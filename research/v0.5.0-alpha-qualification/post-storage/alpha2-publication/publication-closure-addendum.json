@@ -1,0 +1,112 @@
+{
+  "kind": "Completed alpha publication and integrated-PR closure addendum",
+  "status": "completed",
+  "recorded_at_utc": "2026-11-14T19:12:47.573961+00:00",
+  "inventory_snapshot": "https://github.com/den-run-ai/pystachy/tree/3790f5ac4ca4ee660bf747bfc062b22b53d5d897/research/v0.5.0-alpha-qualification/dispositions",
+  "inventory_unchanged": true,
+  "inventory_counts": {
+    "rows": 180,
+    "included": 21,
+    "conditional": 65,
+    "deferred": 94,
+    "superseded": 0
+  },
+  "releases": [
+    {
+      "version": "v0.5.0-alpha.1",
+      "source": "a73c56c92f3aad4b490307a5d1b882e487a57f55",
+      "publication": "GitHub, Docker amd64/arm64 and PyPI 0.5.0a1 published and independently verified",
+      "final_acceptance_sha256": "043910e45801cb5ae7c5c87b03de86e4c10c95cbc9e6632aaa499a7a49b3cd27"
+    },
+    {
+      "version": "v0.5.0-alpha.2",
+      "source": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+      "publication": "GitHub, Docker amd64/arm64 and PyPI 0.5.0a2 published and independently verified",
+      "final_acceptance_sha256": "7ac9e86a7d4d48482d7d2a55ae77015d04daf21381529008ea6eb50e9ebbbec3",
+      "native_run": 43626857296,
+      "pypi_run": 43630294045
+    }
+  ],
+  "alpha2_closed_prs": [
+    {
+      "pr": 1415,
+      "title": "Keep classes a hierarchy's __init__ takes out of templates",
+      "head": "42f7576d77dc08273c2136b1754fc2515b465e71",
+      "source": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+      "whole_head_ancestry_checked": true,
+      "commits_outside_source": 0,
+      "before": {
+        "state": "open",
+        "merged": false,
+        "updated_at": "2026-11-13T03:29:13Z"
+      },
+      "after": {
+        "state": "closed",
+        "merged": false,
+        "closed_at": "2026-11-14T19:11:42Z",
+        "updated_at": "2026-11-14T19:11:42Z"
+      },
+      "comment_result": {
+        "id": 6882790845
+      },
+      "comment_body": "Published in [v0.5.0-alpha.2](https://github.com/den-run-ai/pystachy/releases/tag/v0.5.0-alpha.2) through #1488.\n\nThe complete current head `42f7576d77dc08273c2136b1754fc2515b465e71` is an ancestor of released source `80490143498d149d407343ba1cb7aedb1db2d2c5`, with zero commits outside that source. Closing this stacked PR because its full change history is already included.\n\nGitHub archives, Docker amd64/arm64 and [PyPI 0.5.0a2](https://pypi.org/project/pystachy/0.5.0a2/) are published and independently verified. [Exact-main qualification and build-cost evidence](https://github.com/den-run-ai/pystachy/tree/7e37d27bbda6d257e1b2984d679eba885e2db7ca/research/v0.5.0-alpha-qualification/post-storage/alpha2-main); [native release](https://github.com/den-run-ai/pystachy/actions/runs/43626857296); [PyPI release](https://github.com/den-run-ai/pystachy/actions/runs/43630294045). Stable defaults remain v0.4.0.\n\nRelease bookkeeping prepared with ChatGPT assistance.",
+      "url": "https://github.com/den-run-ai/pystachy/pull/1415"
+    },
+    {
+      "pr": 1281,
+      "title": "Type ClassVar class attributes in ordinary classes",
+      "head": "869a61db4c79511235c3a1243e22c215d2d8ebeb",
+      "source": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+      "whole_head_ancestry_checked": true,
+      "commits_outside_source": 0,
+      "before": {
+        "state": "open",
+        "merged": false,
+        "updated_at": "2026-11-14T04:38:34Z"
+      },
+      "after": {
+        "state": "closed",
+        "merged": false,
+        "closed_at": "2026-11-14T19:11:45Z",
+        "updated_at": "2026-11-14T19:11:45Z"
+      },
+      "comment_result": {
+        "id": 6882791628
+      },
+      "comment_body": "Published in [v0.5.0-alpha.2](https://github.com/den-run-ai/pystachy/releases/tag/v0.5.0-alpha.2) through #1488.\n\nThe complete current head `869a61db4c79511235c3a1243e22c215d2d8ebeb` is an ancestor of released source `80490143498d149d407343ba1cb7aedb1db2d2c5`, with zero commits outside that source. Closing this stacked PR because its full change history is already included.\n\nGitHub archives, Docker amd64/arm64 and [PyPI 0.5.0a2](https://pypi.org/project/pystachy/0.5.0a2/) are published and independently verified. [Exact-main qualification and build-cost evidence](https://github.com/den-run-ai/pystachy/tree/7e37d27bbda6d257e1b2984d679eba885e2db7ca/research/v0.5.0-alpha-qualification/post-storage/alpha2-main); [native release](https://github.com/den-run-ai/pystachy/actions/runs/43626857296); [PyPI release](https://github.com/den-run-ai/pystachy/actions/runs/43630294045). Stable defaults remain v0.4.0.\n\nRelease bookkeeping prepared with ChatGPT assistance.",
+      "url": "https://github.com/den-run-ai/pystachy/pull/1281"
+    },
+    {
+      "pr": 1282,
+      "title": "Read class-body constants in later class-scope values",
+      "head": "cc6c4cabddfc85e5a4ae759509d29331fdf42b52",
+      "source": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+      "whole_head_ancestry_checked": true,
+      "commits_outside_source": 0,
+      "before": {
+        "state": "open",
+        "merged": false,
+        "updated_at": "2026-11-14T04:39:28Z"
+      },
+      "after": {
+        "state": "closed",
+        "merged": false,
+        "closed_at": "2026-11-14T19:11:49Z",
+        "updated_at": "2026-11-14T19:11:49Z"
+      },
+      "comment_result": {
+        "id": 6882792450
+      },
+      "comment_body": "Published in [v0.5.0-alpha.2](https://github.com/den-run-ai/pystachy/releases/tag/v0.5.0-alpha.2) through #1488.\n\nThe complete current head `cc6c4cabddfc85e5a4ae759509d29331fdf42b52` is an ancestor of released source `80490143498d149d407343ba1cb7aedb1db2d2c5`, with zero commits outside that source. Closing this stacked PR because its full change history is already included.\n\nGitHub archives, Docker amd64/arm64 and [PyPI 0.5.0a2](https://pypi.org/project/pystachy/0.5.0a2/) are published and independently verified. [Exact-main qualification and build-cost evidence](https://github.com/den-run-ai/pystachy/tree/7e37d27bbda6d257e1b2984d679eba885e2db7ca/research/v0.5.0-alpha-qualification/post-storage/alpha2-main); [native release](https://github.com/den-run-ai/pystachy/actions/runs/43626857296); [PyPI release](https://github.com/den-run-ai/pystachy/actions/runs/43630294045). Stable defaults remain v0.4.0.\n\nRelease bookkeeping prepared with ChatGPT assistance.",
+      "url": "https://github.com/den-run-ai/pystachy/pull/1282"
+    }
+  ],
+  "stable_pointers": {
+    "github_tag": "v0.4.0",
+    "github_commit": "5f81cc2563d231501952104e991d858e670325ac",
+    "docker_image": "dta67/pystachy",
+    "docker_latest_digest": "sha256:037f5691b17c9ae9a8afb6be79bf6870a1a81fb9ada67ec5e3d9dd5b08d60d01",
+    "pypi_version": "0.4.0"
+  },
+  "scope": "Addendum to the immutable inventory, not a new code review or full open-PR census. Original snapshot states are preserved; later alphas, RCs and stable remain future work."
+}

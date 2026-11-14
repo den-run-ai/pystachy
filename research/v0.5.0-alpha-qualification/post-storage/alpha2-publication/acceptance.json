@@ -1,0 +1,316 @@
+{
+  "kind": "Independent final alpha2 qualification and publication acceptance",
+  "status": "passed_alpha2_delivery_and_qualification",
+  "created_utc": "2026-11-14T19:10:55.376603+00:00",
+  "version": "v0.5.0-alpha.2",
+  "package_version": "0.5.0a2",
+  "commit": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+  "source_tree": "717a8c9386ae9f5f6545cc3686a9e22282fc560c",
+  "inputs": [
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/release-alpha2-verification/independent-audits/native-docker-final.json",
+      "sha256": "4392355313da1d6c41a7e5329d87d3dd536bcc61449a0fdea08190be4caf6a92",
+      "size": 26405
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/release-alpha2-verification/independent-audits/pypi-final.json",
+      "sha256": "ed34c202f5a1c92e04558c2663c265452a4c362b6864b0501f8fcdf5d4bbb939",
+      "size": 69067
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-independent-review/alpha2-final-lean-independent-audit.json",
+      "sha256": "2fc8ec22aaaa6d1380b937209ecb952d42e263a30ce930512e93cd65f36439bc",
+      "size": 15549
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-independent-review/alpha2-release-tree-independent-audit.json",
+      "sha256": "d1405a58a0d4ac005786bc577eac56ce3f115b9827aa109e52ae447427a62aff",
+      "size": 1294
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-exact-main-gates/report.json",
+      "sha256": "4895e13afbe568109ede98dd6881679afface528fc76e659df70025d30b35916",
+      "size": 99831
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-exact-main-gates/verification-acceptance.json",
+      "sha256": "dd3ce02620520567522739aba1fb961792cc13b14cac5eb0d1739f0c6a7a2429",
+      "size": 61008
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-exact-main-gates/qualification-acceptance.json",
+      "sha256": "3887cdcb13b91afde6590c128d4bf66c63003c694e6084f3faa38cfabbc12113",
+      "size": 1345
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-exact-main-performance/independent-acceptance.json",
+      "sha256": "5b10e0abfa0f129322fa31b786f65aa03891196d1bfe58a0cc664a0c979f39ce",
+      "size": 50913
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-build-memory/independent-acceptance.json",
+      "sha256": "6ae8b3876e4244a5d70d101efb192faa53245511936d41cda4d40e5f70247790",
+      "size": 62302
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/release-alpha2-verification/independent-audits/release-body-review.json",
+      "sha256": "b2077a70dafa426c11f578efc50b2080714947be73c9f6cdbb7c164707cdcf80",
+      "size": 4501
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-exact-main-gates/runs-final.json",
+      "sha256": "57fc65ceb640dd612c1382615df50b0270b50a030de1f27990988ad91e72a05c",
+      "size": 101792
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-exact-main-gates/check-runs-final.json",
+      "sha256": "9071a356c700790d4b12041028aa02f093f8184ed5590864c0cf4fa32896d039",
+      "size": 566400
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-independent-review/compiler-review.json",
+      "sha256": "51cbf82ee63441fbca9bdf9ce31bfd8116468a5680b91040e5415abbab8c66b3",
+      "size": 9758
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-independent-runtime-review/review.json",
+      "sha256": "409206ec0674636b199e9c02542e160a2e195c857572754edf103342f5994a4e",
+      "size": 6790
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-independent-review/review-disposition-latest.json",
+      "sha256": "9b74c1f6677a78cf91ca3d65e5cdfd279ea7ba611b9f1193ca9432bf888f57c5",
+      "size": 11613
+    },
+    {
+      "path": "/workspace/scratch/c66a10c5a7b1/ir-audit/a2-explained.json",
+      "sha256": "0fe942a02d205cfbd56b73f8590a245ed414a06c5b2ca3df642c231533743b2c",
+      "size": 1613565
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/release-alpha2-verification/public-pypi-installs.json",
+      "sha256": "d98be3ab578b9be0e886170d1a6dfe6393166d23f0802268b3f7987cf4eed8f4",
+      "size": 2198
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/release-alpha2-verification/pypi-retrieval.json",
+      "sha256": "f40d71f079ad271ba79be67a909aef13d6200a0e92fbc8812c82a8d195ba5710",
+      "size": 1309
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/artifact-audit/verify_public_pypi_installs_with_context.py",
+      "sha256": "2d5a9d664bee1afefb142cb29d94ce0d603f12f3b47bd2fadae4d45d959fdebd",
+      "size": 7499
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/release-alpha2-verification/pypi/pystachy-0.5.0a2-py3-none-any.whl",
+      "sha256": "d42c6624fab8438550a99017f128929dc49833e6aaca19416a2caf3ff0725667",
+      "size": 1928629
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/release-alpha2-verification/stable-retrieval.json",
+      "sha256": "130f4f32793a678c5ccc72e177ab49aea18be778b9c1ea8be6321292d27f74b4",
+      "size": 810
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/release-alpha2-verification/tested/pypi-0.5.0a2/ARTIFACT_PROVENANCE.json",
+      "sha256": "e2ff1c1946ee421c76c03d63b6dd2529779cae4016dc826fc7c29e0106639490",
+      "size": 728
+    }
+  ],
+  "native_acceptance": "passed_native_and_docker",
+  "pypi_acceptance": "passed_pypi",
+  "public_channels": {
+    "github": {
+      "url": "https://github.com/den-run-ai/pystachy/releases/tag/v0.5.0-alpha.2",
+      "release_id": 445512234,
+      "assets": 11,
+      "prerelease": true
+    },
+    "docker": {
+      "image": "dta67/pystachy:v0.5.0-alpha.2",
+      "index_digest": "sha256:ec762302831e863f92ab31ec061131088e46ede67000ea592ecd12a846449104",
+      "platforms": {
+        "amd64": {
+          "manifest_digest": "sha256:b64b64c96d28cb1d7d61d07b27335990645d0dfa0fd81b829068475a48504771",
+          "config_digest": "sha256:ebe65f741eedb8c40f9b0473f28605c5ce975c605331e21334977df331ff2738",
+          "layer_count": 7,
+          "diff_ids": [
+            "sha256:21210938f5a37a9887b2d0a20428917b923a636ca6efe038c3c7d9cd9f1f9b61",
+            "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+            "sha256:f7157730cf0fb4929b8aa8989777a450224f449c32cb7b62d02d1cd465f3c7fc",
+            "sha256:f3790f96ac8b15fe35a96b77097d91321443576360215989819728e0df3499ed",
+            "sha256:ba96159164b16196587862b5cde05158844e309c6c009fe8ccf2258db95c6ffe",
+            "sha256:0306b53eb6a6446f0303edec441fdfaed9d89b8559bb545354de14dfe0f63af5",
+            "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+          ]
+        },
+        "arm64": {
+          "manifest_digest": "sha256:4ce73c89db09daaf426a913cb725ef8fd091ecbc963714db52052b8149461433",
+          "config_digest": "sha256:64c902ca5a1aa432db79b22a1862506c3cefef906125ec83d94a96cfeeb7ba68",
+          "layer_count": 7,
+          "diff_ids": [
+            "sha256:d367816f799f33f5cbdd0a4cdb59a8c432f8d63bfcead9b880672c404202007a",
+            "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+            "sha256:67face5060794595d4de1363da7b68460bc51b9243d35e636e49af19b54d42a4",
+            "sha256:62f3c1ab5b892cb90c02ef6140724e475bd7ebf778937ad01041163e67e9e9f3",
+            "sha256:5cae8002f5fbc9b20e69ddfec9cbf73b8c657f39f72e7f78a554d20ccb33ae45",
+            "sha256:9de1f964fb128eb3dfedeb613e4b019f37886c2a703ede0de932df4ff56e15b0",
+            "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+          ]
+        }
+      },
+      "all_public_configs_equal_tested_native_images": true,
+      "all_public_layers_downloaded": true,
+      "verified_unique_blobs": 11,
+      "verified_layer_references": 14,
+      "downloaded_compressed_bytes": 407152903,
+      "all_downloaded_blob_hash_size_diff_id_records_match_tested_images": true
+    },
+    "pypi": {
+      "url": "https://pypi.org/project/pystachy/0.5.0a2/",
+      "distributions": [
+        {
+          "filename": "pystachy-0.5.0a2-py3-none-any.whl",
+          "sha256": "d42c6624fab8438550a99017f128929dc49833e6aaca19416a2caf3ff0725667",
+          "size": 1928629,
+          "public_url": "https://files.pythonhosted.org/packages/e8/cf/4de766d73e808c7f937d7ca27c35ea4ecfd705a5e1b6f423e809de625d9a/pystachy-0.5.0a2-py3-none-any.whl",
+          "uploaded_at": "2026-11-14T19:08:34.611445Z",
+          "tested_bytes_identical": true
+        },
+        {
+          "filename": "pystachy-0.5.0a2.tar.gz",
+          "sha256": "ef085f320ea6a61db1c55c10b99ddb79f54da175e66cc68e5e8115d70d9a0e4a",
+          "size": 1856048,
+          "public_url": "https://files.pythonhosted.org/packages/08/c4/691cfec3843781610495c26301033cdfc573130e89f319ab59e4bb09d0ac/pystachy-0.5.0a2.tar.gz",
+          "uploaded_at": "2026-11-14T19:08:36.458536Z",
+          "tested_bytes_identical": true
+        }
+      ]
+    }
+  },
+  "workflow_runs": {
+    "native": {
+      "id": 43626857296,
+      "outcomes": {
+        "success": 8,
+        "skipped": 2
+      },
+      "max_job_seconds": 683.0
+    },
+    "pypi": {
+      "id": 43630294045,
+      "publisher_commit": "6e5544cfa3eecb8329e4f4cb19d2e0ac3e99b1bf",
+      "outcomes": {
+        "success": 2,
+        "skipped": 4
+      },
+      "max_job_seconds": 76
+    }
+  },
+  "qualification": {
+    "exact_main_workflows": 7,
+    "exact_main_check_outcomes": {
+      "success": 131,
+      "skipped": 1
+    },
+    "complete_lean_programs": 2550,
+    "shared_programs": 2529,
+    "added_programs": 21,
+    "additional_proved_obligations": 1203,
+    "strict_storage_programs": 175,
+    "strict_storage_obligations_proved": 18582,
+    "new_failed_or_unproved_outcomes": [],
+    "proof_coverage_losses": [],
+    "compiler_compatibility_cases": 4579,
+    "compiler_compatibility_counts": {
+      "identical": 4270,
+      "generated_home_only": 262,
+      "new_acceptance": 17,
+      "ir_change": 10,
+      "diagnostic_change": 6,
+      "diagnostic_home_only": 14
+    },
+    "new_rejections": 0,
+    "compatibility_scope": "Retained original comparison with explained differences; both release compiler/runtime trees remain equivalent except the three independent Lean checker/test repairs.",
+    "bootstrap_tier_tracked_sources_and_modes": 10075,
+    "performance_comparisons": {
+      "ok": 49
+    },
+    "fresh_bootstrap_observation": {
+      "base": {
+        "wall_s": 155.480516573,
+        "returncode": 0
+      },
+      "head": {
+        "wall_s": 162.39670538999997,
+        "returncode": 0
+      },
+      "ratio": 1.044482671973583,
+      "note": "One sequential sample per revision; no confirmation or statistical speed claim."
+    },
+    "build_memory_measured_builds": 18,
+    "build_memory_tradeoff": "Three bounded workloads have lower median warm AOT build time and recorded wait4 peak RSS, with executable-size increases of 4.9\u201335.6%; no broad runtime/memory claim."
+  },
+  "independent_source_reviews": {
+    "count": 2,
+    "reviewed_candidate": "950c0440ad793dc6c34664f591383a5e6bba14dd",
+    "reviewed_tree": "717a8c9386ae9f5f6545cc3686a9e22282fc560c",
+    "release_tree_equal": true,
+    "reviewers": [
+      "alpha2_audit; did not author compiler source changes",
+      "/root/release_pipeline"
+    ],
+    "findings": [],
+    "scopes": [
+      "compiler/class/typing/dispatch",
+      "driver/AOT runtime cache/verification integration"
+    ]
+  },
+  "automated_review_limit": {
+    "github_codex_completed_current_head_review": false,
+    "github_service_attempts_recorded": 4,
+    "local_cli_review_completed": false,
+    "detail": "GitHub review service attempts did not complete. Local CLI attempts ended at argument validation and read-only app-server initialization; no workaround was attempted. Two independent agent source reviews completed separately. The sole historical review thread is resolved; failed-summary finding flags were stale."
+  },
+  "supplemental_public_installs": {
+    "status": "passed_supplemental_public_installs",
+    "installers": [
+      "pip",
+      "uv"
+    ],
+    "payload_files_per_environment": 163,
+    "assertion_context": {
+      "parent_optimize": 0,
+      "PYTHONOPTIMIZE": "0",
+      "installed_python_optimize": [
+        0,
+        0
+      ]
+    },
+    "receipt": {
+      "path": "/workspace/scratch/7dd0519bc14a/release-alpha2-verification/independent-audits/public-pypi-installs-independent.json",
+      "sha256": "2de748d1353300673d7c000acaa7a10ef075ef694dac0b6dd8f5d60dff5e70e1",
+      "size": 6173
+    }
+  },
+  "stable_pointers_unchanged": {
+    "github_tag": "v0.4.0",
+    "github_commit": "5f81cc2563d231501952104e991d858e670325ac",
+    "docker_image": "dta67/pystachy",
+    "docker_latest_digest": "sha256:037f5691b17c9ae9a8afb6be79bf6870a1a81fb9ada67ec5e3d9dd5b08d60d01",
+    "pypi_version": "0.4.0"
+  },
+  "hosted_version_contract": {
+    "expected_stdout": "pystachy v0.5.0-alpha.2 (commit unknown)\n",
+    "reason": "driver.compiler_version defaults absent REVISION to unknown; the released pyproject package-data and actual wheel include VERSION but no REVISION.",
+    "identity_binding": "SOURCE.json plus exact immutable Git source-byte comparison, workflow/tested/public SHA-256 identity.",
+    "additional_local_probe": "Supplemental public-wheel pip/uv installation and version checks have a separate receipt. No local installation or runtime execution is claimed by this evidence-only audit."
+  },
+  "release_body_review": {
+    "status": "passed_release_body_only",
+    "findings": []
+  },
+  "supports_completed_alpha2_publication": true,
+  "scope": "Binds completed independent native/public-layer, PyPI, local-public-install, complete qualification and independent source-review evidence at one release tree. No new network, polling, downloads, payload execution, compilation, installation, tests or Lean reruns. This is independent agent review, not successful GitHub/CLI Codex review."
+}

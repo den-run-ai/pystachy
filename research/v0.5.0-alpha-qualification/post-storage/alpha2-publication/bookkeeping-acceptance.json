@@ -1,0 +1,216 @@
+{
+  "kind": "Independent completed alpha publication bookkeeping and README consistency review",
+  "status": "passed_bookkeeping_and_publication_narrative",
+  "created_utc": "2026-11-14T19:15:33.049711+00:00",
+  "source": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+  "inputs": [
+    {
+      "path": "release-bookkeeping/publication-closure-addendum.json",
+      "sha256": "70b7c0eb6eead1b885ed5e3dde70b10a25bb0e3609586d98d4b313e4e6b1adc8",
+      "bytes": 6835
+    },
+    {
+      "path": "release-bookkeeping/publication-closure-addendum.md",
+      "sha256": "0c71eaba43b6761d4e18eeb2849f72dc08003d8ce55ebe37ffe43271d8e98a68",
+      "bytes": 3577
+    },
+    {
+      "path": "release-bookkeeping/alpha2-closed-included-prs.json",
+      "sha256": "5b0151c756bd672c9e4031bee5cfefe1b846aa0e68942394952d719101520aea",
+      "bytes": 5436
+    },
+    {
+      "path": "release-bookkeeping/alpha2-stacked-pr-closure-preflight.json",
+      "sha256": "2e43f819446bc9afe724249870b593f11c6ef80e7a922b338335be7e7c1d063b",
+      "bytes": 10903
+    },
+    {
+      "path": "release-bookkeeping/pr-disposition-inventory.json",
+      "sha256": "97e6fdf7be1edc6d654b73e2c5a8670567c3c5d7424c4e10c2fff3004dde96e5",
+      "bytes": 348322
+    },
+    {
+      "path": "release-bookkeeping/pr-disposition-archive-manifest.json",
+      "sha256": "8400c3ee6864da9e02c5c1427fb44b1dc57e2a6df4d114dbc7739fa2c497dd75",
+      "bytes": 1999
+    },
+    {
+      "path": "evidence-upload/alpha2-publication-README.md",
+      "sha256": "a15718bf5de053c7620e4e962c580b96be3047a403caa4390fad0815a55d5152",
+      "bytes": 8924
+    },
+    {
+      "path": "release-alpha1-verification/independent-audits/alpha1-final-with-public-installs.json",
+      "sha256": "043910e45801cb5ae7c5c87b03de86e4c10c95cbc9e6632aaa499a7a49b3cd27",
+      "bytes": 6745
+    },
+    {
+      "path": "release-alpha2-verification/independent-audits/alpha2-final.json",
+      "sha256": "7ac9e86a7d4d48482d7d2a55ae77015d04daf21381529008ea6eb50e9ebbbec3",
+      "bytes": 13862
+    },
+    {
+      "path": "release-alpha2-verification/independent-audits/alpha2-final.md",
+      "sha256": "9028eabad5bfb30cc89aceee5972d215bcabbbe55c9777a0c512c2742c3c7461",
+      "bytes": 4371
+    },
+    {
+      "path": "release-alpha2-verification/independent-audits/native-docker-final.json",
+      "sha256": "4392355313da1d6c41a7e5329d87d3dd536bcc61449a0fdea08190be4caf6a92",
+      "bytes": 26405
+    },
+    {
+      "path": "release-alpha2-verification/independent-audits/pypi-final.json",
+      "sha256": "ed34c202f5a1c92e04558c2663c265452a4c362b6864b0501f8fcdf5d4bbb939",
+      "bytes": 69067
+    },
+    {
+      "path": "release-alpha2-verification/native-workflow-complete.json",
+      "sha256": "e2655e6b5a230ea3d48bab3bc8b751028aa54ce6b12cad0566e41d736671a632",
+      "bytes": 36624
+    },
+    {
+      "path": "release-alpha2-verification/pypi-workflow-complete.json",
+      "sha256": "c3acc366a78da204c065ec5e2f45fa1fa67fd77024e6c2f87db082eabb270804",
+      "bytes": 13314
+    },
+    {
+      "path": "alpha2-exact-main-gates/report.json",
+      "sha256": "4895e13afbe568109ede98dd6881679afface528fc76e659df70025d30b35916",
+      "bytes": 99831
+    },
+    {
+      "path": "alpha2-independent-review/alpha2-final-lean-independent-audit.json",
+      "sha256": "2fc8ec22aaaa6d1380b937209ecb952d42e263a30ce930512e93cd65f36439bc",
+      "bytes": 15549
+    },
+    {
+      "path": "alpha2-exact-main-performance/independent-acceptance.json",
+      "sha256": "5b10e0abfa0f129322fa31b786f65aa03891196d1bfe58a0cc664a0c979f39ce",
+      "bytes": 50913
+    },
+    {
+      "path": "alpha2-build-memory/independent-acceptance.json",
+      "sha256": "6ae8b3876e4244a5d70d101efb192faa53245511936d41cda4d40e5f70247790",
+      "bytes": 62302
+    },
+    {
+      "path": "alpha2-independent-review/review-disposition-latest.json",
+      "sha256": "9b74c1f6677a78cf91ca3d65e5cdfd279ea7ba611b9f1193ca9432bf888f57c5",
+      "bytes": 11613
+    },
+    {
+      "path": "release-bookkeeping/pr-disposition-inventory.md",
+      "sha256": "bd75c80a8bab567d37e20538cfd12195738cca212488ac1499077e4a29781de5",
+      "bytes": 89381
+    },
+    {
+      "path": "release-bookkeeping/pr-disposition-inventory-receipt.json",
+      "sha256": "1c8f808ebff955e98b32241419bd3b2dc22e9ed1bd8a25c6ae028bb40d0eb9c9",
+      "bytes": 730
+    },
+    {
+      "path": "release-bookkeeping/build_pr_disposition_inventory.py",
+      "sha256": "82184e066ce25e66d145e26cca94b17f4995f6b34c8cdf8a80063ed1fe4ef9bd",
+      "bytes": 26079
+    },
+    {
+      "path": "release-bookkeeping/open-prs-metadata-snapshot.json",
+      "sha256": "8cab7a9e9b302b20a7d236beff1a40e22d7b681848c0a34c8853b79b124a3ada",
+      "bytes": 355607
+    },
+    {
+      "path": "release-bookkeeping/selected-closed-prs-metadata-snapshot.json",
+      "sha256": "2a2d49941ef7ae093b03286954690655edad547b1cbe3eaef2db2e96ad0eeb05",
+      "bytes": 27214
+    },
+    {
+      "path": "release-bookkeeping/open-prs-final-metadata-snapshot.json",
+      "sha256": "6d0021e1388f940eeaee19af65731ed3a5e2ef94045a8f89c3a27544e6f4f4e6",
+      "bytes": 353782
+    },
+    {
+      "path": "release-bookkeeping/selected-closed-prs-final-metadata-snapshot.json",
+      "sha256": "22fc78ef82a41534a526e832402cca669f17ab78f9dfe9d27cb5f1b7703bd1e8",
+      "bytes": 39886
+    },
+    {
+      "path": "release-bookkeeping/alpha1-closed-included-prs.json",
+      "sha256": "ac1c807224784d94c154ebef12627fb8a42d09cd365d394931940a59a168066b",
+      "bytes": 1400
+    },
+    {
+      "path": "release-bookkeeping/later-alpha-roadmap-independent.json",
+      "sha256": "97179fe8bd099535e13b0b4748121781a55622821f3d31ec344c8906f8ddca67",
+      "bytes": 30733
+    },
+    {
+      "path": "release-bookkeeping/native-mypy-issue-1322-snapshot.json",
+      "sha256": "38c7133578a380404bd291bc8766c28f88c2c5db8aa365c133cf464ca5b9277f",
+      "bytes": 2474
+    },
+    {
+      "path": "release-alpha2-verification/bookkeeping/publication-closure-addendum.json",
+      "sha256": "70b7c0eb6eead1b885ed5e3dde70b10a25bb0e3609586d98d4b313e4e6b1adc8",
+      "bytes": 6835
+    },
+    {
+      "path": "release-alpha2-verification/bookkeeping/publication-closure-addendum.md",
+      "sha256": "0c71eaba43b6761d4e18eeb2849f72dc08003d8ce55ebe37ffe43271d8e98a68",
+      "bytes": 3577
+    },
+    {
+      "path": "release-alpha2-verification/bookkeeping/alpha2-closed-included-prs.json",
+      "sha256": "5b0151c756bd672c9e4031bee5cfefe1b846aa0e68942394952d719101520aea",
+      "bytes": 5436
+    }
+  ],
+  "findings": [],
+  "completed_addendum_matches_final_acceptance_hashes": true,
+  "closure_rows_exactly_match_completed_root_record": true,
+  "all_three_heads_equal_prior_independent_ancestry_proof": true,
+  "recorded_closed_states_are_not_additional_merges": true,
+  "all_closure_times_follow_final_acceptance": true,
+  "closure_heads": {
+    "1415": "42f7576d77dc08273c2136b1754fc2515b465e71",
+    "1281": "869a61db4c79511235c3a1243e22c215d2d8ebeb",
+    "1282": "cc6c4cabddfc85e5a4ae759509d29331fdf42b52"
+  },
+  "frozen_inventory_all_manifest_hashes_unchanged": true,
+  "inventory_counts": {
+    "rows": 180,
+    "included": 21,
+    "conditional": 65,
+    "deferred": 94,
+    "superseded": 0
+  },
+  "publication_sources_runs_artifact_counts_and_stable_defaults_match": true,
+  "cost_table_rows_verified": [
+    {
+      "workload": "numeric",
+      "verified_markdown_row": "| Numeric | 1.450922 \u2192 0.396689 (\u221272.7%) | 93,540 \u2192 88,136 (\u22125.8%) | 107,072 \u2192 145,200 (+35.6%) |"
+    },
+    {
+      "workload": "json",
+      "verified_markdown_row": "| JSON | 12.863427 \u2192 9.186604 (\u221228.6%) | 140,776 \u2192 133,436 (\u22125.2%) | 668,808 \u2192 701,704 (+4.9%) |"
+    },
+    {
+      "workload": "copy_float",
+      "verified_markdown_row": "| Float copy | 1.377891 \u2192 0.227626 (\u221283.5%) | 93,604 \u2192 85,492 (\u22128.7%) | 112,304 \u2192 151,048 (+34.5%) |"
+    }
+  ],
+  "separate_bootstrap_observation": {
+    "base": {
+      "wall_s": 155.480516573,
+      "returncode": 0
+    },
+    "head": {
+      "wall_s": 162.39670538999997,
+      "returncode": 0
+    },
+    "ratio": 1.044482671973583,
+    "note": "One sequential sample per revision; no confirmation or statistical speed claim."
+  },
+  "runtime_memory_scope_and_failed_codex_limits_retained": true,
+  "scope": "Read-only comparison of frozen local records and prose; no network, GitHub mutation, tests, compilation, installation or payload execution. Closure state evidence is the completed root API/readback record, cross-checked against the earlier independent ancestry proof; no new live read was performed. This does not verify the not-yet-packaged final archive membership or bytes."
+}
