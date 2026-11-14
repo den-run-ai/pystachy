@@ -1,0 +1,82 @@
+Point.__eq__
+Point.__eq__
+True False
+Point3.__eq__
+Point.__eq__
+Point3.__eq__
+Point.__eq__
+True False
+Point3.__eq__
+Point.__eq__
+Point3.__eq__
+Point.__eq__
+True False
+Point3.__eq__
+Point.__eq__
+Point3.__eq__
+Point.__eq__
+True False
+Point3.__eq__
+Point.__eq__
+Point3.__eq__
+Point.__eq__
+True False
+Point3.__eq__
+Point.__eq__
+Point3.__eq__
+Point.__eq__
+True False
+Point3.__eq__
+Point.__eq__
+Point3.__eq__
+Point.__eq__
+True False
+Point3.__eq__
+Point.__eq__
+Point3.__eq__
+Point.__eq__
+False True
+Point3.__eq__
+Point.__eq__
+Point3.__eq__
+Point.__eq__
+True False
+Point3.__eq__
+Point.__eq__
+Point3.__eq__
+Point.__eq__
+True False
+Point3.__eq__
+Point.__eq__
+Point3.__eq__
+Point.__eq__
+True False
+Point3.__eq__
+Point.__eq__
+Point3.__eq__
+Point.__eq__
+False True
+Point3.__eq__
+Point.__eq__
+Point3.__eq__
+Point.__eq__
+True False
+Point3.__eq__
+Point.__eq__
+Point3.__eq__
+Point.__eq__
+False True
+Point3.__eq__
+Point.__eq__
+Point3.__eq__
+Point.__eq__
+False True
+Point3.__eq__
+Point.__eq__
+Point3.__eq__
+Point.__eq__
+True False
+Point3.__eq__
+Point3.__eq__
+False False False
+[exit 0]

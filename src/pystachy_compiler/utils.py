@@ -239,6 +239,8 @@ def tname(t: str) -> str:
         return "NoneType"
     if t == "int+":
         return "int"
+    if t == "decimal$Decimal":
+        return "decimal.Decimal"
     if t == "file":
         return "TextIOWrapper"
     if is_vtuple(t):
@@ -1130,7 +1132,13 @@ def template_ok(name: str) -> bool:
         return True
     # Power may also declare an optional modulus parameter: normal call binding checks
     # its signature, rather than SPECIAL's fixed binary-method arity.
-    return name in "__call__ __getitem__ __setitem__ __delitem__ __contains__ __enter__ __exit__ __pow__ __ipow__ __deepcopy__".split() or (name in SPECIAL and SPECIAL[name].startswith("2:"))
+    # round(o) and round(o, n) call __round__ as written, and it returns an int for the one and an
+    # object for the other: a template's parameter types each call's result.
+    # A reflected operator's method is called with the left operand, as its forward method is
+    # with the right one: a number on the left types its parameter.
+    if name in "__radd__ __rsub__ __rmul__ __rtruediv__ __rfloordiv__ __rmod__ __rmatmul__ __rand__ __ror__ __rxor__ __rlshift__ __rrshift__".split():
+        return True
+    return name in "__call__ __getitem__ __setitem__ __delitem__ __contains__ __enter__ __exit__ __pow__ __ipow__ __deepcopy__ __round__".split() or (name in SPECIAL and SPECIAL[name].startswith("2:"))
 
 
 def takes_self(f: FnInfo) -> bool:

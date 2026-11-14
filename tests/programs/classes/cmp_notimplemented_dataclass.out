@@ -1,0 +1,4 @@
+False True True False 3 3
+False True
+TypeError '>' not supported between instances of 'Weight' and 'Weight'
+[exit 0]

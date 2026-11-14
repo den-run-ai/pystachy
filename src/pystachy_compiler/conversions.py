@@ -4,7 +4,7 @@ from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.ir import Ins, Val, tmpname
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import BIG, BIGOPT, DUNDER, NONEVAR, ORDOP, REFL
+from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, DUNDER, NONEVAR, ORDOP, REFL
 from src.pystachy_compiler.bigints import big_viewable, held
 from src.pystachy_compiler.utils import (
     elem,
@@ -227,6 +227,8 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
             self.err(f"{what} may be None ({typestr(v.t)}), and a test does not narrow a global or a field (a call may change it): copy it to a local variable, and test that")
         self.err(f"{what} may be None ({typestr(v.t)}); test it with 'is not None' first")
     hint = " (write a float literal like 1.0, or use float())" if t == "float" and v.t == "int" else ""
+    if t == COMPLEXC and v.t in ["int", "float", "bool", BIG]:
+        hint = " (write a complex literal like 2+0j, or use complex())"
     if is_fn(t) and is_fn(v.t):
         hint = " (each function is a type of its own: a variable, a list's items or a dict's values hold one function)"
     if hint == "" and self.curfn.ll in self.guessed:

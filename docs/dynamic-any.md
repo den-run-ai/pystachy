@@ -700,7 +700,9 @@ unrelated class among them, compare as CPython's rich comparison runs them: the 
 method, else the right operand's reflected one (a builtin type's own method declines an object),
 else identity for `==` and `!=` and `TypeError` for an ordering; `!=` without `__ne__` is not
 `__eq__`. The program's `@o.x.<class>` helper runs the class's method with the other value as an
-`Any` argument (`tests/programs/inference/dynany_eq_other.py`). A comparison method whose parameter is
+`Any` argument (`tests/programs/inference/dynany_eq_other.py`), and a method that returns
+`NotImplemented` declines as one that is absent does
+(`tests/programs/inference/dynany_cmp_notimplemented.py`). A comparison method whose parameter is
 `Any` takes any operand, also between typed objects of its class
 (`tests/programs/inference/dynany_eq_any_param.py`).
 

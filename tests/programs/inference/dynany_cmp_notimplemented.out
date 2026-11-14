@@ -1,0 +1,10 @@
+False True
+True
+False True
+TypeError '<' not supported between instances of 'V' and 'int'
+False True
+TypeError '<' not supported between instances of 'int' and 'V'
+False True
+TypeError '<' not supported between instances of 'V' and 'NoneType'
+True 1 1
+[exit 0]

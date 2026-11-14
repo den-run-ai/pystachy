@@ -1,0 +1,23 @@
+eq
+eq
+eq
+eq
+True True False False
+gt
+ge
+lt
+le
+True True True True
+eq
+eq
+eq
+eq
+True True 2
+eq
+0
+False False
+'<' not supported between instances of 'decimal.Decimal' and 'NoneType'
+'<=' not supported between instances of 'decimal.Decimal' and 'NoneType'
+'>' not supported between instances of 'decimal.Decimal' and 'NoneType'
+'>=' not supported between instances of 'decimal.Decimal' and 'NoneType'
+[exit 0]
