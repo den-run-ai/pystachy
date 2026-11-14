@@ -1449,7 +1449,16 @@ def gen_class_call(self, cn: Node, m: str, args: list[Node], want: str, resultso
             if len(args) == 0 or args[0].kind in ["kw", "starred", "dstar"]:
                 self.err(f"{short(cn.s)}.{m}() needs an instance as its first argument")
             o = self.expr(args[0], cn.s)
-            if o.t not in self.classes or not self.derives(o.t, cn.s):
+            own = cn.s
+            if cn.s in self.tmpl and o.t in self.classes and not self.derives(o.t, cn.s):
+                # (an object of a specialization of class template C, or of a class that derives
+                # from one: that specialization's method, which is C's for its types)
+                own = o.t
+                while own in self.classes and self.tmpl_of(own) != cn.s:
+                    own = self.classes[own].base
+                if own in self.classes and m in self.classes[own].methods:
+                    f = self.classes[own].methods[m]
+            if o.t not in self.classes or own not in self.classes or not self.derives(o.t, own):
                 self.err(f"{short(cn.s)}.{m}() needs an instance of {short(cn.s)}")
             self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
             return self.call_fn(f, [o], args[1:], want, direct=True, resultsoft=resultsoft)
