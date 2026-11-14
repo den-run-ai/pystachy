@@ -33,3 +33,9 @@ class InvalidChild(Invalid):
 
 def unused(value: Invalid) -> int:
     return value.score()
+
+
+class SourceHolder(Total):
+    def __init__(self, source: Total) -> None:
+        self.source: Total = source
+        self.total: int = source.score()

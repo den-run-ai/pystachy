@@ -139,6 +139,23 @@ class StateProbeTests(unittest.TestCase):
         self.assertEqual(len({id(g) for g in generations}), 26)
         self.assertIsNot(generations[0].hierarchies, generations[13].hierarchies)
 
+    def test_fixed_layout_restores_template_registry_after_retry_and_error(self):
+        generator = Gen()
+        templates = {"Base": True, "Unrelated": True}
+        generator.tmpl = templates
+        node = Node("class", "Base", 1)
+        for error in (NeedHierarchy(), SystemExit(1)):
+            def interrupted(gen, st):
+                self.assertEqual(gen.tmpl, {"Unrelated": True})
+                raise error
+
+            with self.subTest(error=type(error).__name__):
+                with patch.object(Gen, "fixed_layout_body", interrupted):
+                    with self.assertRaises(type(error)):
+                        generator.fixed_layout(node)
+                self.assertIs(generator.tmpl, templates)
+                self.assertEqual(templates, {"Base": True, "Unrelated": True})
+
     def test_local_fixed_hierarchies_batch_declaration_retries(self):
         source = "class Base:\n    def __init__(self, values):\n        self.value: int = len(values)\n"
         source += "".join(f"class Child{i}(Base):\n    pass\n" for i in range(25))

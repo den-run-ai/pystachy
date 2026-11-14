@@ -416,12 +416,15 @@ def gen_fixed_hierarchy(self, name: str) -> bool:
     return False
 
 
-def gen_hierarchy_chain(self, name: str, chain: list[str]) -> bool:
+def gen_hierarchy_chain(self, name: str, chain: list[str], seen: list[str]) -> bool:
     # A requested declaration and its ordinary bases. Requiring every generic constructor
     # to establish independent field types prevents specialization-dependent layouts from
     # entering inheritance. This examines syntax, not any tentative inferred fields.
     if name in chain:
         return True
+    if name in seen:
+        return False
+    seen.append(name)
     node = self.nokey
     for n in self.cnodes.values():
         if n.s == name:
@@ -431,13 +434,13 @@ def gen_hierarchy_chain(self, name: str, chain: list[str]) -> bool:
     st = node.kids[0] if node.kind == "subclass" else node
     if name in self.tparams or name in self.nts or len(st.kids) != 1:
         return False
+    if node.kind == "subclass":
+        for base in node.kids[1:]:
+            if base.kind != "name" or not self.hierarchy_chain(base.s, chain, seen):
+                return False
     if self.init_generic(st) and not self.fixed_layout(st):
         return False
     chain.append(name)
-    if node.kind == "subclass":
-        for base in node.kids[1:]:
-            if base.kind != "name" or not self.hierarchy_chain(base.s, chain):
-                return False
     return True
 
 
@@ -447,7 +450,13 @@ def gen_request_hierarchy(self, name: str) -> None:
     if len(self.newhints) > 0 and not self.final:
         raise Rejoin()
     chain: list[str] = []
-    if name not in self.hierarchies and self.hierarchy_chain(name, chain):
+    if name in self.hierarchies:
+        return
+    self.hierarchy_chain(name, chain, [])
+    # A constructor parameter or field may name its still-templated base. Admit
+    # verified ancestors first, then re-evaluate the child's annotation in a fresh Gen.
+    # Incomplete chains retain no unverified child; retries must add a new name.
+    if any(c not in self.hierarchies for c in chain):
         for c in chain:
             self.hierarchies[c] = True
         # Main-module declarations already require eager validity. Batch their safe
@@ -456,7 +465,7 @@ def gen_request_hierarchy(self, name: str) -> None:
         for n in self.cnodes.values():
             if n.kind == "subclass" and owner(n.s) == "" and n.s not in self.hierarchies:
                 local_chain: list[str] = []
-                if self.hierarchy_chain(n.s, local_chain):
+                if self.hierarchy_chain(n.s, local_chain, []):
                     for c in local_chain:
                         self.hierarchies[c] = True
         raise NeedHierarchy()
@@ -471,6 +480,21 @@ def gen_retry_hierarchy(self, msg: str) -> None:
 
 
 def gen_fixed_layout(self, st: Node) -> bool:
+    # A self-reference annotates this prospective nominal layout, even if an earlier
+    # pass classified the class as a template. Only syntax-safe field annotations are
+    # read below; no fields or specializations are inferred. Restore even on a retry.
+    if st.s not in self.tmpl:
+        return self.fixed_layout_body(st)
+    templates = self.tmpl
+    self.tmpl = dict(templates)
+    del self.tmpl[st.s]
+    try:
+        return self.fixed_layout_body(st)
+    finally:
+        self.tmpl = templates
+
+
+def gen_fixed_layout_body(self, st: Node) -> bool:
     # Constructor arguments may specialize code without specializing storage. Keep the
     # source class itself when all its instance fields have concrete annotations; an
     # Iterable field, inferred field, explicit generic class or deferred annotation still

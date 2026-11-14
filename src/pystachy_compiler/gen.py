@@ -1095,6 +1095,7 @@ from src.pystachy_compiler.program import (
     gen_fixed_stores as program_fixed_stores,
     gen_fixed_init as program_fixed_init,
     gen_fixed_layout as program_fixed_layout,
+    gen_fixed_layout_body as program_fixed_layout_body,
     gen_fixed_base_properties as program_fixed_base_properties,
     gen_fixed_hierarchy as program_fixed_hierarchy,
     gen_hierarchy_chain as program_hierarchy_chain,
@@ -3752,14 +3753,17 @@ class Gen:
     def fixed_layout(self, st: Node) -> bool:
         return program_fixed_layout(self, st)
 
+    def fixed_layout_body(self, st: Node) -> bool:
+        return program_fixed_layout_body(self, st)
+
     def fixed_base_properties(self, name: str, fields: dict[str, str], seen: list[str]) -> bool:
         return program_fixed_base_properties(self, name, fields, seen)
 
     def fixed_hierarchy(self, name: str) -> bool:
         return program_fixed_hierarchy(self, name)
 
-    def hierarchy_chain(self, name: str, chain: list[str]) -> bool:
-        return program_hierarchy_chain(self, name, chain)
+    def hierarchy_chain(self, name: str, chain: list[str], seen: list[str]) -> bool:
+        return program_hierarchy_chain(self, name, chain, seen)
 
     def request_hierarchy(self, name: str) -> None:
         return program_request_hierarchy(self, name)
