@@ -4873,6 +4873,12 @@ def dyn_packed_work(self) -> list[list[str]]:
 
 
 def dyn_packed_invoke(self, f: FnInfo, fm: FnInfo, pre: list[Val], pos: Val, kws: Val, constructed: Val | None = None) -> None:
+    if constructed is None and fm.cls == COMPLEXC and fm.name == "__init__":
+        # (object.__init__ of a complex number complex_new made, called again with unpacked
+        # arguments, x.__init__(*args) or a bound method's m(*args): it takes any, which the caller
+        # unpacked, and returns None, as the call.__init__ arm and a typed call do, leaving x as it is)
+        self.dyn_return(f, Val("null", "None"))
+        return
     if fm.bad != "" or fm.vararg >= 0 or fm.kwarg >= 0 or fm.pyexport or len(fm.defaults) != len(fm.params):
         self.raise_("NotImplementedError", self.sconst(f"{self.fname(fm)}() through runtime unpacking requires a supported fixed signature"))
         return
