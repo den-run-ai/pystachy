@@ -353,6 +353,23 @@ storage. Class objects retain identity and identity hashing, report metatype
 `__eq__` or `__hash__` does not become the class object's operation; reflected
 instance equality still runs when a class is compared with an instance.
 
+A stored ordinary class also gives what its class body binds. A class attribute
+reads as `C.name` does, and a static or class method is called as `C.name(...)`
+is, with `cls` bound to the stored class; a class deriving from another gives its
+own override. The lookup comes before the arguments, as in CPython, and a name
+the class lacks raises `AttributeError: type object 'C' has no attribute 'name'`,
+which `getattr()`'s default form takes
+(`tests/programs/inference/dynany_class_members.py`). Classes of modules that do
+not opt in work too: a method that no typed call compiles is compiled on demand
+(`tests/programs/inference/dynany_class_members_imported.py`). A static or class
+method called on an `Any` value's object likewise runs the method of the
+object's own class
+(`tests/programs/inference/dynany_class_members_objects.py`).
+
+Each such case is optional. If a use cannot be compiled (a parameter or result
+layout that no `Any` value holds, an object of a class nothing else boxes), the
+program still compiles and that use raises `NotImplementedError` when selected.
+
 Stored class values can reconstruct ordinary user classes whose boxed instance
 adapters and matching initializers have already been compiled by the program:
 
@@ -916,6 +933,16 @@ can still need an explicit `list[Any]` destination.
   classes with additional methods and no existing boxed adapter, uncompiled
   initializers and `__init__` stored as class data.
 
+- A stored class gives its class attributes, static methods and class methods. A
+  method of its objects, a property, a static or class method read without a
+  call, and a member whose use cannot be compiled raise `NotImplementedError`,
+  where CPython gives a function, a property object or the value; they do not
+  raise the `AttributeError` of a missing name. Assigning a class attribute
+  through a stored class, enum and NamedTuple classes' members, and the names
+  every class object has of `type` (`__doc__`, `__dict__`, `mro`) keep the
+  dynamic lookup's `AttributeError`
+  (`tests/deviations/dynany_class_member_unsupported.py`).
+
 - Stored `type()` of an erased `Callable` held in `Any` raises
   `NotImplementedError`; its existing supported calls still work. Restoring the
   original callable's identity remains tracked by #858.
@@ -931,7 +958,7 @@ can still need an explicit `list[Any]` destination.
   iteration raise `TypeError`, and an object of another NamedTuple class compares with it by
   identity (an ordering raises `TypeError`), where CPython compares their fields.
 
-- A static or class method read through an `Any` value without a call raises `AttributeError`
+- A static or class method read through an object held in `Any` without a call raises `AttributeError`
   (typed code rejects a static method as a value at compile time), and so does a call of a
   property's value (`x.p(...)`). A field's value is called as a function value is.
 

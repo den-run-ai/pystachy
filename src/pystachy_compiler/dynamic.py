@@ -3190,6 +3190,8 @@ def gen_dyn_body(self, key: str) -> None:
         word = "0" if key == "get.__name__" else "1" if key == "get.__qualname__" else "2"
         self.ret_(self.dyn_box(Val(self.mload("str", self.maddr("%ptr", rec.v, word)), "str")))
         self.place(miss)
+    if (key.startswith("get.") or key.startswith("has.") or key.startswith("call.")) and key not in ["get.__name__", "get.__qualname__", "get.__module__"]:
+        dyn_class_members(self, f, key, o, ps[1:])
     arith = (key.startswith("op") or key.startswith("iop")) and dunder != ""
     r = "__r" + dunder[2:] if arith else ""
     # the case of the receiver's class, by one switch on its DynType's class id (word 3: a class's
@@ -3537,7 +3539,13 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])
             # (arguments that do not fit its parameters: CPython's TypeError, once they are evaluated)
             self.raise_("TypeError", self.sconst(bad))
             return
-        r = self.expr(mk("call", "", line, [mk("attr", key[5 : key.rfind(".")], line, [xn])] + an), "")
+        if dyn_exact_method(self, x.t, fm):
+            # (a static or class method that a class deriving from x.t overrides, or one whose
+            # cls a deriving class's objects would bind anew: a typed o.m() is not dispatched on
+            # the object's class and is rejected, but this case's class is the object's own)
+            r = self.class_call(mk("name", x.t, line, []), key[5 : key.rfind(".")], an, "")
+        else:
+            r = self.expr(mk("call", "", line, [mk("attr", key[5 : key.rfind(".")], line, [xn])] + an), "")
     elif key == "module" or key == "qualname":
         r = Val(self.sconst(self.refl_type_name(x.t, "__module__" if key == "module" else "__qualname__")), "str")
     elif key == "callable":
@@ -4076,6 +4084,230 @@ def dyn_class_calls(self, key: str, o: Val, args: list[Val]) -> None:
                         self.ret_(self.dyn_box(value))
         self.place(rest)
     self.raise_("NotImplementedError", self.sconst("calling a class held as an Any value is not supported"))
+
+
+def dyn_exact_method(self, c: str, fm: FnInfo) -> bool:
+    # is fm a static or class method that a typed call on an object of static type c rejects
+    # only because the object may be of a class deriving from c (cls_bound: a deriving class
+    # overrides it, or it uses cls): a boxed object's case knows its class, and calls it through
+    # that class
+    if fm.deco == "" or not dyn_class_plain(self, c):
+        return False
+    for x in self.classes.values():
+        if x.name != c and not x.excluded and self.derives(x.name, c) and fm.name in x.methods and x.methods[fm.name].orig is not fm.orig:
+            return True
+    if fm.deco != "classmethod" or not fm.clsuse or fm.cls != c:
+        return False
+    return len([x for x in self.classes.values() if x.name != c and self.derives(x.name, c)]) > 0
+
+
+def dyn_class_plain(self, c: str) -> bool:
+    # is c an ordinary class, whose class box's cases read its class attributes and call its
+    # static and class methods (dyn_class_members): no template, exception, enum or NamedTuple
+    # class, whose class objects give other things for a name
+    ci = self.classes[c]
+    return ci.origin == "" and c not in self.tmpl and ci.bad == "" and ci.exc == "" and ci.mod not in GLUE and ci.node.line not in ENUMCLASSES and c not in self.nts
+
+
+def dyn_class_member(self, c: str, name: str) -> str:
+    # what the class object of class c gives for name, as a class box's case reads it: "attr" (a
+    # name the class body binds: a class attribute), "method" (a static method or a class
+    # method), "" (nothing: CPython's AttributeError), "type" (a name every class object has of
+    # type or of object, which is not compiled), or why reading it through Any is not supported
+    ci = self.classes[c]
+    if name in ci.methods:
+        fm = ci.methods[name]
+        if fm.prop:
+            return "it is a property, which an object of the class reads"
+        if fm.deco != "staticmethod" and fm.deco != "classmethod":
+            return "it is a method of the class's objects"
+        if fm.bad != "" or len(fm.defaults) < len(fm.params):
+            return "the method is not supported"
+        if fm.deco == "classmethod" and fm.clsuse and fm.cls != c:
+            return f"it is a class method that uses cls, compiled only for {short(fm.cls)}, which defines it"
+        return "method"
+    if name in ci.fdefault and name in ci.ftypes:
+        return "attr"
+    if (name.startswith("__") and name.endswith("__")) or name == "mro":
+        return "type"
+    return ""
+
+
+def dyn_class_boxes(self, t: str) -> bool:
+    # can a value of static type t become an Any value where no new object helper may be made
+    # (dyn_packed_work): a layout a box holds, of classes whose objects the program boxes already
+    t = self.rec_type(t)
+    if self.dyn_boxable(t) != "":
+        return False
+    if is_opt(t):
+        return dyn_class_boxes(self, unopt(t))
+    if is_union(t):
+        return all(dyn_class_boxes(self, m) for m in umembers(t))
+    if is_tuple(t):
+        return all(dyn_class_boxes(self, m) for m in targs(t))
+    return t not in self.classes or t in self.dynclasses
+
+
+def dyn_class_takes(self, fm: FnInfo, key: str) -> bool:
+    # can the static or class method fm be called by call dispatcher key's case of a class box,
+    # as far as its annotations tell: the parameters that the call supplies take Any values,
+    # and a declared result becomes one (dyn_class_boxes). What they do not tell, the case's
+    # attempt finds (dyn_class_arm); this keeps the common refusals from costing a restart
+    supplied = list(range(shape_npos(key))) + [fm.params.index(k) for k in shape_kws(key) if k in fm.params]
+    for j in supplied:
+        if j < len(fm.ptypes) and fm.ptypes[j] != "" and not dyn_class_argument(self, fm.ptypes[j]):
+            return False
+    return fm.generic or fm.ret == "" or fm.ret == "None" or dyn_class_boxes(self, fm.ret)
+
+
+def dyn_class_arm(self, f: FnInfo, key: str, c: str, name: str, kind: str, args: list[Val]) -> None:
+    # class c's case of dispatcher key (get.<a>, has.<m>.<shape>, call.<m>.<shape>) for a class
+    # box: the class attribute name of c (kind "attr"), read as C.name reads it, or its static or
+    # class method (kind "method"), called as C.name(args) calls it with the boxed arguments.
+    # The case is optional, as a runtime adapter is (dyn_packed_invoke): a class named as a value
+    # must not make a program that compiles without the case fail, so one that cannot be
+    # compiled raises NotImplementedError where it runs
+    cn = mk("name", c, self.line, [])
+    attempt = f"protocol:classbox:{c}.{name}:{key}"
+    if attempt in self.xnot:
+        self.raise_("NotImplementedError", self.sconst(f"{short(c)}.{name} of a class held as an Any value is not supported: this use of it cannot be compiled"))
+        return
+    previous = self.xtry
+    self.xtry = attempt
+    hints = dict(self.newhints)
+    declined = dict(self.newx)
+    called = dict(self.called)
+    dispatchers = list(self.dynfns)
+    work = dyn_packed_work(self)
+    try:
+        if kind == "attr":
+            v = self.class_attr(cn, name)
+            if key.startswith("get."):
+                self.dyn_return(f, v)
+            elif self.dyn_boxable(self.rec_type(v.t)) != "":
+                # (a value that no box holds, which is not callable either: the call raises)
+                if key.startswith("has."):
+                    self.ret_(Val("null", DYN))
+                else:
+                    self.raise_("TypeError", self.sconst(f"'{tname(self.rec_type(v.t))}' object is not callable"))
+            elif key.startswith("has."):
+                self.ret_(self.dyn_box(v))  # (its value, which callv.<shape> calls)
+            else:
+                self.dyn_return(f, self.dyn_call(self.dyn_dispatcher(f"callv.{key[key.rfind('.') + 1 :]}", [DYN] * (len(args) + 1), DYN, "__call__"), [v] + args))
+        elif key.startswith("has."):
+            self.ret_(Val("null", DYN))  # (a method, which call.<m>.<shape> calls)
+        else:
+            fm = self.classes[c].methods[name]
+            an = self.dyn_call_args(key, args)
+            bad = self.dyn_bind(fm, 0, key, an)
+            if bad != "":
+                # (arguments that do not fit its parameters: CPython's TypeError, once they are evaluated)
+                self.raise_("TypeError", self.sconst(bad))
+            else:
+                self.dyn_return(f, self.class_call(cn, name, an, ""))
+        # Generic bodies compile synchronously; imported fixed callees and new dispatchers are
+        # deferred. Keep the work this case reaches inside the attempt (see dyn_packed_invoke).
+        fr = self.save()
+        self.modlevel = False
+        self.lenient = False
+        while True:
+            self.xtry = attempt
+            dyn_iteration_hooks(self)
+            if dyn_packed_work(self) != work:
+                self.err("a class member through Any requires additional object helpers")
+            pending = [g for g in self.lazy.values() if g.ll in self.called and g.ll not in called and g.ll not in self.compiled and not g.generic]
+            dynamic = [k for k in self.dynfns if k not in dispatchers and self.dynfns[k].ll not in self.compiled and self.dynfns[k].ll not in self.building]
+            if len(pending) == 0 and len(dynamic) == 0:
+                break
+            for g in pending:
+                if g.ll not in self.compiled:
+                    self.xtry = attempt
+                    self.function(g, g.node.kids[2].kids)
+            for other in dynamic:
+                self.xtry = attempt
+                g = self.dynfns[other]
+                self.function(g, [mk("dynbody", other, self.dynlines[other], [])])
+        self.restore(fr)
+        if self.newhints != hints:
+            self.err("a class member through Any requires additional inference")
+    except Rejoin as retry:
+        # (a failed optional case exports no speculative hints: dyn_packed_invoke)
+        nested = [k for k in self.newx if k not in declined and k != attempt]
+        self.newhints = hints
+        failed = attempt in self.newx
+        self.newx = declined
+        if not isinstance(retry, NeedSliceEH) and self.idevent == "":
+            if len(nested) > 0 and not failed:
+                for k in nested:
+                    self.newx[k] = True
+            else:
+                self.newx[attempt] = True
+        raise
+    finally:
+        self.xtry = previous
+
+
+def dyn_class_members(self, f: FnInfo, key: str, o: Val, args: list[Val]) -> None:
+    # the cases of dispatcher key (get.<a>, has.<m>.<shape>, call.<m>.<shape>) for a class box,
+    # whose payload is its class's record: what the class object of each ordinary class named as
+    # a value gives for the name. A class attribute's value, a static or class method's call,
+    # or CPython's AttributeError where the class has no such name; a name whose value is not
+    # compiled (a method of its objects, a property) raises NotImplementedError rather than the
+    # AttributeError of the rest, which getattr()'s default would take for a missing name. Other
+    # class boxes (a builtin class's, an enum's) and the names every class object has go on to
+    # the cases after these
+    name = key[4:] if key.startswith("get.") else key[key.find(".") + 1 : key.rfind(".")]
+    kinds: dict[str, str] = {}
+    for c in self.classes:
+        if "@pys.refl.c." + c in self.reflrecs and dyn_class_plain(self, c):
+            kind = dyn_class_member(self, c, name)
+            if kind != "type":
+                kinds[c] = kind
+    if len(kinds) == 0:
+        return
+    box = self.label()
+    other = self.label()
+    self.cbr(self.ptr_cmp("==", Val(self.dyn_typeof(o), "dyntype"), Val(self.rtdata("pys_dyntype_type"), "dyntype")).v, box, other)
+    self.place(box)
+    rec = Val(self.mload("%ptr", self.maddr("%ptr", o.v, "1")), "%ptr")
+    lacking = self.label()
+    for c in kinds:
+        kind = kinds[c]
+        hit = lacking if kind == "" else self.label()
+        rest = self.label()
+        self.cbr(self.scalar_cmp("eq", rec, Val(self.refl_record(c), "%ptr")), hit, rest)
+        if kind == "":
+            self.place(rest)
+            continue  # (the classes without the name share one case, below)
+        self.place(hit)
+        shown = self.refl_type_name(c, "__name__")
+        if kind == "method" and key.startswith("get."):
+            self.raise_("NotImplementedError", self.sconst(f"{shown}.{name} of a class held as an Any value is not supported as a value: it is a method (call it)"))
+        elif kind == "attr" and not dyn_class_boxes(self, self.classes[c].ftypes[name]):
+            # (a value whose layout no Any value holds: no read, and it is not callable either)
+            held_as = self.rec_type(self.classes[c].ftypes[name])
+            if key.startswith("get."):
+                self.raise_("NotImplementedError", self.sconst(f"{shown}.{name} of a class held as an Any value is not supported: its value, {typestr(held_as)}, has no layout as an Any value here"))
+            elif key.startswith("has."):
+                self.ret_(Val("null", DYN))
+            else:
+                self.raise_("TypeError", self.sconst(f"'{tname(held_as)}' object is not callable"))
+        elif kind == "method" and key.startswith("call.") and self.dyn_bind(self.classes[c].methods[name], 0, key, self.dyn_call_args(key, args)) == "" and not dyn_class_takes(self, self.classes[c].methods[name], key):
+            self.raise_("NotImplementedError", self.sconst(f"{shown}.{name}() of a class held as an Any value is not supported: a parameter or its result has no layout as an Any value here"))
+        elif kind == "attr" or kind == "method":
+            dyn_class_arm(self, f, key, c, name, kind, args)
+        else:
+            self.raise_("NotImplementedError", self.sconst(f"{shown}.{name} of a class held as an Any value is not supported: {kind}"))
+        if not self.term:
+            self.br(other)
+        self.place(rest)
+    self.br(other)
+    if "" in kinds.values():
+        self.place(lacking)
+        # (CPython's AttributeError, with the name of the class, which its record holds)
+        cname = Val(self.mload("str", self.maddr("%ptr", rec.v, "0")), "str")
+        self.raise_("AttributeError", self.concat([Val(self.sconst("type object '"), "str"), cname, Val(self.sconst(f"' has no attribute '{name}'"), "str")]).v)
+    self.place(other)
 
 
 def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
