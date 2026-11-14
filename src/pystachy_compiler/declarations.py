@@ -1417,8 +1417,8 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         elif d.s.startswith("__") and d.s.endswith("__"):
             bad = f"@property on the special method {d.s} is not supported"
         elif d.kids[1].kind == "noann" and d not in held:
-            if self.dyn_policy(d.line) and not f.gen:
-                # Opt-in getters infer through the same function instances as
+            if not f.gen:
+                # Getters infer through the same function instances as
                 # ordinary methods. They had no accepted implicit None ABI to
                 # preserve, so a recursive return must be genuinely inferred.
                 f.void_default = False

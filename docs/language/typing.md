@@ -960,7 +960,8 @@ Methods support the dedicated decorators `@staticmethod`, `@classmethod`, `@prop
 with its `@value.setter` and `@value.deleter`, and recognized `@overload` stubs. Other method
 decorators, including `@final` and `@override`, are unsupported when the class is used.
 
-A property getter takes only `self` and needs a return annotation. Reading `obj.value`
+A property getter takes only `self`. Without a return annotation, its type is inferred from
+its return statements as a method's is; a generator getter needs one. Reading `obj.value`
 calls the getter each time; inherited getters, property overrides and `super().value`
 use the ordinary method dispatch. A callable-valued property can be called as `obj.value(args)`.
 A setter, defined after the getter under the same name, takes `self` and the value;
