@@ -1,0 +1,14 @@
+{
+  "candidate_commit": "950c0440ad793dc6c34664f591383a5e6bba14dd",
+  "release_main_commit": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+  "candidate_tree": "717a8c9386ae9f5f6545cc3686a9e22282fc560c",
+  "release_tree": "717a8c9386ae9f5f6545cc3686a9e22282fc560c",
+  "identical_complete_git_tree": true,
+  "parents": [
+    "a73c56c92f3aad4b490307a5d1b882e487a57f55",
+    "950c0440ad793dc6c34664f591383a5e6bba14dd"
+  ],
+  "version": "v0.5.0-alpha.2",
+  "worktree_clean": true,
+  "frozen_lean_checkout_unchanged": "/workspace/scratch/7dd0519bc14a/lean-reports/alpha2-source"
+}

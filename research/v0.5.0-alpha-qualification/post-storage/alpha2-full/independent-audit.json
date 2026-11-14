@@ -1,0 +1,573 @@
+{
+  "kind": "Independent agent audit of complete alpha2 Lean acceptance",
+  "status": "passed",
+  "created_utc": "2026-11-14T17:58:37.763630+00:00",
+  "census_commit": "950c0440ad793dc6c34664f591383a5e6bba14dd",
+  "reviewed_candidate_commit": "950c0440ad793dc6c34664f591383a5e6bba14dd",
+  "source_tree": "717a8c9386ae9f5f6545cc3686a9e22282fc560c",
+  "baseline_release_commit": "a73c56c92f3aad4b490307a5d1b882e487a57f55",
+  "baseline_census_commit": "6b9e89ee3eaef0c15cfe7ffb7d586ae9e4db9fd8",
+  "inputs": [
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/lean-reports/alpha2-storage-lean-prepared.json",
+      "sha256": "a5d8db8f6639f44daed2229ccca86803b8868a4eaa7851a0b883df2e332eff44",
+      "size": 776
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/lean-reports/alpha2-storage-lean-status.json",
+      "sha256": "7c19ad569fe3655eb7f3ae72c35206672e52d8cf39c73c2437d04d62df7fe02e",
+      "size": 881
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/lean-reports/alpha2-storage-lean-full-acceptance.json",
+      "sha256": "7b8d6ea805e12a14014a60261dcad496d6ce4b0e1839d4c4748fc284eecadfcd",
+      "size": 694
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/lean-reports/alpha2-storage-lean-proof-delta.json",
+      "sha256": "39cf3eaae1d45e0a2c3a3f82e3d97b7eeb7b1b283548ea762226a616faa43dd1",
+      "size": 2345
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/lean-reports/alpha2-vs-alpha1-proof-comparison.json",
+      "sha256": "b0a052c4e66d92b26eb4baa30178191e45865d7dbe597405cfdb0c0878db0876",
+      "size": 4769
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/lean-reports/python-assertion-preflight.json",
+      "sha256": "dac481137933c3ee16b9b1aeee5e5cae3d9c250c25d3515571432108bb872c67",
+      "size": 362
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-independent-review/alpha1-final-lean-independent-audit.json",
+      "sha256": "c2e43e36908ea2e3c2b7027ce2b1775877ab36d5ef2436c4bbdb1f8c52407e30",
+      "size": 6218
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/lean-reports/alpha2-storage-lean-records.jsonl",
+      "sha256": "98d2cd703064e39dbb14e41f3d13bb1b5df7bbcf4d30903966db4b427ecd09a6",
+      "size": 2226522
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/lean-reports/alpha2-storage-lean-report.md",
+      "sha256": "18eb6dc0772dfbd4b2d95036c724ff9c438a08d7766027cc502587fa403e76cd",
+      "size": 14275
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/lean-reports/alpha1-storage-lean-records.jsonl",
+      "sha256": "5d70d5faeaecbfb6ddf5a89ae31c5381a443a0d91dc5359c5729eaaf525e34b7",
+      "size": 2209364
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/lean-reports/alpha2-source/tools/lean_boundary/.lake/build/bin/pystachy-access",
+      "sha256": "614d42998c1b49867ce8d3505140a2e1fb2ee91b00d969577e09aba1970ae9c0",
+      "size": 118683288
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/lean-reports/alpha2-source/tools/lean_boundary/.lake/build/bin/pystachy-boundary",
+      "sha256": "2d491bc79c80b390f503d0c223108f70abd31e70a81d144125128a4a1f98546c",
+      "size": 118484656
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/lean-reports/alpha2-source/tools/lean_boundary/.lake/build/bin/pystachy-int",
+      "sha256": "0720d6d555ec4e93f6336d3150c599367e1982c1769b1152ac1f5bc846232003",
+      "size": 118472920
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/lean-reports/alpha2-source/tools/lean_report.py",
+      "sha256": "eb7746d8cc883f87d90b86636e1f655fd0f05b3706d591f3260fd70c62ffa5c4",
+      "size": 47564
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/lean-reports/verify-lean-storage-full.py",
+      "sha256": "d03010652a29b0a59f95ad365801fd21e63580a6f90e20c5898830a899cb7029",
+      "size": 4351
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/lean-reports/run-full.py",
+      "sha256": "b43b4548d5b90572c5c2efa6a3d74b6a98d3f06056bb3ba3bc5bc4e1b97595c9",
+      "size": 2958
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-independent-review/compare_lean_records.py",
+      "sha256": "8fd53c4e6d0e9f38845b92e71e78dbc83388c30d2e3905f84906402e5bd58f25",
+      "size": 3486
+    }
+  ],
+  "fresh_census_no_records_reused": true,
+  "complete_programs": 2550,
+  "baseline_programs": 2529,
+  "shared_programs": 2529,
+  "added_programs": 21,
+  "strict_storage_programs": 175,
+  "strict_storage_obligations_proved": 18582,
+  "independently_recomputed_proof_totals": {
+    "payload": {
+      "programs": 282,
+      "functions": 1156,
+      "obligations": 2583,
+      "proved": 2583
+    },
+    "access": {
+      "programs": 1223,
+      "functions": 16186,
+      "obligations": 86150,
+      "proved": 86150
+    },
+    "null": {
+      "programs": 926,
+      "functions": 13211,
+      "obligations": 136413,
+      "proved": 136394
+    },
+    "union": {
+      "programs": 276,
+      "functions": 2214,
+      "obligations": 6948,
+      "proved": 6633
+    },
+    "union_payload": {
+      "programs": 335,
+      "functions": 1717,
+      "obligations": 13533,
+      "proved": 13284
+    },
+    "fields": {
+      "programs": 1401,
+      "functions": 17209,
+      "obligations": 161987,
+      "proved": 161750
+    },
+    "gc": {
+      "programs": 1659,
+      "functions": 26289,
+      "obligations": 191244,
+      "proved": 190869
+    },
+    "int": {
+      "programs": 29,
+      "functions": 36,
+      "obligations": 187,
+      "proved": 187
+    },
+    "int_inline": {
+      "programs": 131,
+      "functions": 351,
+      "obligations": 1692,
+      "proved": 1692
+    },
+    "storage": {
+      "programs": 162,
+      "functions": 1710,
+      "obligations": 18582,
+      "proved": 18582
+    }
+  },
+  "full_markdown_exactly_reconstructs_from_records": true,
+  "full_inventory_and_all_required_checks_verified": true,
+  "clean_current_source_and_all_three_checker_hashes_verified": true,
+  "recorded_execution_and_acceptance_exit_codes_all_zero": true,
+  "new_failed_or_unproved_outcomes_relative_to_alpha1": [],
+  "proof_coverage_or_proved_count_decreases_relative_to_alpha1": [],
+  "all_existing_unproved_lists_exactly_unchanged": true,
+  "shared_check_changes": [
+    {
+      "program": "tests/programs/exceptions/exc_class_exit_enum.py",
+      "check": "null",
+      "before": {
+        "functions": 0,
+        "obligations": 0,
+        "proved": 0,
+        "unproved": []
+      },
+      "after": {
+        "functions": 1,
+        "obligations": 1,
+        "proved": 1,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/exceptions/exc_exit_enum_stored.py",
+      "check": "null",
+      "before": {
+        "functions": 0,
+        "obligations": 0,
+        "proved": 0,
+        "unproved": []
+      },
+      "after": {
+        "functions": 1,
+        "obligations": 1,
+        "proved": 1,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/exceptions/exit_enum_member_caught.py",
+      "check": "null",
+      "before": {
+        "functions": 4,
+        "obligations": 4,
+        "proved": 4,
+        "unproved": []
+      },
+      "after": {
+        "functions": 5,
+        "obligations": 5,
+        "proved": 5,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/exceptions/exit_enum_member_message.py",
+      "check": "null",
+      "before": {
+        "functions": 0,
+        "obligations": 0,
+        "proved": 0,
+        "unproved": []
+      },
+      "after": {
+        "functions": 1,
+        "obligations": 1,
+        "proved": 1,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/exceptions/exit_enum_nonint_protocol.py",
+      "check": "null",
+      "before": {
+        "functions": 0,
+        "obligations": 0,
+        "proved": 0,
+        "unproved": []
+      },
+      "after": {
+        "functions": 1,
+        "obligations": 1,
+        "proved": 1,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/exceptions/exit_enum_stored_status.py",
+      "check": "null",
+      "before": {
+        "functions": 0,
+        "obligations": 0,
+        "proved": 0,
+        "unproved": []
+      },
+      "after": {
+        "functions": 1,
+        "obligations": 1,
+        "proved": 1,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/exceptions/exit_intflag_stored_mutated.py",
+      "check": "null",
+      "before": {
+        "functions": 5,
+        "obligations": 5,
+        "proved": 5,
+        "unproved": []
+      },
+      "after": {
+        "functions": 6,
+        "obligations": 6,
+        "proved": 6,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/library/lib_enum_base_lookup.py",
+      "check": "null",
+      "before": {
+        "functions": 1,
+        "obligations": 1,
+        "proved": 1,
+        "unproved": []
+      },
+      "after": {
+        "functions": 2,
+        "obligations": 2,
+        "proved": 2,
+        "unproved": []
+      }
+    }
+  ],
+  "all_other_shared_check_dictionaries_identical": true,
+  "new_programs": [
+    {
+      "program": "tests/programs/classes/class_attr_default.py",
+      "proved_obligations": {
+        "access": 0,
+        "fields": 5,
+        "gc": 0,
+        "null": 0,
+        "payload": 0,
+        "union": 0,
+        "union_payload": 0
+      }
+    },
+    {
+      "program": "tests/programs/classes/class_body_consts.py",
+      "proved_obligations": {
+        "access": 0,
+        "fields": 75,
+        "gc": 17,
+        "null": 0,
+        "payload": 0,
+        "union": 0,
+        "union_payload": 0
+      }
+    },
+    {
+      "program": "tests/programs/classes/class_consts_raise.py",
+      "proved_obligations": {
+        "access": 0,
+        "fields": 2,
+        "gc": 0,
+        "null": 0,
+        "payload": 0,
+        "union": 0,
+        "union_payload": 0
+      }
+    },
+    {
+      "program": "tests/programs/classes/class_template_field_unused.py",
+      "proved_obligations": {
+        "access": 0,
+        "fields": 0,
+        "gc": 6,
+        "null": 0,
+        "payload": 0,
+        "union": 0,
+        "union_payload": 0
+      }
+    },
+    {
+      "program": "tests/programs/classes/classvar_attrs.py",
+      "proved_obligations": {
+        "access": 0,
+        "fields": 20,
+        "gc": 24,
+        "null": 2,
+        "payload": 0,
+        "union": 0,
+        "union_payload": 0
+      }
+    },
+    {
+      "program": "tests/programs/classes/final_class_values.py",
+      "proved_obligations": {
+        "access": 1,
+        "fields": 29,
+        "gc": 31,
+        "null": 5,
+        "payload": 0,
+        "union": 0,
+        "union_payload": 0
+      }
+    },
+    {
+      "program": "tests/programs/classes/generic_visitor.py",
+      "proved_obligations": {
+        "access": 2,
+        "fields": 37,
+        "gc": 25,
+        "null": 3,
+        "payload": 0,
+        "union": 0,
+        "union_payload": 0
+      }
+    },
+    {
+      "program": "tests/programs/classes/generic_visitor_class_fields.py",
+      "proved_obligations": {
+        "access": 6,
+        "fields": 93,
+        "gc": 64,
+        "null": 6,
+        "payload": 0,
+        "union": 0,
+        "union_payload": 0
+      }
+    },
+    {
+      "program": "tests/programs/classes/generic_visitor_inherited_classmethod.py",
+      "proved_obligations": {
+        "access": 0,
+        "fields": 14,
+        "gc": 0,
+        "null": 0,
+        "payload": 0,
+        "union": 0,
+        "union_payload": 0
+      }
+    },
+    {
+      "program": "tests/programs/classes/generic_visitor_inherited_classmethod_field.py",
+      "proved_obligations": {
+        "access": 0,
+        "fields": 5,
+        "gc": 0,
+        "null": 0,
+        "payload": 0,
+        "union": 0,
+        "union_payload": 0
+      }
+    },
+    {
+      "program": "tests/programs/classes/generic_visitor_postponed.py",
+      "proved_obligations": {
+        "access": 3,
+        "fields": 41,
+        "gc": 23,
+        "null": 10,
+        "payload": 0,
+        "union": 0,
+        "union_payload": 0
+      }
+    },
+    {
+      "program": "tests/programs/classes/generic_visitor_static_methods.py",
+      "proved_obligations": {
+        "access": 0,
+        "fields": 18,
+        "gc": 0,
+        "null": 1,
+        "payload": 0,
+        "union": 0,
+        "union_payload": 0
+      }
+    },
+    {
+      "program": "tests/programs/classes/inheritance_dispatch_wide.py",
+      "proved_obligations": {
+        "access": 16,
+        "fields": 53,
+        "gc": 91,
+        "null": 34,
+        "payload": 0,
+        "union": 0,
+        "union_payload": 0
+      }
+    },
+    {
+      "program": "tests/programs/classes/inheritance_template_fields.py",
+      "proved_obligations": {
+        "access": 9,
+        "fields": 84,
+        "gc": 43,
+        "null": 18,
+        "payload": 0,
+        "union": 0,
+        "union_payload": 0
+      }
+    },
+    {
+      "program": "tests/programs/classes/inheritance_template_param.py",
+      "proved_obligations": {
+        "access": 6,
+        "fields": 70,
+        "gc": 72,
+        "null": 7,
+        "payload": 0,
+        "union": 0,
+        "union_payload": 0
+      }
+    },
+    {
+      "program": "tests/programs/classes/inheritance_template_param_other.py",
+      "proved_obligations": {
+        "access": 1,
+        "fields": 11,
+        "gc": 13,
+        "null": 1,
+        "payload": 0,
+        "union": 0,
+        "union_payload": 0
+      }
+    },
+    {
+      "program": "tests/programs/imports/import_class_attr_default.py",
+      "proved_obligations": {
+        "access": 0,
+        "fields": 5,
+        "gc": 0,
+        "null": 0,
+        "payload": 0,
+        "union": 0,
+        "union_payload": 0
+      }
+    },
+    {
+      "program": "tests/programs/imports/import_class_builtin_default.py",
+      "proved_obligations": {
+        "access": 0,
+        "fields": 3,
+        "gc": 0,
+        "null": 0,
+        "payload": 0,
+        "union": 0,
+        "union_payload": 0
+      }
+    },
+    {
+      "program": "tests/programs/imports/import_class_name_default.py",
+      "proved_obligations": {
+        "access": 0,
+        "fields": 3,
+        "gc": 0,
+        "null": 0,
+        "payload": 0,
+        "union": 0,
+        "union_payload": 0
+      }
+    },
+    {
+      "program": "tests/programs/language/recursion_virtual_frames.py",
+      "proved_obligations": {
+        "access": 0,
+        "fields": 33,
+        "gc": 35,
+        "null": 15,
+        "payload": 0,
+        "union": 0,
+        "union_payload": 0
+      }
+    },
+    {
+      "program": "tests/programs/library/typing_classvar.py",
+      "proved_obligations": {
+        "access": 0,
+        "fields": 4,
+        "gc": 0,
+        "null": 0,
+        "payload": 0,
+        "union": 0,
+        "union_payload": 0
+      }
+    }
+  ],
+  "new_program_obligations_fully_proved": {
+    "fields": 605,
+    "union": 0,
+    "payload": 0,
+    "gc": 444,
+    "union_payload": 0,
+    "access": 44,
+    "null": 102
+  },
+  "new_program_obligations_total": 1195,
+  "total_additional_proved_obligations": 1203,
+  "historical_lib_logging_failure_not_present": true,
+  "contextmanager_storage_repair_preserved": true,
+  "supports_merge_and_publication_from_lean_evidence": true,
+  "scope": "Evidence-only independent agent review; no compiler, Lean checker, census, network or workflow reruns and no repository source changes. This certifies complete proof evidence for exact candidate 950c0440 and its source tree. Publication still requires exact-main and artifact gates after integration. This is not a successful GitHub/CLI Codex review."
+}

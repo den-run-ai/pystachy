@@ -1,0 +1,269 @@
+{
+  "version": "v0.5.0-alpha.2",
+  "candidate_commit": "950c0440ad793dc6c34664f591383a5e6bba14dd",
+  "merged_main_commit": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+  "complete_source_tree": "717a8c9386ae9f5f6545cc3686a9e22282fc560c",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 3820,
+      "sha256": "81ee3aa37e2e49dade381ace6648c7084d18cbf96341862015248f49c4e918df"
+    },
+    {
+      "path": "alpha2-independent-review/alpha1-final-lean-independent-audit.json",
+      "bytes": 6218,
+      "sha256": "c2e43e36908ea2e3c2b7027ce2b1775877ab36d5ef2436c4bbdb1f8c52407e30"
+    },
+    {
+      "path": "alpha2-independent-review/alpha1-final-lean-independent-audit.md",
+      "bytes": 1757,
+      "sha256": "4b4f34f54c9491d0172de693c515bafd839d5b3f713b1c984dccabd1ef2e91c2"
+    },
+    {
+      "path": "alpha2-independent-review/alpha1-unused-annotation.stderr",
+      "bytes": 117,
+      "sha256": "72d1e0c836582d78250f8c9047dbe2a4e9c6819a0681096b79ee6269af113e96"
+    },
+    {
+      "path": "alpha2-independent-review/alpha1-unused-annotation.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "alpha2-independent-review/alpha2-final-lean-independent-audit.json",
+      "bytes": 15549,
+      "sha256": "2fc8ec22aaaa6d1380b937209ecb952d42e263a30ce930512e93cd65f36439bc"
+    },
+    {
+      "path": "alpha2-independent-review/alpha2-final-lean-independent-audit.md",
+      "bytes": 3375,
+      "sha256": "7c53d1595b83b39b16405c66808d79a8eb6139aa43ed4e9488e3fb4d08a7e827"
+    },
+    {
+      "path": "alpha2-independent-review/alpha2-unused-annotation.stderr",
+      "bytes": 117,
+      "sha256": "72d1e0c836582d78250f8c9047dbe2a4e9c6819a0681096b79ee6269af113e96"
+    },
+    {
+      "path": "alpha2-independent-review/alpha2-unused-annotation.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "alpha2-independent-review/audit-alpha2-final-lean.py",
+      "bytes": 15983,
+      "sha256": "558bdb65a786e2e912822dadb966c45b7cef7522f55a1eb844f077be1562f8a0"
+    },
+    {
+      "path": "alpha2-independent-review/compare_lean_records.py",
+      "bytes": 3486,
+      "sha256": "8fd53c4e6d0e9f38845b92e71e78dbc83388c30d2e3905f84906402e5bd58f25"
+    },
+    {
+      "path": "alpha2-independent-review/compiler-review.json",
+      "bytes": 9758,
+      "sha256": "51cbf82ee63441fbca9bdf9ce31bfd8116468a5680b91040e5415abbab8c66b3"
+    },
+    {
+      "path": "alpha2-independent-review/compiler-review.md",
+      "bytes": 3870,
+      "sha256": "3e8caf257cbf080ac98285987d2d836ae51fa7a177e0a9e6cf19be6696c02f2a"
+    },
+    {
+      "path": "alpha2-independent-review/cpython-unused-annotation.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "alpha2-independent-review/cpython-unused-annotation.stdout",
+      "bytes": 3,
+      "sha256": "dc51b8c96c2d745df3bd5590d990230a482fd247123599548e0632fdbf97fc22"
+    },
+    {
+      "path": "alpha2-independent-review/partial-alpha2-proof-delta-audit.json",
+      "bytes": 9772,
+      "sha256": "db755b75c08464eca45bf3881a6fb28508867676e2e81ea160344574eda11e0d"
+    },
+    {
+      "path": "alpha2-independent-review/partial-alpha2-proof-delta-audit.md",
+      "bytes": 2442,
+      "sha256": "7c124999e6ca7e6017411e71568ee41e50f71cc6d1c706d31781255b80a63957"
+    },
+    {
+      "path": "alpha2-independent-review/partial-lean-comparison.json",
+      "bytes": 2205,
+      "sha256": "289c9ea47e4f0d80e6dc4432204b939291a68f2a355037cbffb6c598849bf3d7"
+    },
+    {
+      "path": "alpha2-independent-review/review-disposition-latest.json",
+      "bytes": 11613,
+      "sha256": "9b74c1f6677a78cf91ca3d65e5cdfd279ea7ba611b9f1193ca9432bf888f57c5"
+    },
+    {
+      "path": "alpha2-independent-review/unused-annotation-repro.json",
+      "bytes": 2694,
+      "sha256": "07267b4fcec53f65559c7703553dbe7c5c078036526b54635da42eb62b6a02bb"
+    },
+    {
+      "path": "alpha2-independent-review/unused_quoted_annotation.py",
+      "bytes": 193,
+      "sha256": "e81b186473db4f7e804d6c77f53902173df221c9746a9b6310fbd61751a49cd6"
+    },
+    {
+      "path": "alpha2-independent-runtime-review/review.json",
+      "bytes": 6790,
+      "sha256": "409206ec0674636b199e9c02542e160a2e195c857572754edf103342f5994a4e"
+    },
+    {
+      "path": "alpha2-independent-runtime-review/review.md",
+      "bytes": 5463,
+      "sha256": "c61537ddac4d3090676f5b2c8e98d0626afe536a072964aabcad45c6854beaeb"
+    },
+    {
+      "path": "alpha2-premerge-final.json",
+      "bytes": 6271,
+      "sha256": "24d01336b8800ba6ae20838fd96ec10ee95fa6d0b87700303121b6e1919109a6"
+    },
+    {
+      "path": "alpha2-premerge-preflight.json",
+      "bytes": 235576,
+      "sha256": "74919cec00e43ade99a671a620fa8476ff028c2e174954520350d93b7012bb84"
+    },
+    {
+      "path": "evidence-upload/package_alpha2_lean.py",
+      "bytes": 3088,
+      "sha256": "8cf13e7ca8b2d5c6d9fc779ff48d1629637386ac0786e1730c36715f542d745c"
+    },
+    {
+      "path": "lean-reports/alpha1-release-tree-equivalence.json",
+      "bytes": 463,
+      "sha256": "65e04b29056cc27f3e6133106be14521c4462adba67d9ed808033e76e031228c"
+    },
+    {
+      "path": "lean-reports/alpha1-resume-provenance.json",
+      "bytes": 12165,
+      "sha256": "21894c1a681f7229eda65bf1eeaedbd664c3f8d10ff3b1e5ecb7adab4eb6af4b"
+    },
+    {
+      "path": "lean-reports/alpha1-storage-lean-full-acceptance.json",
+      "bytes": 694,
+      "sha256": "047d7f0e171bfd6ab80b10cedc606a2e9fd46afd82197c5eefedc5fe0f914a1f"
+    },
+    {
+      "path": "lean-reports/alpha1-storage-lean-full-acceptance.log",
+      "bytes": 694,
+      "sha256": "047d7f0e171bfd6ab80b10cedc606a2e9fd46afd82197c5eefedc5fe0f914a1f"
+    },
+    {
+      "path": "lean-reports/alpha1-storage-lean-prepared.json",
+      "bytes": 930,
+      "sha256": "c651093f5bf7f7cb537caa501997881f1c02bb7786b692f1b91754287fdd96d2"
+    },
+    {
+      "path": "lean-reports/alpha1-storage-lean-proof-delta.json",
+      "bytes": 1288,
+      "sha256": "504c56db12c446097a4b2355cf13534ab5d27a3f9463268c80873d27f5c78a69"
+    },
+    {
+      "path": "lean-reports/alpha1-storage-lean-records.jsonl",
+      "bytes": 2209364,
+      "sha256": "5d70d5faeaecbfb6ddf5a89ae31c5381a443a0d91dc5359c5729eaaf525e34b7"
+    },
+    {
+      "path": "lean-reports/alpha1-storage-lean-report.md",
+      "bytes": 14275,
+      "sha256": "982721b3fd411d6f23fa2c0e8230a8d1129f98ce46ab5d070d04e08391a99fc0"
+    },
+    {
+      "path": "lean-reports/alpha1-storage-lean-status.json",
+      "bytes": 942,
+      "sha256": "278308d5ecf58670615dd1a6f6ff8061be17151cb844aaa6dd3e270b2968ab29"
+    },
+    {
+      "path": "lean-reports/alpha1-storage-lean.log",
+      "bytes": 148255,
+      "sha256": "1256a312e62b761ba93b630ee7200b04651e90c2709f71df8262d60321876382"
+    },
+    {
+      "path": "lean-reports/alpha2-release-tree-equivalence.json",
+      "bytes": 573,
+      "sha256": "e1dde3cf5dc81f6116bf27573f3039339faede670254d642bf22ac715fc8e7fa"
+    },
+    {
+      "path": "lean-reports/alpha2-storage-lean-full-acceptance.json",
+      "bytes": 694,
+      "sha256": "7b8d6ea805e12a14014a60261dcad496d6ce4b0e1839d4c4748fc284eecadfcd"
+    },
+    {
+      "path": "lean-reports/alpha2-storage-lean-full-acceptance.log",
+      "bytes": 694,
+      "sha256": "7b8d6ea805e12a14014a60261dcad496d6ce4b0e1839d4c4748fc284eecadfcd"
+    },
+    {
+      "path": "lean-reports/alpha2-storage-lean-prepared.json",
+      "bytes": 776,
+      "sha256": "a5d8db8f6639f44daed2229ccca86803b8868a4eaa7851a0b883df2e332eff44"
+    },
+    {
+      "path": "lean-reports/alpha2-storage-lean-proof-delta.json",
+      "bytes": 2345,
+      "sha256": "39cf3eaae1d45e0a2c3a3f82e3d97b7eeb7b1b283548ea762226a616faa43dd1"
+    },
+    {
+      "path": "lean-reports/alpha2-storage-lean-records.jsonl",
+      "bytes": 2226522,
+      "sha256": "98d2cd703064e39dbb14e41f3d13bb1b5df7bbcf4d30903966db4b427ecd09a6"
+    },
+    {
+      "path": "lean-reports/alpha2-storage-lean-report.md",
+      "bytes": 14275,
+      "sha256": "18eb6dc0772dfbd4b2d95036c724ff9c438a08d7766027cc502587fa403e76cd"
+    },
+    {
+      "path": "lean-reports/alpha2-storage-lean-status.json",
+      "bytes": 881,
+      "sha256": "7c19ad569fe3655eb7f3ae72c35206672e52d8cf39c73c2437d04d62df7fe02e"
+    },
+    {
+      "path": "lean-reports/alpha2-storage-lean.log",
+      "bytes": 159807,
+      "sha256": "a66bb1f543f5f25299659836fda5ede8a401f3f2d1625f59d99fa117229df8d2"
+    },
+    {
+      "path": "lean-reports/alpha2-vs-alpha1-proof-comparison.json",
+      "bytes": 4769,
+      "sha256": "b0a052c4e66d92b26eb4baa30178191e45865d7dbe597405cfdb0c0878db0876"
+    },
+    {
+      "path": "lean-reports/compare-alpha1-to-pre-repair.py",
+      "bytes": 2318,
+      "sha256": "1abe3eb0ff2debf8823b62086e773f477deaf543ccb4685e42a22d0fc5f405ea"
+    },
+    {
+      "path": "lean-reports/python-assertion-preflight.json",
+      "bytes": 362,
+      "sha256": "dac481137933c3ee16b9b1aeee5e5cae3d9c250c25d3515571432108bb872c67"
+    },
+    {
+      "path": "lean-reports/run-full.py",
+      "bytes": 2958,
+      "sha256": "b43b4548d5b90572c5c2efa6a3d74b6a98d3f06056bb3ba3bc5bc4e1b97595c9"
+    },
+    {
+      "path": "lean-reports/verify-lean-storage-full.py",
+      "bytes": 4351,
+      "sha256": "d03010652a29b0a59f95ad365801fd21e63580a6f90e20c5898830a899cb7029"
+    },
+    {
+      "path": "release-bookkeeping/alpha2-qualified-pr-body.md",
+      "bytes": 1346,
+      "sha256": "c8a16974f224e833d08e32cfd225f19f1e4f557f01cf322a24c01b4e27de1931"
+    }
+  ],
+  "archive": {
+    "name": "alpha2-complete-lean.tar.gz",
+    "bytes": 503668,
+    "sha256": "f220f5136726c96d2e512bc88a50d23f3e827ec20bb43202394a8ee46a654a1c",
+    "git_blob_sha1": "f0df5cd0d6573613916ef5e93010d0e28695e54d"
+  }
+}

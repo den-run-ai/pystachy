@@ -1,0 +1,97 @@
+{
+  "baseline_programs": 2529,
+  "current_programs": 2550,
+  "shared_programs": 2529,
+  "added_programs": 21,
+  "all_21_new_programs_fully_proved": true,
+  "new_program_obligations": {
+    "access": 44,
+    "fields": 605,
+    "gc": 444,
+    "null": 102,
+    "payload": 0,
+    "union": 0,
+    "union_payload": 0
+  },
+  "shared_positive_changes": [
+    {
+      "program": "tests/programs/exceptions/exc_class_exit_enum.py",
+      "check": "null",
+      "delta": {
+        "functions": 1,
+        "obligations": 1,
+        "proved": 1
+      }
+    },
+    {
+      "program": "tests/programs/exceptions/exc_exit_enum_stored.py",
+      "check": "null",
+      "delta": {
+        "functions": 1,
+        "obligations": 1,
+        "proved": 1
+      }
+    },
+    {
+      "program": "tests/programs/exceptions/exit_enum_member_caught.py",
+      "check": "null",
+      "delta": {
+        "functions": 1,
+        "obligations": 1,
+        "proved": 1
+      }
+    },
+    {
+      "program": "tests/programs/exceptions/exit_enum_member_message.py",
+      "check": "null",
+      "delta": {
+        "functions": 1,
+        "obligations": 1,
+        "proved": 1
+      }
+    },
+    {
+      "program": "tests/programs/exceptions/exit_enum_nonint_protocol.py",
+      "check": "null",
+      "delta": {
+        "functions": 1,
+        "obligations": 1,
+        "proved": 1
+      }
+    },
+    {
+      "program": "tests/programs/exceptions/exit_enum_stored_status.py",
+      "check": "null",
+      "delta": {
+        "functions": 1,
+        "obligations": 1,
+        "proved": 1
+      }
+    },
+    {
+      "program": "tests/programs/exceptions/exit_intflag_stored_mutated.py",
+      "check": "null",
+      "delta": {
+        "functions": 1,
+        "obligations": 1,
+        "proved": 1
+      }
+    },
+    {
+      "program": "tests/programs/library/lib_enum_base_lookup.py",
+      "check": "null",
+      "delta": {
+        "functions": 1,
+        "obligations": 1,
+        "proved": 1
+      }
+    }
+  ],
+  "no_proved_count_decreases": true,
+  "no_obligation_count_decreases": true,
+  "no_new_unproved_verdicts": true,
+  "all_changed_unproved_lists_empty_before_and_after": true,
+  "all_other_shared_check_dictionaries_identical": true,
+  "total_additional_proved_obligations": 1203,
+  "records_sha256": "98d2cd703064e39dbb14e41f3d13bb1b5df7bbcf4d30903966db4b427ecd09a6"
+}

@@ -1,0 +1,16 @@
+{
+  "name": "alpha2",
+  "commit": "950c0440ad79",
+  "full_census_count": 2550,
+  "unique_names_exactly_match_current_corpus": true,
+  "promoting_programs": 175,
+  "required_checks_present_in_every_record": true,
+  "strict_storage_all_selected_programs_accepted_without_unproved_functions": true,
+  "no_error_or_failed_checks": true,
+  "clean_inputs_match_current_source": true,
+  "checker_executables_match": true,
+  "all_three_prepared_lean_executable_hashes_match": true,
+  "full_completion_metadata_matches": true,
+  "report_sha256": "18eb6dc0772dfbd4b2d95036c724ff9c438a08d7766027cc502587fa403e76cd",
+  "records_sha256": "98d2cd703064e39dbb14e41f3d13bb1b5df7bbcf4d30903966db4b427ecd09a6"
+}
