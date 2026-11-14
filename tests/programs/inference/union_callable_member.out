@@ -1,0 +1,13 @@
+True False True False
+True True False
+False True True False
+none flag True call True call False
+s 42 made
+no yes yes
+[False, True, True, False, False]
+[True, False, False, True] [False, True, False, True]
+3
+False False
+True True
+True False
+[exit 0]

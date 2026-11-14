@@ -862,6 +862,7 @@ from src.pystachy_compiler.expressions import (
     gen_narrow_by as expressions_narrow_by,
     gen_narrowable as expressions_narrowable,
     gen_narrows as expressions_narrows,
+    gen_callable_narrow as expressions_callable_narrow,
     gen_no_class_attr as expressions_no_class_attr,
     gen_nonefmt as expressions_nonefmt,
     gen_ntop as expressions_ntop,
@@ -4215,6 +4216,9 @@ class Gen:
 
     def narrows(self, n: Node, truth: bool, out: dict[str, str]) -> None:
         return expressions_narrows(self, n, truth, out)
+
+    def callable_narrow(self, t: str, truth: bool) -> str:
+        return expressions_callable_narrow(self, t, truth)
 
     def narrowable(self, name: str) -> bool:
         return expressions_narrowable(self, name)

@@ -134,6 +134,23 @@ def gen_narrows(self, n: Node, truth: bool, out: dict[str, str]) -> None:
             out[nm] = n.kids[2].s
         elif self.isinst(t, n.kids[2]) == (-2 if truth else -3):
             out[nm] = unopt(t)
+    elif k == "call" and len(n.kids) == 2 and n.kids[0].kind == "name" and n.kids[0].s == "callable" and n.kids[1].kind == "name" and self.narrowable(n.kids[1].s) and not self.bound("callable"):
+        nm = n.kids[1].s
+        t = out[nm] if nm in out else self.now_type(nm)
+        nt = self.callable_narrow(t, truth) if is_union(unopt(t)) else ""
+        if nt != "":
+            out[nm] = nt  # (a union's Callable member, or the others)
+
+def gen_callable_narrow(self, t: str, truth: bool) -> str:
+    # the type of a value of union type t (or t | None) where callable(x) is truth: its Callable
+    # member, or the others, with None where it is not; "" where that decides nothing
+    keep = [m for m in umembers(unopt(t)) if is_callable(m) == truth]
+    if is_opt(t) and not truth:
+        keep.append("None")
+    if len(keep) == 0 or len([m for m in umembers(unopt(t)) if is_callable(m)]) == 0:
+        return ""
+    nt = self.union_type(keep)
+    return nt if not nt.startswith("!") and nt != t else ""
 
 def gen_forget_walrus(self, pre: dict[str, str], es: list[Node]) -> dict[str, str]:
     # narrowed as it was before expressions es that may not run, or run in a loop, and whose

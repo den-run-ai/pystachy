@@ -6,7 +6,7 @@ from src.pystachy_compiler.ir import ClassInfo, FnInfo, Ins, Val, tmpname
 from src.pystachy_compiler.names import owner
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.specs import BIG, BIGOPT, NONEVAR, OPTTYPES
-from src.pystachy_compiler.utils import elem, is_dict, is_list, is_opt, is_sopt, is_tuple, is_union, is_vtuple, targs, typestr, umembers, unopt
+from src.pystachy_compiler.utils import elem, is_callable, is_dict, is_fn, is_list, is_opt, is_sopt, is_tuple, is_union, is_vtuple, targs, typestr, umembers, unopt
 
 def gen_uboxes(self, a: str, b: str) -> bool:
     # is a value of type a one of union type b (or b | None) once boxed: a member's (one that
@@ -51,7 +51,10 @@ def gen_uop(self, v: Val, op: str) -> Val:
     # handle None before loading the tag, and join only the operation's result.
     if not self.value_union(v.t) and op == "str" and self.reference_union(v.t):
         return self.refl_union_str(v, "__str__")  # (each class's: reflection.py)
-    if not self.value_union(v.t):
+    calls = op == "truth" and is_union(unopt(v.t)) and all([m in ["int", "float", "bool", "str"] or is_list(m) or is_dict(m) or is_callable(m) for m in umembers(unopt(v.t))])
+    if not self.value_union(v.t) and not calls:
+        if len([m for m in umembers(unopt(v.t)) if is_callable(m)]) > 0:
+            self.err("a union that holds a Callable requires narrowing with isinstance() or callable() first")
         self.err("closed reference union operations require narrowing with isinstance() first")
     t = "bool" if op == "truth" else "int" if op == "len" else "str"
     if op == "len":
@@ -71,6 +74,12 @@ def gen_uop(self, v: Val, op: str) -> Val:
             arm = self.label()
             self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(members[i])), "int")).v, arm, nxt)
             self.place(arm)
+        if is_callable(members[i]):
+            self.incoming(ph, "true", self.cur)  # (a function is true)
+            self.br(end)
+            if nxt != "":
+                self.place(nxt)
+            continue
         item = self.uget(Val(v.v, unopt(v.t)), members[i])
         result = Val(self.truth(item), "bool") if op == "truth" else self.builtin("len", [self.vnode(item)], "") if op == "len" else self.to_str(item)
         self.incoming(ph, result.v, self.cur)
@@ -107,6 +116,8 @@ def gen_umember_problem(self, t: str) -> str:
         return ""
     if is_list(t) or is_dict(t):
         return ""
+    if is_callable(t):
+        return ""  # (a function value, as a Callable variable holds it: a pointer to its code and environment)
     return f"{typestr(t)} in a closed union is not supported (use scalar, list/dict or native class/file types)"
 
 def gen_union_type(self, ts: list[str]) -> str:
@@ -141,6 +152,8 @@ def gen_union_type(self, ts: list[str]) -> str:
     for m in ms:
         if self.umember_problem(m) != "":
             return "!" + self.umember_problem(m)
+    if len([m for m in ms if is_callable(m)]) > 1:
+        return "!a closed union holds one Callable type: callable() cannot tell two apart"
     refs = [m for m in ms if m == "file" or m in self.classes]
     if len(refs) > 0:
         if len(refs) != len(ms):
@@ -218,6 +231,12 @@ def gen_to_union(self, v: Val, t: str, what: str) -> Val:
                 return Val("undef", t)  # (see join_hint)
             self.err(f"{what if what != '' else 'a value used as ' + typestr(t)} may be None ({typestr(v.t)}); test it with 'is not None' first")
         return Val(v.v, t).identity(v)
+    calls = [m for m in ms if is_callable(m)]
+    if src not in ms and len(calls) == 1 and (is_fn(src) or is_callable(src)):
+        # a function where the union's Callable member is expected: the value a Callable variable
+        # holds (to_callable, with its errors), in the union's box
+        v = self.coerce(v, calls[0], what)
+        src = calls[0]
     if src not in ms:
         bases = [m for m in ms if src in self.classes and m in self.classes and self.derives(src, m)]
         if len(bases) != 1:

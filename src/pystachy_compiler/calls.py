@@ -214,7 +214,8 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
             self.close_temp(f.kids[0], o)
         return r
     if f.kind == "name":
-        self.not_callable(f.s, self.ltype[f.s])
+        # (a union's value that a test narrowed to its Callable member is that Callable here)
+        self.not_callable(f.s, self.now_type(f.s) if is_union(unopt(self.ltype[f.s])) else self.ltype[f.s])
     return self.obj_call(self.expr(f, ""), args, want, resultsoft)
 
 def gen_star_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str = "") -> Val:

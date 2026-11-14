@@ -558,6 +558,10 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         v = self.expr(args[0], "")
         if v.t == "dyn":
             return self.dyn_call(self.dyn_dispatcher("callable", ["dyn"], "bool", ""), [v])
+        ucalls = [m for m in umembers(unopt(v.t)) if is_callable(m)] if is_union(unopt(v.t)) else []
+        if len(ucalls) > 0:
+            # (a union that holds a Callable: its box's tag tells, and None is not callable)
+            return Val(self.utest(v, ucalls, is_opt(v.t) and v.v not in self.nn), "bool")
         known = self.callable_type(v.t)
         if known == -2:
             return Val("true", "bool") if v.v in self.nn else self.ptr_cmp('!=', v, Val('null', 'None'))
@@ -1177,10 +1181,13 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     return v
 
 def gen_callable_type(self, t: str) -> int:
-    # callable(x) for x of static type t: 1 (a function or Callable), 0, or -2 (an object whose
-    # class defines __call__: callable unless it is None)
+    # callable(x) for x of static type t: 1 (a function or Callable), 0, -2 (an object whose
+    # class defines __call__: callable unless it is None), or -1 (a union that holds a Callable
+    # beside other values: its box's tag tells)
     if is_fn(t) or is_callable(t) or t == "exctype":
         return 1  # (a class object too: a call makes an object of its class)
+    if is_union(unopt(t)) and len([m for m in umembers(unopt(t)) if is_callable(m)]) > 0:
+        return -1
     if is_opt(t) and (is_callable(unopt(t)) or unopt(t) == "exctype"):
         return -2
     cs = [t] if t in self.classes else umembers(unopt(t)) if self.reference_union(t) else []
