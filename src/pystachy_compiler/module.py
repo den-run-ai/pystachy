@@ -46,6 +46,12 @@ class Mod:
         # them are types where X is types.GenericAlias (Loader.generic_class)
         self.cgetitem: dict[str, Node] = {}
         self.deftps: list[str] = []  # the type parameters of its generic defs, as Loader.qren names them: TypeVars
+        # the imports of its top-level if TYPE_CHECKING: branches, which CPython never runs, and what
+        # their names bind for its annotations alone (Loader.type_only): a class of a module the
+        # program imports anyway is "a:" and its qualified name, as a from-import binds it
+        self.tcimports: list[Node] = []
+        self.tkinds: dict[str, str] = {}
+        self.lazyann = False  # does it import annotations from __future__ (Loader.deftime)
         # the user modules its imports (also its functions') initialize, packages included
         # (Gen.identity_modules: the modules whose code tracks numeric identity)
         self.deps: dict[str, bool] = {}
