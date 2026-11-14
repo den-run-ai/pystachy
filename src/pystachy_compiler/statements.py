@@ -1102,6 +1102,10 @@ def gen_stmt_main(self, n: Node) -> None:
             self.sdiscard(f"ptr {self.lcs[-1]}", v, et)
         else:
             self.list_store(Val(self.lcs[-1], self.ctype("list", [et])), self.list_hold(v, et), "append")
+    elif k == "newtype":
+        self.newtype_reads(self.alias_value(n.s))
+        if n.s in self.gflag:
+            self.mstore('bool', 'true', f'@g.{n.s}.def')  # (N = NewType(...) has run: see call)
     elif k == "defaults" or k == "cdefaults":
         if k == "defaults":
             self.decorators(self.funcs[n.s].node, self.funcs[n.s].node.kids[3:] if self.curfn.mod != "" else [], {})

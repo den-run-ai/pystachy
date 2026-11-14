@@ -558,6 +558,8 @@ from src.pystachy_compiler.declarations import (
     gen_alias_args as declarations_alias_args,
     gen_alias_arity as declarations_alias_arity,
     gen_alias_kept as declarations_alias_kept,
+    gen_newtype_name as declarations_newtype_name,
+    gen_newtype_reads as declarations_newtype_reads,
     gen_alias_params as declarations_alias_params,
     gen_alias_problem as declarations_alias_problem,
     gen_alias_tvars as declarations_alias_tvars,
@@ -2899,6 +2901,12 @@ class Gen:
 
     def alias_kept(self, name: str) -> bool:
         return declarations_alias_kept(self, name)
+
+    def newtype_name(self, name: str) -> bool:
+        return declarations_newtype_name(self, name)
+
+    def newtype_reads(self, e: Node) -> None:
+        return declarations_newtype_reads(self, e)
 
     def unalias(self, a: Node, seen: list[str]) -> Node:
         return declarations_unalias(self, a, seen)

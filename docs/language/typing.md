@@ -178,6 +178,16 @@ arguments, an assigned generic alias keeps its type variables, which make a func
 annotated with it a template; a `type` statement's alias needs its arguments. Type
 arguments for a `TypeVarTuple` or `ParamSpec` parameter are unsupported.
 
+`N = NewType("N", T)` (typing's) is an alias of `T` in annotations, also in another module, and
+`N(x)` returns `x` unchanged, as CPython's does: `NewType("Ratio", float)(3)` stays an `int`
+([test](../../tests/programs/generics/newtype.py)). Its type is read when the assignment runs,
+as a type alias's value is: a class it reads through a module that has not bound it yet, as
+during a circular import, raises `AttributeError`
+([test](../../tests/programs/generics/newtype_cycle.py)). A function that imports `N` binds a
+local, which a call where the import may not have run checks, as for an imported function; a
+nested `def` that reads it is rejected. `N` is no generic alias, also where `T` names a TypeVar:
+`N[int]` is CPython's `TypeError`, an error here. Other uses of `N` as a value are rejected.
+
 Other code can use an alias of `int`, `float`, `str` or `bool` (`Pos = int`) as that class,
 to call it or pass it to `isinstance()`; using another alias as a value (`print(Row)`,
 `Row.__value__`, `isinstance(x, Num)`) is rejected.

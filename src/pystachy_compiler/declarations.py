@@ -527,8 +527,11 @@ def gen_class_params(self, st: Node) -> str:
     return ""
 
 def gen_alias_value(self, name: str) -> Node:
-    # the value of type alias name: a type statement's, or that an assignment binds
+    # the value of type alias name: a type statement's, or that an assignment binds (of
+    # N = NewType("N", T), T: Loader.newtype)
     st = self.taliases[name]
+    if st.kind == "assign" and st.kids[1].kind == "call":
+        return st.kids[1].kids[2]
     return st.kids[0].kids[0] if st.kind == "typealias" else st.kids[1]
 
 def gen_alias_params(self, name: str) -> list[str]:
@@ -540,7 +543,7 @@ def gen_alias_params(self, name: str) -> list[str]:
     out: list[str] = []
     v = self.alias_whole(name)
     if v.kind != "name" or v.s not in self.typevars:  # (X = T is the TypeVar, which takes none)
-        self.alias_tvars(st.kids[1], out, [name])
+        self.alias_tvars(self.alias_value(name), out, [name])
     return out
 
 def gen_alias_whole(self, name: str) -> Node:
@@ -614,11 +617,17 @@ def gen_alias_problem(self, e: Node) -> str:
         return ""
     return f"!{p}[...] is not supported in a type alias's value"
 
+# CPython's TypeError for N[...] of a NewType N, also of one whose type names a TypeVar
+NEWTYPE_SUBSCRIPT = "'NewType' object is not subscriptable"
+
+
 def gen_alias_args(self, name: str, n: int) -> str:
     # (alias_problem) CPython's TypeError for name[...] with n type arguments, name a type alias
     st = self.taliases[name]
     if st.kind == "typealias":
         return "Only generic type aliases are subscriptable" if st.kids[0].s == "" else ""  # (others take any)
+    if self.newtype_name(name):
+        return NEWTYPE_SUBSCRIPT  # (N = NewType("N", list[T]) too: a NewType is no generic alias)
     v = self.alias_whole(name)
     if v.kind == "name" and v.s in self.taliases:
         return self.alias_args(v.s, n)  # (X = Y of a type statement Y: that TypeAliasType)
@@ -659,6 +668,24 @@ def gen_alias_tvars(self, a: Node, out: list[str], seen: list[str]) -> None:
         return
     for k in a.kids:
         self.alias_tvars(k, out, seen)
+
+def gen_newtype_name(self, name: str) -> bool:
+    # is name a module global that N = NewType("N", T) binds (Loader.newtype), a type alias of T
+    # whose calls return their argument
+    return name in self.taliases and self.taliases[name].kind == "assign" and self.taliases[name].kids[1].kind == "call"
+
+def gen_newtype_reads(self, e: Node) -> None:
+    # N = NewType("N", T) runs (statement newtype): CPython evaluates T first, where a class or
+    # NewType that T names may not be bound yet, as one read through its module (a.C) during a
+    # circular import, or one that an import which raised was to bind: their errors, as
+    # isinstance's argument has them (isinst_reads). (A string in T is not evaluated)
+    if e.kind == "name":
+        self.modchk(e)
+        if (e.s in self.classes or self.newtype_name(e.s)) and (e.chk or self.foreign(e.s)) and e.s in self.gflag:
+            self.guard(self.scalar('xor', [Val(self.mload('bool', f'@g.{e.s}.def'), 'bool'), Val('true', 'bool')]), self.unbound(e.s))
+        return
+    for k in e.kids if e.kind != "str" else []:
+        self.newtype_reads(k)
 
 def gen_alias_kept(self, name: str) -> bool:
     # does the assignment that binds type alias name stay in the module's code: Pos = int binds
@@ -731,8 +758,8 @@ def gen_unalias(self, a: Node, seen: list[str]) -> Node:
         name = a.kids[0].s
         tps = self.alias_params(name)
         xs = a.kids[1].kids if a.kids[1].kind == "tuple" else [a.kids[1]]
-        if len(tps) == 0 or len(xs) != len(tps) or self.alias_variadic(name):
-            return a
+        if len(tps) == 0 or len(xs) != len(tps) or self.alias_variadic(name) or self.newtype_name(name):
+            return a  # (left for alias_ann's error)
         # (the type arguments replace the type parameters first: in type Pair[Row] = ..., Row is
         # the parameter, not the module's alias Row)
         v = self.subst_ann(clone(self.alias_value(name)), tps, [self.unalias(x, seen) for x in xs])
@@ -758,6 +785,8 @@ def gen_alias_ann(self, n: Node) -> str:
     xs = (n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]) if n.kind == "index" else []
     if name in self.resolving:
         return f"!recursive type aliases are not supported: '{short(name)}' refers to itself"
+    if n.kind == "index" and self.newtype_name(name):
+        return "!" + NEWTYPE_SUBSCRIPT + " (CPython raises TypeError where it evaluates this annotation)"
     if n.kind == "index" and self.alias_variadic(name):
         return f"!type alias '{short(name)}' with a TypeVarTuple (*Ts) or ParamSpec (**P) parameter is not supported with type arguments: write its value out"
     if n.kind == "index" and self.alias_arity(name, tps, len(xs)) != "":

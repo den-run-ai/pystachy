@@ -234,6 +234,9 @@ def gen_flow_program(self, top: list[Node], mod: str, mfns: list[FnInfo], mcls: 
         gl[f.name] = True
     for ci in mcls:
         gl[ci.name] = True
+    for st in top:
+        if st.kind == "newtype":
+            gl[st.s] = True  # (as a def does, N = NewType(...) binds N when it runs)
     mfl = Flow(gl, {})
     self.fvars = {}
     for st in top:
@@ -826,6 +829,8 @@ def gen_fl_stmt(self, fl: Flow, n: Node) -> None:
         for d in self.fl_defaults(n):
             self.fl_expr(fl, d)
         fl.put(n.s)
+    elif k == "newtype":
+        fl.put(n.s)  # (N = NewType(...), which program leaves out but for its binding)
     elif k == "def":
         self.fl_nested(fl, n)  # (a def in a function)
     elif k == "lclass":

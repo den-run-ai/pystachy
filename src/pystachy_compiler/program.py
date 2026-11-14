@@ -873,14 +873,18 @@ def gen_program(self, mods: list[Mod]) -> str:
             elif st.kind == "typealias" and st.s in self.taliases:
                 m.body.kids[i] = mk("pass", "", st.line, [])  # (a type alias, which only annotations name)
             elif st.kind == "assign" and st.kids[0].kind == "name" and st.kids[0].s in self.taliases and self.taliases[st.kids[0].s] is st and not self.alias_kept(st.kids[0].s):
-                m.body.kids[i] = mk("pass", "", st.line, [])
+                # (N = NewType("N", T) binds N where it runs, as a def does: a call N(x) that may come
+                # first checks it, see call)
+                m.body.kids[i] = mk("newtype", st.kids[0].s, st.line, []) if self.newtype_name(st.kids[0].s) else mk("pass", "", st.line, [])
     for q in self.taliases:
         # (CPython evaluates an assigned alias's value where it assigns it, a type statement's
         # only where its __value__ is read)
-        why = self.alias_problem(self.taliases[q].kids[1]) if self.taliases[q].kind == "assign" else ""
+        # (of N = NewType("N", T), T: alias_value)
+        why = self.alias_problem(self.alias_value(q)) if self.taliases[q].kind == "assign" else ""
         if why != "":
             self.line = self.taliases[q].line
-            self.err(why[1:] if why.startswith("!") else f"{why} (CPython evaluates this type alias's value when the assignment runs)")
+            what = "this NewType's type" if self.newtype_name(q) else "this type alias's value"
+            self.err(why[1:] if why.startswith("!") else f"{why} (CPython evaluates {what} when the assignment runs)")
     if len(self.taliases) > 0:
         self.recursive_aliases()
         # an annotation that names a type alias is its value (unalias)
@@ -1074,7 +1078,7 @@ def gen_program(self, mods: list[Mod]) -> str:
     for i in range(len(mods)):
         self.flow_program(tops[i], mods[i].name, mfns[mods[i].name], mcls[mods[i].name], i == 0)
     for nm in self.gflag:
-        if nm in self.funcs or nm in self.classes:
+        if nm in self.funcs or nm in self.classes or self.newtype_name(nm):
             self.global_var(f"@g.{nm}.def", "bool")
     for m in mods:
         # a module global that module code only sets to None (an optional accelerator's
