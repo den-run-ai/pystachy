@@ -747,6 +747,7 @@ class Loader:
         # unlike any other). A key prefixed by a space maps an original private spelling to its
         # lexical name, only for quoted annotations; qexpr never consults these aliases.
         self.qren: dict[str, str] = {}
+        self.sigtps: list[str] = []  # the type parameters of the def whose signature is being qualified, which qren names only in its body
         # the function simplify() is in (own_specials()), and the names that its own imports which
         # special_import() recognizes have surely bound where simplify() is
         self.fs = Mod("", "", "")
@@ -3395,9 +3396,10 @@ class Loader:
                 n.kind = "str"
                 n.s = m.name if m.name != "" else self.ext
                 return
-            if k == "name" and n.s == "__file__" and n.s not in loc and n.s not in m.rebound and self.kind(m, n.s) == "" and m.path != "":
+            if k == "name" and n.s == "__file__" and n.s not in loc and n.s not in self.qren and n.s not in self.sigtps and n.s not in m.rebound and self.kind(m, n.s) == "" and m.path != "":
                 # (its source file, as CPython names it: an absolute path, which an executable
-                # built ahead of time keeps from where it was built)
+                # built ahead of time keeps from where it was built; not a type parameter of that
+                # name, which a generic def's signature and body, and a generic class, may read)
                 n.kind = "str"
                 n.s = os.path.abspath(m.path)
                 return
@@ -3623,10 +3625,13 @@ class Loader:
                 for d in st.kids[3:]:
                     if d.s != "async":
                         self.qdeco(m, d, loc, not cls)
+                outertps = self.sigtps
+                self.sigtps = st.kids[2].s.split()
                 for p in st.kids[0].kids:
                     self.qann(m, p.kids[0], loc)
                     self.qexpr(m, p.kids[1], loc)
                 self.qann(m, st.kids[1], loc)
+                self.sigtps = outertps
                 # (a def in a function sees that function's names too: those it does not bind itself
                 # are the enclosing function's, which a closure reads)
                 own: dict[str, bool] = {}
