@@ -1,0 +1,29 @@
+Py_GIL_DISABLED 0
+SIZEOF_SIZE_T 8
+SIZEOF_VOID_P 8
+abi_thread ''
+abiflags ''
+base the Pystachy home
+exec_prefix the Pystachy home
+implementation 'Pystachy'
+implementation_lower 'pystachy'
+installed_base the Pystachy home
+installed_platbase the Pystachy home
+platbase the Pystachy home
+platlibdir 'lib'
+prefix the Pystachy home
+py_version '3.13.16'
+py_version_nodot '313'
+py_version_nodot_plat ''
+py_version_short '3.13'
+projectbase None
+userbase None
+srcdir None
+EXT_SUFFIX None
+SOABI None
+CC None
+LIBDIR None
+Py_DEBUG None
+SIZEOF_LONG None
+/B/bin {'base': '/B'}
+[exit 0]

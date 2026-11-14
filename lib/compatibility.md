@@ -21,7 +21,7 @@ the [module guide](README.md#module-guide) summarizes what each module supports.
 | [Collections and functional tools](#collections-and-functional-tools) | [`collections`](#collections), [`copy`](#copy), [`enum`](#enum), [`heapq`](#heapq), [`itertools`](#itertools), [`functools`](#functools), [`operator`](#operator), [`contextlib`](#contextlib) |
 | [Numbers and randomness](#numbers-and-randomness) | [`random`](#random), [`statistics`](#statistics), [`mpz`](#mpz) |
 | [Dates and times](#dates-and-times) | [`datetime`](#datetime) |
-| [Files, OS and command line](#files-os-and-command-line) | [`io`](#io), [Binary files](#binary-files), [Path modules](#path-modules), [`pathlib`](#pathlib), [`glob`](#glob), [`shutil`](#shutil), [`argparse`](#argparse), [`getopt`](#getopt) |
+| [Files, OS and command line](#files-os-and-command-line) | [`io`](#io), [Binary files](#binary-files), [Path modules](#path-modules), [`pathlib`](#pathlib), [`glob`](#glob), [`shutil`](#shutil), [`sysconfig`](#sysconfig), [`argparse`](#argparse), [`getopt`](#getopt) |
 | [Processes and threads](#processes-and-threads) | [`_thread`](#_thread), [`threading`](#threading), [`atexit`](#atexit) |
 | [Runtime services](#runtime-services) | [`abc`](#abc), [`types`](#types), [`warnings`](#warnings), [`logging`](#logging), [`traceback`](#traceback), [`weakref` and `_weakref` (prototype)](#weakref-and-_weakref-prototype) |
 | [Native interoperability](#native-interoperability) | [`ctypes`](#ctypes) |
@@ -1408,6 +1408,49 @@ and `copyfile()` of a link with `follow_symlinks=False`, raise `NotImplementedEr
 file system copies it with `copy()` (CPython uses `copy2()`, which also copies its times), and
 of a directory raises the rename's `OSError`. `copytree()`, `copy2()`, `copystat()`, `which()`,
 `disk_usage()`, `get_terminal_size()` and the archive functions are not provided.
+
+### `sysconfig`
+
+A subset implementation of CPython's `sysconfig` that answers for Pystachy
+([test](../tests/programs/library/lib_sysconfig.py)). CPython's reports the installation that
+runs the program: the variables of the Makefile and `pyconfig.h` it was built with, and the
+directories its installer writes.
+
+- **Variables.** `get_config_vars()` has the ones CPython computes as it starts: `prefix`,
+  `exec_prefix`, `base`, `platbase`, `installed_base` and `installed_platbase`, all the Pystachy
+  home ([`sys.prefix`](../docs/language/compatibility.md#modules-and-libraries)); `py_version`,
+  `py_version_short`, `py_version_nodot` and `py_version_nodot_plat`; `platlibdir` (`'lib'`);
+  `implementation` (`'Pystachy'`) and `implementation_lower`; `abiflags` and `abi_thread` (both
+  `''`). Of a build's variables it has the three that are true of every target: `SIZEOF_SIZE_T`
+  and `SIZEOF_VOID_P` (8) and `Py_GIL_DISABLED` (0). Any other, such as `EXT_SUFFIX`, `CC`,
+  `LIBDIR`, `projectbase`, `userbase` or `srcdir`, is not set: `get_config_var()` returns `None`
+  for it, as CPython does for a variable its build does not define
+  ([deviation](../tests/deviations/lib_sysconfig_vars.py)).
+- **A variable's type.** `get_config_var()` returns `int | str | None`. Convert the value with
+  `int()`, `str()` or `bool()`, or narrow it with `is None` and `isinstance()`, before using it
+  as one type ([test](../tests/programs/library/lib_sysconfig_mypyc.py),
+  [error test](../tests/errors/library/lib_sysconfig_var_unnarrowed.py)).
+  `get_config_vars()` takes no names: with names, CPython's returns a list instead of the dict
+  ([error test](../tests/errors/library/lib_sysconfig_config_vars_args.py)).
+- **One scheme.** `posix_prefix` is the layout of the Pystachy home: `stdlib` and `platstdlib`
+  are its `lib/`, `purelib` and `platlib` `lib/site-packages`, `include` and `platinclude`
+  `include`, `scripts` `bin`, and `data` the home. Only `lib/` is there: Pystachy installs
+  nothing in the others, and [no import searches them](../docs/language/modules.md#finding-and-running-modules).
+  CPython has nine schemes, and its paths name the implementation and version, as
+  `lib/python3.13`. `get_preferred_scheme()` of `'home'` or `'user'` raises CPython's
+  `ValueError` for a platform without that scheme, and `get_paths()` of another scheme raises
+  `KeyError` ([deviation](../tests/deviations/lib_sysconfig_scheme.py)).
+- **`vars`**, the caller's variables for `get_paths()` and `get_path()`, is a `dict[str, str]`
+  ([error test](../tests/errors/library/lib_sysconfig_paths_vars.py)). It is left as it was;
+  CPython adds every configuration variable to it.
+- An executable that `pystachy build` makes keeps the home it was compiled with, as it keeps
+  `sys.prefix`.
+
+Not supported, as compile-time errors where used: `get_platform()`, which needs `os.uname()`
+([error test](../tests/errors/library/lib_sysconfig_get_platform.py)); `get_makefile_filename()`,
+`get_config_h_filename()` and `parse_config_h()`, as there is no Makefile or `pyconfig.h`
+([error test](../tests/errors/library/lib_sysconfig_makefile.py)); and `is_python_build()`'s
+deprecated `check_home` argument.
 
 ### `argparse`
 

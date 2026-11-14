@@ -270,6 +270,12 @@ those of reader(), writer(), the registry functions and field_size_limit(), and 
 reader's states). It is derived from Python and is used under the same license and copyright
 notice.
 
+lib/sysconfig.py is Pystachy's own code for its installation, written after CPython 3.13.16's
+Lib/sysconfig/__init__.py (lib/provenance.md); it keeps the functions, docstrings and comments
+it copies from it. tests/programs/upstream/upstream_sysconfig.py adapts five methods of that
+release's Lib/test/test_sysconfig.py, whose source SHA-256 is recorded in its header. They are
+derived from Python and are used under the same license and copyright notice.
+
 lib/statistics.py is CPython 3.13.16's Lib/statistics.py with the edits lib/README.md lists, each
 marked in the source; it is derived from Python and is used under the same license and copyright
 notice.
