@@ -1005,8 +1005,10 @@ def gen_optional(self, t: str) -> str:
     if t in self.classes or is_opt(t):
         return t
     if is_union(t):
-        # (a union that holds a class's objects may be None, as the class's objects may)
-        return t if len([m for m in umembers(t) if m in self.classes]) > 0 else self.ctype("opt", [t])
+        # (a union that holds a class's objects may be None, as the class's objects may; a complex
+        # number beside scalars or containers is a scalar member, whose union is optional as an
+        # int's is, and beside only objects and files a reference member: complex | C)
+        return t if self.reference_union(t) or len([m for m in umembers(t) if m in self.classes and m != COMPLEXC]) > 0 else self.ctype("opt", [t])
     if (t == "str" or t == "bytes" or t == "exc" or t == "exctype" or self.isnum(t) or is_list(t) or is_dict(t) or is_set(t) or is_tuple(t) or is_vtuple(t) or is_callable(t) or is_gen(t)) and "?" not in t:
         return self.ctype("opt", [t])
     return ""

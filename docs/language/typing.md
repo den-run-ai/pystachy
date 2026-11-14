@@ -346,8 +346,8 @@ would differ from the integer.
 
 ## Closed scalar unions
 
-Explicit `A | B` and `Union[A, B]` annotations may combine `int`, `float`, `bool`
-and `str`, optionally including `None`. Nested and repeated members normalize to
+Explicit `A | B` and `Union[A, B]` annotations may combine `int`, `float`, `bool`,
+`str` and `complex`, optionally including `None`. Nested and repeated members normalize to
 one type. These annotations are supported by default in both AOT and JIT modes.
 They may appear in arguments, returns, local variables, fields and container values:
 
@@ -422,6 +422,13 @@ described above. Recursive JSON-shaped types use the
 runtime compilation and speculative type assumptions are out of scope.
 Boxing may allocate; this feature expands supported programs and makes no performance
 claim.
+
+A `complex` member, as mypy's `int | bool | float | complex | str` holds one, narrows with
+`isinstance()`; truth tests, `str()`, `repr()`, printing, `format()` and f-string
+specifications, `==` and `!=` (across members, so `1 == 1+0j` is true), `+`, `-`, `*`, `/`
+and `**` of numeric members, and `abs()` select its operations by the tag. Ordering, `hash()`
+(as of any union), other builtins, and the equality of containers that hold such a union
+require narrowing first.
 
 ### Inferred unions
 
@@ -579,7 +586,10 @@ errors. `is` and `is not` compare the objects themselves, `None` included. A tup
 `count()` and `index()` find the same object first, then compare a member's object as an object
 of its class compares, but for methods that cannot take the other object
 ([compatibility](compatibility.md#functions-and-object-identity)). Narrow a local to a member
-before equality comparison, truth testing or formatting. Containers remain
+before equality comparison, truth testing or formatting. Beside only objects, a `complex`
+member makes a reference union, `complex | C`, whose `==` and `!=`, also in a tuple's
+searches, compare member by member: complex numbers by value, an object by its class's
+`__eq__`, else by identity. Containers remain
 invariant, and no reference union is [inferred](#inferred-unions). This adds deterministic
 native execution, without profiles, an interpreter, runtime compilation or speculative
 assumptions; boxing and dispatch have costs, so no performance improvement is claimed.
