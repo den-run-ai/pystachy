@@ -107,7 +107,9 @@ after each syntax-only eligibility check, including errors and retries.
 Unused imported subclasses retain deferred diagnostics, so their overrides do not enter
 dispatch merely because their base acquired a fixed layout. Speculative comparison
 adapters keep their existing decline path before a diagnostic can activate a hierarchy.
-The finite class registry is independent of the union-join retry budget.
+Activating a class also discards saved union hints and declined dynamic adapters:
+those may refer to the previous template layouts. The finite class-name registry is
+independent of the union-join retry budget.
 
 A known function value can become a direct call. Closures keep captured variables in shared
 cells, so `nonlocal` assignments remain visible. A typed `Callable` uses an adapter with a

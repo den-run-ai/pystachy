@@ -142,9 +142,12 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
             return g.program(mods)
         except Rejoin as retry:
             if isinstance(retry, NeedHierarchy):
-                # Monotone class names, independent of union-join limits and identity retries.
-                # A fresh Gen discards all fields, functions and speculative state.
-                pass
+                # Class-template instances may now be nominal classes. Recompute joins
+                # and declined dynamic adapters against those layouts; only the monotone
+                # class-name registry survives alongside the identity/EH policy.
+                hints = {}
+                xnot = {}
+                passes = 0
             elif isinstance(retry, NeedSliceEH):
                 slice_eh = True
             elif g.idevent != "" and not idfull:

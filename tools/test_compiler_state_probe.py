@@ -125,9 +125,13 @@ class StateProbeTests(unittest.TestCase):
             def program(self, source):
                 test.assertEqual(self.gtypes, {})
                 test.assertFalse(self.final)
+                test.assertEqual(self.hints, {})
+                test.assertEqual(self.xnot, {})
                 count = len(self.hierarchies)
                 if count < 12:
                     self.gtypes["tentative"] = "list[int]"
+                    self.hints["old-layout"] = "helper$Base#1"
+                    self.xnot["protocol:old-layout"] = True
                     self.hierarchies[f"helper$Child{count}"] = True
                     raise NeedHierarchy()
                 return str(count)
@@ -145,7 +149,7 @@ class StateProbeTests(unittest.TestCase):
         generator.tmpl = templates
         node = Node("class", "Base", 1)
         for error in (NeedHierarchy(), SystemExit(1)):
-            def interrupted(gen, st):
+            def interrupted(gen, st, error=error):
                 self.assertEqual(gen.tmpl, {"Unrelated": True})
                 raise error
 
