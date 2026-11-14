@@ -1,5 +1,6 @@
 """Loader component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+import os
 from src.pystachy_compiler import program_cache
 from src.pystachy_compiler.analysis import (
     accel_try,
@@ -771,6 +772,7 @@ class Loader:
         # unlike any other). A key prefixed by a space maps an original private spelling to its
         # lexical name, only for quoted annotations; qexpr never consults these aliases.
         self.qren: dict[str, str] = {}
+        self.sigtps: list[str] = []  # the type parameters of the def whose signature is being qualified, which qren names only in its body
         # the function simplify() is in (own_specials()), and the names that its own imports which
         # special_import() recognizes have surely bound where simplify() is
         self.fs = Mod("", "", "")
@@ -3381,6 +3383,11 @@ class Loader:
         if n.s == "__doc__" and "__doc__" not in t.kinds:
             self.moddoc(n, t)
             return ""
+        if n.s == "__file__" and "__file__" not in t.kinds and t.path != "":
+            n.kind = "str"  # (module t's source file: see qexpr)
+            n.s = os.path.abspath(t.path)
+            n.kids = []
+            return ""
         k = t.kinds.get(n.s, "")
         key = f"{base}  {n.s}"
         if key in self.fragile:
@@ -3417,6 +3424,13 @@ class Loader:
                     fail(f"module '{m.name if m.name != '' else self.ext}' binds __name__, which is not supported in an imported module", n.line)
                 n.kind = "str"
                 n.s = m.name if m.name != "" else self.ext
+                return
+            if k == "name" and n.s == "__file__" and n.s not in loc and n.s not in self.qren and n.s not in self.sigtps and n.s not in m.rebound and self.kind(m, n.s) == "" and m.path != "":
+                # (its source file, as CPython names it: an absolute path, which an executable
+                # built ahead of time keeps from where it was built; not a type parameter of that
+                # name, which a generic def's signature and body, and a generic class, may read)
+                n.kind = "str"
+                n.s = os.path.abspath(m.path)
                 return
             if k == "name" and n.s == "__debug__":
                 n.kind = "True"  # (CPython runs without -O; nothing can bind __debug__)
@@ -3640,10 +3654,13 @@ class Loader:
                 for d in st.kids[3:]:
                     if d.s != "async":
                         self.qdeco(m, d, loc, not cls)
+                outertps = self.sigtps
+                self.sigtps = st.kids[2].s.split()
                 for p in st.kids[0].kids:
                     self.qann(m, p.kids[0], loc)
                     self.qexpr(m, p.kids[1], loc)
                 self.qann(m, st.kids[1], loc)
+                self.sigtps = outertps
                 # (a def in a function sees that function's names too: those it does not bind itself
                 # are the enclosing function's, which a closure reads)
                 own: dict[str, bool] = {}

@@ -1,0 +1,9 @@
+mods: init mods
+mods.shapes: init mods.shapes
+module_file.py True True
+imports x.txt True
+file_of.py mods file_of.py True
+__init__.py True
+# A module's __file__ is the absolute path of its source file: the program's own, an imported
+['module_file.py', 'file_of.py'] 'module_file.py'
+[exit 0]
