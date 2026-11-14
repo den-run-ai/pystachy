@@ -901,14 +901,13 @@ rejects: no method can return `NotImplemented`, so the first one that runs gives
 An int or float of typed code that no variable's box slot holds is a new object where
 it becomes an `Any` value, where CPython's names, containers and classes hold one
 object. This affects numeric items of fixed typed tuples, dicts and sets, including
-variadic argument tuples represented as fixed shapes; typed lists with optional or
-union item types
-(`list[float | None]`, `list[int | float]`); and optional/union numeric generator
+variadic argument tuples represented as fixed shapes; typed lists and runtime-length
+tuples with numeric union item types (`list[int | float]`); and optional/union numeric generator
 yields. Scalar `int` and `float` generator yields retain their source objects.
 
 Yielding into dynamic item storage (`Iterator[Any]`) also retains the source box.
-Numeric runtime-length `tuple[int, ...]` and `tuple[float, ...]` items retain their
-source boxes as described below. Fixed tuple to runtime-length tuple conversions
+Numeric and optional-numeric runtime-length tuple items retain their source boxes
+as described below. Fixed tuple to runtime-length tuple conversions
 can still lose numeric identity; fresh literal displays retain their module
 constants. Fresh displays with dynamic item destinations avoid that fixed typed
 storage boundary. Typed
@@ -1224,7 +1223,8 @@ Coverage: [dynany_identity_fields.py](../tests/programs/inference/dynany_identit
 
 ### Numeric runtime-length tuple items
 
-In identity-tracking code, `tuple[int, ...]` and `tuple[float, ...]` retain their
+In identity-tracking code, runtime-length tuples of `int`, `float`, `int | None`
+and `float | None` retain their
 item objects through direct construction, typed-list construction, indexing,
 iteration, unpacking, slicing, concatenation and conversion back to a list.
 Source lists and tuples own separate companion arrays; mutating the list cannot
@@ -1242,16 +1242,24 @@ materialize pending identities before sharing items, so copying can allocate
 numeric boxes even when the program performs no later Any read. Proven scalar
 indexed arithmetic reads need no boxes. Ordinary programs allocate no companion.
 
+Optional tuples keep their existing nullable representation slots and store the
+same item identities in scanned companions. Widening a numeric tuple to optional
+items allocates fresh representation boxes and an independent companion array;
+the source and destination still share each Python item object. Typed reads reuse
+the representation boxes already in the tuple. `None` uses the canonical dynamic
+None box, never a null dynamic payload.
+
 This supports item crossings through Any; boxing the entire native numeric tuple
-as Any remains rejected. Fixed-length tuple sources, optional/union item storage
-and widening numeric tuples to optional items remain separate identity gaps. In
+as Any remains rejected. Fixed-length tuple sources and numeric union item storage
+remain separate identity gaps. In
 particular, converting an imported fixed tuple does not recover its item objects;
 annotated runtime-length tuple constants preserve them.
 Runtime-length tuple repetition and membership remain unsupported operations.
 
 Coverage: [dynany_identity_vtuples.py](../tests/programs/inference/dynany_identity_vtuples.py),
 [dynany_identity_vtuple_effects.py](../tests/programs/inference/dynany_identity_vtuple_effects.py),
-[python_int_vtuple_identity.py](../tests/programs/numbers/python_int_vtuple_identity.py).
+[python_int_vtuple_identity.py](../tests/programs/numbers/python_int_vtuple_identity.py),
+[dynany_identity_optional_vtuples.py](../tests/programs/inference/dynany_identity_optional_vtuples.py).
 `make listprobe` checks companion ownership, scan kinds, lazy-copy identity and
 collection with an intentionally atomic companion as its negative control.
 
@@ -1291,7 +1299,7 @@ Coverage: [dynany_identity_call_moves.py](../tests/programs/inference/dynany_ide
 
 ### Typed numeric list items
 
-Typed `list[int]` and `list[float]` preserve item objects through stores, reads,
+Typed lists of `int`, `float`, `int | None` and `float | None` preserve item objects through stores, reads,
 iteration, copies, slices, repetition and reordering. Their raw numeric array is
 unchanged; a separate scanned companion array holds item boxes. Copies share
 boxes, and replacing an item changes only that slot's object.
@@ -1313,12 +1321,25 @@ Foreign C list calls follow the CPython FFI twin's copy-back contract: the list
 remains the same object, but every numeric item is replaced after C returns,
 including read-only calls and calls through `ffi.at()`.
 
+Optional numeric lists retain their scanned nullable slots: null means `None`,
+and each non-null slot points to the existing numeric representation box. The
+companion kind distinguishes this from an unboxed scalar array. Copies, clear
+and refill, slices and mutations keep that distinction. Ordinary typed graphs
+without dynamic `Any` still allocate no identity companions; tracked typed reads
+reuse representation boxes. Optional integer items keep their checked 64-bit
+limit even in a promoting-int caller. This preserves item crossings and does not
+admit the entire optional list as an `Any` value.
+
 Coverage: [dynany_identity_list_items.py](../tests/programs/inference/dynany_identity_list_items.py),
 [dynany_identity_list_mutations.py](../tests/programs/inference/dynany_identity_list_mutations.py),
 [dynany_identity_list_transfers.py](../tests/programs/inference/dynany_identity_list_transfers.py),
 [dynany_identity_list_queries.py](../tests/programs/inference/dynany_identity_list_queries.py),
 [dynany_identity_list_selectors.py](../tests/programs/inference/dynany_identity_list_selectors.py),
 [dynany_identity_list_callbacks.py](../tests/programs/inference/dynany_identity_list_callbacks.py),
+[dynany_identity_optional_lists.py](../tests/programs/inference/dynany_identity_optional_lists.py),
+[dynany_identity_optional_container_effects.py](../tests/programs/inference/dynany_identity_optional_container_effects.py),
+[dynany_identity_optional_container_imports.py](../tests/programs/inference/dynany_identity_optional_container_imports.py),
+[python_int_optional_container_identity.py](../tests/programs/numbers/python_int_optional_container_identity.py),
 [c_list_identity.py](../tests/ffi/c_list_identity.py).
 
 ### Constant folding and comprehensions

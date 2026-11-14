@@ -1342,7 +1342,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             # an operand hint: concatenation may widen it (int plus int | None).
             # Comparisons preserve each side's own element representation.
             et = targs(want)[0]
-            if all(self.widens(v.t, et) or self.boxes(v.t, et) or (v.t == BIG and et == "int") for v in vals):
+            if all(self.widens(v.t, et) or self.boxes(v.t, et) or (v.t == BIG and et in ["int", "opt[int]"]) or (v.t == BIGOPT and et == "opt[int]") for v in vals):
                 return self.vtuple_make([self.coerce(v, et) for v in vals], want)
         return self.stack_tuple(vals) if n is self.stkkey else self.tuple_(vals)
     if k == "listcomp":
@@ -2557,9 +2557,13 @@ def gen_vtuple_make(self, vals: list[Val], t: str) -> Val:
 
 def gen_vtuple_item(self, o: Val, index: Val) -> Val:
     et = targs(o.t)[0]
-    kind = self.list_id_kind(self.ctype("list", [unopt(et)]))
-    if kind != 0 and not is_opt(et) and not self.fn.scalar_reads:
+    kind = self.list_id_kind(self.ctype("list", [et]))
+    if kind != 0 and not self.fn.scalar_reads:
         box = self.rt("pys_vtuple_get_identity", "ptr", [f"ptr {o.v}", f"i64 {index.v}", f"i64 {kind}"])
+        if is_opt(et):
+            value = self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {o.v}", f"i64 {index.v}"]), et)
+            value.idfrom = box
+            return value
         return self.dyn_unbox(Val(box, "dyn"), et)
     return self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {o.v}", f"i64 {index.v}"]), et)
 
@@ -5271,7 +5275,7 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         elif b.t == "bytes":
             self.err(f"a bytes-like object is required, not '{tname(a.t)}'")
         elif is_list(b.t):
-            if self.list_id_kind(b.t) != 0 and a.t in ["int", "float", "bool", "dyn"]:
+            if self.list_id_kind(b.t) != 0 and (numeric_identity(a.t) or a.t in ["bool", "None", "dyn"]):
                 found = self.list_find(b, a, "find")
                 return self.num_cmp(">=" if op == "in" else "<", found, Val("0", "int"))
             if a.t != elem(b.t) and (is_list(a.t) or is_dict(a.t) or is_tuple(a.t)) and self.numeric_comparable(a.t, elem(b.t)):

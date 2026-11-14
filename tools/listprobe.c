@@ -640,17 +640,17 @@ static void checked_boundary_rejection(void) {
 }
 /* Tuple companions own their array and retain item boxes after every source
    alias disappears. The atomic-array control must fail to retain the same box. */
-__attribute__((noinline)) static uintptr_t tuple_hold(int atomic_ids) {
+__attribute__((noinline)) static uintptr_t tuple_hold(int atomic_ids, int optional) {
   const uintptr_t mask = 0x5a5a5a5a5a5a5a5a;
   for (I i = 0; i < 1000; i++) {
     Dyn *box = pys_dyn_float(0.125), *sibling = pys_dyn_float(0.25);
     if (gc_find(box) != gc_find(sibling)) continue;
-    I raw[] = {box->v};
+    I raw[] = {optional ? (I)pys_box(box->v) : box->v};
     VTuple *tuple = pys_vtuple_from(raw, 1);
     if (atomic_ids) {
       tuple->ids = pys_alloc_atomic(2 * sizeof(I));
-      tuple->ids[0] = 2; tuple->ids[1] = (I)box;
-    } else pys_vtuple_set_identity(tuple, 0, box, 2);
+      tuple->ids[0] = optional ? 10 : 2; tuple->ids[1] = (I)box;
+    } else pys_vtuple_set_identity(tuple, 0, box, optional ? 10 : 2);
     buffers = pys_list_new(2);
     pys_list_append(buffers, (I)tuple); pys_list_append(buffers, (I)sibling);
     return (uintptr_t)box ^ mask;
@@ -684,6 +684,55 @@ static void tuple_identities(void) {
     bad("copy of an unobserved tuple item changed identity");
   if (pys_vtuple_get_identity(pending, 0, 2) == original) bad("distinct fresh tuple items were interned");
 }
+static void optional_identities(void) {
+  Dyn *a = pys_dyn_float(NAN), *b = pys_dyn_float(NAN);
+  I av = (I)pys_box(a->v), bv = (I)pys_box(b->v);
+  List *values = pys_list_new(0);
+  pys_list_append_identity(values, av, a, 10);
+  pys_list_append_identity(values, 0, DNONE, 10);
+  pys_list_append_identity(values, bv, b, 10);
+  if (atomic(values) || atomic(values->a) || atomic(values->ids) || values->ids[0] != 10)
+    bad("optional identity storage is not scanned or has wrong kind");
+  if (pys_list_get_identity(values, 0, 10) != a || pys_list_get_identity(values, 1, 10) != DNONE)
+    bad("optional list read lost None or numeric identity");
+  List *copy = pys_list_copy(values), *reverse = pys_list_slice_step(values, NONE, NONE, -1);
+  pys_list_extend(copy, values);
+  if (copy->ids[0] != 10 || copy->ids[4] != (I)a || reverse->ids[1] != (I)b)
+    bad("optional list copy changed companion kind or identity");
+  I ticks = gc_tick;
+  pys_list_set(values, 0, 0);
+  if (gc_tick != ticks || values->ids[0] != 14 || values->ids[1]) bad("optional raw store did not defer identity");
+  if (pys_list_get_identity(values, 0, 10) != DNONE || values->ids[0] != 10)
+    bad("optional None materialization changed kind");
+  pys_list_set(values, 0, av);
+  Dyn *fresh = pys_list_get_identity(values, 0, 10);
+  if (fresh == a || DKIND(fresh) != DK_FLOAT || fresh->v != a->v)
+    bad("optional raw store did not create a distinct numeric identity");
+  pys_list_clear(values);
+  if (values->ids != empty_identity_optfloat) bad("optional clear lost its sentinel kind");
+  pys_list_append(values, 0); pys_list_append(values, av);
+  if (pys_list_get_identity(values, 0, 10) != DNONE || DKIND(pys_list_get_identity(values, 1, 10)) != DK_FLOAT)
+    bad("optional raw refill misread nullable slots");
+  VTuple *tuple = pys_vtuple_new(copy), *slice = pys_vtuple_slice(tuple, 3, 6, 1);
+  if (tuple->ids[0] != 10 || tuple->ids == copy->ids || slice->ids[1] != (I)a || slice->ids[2] != (I)DNONE)
+    bad("optional tuple copy lost independent companion storage");
+  I raw[] = {a->v, b->v};
+  VTuple *numeric = pys_vtuple_from(raw, 2);
+  pys_vtuple_set_identity(numeric, 0, NULL, 2); pys_vtuple_set_identity(numeric, 1, b, 2);
+  VTuple *wide = pys_vtuple_box(numeric);
+  if (wide->ids[0] != 10 || wide->ids == numeric->ids || wide->ids[1] != numeric->ids[1] || wide->ids[2] != (I)b ||
+      *(I *)wide->a[0] != a->v || *(I *)wide->a[1] != b->v)
+    bad("optional tuple widening lost payload or shared item identity");
+  List *integers = pys_list_new(0);
+  Dyn *integer = pys_dyn_int(5000);
+  pys_list_append_identity(integers, (I)pys_box(integer->v), integer, 9);
+  pys_list_clear(integers);
+  if (integers->ids != empty_identity_optint) bad("optional int clear lost its sentinel");
+  pys_list_append(integers, (I)pys_box(INT64_MIN));
+  Dyn *minimum = pys_list_get_identity(integers, 0, 9);
+  if (DKIND(minimum) != DK_INT || minimum->v != INT64_MIN || lbig(integers, 0))
+    bad("optional minimum int mistaken for promoting storage");
+}
 int main(void) {
   gc_init(__builtin_frame_address(0), roots, 1);
   budget_candidates_in_child();
@@ -710,9 +759,14 @@ int main(void) {
     bad("native companion did not retain distinct wide boxes through collection");
   checked_boundary_rejection();
   tuple_identities();
-  uintptr_t tuple_box = tuple_hold(0);
+  optional_identities();
+  uintptr_t tuple_box = tuple_hold(0, 0);
   scrub_collect(); tuple_alive(tuple_box, 1);
-  tuple_box = tuple_hold(1);
+  tuple_box = tuple_hold(1, 0);
+  scrub_collect(); tuple_alive(tuple_box, 0);
+  tuple_box = tuple_hold(0, 1);
+  scrub_collect(); tuple_alive(tuple_box, 1);
+  tuple_box = tuple_hold(1, 1);
   scrub_collect(); tuple_alive(tuple_box, 0);
   budgets();
   puts("listprobe: empty-list reuse, inline short lists, range-list storage/mutation, pointer-free list kinds, numeric identity, promoting storage, native Any boundaries, tuple identity roots and large-object collections passed");

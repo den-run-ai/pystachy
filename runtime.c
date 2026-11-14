@@ -2438,6 +2438,7 @@ I pys_dyn_hash(Dyn *x);
 Dyn *pys_dyn_int(I v);
 Dyn *pys_dyn_big(I lo, void *hi);
 Dyn *pys_dyn_float(double x);
+extern const Dyn pys_dyn_none_box;
 static int dyn_eqitem(Dyn *a, Dyn *b);
 static int dyn_keyeq(Dyn *a, Dyn *b);
 static uint64_t hdyn(Dyn *x);
@@ -3078,6 +3079,11 @@ VTuple *pys_vtuple_box(VTuple *src) {
   if (!src) pys_fail("TypeError: 'NoneType' object is not iterable");
   VTuple *t = pys_vtuple_from(src->a, src->len);
   for (I i = 0; i < src->len; i++) t->a[i] = (I)pys_box(src->a[i]);
+  if (src->ids && opt_in()) {
+    vtuple_identity(src);
+    vtuple_ids(t, src->ids[0] | 8);
+    memcpy(t->ids + 1, src->ids + 1, src->len * sizeof(I));
+  }
   return t;
 }
 I pys_vtuple_get(VTuple *t, I index) {
@@ -3140,7 +3146,11 @@ I pys_vtuple_count(VTuple *t, I v, Str *d) { I c = 0; for (I i = 0; i < t->len; 
 #define INLINE_CAP 4                   /* the inline items' capacity, the least that any list has */
 static I empty_list[1];                /* valid even for zero-byte copies; distinct from sort's sentinel */
 static I empty_identity_int[1] = {1}, empty_identity_float[1] = {2}, empty_identity_big[1] = {3};
-static I *empty_identity(I kind) { return (kind & 3) == 1 ? empty_identity_int : (kind & 3) == 2 ? empty_identity_float : empty_identity_big; }
+static I empty_identity_optint[1] = {9}, empty_identity_optfloat[1] = {10};
+static I *empty_identity(I kind) {
+  if (kind & 8) return (kind & 3) == 1 ? empty_identity_optint : empty_identity_optfloat;
+  return (kind & 3) == 1 ? empty_identity_int : (kind & 3) == 2 ? empty_identity_float : empty_identity_big;
+}
 static I empty_atomic[1];              /* the same, for a list whose array was atomic */
 static I empty_inline[1];              /* and for one whose items were inline (scanned) */
 static I *inline_items(List *l) { return (I *)(l + 1); }
@@ -3185,6 +3195,8 @@ List *pys_list_from_const(const I *values, I n) {
    atomic, preserving its C ABI. A raw in-place store clears its companion without allocating;
    a later observation or sharing operation materializes that new object. Pure moves carry
    the null marker with the value. Bit 2 of the companion header marks pending entries.
+   Bit 3 marks an optional numeric slot: null for None, otherwise the address of
+   its representation box. That box is separate from the item's Python identity.
    Copies must materialize before sharing, so separate reads
    of copied items cannot create unrelated boxes.
    A list of ints with no identity observer keeps the Mpz of an item past 64 bits in a
@@ -3203,6 +3215,10 @@ List *pys_list_from_const(const I *values, I n) {
 void pys_list_narrow(List *l) { list_narrow(l); }
 static I list_box(I value, I kind) {
   opt_in();
+  if (kind & 8) {
+    if (!value) return (I)&pys_dyn_none_box;
+    value = *(I *)value;
+  }
   return (kind & 3) == BIGIDS ? 0 : (I)((kind & 3) == 1 ? pys_dyn_int(value) : pys_dyn_float(dbl(value)));
 }
 static __attribute__((noinline)) void list_identity_slow(List *l, I kind) {
@@ -3220,11 +3236,11 @@ static __attribute__((noinline)) void list_identity_slow(List *l, I kind) {
     /* Companion allocation limits use the allocator's fatal MemoryError convention. */
     if (l->cap > INT64_MAX / (I)sizeof(I) - 1) oom();
     I *ids = pys_alloc((l->cap + 1) * sizeof(I));
-    ids[0] = kind & 3; l->ids = ids;
+    ids[0] = kind & 11; l->ids = ids;
   }
   for (I i = 0; i < l->len; i++)
     if (!l->ids[i + 1]) l->ids[i + 1] = list_box(l->a[i], l->ids[0]);
-  l->ids[0] &= 3;
+  l->ids[0] &= 11;
 }
 void pys_list_identity(List *l, I kind) {
   /* Keep the clean check small enough to inline into getters/stores in the
@@ -3234,7 +3250,7 @@ void pys_list_identity(List *l, I kind) {
 static void identity_pair(List *a, List *b) {   /* before list a takes list b's items */
   if ((a->ids || b->ids) && opt_in()) {
     I kind = a->ids ? a->ids[0] : b->ids[0];
-    if ((a->ids && (a->ids[0] & 3) == 1) || (b->ids && (b->ids[0] & 3) == 1)) kind = 1;
+    if ((a->ids && (a->ids[0] & 11) == 1) || (b->ids && (b->ids[0] & 11) == 1)) kind = 1;
     if ((kind & 3) == BIGIDS) {   /* (promoting ints: a needs a companion where b has one) */
       if (b->ids) pys_list_identity(a, kind);
       return;
@@ -3247,7 +3263,7 @@ void pys_list_forget_identity(List *l) {
      unchanged numeric payload becomes a fresh Python value there. */
   if (l->ids && !big_list(l)) {
     for (I i = 0; i < l->len; i++) l->ids[i + 1] = list_box(l->a[i], l->ids[0]);
-    l->ids[0] &= 3;
+    l->ids[0] &= 11;
   }
 }
 

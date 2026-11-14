@@ -853,7 +853,9 @@ def atomic_list(t: str) -> bool:
 
 def list_identity_kind(t: str) -> int:
     # Capability only: whether the current function tracks identity is Gen's policy.
-    return 1 if t == "list[int]" else 2 if t == "list[float]" else 0
+    # Bit 3 marks nullable numeric slots: null for None, otherwise a representation
+    # box of the scalar. Its Python identity still belongs to the separate Dyn box.
+    return 1 if t == "list[int]" else 2 if t == "list[float]" else 9 if t == "list[opt[int]]" else 10 if t == "list[opt[float]]" else 0
 
 
 class ListLayout:

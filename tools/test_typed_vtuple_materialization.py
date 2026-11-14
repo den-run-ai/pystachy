@@ -188,7 +188,7 @@ print(scalar(make(2.0)), expose(make(3.0)), iterate(make(4.0)))
         self.assertFalse(any(i.op == "rt" and i.s.startswith("vtuple.get") for i in plain["iterate"]))
         self.assertTrue(any(i.op == "rt" and i.s == "vtuple.get_identity" for i in tracked["iterate"]))
 
-    def test_reference_and_optional_iteration_keeps_inline_loads(self):
+    def test_reference_and_untracked_optional_iteration_keeps_inline_loads(self):
         for et, value in (("str", '("a", "b")'), ("bool", "(True, False)"),
                           ("float | None", "(1.5, None)"), ("str | None", '("a", None)')):
             for prefix in ("", "# pystachy: dynamic-any\n"):
@@ -198,7 +198,10 @@ def copied(values: tuple[{et}, ...]) -> list[{et}]:
     return [item for item in values]
 print(copied({value}))
 """)
-                    self.assertFalse(any(i.op == "rt" and i.s.startswith("vtuple.get") for i in captured["copied"]))
+                    tracks_optional = et == "float | None" and bool(prefix)
+                    self.assertEqual(any(i.op == "rt" and i.s == "vtuple.get_identity" for i in captured["copied"]), tracks_optional)
+                    if not tracks_optional:
+                        self.assertFalse(any(i.op == "rt" and i.s.startswith("vtuple.get") for i in captured["copied"]))
 
     def test_native_operands_have_one_result_and_allocation_effect(self):
         g = Gen()

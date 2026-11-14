@@ -2018,7 +2018,7 @@ def gen_seq_item(self, s: Val, j: str, mode: str) -> list[Val]:
         return [self.list_item(s, Val(j, "int"))]
     if is_vtuple(s.t):
         et = targs(s.t)[0]
-        if self.list_id_kind(self.ctype("list", [unopt(et)])) != 0 and not is_opt(et) and not self.fn.scalar_reads:
+        if self.list_id_kind(self.ctype("list", [et])) != 0 and not self.fn.scalar_reads:
             return [self.vtuple_item(s, Val(j, "int"))]
         # for_seq has checked the immutable length. Keep its unboxed/reference
         # fast path: the raw slots follow the length and companion pointer.

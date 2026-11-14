@@ -151,6 +151,8 @@ no effect. The shared runtime cache is independent of this setting.
 - **Tuple conversions:** fixed-shape to runtime-length tuples, or scalar to
   optional-element tuples, create new objects. Empty runtime-length tuples are
   not interned. `tuple(t)` preserves identity only when its representation fits.
+  In graphs with dynamic `Any`, numeric runtime-tuple items retain their identity
+  when widened to optional items; the outer tuple can still be a new object.
 - **Callables:** `is` compares the function and its environment/bound object, as
   `==` does. Two reads of `o.m` converted to `Callable` compare identical; CPython
   creates separate bound-method objects.

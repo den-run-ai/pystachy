@@ -2798,7 +2798,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 av.append("i64 " + self.to_slot(v))
                 i += 1
                 continue
-            if self.list_id_kind(o.t) != 0 and p == "*T" and v.t in ["int", "float", "bool"]:
+            if self.list_id_kind(o.t) != 0 and p == "*T" and (numeric_identity(v.t) or v.t in ["bool", "None"]):
                 idquery = v
                 # index's later bounds may call back and rebind the query's source.
                 if m == "index" and v.idslot != "":
@@ -2880,7 +2880,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
             v = self.coerce(v, pt, f"argument {i + 1} of {tname(o.t)}.{m}()" if is_opt(v.t) else "")
             if self.list_id_kind(o.t) != 0 and p == "*T":
                 idstore = v
-                if idquery.t == "" and v.t in ["int", "float", "bool"]:
+                if idquery.t == "" and (numeric_identity(v.t) or v.t in ["bool", "None"]):
                     idquery = v
                     if m == "index" and v.idslot != "":
                         idquery.idfrom = self.dyn_id_box(v).v
