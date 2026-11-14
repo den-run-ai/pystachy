@@ -954,7 +954,9 @@ false where it raises `AttributeError`, as in CPython.
 
 Fields come from class-body annotations or assignments to `self` in `__init__`. Their types
 can be inferred from parameters, literals, constructors, declared function or method results,
-function values, and supported container displays and operations. A field that `__init__`
+function values, and supported container displays and operations, and from a module global
+that one annotated assignment binds (`TABLE: Final[dict[str, Kind]] = {...}`), also through
+an item of one (`TABLE[key]`, a dict's value or a list's item). A field that `__init__`
 sets to `None` takes `T | None` from the first other value the program gives it, or holds
 only `None` (see [optional values](#optional-values-and-narrowing)). When specializing a class
 template, a field can also use an ordinary generic function's inferred return type if its

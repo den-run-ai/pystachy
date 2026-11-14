@@ -2277,6 +2277,25 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         if t == "" and takes_self(f) and e.s == f.params[0] and self.classes[f.cls].tag != 0:
             return f.cls  # field inference precedes specialization of the concrete receiver
         return t if t != "" or f.bad == "" else "!" + f.bad  # (a parameter whose annotation failed)
+    if k == "name" and e.s in self.globanns:
+        # a module global that one annotated assignment binds (x: T = v, also x: Final[T] = v:
+        # analysis.module_anns), unless a local of the function has its name: T
+        shadows: dict[str, bool] = {}
+        if f.name != "<module>":
+            local_names(guess_scope(f), shadows)  # (a module's own names are its globals)
+        decl = self.globanns[e.s]
+        decl = decl.kids[1] if decl.kind == "index" and self.typing_ref(decl.kids[0]) == "Final" else decl
+        t = self.ann(decl) if e.s not in shadows and self.ann_problem(decl, False) == "" else ""
+        if t != "" and not t.startswith("!"):
+            return t  # (else as for any other name, with no error here: TABLE: TypeAlias = ...)
+    if k == "index":
+        # x[i] of a dict, a list or a str x: a value of the dict, an item of the list, a str
+        t = self.guess(e.kids[0], f)
+        if is_dict(t):
+            return targs(t)[1]
+        if is_list(t):
+            return targs(t)[0]
+        return "str" if t == "str" else ""  # (else unknown, as before: no new error here)
     if k == "name" and (e.s in self.funcs or (e.s in PYBUILTINS and e.s[0].islower() and not self.bound(e.s))):
         # a function, which the field then holds (unless a local of the method has its name)
         asg: dict[str, bool] = {}
