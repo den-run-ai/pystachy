@@ -1,0 +1,122 @@
+{
+ "revision": "compiler built at ad19255e (main 16bcb15d keeps its compiler, runtime and lib/)",
+ "programs": 1448,
+ "plain_pass": 1445,
+ "with_comment_pass": 1427,
+ "plain_failures": [
+  "io/io_keyboard_interrupt.py",
+  "io/symlink_main.py",
+  "language/exec_signal.py"
+ ],
+ "flagged": 18,
+ "recheck": [
+  {
+   "program": "containers/slice_assign.py",
+   "stands": true,
+   "pystachy": "recheck/containers/slice_assign.py:51: error: cannot infer the type of an empty list; add a type annotation (xs: list[T] = [], or -> list[T] on a function returning the list)",
+   "cpython_last_stderr": ""
+  },
+  {
+   "program": "containers/star_calls.py",
+   "stands": true,
+   "pystachy": "recheck/containers/star_calls.py:57: error: a builtin function or method as an Any value is not supported yet (<built-in function max>)",
+   "cpython_last_stderr": ""
+  },
+  {
+   "program": "generics/template_return_context_ambiguous.py",
+   "stands": true,
+   "pystachy": "recheck/generics/template_return_context_ambiguous.py:8: error: expected list[float | int | str] | list[float | int], got list[Any]",
+   "cpython_last_stderr": ""
+  },
+  {
+   "program": "generics/template_return_context_local.py",
+   "stands": true,
+   "pystachy": "recheck/generics/template_return_context_local.py:10: error: expected list[float | int], got list[Any]",
+   "cpython_last_stderr": ""
+  },
+  {
+   "program": "inference/any_annotated.py",
+   "stands": true,
+   "pystachy": "recheck/inference/any_annotated.py:10: error: unsupported type annotation",
+   "cpython_last_stderr": ""
+  },
+  {
+   "program": "inference/any_generators.py",
+   "stands": true,
+   "pystachy": "recheck/inference/any_generators.py:74: error: nested_outer() yields list[int], but yield from delegates to a generator that yields list[Any]",
+   "cpython_last_stderr": ""
+  },
+  {
+   "program": "inference/any_init.py",
+   "stands": true,
+   "pystachy": "recheck/inference/any_init.py:34: error: **kwargs is not supported",
+   "cpython_last_stderr": ""
+  },
+  {
+   "program": "inference/any_init_annotated.py",
+   "stands": true,
+   "pystachy": "recheck/inference/any_init_annotated.py:6: error: unsupported type annotation",
+   "cpython_last_stderr": ""
+  },
+  {
+   "program": "inference/any_iterators.py",
+   "stands": true,
+   "pystachy": "recheck/inference/any_iterators.py:67: error: iter() returned non-iterator of type 'Any': Count.__iter__ must return an iterator, an object whose class defines __next__, or iter(xs) of a list xs (-> Iterator[T])",
+   "cpython_last_stderr": ""
+  },
+  {
+   "program": "inference/any_methods.py",
+   "stands": true,
+   "pystachy": "recheck/inference/any_methods.py:61: error: a type[BaseException] value cannot become an Any value",
+   "cpython_last_stderr": ""
+  },
+  {
+   "program": "inference/any_templates.py",
+   "stands": true,
+   "pystachy": "recheck/inference/any_templates.py:55: error: Callable[..., R] is not supported: name the parameter types (Callable[[A, B], R])",
+   "cpython_last_stderr": ""
+  },
+  {
+   "program": "inference/any_variables.py",
+   "stands": true,
+   "pystachy": "recheck/inference/any_variables.py:21: error: expected Box[Any], got Box[int]",
+   "cpython_last_stderr": ""
+  },
+  {
+   "program": "inference/any_variables_annotated.py",
+   "stands": true,
+   "pystachy": "recheck/inference/any_variables_annotated.py:4: error: unsupported type annotation",
+   "cpython_last_stderr": ""
+  },
+  {
+   "program": "language/deep_nesting.py",
+   "stands": true,
+   "pystachy": "timeout",
+   "cpython_last_stderr": "ValueError: recursion limit must be greater or equal than 1"
+  },
+  {
+   "program": "reflection/reflect_runtime_doc.py",
+   "stands": false,
+   "pystachy": "",
+   "cpython_last_stderr": ""
+  },
+  {
+   "program": "reflection/reflect_runtime_getattr.py",
+   "stands": false,
+   "pystachy": "",
+   "cpython_last_stderr": ""
+  },
+  {
+   "program": "strings/bom.py",
+   "stands": false,
+   "pystachy": "",
+   "cpython_last_stderr": ""
+  },
+  {
+   "program": "syntax/syntax_nested_parentheses.py",
+   "stands": true,
+   "pystachy": "timeout",
+   "cpython_last_stderr": ""
+  }
+ ]
+}

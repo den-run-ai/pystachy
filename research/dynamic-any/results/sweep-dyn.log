@@ -1,0 +1,39 @@
+150 of 461 modules import: _collections_abc _colorize _compat_pickle _osx_support _py_abc _pyrepl _pyrepl._threading_handler _pyrepl.commands _pyrepl.input _pyrepl.keymap _pyrepl.pager _pyrepl.types _sitebuiltins abc argparse base64 concurrent dataclasses email email._parseaddr email.base64mime email.charset email.encoders email.errors email.iterators email.mime email.quoprimime email.utils encodings encodings.aliases encodings.ascii encodings.base64_codec encodings.charmap encodings.cp037 encodings.cp1006 encodings.cp1026 encodings.cp1125 encodings.cp1140 encodings.cp1250 encodings.cp1251 encodings.cp1252 encodings.cp1253 encodings.cp1254 encodings.cp1255 encodings.cp1256 encodings.cp1257 encodings.cp1258 encodings.cp273 encodings.cp424 encodings.cp437 encodings.cp500 encodings.cp720 encodings.cp737 encodings.cp775 encodings.cp850 encodings.cp852 encodings.cp855 encodings.cp856 encodings.cp858 encodings.cp860 encodings.cp861 encodings.cp862 encodings.cp863 encodings.cp865 encodings.cp866 encodings.cp874 encodings.cp875 encodings.hex_codec encodings.hp_roman8 encodings.idna encodings.iso8859_1 encodings.iso8859_10 encodings.iso8859_11 encodings.iso8859_13 encodings.iso8859_14 encodings.iso8859_15 encodings.iso8859_16 encodings.iso8859_2 encodings.iso8859_3 encodings.iso8859_4 encodings.iso8859_5 encodings.iso8859_6 encodings.iso8859_7 encodings.iso8859_8 encodings.iso8859_9 encodings.koi8_r encodings.koi8_t encodings.koi8_u encodings.kz1048 encodings.latin_1 encodings.mac_arabic encodings.mac_croatian encodings.mac_cyrillic encodings.mac_farsi encodings.mac_greek encodings.mac_iceland encodings.mac_latin2 encodings.mac_roman encodings.mac_romanian encodings.mac_turkish encodings.palmos encodings.ptcp154 encodings.punycode encodings.quopri_codec encodings.raw_unicode_escape encodings.rot_13 encodings.tis_620 encodings.undefined encodings.unicode_escape encodings.utf_16 encodings.utf_16_be encodings.utf_16_le encodings.utf_32 encodings.utf_32_be encodings.utf_32_le encodings.utf_7 encodings.utf_8 encodings.utf_8_sig encodings.uu_codec fileinput graphlib linecache mimetypes netrc ntpath nturl2path os pydoc_data pydoc_data.module_docs pydoc_data.topics quopri reprlib sitecustomize stringprep tempfile traceback typing wave wsgiref wsgiref.headers wsgiref.validate xml xml.dom xml.dom.NodeFilter xml.dom.domreg xml.dom.minicompat xml.etree xml.etree.ElementPath xml.parsers xmlrpc
+
+58 left out, as lib/ has _markupbase, _opcode_metadata, _weakrefset, bisect, codecs, collections, colorsys, contextlib, csv, curses, datetime, difflib, fnmatch, functools, genericpath, getopt, gettext, heapq, html, io, json, keyword, opcode, operator, posixpath, random, re, shlex, stat, statistics, string, struct, textwrap, this, token, types, urllib, warnings, weakref: _markupbase _opcode_metadata _weakrefset bisect codecs collections colorsys contextlib csv curses curses.ascii curses.has_key curses.panel curses.textpad datetime difflib fnmatch functools genericpath getopt gettext heapq html html.entities html.parser io json json.decoder json.encoder json.scanner json.tool keyword opcode operator posixpath random re re._casefix re._compiler re._constants re._parser shlex stat statistics string struct textwrap this token types urllib urllib.error urllib.parse urllib.request urllib.response urllib.robotparser warnings weakref
+
+   56  imports the missing module _warnings
+   44  imports the missing module _socket
+   27  imports the missing module _signal
+   15  class 'email.charset.Charset' cannot be used as a value (classes are not values: call it, or read an
+   10  imports the missing module pyexpat
+    9  class '_thread.lock' cannot be used as a value (classes are not values: call it, or read an attribut
+    9  class enum.FlagBoundary is not supported: unsupported base class: single inheritance requires a prev
+    8  dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not <bui
+    7  imports the missing module _ctypes
+    7  imports the missing module _contextvars
+    7  imports the missing module _bz2
+    7  imports the missing module _codecs_jp
+    7  imports the missing module _codecs_iso2022
+    5  imports the missing module termios
+    5  imports the missing module _dbm
+    4  unsupported module attribute os.O_RDONLY
+    4  inheritance with generic class templates is not supported: annotate __init__ parameters with concret
+    4  imports the missing module _codecs_cn
+    4  types.MappingProxyType is not supported: of the types module, Pystachy has only GenericAlias, for a
+    4  imports the missing module _zoneinfo
+    3  redefinition of 'locale.localeconv' is not supported
+    3  imports the missing module _tokenize
+    3  class email._encoded_words._QByteMap is not supported: unsupported base class: single inheritance re
+    3  expected int, got None
+    3  imports the missing module _codecs_kr
+    3  imports the missing module _sqlite3
+    3  imports the missing module _elementtree
+    2  imports the missing module msvcrt
+    2  unsupported module attribute __future__.all_feature_names
+    2  imports the missing module zlib
+
+real	0m20.736s
+user	0m53.986s
+sys	0m6.622s
+done

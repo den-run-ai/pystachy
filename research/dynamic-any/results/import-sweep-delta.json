@@ -1,0 +1,11 @@
+{
+ "modules": 519,
+ "ok_without_comment": 149,
+ "ok_with_comment": 150,
+ "changed": {
+  "xml.etree.ElementPath": {
+   "without": "<stdlib>/xml/etree/ElementPath.py:352: error: expected <function prepare_child>, got <function prepare_star> (each function is a type of its own: a variable, a list's items or a dict's values hold one function)",
+   "with": "OK"
+  }
+ }
+}

@@ -1,0 +1,526 @@
+[
+ {
+  "probe": "a01_record_display",
+  "cpython_rc": 0,
+  "cpython_out_sha": "4ddb842afdef",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "a02_result_record_any",
+  "cpython_rc": 0,
+  "cpython_out_sha": "91798e559770",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "a03_result_record_object",
+  "cpython_rc": 0,
+  "cpython_out_sha": "91798e559770",
+  "jit": "FAIL",
+  "jit_rc": 1,
+  "jit_err": "probes/idioms/a03_result_record_object.py:3: error: unsupported type annotation",
+  "aot": "FAIL",
+  "aot_rc": 1,
+  "aot_err": "probes/idioms/a03_result_record_object.py:3: error: unsupported type annotation"
+ },
+ {
+  "probe": "a04_json_dumps_mixed",
+  "cpython_rc": 0,
+  "cpython_out_sha": "2ae95bf7b647",
+  "jit": "FAIL",
+  "jit_rc": 1,
+  "jit_err": "probes/idioms/a04_json_dumps_mixed.py:7: error: expected bool | dict[str,JSONValue] | float | int | list[JSONValue] | str | None, got dict[Any,Any]",
+  "aot": "FAIL",
+  "aot_rc": 1,
+  "aot_err": "probes/idioms/a04_json_dumps_mixed.py:7: error: expected bool | dict[str,JSONValue] | float | int | list[JSONValue] | str | None, got dict[Any,Any]"
+ },
+ {
+  "probe": "a05_json_loads_any",
+  "cpython_rc": 0,
+  "cpython_out_sha": "33e2c748c4fc",
+  "jit": "FAIL",
+  "jit_rc": 1,
+  "jit_err": "probes/idioms/a05_json_loads_any.py:6: error: a dict[str,JSONValue] cannot become an Any value: its items are typed, and Any's containers hold Any items (make it a dict[Any, Any] from the start, or copy it)",
+  "aot": "FAIL",
+  "aot_rc": 1,
+  "aot_err": "probes/idioms/a05_json_loads_any.py:6: error: a dict[str,JSONValue] cannot become an Any value: its items are typed, and Any's containers hold Any items (make it a dict[Any, Any] from the start, or copy it)"
+ },
+ {
+  "probe": "a06_json_loads_plain",
+  "cpython_rc": 0,
+  "cpython_out_sha": "cb51c7e4af09",
+  "jit": "FAIL",
+  "jit_rc": 1,
+  "jit_err": "probes/idioms/a06_json_loads_plain.py:6: error: 'bool | dict[str,JSONValue] | float | int | list[JSONValue] | str' object is not subscriptable",
+  "aot": "FAIL",
+  "aot_rc": 1,
+  "aot_err": "probes/idioms/a06_json_loads_plain.py:6: error: 'bool | dict[str,JSONValue] | float | int | list[JSONValue] | str' object is not subscriptable"
+ },
+ {
+  "probe": "a07_sort_records",
+  "cpython_rc": 0,
+  "cpython_out_sha": "4e5b0a7d4b30",
+  "jit": "FAIL",
+  "jit_rc": 1,
+  "jit_err": "probes/idioms/a07_sort_records.py:11: error: unsupported call sum(list[dyn])",
+  "aot": "FAIL",
+  "aot_rc": 1,
+  "aot_err": "probes/idioms/a07_sort_records.py:11: error: unsupported call sum(list[dyn])"
+ },
+ {
+  "probe": "a08_handler_registry",
+  "cpython_rc": 0,
+  "cpython_out_sha": "78cdfd213666",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "a09_handler_lambdas",
+  "cpython_rc": 0,
+  "cpython_out_sha": "78cdfd213666",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "a10_visitor",
+  "cpython_rc": 0,
+  "cpython_out_sha": "884fa2117f15",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "a11_sentinel",
+  "cpython_rc": 0,
+  "cpython_out_sha": "38abdf12279f",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "a12_parse_tokens",
+  "cpython_rc": 0,
+  "cpython_out_sha": "a4f909dd0f01",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "a13_tiny_interp",
+  "cpython_rc": 0,
+  "cpython_out_sha": "7755002f2208",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "a14_mixed_tuples_repr",
+  "cpython_rc": 0,
+  "cpython_out_sha": "bde7ca307037",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "a15_isinstance_tuple",
+  "cpython_rc": 0,
+  "cpython_out_sha": "cfc17426ee17",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "a16_type_is",
+  "cpython_rc": 0,
+  "cpython_out_sha": "81d4e5cefd65",
+  "jit": "FAIL",
+  "jit_rc": 1,
+  "jit_err": "probes/idioms/a16_type_is.py:7: error: type(x).__name__ of Any is not supported (#486: user classes and the builtin types int, float, bool, str, bytes, list, dict, tuple, set and frozenset)",
+  "aot": "FAIL",
+  "aot_rc": 1,
+  "aot_err": "probes/idioms/a16_type_is.py:7: error: type(x).__name__ of Any is not supported (#486: user classes and the builtin types int, float, bool, str, bytes, list, dict, tuple, set and frozenset)"
+ },
+ {
+  "probe": "a17_dict_methods",
+  "cpython_rc": 0,
+  "cpython_out_sha": "fd3de97ebfbc",
+  "jit": "FAIL",
+  "jit_rc": 1,
+  "jit_err": "probes/idioms/a17_dict_methods.py:8: error: dict.update() of a dict[Any,Any] takes a dict of its type, a list[tuple[Any,Any]] or keyword arguments, not Any",
+  "aot": "FAIL",
+  "aot_rc": 1,
+  "aot_err": "probes/idioms/a17_dict_methods.py:8: error: dict.update() of a dict[Any,Any] takes a dict of its type, a list[tuple[Any,Any]] or keyword arguments, not Any"
+ },
+ {
+  "probe": "a18_list_methods",
+  "cpython_rc": 0,
+  "cpython_out_sha": "d8a00ad5b702",
+  "jit": "FAIL",
+  "jit_rc": 1,
+  "jit_err": "probes/idioms/a18_list_methods.py:13: error: 'dyn' cannot be sliced",
+  "aot": "FAIL",
+  "aot_rc": 1,
+  "aot_err": "probes/idioms/a18_list_methods.py:13: error: 'dyn' cannot be sliced"
+ },
+ {
+  "probe": "a19_counter_defaultdict",
+  "cpython_rc": 0,
+  "cpython_out_sha": "44db200305f4",
+  "jit": "FAIL",
+  "jit_rc": 1,
+  "jit_err": "probes/idioms/a19_counter_defaultdict.py:7: error: Counter() cannot bind its type variables from the argument for 'iterable', a Generator[Any]: it has no supported iterable item type (specializing collections.Counter(Generator[Any]) for the call at probes/idioms/a19_counter_defaultdict.py:7)",
+  "aot": "FAIL",
+  "aot_rc": 1,
+  "aot_err": "probes/idioms/a19_counter_defaultdict.py:7: error: Counter() cannot bind its type variables from the argument for 'iterable', a Generator[Any]: it has no supported iterable item type (specializing collections.Counter(Generator[Any]) for the call at probes/idioms/a19_counter_defaultdict.py:7)"
+ },
+ {
+  "probe": "a20_dataclass_any_field",
+  "cpython_rc": 0,
+  "cpython_out_sha": "c93d7efc2971",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "a21_recursion_tree",
+  "cpython_rc": 0,
+  "cpython_out_sha": "754731639c44",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "a22_flatten",
+  "cpython_rc": 0,
+  "cpython_out_sha": "0a74889ca53c",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "a23_deep_merge",
+  "cpython_rc": 0,
+  "cpython_out_sha": "50a1648ca7e5",
+  "jit": "FAIL",
+  "jit_rc": 1,
+  "jit_err": "probes/idioms/a23_deep_merge.py:13: error: a dict[str,Any] cannot become an Any value: its items are typed, and Any's containers hold Any items (make it a dict[Any, Any] from the start, or copy it)",
+  "aot": "FAIL",
+  "aot_rc": 1,
+  "aot_err": "probes/idioms/a23_deep_merge.py:13: error: a dict[str,Any] cannot become an Any value: its items are typed, and Any's containers hold Any items (make it a dict[Any, Any] from the start, or copy it)"
+ },
+ {
+  "probe": "a24_get_in_reduce",
+  "cpython_rc": 0,
+  "cpython_out_sha": "a7c5fc1a480c",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "a25_kwargs_any",
+  "cpython_rc": 0,
+  "cpython_out_sha": "81f162140dec",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "a26_exception_payload",
+  "cpython_rc": 0,
+  "cpython_out_sha": "fde40006c255",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "a27_generator_any",
+  "cpython_rc": 0,
+  "cpython_out_sha": "efd3e89d971e",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "a28_str_format_any",
+  "cpython_rc": 0,
+  "cpython_out_sha": "1e67b8c1115d",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "a29_csv_rows",
+  "cpython_rc": 0,
+  "cpython_out_sha": "7aef50c1d8b8",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "a30_any_numeric_mix",
+  "cpython_rc": 0,
+  "cpython_out_sha": "55a359896306",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "b01_json_to_any",
+  "cpython_rc": 0,
+  "cpython_out_sha": "1d6a125a92db",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "b02_dumps_any_handwritten",
+  "cpython_rc": 0,
+  "cpython_out_sha": "8ff00d137617",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "b03_enc_unannotated",
+  "cpython_rc": 0,
+  "cpython_out_sha": "2c584b3b1162",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "b04_lib_boundaries",
+  "cpython_rc": 0,
+  "cpython_out_sha": "3975f5ec8727",
+  "jit": "FAIL",
+  "jit_rc": 1,
+  "jit_err": "./lib/textwrap.py:175: error: unsupported call ord(dyn) (compiling textwrap.TextWrapper._munge_whitespace(dyn) for the call at ./lib/textwrap.py:364; compiling textwrap.TextWrapper._split_chunks(dyn) for the call at ./lib/textwrap.py:378; compiling textwrap.TextWrapper.wrap(dyn) for the call at ./lib/textwrap.py:406; compiling textwrap.wrap(dyn, int, kw[]) for the call at probes/idioms/b04_lib_boundaries.py:17)",
+  "aot": "FAIL",
+  "aot_rc": 1,
+  "aot_err": "./lib/textwrap.py:175: error: unsupported call ord(dyn) (compiling textwrap.TextWrapper._munge_whitespace(dyn) for the call at ./lib/textwrap.py:364; compiling textwrap.TextWrapper._split_chunks(dyn) for the call at ./lib/textwrap.py:378; compiling textwrap.TextWrapper.wrap(dyn) for the call at ./lib/textwrap.py:406; compiling textwrap.wrap(dyn, int, kw[]) for the call at probes/idioms/b04_lib_boundaries.py:17)"
+ },
+ {
+  "probe": "b05_heapq_alone",
+  "cpython_rc": 0,
+  "cpython_out_sha": "e4c059b6a0ce",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "b06_re_any",
+  "cpython_rc": 0,
+  "cpython_out_sha": "ae390c7a9807",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "b07_template_any",
+  "cpython_rc": 0,
+  "cpython_out_sha": "1bb050303c5a",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "b08_format_map",
+  "cpython_rc": 0,
+  "cpython_out_sha": "868a2b60b66d",
+  "jit": "FAIL",
+  "jit_rc": 1,
+  "jit_err": "probes/idioms/b08_format_map.py:7: error: % formatting with a mapping (%(name)s) is not supported",
+  "aot": "FAIL",
+  "aot_rc": 1,
+  "aot_err": "probes/idioms/b08_format_map.py:7: error: % formatting with a mapping (%(name)s) is not supported"
+ },
+ {
+  "probe": "b08b_format_kwargs",
+  "cpython_rc": 0,
+  "cpython_out_sha": "bfbfcb4be4c9",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "b09_json_logic",
+  "cpython_rc": 0,
+  "cpython_out_sha": "0ffb2fed2187",
+  "jit": "FAIL",
+  "jit_rc": 1,
+  "jit_err": "probes/idioms/b09_json_logic.py:78: error: cannot infer the type of an empty list; add a type annotation (xs: list[T] = [], or -> list[T] on a function returning the list)",
+  "aot": "FAIL",
+  "aot_rc": 1,
+  "aot_err": "probes/idioms/b09_json_logic.py:78: error: cannot infer the type of an empty list; add a type annotation (xs: list[T] = [], or -> list[T] on a function returning the list)"
+ },
+ {
+  "probe": "b09b_json_logic_nonempty",
+  "cpython_rc": 0,
+  "cpython_out_sha": "0ffb2fed2187",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "b10_query_eval",
+  "cpython_rc": 0,
+  "cpython_out_sha": "4eefcda1158b",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "b11_class_registry",
+  "cpython_rc": 0,
+  "cpython_out_sha": "daee1cd25194",
+  "jit": "FAIL",
+  "jit_rc": 1,
+  "jit_err": "probes/idioms/b11_class_registry.py:16: error: class 'A' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)",
+  "aot": "FAIL",
+  "aot_rc": 1,
+  "aot_err": "probes/idioms/b11_class_registry.py:16: error: class 'A' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)"
+ },
+ {
+  "probe": "b12_getattr_dispatch",
+  "cpython_rc": 0,
+  "cpython_out_sha": "a5c0dfc64d74",
+  "jit": "FAIL",
+  "jit_rc": 1,
+  "jit_err": "probes/idioms/b12_getattr_dispatch.py:8: error: getattr() of a name only the run time knows is supported where its text is used (print(), str(), repr(), an f-string field without a format spec): elsewhere its value would need a type of its own (#487, #489); use a str literal or a constant set of names (#486)",
+  "aot": "FAIL",
+  "aot_rc": 1,
+  "aot_err": "probes/idioms/b12_getattr_dispatch.py:8: error: getattr() of a name only the run time knows is supported where its text is used (print(), str(), repr(), an f-string field without a format spec): elsewhere its value would need a type of its own (#487, #489); use a str literal or a constant set of names (#486)"
+ },
+ {
+  "probe": "b13_method_keyword",
+  "cpython_rc": 0,
+  "cpython_out_sha": "5dbcfdf38f98",
+  "jit": "FAIL",
+  "jit_rc": 1,
+  "jit_err": "probes/idioms/b13_method_keyword.py:12: error: a method call of an Any value takes positional arguments only (o.show(...))",
+  "aot": "FAIL",
+  "aot_rc": 1,
+  "aot_err": "probes/idioms/b13_method_keyword.py:12: error: a method call of an Any value takes positional arguments only (o.show(...))"
+ },
+ {
+  "probe": "b14_set_any",
+  "cpython_rc": 0,
+  "cpython_out_sha": "8debced4b7f0",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "b15_lru_cache_any",
+  "cpython_rc": 0,
+  "cpython_out_sha": "5cb349f66847",
+  "jit": "FAIL",
+  "jit_rc": 1,
+  "jit_err": "./lib/functools.py:328: error: class functools._lru_cache_wrapper is not supported: dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not tuple[Any] (specializing functools._lru_cache_wrapper(<function describe (probes/idioms/b15_lru_cache_any.py:8)>, int, bool) for the call at ./lib/functools.py:328; compiling functools._make_wrapper(fn[c:1:describe@8], int, bool) for the call at ./lib/functools.py:354; compiling lru_cache.<locals>.unbounded_function(fn[c:1:describe@8]) for the call at probes/idioms/b15_lru_cache_any.py:7)",
+  "aot": "FAIL",
+  "aot_rc": 1,
+  "aot_err": "./lib/functools.py:328: error: class functools._lru_cache_wrapper is not supported: dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not tuple[Any] (specializing functools._lru_cache_wrapper(<function describe (probes/idioms/b15_lru_cache_any.py:8)>, int, bool) for the call at ./lib/functools.py:328; compiling functools._make_wrapper(fn[c:1:describe@8], int, bool) for the call at ./lib/functools.py:354; compiling lru_cache.<locals>.unbounded_function(fn[c:1:describe@8]) for the call at probes/idioms/b15_lru_cache_any.py:7)"
+ },
+ {
+  "probe": "b16_sorted_mixed_keys",
+  "cpython_rc": 0,
+  "cpython_out_sha": "2dccfc63ae03",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "b17_zip_enumerate",
+  "cpython_rc": 0,
+  "cpython_out_sha": "e61749a567d2",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "b18_any_slicing",
+  "cpython_rc": 0,
+  "cpython_out_sha": "9b2ac563edb1",
+  "jit": "FAIL",
+  "jit_rc": 1,
+  "jit_err": "probes/idioms/b18_any_slicing.py:7: error: 'dyn' cannot be sliced",
+  "aot": "FAIL",
+  "aot_rc": 1,
+  "aot_err": "probes/idioms/b18_any_slicing.py:7: error: 'dyn' cannot be sliced"
+ },
+ {
+  "probe": "b19_sum_generator",
+  "cpython_rc": 0,
+  "cpython_out_sha": "fbe4317b3f39",
+  "jit": "FAIL",
+  "jit_rc": 1,
+  "jit_err": "probes/idioms/b19_sum_generator.py:6: error: unsupported call sum(list[dyn])",
+  "aot": "FAIL",
+  "aot_rc": 1,
+  "aot_err": "probes/idioms/b19_sum_generator.py:6: error: unsupported call sum(list[dyn])"
+ },
+ {
+  "probe": "b20_object_annotation",
+  "cpython_rc": 0,
+  "cpython_out_sha": "c83855dd6003",
+  "jit": "FAIL",
+  "jit_rc": 1,
+  "jit_err": "probes/idioms/b20_object_annotation.py:3: error: unsupported type annotation",
+  "aot": "FAIL",
+  "aot_rc": 1,
+  "aot_err": "probes/idioms/b20_object_annotation.py:3: error: unsupported type annotation"
+ },
+ {
+  "probe": "b21_empty_in_display",
+  "cpython_rc": 0,
+  "cpython_out_sha": "029121b3abfd",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "b22_textwrap_narrowed",
+  "cpython_rc": 0,
+  "cpython_out_sha": "e46ef416a15b",
+  "jit": "FAIL",
+  "jit_rc": 1,
+  "jit_err": "./lib/textwrap.py:175: error: unsupported call ord(dyn) (compiling textwrap.TextWrapper._munge_whitespace(dyn) for the call at ./lib/textwrap.py:364; compiling textwrap.TextWrapper._split_chunks(dyn) for the call at ./lib/textwrap.py:378; compiling textwrap.TextWrapper.wrap(dyn) for the call at ./lib/textwrap.py:406; compiling textwrap.wrap(dyn, int, kw[]) for the call at probes/idioms/b22_textwrap_narrowed.py:8)",
+  "aot": "FAIL",
+  "aot_rc": 1,
+  "aot_err": "./lib/textwrap.py:175: error: unsupported call ord(dyn) (compiling textwrap.TextWrapper._munge_whitespace(dyn) for the call at ./lib/textwrap.py:364; compiling textwrap.TextWrapper._split_chunks(dyn) for the call at ./lib/textwrap.py:378; compiling textwrap.TextWrapper.wrap(dyn) for the call at ./lib/textwrap.py:406; compiling textwrap.wrap(dyn, int, kw[]) for the call at probes/idioms/b22_textwrap_narrowed.py:8)"
+ },
+ {
+  "probe": "b23_statistics_any",
+  "cpython_rc": 0,
+  "cpython_out_sha": "4fb5f40d66ea",
+  "jit": "FAIL",
+  "jit_rc": 1,
+  "jit_err": "./lib/statistics.py:622: error: unsupported call math.fsum(list[dyn]) (compiling statistics.fmean(list[dyn], None) for the call at probes/idioms/b23_statistics_any.py:7)",
+  "aot": "FAIL",
+  "aot_rc": 1,
+  "aot_err": "./lib/statistics.py:622: error: unsupported call math.fsum(list[dyn]) (compiling statistics.fmean(list[dyn], None) for the call at probes/idioms/b23_statistics_any.py:7)"
+ },
+ {
+  "probe": "b24_empty_nested",
+  "cpython_rc": 0,
+  "cpython_out_sha": "2ff2121cf7ba",
+  "jit": "FAIL",
+  "jit_rc": 1,
+  "jit_err": "probes/idioms/b24_empty_nested.py:5: error: cannot infer the type of an empty list; add a type annotation (xs: list[T] = [], or -> list[T] on a function returning the list)",
+  "aot": "FAIL",
+  "aot_rc": 1,
+  "aot_err": "probes/idioms/b24_empty_nested.py:5: error: cannot infer the type of an empty list; add a type annotation (xs: list[T] = [], or -> list[T] on a function returning the list)"
+ },
+ {
+  "probe": "b25_empty_nested_top",
+  "cpython_rc": 0,
+  "cpython_out_sha": "7c003b9fc578",
+  "jit": "FAIL",
+  "jit_rc": 1,
+  "jit_err": "probes/idioms/b25_empty_nested_top.py:3: error: cannot infer the type of an empty list; add a type annotation (xs: list[T] = [], or -> list[T] on a function returning the list)",
+  "aot": "FAIL",
+  "aot_rc": 1,
+  "aot_err": "probes/idioms/b25_empty_nested_top.py:3: error: cannot infer the type of an empty list; add a type annotation (xs: list[T] = [], or -> list[T] on a function returning the list)"
+ },
+ {
+  "probe": "b26_textwrap_local",
+  "cpython_rc": 0,
+  "cpython_out_sha": "e46ef416a15b",
+  "jit": "PASS",
+  "aot": "PASS"
+ },
+ {
+  "probe": "c01_vartuple_concat",
+  "cpython_rc": 0,
+  "cpython_out_sha": "db3a881130ce",
+  "jit": "FAIL",
+  "jit_rc": 1,
+  "jit_err": "probes/idioms/c01_vartuple_concat.py:9: error: unsupported operand type(s) for +: 'tuple' and 'tuple'",
+  "aot": "FAIL",
+  "aot_rc": 1,
+  "aot_err": "probes/idioms/c01_vartuple_concat.py:9: error: unsupported operand type(s) for +: 'tuple' and 'tuple'"
+ },
+ {
+  "probe": "c02_vartuple_concat_dyn",
+  "cpython_rc": 0,
+  "cpython_out_sha": "db3a881130ce",
+  "jit": "FAIL",
+  "jit_rc": 1,
+  "jit_err": "probes/idioms/c02_vartuple_concat_dyn.py:10: error: unsupported operand type(s) for +: 'tuple' and 'tuple'",
+  "aot": "FAIL",
+  "aot_rc": 1,
+  "aot_err": "probes/idioms/c02_vartuple_concat_dyn.py:10: error: unsupported operand type(s) for +: 'tuple' and 'tuple'"
+ }
+]
