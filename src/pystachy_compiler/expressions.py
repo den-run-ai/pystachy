@@ -796,6 +796,9 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     self.line = n.line
     want = self.rec_type(want)
     k = n.kind
+    if k == "superinit":
+        # Bound arm of a nullable super initializer, already split from its own initializer.
+        return self.super_call(n.kids[0], "__init__", [], init_bound=True)
     if k in ["matchbind", "matchconst", "matchvalue", "matchseq", "matchclass", "matchfield", "matchunsupported"]:
         return pattern_expr(self, n)
     if k == "cmfactory":
@@ -803,7 +806,16 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         # accepts current packed arguments. Its Callable type keeps overrides compatible.
         factory = self.expr(n.kids[0], "")
         parameters = [self.expr(arg, "").t for arg in n.kids[1:]]
-        return self.to_callable(factory, self.ctype("callable", [self.adapter_ret(factory.t, parameters)] + parameters))
+        signature = [self.adapter_ret(factory.t, parameters)] + parameters
+        # This internal adapter forwards the exact packed values. Public annotation
+        # normalization (ctype) would narrow promoting ints inside args/kwds, rejecting
+        # keywords or overflowing large arguments before the generator receives them.
+        size = 9 + len(signature)
+        for t in signature:
+            size += len(t)
+            if size > TYPE_SIZE:
+                self.err(f"type representation exceeds {TYPE_SIZE} bytes; simplify the type or annotate template parameters")
+        return self.to_callable(factory, "callable[" + ",".join(signature) + "]")
     if k == "cmref":
         # Preserve contextlib's existing bound-generator metadata. The generated
         # wrapper binds this statically even for None; its private factory runs it.
@@ -1047,6 +1059,15 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 name = f.node.pyname if f.node.pyname != "" else mn
                 qn = self.sconst(name if n.s == "__name__" else self.qualname(f))
                 if ci.tag > 0:
+                    # Contextmanager metadata can bind a class-call receiver that is None.
+                    # It has no class tag: retain the canonical method's static name there,
+                    # and preserve the existing virtual metadata lookup for actual objects.
+                    end = self.label()
+                    nonnull = self.label()
+                    start = self.cur
+                    staticname = qn
+                    self.cbr(self.ptr_cmp('==', o, Val('null', 'None')).v, end, nonnull)
+                    self.place(nonnull)
                     tag = self.mload('int', o.v)
                     for cc in self.classes.values():
                         if cc.tag > 0 and cc.name != cn and self.derives(cc.name, cn):
@@ -1055,6 +1076,13 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                             name = f.node.pyname if f.node.pyname != "" else mn
                             subname = self.sconst(name if n.s == "__name__" else self.qualname(f))
                             qn = self.select(matches, Val(subname, '%ptr'), Val(qn, '%ptr'))
+                    done = self.cur
+                    self.br(end)
+                    self.place(end)
+                    ph = Ins("phi", "str", "")
+                    self.incoming(ph, staticname, start)
+                    self.incoming(ph, qn, done)
+                    qn = self.phi(ph)
                 return Val(qn, "str")
             if o.t.startswith("fn[d:"):
                 mn = fk[: fk.find(":")]

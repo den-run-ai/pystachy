@@ -1019,6 +1019,10 @@ arguments. `closing(thing)`, `nullcontext()`, `nullcontext(value)`, `suppress(A,
   Assigning `func`, even to itself, restores the port's ordinary bound-method dispatch: it
   requires a non-null bound receiver and may select its override instead of an explicitly
   named base implementation. Untouched managers retain the defining generator.
+  Inspecting `func.__name__` or `func.__qualname__` is safe with a `None` receiver, but uses
+  the hierarchy's canonical root method's static metadata: an explicit derived-class call
+  can therefore report the root's qualified name. CPython exposes the defining unbound
+  generator instead ([test](../tests/deviations/contextmanager_derived_none_metadata.py)).
 - `suppress()` as a `with` statement's item, with exception classes named, is compiled as an
   `except` clause that catches them; one kept as a value, or given exception classes held as
   values, is CPython's (its `__exit__` tests them with `issubclass()`). `with suppress(...) as x`

@@ -183,6 +183,8 @@ def cm_methods(n: Node, names: list[str]) -> None:
                     assignment.kids[1] = mk("cmfactory", "", d.line, [assignment.kids[1], mk("name", a, d.line, []), mk("name", k, d.line, [])])
                     call = w.kids[2].kids[-1].kids[0]
                     call.kids[1].kind = "cmref"  # metadata binding, not an attribute lookup on self
+                    if d.pyname == "":
+                        d.pyname = d.s  # the generator's source name, before its hidden binding
                     d.s = "_pys_cm_" + d.s
                     d.kids = d.kids[:3]
                     kept.append(d)
