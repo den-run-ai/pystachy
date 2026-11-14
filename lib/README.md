@@ -79,7 +79,7 @@ described [below](#unchanged-cpython-files).
 | 🟢 `itertools` | Subset implementation of CPython's C module on generators (`_pystachy_itertools`), following the documented pure-Python equivalents | Every function: `count`, `cycle`, `repeat`, `accumulate`, `batched`, `chain` and `chain.from_iterable`, `compress`, `dropwhile`, `filterfalse`, `groupby`, `islice`, `pairwise`, `starmap`, `takewhile`, `tee`, `zip_longest`, `product`, `permutations`, `combinations` and `combinations_with_replacement`, lazy as in CPython, with the C module's argument checks and messages | Iterators are generators of one item type; runtime-length tuples (`batched`, the combinatorics) of scalar items; `tee(it, n)` gives a list; an iterator an exception has left is finished |
 | 🟡 `functools` | Typed subset implementation | `cache`, `lru_cache`, statistics, clearing, `reduce`, `cmp_to_key`, `partial`, `wraps`, `update_wrapper` | Typed callables and supported value/key types |
 | 🟡 `operator` | Adapted CPython | Operator functions, `itemgetter`, `attrgetter`, `methodcaller` | Getters specialize on literal items and names |
-| 🟡 `contextlib` | Adapted CPython | `contextmanager` (also as a decorator), `closing`, `nullcontext`, `suppress`, `AbstractContextManager`, `ContextDecorator` | No `ExitStack`, `redirect_stdout`, `chdir` or async managers; positional `nullcontext(value)` |
+| 🟡 `contextlib` | Adapted CPython | `contextmanager` (also as a decorator), `closing`, `nullcontext`, `suppress`, `ExitStack`, `AbstractContextManager`, `ContextDecorator` | No `redirect_stdout`, `chdir` or async managers; positional `nullcontext(value)`; no subclass of `ExitStack` |
 
 ### Numbers and randomness
 

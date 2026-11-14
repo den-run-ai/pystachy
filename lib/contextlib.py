@@ -1,18 +1,18 @@
 """Utilities for with-statement contexts.  See PEP 343."""
 # Pystachy port of CPython 3.13's Lib/contextlib.py (lib/provenance.md): contextmanager (also
-# as a decorator, @cm() on a function), closing, nullcontext, suppress and
+# as a decorator, @cm() on a function), closing, nullcontext, suppress, ExitStack and
 # AbstractContextManager, with CPython's code where the subset takes it. Each change is marked
 # "Pystachy port". The async managers (asynccontextmanager, aclosing, AsyncExitStack,
-# AbstractAsyncContextManager), ExitStack, redirect_stdout, redirect_stderr and chdir are not here:
-# the subset has no async def, no list of managers of different classes, no assignable
-# sys.stdout and no os.getcwd() (lib/compatibility.md).
+# AbstractAsyncContextManager), redirect_stdout, redirect_stderr and chdir are not here:
+# the subset has no async def, no assignable sys.stdout and no os.getcwd()
+# (lib/compatibility.md).
 import abc
 from types import TracebackType
-from typing import Self
+from typing import Callable, Self
 
 __all__ = ["contextmanager", "closing", "nullcontext",
            "AbstractContextManager", "ContextDecorator",
-           "suppress"]
+           "suppress", "ExitStack"]
 
 
 class AbstractContextManager(abc.ABC):
@@ -258,6 +258,143 @@ class suppress:
         if issubclass(exctype, self._exceptions):
             return True
         return False
+
+
+def _not_callable(exc_type: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None) -> bool:
+    # Pystachy port: the exit callback of ExitStack.push(None)
+    raise TypeError("'NoneType' object is not callable")
+
+
+# Inspired by discussions on http://bugs.python.org/issue13585
+class ExitStack(AbstractContextManager):
+    """Context manager for dynamic management of a stack of exit callbacks.
+
+    For example:
+        with ExitStack() as stack:
+            files = [stack.enter_context(open(fname)) for fname in filenames]
+            # All opened files will automatically be closed at the end of
+            # the with statement, even if attempts to open files later
+            # in the list raise an exception.
+    """
+
+    # Pystachy port: _BaseExitStack's methods are here (a class has one base, and there is no
+    # AsyncExitStack to share them with). An exit callback is a closure of __exit__'s
+    # signature that returns whether it suppresses the exception: enter_context(), push() and
+    # callback() each make one, where CPython binds the manager's __exit__ with MethodType or
+    # wraps the callback (_create_exit_wrapper, _create_cb_wrapper). The callbacks are a list
+    # (CPython: a deque of (is_sync, callback) pairs, whose is_sync is always true here).
+
+    def __init__(self) -> None:
+        self._exit_callbacks: list[Callable[[type[BaseException] | None, BaseException | None, TracebackType | None], bool]] = []
+
+    def pop_all(self) -> "ExitStack":
+        """Preserve the context stack by transferring it to a new instance."""
+        # Pystachy port: ExitStack() (CPython: type(self)(); no class derives from this one)
+        new_stack = ExitStack()
+        new_stack._exit_callbacks = self._exit_callbacks
+        self._exit_callbacks = []
+        return new_stack
+
+    def push(self, exit):
+        """Registers a callback with the standard __exit__ method signature.
+
+        Can suppress exceptions the same way __exit__ method can.
+        Also accepts any object with an __exit__ method (registering a call
+        to the method instead of the object itself).
+        """
+        # Pystachy port: callable() and hasattr() test exit's static type, so that only the
+        # call it has is compiled: a function, or an object whose class defines __call__(), is
+        # the callback; any other object is a manager where its class defines __exit__()
+        # (CPython tries type(exit).__exit__ first, also for an object that can be called, and
+        # assumes that any other object is a callable; hasattr() of a function is not
+        # supported). An object without either, which None is, fails as CPython's call of it
+        # does, when the stack unwinds.
+        if callable(exit):
+            # Not a context manager, so assume it's a callable.
+            self._push_exit_callback(exit)
+        elif hasattr(exit, "__exit__"):
+            self._push_cm_exit(exit)
+        else:
+            self._exit_callbacks.append(_not_callable)
+        return exit  # Allow use as a decorator.
+
+    def enter_context(self, cm):
+        """Enters the supplied context manager.
+
+        If successful, also pushes its __exit__ method as a callback and
+        returns the result of the __enter__ method.
+        """
+        # Pystachy port: cm.__enter__() (CPython looks the two methods up on type(cm) and
+        # raises TypeError where one is missing, which is a compile-time error here)
+        result = cm.__enter__()
+        self._push_cm_exit(cm)
+        return result
+
+    def callback(self, callback, /, *args, **kwds):
+        """Registers an arbitrary callback and arguments.
+
+        Cannot suppress exceptions.
+        """
+        def _exit_wrapper(exc_type: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None) -> bool:
+            callback(*args, **kwds)
+            return False
+
+        # Pystachy port: no _exit_wrapper.__wrapped__ = callback (a function has no attributes)
+        self._exit_callbacks.append(_exit_wrapper)
+        return callback  # Allow use as a decorator
+
+    def _push_cm_exit(self, cm) -> None:
+        """Helper to correctly register callbacks to __exit__ methods."""
+        def _exit_wrapper(exc_type: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None) -> bool:
+            if cm.__exit__(exc_type, exc, tb):
+                return True
+            return False
+        self._exit_callbacks.append(_exit_wrapper)
+
+    def _push_exit_callback(self, callback) -> None:
+        def _exit_wrapper(exc_type: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None) -> bool:
+            if callback(exc_type, exc, tb):
+                return True
+            return False
+        self._exit_callbacks.append(_exit_wrapper)
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None) -> bool:
+        received_exc = exc is not None
+
+        # Pystachy port: no _fix_exception_context() (an exception's __context__ is not
+        # read or written, and no traceback shows it)
+
+        # Callbacks are invoked in LIFO order to match the behaviour of
+        # nested context managers
+        suppressed_exc = False
+        pending_raise = False
+        while self._exit_callbacks:
+            cb = self._exit_callbacks.pop()
+            try:
+                # Pystachy port: no traceback (CPython passes exc.__traceback__)
+                if exc is None:
+                    suppress = cb(None, None, None)
+                else:
+                    suppress = cb(type(exc), exc, None)
+                if suppress:
+                    suppressed_exc = True
+                    pending_raise = False
+                    exc = None
+            except BaseException as new_exc:
+                pending_raise = True
+                exc = new_exc
+
+        if pending_raise:
+            assert exc is not None
+            raise exc
+        return received_exc and suppressed_exc
+
+    def close(self) -> None:
+        """Immediately unwind the context stack."""
+        self.__exit__(None, None, None)
 
 
 class _NullContext(AbstractContextManager):

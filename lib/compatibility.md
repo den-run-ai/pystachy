@@ -1000,8 +1000,17 @@ didn't yield", "generator didn't stop" and "generator didn't stop after throw()"
 suppressed where the generator swallows it, and a `StopIteration` or `GeneratorExit` of the block,
 or a `RuntimeError` that PEP 479 or the generator made of the `StopIteration`, goes on as itself.
 A manager it makes also decorates a function (`@cm()`, `ContextDecorator`), and both take keyword
-arguments. `closing(thing)`, `nullcontext()`, `nullcontext(value)`, `suppress(A, B)` and
-`AbstractContextManager` (to derive from) are the others.
+arguments. `closing(thing)`, `nullcontext()`, `nullcontext(value)`, `suppress(A, B)`,
+`ExitStack` and `AbstractContextManager` (to derive from) are the others.
+
+`ExitStack` enters managers of different classes (`enter_context()`), registers callbacks
+with their arguments (`callback()`) and exit functions, callable objects and managers
+(`push()`), and unwinds them in reverse order at the end of its `with` block or in `close()`;
+`pop_all()` moves them to a new stack. An exit that returns true suppresses the exception for
+the exits after it, and one that raises replaces it, as in CPython
+([test](../tests/programs/library/lib_contextlib_exitstack.py),
+[upstream cases](../tests/programs/upstream/upstream_contextlib_exitstack.py)). Each registered
+exit is a closure in a list, where CPython keeps bound methods and wrappers in a deque.
 
 - `@contextmanager` (or `@contextlib.contextmanager`, as the module imports it) on a method, its
   only decorator, makes the generator method `_pys_cm_NAME` and a method `NAME(self, /, *args,
@@ -1025,10 +1034,16 @@ arguments. `closing(thing)`, `nullcontext()`, `nullcontext(value)`, `suppress(A,
   exception).
 - A function that a manager decorates and that calls itself is rejected (the decorator's `inner()`
   calls itself before its return type is inferred): use the manager inside it instead.
-- `ExitStack`, `redirect_stdout`, `redirect_stderr`, `chdir` and the async managers
+- `ExitStack.enter_context()` of an object whose class lacks `__enter__()` or `__exit__()` is a
+  compile-time error, where CPython raises `TypeError`
+  ([error test](../tests/errors/library/lib_contextlib_exitstack_no_exit.py)). `push()` of an
+  object whose class defines both `__call__()` and `__exit__()` registers the call; CPython
+  registers its `__exit__()` ([deviation](../tests/deviations/lib_contextlib_exitstack_push.py)).
+  An exit gets no traceback, and the exception that leaves the stack has no `__context__` to
+  repair. No class derives from `ExitStack`, whose `pop_all()` makes an `ExitStack`.
+- `redirect_stdout`, `redirect_stderr`, `chdir` and the async managers
   (`asynccontextmanager`, `aclosing`, `AsyncExitStack`, `AbstractAsyncContextManager`) are not
-  ported: the subset has no list of managers of different classes, no assignable `sys.stdout`,
-  no `os.getcwd()` and no `async def`.
+  ported: the subset has no assignable `sys.stdout`, no `os.getcwd()` and no `async def`.
 
 ## Numbers and randomness
 

@@ -364,7 +364,7 @@ See [context-manager semantics](semantics.md#context-managers) and
 - `with` values outside files and program classes defining both `__enter__` and `__exit__`,
   including unions of such classes; `with suppress(...) as x`; `nullcontext(None)`.
 - Exception class-object attributes other than `__name__`, `__qualname__` and `__module__`.
-- Unported `ExitStack`, `redirect_stdout`, `redirect_stderr`, `chdir`, `aclosing`,
+- Unported `redirect_stdout`, `redirect_stderr`, `chdir`, `aclosing`,
   `asynccontextmanager` and `AsyncExitStack`.
 
 ### Names and scopes
