@@ -7,6 +7,7 @@ the model does not establish that the exporter or runtime implements that model.
 | Area | Enforced property | Current boundary |
 |---|---|---|
 | Dynamic `Any` | Payload reads have matching type guards and compatible class layout prefixes | Exported layouts, runtime tag/boxing contracts and LLVM offsets |
+| Reference boxing | A non-null reference round trip preserves its address, mutable aliases and abstract tracing edge | Bounded C-AST adapter, physical layout correspondence and allocator/collector semantics |
 | Lists, dictionaries and sets | Unchecked accesses have bounds/live-entry facts | Runtime effects and container contracts |
 | Closure cells and calls | Captured-container facts survive only valid reads; visible callee writes invalidate facts | Independent Python body-effect scan and cell ABI |
 | Promoting integers | Selected result-fit claims and actual checked `+`, `-`, `*` reconstruction paths | Other inline arithmetic, LLVM and integer runtime |
@@ -58,7 +59,7 @@ audit; that historical comparison found no copied implementation. The shared log
 and dependency review, not a formal proof of authorship.
 
 Current Lean imports are limited to `Std`, `Lean` and the local `PystachyBoundary`,
-`PystachyAccess`, `PystachyInt`, `PystachyInline`, `PystachyStorage` and
+`PystachyAlias`, `PystachyAccess`, `PystachyInt`, `PystachyInline`, `PystachyStorage` and
 `PystachyGuards` modules; `lake-manifest.json`
 contains no external packages. The pinned Lean
 toolchain is an external development dependency with its own
@@ -208,6 +209,47 @@ controls. These are ABI/runtime tests, not Lean boxing or alias-preservation
 theorems. Snapshot fidelity, the adapter's classification of reads, LLVM's layout
 rules and the runtime implementation remain trusted.
 
+## Reference aliases and tracing roots
+
+`PystachyAlias.accepted_reference_roundtrip` proves that a non-null reference
+boxed by an accepted transfer and read back has exactly its original address.
+`accepted_alias_write` proves equality of the entire heap update through either
+alias, for an arbitrary initial heap and stored value. Copying a mutable object
+does not satisfy this contract. `accepted_traces_reference` proves that the
+reference occupies a traced word of the box. `accepted_root_chain` composes that
+edge with an **assumed** downstream edge in an explicit reachability model; it
+does not prove the downstream edge or concrete collector behavior.
+
+`tools/check_lean_alias.py` derives the transfer from Clang's AST for the live
+`pys_dyn_ref` and `gc_box` bodies. It inventories every statement of the bounded
+non-null path, resolves the scanned versus atomic allocator, and extracts every
+field store in execution order. It independently compiles the runtime's `Dyn`
+declaration for named byte offsets and widths, then obtains the read offset by
+running the actual `dyn.payload` lowerer. Lean checks the extent, scanned storage
+and final symbolic word read. Overwritten or omitted reference stores, changed
+field order, wrong read offsets and atomic allocations fail. Unknown C shapes,
+pointer arithmetic, narrowing casts and changed result bindings fail closed in
+the adapter. The native JSON front end refuses missing/extra fields and unknown
+sources. Run `python3.13 tools/check_lean_alias.py` after building the checker;
+`make check-lean-boundary` includes the live-runtime check, mutation controls and
+the theorem's axiom audit.
+
+`make boxprobe` separately tests bidirectional typed/Any mutations through one
+native integer list, then keeps its list and numeric companion alive through
+only a rooted reference box. An otherwise identical atomic box must fail to
+retain the list. This negative control checks the need for the actual trace edge;
+the list/companion chain is runtime-tested, not formally established by the
+reference-transfer theorem.
+
+The formal scope is one non-null reference-transfer primitive, including the
+pointer used by native `list[int]` wrappers. The null branch is structurally
+checked but excluded from the theorem. Native-list preparation may mutate items
+without rebinding its input pointer; its correctness remains unproved. The C-AST
+normalizer, declaration/layout extraction, pointer-to-word ABI, LLVM lowering,
+the allocator's one-byte slack and size-class rules, concrete tracing and
+downstream object edges remain trusted or tested. These results do not justify
+removing roots, companions or runtime guards.
+
 ## How actual IR reaches the model
 
 `tools/check_lean_boundary.py` reads the existing inspection schema, validates
@@ -333,7 +375,8 @@ not proved by this version:
   remain trusted. Builtin bool and native int-list payload contracts are tested,
   not proved.
 - Object initialization, null/unbound behavior (a null dynamic value has no tag,
-  so it must never pass a guard), GC, aliases in mutable containers, or the
+  so it must never pass a guard), general GC/alias correctness beyond the bounded
+  reference-transfer theorem above, or the
   implementation of runtime tag operations.
 - Source-language or LLVM equivalence, generic specialization, identity-slot
   elision, absence of dynamic operations, or necessity/removal of `Any`.

@@ -1317,9 +1317,13 @@ The optional
 reads of every builtin, class, function and generator type, including int/bool
 sharing and class inheritance, in normalized functions exported from actual
 typed IR; CI requires it to accept every such read of the dynamic-`Any` test
-programs. It rejects unsupported forms and does not establish adapter
-fidelity, the descriptor table, payload layouts, identity/GC preservation or
-LLVM correctness. It is separate from the built-in closed-union proof and does not
+programs. A separate bounded reference-transfer theorem checks the live reference
+boxer's stores, scanned allocation and payload offsets, proving that a non-null
+round trip preserves its address, heap writes through aliases and abstract trace
+edge. Native list/companion retention is tested with an atomic-box negative
+control; downstream edges and the concrete collector remain outside that proof.
+The checks reject unsupported forms and do not establish adapter fidelity, general
+identity/GC preservation or LLVM correctness. They are separate from the built-in closed-union proof and do not
 justify removing `Any` or identity bookkeeping. These box reads are effect-free because boxes are
 immutable. Runtime calls with an `A` descriptor receive every effect, as `O` calls
 do: the box may contain an object whose equality, hashing or repr runs program code.
