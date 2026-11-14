@@ -1491,6 +1491,7 @@ class Gen:
         # each module's TYPE_CHECKING that is a constant False (false_flag()), and its names that hold a
         # test of the platform (Loader.platform_flags()): the literal each holds, "False" or "True"
         self.constflags: dict[str, str] = {}
+        self.earlycopies: dict[str, str] = {}  # the types of modules' copies of other modules' constants (program.py), declared where a circular import reads them
         # an imported module's globals (and defs and classes) that other code may find unbound:
         # not assigned on every path through its module code, or before an import that may run
         # code calling back into the module

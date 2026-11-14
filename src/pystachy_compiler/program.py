@@ -1100,6 +1100,7 @@ def gen_program(self, mods: list[Mod]) -> str:
         for st in m.body.kids if m.name != "" else []:
             if st.kind == "assign" and st.s == "docinit":
                 docinfer[st.kids[0].s] = True
+    early: dict[str, str] = {}  # (the types of the constants typed before any module code compiles)
     for m in mods:
         for st in m.body.kids if m.name != "" else []:
             # The loader's implicit __doc__ value exists before a circular import can read
@@ -1112,8 +1113,24 @@ def gen_program(self, mods: list[Mod]) -> str:
                 k = st.kids[1].kids[0].kind if st.kids[1].kind == "unary" and is_const(st.kids[1]) else st.kids[1].kind  # (-1, -2.5)
                 if k == "int" or k == "float" or k == "str":
                     self.declare(st.kids[0].s, k)
+                    early[st.kids[0].s] = k
                 elif k == "True" or k == "False":
                     self.declare(st.kids[0].s, "bool")
+                    early[st.kids[0].s] = "bool"
+    grown = True
+    while grown:
+        # and so is a module's copy of such a constant of another module (from m import K, also as
+        # mypy's types.py re-exports type_visitor's ANY_STRATEGY), or of such a copy: typed where a
+        # circular import reads it (earlycopies, Gen.load_name), as the import binds it before its
+        # module imports any module after it, and a read before then raises ImportError, as for
+        # the constant itself
+        grown = False
+        for m in mods:
+            for st in m.body.kids if m.name != "" else []:
+                if st.kind == "assign" and st.s == "from" and len(st.kids) == 2 and st.kids[0].kind == "name" and st.kids[1].kind == "name" and st.kids[1].s in early and st.kids[0].s not in early and st.kids[0].s not in self.gtypes and st.kids[0].s not in self.noneglobals:
+                    early[st.kids[0].s] = early[st.kids[1].s]
+                    self.earlycopies[st.kids[0].s] = early[st.kids[1].s]
+                    grown = True
     for m in mods:
         self.mfile[m.name] = m.path[2:] if m.path.startswith("./") else m.path
     timing_end(phase + ".prepare", started)
