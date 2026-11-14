@@ -65,3 +65,43 @@ Reproduce each row by building the three source revisions with the flags above,
 then running the corresponding mode with arguments `20000 3`. The structural
 `tools/test_typed_generator_identity.py` control checks that a fresh-expression
 producer has no numeric boxing calls and fails when eager boxing is restored.
+
+## Optional numeric channels
+
+`optional.py` streams a missing value every sixteenth item and otherwise a fresh
+reward or one repeated numeric source. It exercises nullable typed consumption
+and the same generator through `Any`. Run each of `typed`, `observed`,
+`typed-alias` and `observed-alias` with an item count:
+
+```sh
+python3.13 bench/generator_identity/optional.py typed 20000
+PYSTACHY_CFLAGS=-DPYSTACHY_PROFILE_DATA ./pystachy build \
+  bench/generator_identity/optional.py -o /tmp/optional-generator
+/tmp/optional-generator typed 20000
+```
+
+The optional channel retains its existing nullable representation: a non-`None`
+yield has a representation box even if no dynamic observer needs its object.
+The new promise companion keeps that object's identity independently. Fresh typed
+yields need no additional dynamic box; repeated aliases share one canonical box.
+
+The [allocation record](optional_allocations.json) compares #1493's compiler and
+runtime sources (`adac7f4`) against `8cc65f4` on Linux x86-64, CPython 3.13.16 and
+LLVM 18.1.3. Each row is one instrumented AOT process with 20,000 yields,
+including 1,250 missing values. Every numeric checksum and missing-value count
+matches CPython. No timing measurement or speedup claim is made.
+
+| Consumer | Before allocation requests | After allocation requests |
+|---|---:|---:|
+| Typed, fresh expression | 18,758 | 18,758 |
+| Any, fresh expression | 37,510 | 37,510 |
+| Typed, repeated source alias | 18,758 | 18,759 |
+| Any, repeated source alias | 37,510 | 18,761 |
+
+The repeated typed source needs one canonical box. The old repeated-`Any` path
+loses object identity and therefore serves as a negative correctness control,
+not an implementation with equivalent semantics. Its managed-heap peak changes
+from 1,048,576 to 720,896 bytes; fresh typed consumption stays at 655,360 bytes.
+These are managed allocation counters and heap peaks, not RSS or live retention.
+Ordinary programs retain their old generator layouts; the layout unit controls
+also reject missing/mistyped companions and detect eager optional yield boxing.
