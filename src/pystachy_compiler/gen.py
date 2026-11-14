@@ -509,6 +509,7 @@ from src.pystachy_compiler.containers import (
     gen_key_items as containers_key_items,
     gen_key_kind as containers_key_kind,
     gen_key_problem as containers_key_problem,
+    gen_key_union as containers_key_union,
     gen_key_repr as containers_key_repr,
     gen_keyed as containers_keyed,
     gen_keys_list as containers_keys_list,
@@ -5168,6 +5169,9 @@ class Gen:
 
     def key_problem(self, t: str) -> str:
         return containers_key_problem(self, t)
+
+    def key_union(self, t: str) -> bool:
+        return containers_key_union(self, t)
 
     def elem_problem(self, t: str) -> str:
         return containers_elem_problem(self, t)

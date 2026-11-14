@@ -2,6 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.analysis import none_display, walrus_names
 from src.pystachy_compiler.bigints import big_tree, held, narrow_type
+from src.pystachy_compiler.conversions import ends_in_id
 from src.pystachy_compiler.diagnostics import dynamic_program, int_lists, shown
 from src.pystachy_compiler.ir import ClassInfo, Ins, IterArg, SetArg, Val
 from src.pystachy_compiler.names import short
@@ -33,6 +34,7 @@ from src.pystachy_compiler.utils import (
     targs,
     tname,
     typestr,
+    umembers,
     unopt,
 )
 
@@ -765,12 +767,20 @@ def gen_key_items(self, t: str) -> bool:
             return False
     return True
 
+def gen_key_union(self, t: str) -> bool:
+    # is t a union of classes whose objects hash and compare by identity alone (no class an object
+    # of a member may be of defines __hash__ or __eq__): a key, as an object of one such class is.
+    # runtime.c hashes and compares the object its box holds, not the box (#1452)
+    return is_union(t) and all([self.key_class(m) and len([c for c in self.hash_classes(m) if self.hash_kind(c.name) != "id"]) == 0 for m in umembers(t)])
+
 def gen_key_problem(self, t: str) -> str:
     # why t cannot be a dict's key type, or "" (utils.key_problem): objects too, and dynamic values
     # (hashed by their types at run time: TypeError: unhashable type)
     t = narrow_type(t)  # (a promoting int, also a tuple's, is a key as a 64-bit int: bigints.py)
-    if t == "dyn" or self.key_class(t) or (is_tuple(t) and self.key_items(t)):
+    if t == "dyn" or self.key_class(t) or self.key_union(t) or (is_tuple(t) and self.key_items(t)):
         return ""
+    if is_union(t) and self.reference_union(t) and all([self.key_class(m) for m in umembers(t)]):
+        return key_problem(t) + " (a union's classes must hash and compare by identity: none may define __hash__ or __eq__)"
     if t in self.nts:
         return key_problem(t) + " (a NamedTuple, which CPython hashes as the tuple of its fields)"
     if t in self.classes and self.classes[t].exc != "":
@@ -806,6 +816,14 @@ def gen_hash_desc(self, t: str) -> str:
     # runtime.c's descriptor of keys of type t (Dict.kind): desc's, but an object is P<id> where
     # it hashes and compares by identity alone (no class it may be of defines __eq__ or
     # __hash__), else H<id>, which hashes through the program (obj_hash) and compares as O<id>
+    if self.key_union(t):
+        # U<n>: each member's tag and P<id>, as a union's descriptor lists them (gen_plain_desc)
+        ms = umembers(t)
+        out = "U" + str(len(ms)) + ":"
+        for i in range(len(ms)):
+            md = self.hash_desc(ms[i])
+            out += str(self.utag(ms[i])) + ":" + md + ("." if i + 1 < len(ms) and ends_in_id(md) else "")
+        return out
     if t in self.classes:
         d = self.desc(t, "==")
         for c in self.hash_classes(t):
@@ -834,6 +852,8 @@ def gen_key_repr(self, t: str) -> bool:
     u = unopt(t)
     if u in self.classes:
         return len([c for c in self.hash_classes(u) if "__repr__" in c.methods]) > 0
+    if self.key_union(u):
+        return any(self.key_repr(x) for x in umembers(u))
     return is_tuple(u) and any(self.key_repr(x) for x in targs(u))
 
 def gen_dkey(self, k: Val, kt: str) -> Val:

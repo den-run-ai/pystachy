@@ -73,7 +73,9 @@ neither `__eq__` nor `__hash__` hashes and compares by identity; one whose class
 `__hash__` uses it and `__eq__`, which run where CPython calls them (once per insertion or
 lookup, and for each key of the same hash). A class that defines `__eq__` without `__hash__` is
 unhashable, as in CPython: adding or looking up its object raises `TypeError: unhashable type`.
-An object key may be `None`. Floats, frozensets, NamedTuples and exception objects cannot be
+A union of classes (`TypeInfo | TypeAlias`) is a key type where no class its objects may be of
+defines `__eq__` or `__hash__`: they hash and compare by identity, whichever member's they are,
+typed by their class or the union. An object key may be `None`. Floats, frozensets, NamedTuples and exception objects cannot be
 keys or set elements. `hash()` gives CPython's results for ints, floats, `None`, objects with
 `__hash__` and tuples and NamedTuples of these; a str's and an object's identity hash differ from CPython's,
 which change from run to run, but are equal for equal strs and for the same object.
