@@ -1220,8 +1220,10 @@ numeric boxes even when the program performs no later Any read. Proven scalar
 indexed arithmetic reads need no boxes. Ordinary programs allocate no companion.
 
 This supports item crossings through Any; boxing the entire native numeric tuple
-as Any remains rejected. Fixed heterogeneous tuples, optional/union item storage
-and widening numeric tuples to optional items remain separate identity gaps.
+as Any remains rejected. Fixed-length tuple sources, optional/union item storage
+and widening numeric tuples to optional items remain separate identity gaps. In
+particular, converting an imported fixed tuple does not recover its item objects;
+annotated runtime-length tuple constants preserve them.
 Runtime-length tuple repetition and membership remain unsupported operations.
 
 Coverage: [dynany_identity_vtuples.py](../tests/programs/inference/dynany_identity_vtuples.py),
