@@ -754,14 +754,15 @@ def gen_gen_words(self, p: str, t: str, y: str, owned: Val | None = None) -> lis
     identity = self.mload("dyn", self.maddr("int", p, str(generator_slots(self.gproto, int_program(), False)))) if generator_identity(t, self.idhere()) else ""
     if t == y:
         return [s, hi, identity]
-    # A dynamic conversion can raise before gen_suspend installs the delegate's
-    # close path. Drop a freshly owned delegate on that exceptional edge; an
-    # existing generator belongs to its caller and must remain resumable.
+    # A dynamic conversion or checked optional-int narrowing can raise before
+    # gen_suspend installs the delegate's close path. Drop a freshly owned
+    # delegate on that edge; a borrowed generator must remain resumable.
     outer = self.handler
     failed = ""
     slot = ""
     mark = Val("", "")
-    if owned is not None and self.eh and (t == "dyn" or y == "dyn"):
+    checked_optional = t == "int" and y == "opt[int]" and int_program()
+    if owned is not None and self.eh and (t == "dyn" or y == "dyn" or checked_optional):
         mark = Val(self.rt("pys_try_mark", "i64", []), "int")
         if self.fn.gbase != "":
             mark = Val(self.scalar("sub", [mark, Val(self.mload("int", self.fn.gbase), "int")]), "int")
