@@ -114,17 +114,23 @@ def cm_root(c: str, name: str, bases: dict[str, list[str]], cms: list[str]) -> s
     return c if c + "." + name in cms else ""
 
 
+def cm_private_fields(n: Node) -> None:
+    # The contextlib port's recreation bookkeeping is compiler storage, not public
+    # attributes. Its backing function retains the visible __dict__ name "func".
+    if n.kind == "attr" and n.s in ["_func", "_pys_factory", "_pys_func_changed"]:
+        n.s = " " + n.s
+    for kid in n.kids:
+        cm_private_fields(kid)
+
+
 def cm_methods(n: Node, names: list[str]) -> None:
     # a method decorated @contextmanager (names: as the module imports it) is the generator method
-    # _pys_cm_NAME, and NAME(self, /, *args, **kwds) returns the manager that
-    # contextmanager(self._pys_cm_NAME)(*args, **kwds) makes: what CPython's helper does, bound to
-    # the object (the subset has no decorated methods). Its generator is C's own,
-    # C._pys_cm_NAME(self, *args, **kwds), so that super().NAME() runs the base class's, also
-    # where a subclass in another module overrides it (#1469); and the function it keeps (for a
-    # decorator's calls, which make the generator again) is bound to self
-    # taken as an object of the class that first defines NAME so, so that NAME returns one type
-    # whatever subclass self is. A generic class keeps contextmanager(self._pys_cm_NAME) (C alone
-    # names no type there)
+    # _pys_cm_NAME. Its wrapper captures self in a factory accepting packed args and kwds,
+    # factory that calls C's own generator, even when self is None. The manager keeps this
+    # same private factory for decorator recreation, without looking up a method on self.
+    # Its existing func/args/kwds metadata remains available. cmfactory
+    # converts the closure to a Callable with its inferred return type: overrides yielding
+    # the same type then return one manager type despite having different closure environments.
     if len(names) == 0:
         return
     bases: dict[str, list[str]] = {}
@@ -148,20 +154,35 @@ def cm_methods(n: Node, names: list[str]) -> None:
                     root = cm_root(st.s, d.s, bases, cms)
                     # (NAME's own parameters are the def's names, args and kwds, but for one that
                     # would hide a name NAME reads: def scope(C) in class C, class args)
-                    reads = [st.s, root, d.kids[3].s.split(".")[0]]
+                    reads = [st.s, root, "_pys_cm_GCM"]
                     a = "_pys_cm_args" if "args" in reads else "args"
+                    while a in reads:
+                        a += "_"
                     k = "_pys_cm_kwds" if "kwds" in reads else "kwds"
-                    if me in reads + [a, k, "_pys_cm_self", "_pys_cm_GCM"]:
+                    while k in reads + [a]:
+                        k += "_"
+                    factory = "_pys_cm_factory"
+                    while factory in reads + [a, k]:
+                        factory += "_"
+                    held = "_pys_cm_self"
+                    while held in reads + [a, k, factory]:
+                        held += "_"
+                    if me in reads + [a, k, factory, held]:
                         me = "_pys_cm_me"
-                    if generic:
-                        src = f"def {d.s}({me}, /, *{a}, **{k}):\n    return {d.kids[3].s}({me}._pys_cm_{d.s})(*{a}, **{k})\n"
-                    else:
-                        if not imported:
-                            top.append(Parser(Lexer("from contextlib import _GeneratorContextManager as _pys_cm_GCM\n", st.line).file()).module().kids[0])
-                            imported = True
-                        own = f"{st.s}._pys_cm_{d.s}({me}, *{a}, **{k})"
-                        src = f"def {d.s}({me}, /, *{a}, **{k}):\n    _pys_cm_self: {root} = {me}\n    return _pys_cm_GCM(_pys_cm_self._pys_cm_{d.s}, {a}, {k}, {own})\n"
+                        while me in reads + [a, k, factory, held]:
+                            me += "_"
+                    if not imported:
+                        top.append(Parser(Lexer("from contextlib import _GeneratorContextManager as _pys_cm_GCM\n", st.line).file()).module().kids[0])
+                        imported = True
+                    own = f"{st.s}._pys_cm_{d.s}({me}, *{a}, **{k})"
+                    cast = "" if generic else f"    {held}: {root} = {me}\n"
+                    bound = f"{me if generic else held}._pys_cm_{d.s}"
+                    src = f"def {d.s}({me}, /, *{a}, **{k}):\n    {factory} = lambda {a}, {k}: {own}\n{cast}    return _pys_cm_GCM({bound}, {a}, {k}, {factory}({a}, {k}), {factory})\n"
                     w = Parser(Lexer(src, d.line).file()).module().kids[0]
+                    assignment = w.kids[2].kids[0]
+                    assignment.kids[1] = mk("cmfactory", "", d.line, [assignment.kids[1], mk("name", a, d.line, []), mk("name", k, d.line, [])])
+                    call = w.kids[2].kids[-1].kids[0]
+                    call.kids[1].kind = "cmref"  # metadata binding, not an attribute lookup on self
                     d.s = "_pys_cm_" + d.s
                     d.kids = d.kids[:3]
                     kept.append(d)
@@ -1148,6 +1169,10 @@ class Loader:
         FILES.append(path[2:] if path.startswith("./") else path)
         self.pragmas(src, k, k * LINES + 1)
         self.parsed[path] = self.parse_source(src, k * LINES + 1, self.in_lib(path))
+        if self.in_lib(path) and path.endswith("/contextlib.py"):
+            for st in self.parsed[path].kids:
+                if st.kind == "subclass" and st.s == "_GeneratorContextManager":
+                    cm_private_fields(st)
         tb_import(self.parsed[path])
         binary_opens(self.parsed[path])
         cm_methods(self.parsed[path], cm_names(self.parsed[path]))

@@ -667,7 +667,7 @@ def comparison_missing(n: Node, aliases: list[str], fields: dict[str, str]) -> N
         comparison_missing(kid, aliases, fields)
 
 
-def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "", resultsoft: bool = False, cmpfields: str = "") -> FnInfo:
+def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "", resultsoft: bool = False, cmpfields: str = "", nullable_self: bool = False) -> FnInfo:
     # the function template f compiles to for arguments of types ts, compiled when first
     # needed, in the middle of the function that calls it: its first return statement
     # decides what it returns; nnp: the parameters whose objects are known not to be None
@@ -695,6 +695,8 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     # Keep that specialization separate from typed len(), which requires int.
     raw_hint = f.name == "__len__" and self.curfn.name == "dyn.lengthhint" and self.xtry.startswith("protocol-hint:")
     readkey += " length-hint" if raw_hint else ""
+    nullable_self = nullable_self or f.nullable_self
+    readkey += " nullable-self" if nullable_self else ""
     key = ",".join(ts) + (" " + ",".join(nnp) if len(nnp) > 0 else "") + readkey
     if cmpfields != "":
         key += " fields " + cmpfields  # never reuse the ordinary typed call's specialization
@@ -748,6 +750,7 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     self.materialize(f)  # (an inherited class method's own body)
     g = FnInfo(f.name, f"{f.ll}.{len(f.insts) + 1}", f.node, f.cls)
     g.deco = f.deco
+    g.nullable_self = nullable_self
     g.prop = f.prop
     g.clsuse = f.clsuse
     g.orig = f.orig
@@ -912,7 +915,7 @@ def gen_const_of(self, n: Node, env: dict[str, Node], live: bool) -> Node | None
             local_names(f.node.kids[2].kids, asg)
             return c.lits[n.s] if n.s not in asg else None
         return None
-    if k == "attr" and c is not None and n.kids[0].kind == "name" and takes_self(f) and n.kids[0].s == f.params[0] and n.s in c.fconst:
+    if k == "attr" and c is not None and n.kids[0].kind == "name" and takes_self(f) and not f.nullable_self and n.kids[0].s == f.params[0] and n.s in c.fconst:
         asg = {}
         local_names(f.node.kids[2].kids, asg)
         return c.fconst[n.s] if f.params[0] not in asg else None

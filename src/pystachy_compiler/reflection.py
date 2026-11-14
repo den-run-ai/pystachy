@@ -1222,6 +1222,17 @@ def gen_refl_init_order(self, c: str, f: FnInfo, out: list[str], maybe: dict[str
     return True
 
 
+def refl_field_name(ci: ClassInfo, field: str, libdir: str) -> str:
+    # The contextlib port keeps its public func/args/kwds metadata while its setter
+    # and generator factory use hidden storage. Other classes retain their own names.
+    if ci.mod == "contextlib" and short(ci.origin if ci.origin != "" else ci.name) == "_GeneratorContextManager" and lib_source(ci.node.line, libdir, "contextlib.py"):
+        if field == " _func":
+            return "func"
+        if field in [" _pys_factory", " _pys_func_changed"]:
+            return ""
+    return field
+
+
 def gen_refl_dict_order(self, c: str) -> list[str]:
     # the names in the __dict__ of an object of class c, in the order CPython inserts them: the
     # fields __init__ assigns (a dataclass's: its fields), each where it is first assigned;
@@ -1233,7 +1244,7 @@ def gen_refl_dict_order(self, c: str) -> list[str]:
     out, why = self.refl_order(c)
     if why != "":
         self.err(f"vars() of {short(c)}{why}")
-    return out
+    return [fl for fl in out if refl_field_name(ci, fl, self.libdir) != ""]
 
 
 def gen_refl_order(self, c: str) -> tuple[list[str], str]:
@@ -1372,7 +1383,7 @@ def gen_refl_fields_table(self, c: str) -> str:
             ft = self.field_type(c, fl)
             if is_union(unopt(ft)) and not self.value_union(ft):
                 self.err(f"vars() of {short(c)}, whose field {fl} is a {typestr(ft)}, is not supported (a union of classes: #487)")
-            t.refs.append(self.sconst(fl))
+            t.refs.append(self.sconst(refl_field_name(ci, fl, self.libdir)))
             t.refs.append(self.sconst("J" if ft == BIG else self.desc(ft, "repr")))  # (a promoting int's {lo, hi}: runtime.c's jbig)
             t.items.append(Val(str(ci.fpos[fl]), "int"))
             flag = ci.fflag[fl] if fl in ci.fflag and c + "." + fl not in self.cvars else -1
@@ -1600,7 +1611,8 @@ def gen_refl_unroll_dict(self, n: Node, d: Node, x: Node, m: str) -> None:
                 go = self.label()
                 self.cbr(self.mem_load(Val(self.fgep(ov, ci.fflag[fl]), "*bool")).v, go, nxt)
                 self.place(go)
-            key = Val(self.sconst(fl), "str")
+            visible = refl_field_name(ci, fl, self.libdir)
+            key = Val(self.sconst(visible), "str")
             if m == "items" and vn is tgt:
                 val = self.coerce(self.getfield(ov, self.field(ov, fl), fl), vt)
                 self.assign(tgt, self.tuple_([key, val]))
@@ -1617,7 +1629,7 @@ def gen_refl_unroll_dict(self, n: Node, d: Node, x: Node, m: str) -> None:
             self.brks.append([])
             self.branch += 1
             sub = kt != "" and kt not in asg
-            self.stmts([refl_subst(st, kt, mk("str", fl, st.line, [])) if sub else st for st in body])
+            self.stmts([refl_subst(st, kt, mk("str", visible, st.line, [])) if sub else st for st in body])
             self.branch -= 1
             self.wdepth.pop()
             self.loops.pop()
@@ -1742,7 +1754,7 @@ def gen_refl_dict_copy(self, d: Node) -> Val:
                 self.place(go)
             kv = targs(dt)  # (["dyn", "dyn"] where the values are Any values or containers: ctype)
             v = self.list_hold(self.getfield(ov, self.field(ov, fl), fl), kv[1])  # (a tuple of ints as the dict holds it, a promoting int as a dict of ints does: bigints.py)
-            self.dict_store(r.v, self.to_slot(self.store_key(Val(self.sconst(fl), "str"), kv[0])), v, kv)
+            self.dict_store(r.v, self.to_slot(self.store_key(Val(self.sconst(refl_field_name(ci, fl, self.libdir)), "str"), kv[0])), v, kv)
             if nxt != "":
                 self.br(nxt)
                 self.place(nxt)
@@ -1767,16 +1779,18 @@ def gen_refl_dict_format(self, d: Node, keys: list[str], fmt: str, what: str) ->
         self.place(lf.label)
         ci = self.classes[lf.c]
         order = self.refl_dict_order(lf.c)
+        names = [refl_field_name(ci, fl, self.libdir) for fl in order]
         ov = Val(lf.v.v, lf.c)
         args: list[Node] = []
         for k in keys:
-            if k not in order:
+            if k not in names:
                 self.err(f"KeyError: '{k}': a {what} format reads a key that vars() of {short(lf.c)} does not have (#486)")
-            if k in ci.fflag and lf.c + "." + k not in self.cvars:
+            fl = order[names.index(k)]
+            if fl in ci.fflag and lf.c + "." + fl not in self.cvars:
                 # (a field __init__ may leave unassigned: KeyError where it is, as CPython's dict raises)
-                unset = self.scalar('xor', [Val(self.mem_load(Val(self.fgep(ov, ci.fflag[k]), "*bool")).v, 'bool'), Val('true', 'bool')])
+                unset = self.scalar('xor', [Val(self.mem_load(Val(self.fgep(ov, ci.fflag[fl]), "*bool")).v, 'bool'), Val('true', 'bool')])
                 self.guard(unset, f"KeyError: '{k}'")
-            args.append(self.vnode(self.getfield(ov, self.field(ov, k), k)))
+            args.append(self.vnode(self.getfield(ov, self.field(ov, fl), fl)))
         r = self.percent(fmt, mk("tuple", "", self.line, args), False) if what == "%" else self.str_format(fmt, "format", args)
         vals.append(r)
         blocks.append(self.cur)

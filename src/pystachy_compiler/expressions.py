@@ -798,6 +798,17 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     k = n.kind
     if k in ["matchbind", "matchconst", "matchvalue", "matchseq", "matchclass", "matchfield", "matchunsupported"]:
         return pattern_expr(self, n)
+    if k == "cmfactory":
+        # The generated contextmanager factory captures the original receiver and
+        # accepts current packed arguments. Its Callable type keeps overrides compatible.
+        factory = self.expr(n.kids[0], "")
+        parameters = [self.expr(arg, "").t for arg in n.kids[1:]]
+        return self.to_callable(factory, self.ctype("callable", [self.adapter_ret(factory.t, parameters)] + parameters))
+    if k == "cmref":
+        # Preserve contextlib's existing bound-generator metadata. The generated
+        # wrapper binds this statically even for None; its private factory runs it.
+        receiver = self.expr(n.kids[0], "")
+        return Val(receiver.v, f"fn[m:{receiver.t}.{n.s}]")
     resultsoft = resultsoft or n is self.soft
     if returnctx and k in ["binop", "boolop", "ifexp"]:
         # Contextual return inference follows fresh literal trees and calls.
@@ -1460,8 +1471,9 @@ def gen_class_call(self, cn: Node, m: str, args: list[Node], want: str, resultso
                     f = self.classes[own].methods[m]
             if o.t not in self.classes or own not in self.classes or not self.derives(o.t, own):
                 self.err(f"{short(cn.s)}.{m}() needs an instance of {short(cn.s)}")
-            self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
-            return self.call_fn(f, [o], args[1:], want, direct=True, resultsoft=resultsoft)
+            # This reads C.m, not o.m: evaluate all arguments and let the body use self,
+            # which may be None. Its separate specialization retains dereference guards.
+            return self.call_fn(f, [o], args[1:], want, direct=True, resultsoft=resultsoft, unbound=True)
         self.err(f"{short(cn.s)}.{m}() is a method of its objects: calling it through the class is not supported; call it on an object, o.{m}(...)")
     self.cls_bound(f, cn.s, False)
     return self.call_fn(f, [], args, want, resultsoft=resultsoft)
