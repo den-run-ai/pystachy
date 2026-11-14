@@ -263,6 +263,12 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return Val("null", "None")
     if name == "__pys_exc_repr":
         return self.exc_brepr(self.expr(args[0], ""))  # (exc_helpers)
+    if name == "__pys_gc_collect":
+        # gc.collect()'s collection (lib/_pystachy_gc.py): the runtime's, started now
+        if self.curfn.mod != "gc" or len(args) != 0:
+            self.err(f"name '{name}' is not defined")
+        self.rt("pys_gc_collect", "void", [])
+        return Val("null", "None")
     if name == "__pys_repr_enter" or name == "__pys_repr_leave":
         o = self.expr(args[0], "")
         r = self.rt(name[2:], "i64" if name.endswith("enter") else "void", [f"ptr {o.v}"])

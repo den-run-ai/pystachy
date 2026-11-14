@@ -207,7 +207,8 @@ its maker writes in full, are not cleared at all. Each sweep keeps as many free 
 next cycle may take (up to half as much again as its allocation window, which grows with the
 live bytes), reused before clean ones without page faults, and returns the rest to the system. Pointer-free slots of more than 136 bytes are cleared when they are handed out rather
 than when they die. `PYSTACHY_GC_MIN` sets the 32 MiB allocation window between collections
-([#650](https://github.com/den-run-ai/pystachy/issues/650)). The
+([#650](https://github.com/den-run-ai/pystachy/issues/650)), and [`gc.collect()`](../lib/compatibility.md#gc)
+starts one at once. The
 [2 November 2026 allocator evaluation](https://github.com/den-run-ai/pystachy/blob/a2cb8a3638d715577a7ab1cd1e4a0d6b01b6cdf2/docs/reports/allocator-prototype.md)
 records the measurements. Unreachable files close during collection or at program exit. Supported Python operations are checked
 against CPython; the [compatibility reference](language/compatibility.md) lists deviations.

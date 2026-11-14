@@ -9260,6 +9260,7 @@ static void trk_sweep(void) {          /* after marking */
     }
 }
 I pys_collected(void) { return ndq ? dq[--ndq] : 0; }   /* a value whose owner a collection found dropped, once; 0: none */
+void pys_gc_collect(void) { if (!gc_off) collect(); }   /* gc.collect() (lib/_pystachy_gc.py): a collection now, but for PYSTACHY_GC=off */
 static I trk_report(I *ex) { *ex = trk_exit; return trk ? trk_gc : -1; }
 I pys_trk_pop(void) {                  /* at exit (pyembed.c): every value not released yet, then 0 */
   static I i = -1;

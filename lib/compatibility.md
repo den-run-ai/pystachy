@@ -1540,6 +1540,29 @@ CPython.
 
 ## Runtime services
 
+### `gc`
+
+CPython's `gc` controls its collector of reference cycles, which works beside reference counts.
+Here one tracing collector reclaims all memory, and `lib/_pystachy_gc.py`, which Pystachy loads
+for CPython's C module, has what of that interface means something for it ([test](../tests/programs/library/lib_gc.py)):
+
+- `collect()` runs a collection now, also after `disable()`, so that objects nothing refers to
+  are found dead where no allocation would have started one: weak references to them die
+  ([test](../tests/programs/library/lib_gc_collect.py)). It checks its generation as CPython
+  does (`ValueError: invalid generation`) and returns 0, where CPython returns the number of
+  unreachable objects it found ([deviation](../tests/deviations/lib_gc_collect_count.py)). With
+  `PYSTACHY_GC=off` it does nothing.
+- `enable()`, `disable()` and `isenabled()`, `set_threshold()` and `get_threshold()`,
+  `set_debug()` and `get_debug()` keep CPython's settings, with its initial values, and report
+  them. `freeze()` and `unfreeze()` do nothing. None of these changes when the collector runs:
+  it reclaims what CPython's reference counts would, which those settings do not stop there
+  either. `set_debug()` prints nothing.
+
+Not supported, as compile-time errors where used: `get_objects()`, `get_referrers()`,
+`get_referents()`, `is_tracked()`, `is_finalized()`, `get_stats()`, `get_count()`,
+`get_freeze_count()`, `callbacks` and `garbage`, which describe CPython's object graph and
+generations ([error test](../tests/errors/library/lib_gc_get_objects.py)).
+
 ### `abc`
 
 `abc` is `_pystachy_abc`, which Pystachy loads for `import abc`, as CPython has imported its

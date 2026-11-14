@@ -49,7 +49,7 @@ STANDINS: dict[str, str] = {"binascii": "_pystachy_binascii", "_codecs": "_pysta
                             "abc": "_pystachy_abc", "_struct": "_pystachy_struct", "_thread": "_pystachy_thread",
                             "_io": "_pystachy__io",
                             "unicodedata": "_pystachy_unicodedata", "itertools": "_pystachy_itertools",
-                            "_weakref": "_pystachy_weakref"}
+                            "_weakref": "_pystachy_weakref", "gc": "_pystachy_gc"}
 # the stand-ins whose objects have no attributes in CPython (a weak reference's C struct, and a
 # mapping proxy's, whose dict code given only the proxy must not reach): their classes' fields
 # are the module's own, which a program can neither read, assign, find by hasattr() nor reflect
@@ -1113,7 +1113,7 @@ RUNTIME: dict[str, str] = {
     # runtime mode's primitives (Gen.primitive): a new str's memory, and the C library's searches
     # and copy, over the bytes of strs (a str that _rt.str_new made is written only before
     # _rt.str_done hands it out, so these need no letter either)
-    "alloc_atomic": "%ptr:int|A|", "init_lib": "None:%ptr,int|A I|", "cstr": "opt[str]:%ptr,int|R A|", "c_check": "int:int,int|R I|", "c_str": "None:str|R|", "c_at": "%ptr:%ptr,int|R|", "string_at": "str:int,int|R A|", "bytes_at": "bytes:int,int|R A|", "load_library": "int:str|R A I|", "track": "int:%ptr,int,int|A I|", "c_bind": "None:%ptr,%ptr,%ptr|R A I|", "untrack": "None:int|I|", "collected": "int:|I|", "memchr": "%ptr:%ptr,%i32,int||memchr", "memcmp": "%i32:%ptr,%ptr,int||memcmp",
+    "alloc_atomic": "%ptr:int|A|", "init_lib": "None:%ptr,int|A I|", "cstr": "opt[str]:%ptr,int|R A|", "c_check": "int:int,int|R I|", "c_str": "None:str|R|", "c_at": "%ptr:%ptr,int|R|", "string_at": "str:int,int|R A|", "bytes_at": "bytes:int,int|R A|", "load_library": "int:str|R A I|", "track": "int:%ptr,int,int|A I|", "gc_collect": "None:|A I|", "c_bind": "None:%ptr,%ptr,%ptr|R A I|", "untrack": "None:int|I|", "collected": "int:|I|", "memchr": "%ptr:%ptr,%i32,int||memchr", "memcmp": "%i32:%ptr,%ptr,int||memcmp",
     "memmem": "%ptr:%ptr,int,%ptr,int||memmem", "memmove": "None:%ptr,%ptr,int,%i1||llvm.memmove.p0.p0.i64",
 }
 # LLVM symbol -> RUNTIME key (spelt out here as rtsym does: module code calls no function before

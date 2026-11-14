@@ -1,0 +1,17 @@
+True
+False
+True
+(2000, 10, 10)
+(5, 10, 10)
+(1, 2, 10)
+(200000, 30, 30)
+0 -1 -1
+0 1 2 4 32 38
+True
+0
+ValueError invalid generation
+ValueError invalid generation
+ValueError invalid generation
+True True True True
+1000 True
+[exit 0]
