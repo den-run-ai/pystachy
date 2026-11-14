@@ -22,6 +22,8 @@ from src.pystachy_compiler.specs import (
     LIST_READS,
     LIST_WRITES,
     METHODS,
+    NONE_ITEM,
+    NONEVAR,
     OPTS,
     OPAQUE,
     RUNTIME,
@@ -791,19 +793,20 @@ def empty_default(n: Node, name: str, kind: str) -> bool:
 def key_problem(t: str) -> str:
     # why t cannot be a dict's key type, or "": keys are ints, strs, or tuples whose items are ints,
     # bools, strs, str | None or such tuples (runtime.c hashes and compares them by descriptor), and
-    # objects, also as such items (Gen.key_problem)
+    # objects, also as such items (Gen.key_problem); None, and each of these types | None (none_key)
     if t == "int" or t == "str" or t == "bytes" or t == "exctype" or (is_tuple(t) and key_items(t)):
         return ""  # (an exception class's class object is hashed and compared by identity)
-    if is_opt(t):
-        return f"dict keys must be int or str, not {typestr(t)} (a key cannot be None)"
+    if t == "None" or (is_opt(t) and t != NONEVAR and t != NONE_ITEM and key_problem(unopt(t)) == ""):
+        return ""  # (None, or a key that may be None: hash(None) is a constant, and None equals only itself)
     return f"dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not {typestr(t)}"
 
 
-def elem_problem(t: str) -> str:
-    # why t cannot be the element type of a set, or "": the types of dict keys (key_problem)
-    if is_opt(t):
-        return f"set elements must be int or str, not {typestr(t)} (an element cannot be None)"
-    return key_problem(t).replace("dict keys", "set elements")
+def none_key(t: str) -> bool:
+    # may a dict's key (a set's element) of type t be None, as a value of the type and not as
+    # the null an object's type always includes: None itself, or T | None for a key type T. Its
+    # table has a descriptor's kind (runtime.c's hitem and hval hash None; eqv compares it), never
+    # the int's or str's kinds 0 and 1, whose lookups take no None
+    return t == "None" or (is_opt(t) and t != NONEVAR and t != NONE_ITEM)
 
 
 def lookable(a: str, b: str) -> bool:
@@ -811,6 +814,8 @@ def lookable(a: str, b: str) -> bool:
     # is 1, and None (a tuple's item) is no str
     if a == b or (a == "bool" and b == "int") or (b == "str" and (a == "None" or a == "opt[str]")):
         return True
+    if none_key(b) and (a == "None" or (b != "None" and lookable(unopt(a), unopt(b)))):
+        return True  # (a key that may be None: None, or what its type's keys find)
     if not is_tuple(a) or not is_tuple(b) or len(targs(a)) != len(targs(b)):
         return False
     for i in range(len(targs(a))):

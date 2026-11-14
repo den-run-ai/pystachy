@@ -1,0 +1,48 @@
+{None: 1, 'k': 2} 2 True [None, 'k'] [1, 2] [(None, 1), ('k', 2)]
+1 2 1 None 1 9
+{None: 6, 'k': 1} 2 True [None, 'k'] [6, 1] [(None, 6), ('k', 1)]
+6 True 6
+1 True 1
+False None -1
+6 False 77 8 8
+KeyError None
+KeyError None
+KeyError None
+{'k': 1, None: 3, 'u': 4} 3 True ['k', None, 'u'] [1, 3, 4] [('k', 1), (None, 3), ('u', 4)]
+{'k': 1, None: 3, 'u': 4} 3 True ['k', None, 'u'] [1, 3, 4] [('k', 1), (None, 3), ('u', 4)]
+{'k': 1, None: 3, 'u': 4} 3 True ['k', None, 'u'] [1, 3, 4] [('k', 1), (None, 3), ('u', 4)]
+True False False {'k': 1, None: 0, 'u': 4}
+{'k': 1, None: 10, 'u': 4, 'w': 11} 4 True ['k', None, 'u', 'w'] [1, 10, 4, 11] [('k', 1), (None, 10), ('u', 4), ('w', 11)]
+key k False
+key None True
+key u False
+key w False
+item k 1
+item None 10
+item u 4
+item w 11
+{'k': 2, None: 20, 'u': 8, 'w': 22}
+['k', 'u', 'w'] [10]
+('w', 11) ('u', 4) 2
+{None: ['a', 'c'], 'f.py': ['b']} ['a', 'c'] 2
+{None: ['x']}
+{'a': 0, None: 0} 2
+67 -1 1 False True
+{None: 1} 1 True 1 1 [None]
+{} 7 {} False None 4
+None 6
+{None: 'x'} x
+{1: 'a!', None: 'n', 70000: 'big'} 3 a! n big True False True
+big True big
+n True n
+False None
+n {70000: 'big'} None None big
+KeyError None
+KeyError 4
+301 -1 299 False 44849
+151 -1 False True [3, 9, None]
+{(1, 'a'): 1, None: 0, (2, 'b'): 2} 0 1 True False True
+0 0
+2 2
+{(1, 'a'): 1, (2, 'b'): 2} False None
+[exit 0]

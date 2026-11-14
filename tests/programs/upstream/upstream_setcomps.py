@@ -4,8 +4,6 @@
 # The doctests print what each `>>>` line shows; doctests_srange are the srange()/lrange()
 # sections.
 # EXCLUDED upstream cases:
-# - `{None for i in range(10)}` (rejected: "set elements must be int or str, objects, or tuples
-#   of int, bool, str, str | None and objects, not None")
 # - the scoping sections, at module and function scope: sets of lambdas (rejected: "set
 #   elements must be ... not <function <lambda> ...>"; CPython hashes functions by identity)
 # - the generator section (grange), the lvalue SyntaxError sections (the same errors at compile
@@ -24,6 +22,7 @@ def doctests() -> None:
     i = 20
     print(sum({i*i for i in range(100)}))
     print(i)
+    print({None for i in range(10)})
 
 
 def srange(n: int) -> set[int]:

@@ -998,7 +998,7 @@ def gen_big_dict_call(self, o: Val, m: str, kx: Val, k: str, d: Val, has: bool, 
         if kx.t == BIG:
             e = self.big_key_entry(o, kx, "pys_dict_big_find")
         else:
-            e = self.nonekey(kx, "-1", "pys_dict_find", [f"ptr {o.v}", f"i64 {k}"], x)  # (a key that is None: none)
+            e = self.nonekey(kx, "-1", "pys_dict_find", [f"ptr {o.v}", f"i64 {k}"], x, targs(o.t)[0])  # (a key that is None: none)
         found = self.label()
         end = self.label()
         ph = Ins("phi", BIG, "")

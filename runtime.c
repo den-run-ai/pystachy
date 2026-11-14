@@ -4178,7 +4178,7 @@ static uint64_t hval(I k, const char *d) {
     for (const char *z = *d == 's' || *d == 'P' ? d : skip(d); d < z; d++) if (*d == 'H') return 0;
     return 0x9E3779B97F4A7C15ULL;
   }
-  if (*d == '?') d++;
+  if (*d == '?') { d++; k = unbox(k, d); }           /* (an int | None key that is an int: the int its box holds) */
   if (*d != 'T') { Dict t = {.kind = *d == 's'}; return hsh(&t, k); }   /* (a P<id>'s: its address's) */
   uint64_t h = 0x27D4EB2F165667C5ULL; const char *e = d + 2;
   for (int i = 0; i < d[1] - '0'; i++) {
