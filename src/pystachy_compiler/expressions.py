@@ -5371,7 +5371,11 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         return self.ptr_cmp(op, a, b)
     if op in ORDOP and is_tuple(a.t) and is_tuple(b.t) and len(targs(a.t)) != len(targs(b.t)):
         return self.tuple_order(op, a, b)  # (of different lengths, which no one tuple type holds)
-    if (is_tuple(a.t) and BIG in a.t) or (is_tuple(b.t) and BIG in b.t):
+    if (is_tuple(unopt(a.t)) and BIG in a.t) or (is_tuple(unopt(b.t)) and BIG in b.t):
+        if is_opt(a.t) or is_opt(b.t):
+            # Optional tuple container reads keep the tuple's promoting layout.
+            # Test None before comparing the same nonnull tuple values below.
+            return self.optcmp(op, a, b)
         # a tuple of promoting ints: runtime.c's walks read its items (desc's J) where both are
         # builtin value trees (bigints.big_tree), as they compare tuples of 64-bit ints, and the
         # others are compared item by item here; a tuple[T, ...] holds 64-bit ints, as which the

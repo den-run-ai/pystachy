@@ -170,7 +170,7 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         v = self.big_narrow(v)  # (into 64-bit storage, or as an int: bigints.py)
         if v.t == t:
             return v
-    if is_tuple(v.t) and BIG in v.t and t != "" and BIG not in t:
+    if is_tuple(unopt(v.t)) and BIG in v.t and t != "" and BIG not in t:
         if is_tuple(t) and self.join_hint(t, v.t):
             return Val("undef", t)  # (as an int location becomes a promoting int)
         v = self.big_tuple_narrow(v)  # (a tuple of promoting ints into 64-bit storage: the same tuple, bigints.py)

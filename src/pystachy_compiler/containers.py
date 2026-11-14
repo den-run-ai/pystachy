@@ -464,7 +464,7 @@ def gen_supdate(self, s: str, v: Val, et: str) -> None:
 def gen_sdiscard(self, ov: str, v: Val, et: str) -> None:
     # set ov (of elements of type et) discards v, which it holds or not; None is no element (but
     # where the elements are objects, which may be None)
-    if v.t == "None" and et not in self.classes and not none_key(et):
+    if v.t == "None" and et not in self.classes and not self.key_union(et) and not none_key(et):
         return
     if v.t == BIG and et == "int" and int_lists():
         self.rt("pys_set_big_discard", "void", [ov, f"i64 {self.big_lo(v).v}", f"ptr {self.big_hi(v).v}"])  # (bigints.py)
@@ -616,7 +616,7 @@ def gen_smethod(self, o: Val, m: str, args: list[Node]) -> Val:
             self.br(end)
             self.place(end)
             return none
-        if (v.t == "None" or (is_opt(v.t) and unopt(v.t) == et)) and et not in self.classes and not none_key(et):
+        if (v.t == "None" or (is_opt(v.t) and unopt(v.t) == et)) and et not in self.classes and not self.key_union(et) and not none_key(et):
             # None is no element (but an object's): discard() does nothing, remove() raises
             # KeyError: None
             if m == "remove":
@@ -936,7 +936,7 @@ def gen_dkey(self, k: Val, kt: str) -> Val:
     # (a tuple of ints in the layout in which the dict holds it, key_hold: bigints.held)
     if none_key(kt):
         return self.none_dkey(k, kt)
-    if (is_tuple(k.t) or (is_opt(k.t) and unopt(k.t) == kt)) and held(narrow_type(kt)) != narrow_type(kt):
+    if is_tuple(unopt(k.t)) and held(narrow_type(kt)) != narrow_type(kt):
         return self.key_hold(k, narrow_type(kt))
     if is_tuple(k.t) and BIG in k.t and BIG not in kt:
         k = self.big_tuple_narrow(k)  # (a key holds 64-bit ints: bigints.py)
@@ -966,6 +966,8 @@ def gen_none_dkey(self, k: Val, kt: str) -> Val:
         if k.t != "None":
             self.err(f"a {typestr(k.t)} is looked up among keys that are always None: only None is one")
         return k
+    if (k.t == "None" or is_tuple(unopt(k.t))) and held(narrow_type(kt)) != narrow_type(kt):
+        return self.key_hold(k, narrow_type(kt))
     if is_tuple(unopt(k.t)) and k.t != kt and unopt(k.t) != unopt(kt) and lookable(unopt(k.t), unopt(kt)):
         return Val(k.v, kt)  # (a None where the keys hold a str finds none: runtime.c's hval)
     if is_tuple(unopt(k.t)) and BIG in k.t and BIG not in kt:
