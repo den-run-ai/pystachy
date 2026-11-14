@@ -1,7 +1,11 @@
 # Generated native test examples
 
-These original pytest-style tests exercise current stdlib APIs, the iniconfig and
-jdcal ports, typed fixtures and opt-in dynamic payloads. They demonstrate the
+These original pytest-style tests exercise current stdlib APIs, the iniconfig,
+jdcal and roman ports, typed fixtures and opt-in dynamic payloads. `test_forms.py`
+adds test classes, class and module fixture scopes, fixture parameters, `tmp_path`,
+`monkeypatch`, `pytest.approx` and fields of a caught exception.
+`test_unittest_style.py` adds `unittest.TestCase` classes with inherited tests and
+subtests, `pytestmark` and computed parameter tables. They demonstrate the
 [bounded runner](../../docs/pytest-native.md), not full pytest or upstream-suite support.
 
 From the repository root, with the pinned development environment and LLVM:

@@ -59,7 +59,8 @@ def source_hashes(source: Path, suite: Path) -> dict[str, str]:
     files = {source, Path(__file__).resolve(), ROOT / "pystachy.py", ROOT / "runtime.py",
              ROOT / "runtime.c", ROOT / "pyext.c", ROOT / "pyembed.c", ROOT / "lljit.c",
              ROOT / "VERSION"}
-    for name in ("pytest_native.py", "pytest_native_codegen.py", "pytest_native_support.py"):
+    for name in ("pytest_native.py", "pytest_native_codegen.py", "pytest_native_support.py",
+                 "pytest_native_fixtures.py", "pytest_native_logging.py", "pytest_native_capture.py"):
         files.add(ROOT / "tools" / name)
     for directory, suffixes in (("src", {".py"}), ("lib", {".py"}),
                                 ("ryu", {".c", ".h"}), ("mpz", {".c", ".h"})):
@@ -98,7 +99,7 @@ def benchmark(args: argparse.Namespace) -> dict:
                          + "\n" + "\n".join(result.error + result.stderr for result in results))
     result = results[0]
     suite = work / "generated" / hashlib.sha256(result.path.encode()).hexdigest()[:16]
-    executable = suite / "suite"
+    executable = suite / "_pyn_suite"
     report = suite / "events-0.jsonl"
     oracle_report = work / "oracle" / "oracle.jsonl"
     native_env = runner.environment([suite, source.parent, ROOT])
@@ -111,7 +112,7 @@ def benchmark(args: argparse.Namespace) -> dict:
         "pytest": [python, "-m", "pytest", "-q", "-p", "_pyn_oracle", "-p", "no:cacheprovider",
                    "--noconftest", "--rootdir", str(ROOT),
                    "-c", str(work / "oracle" / "empty.ini"), str(source)],
-        "generated_cpython": [python, str(suite / "suite.py")],
+        "generated_cpython": [python, str(suite / "_pyn_suite.py")],
         "aot": [str(executable)],
     }
     samples = []

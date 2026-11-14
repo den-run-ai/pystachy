@@ -153,9 +153,10 @@ class DiscoveryTests(TemporarySuite):
         second = self.source("import helper\ndef test_b(): assert helper.value == 1", "b/test_b.py")
         self.source("value = 1", "a/helper.py")
         self.source("value = 2", "b/helper.py")
+        # pytest gives test_b its own directory's helper; one program has one module per name.
         results = runner.run_suite([first, second], self.root, self.work, "python", [], sys.executable, 10)
         self.assertTrue(all(result.state == "collection-error" for result in results))
-        self.assertTrue(all("one source directory" in result.error for result in results))
+        self.assertTrue(all("modules named helper are importable from both" in result.error for result in results))
 
     def test_discovery_is_deterministic_and_deduplicated(self):
         second = self.source("def test_b(): pass", "nested/test_b.py")
@@ -166,10 +167,16 @@ class DiscoveryTests(TemporarySuite):
 
     def test_conftest_never_disappears_from_collection(self):
         path = self.source("def test_a(): pass", "nested/test_a.py")
-        self.source("raise RuntimeError('must not execute')", "conftest.py")
+        outer = self.source("raise RuntimeError('runs where pytest runs it')", "conftest.py")
+        self.source("VALUE = 1", "other/conftest.py")
         for selected in ([path], [self.root]):
-            with self.subTest(selected=selected), self.assertRaisesRegex(CollectionError, "conftest"):
-                runner.discover(selected, self.root)
+            with self.subTest(selected=selected):
+                paths = runner.discover(selected, self.root)
+                # The conftest.py above the test applies to it; one beside no test does not.
+                self.assertEqual(runner.layout(paths, self.root).conftests, [outer])
+        result = runner.run_module(path, self.root, self.work, "python", [], sys.executable, 30)
+        self.assertEqual(result.state, "execution-error")
+        self.assertIn("runs where pytest runs it", result.stderr)
 
     def test_pytest_configuration_is_not_silently_ignored(self):
         path = self.source("def test_a(): pass")
@@ -304,19 +311,33 @@ class CollectionControls(TemporarySuite):
 
     def test_imported_test_classes_cannot_disappear(self):
         self.source("class TestImported:\n    def test_failure(self):\n        assert False\n", "helper.py")
-        for statement in ("from helper import TestImported", "from helper import TestImported as TestAlias",
-                          "import helper as TestModule"):
+        self.source("def test_function():\n    assert False\n", "functions.py")
+        for statement, name in (("from helper import TestImported", "TestImported"),
+                                ("from helper import TestImported as TestAlias", "TestAlias")):
+            with self.subTest(statement=statement):
+                # pytest collects the class in the module that imports it, under the name bound there.
+                path = self.source(statement + "\ndef test_local():\n    pass\n")
+                actual = runner.run_module(path, self.root, self.work, "python", [], sys.executable, 10)
+                self.assertEqual(actual.state, "test-failed", actual.error)
+                self.assertEqual(actual.cases, [f"test_suite.py::{name}::test_failure", "test_suite.py::test_local"])
+                if importlib.util.find_spec("pytest"):
+                    expected = runner.oracle([path], self.root, self.work / "oracle", sys.executable, 30)
+                    self.assertEqual(expected["exit_code"], 1, expected)
+                    self.assertEqual(expected["cases"], actual.cases)
+        # What the collector cannot read may be a test: a function, or a class of an installed module.
+        # Its import is left out and recorded, which fails the run, and pytest's case is missed.
+        for statement in ("from functions import test_function", "from installed_elsewhere import TestThing"):
             with self.subTest(statement=statement):
                 path = self.source(statement + "\ndef test_local():\n    pass\n")
                 actual = runner.run_module(path, self.root, self.work, "python", [], sys.executable, 10)
-                self.assertEqual(actual.state, "collection-error")
-                self.assertIn("imported tests", actual.error)
-        path = self.source("from helper import TestImported\ndef test_local():\n    pass\n")
-        if importlib.util.find_spec("pytest"):
-            expected = runner.oracle([path], self.root, self.work / "oracle", sys.executable, 30)
-            self.assertEqual(expected["exit_code"], 1, expected)
-            self.assertEqual(expected["cases"], ["test_suite.py::TestImported::test_failure",
-                                                  "test_suite.py::test_local"])
+                self.assertEqual(actual.cases, ["test_suite.py::test_local"])
+                self.assertEqual(list(actual.unbound), ["test_suite.py:1: " + statement])
+                self.assertIn("imported tests", actual.unbound["test_suite.py:1: " + statement])
+                if importlib.util.find_spec("pytest"):
+                    expected = runner.oracle([path], self.root, self.work / "oracle", sys.executable, 30)
+                    differences = runner.compare([actual], expected)
+                    self.assertIn(runner.LEFT_OUT, differences) if "error" not in expected else None
+                    self.assertGreater(len(differences), 1 if "error" not in expected else 0, differences)
 
     def test_dynamic_test_class_aliases_are_rejected(self):
         for statement in ("TestAlias = Helper", "if True:\n    TestAlias = Helper"):
@@ -325,16 +346,21 @@ class CollectionControls(TemporarySuite):
 
     def test_unsupported_test_shapes_fail_explicitly(self):
         sources = {
-            "test_class": "class TestThings:\n    def test_one(self): pass\n",
+            "test_class_init": "class TestThings:\n    def __init__(self): pass\n    def test_one(self): pass\n",
+            "test_class_base": "from helper import Base\nclass TestThings(Base):\n    def test_one(self): pass\n",
+            "nested_test_class": "class TestThings:\n    class TestInner:\n        def test_one(self): pass\n",
+            "unittest_case": "import unittest\nclass Legacy(unittest.TestCase):\n    def runTest(self): pass\n",
+            "xunit_class": "class TestThings:\n    def setup_class(cls): pass\n    def test_one(self): pass\n",
             "async": "async def test_one(): pass\n",
             "custom_decorator": "def custom(f): return f\n@custom\ndef test_one(): pass\n",
-            "module_mark": "import pytest\npytestmark = pytest.mark.skip(reason='x')\ndef test_one(): pass\n",
+            "module_mark": "import pytest\npytestmark = pytest.mark.filterwarnings('error::pkg.Custom')\n"
+                           "def test_one(): pass\n",
             "plugin": "pytest_plugins = ['something']\ndef test_one(): pass\n",
-            "unknown_helper": "import pytest\ndef test_one():\n    pytest.approx(1.0)\n",
+            "unknown_helper": "import pytest\ndef test_one():\n    pytest.warns(UserWarning)\n",
             "relative_import": "from . import helper\ndef test_one(): pass\n",
             "imported_test": "from helper import test_imported\n",
             "dynamic_namespace": "globals()['test_dynamic'] = lambda: None\n",
-            "file_observation": "def test_one():\n    assert __file__.endswith('test_suite.py')\n",
+            "file_observation": "__file__ = 'elsewhere.py'\ndef test_one(): pass\n",
         }
         for name, source in sources.items():
             with self.subTest(name=name), self.assertRaises(CollectionError):
@@ -359,13 +385,19 @@ class CollectionControls(TemporarySuite):
         self.assertEqual(status, 5)
 
     def test_cli_collection_error_is_nonzero(self):
-        path = self.source("async def test_one(): pass\n")
-        evidence = self.root / "result.json"
-        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-            status = runner.main([str(path), "--root", str(self.root), "--mode", "python",
-                                  "--work-dir", str(self.work), "--json", str(evidence)])
-        self.assertEqual(status, 2)
-        self.assertEqual(json.loads(evidence.read_text())["results"][0]["state"], "collection-error")
+        # A statement of the module itself rejects the module; a test is left out of it.
+        for source, state in (("def helper(): pass\nglobals()['test_alias'] = helper\n", "collection-error"),
+                              ("async def test_one(): pass\n", "empty")):
+            with self.subTest(state=state):
+                path = self.source(source)
+                evidence = self.root / "result.json"
+                with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                    status = runner.main([str(path), "--root", str(self.root), "--mode", "python",
+                                          "--work-dir", str(self.work), "--json", str(evidence)])
+                result = json.loads(evidence.read_text())["results"][0]
+                self.assertEqual(status, 2)
+                self.assertEqual(result["state"], state)
+                self.assertEqual(list(result["uncollected"]), ["test_suite.py::test_one"] if state == "empty" else [])
 
 
 LIFECYCLE = '''
@@ -589,7 +621,7 @@ class OriginalPytestParity(TemporarySuite):
     def test_named_fixtures_preserve_aliases_and_autouse_order(self):
         self.check_parity(FIXTURE_ALIASES)
 
-    def test_annotation_mutation_is_rejected_instead_of_false_pass(self):
+    def test_annotation_mutation_cannot_make_a_false_pass(self):
         path = self.source('''
             import pytest
             VALUES = [1]
@@ -600,13 +632,15 @@ class OriginalPytestParity(TemporarySuite):
             def test_value(value: mutate()):
                 assert value == 1
         ''')
+        # The test receives the changed value, as in pytest, and fails as it does there;
+        # the ID read from the source is the stale one, which the comparison reports.
         actual = runner.run_module(path, self.root, self.work, "python", [], sys.executable, 30)
-        self.assertEqual(actual.state, "collection-error")
-        self.assertIn("evaluated annotations", actual.error)
+        self.assertEqual(actual.state, "test-failed")
+        self.assertEqual(actual.cases, ["test_suite.py::test_value[1]"])
         expected = runner.oracle([path], self.root, self.work / "oracle", sys.executable, 30)
         self.assertEqual(expected.get("exit_code"), 1)
         self.assertEqual(expected["cases"], ["test_suite.py::test_value[2]"])
-        self.assertTrue(runner.compare([actual], expected))
+        self.assertIn("collected test IDs/order differ from pytest", runner.compare([actual], expected))
 
     def test_nested_shadow_cannot_make_direct_fixture_call_pass(self):
         path = self.source('''
@@ -620,11 +654,14 @@ class OriginalPytestParity(TemporarySuite):
                 assert make_value() == 1
         ''')
         actual = runner.run_module(path, self.root, self.work, "python", [], sys.executable, 30)
-        self.assertEqual(actual.state, "collection-error")
-        self.assertIn("only be requested", actual.error)
+        # The test is left out, not run: nothing of it can pass.
+        self.assertEqual((actual.state, actual.cases), ("empty", []))
+        self.assertIn("only be requested", actual.uncollected["test_suite.py::test_direct"])
         expected = runner.oracle([path], self.root, self.work / "oracle", sys.executable, 30)
         self.assertEqual(expected.get("exit_code"), 1)
-        self.assertTrue(runner.compare([actual], expected))
+        self.assertEqual(runner.compare([actual], expected), [runner.LEFT_OUT])
+        self.assertEqual(runner.outcome_differences([actual], expected),
+                         ["test_suite.py::test_direct: pytest failed, native not collected"])
 
     def test_parameter_set_ids_marks_and_strict_xpass(self):
         self.check_parity(PYTEST_PARAMETERS, "test-failed")
@@ -685,7 +722,7 @@ class OriginalPytestParity(TemporarySuite):
                                    + "def test_tuple():\n" + textwrap.indent(body, "    ") + "\n")
                 actual = runner.run_module(path, self.root, self.work, "python", [], sys.executable, 30)
                 self.assertEqual(actual.state, "execution-error")
-                self.assertIn("exception tuples and non-class values are unsupported", actual.stderr)
+                self.assertIn("raises requires an exception class or a literal tuple of classes", actual.stderr)
                 expected = runner.oracle([path], self.root, self.work / "oracle", sys.executable, 30)
                 self.assertNotIn("error", expected)
                 self.assertTrue(runner.compare([actual], expected))
@@ -773,7 +810,9 @@ class OriginalPytestParity(TemporarySuite):
                                    "def test_invalid():\n    with pytest.raises(TypeError):\n"
                                    f"        pytest.raises({expected})\n")
                 actual = runner.run_module(path, self.root, self.work, "aot", compiler, sys.executable, 120)
-                self.assertIn(actual.state, {"compile-error", "execution-error"}, actual.events)
+                # The compiler rejects the test, which is left out and reported: no case of it passes.
+                self.assertEqual((actual.state, actual.cases, actual.events), ("empty", [], []))
+                self.assertEqual(list(actual.uncompiled), ["test_suite.py::test_invalid"])
 
     @unittest.skipUnless(os.environ.get("PYSTACHY_PYTEST_NATIVE_COMPILER"), "native compiler opt-in required")
     def test_native_failures_do_not_hide_cleanup(self):
@@ -854,7 +893,7 @@ class MultiModuleParity(TemporarySuite):
                 with open({str(call_marker)!r}, "w") as handle:
                     handle.write("test happened")
         ''', "test_first.py")
-        unsupported = self.source("async def test_second(): pass\n", "test_second.py")
+        unsupported = self.source("def helper(): pass\nglobals()['test_alias'] = helper\n", "test_second.py")
         results = runner.run_suite([first, unsupported], self.root, self.work, "python", [], sys.executable, 30)
         self.assertTrue(any(result.state == "collection-error" for result in results))
         self.assertFalse(import_marker.exists(), "collection preflight ran module initialization")
@@ -884,6 +923,237 @@ class MultiModuleParity(TemporarySuite):
     @unittest.skipUnless(os.environ.get("PYSTACHY_PYTEST_NATIVE_COMPILER"), "native compiler opt-in required")
     def test_native_shared_helper_is_one_module(self):
         self.check_suite(self.shared_helper_suite(), ["passed", "test-failed"], mode="jit")
+
+
+
+DIALECT = """
+import sys
+
+import pytest
+
+LOG: list[str] = []
+IS_LINUX = sys.platform.startswith("linux")
+
+
+@pytest.fixture
+def first():
+    LOG.append("first")
+    yield
+    LOG.append("first-down")
+
+
+@pytest.fixture
+def second():
+    LOG.append("second")
+    yield
+    LOG.append("second-down")
+
+
+@pytest.fixture
+def value():
+    LOG.append("value")
+    return 3
+
+
+@pytest.mark.usefixtures("first")
+@pytest.mark.usefixtures("second")
+def test_usefixtures_order(value):
+    assert LOG == ["second", "first", "value"]
+
+
+@pytest.mark.slow
+@pytest.mark.network(timeout=5)
+def test_labels():
+    assert LOG == ["second", "first", "value", "first-down", "second-down"]
+
+
+@pytest.mark.skipif(sys.version_info < (3, 0), reason="never skipped")
+@pytest.mark.skipif(IS_LINUX or not IS_LINUX, reason="always skipped")
+def test_runtime_skip():
+    assert False
+
+
+@pytest.mark.skipif(len(LOG) > 100, reason="runs")
+def test_runtime_run():
+    assert len(LOG) == 5
+
+
+@pytest.mark.parametrize("n", [1, 2])
+@pytest.mark.skipif(len(LOG) > 100, reason="not skipped")
+def test_param_skip(n):
+    assert n in (1, 2)
+
+
+if __name__ == "__main__":
+    pytest.main([__file__])
+"""
+
+OPERANDS = """
+log: list[str] = []
+
+
+def left() -> int:
+    log.append("left")
+    return 1
+
+
+def right() -> int:
+    log.append("right")
+    return 2
+
+
+def test_order_and_message():
+    try:
+        assert left() == right()
+    except AssertionError as error:
+        assert log == ["left", "right"]
+        assert "assert 1 == 2" in str(error)
+    else:
+        assert False
+
+
+def test_failure_detail():
+    numbers = [1, 2]
+    assert len(numbers) in (3, 4)
+"""
+
+
+@unittest.skipUnless(importlib.util.find_spec("pytest"), "real pytest required for independent oracle")
+class DiagnosticsAndSelection(TemporarySuite):
+    check_parity = OriginalPytestParity.check_parity
+
+    def cli(self, *arguments):
+        evidence = self.root / "evidence.json"
+        evidence.unlink(missing_ok=True)
+        with contextlib.redirect_stdout(io.StringIO()) as out, contextlib.redirect_stderr(io.StringIO()) as err:
+            status = runner.main([*map(str, arguments), "--root", str(self.root), "--work-dir", str(self.work),
+                                  "--json", str(evidence)])
+        report = json.loads(evidence.read_text()) if evidence.exists() else {}
+        return status, report, out.getvalue() + err.getvalue()
+
+    def test_failures_name_exceptions_and_comparison_operands(self):
+        path = self.source("""
+            def add(a: int, b: int) -> int:
+                return a + b
+
+            def test_operands():
+                result = add(2, 2)
+                assert result == add(2, 3)
+
+            def test_missing_key():
+                values: dict[str, int] = {}
+                assert values["missing"] == 1
+        """)
+        status, report, output = self.cli(path, "--mode", "python")
+        details = {event["nodeid"]: event["detail"] for result in report["results"]
+                   for event in result["events"] if event["phase"] == "call"}
+        self.assertEqual(status, 1, output)
+        self.assertEqual(report["qualification"], "pytest-matched")
+        self.assertIn("assert result == add(2, 3)\nassert 4 == 5", details["test_suite.py::test_operands"])
+        self.assertEqual(details["test_suite.py::test_missing_key"], "KeyError: 'missing'")
+        self.assertIn("pytest (CPython) report:", output)
+        self.assertIn("2 failed in", output)
+
+    def test_operands_are_evaluated_once_in_order(self):
+        actual = self.check_parity(OPERANDS, "test-failed")
+        detail = [event["detail"] for event in actual.events if event["phase"] == "call" and event["outcome"] == "failed"]
+        self.assertEqual(len(detail), 1)
+        self.assertTrue(detail[0].endswith("assert len(numbers) in (3, 4)\nassert 2 in (3, 4)"), detail)
+
+    def test_mismatches_name_each_test_and_outcome(self):
+        path = self.source("""
+            import sys
+
+            def test_runner_argv():
+                assert sys.argv[0].endswith("__main__.py")
+        """)
+        status, report, output = self.cli(path, "--mode", "python")
+        self.assertEqual(status, 2)
+        self.assertEqual(report["mismatches"], ["test_suite.py::test_runner_argv [call]: pytest passed, native failed"])
+        self.assertIn("MISMATCH test_suite.py::test_runner_argv [call]", output)
+
+    def test_collection_errors_do_not_run_pytest(self):
+        path = self.source("def helper(): pass\nglobals()['test_alias'] = helper\n")
+        status, report, output = self.cli(path, "--mode", "python")
+        self.assertEqual(status, 2)
+        self.assertIsNone(report["oracle"])
+        self.assertEqual(report["qualification"], "not-compared")
+        self.assertNotIn("differ from pytest", output)
+
+    def test_node_ids_select_cases_in_order_once(self):
+        path = self.source("""
+            import pytest
+
+            def test_a():
+                pass
+
+            def test_b():
+                pass
+
+            @pytest.mark.parametrize("x", [1, 2, 3])
+            def test_p(x):
+                pass
+        """)
+        status, report, output = self.cli(f"{path}::test_b", f"{path}::test_p[2]", f"{path}::test_b", "--mode", "python")
+        self.assertEqual(status, 0, output)
+        self.assertEqual(report["results"][0]["cases"], ["test_suite.py::test_b", "test_suite.py::test_p[2]"])
+        self.assertEqual(report["oracle"]["cases"], report["results"][0]["cases"])
+        for arguments, message in (([f"{path}::test_missing"], "not found: test_suite.py::test_missing"),
+                                   ([f"{path}::test_a", str(path)], "give node IDs"),):
+            with self.subTest(arguments=arguments):
+                status, _, output = self.cli(*arguments, "--mode", "python")
+                self.assertEqual(status, 2)
+                self.assertIn(message, output)
+        other = self.source("def test_c():\n    pass\n", "test_other.py")
+        status, _, output = self.cli(f"{path}::test_a", f"{other}::test_c", f"{path}::test_b", "--mode", "python")
+        self.assertEqual(status, 2)
+        self.assertIn("must be given together", output)
+
+    def test_missing_pytest_is_named(self):
+        path = self.source("def test_a():\n    pass\n")
+        fake = self.root / "python-without-pytest"
+        fake.write_text("#!/bin/sh\necho 'python: No module named pytest' >&2\nexit 1\n")
+        fake.chmod(0o755)
+        reference = runner.oracle([path], self.root, self.work, str(fake), 30)
+        self.assertIn("pytest is not installed for", reference["error"])
+
+    def test_script_guard_labels_usefixtures_and_runtime_skipif(self):
+        self.check_parity(DIALECT)
+
+    def test_generated_names_keep_module_identity_and_free_suite(self):
+        self.source("VALUE = 1\n", "suite.py")
+        self.check_parity("""
+            import suite
+
+            class Record:
+                pass
+
+            def test_module_identity():
+                assert Record.__module__ == "test_suite"
+                assert suite.VALUE == 1
+        """)
+
+    @unittest.skipUnless(os.environ.get("PYSTACHY_PYTEST_NATIVE_COMPILER"), "native compiler opt-in required")
+    def test_native_operands_dialect_and_identity(self):
+        actual = self.check_parity(OPERANDS, "test-failed", mode="jit")
+        self.assertTrue(actual.assertion_operands)
+        self.assertTrue(any(event["detail"].endswith("assert 2 in (3, 4)") for event in actual.events))
+        self.check_parity(DIALECT, mode="jit")
+
+    @unittest.skipUnless(os.environ.get("PYSTACHY_PYTEST_NATIVE_COMPILER"), "native compiler opt-in required")
+    def test_native_operand_build_failure_runs_plain_assertions_once(self):
+        source = "def test_type():\n    x = 5\n    assert type(x) == int\n"
+        for mode in ("jit", "aot"):
+            with self.subTest(mode=mode):
+                self.work = self.root / f"build-{mode}"
+                actual = self.check_parity(source, mode=mode)
+                self.assertFalse(actual.assertion_operands)
+                self.assertTrue(actual.operand_build_error)
+                # The plain choice is kept for the unchanged instrumented code.
+                self.assertTrue(any(self.work.glob("*/plain-assertions")))
+                again = self.check_parity(source, mode=mode)
+                self.assertFalse(again.assertion_operands)
+                self.assertEqual(again.operand_build_error, "")
 
 
 if __name__ == "__main__":

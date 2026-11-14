@@ -454,6 +454,7 @@ pointing at the checkout. Test modules run first, at most four at once. Only aft
 finish do the JIT examples, AOT examples, failure controls and bundled upstream methods
 run together, each with its own work directory. This ordering prevents tests from
 competing with examples for the default directory's lock. The checks cover collection, fixture lifecycle,
+unittest cases, package layouts, `conftest.py` hooks answered for by the comparison, `-k`/`-m` selection,
 JIT/AOT parity, GC stress, failure controls and the bundled upstream fnmatch/textwrap
 methods. The existing job runs once on code PRs, main pushes and manual runs;
 documentation-only PRs retain their lightweight plan. Its artifact includes both
