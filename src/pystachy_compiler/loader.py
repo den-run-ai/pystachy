@@ -168,11 +168,13 @@ def cm_methods(n: Node, names: list[str]) -> None:
                 abstract = ""
                 if d.kind == "def" and len(d.kids) == 5 and not generic and d.kids[3].kind == "deco" and d.kids[4].kind == "deco" and len(d.kids[3].kids) + len(d.kids[4].kids) == 0:
                     other = d.kids[4].s if d.kids[3].s in names else d.kids[3].s if d.kids[4].s in names else ""
-                    if other in ["abstractmethod", "abc.abstractmethod"] and abstract_cm_body(d.kids[2]) and cm_yields_none(d.kids[1]):
+                    # (its parameters are those of two methods below: defaults that are literals,
+                    # which evaluating twice does not show)
+                    if other in ["abstractmethod", "abc.abstractmethod"] and abstract_cm_body(d.kids[2]) and cm_yields_none(d.kids[1]) and len([x for x in d.kids[0].kids if not is_const(x.kids[1])]) == 0:
                         abstract = other
                 if d.kind == "def" and abstract != "" and len(d.kids[0].kids) > 0 and d.kids[0].kids[0].kind == "param":
                     # def NAME(self, ...): raise E, abstract and a context manager: CPython's helper
-                    # calls it for the generator, where it raises. _pys_cm_abs_NAME is that
+                    # calls it for the generator, where it raises. _pys_cm_abs_NAME_LINE is that
                     # function, which NAME calls first; _pys_cm_NAME is the generator the
                     # overrides' managers are typed with, which nothing then makes
                     me = d.kids[0].kids[0].s
@@ -181,10 +183,15 @@ def cm_methods(n: Node, names: list[str]) -> None:
                         top.append(Parser(Lexer("from contextlib import _GeneratorContextManager as _pys_cm_GCM\n", st.line).file()).module().kids[0])
                         imported = True
                     own = f"{st.s}._pys_cm_{d.s}({me}, *args, **kwds)" if st.s in derived else f"{me}._pys_cm_{d.s}(*args, **kwds)"
-                    src = f"@{abstract}\ndef {d.s}({me}, /, *args, **kwds):\n    {me}._pys_cm_abs_{d.s}(*args, **kwds)\n    _pys_cm_self: {cm_root(st.s, d.s, bases, cms)} = {me}\n    return _pys_cm_GCM(_pys_cm_self._pys_cm_{d.s}, args, kwds, {own})\n"
+                    # (this def's body, whatever class the object is of: the method's name has the
+                    # def's line, which no other def of the program has, so super().NAME() of a
+                    # subclass that declares the method again, also in another module, runs this one)
+                    helper = f"_pys_cm_abs_{d.s}_{d.line}"
+                    body = f"{me}.{helper}(*args, **kwds)"
+                    src = f"@{abstract}\ndef {d.s}({me}, /, *args, **kwds):\n    {body}\n    _pys_cm_self: {cm_root(st.s, d.s, bases, cms)} = {me}\n    return _pys_cm_GCM(_pys_cm_self._pys_cm_{d.s}, args, kwds, {own})\n"
                     w = Parser(Lexer(src, d.line).file()).module().kids[0]
                     raises = clone(d)
-                    raises.s = "_pys_cm_abs_" + d.s
+                    raises.s = helper
                     raises.kids = [raises.kids[0], mk("noann", "", d.line, []), raises.kids[2]]
                     d.s = "_pys_cm_" + d.s
                     d.kids = d.kids[:3]
