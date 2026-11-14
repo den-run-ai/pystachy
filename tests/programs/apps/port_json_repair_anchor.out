@@ -1,0 +1,5 @@
+26 anchor cases; 0 differences
+8 cross-draft evolved validators
+{'a': 1}
+SchemaDefinitionError: Unsupported $ref: #n
+[exit 0]

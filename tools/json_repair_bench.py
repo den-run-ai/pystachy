@@ -52,6 +52,16 @@ def command_identity(command):
     return {name: digest(name) for name in sorted(files)}
 
 
+def verify_input_identity(variant):
+    """Check explicitly declared indirect inputs, including non-Python fixtures."""
+    expected = variant.get("input_sha256", {})
+    actual = {name: digest(name) for name in expected}
+    if actual != expected:
+        changed = [name for name in expected if actual[name] != expected[name]]
+        raise ValueError(f"declared benchmark inputs changed: {changed}")
+    return actual
+
+
 def parse_output(output, batches, warmups):
     measured = []
     warmed = []
@@ -120,6 +130,14 @@ def validate_config(config):
             raise ValueError("variant source directory is missing")
         if not isinstance(variant.get("env", {}), dict):
             raise ValueError("variant env must be a mapping")
+        inputs = variant.get("input_sha256", {})
+        if not isinstance(inputs, dict) or not all(
+            isinstance(path, str) and Path(path).is_absolute() and Path(path).is_file()
+            and isinstance(value, str) and len(value) == 64
+            and all(char in "0123456789abcdef" for char in value)
+            for path, value in inputs.items()
+        ):
+            raise ValueError("input_sha256 must map absolute existing files to SHA-256 hashes")
         for case in config["cases"]:
             command = variant["commands"][case["probe"]]
             if not isinstance(command, list) or not command or not all(isinstance(arg, str) for arg in command):
@@ -149,6 +167,7 @@ def run_campaign(config, *, pairs, batches, warmups, cpu, timeout):
         report["identities"][variant["name"]] = {
             "source": source_identity(variant["source"]),
             "commands": {name: command_identity(command) for name, command in variant["commands"].items()},
+            "indirect_inputs": verify_input_identity(variant),
             "provided": variant.get("identity", {}),
         }
     witnesses = {}
@@ -179,6 +198,7 @@ def run_campaign(config, *, pairs, batches, warmups, cpu, timeout):
     # Fail if a source or executable changes during the campaign.
     for variant in variants:
         before = report["identities"][variant["name"]]
+        verify_input_identity(variant)
         if before["source"] != source_identity(variant["source"]):
             raise ValueError(f"source changed while timing: {variant['name']}")
         for name, command in variant["commands"].items():

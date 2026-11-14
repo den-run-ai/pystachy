@@ -7,9 +7,9 @@ Run it with a CPython that has jsonschema 4.26 installed; the port's validator n
 
 Two kinds of difference are counted and not failures. jsonschema tries an object's additional
 properties in the order of a set of their names, which the hash seed decides; it is pinned here
-to the order of the instance, the port's. And the port resolves only "#" and "#/..." references
-into the root schema: where it raises its unresolvable-reference error for an anchor, another
-document or a reference inside a subschema with its own $id, jsonschema's outcome is its own.
+to the order of the instance, the port's. The port resolves root pointers and same-resource
+static anchors: its unresolvable-reference error still excludes legacy/dynamic/duplicate
+anchors, another document or a reference inside a subschema with its own $id.
 
 The result is evidence for the generated cases, not proof. Exit status 1: a difference.
 
@@ -29,6 +29,46 @@ ANSWERS = ROOT / "tests/upstream/json_repair/validator_answers.json"
 D7 = "http://json-schema.org/draft-07/schema#"
 D4 = "http://json-schema.org/draft-04/schema#"
 D19 = "https://json-schema.org/draft/2019-09/schema"
+D20 = "https://json-schema.org/draft/2020-12/schema"
+# Static root-resource anchor resolution, including recursive schemas and false positives in
+# instance-valued keywords. --answers records these from jsonschema, not the port.
+ANCHOR_PAIRS = [
+    ({"$defs": {"n": {"$anchor": "n", "type": "integer"}}, "$ref": "#n"}, 3),
+    ({"$defs": {"n": {"$anchor": "n", "type": "integer"}}, "$ref": "#n"}, "x"),
+    ({"$schema": D19, "definitions": {"n": {"$anchor": "n", "type": "integer"}}, "$ref": "#n"}, "x"),
+    ({"$id": "https://example.com/root", "$defs": {"n": {"$anchor": "n", "type": "null"}},
+      "$ref": "https://example.com/root#n"}, None),
+    ({"$defs": {"n": {"$anchor": "n", "type": "integer"}}, "$ref": "#%6e"}, 3),
+    ({"$ref": "#missing"}, 3),
+    ({"$id": "https://example.com/root", "$ref": "https://example.com/root#a/b"}, 3),
+    ({"$ref": "#n", "const": {"$anchor": "n"}}, 3),
+    ({"$ref": "#n", "default": {"$anchor": "n"}, "examples": [{"$anchor": "n"}]}, 3),
+    ({"$ref": "#n", "enum": [{"$anchor": "n"}], "unknown": {"$anchor": "n"}}, 3),
+    ({"$ref": "#n", "additionalItems": {"$anchor": "n"}}, 3),
+    ({"$schema": D19, "$ref": "#n", "prefixItems": [{"$anchor": "n"}]}, 3),
+    ({"$ref": "#n", "$defs": {"other": {"$schema": D7, "$anchor": "n"}}}, 3),
+    ({"$ref": "#n", "contentSchema": {"$anchor": "n", "type": "integer"}}, "x"),
+    ({"$schema": D19, "$ref": "#n", "items": [{"$anchor": "n", "type": "integer"}]}, "x"),
+    ({"$ref": "#n", "prefixItems": [{"$anchor": "n", "type": "integer"}]}, "x"),
+    ({"$ref": "#n", "$defs": {"n": {"$anchor": "n", "properties": {"child": {"$ref": "#n"}},
+                                      "type": "object"}}}, {"child": {"child": {}}}),
+    ({"$ref": "#n", "$defs": {"n": {"$anchor": "n", "properties": {"child": {"$ref": "#n"}},
+                                      "type": "object"}}}, {"child": {"child": 1}}),
+    ({"$ref": "#n", "$defs": {"n": {"$anchor": "n", "properties": {"a": {}}}},
+      "unevaluatedProperties": False}, {"a": 1}),
+    ({"$ref": "#n", "$defs": {"n": {"$anchor": "n", "properties": {"a": {}}}},
+      "unevaluatedProperties": False}, {"a": 1, "b": 2}),
+    ({"$ref": "#n", "$defs": {"n": {"$anchor": "n", "prefixItems": [{}]}},
+      "unevaluatedItems": False}, [1, 2]),
+    ({"$defs": {"n": {"$anchor": "n", "properties": {"a": {}}}},
+      "unevaluatedProperties": False, "$ref": "#n"}, {"a": 1}),
+    ({"unevaluatedProperties": False, "$ref": "#missing"}, {"a": 1}),
+    ({"unevaluatedItems": False, "$ref": "#bad/anchor"}, [1]),
+    ({"$ref": "#n", "$defs": {"legacy": {"$schema": D7, "dependencies": {
+        "first": ["x"], "second": {"$schema": D20, "$anchor": "n", "type": "integer"}}}}}, 3),
+    ({"$ref": "#n", "$defs": {"legacy": {"$schema": D7, "dependencies": {
+        "first": {"$schema": D20, "$anchor": "n", "type": "integer"}, "second": {}}}}}, "x"),
+]
 # Each keyword's errors, by hand: what --answers records of jsonschema for tools/test_json_repair_validator.py.
 PAIRS = [
     ({"type": "integer"}, "a"), ({"type": ["string", "null"]}, 3), ({"type": "integer"}, 3.0), ({"type": "integer"}, True),
@@ -67,7 +107,7 @@ PAIRS = [
     ({"unevaluatedProperties": {"type": "integer", "minimum": 5}}, {"a": "x", "b": 1}),
     ({"prefixItems": [{}], "unevaluatedItems": False}, [1, 2, "a"]), ({"$schema": D19, "items": [{}], "unevaluatedItems": False}, [1, 2]),
     (False, 1), ({"properties": {"a": False}}, {"a": [1]}), (True, 1), ({}, {"a": 1}),
-]
+] + ANCHOR_PAIRS
 CHECKED = [{"type": "strin"}, {"type": ["string", "string"]}, {"required": "a"}, {"minItems": -1}, {"properties": 3}, {"pattern": "["},
            {"patternProperties": {"(": {}}}, {"allOf": []}, {"$id": "a#b"}, {"items": [1]}, {"enum": 3}, {"multipleOf": 0},
            {"$schema": D7, "items": [1]}, {"$schema": D7, "required": []}, {"$schema": D4, "required": []}, {"$schema": D4, "exclusiveMinimum": True},

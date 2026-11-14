@@ -5,6 +5,7 @@ Compare the witness lines across implementations before comparing seconds.
 Size counts repeated fragments, not bytes. Startup, compilation, input creation
 and exact-result validation are outside the timer. Use ROUNDS=0 for validation.
 """
+import json
 import sys
 from time import perf_counter
 from typing import Any
@@ -76,6 +77,8 @@ source, expected = payload(mode, size)
 logging = mode == "logs"
 result: Any = repair_json(source, return_objects=True, logging=logging)
 log_count = checked_value(result, expected, logging)
+complete = json.dumps(result, ensure_ascii=True)
+print("outputs", complete)
 print("witness", mode, size, len(source), len(expected), log_count)
 print("rounds", rounds)
 for batch in range(warmups + batches):
@@ -85,4 +88,6 @@ for batch in range(warmups + batches):
     seconds = perf_counter() - start
     if checked_value(result, expected, logging) != log_count:
         raise ValueError("repair log count changed across repeated calls")
+    if json.dumps(result, ensure_ascii=True) != complete:
+        raise ValueError("complete repaired result, dictionary order or log text changed")
     print("warmup_seconds" if batch < warmups else "seconds", seconds)

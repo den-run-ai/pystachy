@@ -40,7 +40,11 @@ class AnswerTests(unittest.TestCase):
             self.assertEqual(json.loads(json.dumps(got)), want)
 
     def test_references_that_are_left_out_fail(self):
-        for schema, text in (({"$ref": "#name", "$defs": {"a": {"$anchor": "name"}}}, "Unresolvable: #name"),
+        for schema, text in (({"$ref": "#name", "$defs": {"a": {"$dynamicAnchor": "name"}}}, "Unresolvable: #name"),
+                             ({"$schema": fuzz.D7, "$ref": "#name", "definitions": {"a": {"$id": "#name"}}},
+                              "Unresolvable: #name"),
+                             ({"$ref": "#name", "$defs": {"a": {"$anchor": "name"}, "b": {"$anchor": "name"}}},
+                              "Unresolvable: #name"),
                              ({"$ref": "other.json"}, "Unresolvable: other.json"),
                              ({"$ref": "https://example.com/a#/b"}, "Unresolvable: https://example.com/a#/b"),
                              ({"properties": {"a": {"$id": "https://example.com/a", "$ref": "#/$defs/n"}},
@@ -57,6 +61,46 @@ class AnswerTests(unittest.TestCase):
         with self.assertRaisesRegex(exceptions.SchemaError, "Draft 3"):
             validators.validator_for(draft3).check_schema(draft3)
         self.assertEqual(sorted(validators.METASCHEMAS), [4, 6, 7, 2019, 2020])
+
+    def test_static_anchors_are_found_only_in_schema_positions(self):
+        for draft in (fuzz.D19, fuzz.D20):
+            singles = ("additionalProperties", "contains", "contentSchema", "else", "if", "items", "not",
+                       "propertyNames", "then", "unevaluatedItems", "unevaluatedProperties")
+            arrays = ("allOf", "anyOf", "oneOf") + (("prefixItems",) if draft == fuzz.D20 else ())
+            maps = ("$defs", "definitions", "dependentSchemas", "patternProperties", "properties")
+            anchor = {"$anchor": "target", "type": "integer"}
+            for keyword in singles + arrays + maps:
+                child = [anchor] if keyword in arrays else {"a": anchor} if keyword in maps else anchor
+                schema = {"$schema": draft, keyword: child}
+                validator = validators.validator_for(schema)(schema)
+                self.assertEqual(validator._resolve("#target", validator._draft, False), (anchor, False), keyword)
+            for keyword in ("const", "default", "enum", "examples", "unknown"):
+                schema = {"$schema": draft, keyword: [anchor] if keyword in ("enum", "examples") else anchor}
+                validator = validators.validator_for(schema)(schema)
+                with self.assertRaises(exceptions.NoSuchAnchor, msg=keyword):
+                    validator._resolve("#target", validator._draft, False, False)
+
+    def test_evolve_retains_the_root_anchor_dialect(self):
+        root = {"$id": "https://example.com/root", "$defs": {"n": {"$anchor": "n", "type": "integer"}}}
+        validator = validators.validator_for(root)(root)
+        for draft in (fuzz.D4, fuzz.D7, fuzz.D19, fuzz.D20):
+            for ref in ("#n", "https://example.com/root#n"):
+                evolved = validator.evolve({"$schema": draft, "$ref": ref})
+                self.assertTrue(evolved.is_valid(3))
+                self.assertFalse(evolved.is_valid("x"))
+
+    def test_embedded_resources_cannot_shadow_root_anchors(self):
+        for child_id in ("", "#", "https://example.com/root", "https://example.com/root#", "other.json"):
+            for reverse in (False, True):
+                definitions = {"nested": {"$id": child_id, "$anchor": "n", "type": "string"},
+                               "outer": {"$anchor": "n", "type": "integer"}}
+                if reverse:
+                    definitions = dict(reversed(list(definitions.items())))
+                root = {"$id": "https://example.com/root", "$defs": definitions, "$ref": "#n"}
+                validator = validators.validator_for(root)(root)
+                for instance in (3, "x"):
+                    with self.assertRaisesRegex(exceptions._WrappedReferencingError, "Unresolvable: #n"):
+                        validator.validate(instance)
 
 
 class GeneratedTests(unittest.TestCase):

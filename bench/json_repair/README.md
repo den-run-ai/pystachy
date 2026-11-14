@@ -6,6 +6,17 @@ every variant must print identical witnesses. Startup, compilation, input creati
 validation are not timed. The inputs model features of LLM output; they are not a sample
 of production failure frequencies.
 
+## Current upstream comparison
+
+The [14 November refresh](results/refresh-2026-11-14.md) compares pristine upstream
+0.64.9, adapted CPython, AOT, JIT and the actual CPython companion extension, with 400
+process records and reproducible source/artifact hashes. It measures the unreleased
+schema-port stack, including bounded static anchors. AOT is 6.3–8.0× faster than upstream
+on mixed/malformed records and 3.0–25.2× on the schema workloads. The adapted CPython
+baseline is essential: it is 4.1× faster than native on the long Unicode fixture.
+The report includes process variability, startup/build costs and remaining compatibility
+gaps; these results do not replace the historical same-compiler rebase comparison below.
+
 ## Port re-based on upstream 0.64.9
 
 The port is now [upstream 0.64.9's source with a small patch set](../../ports/json_repair/PORT.md#differences-from-upstream)
@@ -77,7 +88,8 @@ and five measured batches each, pinned to one CPU. Values are medians of process
 are retained.
 Port changes merged on 4 November moved several of these workloads; a
 [9 November research re-measurement](https://github.com/den-run-ai/pystachy/blob/eed2912f204688c0b5244c04c72f480f9c98ef1f/research/status-20261109/json-repair/json-repair-remeasure-2026-11-09.json)
-on another host recorded them. The table remains the latest committed release measurement.
+on another host recorded them. This remains historical release evidence; the current
+unreleased-stack comparison is linked above.
 
 | Workload, time per repair | Upstream, CPython | Port, CPython | Port, AOT | Port, JIT | AOT vs upstream |
 |---|---:|---:|---:|---:|---:|

@@ -1,0 +1,306 @@
+{
+  "source_commit": "becf79b1aad9cd25a56301fd6280fbdda184bdee",
+  "commands": [
+    {
+      "name": "write-inputs",
+      "command": [
+        "/workspace/scratch/a0582a7d2fcd/json-bench-venv/bin/python",
+        "/workspace/scratch/a0582a7d2fcd/json-repair-refresh/tools/json_repair_parity.py",
+        "--write-inputs",
+        "/workspace/scratch/a0582a7d2fcd/json-refresh-validation/inputs.jsonl"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "elapsed_seconds": 0.11520794600073714
+    },
+    {
+      "name": "upstream-cpython",
+      "command": [
+        "/workspace/scratch/a0582a7d2fcd/json-bench-venv/bin/python",
+        "/workspace/scratch/a0582a7d2fcd/json-repair-refresh/tests/upstream/json_repair/replay.py",
+        "/workspace/scratch/a0582a7d2fcd/json-refresh-validation/inputs.jsonl"
+      ],
+      "environment": {
+        "PYTHONPATH": "/workspace/scratch/a0582a7d2fcd/json-repair-upstream/src"
+      },
+      "returncode": 0,
+      "elapsed_seconds": 0.26491014899511356
+    },
+    {
+      "name": "upstream-cpython-check",
+      "command": [
+        "/workspace/scratch/a0582a7d2fcd/json-bench-venv/bin/python",
+        "/workspace/scratch/a0582a7d2fcd/json-repair-refresh/tools/json_repair_parity.py",
+        "/workspace/scratch/a0582a7d2fcd/json-refresh-validation/upstream-cpython.stdout",
+        "--report",
+        "/workspace/scratch/a0582a7d2fcd/json-refresh-validation/upstream-cpython.json"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "elapsed_seconds": 0.16533916899788892
+    },
+    {
+      "name": "adapted-cpython",
+      "command": [
+        "/workspace/scratch/a0582a7d2fcd/json-bench-venv/bin/python",
+        "/workspace/scratch/a0582a7d2fcd/json-repair-refresh/tests/upstream/json_repair/replay.py",
+        "/workspace/scratch/a0582a7d2fcd/json-refresh-validation/inputs.jsonl"
+      ],
+      "environment": {
+        "PYTHONPATH": "/workspace/scratch/a0582a7d2fcd/json-repair-refresh/ports"
+      },
+      "returncode": 0,
+      "elapsed_seconds": 0.21490494300087448
+    },
+    {
+      "name": "adapted-cpython-check",
+      "command": [
+        "/workspace/scratch/a0582a7d2fcd/json-bench-venv/bin/python",
+        "/workspace/scratch/a0582a7d2fcd/json-repair-refresh/tools/json_repair_parity.py",
+        "/workspace/scratch/a0582a7d2fcd/json-refresh-validation/adapted-cpython.stdout",
+        "--report",
+        "/workspace/scratch/a0582a7d2fcd/json-refresh-validation/adapted-cpython.json"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "elapsed_seconds": 0.164973730003112
+    },
+    {
+      "name": "aot",
+      "command": [
+        "/workspace/scratch/a0582a7d2fcd/json-repair-refresh/build/json-refresh/replay",
+        "/workspace/scratch/a0582a7d2fcd/json-refresh-validation/inputs.jsonl"
+      ],
+      "environment": {
+        "PYSTACHY_HOME": "/workspace/scratch/a0582a7d2fcd/json-repair-refresh",
+        "PYSTACHY_PATH": "/workspace/scratch/a0582a7d2fcd/json-repair-refresh/ports",
+        "PYSTACHY_LLVM": "/workspace/scratch/c2b093657c17/toolchains/llvm18/payload/usr/lib/llvm-18/bin",
+        "PYSTACHY_JOBS": "2"
+      },
+      "returncode": 0,
+      "elapsed_seconds": 0.16499826600193046
+    },
+    {
+      "name": "aot-check",
+      "command": [
+        "/workspace/scratch/a0582a7d2fcd/json-bench-venv/bin/python",
+        "/workspace/scratch/a0582a7d2fcd/json-repair-refresh/tools/json_repair_parity.py",
+        "/workspace/scratch/a0582a7d2fcd/json-refresh-validation/aot.stdout",
+        "--report",
+        "/workspace/scratch/a0582a7d2fcd/json-refresh-validation/aot.json"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "elapsed_seconds": 0.11489880199951585
+    },
+    {
+      "name": "aot-gc",
+      "command": [
+        "/workspace/scratch/a0582a7d2fcd/json-repair-refresh/build/json-refresh/replay",
+        "/workspace/scratch/a0582a7d2fcd/json-refresh-validation/inputs.jsonl"
+      ],
+      "environment": {
+        "PYSTACHY_HOME": "/workspace/scratch/a0582a7d2fcd/json-repair-refresh",
+        "PYSTACHY_PATH": "/workspace/scratch/a0582a7d2fcd/json-repair-refresh/ports",
+        "PYSTACHY_LLVM": "/workspace/scratch/c2b093657c17/toolchains/llvm18/payload/usr/lib/llvm-18/bin",
+        "PYSTACHY_JOBS": "2",
+        "PYSTACHY_GC_STRESS": "1"
+      },
+      "returncode": 0,
+      "elapsed_seconds": 54.39141862899851
+    },
+    {
+      "name": "aot-gc-check",
+      "command": [
+        "/workspace/scratch/a0582a7d2fcd/json-bench-venv/bin/python",
+        "/workspace/scratch/a0582a7d2fcd/json-repair-refresh/tools/json_repair_parity.py",
+        "/workspace/scratch/a0582a7d2fcd/json-refresh-validation/aot-gc.stdout",
+        "--report",
+        "/workspace/scratch/a0582a7d2fcd/json-refresh-validation/aot-gc.json"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "elapsed_seconds": 0.16515958600211889
+    },
+    {
+      "name": "jit",
+      "command": [
+        "/workspace/scratch/a0582a7d2fcd/json-repair-refresh/pystachy",
+        "run",
+        "/workspace/scratch/a0582a7d2fcd/json-repair-refresh/tests/upstream/json_repair/replay.py",
+        "/workspace/scratch/a0582a7d2fcd/json-refresh-validation/inputs.jsonl"
+      ],
+      "environment": {
+        "PYSTACHY_HOME": "/workspace/scratch/a0582a7d2fcd/json-repair-refresh",
+        "PYSTACHY_PATH": "/workspace/scratch/a0582a7d2fcd/json-repair-refresh/ports",
+        "PYSTACHY_LLVM": "/workspace/scratch/c2b093657c17/toolchains/llvm18/payload/usr/lib/llvm-18/bin",
+        "PYSTACHY_JOBS": "2"
+      },
+      "returncode": 0,
+      "elapsed_seconds": 7.091952082999342
+    },
+    {
+      "name": "jit-check",
+      "command": [
+        "/workspace/scratch/a0582a7d2fcd/json-bench-venv/bin/python",
+        "/workspace/scratch/a0582a7d2fcd/json-repair-refresh/tools/json_repair_parity.py",
+        "/workspace/scratch/a0582a7d2fcd/json-refresh-validation/jit.stdout",
+        "--report",
+        "/workspace/scratch/a0582a7d2fcd/json-refresh-validation/jit.json"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "elapsed_seconds": 0.11463159899722086
+    },
+    {
+      "name": "jit-gc",
+      "command": [
+        "/workspace/scratch/a0582a7d2fcd/json-repair-refresh/pystachy",
+        "run",
+        "/workspace/scratch/a0582a7d2fcd/json-repair-refresh/tests/upstream/json_repair/replay.py",
+        "/workspace/scratch/a0582a7d2fcd/json-refresh-validation/inputs.jsonl"
+      ],
+      "environment": {
+        "PYSTACHY_HOME": "/workspace/scratch/a0582a7d2fcd/json-repair-refresh",
+        "PYSTACHY_PATH": "/workspace/scratch/a0582a7d2fcd/json-repair-refresh/ports",
+        "PYSTACHY_LLVM": "/workspace/scratch/c2b093657c17/toolchains/llvm18/payload/usr/lib/llvm-18/bin",
+        "PYSTACHY_JOBS": "2",
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "returncode": 0,
+      "elapsed_seconds": 74.29281634099607
+    },
+    {
+      "name": "jit-gc-check",
+      "command": [
+        "/workspace/scratch/a0582a7d2fcd/json-bench-venv/bin/python",
+        "/workspace/scratch/a0582a7d2fcd/json-repair-refresh/tools/json_repair_parity.py",
+        "/workspace/scratch/a0582a7d2fcd/json-refresh-validation/jit-gc.stdout",
+        "--report",
+        "/workspace/scratch/a0582a7d2fcd/json-refresh-validation/jit-gc.json"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "elapsed_seconds": 0.1653553309952258
+    },
+    {
+      "name": "companion",
+      "command": [
+        "/workspace/scratch/a0582a7d2fcd/json-bench-venv/bin/python",
+        "-I",
+        "/workspace/scratch/a0582a7d2fcd/json-repair-refresh/tests/upstream/json_repair/extension.py",
+        "/workspace/scratch/a0582a7d2fcd/json-repair-refresh/build/json-refresh"
+      ],
+      "environment": {
+        "PYSTACHY_HOME": "/workspace/scratch/a0582a7d2fcd/json-repair-refresh",
+        "PYSTACHY_PATH": "/workspace/scratch/a0582a7d2fcd/json-repair-refresh/ports",
+        "PYSTACHY_LLVM": "/workspace/scratch/c2b093657c17/toolchains/llvm18/payload/usr/lib/llvm-18/bin",
+        "PYSTACHY_JOBS": "2"
+      },
+      "returncode": 0,
+      "elapsed_seconds": 0.3152748780048569
+    },
+    {
+      "name": "companion-gc",
+      "command": [
+        "/workspace/scratch/a0582a7d2fcd/json-bench-venv/bin/python",
+        "-I",
+        "/workspace/scratch/a0582a7d2fcd/json-repair-refresh/tests/upstream/json_repair/extension.py",
+        "/workspace/scratch/a0582a7d2fcd/json-repair-refresh/build/json-refresh"
+      ],
+      "environment": {
+        "PYSTACHY_HOME": "/workspace/scratch/a0582a7d2fcd/json-repair-refresh",
+        "PYSTACHY_PATH": "/workspace/scratch/a0582a7d2fcd/json-repair-refresh/ports",
+        "PYSTACHY_LLVM": "/workspace/scratch/c2b093657c17/toolchains/llvm18/payload/usr/lib/llvm-18/bin",
+        "PYSTACHY_JOBS": "2",
+        "PYSTACHY_GC_STRESS": "1"
+      },
+      "returncode": 0,
+      "elapsed_seconds": 2.928947683998558
+    },
+    {
+      "name": "cli",
+      "command": [
+        "/workspace/scratch/a0582a7d2fcd/json-bench-venv/bin/python",
+        "/workspace/scratch/a0582a7d2fcd/json-repair-refresh/tests/upstream/json_repair/cli.py",
+        "/workspace/scratch/a0582a7d2fcd/json-repair-refresh/pystachy"
+      ],
+      "environment": {
+        "PYSTACHY_HOME": "/workspace/scratch/a0582a7d2fcd/json-repair-refresh",
+        "PYSTACHY_PATH": "/workspace/scratch/a0582a7d2fcd/json-repair-refresh/ports",
+        "PYSTACHY_LLVM": "/workspace/scratch/c2b093657c17/toolchains/llvm18/payload/usr/lib/llvm-18/bin",
+        "PYSTACHY_JOBS": "2"
+      },
+      "returncode": 0,
+      "elapsed_seconds": 220.42723994400149
+    }
+  ],
+  "replay_results": {
+    "jit-gc": {
+      "cases": 962,
+      "matched": 962,
+      "problems": []
+    },
+    "aot-gc": {
+      "cases": 962,
+      "matched": 962,
+      "problems": []
+    },
+    "aot": {
+      "cases": 962,
+      "matched": 962,
+      "problems": []
+    },
+    "adapted-cpython": {
+      "cases": 962,
+      "matched": 962,
+      "problems": []
+    },
+    "jit": {
+      "cases": 962,
+      "matched": 962,
+      "problems": []
+    },
+    "upstream-cpython": {
+      "cases": 962,
+      "matched": 962,
+      "problems": []
+    }
+  },
+  "companion": "Checking /workspace/scratch/a0582a7d2fcd/json-repair-refresh/build/json-refresh/pystachy_json_repair/_native.abi3.so\n962/962 match; 0 problems\n",
+  "companion_gc": "Checking /workspace/scratch/a0582a7d2fcd/json-repair-refresh/build/json-refresh/pystachy_json_repair/_native.abi3.so\n962/962 match; 0 problems\n",
+  "cli": "json_repair CLI: 20 process cases matched CPython 3.13.16 in JIT and AOT\n",
+  "validator_fuzz": "2000 schemas, 1279 valid schemas, 5116 instances, 1957 invalid instances, 658 raised, 17 references left out; 0 differences\n",
+  "upstream_pytest": {
+    "pristine": {
+      "passed": 548,
+      "skipped": 25
+    },
+    "adapted": {
+      "passed": 531,
+      "failed": 17,
+      "skipped": 25
+    },
+    "mode": "CI=1; skips upstream timing tests",
+    "known_failures": "15 Pydantic; two replaced string-accumulator internal-state assertions"
+  },
+  "code_head_ci": [
+    "https://github.com/den-run-ai/pystachy/actions/runs/43571439408",
+    "https://github.com/den-run-ai/pystachy/actions/runs/43571439393"
+  ],
+  "logs_sha256": {
+    "json-bootstrap.log": "4af6a79c1b9a9f4241ad3acf760b7a30e67e777df8f067a59814f23f740e765e",
+    "json-check-fast.log": "bb4f431ac10d3b79d696cfbab6fb454343c8a480357c44f7a98cc3008b87bc52",
+    "json-anchor-native.log": "7f432fae249536f544ebe2557776e09043a92590017acead3aa5db399f35b9b1",
+    "json-anchor-native-final.log": "b4f91cfce3815d25bfed3c6c61e5aea163ed27a550cd466de61c6d787458aa03",
+    "json-anchor-gc.log": "f7fb1044335df5c38d33559ed591498529dede8a5a7b0df82ec032c096949305",
+    "json-upstream-pytest-ci.log": "9ffabccdc6167f59b9ad8f21c41f063e5afee1ad2c4f6716f625c6c9ca152d03",
+    "json-port-pytest.log": "1d653bdb40d739660a02fc04f03fd63257853d17f578f9097823300264cd1cc0",
+    "json-upstream-pytest.log": "5941aea0b3449e1b0b5c65861c9d2fce6f4fd3498796753a4c3be03c63aa3e70"
+  },
+  "notes": [
+    "Initial native anchor recording omitted the exit-status envelope; schema passed 2/2 there, then corrected anchor recording passed its 2/2 rerun. Combined program-GC-stress run passed 4/4.",
+    "CLI comparison uses the adapted custom command under CPython versus native JIT/AOT; it is not a pristine upstream CLI/schema CLI comparison.",
+    "Full local make verify, fresh wheel portability and long-running retention were not run."
+  ]
+}

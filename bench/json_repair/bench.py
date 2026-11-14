@@ -2,8 +2,9 @@
 """Small repeated trace-repair workload; serialization is outside the timed loop.
 
 Run with ROUNDS [BATCHES WARMUPS] (default 2000, ten records per round).
-Compare the first output line and checksum across pristine/adapted/native runs
-before comparing seconds. Zero iterations emits the exact output witness only.
+Compare the complete output and checksum witnesses across pristine/adapted/native
+runs before comparing seconds. Each batch retains its latest result for every
+input and compares complete output outside the timer, including dictionary order.
 """
 import json
 import sys
@@ -54,18 +55,23 @@ for source in SOURCES:
     result: Any = repair_json(source, return_objects=True)
     outputs.append(result)
     per_round += weight(result)
-print("outputs", json.dumps(outputs, ensure_ascii=True, sort_keys=True))
+expected = json.dumps(outputs, ensure_ascii=True)
+print("outputs", expected)
 print("per_round", per_round)
 
 for batch in range(warmups + batches):
     checksum = 0
     start = perf_counter()
     for _ in range(rounds):
-        for source in SOURCES:
-            checksum += weight(repair_json(source, return_objects=True))
+        for index in range(len(SOURCES)):
+            result = repair_json(SOURCES[index], return_objects=True)
+            outputs[index] = result
+            checksum += weight(result)
     seconds = perf_counter() - start
     if checksum != rounds * per_round:
         raise ValueError("repair checksum changed across repeated calls")
+    if json.dumps(outputs, ensure_ascii=True) != expected:
+        raise ValueError("complete repaired result or dictionary order changed")
     if batch >= warmups:
         print("records", rounds * len(SOURCES))
         print("checksum", checksum)
