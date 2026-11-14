@@ -194,7 +194,7 @@ class AdapterTests(SnapshotFixture):
         original = copy.deepcopy(self.snapshot)
         candidate = self.normalized()
         self.assertEqual(self.snapshot, original)
-        self.assertEqual(candidate["schema_version"], 2)
+        self.assertEqual(candidate["schema_version"], 3)
         self.assertTrue(any(node["op"] == "payload" for node in candidate["program"]["nodes"]))
         self.assertEqual(len(candidate["program"]["nodes"]), len(candidate["certificate"]))
         self.assertEqual(candidate["certificate"][candidate["program"]["entry"]], [])
@@ -855,7 +855,8 @@ class ClassAndIntTests(SnapshotFixture):
         def renumber_subclass(snapshot, function):
             # (the class number the case names now belongs to no descriptor)
             next(t for t in snapshot["dynamic_types"] if t["symbol"] == "@dt.Sub")["cls"] = 7
-        self.assertFalse(self.mutated("dyn.call.label.0", renumber_subclass))
+        with self.assertRaisesRegex(ValueError, "descriptor and class layout disagree"):
+            self.mutated("dyn.call.label.0", renumber_subclass)
 
     def test_descriptor_table_is_required_and_validated(self):
         snapshot, function = self.selected("dyn.call.label.0")

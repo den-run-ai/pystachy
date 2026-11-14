@@ -7,6 +7,11 @@
    survival checks. Like listprobe, this includes the real runtime and links runtime.py's IR.
    usage: make boxprobe */
 #include "../runtime.c"
+#include <stddef.h>
+
+_Static_assert(offsetof(Dyn, t) == 0 && offsetof(Dyn, v) == 8, "dynamic payload ABI");
+_Static_assert(offsetof(DynType, kind) == 0 && offsetof(DynType, cls) == 24 &&
+               offsetof(DynType, base) == 32 && offsetof(DynType, flags) == 40, "dynamic descriptor ABI");
 
 I pys_obj_eq(I c, I a, I b) { (void)c; return a == b; }
 I pys_obj_cmp(I c, I op, I a, I b) { (void)c; (void)op; return a < b ? -1 : a > b; }
@@ -28,6 +33,32 @@ __attribute__((noinline)) static void scrub_collect(void) {
 static void box_slot(void *p, int atomic, const char *what) {
   Seg *s = gc_find(p);
   if (!s || s->large || s->size != 16 || (s->k & 1) != atomic) bad(what);
+}
+
+/* The exact payload bits and referenced address consumed by dyn.payload's
+   LLVM load; guards establish which interpretation that word permits. */
+__attribute__((noinline)) static void boxing_contracts(void) {
+  const I integers[] = {INT64_MIN, -1000, -5, 0, 256, 1000, INT64_MAX};
+  for (size_t i = 0; i < sizeof integers / sizeof *integers; i++) {
+    Dyn *box = pys_dyn_int(integers[i]);
+    if (box->t != &pys_dyntype_int || box->v != integers[i] ||
+        pys_dyn_unbox(box, &pys_dyntype_int) != integers[i]) bad("int boxing changed payload bits");
+  }
+  const uint64_t floats[] = {0, UINT64_C(0x8000000000000000), UINT64_C(0x3ff8000000000000),
+                            UINT64_C(0x7ff0000000000000), UINT64_C(0xfff0000000000000),
+                            UINT64_C(0x7ff8000000000042)};
+  for (size_t i = 0; i < sizeof floats / sizeof *floats; i++) {
+    double value;
+    memcpy(&value, &floats[i], 8);
+    Dyn *box = pys_dyn_float(value);
+    if (box->t != &pys_dyntype_float || (uint64_t)box->v != floats[i] ||
+        (uint64_t)pys_dyn_unbox(box, &pys_dyntype_float) != floats[i]) bad("float boxing changed payload bits");
+  }
+  Str *value = cstr("same address");
+  Dyn *box = pys_dyn_ref(&pys_dyntype_str, value);
+  if (box->t != &pys_dyntype_str || (void *)box->v != value ||
+      (void *)pys_dyn_unbox(box, &pys_dyntype_str) != value) bad("reference boxing copied its payload");
+  if (pys_dyn_ref(&pys_dyntype_str, NULL) != DNONE) bad("null reference did not box None");
 }
 
 __attribute__((noinline)) static void sizes(void) {
@@ -72,6 +103,7 @@ __attribute__((noinline)) static void dead(uintptr_t x) {
 
 int main(void) {
   gc_init(__builtin_frame_address(0), roots, 2);
+  boxing_contracts();
   sizes();
   uintptr_t x = hold(8);               /* the payload word's address */
   scrub_collect();
@@ -79,6 +111,6 @@ int main(void) {
   x = hold(16);                        /* one past the end: the next slot's address */
   scrub_collect();
   dead(x);
-  puts("boxprobe: 16-byte box slots, a box kept by its payload word's address, and the one-past-the-end control passed");
+  puts("boxprobe: boxing bits and reference addresses, 16-byte box slots, a box kept by its payload word's address, and the one-past-the-end control passed");
   return 0;
 }

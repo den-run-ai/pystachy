@@ -6,7 +6,7 @@ the model does not establish that the exporter or runtime implements that model.
 
 | Area | Enforced property | Current boundary |
 |---|---|---|
-| Dynamic `Any` | Payload reads have matching type guards | Runtime tag/layout contracts |
+| Dynamic `Any` | Payload reads have matching type guards and compatible class layout prefixes | Exported layouts, runtime tag/boxing contracts and LLVM offsets |
 | Lists, dictionaries and sets | Unchecked accesses have bounds/live-entry facts | Runtime effects and container contracts |
 | Closure cells and calls | Captured-container facts survive only valid reads; visible callee writes invalidate facts | Independent Python body-effect scan and cell ABI |
 | Promoting integers | Selected result-fit claims and actual checked `+`, `-`, `*` reconstruction paths | Other inline arithmetic, LLVM and integer runtime |
@@ -178,6 +178,36 @@ dependencies of the public theorems, rejecting admitted proofs, extra axioms and
 native-computation assumptions. The allowed axioms are Lean's standard
 `propext`, `Classical.choice` and `Quot.sound`.
 
+## Class layouts and boxing correspondence
+
+`PystachyLayout.accepted_layout_projection` connects an accepted payload guard
+with independently checked layout obligations: every admitted concrete descriptor
+must have the requested class's complete member prefix. A member records both
+its source representation and LLVM storage type; two pointer fields with different
+source representations are not interchangeable. Assignment flags and numeric
+identity companions are members too.
+
+The inspector exports `dynamic_layouts` from the class registry and the ordered
+members used by `lower_module.struct_types`, independently of `dynamic_types`'s
+DynType constants. The adapter cross-checks their payload names, class numbers,
+bases, roles and inventory. Schema 3 candidates distinguish `class_payload`
+from ordinary payload nodes. Each class read names its expected layout, and the
+native front end constructs a prefix obligation for every tag that read admits.
+Deleting a layout entry, clearing the table or downgrading the candidate to
+schema 2 cannot discard those obligations. Schema 2 remains supported for the
+other guard-based proof adapters. Old inspection snapshots with classes must be
+regenerated to include the layout inventory.
+
+Mutation tests change a subclass's member representation, LLVM type, order or
+extent, and independently change descriptor metadata. They compare exported
+layouts with emitted `%C.*` struct declarations and compile the real C Dyn/DynType
+declarations to check named offsets against payload lowering. `make boxprobe`
+tests the actual runtime's integer and float payload bits (including negative
+zero and NaN), reference addresses and null boxing, alongside its existing GC
+controls. These are ABI/runtime tests, not Lean boxing or alias-preservation
+theorems. Snapshot fidelity, the adapter's classification of reads, LLVM's layout
+rules and the runtime implementation remain trusted.
+
 ## How actual IR reaches the model
 
 `tools/check_lean_boundary.py` reads the existing inspection schema, validates
@@ -199,8 +229,9 @@ explicit role:
   the runtime's `box`/`ubox` slot argument. The internal address may
   not escape, and other raw-slot transports are unsupported. Producer identity
   comes from result numbers, not a consumer's operand annotation. This is a
-  structural check in the trusted Python bridge, not a Lean proof of runtime
-  layout or of `slot.unpack` lowering.
+  structural check in the trusted Python bridge. Class projections additionally
+  receive the checked layout-prefix obligations above; `slot.unpack` lowering
+  remains outside the theorem.
 - Guards come from tests of a box's tag: comparisons of its DynType with a
   descriptor; runtime.c's `pys_dyn_isa` and `pys_dyn_role_isa`, whose accepted
   descriptors the table determines (a class's subclasses and None, or both int
@@ -293,11 +324,14 @@ not proved by this version:
 - The descriptor table: that it lists every DynType the program emits. (runtime.c's
   iterator descriptors have no base, class number or kind that an interpreted test
   admits.) The class numbers that dispatchers switch on must identify the program's
-  classes. The bridge's copies of runtime.c's builtin kinds, role flag, class number
+  classes; the bridge cross-checks them against the separate class registry
+  export. The bridge's copies of runtime.c's builtin kinds, role flag, class number
   word and builtin payload tags are tested against runtime.c
   ([test_typed_dynamic_tables.py](../test_typed_dynamic_tables.py)), not proved.
-- Payload layout: that a subclass's, a secondary role's, a bool's and a native
-  int list's payloads have the layouts their accepted reads assume.
+- The correspondence of exported class members to physical LLVM offsets. Lean
+  checks each admitted class/role prefix, but the exporter and LLVM layout rules
+  remain trusted. Builtin bool and native int-list payload contracts are tested,
+  not proved.
 - Object initialization, null/unbound behavior (a null dynamic value has no tag,
   so it must never pass a guard), GC, aliases in mutable containers, or the
   implementation of runtime tag operations.

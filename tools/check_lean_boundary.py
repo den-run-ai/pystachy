@@ -74,7 +74,7 @@ INVOKES = {"rt", "call", "icall", "init", "gen.resume"}
 SLOT_ACCESS = {"mem.load", "mem.store", "mach.load", "mach.store", "landing"}
 SUPPORTED_OPS = ORDINARY | TAG_OPS | TERMINATORS
 LIMITATIONS = [
-    "Only dyn.payload guard safety in each selected normalized function is checked.",
+    "Dynamic payload guards and inventoried class layout prefixes are checked in each selected normalized function.",
     "Python normalization, snapshot fidelity, the descriptor table, runtime tag and payload layout "
     "contracts and LLVM lowering are not proved.",
     "Generators, unlisted payload types and stores into boxes or descriptors are rejected; null "
@@ -205,7 +205,7 @@ def live_locations(nodes):
     guard matters only when a successor's obligations need it; the normal backward
     propagation already retains those. Dead copies similarly need no source facts.
     """
-    reads = [{node["value"]} if node["op"] == "payload" else set() for node in nodes]
+    reads = [{node["value"]} if node["op"] in {"payload", "class_payload"} else set() for node in nodes]
     predecessors = [[] for _ in nodes]
     for index, node in enumerate(nodes):
         for target in successors(node):
@@ -326,6 +326,42 @@ def descriptor_table(snapshot):
     return types, derived, roles, classes
 
 
+def descriptor_layouts(snapshot, types):
+    """Cross-check descriptor claims against the independently exported class layouts.
+
+    Same-width pointer members remain distinct source representations. The
+    ordered LLVM types also capture padding/alignment inputs, including hidden
+    fields. Prefix compatibility itself is checked by Lean, not trusted here.
+    """
+    descriptors = {symbol: entry for symbol, entry in types.items() if entry["kind"] == DK_OBJ}
+    raw = snapshot.get("dynamic_layouts")
+    if not descriptors and raw is None:
+        return {}
+    if raw is None:
+        raise Unsupported("the snapshot has no dynamic_layouts table; inspect the program again")
+    require(isinstance(raw, list) and len(raw) <= 65536, "invalid dynamic_layouts table")
+    layouts = {}
+    for entry in raw:
+        require(isinstance(entry, dict) and set(entry) == {
+            "name", "descriptor", "base", "role", "number", "members", "llvm"}, "invalid class layout fields")
+        payload = name(entry["name"], "class layout name")
+        symbol = name(entry["descriptor"], "class layout descriptor")
+        require(symbol in descriptors and symbol not in layouts, "duplicate or unknown class layout descriptor")
+        descriptor = descriptors[symbol]
+        require(descriptor["payload"] == payload and descriptor["cls"] == entry["number"]
+                and type(entry["number"]) is int and descriptor["base"] == entry["base"]
+                and descriptor["role"] == entry["role"], "descriptor and class layout disagree")
+        require(isinstance(entry["members"], list) and isinstance(entry["llvm"], list)
+                and len(entry["members"]) == len(entry["llvm"]) <= 4096, "invalid class layout members")
+        members = []
+        for representation, llvm in zip(entry["members"], entry["llvm"], strict=True):
+            require(isinstance(representation, str) and isinstance(llvm, str), "invalid class member type")
+            members.append(name(json.dumps([representation, llvm], separators=(",", ":")), "class member representation"))
+        layouts[symbol] = members
+    require(layouts.keys() == descriptors.keys(), "class layout inventory is incomplete")
+    return layouts
+
+
 def isa_tags(types, derived, symbol):
     """The tags for which runtime.c's pys_dyn_isa(x, symbol) is true."""
     tags = {symbol}
@@ -360,6 +396,9 @@ def normalize_snapshot(snapshot, function):
     fn = selected[0]
     symbol = name(fn.get("symbol"), "function symbol")
     types, derived, roles, classes = descriptor_table(snapshot)
+    layouts = descriptor_layouts(snapshot, types)
+    referenced_layouts = {}
+    read_layouts = {}
 
     def accepted(payload):
         # the tags of the boxes whose payload a read of static type payload may take
@@ -370,8 +409,15 @@ def normalize_snapshot(snapshot, function):
             raise Unsupported(f"unsupported payload type: {payload}")
         holder = holders[0]
         if types[holder]["kind"] == DK_OBJ:
-            # (a subclass's objects share its layout, and a role is a fieldless secondary base)
-            return derived[holder] | roles[holder]
+            # Every admitted concrete descriptor must support this projection.
+            # An ancestry edge or a secondary-role flag is not itself evidence.
+            tags = derived[holder] | roles[holder]
+            for tag in sorted(tags):
+                require(tag in layouts, "class payload descriptor has no layout")
+                referenced_layouts[tag] = layouts[tag]
+            referenced_layouts[holder] = layouts[holder]
+            read_layouts[payload] = holder
+            return tags
         return {holder}
     name(fn.get("return_representation"), "return representation")
     recursion = fn.get("recursion")
@@ -815,7 +861,10 @@ def normalize_snapshot(snapshot, function):
                 require(operands[0]["type"] == "dyn" and (operands[0]["value"] in definitions
                                                           or operands[0]["value"].startswith("@")),
                         "dyn.payload requires a dynamic register or constant box")
-                following({"op": "payload", "value": operands[0]["value"], "tags": sorted(tags)})
+                node = {"op": "payload", "value": operands[0]["value"], "tags": sorted(tags)}
+                if op["text"] in read_layouts:
+                    node.update(op="class_payload", layout=read_layouts[op["text"]])
+                following(node)
                 payloads += 1
             elif kind == "br":
                 shape(op, 0, 0, 1, "")
@@ -917,9 +966,11 @@ def normalize_snapshot(snapshot, function):
             if key in node:
                 node[key] = renumber[node[key]]
     certificate = infer_certificate(nodes)
-    candidate = {"schema_version": 2, "program": {"entry": 0, "nodes": nodes}, "certificate": certificate}
+    candidate = {"schema_version": 3, "program": {"entry": 0, "nodes": nodes}, "certificate": certificate,
+                 "layouts": [{"tag": tag, "members": members} for tag, members in sorted(referenced_layouts.items())]}
     return candidate, {"function": symbol, "stage": "typed-after", "nodes": len(nodes),
-                       "payloads": payloads, "paired_guards": paired_guards,
+                       "payloads": payloads, "layouts": sum(len(node["tags"]) for node in nodes if node["op"] == "class_payload"),
+                       "paired_guards": paired_guards,
                        "threaded_edges": threaded, "omitted_blocks": len(blocks) - len(live),
                        "escaped_slots": len(escaped),
                        "scope": "dyn.payload guards in one normalized function", "limitations": LIMITATIONS}
@@ -940,6 +991,8 @@ def run_checker(checker, encoded, metadata):
             "checker did not return an acceptance result")
     require(result.get("nodes") == metadata["nodes"] and result.get("payloads") == metadata["payloads"],
             "checker counts disagree with normalized input")
+    if "layouts" in metadata:
+        require(result.get("layouts") == metadata["layouts"], "checker layout count disagrees with normalized input")
     accepted = result["accepted"]
     require(completed.returncode == (0 if accepted else 1), "checker result/exit status mismatch")
     return accepted
