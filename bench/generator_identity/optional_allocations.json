@@ -5,7 +5,6 @@
   "baseline_native_source_commit": "d68c9837ccad11e46b29a8955cc125c1a33cb77b",
   "baseline_native_sha256": "5dc9973d3a0ff8b79b8ae9ba2ca7d81347b460c8de0a015d6b2acd898c2ebf6e",
   "baseline_provenance": "Published PR1493 evidence identifies byte-identical compiler/runtime/library sources; final head adds only storage adapter/tests/docs.",
-  "candidate_commit": "8cc65f440b94e1b13a3f4015eda51bfef3f805bc",
   "candidate_compiler": "CPython-hosted compiler from candidate commit, LLVM18.1.3 AOT-O2",
   "python_version": "Python 3.13.16",
   "llvm_version": "18.1.3",
@@ -154,5 +153,9 @@
         "gc_peak_heap_bytes": 720896
       }
     }
-  ]
+  ],
+  "candidate_local_commit": "8cc65f440b94e1b13a3f4015eda51bfef3f805bc",
+  "candidate_published_commit": "b77d496547b733f4c121400ad1334f54aa33e1f8",
+  "candidate_source_tree": "7f6dfe900836cf9dd70cbd214e51a32b5bc04c58",
+  "candidate_provenance": "Git Data publication preserves the complete measured source tree byte-for-byte; only commit metadata differs from the local candidate commit."
 }

@@ -86,8 +86,9 @@ The new promise companion keeps that object's identity independently. Fresh type
 yields need no additional dynamic box; repeated aliases share one canonical box.
 
 The [allocation record](optional_allocations.json) compares #1493's compiler and
-runtime sources (`adac7f4`) against `8cc65f4` on Linux x86-64, CPython 3.13.16 and
-LLVM 18.1.3. Each row is one instrumented AOT process with 20,000 yields,
+runtime sources (`adac7f4`) against [`b77d496`](https://github.com/den-run-ai/pystachy/commit/b77d496547b733f4c121400ad1334f54aa33e1f8)
+on Linux x86-64, CPython 3.13.16 and LLVM 18.1.3. The published candidate
+retains the measured local `8cc65f4` source tree byte-for-byte. Each row is one instrumented AOT process with 20,000 yields,
 including 1,250 missing values. Every numeric checksum and missing-value count
 matches CPython. No timing measurement or speedup claim is made.
 
