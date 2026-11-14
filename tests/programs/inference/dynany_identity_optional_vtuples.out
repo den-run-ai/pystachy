@@ -1,0 +1,17 @@
+source True True True
+list source True True True
+search 2 0 3 1 1 0
+slice True True
+concat True True True True
+list copy True True True
+iteration True False False
+iteration False False True
+iteration False True False
+iteration True False False
+unpack True True True True
+widen True True True
+widen copies True True
+fresh widen True True False
+fresh copy True True
+integer True True True True
+[exit 0]

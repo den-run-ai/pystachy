@@ -151,6 +151,8 @@ no effect. The shared runtime cache is independent of this setting.
 - **Tuple conversions:** fixed-shape to runtime-length tuples, or scalar to
   optional-element tuples, create new objects. Empty runtime-length tuples are
   not interned. `tuple(t)` preserves identity only when its representation fits.
+  In graphs with dynamic `Any`, numeric runtime-tuple items retain their identity
+  when widened to optional items; the outer tuple can still be a new object.
 - **Callables:** `is` compares the function and its environment/bound object, as
   `==` does. Two reads of `o.m` converted to `Callable` compare identical; CPython
   creates separate bound-method objects.
@@ -487,7 +489,8 @@ See [object protocols](semantics.md#object-protocols) and
 - **Iterator operations:** `iter(callable, sentinel)`; `iter()` of `enumerate`, `zip`, `map`,
   `filter` or `reversed`; `next(it, default)` without a common item/default type; iterator
   classes lacking `__iter__` in comprehensions or `str.join`; inheritance-hierarchy
-  constructors calling `iter()` or accepting `Iterator[T]` / `Iterable[T]`.
+  constructors storing an iterator whose concrete class depends on their arguments.
+  Fixed-field constructors may consume `Iterator[T]` / `Iterable[T]`.
 - **Fallbacks and power:** `__getitem__`-only iteration/membership; `__len__` / `__getitem__`
   fallback for `reversed`; reflected arithmetic; `NotImplemented`; object or optional
   numeric power exponents; three-argument object `pow`. Before `**=`, narrow a base-typed
@@ -517,12 +520,14 @@ See [object protocols](semantics.md#object-protocols) and
 See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
 [single inheritance](typing.md#single-inheritance).
 
-- **Inheritance:** multiple bases outside the [method-only secondary base](typing.md#a-method-only-secondary-base) subset; ordinary hierarchies involving templates,
+- **Inheritance:** multiple bases outside the [method-only secondary base](typing.md#a-method-only-secondary-base) subset; ordinary hierarchies involving layout-specialized templates,
   NamedTuple or builtins; generic inheritance outside the [visitor subset](typing.md#explicit-generic-classes)
   (bases whose constructor binds type variables or subclasses passing through their own type
   variables); mixed dataclass/ordinary hierarchies; decorated subclasses except
   dataclass-from-dataclass; changing method kind; incompatible virtual call signatures or
-  results; overridden static/class methods called through base-typed objects.
+  results; overridden static/class methods called through base-typed objects. Independent
+  classes and ordinary hierarchies with fixed concrete fields may specialize constructor
+  arguments without specializing their layouts ([class templates](typing.md#class-templates-and-generic-classes)).
 - **Inherited members:** assigning inherited class attributes through subclasses without their
   own defaults; changing field types; derived-only fields without supported narrowing;
   inherited `cls`-using classmethods through base-typed objects, across modules or with

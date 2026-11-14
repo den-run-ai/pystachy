@@ -167,6 +167,12 @@ class Rejoin(Exception):
     pass
 
 
+class NeedHierarchy(Rejoin):
+    # A previously excluded fixed-layout class is used. Fresh compilation admits its
+    # hierarchy so earlier dispatch sites include the newly reachable receiver.
+    pass
+
+
 class NeedSliceEH(Rejoin):
     # A dynamic slice needs to catch an iterator callback's TypeError. Start
     # a fresh compile with exception handling before lowering any function.

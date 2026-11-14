@@ -258,7 +258,7 @@ coerced homogeneous elements. Its result is `vtuple[T]` and every operand has na
 type `T`; it owns one semantic result and an allocation effect. A fresh tuple display
 can use it directly, while conversion from an existing fixed tuple first reads that
 tuple without changing its storage. Literal constant displays keep their existing
-constant path. Lowering allocates the existing scanned layout (length followed by
+constant path. Lowering allocates the existing scanned layout (length, nullable numeric-identity companion pointer, then
 eight-byte elements), retaining native references across that allocation; address
 and bool-widening temporaries are local to the emitter. This removes intermediate
 fixed tuples and the copy through `vtuple.from` without a new runtime API, allocator
@@ -391,6 +391,14 @@ and with a generator operand that generator's. `gen.resume` runs a generator to 
 suspend and has every effect (user code); the exception passes make it an `invoke` like a
 call. `gen.drop` closes and destroys a generator a loop owns and never raises. The verifier
 checks their places, operands and metadata; lowering alone emits the `llvm.coro.*` calls.
+In identity-tracking code, scalar numeric `gen.yield` has three operands: its raw
+`%slot`, a `%ptr` high word (null unless the channel holds promoting ints), and a
+nullable `dyn` identity companion. The verifier requires that shape for those
+channels and rejects a nonnull placeholder when no high word exists. Lowering
+stores the companion immediately after the existing five/seven/nine-word promise;
+it never writes the high placeholder outside that frame. A consumer copies the
+companion into its private result slot before another resume. Isolated ordinary
+modules keep their raw layout; crossing checks prevent mixing representations.
 
 Each block ends with one terminator. Branch labels stay within the function, and phi
 predecessors must branch to their join. `switch` branches on an `int` to the label of the

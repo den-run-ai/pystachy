@@ -151,6 +151,57 @@ class IdentityScopeTests(unittest.TestCase):
         # (tomllib's own code still tracks identity)
         self.assertIn("call ptr @pys_dyn_int_box", ir)
 
+    def test_local_numeric_generator_keeps_identity_isolation(self):
+        source = """from typing import Iterator
+import scopelib
+class Box:
+    def __init__(self, value: float) -> None:
+        self.value = value
+
+def values() -> Iterator[float]:
+    value = float("1.25")
+    yield value
+    yield value
+
+print(Box(float("2.5")).value)
+for value in values():
+    print(value)
+scopelib.keep("only a string crosses")
+"""
+        ir, generations = self.compile(source)
+        self.assertEqual([g.idevent for g in generations], [""])
+        self.assertIn("", generations[-1].idoff)
+        self.assertIn("%C.Box = type {double}", ir)
+        for name, body in self.main_functions(generations[-1], ir).items():
+            with self.subTest(function=name):
+                self.assertIsNone(BOXING.search(body))
+                self.assertNotIn(".box.", body)
+
+    def test_boxed_generator_crossing_restarts_identity_tracking(self):
+        for nested in [False, True]:
+            source = """from typing import Iterator
+import scopelib
+
+def values() -> Iterator[float]:
+    value = float("nan")
+    yield value
+    yield value
+"""
+            if nested:
+                source += """
+def outer() -> Iterator[Iterator[float]]:
+    yield values()
+scopelib.keep(outer())
+"""
+            else:
+                source += "scopelib.keep(values())\n"
+            with self.subTest(nested=nested):
+                ir, generations = self.compile(source)
+                self.assertEqual(generations[0].idevent, "generator as an Any value")
+                self.assertTrue(generations[-1].idfull)
+                forced, _ = self.compile(source, full=True)
+                self.assertEqual(ir, forced)
+
     def test_tomllib_flags_keep_typed_private_storage(self):
         source = 'import tomllib\nprint(tomllib.loads("a.b = 1\\na.c = 2\\n[x]\\ny = 3"))\n'
         ir, generations = self.compile(source, helper=False)

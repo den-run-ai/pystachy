@@ -389,6 +389,22 @@ class Observer:
         return sorted(types, key=lambda t: t["symbol"])
 
     @staticmethod
+    def dynamic_layouts(gen) -> list[dict]:
+        # Independent class metadata ties DynType numbers and ancestry to the
+        # same ordered members emitted as %C.<name>. Hidden assignment flags
+        # and numeric identity companions are part of that physical prefix.
+        from src.pystachy_compiler.lower_module import struct_types
+        result = []
+        for name, ci in gen.classes.items():
+            if name not in gen.dyntypes:
+                continue
+            members = [ci.ftypes[field] for field in ci.fields] + ["bool"] * ci.nflag + ["dyn"] * ci.nbox
+            result.append({"name": name, "descriptor": gen.dyntypes[name],
+                           "base": gen.dyntypes.get(ci.base, "") if ci.base in gen.classes and gen.classes[ci.base].exc == "" else "",
+                           "role": gen.dyntypes.get(ci.role, ""), "number": gen.ocls[name],
+                           "members": members, "llvm": struct_types(ci)})
+        return sorted(result, key=lambda entry: entry["name"])
+    @staticmethod
     def classes(gen) -> dict:
         # Each class of the program: its single base (a class of the program, a builtin
         # exception class or none) and its fieldless secondary base, which Gen.derives follows;
@@ -797,6 +813,7 @@ class Observer:
                             "attempt": self.attempt["index"] if self.attempt else 0, "functions": functions}
                 if name == "typed-after" and self.gen is not None:
                     snapshot["dynamic_types"] = self.dynamic_types(self.gen)
+                    snapshot["dynamic_layouts"] = self.dynamic_layouts(self.gen)
                     snapshot["classes"] = self.classes(self.gen)
                     if self.guard_evidence:
                         snapshot["class_layouts"] = self.class_layouts(self.gen)
