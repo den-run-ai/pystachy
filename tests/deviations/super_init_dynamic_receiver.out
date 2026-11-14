@@ -1,0 +1,5 @@
+receiver argument
+initializing an unbound super object with a runtime-selected non-exception class is not supported
+receiver argument
+initializing an unbound super object with a dynamic receiver is not supported
+[exit 0]

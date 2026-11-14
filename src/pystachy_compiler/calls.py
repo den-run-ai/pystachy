@@ -51,6 +51,8 @@ from src.pystachy_compiler.utils import (
 def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str = "") -> Val:
     f = n.kids[0]
     args = n.kids[1:]
+    if f.kind == "supercallee":
+        return self.super_call(f.kids[0], f.s, args, captured=self.expr(f.kids[1], ""))
     if f.kind == "name":
         self.modchk(f)  # resolve the callable's binding before specialized or unpacked arguments
     if self.getattr_name(f) != "":
@@ -87,6 +89,8 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
         if r is not None:
             return r
     if len([a for a in args if a.kind == "starred" or a.kind == "dstar"]) > 0:
+        if f.kind == "attr" and f.s == "__init__" and f.kids[0].kind == "call" and f.kids[0].kids[0].kind == "name" and f.kids[0].kids[0].s == "super" and not self.bound("super"):
+            return self.super_call(f.kids[0], f.s, args)
         return self.star_call(n, want, resultsoft, typeargs)
     if f.kind == "name" and f.s not in self.ltype:
         self.read_ahead(f.s)
@@ -366,6 +370,8 @@ def gen_static_callee(self, f: Node) -> bool:
     # does evaluating callee f (or the object of o.m) read nothing a call's arguments may change:
     # a def, class, builtin or module's function, super(), or a variable's empty container that
     # the call fills (whose name types it)
+    if f.kind == "supercallee":
+        return True  # an internal super initializer whose receiver is already captured
     if f.kind == "attr":
         o = f.kids[0]
         if self.dotted(f) != "" or (o.kind == "call" and o.kids[0].kind == "name" and o.kids[0].s == "super" and not self.bound("super")):

@@ -1,0 +1,44 @@
+present False
+zero finished
+argument not a type
+type error super() argument 1 must be type, not str
+type error super() argument 1 must be type, not None
+one_class finished
+two_none finished
+two_child finished
+two_subclass finished
+type error super(type, obj): obj (instance of Other) is not an instance or subtype of type (C).
+type error super(type, obj): obj (type Other) is not an instance or subtype of type (C).
+argument first
+argument second
+argument third
+type error super() takes at most 2 arguments (3 given)
+failing argument
+value error argument failed
+reassigned super() argument 1 must be type, not C
+local replaced False
+argument name
+argument obj
+keyword error super() takes no keyword arguments
+present True
+zero finished
+argument not a type
+one_str finished
+one_none finished
+one_class finished
+two_none finished
+two_child finished
+two_subclass finished
+two_other finished
+two_class finished
+argument first
+argument second
+argument third
+three finished
+failing argument
+value error argument failed
+local replaced False
+argument name
+argument obj
+keyword finished
+[exit 0]

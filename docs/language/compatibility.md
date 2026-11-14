@@ -653,6 +653,13 @@ See [user exception classes](semantics.md#user-exception-classes) and
 - **`super`:** outside exception methods, in parameterless static methods, without arguments
   in classmethods, with anything but the method's own class and `self`, or calling a base
   classmethod that uses `cls`.
+  When an explicit class call passes `None` as `self`, the temporary unbound super object's
+  own initializer evaluates arguments and validates supported class/receiver pairs. A
+  non-`None` replacement receiver requiring a runtime-selected non-exception class, dynamic
+  receiver, builtin class without a supported instance check, or overridden `__class__`
+  raises `NotImplementedError` in that null arm; this
+  does not restrict the base initializer call when the original receiver is non-null.
+  A replacement receiver of `None` remains valid after checking the first argument is a type.
 
 ### Builtins
 

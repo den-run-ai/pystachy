@@ -1311,7 +1311,99 @@ def gen_exc_brepr(self, o: Val) -> Val:
     a = self.getfield(o, self.field(o, " args"), " args")
     return Val(self.rt("pys_exc_brepr", "ptr", [f"ptr {o.v}", f"ptr {a.v}"]), "str")
 
-def gen_super_call(self, sc: Node, m: str, args: list[Node], based: bool = False, read: bool = False, own_bound: bool = False) -> Val:
+def gen_super_own_init(self, args: list[Node]) -> Val:
+    # Initialize a temporary unbound super object, whose value cannot escape this call.
+    # Argument effects precede every arity/type check; successful initialization returns
+    # None and does not change the method's original receiver.
+    vals: list[Val] = []
+    keywords = False
+    for arg in args:
+        keywords = keywords or arg.kind == "kw"
+        vals.append(self.expr(arg.kids[0] if arg.kind == "kw" else arg, ""))
+    if self.term:
+        return Val("null", "None")
+    if keywords or len(vals) > 2:
+        self.raise_("TypeError", self.sconst("super() takes no keyword arguments" if keywords else f"super() takes at most 2 arguments ({len(vals)} given)"))
+        return Val("null", "None")
+    if len(vals) == 0:
+        return Val("null", "None")
+    line = self.line
+    first = vals[0]
+    named = self.exc_class(args[0]) if args[0].kind == "name" else ""
+    if first.t.startswith("fn[b:") and first.t[5:-1] in "bool bytearray bytes classmethod complex dict enumerate filter float frozenset int list map memoryview object property range reversed set slice staticmethod str super tuple type zip".split():
+        named = first.t[5:-1]
+    exception_type = unopt(first.t) == "exctype"
+    unsupported = ""
+    if not exception_type and named == "":
+        valid = ""
+        if first.t == "dyn":
+            valid = self.label()
+            invalid = self.label()
+            self.cbr(self.dyn_test(first, ["%class:type"]), valid, invalid)
+            self.place(invalid)
+        actual_name = self.refl_type_attr(self.vnode(first), "__name__")
+        absent = self.dyn_test(first, ["None"]) if first.t == "dyn" else self.isnull(first)
+        actual_name = Val(self.select(absent, Val(self.sconst("None"), "str"), actual_name), "str")
+        message = mk("binop", "+", line, [mk("str", "super() argument 1 must be type, not ", line, []), self.vnode(actual_name)])
+        self.raise_("TypeError", self.expr(message, "str").v)
+        if valid == "":
+            return Val("null", "None")
+        self.place(valid)
+        unsupported = "a runtime-selected non-exception class"
+    if exception_type:
+        self.notnone(first, "TypeError: super() argument 1 must be type, not None")
+    if len(vals) == 1 or vals[1].t == "None":
+        return Val("null", "None")
+    second = vals[1]
+    other = self.exc_class(args[1]) if args[1].kind == "name" else ""
+    if second.t.startswith("fn[b:") and second.t[5:-1] in "bool bytearray bytes classmethod complex dict enumerate filter float frozenset int list map memoryview object property range reversed set slice staticmethod str super tuple type zip".split():
+        other = second.t[5:-1]
+    if named != "" and second.t in self.classes and self.derives(second.t, named):
+        return Val("null", "None")  # actual subclasses and None both satisfy supercheck
+    if second.t == "dyn" and other == "":
+        unsupported = "a dynamic receiver"
+    if named != "" and not exception_type and other == "" and unopt(second.t) != "exctype" and self.isinst("None", mk("name", named, line, [])) < 0:
+        unsupported = "an unsupported builtin instance check for " + named
+    if second.t in self.classes and any(self.derives(c.name, second.t) and ("__class__" in c.ftypes or "__class__" in c.methods) for c in self.classes.values()):
+        unsupported = "a receiver overriding __class__"
+    if unsupported != "":
+        # Reject only this executed null arm. The same method with a non-null original
+        # receiver still calls its base initializer, including previously accepted code.
+        done = self.label()
+        bad = self.label()
+        absent = self.dyn_test(second, ["None"]) if second.t == "dyn" else self.isnull(second)
+        self.cbr(absent, done, bad)
+        self.place(bad)
+        self.raise_("NotImplementedError", self.sconst("initializing an unbound super object with " + unsupported + " is not supported"))
+        self.place(done)
+        return Val("null", "None")
+    class_receiver = unopt(second.t) == "exctype" or other != ""
+    target = self.vnode(first) if exception_type else mk("name", named, line, [])
+    if class_receiver and not exception_type:
+        compatible = named == "object" or named == "type" or (other != "" and (other == named or (other == "bool" and named == "int") or self.derives(other, named)))
+        check = mk("True" if compatible else "False", "", line, [])
+    elif class_receiver and unopt(second.t) != "exctype":
+        check = mk("False", "", line, [])
+    else:
+        check = mk("call", "", line, [mk("name", "issubclass" if class_receiver else "isinstance", line, []), self.vnode(second), target])
+    # None is valid even for a statically optional second argument; short-circuit before
+    # issubclass or diagnostics inspect an optional class object's name.
+    check = mk("boolop", "or", line, [mk("cmp", "is", line, [self.vnode(second), mk("None", "", line, [])]), check])
+    good = self.expr(check, "bool")
+    done = self.label()
+    bad = self.label()
+    self.cbr(good.v, done, bad)
+    self.place(bad)
+    actual = mk("attr", "__name__", line, [self.vnode(second)]) if class_receiver else self.vnode(self.refl_type_attr(self.vnode(second), "__name__"))
+    expected = mk("attr", "__name__", line, [self.vnode(first)]) if exception_type else mk("str", short(named), line, [])
+    message = mk("str", "super(type, obj): obj (" + ("type " if class_receiver else "instance of "), line, [])
+    for part in [actual, mk("str", ") is not an instance or subtype of type (", line, []), expected, mk("str", ").", line, [])]:
+        message = mk("binop", "+", line, [message, part])
+    self.raise_("TypeError", self.expr(message, "str").v)
+    self.place(done)
+    return Val("null", "None")
+
+def gen_super_call(self, sc: Node, m: str, args: list[Node], based: bool = False, read: bool = False, own_bound: bool = False, captured: Val | None = None) -> Val:
     # super().m(args) in a method of an exception class (based: Base.m(self, args), for its
     # base): the base's method m, or what BaseException's __init__ (keep the args), __str__ and
     # __repr__ do
@@ -1329,15 +1421,20 @@ def gen_super_call(self, sc: Node, m: str, args: list[Node], based: bool = False
         self.err("super() is only supported without arguments in a method of a class with a supported base (super(C, self) in a method of C is super())")
     if me0 == "":
         self.err("super() in a class method (which binds cls, the class) or a static method without parameters is not supported")
-    me = self.expr(mk("name", me0, sc.line, []), "")
+    me = self.expr(mk("name", me0, sc.line, []), "") if captured is None else captured
     start = sc.kids[1].s if ordinary and len(sc.kids) == 3 else cls
-    if not own_bound and not based and not read and m in ["__init__", "__str__", "__repr__"] and len(args) == 0 and me.v not in self.nn:
+    if m == "__init__" and not based and any(a.kind == "starred" or a.kind == "dstar" for a in args):
+        # Retain the receiver that super() read before the generic star binder evaluates
+        # argument effects, which can reassign the method's first local parameter.
+        callee = mk("supercallee", m, sc.line, [sc, self.vnode(me)])
+        return self.star_call(mk("call", "", sc.line, [callee] + args), "")
+    if not own_bound and not based and not read and (m == "__init__" or (m in ["__str__", "__repr__"] and len(args) == 0)) and me.v not in self.nn:
         # An unbound super object retains its own initializer and string wrappers.
         # For a bound receiver, keep the normal base method and its side effects.
-        receiver = mk("name", me0, sc.line, [])
+        receiver = self.vnode(me)
         condition = mk("cmp", "is", sc.line, [receiver, mk("None", "", sc.line, [])])
-        own = mk("None", "", sc.line, []) if m == "__init__" else mk("str", f"<super: <class '{short(start)}'>, NULL>", sc.line, [])
-        call = mk("superbound", m, sc.line, [sc])
+        own = mk("superowninit", "", sc.line, args) if m == "__init__" else mk("str", f"<super: <class '{short(start)}'>, NULL>", sc.line, [])
+        call = mk("superbound", m, sc.line, [sc, receiver] + args)
         return self.expr(mk("ifexp", "", sc.line, [condition, own, call]), "")
     if not based:
         # super(C, None) is unbound: its attribute lookup fails before call arguments.
@@ -1557,6 +1654,8 @@ def gen_exc_held(self, t: Node) -> bool:
         x = self.refl_typeof(t)
     if t.kind == "name":
         v = self.static_type(t)
+    elif t.kind == "val":
+        v = self.vnodes[int(t.s)].t
     elif t.kind == "attr" and t.kids[0].kind == "name" and self.dotted(t) == "":
         o = unopt(self.static_type(t.kids[0]))
         v = self.classes[o].ftypes.get(t.s, "") if o in self.classes and t.s not in self.classes[o].methods else ""
