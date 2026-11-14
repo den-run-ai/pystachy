@@ -188,6 +188,33 @@ class StateProbeTests(unittest.TestCase):
         self.assertIn("@main", ir)
         self.assertEqual(len(attempts), 2)
 
+    def test_imported_hierarchy_discovers_only_used_constructor_dependencies(self):
+        path = ROOT / "tests/programs/classes/constructor_dependency_imported.py"
+        original = Gen.program
+        attempts = []
+        final = []
+
+        def counted(gen, mods):
+            attempts.append(tuple(gen.hierarchies))
+            result = original(gen, mods)
+            final.append(gen)
+            return result
+
+        with patch.object(Gen, "program", counted):
+            ir = driver.compile_program(str(path), path.read_text(),
+                                        [str(ROOT / "tests"), str(ROOT / "lib")], "")
+        self.assertIn("@main", ir)
+        self.assertEqual(len(attempts), 3)
+        generator = final[0]
+        prefix = "mods$constructor_dependency$"
+        self.assertEqual(set(generator.hierarchies),
+                         {prefix + "Root", prefix + "Errors", prefix + "Child"})
+        self.assertEqual(generator.classes[prefix + "Errors"].tag, 0)
+        self.assertNotIn(prefix + "Errors", generator.tmpl)
+        self.assertIn(prefix + "UnusedErrors", generator.tmpl)
+        self.assertNotIn(prefix + "UnusedChild", generator.classes)
+        self.assertNotIn(prefix + "NestedChild", generator.classes)
+
     def test_restart_rewinds_known_globals_and_uses_fresh_gen(self):
         self.restart_contract(driver.compile_program)
 

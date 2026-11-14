@@ -107,11 +107,17 @@ once for each receiver's class.
 Inherited fields keep the base layout; unrelated classes retain their existing layout.
 Explicit base calls and `super()` select a body directly while preserving the receiver.
 A hierarchy needing only constructor-code specialization is activated on demand. The
-retry registry retains qualified class names and their ancestors; a fresh `Gen` rebuilds
-layouts and dispatch sites, including calls compiled before the subclass was discovered.
+retry registry retains qualified class names, their ancestors and required constructor
+type dependencies; a fresh `Gen` rebuilds layouts and dispatch sites, including calls
+compiled before the subclass was discovered.
 Ancestors whose layouts are already verified can activate before a child's annotations
-are re-evaluated; this handles constructor parameters and fields naming that base. A
-self-reference names the prospective nominal layout, including a subclass not yet
+are re-evaluated; this handles constructor parameters and fields naming that base.
+A used imported descendant also discovers dependencies whose annotated fields contain
+class-template objects, using the same annotation rule as local hierarchies. Such
+dependencies need no inheritance tag; unused imported descendants do not discover them.
+Discovery starts at a compiled hierarchy use. An unsupported standalone dependency
+construction reached earlier retains its existing diagnostic.
+A self-reference names the prospective nominal layout, including a subclass not yet
 registered. The class and template registries are restored after each syntax-only
 eligibility check, including errors and retries.
 Unused imported subclasses retain deferred diagnostics, so their overrides do not enter

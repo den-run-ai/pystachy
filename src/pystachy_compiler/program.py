@@ -453,9 +453,10 @@ def gen_fixed_hierarchy(self, name: str) -> bool:
 
 
 def gen_hierarchy_chain(self, name: str, chain: list[str], seen: list[str]) -> bool:
-    # A requested declaration and its ordinary bases. Requiring every generic constructor
-    # to establish independent field types prevents specialization-dependent layouts from
-    # entering inheritance. This examines syntax, not any tentative inferred fields.
+    # A requested declaration, its ordinary bases and constructor-type dependencies.
+    # A dependency may use annotated template-valued fields under the existing hierarchy
+    # rule; generic parameters still need an independent fixed-layout proof. Only syntax,
+    # never tentative inferred fields, justifies retaining a name across the retry.
     if name in chain:
         return True
     if name in seen:
@@ -474,8 +475,17 @@ def gen_hierarchy_chain(self, name: str, chain: list[str], seen: list[str]) -> b
         for base in node.kids[1:]:
             if base.kind != "name" or not self.hierarchy_chain(base.s, chain, seen):
                 return False
-    if self.init_generic(st) and not self.fixed_layout(st):
-        return False
+    if self.init_generic(st, True) and not self.fixed_layout(st):
+        # Imported descendants may be deferred before acquiring a tag. Discover
+        # dependencies only when this layout needs their annotations to become nominal.
+        # A constructor with an already fixed layout can still specialize for a
+        # variable-layout parameter without activating that parameter's class.
+        named: dict[str, bool] = {}
+        self.init_param_classes(st, named)
+        for c in named:
+            if c != name and c in self.tmpl and not self.hierarchy_chain(c, chain, seen):
+                return False
+        return False  # recheck after a fresh pass, with only verified dependencies retained
     chain.append(name)
     return True
 
@@ -489,8 +499,8 @@ def gen_request_hierarchy(self, name: str) -> None:
     if name in self.hierarchies:
         return
     self.hierarchy_chain(name, chain, [])
-    # A constructor parameter or field may name its still-templated base. Admit
-    # verified ancestors first, then re-evaluate the child's annotation in a fresh Gen.
+    # A constructor parameter or field may name its still-templated base or dependency.
+    # Admit verified names first, then re-evaluate the child's annotation in a fresh Gen.
     # Incomplete chains retain no unverified child; retries must add a new name.
     if any(c not in self.hierarchies for c in chain):
         for c in chain:
@@ -1306,7 +1316,9 @@ def gen_program(self, mods: list[Mod]) -> str:
     # (Checker(errors: Errors)), which a template would make a template in turn. A program with
     # such a parameter was rejected while its class stayed a template, so only programs that did
     # not compile see the class compiled as an ordinary one, used or not
-    fixedcls: dict[str, bool] = {}
+    # Activated dependencies may have no class tag: their requesting imported child
+    # was still deferred when declarations were collected on this pass.
+    fixedcls: dict[str, bool] = dict(self.hierarchies)
     for ci in self.classes.values():
         if ci.tag > 0:
             fixedcls[ci.name] = True
