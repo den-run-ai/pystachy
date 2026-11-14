@@ -2403,6 +2403,8 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
             return OBJECTC  # (object(): an object of lib/_pystachy_object.py's class)
         if c == "len" or c == "ord":
             return "int"
+        if c in ["any", "all", "callable", "isinstance", "issubclass", "hasattr"] and not self.bound(c):
+            return "bool"  # (whatever their arguments: self.amb = any(t.x for t in ts))
         if c == "input" or c == "repr" or c == "chr" or c == "ascii" or c == "hex" or c == "oct" or c == "bin":
             return "str"
         if c == "open":
