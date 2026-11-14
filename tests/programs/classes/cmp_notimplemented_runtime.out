@@ -1,0 +1,30 @@
+Picky.__eq__ 1
+Picky.__eq__ 1
+Picky.__eq__ -1
+Picky.__eq__ -1
+Picky.__eq__ -1
+Picky.__eq__ -1
+Picky.__eq__ -1
+Picky.__eq__ 1
+Picky.__eq__ -1
+True False True False True
+Picky.__lt__ 1
+Picky.__lt__ 200
+Picky.__gt__ 1
+True False False
+Picky.__lt__ 200
+Picky.__gt__ -1
+TypeError '<' not supported between instances of 'Picky' and 'Picky'
+Picky.__gt__ 200
+True
+Picky.__lt__ -1
+True
+Picky.__gt__ -1
+Picky.__lt__ 200
+TypeError '>' not supported between instances of 'Picky' and 'Picky'
+Picky.__lt__ 1
+True
+Picky.__gt__ 1
+Picky.__lt__ 200
+False
+[exit 0]

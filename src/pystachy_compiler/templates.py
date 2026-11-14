@@ -724,6 +724,11 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
                 g.ret = "None"
             elif f.gen:
                 self.err(f"cannot infer what {short(f.name)}() yields: it calls itself before its first yield; annotate its return type (-> Iterator[T])")
+            elif self.may_decline(f):
+                # (a comparison method that names NotImplemented returns that or a bool: a tree's
+                # __eq__, whose guard is decided here, compares its children first. The
+                # first-return path refuses another type)
+                g.ret = "bool"
             else:
                 self.err(f"cannot infer what {short(f.name)}() returns: it calls itself before a return statement does; annotate its return type")
         if g.ll in self.building:

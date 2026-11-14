@@ -1292,6 +1292,26 @@ def comparison_layout(ci: ClassInfo) -> dict[str, str]:
     return fields
 
 
+def gen_xdecline(self, method: FnInfo, after: bool) -> None:
+    # (dyn_xbody) around the helper's call of c's method, which may return NotImplemented
+    # (may_decline): before it the variable that the return sets is cleared (decl_flag), and
+    # after it the helper returns status 2 where it is set, as where c has no method, so that
+    # the runtime asks the other operand's reflected method, then compares identity or raises
+    # TypeError, as for objects that are no Any values (inherit_cmp)
+    if not self.may_decline(method) or self.term:
+        return
+    if not after:
+        self.mstore("bool", "false", self.decl_flag())
+        return
+    declined = self.label()
+    answered = self.label()
+    self.cbr(self.mload("bool", self.decl_flag()), declined, answered)
+    self.place(declined)
+    self.mstore("bool", "false", self.decl_flag())
+    self.ret_(Val("2", "int"))
+    self.place(answered)
+
+
 def gen_dyn_xbody(self, c: str) -> None:
     # the body of @o.x.<class> (dyn_xhelper): c's own method, which takes b as its parameter's type
     # takes an Any value; != is not == where c has no __ne__, as object.__ne__ inverts __eq__. A
@@ -1338,8 +1358,10 @@ def gen_dyn_xbody(self, c: str) -> None:
                     self.ret_(Val("3", "int"))
                 else:
                     self.xtry = f"{c}.{m}"
+                    self.xdecline(method, False)
                     r = self.truth(self.expr(mk("call", "", line, [mk("attr", m, line, [self.vnode(a)]), self.vnode(b)]), ""))
                     self.xtry = ""
+                    self.xdecline(method, True)
                     if inv:
                         r = self.scalar("xor", [Val(r, "bool"), Val("true", "bool")])
                     if not self.term:
@@ -1392,12 +1414,15 @@ def gen_dyn_xbody(self, c: str) -> None:
                 self.place(nxt)
                 continue
             self.xtry = key
+            declining = method
+            self.xdecline(declining, False)
             if adapt:
                 method = self.instance(method, [c, DYN], [])
                 r = self.truth(self.call_fn(method, [a, b], [], direct=True))
             else:
                 r = self.truth(self.expr(mk("call", "", line, [mk("attr", m, line, [self.vnode(a)]), self.vnode(b)]), ""))
             self.xtry = ""
+            self.xdecline(declining, True)
             if inv:
                 r = self.scalar("xor", [Val(r, "bool"), Val("true", "bool")])
             if not self.term:

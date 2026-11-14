@@ -3,7 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.bigints import TSLOT_BIG, big_tree, big_viewable, held, narrow_type, narrows, search_type
 from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
-from src.pystachy_compiler.diagnostics import LINES, dynamic_program, int_lists, shown
+from src.pystachy_compiler.diagnostics import LINES, dynamic_program, int_lists, shown, where
 from src.pystachy_compiler.dynamic import boxed_list_items, comparison_container_pair, comparison_invalid, comparison_property_type
 from src.pystachy_compiler.ir import ClassInfo, Data, FmtArgs, FnInfo, Ins, IterArg, Loop, Val, tmpname, one_num
 from src.pystachy_compiler.names import ENUMCLASSES, short
@@ -3875,6 +3875,115 @@ def gen_enum_intlike(self, c: str) -> bool:
     return c in self.classes and (("enum$IntEnum" in self.classes and self.derives(c, "enum$IntEnum")) or ("enum$IntFlag" in self.classes and self.derives(c, "enum$IntFlag")) or c == "enum$IntEnum" or c == "enum$IntFlag")
 
 
+CMPDUNDERS = ["__eq__", "__ne__", "__lt__", "__le__", "__gt__", "__ge__"]
+
+def declines_in(ns: list[Node]) -> bool:
+    # does one of statements ns return NotImplemented (the code of a def, lambda or class
+    # inside them aside)
+    for n in ns:
+        if n.kind == "def" or n.kind == "lambda" or n.kind == "class":
+            continue
+        if n.kind == "return" and len(n.kids) == 1 and n.kids[0].kind == "name" and n.kids[0].s == "NotImplemented":
+            return True
+        if declines_in(n.kids):
+            return True
+    return False
+
+def gen_may_decline(self, f: FnInfo) -> bool:
+    # may f return NotImplemented: is it a comparison method (__eq__, __lt__, ...) whose own
+    # code has that return statement (decline compiles it where it is reached)
+    if f.mayd < 0:
+        f.mayd = 1 if f.cls in self.classes and f.name in CMPDUNDERS and f.node.kind == "def" and declines_in(f.node.kids[2].kids) else 0
+    return f.mayd == 1
+
+def gen_decl_flag(self) -> str:
+    # the hidden variable a comparison method sets as it returns NotImplemented (decline). Only
+    # the comparison that called it reads it (concrete_cmp), and clears it before each such
+    # call: a call that leaves it set finds no reader, which the next comparison's clearing
+    # makes harmless
+    if not self.declflag:
+        self.declflag = True
+        self.global_var("@d.declined", "bool")
+    return "@d.declined"
+
+def gen_declining_call(self, f: FnInfo, me: Val, arg: Val, direct: bool, decl: list[bool]) -> Val:
+    # f(me, arg) of a comparison method that may return NotImplemented (may_decline), as a bool.
+    # decl takes True, and decl_flag's variable is cleared before the code of the call, for the
+    # caller to read after it; unless the one function called is compiled and has no such
+    # return for these operands: the call is then as it was before methods could decline, and
+    # as one that takes the result as it is, which decline rejects
+    got: list[FnInfo] = []
+    if self.term:
+        self.place(self.label())  # (dead code: in a block of its own, as add starts one)
+    blk = self.blk
+    at = len(blk.code)
+    r = self.coerce(self.call_fn(f, [me, arg], [], direct=direct, got=got), "bool")
+    if len(got) == 1 and (got[0].inst or got[0].ll in self.compiled) and not got[0].declines and got[0].ll not in self.building:
+        got[0].plain = where(self.line)
+        return r
+    clear = Ins("mach.store", "", "")  # (mstore, before the code of the call)
+    clear.a = [Val(self.decl_flag(), "%ptr"), Val("false", "bool")]
+    if self.source_lines.enabled:
+        clear.line = self.line
+    blk.code.insert(at, clear)
+    decl.append(True)
+    return r
+
+def gen_cmp_cands(self, op: str, at: str, bt: str) -> list[list[str]]:
+    # every method CPython tries for op between objects of the concrete classes at and bt, in
+    # its order (each as cmp_pick gives the first): the next is called where one returns
+    # NotImplemented
+    right = at in self.classes and bt in self.classes and at != bt and self.derives(bt, at)
+    sides = ["b", "a"] if right else ["a", "b"]
+    methods = [DUNDER[REFL[op]] if op in REFL else DUNDER[op], DUNDER[op]] if right else [DUNDER[op], DUNDER[REFL[op]] if op in REFL else DUNDER[op]]
+    out: list[list[str]] = []
+    for i in range(2):
+        lt = bt if sides[i] == "b" else at
+        rt = at if sides[i] == "b" else bt
+        m = methods[i]
+        inv = ""
+        if lt in self.classes:
+            ms = self.classes[lt].methods
+            if op == "!=" and m not in ms and "__eq__" in ms:
+                m = "__eq__"
+                inv = "!"
+            if m in ms and ms[m].synthetic and self.is_dc(ms[m].cls) and lt != rt:
+                continue
+            if m in ms and lib_source(ms[m].node.line, self.libdir, "enum.py") and (rt == "None" or (rt in self.classes and not self.derives(rt, ms[m].cls) and not (self.enum_intlike(ms[m].cls) and self.enum_intlike(rt)))):
+                continue
+            if m in ms:
+                out.append([sides[i], m, inv])
+    return out
+
+def gen_cmp_declining(self, op: str, at: str, bt: str) -> bool:
+    # may a method that op calls for operands of types at and bt return NotImplemented: the
+    # method of at's class, or the reflected one of bt's (a != b: __eq__ where a class has no
+    # __ne__)
+    for side in range(2):
+        t = at if side == 0 else bt
+        m = DUNDER[op] if side == 0 or op not in REFL else DUNDER[REFL[op]]
+        if t in self.classes:
+            ms = self.classes[t].methods
+            if op == "!=" and m not in ms and "__eq__" in ms:
+                m = "__eq__"
+            if m in ms and self.may_decline(ms[m]):
+                return True
+    return False
+
+def gen_cmp_stage(self, op: str, at: str, bt: str, stage: int) -> list[str]:
+    # what concrete_cmp compiles at a stage of inherit_cmp for objects of the concrete classes at
+    # and bt: at stage 0 cmp_pick's method, and at stage n, which runs where the methods of the
+    # stages before it all returned NotImplemented, the next one of cmp_cands; [] after the last
+    # (identity or TypeError, as where neither class has a method); ["never"] where the pair
+    # does not reach the stage, a method before it having no such return statement
+    if stage == 0:
+        return self.cmp_pick(op, at, bt)
+    cs = self.cmp_cands(op, at, bt)
+    for i in range(stage):
+        if i >= len(cs) or not self.may_decline(self.classes[at if cs[i][0] == "a" else bt].methods[cs[i][1]]):
+            return ["never"]
+    return cs[stage] if stage < len(cs) else []
+
 def gen_cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
     # the method concrete_cmp calls for op between objects of the concrete classes at and bt, as
     # [the operand it is called on ("a" or "b"), the method, "!" if its result is inverted
@@ -3903,9 +4012,13 @@ def gen_cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
                 return [sides[i], m, inv]
     return []
 
-def gen_inherit_cmp(self, op: str, a: Val, b: Val, lenient: bool = False) -> Val:
+def gen_inherit_cmp(self, op: str, a: Val, b: Val, lenient: bool = False, stage: int = 0) -> Val:
     # Compare concrete runtime types, including None. Both operands matter: Python gives
     # the right operand's reflected comparison priority when its class is a strict subtype.
+    # A method that returns NotImplemented (decline) sets decl_flag's variable: the arm that
+    # called it then goes on to the next stage, which tells the operands apart again and calls
+    # the next method of each pair (cmp_stage), and after the last compares their identity or
+    # raises TypeError, as where neither class has a method.
     # lenient (tuple search, titem_eq): a pair whose method does not take the other operand,
     # an error for ==, finds them not equal, as the search did before it dispatched on classes.
     # Each pair of the operands' alternatives (cmp_alts) is compiled as concrete_cmp compiles
@@ -3932,8 +4045,8 @@ def gen_inherit_cmp(self, op: str, a: Val, b: Val, lenient: bool = False) -> Val
     for x in xs:
         row: list[int] = []
         for y in ys:
-            w = self.cmp_widen(op, x, y, a.t, b.t)
-            k = self.cmp_key(op, w[0], w[1])
+            w = self.cmp_widen(op, x, y, a.t, b.t, stage)
+            k = self.cmp_key(op, w[0], w[1], stage)
             if k not in arm_of:
                 arm_of[k] = len(keys)
                 keys.append(k)
@@ -3948,12 +4061,32 @@ def gen_inherit_cmp(self, op: str, a: Val, b: Val, lenient: bool = False) -> Val
             row_of[s] = len(rows)
             rows.append(row)
         group.append(row_of[s])
+    nxt: list[str] = []  # (where an arm whose method declined goes: the next stage, placed once)
     if len(keys) == 1:
         if lenient and keys[0].startswith("bad "):
             return Val("false" if op == "==" else "true", "bool")
-        if lenient and keys[0].startswith("call "):
-            return self.cmp_try(op, keys[0], pairs[0][0], pairs[0][1])
-        return self.ptr_cmp('==' if op == '==' else '!=', a, b) if keys[0] == "is" else self.concrete_cmp(op, pairs[0][0], pairs[0][1])
+        if keys[0] == "is":
+            return self.ptr_cmp('==' if op == '==' else '!=', a, b)
+        decl: list[bool] = []
+        r = self.cmp_try(op, keys[0], pairs[0][0], pairs[0][1], stage, decl) if lenient and keys[0].startswith("call ") else self.concrete_cmp(op, pairs[0][0], pairs[0][1], stage, decl)
+        if len(decl) == 0 or self.term:
+            return r
+        lgot = self.label()
+        one = Ins("phi", "bool", "")
+        nxt.append(self.label())
+        self.cbr(self.mload('bool', self.decl_flag()), nxt[0], lgot)
+        self.place(lgot)
+        self.incoming(one, r.v, self.cur)
+        lend = self.label()
+        self.br(lend)
+        self.place(nxt[0])
+        self.mstore('bool', 'false', self.decl_flag())
+        r = self.inherit_cmp(op, a, b, lenient, stage + 1)
+        if not self.term:
+            self.incoming(one, r.v, self.cur)
+            self.br(lend)
+        self.place(lend)
+        return Val(self.phi(one), "bool")
     arms = [self.label() for k in keys]
     tos = [[arms[i] for i in rw] for rw in rows]
     # (where each row's tests of b start: none for a row of one arm, nor where a's alternatives
@@ -3989,13 +4122,20 @@ def gen_inherit_cmp(self, op: str, a: Val, b: Val, lenient: bool = False) -> Val
                 i = rows[g][yi]
                 if i not in placed:
                     placed[i] = True
-                    self.cmp_arm(op, a, b, keys[i], pairs[i], arms[i], ph, end, lenient)
+                    self.cmp_arm(op, a, b, keys[i], pairs[i], arms[i], ph, end, lenient, stage, nxt)
                 if yi == 0 and sb != "-" and sb != "":
                     self.place(sb)
                     self.cmp_tags(b, ys, tos[g])
         if xi == 0 and some != "-" and some != "":
             self.place(some)
             self.cmp_tags(a, xs, ta)
+    if len(nxt) > 0:
+        self.place(nxt[0])
+        self.mstore('bool', 'false', self.decl_flag())
+        later = self.inherit_cmp(op, a, b, lenient, stage + 1)
+        if not self.term:
+            self.incoming(ph, later.v, self.cur)
+            self.br(end)
     self.place(end)
     if len(ph.a) == 0:
         self.unreachable()
@@ -4016,7 +4156,7 @@ def gen_cmp_alts(self, v: Val) -> list[Val]:
         alts.append(Val(v.v, c))
     return alts
 
-def gen_cmp_widen(self, op: str, x: Val, y: Val, at: str, bt: str) -> list[Val]:
+def gen_cmp_widen(self, op: str, x: Val, y: Val, at: str, bt: str, stage: int = 0) -> list[Val]:
     # pair x, y of inherit_cmp's alternatives of operands of static types at and bt, as
     # concrete_cmp is to compile it: where the method it calls takes the other operand as a
     # template's parameter (other: object, or no annotation), that operand as its static type
@@ -4024,8 +4164,8 @@ def gen_cmp_widen(self, op: str, x: Val, y: Val, at: str, bt: str) -> list[Val]:
     # operand's alternatives) calls the same method. That pair compiles that instance anyway,
     # and it takes an object of any of the type's classes, so that the method is compiled once
     # for each receiver class, not once for each pair of classes (#625). Else x, y
-    p = self.cmp_pick(op, x.t, y.t)
-    if len(p) == 0:
+    p = self.cmp_stage(op, x.t, y.t, stage)
+    if len(p) != 3:
         return [x, y]
     lhs = x if p[0] == "a" else y
     rhs = y if p[0] == "a" else x
@@ -4035,12 +4175,12 @@ def gen_cmp_widen(self, op: str, x: Val, y: Val, at: str, bt: str) -> list[Val]:
     f = self.classes[lhs.t].methods[p[1]]
     if len(f.ptypes) != 2 or f.ptypes[1] != "" or f.bad != "":
         return [x, y]
-    q = self.cmp_pick(op, x.t, st) if p[0] == "a" else self.cmp_pick(op, st, y.t)
+    q = self.cmp_stage(op, x.t, st, stage) if p[0] == "a" else self.cmp_stage(op, st, y.t, stage)
     if len(q) != 3 or q[0] != p[0] or q[1] != p[1] or q[2] != p[2]:
         return [x, y]
     return [x, Val(rhs.v, st)] if p[0] == "a" else [Val(rhs.v, st), y]
 
-def gen_cmp_key(self, op: str, a: Val, b: Val) -> str:
+def gen_cmp_key(self, op: str, a: Val, b: Val, stage: int = 0) -> str:
     # what concrete_cmp(op, a, b) compiles, for alternatives a and b of inherit_cmp's operands:
     # pairs of one key compile to the same code, where a None alternative is the operand
     # itself. A call is told apart by its method, which operand it is called on, its
@@ -4048,7 +4188,9 @@ def gen_cmp_key(self, op: str, a: Val, b: Val) -> str:
     # parameter of a class it derives from as that class (coerce: the same pointer, or null),
     # else its own type, which a template's instance is compiled for. Identity ("is") is
     # that of the operands, whichever alternative each is.
-    p = self.cmp_pick(op, a.t, b.t)
+    p = self.cmp_stage(op, a.t, b.t, stage)
+    if len(p) == 1:
+        return "never"  # (pairs that do not reach the stage share an arm, which is not reached)
     if len(p) == 0:
         if op != "==" and op != "!=":
             return f"raise {tname(a.t)} {tname(b.t)}"  # (the TypeError names both classes)
@@ -4075,22 +4217,29 @@ def uniform(to: list[str]) -> bool:
             return False
     return True
 
-def gen_cmp_arm(self, op: str, a: Val, b: Val, k: str, p: list[Val], l: str, ph: Ins, end: str, lenient: bool = False) -> None:
+def gen_cmp_arm(self, op: str, a: Val, b: Val, k: str, p: list[Val], l: str, ph: Ins, end: str, lenient: bool, stage: int, nxt: list[str]) -> None:
     # arm l of inherit_cmp, for key k: what concrete_cmp compiles for pair p, and then end, where
-    # phi ph takes its result ("is": the identity of the operands, which each alternative is;
-    # lenient: a method that does not take the other operand finds them not equal)
+    # phi ph takes its result ("is": the identity of the operands, which each alternative is);
+    # where its method may have declined, to nxt[0], made here for the first such arm, if it did
     self.place(l)
+    decl: list[bool] = []
     if lenient and k.startswith("bad "):
         r = Val("false" if op == "==" else "true", "bool")
     elif lenient and k.startswith("call "):
-        r = self.cmp_try(op, k, p[0], p[1])
+        r = self.cmp_try(op, k, p[0], p[1], stage, decl)
     else:
-        r = self.ptr_cmp('==' if op == '==' else '!=', a, b) if k == "is" else self.concrete_cmp(op, p[0], p[1])
+        r = self.ptr_cmp('==' if op == '==' else '!=', a, b) if k == "is" else self.concrete_cmp(op, p[0], p[1], stage, decl)
+    if not self.term and len(decl) > 0:
+        if len(nxt) == 0:
+            nxt.append(self.label())
+        lgot = self.label()
+        self.cbr(self.mload('bool', self.decl_flag()), nxt[0], lgot)
+        self.place(lgot)
     if not self.term:
         self.incoming(ph, r.v, self.cur)
         self.br(end)
 
-def gen_cmp_try(self, op: str, k: str, x: Val, y: Val) -> Val:
+def gen_cmp_try(self, op: str, k: str, x: Val, y: Val, stage: int = 0, decl: list[bool] | None = None) -> Val:
     # concrete_cmp(op, x, y) for a lenient comparison (tuple search, titem_eq) of pair x, y, whose
     # key k calls a method: an attempt (Gen.xtry), as a dynamic value's comparison method's call
     # is (dynamic.py), since the search compiles a call for each pair of classes its operands may
@@ -4105,7 +4254,7 @@ def gen_cmp_try(self, op: str, k: str, x: Val, y: Val) -> Val:
     previous = self.xtry
     self.xtry = attempt
     n = len(self.called)
-    r = self.concrete_cmp(op, x, y)
+    r = self.concrete_cmp(op, x, y, stage, decl)
     if len(self.called) > n:
         # (the functions of imported modules it is the first to call, the last keys of called, are
         # compiled inside the attempt, as dyn_prepare_factory compiles them: later, an error in
@@ -4171,10 +4320,18 @@ def gen_cmp_tags(self, v: Val, alts: list[Val], to: list[str]) -> None:
         if i + 1 < len(tested):
             self.place(nxt)
 
-def gen_concrete_cmp(self, op: str, a: Val, b: Val) -> Val:
-    # Both objects now have known, non-null concrete classes. NotImplemented is outside
-    # the subset; a supported comparison method returns bool, so the first one completes.
-    p = self.cmp_pick(op, a.t, b.t)
+def gen_concrete_cmp(self, op: str, a: Val, b: Val, stage: int = 0, decl: list[bool] | None = None) -> Val:
+    # Both objects now have known, non-null concrete classes. The method of the stage is called
+    # (cmp_stage). One that may return NotImplemented (may_decline) is called with decl_flag's
+    # variable cleared, and decl takes True unless the instance compiled for these operands has
+    # no such return: the caller then reads the variable, and goes on to the next stage where it
+    # is set. Its other operand, an object here, is known not to be None where the method takes
+    # it as a template's parameter (the pair has its own arm then: cmp_key), which decides the
+    # method's isinstance() test of it at compile time.
+    p = self.cmp_stage(op, a.t, b.t, stage)
+    if len(p) == 1:
+        self.raise_("RuntimeError", self.sconst("internal error: a comparison went on after a method that does not return NotImplemented"))
+        return Val("false", "bool")
     if len(p) > 0:
         lhs = a if p[0] == "a" else b
         rhs = b if p[0] == "a" else a
@@ -4187,7 +4344,25 @@ def gen_concrete_cmp(self, op: str, a: Val, b: Val) -> Val:
             # compares, it raises where it runs; desc rejects the operations that run it)
             self.raise_("TypeError", self.sconst(why))
             return Val("false", "bool")
-        r = self.coerce(self.call_fn(self.classes[lhs.t].methods[m], [lhs, rhs], [], direct=True), "bool")
+        f = self.classes[lhs.t].methods[m]
+        if not self.may_decline(f):
+            r = self.coerce(self.call_fn(f, [lhs, rhs], [], direct=True), "bool")
+            return Val(self.scalar('xor', [Val(r.v, 'bool'), Val('true', 'bool')]), "bool") if p[2] == "!" else r
+        known = rhs.t in self.classes and rhs.v not in self.nn and len(f.ptypes) == 2 and f.ptypes[1] == ""
+        if known:
+            self.nn[rhs.v] = True
+        arg = rhs
+        if rhs.t == "None" and len(f.ptypes) == 2 and f.ptypes[1] == "" and not self.dispatches(f, f.params[1]):
+            # (None, to a template's parameter that the method does not test, with isinstance()
+            # or "is None", which None decides at compile time: as an object of the receiver's
+            # class that is None, whose attribute reads raise AttributeError where they run, as
+            # where the operand's class has no subclass and no method declines. An except
+            # clause may catch it, and return NotImplemented)
+            arg = Val("null", lhs.t)
+        unread: list[bool] = []
+        r = self.declining_call(f, lhs, arg, True, decl if decl is not None else unread)
+        if known:
+            self.nn.pop(rhs.v, False)
         return Val(self.scalar('xor', [Val(r.v, 'bool'), Val('true', 'bool')]), "bool") if p[2] == "!" else r
     if op == "==" or op == "!=":
         # object.__eq__ declines, then Python falls back to object identity.
@@ -5086,6 +5261,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
                     return self.inherit_cmp(op, a, b)
     if (op == "==" or op == "!=" or op in REFL) and ((a.t in self.classes and self.classes[a.t].tag != 0) or (b.t in self.classes and self.classes[b.t].tag != 0)):
         return self.inherit_cmp(op, a, b)
+    if (op == "==" or op == "!=" or op in REFL) and self.cmp_declining(op, a.t, b.t):
+        return self.inherit_cmp(op, a, b)  # (which reads whether the method returned NotImplemented)
     ka = self.exc_kinds(a.t) if op == "==" or op == "!=" or op in REFL else []
     kb = self.exc_kinds(b.t) if op == "==" or op == "!=" or op in REFL else []
     if (len(ka) > 1 or len(kb) > 1 or (a.t != b.t and len(ka) + len(kb) > 0)) and a.t != "exc" and b.t != "exc":
