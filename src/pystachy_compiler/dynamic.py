@@ -3169,10 +3169,10 @@ def gen_dyn_body(self, key: str) -> None:
         # only type identity, never payload access, uses their shared origin.
         # Keep runtime builtin families (numeric/list storage, functions and
         # iterators) on their established path, including erased callables.
-        same = self.rt("pys_dyn_same_type", "i64", [f"ptr {o.v}", f"ptr {ps[1].v}"])
+        same_type = self.rt("pys_dyn_same_type", "i64", [f"ptr {o.v}", f"ptr {ps[1].v}"])
         hit = self.label()
         rest = self.label()
-        self.cbr(self.num_cmp("!=", Val(same, "int"), Val("0", "int")).v, hit, rest)
+        self.cbr(self.num_cmp("!=", Val(same_type, "int"), Val("0", "int")).v, hit, rest)
         self.place(hit)
         self.ret_(Val("true", "bool"))
         self.place(rest)
