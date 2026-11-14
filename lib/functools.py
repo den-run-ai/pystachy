@@ -405,3 +405,20 @@ try:
     from _functools import partial
 except ImportError:
     pass
+
+
+# Pystachy port: total_ordering and cached_property are the compiler's where they decorate a
+# class statement and a method of one (Loader.functools_classes), which is all they do here: a
+# class is no value in Pystachy, and a method's object is found as its class is compiled, so
+# the loader rejects a call of either. (__all__ does not name them: a module imports them by
+# name.)
+def total_ordering(cls):
+    """Class decorator that fills in missing ordering methods"""
+    return cls
+
+
+def cached_property(func):
+    """A property whose value is computed once for an object and then kept."""
+    return func
+    """A property whose value is computed once for an object and then kept."""
+    return func

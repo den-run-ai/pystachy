@@ -1709,6 +1709,8 @@ def gen_tests(self, ns: list[Node], p: str) -> bool:
             return True
         if n.kind == "call" and n.kids[0].kind == "name" and ((n.kids[0].s == "getattr" and len(n.kids) == 4) or (n.kids[0].s == "type" and len(n.kids) == 2)) and n.kids[1].kind == "name" and n.kids[1].s == p:
             return True  # (getattr(p, name, default) and type(p): reflection.py)
+        if n.kind == "call" and n.kids[0].kind == "name" and n.kids[0].s == "__pys_ordering" and len(n.kids) == 4 and n.kids[2].kind == "name" and n.kids[2].s == p:
+            return True  # (a method the loader wrote for @total_ordering passes p to the class's own one: ordering)
         x = nonetest(n)
         if x >= 0 and n.kids[x].kind == "name" and n.kids[x].s == p:
             return True

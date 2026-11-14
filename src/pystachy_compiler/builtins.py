@@ -171,6 +171,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.err(GALIASUSE if name == GALIAS else TYPESUSE.replace("NAME", name[len(TYPESMOD) + 1 :]))
     if name == "ffi.at":
         self.err("ffi.at(xs, k) passes a list from an index to C: it is only an argument of a call of an @extern function, for a list[float] or list[ffi.c_int64] parameter")
+    if name == "__pys_ordering":
+        return self.ordering(args)
     if name == "__pys_cache_lock":
         if (self.curfn.mod != "_pystachy_cache" or not lib_source(self.curfn.node.line, self.libdir, "_pystachy_cache.py") or
                 len(args) != 1 or any([a.kind in ["kw", "starred", "dstar"] for a in args])):
