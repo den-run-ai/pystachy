@@ -1,5 +1,6 @@
 """Check builtin arity and bounded dynamic call specialization."""
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -92,6 +93,45 @@ class GeneratorContextTests(unittest.TestCase):
 
 
 class TemplateMembershipTests(unittest.TestCase):
+    def test_cross_module_exact_types_share_one_descriptor_dispatcher(self):
+        helper = ""
+        source = ("# pystachy: dynamic-any\nfrom typing import Any\nimport exacthelpers\n"
+                  "class Box:\n    def __init__(self, value):\n        self.value = value\n"
+                  "class Factory:\n    def make(self):\n        return Box(1.5)\n"
+                  "a: Any = Box(1)\nb: Any = Box('text')\n")
+        for index in range(32):
+            helper += (f"def site{index}(left, right):\n"
+                       "    return type(left) is type(right)\n")
+            source += f"print(exacthelpers.site{index}(a, b))\n"
+        source += "factory: Any = Factory()\nprint(exacthelpers.site0(a, factory.make()))\n"
+        generators = []
+        operations = {}
+        original = driver.Gen
+        lower = original.lower
+
+        def generator():
+            value = original()
+            generators.append(value)
+            return value
+
+        def observed_lower(gen, fn):
+            operations[fn.f.name] = [(ins.op, ins.s) for block in fn.blocks for ins in block.code]
+            return lower(gen, fn)
+
+        root = Path(__file__).resolve().parent.parent
+        with tempfile.TemporaryDirectory() as directory:
+            Path(directory, "exacthelpers.py").write_text(helper)
+            with patch.object(driver, "Gen", generator), patch.object(original, "lower", observed_lower):
+                driver.compile_program("template_type_probe.py", source,
+                                       [directory, str(root / "lib")], "")
+        gen = generators[-1]
+        predicates = [fn for fn in gen.fns if fn.f.name == "dyn.sametype"]
+        self.assertEqual(len(predicates), 1)
+        code = operations[predicates[0].f.name]
+        self.assertFalse(any(op in {"dyn.payload", "dyn.raw", "slot.unpack"} for op, _ in code))
+        classes = [c for c in gen.dynclasses if gen.tmpl_of(c) == "Box"]
+        self.assertEqual(len(classes), 3)
+
     def test_sites_share_origin_predicate_without_payload_narrowing(self):
         source = ("# pystachy: dynamic-any\nfrom typing import Any, Generic, TypeVar\n"
                   "T = TypeVar('T')\nclass Box(Generic[T]):\n"

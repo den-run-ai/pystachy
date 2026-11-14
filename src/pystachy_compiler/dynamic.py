@@ -3164,6 +3164,34 @@ def gen_dyn_body(self, key: str) -> None:
     if key == "typevalue":
         self.refl_dynamic_type(o)
         return
+    if key == "sametype":
+        # Physical descriptors of one generic Python class remain different:
+        # only type identity, never payload access, uses their shared origin.
+        # Keep runtime builtin families (numeric/list storage, functions and
+        # iterators) on their established path, including erased callables.
+        same_type = self.rt("pys_dyn_same_type", "i64", [f"ptr {o.v}", f"ptr {ps[1].v}"])
+        hit = self.label()
+        rest = self.label()
+        self.cbr(self.num_cmp("!=", Val(same_type, "int"), Val("0", "int")).v, hit, rest)
+        self.place(hit)
+        self.ret_(Val("true", "bool"))
+        self.place(rest)
+        for origin in self.tmpl:
+            classes = [c for c in self.dynclasses if self.tmpl_of(c) == origin]
+            if len(classes) < 2:
+                continue
+            matches: list[Val] = []
+            for operand in ps:
+                match = "false"
+                for c in classes:
+                    eq = self.ptr_cmp("==", operand, Val(self.dyntypes[c], "dyntype"))
+                    match = self.scalar("or", [Val(match, "bool"), eq])
+                matches.append(Val(match, "bool"))
+            next_origin = self.label()
+            self.cbr(self.scalar("and", matches), hit, next_origin)
+            self.place(next_origin)
+        self.ret_(Val("false", "bool"))
+        return
     if key.startswith("isinstance."):
         # A template's specializations share its Python class but not its payload
         # layout. Only inspect immutable descriptor metadata here. In particular,
