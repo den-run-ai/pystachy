@@ -1357,7 +1357,9 @@ def gen_super_call(self, sc: Node, m: str, args: list[Node], based: bool = False
             # self as its first argument), and a class method's cls would be the object's class
             self.cls_bound(bm, cls, True)
             return self.call_fn(bm, [], args, direct=True)
-        return self.call_fn(bm, [me], args, direct=True)
+        # Explicit Base.m(self, ...) may forward None from an unbound class call.
+        # Preserve that nullable specialization; only actual super() lookup checked me.
+        return self.call_fn(bm, [me], args, direct=True, unbound=based)
     if read:
         self.err(f"super() has no supported property '{m}' in the base of {short(cls)}")
     if ordinary:
@@ -1369,9 +1371,23 @@ def gen_super_call(self, sc: Node, m: str, args: list[Node], based: bool = False
     if m == "__init__":
         self.exc_kw(b, args, f"{short(b)}.__init__()")
         vals = self.exc_vals(args)
+        if based:
+            # Builtin descriptors reject None after evaluating the explicit arguments.
+            # A user base without its own initializer inherits this builtin's wrapper.
+            descriptor = self.classes[b].exc if b in self.classes else b
+            self.notnone(me, f"TypeError: descriptor '__init__' requires a '{descriptor}' object but received a 'NoneType'")
         self.exc_keep(me, vals)
         return Val("null", "None")
     if (m == "__str__" or m == "__repr__") and len(args) == 0:
+        if based:
+            # CPython 3.13's supported exception bases with their own __str__ wrapper;
+            # the other string wrappers, and every supported __repr__, are BaseException's.
+            descriptor = "BaseException"
+            if m == "__str__":
+                for candidate in ["AttributeError", "ImportError", "KeyError", "NameError", "OSError"]:
+                    if self.derives(b, candidate):
+                        descriptor = candidate
+            self.notnone(me, f"TypeError: descriptor '{m}' requires a '{descriptor}' object but received a 'NoneType'")
         return self.getfield(me, self.field(me, " str"), " str") if m == "__str__" else self.exc_brepr(me)
     self.err(f"super().{m}() is not supported: only __init__, __str__, __repr__ and the methods of a base class of the program")
     return me
