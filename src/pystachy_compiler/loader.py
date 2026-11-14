@@ -258,6 +258,24 @@ def enum_literal(e: Node) -> list[str]:
     return []
 
 
+def enum_item_types(t: str) -> list[str]:
+    # the types of the arguments CPython passes an enum class's __init__ for a member whose value
+    # has type t (enum_literal's): a tuple's items, else the value itself
+    if not t.startswith("tuple["):
+        return [t]
+    out: list[str] = []
+    depth = 0
+    w = ""
+    for ch in t[6:-1] + ",":
+        if ch == "," and depth == 0:
+            out.append(w.strip())
+            w = ""
+        else:
+            depth += 1 if ch == "[" else -1 if ch == "]" else 0
+            w += ch
+    return out
+
+
 def enum_int_op(op: str, a: int, b: int) -> list[str]:
     # a op b of two ints of the 64-bit range, as an enum_literal's [type, text]: [] where CPython's
     # result is no int of that range (or op is none of these), which the compiler does not compute
@@ -419,6 +437,8 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
         canon: dict[str, str] = {}  # each one's member: itself, or for an alias the member whose value it has
         keys: dict[str, str] = {}  # the members by their values' texts
         texts: dict[str, str] = {}  # the members' values' texts
+        avals: dict[str, Node] = {}  # (each alias's own value, which an __init__ is called with)
+        inits: list[Node] = []  # the class's own __init__, which each member's value's items initialize
         defs: dict[str, bool] = {}
         vtype = ""
         last: list[int] = []
@@ -429,8 +449,13 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
             nm = s.kids[0].s if s.kind == "assign" and len(s.kids) == 2 and s.kids[0].kind == "name" else ""
             dunder = len(nm) > 4 and nm.startswith("__") and nm.endswith("__")
             if s.kind == "def":
-                if s.s in ENUM_HOOKS or s.s in canon:
+                # (__init__ of an enum class but a flag's, whose pseudo-members the run time makes:
+                # called for each member with its value's items, below)
+                own_init = s.s == "__init__" and (kind == "Enum" or kind == "IntEnum" or kind == "StrEnum") and len(s.kids) == 3 and s.s not in canon
+                if (s.s in ENUM_HOOKS and not own_init) or s.s in canon:
                     fail(f"enum class {st.s}'s {s.s}() is not supported{' (a member of that name precedes it)' if s.s in canon else ': the compiler makes and looks up its members'}", s.line)
+                if own_init:
+                    inits.append(s)
                 if s.s == "_missing_" and (kind == "Flag" or kind == "IntFlag"):
                     fail(f"flag class {st.s}'s _missing_() is not supported: Flag's own makes its pseudo-members", s.line)
                 if s.s == "_missing_" and (len(s.kids) != 4 or s.kids[3].s != "classmethod" or len(s.kids[3].kids) != 0):
@@ -486,6 +511,7 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                 texts[nm] = lit[1]
                 if lit[1] in keys:
                     canon[nm] = keys[lit[1]]
+                    avals[nm] = v
                     init = mk("enumalias", keys[lit[1]], s.line, [])
                 else:
                     keys[lit[1]] = nm
@@ -496,6 +522,32 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                 out.append(s)
             else:
                 fail(f"enum class {st.s}'s body is not supported: an enum class has members (NAME = value), methods and a docstring", s.line)
+        if len(inits) > 0:
+            # __init__(self, ...) of the class: EnumType calls it for each member with the items of
+            # the member's value (a tuple's, else the value), also for an alias, whose object it
+            # then drops for the member of that value. A parameter without an annotation takes
+            # the type of its item, which the members' values share
+            if len(mnames) == 0:
+                fail(f"enum class {st.s}'s __init__() is not supported: the class that defines the members defines it", inits[0].line)
+            its = enum_item_types(vtype)
+            ps = inits[0].kids[0].kids
+            kwonly = int(inits[0].kids[0].s.split(",")[1])  # (the first keyword-only parameter's index, or -1)
+            for i in range(1, len(ps)):
+                if ps[i].kind != "param" or ps[i].kids[0].kind != "noann":
+                    continue
+                # (an item goes to a parameter that takes it by position; another one, which the
+                # members' values never give, has the type of its default value)
+                t = its[i - 1] if (kwonly < 0 or i < kwonly) and i - 1 < len(its) else ""
+                if t == "" and ps[i].kids[1].kind != "noann":
+                    lit = enum_literal(ps[i].kids[1])
+                    t = lit[0] if len(lit) > 0 and lit[0] != "None" else ""
+                if t != "":
+                    ps[i].kids[0] = Parser(Lexer(f"_: {t}\n", ps[i].line).file()).module().kids[0].kids[1]
+            for o in out:
+                if o.kind == "annassign" and len(o.kids) == 3 and o.kids[2].kind == "enummember":
+                    o.kids[2].kids.append(mk("str", "__init__", o.line, []))
+                elif o.kind == "annassign" and len(o.kids) == 3 and o.kids[2].kind == "enumalias":
+                    o.kids[2].kids = [avals[o.kids[0].s], mk("str", o.kids[0].s, o.line, [])]
         aliases = [m for m in mnames if canon[m] != m]
         if uniq and len(aliases) > 0:
             fail(f"duplicate values found in <enum {st.s!r}>: " + ", ".join([f"{m} -> {canon[m]}" for m in aliases]), st.line)

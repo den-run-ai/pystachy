@@ -16,6 +16,7 @@ from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.specs import BIG, BIGOPT, GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, RANGEC, TYPEMODS, is_excname
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
+    is_const,
     lib_file,
     lib_source,
     opaque_class,
@@ -3075,14 +3076,46 @@ def gen_enum_member(self, n: Node, want: str) -> Val:
     self.setfield(o, self.field(o, "_value_"), "_value_", v)
     if self.enum_intlike(c):
         self.mem_store(Val(self.fgep(o, ci.fpos[" enum int"]), "*int"), self.coerce(v, "int"))
+    if len(n.kids) > 1:
+        gen_enum_init(self, o, n.kids[0])
     return o
+
+
+def gen_enum_init(self, o: Val, v: Node) -> None:
+    # the __init__ of member o's enum class, called as EnumType calls it once the member has its
+    # _name_ and _value_: with the items of its value v where that is a tuple, else with v. It is
+    # a call of the method, whose result is dropped: no constructor checks that it is None
+    f = self.classes[o.t].methods["__init__"]
+    items = v.kids if v.kind == "tuple" else [v]
+    args = [x for x in items]
+    if f.node.line > v.line:
+        # EnumType calls __init__ once the class body has run. Here the member is initialized
+        # where the body binds it, before the def statement below it has evaluated its
+        # defaults: a parameter that the value's items leave out is given its default value,
+        # a literal, with the call
+        for j in range(len(items) + 1, len(f.params)):
+            d = f.defaults[j]
+            if j == f.vararg or j == f.kwarg or d.kind == "noann":
+                continue
+            if not is_const(d):
+                self.err(f"enum class {short(o.t)}'s __init__(): the default value of parameter '{f.params[j]}' is not supported where the members precede the def statement, which evaluates it after they are initialized here: use a literal, or define __init__ first")
+            args.append(clone_node(d) if j < f.npos else mk("kw", f.params[j], v.line, [clone_node(d)]))
+    self.call_fn(f, [o], args, direct=True)
 
 
 def gen_enum_alias(self, n: Node, want: str) -> Val:
     # an enum member's alias (Loader's enum_classes), as its class attribute's default: the member
     # n.s, whose class attribute the class statement has bound before (body order), read from its
-    # global, as the class's own name is not bound until the statement ends
+    # global, as the class's own name is not bound until the statement ends. Where the class has
+    # an __init__ (n's kids: the alias's value and name), CPython first makes and initializes a
+    # member of the alias's own name, which it drops for the member of that value
     ci = self.classes[unopt(want)]
+    if len(n.kids) > 1:
+        v = self.coerce(self.expr(n.kids[0], ci.ftypes["_value_"]), ci.ftypes["_value_"])
+        o = self.new_obj(ci.name)
+        self.setfield(o, self.field(o, "_name_"), "_name_", Val(self.sconst(n.kids[1].s), "str"))
+        self.setfield(o, self.field(o, "_value_"), "_value_", v)
+        gen_enum_init(self, o, n.kids[0])
     self.class_default(ci, n.s)
     t = ci.ftypes[n.s]
     return Val(self.mload(t, ci.fglob[n.s]), t)
