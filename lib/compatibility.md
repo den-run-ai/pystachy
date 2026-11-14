@@ -1136,6 +1136,11 @@ a `Decimal`, `int` or `float`; `hash()`, `int()`, `float()`, `round()`, `math.fl
 `getcontext()`, `setcontext()`, `localcontext()` and the three predefined contexts; all eight
 rounding modes; NaNs, infinities and signed zeros.
 
+Comparisons decline operands outside these numeric types so that their reflected
+comparison methods run, including in tuple searches. Direct comparison-method calls
+that could return `NotImplemented` retain the compiler's
+[bounded comparison contract](../docs/language/semantics.md#object-protocols).
+
 - **Signals.** Flags are not recorded and traps are fixed at the default:
   `InvalidOperation`, `DivisionByZero` and `Overflow` always raise, and the other signals
   never do. `Context` has no `flags` or `traps`, and its `repr()` shows none set.

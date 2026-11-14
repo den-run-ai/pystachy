@@ -237,6 +237,8 @@ def tname(t: str) -> str:
         return "NoneType"
     if t == "int+":
         return "int"
+    if t == "decimal$Decimal":
+        return "decimal.Decimal"
     if t == "file":
         return "TextIOWrapper"
     if is_vtuple(t):

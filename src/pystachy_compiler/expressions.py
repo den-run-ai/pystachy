@@ -5052,7 +5052,7 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str, 
         # declines) x's __eq__(item); with neither, they are not equal. An object of a class
         # with subclasses calls its runtime class's (#1430), as == does (inherit_cmp)
         runtime = [x for x in [item.t, a.t] if x in self.classes and self.classes[x].exc == "" and self.classes[x].tag != 0 and len(self.cmp_kinds(x)) > 1]
-        if len(runtime) > 0 or (lenient and (item.t in self.classes or a.t in self.classes)):
+        if len(runtime) > 0 or (lenient and (item.t in self.classes or a.t in self.classes)) or self.cmp_declining("==", item.t, a.t):
             c = self.inherit_cmp("==", item, a, True)
         else:
             c = self.foreign_eq(item, a)

@@ -1170,7 +1170,7 @@ class Decimal:
             return self == _from_int(other)
         if isinstance(other, float):
             return self == Decimal(other)
-        return False
+        return NotImplemented
 
     def _order(self, other: "Decimal") -> int:
         if self._kind >= _NAN or other._kind >= _NAN:
@@ -1178,15 +1178,23 @@ class Decimal:
         return self._cmp(other)
 
     def __lt__(self, other) -> bool:
+        if not isinstance(other, (Decimal, int, float)):
+            return NotImplemented
         return self._order(_comparand(other)) < 0
 
     def __le__(self, other) -> bool:
+        if not isinstance(other, (Decimal, int, float)):
+            return NotImplemented
         return self._order(_comparand(other)) <= 0
 
     def __gt__(self, other) -> bool:
+        if not isinstance(other, (Decimal, int, float)):
+            return NotImplemented
         return self._order(_comparand(other)) > 0
 
     def __ge__(self, other) -> bool:
+        if not isinstance(other, (Decimal, int, float)):
+            return NotImplemented
         return self._order(_comparand(other)) >= 0
 
     def compare(self, other: "Decimal", context: Context | None = None) -> "Decimal":

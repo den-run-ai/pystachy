@@ -1,0 +1,55 @@
+child 1
+base 1
+child 1
+base 1
+child 1
+base 1
+True 2
+child 1
+base 1
+0
+child 1
+base 1
+child 1
+base 1
+child 1
+base 1
+True 2
+child 1
+base 1
+0
+child 1
+base 2
+child 1
+base 2
+child 1
+base 2
+False 0
+child 1
+base 2
+missing
+child -1
+base -1
+child -1
+base -1
+child -1
+base -1
+False 0
+child -1
+base -1
+missing
+True 2
+0
+child 1
+child 1
+child 1
+False 0
+child 1
+missing
+child 1
+child 1
+child 1
+False 0
+child 1
+missing
+[exit 0]
