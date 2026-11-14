@@ -699,6 +699,26 @@ def load(path):
     return header, list(records.values())
 
 
+def repair_record_tail(path):
+    """After load and resume validation, make the last surviving line append-safe.
+
+    Keep every earlier byte. A second interruption can then leave another tail
+    to discard, without turning the previously discarded tail into an interior line.
+    """
+    with path.open("r+b") as output:
+        data = output.read()
+        last = data.splitlines(keepends=True)[-1]
+        size = len(data)
+        try:
+            json.loads(last)
+        except json.JSONDecodeError:
+            size -= len(last)
+            output.truncate(size)
+        if size and data[size - 1:size] != b"\n":
+            output.seek(size)
+            output.write(b"\n")
+
+
 def meta(header, records):
     """A report's metadata: its header, the date and the worker time its records took."""
     conditional = {"int", "int_inline", "storage"}
@@ -840,6 +860,7 @@ def main(argv=None):
             parser.error(f"{args.records} was made from other inputs: run without --resume")
         header, wanted = previous, set(programs)
         records = [record for record in records if record["program"] in wanted]
+        repair_record_tail(args.records)
     else:
         args.records.parent.mkdir(parents=True, exist_ok=True)
         args.records.write_text(json.dumps({"header": header}, sort_keys=True) + "\n")
