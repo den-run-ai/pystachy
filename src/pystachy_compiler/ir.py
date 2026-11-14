@@ -592,6 +592,7 @@ class ClassInfo:
         self.fields: list[str] = []
         self.fields_ready = False  # declare_fields prepared this declaration; specializations copy its fields
         self.fields_preparing = False  # recursive class-attribute annotations retain their provisional path
+        self.init_only = False  # only constructor code specializes; annotated fields keep one class layout
         self.fpos: dict[str, int] = {}  # field -> its index in fields (and in the struct)
         self.ftypes: dict[str, str] = {}
         self.fdefault: dict[str, Node] = {}

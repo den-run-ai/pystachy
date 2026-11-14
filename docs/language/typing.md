@@ -773,6 +773,31 @@ the same types share a specialization: `Box(1)` and `Box(2)` share one, while `B
 uses another. Methods compile when needed; non-template special methods compile when the
 specialization is created.
 
+When every initialized instance field has a concrete class-body annotation or an inline
+annotation before its first unannotated store in source order,
+constructor code can specialize without changing the class's layout. For example,
+`__init__(self, groups: Iterable[list[str]])` can fill `self.seen: dict[str, int]`
+from lists, tuples or generators. All such objects have the same static class and can
+share a variable or container. This gives consumer classes concrete parameter types,
+so those consumers can use ordinary inheritance without becoming class templates. Its constructor
+and instance methods remain compiled on demand, including in an unused class in the
+main module. Fixed-layout constructors also support ordinary inheritance, inherited
+initializers and `super().__init__`, including imported and aliased classes. All generic
+initializers in the hierarchy must meet the same storage rule. This path excludes
+explicit `Generic` classes, inferred fields, stored
+`Iterable`/`Iterator` fields, property stores, initialization delegated through `self`
+(including aliases and helpers), callable-controlled constructor layouts,
+deferred string field annotations and fields annotated with a specialization of another
+class template.
+
+An imported subclass becomes available when compiled code needs it, including class
+tests and annotations of a called helper. Its activation recompiles earlier dispatch sites
+with the complete set of used classes. Unused imported siblings and their overrides stay
+excluded; merely declaring them does not make a working base-class call compile their
+bodies. An initializer whose field types depend on its arguments still cannot take part
+in inheritance. Explicit `Base.__init__(self, ...)` delegation remains excluded from the
+fixed-layout proof because it passes the receiver to another callable.
+
 If `Box.__init__(self, value: Any) -> None` assigns `self.value = value`, it behaves like
 the unannotated constructor: `Box(1).value` is an `int`, and `Box("s").value` is a `str`.
 Existing field types cannot change later. `Any` does not provide a shared boxed layout for
@@ -1065,7 +1090,8 @@ class variables.
 ## Single inheritance
 
 An ordinary class may derive from one previously declared ordinary class, including an
-imported class. Annotate its `__init__` parameters; constructor-inferred class templates cannot
+imported class. Annotate its `__init__` parameters. Constructor arguments may be generic
+when all fields retain one fixed concrete layout; layout-specialized class templates cannot
 participate in a hierarchy. A generic base without its own `__init__` supports the
 [visitor subset](#explicit-generic-classes); bases whose constructor binds type variables and
 subclasses passing through their own type variables remain unsupported. Fields retain their

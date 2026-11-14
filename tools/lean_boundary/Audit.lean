@@ -1,6 +1,8 @@
 -- SPDX-License-Identifier: MIT
 import Lean
 import PystachyBoundary
+import PystachyLayout
+import PystachyAlias
 import PystachyAccess
 import PystachyInt
 import PystachyInline
@@ -13,6 +15,9 @@ open Lean in
 run_cmd do
   let allowed := #[``propext, ``Classical.choice, ``Quot.sound]
   for theoremName in #[``PystachyBoundary.check_iff,
+      ``PystachyLayout.checked_projection, ``PystachyLayout.accepted_layout_projection,
+      ``PystachyAlias.accepted_reference_roundtrip, ``PystachyAlias.accepted_alias_write,
+      ``PystachyAlias.accepted_traces_reference, ``PystachyAlias.accepted_root_chain,
       ``PystachyBoundary.reachable_facts, ``PystachyBoundary.accepted_payload_safe,
       ``PystachyAccess.reachable_invariant, ``PystachyAccess.accepted_access_safe,
       ``PystachyAccess.writeField_step, ``PystachyAccess.accepted_write_progress,

@@ -106,6 +106,20 @@ operand, share its code. A method that takes the other operand as a template's p
 once for each receiver's class.
 Inherited fields keep the base layout; unrelated classes retain their existing layout.
 Explicit base calls and `super()` select a body directly while preserving the receiver.
+A hierarchy needing only constructor-code specialization is activated on demand. The
+retry registry retains qualified class names and their ancestors; a fresh `Gen` rebuilds
+layouts and dispatch sites, including calls compiled before the subclass was discovered.
+Ancestors whose layouts are already verified can activate before a child's annotations
+are re-evaluated; this handles constructor parameters and fields naming that base. A
+self-reference names the prospective nominal layout, including a subclass not yet
+registered. The class and template registries are restored after each syntax-only
+eligibility check, including errors and retries.
+Unused imported subclasses retain deferred diagnostics, so their overrides do not enter
+dispatch merely because their base acquired a fixed layout. Speculative comparison
+adapters keep their existing decline path before a diagnostic can activate a hierarchy.
+Activating a class also discards saved union hints and declined dynamic adapters:
+those may refer to the previous template layouts. The finite class-name registry is
+independent of the union-join retry budget.
 
 A known function value can become a direct call. Closures keep captured variables in shared
 cells, so `nonlocal` assignments remain visible. A typed `Callable` uses an adapter with a
@@ -434,7 +448,18 @@ value. Programs without `send` and `throw` keep five words and the code they had
 `yield from` whose closing may run code closes its generator as above. A program where a module
 opts in to [promoting ints](python-int.md) gives its generators nine words: also the pointers of
 the promoting ints yielded last and returned (`specs.GENVALP`, `GENRETP`), which every `yield` of
-an int writes, null where the value fits.
+an int writes, null where the value fits. In code tracking dynamic `Any` identity, scalar
+`int` and `float` yield channels add one scanned nullable object companion after
+the existing promise: six, eight or ten words in total. The numeric payload and
+any promoting-int high pointer keep their original slots. Existing source aliases
+supply their canonical box; fresh computed yields supply null, as scalar calls do.
+Consumers copy that companion into a private result slot before any later resume.
+They can transfer a fresh result into a lone loop local without boxing, while
+observable aliases materialize normally. No pointer into a generator's local
+identity slot escapes. Isolated nontracking modules keep their old frame size.
+A typed generator crossing identity regions, including erasure to `Any`, forces
+recompilation with consistent tracking before a consumer can read it. Generator
+return channels keep their prior layout.
 
 A generator expression that no consumer takes directly becomes an anonymous generator
 function, called with its first iterable (evaluated where it is written) and the values of

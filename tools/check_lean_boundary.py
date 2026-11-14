@@ -87,7 +87,7 @@ SUPPORTED_OPS = ORDINARY | TAG_OPS | TERMINATORS
 GENERATOR_EDGES = {"gen.start": "br", "gen.yield": "br", "gen.ret": "ret.none"}
 
 LIMITATIONS = [
-    "Only dyn.payload guard safety in each selected normalized function is checked.",
+    "Dynamic payload guards and inventoried class layout prefixes are checked in each selected normalized function.",
     "Python normalization, snapshot fidelity, the descriptor table, runtime tag and payload layout "
     "contracts and LLVM lowering are not proved.",
     "Generators, unlisted payload types and stores into boxes or descriptors are rejected; null "
@@ -160,6 +160,49 @@ def shape(op, operands, results, targets=0, typ=None, texts=("",)):
             and (typ is None or op["type"] == typ), f"invalid {op['op']} shape")
 
 
+def check_payload_consumers(blocks):
+    """Tie a projection's claimed type to its direct consumers, before proving its guard.
+
+    dyn.payload lowers to an internal address and a slot of bits. Only int uses
+    those bits directly; every other type first unpacks that same slot as the
+    projection's declared type. Do not trust a consumer's operand annotation to
+    identify a producer, or let opaque transport hide a reinterpretation.
+    """
+    addresses = set()
+    payloads = {}
+    for block in blocks:
+        for op in block["operations"]:
+            if op["op"] == "dyn.payload":
+                shape(op, 1, 2, typ="%slot", texts=(op["text"],))
+                addresses.add(f"%t{op['results'][0]}")
+                payloads[f"%t{op['results'][1]}"] = op["text"]
+    for block in blocks:
+        for op in block["operations"]:
+            for position, operand in enumerate(op["operands"]):
+                value = operand["value"]
+                require(value not in addresses, "dyn.payload internal address cannot be used")
+                if value not in payloads:
+                    continue
+                typ = payloads[value]
+                if op["op"] == "slot.unpack":
+                    shape(op, 1, 1, typ=typ)
+                    require(operand["type"] == "%slot", "dyn.payload unpack requires a slot operand")
+                elif typ == "int":
+                    # The runtime ABI names an uninterpreted i64 slot *T. These
+                    # two constructors copy that word unchanged into a fresh
+                    # optional/union box; they do not dereference it as a pointer.
+                    boxed = op["op"] == "rt" and op["text"] in {"box", "ubox"}
+                    if boxed and operand["type"] == "*T":
+                        index = 1 if op["text"] == "ubox" else 0
+                        shape(op, index + 1, 1, typ="%ptr", texts=(op["text"],))
+                        require(position == index and (index == 0 or op["operands"][0]["type"] == "int"),
+                                "dyn.payload int boxing requires the runtime slot argument")
+                    else:
+                        require(operand["type"] == "int", "dyn.payload int bits require an int operand")
+                else:
+                    raise Unsupported("dyn.payload bits require direct slot.unpack of the declared type")
+
+
 def successors(node):
     if node["op"] == "stop":
         return []
@@ -200,7 +243,7 @@ def live_locations(nodes):
                 later.add(node["src"])
         elif node["op"] == "havoc":
             later.discard(node["dst"])
-        elif node["op"] == "payload":
+        elif node["op"] in {"payload", "class_payload"}:
             later.add(node["value"])
         if later != live[index]:
             live[index] = later
@@ -325,6 +368,42 @@ def descriptor_table(snapshot):
     return types, derived, roles, classes
 
 
+def descriptor_layouts(snapshot, types):
+    """Cross-check descriptor claims against the independently exported class layouts.
+
+    Same-width pointer members remain distinct source representations. The
+    ordered LLVM types also capture padding/alignment inputs, including hidden
+    fields. Prefix compatibility itself is checked by Lean, not trusted here.
+    """
+    descriptors = {symbol: entry for symbol, entry in types.items() if entry["kind"] == DK_OBJ}
+    raw = snapshot.get("dynamic_layouts")
+    if not descriptors and raw is None:
+        return {}
+    if raw is None:
+        raise Unsupported("the snapshot has no dynamic_layouts table; inspect the program again")
+    require(isinstance(raw, list) and len(raw) <= 65536, "invalid dynamic_layouts table")
+    layouts = {}
+    for entry in raw:
+        require(isinstance(entry, dict) and set(entry) == {
+            "name", "descriptor", "base", "role", "number", "members", "llvm"}, "invalid class layout fields")
+        payload = name(entry["name"], "class layout name")
+        symbol = name(entry["descriptor"], "class layout descriptor")
+        require(symbol in descriptors and symbol not in layouts, "duplicate or unknown class layout descriptor")
+        descriptor = descriptors[symbol]
+        require(descriptor["payload"] == payload and descriptor["cls"] == entry["number"]
+                and type(entry["number"]) is int and descriptor["base"] == entry["base"]
+                and descriptor["role"] == entry["role"], "descriptor and class layout disagree")
+        require(isinstance(entry["members"], list) and isinstance(entry["llvm"], list)
+                and len(entry["members"]) == len(entry["llvm"]) <= 4096, "invalid class layout members")
+        members = []
+        for representation, llvm in zip(entry["members"], entry["llvm"], strict=True):
+            require(isinstance(representation, str) and isinstance(llvm, str), "invalid class member type")
+            members.append(name(json.dumps([representation, llvm], separators=(",", ":")), "class member representation"))
+        layouts[symbol] = members
+    require(layouts.keys() == descriptors.keys(), "class layout inventory is incomplete")
+    return layouts
+
+
 def isa_tags(types, derived, symbol):
     """The tags for which runtime.c's pys_dyn_isa(x, symbol) is true."""
     tags = {symbol}
@@ -423,6 +502,9 @@ def normalize_snapshot(snapshot, function, max_blocks=1024, max_instructions=MAX
     fn = selected[0]
     symbol = name(fn.get("symbol"), "function symbol")
     types, derived, roles, classes = descriptor_table(snapshot)
+    layouts = descriptor_layouts(snapshot, types)
+    referenced_layouts = {}
+    read_layouts = {}
 
     def accepted(payload):
         # the tags of the boxes whose payload a read of static type payload may take
@@ -433,8 +515,15 @@ def normalize_snapshot(snapshot, function, max_blocks=1024, max_instructions=MAX
             raise Unsupported(f"unsupported payload type: {payload}")
         holder = holders[0]
         if types[holder]["kind"] == DK_OBJ:
-            # (a subclass's objects share its layout, and a role is a fieldless secondary base)
-            return derived[holder] | roles[holder]
+            # Every admitted concrete descriptor must support this projection.
+            # An ancestry edge or a secondary-role flag is not itself evidence.
+            tags = derived[holder] | roles[holder]
+            for tag in sorted(tags):
+                require(tag in layouts, "class payload descriptor has no layout")
+                referenced_layouts[tag] = layouts[tag]
+            referenced_layouts[holder] = layouts[holder]
+            read_layouts[payload] = holder
+            return tags
         return {holder}
     name(fn.get("return_representation"), "return representation")
     recursion = fn.get("recursion")
@@ -548,6 +637,7 @@ def normalize_snapshot(snapshot, function, max_blocks=1024, max_instructions=MAX
                 pending.append(target)
     # Blocks that no edge reaches cannot run; they are omitted and counted.
     live = [block for block in blocks if block["label"] in reached]
+    check_payload_consumers(live)
     predecessors = {block["label"]: set() for block in live}
     for block in live:
         for target in edges[block["label"]]:
@@ -878,7 +968,10 @@ def normalize_snapshot(snapshot, function, max_blocks=1024, max_instructions=MAX
                 require(operands[0]["type"] == "dyn" and (operands[0]["value"] in definitions
                                                           or operands[0]["value"].startswith("@")),
                         "dyn.payload requires a dynamic register or constant box")
-                following({"op": "payload", "value": operands[0]["value"], "tags": sorted(tags)})
+                node = {"op": "payload", "value": operands[0]["value"], "tags": sorted(tags)}
+                if op["text"] in read_layouts:
+                    node.update(op="class_payload", layout=read_layouts[op["text"]])
+                following(node)
                 payloads += 1
             elif kind == "br":
                 shape(op, 0, 0, 1, "")
@@ -979,11 +1072,13 @@ def normalize_snapshot(snapshot, function, max_blocks=1024, max_instructions=MAX
         for key in ("next", "yes", "no"):
             if key in node:
                 node[key] = renumber[node[key]]
-    # (a caller that only validates the function needs no certificate: certify=False)
+    # A validation-only caller needs no certificate; preserve class-layout obligations.
     certificate = infer_certificate(nodes) if certify else []
-    candidate = {"schema_version": 2, "program": {"entry": 0, "nodes": nodes}, "certificate": certificate}
+    candidate = {"schema_version": 3, "program": {"entry": 0, "nodes": nodes}, "certificate": certificate,
+                 "layouts": [{"tag": tag, "members": members} for tag, members in sorted(referenced_layouts.items())]}
     return candidate, {"function": symbol, "stage": "typed-after", "nodes": len(nodes),
-                       "payloads": payloads, "paired_guards": paired_guards,
+                       "payloads": payloads, "layouts": sum(len(node["tags"]) for node in nodes if node["op"] == "class_payload"),
+                       "paired_guards": paired_guards,
                        "threaded_edges": threaded, "omitted_blocks": len(blocks) - len(live),
                        "escaped_slots": len(escaped),
                        "scope": "dyn.payload guards in one normalized function", "limitations": LIMITATIONS}
@@ -1095,9 +1190,11 @@ def run_checker(checker, encoded, metadata):
     result = checker_result(checker, encoded, timeout=10)
     require(isinstance(result, dict) and type(result.get("accepted")) is bool,
             "checker did not return an acceptance result")
-    require(set(result) == {"accepted", "nodes", "payloads"}, f"checker error: {result.get('error')}")
+    require(set(result) == {"accepted", "nodes", "payloads", "layouts"}, f"checker error: {result.get('error')}")
     require(result["nodes"] == metadata["nodes"] and result["payloads"] == metadata["payloads"],
             "checker counts disagree with normalized input")
+    require(type(result["layouts"]) is int and result["layouts"] == metadata.get("layouts", 0),
+            "checker layout count disagrees with normalized input")
     return result["accepted"]
 
 

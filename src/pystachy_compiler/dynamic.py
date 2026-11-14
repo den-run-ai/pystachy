@@ -279,6 +279,10 @@ def gen_identity_box(self, v: Val, t: str) -> None:
         return
     if (t == "int" or t == "float") and v.idfrom == "" and v.idslot == "" and not v.lit:
         self.identity_event("number as an Any value")
+    if is_gen(t) and not self.identity_free(gelem(t)):
+        # Dynamic iterator dispatch must not interpret an untracked numeric
+        # promise as a box. Nested generators can expose that channel later.
+        self.identity_event("generator as an Any value")
     if is_fn(t) or (is_callable(t) and not self.identity_free(t)):
         self.identity_event("function as an Any value")
 
@@ -2461,6 +2465,14 @@ def gen_dyn_test(self, v: Val, ts: list[str]) -> str:
     t = Val(self.dyn_typeof(v), "dyntype")
     r = ""
     for m in ts:
+        if m in self.tmpl:
+            # Python class identity does not select a template's physical layout.
+            # Share one predicate per origin and let the existing dispatcher fixed
+            # point include specializations discovered after this call is compiled.
+            predicate = self.dyn_dispatcher("isinstance." + m, [DYN], "bool", m)
+            x = self.dyn_call(predicate, [v]).v
+            r = x if r == "" else self.scalar("or", [Val(r, "bool"), Val(x, "bool")])
+            continue
         if m in self.classes and m not in self.tmpl and self.classes[m].exc == "":
             # an object of class m or of a subclass: pys_dyn_isa walks the box's bases as the
             # program runs, so a subclass whose objects the program boxes only after this test is
@@ -2509,8 +2521,9 @@ def gen_dyn_isinst_types(self, c: Node) -> list[str]:
         return ["None"]
     if c.kind != "name":
         return [""]
-    if c.s in self.classes and self.classes[c.s].exc == "" and c.s not in self.tmpl:
-        self.dyn_class_type(c.s)  # (so that dyn_test has its DynType, even if no object of it is boxed yet)
+    if c.s in self.classes and self.classes[c.s].exc == "":
+        if c.s not in self.tmpl:
+            self.dyn_class_type(c.s)  # (so that dyn_test has its DynType, even if no object of it is boxed yet)
         return [c.s]
     if self.bound(c.s):
         return [""]
@@ -2541,9 +2554,9 @@ def gen_dyn_narrow_type(self, c: Node, truth: bool) -> str:
     ts = self.dyn_isinst_types(c)
     if len(ts) == 2 and ts[0] == "int" and ts[1] == "bool":
         return DYNINT
-    # A list's Python type does not establish boxed versus native integer storage.
-    # Keep its descriptor and use the layout-aware dynamic operations after the test.
-    if len(ts) != 1 or ts[0] == "" or ts[0] == "*" or ts[0] == "%class:type":
+    # Python class identity does not establish a list's or template's storage
+    # layout. Keep its descriptor and use dynamic operations after the test.
+    if len(ts) != 1 or ts[0] == "" or ts[0] == "*" or ts[0] == "%class:type" or ts[0] in self.tmpl:
         return ""
     return ts[0]
 
@@ -3154,6 +3167,52 @@ def gen_dyn_body(self, key: str) -> None:
         return
     if key == "typevalue":
         self.refl_dynamic_type(o)
+        return
+    if key == "sametype":
+        # Physical descriptors of one generic Python class remain different:
+        # only type identity, never payload access, uses their shared origin.
+        # Keep runtime builtin families (numeric/list storage, functions and
+        # iterators) on their established path, including erased callables.
+        same_type = self.rt("pys_dyn_same_type", "i64", [f"ptr {o.v}", f"ptr {ps[1].v}"])
+        hit = self.label()
+        rest = self.label()
+        self.cbr(self.num_cmp("!=", Val(same_type, "int"), Val("0", "int")).v, hit, rest)
+        self.place(hit)
+        self.ret_(Val("true", "bool"))
+        self.place(rest)
+        for origin in self.tmpl:
+            classes = [c for c in self.dynclasses if self.tmpl_of(c) == origin]
+            if len(classes) < 2:
+                continue
+            matches: list[Val] = []
+            for operand in ps:
+                match = "false"
+                for c in classes:
+                    eq = self.ptr_cmp("==", operand, Val(self.dyntypes[c], "dyntype"))
+                    match = self.scalar("or", [Val(match, "bool"), eq])
+                matches.append(Val(match, "bool"))
+            next_origin = self.label()
+            self.cbr(self.scalar("and", matches), hit, next_origin)
+            self.place(next_origin)
+        self.ret_(Val("false", "bool"))
+        return
+    if key.startswith("isinstance."):
+        # A template's specializations share its Python class but not its payload
+        # layout. Only inspect immutable descriptor metadata here. In particular,
+        # do not ask typevalue() about unrelated values with unsupported reflection.
+        classes = [c for c in self.dynclasses if self.tmpl_of(c) == dunder]
+        if len(classes) == 0:
+            self.ret_(Val("false", "bool"))
+            return
+        typ = self.dyn_typeof(o)
+        cid = Val(self.mload("int", self.maddr("int", typ, "3")), "int")
+        hit = self.label()
+        miss = self.label()
+        self.switch(cid, [str(self.ocls[c]) for c in classes], [hit for _ in classes], miss)
+        self.place(hit)
+        self.ret_(Val("true", "bool"))
+        self.place(miss)
+        self.ret_(Val("false", "bool"))
         return
     if key.startswith("pairkey."):
         # Each raw key slot travels with its wide-int companion. The callback

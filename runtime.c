@@ -103,7 +103,9 @@ _Static_assert(offsetof(Str, len) == 0 && offsetof(Str, dict_hash) == 8 &&
 typedef struct { I len, cap; I *a, *ids; } List; /* optional scanned numeric identity companion: kind, then boxes */
 _Static_assert(offsetof(List, len) == 0 && offsetof(List, cap) == 8 && offsetof(List, a) == 16 &&
                offsetof(List, ids) == 24 && sizeof(List) == 32, "List ABI: raw prefix and identity companion");
-typedef struct { I len; I a[]; } VTuple;                /* immutable homogeneous tuple, counted inline slots */
+typedef struct { I len; I *ids; I a[]; } VTuple; /* immutable raw slots and optional scanned numeric identities */
+_Static_assert(offsetof(VTuple, len) == 0 && offsetof(VTuple, ids) == 8 &&
+               offsetof(VTuple, a) == 16 && sizeof(VTuple) == 16, "VTuple ABI: length, identities, raw items");
 typedef struct { I len, kind, n, size; I *keys, *vals; uint64_t *hs; int32_t *idx; I cut, vatomic; I *vb, *kb; } Dict; /* kind 0: int keys, 1: str, else a Str *: the descriptor of tuple or object keys; vatomic: the values are ints, floats or bools, whose arrays are atomic; vb: the Mpz of each value past 64 bits of a dict of ints, or null (dbig); kb: of each key past 64 bits of int keys, or null (kbig); see dicts */
 typedef struct { I len, kind, fill, mask, finger; I *keys, *hs, *kb; } Set; /* a set or frozenset, kind as Dict's; kb: the Mpz of each element past 64 bits of a set of ints, or null (sbig); see sets */
 typedef struct { char *p; I n, cap; } Buf;
@@ -2817,7 +2819,8 @@ static int eqv(I a, I b, const char *d) {
     if (x == y) return 1;
     if (!x || !y) return x == y;
     if (x->len != y->len) return 0;
-    for (I i = 0; i < x->len; i++) if (!eqitem(x->a[i], y->a[i], d + 1)) return 0;
+    for (I i = 0; i < x->len; i++)
+      if (!(x->ids && y->ids && x->ids[i + 1] && x->ids[i + 1] == y->ids[i + 1]) && !eqitem(x->a[i], y->a[i], d + 1)) return 0;
     return 1;
   }
   case 'S': case 'F': return pys_set_cmp((Set *)a, (Set *)b, 4);   /* (a set equals a frozenset of its elements) */
@@ -2919,6 +2922,7 @@ static int eqpair_depth(I a, I b, const char *x, const char *y, I depth) {
     I *p = *x == 'T' ? (I *)a : ((VTuple *)a)->a, *q = *y == 'T' ? (I *)b : ((VTuple *)b)->a, wx[2], wy[2];
     const char *ex = x + (*x == 'T' ? 2 : 1), *ey = y + (*y == 'T' ? 2 : 1);
     for (I i = 0; i < nx; i++) {
+      if (*x == 'V' && *y == 'V' && ((VTuple *)a)->ids && ((VTuple *)b)->ids && ((VTuple *)a)->ids[i + 1] && ((VTuple *)a)->ids[i + 1] == ((VTuple *)b)->ids[i + 1]) continue;
       if (!eqpair_depth(*x == 'T' ? titem(p, nx, i, ex, wx) : p[i], *y == 'T' ? titem(q, ny, i, ey, wy) : q[i], ex, ey, depth)) return 0;
       if (*x == 'T') ex = skip(ex);
       if (*y == 'T') ey = skip(ey);
@@ -2970,7 +2974,7 @@ static int opv(I a, I b, const char *d, I op) {
   case 'V': {
     VTuple *x = (VTuple *)a, *y = (VTuple *)b; I i = 0;
     if (x == y) return cmpop(0, op);
-    while (i < x->len && i < y->len && eqitem(x->a[i], y->a[i], d + 1)) i++;
+    while (i < x->len && i < y->len && ((x->ids && y->ids && x->ids[i + 1] && x->ids[i + 1] == y->ids[i + 1]) || eqitem(x->a[i], y->a[i], d + 1))) i++;
     if (i < x->len && i < y->len) return opv(x->a[i], y->a[i], d + 1, op);
     return cmpop((x->len > y->len) - (x->len < y->len), op);
   }
@@ -3020,6 +3024,35 @@ void pys_unpack_ex_check(I have, I want) {
 /* Variable-length tuples own copied slots; later list mutation cannot change the
    tuple. Scanned allocation retains pointer-valued elements and optional boxes.
    The source remains live through the allocation because memcpy reads it after. */
+void pys_list_identity(List *l, I kind);
+static I list_box(I value, I kind);
+
+/* Identities are immutable once materialized. Copies own their companion arrays,
+   but share the item boxes. Materialize before sharing a pending numeric item. */
+static void vtuple_ids(VTuple *t, I kind) {
+  opt_in();
+  if (!t->ids) {
+    if (t->len > INT64_MAX / (I)sizeof(I) - 1) oom();
+    I *ids = pys_alloc((t->len + 1) * sizeof(I));
+    ids[0] = kind; t->ids = ids;
+  }
+}
+static void vtuple_identity(VTuple *t) {
+  if (t->ids && opt_in())
+    for (I i = 0; i < t->len; i++)
+      if (!t->ids[i + 1]) t->ids[i + 1] = list_box(t->a[i], t->ids[0]);
+}
+void pys_vtuple_set_identity(VTuple *t, I index, Dyn *box, I kind) {
+  vtuple_ids(t, kind); t->ids[index + 1] = (I)box;
+}
+Dyn *pys_vtuple_get_identity(VTuple *t, I index, I kind) {
+  if (!t) pys_fail("TypeError: 'NoneType' object is not subscriptable");
+  index = idx(index, t->len, "IndexError: tuple index out of range");
+  vtuple_ids(t, kind);
+  if (!t->ids[index + 1]) t->ids[index + 1] = list_box(t->a[index], kind);
+  return (Dyn *)t->ids[index + 1];
+}
+
 VTuple *pys_vtuple_from(I *src, I count) {
   if (count < 0 || count > (INT64_MAX - (I)sizeof(VTuple)) / (I)sizeof(I)) pys_fail("MemoryError");
   if (count && !src) pys_fail("TypeError: 'NoneType' object is not iterable");
@@ -3031,7 +3064,13 @@ VTuple *pys_vtuple_from(I *src, I count) {
 VTuple *pys_vtuple_new(List *src) {
   if (!src) pys_fail("TypeError: 'NoneType' object is not iterable");
   list_narrow(src);   /* (a tuple[int, ...] holds 64-bit ints: BIGIDS) */
-  return pys_vtuple_from(src->a, src->len);
+  VTuple *t = pys_vtuple_from(src->a, src->len);
+  if (src->ids && !big_list(src) && opt_in()) {
+    pys_list_identity(src, src->ids[0]);
+    vtuple_ids(t, src->ids[0]);
+    memcpy(t->ids + 1, src->ids + 1, src->len * sizeof(I));
+  }
+  return t;
 }
 /* Immutable widening from int/float/bool to the same scalar | None. The
    compiler restricts this helper to unboxed scalar source elements. */
@@ -3055,6 +3094,13 @@ VTuple *pys_vtuple_concat(VTuple *a, VTuple *b) {
   t->len = a->len + b->len;
   memcpy(t->a, a->a, a->len * sizeof(I));
   memcpy(t->a + a->len, b->a, b->len * sizeof(I));
+  if ((a->ids || b->ids) && opt_in()) {
+    I kind = a->ids ? a->ids[0] : b->ids[0];
+    vtuple_ids(a, kind); vtuple_ids(b, kind);
+    vtuple_identity(a); vtuple_identity(b); vtuple_ids(t, kind);
+    memcpy(t->ids + 1, a->ids + 1, a->len * sizeof(I));
+    memcpy(t->ids + a->len + 1, b->ids + 1, b->len * sizeof(I));
+  }
   return t;
 }
 VTuple *pys_vtuple_slice(VTuple *t, I lo, I hi, I st) {   /* t[lo:hi:st]; all of t is t itself, as in CPython */
@@ -3063,6 +3109,10 @@ VTuple *pys_vtuple_slice(VTuple *t, I lo, I hi, I st) {   /* t[lo:hi:st]; all of
   VTuple *r = pys_alloc(sizeof(VTuple) + n * sizeof(I));
   r->len = n;
   for (I i = 0; i < n; i++) r->a[i] = t->a[lo + i * st];
+  if (t->ids && opt_in()) {
+    vtuple_identity(t); vtuple_ids(r, t->ids[0]);
+    for (I i = 0; i < n; i++) r->ids[i + 1] = t->ids[lo + i * st + 1];
+  }
   return r;
 }
 static int eqitem(I a, I b, const char *d);
@@ -3216,6 +3266,12 @@ List *pys_vtuple_list(VTuple *t) {
   List *l = pys_list_new(t->len);
   if (t->len) memcpy(l->a, t->a, t->len * sizeof(I));
   l->len = t->len;
+  if (t->ids && opt_in()) {
+    vtuple_identity(t);
+    if (l->cap > INT64_MAX / (I)sizeof(I) - 1) oom();
+    l->ids = pys_alloc((l->cap + 1) * sizeof(I));
+    memcpy(l->ids, t->ids, (t->len + 1) * sizeof(I));
+  }
   return l;
 }
 static void reserve(List *l, I n) {

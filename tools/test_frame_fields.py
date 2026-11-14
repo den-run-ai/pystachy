@@ -61,7 +61,7 @@ PROGRAM = """
     consts fieldnames bconsts tconsts tconstdata lconsts strs bstrs strvals vnodes cmexit rtfns opfxs out source_lines fns fll callsites summaries xcls xvals
     xmods xsigs xctors xtypes exctree eh opts reds lazy lazyat wake called gflag ocls ocmp hcls one
     xobj impg wide nokey nonereads noneglobalpending attrvals attrown hints newhints final xnot newx retseen
-    template_instances template_retained retainers unsupported cnodes hooks chooks flagged unraised
+    template_instances template_retained retainers unsupported hierarchies deferred_hierarchies cnodes hooks chooks flagged unraised
     noneglobals intglobals rangeused objectused intat strglobals strtuples abstracts abcmeta
     constflags late ext libdir prefix csyms csymline cdirect extvars unicode_audit rtmode rtdefs
     rtcache externs deps comp flowctx closures clokeys adapters adrets ncv dispatchers cacheforms decorated
