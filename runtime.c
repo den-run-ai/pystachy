@@ -4101,11 +4101,24 @@ static int khash(I kind) { return (kind & KTAG) || (kind > 1 && (*kraw(kind) == 
    before it are ints, strs, None, objects by identity and such tuples, which run no code */
 static uint64_t hval(I k, const char *d) {
   if (*d == 'H' || *d == 'A' || (*d == '?' && d[1] == 'H')) return 0;
-  if ((*d == '?' || *d == 's' || *d == 'T' || *d == 'P') && !k) {   /* None (also a looked-up key's) */
+  if ((*d == '?' || *d == 's' || *d == 'T' || *d == 'V' || *d == 'P') && !k) {   /* None (also a looked-up key's) */
     for (const char *z = *d == 's' || *d == 'P' ? d : skip(d); d < z; d++) if (*d == 'H') return 0;
     return 0x9E3779B97F4A7C15ULL;
   }
   if (*d == '?') d++;
+  if (*d == 'V') {   /* a runtime-length tuple: its items, of its one descriptor, hashed as a tuple's below, and its length */
+    VTuple *t = (VTuple *)k; uint64_t h = 0x27D4EB2F165667C5ULL; const char *e = d + 1;
+    for (I i = 0; i < t->len; i++) {
+      I x = t->a[i]; uint64_t v;
+      if (*e == 'i' || *e == 'b') { v = (uint64_t)pys_hash_int(x); v = v ? v : 1; }
+      else if (*e == 's' || (*e == '?' && e[1] == 's')) v = x ? hstrd((Str *)x) : 0x9E3779B97F4A7C15ULL;
+      else { v = hval(x, e); if (!v) return 0; }
+      h = (h ^ v) * 0x100000001B3ULL;
+    }
+    h = (h ^ (uint64_t)t->len) * 0x100000001B3ULL;
+    h ^= h >> 29;
+    return h ? h : 1;
+  }
   if (*d != 'T') { Dict t = {.kind = *d == 's'}; return hsh(&t, k); }   /* (a P<id>'s: its address's) */
   uint64_t h = 0x27D4EB2F165667C5ULL; const char *e = d + 2;
   for (int i = 0; i < d[1] - '0'; i++) {
