@@ -784,8 +784,13 @@ class Normalize:
                 k, a = op["op"], args(op)
                 if k in {"br", "landing", "gen.start", "gen.yield"}:
                     nxt = self.edge(op["targets"][0], label)
-                    if k == "gen.yield" and not (len(a) == 2 and self.pair(*a)):
-                        for v in reversed(a):
+                    if k == "gen.yield":
+                        # Yield transports a canonical low/digits pair. A tracked
+                        # identity is an independent operand, not part of that pair.
+                        shape = [operand["type"] for operand in op["operands"]]
+                        paired = (shape in (["%slot", "%ptr"], ["%slot", "%ptr", "dyn"])
+                                  and self.pair(a[0], a[1]))
+                        for v in reversed(a[2:] if paired else a):
                             nxt = self.needed(v, nxt)
                 elif k == "cbr":
                     nxt = self.condition(a[0], self.edge(op["targets"][0], label),
