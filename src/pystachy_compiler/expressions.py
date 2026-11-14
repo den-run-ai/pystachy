@@ -5106,7 +5106,11 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             return self.uequal(op, a, b)
         if op in ["<", "<=", ">", ">="] and not is_opt(a.t) and not is_opt(b.t) and self.uorders(a.t, b.t):
             return self.ucmp(op, a, b)  # (each member's ordering: union splitting)
-        if not ((op == "in" or op == "not in") and (is_tuple(b.t) or (is_list(b.t) and is_union(unopt(self.rec_type(elem(b.t)))) and self.ueq_type(elem(b.t))))):
+        # (a set's or dict's keys that are a union of classes compared by identity, of whose
+        # members a's are: runtime.c compares the objects the boxes hold, #1452)
+        kt = selem(b.t) if is_set(b.t) else targs(b.t)[0] if is_dict(b.t) else ""
+        keyed = kt != "" and not is_opt(a.t) and self.key_union(kt) and all([m in umembers(kt) for m in (umembers(a.t) if is_union(a.t) else [a.t])])
+        if not ((op == "in" or op == "not in") and (keyed or is_tuple(b.t) or (is_list(b.t) and is_union(unopt(self.rec_type(elem(b.t)))) and self.ueq_type(elem(b.t))))):
             self.err("comparing closed union values requires narrowing with isinstance() first")
     if (op == "in" or op == "not in") and is_kw(b.t):
         b = self.kw_list(b)  # (x in kwargs: among the names)
@@ -5236,8 +5240,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         return Val(r if op == "in" else self.scalar('xor', [Val(r, 'bool'), Val('true', 'bool')]), "bool")
     if (op == "in" or op == "not in") and b.t == "str":
         a = self.unwrap(a, "TypeError: 'in <string>' requires string as left operand, not NoneType")
-    if (op == "in" or op == "not in") and a.t == "None" and ((is_dict(b.t) and targs(b.t)[0] not in self.classes and not none_key(targs(b.t)[0])) or (is_set(b.t) and selem(b.t) not in self.classes and not none_key(selem(b.t))) or (is_list(b.t) and (self.optional(elem(b.t)) == "" or self.isnum(elem(b.t))) and elem(b.t) not in self.classes)):
-        return Val("false" if op == "in" else "true", "bool")  # None is no key of a dict (no element of a set) but an object's, and no number
+    if (op == "in" or op == "not in") and a.t == "None" and ((is_dict(b.t) and targs(b.t)[0] not in self.classes and not self.key_union(targs(b.t)[0]) and not none_key(targs(b.t)[0])) or (is_set(b.t) and selem(b.t) not in self.classes and not self.key_union(selem(b.t)) and not none_key(selem(b.t))) or (is_list(b.t) and (self.optional(elem(b.t)) == "" or self.isnum(elem(b.t))) and elem(b.t) not in self.classes)):
+        return Val("false" if op == "in" else "true", "bool")  # None is no key of a dict (no element of a set) but an object's or a union of classes', and no number
     kt = targs(b.t)[0] if is_dict(b.t) else selem(b.t) if is_set(b.t) else ""
     if (op == "in" or op == "not in") and is_opt(a.t) and ((kt != "" and (unopt(a.t) == kt or (is_sopt(a.t) and bool_for_int(unopt(a.t), kt)) or (a.t == BIGOPT and kt == "int"))) or (is_sopt(a.t) and is_list(b.t) and (unopt(a.t) == elem(b.t) or self.isnum(elem(b.t))))):
         # None is no key of the dict (and no int of a list[int]); a promoting int's search is exact (bigints.py)
