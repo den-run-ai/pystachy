@@ -1,0 +1,17 @@
+{
+  "baseline": "950c0440ad793dc6c34664f591383a5e6bba14dd",
+  "built_commit": "9997bf2c1551f177506c2c3b2d095c940df715d9",
+  "source_identity": "tracked compiler, runtime and library inputs byte-identical; original checkout clean",
+  "compiler_sha256": "ab6eab3cd16a215ae483a4bd8ca6a5219cecbcff62f89e58e6b01d9f08a9233a",
+  "bootstrap_stage_hashes": [
+    "b0dd064147332c2969e46626b9d55688ff269ce8085862a621775500cce22a7e",
+    "b0dd064147332c2969e46626b9d55688ff269ce8085862a621775500cce22a7e",
+    "b0dd064147332c2969e46626b9d55688ff269ce8085862a621775500cce22a7e"
+  ],
+  "runtime_stage_hashes": [
+    "cd645bebc4fea57b4824b5393843fea99bb31880a31a79dd825e1f34c388f830",
+    "cd645bebc4fea57b4824b5393843fea99bb31880a31a79dd825e1f34c388f830",
+    "cd645bebc4fea57b4824b5393843fea99bb31880a31a79dd825e1f34c388f830"
+  ],
+  "bootstrap_log": "/workspace/scratch/c66a10c5a7b1/alpha2-bootstrap.log"
+}

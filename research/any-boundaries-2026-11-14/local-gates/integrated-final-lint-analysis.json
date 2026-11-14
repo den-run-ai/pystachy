@@ -1,0 +1,24 @@
+{
+  "lint": "completed successfully before check-runtime",
+  "runtime": "674 entries,70 exception classes,193 functions; passed",
+  "initial_recording_summary": [
+    "CPython 3.13.16: 2464 recordings, 133 deviations, 11 files of lib/ checked; 10 failed"
+  ],
+  "failure_checks": 10,
+  "affected_programs": [
+    "any_annotated",
+    "any_templates",
+    "any_variables",
+    "dynany_annotated",
+    "typevar_templates"
+  ],
+  "dependency_missing_programs": [
+    "any_annotated",
+    "any_templates",
+    "any_variables",
+    "dynany_annotated",
+    "typevar_templates"
+  ],
+  "same_programs": true,
+  "initial_make_failure": "make: *** [Makefile:378: check-recordings] Error 1"
+}

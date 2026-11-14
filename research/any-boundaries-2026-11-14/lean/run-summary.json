@@ -1,0 +1,222 @@
+{
+  "build": {
+    "all_public_axiom_audits_passed": true,
+    "audit_log": "theorem-audit.log",
+    "jobs": 44,
+    "kernel_sources_unchanged_since_previous_qualification": true,
+    "notes": "The final unit target rechecked the cached unchanged Lean build and replayed its audit results; the earlier combined kernel build is retained in ../lean-evidence.",
+    "status": "passed"
+  },
+  "focused_report": {
+    "command": [
+      "make",
+      "lean-report",
+      "PY=/workspace/scratch/c2b093657c17/dev-venv/bin/python",
+      "LEAN_REPORT_FLAGS=--jobs 1 --timeout 120 --progress --output /workspace/scratch/6e931c3f8732/lean-evidence-final/selected-report.md --records /workspace/scratch/6e931c3f8732/lean-evidence-final/selected-records.jsonl tests/programs/classes/constructor_dependency_alias.py tests/programs/classes/constructor_dependency_imported.py tests/programs/classes/constructor_dependency_qualified.py tests/programs/classes/constructor_dependency_quoted.py tests/programs/classes/constructor_dependency_specialized.py tests/programs/classes/constructor_dependency_transitive.py tests/programs/inference/dynany_identity_optional_lists.py tests/programs/inference/dynany_identity_optional_vtuples.py tests/programs/inference/dynany_identity_optional_container_imports.py tests/programs/inference/dynany_identity_optional_container_effects.py tests/programs/inference/dynany_identity_promote_optional.py tests/programs/numbers/python_int_optional_container_identity.py tests/programs/numbers/python_int_optional_tuple_identity.py /workspace/scratch/6e931c3f8732/combined-boundary-consumer/consumer.py"
+    ],
+    "evaluated_programs": 14,
+    "exit_code": 0,
+    "external_input_provenance": "External consumer inputs are independently SHA256-pinned. The report correctly flags this explicit selected corpus as external and does not claim canonical exhaustive coverage.",
+    "incomplete_checks": 0,
+    "log": "selected-report.log",
+    "per_check": {
+      "access": {
+        "functions": 7,
+        "programs": 6,
+        "proved": 7,
+        "total": 7
+      },
+      "fields": {
+        "functions": 34,
+        "programs": 8,
+        "proved": 152,
+        "total": 152
+      },
+      "gc": {
+        "functions": 61,
+        "programs": 13,
+        "proved": 369,
+        "total": 369
+      },
+      "removed_null": {
+        "functions": 6,
+        "programs": 6,
+        "proved": 11,
+        "total": 11
+      },
+      "storage": {
+        "functions": 5,
+        "programs": 2,
+        "proved": 31,
+        "total": 31
+      }
+    },
+    "programs": 14,
+    "proved_obligations": 570,
+    "records": "selected-records.jsonl",
+    "rejected": 0,
+    "report": "selected-report.md",
+    "seconds": 14.22,
+    "status": "passed",
+    "total_obligations": 570,
+    "unsupported": 0,
+    "zero_obligation_checks": [
+      "dynamic payload reads",
+      "closed-union reads",
+      "union payload bits",
+      "promoting-int fit claims",
+      "promoting-int inline arithmetic"
+    ]
+  },
+  "inputs_unchanged_after_run": true,
+  "native_checker_binaries_unchanged_after_run": true,
+  "prior_rejection": "/workspace/scratch/6e931c3f8732/lean-evidence/storage-report.json",
+  "published_source": {
+    "integrated_local_commit": "5acdbfddea96ce43e0a389dcec6c0392114fa6e5",
+    "pr": 1493,
+    "published_commit": "adac7f4c88fd86ddaecbb889042b778c701b29ed",
+    "source_tree_correspondence": "All three commits have the exact same complete Git tree. Native compiler/runtime source matches the separately bootstrapped d68c9837; changes since then are only tools/check_lean_storage.py, tools/test_lean_storage_generators.py and tools/lean_boundary/STORAGE.md.",
+    "tree": "ddb2991da45e803167a0cf46a11020389a01f485",
+    "verified_commit": "e4faeab2b2241b9fe77ef6daec7df94535046279"
+  },
+  "scope": "Full native Lean unit gate; explicit selected 14-case report; full strict 178-program promoting-int storage corpus. Does not replace the exhaustive all-program report.",
+  "source_commit": "e4faeab2b2241b9fe77ef6daec7df94535046279",
+  "source_manifest": {
+    "file": "source-manifest.json",
+    "native_checkers": 5,
+    "source_and_input_files": 6304
+  },
+  "source_tree": "ddb2991da45e803167a0cf46a11020389a01f485",
+  "status": "passed",
+  "storage_corpus": {
+    "command": [
+      "/workspace/scratch/c2b093657c17/dev-venv/bin/python",
+      "tools/check_lean_storage_corpus.py",
+      "--jobs",
+      "1",
+      "--timeout",
+      "120",
+      "--progress",
+      "--report",
+      "/workspace/scratch/6e931c3f8732/lean-evidence-final/storage-report.json"
+    ],
+    "exit_code": 0,
+    "inventory_command": [
+      "/workspace/scratch/c2b093657c17/dev-venv/bin/python",
+      "tools/check_lean_storage_corpus.py",
+      "--list"
+    ],
+    "log": "storage.log",
+    "programs": 178,
+    "report": "storage-report.json",
+    "seconds": 346.74,
+    "status": "accepted",
+    "totals": {
+      "accepted": 1718,
+      "boundaries": 865,
+      "error": 0,
+      "failed_programs": 0,
+      "functions": 5449,
+      "low_word_uses": 22597,
+      "obligation_functions": 1718,
+      "obligations": 18610,
+      "programs": 178,
+      "proof_batches": 1770,
+      "proved_obligations": 18610,
+      "rejected": 0,
+      "stack_copy_obligations": 60,
+      "stack_copy_reads": 120,
+      "tail_reads": 746,
+      "unclassified_functions": 0,
+      "unsupported": 0
+    }
+  },
+  "storage_rejection_resolution": {
+    "changed_program_totals": [
+      {
+        "after": {
+          "accepted": 6,
+          "boundaries": 0,
+          "error": 0,
+          "functions": 11,
+          "low_word_uses": 34,
+          "obligation_functions": 6,
+          "obligations": 22,
+          "proof_batches": 6,
+          "proved_obligations": 22,
+          "rejected": 0,
+          "stack_copy_obligations": 0,
+          "stack_copy_reads": 0,
+          "tail_reads": 0,
+          "unclassified_functions": 0,
+          "unsupported": 0
+        },
+        "before": {
+          "accepted": 4,
+          "boundaries": 0,
+          "error": 0,
+          "functions": 11,
+          "low_word_uses": 34,
+          "obligation_functions": 6,
+          "obligations": 26,
+          "proof_batches": 6,
+          "proved_obligations": 18,
+          "rejected": 2,
+          "stack_copy_obligations": 0,
+          "stack_copy_reads": 0,
+          "tail_reads": 0,
+          "unclassified_functions": 0,
+          "unsupported": 0
+        },
+        "program": "tests/programs/numbers/python_int_generator_identity.py"
+      }
+    ],
+    "new_obligations": 18610,
+    "new_proved": 18610,
+    "new_status": "accepted",
+    "old_obligations": 18614,
+    "old_proved": 18606,
+    "old_status": "rejected",
+    "raw_low_word_uses_after": 22597,
+    "raw_low_word_uses_before": 22597,
+    "reason": "Four previously misclassified paired generator transports no longer require numeric-fit evidence. All real obligations remain checked, including independent identity operands. Seven native unit controls and independent actual-IR negative mutations pass."
+  },
+  "toolchain": {
+    "lean": "4.35.0",
+    "llvm": "18.1.3",
+    "python": "/workspace/scratch/c2b093657c17/dev-venv/bin/python"
+  },
+  "units": {
+    "command": [
+      "make",
+      "check-lean-boundary",
+      "PY=/workspace/scratch/c2b093657c17/dev-venv/bin/python"
+    ],
+    "exit_code": 0,
+    "group_counts": [
+      119,
+      31,
+      9,
+      17,
+      6,
+      5,
+      44,
+      22,
+      8,
+      3,
+      9,
+      19,
+      4,
+      7,
+      13,
+      57,
+      10
+    ],
+    "groups": 17,
+    "log": "units.log",
+    "seconds": 114.7,
+    "skipped": 0,
+    "status": "passed",
+    "tests": 383
+  }
+}

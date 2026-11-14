@@ -1,0 +1,50 @@
+{
+  "source": "6cb04cef038e059f8cba5f491b075f5553c58f1a",
+  "supplied_binary": "/workspace/scratch/6e931c3f8732/pystachy/pystachy",
+  "binary_sha256": "5ed068128f04d75239edcf40c64b2d99761c18077a21df6911e7b0935eefb361",
+  "workers": 2,
+  "results": [
+    {
+      "label": "consumer-jit",
+      "rc": 0,
+      "stdout_matches": true,
+      "stderr_empty": true
+    },
+    {
+      "label": "consumer-jit-gc",
+      "rc": 0,
+      "stdout_matches": true,
+      "stderr_empty": true
+    },
+    {
+      "label": "consumer-aot",
+      "rc": 0,
+      "stdout_matches": true,
+      "stderr_empty": true
+    },
+    {
+      "label": "consumer-aot-gc",
+      "rc": 0,
+      "stdout_matches": true,
+      "stderr_empty": true
+    },
+    {
+      "label": "native-suite",
+      "cases": 45,
+      "rc": 0,
+      "tail": [
+        "selected 45 cases",
+        "82 passed, 0 failed"
+      ]
+    },
+    {
+      "label": "native-suite-gc",
+      "cases": 37,
+      "rc": 0,
+      "tail": [
+        "selected 37 cases",
+        "74 passed, 0 failed"
+      ]
+    }
+  ]
+}

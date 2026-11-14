@@ -1,0 +1,32 @@
+{
+  "published_head": "adac7f4c88fd86ddaecbb889042b778c701b29ed",
+  "source_tree": "ddb2991da45e803167a0cf46a11020389a01f485",
+  "archive_files": 53,
+  "archive_content": "All final commands, logs, snapshots/candidate reports, source/input/checker hashes; preceding strict failure and setup logs; actual-source comparisons from #1486, frozen integration and final pre-fix; independent negative controls. No native binary blobs.",
+  "publication": [
+    {
+      "path": "/workspace/scratch/6e931c3f8732/lean-evidence-final/README.md",
+      "name": "README.md",
+      "bytes": 5268,
+      "sha256": "9fa2b7ef9315a75fa1108e11c343f379116b12f04073a965648d921dd5f7f89f"
+    },
+    {
+      "path": "/workspace/scratch/6e931c3f8732/lean-evidence-final/run-summary.json",
+      "name": "run-summary.json",
+      "bytes": 7671,
+      "sha256": "82e51404c0e9d516da3c3bd81414a2899f3729a789685fe5801819b76c39511d"
+    },
+    {
+      "path": "/workspace/scratch/6e931c3f8732/lean-evidence-final/selected-report.md",
+      "name": "selected-report.md",
+      "bytes": 4300,
+      "sha256": "3fc29ab204b9038700a1ec97df96abdd8b13ca460b2f46359f24334df15eda34"
+    },
+    {
+      "path": "/workspace/scratch/6e931c3f8732/lean-evidence-final/qualification-archive.tar.gz",
+      "name": "qualification-archive.tar.gz",
+      "bytes": 1040934,
+      "sha256": "b5768d44c281404fecdc3a5c34125d9b3a9c1a326d782b590da57d40efe4e896"
+    }
+  ]
+}

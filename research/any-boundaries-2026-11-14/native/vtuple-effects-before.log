@@ -1,0 +1,19 @@
+F
+======================================================================
+FAIL: test_optional_tuple_widening_invalidates_heap_reaching_facts (tools.test_typed_storage.TypedStorageTests.test_optional_tuple_widening_invalidates_heap_reaching_facts)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/6e931c3f8732/boundary-qualification/tools/test_typed_storage.py", line 137, in test_optional_tuple_widening_invalidates_heap_reaching_facts
+    self.assertEqual(reaching, value)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+AssertionError: '%a2' != '%t2'
+- %a2
+?  ^
++ %t2
+?  ^
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+FAILED (failures=1)

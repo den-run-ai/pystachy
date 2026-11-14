@@ -1,0 +1,31 @@
+{
+  "comparisons": [
+    {
+      "label": "positive-jit",
+      "rc": 0,
+      "matches_cpython": true,
+      "stderr_empty": true
+    },
+    {
+      "label": "positive-jit-gc",
+      "rc": 0,
+      "matches_cpython": true,
+      "stderr_empty": true
+    },
+    {
+      "label": "positive-aot",
+      "rc": 0,
+      "matches_cpython": true,
+      "stderr_empty": true
+    },
+    {
+      "label": "positive-aot-gc",
+      "rc": 0,
+      "matches_cpython": true,
+      "stderr_empty": true
+    }
+  ],
+  "cpython_optional_output": "an optional list's item True True\n",
+  "cpython_remaining_deviation_output": "a union list's item True True\na folded wide constant True True\n",
+  "remaining_deviation_matches_cpython": false
+}

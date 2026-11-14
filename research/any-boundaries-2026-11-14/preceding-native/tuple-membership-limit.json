@@ -1,0 +1,20 @@
+[
+  {
+    "tree": "container-identity",
+    "sha": "762cecde15e7d0b9ac65e76a1d34ede6acd3765e",
+    "rc": 1,
+    "stderr": "/workspace/scratch/6e931c3f8732/combined-boundary-consumer/tuple_membership_limit.py:7: error: 'in' is not supported for vtuple[float | None]\n"
+  },
+  {
+    "tree": "boundary-qualification",
+    "sha": "6cb04cef038e059f8cba5f491b075f5553c58f1a",
+    "rc": 1,
+    "stderr": "/workspace/scratch/6e931c3f8732/combined-boundary-consumer/tuple_membership_limit.py:7: error: 'in' is not supported for vtuple[float | None]\n"
+  },
+  {
+    "tree": "optional-container-before",
+    "sha": "a9812d5426baaf3b494013269e7effd2ab3ff118",
+    "rc": 1,
+    "stderr": "/workspace/scratch/6e931c3f8732/combined-boundary-consumer/tuple_membership_limit.py:7: error: 'in' is not supported for vtuple[float | None]\n"
+  }
+]

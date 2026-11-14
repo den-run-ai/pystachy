@@ -1,0 +1,24 @@
+{
+  "source": "6cb04cef038e059f8cba5f491b075f5553c58f1a",
+  "tree": "cb65fc79e7d8e2f3a9950bad7b56abe4c4c42c10",
+  "python": "/workspace/scratch/c2b093657c17/dev-venv/bin/python3.13",
+  "python_version": "3.13.16",
+  "typing_extensions": "4.16.0",
+  "command": [
+    "make",
+    "check-recordings",
+    "PY=/workspace/scratch/c2b093657c17/dev-venv/bin/python3.13"
+  ],
+  "start": "2026-11-14T16:16:34.347444+00:00",
+  "status": "complete",
+  "exit_code": 0,
+  "end": "2026-11-14T16:18:56.924987+00:00",
+  "source_clean": true,
+  "log": "/workspace/scratch/6e931c3f8732/integrated-final-recordings-corrected.log",
+  "tail": [
+    "PYTHON=\"/workspace/scratch/c2b093657c17/dev-venv/bin/python3.13\" tests/record.sh --check",
+    "CPython 3.13.16: 2464 recordings, 133 deviations, 11 files of lib/ checked; 0 failed",
+    "/workspace/scratch/c2b093657c17/dev-venv/bin/python3.13 tools/check_agent_source.py",
+    "6 pinned AskMe files verified at 9256333b07628f6e4b399f41916f36d463914501"
+  ]
+}

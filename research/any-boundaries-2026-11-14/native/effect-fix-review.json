@@ -1,0 +1,13 @@
+{
+  "finding": "pys_vtuple_box may materialize identities in its existing source companion, while the old RUNTIME declaration only declared R/A. The fresh-object-write exemption therefore does not cover this operation.",
+  "fix": "Add rO/wO to vtuple.box, matching slice/concat/list companion materialization.",
+  "fix_commit": "41c08cac22864cf5dcdf91cfe3049bc79eb8ce73",
+  "qualified_integrated_commit": "d68c9837ccad11e46b29a8955cc125c1a33cb77b",
+  "regression": "test_optional_tuple_widening_invalidates_heap_reaching_facts: old declaration reused %a2 across the operation; corrected declaration preserves fresh read %t2. A stack-slot fact still survives, and restoring the old declaration in the test reproduces unsafe heap-fact reuse.",
+  "old_declaration_negative_control": "vtuple-effects-before.log",
+  "meaningful_positive_and_negative_controls": "tools/test_typed_storage.py",
+  "qualified_units": "effect-units.log (38 passed on qualified d68 source)",
+  "hosted_before_new_native": "vtuple-effects-hosted-native.log and vtuple-effects-hosted-gc.log (6/6 each; current hosted compiler, not the old native binary)",
+  "native_qualification": "qualification.json (consumer4/4;46cases84/84normal and84/84GC-mode)",
+  "claims_limit": "No user-visible wrong-output counterexample was established for the missing effect. This fixes the runtime/effect contract and protects conservative heap-reaching analysis."
+}

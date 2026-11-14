@@ -1,0 +1,11 @@
+constructor 2 True True
+generic True True True True
+generator True True True
+mutation True True True True
+search 2 2 True 2 1
+none True True
+snapshot True True
+list copy True True
+widen True True True
+iterate True True
+iterate True True

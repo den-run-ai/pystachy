@@ -1,0 +1,90 @@
+{
+  "files": {
+    "README.md": {
+      "sha256": "3cc11deac46cea6d2f2197419a41e9c27bb3e429c1dfc2df93f3bd05b9b85129",
+      "bytes": 9039
+    },
+    "archive-verification.json": {
+      "sha256": "3115b95cc809afdce44025c8ab41a62c4d30a750a02655c95dd462e1bf89483b",
+      "bytes": 413
+    },
+    "classification.md": {
+      "sha256": "46044fe251d93802f418fd0a0549a4c64a1ce907fe7c0fbef376144390721bed",
+      "bytes": 158195
+    },
+    "classify.py": {
+      "sha256": "1fd6e4bcac0525e289f3ae01e55af5bfe4feb8c366e540529eb7cf8627d96ddc",
+      "bytes": 11022
+    },
+    "classify_constructors.py": {
+      "sha256": "8eabcf82c73ec80a1d3a1a62e627ec038195d03e5cbcf9289d55ba397032ce69",
+      "bytes": 7017
+    },
+    "compare_previous.py": {
+      "sha256": "8de5ba370683345645df0e344c85a54fbcf12beff7070a2837cebc9963c3ee86",
+      "bytes": 5616
+    },
+    "constructor_review.py": {
+      "sha256": "327aff58765622cad8572ead8761b830fc494043bfbdccf95b3e5ffb171f7305",
+      "bytes": 4034
+    },
+    "final_tree.py": {
+      "sha256": "56d24926727d05c129a25381d885156be00cf3829c4f3499043a1801c80f693d",
+      "bytes": 3030
+    },
+    "inspect.py": {
+      "sha256": "590579a5b42821950ad1055b2f1e157ae3ecd98bdb3282edd92069b436a5aeda",
+      "bytes": 7249
+    },
+    "manifests-and-ledgers.tar.xz": {
+      "sha256": "ca3db84c0a66c48c8885f60f666696bf609263565ebffda0bd267e70f246b431",
+      "bytes": 2573208
+    },
+    "original-irsame.sh": {
+      "sha256": "7baa4d09a86103485f6b6c87a739162347b97542051d80b6cfb57c8a108587d5",
+      "bytes": 9405
+    },
+    "package.py": {
+      "sha256": "01e5f89f32e0b17c99af723e33c53c37ffd75138d2c982b6795ee6bff55ad082",
+      "bytes": 6319
+    },
+    "prepare.py": {
+      "sha256": "bfdf36e4a5759d6b1f12eacd4a9ffcbecd98fb25af56455f84b5ad272098a002",
+      "bytes": 7724
+    },
+    "raw-results.tar.xz": {
+      "sha256": "9c0a26564e9558f67a107a096a39bc48070d7eb94e81be07bc2f914fef0a8f6e",
+      "bytes": 15985156
+    },
+    "retaining-irsame.sh": {
+      "sha256": "30b0817773fe88ea68942413a395327d9b8ce657ea9d4e8b949cc7fe794c1d9c",
+      "bytes": 10283
+    },
+    "reuse_reviews.py": {
+      "sha256": "6a053646f05797b18b34d0268e054bb2f79b5ddfb38fbc47db3708e175a08b19",
+      "bytes": 2699
+    },
+    "run.py": {
+      "sha256": "1bd2c8e69ef996e8135da4b17d603f8885f754cafaecf200b5c8a6ab0319b179",
+      "bytes": 2448
+    },
+    "toolchain.py": {
+      "sha256": "e3643195c61ca0f659ea8265f5c7dca21461074ddaa21bf3e3beb0b1bab8e4a5",
+      "bytes": 1790
+    },
+    "triage.py": {
+      "sha256": "3015681d8164a7d44a9d446a4d7dba440b3a91cfe7564d99744e54266c9bd07e",
+      "bytes": 3104
+    },
+    "verify_archive.py": {
+      "sha256": "a05d67e30250885a9b701a3b4e7f284b59b9a0951833770c34ea7ac80192ca81",
+      "bytes": 2492
+    },
+    "write_readme.py": {
+      "sha256": "b79f89bc25798beadd449f1b887303580d2bfe5375d9426021f9ce06c7f9c567",
+      "bytes": 10140
+    }
+  },
+  "total_bytes": 18820383,
+  "purpose": "Pinned full native IR audit; complete source manifests, per-case ledgers, raw-file hashes and every changed IR are retained. Cross-audit review reuse is recorded explicitly."
+}

@@ -1,0 +1,155 @@
+{
+  "schema_version": 1,
+  "qualified_commit": "d68c9837ccad11e46b29a8955cc125c1a33cb77b",
+  "qualified_tree": "e8509e11b8eb7bbceb51fd35d0d1ffa8df03da5b",
+  "final_published_commit": "adac7f4c88fd86ddaecbb889042b778c701b29ed",
+  "final_local_commit": "5acdbfddea96ce43e0a389dcec6c0392114fa6e5",
+  "final_tree": "ddb2991da45e803167a0cf46a11020389a01f485",
+  "published_local_tree_verified_equal": true,
+  "qualified_binary_sha256": "5dc9973d3a0ff8b79b8ae9ba2ca7d81347b460c8de0a015d6b2acd898c2ebf6e",
+  "tree_difference": [
+    {
+      "path": "tools/check_lean_storage.py",
+      "qualified": {
+        "mode": "100644",
+        "blob": "920486ea8a1378b5b21f8faec284e9773f3c0d37"
+      },
+      "final": {
+        "mode": "100644",
+        "blob": "efeb5dd87ebae2977900682c38bfce07a3ccdeef"
+      }
+    },
+    {
+      "path": "tools/lean_boundary/STORAGE.md",
+      "qualified": {
+        "mode": "100644",
+        "blob": "6a705d9ab79541c849d8e80106cf9cede2e068ff"
+      },
+      "final": {
+        "mode": "100644",
+        "blob": "22b7a0ac2d82715edfb8ba7755289c2d68d549b2"
+      }
+    },
+    {
+      "path": "tools/test_lean_storage_generators.py",
+      "qualified": null,
+      "final": {
+        "mode": "100644",
+        "blob": "3b80a1ca8a15631805ac0d5ac1dc8db7a3f66a7c"
+      }
+    }
+  ],
+  "unchanged_repository_paths": 10239,
+  "unchanged_repository_blob_mode_digest": "adc079b511f4811b1738703b903a772e58e5f54a67503de5ee7b316ace97aad9",
+  "input_groups": {
+    "compiler_runtime_libraries_and_build": {
+      "paths": 169,
+      "old_digest": "219446b3961caed26d0d5f8481ee92ba77c26f49d77e584c91871000e8ca5775",
+      "final_digest": "219446b3961caed26d0d5f8481ee92ba77c26f49d77e584c91871000e8ca5775",
+      "all_blobs_and_modes_equal": true
+    },
+    "all_c_probes": {
+      "paths": 11,
+      "old_digest": "d67a06d2cb283bd02d68c7c4639cc84d420a62ac9dc623752b8c6c0dadedac64",
+      "final_digest": "d67a06d2cb283bd02d68c7c4639cc84d420a62ac9dc623752b8c6c0dadedac64",
+      "all_blobs_and_modes_equal": true
+    },
+    "all_test_fixtures_helpers_sidecars_and_shell_harness": {
+      "paths": 8865,
+      "old_digest": "cba8005088bfc7f18eafbaba78a85ff2cd64d77185b44403ed6cd91d7668b674",
+      "final_digest": "cba8005088bfc7f18eafbaba78a85ff2cd64d77185b44403ed6cd91d7668b674",
+      "all_blobs_and_modes_equal": true
+    },
+    "qualified_unit_modules": {
+      "paths": 3,
+      "old_digest": "bed17c0d5bdbe8455551f38acfd988b144c79cd707ad89be54838d80e71faf0b",
+      "final_digest": "bed17c0d5bdbe8455551f38acfd988b144c79cd707ad89be54838d80e71faf0b",
+      "all_blobs_and_modes_equal": true
+    },
+    "runtime_contract_check": {
+      "paths": 1,
+      "old_digest": "3904c2589c66f14b8f2c840c8706f71f2f5222d3ead3b2f36909cdc9686d347a",
+      "final_digest": "3904c2589c66f14b8f2c840c8706f71f2f5222d3ead3b2f36909cdc9686d347a",
+      "all_blobs_and_modes_equal": true
+    }
+  },
+  "consumer_sources_sha256": {
+    "consumer.py": "55a655182c693935fb633dace7f8322139855fc39416153640a0ae4d82f26e44",
+    "consumer_models.py": "b0848444621927310035d5e8bd171fc954bc8e54f911fbe8727442f21363c5a1",
+    "consumer_observer.py": "89e3256d7e0879b1e2b8f4ee0580f819aad3ef13d81cb9b8dfe0b7a7e8f1b10e"
+  },
+  "native_input_equivalence": true,
+  "qualification_results": [
+    {
+      "label": "consumer-jit",
+      "rc": 0,
+      "stdout_matches": true,
+      "stderr_empty": true
+    },
+    {
+      "label": "consumer-jit-gc",
+      "rc": 0,
+      "stdout_matches": true,
+      "stderr_empty": true
+    },
+    {
+      "label": "consumer-aot",
+      "rc": 0,
+      "stdout_matches": true,
+      "stderr_empty": true
+    },
+    {
+      "label": "consumer-aot-gc",
+      "rc": 0,
+      "stdout_matches": true,
+      "stderr_empty": true
+    },
+    {
+      "label": "native-suite",
+      "cases": 46,
+      "rc": 0,
+      "tail": [
+        "selected 46 cases",
+        "84 passed, 0 failed"
+      ]
+    },
+    {
+      "label": "native-suite-gc",
+      "cases": 46,
+      "rc": 0,
+      "tail": [
+        "selected 46 cases",
+        "84 passed, 0 failed"
+      ]
+    }
+  ],
+  "unit_evidence": {
+    "qualified_modules": [
+      "tools/test_typed_storage.py",
+      "tools/test_typed_vtuple_materialization.py",
+      "tools/test_typed_ir_pass_contracts.py"
+    ],
+    "tests": 38,
+    "passed": true,
+    "log": "effect-units.log"
+  },
+  "outside_this_native_qualification": {
+    "added_unit_file": "tools/test_lean_storage_generators.py",
+    "reason": "This new Lean storage-adapter unit was added after d68. It was not part of the46-case native suites or38unit runs reported here. The Lean agent owns its execution and adapter/corpus validation.",
+    "other_changed_paths": "tools/check_lean_storage.py and tools/lean_boundary/STORAGE.md are verifier adapter/documentation changes, neither a native compiler/runtime/library/probe/harness input."
+  },
+  "scope_note": "This is a source/input correspondence mapping, not a claim that the final published tree was independently bootstrapped or that this agent ran the final Lean/CI gates. The tested native inputs and all fixture/harness blobs and modes are identical; the qualified binary/source identity remains d68.",
+  "evidence_sha256": {
+    "qualification.json": "d94fc7b26dc722407fc22fce816b7fc754f9a6914865f821d08214c55d7e416f",
+    "effect-units.log": "2f2c46e5d976a8ec029f0d030631f79a73daf08ce79bce4196a50deb431778f4",
+    "native-suite.log": "e8764cbddb88f6af63f9291a3910a72e920c8e4559656c16a0c58fd62bf49ecc",
+    "native-suite-gc.log": "e8764cbddb88f6af63f9291a3910a72e920c8e4559656c16a0c58fd62bf49ecc",
+    "effect-fix.patch": "64c3382cfa6665bbe5cdedaeecb5fde595a5a2d438dbc8f6b0d1ed87e0bd4f1e",
+    "effect-fix-review.json": "6d38636575cb545f2c78b74b017fcc165f448167165aee1b89c25949303ba36a",
+    "vtuple-effects-before.log": "c228be09850eb2dee7528763ad6d5d781219d72da4d332e3fd85ae25bd035a4d",
+    "vtuple-effects-units.log": "72123c8a997b7fa41e114f6a0c98975775ebada3773990e04dc550541eb50cff",
+    "vtuple-effects-runtime-lint-corrected.log": "132e697f89c14aa0a9229a6bd300e8710fd68a5e2dca8df4957c3acb2f29b98e",
+    "vtuple-effects-hosted-native.log": "e75083075705d6bac4f06f729e0fd827471cb894c095fa54fd094306281bae78",
+    "vtuple-effects-hosted-gc.log": "e75083075705d6bac4f06f729e0fd827471cb894c095fa54fd094306281bae78"
+  }
+}

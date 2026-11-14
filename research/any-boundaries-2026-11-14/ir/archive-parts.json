@@ -1,0 +1,113 @@
+{
+  "archives": [
+    {
+      "file": "raw-results.tar.xz",
+      "size": 15985156,
+      "sha256": "9c0a26564e9558f67a107a096a39bc48070d7eb94e81be07bc2f914fef0a8f6e",
+      "parts": [
+        {
+          "file": "raw-results.tar.xz.parts/part-000",
+          "size": 1048576,
+          "sha256": "6ef795123d830c3d72758dca126fb17162f0158efc437c3017de4bf69c342154"
+        },
+        {
+          "file": "raw-results.tar.xz.parts/part-001",
+          "size": 1048576,
+          "sha256": "890d4c3a5ff8f18a0dbfd08254071419865e4c7e33329144f73edf31868ee0a2"
+        },
+        {
+          "file": "raw-results.tar.xz.parts/part-002",
+          "size": 1048576,
+          "sha256": "c28a1c026ed4bd2357d8e51a968e1309a68032914d422db62ffd791bf5c3b3fe"
+        },
+        {
+          "file": "raw-results.tar.xz.parts/part-003",
+          "size": 1048576,
+          "sha256": "37450600a417f021ea0f5d7ec04f90d19222e5910f497e1399ffa46d9244dbbc"
+        },
+        {
+          "file": "raw-results.tar.xz.parts/part-004",
+          "size": 1048576,
+          "sha256": "0acce333dc3ec9885300a913d59601cae14e7e671215a07ac90d08075c484df0"
+        },
+        {
+          "file": "raw-results.tar.xz.parts/part-005",
+          "size": 1048576,
+          "sha256": "f466eeea742fd31147fcca1dff92a030b10e699dbb323e0c5caf0f96a1053426"
+        },
+        {
+          "file": "raw-results.tar.xz.parts/part-006",
+          "size": 1048576,
+          "sha256": "0cd4aea184abfc7ee219f6da5b7a5185dc8be6dc2b1cbef738e6d8635c6cd70b"
+        },
+        {
+          "file": "raw-results.tar.xz.parts/part-007",
+          "size": 1048576,
+          "sha256": "9f622b19cf2e91b9d82a20c087ae6f7f111281e7ec589f1747d0bdf075ed19f3"
+        },
+        {
+          "file": "raw-results.tar.xz.parts/part-008",
+          "size": 1048576,
+          "sha256": "d90f957b08a4e0489bb4441bd40f1b0fe6572f1a4c27dfacfadd6471372fa65f"
+        },
+        {
+          "file": "raw-results.tar.xz.parts/part-009",
+          "size": 1048576,
+          "sha256": "83614a5544e83c5ab8ed5dd687938476fb9a7b3d17e3d01f2fd32b294096439a"
+        },
+        {
+          "file": "raw-results.tar.xz.parts/part-010",
+          "size": 1048576,
+          "sha256": "841093bb11a31ce4702cdbab24f668931bda9374930bb45f9767522ea38190cd"
+        },
+        {
+          "file": "raw-results.tar.xz.parts/part-011",
+          "size": 1048576,
+          "sha256": "8eef33e0a94afe1a4bceca89ef80e7318701d5dc52596914a00457af54431bf8"
+        },
+        {
+          "file": "raw-results.tar.xz.parts/part-012",
+          "size": 1048576,
+          "sha256": "67814bdaab5e61d049df9cec4a27d6a386e0d845d846e36f35551a71f738ebf5"
+        },
+        {
+          "file": "raw-results.tar.xz.parts/part-013",
+          "size": 1048576,
+          "sha256": "d27a89efbc89893d28dab0f698c57bfdc6694e5be7c24844868eb81d2500b06e"
+        },
+        {
+          "file": "raw-results.tar.xz.parts/part-014",
+          "size": 1048576,
+          "sha256": "532ce4e2e07ed3beffabdd6705086302abdc141d579370ebf42352b6434422c2"
+        },
+        {
+          "file": "raw-results.tar.xz.parts/part-015",
+          "size": 256516,
+          "sha256": "076fe4de05d0e8365147cb3f136001e39de577543a3b2ee5b8a7407de2cb65b0"
+        }
+      ]
+    },
+    {
+      "file": "manifests-and-ledgers.tar.xz",
+      "size": 2573208,
+      "sha256": "ca3db84c0a66c48c8885f60f666696bf609263565ebffda0bd267e70f246b431",
+      "parts": [
+        {
+          "file": "manifests-and-ledgers.tar.xz.parts/part-000",
+          "size": 1048576,
+          "sha256": "31d149eeda2cddfe1f6b278a1ea2a11eb53ebd20ddd711bdc8316e1e2a61443c"
+        },
+        {
+          "file": "manifests-and-ledgers.tar.xz.parts/part-001",
+          "size": 1048576,
+          "sha256": "0694b7104cbcee31ee7f2825490ec88e33fe886e57fb8081cb219bccdc789884"
+        },
+        {
+          "file": "manifests-and-ledgers.tar.xz.parts/part-002",
+          "size": 476056,
+          "sha256": "9fbedb3d0b158c952f1108c879703191b4dc01e17cc6e4a648ec5dc26bfa941d"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "pr": 1493,
+  "repository": "den-run-ai/pystachy",
+  "base_commit": "950c0440ad793dc6c34664f591383a5e6bba14dd",
+  "compiler_binary_sha256": "5dc9973d3a0ff8b79b8ae9ba2ca7d81347b460c8de0a015d6b2acd898c2ebf6e",
+  "compiler_ir_fixedpoint_sha256": "0190ee6340b55748fe3373cf7b47fbe1ed21ccc6a8fdf3b651acbc8330e088fb",
+  "runtime_ir_fixedpoint_sha256": "cd645bebc4fea57b4824b5393843fea99bb31880a31a79dd825e1f34c388f830",
+  "compiler_ir_lines": 940800,
+  "runtime_ir_lines": 21214,
+  "fixture_correction_pending": false,
+  "final_local_commit": "5acdbfddea96ce43e0a389dcec6c0392114fa6e5",
+  "final_published_commit": "adac7f4c88fd86ddaecbb889042b778c701b29ed",
+  "final_tree": "ddb2991da45e803167a0cf46a11020389a01f485",
+  "final_delta": [
+    "tools/check_lean_storage.py",
+    "tools/lean_boundary/STORAGE.md",
+    "tools/test_lean_storage_generators.py"
+  ],
+  "compiler_qualified_local_commit": "d68c9837ccad11e46b29a8955cc125c1a33cb77b",
+  "compiler_qualified_published_commit": "5731ec352284a87a6df6eabc1a5396f90f194dd0",
+  "compiler_qualified_tree": "e8509e11b8eb7bbceb51fd35d0d1ffa8df03da5b",
+  "preceding_qualified_local_commit": "6cb04cef038e059f8cba5f491b075f5553c58f1a",
+  "preceding_qualified_published_commit": "b34093acda58ab7f2f82bebab7db6c08a4d0ad99",
+  "preceding_qualified_tree": "cb65fc79e7d8e2f3a9950bad7b56abe4c4c42c10"
+}

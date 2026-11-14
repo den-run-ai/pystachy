@@ -1,0 +1,12 @@
+{
+  "src/pystachy_compiler/utils.py:list_identity_kind": true,
+  "src/pystachy_compiler/containers.py:gen_list_id_kind": true,
+  "src/pystachy_compiler/containers.py:gen_list_item": true,
+  "src/pystachy_compiler/expressions.py:gen_vtuple_make": true,
+  "src/pystachy_compiler/expressions.py:gen_vtuple_item": true,
+  "src/pystachy_compiler/expressions.py:gen_cmp2": true,
+  "src/pystachy_compiler/statements.py:gen_seq_item": true,
+  "src/pystachy_compiler/builtins.py:gen_bmethod": true,
+  "List and VTuple ABI headers": true,
+  "VTuple and List identity operations": true
+}
