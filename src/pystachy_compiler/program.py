@@ -1297,8 +1297,13 @@ def gen_program(self, mods: list[Mod]) -> str:
                     self.classes[role].isrole = True
                     self.classes[role].isiface = self.classes[role].isiface or len(chain) > 0
                     # These unrelated static types can now denote the same instance: the
-                    # primary ancestors, and the other secondary bases.
-                    others: list[str] = [r for r in ci.roles if r != named]
+                    # primary ancestors, and the other secondary bases, each with the classes
+                    # it extends (role_chain).
+                    others: list[str] = []
+                    for r in ci.roles:
+                        if r != named:
+                            extended = self.role_chain(ci.base, r)
+                            others += extended if len(extended) > 0 else [r]
                     ancestor = ci.base
                     while ancestor in self.classes:
                         if not self.on_chain(role, ancestor):  # (a trait's own bases are its bases)
