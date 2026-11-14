@@ -245,6 +245,14 @@ AOT optimizes the program and the whole runtime together. The measured tradeoffs
 [#333](https://github.com/den-run-ai/pystachy/pull/333); the pipeline is described in
 [compiler internals](internals.md).
 
+The copies cut the instructions a loop executes where it reads `list[float]` items, divides floats
+or calls `math.sqrt()`: pyperformance's spectral_norm runs 0.45× as many, scimark 0.58×, nbody
+0.59× and the UMAP probe 0.73× (callgrind, of the program cache's executables). A program cache
+hit, which compiles nothing, then takes 0.61× the time for spectral_norm and 0.78× for the UMAP
+probe. An uncached launch also compiles the inlined code: the JIT corpus took 4% longer, and a
+program up to 75 ms (scimark: 1.38× the time at its default size, 0.84× with ten times its loops).
+Times are paired medians on one x86-64 core ([results](../bench/results/jit-helpers-2026-11-14.json)).
+
 ## Start-up and memory
 
 JIT execution includes frontend and LLVM work; a built AOT executable starts directly.
