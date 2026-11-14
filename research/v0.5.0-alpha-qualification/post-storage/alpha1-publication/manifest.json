@@ -1,0 +1,598 @@
+{
+  "version": "v0.5.0-alpha.1",
+  "source_commit": "a73c56c92f3aad4b490307a5d1b882e487a57f55",
+  "scope": "Completed publication, public byte identity, independent audits and raw workflow logs. Large public payloads are retained by their verified hashes and public URLs, not duplicated here.",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 4633,
+      "sha256": "d05a995a1376b835c062ea8843c710ba8172fbe59c7a1a90110b262405a91215"
+    },
+    {
+      "path": "alpha1-native-dispatch.json",
+      "bytes": 1026,
+      "sha256": "e8842b73ad8e7bb0a259e4aa37d8c1add77c085025f529e5dc6792eff5da1b24"
+    },
+    {
+      "path": "alpha1-pypi-dispatch.json",
+      "bytes": 1526,
+      "sha256": "491cc6ed7806603b0848d2eefaacaf69bee4b0cb74ae3ab360b0f18428987137"
+    },
+    {
+      "path": "artifact-audit/PUBLIC_LAYERS.md",
+      "bytes": 3954,
+      "sha256": "36bd36c2cfe25ec7ed3323f2f155fd825148a594caf6504582ca600765cf99bd"
+    },
+    {
+      "path": "artifact-audit/helper-review.json",
+      "bytes": 1148,
+      "sha256": "4386280c0073baaa192c18e7a4c6646c0b7316094c2767c66232ba47d0ebedf2"
+    },
+    {
+      "path": "artifact-audit/offline-layer-checks.json",
+      "bytes": 1578,
+      "sha256": "0f13d72f55937871049422a1f61626e90e708e76142110a5450b93550a9625f3"
+    },
+    {
+      "path": "artifact-audit/package_release_evidence.py",
+      "bytes": 4616,
+      "sha256": "fe2139dbdc7132f1b9b6191f29e80f801d85b58439ad4c20942f09a44b4d1b07"
+    },
+    {
+      "path": "artifact-audit/verify_public_layers.py",
+      "bytes": 12548,
+      "sha256": "3ddf1a5cff2a9d756938efce794adbc084453e19029f9353f100366aee1e5a4b"
+    },
+    {
+      "path": "artifact-audit/verify_public_pypi_installs.py",
+      "bytes": 7029,
+      "sha256": "a569faba58578d312630ef09e267edee43328df5dfe884e053b32b044a394039"
+    },
+    {
+      "path": "pre-alpha-stable/stable-retrieval.json",
+      "bytes": 810,
+      "sha256": "bd505e62f8e1289f3b1170d1e46f53969fdf7a21ddbd5d43a7d355f41b8dcfce"
+    },
+    {
+      "path": "pre-alpha-stable/stable/docker-latest.json",
+      "bytes": 685,
+      "sha256": "037f5691b17c9ae9a8afb6be79bf6870a1a81fb9ada67ec5e3d9dd5b08d60d01"
+    },
+    {
+      "path": "pre-alpha-stable/stable/github-latest.json",
+      "bytes": 30162,
+      "sha256": "9bcb5dc05159073422503feb8841ae6a6b14b57d569a0e85d856ab64728cc78a"
+    },
+    {
+      "path": "pre-alpha-stable/stable/github-stable-tag.json",
+      "bytes": 43730,
+      "sha256": "17e818730e22a89208d39d619bae55524d7817efec4612e3ecf8cbb39ba91b22"
+    },
+    {
+      "path": "pre-alpha-stable/stable/pypi-latest.json",
+      "bytes": 44787,
+      "sha256": "1c5c7ffc808dbd3da711690d532d51cd7000c3684a27d6b5fdd28c6c72c5fe4e"
+    },
+    {
+      "path": "release-alpha1-public-layers/docker-public-layers.json",
+      "bytes": 14731,
+      "sha256": "d6b535a83d0d0ea187fd94f25b7f7cf3caac2f031135e405ade5bc3fdd359703"
+    },
+    {
+      "path": "release-alpha1-verification/artifact-binary-linux-aarch64-retrieval.json",
+      "bytes": 1153,
+      "sha256": "8bea8031e9b64db96b6f88d0b5d012c23d0f0e6dc77a374c02119363be6e83d9"
+    },
+    {
+      "path": "release-alpha1-verification/artifact-binary-linux-x86_64-retrieval.json",
+      "bytes": 1148,
+      "sha256": "15de6112e61b45597d251a0378fffb1fd1729ab43395b0885f98f05d32c38a2b"
+    },
+    {
+      "path": "release-alpha1-verification/artifact-binary-macos-arm64-retrieval.json",
+      "bytes": 1109,
+      "sha256": "33b24d5ab6590e5b51446a43f006f84ef784808a0eea4aca3567f6dbf9bc603f"
+    },
+    {
+      "path": "release-alpha1-verification/artifact-binary-macos-x86_64-retrieval.json",
+      "bytes": 1113,
+      "sha256": "c6db608657ecc6fc6bcc023dcab68ffb56640fe6867061e3cff30801812a3cc0"
+    },
+    {
+      "path": "release-alpha1-verification/artifact-container-linux-amd64-retrieval.json",
+      "bytes": 1085,
+      "sha256": "31d2b794ac973eadf9c7527474ee46a82cda1793b1b00ab72712b43f6618a311"
+    },
+    {
+      "path": "release-alpha1-verification/artifact-container-linux-arm64-retrieval.json",
+      "bytes": 1085,
+      "sha256": "ea59702c39e9a0bd8ee4d2f10e3bf456c6716ac8997d01161eb00254720d3c6d"
+    },
+    {
+      "path": "release-alpha1-verification/artifact-pypi-0.5.0a1-retrieval.json",
+      "bytes": 1124,
+      "sha256": "d44879b649795636786c125811fa8fc0662dc82233f969c55393df1b6f04ffde"
+    },
+    {
+      "path": "release-alpha1-verification/docker-retrieval.json",
+      "bytes": 3281,
+      "sha256": "41218aa90a06ce6994533895d37c4cd6dd06402a6837e719535cb6b52b2ddd39"
+    },
+    {
+      "path": "release-alpha1-verification/docker/config-amd64.json",
+      "bytes": 4629,
+      "sha256": "26e99fd90dcaa5d16202cd08507cbf83353be5510d8ac861fa2b6622c73394fc"
+    },
+    {
+      "path": "release-alpha1-verification/docker/config-arm64.json",
+      "bytes": 4634,
+      "sha256": "db2d3e7fab735e41487f5e04a351fe4500f68a952c90ea1099c04cc9141bc5b9"
+    },
+    {
+      "path": "release-alpha1-verification/docker/index.json",
+      "bytes": 685,
+      "sha256": "1ae046bdbb9a72202a9daa44b756673cf1436166db2345f8ed2ab69fa2a954f2"
+    },
+    {
+      "path": "release-alpha1-verification/docker/manifest-amd64.json",
+      "bytes": 1779,
+      "sha256": "dba4d56a522696cd690429057563e770277d892f3c8c422a3fcaec64e0b9c07b"
+    },
+    {
+      "path": "release-alpha1-verification/docker/manifest-arm64.json",
+      "bytes": 1779,
+      "sha256": "8a4f9fcb494913b74a6bd625086c04090950283d389a99352c212ce8e13b9609"
+    },
+    {
+      "path": "release-alpha1-verification/docker/tag-amd64.json",
+      "bytes": 1779,
+      "sha256": "dba4d56a522696cd690429057563e770277d892f3c8c422a3fcaec64e0b9c07b"
+    },
+    {
+      "path": "release-alpha1-verification/docker/tag-arm64.json",
+      "bytes": 1779,
+      "sha256": "8a4f9fcb494913b74a6bd625086c04090950283d389a99352c212ce8e13b9609"
+    },
+    {
+      "path": "release-alpha1-verification/independent-audit-binary.py",
+      "bytes": 13739,
+      "sha256": "ae6929f8432ace7d529bccd171185a48c266ed98901156ade9c404424412f69e"
+    },
+    {
+      "path": "release-alpha1-verification/independent-audit-containers.py",
+      "bytes": 12509,
+      "sha256": "c112e9023816104a3072facd721c670683869098ccebf166e078a15806aa0a7d"
+    },
+    {
+      "path": "release-alpha1-verification/independent-audit-pypi.py",
+      "bytes": 21639,
+      "sha256": "dcda4b739e7cf9062d810309564d64a51672e4ec76d1178744841ebc72059bdc"
+    },
+    {
+      "path": "release-alpha1-verification/independent-audits/alpha1-final-with-public-installs.json",
+      "bytes": 6745,
+      "sha256": "043910e45801cb5ae7c5c87b03de86e4c10c95cbc9e6632aaa499a7a49b3cd27"
+    },
+    {
+      "path": "release-alpha1-verification/independent-audits/alpha1-final-with-public-installs.md",
+      "bytes": 4501,
+      "sha256": "e2586a3abc0bb721f2177b7e6085fb6e3b2c3297c8626344bbed0747ced19fcb"
+    },
+    {
+      "path": "release-alpha1-verification/independent-audits/alpha1-final.json",
+      "bytes": 5809,
+      "sha256": "1b8ce7326b2f4aeb31c14285aebe2f13d9a9abcaed559e586620da27daf92a13"
+    },
+    {
+      "path": "release-alpha1-verification/independent-audits/alpha1-final.md",
+      "bytes": 3326,
+      "sha256": "56131326971794779b2a9f8632aa572aefb801ca47cc5701a5a1b8685a255e46"
+    },
+    {
+      "path": "release-alpha1-verification/independent-audits/binary-linux-aarch64.json",
+      "bytes": 8120,
+      "sha256": "e16271450649e58313bf48082db699f6eb80025c9362cac8cf01c2e3414a4c1c"
+    },
+    {
+      "path": "release-alpha1-verification/independent-audits/binary-linux-x86_64.json",
+      "bytes": 8202,
+      "sha256": "2bf4d669bc0f1d6de30c052670e6dcbbb5b15a5a672acbba43e7e3f5aee13084"
+    },
+    {
+      "path": "release-alpha1-verification/independent-audits/binary-macos-arm64.json",
+      "bytes": 6205,
+      "sha256": "18076c38bd1389cfc05bae586c99c5fc6f4ac6b8ab3a2ab63e245fe3b3970405"
+    },
+    {
+      "path": "release-alpha1-verification/independent-audits/binary-macos-x86_64.json",
+      "bytes": 6225,
+      "sha256": "e709990ffcbce15ddb0a2198f7451a6ff1c77d2e78e8396251a1db774b1df612"
+    },
+    {
+      "path": "release-alpha1-verification/independent-audits/container-linux-amd64.json",
+      "bytes": 14659,
+      "sha256": "eca72c2aca1c0cdf421b76b20111c8a636154b68a59b7a4be53cdce2eb83257a"
+    },
+    {
+      "path": "release-alpha1-verification/independent-audits/container-linux-arm64.json",
+      "bytes": 14668,
+      "sha256": "c8e84549dd77c6a91c56ee9bb591676cb78d051bb8aedf09e912aac4c13fed32"
+    },
+    {
+      "path": "release-alpha1-verification/independent-audits/four-binaries.json",
+      "bytes": 6931,
+      "sha256": "c90ba912b45e86ebe3ee7fb1e33879f60304cacaac45b6c449d5e5efebea3a5d"
+    },
+    {
+      "path": "release-alpha1-verification/independent-audits/four-binaries.md",
+      "bytes": 1974,
+      "sha256": "aa93113ecfb62d1ec4c03f9d82470c6fd9813026c62829963ee03f4278634faf"
+    },
+    {
+      "path": "release-alpha1-verification/independent-audits/native-docker-final.json",
+      "bytes": 21880,
+      "sha256": "54ced583f16effb214daf7e463dadfc3c0bf3d99027f78692ed806d9183d2d63"
+    },
+    {
+      "path": "release-alpha1-verification/independent-audits/native-docker-final.md",
+      "bytes": 2680,
+      "sha256": "6d26f5bbc6bcf9741fe8f749fecf2908a4e95d90780833a7d90353c237a68e61"
+    },
+    {
+      "path": "release-alpha1-verification/independent-audits/public-pypi-installs-independent.json",
+      "bytes": 4884,
+      "sha256": "e5d27aebbbeae0dbac233181218882f033ee8d87f6ff8fc536c6ce543fa1d790"
+    },
+    {
+      "path": "release-alpha1-verification/independent-audits/pypi-final.json",
+      "bytes": 69037,
+      "sha256": "a5dda36dd6854c9cfa3f8fe2878a08f03f130c16ae6d11bc43124d3885db18bf"
+    },
+    {
+      "path": "release-alpha1-verification/independent-audits/pypi-final.md",
+      "bytes": 3538,
+      "sha256": "891662b74949cfa58baceb924ed00b70cb4dff9a2c583680f912a42fbb60e062"
+    },
+    {
+      "path": "release-alpha1-verification/independent-audits/two-containers.json",
+      "bytes": 4084,
+      "sha256": "fcfa2cd6cf0765cbadfe1a2d32d5348fe880e9577aef4d50e52b717ebd466834"
+    },
+    {
+      "path": "release-alpha1-verification/independent-audits/two-containers.md",
+      "bytes": 1539,
+      "sha256": "59e16e3ddc145f685909155984370fb73952935253828e6cc93b196e03f6e874"
+    },
+    {
+      "path": "release-alpha1-verification/native-metadata/release.json",
+      "bytes": 28677,
+      "sha256": "73ce071dab23b739663743fd312328095060b129477f2049516328e000cbf43b"
+    },
+    {
+      "path": "release-alpha1-verification/native-metadata/tag.json",
+      "bytes": 16514,
+      "sha256": "04a8526bb3a28ae303874951f3da352e07402c569b49160b1b0fc93e6cb8e385"
+    },
+    {
+      "path": "release-alpha1-verification/native-retrieval.json",
+      "bytes": 5498,
+      "sha256": "38a751883cf3742923f1fd0e031e1cb6e72ebb16000126b4f9de40d0d0cb0a4d"
+    },
+    {
+      "path": "release-alpha1-verification/native-workflow-complete.json",
+      "bytes": 28674,
+      "sha256": "a962e3b94e790160a3f01ff89f63c5c2040f68117ef5ce3c99f13e51facd605b"
+    },
+    {
+      "path": "release-alpha1-verification/native/SHA256SUMS",
+      "bytes": 448,
+      "sha256": "f4dd9b0de8dbfb787ec48f52e86c5bfcd51fa76b56499fdd19d37158a7ae6447"
+    },
+    {
+      "path": "release-alpha1-verification/native/linux-abi-linux-aarch64.json",
+      "bytes": 1371,
+      "sha256": "96ae4920345e91c724e90512e29472902deca825efa62e46973d50143fc593e4"
+    },
+    {
+      "path": "release-alpha1-verification/native/linux-abi-linux-x86_64.json",
+      "bytes": 1466,
+      "sha256": "5cf974ed5ffb91758e7d98307a4b2876ad2267b8cddf5c90d4d9920c9a758079"
+    },
+    {
+      "path": "release-alpha1-verification/native/pystachy-v0.5.0-alpha.1-linux-aarch64.tar.gz.sha256",
+      "bytes": 111,
+      "sha256": "c00ba6ba6a5dab14cadeb6c4937683aa7d589af220074ac06703d0f4b87b76fa"
+    },
+    {
+      "path": "release-alpha1-verification/native/pystachy-v0.5.0-alpha.1-linux-x86_64.tar.gz.sha256",
+      "bytes": 110,
+      "sha256": "5bfbc97413d5a96917a5d88cde6b51eb075722f94df8bbaafc369c08be007250"
+    },
+    {
+      "path": "release-alpha1-verification/native/pystachy-v0.5.0-alpha.1-macos-arm64.tar.gz.sha256",
+      "bytes": 109,
+      "sha256": "8d4bd164307dbf9153e22eed57b870fe7a0f2a2ba12c40c0e3cd12cc35352593"
+    },
+    {
+      "path": "release-alpha1-verification/native/pystachy-v0.5.0-alpha.1-macos-x86_64.tar.gz.sha256",
+      "bytes": 110,
+      "sha256": "a1afe0a22e100840e624455cea235cff4fda4cdb1495320ff9ed5986ab0a24ea"
+    },
+    {
+      "path": "release-alpha1-verification/public-native-version.json",
+      "bytes": 462,
+      "sha256": "d3b16b1b8c64e16a40c86ea8bcdc848258be7538c1101c2376cf1ab3b83bc489"
+    },
+    {
+      "path": "release-alpha1-verification/public-pypi-hosted-version-diagnostic.json",
+      "bytes": 241,
+      "sha256": "fe2c6ab34fc17ac94bf36f91d528fb2d1252ad0903a3034a5ba062fdcf3c6e24"
+    },
+    {
+      "path": "release-alpha1-verification/public-pypi-installs-attempt-1.json",
+      "bytes": 1024,
+      "sha256": "53ecf90361051ec69cdfb3e6ddc9a823c5262c327da0ec4b0e84ea9826453969"
+    },
+    {
+      "path": "release-alpha1-verification/public-pypi-installs-execution-context.json",
+      "bytes": 819,
+      "sha256": "c26cd7f2eb3b8c88d73d5711916914c9f641aba614d6c6fd5a3c7d91a4b7d784"
+    },
+    {
+      "path": "release-alpha1-verification/public-pypi-installs.json",
+      "bytes": 2073,
+      "sha256": "9f5b454902f7728431b57503265d4427b8ddd5c308a21c6523f73c3615aaa5b2"
+    },
+    {
+      "path": "release-alpha1-verification/public-release-api.json",
+      "bytes": 28677,
+      "sha256": "73ce071dab23b739663743fd312328095060b129477f2049516328e000cbf43b"
+    },
+    {
+      "path": "release-alpha1-verification/public-tag-api.json",
+      "bytes": 16514,
+      "sha256": "04a8526bb3a28ae303874951f3da352e07402c569b49160b1b0fc93e6cb8e385"
+    },
+    {
+      "path": "release-alpha1-verification/pypi-metadata.json",
+      "bytes": 16459,
+      "sha256": "ef7033078f5385f344cd262d6a31accb0aa1d27b0ca8589e20aeee3c54e48c4f"
+    },
+    {
+      "path": "release-alpha1-verification/pypi-preflight.json",
+      "bytes": 52,
+      "sha256": "dd86d5ac7a931cf55c70d20e34d78764f0723be9e08762b5b46c590dccce49e6"
+    },
+    {
+      "path": "release-alpha1-verification/pypi-retrieval.json",
+      "bytes": 1309,
+      "sha256": "f85a67204a9ec8092a20e5ec00491f67f18d31b963f99fd4a0a09708fee3e76a"
+    },
+    {
+      "path": "release-alpha1-verification/pypi-workflow-complete.json",
+      "bytes": 8463,
+      "sha256": "aeee1ef7a633e5339749998d78b8d14b0cca80bbc6eb3c3f36ed49f3640596c9"
+    },
+    {
+      "path": "release-alpha1-verification/stable-retrieval.json",
+      "bytes": 810,
+      "sha256": "67572cba33741e2b91bf304387e76cbae01f21a627ffa4c0daf8ac94094e72d0"
+    },
+    {
+      "path": "release-alpha1-verification/stable/docker-latest.json",
+      "bytes": 685,
+      "sha256": "037f5691b17c9ae9a8afb6be79bf6870a1a81fb9ada67ec5e3d9dd5b08d60d01"
+    },
+    {
+      "path": "release-alpha1-verification/stable/github-latest.json",
+      "bytes": 30162,
+      "sha256": "9bcb5dc05159073422503feb8841ae6a6b14b57d569a0e85d856ab64728cc78a"
+    },
+    {
+      "path": "release-alpha1-verification/stable/github-stable-tag.json",
+      "bytes": 43730,
+      "sha256": "17e818730e22a89208d39d619bae55524d7817efec4612e3ecf8cbb39ba91b22"
+    },
+    {
+      "path": "release-alpha1-verification/stable/pypi-latest.json",
+      "bytes": 44787,
+      "sha256": "1c5c7ffc808dbd3da711690d532d51cd7000c3684a27d6b5fdd28c6c72c5fe4e"
+    },
+    {
+      "path": "release-alpha1-verification/tested/binary-linux-aarch64/ARTIFACT_PROVENANCE.json",
+      "bytes": 721,
+      "sha256": "50c3fac0b73e806efa7bcd6c810c17077fee27bc7b92fb89af700374af6f0ff9"
+    },
+    {
+      "path": "release-alpha1-verification/tested/binary-linux-aarch64/linux-abi-linux-aarch64.json",
+      "bytes": 1371,
+      "sha256": "96ae4920345e91c724e90512e29472902deca825efa62e46973d50143fc593e4"
+    },
+    {
+      "path": "release-alpha1-verification/tested/binary-linux-aarch64/pystachy-v0.5.0-alpha.1-linux-aarch64.tar.gz.sha256",
+      "bytes": 111,
+      "sha256": "c00ba6ba6a5dab14cadeb6c4937683aa7d589af220074ac06703d0f4b87b76fa"
+    },
+    {
+      "path": "release-alpha1-verification/tested/binary-linux-x86_64/ARTIFACT_PROVENANCE.json",
+      "bytes": 720,
+      "sha256": "a690fb4b84e6ba9ebad271b4ba2add0eabae7c28a981947229ddda01a9f3fee5"
+    },
+    {
+      "path": "release-alpha1-verification/tested/binary-linux-x86_64/linux-abi-linux-x86_64.json",
+      "bytes": 1466,
+      "sha256": "5cf974ed5ffb91758e7d98307a4b2876ad2267b8cddf5c90d4d9920c9a758079"
+    },
+    {
+      "path": "release-alpha1-verification/tested/binary-linux-x86_64/pystachy-v0.5.0-alpha.1-linux-x86_64.tar.gz.sha256",
+      "bytes": 110,
+      "sha256": "5bfbc97413d5a96917a5d88cde6b51eb075722f94df8bbaafc369c08be007250"
+    },
+    {
+      "path": "release-alpha1-verification/tested/binary-macos-arm64/ARTIFACT_PROVENANCE.json",
+      "bytes": 719,
+      "sha256": "432f6db4951605fd381d53a274650e12798cb6c5bb385cfb657f057cfc9454ab"
+    },
+    {
+      "path": "release-alpha1-verification/tested/binary-macos-arm64/pystachy-v0.5.0-alpha.1-macos-arm64.tar.gz.sha256",
+      "bytes": 109,
+      "sha256": "8d4bd164307dbf9153e22eed57b870fe7a0f2a2ba12c40c0e3cd12cc35352593"
+    },
+    {
+      "path": "release-alpha1-verification/tested/binary-macos-x86_64/ARTIFACT_PROVENANCE.json",
+      "bytes": 720,
+      "sha256": "0e7ed27ce953f7a79e92917c9353ffedb795c22ddd94cc17a9f313ea053a3ea9"
+    },
+    {
+      "path": "release-alpha1-verification/tested/binary-macos-x86_64/pystachy-v0.5.0-alpha.1-macos-x86_64.tar.gz.sha256",
+      "bytes": 110,
+      "sha256": "a1afe0a22e100840e624455cea235cff4fda4cdb1495320ff9ed5986ab0a24ea"
+    },
+    {
+      "path": "release-alpha1-verification/tested/container-linux-amd64/ARTIFACT_PROVENANCE.json",
+      "bytes": 724,
+      "sha256": "dd636dd4ee9516e10eea213a37c9d461302432b1c834a586ba2b1a0b7a1a8423"
+    },
+    {
+      "path": "release-alpha1-verification/tested/container-linux-amd64/pystachy-image-amd64.tar.gz.sha256",
+      "bytes": 94,
+      "sha256": "16dd2e908ac891f90aee72afcaac8749ac59cefec83def4e2015e83aef32de13"
+    },
+    {
+      "path": "release-alpha1-verification/tested/container-linux-arm64/ARTIFACT_PROVENANCE.json",
+      "bytes": 724,
+      "sha256": "0f4f1b87dec4720402d4afd507e86f6a66877c775415a3c6cd496d60f5026873"
+    },
+    {
+      "path": "release-alpha1-verification/tested/container-linux-arm64/pystachy-image-arm64.tar.gz.sha256",
+      "bytes": 94,
+      "sha256": "caeed6758bbba74bf475af4027ef7d15c2275b4fb185dbdc20baccdaceb5b1c8"
+    },
+    {
+      "path": "release-alpha1-verification/tested/pypi-0.5.0a1/ARTIFACT_PROVENANCE.json",
+      "bytes": 728,
+      "sha256": "384745e68996cbe92d42c265ff80bf2bb46ff390b7ea7e1ceec398861bce6eb9"
+    },
+    {
+      "path": "release-alpha1-verification/tested/pypi-0.5.0a1/SHA256SUMS",
+      "bytes": 200,
+      "sha256": "8d769c515839f00723462c457719b9a5cd81ca2bceeee5690d07d8aae492c710"
+    },
+    {
+      "path": "release-alpha1-verification/tested/pypi-0.5.0a1/SOURCE.json",
+      "bytes": 197,
+      "sha256": "edf9c8d1cb0118cebd4af8637e75d4ab06d0e59ae6cac07f852e55872a81a68b"
+    },
+    {
+      "path": "release-alpha1-verification/workflow-logs/binary-linux-aarch64.job.json",
+      "bytes": 3994,
+      "sha256": "d4dbf2bc2edccc4709322ea2fdde70dded1b35e800d2764cdaecb455ca9fb73c"
+    },
+    {
+      "path": "release-alpha1-verification/workflow-logs/binary-linux-aarch64.log",
+      "bytes": 36634,
+      "sha256": "618c027c7058922cfb8903aee574a5eb26fba72edfe626a00002e1b7ff1c5ca5"
+    },
+    {
+      "path": "release-alpha1-verification/workflow-logs/binary-linux-x86_64.job.json",
+      "bytes": 3989,
+      "sha256": "2371382d398d2da832685ae65e3b390252f34145031689733b8f7732a5485fbc"
+    },
+    {
+      "path": "release-alpha1-verification/workflow-logs/binary-linux-x86_64.log",
+      "bytes": 36861,
+      "sha256": "87d2561ab2224e39a716b33f773d21a3baa206c6dcce1567bedd2866d29bc2b6"
+    },
+    {
+      "path": "release-alpha1-verification/workflow-logs/binary-macos-arm64.job.json",
+      "bytes": 3984,
+      "sha256": "0191aa388ba09c0fab13af89557393e4e01aadcc7170b9f321f0753beca9c237"
+    },
+    {
+      "path": "release-alpha1-verification/workflow-logs/binary-macos-arm64.log",
+      "bytes": 33801,
+      "sha256": "9046734cfff638c303ee886283d40f0d2cf0d8029ca7931c70348afe47a09713"
+    },
+    {
+      "path": "release-alpha1-verification/workflow-logs/binary-macos-x86_64.job.json",
+      "bytes": 3991,
+      "sha256": "46aff73b5a0dc93371586dd910751f710b51f0895b966d8b13484a2dc86b93ea"
+    },
+    {
+      "path": "release-alpha1-verification/workflow-logs/binary-macos-x86_64.log",
+      "bytes": 39661,
+      "sha256": "36d85abc80f2c4f3f004171e6f3fa34a071ea14dbccc8622bb9bc14b06fb2e37"
+    },
+    {
+      "path": "release-alpha1-verification/workflow-logs/container-linux-amd64.job.json",
+      "bytes": 4352,
+      "sha256": "e55b125bc6e46db854bc1bb70557e9af20319cc3d99ec024f8a6a95308d29e7c"
+    },
+    {
+      "path": "release-alpha1-verification/workflow-logs/container-linux-amd64.log",
+      "bytes": 96034,
+      "sha256": "3d04c51164c9c7832e60ec3d00c6b5412d67a59b8be544eed7676df78005684a"
+    },
+    {
+      "path": "release-alpha1-verification/workflow-logs/container-linux-arm64.job.json",
+      "bytes": 4356,
+      "sha256": "19484e6f7c739f44f9748d13277d55aacee7f88e87ec0a32f453a22710f80e83"
+    },
+    {
+      "path": "release-alpha1-verification/workflow-logs/container-linux-arm64.log",
+      "bytes": 95654,
+      "sha256": "7073031b750aa2e958624efadd9ea9839349ba23d0688adb0e73d92ea31f502c"
+    },
+    {
+      "path": "release-alpha1-verification/workflow-logs/prepare.log",
+      "bytes": 76321,
+      "sha256": "42e0807f4ed36659427b840afe5cf743fe22429d55be6e149b18eeabc6b1ae37"
+    },
+    {
+      "path": "release-alpha1-verification/workflow-logs/publish.job.json",
+      "bytes": 5126,
+      "sha256": "4d96ce6c57311a78f669ce89abe25f7312ddaf26d094c22b3642f6606a3fe23c"
+    },
+    {
+      "path": "release-alpha1-verification/workflow-logs/publish.log",
+      "bytes": 48460,
+      "sha256": "9016a34340a3df1faeb36423cd6dec25dbaa407c797f36b461596566ab3ca69b"
+    },
+    {
+      "path": "release-alpha1-verification/workflow-logs/pypi-publish.job.json",
+      "bytes": 2748,
+      "sha256": "e7116e50b595a47fae606b05ce7bf6f946164b12b3d153af5e746df4974a2cfe"
+    },
+    {
+      "path": "release-alpha1-verification/workflow-logs/pypi-publish.log",
+      "bytes": 47860,
+      "sha256": "4844bcd95863838c74da14eb43bc8cbddba8eff78f5810f4a96b9a03995b1d22"
+    },
+    {
+      "path": "release-alpha1-verification/workflow-logs/pypi-verify.job.json",
+      "bytes": 5482,
+      "sha256": "f1e6d49385f3d1de1554d97a0bb1df99e1333effca6108eee4f30471f013da86"
+    },
+    {
+      "path": "release-alpha1-verification/workflow-logs/pypi-verify.log",
+      "bytes": 190941,
+      "sha256": "6e488441a8acc4d44e091af18974123a402855cd516f5aa83d2bcab95abd9bbe"
+    },
+    {
+      "path": "retrieval-helpers/retrieve.py",
+      "bytes": 16111,
+      "sha256": "7bc722ac67092e8c787b96d63c99c4c74487fa19aaec4ff42e1d99e3edbb5b70"
+    },
+    {
+      "path": "retrieval-helpers/verify.py",
+      "bytes": 8863,
+      "sha256": "8561f2eafdb216439d34e29e54b6751f3510123f580bb31d7392082a28b6df18"
+    }
+  ],
+  "archive": {
+    "name": "alpha1-publication.tar.gz",
+    "bytes": 317024,
+    "sha256": "728333c5edb89faba3ac9134962230fc4df297c2129aac2147bbfd923ddf36f5",
+    "git_blob_sha1": "10e00b35bf53eede68b2206a4dcf088beb2f5b4c"
+  }
+}

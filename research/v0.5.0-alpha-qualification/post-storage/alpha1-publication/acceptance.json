@@ -1,0 +1,137 @@
+{
+  "kind": "Independent agent final acceptance of alpha1 publication and complete Lean evidence",
+  "status": "passed_alpha1_delivery_and_lean_acceptance",
+  "created_utc": "2026-11-14T17:44:36.088626+00:00",
+  "version": "v0.5.0-alpha.1",
+  "package_version": "0.5.0a1",
+  "commit": "a73c56c92f3aad4b490307a5d1b882e487a57f55",
+  "source_tree": "3c9a009434d68906889651d148cb29f6022d2f1f",
+  "components": {
+    "native_docker": {
+      "path": "/workspace/scratch/7dd0519bc14a/release-alpha1-verification/independent-audits/native-docker-final.json",
+      "sha256": "54ced583f16effb214daf7e463dadfc3c0bf3d99027f78692ed806d9183d2d63",
+      "size": 21880,
+      "status": "passed_native_and_docker"
+    },
+    "pypi": {
+      "path": "/workspace/scratch/7dd0519bc14a/release-alpha1-verification/independent-audits/pypi-final.json",
+      "sha256": "a5dda36dd6854c9cfa3f8fe2878a08f03f130c16ae6d11bc43124d3885db18bf",
+      "size": 69037,
+      "status": "passed_pypi"
+    },
+    "lean": {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-independent-review/alpha1-final-lean-independent-audit.json",
+      "sha256": "c2e43e36908ea2e3c2b7027ce2b1775877ab36d5ef2436c4bbdb1f8c52407e30",
+      "size": 6218,
+      "status": "passed"
+    },
+    "supplemental_public_installs": {
+      "path": "/workspace/scratch/7dd0519bc14a/release-alpha1-verification/independent-audits/public-pypi-installs-independent.json",
+      "sha256": "e5d27aebbbeae0dbac233181218882f033ee8d87f6ff8fc536c6ce543fa1d790",
+      "size": 4884,
+      "status": "passed_supplemental_public_installs"
+    }
+  },
+  "public_channels": {
+    "github": {
+      "url": "https://github.com/den-run-ai/pystachy/releases/tag/v0.5.0-alpha.1",
+      "release_id": 445459583,
+      "asset_count": 11,
+      "prerelease": true
+    },
+    "docker": {
+      "image": "dta67/pystachy:v0.5.0-alpha.1",
+      "index_digest": "sha256:1ae046bdbb9a72202a9daa44b756673cf1436166db2345f8ed2ab69fa2a954f2",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ],
+      "unique_downloaded_public_blobs": 11,
+      "verified_ordered_layer_references": 14
+    },
+    "pypi": {
+      "url": "https://pypi.org/project/pystachy/0.5.0a1/",
+      "distributions": [
+        {
+          "filename": "pystachy-0.5.0a1-py3-none-any.whl",
+          "sha256": "7d2cd50086e08b2a3535dcca2ccad7cd30daae828feb62ad4ec29a251fb30dc4",
+          "size": 1917999,
+          "public_url": "https://files.pythonhosted.org/packages/67/6e/75f096b0af237f583f9ce487029f8ee971f22e92f4bf1f28284d05e08e90/pystachy-0.5.0a1-py3-none-any.whl",
+          "uploaded_at": "2026-11-14T17:28:46.418677Z",
+          "tested_bytes_identical": true
+        },
+        {
+          "filename": "pystachy-0.5.0a1.tar.gz",
+          "sha256": "b405829de6610ade481215ac835d057d751054acfb074f245262111da8f6b8f0",
+          "size": 1846374,
+          "public_url": "https://files.pythonhosted.org/packages/54/50/31118923f00b8e78c23741db45298483308107a782fa35a0b3ed5408e962/pystachy-0.5.0a1.tar.gz",
+          "uploaded_at": "2026-11-14T17:28:48.551568Z",
+          "tested_bytes_identical": true
+        }
+      ]
+    }
+  },
+  "workflow_runs": {
+    "native": {
+      "id": 43618595752,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43618595752",
+      "outcomes": {
+        "success": 8,
+        "skipped": 2
+      },
+      "max_job_seconds": 730
+    },
+    "pypi": {
+      "id": 43621120891,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43621120891",
+      "publisher_commit": "6e5544cfa3eecb8329e4f4cb19d2e0ac3e99b1bf",
+      "outcomes": {
+        "success": 2,
+        "skipped": 4
+      },
+      "max_job_seconds": 110
+    }
+  },
+  "qualification": {
+    "exact_main_ci_installation_lint_packages_passed_at_prepare_and_publish": true,
+    "four_native_bootstrap_fixed_points_python_free_relocation_jit_aot_gc_and_cache_passed": true,
+    "linux_complete_abi_and_default_program_cache_passed": true,
+    "two_native_docker_architectures_uid10001_jit_aot_and_bind_mounts_passed": true,
+    "clean_pip_and_uv_jit_aot_and_external_cache_passed": true,
+    "actual_pypi_uploads_returned_http_200": true,
+    "public_native_docker_pypi_artifact_identities_equal_tested_payloads": true,
+    "complete_lean_programs": 2529,
+    "strict_storage_programs": 175,
+    "strict_storage_obligations_proved": 18582,
+    "new_failed_or_unproved_lean_outcomes": [],
+    "unexplained_proof_coverage_losses": [],
+    "additional_local_public_pip_uv_installs_passed": true,
+    "additional_installed_payload_files_verified_per_environment": 162
+  },
+  "stable_pointers_unchanged": {
+    "github_tag": "v0.4.0",
+    "github_commit": "5f81cc2563d231501952104e991d858e670325ac",
+    "docker_image": "dta67/pystachy",
+    "docker_latest_digest": "sha256:037f5691b17c9ae9a8afb6be79bf6870a1a81fb9ada67ec5e3d9dd5b08d60d01",
+    "pypi_version": "0.4.0"
+  },
+  "hosted_version_contract": {
+    "expected_stdout": "pystachy v0.5.0-alpha.1 (commit unknown)\n",
+    "reason": "driver.compiler_version defaults absent REVISION to unknown; the released pyproject package-data and actual wheel include VERSION but no REVISION.",
+    "identity_binding": "SOURCE.json plus exact immutable Git source-byte comparison, workflow/tested/public SHA-256 identity.",
+    "additional_local_probe": "An earlier supplemental probe applied the native archive full-commit format to the hosted wheel. It failed after successful pip installation/version exit; its failed receipt and diagnostic are preserved. The corrected source-defined hosted contract passes for both pip and uv."
+  },
+  "audit_helper": {
+    "path": "/workspace/scratch/7dd0519bc14a/release-alpha1-verification/independent-audit-pypi.py",
+    "sha256": "dcda4b739e7cf9062d810309564d64a51672e4ec76d1178744841ebc72059bdc",
+    "size": 21639
+  },
+  "supports_completed_alpha1_publication": true,
+  "scope": "Binds completed independent native/Docker, PyPI, full Lean and supplemental fresh public-wheel installation receipts at one exact release source. No new network, downloads, payload execution, compilation, installations or Lean reruns were performed by this aggregation. CI JIT/AOT and local installation checks have separate receipts and scopes. This is independent agent evidence review, not a successful GitHub/CLI Codex review.",
+  "supersedes": {
+    "path": "/workspace/scratch/7dd0519bc14a/release-alpha1-verification/independent-audits/alpha1-final.json",
+    "sha256": "1b8ce7326b2f4aeb31c14285aebe2f13d9a9abcaed559e586620da27daf92a13",
+    "size": 5809,
+    "reason": "Add the completed supplemental fresh public-wheel pip/uv installation audit; all original native/Docker, PyPI workflow, source-byte and full Lean acceptance remain unchanged."
+  }
+}
