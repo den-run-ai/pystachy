@@ -1,0 +1,12 @@
+bytearray(b'bc') bytearray(b'ab') bytearray(b'fgh') bytearray(b'aceg') bytearray(b'hgfedcba') bytearray(b'fg') bytearray(b'') bytearray(b'') bytearray(b'gec')
+bytearray(b'aXYZdefgh')
+bytearray(b'__aXYZdefgh')
+bytearray(b'1_a2YZ3ef4h')
+bytearray(b'1_Z3ef4h')
+bytearray(b'_3fh')
+bytearray(b'_3!!fh')
+bytearray(b'Hi') 2
+bytearray(b'HiHi') True
+ValueError: attempt to assign bytes of size 7 to extended slice of size 2
+ValueError: slice step cannot be zero
+[exit 0]

@@ -927,7 +927,11 @@ def gen_stmt_main(self, n: Node) -> None:
                 self.err("del of an attribute is only supported for a property (which calls its deleter)")
             if dt.kind == "slice":
                 bnd: list[str] = []
-                o = self.slice_target(dt, bnd, "TypeError: 'NoneType' object does not support item deletion")
+                gone: list[Val] = []
+                o = self.slice_target(dt, bnd, "TypeError: 'NoneType' object does not support item deletion", None, None, gone)
+                if len(gone) > 0:
+                    self.protocol(o, "_delslice", gone)  # (a bytearray's)
+                    continue
                 self.rt("pys_dyn_list_del_slice" if o.t == "dyn" else "pys_list_del_slice", "void", [f"ptr {o.v}", f"i64 {bnd[0]}", f"i64 {bnd[1]}", f"i64 {bnd[2]}"])
                 continue
             if dt.kind == "index" and dt.kids[0].kind == "attr" and self.dotted(dt.kids[0]) == "os.environ":
@@ -1299,7 +1303,12 @@ def gen_augassign(self, n: Node) -> None:
         bnd: list[str] = []
         raw: list[str] = []
         values: list[Val] = []
-        o = self.slice_target(t, bnd, "TypeError: 'NoneType' object is not subscriptable", raw, values)
+        taken: list[Val] = []
+        o = self.slice_target(t, bnd, "TypeError: 'NoneType' object is not subscriptable", raw, values, taken)
+        if len(taken) > 0:
+            # a bytearray's: the slice, a new bytearray that op changes, stored back by the same bounds
+            self.protocol(o, "_setslice", taken + [self.inplace(op, self.protocol(o, "_getslice", taken), n.kids[1])])
+            return
         if o.t == "dyn":
             cur = Val(self.rt("pys_dyn_list_slice", "ptr", [f"ptr {o.v}", f"i64 {bnd[0]}", f"i64 {bnd[1]}", f"i64 {bnd[2]}"]), "dyn")
             value = self.inplace(op, cur, n.kids[1])

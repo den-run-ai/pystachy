@@ -28,6 +28,7 @@ from src.pystachy_compiler.specs import (
     OBJECTC,
     ORDOP,
     PYBUILTINS,
+    BYTEARRAYC,
     RANGEC,
     RANGES,
     REFL,
@@ -1094,6 +1095,10 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 bv = self.expr(bx, "int") if bx.kind != "omit" else Val("null", "None")
                 bs.append(self.vnode(self.as_int(bv) if bv.t == "bool" else bv))
             return self.call_fn(self.funcs[RANGES + "$_slice"], [], bs)
+        if unopt(o.t) == BYTEARRAYC:
+            # a bytearray's slice: lib/_pystachy_bytearray.py's _getslice, of the bounds as written
+            o = self.unwrap(o, "TypeError: 'NoneType' object is not subscriptable")
+            return self.protocol(o, "_getslice", self.slice_written(n.kids[1:]))
         if o.t == "dyn":
             return self.dyn_slice(o, n.kids[1:])  # (by its box's type, of the bounds as Any values: dynamic.py)
         fold = is_tuple(unopt(o.t)) or o.t in self.nts  # (constant bounds: the items' types)
@@ -3032,6 +3037,20 @@ def gen_argtype(self, t: str, m: str, j: int, missing: str) -> str:
     if ms[m].bad != "":
         self.err(ms[m].bad)  # (an imported module's method that cannot be compiled)
     return ms[m].ptypes[j] if j < len(ms[m].ptypes) else ""
+
+def gen_slice_written(self, bounds: list[Node]) -> list[Val]:
+    # the bounds of a slice as they are written, for a class of lib's that takes them so (a
+    # bytearray's _getslice, _setslice and _delslice): start, stop and step, each an int (a bool
+    # as one), or None where it is left out
+    vs: list[Val] = []
+    for bx in bounds + [mk("omit", "", self.line, [])] * (3 - len(bounds)):
+        bv = self.expr(bx, "int") if bx.kind != "omit" else Val("null", "None")
+        if bv.t == "bool":
+            bv = self.as_int(bv)
+        if bv.t != "int" and bv.t != "None" and unopt(bv.t) != "int":
+            self.err("slice indices must be integers or None or have an __index__ method")
+        vs.append(bv)
+    return vs
 
 def gen_protocol(self, o: Val, m: str, args: list[Val]) -> Val:
     # the call of the special method m of o's class that an operator makes (o[k] calls
