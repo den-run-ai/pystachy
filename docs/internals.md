@@ -829,6 +829,7 @@ are required before promotion. `make verify` keeps the standard tier.
 | Variable | Effect |
 |---|---|
 | `PYSTACHY_LLVM` | Override the LLVM tool directory (defaults: Linux 18, macOS 20; Linux also [19 to 23](install.md#other-llvm-releases)); standard apt/Homebrew locations are discovered before falling back to `PATH` |
+| `PYSTACHY_COMPILER=auto\|hosted\|native` | Package launcher only: `auto` uses a bundled native compiler when present, otherwise Python; `hosted` forces Python, `native` requires the optional native payload. The ordinary source wheel contains no native payload. |
 | `PYSTACHY_HOME` | Directory holding the runtime and `lib/`; set by the installed launcher |
 | `PYSTACHY_CACHE` | Runtime and program cache directory; checkout default is `build/`, installed default is `${XDG_CACHE_HOME:-$HOME/.cache}/pystachy` |
 | `PYSTACHY_PATH` | Additional import directories, separated by `:` |
