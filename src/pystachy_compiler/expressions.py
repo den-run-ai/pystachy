@@ -3639,7 +3639,9 @@ def gen_dunder(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
                 pair_same = at == bt or (self.tmpl_of(at) != "" and self.tmpl_of(at) == self.tmpl_of(bt))
                 if pair_same or rm not in self.classes[bt].methods:
                     continue
-                reflected = at not in self.classes or m not in self.classes[at].methods
+                # (lib's complex has these methods for dynamic Any values only: CPython's declines
+                # an object of another class, whose reflected method then runs)
+                reflected = at not in self.classes or m not in self.classes[at].methods or at == COMPLEXC
                 if at in self.classes and self.derives(bt, at):
                     reflected = reflected or rm not in self.classes[at].methods or self.classes[bt].methods[rm] is not self.classes[at].methods[rm]
                 if reflected:
@@ -4855,9 +4857,9 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             # decides: inherit_cmp, where complex's own __eq__ declines it, cmp_pick)
             return self.inherit_cmp(op, a, b)
         if o in self.classes:
-            # an object of another class: complex's __eq__ declines it, as CPython's returns
-            # NotImplemented, so the object's own __eq__ or __ne__ answers, else identity (also
-            # between two None values)
+            # an object of another class: complex's __eq__ (lib's, for dynamic Any values) declines
+            # it, as CPython's returns NotImplemented, so the object's own __eq__ or __ne__ answers,
+            # else identity (also between two None values)
             obj = b if a.t == COMPLEXC else a
             cx = a if a.t == COMPLEXC else b
             om = self.classes[o].methods

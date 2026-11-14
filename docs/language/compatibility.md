@@ -660,7 +660,7 @@ See [user exception classes](semantics.md#user-exception-classes) and
   module calling `object()`. See [sentinels](semantics.md#sentinels).
 - **Complex numbers:** ordering, `//`, `%`, `divmod()`, `round()`, `int()`, `float()` and `math`
   of one; an `int` or `float` where `complex` is declared; `sum()`; unions with other scalars or
-  containers; dynamic `Any` values; attribute assignment and subclasses. See
+  containers; attribute assignment and subclasses. See
   [complex numbers](semantics.md#complex-numbers).
 - **Reserved modules:** `_pystachy_iterators`, `_pystachy_range`, `_pystachy_object`, `_pystachy_complex`.
 - **Arguments:** unsupported keywords; optional `key=` when items lack a supported natural
