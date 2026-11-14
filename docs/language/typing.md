@@ -58,7 +58,7 @@ Runtime-length tuples concatenate (`a + b`, `a += b`) with each other and with f
 into a new tuple of one item type, or return the other operand itself where one is empty, as
 CPython does; items of a type and items that are `None`, or of that type or `None`, make a tuple
 of that type or `None` (`nums + (None,)`). They do not
-support repetition, membership, dictionary keys, or set elements yet. Their annotation is distinct
+support repetition or membership yet, but are dict keys and set elements (below). Their annotation is distinct
 from the fixed shape used by `*args`; `tuple()` takes a list, string, tuple, generator
 expression or `range`/`map`/`filter`/`reversed` call whose items are `int`, `float`,
 `bool`, `str` or optional versions of those types, the objects of iterator classes and
@@ -71,7 +71,9 @@ Dict keys are `int`, `str`, objects of the program's classes, or tuples containi
 `bool`, `str`, `str | None`, objects and nested tuples of these. `None` is a key type too, and
 so is any of these types that may be `None`: `set[None]`, `set[str | None]` and
 `dict[int | None, V]` hold `None` as CPython does, found by `hash(None)` and identity. `{None}`
-is a `set[None]`, and `{None, "a"}` a `set[str | None]`. An object whose class defines
+is a `set[None]`, and `{None, "a"}` a `set[str | None]`. Runtime-length tuples of `int`,
+`bool`, `str` or `str | None` (`tuple[bool, ...]`) are keys too, equal to a tuple of the same
+items whatever its shape, as in CPython. An object whose class defines
 neither `__eq__` nor `__hash__` hashes and compares by identity; one whose class defines
 `__hash__` uses it and `__eq__`, which run where CPython calls them (once per insertion or
 lookup, and for each key of the same hash). A class that defines `__eq__` without `__hash__` is
