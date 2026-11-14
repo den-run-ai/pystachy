@@ -280,7 +280,14 @@ refreshed when dynamic dispatch discovers more boxed specializations. It reads
 descriptor metadata without unboxing the instance or instantiating an unused
 template. Concrete annotations still require their own compatible layout.
 
-Coverage: `tests/programs/generics/dynany_template_isinstance.py`.
+`type(value) is Box` and comparisons between two `type(value)` results use the
+same Python class identity in ordinary helpers receiving boxed arguments from
+opt-in modules. Distinct specializations of `Box` compare equal; an unrelated
+class with the same name does not. These exact-type tests preserve operand
+evaluation order and do not narrow a box to one specialization's field layout.
+
+Coverage: `tests/programs/generics/dynany_template_isinstance.py`,
+`dynany_template_type_import.py` and `dynany_template_type_order.py`.
 
 ### Other containers and fresh results
 
