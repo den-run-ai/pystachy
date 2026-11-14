@@ -279,6 +279,10 @@ def gen_identity_box(self, v: Val, t: str) -> None:
         return
     if (t == "int" or t == "float") and v.idfrom == "" and v.idslot == "" and not v.lit:
         self.identity_event("number as an Any value")
+    if is_gen(t) and not self.identity_free(gelem(t)):
+        # Dynamic iterator dispatch must not interpret an untracked numeric
+        # promise as a box. Nested generators can expose that channel later.
+        self.identity_event("generator as an Any value")
     if is_fn(t) or (is_callable(t) and not self.identity_free(t)):
         self.identity_event("function as an Any value")
 

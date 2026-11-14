@@ -434,7 +434,18 @@ value. Programs without `send` and `throw` keep five words and the code they had
 `yield from` whose closing may run code closes its generator as above. A program where a module
 opts in to [promoting ints](python-int.md) gives its generators nine words: also the pointers of
 the promoting ints yielded last and returned (`specs.GENVALP`, `GENRETP`), which every `yield` of
-an int writes, null where the value fits.
+an int writes, null where the value fits. In code tracking dynamic `Any` identity, scalar
+`int` and `float` yield channels add one scanned nullable object companion after
+the existing promise: six, eight or ten words in total. The numeric payload and
+any promoting-int high pointer keep their original slots. Existing source aliases
+supply their canonical box; fresh computed yields supply null, as scalar calls do.
+Consumers copy that companion into a private result slot before any later resume.
+They can transfer a fresh result into a lone loop local without boxing, while
+observable aliases materialize normally. No pointer into a generator's local
+identity slot escapes. Isolated nontracking modules keep their old frame size.
+A typed generator crossing identity regions, including erasure to `Any`, forces
+recompilation with consistent tracking before a consumer can read it. Generator
+return channels keep their prior layout.
 
 A generator expression that no consumer takes directly becomes an anonymous generator
 function, called with its first iterable (evaluated where it is written) and the values of
