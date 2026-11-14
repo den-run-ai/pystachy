@@ -68,11 +68,11 @@ CHECKS = (
 # (union payload bits are proved with their function's union reads: one list names both)
 LISTED_WITH = {"union_payload": "union"}
 # What a report's counts are made from, as git pathspecs (a `*` also matches `/`): a change to
-# any of them may change them. Helper packages of the tests live directly in tests/; this file
-# only tallies and renders.
+# any of them may change them. Helper packages of the tests live directly in tests/; the runner
+# selects checks and controls compilation, so it is an input too.
 INPUTS = {
     "compiler": ("pystachy.py", "VERSION", "src", "lib"),
-    "checkers": ("tools/inspect_compiler.py", "tools/check_lean_*.py", "tools/lean_boundary/*.lean",
+    "checkers": ("tools/lean_report.py", "tools/inspect_compiler.py", "tools/check_lean_*.py", "tools/lean_boundary/*.lean",
                  "tools/lean_boundary/lakefile.toml", "tools/lean_boundary/lake-manifest.json",
                  "tools/lean_boundary/lean-toolchain"),
     "corpus": ("tests/*.py", "tests/*.path"),
@@ -301,6 +301,30 @@ def results_database(path):
     return str(path)
 
 
+def checked_records(args, programs, promoting, database):
+    """The same checks and per-run caches, with no pool for one worker. Spawn is available
+    where forkserver's Unix socket cannot be created; each compilation still owns its child."""
+    global _verdicts
+    if args.jobs == 1:
+        previous = _verdicts, guards._removal_attempts, boundary.RESULTS
+        keep_results(database)
+        try:
+            for program in programs:
+                yield check_program(program, program in promoting, args.timeout, args.checker, args.access_checker)
+        finally:
+            for cache in (_verdicts, guards._removal_attempts, boundary.RESULTS):
+                cache.connection.close()
+            _verdicts, guards._removal_attempts, boundary.RESULTS = previous
+        return
+    context = multiprocessing.get_context(args.start_method)
+    with concurrent.futures.ProcessPoolExecutor(args.jobs, mp_context=context, initializer=keep_results,
+                                               initargs=(database,)) as pool:
+        work = [pool.submit(check_program, program, program in promoting, args.timeout, args.checker,
+                            args.access_checker) for program in programs]
+        for done in concurrent.futures.as_completed(work):
+            yield done.result()
+
+
 def check_program(program, promoting, timeout, checker, access_checker):
     """One program's record: each check's counts and unproved functions, or why none ran."""
     started = time.monotonic()
@@ -480,6 +504,8 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("programs", nargs="*", help="check only these (the report is then written to --output)")
     parser.add_argument("--jobs", type=int, default=min(4, os.cpu_count() or 1))
+    parser.add_argument("--start-method", choices=("forkserver", "spawn"), default="forkserver",
+                        help="process start method with --jobs greater than one (default: forkserver)")
     parser.add_argument("--timeout", type=float, default=300, help="seconds per inspection")
     parser.add_argument("--checker", type=Path, default=boundary.DEFAULT_CHECKER)
     parser.add_argument("--access-checker", type=Path, default=access.DEFAULT_CHECKER)
@@ -526,16 +552,11 @@ def main(argv=None):
     checked = {record["program"] for record in records}
     remaining = [program for program in programs if program not in checked]
     promoting = set(storage_corpus.select(remaining))
-    # (processes: a thread holds the interpreter while it checks a snapshot)
-    context = multiprocessing.get_context("forkserver")
     with tempfile.TemporaryDirectory(prefix="pystachy-lean-report-") as shared, \
-            args.records.open("a") as output, concurrent.futures.ProcessPoolExecutor(
-                args.jobs, mp_context=context, initializer=keep_results,
-                initargs=(results_database(Path(shared) / "results.db"),)) as pool:
-        work = [pool.submit(check_program, program, program in promoting, args.timeout, args.checker,
-                            args.access_checker) for program in remaining]
-        for done in concurrent.futures.as_completed(work):
-            records.append(done.result())
+            args.records.open("a") as output:
+        database = results_database(Path(shared) / "results.db")
+        for record in checked_records(args, remaining, promoting, database):
+            records.append(record)
             output.write(json.dumps(records[-1], sort_keys=True) + "\n")
             output.flush()
             if args.progress:

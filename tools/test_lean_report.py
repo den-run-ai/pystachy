@@ -3,6 +3,7 @@ workers compile programs and share results (lean_report.py).
 
 They need no Lean checker: records are made by hand, as check_program makes them, and the
 committed report is checked for its form, not rerun."""
+import argparse
 import hashlib
 import json
 import os
@@ -152,6 +153,7 @@ class StatusTests(unittest.TestCase):
         self.assertEqual(self.status(dict(same, corpus=dict(same["corpus"], clean=False))), 1)
 
     def test_each_input_group_has_a_digest(self):
+        self.assertIn("tools/lean_report.py", report.INPUTS["checkers"])
         found = report.inputs()
         self.assertEqual(set(found), set(report.INPUTS))
         self.assertTrue(all(len(item["digest"]) == 16 and type(item["clean"]) is bool for item in found.values()))
@@ -159,6 +161,35 @@ class StatusTests(unittest.TestCase):
 
 class WorkerTests(unittest.TestCase):
     PROGRAM = report.ROOT / "tools/lean_boundary/examples/generators.py"
+
+    def test_one_worker_uses_the_same_checks_and_cache_without_a_pool(self):
+        args = argparse.Namespace(jobs=1, start_method="forkserver", timeout=120,
+                                  checker="boundary", access_checker="access")
+        original = report._verdicts, report.guards._removal_attempts, report.boundary.RESULTS
+        seen = []
+
+        def checked(program, promoting, timeout, checker, access_checker):
+            seen.append((program, promoting, timeout, checker, access_checker))
+            self.assertIsInstance(report.boundary.RESULTS, report.Shared)
+            key = ("checker", "candidate")
+            if program == "first.py":
+                report.boundary.RESULTS[key] = {"accepted": True}
+            else:
+                self.assertEqual(report.boundary.RESULTS[key], {"accepted": True})
+            return record(program, fields=row(3, 3))
+
+        with tempfile.TemporaryDirectory() as directory, \
+                mock.patch.object(report.multiprocessing, "get_context", side_effect=AssertionError("no context")), \
+                mock.patch.object(report.concurrent.futures, "ProcessPoolExecutor", side_effect=AssertionError("no pool")), \
+                mock.patch.object(report, "check_program", side_effect=checked):
+            database = report.results_database(Path(directory) / "results.db")
+            records = list(report.checked_records(args, ["first.py", "second.py"], {"second.py"}, database))
+        self.assertEqual(records, [record("first.py", fields=row(3, 3)), record("second.py", fields=row(3, 3))])
+        self.assertEqual(seen, [("first.py", False, 120, "boundary", "access"),
+                                ("second.py", True, 120, "boundary", "access")])
+        for before, after in zip(original, (report._verdicts, report.guards._removal_attempts, report.boundary.RESULTS),
+                                 strict=True):
+            self.assertIs(before, after)
 
     def test_workers_share_each_result_by_its_kind_and_key(self):
         with tempfile.TemporaryDirectory() as directory:
