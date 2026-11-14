@@ -91,8 +91,10 @@ reuse the f-string's quote, nest f-strings, and hold backslashes, newlines and c
 `%` formatting requires a literal format string, or a module global that one module-level
 assignment binds to one (`FMT = "%8.3f"`, also `Final`) where nothing else in the program, not
 even a function's local, binds its name. It supports `s r a d i u x X o e E f F g G c`, flags,
-widths and precisions, but not named substitutions, `*` widths or precisions, or integer
-precisions. A variable format string such as `fmt % value` is rejected. A literal format of
+widths and precisions, but not `*` widths or precisions, or integer precisions. A dict, or an
+object with `__getitem__`, on the right takes conversions that name keys, `"%(name)s: %(count)d"
+% row`: each key is looked up as its conversion comes, and a missing one raises `KeyError`.
+Every conversion of such a format names a key. A variable format string such as `fmt % value` is rejected. A literal format of
 only `%s`, `%r` and `%a` conversions, whose widths and precisions have at most two digits,
 applied to a tuple display with one item for each, is evaluated as CPython 3.11+ compiles it,
 as an f-string: each item just before its conversion. Any other `%` evaluates all its

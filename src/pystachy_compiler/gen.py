@@ -871,6 +871,7 @@ from src.pystachy_compiler.expressions import (
     gen_optcmp as expressions_optcmp,
     gen_optint as expressions_optint,
     gen_percent as expressions_percent,
+    gen_percent_map as expressions_percent_map,
     gen_percent_opt as expressions_percent_opt,
     gen_pformat as expressions_pformat,
     gen_str_field as expressions_str_field,
@@ -4314,6 +4315,9 @@ class Gen:
 
     def cls_bound(self, f: FnInfo, c: str, obj: bool) -> None:
         return expressions_cls_bound(self, f, c, obj)
+
+    def percent_map(self, fmt: str, v: Val) -> Val:
+        return expressions_percent_map(self, fmt, v)
 
     def percent(self, fmt: str, rhs: Node, lit: bool) -> Val:
         return expressions_percent(self, fmt, rhs, lit)
