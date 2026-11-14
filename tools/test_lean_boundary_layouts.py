@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 from types import SimpleNamespace
 import unittest
+from unittest import mock
 
 import check_lean_boundary as bridge
 import test_lean_boundary as fixtures
@@ -19,9 +20,53 @@ ROOT = Path(__file__).resolve().parents[1]
 CLANG = shutil.which(str(Path(os.environ["PYSTACHY_LLVM"]) / "clang") if os.environ.get("PYSTACHY_LLVM") else "clang")
 
 
+class CheckerProtocolTests(unittest.TestCase):
+    def result(self, reply, metadata):
+        with mock.patch.object(bridge, "checker_result", return_value=reply):
+            return bridge.run_checker("unused", "{}\n", metadata)
+
+    def test_shared_protocol_accepts_other_checkers_without_layouts(self):
+        reply = {"accepted": True, "nodes": 1, "payloads": 0}
+        metadata = {"nodes": 1, "payloads": 0}
+        self.assertTrue(self.result(reply, metadata))
+        self.assertTrue(self.result({**reply, "layouts": 0}, metadata))
+        for change in ({"nodes": True}, {"payloads": False}):
+            with self.subTest(change=change), self.assertRaisesRegex(ValueError, "counts disagree"):
+                self.result({**reply, **change}, metadata)
+        with self.assertRaisesRegex(ValueError, "layout count"):
+            self.result({**reply, "layouts": 1}, metadata)
+
+    def test_class_obligations_require_exact_native_layout_count(self):
+        metadata = {"nodes": 2, "payloads": 1, "layouts": 2}
+        reply = {"accepted": True, "nodes": 2, "payloads": 1, "layouts": 2}
+        self.assertTrue(self.result(reply, metadata))
+        for change in ({"layouts": 0}, {"layouts": 1}, {"layouts": True}, {"extra": 0}):
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                self.result({**reply, **change}, metadata)
+        del reply["layouts"]
+        with self.assertRaisesRegex(ValueError, "checker error"):
+            self.result(reply, metadata)
+
+
 class LayoutMetadataTests(fixtures.SnapshotFixture):
     example = fixtures.CLASS_EXAMPLE
     function_filter = ""
+
+    def test_validation_only_preserves_class_layout_obligations(self):
+        candidate, metadata = bridge.normalize_snapshot(self.snapshot, "boundary_class", certify=False)
+        self.assertEqual(candidate["certificate"], [])
+        self.assertEqual(candidate["schema_version"], 3)
+        self.assertEqual(len(candidate["layouts"]), 2)
+        self.assertEqual(metadata["layouts"], 2)
+
+    @unittest.skipUnless(fixtures.CHECKER.is_file(), "build tools/lean_boundary to check batch layouts")
+    def test_batch_checker_preserves_layout_checks_between_candidates(self):
+        candidate, metadata = bridge.normalize_snapshot(self.snapshot, "boundary_class")
+        bad = copy.deepcopy(candidate)
+        layout = next(entry for entry in bad["layouts"] if entry["tag"] == "@dt.Sub")
+        layout["members"][0] = "str"
+        for value, expected in ((candidate, True), (bad, False), (candidate, True)):
+            self.assertEqual(bridge.run_checker(fixtures.CHECKER, bridge.encode(value), metadata), expected)
 
     def test_layout_inventory_matches_emitted_structs(self):
         llvm = (self.directory / "inspection/llvm.ll").read_text()

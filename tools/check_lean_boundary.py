@@ -1190,11 +1190,16 @@ def run_checker(checker, encoded, metadata):
     result = checker_result(checker, encoded, timeout=10)
     require(isinstance(result, dict) and type(result.get("accepted")) is bool,
             "checker did not return an acceptance result")
-    require(set(result) == {"accepted", "nodes", "payloads", "layouts"}, f"checker error: {result.get('error')}")
-    require(result["nodes"] == metadata["nodes"] and result["payloads"] == metadata["payloads"],
+    expected = {"accepted", "nodes", "payloads"}
+    if "layouts" in metadata or "layouts" in result:
+        expected.add("layouts")
+    require(set(result) == expected, f"checker error: {result.get('error')}")
+    require(type(result["nodes"]) is int and type(result["payloads"]) is int
+            and result["nodes"] == metadata["nodes"] and result["payloads"] == metadata["payloads"],
             "checker counts disagree with normalized input")
-    require(type(result["layouts"]) is int and result["layouts"] == metadata.get("layouts", 0),
-            "checker layout count disagrees with normalized input")
+    if "layouts" in expected:
+        require(type(result["layouts"]) is int and result["layouts"] == metadata.get("layouts", 0),
+                "checker layout count disagrees with normalized input")
     return result["accepted"]
 
 
