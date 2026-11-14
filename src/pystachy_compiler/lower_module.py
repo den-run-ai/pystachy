@@ -79,6 +79,19 @@ def jit_alloc(ir: str) -> str:
     return ir + fl + slow
 
 
+def unprofiled_generators(ir: str) -> str:
+    # The IR of a build that writes profiles (the driver's aot_profile), with noprofile on each
+    # generator function, a presplitcoroutine (lowering.py's define line): LLVM 18 aborts where
+    # it applies a profile to one, so none is recorded for them, and a build that uses the
+    # profile compiles them as it does without one
+    out: list[str] = []
+    for line in ir.split("\n"):
+        if line.startswith("define ") and ") presplitcoroutine" in line:
+            line = line.replace(") presplitcoroutine", ") presplitcoroutine noprofile")
+        out.append(line)
+    return "\n".join(out)
+
+
 def address_runtime_ir(ir: str) -> str:
     # Attribute every generated definition, including internal helpers and those
     # with an exception personality. Clang's IR-input pipeline then runs ASan for

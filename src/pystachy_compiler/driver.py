@@ -9,7 +9,7 @@ from src.pystachy_compiler.diagnostics import MAXNEST, RAW, NeedSliceEH, Rejoin,
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.loader import Loader
-from src.pystachy_compiler.lower_module import OBJHOOKS, OBJHOOKS_MAIN, address_runtime_ir, jit_alloc
+from src.pystachy_compiler.lower_module import OBJHOOKS, OBJHOOKS_MAIN, address_runtime_ir, jit_alloc, unprofiled_generators
 from src.pystachy_compiler.names import RENAMED
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.specs import JIT_INLINE, LIBS, LINKDL, MODULES, OPTS, PLATFORM
@@ -472,6 +472,27 @@ def aot_optimization() -> str:
     return value
 
 
+def aot_profile() -> list[str]:
+    # Profile-guided builds of an executable: clang's flag for the step that optimizes the program
+    # and the runtime it needs as one module, and its flag for the link. PYSTACHY_PROFILE_GENERATE
+    # names the directory where the executable writes a raw profile each time it runs;
+    # PYSTACHY_PROFILE_USE names the indexed profile that llvm-profdata merge makes of them. The
+    # runtime's own build takes neither flag: its modules, compiled apart, would each carry the
+    # module flag that the profile adds, and LLVM cannot link two of them. A generating build
+    # leaves generator functions out of the profile (lower_module's unprofiled_generators)
+    gen = os.getenv("PYSTACHY_PROFILE_GENERATE", "")
+    use = os.getenv("PYSTACHY_PROFILE_USE", "")
+    if gen != "" and use != "":
+        fail("PYSTACHY_PROFILE_GENERATE and PYSTACHY_PROFILE_USE cannot both be set", 0)
+    if gen != "":
+        return [" " + q("-fprofile-generate=" + gen), " " + q("-fprofile-generate=" + gen)]
+    if use != "":
+        if not os.path.isfile(use):
+            fail(f"PYSTACHY_PROFILE_USE: no profile at {use} (llvm-profdata merge makes one of the raw profiles)", 0)
+        return [" " + q("-fprofile-use=" + use), ""]
+    return ["", ""]
+
+
 # The LLVM versions whose C API lljit.c declares (two changes are gated at 21), for which the driver
 # builds Pystachy's JIT runner; another version runs lli. And what the runner's -self-check writes, at
 # each level of code generation it is checked at
@@ -641,6 +662,7 @@ def main() -> None:
         fail("file not found", 0)
     retained = retained_ir_path(cmd, diagnostics.SRC, argv[3:])
     aotopt = aot_optimization() if cmd == "build" else "2"
+    aotprofile = aot_profile() if cmd == "build" else ["", ""]
     jitflags = ""
     codegen = "2"
     runner = ""
@@ -969,7 +991,7 @@ def main() -> None:
     parto = f"{rto}.{os.getpid()}.{own}"
     partso = f"{rts}.{os.getpid()}.{own}"
     f = open(ll, "w", encoding=RAW)
-    f.write(address_runtime_ir(ir) if asan and cmd != "run" else ir)
+    f.write(address_runtime_ir(ir) if asan and cmd != "run" else unprofiled_generators(ir) if aotprofile[1] != "" else ir)
     if cmd == "build":
         # runtime.c's pys_plain, which -O2 reads with the runtime as one module: 1 removes the code
         # that only values of those opt-ins reach (opt_in()), before it is optimized; the JIT tier
@@ -1214,14 +1236,15 @@ def main() -> None:
             out = diagnostics.SRC[:-3] if diagnostics.SRC.endswith(".py") else diagnostics.SRC + ".exe"
         code = timed_sh("program.llvm_link", link)
         if code == 0 and newalloc:
-            code = timed_sh("program.llvm_optimize", f"{llvm}clang -O{aotopt} -c -emit-llvm {q(bc)} -o {q(obc)} -Wno-unused-command-line-argument{ccflags}")
+            code = timed_sh("program.llvm_optimize", f"{llvm}clang -O{aotopt} -c -emit-llvm {q(bc)} -o {q(obc)} -Wno-unused-command-line-argument{ccflags}{aotprofile[0]}")
         if code == 0 and newalloc:
             code = timed_sh("program.late_inline", f"{llvm}opt -passes={LATE_PASSES} {LATE_INLINE} {q(obc)} -o {q(lbc)}")
         if code == 0:
-            cc = f"{llvm}clang -O{aotopt} -c -Xclang -disable-llvm-passes {q(lbc)}" if newalloc else f"{llvm}clang -O{aotopt} -c {q(bc)}"
+            # (the profile flag goes to the one step that runs LLVM's passes over the module)
+            cc = f"{llvm}clang -O{aotopt} -c -Xclang -disable-llvm-passes {q(lbc)}" if newalloc else f"{llvm}clang -O{aotopt} -c {q(bc)}{aotprofile[0]}"
             code = timed_sh("program.codegen" if newalloc else "program.optimize_codegen", cc + f" -o {q(obj)} -Wno-unused-command-line-argument{ccflags}")
         if code == 0:
-            code = timed_sh("program.link", f"{llvm}clang {q(obj)} -o {q(out)}{libs} -lm{cflags}")
+            code = timed_sh("program.link", f"{llvm}clang {q(obj)} -o {q(out)}{libs} -lm{cflags}{aotprofile[1]}")
     else:
         # Match the precompiled runtime's target before instcombine folds sizeof/GEP.
         # LLVM's default layout gives i64 only four-byte alignment; ORC later installs
