@@ -464,6 +464,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             self.err(f"tuple() of {typestr(v.t)} is not supported: use a list, string or tuple")
         if unopt(elem(v.t)) not in ["int", "float", "bool", "str", "dyn"]:
             self.err("runtime-length tuple elements must be int, float, bool, str or their optional types")
+        v = self.list_identity(v)
         return Val(self.rt("pys_vtuple_new", "ptr", [f"ptr {v.v}"]), self.ctype("vtuple", [elem(v.t)]))
     if name == "typing.NamedTuple":
         self.err("the functional NamedTuple form is not supported: write a class, class P(NamedTuple): with annotated fields")
@@ -3179,6 +3180,8 @@ def gen_tmethod(self, o: Val, m: str, args: list[Node]) -> Val:
     x = self.expr(args[0], "", resultsoft=True)
     if "?" in x.t:
         self.err(f"cannot infer the type of the argument of tuple.{m}(): give it a type")
+    if is_vtuple(o.t) and self.list_id_kind(self.ctype("list", [targs(o.t)[0]])) != 0 and numeric_identity(x.t):
+        x.idfrom = self.dyn_id_box(x).v
     bounds: list[Val] = []
     for j in range(1, len(args)):
         bounds.append(self.coerce(self.as_int(self.expr(args[j], "int")), "int", f"argument {j + 1} of tuple.index()"))
@@ -3206,7 +3209,7 @@ def gen_tmethod(self, o: Val, m: str, args: list[Node]) -> Val:
         vi = self.mload('int', index)
         self.cbr(self.num_cmp('<', Val(vi, "int"), span[1]).v, body, done)
         self.place(body)
-        item = self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {o.v}", f"i64 {vi}"]), targs(o.t)[0])
+        item = self.vtuple_item(o, Val(vi, "int"))
         matched = self.titem_eq(item, x, hit, None, "")
         self.br(step)
         if matched:

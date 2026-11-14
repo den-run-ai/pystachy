@@ -258,7 +258,7 @@ coerced homogeneous elements. Its result is `vtuple[T]` and every operand has na
 type `T`; it owns one semantic result and an allocation effect. A fresh tuple display
 can use it directly, while conversion from an existing fixed tuple first reads that
 tuple without changing its storage. Literal constant displays keep their existing
-constant path. Lowering allocates the existing scanned layout (length followed by
+constant path. Lowering allocates the existing scanned layout (length, nullable numeric-identity companion pointer, then
 eight-byte elements), retaining native references across that allocation; address
 and bool-widening temporaries are local to the emitter. This removes intermediate
 fixed tuples and the copy through `vtuple.from` without a new runtime API, allocator
