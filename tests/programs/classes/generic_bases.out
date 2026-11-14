@@ -1,0 +1,10 @@
+base b: done=False False False False
+fut f: done=False True False False
+task 2 Task t: done=False True True False
+task 0 Task n: done=False True True False
+base pep: done=False False False True
+base pep: done=False False False True
+4 S None Task t: done=True [1.5, 2.5] False
+True False True
+pep pep
+[exit 0]

@@ -6,8 +6,12 @@ use CPython to start separate processes, each importing an
 The [process-pool example](#process-pools-today) below shows this arrangement.
 
 This page describes current behavior and the probes that check it. Native
-parallel loops, shared-heap threads and `async def` remain unsupported; their
+parallel loops and shared-heap threads remain unsupported; their
 proposals are linked under [design history](#design-history).
+[Coroutines](coroutines.md) (`async def` and `await`) run natively on the owner
+thread: they interleave at their awaits and run nothing in parallel, also as the tasks of
+`asyncio`'s event loop, which has no I/O, threads or executors
+([limits](../lib/compatibility.md#asyncio)).
 
 ## Capabilities
 
@@ -38,11 +42,15 @@ to check that the probes exist and that their test suites execute them.
 | `threading`'s locks, conditions, semaphores, events, barriers, timers and `Thread` objects, in the one thread | native | `tests/programs/library/lib_threading.py` |
 | `threading.Thread.start()` | refused: `NotImplementedError` | `tests/deviations/threading_start.py` |
 | A lock `acquire()` or a `join()` that would wait forever | refused: `RuntimeError` | `tests/deviations/lib_thread_deadlock.py` |
-| `async def`, `await`, `async for`, `async with` | refused at compile time | `tests/errors/generators/gen_async.py` |
+| `async def` and `await` of coroutines, `@types.coroutine` generators and objects whose `__await__` is a generator method; a coroutine's `send()`, `throw()` and `close()`, run by code of the owner thread | native | `tests/programs/generators/coro_protocol.py`, `tests/programs/generators/coro_scheduler.py`, `tests/programs/upstream/upstream_coroutines.py` |
+| `async with` and `async for` in coroutines of the owner thread | native | `tests/programs/generators/coro_async_with.py`, `tests/programs/generators/coro_async_for.py`, `tests/programs/upstream/upstream_coroutines_with_for.py` |
+| Async generators and asynchronous comprehensions in coroutines of the owner thread | native | `tests/programs/generators/agen_await.py`, `tests/programs/generators/acomp_list.py`, `tests/programs/upstream/upstream_asyncgen.py` |
+| `asyncio` tasks, `gather()`, `TaskGroup`, timers, locks and queues on the owner thread's event loop | native | `tests/programs/library/lib_asyncio_run.py`, `tests/programs/library/lib_asyncio_sync.py`, `tests/programs/upstream/upstream_asyncio_tasks.py` |
 
 
-A compiled program cannot import `queue`, `asyncio`, `concurrent.futures`,
-`multiprocessing`, `subprocess`, `contextvars`, `selectors`, `socket` or `signal`;
+A compiled program cannot import `queue`, `concurrent.futures`,
+`multiprocessing`, `subprocess`, `contextvars`, `selectors`, `socket` or `signal`, and its
+`asyncio` has no sockets, subprocesses, threads or executors;
 use the hosted interfaces for those operations. Native process control provides
 `os.system()` and `os.execv()`, with no `fork`, pipe or spawn. `_thread` and
 `threading` run only on the owner thread: importing them does not enable
@@ -53,7 +61,7 @@ IPv4 TCP, local socket pairs and epoll/kqueue readiness through a separate C
 bridge. It runs under CPython and Pystachy with explicit resource ownership and
 compares its bounded API with the real stdlib. Its pipe consumer drains inherited
 worker output with deadlines; the launcher owns worker processes. This does not
-enable native stdlib `socket`, `selectors` or `asyncio` imports.
+enable native stdlib `socket` or `selectors` imports, nor I/O in `asyncio`.
 
 An `abi3t` extension refuses import under `PYTHON_GIL=0`. That check needs a
 free-threaded CPython 3.15, which CI does not run. See the

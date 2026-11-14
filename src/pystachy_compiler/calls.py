@@ -1,8 +1,8 @@
 """Calls component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.analysis import local_names, numeric_statement
-from src.pystachy_compiler.bigints import converts
-from src.pystachy_compiler.diagnostics import dynamic_program, shown, where
+from src.pystachy_compiler.bigints import converts, int_tuple
+from src.pystachy_compiler.diagnostics import dynamic_program, int_lists, shown, where
 from src.pystachy_compiler.generators import fresh_yield_context
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Val, tmpname
 from src.pystachy_compiler.names import ENUMCLASSES, short
@@ -11,6 +11,7 @@ from src.pystachy_compiler.specs import BFILE, BIG, EXCEPTIONS, GLUE, HASATTR, M
 from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import (
+    lib_file,
     opaque_class,
     atomic_dict,
     identity_abi,
@@ -26,6 +27,8 @@ from src.pystachy_compiler.utils import (
     is_const,
     is_dict,
     is_fn,
+    is_agen,
+    is_coro,
     is_gen,
     is_fset,
     is_kw,
@@ -34,6 +37,8 @@ from src.pystachy_compiler.utils import (
     is_set,
     is_tuple,
     is_union,
+    is_vtuple,
+    elem,
     kw_names,
     kw_types,
     literal_format,
@@ -310,6 +315,10 @@ def gen_star_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: 
             if is_tuple(v.t):
                 for i in range(len(targs(v.t))):
                     pos.append(self.vnode(self.tget(v, i)))
+            elif not printing and (is_list(v.t) or is_vtuple(v.t)) and self.star_pack(f) and a is [x for x in args if x.kind != "kw" and x.kind != "dstar"][-1]:
+                # (a run-time list into the *args of a function of the program: call_fn's star_args
+                # binds its items, as CPython's frame setup does)
+                pos.append(mk("vstar", "", a.line, [self.vnode(v)]))
             elif printing and (is_list(v.t) or v.t == "str" or is_dict(v.t) or v.t == RANGEC):
                 # print(*xs): its items printed as arguments are, joined by sep (a sole star's
                 # items as they are once the keywords are evaluated, others' as they are now)
@@ -361,6 +370,64 @@ def gen_star_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: 
     if dynh.v != "":
         return self.dyn_method_found(receiver, f.s, out, dynh)
     return self.call(mk("call", n.s, n.line, [f] + out), want, resultsoft, typeargs)
+
+def gen_star_pack(self, f: Node) -> bool:
+    # may f(..., *xs) unpack a list xs known only at run time: f names a module-level function of
+    # the program (not a local, nor one that a decorator replaces) that takes *args, of a module
+    # of the program's own or of lib's asyncio (lib's others take a fixed tuple: itertools'
+    # zip_longest(*rows) would compile its own code with a runtime-length one)
+    if f.kind != "name" or f.s not in self.funcs or f.s in self.ltype or f.s in self.decorated:
+        return False
+    g = self.funcs[f.s]
+    if lib_file(g.node.line, self.libdir) and not g.mod.startswith("asyncio"):
+        return False
+    return g.vararg >= 0 and g.cls == "" and g.clo < 0 and not g.extern and g.vartup == ""
+
+
+def gen_star_args(self, f: FnInfo, a: Node, pos: int, vals: list[Val], extra: list[Val], args: list[Node]) -> int:
+    # f(..., *xs) of a list (or tuple[T, ...]) xs known only at run time, the vstar node a, last of
+    # the call's positional arguments (gen_call): its first items fill the positional parameters
+    # of f from pos to its *args, those after them make the tuple *args is, a tuple[T, ...] of
+    # their type T. Too few items raise CPython's TypeError, once every argument is evaluated
+    # (gen_call evaluated those that are not pure). The positions it filled are returned
+    xs = self.expr(a.kids[0], "")
+    et = elem(xs.t) if is_list(xs.t) else targs(xs.t)[0]
+    fixed = [j for j in range(pos, f.vararg)]
+    who = f"{f.mod if f.mod != '' else '__main__'}.{short(f.name)}()"
+    if len(extra) > 0 or et == BIG or et == "dyn" or "?" in et or et == "None":
+        self.err(f"unpacking a {typestr(xs.t)} into the arguments of {who} is not supported here (a list of known items into its *args is, after its other positional arguments)")
+    kws = [x.s for x in args if x.kind == "kw"]
+    for j in fixed:
+        if f.defaults[j].kind != "noann" or f.params[j] in kws:
+            self.err(f"unpacking a {typestr(xs.t)} into the arguments of {who} is not supported where its items may fill '{f.params[j]}', a parameter with a default or given by keyword")
+    if int_lists() and int_tuple(et):
+        self.err(f"unpacking a {typestr(xs.t)} into the arguments of {who} is not supported in a program whose lists hold promoting ints (its tuples' ints may be past 64 bits)")
+    if f.varelem != "" and self.ctype("vtuple", [f.varelem]) != self.ctype("vtuple", [et]):
+        # (an annotated promoting int's *args holds 64-bit ints, as a list's items are read: ctype)
+        self.err(f"unpacking a {typestr(xs.t)} into the arguments of {who}, whose *{f.params[f.vararg]} takes {typestr(f.varelem)} items, is not supported (make it a list[{typestr(f.varelem)}])")
+    n = Val(self.list_len(xs) if is_list(xs.t) else self.mload("int", xs.v), "int")
+    for m in range(len(fixed)):
+        miss = [f.params[j] for j in fixed[m:]]
+        names = "'" + "', '".join(miss) + "'"
+        if len(miss) == 2:
+            names = f"'{miss[0]}' and '{miss[1]}'"
+        elif len(miss) > 2:
+            names = "'" + "', '".join(miss[:-1]) + f"', and '{miss[-1]}'"
+        self.guard(self.num_cmp("==", n, Val(str(m), "int")).v, f"TypeError: {self.fname(f)}() missing {len(miss)} required positional argument{'s' if len(miss) != 1 else ''}: {names}")
+    for i in range(len(fixed)):
+        j = fixed[i]
+        item = self.list_item(xs, Val(str(i), "int")) if is_list(xs.t) else self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {xs.v}", f"i64 {i}"]), et)
+        vals[j] = self.pcoerce(item, f.ptypes[j], f, j)
+    if is_list(xs.t):
+        rest = self.rt("pys_list_slice", "ptr", [f"ptr {xs.v}", f"i64 {len(fixed)}", f"i64 {n.v}"])
+        vt = self.rt("pys_vtuple_new", "ptr", [f"ptr {rest}"])
+    elif len(fixed) > 0:
+        vt = self.rt("pys_vtuple_slice", "ptr", [f"ptr {xs.v}", f"i64 {len(fixed)}", f"i64 {n.v}", "i64 1"])
+    else:
+        vt = xs.v  # (a tuple is *args as it is, as CPython passes it)
+    vals[f.vararg] = Val(vt, self.ctype("vtuple", [et]))
+    return pos + len(fixed)
+
 
 def gen_static_callee(self, f: Node) -> bool:
     # does evaluating callee f (or the object of o.m) read nothing a call's arguments may change:
@@ -875,6 +942,10 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
         return self.to_str(o) if m == "__str__" else self.repr(o)
     if is_gen(o.t):
         return self.gen_method(o, m, args)
+    if is_coro(o.t):
+        return self.coro_method(o, m, args)
+    if is_agen(o.t):
+        return self.agen_method(o, m, args)
     if o.t in self.classes and m == "__init__" and self.classes[o.t].exc != "":
         for c in self.classes.values():
             if c.name != o.t and self.derives(c.name, o.t) and "__init__" in c.methods and c.methods["__init__"].cls == c.name:
@@ -1272,6 +1343,7 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
     end = self.label()
     vals: list[Val] = []
     edges: list[str] = []
+    insts: list[FnInfo | None] = []  # (the instance each arm's call ran, where it made a coroutine)
     narrow = dict(self.narrowed)
     for i in range(len(cs)):
         c = cs[i]
@@ -1285,6 +1357,7 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
         if not self.term:
             if self.idhere() and numeric_identity(v.t):
                 v.idfrom = self.dyn_id_box(v).v
+            insts.append(self.gencallf if self.gencall != "" and v.v == self.gencall else None)
             vals.append(v)
             edges.append(self.cur)
             self.br(end)
@@ -1292,10 +1365,17 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
             self.place(nxt)
     self.narrowed = narrow
     t = vals[0].t if len(vals) > 0 else "None"
+    corojoin = False
     for v in vals[1:]:
-        t = self.join(t, v.t)
+        jt = self.join(t, v.t)
+        if jt == "" and is_coro(t) and is_coro(v.t):
+            jt = self.coro_join(t, v.t)  # (async overrides: coroutines of one type, coro_rejoin)
+            corojoin = jt != ""
+        t = jt
         if t == "":
             self.err(f"overrides of {short(o.t)}.{f.name}() return incompatible types; use a common return type")
+    if corojoin:
+        self.coro_rejoin(f, o.t, t, vals, insts)
     ph = Ins("phi", t, "")
     for i in range(len(vals)):
         r = self.convert_at(vals[i], t, edges[i])
@@ -1304,6 +1384,12 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
     if len(vals) == 0:
         self.unreachable()
     result = Val("null", "None") if t == "None" else Val(self.phi(ph), t)
+    made = [g for g in insts if g is not None]
+    if is_gen(t) and len(vals) > 1 and len(made) == len(vals) and all(g.node is made[0].node and g.ret == t for g in made):
+        # (each arm called one generator method, inherited, as Future.__await__ of a Future[T] and a
+        # Task[T]: a new generator, as a direct call's, which await and a loop own: call_fn)
+        self.gencall = result.v
+        self.gencallf = made[0]
     if self.idhere() and numeric_identity(t):
         identity = Ins("phi", "dyn", "")
         for i in range(len(vals)):
@@ -1388,10 +1474,15 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
     kwn: list[str] = []
     kwv: list[Val] = []
     offs: dict[int, Val] = {}  # (the index of each list that an @extern call takes as ffi.at(xs, k))
+    vstar = False  # (a run-time list made *args: star_args)
     for a in args:
         j = pos
         e = a
-        if a.kind == "starred" or a.kind == "dstar":
+        if a.kind == "vstar" and f.vararg >= 0 and not vstar:
+            pos = self.star_args(f, a, pos, vals, extra, args)
+            vstar = True
+            continue
+        if a.kind == "starred" or a.kind == "dstar" or a.kind == "vstar":
             self.err("star arguments are not supported")
         if a.kind != "kw" and f.vararg >= 0 and j >= f.vararg:
             t = targs(f.vartup)[len(extra)] if f.vartup != "" else f.varelem  # (*args: *Ts: its item's type, see arity)
@@ -1433,7 +1524,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
             return Val("undef", want if want not in ["", "?"] else f.ret if f.ret != "" else "int")
         if j in f.pats:
             vals[j] = self.pat_arg(vals[j], f.pats[j])
-    if f.vararg >= 0:
+    if f.vararg >= 0 and not vstar:
         vals[f.vararg] = self.stack_tuple(extra) if len(extra) > 0 and self.stack_ok(f) else self.tuple_(extra)
     if f.kwarg >= 0:
         vals[f.kwarg] = self.kw_record(kwn, kwv)
@@ -1631,7 +1722,13 @@ def gen_arity_error(self, f: FnInfo, npre: int, args: list[Node]) -> str:
     for j in range(min(npre, last)):
         filled[j] = True
     for a in args:
-        if a.kind != "kw":
+        if a.kind == "vstar" and f.vararg >= 0:
+            # (a run-time list's items fill the positional parameters left, or star_args raises
+            # CPython's TypeError where it has too few)
+            for j in range(given, last):
+                filled[j] = True
+            given = max(given, last)
+        elif a.kind != "kw":
             if given < last:
                 filled[given] = True
             given += 1

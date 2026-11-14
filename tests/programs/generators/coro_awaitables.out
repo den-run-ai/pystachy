@@ -1,0 +1,13 @@
+True False
+True
+compute finished
+int: object int can't be used in 'await' expression
+str: object str can't be used in 'await' expression
+generator: object generator can't be used in 'await' expression
+list: object list can't be used in 'await' expression
+checks finished
+tick yields None
+tick yields None
+tick yields None
+ticks done after 3
+[exit 0]

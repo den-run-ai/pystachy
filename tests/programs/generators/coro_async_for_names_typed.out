@@ -1,0 +1,5 @@
+item 1 1 10
+item 2 3 20
+item 3 6 30
+else 6 changed 30
+[exit 0]

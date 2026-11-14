@@ -1,0 +1,23 @@
+[0, 1, 2, 3]
+[0, 2, 4]
+[(0, 0), (0, 1), (1, 0), (1, 1)]
+[(0, 'a'), (0, 'b'), (1, 'a'), (1, 'b')]
+[(0, 0), (1, 0), (1, 1)]
+driver got double 0
+driver got double 1
+[0, 2]
+driver got double 0
+driver got double 1
+driver got double 2
+driver got double 3
+[2, 3]
+driver got make
+driver got make
+[0]
+{0, 1, 2}
+{0: 0, 1: 1, 2: 4}
+[2, 1, 0]
+[[], [0], [0, 1]]
+10
+done
+[exit 0]

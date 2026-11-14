@@ -1,0 +1,61 @@
+assertTrue True
+assertEqual None None
+assertEqual my message my message
+assertRaises asyncio.CancelledError
+assertRaisesRegex RuntimeError True
+assertIs True
+assertTrue True
+assertEqual ok ok
+assertIs True
+assertTrue True
+assertEqual ok ok
+assertIs True
+assertTrue True
+assertEqual ok ok
+assertEqual 1042 1042
+assertFalse 0
+assertNotIn False
+assertTrue True
+assertTrue 1
+assertIn True
+assertTrue True
+assertRaises asyncio.CancelledError
+assertTrue True
+assertIn True
+assertEqual 1 1
+assertFalse False
+assertNotIn False
+assertEqual 0 0
+assertFalse False
+assertTrue True
+assertEqual 1 1
+assertFalse False
+assertRaises asyncio.CancelledError
+assertTrue True
+assertTrue True
+assertTrue True
+assertTrue True
+assertIs True
+assertIs True
+assertTrue True
+assertEqual 42 42
+assertFalse False
+assertIs True
+assertIs True
+assertTrue True
+assertIs True
+assertEqual 42 42
+assertFalse False
+assertFalse False
+assertFalse False
+assertTrue True
+assertRaises asyncio.CancelledError
+assertTrue True
+assertTrue True
+assertFalse False
+assertFalse False
+assertRaises ValueError
+assertRaisesRegex RuntimeError Task does not support set_result operation
+assertRaisesRegex RuntimeError Task does not support set_exception operation
+assertEqual ko ko
+[exit 0]

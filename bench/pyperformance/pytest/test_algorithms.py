@@ -1,8 +1,13 @@
 """Original correctness checks of the imported pyperformance workload functions."""
+import asyncio
+
 import pytest
 
+import async_generators
+import async_tree
 import bpe_tokeniser
 import comprehensions
+import coroutines
 import fannkuch
 import generators
 import go
@@ -24,6 +29,28 @@ def test_fannkuch(size: int, expected: int):
 def test_generators(size: int):
     assert list(generators.tree(range(size))) == list(range(size))
     assert generators.bench_generators(1, size) == size * (size - 1) // 2
+
+
+@pytest.mark.parametrize("size", [1, 3, 17, 100])
+def test_async_generators(size: int):
+    async_generators.VALUES.clear()
+    async_generators.run(async_generators.collect(size))
+    assert async_generators.VALUES == list(range(size))
+    async_generators.run(async_generators.bench_async_generators(size))
+
+
+@pytest.mark.parametrize("variant,cache", [("none", 0), ("memoization", 28), ("cpu_io_mixed", 21)])
+def test_async_tree(variant: str, cache: int):
+    async_tree.SIZES[0] = 2.0
+    async_tree.SIZES[1] = 0.0
+    tree = async_tree.make_tree(variant, False)
+    asyncio.run(tree.run())
+    assert len(tree.cache) == cache
+
+
+@pytest.mark.parametrize("n,expected", [(0, 0), (1, 1), (10, 55), (20, 6765)])
+def test_coroutines(n: int, expected: int):
+    assert coroutines.bench_coroutines(1, n) == expected
 
 
 def test_comprehensions():

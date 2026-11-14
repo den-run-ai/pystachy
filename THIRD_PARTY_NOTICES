@@ -81,10 +81,14 @@ tests/programs/upstream/upstream_textwrap_wrap.py, tests/programs/upstream/upstr
 tests/programs/upstream/upstream_textwrap_indent.py and tests/programs/upstream/upstream_textwrap_unicode.py
 adapt that commit's Lib/test/test_textwrap.py. tests/programs/upstream/upstream_functools_cache.py
 adapts selected methods from Lib/test/test_functools.py, whose source SHA-256 is
-recorded in its header. tests/programs/upstream/upstream_contextlib.py and tests/programs/upstream/upstream_generators_protocol.py
-adapt selected cases of that commit's Lib/test/test_contextlib.py and
-Lib/test/test_generators.py. They preserve the upstream assertions for the supported
-cases and disclose adaptations and exclusions; the same PSF license applies.
+recorded in its header. tests/programs/upstream/upstream_contextlib.py, tests/programs/upstream/upstream_generators_protocol.py,
+tests/programs/upstream/upstream_coroutines.py, tests/programs/upstream/upstream_coroutines_with_for.py,
+tests/programs/upstream/upstream_coroutines_comp.py, tests/programs/upstream/upstream_asyncgen.py and
+tests/errors/syntax/syntax_asyncgen_*.py adapt selected cases of that commit's
+Lib/test/test_contextlib.py, Lib/test/test_generators.py, Lib/test/test_coroutines.py and
+Lib/test/test_asyncgen.py.
+They preserve the upstream assertions for the supported cases and disclose adaptations and
+exclusions; the same PSF license applies.
 
 CPython's selected copyreg registration functions
 ------------------------------------------------
@@ -162,6 +166,16 @@ License, whose text and copyright notice are in ports/tomli_w/LICENSE.
 tests/programs/upstream/upstream_tomllib_data.py holds the TOML documents of CPython 3.13.16's
 Lib/test/test_tomllib/data, and tests/programs/upstream/upstream_tomllib_misc.py adapts the
 assertions of its Lib/test/test_tomllib/test_error.py and test_misc.py, under the same licenses.
+
+lib/asyncio/ is CPython 3.13.16's Lib/asyncio (its __init__, base_events, base_futures, events,
+exceptions, futures, locks, queues, runners, taskgroups, tasks and timeouts modules) with the edits
+lib/compatibility.md lists, each marked "Pystachy port:" in the source; it is derived from Python
+and is used under the same license and copyright notice. tests/programs/upstream/upstream_asyncio_futures.py,
+tests/programs/upstream/upstream_asyncio_tasks.py, tests/programs/upstream/upstream_asyncio_taskgroups.py,
+tests/programs/upstream/upstream_asyncio_locks.py and tests/programs/upstream/upstream_asyncio_queues.py
+adapt selected cases of its Lib/test/test_asyncio/test_futures.py, test_tasks.py,
+test_taskgroups.py, test_locks.py and test_queues.py, whose SHA-256 values and exclusions their
+headers give, under the same license.
 
 lib/_pystachy_mappingproxy.py is Pystachy's own mappingproxy (types.MappingProxyType), written
 after CPython 3.13.16's Objects/descrobject.c, whose behaviour, messages and docstrings it follows;
@@ -540,7 +554,7 @@ Kuhn's code that wcwidth derives from.
 pyperformance (bench/pyperformance/)
 ------------------------------------
 
-The Python files in bench/pyperformance/ are the run_benchmark.py files of 25 benchmarks from
+The Python files in bench/pyperformance/ are the run_benchmark.py files of 28 benchmarks from
 pyperformance 1.14.0 (https://github.com/python/pyperformance), edited where
 bench/pyperformance/README.md lists (each edit is marked "Pystachy port:"); that README records
 the sdist's and each file's SHA-256. pyperformance is used under the MIT License, whose text is in

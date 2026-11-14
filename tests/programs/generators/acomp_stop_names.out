@@ -1,0 +1,7 @@
+[1, 2] ValueError
+[10, 20, 30]
+[1] KeyError
+{1, 2}
+KeyError
+ValueError left the comprehension
+[exit 0]

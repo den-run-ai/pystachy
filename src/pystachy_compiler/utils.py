@@ -238,6 +238,10 @@ def tname(t: str) -> str:
         return "type"
     if is_gen(t):
         return "generator"
+    if is_coro(t):
+        return CORONAMES.get(coro_mark(t), "coroutine")
+    if is_agen(t):
+        return "async_generator"
     if is_kw(t):
         return "dict"
     if is_fn(t):
@@ -637,7 +641,7 @@ def typestr(t: str) -> str:
     w = ""
     for c in t + ",":
         if c == "[" or c == "]" or c == ",":
-            out.append("BaseException" if w == "exc" else "type[BaseException]" if w == "exctype" else "Any" if w == "dyn" else "Generator" if w == "gen" and c == "[" else SPECSHOW[w] if w in SPECSHOW else short(w))
+            out.append("BaseException" if w == "exc" else "type[BaseException]" if w == "exctype" else "Any" if w == "dyn" else "Generator" if w == "gen" and c == "[" else "Coroutine" if w == "coro" and c == "[" else "AsyncGenerator" if w == "agen" and c == "[" else SPECSHOW[w] if w in SPECSHOW else short(w))
             out.append(c)
             w = ""
         else:
@@ -958,6 +962,55 @@ def gsend(t: str) -> str:
     # S, the send type of a generator gen[Y,S]: None for a gen[Y]
     a = targs(t)
     return a[1] if len(a) > 1 else "None"
+
+
+def is_coro(t: str) -> bool:
+    # coro[Y,S,R]: a coroutine object (an async def's call made it), the handle of an LLVM
+    # coroutine as a generator's is; Y is what it yields to the code that runs it (send()), S
+    # what that sends (None), R what await gives once it returns (docs/internals.md#coroutines);
+    # coro[Y,S,R,K], the awaitable of an async generator's method K (coro_mark). Unlike a generator
+    # it is no iterator: no loop takes it
+    return t.startswith("coro[")
+
+
+def is_handle(t: str) -> bool:
+    # a generator, a coroutine or an async generator: an LLVM coroutine's handle, whose promise
+    # gen.promise addresses
+    return t.startswith("gen[") or t.startswith("coro[") or t.startswith("agen[")
+
+
+def is_agen(t: str) -> bool:
+    # agen[T,S,Y]: an async generator object (an async def that yields made it, PEP 525), the
+    # handle of an LLVM coroutine. T is what it yields to the code that iterates it (async for,
+    # anext()), S what asend() sends it (None, or what an S | None holds), Y what its awaits yield
+    # to the code that runs the coroutine that iterates it (docs/internals.md#async-generators)
+    return t.startswith("agen[")
+
+
+def ayield(t: str) -> str:
+    # Y, of an async generator agen[T,S,Y]
+    return targs(t)[2]
+
+
+def coro_mark(t: str) -> str:
+    # the method of an async generator whose awaitable coroutine type coro[Y,None,R,K] is (K asend:
+    # __anext__(), asend() or anext(); athrow: athrow() or aclose(), asyncgens.py), else ""
+    a = targs(t)
+    return a[3] if len(a) > 3 else ""
+
+
+# CPython's names of the awaitables of an async generator's methods (coro_mark)
+CORONAMES: dict[str, str] = {"asend": "async_generator_asend", "athrow": "async_generator_athrow"}
+
+
+def cyield(t: str) -> str:
+    # Y, of a coroutine coro[Y,S,R]
+    return targs(t)[0]
+
+
+def cret(t: str) -> str:
+    # R, of a coroutine coro[Y,S,R]: what await gives
+    return targs(t)[2]
 
 
 def targs(t: str) -> list[str]:

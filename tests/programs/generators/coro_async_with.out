@@ -1,0 +1,47 @@
+yielded enter a
+enter a
+body A
+yielded exit a
+exit a True True
+yielded enter b
+enter b
+yielded exit b
+exit b False False
+caught boom
+yielded enter c
+enter c
+yielded exit c
+exit c False False
+after suppress
+yielded enter d
+enter d
+yielded enter e
+enter e
+nested D E
+yielded exit e
+exit e True True
+yielded exit d
+exit d True True
+yielded enter loop0
+enter loop0
+yielded exit loop0
+exit loop0 True True
+yielded enter loop1
+enter loop1
+loop body 1
+yielded exit loop1
+exit loop1 True True
+yielded enter loop2
+enter loop2
+yielded exit loop2
+exit loop2 True True
+yielded enter r0
+enter r0
+yielded exit r0
+exit r0 True True
+yielded enter r1
+enter r1
+yielded exit r1
+exit r1 True True
+done
+[exit 0]

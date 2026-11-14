@@ -1,0 +1,23 @@
+item 1
+finally
+main driver got in finally
+after await in finally
+closed
+closed again
+main stop
+aclose-new stop
+after StopAsyncIteration
+s stop
+aclose-suspended stop
+after StopAsyncIteration
+s stop
+ignoring
+aclose-ignorer RuntimeError async generator ignored GeneratorExit
+resumed after aclose
+after-ignorer StopAsyncIteration
+s stop
+caught GeneratorExit
+aclose-catcher driver got cleaning
+aclose-catcher stop
+aclose-again stop
+[exit 0]

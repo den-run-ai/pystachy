@@ -1,0 +1,27 @@
+1
+caught ValueError('v')
+main driver got handling
+10
+20
+not caught twice
+None
+1
+20
+KeyError leaves it
+main stop
+athrow-new ValueError x
+after StopAsyncIteration
+s stop
+athrow-SI RuntimeError async generator raised StopIteration
+s stop
+athrow-SAI RuntimeError async generator raised StopAsyncIteration
+s stop
+athrow-VE ValueError 
+athrow-finished stop
+s stop
+caught ValueError()
+athrow-caught driver got handling
+athrow-caught stop
+next stop
+end StopAsyncIteration
+[exit 0]

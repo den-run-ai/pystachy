@@ -1,0 +1,6 @@
+base b False False
+fut f 3 True False
+task s True True
+fut g [1, 2] True False
+task 2.5 True True
+[exit 0]

@@ -424,7 +424,7 @@ phases; these are evidence checks, with no speed threshold.
 The `benchmarks` group also runs `make bench-pyperformance-check` with that run's verified
 native compiler. Every delivered adaptation must match CPython stdout in JIT and AOT on
 bounded smoke inputs; a mismatch or failed build fails the group and aggregate gate.
-It also runs the shared pytest API assertions for all 25 delivered workloads.
+It also runs the shared pytest API assertions for all 28 delivered workloads.
 The group's artifact includes `pyperformance-smoke.json` and `pytest-pyperformance.json`. This is correctness coverage,
 with no timing thresholds or claim to run the upstream pyperf harness.
 

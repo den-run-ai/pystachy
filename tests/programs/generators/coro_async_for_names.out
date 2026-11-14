@@ -1,0 +1,7 @@
+pair 1 1
+pair 3 1
+after False False
+item 1
+item 2
+else False
+[exit 0]

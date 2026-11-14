@@ -285,8 +285,8 @@ def gen_plain_desc(self, t: str, use: str) -> str:
         return "y" if use == "repr" else "s"  # (a bytes compares, orders and hashes as a str of its bytes)
     if is_opt(t) and t != NONEVAR:
         return "?" + self.desc(unopt(t), use)  # None or the value
-    if t == "None":
-        return "?s"  # (always None: a tuple's item)
+    if t == "None" or t == NONEVAR:
+        return "?s"  # (always None: a tuple's item, or a variable that holds only None so far, a null pointer)
     sub = use if use == "repr" or use == "==" else "== " + use
     if is_list(t):
         return "L" + self.desc(held(elem(t)), sub)  # (a tuple of ints as a list holds it: bigints.held)

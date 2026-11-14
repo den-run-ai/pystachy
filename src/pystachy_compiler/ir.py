@@ -201,6 +201,26 @@ class FnInfo:
         # a generator expression's (Gen.genexp_value) whose first iterable is a generator that only it
         # holds, which this function made: its loop over that iterable (.0) owns it
         self.gfirst: FnInfo | None = None
+        # an async def (gen too, since its code is a generator's): a call makes a coroutine object of
+        # type coro[Y,None,R] (ret), R its return annotation (gret) and Y what its awaits yield to the
+        # code that runs it, None until one of them yields something else (docs/internals.md#coroutines)
+        self.aio = False
+        self.ayield = "None"  # its Y so far: what the awaits compiled so far yield
+        self.ynone = False  # an await compiled so far may yield None (Y must then hold None)
+        self.ysure = False  # its Y can no longer change: a call of it was compiled while it was being compiled
+        # an async def that yields (aio and gen too): an async generator function, whose call makes
+        # an async generator object of type agen[T,S,Y] (ret; "" while its first yield decides T),
+        # Y being its ayield (docs/internals.md#async-generators)
+        self.agen = False
+        # a module's async def that never suspends: each of its awaits is of a call of such an async
+        # def by its name (Gen.coro_analyze). await of a call of it calls its twin, the same body
+        # compiled as an ordinary function whose awaits are such calls too (direct): no coroutine
+        self.nosusp = False
+        self.twin: FnInfo | None = None
+        self.direct = False
+        # a generator function that @types.coroutine marks: await takes its generators as it takes
+        # a coroutine (the yields reach the code that runs the coroutine that awaits)
+        self.awaitable = False
 
 
 class Closure:
@@ -588,6 +608,7 @@ class ClassInfo:
         self.ftypes: dict[str, str] = {}
         self.fdefault: dict[str, Node] = {}
         self.fnone: dict[str, Node] = {}  # field -> the value of __init__ that gave it its first value, None (Gen.none_field)
+        self.fnonetv: dict[str, bool] = {}  # the fields of those given a parameter whose type variable is bound to None (Box[None]'s self.v = v)
         self.fguess: dict[str, bool] = {}  # the fields whose type __init__'s values gave them (not annotations: Gen.join_hint)
         self.slots: list[str] = []  # literal __slots__, including inherited slots
         self.slotlimit = False  # every ordinary base and this class omit an instance dict

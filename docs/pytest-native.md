@@ -130,7 +130,7 @@ python3 tools/pytest_native_suites.py --suite byte_bpe --mode python
 make test-pytest-workloads
 ```
 
-The registry runs 19 example suites and the 25 delivered pyperformance workloads
+The registry runs 19 example suites and the 28 delivered pyperformance workloads
 as independent suites, each using the same source under original CPython pytest
 and generated native execution. Each suite keeps its sibling imports; shared
 fixtures across directories are not implied. Every registered case must execute

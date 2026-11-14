@@ -1,0 +1,27 @@
+assertIs True
+assertEqual [123, 456, 789] [123, 456, 789]
+yielded ('result',)
+result 123
+yielded ('result',)
+StopAsyncIteration was raised
+assertRaises AwaitException
+yielded ('result',)
+result 123
+assertRaises ZeroDivisionError
+assertRaisesRegex RuntimeError async generator raised StopAsyncIteration
+assertRaisesRegex RuntimeError async generator raised StopIteration
+assertEqual ['1', '2', '3', 'ZeroDivisionError', 'STOP'] ['1', '2', '3', 'ZeroDivisionError', 'STOP'] True
+assertEqual ['1', '2', 'ZeroDivisionError', 'STOP'] ['1', '2', 'ZeroDivisionError', 'STOP'] True
+assertEqual ['1', '2', '3', 'ZeroDivisionError', 'STOP'] ['1', '2', '3', 'ZeroDivisionError', 'STOP'] True
+assertRaisesRegex TypeError can't send non-None value to a just-started async generator
+assertEqual ['1', '2', '3', 'STOP'] ['1', '2', '3', 'STOP'] True
+assertRaisesRegex RuntimeError anext(): asynchronous generator is already running
+assertRaisesRegex RuntimeError cannot reuse already awaited __anext__()/asend()
+assertRaisesRegex RuntimeError coroutine ignored GeneratorExit
+assertRaises StopIteration
+assertRaisesRegex RuntimeError coroutine ignored GeneratorExit
+assertEqual [0, 2, 4, 6, 8, 10, 12, 14, 16, 18] [0, 2, 4, 6, 8, 10, 12, 14, 16, 18]
+assertEqual [2, 4, 6, 8, 10, 12, 14, 16, 18] [2, 4, 6, 8, 10, 12, 14, 16, 18]
+assertRaisesRegex RuntimeError cannot reuse already awaited __anext__()/asend()
+assertRaisesRegex RuntimeError cannot reuse already awaited aclose()/athrow()
+[exit 0]

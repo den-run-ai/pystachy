@@ -486,6 +486,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return self.next_(args, want)
     if name == "iter":
         return self.iter_(args)
+    if name == "aiter" or name == "anext":
+        return self.aiter_(args) if name == "aiter" else self.anext_(args)  # (asyncgens.py)
     if name == "open":
         return self.open_(args)
     if name == "select.select":

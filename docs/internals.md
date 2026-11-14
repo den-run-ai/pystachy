@@ -432,6 +432,117 @@ function, called with its first iterable (evaluated where it is written) and the
 the enclosing function's variables it reads. Programs without `yield` and without such
 generator expressions emit the same typed IR and LLVM IR as before.
 
+<a id="coroutines"></a>
+
+## Coroutines
+
+An `async def` (`coroutines.py`) compiles as a generator function does: a call makes a
+coroutine object, the handle of an LLVM coroutine with the same promise, and runs none of the
+body. Its type is `coro[Y,None,R]` (shown as `Coroutine[Y, None, R]`): `R` is the return
+annotation or what its returns return, and `Y` is what its awaits yield to the code that runs
+it with `send()` and `throw()`. `Y` is `None` until an await of something that yields another
+type decides it, so an `async def` is a template whose first call compiles it. An await of
+something that yields `None` or `T | None` makes a `Y` of `T` into `T | None`, and an await that
+yields `T` passes it on as `T | None` where `Y` is that. A recursive
+call compiled before that decision (`FnInfo.ysure`) makes a later change of `Y` a `yield:`
+hint: the program is compiled again with that `Y` from the start (`Rejoin`), as joins are. An
+await of a coroutine of the recursion being compiled passes its yields through unchanged.
+A coroutine is no iterator: it has no loop, `next()` or consumer of a generator.
+
+`await x` delegates as `r = yield from x` does: it resumes `x` (`gen.resume`), yields what `x`
+yields, sends what is thrown into this coroutine on to `x` (`throw()`), closes `x` when this
+coroutine is closed (PEP 380), and its value is what `x` returns, read from `x`'s promise. The
+awaitables are coroutine objects, the generators of a `@types.coroutine` generator function
+(`FnInfo.awaitable`; the decorator is a mark, as CPython's sets a code flag) and objects whose
+`__await__` is a generator method. A coroutine made elsewhere is checked before it is resumed:
+a finished one raises `RuntimeError: cannot reuse already awaited coroutine`, and one
+suspended where something else awaits it `RuntimeError: coroutine is being awaited already`.
+Its state needs `GENNEW` (not started), so a program with an `async def` keeps the protocol
+words of a program that calls `send()` (`Gen.gproto`). A coroutine's own `send()` and
+`throw()` raise that first `RuntimeError` once it has finished, where a generator's raise
+`StopIteration`; a coroutine that a call here made is destroyed once it returns, so that
+LLVM's CoroElide may put its frame in its caller's.
+
+Before any code compiles, `Gen.coro_analyze` finds the module-level `async def`s that never
+suspend: each await in them, also in the defaults and decorators of the functions and lambdas
+they define, which they evaluate, is of a call, by its name, of such an `async def`, a name that
+the function does not bind itself (as a local, a comprehension's target or by `:=`). It takes the
+greatest such set, so mutual recursion qualifies. `await f(...)` of one calls `f`'s twin
+(`coro_twin`): the same body compiled as an ordinary template function (`FnInfo.direct`), whose
+awaits are such calls too. No coroutine object, frame allocation or resume remains, which is
+what running the coroutine to its return would compute; a call of `f` as a value still makes a
+coroutine. A twin's body is covered by a landing block that turns a `StopIteration` leaving it
+into `RuntimeError: coroutine raised StopIteration` (PEP 479), as its coroutine would; its
+mark is past every unwind action, which the handler that takes the exception runs.
+
+Once `Symtable` has checked a module, `Parser.module` rewrites each `async with` and `async for`
+of an `async def` (`desugar_async`) as the statements PEP 492 gives for it: a `try` statement
+whose bare `except` clause awaits `__aexit__(type, value, tb)` and re-raises unless that is
+true, and whose `finally` block awaits `__aexit__(None, None, None)` unless the clause ran; a
+`while` loop whose `try` statement awaits `__anext__()` and ends the loop on
+`StopAsyncIteration`, binding the target in its `else` block, so that a `StopAsyncIteration`
+from the target or the body propagates. Every later pass sees ordinary statements. The manager,
+the iterator and their flags are locals named `__pys_aw<k>.*`, which no identifier can name
+(as `lower_matches`' temporaries), so that they never share a variable of the program. The implicit awaits are `await`
+nodes whose `s` names them (`aenter`, `aexit`, `aexitnone`, `aiter`, `anext`); `await_protocol`
+checks the protocol first, as CPython does (`__aexit__` before `__aenter__()` runs), raising
+CPython's `TypeError`s, then awaits the call through `await_expr` with CPython's message for a
+result that is no awaitable. `__aiter__`, `__anext__`, `__aenter__` and `__aexit__` infer an
+omitted return annotation, as `__iter__` and `__next__` do. An `async def` whose inferred return
+type is a number and that also ends without a value returns `R | None` from the next pass on
+(a `cret:` hint, `ret_widen`), where a function's returns convert in place (`reopt`); so does the
+end of its twin, as a bare `return` does, where a function ending without a value raises
+`RuntimeError` ([deviations](language/compatibility.md)).
+
+<a id="async-generators"></a>
+
+### Async generators
+
+An `async def` that yields (`asyncgens.py`, `FnInfo.agen`) is one LLVM coroutine, compiled as a
+generator function is, whose call makes an async generator object of type `agen[T,S,Y]` (shown
+as `AsyncGenerator[T, S, Y]`): `T` is what it yields to its consumer, from its return annotation
+(`AsyncGenerator[T, S]`, `AsyncIterator[T]`, `AsyncIterable[T]`) or its first yield; `S` what
+`asend()` sends (`None` unless the annotation names an `S | None`); and `Y` what its awaits yield
+to the code that runs the coroutine that consumes it, inferred as a coroutine's `Y` is
+(`coro_yields`, `yield:` hints). An annotation of a variable or field has `Y` `None`; a function's
+parameter so annotated makes it a template that takes its argument's type (`agen_param`).
+Its frame suspends in two ways: at a `yield` of its own, whose value is the consumer's, and where
+one of its awaits passes on what its awaitable yields. An async generator returns no value, so
+the promise's `GENRET` word holds its flags (`AGFLAGS`): a yield of its own stores `AGYIELD`; a
+consumer's step stores `AGRUN` (or `AGCLOSE` for `aclose()`) before it resumes the frame, so that a
+suspension that leaves `AGRUN` is an await's, and another step raises `RuntimeError:
+anext(): asynchronous generator is already running` while one runs. Its landing block clears
+the flags, turns a `StopIteration` or `StopAsyncIteration` that leaves the body into
+`RuntimeError` (`async generator raised ...`), and finishes it where `aclose()`'s
+`GeneratorExit` arrives.
+
+A step (`agen_step`) is code of the awaiting coroutine, as CPython's `async_generator_asend` and
+`async_generator_athrow` would run it: it checks the state (finished: `StopAsyncIteration`, or
+`None` for `athrow()` and `aclose()`), resumes the frame (`gen.resume`; `athrow()` and `aclose()`
+throw into it, `asend()` stores the value its `yield` gives), and then reads the flags: a yield
+of its own is the await's value; an await's suspension makes the awaiting coroutine suspend with
+that value (converted to its own `Y`) and resume the frame when it is resumed, also with what
+`throw()` throws into it; `close()` of it, or a thrown `GeneratorExit`, throws `GeneratorExit`
+into the frame, and `RuntimeError: coroutine ignored GeneratorExit` follows if it yields again.
+`await ag.__anext__()`, `asend(v)`, `athrow(e)`, `aclose()` and `anext(ag[, d])` of an async
+generator compile to the step itself; used as values they are coroutine objects of async defs
+made where they are used, whose bodies await the step (`await` nodes of kinds `agnext`, `agsend`,
+`agthrow`, `agclose`), of type `coro[Y,None,R,K]`, `K` (`asend` or `athrow`) naming CPython's
+type and its `cannot reuse already awaited ...` message. `async for` over an async generator
+(`agen_for`, the `try` statement of `desugar_async`'s loop whose iterator is one) goes from the
+step to the loop's end where the frame finishes, raising and catching no `StopAsyncIteration`, so
+an item costs a resume, a suspend and a few loads and stores, as a `for` over a generator does.
+Nothing finalizes a dropped suspended async generator (no `sys.set_asyncgen_hooks`).
+
+Asynchronous comprehensions (PEP 530) become ordinary comprehensions once `Symtable` has checked
+the module (`desugar_comp`): each `async for` clause's iterable is an `await` node of kind `aiterc`,
+which gives what its `__aiter__()` gives as an async generator (an iterator object of a class
+with `__anext__` through one that steps it, `agen_adapter`); a `for` loop over that value
+(`for_seq`, mode `async`) runs a step for each item and ends where it finishes. A generator
+expression with an `async for` clause or an `await` outside its first iterable (an `asynccomp`
+node) is an `async def`'s generator expression (`genexp_value`), an async generator; the parser
+marks one whose first clause is `async for` (`aiterof`), as its `s` says `gen`.
+
 <a id="whole-program-optimization"></a>
 <a id="two-tiers"></a>
 

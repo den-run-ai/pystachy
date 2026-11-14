@@ -1,0 +1,13 @@
+True
+1 0 -1
+StopAsyncIteration
+1 0
+x none
+'int' object is not an async iterable
+'int' object is not an async iterator
+aiter() returned not an async iterator of type 'int'
+done
+0 20 KeyError
+0 None
+done
+[exit 0]

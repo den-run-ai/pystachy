@@ -373,8 +373,31 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
         self.fn.tries.append(tr)
         self.handler = hm
         self.place(tr.body)
+    hd = ""
+    dslot = ""
+    if f.direct and self.eh:
+        # the twin of an async def that never suspends (coroutines.py): a StopIteration that
+        # leaves it is the RuntimeError its coroutine would raise (PEP 479), whatever handles it on
+        # the way. Its landing takes up nothing else: the unwind actions its code leaves run where
+        # the exception is handled (the mark is past them all)
+        dslot = self.alloca("exc", "")
+        hd = self.label()
+        dtr = Try(self.label())
+        dtr.landing = hd
+        self.fn.tries.append(dtr)
+        self.handler = hd
+        self.place(dtr.body)
     self.lazy_fields(f, body)
     self.stmts(body)
+    if hd != "":
+        cont = ""
+        if not self.term:
+            cont = self.label()
+            self.br(cont)
+        self.handler = ""
+        self.gen_raised(self.landing(hd, dslot, Val("9223372036854775807", "int")), "coroutine")
+        if cont != "":
+            self.place(cont)
     if f.gen:
         self.gen_end(f)
     if f.ret == "":
@@ -402,6 +425,10 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
         self.throw(e)
     if not self.term and f.ret == "dyn":
         self.ret_(Val(self.rtdata("pys_dyn_none_box"), "dyn"))  # (None, as a dynamic value: dynamic.py)
+    if not self.term and f.direct and f.infer and f.ret != "" and f.ret != "None" and f.ret not in self.classes and not is_opt(f.ret) and self.optional(f.ret) != "":
+        # (the twin of an async def returns what its coroutine does: R | None, which ends without a
+        # value here, as a bare return does; coroutines.py, ret_widen)
+        self.reopt(self.optional(f.ret))
     if not self.term:
         if f.ret == "None" or (f.infer and f.ret in self.classes) or is_opt(f.ret) or (self.retann and f.ret != "" and self.optional(f.ret) == f.ret and self.ann_none(f.node.kids[1], [])):
             # (a template's function that ends without a return, or one returning T | None: None;

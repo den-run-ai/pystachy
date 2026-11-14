@@ -33,6 +33,7 @@ from src.pystachy_compiler.specs import (
     REFL,
     STUB,
     TYPE_SIZE,
+    TYPESMOD,
     TYPING,
     UNARY,
     UNSUPPORTED,
@@ -433,6 +434,10 @@ def gen_isinst(self, t: str, c: Node) -> int:
         return r
     if c.kind == "call" and len(c.kids) == 2 and c.kids[0].kind == "name" and c.kids[0].s == "type" and c.kids[1].kind == "None" and not self.bound("type"):
         return self.isnone(t)
+    if (c.kind == "attr" and self.dotted(c) in ("types.CoroutineType", TYPESMOD + ".CoroutineType")) or (c.kind == "name" and self.imported(c.s) in ("types.CoroutineType", TYPESMOD + ".CoroutineType") and not self.bound(c.s)):
+        # (types.CoroutineType: the coroutines of async defs, which their type tells, as
+        # asyncio.ensure_future() tells a coroutine from a future)
+        return 1 if t.startswith("coro[") else 0
     abc = self.typing_ref(c) if c.kind == "attr" or (c.kind == "name" and c.s not in self.classes and self.imported(c.s) != "") else ""
     if abc == "Sequence" or abc == "MutableSequence" or abc == "Mapping" or abc == "MutableMapping":
         # (collections.abc's: str, bytes and tuple, also a NamedTuple, are Sequences, list is a mutable one)
@@ -881,6 +886,10 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         return self.dict_merge(n, want)
     if k == "yield":
         return self.yield_value(n)  # (what send() sends the generator)
+    if k == "await":
+        return self.await_value(n, want)  # (what the awaitable returns: coroutines.py)
+    if k == "asynccomp" and n.s == "gen":
+        return self.genexp_value(n)  # (an asynchronous generator expression, desugar_comp: an async generator)
     if k in UNSUPPORTED:
         self.err(UNSUPPORTED[k])
     if k == "walrus":
@@ -1161,7 +1170,9 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if given and soft:
             for v in items:
                 et = self.wider(et, v.t) or et
-        if et == "" or et == "None":
+        if et == "" or (et == "None" and not (given and want == "list[None]")):
+            # (a list of None that its context names list[None], as a type variable bound to None
+            # does, list[T] of Box[None]: its slots hold null pointers)
             self.err(f"cannot infer the type of {'an empty list' if len(items) == 0 else 'a list of None'}; add a type annotation (xs: list[T] = [], or -> list[T] on a function returning the list)")
         for v in items if not is_list(want) and et in self.classes else items[:0]:
             e0 = et
@@ -4954,6 +4965,9 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         return Val(r if op == "in" else self.scalar('xor', [Val(r, 'bool'), Val('true', 'bool')]), "bool")
     if (op == "in" or op == "not in") and b.t == "str":
         a = self.unwrap(a, "TypeError: 'in <string>' requires string as left operand, not NoneType")
+    if (op == "in" or op == "not in") and a.t == "None" and is_list(b.t) and elem(b.t) == "None":
+        # (a list[None]'s items are all None: it holds None where it holds an item)
+        return self.num_cmp("!=" if op == "in" else "==", Val(self.list_len(b), "int"), Val("0", "int"))
     if (op == "in" or op == "not in") and a.t == "None" and ((is_dict(b.t) and targs(b.t)[0] not in self.classes) or (is_set(b.t) and selem(b.t) not in self.classes) or (is_list(b.t) and (self.optional(elem(b.t)) == "" or self.isnum(elem(b.t))) and elem(b.t) not in self.classes)):
         return Val("false" if op == "in" else "true", "bool")  # None is no key of a dict (no element of a set) but an object's, and no number
     kt = targs(b.t)[0] if is_dict(b.t) else selem(b.t) if is_set(b.t) else ""

@@ -151,8 +151,8 @@ behavioral differences are listed as [deviations from CPython](https://github.co
 | Area | Supported | Not supported |
 |---|---|---|
 | Values | `int`, `float`, `bool`, `str`, `bytes`, `list`, `dict`, `set`, `frozenset`, `tuple` | `complex`, `bytearray`, `memoryview` |
-| Functions | Closures, lambdas, decorators, `*args` and `**kwargs`, generators | `async` and `await` |
-| Classes | Single inheritance, dataclasses, `NamedTuple`, properties, operator methods | General multiple inheritance, metaclasses, subclasses of builtin types |
+| Functions | Closures, lambdas, decorators, `*args` and `**kwargs`, generators, `async def`, `await`, async generators and asynchronous comprehensions, `asyncio` tasks and event loop | `asyncio` I/O, threads and exception groups |
+| Classes | Single inheritance, also of generic classes, dataclasses, `NamedTuple`, properties, operator methods | General multiple inheritance, metaclasses, subclasses of builtin types |
 | Typing | Inferred locals and returns, generics, closed unions, `T \| None` narrowing | General object unions |
 | Syntax | Comprehensions, f-strings, `with`, `try`/`except`/`finally`, `:=`, bounded `match` | Mapping and general sequence/class patterns; `except*` |
 | Runtime | Modules and packages, automatic memory management | Native threads, `__del__` finalizers, `eval` and `exec` |

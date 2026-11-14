@@ -1,0 +1,12 @@
+first
+echo a
+echo b
+echo done
+talk stop
+early TypeError can't send non-None value to a just-started async generator
+first stop
+again RuntimeError cannot reuse already awaited __anext__()/asend()
+x stop
+end StopAsyncIteration
+after StopAsyncIteration
+[exit 0]

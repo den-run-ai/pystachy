@@ -26,6 +26,7 @@ program you can also run under CPython, then check the APIs your application use
 | Handle I/O readiness or weak references | [POSIX select](select.md), [weak references](weakref.md) |
 | Package a library or deploy an application | [Packages and deployment](packages.md), [package tutorial](../examples/package/README.md) |
 | Run work in parallel | [Concurrency](concurrency.md) |
+| Write `async def` coroutines | [Coroutines](coroutines.md): what compiles, how it runs, threads and free-threading |
 
 ## Measure and improve performance
 

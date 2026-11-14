@@ -670,7 +670,17 @@ Tuple arguments and list or tuple displays can be unpacked into any callable:
 `fn(*args)` or `fn(*[a, b])`. `print()` additionally accepts a list, string or dict through `*`.
 In dynamic-`Any` modules, a callable held in `Any` also accepts
 [runtime argument packs](../dynamic-any.md#runtime-argument-unpacking) for fixed signatures.
-Other runtime list unpacking remains unsupported.
+A list (or a `tuple[T, ...]`) known only at run time unpacks into a module-level function of the
+program that takes `*args`, as the last of the call's positional arguments (`f(1, *xs)`,
+`asyncio.gather(*coros)`): its first items fill the positional parameters before `*args`, which
+must have no default nor be given by keyword, and the others make `*args` a `tuple[T, ...]` of the
+list's item type (an annotated `*args: T` must name that type), a copy; too few items raise
+CPython's `TypeError` (`f() missing 1 required positional argument: 'b'`) once the arguments are
+evaluated. The items may be objects or coroutines. With [promoting ints](../python-int.md),
+`*args: int` takes a `list[int]`, whose items past 64 bits raise `OverflowError` (a
+`tuple[int, ...]` holds 64-bit ints), and a list of tuples that hold ints is not unpacked so.
+Other runtime list unpacking, into a function without `*args`, a method or a library function,
+remains unsupported.
 
 `**kwargs` has a fixed set of keyword names and value types for each call. It supports
 indexing, `get()`, membership, length, truth tests, iteration and `keys()`. If its values
@@ -805,13 +815,20 @@ a value is a `TypeVar`'s error.
 
 Supported matching forms are `T`, `list[T]`, `dict[K, V]`, `set[T]`, `frozenset[T]`,
 `tuple[A, *Ts]`, `T | None`, `Iterable[T]` (or `Iterator[T]`), `Callable[[A, *Ts], R]`,
-a generic class's `C[K, V]`, and unions of these. Iterable matching uses the item type of a
+`Coroutine[Y, S, R]` (what a coroutine yields and returns), a generic class's `C[K, V]`, and unions
+of these. Iterable matching uses the item type of a
 supported list, set, dict, string or homogeneous tuple, or of an object's iterator (what its
 `__next__` returns, or the items of its supported `__iter__`); an empty tuple binds nothing.
 `C[K, V]` matches an object of a specialization of `C`. In a union such as
 `Iterable[tuple[K, V]] | dict[K, V]`, the first member that fits binds, trying
 `Iterable[...]` members last; a named specialization types such a parameter as its first
-member. A direct `None` argument binds no type variable on its own. Repeated bindings must
+member. A direct `None` argument binds a type variable that no other argument binds to `None`,
+as a type checker does (`Box(None)` is a `Box[None]`, and so is `Box[None](None)`), and so does a
+coroutine that returns `None` for `Coroutine[Y, S, T]` (asyncio's `Task[None]`); where another
+argument binds it, `None` keeps the union fallback below or is an error. Annotations of `T` and
+`T | None` then type `None` values, which fields hold as null pointers, and a `list[T]` is a
+`list[None]`, which prints, compares, searches and iterates as CPython's (a `list[None]` display
+needs that context: `xs: list[None] = [None]`). Repeated bindings must
 preserve the values' types: mixed `int` and `bool` constructor arguments can use the
 direct-scalar union fallback below, but do not implicitly join to `int`. Callable matching
 uses annotated positional parameters and returns, or an existing `Callable` signature. A
@@ -890,7 +907,19 @@ The inferred union uses the existing tagged boxes; per-argument unboxed generic
 fields are separate work, and operations outside the supported union surface
 still require narrowing.
 
-`Generic[...]` must be the class's only base, and a PEP 695 class has no base; its type
+A generic class may have one base: an ordinary class of the program declared before it
+(`class Fut(Base, Generic[T])`, `class Fut[T](Base)`), or a generic class's specialization by its
+own type variables (`class Task(Fut[T])`, `class Task[T](Fut[T])`); `Generic[...]` is otherwise its
+only base. Each specialization is then a class of a hierarchy: `Task[int]` derives from
+`Fut[int]`, which derives from `Base`, and begins with their fields; `super().__init__()`,
+inherited methods, overrides called through any base (also a list of `Base` holding several
+specializations' objects) and `isinstance()` of the generic class work as for
+[single inheritance](#single-inheritance). Calls through a base are compiled for the
+specializations made so far, so a specialization first made after such a call compiled makes the
+compiler compile the program again with it made first; its type arguments may then name a
+hierarchy's other specializations but not other generic classes'. Such a generic class needs an
+`__init__` of its own and no class attributes (assign fields in `__init__`), and its base no
+decorator, exception class or dataclass. Its type
 parameters cannot be a `ParamSpec` (`**P`) or more than one `TypeVarTuple`. Use the bare
 class name or `Self` inside its methods and fields, or an explicit specialization such as
 `"Pair[V, K]"`. A method's separate type variables (a module-level `TypeVar`, or its own,
@@ -1033,15 +1062,18 @@ class variables.
 ## Single inheritance
 
 An ordinary class may derive from one previously declared ordinary class, including an
-imported class. Annotate its `__init__` parameters; constructor-inferred class templates and
-`Generic` classes cannot participate in a hierarchy. Fields retain their declared or inferred
+imported class. Annotate its `__init__` parameters; constructor-inferred class templates
+cannot participate in a hierarchy, and `Generic` classes only as
+[explicit generic classes with a base](#explicit-generic-classes). Fields retain their declared or inferred
 types, and the existing field-inference rules still apply.
 
 Subclasses inherit fields, class attributes, methods and `__init__` when they do not define
 their own. Instance methods can override inherited methods. Calls through a base annotation
 or `list[Base]` select the receiver's concrete implementation, including calls made inside
 inherited methods and bound methods. Each possible implementation must accept the call's
-arguments, and its results must have a common supported type.
+arguments, and its results must have a common supported type;
+the coroutines of `async def` overrides join what they yield and return (`int` and `None` make
+`int | None`), as the overrides then compile with that type.
 Converting a bound method to `Callable` also requires compatible parameter types and
 annotated return types throughout that method's hierarchy, preserving method equality
 across base and derived views of the same receiver.

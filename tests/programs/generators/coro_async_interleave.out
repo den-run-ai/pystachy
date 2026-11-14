@@ -1,0 +1,31 @@
+   A body
+   B body
+   A exiting
+   B exiting
+   A exiting again
+   B exiting again
+A saw ValueError a-err
+A propagated a-err
+  finished
+B saw ValueError b-err
+B propagated b-err
+  finished
+KeyError 'from aexit'
+enter held
+inside
+exit held GeneratorExit
+closed
+enter held
+inside
+exit held IndexError
+IndexError out: thrown
+enter v1
+pair 1 v1
+exit v1 None
+enter v2
+exit v2 None
+enter v3
+pair 3 v3
+exit v3 None
+body's StopAsyncIteration propagates
+[exit 0]

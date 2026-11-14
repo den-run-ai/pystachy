@@ -1,0 +1,4 @@
+box 1 coroutine other other
+False False False
+True
+[exit 0]

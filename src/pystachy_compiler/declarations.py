@@ -4,6 +4,7 @@ from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.analysis import attr_fills, attr_values, calls_init, local_names, nonexpr, stmt_walrus
 from src.pystachy_compiler.bigints import PROMOTES, callable_ints, narrowed
 from src.pystachy_compiler.diagnostics import Rejoin, int_lists, shown, where
+from src.pystachy_compiler.coroutines import is_async
 from src.pystachy_compiler.dynamic import comparison_record_write, comparison_storage_key
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val, tmpname
 from src.pystachy_compiler.module import Mod
@@ -253,6 +254,26 @@ def gen_ann(self, n: Node) -> str:
             # (an iterator of another kind, as #477 makes them, is not one of these)
             yr = self.gen_ann_ret(n)
             return "!" + yr[0] if len(yr) == 1 else self.gen_type(yr[0], yr[2])
+        if base == "coroutine":
+            # Coroutine[Y, None, R] (typing's or collections.abc's): a coroutine object, which
+            # yields Y to the code that runs it and returns R; nothing sends it another value
+            # than None (coroutines.py)
+            if len(a) != 3:
+                return "!Coroutine[...] takes three types: Coroutine[Y, None, R]"
+            if a[1].kind != "None":
+                return "!a coroutine's send type is None: annotate it Coroutine[Y, None, R]"
+            cy = self.ann(a[0])
+            cr = self.ann(a[2])
+            for ct in [cy, cr]:
+                if ct.startswith("!"):
+                    return ct
+            return self.coro_type(cy, cr)
+        if base == "asyncgenerator" or base == "asynciterator" or base == "asynciterable":
+            # AsyncGenerator[T, S], AsyncIterator[T] (typing's or collections.abc's): an async
+            # generator object, whose awaits yield None to the code that runs its consumer, as no
+            # annotation can say otherwise (asyncgens.py)
+            ta = self.agen_ann(n, False)
+            return "!" + ta[0] if len(ta) == 1 else self.agen_type(ta[0], ta[1], "None")
         if base == "callable":
             # Callable[[A, B], R] (typing's or collections.abc's): callable[R,A,B]
             if len(a) != 2 or (a[0].kind != "list" and a[0].kind != "ellipsis"):
@@ -512,8 +533,8 @@ def gen_class_params(self, st: Node) -> str:
     tp = st.kids[1]
     names = tp.s.split()  # (each a name of its own, see Loader.qren)
     kinds = [x.s.replace("=", "") for x in tp.kids]
-    if len(st.kids) > 2:
-        return "a generic class (class C[T]) with a base class is not supported"
+    if len(st.kids) > 3 or (len(st.kids) == 3 and st.kids[2].kind != "name" and not (st.kids[2].kind == "index" and st.kids[2].kids[0].kind == "name" and st.kids[2].kids[0].s in self.tparams)):
+        return "a generic class (class C[T]) with a base class is only supported with one base: an ordinary class, or a generic class's G[T] of its own type parameters"
     if "**" in kinds:
         return f"ParamSpec type parameters (**{short(names[kinds.index('**')])}) are not supported"
     if kinds.count("*") > 1:
@@ -799,9 +820,20 @@ def gen_ann_problem(self, n: Node, ret: bool) -> str:
     # why typeof(n), for a return annotation (ret), or vtype(n) fails, or "" (one that raises
     # where CPython evaluates it is the loader's error: see Loader.deftime)
     t = self.ann(n)
-    if t == "None" and not ret:
+    if t == "None" and not ret and not self.tv_none(n):
         return "None is only supported as a return type; annotate an optional value as T | None"
     return t[1:] if t.startswith("!") else ""
+
+def gen_tv_none(self, n: Node) -> bool:
+    # is annotation n a type variable that a generic class's specialization binds to None
+    # (Box[None]'s T), or a union of such and None (T | None): it types its values as None, which
+    # fields, parameters and containers hold as a null pointer
+    u = self.parse_expr(n.s) if n.kind == "str" else n
+    if u.kind == "name":
+        return self.tvar(u.s) == "None"
+    if u.kind == "binop" and u.s == "|":
+        return (self.tv_none(u.kids[0]) or u.kids[0].kind == "None") and (self.tv_none(u.kids[1]) or u.kids[1].kind == "None") and (u.kids[0].kind != "None" or u.kids[1].kind != "None")
+    return False
 
 def gen_vtype(self, n: Node) -> str:
     # the annotation of a variable, parameter or field: None alone is only a return type
@@ -920,6 +952,8 @@ def gen_opt(self, t: str, x: Node) -> str:
         return t
     if t == "exc":
         return self.ctype("opt", [t])  # (an exception or None: __exit__'s exception)
+    if t == "None" and self.tv_none(x):
+        return t  # (T | None of a T bound to None: None)
     r = self.optional(t)
     return r if r != "" else f"!None/Optional is only supported for {OPTTYPES}, not {typestr(t)}"
 
@@ -1148,8 +1182,8 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
     deco = ""
     stub = False  # (an imported module's that no def follows: see typing_forms)
     for x in d.kids[3:]:
-        if x.s != "async" and deco == "":
-            deco = x.s
+        if x.s != "async" and deco == "" and not self.coro_deco(x, {}):
+            deco = x.s  # (not async's keyword, nor @types.coroutine's mark: coroutines.py)
         stub = stub or self.imported(x.s) == "typing.overload"
     if cls != "" and len(d.kids) == 4 and len(d.kids[3].kids) == 0 and (deco == "staticmethod" or deco == "classmethod"):
         f.deco = deco  # (a method that takes no self, or its class as cls)
@@ -1189,6 +1223,11 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         # x: object, as in __eq__(self, other: object): a template's parameter, which each call
         # types (any argument: isinstance() narrows it), where a template may be
         if ps[i].kind == "param" and ps[i].kids[0].kind == "name" and ps[i].kids[0].s == "object" and not (cls != "" and i == 0 and f.deco != "staticmethod") and (cls == "" or template_ok(d.s) or init):
+            ps[i].kids[0] = mk("noann", "", d.line, [])
+        # x: AsyncIterator[T] (AsyncIterable[T], AsyncGenerator[T, S]): likewise, so that an
+        # async generator whose awaits yield what no annotation names, or an object of a class
+        # with __aiter__, is its argument (asyncgens.py)
+        if ps[i].kind == "param" and self.agen_param(ps[i].kids[0]) and not (cls != "" and i == 0 and f.deco != "staticmethod") and (cls == "" or template_ok(d.s) or init):
             ps[i].kids[0] = mk("noann", "", d.line, [])
     if (cls == "" or template_ok(d.s) or init) and not f.prop and f.acc == "" and not f.extern and not f.export and not f.pyexport and not self.dyn_policy(d.line):
         # typing.Any, also in list[Any] or Mapping[str, Any]: what it annotates is left to each
@@ -1252,12 +1291,18 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         f.generic = True  # (-> Box: what it returns is one of the class's specializations)
     if cls in self.classes and self.classes[cls].origin != "" and (template_ok(d.s) or init):
         f.generic = True  # (a specialization's methods: compiled where they are called, see specialize)
-    gbad = self.gen_declare(f, d) if has_kind(d.kids[2], "yield") and not self.rtmode else ""
+    gbad = self.gen_declare(f, d) if has_kind(d.kids[2], "yield") and not self.rtmode else self.coro_declare(f, d) if is_async(d) and not self.rtmode else ""
+    awaits = [x for x in d.kids[3:] if self.coro_deco(x, {})]
+    if len(awaits) > 0 and gbad == "":
+        # @types.coroutine: await takes the generators of this generator function (coroutines.py)
+        if not f.gen or f.aio or len(awaits) > 1:
+            gbad = "@types.coroutine is supported on a generator function (one that yields), as its only decorator"
+        f.awaitable = True
     # an __iter__ annotated -> Iterator[T] (or Iterable[T]) that returns something other than
     # iter(x), its own object or another iterator object: its return is inferred, as an
     # unannotated one's is (an iterator class's __next__ gives the items)
     selfiter = cls != "" and d.s == "__iter__" and d.kids[1].kind != "noann" and self.iter_item(d.kids[1]) is not None and other_return(d.kids[2]) and not f.gen
-    protocol = cls != "" and (d.s == "__iter__" or d.s == "__next__") and d.kids[1].kind == "noann" and d not in held
+    protocol = cls != "" and d.s in ["__iter__", "__next__", "__aiter__", "__anext__", "__aenter__", "__aexit__"] and d.kids[1].kind == "noann" and d not in held
     if not f.gen and ((d.kids[1].kind == "noann" and (cls == "" or template_ok(d.s))) or selfiter or protocol) and not f.extern and not f.export and not f.pyexport and has_value_return(d.kids[2]):
         # The declared parameter types still coerce every call. Reuse return
         # inference even when all parameter types are already concrete.
@@ -1338,8 +1383,9 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         f.npos = len(f.params) if f.kwarg < 0 else f.kwarg
     if f.vararg >= 0:
         f.npos = f.vararg
-    if len(d.kids) > 3 and f.deco == "" and not f.prop and f.acc == "" and not f.extern and not f.pyexport:
-        bad = f"unsupported decorator @{deco}" if deco != "" else "async functions are not supported"
+    others = [x for x in d.kids[3:] if x.s != "async" and not self.coro_deco(x, {})]
+    if len(others) > 0 and f.deco == "" and not f.prop and f.acc == "" and not f.extern and not f.pyexport:
+        bad = f"decorator @{others[0].s} on an async def is not supported" if is_async(d) else f"unsupported decorator @{others[0].s}"
         bad = STUB.replace("NAME", short(d.s)) if stub else bad
     if f.deco != "" and d.s.startswith("__") and d.s.endswith("__"):
         bad = f"@{f.deco} on the special method {d.s} is not supported"
@@ -1873,6 +1919,20 @@ def gen_generic_base(self, n: Node) -> list[str]:
         out.append(v.s)
     return out if len([v for v in out if v in self.tvtuples]) < 2 else []
 
+def gen_generic_parent(self, n: Node) -> list[str]:
+    # the type variables of a class's base n when it is G[T, U] of a generic class G declared
+    # before, each a TypeVar named once (class Task(Future[T]), whose own type variables they
+    # are); else []
+    if n.kind != "index" or n.kids[0].kind != "name" or n.kids[0].s not in self.tparams:
+        return []
+    out: list[str] = []
+    for x in n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]:
+        if x.kind != "name" or x.s not in self.typevars or x.s in self.tvtuples or x.s in out:
+            return []
+        out.append(x.s)
+    return out if len(out) == len(self.tparams[n.kids[0].s]) else []
+
+
 def gen_nt_base(self, n: Node) -> bool:
     # does a class's base n name typing.NamedTuple
     return (n.kind == "name" and self.imported(n.s) == "typing.NamedTuple") or (n.kind == "attr" and self.typing_attr(n) == "NamedTuple")
@@ -2142,6 +2202,11 @@ def gen_scan_fields(self, ci: ClassInfo, f: FnInfo, body: list[Node], known: dic
                     # gives it its type, T | None, as for a variable (see none_field)
                     t = NONEVAR
                     ci.fnone[name] = st.kids[-1]
+                    e = st.kids[-1]
+                    j = f.params.index(e.s) if e.kind == "name" and e.s in f.params else -1
+                    a = st.kids[1] if k == "annassign" else f.node.kids[0].kids[j].kids[0] if j > 0 and j < len(f.node.kids[0].kids) else e
+                    if (k == "annassign" or j > 0) and self.tv_none(a):
+                        ci.fnonetv[name] = True  # (it holds what a None type variable types: None, see none_field)
                 if t == "" and why == "":
                     why = f"cannot infer the type of field '{name}'; annotate it (self.{name}: T = ...)"
                 if t == "" and ci.mod == "":
@@ -2553,7 +2618,7 @@ def gen_none_field(self, cls: str, name: str, cmp: bool) -> str:
         if ci.ftypes[name] == NONEVAR:
             self.refine_field(ci, name, t)
         return ci.ftypes[name]
-    if not self.set_elsewhere(root, name):
+    if not self.set_elsewhere(root, name) or name in root.fnonetv:
         self.nonereads[key] = where(self.line)
         return "None"
     if cmp:

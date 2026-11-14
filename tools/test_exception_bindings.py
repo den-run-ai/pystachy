@@ -141,8 +141,23 @@ class BindingIndexTests(unittest.TestCase):
         self.assertFalse(analysis.binds_other([node], "private"))
 
     def test_async_wrappers_keep_the_original_scanner_policy(self):
-        # Unsupported async syntax can be present in a dropped/nested scope. Match
-        # binds_other's existing traversal rather than extending its binding rules.
+        # An "async" wrapper node (async with/for that no async def holds, which the parser
+        # rejects, so built here): match binds_other's existing traversal rather than
+        # extending its binding rules.
+        loop = parsed("""
+            for private in (iterable := stream):
+                hidden_loop = 1
+        """)[0]
+        manager = parsed("""
+            with (manager := context) as alias:
+                hidden_with = 2
+        """)[0]
+        self.check_body([mk("async", "", 1, [loop]), mk("async", "", 3, [manager])], {"iterable", "manager"})
+
+    def test_async_statements_bind_as_their_pep492_statements(self):
+        # An async def's async with and async for become ordinary statements after parsing
+        # (coroutines.desugar_async): their targets, their bodies' bindings and the locals
+        # that hold the manager, the iterator and their state are the function's
         body = parsed("""
             async def owner():
                 async for private in (iterable := stream):
@@ -150,7 +165,9 @@ class BindingIndexTests(unittest.TestCase):
                 async with (manager := context) as alias:
                     hidden_with = 2
         """)[0].kids[2].kids
-        self.check_body(body, {"iterable", "manager"})
+        self.check_body(body, {"iterable", "manager", "private", "alias", "hidden_loop", "hidden_with",
+                               "__pys_aw0.it", "__pys_aw0.run", "__pys_aw0.val",
+                               "__pys_aw1.mgr", "__pys_aw1.val", "__pys_aw1.hit"})
 
 
 class BindingCompileTests(unittest.TestCase):

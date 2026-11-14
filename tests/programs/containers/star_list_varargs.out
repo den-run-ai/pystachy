@@ -1,0 +1,26 @@
+6 0 9
+1 2 (3, 4) 2
+rest 3
+rest 4
+3
+10 1 (2, 3) 2
+rest 2
+rest 3
+11
+TypeError pair() missing 2 required positional arguments: 'a' and 'b'
+TypeError pair() missing 1 required positional argument: 'b'
+0 1 () 0
+1
+0 1 (2,) 1
+rest 2
+1
+evaluated -
+a-b-c 
+1 2 (3,) 1
+rest 3
+6 3
+(7, 8) [7, 8, 9]
+3
+[0, 10, 20]
+done
+[exit 0]

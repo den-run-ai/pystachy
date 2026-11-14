@@ -16,6 +16,8 @@ from src.pystachy_compiler.diagnostics import int_program
 from src.pystachy_compiler.ir import Exit, FnInfo, Ins, IterArg, SeqStart, Try, Val, tmpname
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import (
+    AGFLAGS,
+    AGYIELD,
     BIG,
     EXCBASES,
     GENCLEAN,
@@ -35,15 +37,21 @@ from src.pystachy_compiler.specs import (
     exc_derives,
 )
 from src.pystachy_compiler.syntax import Node, comp_names, has_kind, made_var, mk, names_in
-from src.pystachy_compiler.utils import gelem, gsend, is_gen, is_list, typestr
+from src.pystachy_compiler.utils import gelem, gsend, is_agen, is_coro, is_gen, is_list, typestr
+
+
+def suspends(n: Node) -> bool:
+    # does code n hold a yield or an await (outside the functions it defines): where a generator,
+    # or a coroutine (an async def, whose awaits delegate as yield from does), suspends
+    return has_kind(n, "yield") or has_kind(n, "await")
 
 
 def with_yield(body: list[Node]) -> bool:
-    # does one of these statements yield inside a with block
+    # does one of these statements yield (or await) inside a with block
     for st in body:
         if st.kind == "def" or st.kind == "class" or st.kind == "subclass" or st.kind == "lambda":
             continue
-        if st.kind == "with" and has_kind(st.kids[-1], "yield"):
+        if st.kind == "with" and suspends(st.kids[-1]):
             return True
         for k in st.kids:
             if (k.kind == "block" and with_yield(k.kids)) or (k.kind == "except" and with_yield(k.kids[1].kids)):
@@ -52,12 +60,12 @@ def with_yield(body: list[Node]) -> bool:
 
 
 def loop_yield(body: list[Node]) -> bool:
-    # does one of these statements yield inside a for loop over a call (which may make a
-    # generator the loop owns, closed where the loop is left)
+    # does one of these statements yield (or await) inside a for loop over a call (which may make
+    # a generator the loop owns, closed where the loop is left)
     for st in body:
         if st.kind == "def" or st.kind == "class" or st.kind == "subclass" or st.kind == "lambda":
             continue
-        if st.kind == "for" and has_kind(st.kids[2], "yield") and st.kids[1].kind != "list" and st.kids[1].kind != "tuple" and st.kids[1].kind != "str":
+        if st.kind == "for" and suspends(st.kids[2]) and st.kids[1].kind != "list" and st.kids[1].kind != "tuple" and st.kids[1].kind != "str":
             return True
         for k in st.kids:
             if (k.kind == "block" and loop_yield(k.kids)) or (k.kind == "except" and loop_yield(k.kids[1].kids)):
@@ -66,8 +74,9 @@ def loop_yield(body: list[Node]) -> bool:
 
 
 def yields_from(n: Node) -> bool:
-    # does n hold a yield from (outside the functions it defines)
-    if n.kind == "yield" and n.s == "from":
+    # does n hold a yield from or an await, which delegates as it does (outside the functions it
+    # defines): closing it while suspended there closes what it delegates to
+    if (n.kind == "yield" and n.s == "from") or n.kind == "await":
         return True
     if n.kind == "def" or n.kind == "class" or n.kind == "subclass" or n.kind == "lambda":
         return False
@@ -87,6 +96,12 @@ def uses_protocol(n: Node) -> bool:
         if uses_protocol(k):
             return True
     return False
+
+
+def handle_noun(t: str) -> str:
+    # what CPython's messages call the object of handle type t: a coroutine (an async def's), an
+    # async generator or a generator
+    return "coroutine" if is_coro(t) else "async generator" if is_agen(t) else "generator"
 
 
 def reads_handled(n: Node) -> bool:
@@ -110,13 +125,14 @@ def reads_cause(n: Node) -> bool:
     return False
 
 
-def gen_pep479(self, e: Val) -> None:
-    # PEP 479's RuntimeError, raised for StopIteration e that leaves a generator: its __cause__
-    # is e where the program reads it (Gen.causeread)
+def gen_pep479(self, e: Val, noun: str = "generator") -> None:
+    # PEP 479's RuntimeError, raised for StopIteration e that leaves a generator (noun "coroutine":
+    # an async def's coroutine, PEP 492): its __cause__ is e where the program reads it
+    # (Gen.causeread)
     if not self.causeread:
-        self.raise_("RuntimeError", self.sconst("generator raised StopIteration"))
+        self.raise_("RuntimeError", self.sconst(f"{noun} raised StopIteration"))
         return
-    r = self.exc_value("RuntimeError", [Val(self.sconst("generator raised StopIteration"), "str")])
+    r = self.exc_value("RuntimeError", [Val(self.sconst(f"{noun} raised StopIteration"), "str")])
     self.rt("pys_exc_setcause", "void", [f"ptr {r.v}", f"ptr {e.v}"])
     self.throw(r)
 
@@ -196,7 +212,7 @@ def gen_gen_declare(self, f: FnInfo, d: Node) -> str:
         f.gtry = f.gtry or has_kind(st, "try")
     f.gclose = f.gclose or f.gtry
     if len(d.kids) > 3 and d.kids[3].s == "async":
-        return "async generators are not supported"
+        return self.agen_declare(f, d)  # (an async generator function: asyncgens.py)
     if d.kids[1].kind == "noann":
         f.generic = True  # (its first yield decides what it yields, for each call's argument types)
         f.ret = ""
@@ -334,18 +350,24 @@ def gen_gen_end(self, f: FnInfo) -> None:
     if not self.term:
         self.gen_none_end()
         self.gen_ret(Val("null", "None"))
-    if f.ret == "":
+    if f.ret == "" and not f.aio:
         f.ret = self.gen_type("None", f.gsend)  # (no yield is reached: it yields nothing)
     if f.gret == "":
         f.gret = "None"
     elif fn.gnone and f.gret != "None" and f.gretinfer:
         f.gret = self.optional(f.gret)  # (it also ends without a value: R | None, the same pointer)
+    if f.agen:
+        f.ret = self.agen_type(gelem(f.ret) if f.ret != "" else "None", f.gsend, f.ayield)  # (asyncgens.py)
+    elif f.aio:
+        f.ret = self.coro_type(f.ayield, f.gret)  # (an async def's coroutine: coroutines.py)
     if fn.gpad != "":
         self.handler = ""
         slot = self.alloca("exc", "")
         e = self.landing(fn.gpad, slot, Val("0", "int"))
         p = self.gen_promise(Val("", ""))
         self.mstore("int", str(GENDONE), self.maddr("int", p, str(GENSTATE)))
+        if f.agen:
+            self.agen_landed(e, p)  # (no step runs it now; aclose()'s GeneratorExit finishes it)
         cmd = self.mload("int", self.maddr("int", p, str(GENCMD)))
         lc = self.label()
         lp = self.label()
@@ -365,8 +387,10 @@ def gen_gen_end(self, f: FnInfo) -> None:
         lo = self.label()
         self.cbr(self.exc_match(e, self.builtin_catch("StopIteration")), ls, lo)
         self.place(ls)
-        self.pep479(e)
+        self.pep479(e, "async generator" if f.agen else "coroutine" if f.aio else "generator")
         self.place(lo)
+        if f.agen:
+            self.agen_sai(e)  # (a StopAsyncIteration as RuntimeError too, PEP 525)
         self.throw(e)
     f.noret = False
 
@@ -419,11 +443,12 @@ def gen_gen_none_end(self) -> None:
     # the generator ends without a value here (return, or the end of its code): the value of a
     # yield from that delegates to it is None, which its return type must hold. An unannotated
     # one returning a reference type R elsewhere returns R | None (the same null pointer); one
-    # returning a number would need a box: an error
+    # returning a number would need a box: an error, but for an async def's, which the next pass
+    # compiles returning R | None from the start (ret_widen)
     f = self.curfn
     r = f.gret
-    if r != "" and r != "None" and self.optional(r) != r and (not f.gretinfer or not self.none_null(r)):
-        self.err(f"{short(f.name)}() returns {typestr(r)} and ends without a value elsewhere: annotate it Generator[Y, {typestr(f.gsend)}, {typestr(r)} | None]" if not f.gretinfer else f"{short(f.name)}() returns {typestr(r)} and ends without a value elsewhere, which the value of yield from cannot hold: return a value on every path, or annotate it Generator[Y, {typestr(f.gsend)}, {typestr(r)} | None]")
+    if r != "" and r != "None" and self.optional(r) != r and (not f.gretinfer or not self.none_null(r)) and not (f.aio and f.gretinfer and self.optional(r) != "" and self.ret_widen(f, self.optional(r))):
+        self.err(f"{short(f.name)}() returns {typestr(r)} and ends without a value elsewhere: return a value on every path, or annotate it async def {short(f.name)}(...) -> {typestr(r)} | None" if f.aio else f"{short(f.name)}() returns {typestr(r)} and ends without a value elsewhere: annotate it Generator[Y, {typestr(f.gsend)}, {typestr(r)} | None]" if not f.gretinfer else f"{short(f.name)}() returns {typestr(r)} and ends without a value elsewhere, which the value of yield from cannot hold: return a value on every path, or annotate it Generator[Y, {typestr(f.gsend)}, {typestr(r)} | None]")
     self.fn.gnone = True
 
 
@@ -442,14 +467,18 @@ def gen_gen_return(self, n: Node) -> None:
         v = self.expr(n.kids[0], r if r != "None" else "")
         if (r == "" or r == "None") and v.t == "None":
             self.gen_none_end()  # (return f(), return (yield): a value that is None, as a return without one)
+        elif r == "None" and f.aio:
+            self.err(f"{short(f.name)}() is annotated to return None (async def {short(f.name)}(...) -> None), and returns {typestr(v.t)}")
         elif r == "None":
             self.err(f"{short(f.name)}() is annotated to return no value (Iterator[T], Iterable[T] or Generator[Y, {'None' if f.gsend == 'None' else 'S'}, None]): annotate it Generator[Y, {typestr(f.gsend)}, R] to return one")
         elif r == "":
             if "?" in v.t:
-                self.err(f"cannot infer what {short(f.name)}() returns from {typestr(v.t)}; annotate it Generator[Y, {typestr(f.gsend)}, R]")
-            if self.fn.gnone and self.optional(v.t) != v.t and not self.none_null(v.t):
-                self.err(f"{short(f.name)}() returns {typestr(v.t)} and ends without a value elsewhere, which the value of yield from cannot hold: return a value on every path, or annotate it Generator[Y, {typestr(f.gsend)}, {typestr(v.t)} | None]")
+                self.err(f"cannot infer what {short(f.name)}() returns from {typestr(v.t)}; annotate it " + (f"async def {short(f.name)}(...) -> R" if f.aio else f"Generator[Y, {typestr(f.gsend)}, R]"))
+            if self.fn.gnone and self.optional(v.t) != v.t and not self.none_null(v.t) and not (f.aio and self.optional(v.t) != "" and self.ret_widen(f, self.optional(v.t))):
+                self.err(f"{short(f.name)}() returns {typestr(v.t)} and ends without a value elsewhere: return a value on every path, or annotate it async def {short(f.name)}(...) -> {typestr(v.t)} | None" if f.aio else f"{short(f.name)}() returns {typestr(v.t)} and ends without a value elsewhere, which the value of yield from cannot hold: return a value on every path, or annotate it Generator[Y, {typestr(f.gsend)}, {typestr(v.t)} | None]")
             f.gret = v.t
+            if f.aio:
+                self.coro_settle(f)  # (a call of it compiled from now on gives its coroutine type)
         else:
             v = self.coerce(v, r)
     else:
@@ -477,12 +506,13 @@ def gen_gen_cleanup(self) -> int:
     return 0
 
 
-def gen_gen_suspend(self, slot: str, k: int, sub: Val, thrown: str = "", hi: str = "") -> None:
+def gen_gen_suspend(self, slot: str, k: int, sub: Val, thrown: str = "", hi: str = "", closed: str = "") -> None:
     # the generator being compiled yields the value in slot (with hi, the pointer of an int in a
     # program where a module opts in to promoting ints: gen_slots), then goes on where it is resumed.
     # k: closing it here runs code of its (gen_cleanup), so a close raises GeneratorExit here,
     # having closed sub first, the generator a yield from delegates to (or none: Val("", "")):
-    # what closing sub raises is raised here (PEP 380). In a program that uses throw()
+    # what closing sub raises is raised here (PEP 380); or a close goes to closed, the block of
+    # an async generator's step that closes it (asyncgens.py). In a program that uses throw()
     # (Gen.gproto), the exception thrown into it is raised here too, or handed to thrown, the
     # block of a yield from that throws it into its generator
     fn = self.fn
@@ -522,10 +552,13 @@ def gen_gen_suspend(self, slot: str, k: int, sub: Val, thrown: str = "", hi: str
                 self.mstore("int", "0", ea)
                 self.throw(e)
             self.place(lc)
-        if sub.v != "":
-            self.gen_close(sub)
-            self.gen_drop(sub)
-        self.raise_("GeneratorExit", self.sconst(""))
+        if closed != "":
+            self.br(closed)
+        else:
+            if sub.v != "":
+                self.gen_close(sub)
+                self.gen_drop(sub)
+            self.raise_("GeneratorExit", self.sconst(""))
         self.place(lgo)
 
 
@@ -568,9 +601,9 @@ def gen_yield_stmt(self, n: Node) -> None:
     v = self.expr(n.kids[0], y) if len(n.kids) > 0 else Val("null", "None")
     if y == "":
         if "?" in v.t:
-            self.err(f"cannot infer what {short(f.name)}() yields from an empty {typestr(v.t)}; annotate it -> Iterator[T]")
+            self.err(f"cannot infer what {short(f.name)}() yields from an empty {typestr(v.t)}; annotate it -> {'AsyncIterator' if f.agen else 'Iterator'}[T]")
         y = v.t
-        f.ret = self.gen_type(y, f.gsend)
+        f.ret = self.agen_type(y, f.gsend, f.ayield) if f.agen else self.gen_type(y, f.gsend)
     elif v.t != y and not (v.t == BIG and y == "int"):
         v = self.coerce(v, y)
     if dead:
@@ -579,6 +612,9 @@ def gen_yield_stmt(self, n: Node) -> None:
         self.unreachable()
         return
     w = ["0", ""] if y == "None" else self.gen_slots(v, gelem(f.ret))
+    if f.agen:
+        # (a yield of its own, which ends the step that runs it: the value is its consumer's)
+        self.mstore("int", str(AGYIELD), self.maddr("int", self.gen_promise(Val("", "")), str(AGFLAGS)))
     self.gen_suspend(w[0], self.gen_cleanup(), Val("", ""), "", w[1])
 
 
@@ -849,7 +885,7 @@ def gen_gen_next(self, h: Val, done: str) -> str:
     go = self.label()
     self.cbr(self.num_cmp("==", Val(s0, "int"), Val(str(GENDONE), "int")).v, done, go)
     self.place(go)
-    self.guard(self.num_cmp("==", Val(s0, "int"), Val(str(GENRUN), "int")).v, "ValueError: generator already executing")
+    self.guard(self.num_cmp("==", Val(s0, "int"), Val(str(GENRUN), "int")).v, f"ValueError: {handle_noun(h.t)} already executing")
     resumed = self.gen_resume_enter(st)
     self.mstore("int", str(GENRUN), st)
     i = Ins("gen.resume", "", "")
@@ -1070,18 +1106,19 @@ def gen_gen_stop(self) -> None:
     # (in a generator with exceptions off, which nothing in it can catch, PEP 479's RuntimeError
     # at once)
     if self.curfn.gen and not self.eh:
-        self.raise_("RuntimeError", self.sconst("generator raised StopIteration"))
+        self.raise_("RuntimeError", self.sconst(("async generator" if self.curfn.agen else "coroutine" if self.curfn.aio else "generator") + " raised StopIteration"))
     else:
         self.raise_("StopIteration", self.sconst(""))
 
 
-def gen_gen_raised(self, e: Val) -> None:
-    # exception e, which leaves a generator, raised here: a StopIteration as PEP 479's RuntimeError
+def gen_gen_raised(self, e: Val, noun: str = "generator") -> None:
+    # exception e, which leaves a generator (or a coroutine: noun), raised here: a StopIteration as
+    # PEP 479's RuntimeError
     ls = self.label()
     lo = self.label()
     self.cbr(self.exc_match(e, self.builtin_catch("StopIteration")), ls, lo)
     self.place(ls)
-    self.pep479(e)
+    self.pep479(e, noun)
     self.place(lo)
     self.throw(e)
 
@@ -1093,10 +1130,11 @@ def gen_gen_close(self, h: Val) -> None:
     # leaves it for pys_gen_closed: a StopIteration as RuntimeError), and if it yields instead,
     # RuntimeError (it stays suspended there). Any other one (not started, suspended where nothing
     # handles GeneratorExit, finished) is finished at once; a running one raises ValueError
+    noun = handle_noun(h.t)
     p = self.gen_promise(h)
     st = self.maddr("int", p, str(GENSTATE))
     s0 = self.mload("int", st)
-    self.guard(self.num_cmp("==", Val(s0, "int"), Val(str(GENRUN), "int")).v, "ValueError: generator already executing")
+    self.guard(self.num_cmp("==", Val(s0, "int"), Val(str(GENRUN), "int")).v, f"ValueError: {noun} already executing")
     fin = self.label()
     if self.eh:
         # (with exceptions off, no yield is in a try or with block: nothing runs as one closes)
@@ -1119,14 +1157,14 @@ def gen_gen_close(self, h: Val) -> None:
         lok = self.label()
         self.cbr(self.ptr_cmp("!=", e, Val("null", "None")).v, lr, lok)
         self.place(lr)
-        self.gen_raised(e)
+        self.gen_raised(e, noun)
         self.place(lok)
         s1 = self.mload("int", st)
         lign = self.label()
         self.cbr(self.num_cmp("!=", Val(s1, "int"), Val(str(GENDONE), "int")).v, lign, end)
         self.place(lign)
         self.mstore("int", "0", ca)
-        self.raise_("RuntimeError", self.sconst("generator ignored GeneratorExit"))
+        self.raise_("RuntimeError", self.sconst(f"{noun} ignored GeneratorExit"))
         self.place(fin)
         self.mstore("int", str(GENDONE), st)
         self.br(end)
@@ -1165,7 +1203,7 @@ def gen_gen_throw_into(self, h: Val, e: Val, done: str) -> str:
     p = self.gen_promise(h)
     st = self.maddr("int", p, str(GENSTATE))
     s0 = self.mload("int", st)
-    self.guard(self.num_cmp("==", Val(s0, "int"), Val(str(GENRUN), "int")).v, "ValueError: generator already executing")
+    self.guard(self.num_cmp("==", Val(s0, "int"), Val(str(GENRUN), "int")).v, f"ValueError: {handle_noun(h.t)} already executing")
     go = self.label()
     lnot = self.label()
     self.cbr(self.num_cmp("==", Val(s0, "int"), Val(str(GENCLEAN), "int")).v if self.eh else "false", go, lnot)
@@ -1175,7 +1213,7 @@ def gen_gen_throw_into(self, h: Val, e: Val, done: str) -> str:
     self.cbr(self.num_cmp("==", Val(s0, "int"), Val("0", "int")).v, lsusp, lraw)
     self.place(lsusp)
     self.mstore("int", str(GENDONE), st)
-    self.gen_raised(e)
+    self.gen_raised(e, handle_noun(h.t))
     self.place(lraw)
     self.mstore("int", str(GENDONE), st)
     self.throw(e)
@@ -1318,8 +1356,11 @@ def gen_genexp_value(self, n: Node) -> Val:
             ps.append(mk("param", f".{j}", line, [noann, noann]))
             cargs.append(mk("kw", a.s, line, [mk("name", f".{j}", line, [])]) if a.kind == "kw" else mk("name", f".{j}", line, []))
         itn = mk("call", "", line, [first.kids[0]] + cargs)
+    if first.kind == "await" and first.s == "aiterc":
+        itn = mk("await", "aiterc", line, [itn])  # (its first clause is async for: its iterator, evaluated here, an async generator)
     loop = mk("for", "", line, [n.kids[1], itn, mk("block", "", line, body)])
-    d = mk("def", "<genexpr>", line, [mk("params", "0,-1", line, ps), noann, mk("block", "", line, [loop])])
+    # (an asynchronous generator expression, desugar_comp: an async def's, an async generator)
+    d = mk("def", "<genexpr>", line, [mk("params", "0,-1", line, ps), noann, mk("block", "", line, [loop])] + ([mk("deco", "async", line, [])] if n.kind == "asynccomp" else []))
     free: dict[str, bool] = {}
     closure_free(d, free)
     f = self.curfn

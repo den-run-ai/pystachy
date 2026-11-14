@@ -1,0 +1,12 @@
+created
+main starts
+yielded label b
+nothing ran
+49 b=49 610 7.0
+yielded label 0
+yielded label 1
+yielded label 2
+returned after 4 steps
+returned after 0 steps
+coroutine
+[exit 0]

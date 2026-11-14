@@ -295,11 +295,34 @@ into it, runs the manager's `__exit__` as CPython does, and `contextlib.contextm
 generator through these calls (see [context managers](#context-managers)).
 
 `close()` is supported as a statement; its value (what a generator returns as it closes, in
-CPython 3.13) is not. `throw(type, value, traceback)`, `async` generators and frame
-introspection are not supported, nor `yield from` of an iterator that is no generator in a
+CPython 3.13) is not. `throw(type, value, traceback)` and frame introspection are not
+supported, nor `yield from` of an iterator that is no generator in a
 generator that takes a value from `send()` (CPython sends the value on to the iterator, which has
 no `send()`). A generator the program drops while it is suspended is not closed (see
 [deviations](compatibility.md#memory-and-resource-lifetime)).
+
+<a id="coroutines"></a>
+
+## Coroutines
+
+An `async def` call makes a coroutine object and runs none of its body; `await` runs an
+awaitable (a coroutine, a `@types.coroutine` generator, or an object whose `__await__` is a
+generator method) to its return, passing what it yields on to the code that runs the
+coroutine, and gives what it returns. `send(None)`, `throw()` and `close()` reach through each
+await as through `yield from`, with CPython's errors for a coroutine awaited twice, awaited
+while suspended elsewhere, resumed after it finished, or awaited when it is no awaitable.
+`async with` awaits its manager's `__aenter__()` and `__aexit__()`, and `async for` awaits
+`__anext__()` until `StopAsyncIteration`, as PEP 492 specifies.
+
+An `async def` that yields is an async generator (PEP 525): a call makes it and runs none of its
+body; each `__anext__()`, `asend()`, `athrow()` and `aclose()` awaited, `anext()` and `async for`
+runs it to its next `yield`, whose value the await gives, while what its own awaits yield goes to
+the code that runs the awaiting coroutine. It ends with `StopAsyncIteration`, and a
+`StopIteration` or `StopAsyncIteration` that leaves its body is `RuntimeError`, with CPython
+3.13's errors for steps that overlap or awaitables awaited twice. Asynchronous comprehensions
+(PEP 530) take their `async for` clauses' items the same way in an `async def`; a generator
+expression with one, or with an `await`, is an async generator. See
+[coroutines](../coroutines.md) for the supported forms, their limits and costs.
 
 <a id="context-managers"></a>
 

@@ -1,0 +1,32 @@
+made
+count starts
+item 0
+item 10
+item 20
+count ends
+count starts
+loop 0
+loop 20
+count starts
+a 0
+a 10
+count ends
+count starts
+b 0
+b 10
+count ends
+nested done
+empty
+pair 7
+pair 8
+a b
+exhausted
+still exhausted
+default
+True True
+async_generator async_generator_asend
+count starts
+0
+async_generator_athrow
+done
+[exit 0]

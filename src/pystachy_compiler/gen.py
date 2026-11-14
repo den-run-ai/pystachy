@@ -473,6 +473,8 @@ from src.pystachy_compiler.calls import (
     gen_nt_new as calls_nt_new,
     gen_star_call as calls_star_call,
     gen_star_who as calls_star_who,
+    gen_star_args as calls_star_args,
+    gen_star_pack as calls_star_pack,
     gen_static_callee as calls_static_callee,
     gen_tests as calls_tests,
     gen_to_callable as calls_to_callable,
@@ -620,6 +622,7 @@ from src.pystachy_compiler.declarations import (
     gen_join as declarations_join,
     gen_none_items as declarations_none_items,
     gen_nt_base as declarations_nt_base,
+    gen_generic_parent as declarations_generic_parent,
     gen_nt_class as declarations_nt_class,
     gen_nt_defaults as declarations_nt_defaults,
     gen_nt_dflt_display as declarations_nt_dflt_display,
@@ -650,6 +653,7 @@ from src.pystachy_compiler.declarations import (
     gen_unalias_all as declarations_unalias_all,
     gen_union_members as declarations_union_members,
     gen_unpack_ann as declarations_unpack_ann,
+    gen_tv_none as declarations_tv_none,
     gen_vtype as declarations_vtype,
     gen_widens as declarations_widens,
     gen_widens_items as declarations_widens_items,
@@ -987,6 +991,55 @@ from src.pystachy_compiler.generators import (
     gen_gen_send as generators_gen_send,
     gen_yield_from_iter as generators_yield_from_iter,
 )
+from src.pystachy_compiler.asyncgens import (
+    gen_agen_ann as asyncgens_agen_ann,
+    gen_agen_args as asyncgens_agen_args,
+    gen_agen_await as asyncgens_agen_await,
+    gen_agen_await_call as asyncgens_agen_await_call,
+    gen_agen_awaitable as asyncgens_agen_awaitable,
+    gen_agen_call as asyncgens_agen_call,
+    gen_agen_close_sub as asyncgens_agen_close_sub,
+    gen_agen_declare as asyncgens_agen_declare,
+    gen_agen_for as asyncgens_agen_for,
+    gen_agen_aiter as asyncgens_agen_aiter,
+    gen_agen_adapter as asyncgens_agen_adapter,
+    gen_agen_param as asyncgens_agen_param,
+    gen_agen_landed as asyncgens_agen_landed,
+    gen_agen_method as asyncgens_agen_method,
+    gen_agen_raised as asyncgens_agen_raised,
+    gen_agen_result as asyncgens_agen_result,
+    gen_agen_sai as asyncgens_agen_sai,
+    gen_agen_step as asyncgens_agen_step,
+    gen_agen_stop as asyncgens_agen_stop,
+    gen_agen_type as asyncgens_agen_type,
+    gen_aiter_ as asyncgens_aiter_,
+    gen_anext_ as asyncgens_anext_,
+    gen_anext_default as asyncgens_anext_default,
+)
+from src.pystachy_compiler.coroutines import (
+    gen_await_dead as coroutines_await_dead,
+    gen_await_handle as coroutines_await_handle,
+    gen_await_expr as coroutines_await_expr,
+    gen_await_protocol as coroutines_await_protocol,
+    gen_await_value as coroutines_await_value,
+    gen_await_words as coroutines_await_words,
+    gen_awaits_direct as coroutines_awaits_direct,
+    gen_coro_analyze as coroutines_coro_analyze,
+    gen_coro_twin as coroutines_coro_twin,
+    gen_direct_await as coroutines_direct_await,
+    gen_coro_declare as coroutines_coro_declare,
+    gen_coro_hinted as coroutines_coro_hinted,
+    gen_coro_join as coroutines_coro_join,
+    gen_coro_rejoin as coroutines_coro_rejoin,
+    gen_ret_widen as coroutines_ret_widen,
+    gen_yield_change as coroutines_yield_change,
+    gen_coro_deco as coroutines_coro_deco,
+    gen_coro_method as coroutines_coro_method,
+    gen_coro_scan as coroutines_coro_scan,
+    gen_coro_settle as coroutines_coro_settle,
+    gen_coro_type as coroutines_coro_type,
+    gen_coro_yields as coroutines_coro_yields,
+)
 from src.pystachy_compiler.functions import (
     gen_enter as functions_enter,
     gen_extern_args as functions_extern_args,
@@ -1086,6 +1139,7 @@ from src.pystachy_compiler.program import (
     gen_exc_base as program_exc_base,
     gen_hook as program_hook,
     gen_inherit as program_inherit,
+    gen_gbase_link as program_gbase_link,
     gen_accessor as program_accessor,
     gen_class_ref as program_class_ref,
     gen_dc_options as program_dc_options,
@@ -1183,6 +1237,9 @@ from src.pystachy_compiler.templates import (
     gen_match_items as templates_match_items,
     gen_names_tv as templates_names_tv,
     gen_specialize as templates_specialize,
+    gen_gspec_link as templates_gspec_link,
+    gen_gspec_late as templates_gspec_late,
+    gen_gspec_replay as templates_gspec_replay,
     gen_literal_class as templates_literal_class,
     gen_literal_args as templates_literal_args,
     gen_lit_context as templates_lit_context,
@@ -1624,6 +1681,13 @@ class Gen:
         # which the arguments of the call that makes an object bind (see bind)
         self.tparams: dict[str, list[str]] = {}
         self.pep695: dict[str, bool] = {}  # the generic classes of PEP 695's syntax, class C[T] (reflection: __type_params__)
+        # generic classes with a base (templates.py's gspec_link): the base each names, an ordinary
+        # class (class C(Base, Generic[T]), class C[T](Base)) or a generic class's C[T] of its own
+        # type variables (class Task(Future[T])); those and the generic classes they name, whose
+        # specializations are classes of a hierarchy (with a class tag, ntag counting them)
+        self.gbases: dict[str, Node] = {}
+        self.gtagged: dict[str, bool] = {}
+        self.ntag = 0
         # the type aliases, by qualified name: the statement that binds each (Mod.taliases), and
         # those whose annotation alias_ann is making the type of
         self.taliases: dict[str, Node] = {}
@@ -2918,6 +2982,9 @@ class Gen:
     def ann_problem(self, n: Node, ret: bool) -> str:
         return declarations_ann_problem(self, n, ret)
 
+    def tv_none(self, n: Node) -> bool:
+        return declarations_tv_none(self, n)
+
     def vtype(self, n: Node) -> str:
         return declarations_vtype(self, n)
 
@@ -3435,6 +3502,141 @@ class Gen:
     def gen_declare(self, f: FnInfo, d: Node) -> str:
         return generators_gen_declare(self, f, d)
 
+    def coro_declare(self, f: FnInfo, d: Node) -> str:
+        return coroutines_coro_declare(self, f, d)
+
+    def coro_deco(self, x: Node, loc: dict[str, bool]) -> bool:
+        return coroutines_coro_deco(self, x, loc)
+
+    def coro_type(self, y: str, r: str) -> str:
+        return coroutines_coro_type(self, y, r)
+
+    def coro_scan(self, body: list[Node], kind: str) -> bool:
+        return coroutines_coro_scan(self, body, kind)
+
+    def coro_settle(self, f: FnInfo) -> None:
+        return coroutines_coro_settle(self, f)
+
+    def coro_yields(self, yi: str, callee: FnInfo | None, what: str) -> str:
+        return coroutines_coro_yields(self, yi, callee, what)
+
+    def await_value(self, n: Node, want: str) -> Val:
+        return coroutines_await_value(self, n, want)
+
+    def await_dead(self, want: str) -> Val:
+        return coroutines_await_dead(self, want)
+
+    def await_protocol(self, n: Node, want: str) -> Val:
+        return coroutines_await_protocol(self, n, want)
+
+    def await_expr(self, x: Node, want: str, bad: str) -> Val:
+        return coroutines_await_expr(self, x, want, bad)
+
+    def await_handle(self, v: Val, yi: str, r: str, callee: FnInfo | None, what: str) -> Val:
+        return coroutines_await_handle(self, v, yi, r, callee, what)
+
+    def await_words(self, p: str, yi: str, y: str, owned: Val | None) -> list[str]:
+        return coroutines_await_words(self, p, yi, y, owned)
+
+    def coro_method(self, o: Val, m: str, args: list[Node]) -> Val:
+        return coroutines_coro_method(self, o, m, args)
+
+    def agen_declare(self, f: FnInfo, d: Node) -> str:
+        return asyncgens_agen_declare(self, f, d)
+
+    def agen_type(self, t: str, s: str, y: str) -> str:
+        return asyncgens_agen_type(self, t, s, y)
+
+    def agen_ann(self, n: Node, infer: bool) -> list[str]:
+        return asyncgens_agen_ann(self, n, infer)
+
+    def agen_landed(self, e: Val, p: str) -> None:
+        return asyncgens_agen_landed(self, e, p)
+
+    def agen_sai(self, e: Val) -> None:
+        return asyncgens_agen_sai(self, e)
+
+    def agen_raised(self, e: Val) -> None:
+        return asyncgens_agen_raised(self, e)
+
+    def agen_stop(self) -> None:
+        return asyncgens_agen_stop(self)
+
+    def agen_close_sub(self, ag: Val, x: Val) -> None:
+        return asyncgens_agen_close_sub(self, ag, x)
+
+    def agen_result(self, t: str, mode: str, dflt: Val) -> str:
+        return asyncgens_agen_result(self, t, mode, dflt)
+
+    def agen_step(self, ag: Val, mode: str, arg: Val, dflt: Val, want: str, stop: str = "") -> Val:
+        return asyncgens_agen_step(self, ag, mode, arg, dflt, want, stop)
+
+    def agen_for(self, n: Node) -> bool:
+        return asyncgens_agen_for(self, n)
+
+    def agen_aiter(self, e: Node) -> Val:
+        return asyncgens_agen_aiter(self, e)
+
+    def agen_adapter(self, it: Val) -> Val:
+        return asyncgens_agen_adapter(self, it)
+
+    def agen_param(self, n: Node) -> bool:
+        return asyncgens_agen_param(self, n)
+
+    def agen_args(self, m: str, args: list[Node]) -> None:
+        return asyncgens_agen_args(self, m, args)
+
+    def agen_await(self, n: Node, want: str) -> Val:
+        return asyncgens_agen_await(self, n, want)
+
+    def agen_call(self, x: Node) -> bool:
+        return asyncgens_agen_call(self, x)
+
+    def agen_await_call(self, x: Node, want: str) -> Val:
+        return asyncgens_agen_await_call(self, x, want)
+
+    def agen_method(self, o: Val, m: str, args: list[Node]) -> Val:
+        return asyncgens_agen_method(self, o, m, args)
+
+    def agen_awaitable(self, o: Val, mode: str, extra: list[Node]) -> Val:
+        return asyncgens_agen_awaitable(self, o, mode, extra)
+
+    def aiter_(self, args: list[Node]) -> Val:
+        return asyncgens_aiter_(self, args)
+
+    def anext_(self, args: list[Node]) -> Val:
+        return asyncgens_anext_(self, args)
+
+    def anext_default(self, it: Val, d: Val) -> Val:
+        return asyncgens_anext_default(self, it, d)
+
+    def coro_analyze(self) -> None:
+        return coroutines_coro_analyze(self)
+
+    def coro_hinted(self, g: FnInfo) -> None:
+        return coroutines_coro_hinted(self, g)
+
+    def coro_join(self, a: str, b: str) -> str:
+        return coroutines_coro_join(self, a, b)
+
+    def coro_rejoin(self, f: FnInfo, base: str, t: str, vals: list[Val], insts: list[FnInfo | None]) -> None:
+        return coroutines_coro_rejoin(self, f, base, t, vals, insts)
+
+    def ret_widen(self, f: FnInfo, t: str) -> bool:
+        return coroutines_ret_widen(self, f, t)
+
+    def yield_change(self, f: FnInfo, t: str, relayout: bool, why: str) -> None:
+        return coroutines_yield_change(self, f, t, relayout, why)
+
+    def awaits_direct(self, f: FnInfo, nos: dict[str, bool]) -> bool:
+        return coroutines_awaits_direct(self, f, nos)
+
+    def coro_twin(self, f: FnInfo) -> FnInfo:
+        return coroutines_coro_twin(self, f)
+
+    def direct_await(self, x: Node) -> FnInfo | None:
+        return coroutines_direct_await(self, x)
+
     def gen_drop(self, h: Val) -> None:
         return generators_gen_drop(self, h)
 
@@ -3490,8 +3692,8 @@ class Gen:
     def gen_stream(self, name: str, v: Val, args: list[Node], want: str, resultsoft: bool) -> Val:
         return generators_gen_stream(self, name, v, args, want, resultsoft)
 
-    def gen_suspend(self, slot: str, k: int, sub: Val, thrown: str = "", hi: str = "") -> None:
-        return generators_gen_suspend(self, slot, k, sub, thrown, hi)
+    def gen_suspend(self, slot: str, k: int, sub: Val, thrown: str = "", hi: str = "", closed: str = "") -> None:
+        return generators_gen_suspend(self, slot, k, sub, thrown, hi, closed)
 
     def yield_from_iter(self, what: str) -> None:
         return generators_yield_from_iter(self, what)
@@ -3526,8 +3728,8 @@ class Gen:
     def gen_stop(self) -> None:
         return generators_gen_stop(self)
 
-    def gen_raised(self, e: Val) -> None:
-        return generators_gen_raised(self, e)
+    def gen_raised(self, e: Val, noun: str = "generator") -> None:
+        return generators_gen_raised(self, e, noun)
 
     def gen_close(self, h: Val) -> None:
         return generators_gen_close(self, h)
@@ -3535,8 +3737,8 @@ class Gen:
     def exc_mark(self) -> str:
         return generators_exc_mark(self)
 
-    def pep479(self, e: Val) -> None:
-        return generators_pep479(self, e)
+    def pep479(self, e: Val, noun: str = "generator") -> None:
+        return generators_pep479(self, e, noun)
 
     def exc_back(self, old: str) -> None:
         return generators_exc_back(self, old)
@@ -4669,6 +4871,12 @@ class Gen:
     def star_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str = "") -> Val:
         return calls_star_call(self, n, want, resultsoft, typeargs)
 
+    def star_pack(self, f: Node) -> bool:
+        return calls_star_pack(self, f)
+
+    def star_args(self, f: FnInfo, a: Node, pos: int, vals: list[Val], extra: list[Val], args: list[Node]) -> int:
+        return calls_star_args(self, f, a, pos, vals, extra, args)
+
     def static_callee(self, f: Node) -> bool:
         return calls_static_callee(self, f)
 
@@ -4806,6 +5014,21 @@ class Gen:
 
     def tests(self, ns: list[Node], p: str) -> bool:
         return calls_tests(self, ns, p)
+
+    def gspec_link(self, s: ClassInfo, t: ClassInfo) -> None:
+        return templates_gspec_link(self, s, t)
+
+    def gspec_late(self, c: str, ts: list[str], given: dict[str, str], named: bool, lits: dict[str, Node], doing: str) -> None:
+        return templates_gspec_late(self, c, ts, given, named, lits, doing)
+
+    def gspec_replay(self) -> None:
+        return templates_gspec_replay(self)
+
+    def gbase_link(self, name: str) -> None:
+        return program_gbase_link(self, name)
+
+    def generic_parent(self, n: Node) -> list[str]:
+        return declarations_generic_parent(self, n)
 
     def specialize(self, c: str, ts: list[str], given: dict[str, str], named: bool, lits: dict[str, Node]) -> str:
         return templates_specialize(self, c, ts, given, named, lits)

@@ -1028,7 +1028,7 @@ arguments. `closing(thing)`, `nullcontext()`, `nullcontext(value)`, `suppress(A,
 - `ExitStack`, `redirect_stdout`, `redirect_stderr`, `chdir` and the async managers
   (`asynccontextmanager`, `aclosing`, `AsyncExitStack`, `AbstractAsyncContextManager`) are not
   ported: the subset has no list of managers of different classes, no assignable `sys.stdout`,
-  no `os.getcwd()` and no `async def`.
+  no `os.getcwd()` and no async generators (which `asynccontextmanager` decorates).
 
 ## Numbers and randomness
 
@@ -1527,6 +1527,61 @@ CPython.
 - In an extension module (`pystachy ext`), `register()` records callbacks that never run:
   CPython's own finalization does not know of them.
 
+### `asyncio`
+
+CPython's pure-Python `asyncio` modules, adapted with marked edits: the `Future` and `Task` of
+`futures.py` and `tasks.py` (CPython's `_PyFuture` and `_PyTask`, which its C `_asyncio` replaces),
+`create_task()`, `gather()`, `sleep()` (also `sleep(0)`), `ensure_future()`, `wait_for()`,
+`current_task()`, `all_tasks()` and `eager_task_factory`; a `BaseEventLoop` with `call_soon()`,
+`call_later()`, `call_at()`, `time()`, `run_until_complete()`, `run_forever()`, `stop()`,
+`close()` and `set_task_factory()`, its timers on a heap; `get_running_loop()`,
+`get_event_loop()`, `new_event_loop()`, `set_event_loop()` and the default policy; `run()` and
+`Runner`; `TaskGroup`; `timeout()` and `timeout_at()`; `Lock`, `Event` and `Queue`, and the module's
+exceptions ([tests](../tests/programs/library/lib_asyncio_run.py),
+[upstream tests](../tests/programs/upstream/upstream_asyncio_tasks.py)). Tasks run in CPython's
+order: the results, exceptions and cancellations, and the order of callbacks and of tasks that
+these tests and `bench/pyperformance/async_tree.py` observe, are CPython's.
+
+How it runs: a coroutine's yield type is one static type, so every awaitable of the module
+yields `None`, where CPython's future yields itself. Awaiting a pending future records it for the
+task that runs the coroutine, which then waits on it as CPython's `Task.__step()` waits on the
+future it receives; a bare yield (`sleep(0)`) reschedules the task. `Future[T]` and `Task[T]`
+derive from a `_FutureBase` that holds what does not depend on `T`, which the loop, `gather()`
+and `TaskGroup` hold; a callback is a function of no arguments that calls the one registered with
+its arguments. A task runs a coroutine that awaits the program's and keeps what it returns, as a
+coroutine's `StopIteration` carries no value here. When no callback is ready, the loop sleeps
+until its next timer with `time.sleep()`.
+
+- A `Future` names its result type where it is made: `f: asyncio.Future[int] =
+  asyncio.Future(loop=loop)`. `loop.create_future()`, whose future no argument types, is not
+  supported ([error](../tests/errors/library/lib_asyncio_create_future.py)), and neither are an
+  `asyncio.Queue` without its item type named nor a coroutine that awaits something that yields a
+  value other than `None` (an `__await__` of the program's that yields one).
+- `gather()` takes coroutines or futures of one result type, which its result is a list of
+  ([error](../tests/errors/library/lib_asyncio_gather_types.py)), also from a list unpacked into
+  it (`gather(*coros)`); `return_exceptions=True` raises `NotImplementedError`. An awaitable given
+  twice runs twice.
+- A `TaskGroup` whose tasks fail raises the first failure's exception, once the others are
+  cancelled and done, where CPython raises an `ExceptionGroup` of them
+  ([deviation](../tests/deviations/lib_asyncio_taskgroup_error.py)): exception groups are not
+  supported.
+- `set_task_factory()` takes `None` or `asyncio.eager_task_factory`; another factory raises
+  `NotImplementedError`, and `create_eager_task_factory()` too. There are no `contextvars`
+  (`context=` arguments are taken and not used), no custom exception handlers (an exception that
+  a callback raises is reported on stderr with its last line, where CPython's logger prints its
+  traceback), no debug mode, and no warnings about tasks or futures dropped while pending or
+  with an exception never retrieved (Pystachy finalizes no object).
+- A loop with nothing ready and no timers raises `RuntimeError`, where CPython's selector would
+  wait for ever for I/O. There are no sockets, transports, protocols, streams, servers,
+  subprocesses, signal handlers, executors, threads (`to_thread()`, `run_in_executor()`),
+  `wait()`, `as_completed()`, `shield()`, `Condition`, semaphores, `Barrier`,
+  `PriorityQueue` or `LifoQueue`, and no `asyncio.TimeoutError`, the builtin `TimeoutError`
+  under another name.
+- A `Future`'s and a `Task`'s `repr()` show no callbacks' names (`cb=[<callback>]`) and no
+  coroutine, and a result's repr is not shortened by `reprlib`; `yield from` of a future (its
+  `__iter__`) is not supported. `cancelling()` and `uncancel()` of a future that is not a task
+  raise `AttributeError` where called, which CPython raises where they are looked up.
+
 ## Runtime services
 
 ### `abc`
@@ -1564,6 +1619,10 @@ reference, as elsewhere in an annotation, and any other argument must still be a
 the idiom, as CPython's `_sre` types are generic. At run time, where CPython makes them
 `types.GenericAlias` objects, they are a compile-time error
 ([error test](../tests/errors/reflection/types_generic_alias_subscript.py)).
+
+`@types.coroutine` on a generator function makes its generators awaitable, as CPython's flag on the
+function's code does; the generators stay generators ([coroutines](../docs/coroutines.md),
+[test](../tests/programs/generators/coro_awaitables.py)). It is the only decorator of such a function.
 
 `MappingProxyType(d)` is a read-only view of dict `d`, CPython's `mappingproxy`
 (`lib/_pystachy_mappingproxy.py`): indexing, `in`, `len()`, iteration (which fails as the dict's

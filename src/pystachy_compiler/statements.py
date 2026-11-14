@@ -38,6 +38,7 @@ from src.pystachy_compiler.utils import (
     empty_result_type,
     folds,
     gelem,
+    is_agen,
     is_const,
     is_dict,
     is_fset,
@@ -1729,6 +1730,13 @@ def gen_for_(self, n: Node, hide: list[str], arg: IterArg | None = None) -> None
         self.iterarg(arg)
         self.hide(hide)  # (a comprehension's variables, which it forgets after the loop)
         return  # nothing to iterate: the body never runs (and its types are unknown)
+    if is_agen(seq.t):
+        # an async generator, which a comprehension's async for clause steps through with awaits
+        # (desugar_comp: its iterable is an await node of kind aiterc), and a for loop does not
+        if it.kind != "await" or it.s != "aiterc":
+            self.err("'async_generator' object is not iterable: iterate it with async for")
+        self.for_seq(tgt, [seq], "async", body, "0", hide, arg)
+        return
     own = self.owned_gen(seq, it)
     if own > 0:
         self.owned_loop([seq], own == 2, tgt, [seq], "", body, "0", hide, arg, None)
@@ -1897,7 +1905,7 @@ def gen_for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], s
     # (so is a generator's, before another resumes it: zip(g, g) takes two of its items; and so
     # is every sequence's in a zip() with a dynamic value, whose next item may come from user
     # code, a __next__ or a generator, that changes an earlier sequence: #1164)
-    now = nexts or len([s for s in seqs if is_gen(s.t)]) > 0 or (len(seqs) > 1 and len([s for s in seqs if s.t == "dyniter"]) > 0)
+    now = nexts or len([s for s in seqs if is_gen(s.t) or is_agen(s.t)]) > 0 or (len(seqs) > 1 and len([s for s in seqs if s.t == "dyniter"]) > 0)
     lc = self.label()
     ls = self.label()
     le = self.label()
@@ -1935,6 +1943,12 @@ def gen_for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], s
         elif is_gen(s.t):
             # a generator runs to its next yield (the address of its promise, which holds the value)
             j = self.gen_next(s, le)
+            ok = "true"
+            nx = ""
+        elif is_agen(s.t):
+            # an async generator's step (a comprehension's async for clause, mode async): its next
+            # item, the loop ending where it finishes; its awaits suspend this coroutine (asyncgens.py)
+            j = self.agen_step(s, "anext", Val("", ""), Val("", ""), "", le).v
             ok = "true"
             nx = ""
         elif is_set(s.t):
@@ -2031,6 +2045,8 @@ def gen_seq_item(self, s: Val, j: str, mode: str) -> list[Val]:
         return [Val(j, "dyn")]
     if is_gen(s.t):
         return [self.gen_value(j, gelem(s.t))]  # (j: its promise, gen_next)
+    if is_agen(s.t):
+        return [Val(j, self.agen_result(gelem(s.t), "anext", Val("", "")))]  # (j: the item, agen_step)
     if is_set(s.t):
         return [self.set_value(s, j)]  # (elements past 64 bits, tuples of ints: bigints.py)
     if s.t == RANGEC:
@@ -2048,6 +2064,12 @@ def gen_seq_start(self, s: Val, mode: str, made: SeqStart) -> None:
     # the state of an iterator over sequence s (for_seq, in mode), as CPython's takes it when it
     # is made: a dict's or a set's size, and the slot it reads first; a list's or a str's
     # length, from which reversed() counts down (an iterator object keeps its own)
+    if is_agen(s.t):
+        if mode != "async":
+            self.err("'async_generator' object is not iterable: iterate it with async for")
+        made.st.append("")
+        made.used.append("")
+        return
     if is_set(s.t) and mode == "reversed":
         self.err(f"'{tname(s.t)}' object is not reversible")
     if is_gen(s.t) and mode == "reversed":

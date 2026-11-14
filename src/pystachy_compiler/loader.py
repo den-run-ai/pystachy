@@ -1195,6 +1195,8 @@ class Loader:
                 m.kinds[st.s] = "f" if k == "def" else "c"
                 if k == "subclass" and (len(st.kids) == 2 or st.kids[1].kind == "typeparams") and "__class_getitem__" not in top_bindings(st.kids[0].kids[0].kids):
                     m.cbases[st.s] = st.kids[1]
+                elif k == "subclass" and len(st.kids) == 3 and st.kids[2].kind == "index" and "__class_getitem__" not in top_bindings(st.kids[0].kids[0].kids):
+                    m.cbases[st.s] = st.kids[2]  # (class C(Base, Generic[T]): generic_class)
                 for x in st.kids[0].kids if k == "class" else st.kids[0].kids[0].kids if k == "subclass" else []:
                     if x.kind == "assign" and len(x.kids) == 2 and x.kids[0].kind == "name" and x.kids[0].s == "__class_getitem__":
                         v = x.kids[1]
@@ -1897,6 +1899,13 @@ class Loader:
         if base is None or base.kind != "index":
             return False
         g = base.kids[0]
+        if (g.kind == "name" and (m.kinds.get(g.s, "") == "c" or m.kinds.get(g.s, "").startswith("a:")) and g.s != name) or (g.kind == "attr" and g.kids[0].kind == "name" and m.kinds.get(g.kids[0].s, "").startswith("m:")):
+            # (class Task(Future[T]) of a generic class Future, which g names in class name's module)
+            dm = self.dm
+            self.dm = m
+            r = self.generic_class(g)
+            self.dm = dm
+            return r
         if g.kind == "name":
             k = m.kinds.get(g.s, "")
             return k == "b:typing.Generic" or k == "b:typing_extensions.Generic"
@@ -3382,6 +3391,8 @@ class Loader:
 
     def qexpr(self, m: Mod, n: Node, loc: dict[str, bool]) -> None:
         k = n.kind
+        if k == "name" and n.made and is_excname(n.s):
+            return  # (a builtin exception class that a lowering names, as async for's StopAsyncIteration)
         if k == "name" or k == "attr":
             if k == "name" and n.s == "__name__" and (m.name != "" or self.ext != "") and n.s not in loc:
                 if "__name__" in m.rebound:

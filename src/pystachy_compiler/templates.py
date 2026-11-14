@@ -17,9 +17,12 @@ from src.pystachy_compiler.specs import (
 from src.pystachy_compiler.syntax import Node, mentions, mk
 from src.pystachy_compiler.utils import (
     clone,
+    cret,
+    cyield,
     elem,
     gelem,
     is_callable,
+    is_coro,
     is_dict,
     is_gen,
     is_list,
@@ -110,6 +113,8 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
             s.tvars = self.bind(c, ts, given)  # (before its fields, which its type variables may type)
             if int_lists():
                 s.tvars = {x: promoted(s.tvars[x]) for x in s.tvars}  # (as above: an int that an item binds, list[T] of a list[int])
+        if c in self.gtagged:
+            self.gspec_link(s, t)  # (a class of a hierarchy: its tag, base and fields)
         if named:
             fi.ptypes = [name] + self.named_params(c, init.node)
         elif c in self.tparams:
@@ -200,6 +205,8 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
                 self.lib = False
                 g.mod = s.mod
                 s.methods[g.name] = g  # (x.setter: a property's setter)
+        if s.base in self.classes:
+            self.inherit(s)  # (the methods of its base that it does not define)
         s.hook = t.hook
         if c in self.cnts:
             self.dc_methods(s)  # (its __repr__)
@@ -225,6 +232,8 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
         self.specdone[doing] = name
         if canonical != "":
             self.specdone[canonical] = name
+        if c in self.gtagged and self.compiling:
+            self.gspec_late(c, ts, given, named, lits, doing)
         return name
     finally:
         for request in owned:
@@ -234,6 +243,105 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
         self.lib = lib
         while len(self.making) > depth:
             self.making.pop()
+
+
+def gen_gspec_link(self, s: ClassInfo, t: ClassInfo) -> None:
+    # specialization s of generic class t, whose objects are of a hierarchy (Gen.gtagged): its
+    # class tag, its base (t's ordinary base, or the specialization of t's generic base that s's
+    # type variables name, class Task(Future[T])), and the base's fields first (fl_fields lays out
+    # its flags after them, as for any subclass); without a base, its tag first
+    self.ntag += 1
+    s.tag = self.ntag
+    g = self.gbases.get(t.name, None)
+    if g is not None and g.kind == "index":
+        gc = g.kids[0].s
+        xs = g.kids[1].kids if g.kids[1].kind == "tuple" else [g.kids[1]]
+        given: dict[str, str] = {}
+        for i in range(len(xs)):
+            given[self.tparams[gc][i]] = self.ann(xs[i])
+        s.base = self.specialize(gc, [], given, True, {})
+    elif g is not None:
+        s.base = t.base
+    own = [x for x in s.fields]
+    s.fields = []
+    s.fpos = {}
+    if s.base in self.classes:
+        b = self.classes[s.base]
+        self.declare_fields(b)  # (an annotation may name the specialization before the base's own declaration)
+        fdefault: dict[str, Node] = {}
+        for x in t.fdefault:
+            fdefault[x] = t.fdefault[x]
+        for x in b.fields:
+            s.fpos[x] = len(s.fields)
+            s.fields.append(x)
+            s.ftypes[x] = b.ftypes[x]
+            if x in b.fdefault:
+                fdefault[x] = b.fdefault[x]
+        s.fdefault = fdefault
+    else:
+        s.fpos[" class"] = 0
+        s.fields.append(" class")
+        s.ftypes[" class"] = "int"
+    for x in own:
+        if x not in s.fpos:
+            s.fpos[x] = len(s.fields)
+            s.fields.append(x)
+
+
+def gen_gspec_late(self, c: str, ts: list[str], given: dict[str, str], named: bool, lits: dict[str, Node], doing: str) -> None:
+    # a specialization of generic class c of a hierarchy, made as code compiles: code compiled
+    # before it may have dispatched on its base's objects without it. The next pass makes it
+    # before any code compiles (a "gspec:" hint that gspec_replay replays, as Rejoin's joins)
+    key = "gspec:" + self.stable(doing)
+    if key in self.hints:
+        self.err(f"internal error: the specialization of {short(c)} that an earlier pass made late was not made again before code compiled (see gspec_replay)")
+    for x in ts + [given[k] for k in given]:
+        w = ""
+        for ch in x + " ":
+            if ch in "[](),| ;=~>*?":
+                if w in self.classes and self.classes[w].origin != "" and self.classes[w].origin not in self.gtagged:
+                    # (a specialization of a hierarchy's generic class is replayed before it: its
+                    # stable name, as gspec_replay reads it back)
+                    self.err(f"a specialization of {short(c)}, a generic class of a hierarchy, whose type arguments are other generic classes' specializations ({typestr(x)}) is not supported where it is first made in code (name it in an annotation that precedes that code)")
+                w = ""
+            else:
+                w += ch
+        if "fn[" in x:
+            self.err(f"a specialization of {short(c)}, a generic class of a hierarchy, for a function's type ({typestr(x)}) is not supported where it is first made in code")
+    if len(lits) > 0:
+        self.err(f"a specialization of {short(c)}, a generic class of a hierarchy, on literal arguments is not supported")
+    if self.final:
+        self.err(f"internal error: a specialization of {short(c)} made after code that dispatches on its base (see gspec_late)")
+    self.newhints[key] = "\x1e".join([c, "1" if named else "0", "\x1f".join([self.stable(t) for t in ts]), "\x1f".join([k + "=" + self.stable(given[k]) for k in given])])
+
+
+def gen_gspec_replay(self) -> None:
+    # the specializations of a hierarchy's generic classes that an earlier pass made as code
+    # compiled (gspec_late): made again before any code compiles, in the order they were found
+    for key in self.hints:
+        if not key.startswith("gspec:"):
+            continue
+        v = self.hints[key]
+        # (the specializations its types name, by the stable names gspec_late wrote, made by the
+        # replays before it: their names in this pass, the longest first)
+        names = [n for n in self.classes if self.classes[n].speckey != "" and self.classes[n].origin in self.gtagged]
+        stables = [self.stable(n) for n in names]
+        order: list[int] = []
+        for i in range(len(names)):
+            j = 0
+            while j < len(order) and len(stables[order[j]]) >= len(stables[i]):
+                j += 1
+            order.insert(j, i)
+        for i in order:
+            v = v.replace(stables[i], names[i])
+        parts = v.split("\x1e")
+        c = parts[0]
+        ts = parts[2].split("\x1f") if parts[2] != "" else []
+        given: dict[str, str] = {}
+        for kv in parts[3].split("\x1f") if parts[3] != "" else []:
+            given[kv[: kv.find("=")]] = kv[kv.find("=") + 1 :]
+        self.line = self.classes[c].node.line
+        self.specialize(c, ts, given, parts[1] == "1", {})
 
 
 def promoted(t: str) -> str:
@@ -261,11 +369,19 @@ def gen_bind(self, c: str, ts: list[str], given: dict[str, str]) -> dict[str, st
     init = self.classes[c].methods["__init__"].node  # (as specialize's: a template has its own)
     ps = init.kids[0].kids
     later: list[int] = []
+    nones: dict[str, int] = {}  # (a type variable that a direct None argument alone may bind: its parameter)
     for i in range(1, min(len(ps), len(ts) + 1)):
         a = ps[i].kids[0]
         if not self.names_tv(a, tvs):
             continue
         t = ts[i - 1]
+        u = self.parse_expr(a.s) if a.kind == "str" else a
+        if ps[i].kind == "param" and t == "None" and u.kind == "name" and u.s in tvs and u.s not in self.tvtuples:
+            # (None binds the variable only where no other argument does, below: Box(None) is a
+            # Box[None], as for a type checker; Pair(1, None) keeps its union fallback)
+            if u.s not in nones:
+                nones[u.s] = i
+            continue
         if ps[i].kind == "starparam":
             why = self.match_items([a] if a.kind == "starred" else [a] * len(targs(t)), targs(t), tv, tvs)  # (*args: *Ts, or *args: T)
         elif ps[i].kind == "dstarparam":
@@ -291,6 +407,12 @@ def gen_bind(self, c: str, ts: list[str], given: dict[str, str]) -> dict[str, st
             # (a private class, such as functools' cache wrapper, is not one a program names)
             hint = "" if short(c).startswith("_") else f"; or name them where the object goes (q: {short(c)}[{ints}] = {short(c)}(...)) or in the call ({short(c)}[{ints}](...))"
             self.err(f"{short(c)}() cannot bind its type variables from the argument for '{ps[i].s}', a {typestr(ts[i - 1])}: {self.match(a, ts[i - 1], dict(tv), tvs)}{hint}")
+    for x in nones:
+        if x in tv and tv[x] != "None":
+            i = nones[x]
+            self.err(f"{short(c)}() cannot bind its type variables from the argument for '{ps[i].s}', a None: '{short(x)}' would be None, which Pystachy binds no type variable to (a list or dict of None values has no type)")
+        if x not in tv and x not in given:
+            tv[x] = "None"
     for x in tvs:
         if x not in tv and x in given:
             tv[x] = given[x]
@@ -521,6 +643,15 @@ def gen_match(self, a: Node, t: str, tv: dict[str, str], tvs: list[str]) -> str:
         # (a generator, where the annotation is Iterable[T], Iterator[T] or Generator[T, S, R]:
         # what it yields binds T; the rest of Generator[...] binds nothing)
         return self.match(xs[0], gelem(t), tv, tvs)
+    if base == "coroutine" and is_coro(t) and len(xs) == 3:
+        # (a coroutine, where the annotation is Coroutine[Y, S, R]: what it yields binds Y, and what
+        # it returns R; nothing sends it another value than None)
+        why = self.match(xs[0], cyield(t), tv, tvs)
+        r = self.parse_expr(xs[2].s) if xs[2].kind == "str" else xs[2]
+        if why == "" and cret(t) == "None" and r.kind == "name" and r.s in tvs and r.s not in tv and r.s not in self.tvtuples:
+            tv[r.s] = "None"  # (a coroutine that returns None binds R to None, as Box(None) binds T: bind)
+            return ""
+        return why if why != "" else self.match(xs[2], cret(t), tv, tvs)
     if (base == "iterable" or base == "iterator") and len(xs) == 1:
         if t == "tuple[]":
             return ""  # (no items bind T; the context can still give it)
@@ -720,12 +851,15 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
                 # programs valid, but fix their consumed ABI before emitting a call.
                 # The first-return path refuses any later non-None inference.
                 g.ret = "None"
+            elif f.aio and not f.agen:
+                self.err(f"cannot infer what {short(f.name)}() returns: it awaits or calls itself before a return statement decides that; annotate its return type (async def {short(f.name)}(...) -> R)")
             elif f.gen:
-                self.err(f"cannot infer what {short(f.name)}() yields: it calls itself before its first yield; annotate its return type (-> Iterator[T])")
+                self.err(f"cannot infer what {short(f.name)}() yields: it calls itself before its first yield; annotate its return type (-> {'AsyncIterator' if f.agen else 'Iterator'}[T])")
             else:
                 self.err(f"cannot infer what {short(f.name)}() returns: it calls itself before a return statement does; annotate its return type")
         if g.ll in self.building:
             self.retseen[g.ll] = True  # (a return of None can no longer make it T | None)
+            g.ysure = True  # (a coroutine's Y is in the type this call gives: coroutines.py)
             if g.ll != self.curfn.ll:
                 self.dynseen[g.ll] = True  # (nor compiling it again change what it returns: dyn_again)
         f.lastikey = key
@@ -753,6 +887,10 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     g.orig = f.orig
     g.iters = f.iters
     g.gen = f.gen
+    g.aio = f.aio
+    g.agen = f.agen
+    g.awaitable = f.awaitable
+    g.direct = f.direct
     g.gret = f.gret
     g.gretinfer = f.gretinfer
     g.gsend = f.gsend
@@ -794,6 +932,8 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     g.clo = f.clo
     for x in nnp:
         g.nnp[x] = True
+    if g.aio:
+        self.coro_hinted(g)  # (Y from an earlier pass: coroutines.py)
     f.insts[key] = g
     self.template_instances += 1
     self.template_retained += size

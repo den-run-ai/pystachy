@@ -36,10 +36,13 @@ SDIST_DIR = "pyperformance-1.14.0/pyperformance/data-files/benchmarks/"
 # CPython 3.13 on an idle 2.1 GHz x86-64 core), and of a --smoke run (correctness only).
 # bench/pyperformance/NAME.py's main reads them; each starts with the number of loops.
 BENCHMARKS = {
+    "async_generators": (["3"], ["1", "100"]),
+    "async_tree": (["1", "none"], ["1", "all", "gather", "2", "0.001"]),
     "barnes_hut": (["1"], ["1", "5", "50"]),
     "bpe_tokeniser": (["1"], ["1", "260", "smoke"]),
     "chaos": (["10"], ["1", "200"]),
     "comprehensions": (["10000"], ["1"]),
+    "coroutines": (["50"], ["1", "10"]),
     "fannkuch": (["2"], ["1", "7"]),
     "float": (["10"], ["1", "1000"]),
     "generators": (["10"], ["1", "100"]),
@@ -193,15 +196,19 @@ CENSUS_CALLS = {
 
 
 # What pyperf times in each ported benchmark, which --census reads from the upstream main: the
-# function that runner.bench_func() calls, whose calls the port's main times in one loop; or the
+# function that runner.bench_func() calls, or whose coroutines runner.bench_async_func() runs,
+# whose calls the port's main times in one loop; or the
 # functions that time themselves for runner.bench_time_func(), each around one loop. The ports
 # keep those timers in place with time.perf_counter(), which is pyperf.perf_counter(), and add
 # their seconds to a list TIMED, whose sum the main prints.
 TIMED_PART = {
+    "async_generators": "bench_async_generators",
+    "async_tree": "run",
     "barnes_hut": ["bench_quadtree_nbody"],
     "bpe_tokeniser": ["bench_bpe_tokeniser"],
     "chaos": "create_image_chaos",
     "comprehensions": ["bench_comprehensions"],
+    "coroutines": ["bench_coroutines"],
     "fannkuch": "fannkuch",
     "float": "benchmark",
     "generators": ["bench_generators"],
@@ -293,7 +300,8 @@ def upstream_timed_part(text):
     """TIMED_PART's entry for an upstream file, and what keeps its timers from fitting the rule."""
     tree = ast.parse(text)
     targets = {ast.unparse(n.args[1]).split(".")[-1] for n in ast.walk(tree) if isinstance(n, ast.Call)
-               and isinstance(n.func, ast.Attribute) and n.func.attr == "bench_func" and len(n.args) > 1}
+               and isinstance(n.func, ast.Attribute) and n.func.attr in ("bench_func", "bench_async_func")
+               and len(n.args) > 1}
     own = timers(tree, "pyperf")
     problems = [f"{name}(): its timer is not around one loop" for name, (count, between) in sorted(own.items())
                 if count != 2 or len(between) != 1 or not isinstance(between[0], ast.For)]

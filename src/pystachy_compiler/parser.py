@@ -2,6 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import CPYSTACK, MAXNEST, TOODEEP, fail
 from src.pystachy_compiler.lexer import ESCAPES, Lexer, Tok, big_key, debug_text, string_end, utf8
+from src.pystachy_compiler.coroutines import async_first, desugar_async
 from src.pystachy_compiler.scope import Symtable
 from src.pystachy_compiler.patterns import lower_matches
 from src.pystachy_compiler.syntax import (
@@ -317,6 +318,7 @@ class Parser:
         st.tparams = self.tparams
         st.tpx = self.tpx
         st.check(body, doc)
+        desugar_async(body, False, [0])  # (async with and async for, once checked as CPython does)
         module = mk("block", "doc" if doc else "", 1, body)
         lower_matches(module, [0])
         return module  # (with its docstring: Loader.docstring())
@@ -1822,6 +1824,7 @@ class Parser:
                         gen = start(a)
                     fl = self.line()
                     a = self.comp(a, line)
+                    async_first(a)
                     a.s = "gen"
                     if cls and len(c.kids) == n and self.peek() == ")":
                         self.invalid(fl)  # (class C(x for x in y): only a call takes one)
@@ -1978,6 +1981,7 @@ class Parser:
             e = self.nitem()
             if self.compnext():
                 e = self.comp(e, line)
+                async_first(e)
                 e.s = "gen"
             elif self.peek() == ",":
                 e = mk("tuple", "", line, [e])
