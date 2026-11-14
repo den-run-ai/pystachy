@@ -266,6 +266,22 @@ Coverage: `dynany_native_int_list.py`, `dynany_native_int_list_callbacks.py`,
 `dynany_native_int_list_promote.py`, `lib_copy_native_any.py` and
 `lib_copy_native_any_promote.py`.
 
+### Class templates and generics
+
+`isinstance(value, Box)` accepts every specialization of the class template
+`Box`, as typed code does. This includes generic classes, imported aliases,
+tuples of classes and class unions. Unrelated classes with the same name remain
+distinct; `None` does not pass a template test.
+
+The test identifies the Python class, not a concrete field layout. The value
+stays dynamic after a successful test, and attribute access and methods dispatch
+using its actual specialization. One shared predicate per tested template is
+refreshed when dynamic dispatch discovers more boxed specializations. It reads
+descriptor metadata without unboxing the instance or instantiating an unused
+template. Concrete annotations still require their own compatible layout.
+
+Coverage: `tests/programs/generics/dynany_template_isinstance.py`.
+
 ### Other containers and fresh results
 
 Other mutable containers of typed items cannot become `Any` values. Reinterpreting

@@ -193,6 +193,14 @@ explicit role:
   accepts its own descriptor, those whose bases lead to it (subclasses share its
   layout) and those naming it as their secondary role. A function's or
   generator's read accepts its one descriptor. Other payload types are refused.
+  Before constructing the proof, the adapter also checks how the projection's
+  bits are consumed: `slot.unpack` must use the declared payload type, and only
+  an `int` payload may be used directly as an integer or copied unchanged into
+  the runtime's `box`/`ubox` slot argument. The internal address may
+  not escape, and other raw-slot transports are unsupported. Producer identity
+  comes from result numbers, not a consumer's operand annotation. This is a
+  structural check in the trusted Python bridge, not a Lean proof of runtime
+  layout or of `slot.unpack` lowering.
 - Guards come from tests of a box's tag: comparisons of its DynType with a
   descriptor; runtime.c's `pys_dyn_isa` and `pys_dyn_role_isa`, whose accepted
   descriptors the table determines (a class's subclasses and None, or both int
