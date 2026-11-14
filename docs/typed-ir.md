@@ -388,6 +388,10 @@ and with a generator operand that generator's. `gen.resume` runs a generator to 
 suspend and has every effect (user code); the exception passes make it an `invoke` like a
 call. `gen.drop` closes and destroys a generator a loop owns and never raises. The verifier
 checks their places, operands and metadata; lowering alone emits the `llvm.coro.*` calls.
+In identity-tracking code, scalar numeric yield channels pack a `dyn` box into the
+value slot and recover it through checked unboxing at consumers. This preserves
+object identity without changing promise size; isolated ordinary modules keep raw
+values. Identity-region crossing checks prevent mixing those representations.
 
 Each block ends with one terminator. Branch labels stay within the function, and phi
 predecessors must branch to their join. `switch` branches on an `int` to the label of the

@@ -35,7 +35,14 @@ from src.pystachy_compiler.specs import (
     exc_derives,
 )
 from src.pystachy_compiler.syntax import Node, comp_names, has_kind, made_var, mk, names_in
-from src.pystachy_compiler.utils import gelem, gsend, is_gen, is_list, typestr
+from src.pystachy_compiler.utils import gelem, gsend, is_gen, is_list, numeric_identity, typestr
+
+
+def boxed_yield(t: str, tracking: bool) -> bool:
+    # Numeric channels keep source objects in identity-tracking code. Typed
+    # generator handles cannot cross identity regions without recompilation
+    # (identity_call/global/field/box), so isolated ordinary modules stay raw.
+    return tracking and t in ["int", "float"]
 
 
 def with_yield(body: list[Node]) -> bool:
@@ -710,7 +717,10 @@ def gen_gen_keep(self, w: list[str], ys: str, yh: str) -> None:
 def gen_gen_slots(self, v: Val, y: str) -> list[str]:
     # v as the promise of a generator that yields y holds it: its slot, and where y is an int in
     # a program where a module opts in to promoting ints (int_program), its pointer (GENVALP; null
-    # where it fits, as every yield of an int writes it), else ""
+    # where it fits, as every yield of an int writes it), else "". Identity-tracking code
+    # carries a numeric object in the value slot instead; its box roots any wide payload.
+    if boxed_yield(y, self.idhere()):
+        return [self.to_slot(self.dyn_box(v)), "null" if y == "int" and int_program() else ""]
     if y != "int" or not int_program():
         return [self.to_slot(v), ""]
     if v.t == BIG:
@@ -743,7 +753,11 @@ def gen_gen_words(self, p: str, t: str, y: str, owned: Val | None = None) -> lis
         self.fn.tries.append(tr)
         self.handler = failed
         self.place(tr.body)
-    result = self.gen_slots(self.coerce(self.big(Val(s, "int"), hi) if hi != "" else self.from_slot(s, t), y), y)
+    if boxed_yield(t, self.idhere()):
+        value = self.dyn_unbox(self.from_slot(s, "dyn"), BIG if t == "int" and int_program() else t)
+    else:
+        value = self.big(Val(s, "int"), hi) if hi != "" else self.from_slot(s, t)
+    result = self.gen_slots(self.coerce(value, y), y)
     if failed != "" and owned is not None:
         self.handler = outer
         done = self.label()
@@ -760,6 +774,8 @@ def gen_gen_value(self, p: str, t: str) -> Val:
     # where a module opts in, the promoting int of its slot and pointer (GENVALP), narrowed in a
     # module that does not opt in but for lib's READ_HELPERS (bigints.read_policy, gen_value_type)
     s = self.mload("int", p)
+    if boxed_yield(t, self.idhere()):
+        return self.dyn_unbox(self.from_slot(s, "dyn"), self.gen_value_type(t))
     if t != "int" or not int_program():
         return self.from_slot(s, t)
     v = self.big(Val(s, "int"), self.mload("%ptr", self.maddr("int", p, str(GENVALP))))
@@ -988,15 +1004,22 @@ def gen_gen_unpack(self, t: Node, g: Val) -> None:
             items.append(Val("null", "None"))
         else:
             sl = self.alloca(self.gen_value_type(y), "")
-            self.mstore(self.gen_value_type(y), self.gen_value(p, y).v, sl)
-            items.append(Val(sl, self.gen_value_type(y)))
+            value = self.gen_value(p, y)
+            self.mstore(self.gen_value_type(y), value.v, sl)
+            saved = Val(sl, self.gen_value_type(y))
+            # The next resume may replace the promise; retain this item's box
+            # until every item has been read and target assignment begins.
+            saved.idfrom = value.idfrom
+            items.append(saved)
     self.place(few)
     k = self.to_str(Val(self.mload("int", got), "int"))
     msg = self.cat(self.cat(Val(self.sconst(f"not enough values to unpack (expected {n}, got "), "str"), k), Val(self.sconst(")"), "str"))
     self.raise_("ValueError", msg.v)
     self.place(ok)
     for i in range(n):
-        self.assign(t.kids[i], items[i] if y == "None" else Val(self.mload(items[i].t, items[i].v), items[i].t))
+        value = items[i] if y == "None" else Val(self.mload(items[i].t, items[i].v), items[i].t)
+        value.idfrom = items[i].idfrom
+        self.assign(t.kids[i], value)
 
 
 def gen_gen_contains(self, x: Val, g: Val) -> Val:
@@ -1045,6 +1068,9 @@ def gen_gen_next_value(self, g: Val, dflt: Val) -> Val:
         self.err(f"next() of a generator of {typestr(y)} with a default of {typestr(dflt.t)}: they need one type")
     if dflt.v != "":
         v = self.coerce(v, t)
+    # Payload phis alone lose the object selected by next(g, default).
+    keep = dflt.v != "" and self.idhere() and numeric_identity(t)
+    vb = self.dyn_box(v).v if keep else ""
     got = self.cur
     end = self.label()
     self.br(end)
@@ -1054,6 +1080,7 @@ def gen_gen_next_value(self, g: Val, dflt: Val) -> Val:
         self.place(end)
         return v
     d = self.coerce(dflt, t)
+    db = self.dyn_box(d).v if keep else ""
     dl = self.cur
     self.br(end)
     self.place(end)
@@ -1062,7 +1089,13 @@ def gen_gen_next_value(self, g: Val, dflt: Val) -> Val:
     ph = Ins("phi", t, "")
     self.incoming(ph, v.v, got)
     self.incoming(ph, d.v, dl)
-    return Val(self.phi(ph), t)
+    result = Val(self.phi(ph), t)
+    if keep:
+        boxes = Ins("phi", "dyn", "")
+        self.incoming(boxes, vb, got)
+        self.incoming(boxes, db, dl)
+        result.idfrom = self.phi(boxes)
+    return result
 
 
 def gen_gen_stop(self) -> None:
