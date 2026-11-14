@@ -190,6 +190,10 @@ class PrepareTests(unittest.TestCase):
             self.assertNotIn(("helper", name), self.items)
         self.assertNotIn("@counter", self.table)
 
+    def test_a_function_called_only_off_a_fast_path_is_not_copied(self):
+        runtime = RUNTIME.replace("@pys_fdiv(", "@pys_bytes_get(")
+        self.assertNotIn("@pys_bytes_get", jit_helpers.prepare(runtime))
+
     def test_the_module_of_every_item_verifies(self):
         tool = opt()
         if not tool:

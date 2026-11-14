@@ -29,6 +29,10 @@ BARRED = [" invoke ", "personality", "metadata ", " asm ", "@llvm.frameaddress",
           "@llvm.stackrestore", "@llvm.returnaddress", "@llvm.eh.", "@llvm.localescape", "blockaddress",
           "indirectbr", "musttail", "returns_twice", "thread_local", " callbr ", "@llvm.va_start",
           "@llvm.coro."]
+# functions the program calls only off an inline fast path of its own (listfast reads a bytes' byte
+# in line, and calls the runtime for an index past its end or negative): a copy would put that cold
+# path into each loop, which made json_loads' loop 5% slower
+COLD = ["@pys_bytes_get"]
 # the linkage, visibility and preemption words of a define line or a global's line
 LINKAGE = ["dso_local", "dso_preemptable", "internal", "private", "hidden", "protected", "external",
            "linkonce", "linkonce_odr", "weak", "weak_odr", "available_externally", "extern_weak", "common"]
@@ -306,7 +310,7 @@ def prepare(runtime: str) -> str:
     items: list[str] = []
     made: dict[str, bool] = {}
     for n in [f for f in funcs]:
-        if local[n] or not n.startswith("@pys_"):
+        if local[n] or not n.startswith("@pys_") or n in COLD:
             continue
         sig = signature(funcs[n][0])
         if sig == "" or size(funcs[n]) > MOST or barred(funcs[n]) or " noinline" in inline_attributes(funcs[n][0], groups):

@@ -487,7 +487,9 @@ call it keeps reaches the library's function). A copy brings private copies of t
 cold local functions it uses and declarations of the rest. Its attributes are written in line,
 its metadata dropped, and its struct types spelled as literal types. A function that reaches a
 local variable of the runtime (state a copy would split), a thread-local, the stack's or frame's
-address, an exception handler or a metadata operand is left out. The copies are kept beside the
+address, an exception handler or a metadata operand is left out, as is `pys_bytes_get`, which a
+program calls only off `listfast`'s inline read: its copy put that cold path into loops and made
+pyperformance's json_loads loop 5% slower. The copies are kept beside the
 runtime as `runtime-py-*.jit` (an empty file where there are none), after `opt` verifies them as
 one module. `jit_helpers.splice()` then replaces each declaration that a program's module holds
 of a copied function, when its signature matches, and adds what the copy needs. After the
