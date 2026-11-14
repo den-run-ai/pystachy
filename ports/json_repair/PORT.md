@@ -15,7 +15,7 @@ It is now upstream's source: 678 lines differ from 0.64.9, of which 208 are the
 [string scanner](#performance), 51 the [command](#file-and-pipe-command) and 116 the body of
 upstream's `cli()`, which is in [a module of its own](#imports) with two lines changed. Twelve
 modules differ only by their opt-in comments, and `utils/string_file_wrapper.py` not at all.
-The port adds one package, [a JSON Schema validator](#schema-guided-repair) of 1,003 lines, in
+The port adds one package, [a JSON Schema validator](#schema-guided-repair) of 1,091 lines, in
 place of the `jsonschema` package. Its behavior is upstream's; a difference that this page
 does not list is a bug.
 
@@ -77,8 +77,15 @@ before any repair, and an invalid one raises upstream's `Invalid schema: ...`.
 What the validator leaves out fails; nothing is accepted unchecked:
 
 - **References.** `$ref`, `$dynamicRef` and `$recursiveRef` resolve `#` and `#/...` pointers
-  into the root schema, also through the root's own `$id`. An anchor (`#name`), another
-  document, and a reference inside a subschema that has an `$id` of its own raise
+  into the root schema, also through the root's own `$id`. Draft 2019-09 and 2020-12 static
+  `$anchor` names (`#name`) also resolve within schemas without embedded resources, including
+  recursive schemas. An embedded `$id` may alias the root URI and shadow its anchors, so
+  anchor lookup rejects that scope until resource resolution is implemented.
+  Anchor discovery follows schema-valued keywords; values in `const`, `default`, `enum` and
+  other instance data cannot introduce anchors. Missing anchors report `NoSuchAnchor`, and
+  malformed pointer-like names report `InvalidAnchor`, as jsonschema does. Dynamic anchors,
+  legacy `id`/`$id` anchors, duplicate names, another document, and a reference inside a
+  subschema that has an `$id` of its own raise
   jsonschema's `_WrappedReferencingError` with `Unresolvable: REF`, where jsonschema may
   resolve them (it fetches remote schemas). Upstream's repair itself resolves only `#/...`.
 - **Draft 3.** A schema that declares it raises `Invalid schema: Draft 3 schemas are not supported.`

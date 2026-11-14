@@ -23,6 +23,14 @@ class PointerToNowhere(Unresolvable):
     """A JSON Pointer leads to a part of a document that does not exist."""
 
 
+class NoSuchAnchor(Unresolvable):
+    """An anchor does not exist within the referenced resource."""
+
+
+class InvalidAnchor(Unresolvable):
+    """A fragment is neither an anchor name nor a JSON Pointer."""
+
+
 class _RefResolutionError(Exception):
     """A ref could not be resolved."""
 

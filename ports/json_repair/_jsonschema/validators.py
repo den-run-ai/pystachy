@@ -8,8 +8,8 @@ which a schema's keywords are tried, and each message. A validator reports the f
 jsonschema's Validator.iter_errors() yields, which is all that json_repair reads.
 
 Left out, each failing with an exception and none silently accepted:
-- references other than "#" and "#/..." to the root schema (anchors, other documents, a
-  reference inside a subschema that has its own $id): _WrappedReferencingError;
+- references outside the root resource, legacy or dynamic anchors, and duplicate anchors:
+  _WrappedReferencingError;
 - draft 3: SchemaError from check_schema().
 A format is asserted only while a schema is checked against its metaschema, and only "regex",
 as with jsonschema installed alone.
@@ -20,7 +20,7 @@ import re
 from typing import Any
 
 from ._metaschemas import METASCHEMAS
-from .exceptions import PointerToNowhere, SchemaError, UnknownType, Unresolvable, ValidationError, _WrappedReferencingError
+from .exceptions import InvalidAnchor, NoSuchAnchor, PointerToNowhere, SchemaError, UnknownType, Unresolvable, ValidationError, _WrappedReferencingError
 
 LATEST = 2020
 _DRAFTS = {
@@ -177,6 +177,67 @@ def _has_id(schema: Any, draft: int) -> bool:
     return isinstance(name, str) and not name.startswith("#")
 
 
+def _anchor_schemas(schema: Any, name: str, draft: int) -> list[Any]:
+    """Find static anchors in this resource's schema positions, never in instance data.
+
+    None marks an unsupported legacy/dynamic anchor or embedded resource. An embedded $id
+    can alias the root URI and shadow its anchors, so reject rather than guess its scope.
+    Duplicate names are rejected rather than choosing a target by traversal order.
+    """
+    if not isinstance(schema, dict):
+        return []
+    draft = _draft_of(schema, draft)
+    found: list[Any] = []
+    if draft >= 2019 and schema.get("$anchor") == name:
+        found.append(schema)
+    if draft == 2020 and schema.get("$dynamicAnchor") == name:
+        found.append(None)
+    if draft < 2019 and "$ref" not in schema and schema.get("id" if draft == 4 else "$id") == "#" + name:
+        found.append(None)
+    children: list[Any] = []
+    for keyword, value in schema.items():
+        if keyword in ("not", "additionalProperties") or (keyword == "additionalItems" and draft < 2020):
+            children.append(value)
+        elif keyword in ("contains", "propertyNames") and draft >= 6:
+            children.append(value)
+        elif keyword in ("if", "then", "else") and draft >= 7:
+            children.append(value)
+        elif keyword in ("contentSchema", "unevaluatedItems", "unevaluatedProperties") and draft >= 2019:
+            children.append(value)
+        elif keyword == "items":
+            if isinstance(value, list) and draft < 2020:
+                children.extend(value)
+            else:
+                children.append(value)
+        elif keyword in ("allOf", "anyOf", "oneOf") or (keyword == "prefixItems" and draft == 2020):
+            if isinstance(value, list):
+                children.extend(value)
+        elif keyword == "dependencies" and draft < 2019:
+            # jsonschema's referencing dependency discovers this legacy map only when its
+            # first value is a schema, not a list of property dependencies.
+            first = True
+            schemas = False
+            if isinstance(value, dict):
+                for child in value.values():
+                    if first:
+                        schemas = isinstance(child, dict)
+                        first = False
+                    if schemas:
+                        children.append(child)
+        elif (keyword in ("definitions", "properties", "patternProperties")
+              or (keyword in ("$defs", "dependentSchemas") and draft >= 2019)):
+            if isinstance(value, dict):
+                for child in value.values():
+                    children.append(child)
+    for child in children:
+        if isinstance(child, dict):
+            if _has_id(child, _draft_of(child, draft)):
+                found.append(None)
+            else:
+                found.extend(_anchor_schemas(child, name, draft))
+    return found
+
+
 def _unquoted(text: str) -> str:
     # urllib.parse.unquote(): %XX is a byte of UTF-8, and what is no UTF-8 a replacement character
     if "%" not in text:
@@ -222,14 +283,15 @@ def _metaschema(draft: int) -> Any:
 
 
 class Validator:
-    def __init__(self, schema: Any, draft: int, root: Any, formats: bool = False) -> None:
+    def __init__(self, schema: Any, draft: int, root: Any, formats: bool = False, root_draft: int = 0) -> None:
         self.schema = schema
         self._draft = draft
         self._root = root
         self._formats = formats
+        self._root_draft = root_draft if root_draft else draft
 
     def evolve(self, schema: Any) -> "Validator":
-        return Validator(schema, _draft_of(schema, self._draft), self._root, self._formats)
+        return Validator(schema, _draft_of(schema, self._draft), self._root, self._formats, self._root_draft)
 
     def is_valid(self, instance: Any) -> bool:
         return not self._errors(instance, self.schema, self._draft, self._draft, False, False)
@@ -278,9 +340,9 @@ class Validator:
             raise AttributeError(f"{type(ref).__name__!r} object has no attribute 'startswith'")
         uri, _, fragment = ref.partition("#")
         root = self._root
-        local = not embedded and (not fragment or fragment.startswith("/"))
+        local = not embedded
         if local and uri:
-            name = root.get("id" if draft == 4 else "$id") if isinstance(root, dict) else None
+            name = root.get("id" if self._root_draft == 4 else "$id") if isinstance(root, dict) else None
             local = isinstance(name, str) and _normalized(name) == uri
         if not local:
             if wrapped:
@@ -288,6 +350,27 @@ class Validator:
             raise Unresolvable(ref)
         if not fragment:
             return root, False
+        if not fragment.startswith("/"):
+            # Static anchors belong to schema positions, not arbitrary dictionaries in e.g.
+            # const/default/enum. Keep resource and dynamic-scope extensions explicit.
+            anchors = _anchor_schemas(root, fragment, self._root_draft)
+            if len(anchors) == 1 and anchors[0] is not None:
+                return anchors[0], False
+            if anchors or self._root_draft < 2019:
+                if wrapped:
+                    raise _WrappedReferencingError(f"Unresolvable: {ref}")
+                raise Unresolvable(ref)
+            if "/" in fragment:
+                message = (f"'#{fragment}' is not a valid anchor, neither as a plain name anchor nor as a JSON Pointer. "
+                           f"You may have intended to use '#/{fragment}', as the slash is required *before each segment* "
+                           "of a JSON pointer.")
+                if wrapped:
+                    raise _WrappedReferencingError("InvalidAnchor: " + message)
+                raise InvalidAnchor(message)
+            message = f"{fragment!r} does not exist within {root!r}"
+            if wrapped:
+                raise _WrappedReferencingError("NoSuchAnchor: " + message)
+            raise NoSuchAnchor(message)
         contents = root
         for segment in _unquoted(fragment[1:]).split("/"):
             found = True

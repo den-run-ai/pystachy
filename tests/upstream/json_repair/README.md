@@ -156,7 +156,10 @@ oracle needs `jsonschema`, which upstream validates with and the port
   [the native regression](../../../tests/programs/apps/port_json_repair_schema.py) replays 182
   of the family's cases against upstream's outcomes (its `.in` file, written by `--record`),
   and [the validator's unit tests](../../../tools/test_json_repair_validator.py) hold it to
-  `jsonschema`'s answers for [97 hand-written cases](validator_answers.json) (`--answers`).
+  `jsonschema`'s answers for [123 hand-written cases](validator_answers.json) (`--answers`).
+  The 26 static-anchor cases also run as a dedicated native regression, including
+  schema-versus-instance positions, recursive anchors, error messages and mixed drafts.
+  Its additional cross-draft `evolve()` checks retain the root resource's dialect.
 - [metaschemas.py](metaschemas.py) regenerates the port's metaschemas from
   jsonschema-specifications 2025.9.1, whose files' hashes it pins.
 

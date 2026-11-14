@@ -109,7 +109,7 @@ def recorded() -> None:
 
 def left_out() -> None:
     nested: Any = {"type": "object", "properties": {"a": {"anyOf": [{"$ref": "#name"}, {"$ref": "other.json"}]}},
-                   "$defs": {"named": {"$anchor": "name", "type": "integer"}}}
+                   "$defs": {"named": {"$dynamicAnchor": "name", "type": "integer"}}}
     inside: Any = {"type": "object", "properties": {"a": {"$id": "https://example.com/a", "$defs": {"n": {"type": "integer"}},
                                                          "anyOf": [{"$ref": "#/$defs/n"}]}}}
     remote: Any = {"type": "object", "properties": {"a": {"not": {"$ref": "https://example.com/schema.json"}}}}
