@@ -1,0 +1,19 @@
+{
+  "scope": "Read-only review of frozen-evidence packaging integrity; not a compiler, Lean-model, or CI review",
+  "review_independent_of_packaging_implementation": true,
+  "conclusion": "Build path clean; standalone verify completion-flag parity finding resolved before packaging",
+  "reviewed_controls": [
+    "source SHA256, size and modes before and after copying",
+    "deterministic gzip and original/stored hashes",
+    "exact package membership",
+    "both canonical-report and strict-storage completion flags before atomic publication"
+  ],
+  "finding": {
+    "description": "Standalone verify originally checked immutable=true without requiring both complete stage flags",
+    "resolution": "Standalone verify now requires canonical_report_complete=true and strict_storage_complete=true before validating package files",
+    "status": "implemented; no source/compiler test added"
+  },
+  "script_path": "/workspace/scratch/1a96cd11db0d/research-lean-final-upload/package_final_lean.py",
+  "script_sha256_after_resolution": "899c338a15000c48e694fb9a8110a9c658d266558a2756f4563042830731018f",
+  "captured_utc": "2026-11-14T23:44:18.004490+00:00"
+}

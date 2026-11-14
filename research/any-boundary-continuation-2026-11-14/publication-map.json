@@ -41,9 +41,14 @@
       "local": "2df26bde21451abb89cc487f57b0a5531c655b8d",
       "remote": "adf5a12a147649d01018dd49c8167610812ada00",
       "tree": "30d991ebec23d92140381b4cd6fe6892a31b5a2b"
+    },
+    {
+      "local": "3b03fed2a0d97eb1c1465262d576e18555218299",
+      "remote": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+      "tree": "3960ae03b0cacfeaa71b8b2c32ced798562fc68b"
     }
   ],
-  "qualification_checkpoint": {
+  "historical_checkpoint": {
     "status": "incomplete_provisional_recovery_checkpoint",
     "completed_qualification": false,
     "source_commit": "2df26bde21451abb89cc487f57b0a5531c655b8d",
@@ -77,6 +82,27 @@
     "history_preserved": true,
     "live_report_files_excluded": true,
     "reproducible_elf_files_excluded": true,
-    "runtime_caches_excluded": true
+    "runtime_caches_excluded": true,
+    "published_commit": "cb7c93b77456e0c39f2a2e449c6c1cdd9dfdda0e"
+  },
+  "final_qualification": {
+    "status": "all_local_gates_and_ci_passed_lint_retry_pending",
+    "pr": 1495,
+    "public_final_head": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+    "local_final_head": "3b03fed2a0d97eb1c1465262d576e18555218299",
+    "final_tree": "3960ae03b0cacfeaa71b8b2c32ced798562fc68b",
+    "compiler_source_local": "2df26bde21451abb89cc487f57b0a5531c655b8d",
+    "compiler_source_public": "adf5a12a147649d01018dd49c8167610812ada00",
+    "only_change_after_compiler_validation": "tools/lean_boundary/REPORT.md",
+    "canonical_lean_programs": 2612,
+    "canonical_lean_execution_errors": 0,
+    "strict_storage_programs": 182,
+    "strict_storage_obligations_proved": 18658,
+    "ci": "passed",
+    "lint": "attempt1_cancelled_retry_pending",
+    "submission_format": "passed",
+    "ci_run": 43654295644,
+    "lint_run": 43654295641,
+    "cancelled_lint_job": 132629324385
   }
 }

@@ -1,0 +1,73 @@
+{
+  "source_commit": "2df26bde21451abb89cc487f57b0a5531c655b8d",
+  "source_tree": "30d991ebec23d92140381b4cd6fe6892a31b5a2b",
+  "source_worktree": "/workspace/scratch/1a96cd11db0d/lean-report-qa",
+  "git_status": "",
+  "generator_sha256": "d75289514bef26f297ae2af68abca254e3502966e2e29d1431ba983a92bea583",
+  "lean_inputs": {
+    "tools/lean_boundary/AccessMain.lean": "06f42513ae8284b6b90783897612ebf3a2117665f03b624909628d4bd36dcc74",
+    "tools/lean_boundary/AliasMain.lean": "9c5c9a6a0bec5ada87bd9594713a57b4d077355b5e82d43556ac68f45c173e2c",
+    "tools/lean_boundary/Audit.lean": "370ee9b9b48e0771c5da2a71ea7a9bf23e079f581741da678c27636eb6434549",
+    "tools/lean_boundary/CompanionMain.lean": "83bdba5487544a624f4aea813d85806a83191443f14655ca8f8a12f3c472d941",
+    "tools/lean_boundary/GuardAudit.lean": "4a137b6fd9cc25db92ac13fae0f527f9092d9ddc185ae04eb0d7408394970104",
+    "tools/lean_boundary/IntMain.lean": "40bb8c9d30b45831cf8730bc50bfbb67999f1ac3aa46db721854a060e92f655f",
+    "tools/lean_boundary/Main.lean": "80d0ac9c3d4b153fafa24d9b8d646efe7179b39802ffe8428be0367ca6d047e8",
+    "tools/lean_boundary/PystachyAccess.lean": "24cee1df8f6dd6a3eb81d137a756b2999f3459a73cf99cf4fdc545555c61ee52",
+    "tools/lean_boundary/PystachyAlias.lean": "54b2bdc0ea3768ef63ba0dd467cf0b436ec8ccaf92785980f0802707591335c1",
+    "tools/lean_boundary/PystachyBoundary.lean": "a75ab725937fff9e85f958f31e2eb8814e2c5cb5244be7e55f47f305af994557",
+    "tools/lean_boundary/PystachyCompanion.lean": "bcde7810b27b6c00d575eaf50e8afa7437c5cfee36fb18e4d7827a3ab77f5c30",
+    "tools/lean_boundary/PystachyGuards.lean": "a6ffd64fa68fb393d8fb4636b4e4a15048b3631d77581692fa8f50d408ed21df",
+    "tools/lean_boundary/PystachyInline.lean": "3452c0c156d5a23910a0e3771e36ed0b3f78cd9a45cec6cac53da0e4d0fa4ffa",
+    "tools/lean_boundary/PystachyInt.lean": "44d00d41efcbb051dfb4a783c3383868710f5e7970d4707007a3db8ec59e4eb3",
+    "tools/lean_boundary/PystachyLayout.lean": "a4a459be5fb56698c7821c3689a8ab077753af5a66e2bfb6ccf52481c27cc81d",
+    "tools/lean_boundary/PystachyStorage.lean": "23af7fa006700ffc9f3fc35ca24a07508010abcdc099fe3a44a7bbac247e8a95",
+    "tools/lean_boundary/lake-manifest.json": "8200a2b2581274238a8638d33ca21a97aa4889d328ad96c56907d044bcd86b77",
+    "tools/lean_boundary/lakefile.toml": "83ee0585367c3f40fd310b23d43a92c3af2289b2a3c8ef4382cdd34f6d9f2743",
+    "tools/lean_boundary/lean-toolchain": "ca5f1f601d34c49079e38d7e7041eb0f2a9c227fbc1df0f404820069a052330c"
+  },
+  "executables": {
+    "pystachy-boundary": {
+      "path": "/workspace/scratch/1a96cd11db0d/lean-report-qa/tools/lean_boundary/.lake/build/bin/pystachy-boundary",
+      "sha256": "8222c75f7e7780efd48b1d12175139a3f0ea378e2882f4c4f3e0011235674c76"
+    },
+    "pystachy-access": {
+      "path": "/workspace/scratch/1a96cd11db0d/lean-report-qa/tools/lean_boundary/.lake/build/bin/pystachy-access",
+      "sha256": "614d42998c1b49867ce8d3505140a2e1fb2ee91b00d969577e09aba1970ae9c0"
+    },
+    "pystachy-int": {
+      "path": "/workspace/scratch/1a96cd11db0d/lean-report-qa/tools/lean_boundary/.lake/build/bin/pystachy-int",
+      "sha256": "0720d6d555ec4e93f6336d3150c599367e1982c1769b1152ac1f5bc846232003"
+    },
+    "pystachy-alias": {
+      "path": "/workspace/scratch/1a96cd11db0d/lean-report-qa/tools/lean_boundary/.lake/build/bin/pystachy-alias",
+      "sha256": "59487b8ce1c4663d1574a0ed107f27204c7587afdcf6109d0f5a370fcc5e834f"
+    },
+    "pystachy-companion": {
+      "path": "/workspace/scratch/1a96cd11db0d/lean-report-qa/tools/lean_boundary/.lake/build/bin/pystachy-companion",
+      "sha256": "bb34d321bc9097256145553cf90d800c10d6c98094f98cff8bdb12eedb1e3783"
+    }
+  },
+  "build_provenance": {
+    "copied_from": "/workspace/scratch/1a96cd11db0d/lean-qa",
+    "build_source_commit": "40dfd158f09dfa0e4f19a51d33c4893b434b57ae",
+    "all_lean_inputs_byte_identical": true
+  },
+  "python": "3.13.16",
+  "python_executable": "/workspace/scratch/c2b093657c17/dev-venv/bin/python",
+  "python_executable_sha256": "6e9b7d27499f26dbec3c8687728f3a0500b9b61688664f03678242744567c461",
+  "host_platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "sys_platform": "linux",
+  "llvm_version": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+  "lean_version": "Lean (version 4.35.0, x86_64-unknown-linux-gnu, commit eb6cafb7290e8bd5f2937522d8d804f58f02bafc, Release)",
+  "lake_version": "Lake version 5.0.0-src+eb6cafb (Lean version 4.35.0)",
+  "jobs": 2,
+  "start_method": "spawn",
+  "start_utc": "2026-11-14T22:37:28.818807+00:00",
+  "environment": {
+    "PATH": "/workspace/scratch/c2b093657c17/dev-venv/bin:/workspace/scratch/c2b093657c17/toolchains/llvm18/payload/usr/lib/llvm-18/bin:/workspace/scratch/c2b093657c17/toolchains/lean-4.35.0-linux/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "PYSTACHY_LLVM": "/workspace/scratch/c2b093657c17/toolchains/llvm18/payload/usr/lib/llvm-18/bin",
+    "PYSTACHY_JOBS": "2",
+    "LEAN_BOUNDARY_REQUIRED": "1",
+    "LD_LIBRARY_PATH": "/workspace/scratch/c2b093657c17/toolchains/llvm18/payload/usr/lib/llvm-18/lib"
+  }
+}

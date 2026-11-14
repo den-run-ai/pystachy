@@ -1,0 +1,93 @@
+{
+  "verification_kind": "Artifact accounting only; no compiler or Lean checks rerun",
+  "frozen_manifest_sha256": "2707a2e9031d656db037cdf77089a678bc9478e506f5c42469da3004e785ab3b",
+  "canonical_inventory": {
+    "count": 2612,
+    "sha256": "e943ce02e791aecc589f9d46a92cef7f84ac9cbdbac6aa64bda2de4285b1b202"
+  },
+  "canonical_programs_unique": true,
+  "canonical_execution_errors": 0,
+  "canonical_rows_recomputed_from_full_ledger": [
+    {
+      "check": "Dynamic payload reads",
+      "programs": 293,
+      "functions": 1171,
+      "obligations": 2618,
+      "proved": 2618
+    },
+    {
+      "check": "Unchecked list and dict accesses",
+      "programs": 1237,
+      "functions": 16230,
+      "obligations": 86194,
+      "proved": 86194
+    },
+    {
+      "check": "Removed null checks",
+      "programs": 944,
+      "functions": 13240,
+      "obligations": 136443,
+      "proved": 136424
+    },
+    {
+      "check": "Closed-union reads",
+      "programs": 277,
+      "functions": 2216,
+      "obligations": 6951,
+      "proved": 6636
+    },
+    {
+      "check": "Union payload bits",
+      "programs": 336,
+      "functions": 1719,
+      "obligations": 13536,
+      "proved": 13287
+    },
+    {
+      "check": "Field initialization",
+      "programs": 1440,
+      "functions": 17396,
+      "obligations": 162517,
+      "proved": 162280
+    },
+    {
+      "check": "Collector scanning",
+      "programs": 1696,
+      "functions": 26488,
+      "obligations": 192007,
+      "proved": 191632
+    },
+    {
+      "check": "Promoting-int fit claims",
+      "programs": 29,
+      "functions": 36,
+      "obligations": 187,
+      "proved": 187
+    },
+    {
+      "check": "Promoting-int inline arithmetic",
+      "programs": 134,
+      "functions": 354,
+      "obligations": 1698,
+      "proved": 1698
+    },
+    {
+      "check": "Promoting-int storage",
+      "programs": 169,
+      "functions": 1733,
+      "obligations": 18658,
+      "proved": 18658
+    }
+  ],
+  "strict_storage_inventory": {
+    "count": 182,
+    "sha256": "8070fab0a61c2e061e11bd0aa76aff4ba3fb6162786352006913d7597febc3be"
+  },
+  "strict_selection_matches_canonical_promoting_inventory": true,
+  "strict_all_182_programs_accepted": true,
+  "strict_totals_recomputed_from_full_program_results": true,
+  "all_frozen_files_match_owner_inventory": true,
+  "report_bytes_match_both_frozen_paths": true,
+  "report_sha256": "d61511b4aba450ee2e01f981bb65f1644b373b7fd92ea3eebe0c9a58e71f6522",
+  "captured_utc": "2026-11-14T23:46:04.663071+00:00"
+}

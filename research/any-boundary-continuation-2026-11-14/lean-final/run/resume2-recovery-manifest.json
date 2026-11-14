@@ -1,0 +1,76 @@
+{
+  "source_commit": "2df26bde21451abb89cc487f57b0a5531c655b8d",
+  "interrupted_owned_session": 51349,
+  "session_exit_code": 130,
+  "reason": "Root authorized full-scope official retry of exactly two compiler children killed with signal9; exact cause unknown.",
+  "checkpoint": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/whole.resume2.jsonl",
+  "checkpoint_sha256": "1d04f82c9b3687e3e5f2cd4e79454f9ec7127f1ac3a015f2f762cda34150f51f",
+  "original_header_preserved_byte_for_byte": true,
+  "retained_successful_records": 1753,
+  "retained_every_successful_record_byte_for_byte": true,
+  "removed_only_execution_failure_records": [
+    {
+      "line": 1640,
+      "program": "tests/programs/library/lib_argparse_required.py",
+      "sha256": "f95d1ae18b7b8487411e04a4dddce9101dc163a4df6de173db57a03e56c99936",
+      "record": {
+        "error": "inspection error: the compilation exited -9 without a report",
+        "program": "tests/programs/library/lib_argparse_required.py",
+        "seconds": 5.6
+      }
+    },
+    {
+      "line": 1754,
+      "program": "tests/programs/library/lib_logging_config.py",
+      "sha256": "081b9fea784dc92475ecccb9321b52dc75bd591104ae0980d0bafb1b038bb181",
+      "record": {
+        "error": "inspection error: the compilation exited -9 without a report",
+        "program": "tests/programs/library/lib_logging_config.py",
+        "seconds": 14.8
+      }
+    }
+  ],
+  "incomplete_tail_preserved_for_official_repair": null,
+  "ordinary_unproved_or_unsupported_records_retained": true,
+  "selected_scope_retry_record_not_inserted": true,
+  "next_command_uses": "make lean-report; --resume --jobs 1 --start-method spawn; original 300s inspection timeout",
+  "preserved_evidence": {
+    "whole.jsonl": {
+      "path": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/whole.jsonl",
+      "sha256": "7bf7bcbee34d73d11ad19ce4255f73865ce32d356b3c2699f9785bc6e867cfa4",
+      "size": 1505212
+    },
+    "whole-report-resume1.log": {
+      "path": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/whole-report-resume1.log",
+      "sha256": "d713dc1ad70de874e36ea2049927133d94b19a6a3a0912d76308b0355c8765d3",
+      "size": 28253
+    },
+    "run-status.resume1-interrupted.json": {
+      "path": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/run-status.resume1-interrupted.json",
+      "sha256": "00c5478af5e0271ebd4b0eb1d8259730f1d4de628d4fca0ccb0d451ec0ea65a4",
+      "size": 818
+    },
+    "results.pre-resume2.json": {
+      "path": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/results.pre-resume2.json",
+      "sha256": "f3c7729c9bd68b25b57650bbf2c444dd1ead42db20c2d01fd216e939ba5230c6",
+      "size": 564
+    },
+    "argparse-required-replay.jsonl": {
+      "path": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/argparse-required-replay.jsonl",
+      "sha256": "02346fc2cd09474409b0b15080bc7d2cdbba8f738bc677634fe1e051fe00a602",
+      "size": 2169
+    },
+    "argparse-required-replay.log": {
+      "path": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/argparse-required-replay.log",
+      "sha256": "3e68691669e9d0447e8ed101440a6787786b839ad18c4194185d1f2f499ba797",
+      "size": 1094
+    },
+    "argparse-required-replay-status.json": {
+      "path": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/argparse-required-replay-status.json",
+      "sha256": "f3709f6f660a127f170bf4363f431262d99760c56e1b35fc7e85488c354083b0",
+      "size": 503
+    }
+  },
+  "git_status": "",
+  "time_utc": "2026-11-14T23:04:13.510942+00:00"
+}

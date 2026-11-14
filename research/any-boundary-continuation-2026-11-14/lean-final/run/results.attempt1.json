@@ -1,0 +1,15 @@
+[
+  {
+    "stage": "whole-report",
+    "command": [
+      "make",
+      "lean-report",
+      "PY=/workspace/scratch/c2b093657c17/dev-venv/bin/python",
+      "LEAN_REPORT_FLAGS=--jobs 2 --start-method spawn --progress --records /workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/whole.jsonl"
+    ],
+    "returncode": 2,
+    "elapsed_seconds": 810.1562795639038,
+    "log": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/whole-report.log",
+    "log_sha256": "35141381411b15c3bd033f241334d3a131714a34685faec8c3cd5116adaa900d"
+  }
+]

@@ -1,0 +1,197 @@
+{
+  "comparison": "Previously committed REPORT versus newly generated complete canonical REPORT; no checks rerun",
+  "previous_container_commit": "2df26bde21451abb89cc487f57b0a5531c655b8d",
+  "previous_report_sha256": "551428fc8a1f6c89a5ac7f19c6f36493275cc050cd5a260adecc82fbc0e37d97",
+  "final_report_commit": "9e23abd6cb5e20881ef730b5836a986bb723e93b",
+  "final_report_sha256": "d61511b4aba450ee2e01f981bb65f1644b373b7fd92ea3eebe0c9a58e71f6522",
+  "compared_unchanged_fields": [
+    "unproved_obligations",
+    "rejected_functions",
+    "unsupported_functions"
+  ],
+  "all_unproved_totals_and_function_counts_unchanged": true,
+  "previous_rows": {
+    "Dynamic payload reads": {
+      "programs": 282,
+      "functions": 1156,
+      "proved": 2583,
+      "obligations": 2583,
+      "unproved_obligations": 0,
+      "rejected_functions": 0,
+      "unsupported_functions": 0
+    },
+    "Unchecked list and dict accesses": {
+      "programs": 1206,
+      "functions": 16154,
+      "proved": 86097,
+      "obligations": 86097,
+      "unproved_obligations": 0,
+      "rejected_functions": 0,
+      "unsupported_functions": 0
+    },
+    "Removed null checks": {
+      "programs": 889,
+      "functions": 13072,
+      "proved": 136103,
+      "obligations": 136122,
+      "unproved_obligations": 19,
+      "rejected_functions": 4,
+      "unsupported_functions": 0
+    },
+    "Closed-union reads": {
+      "programs": 276,
+      "functions": 2213,
+      "proved": 6633,
+      "obligations": 6948,
+      "unproved_obligations": 315,
+      "rejected_functions": 31,
+      "unsupported_functions": 7
+    },
+    "Union payload bits": {
+      "programs": 335,
+      "functions": 1716,
+      "proved": 13283,
+      "obligations": 13532,
+      "unproved_obligations": 249,
+      "rejected_functions": null,
+      "unsupported_functions": null
+    },
+    "Field initialization": {
+      "programs": 1359,
+      "functions": 16988,
+      "proved": 160916,
+      "obligations": 161153,
+      "unproved_obligations": 237,
+      "rejected_functions": 1,
+      "unsupported_functions": 13
+    },
+    "Collector scanning": {
+      "programs": 1640,
+      "functions": 26177,
+      "proved": 190312,
+      "obligations": 190687,
+      "unproved_obligations": 375,
+      "rejected_functions": 37,
+      "unsupported_functions": 3
+    },
+    "Promoting-int fit claims": {
+      "programs": 29,
+      "functions": 36,
+      "proved": 187,
+      "obligations": 187,
+      "unproved_obligations": 0,
+      "rejected_functions": 0,
+      "unsupported_functions": 0
+    },
+    "Promoting-int inline arithmetic": {
+      "programs": 131,
+      "functions": 351,
+      "proved": 1692,
+      "obligations": 1692,
+      "unproved_obligations": 0,
+      "rejected_functions": 0,
+      "unsupported_functions": 0
+    },
+    "Promoting-int storage": {
+      "programs": 161,
+      "functions": 1697,
+      "proved": 18563,
+      "obligations": 18563,
+      "unproved_obligations": 0,
+      "rejected_functions": 0,
+      "unsupported_functions": 0
+    }
+  },
+  "final_rows": {
+    "Dynamic payload reads": {
+      "programs": 293,
+      "functions": 1171,
+      "proved": 2618,
+      "obligations": 2618,
+      "unproved_obligations": 0,
+      "rejected_functions": 0,
+      "unsupported_functions": 0
+    },
+    "Unchecked list and dict accesses": {
+      "programs": 1237,
+      "functions": 16230,
+      "proved": 86194,
+      "obligations": 86194,
+      "unproved_obligations": 0,
+      "rejected_functions": 0,
+      "unsupported_functions": 0
+    },
+    "Removed null checks": {
+      "programs": 944,
+      "functions": 13240,
+      "proved": 136424,
+      "obligations": 136443,
+      "unproved_obligations": 19,
+      "rejected_functions": 4,
+      "unsupported_functions": 0
+    },
+    "Closed-union reads": {
+      "programs": 277,
+      "functions": 2216,
+      "proved": 6636,
+      "obligations": 6951,
+      "unproved_obligations": 315,
+      "rejected_functions": 31,
+      "unsupported_functions": 7
+    },
+    "Union payload bits": {
+      "programs": 336,
+      "functions": 1719,
+      "proved": 13287,
+      "obligations": 13536,
+      "unproved_obligations": 249,
+      "rejected_functions": null,
+      "unsupported_functions": null
+    },
+    "Field initialization": {
+      "programs": 1440,
+      "functions": 17396,
+      "proved": 162280,
+      "obligations": 162517,
+      "unproved_obligations": 237,
+      "rejected_functions": 1,
+      "unsupported_functions": 13
+    },
+    "Collector scanning": {
+      "programs": 1696,
+      "functions": 26488,
+      "proved": 191632,
+      "obligations": 192007,
+      "unproved_obligations": 375,
+      "rejected_functions": 37,
+      "unsupported_functions": 3
+    },
+    "Promoting-int fit claims": {
+      "programs": 29,
+      "functions": 36,
+      "proved": 187,
+      "obligations": 187,
+      "unproved_obligations": 0,
+      "rejected_functions": 0,
+      "unsupported_functions": 0
+    },
+    "Promoting-int inline arithmetic": {
+      "programs": 134,
+      "functions": 354,
+      "proved": 1698,
+      "obligations": 1698,
+      "unproved_obligations": 0,
+      "rejected_functions": 0,
+      "unsupported_functions": 0
+    },
+    "Promoting-int storage": {
+      "programs": 169,
+      "functions": 1733,
+      "proved": 18658,
+      "obligations": 18658,
+      "unproved_obligations": 0,
+      "rejected_functions": 0,
+      "unsupported_functions": 0
+    }
+  }
+}

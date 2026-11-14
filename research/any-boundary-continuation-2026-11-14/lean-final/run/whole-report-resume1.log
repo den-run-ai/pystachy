@@ -1,0 +1,432 @@
+cd tools/lean_boundary && lake build
+ℹ [20/44] Replayed GuardAudit
+info: GuardAudit.lean:6:0: PystachyGuards.removed_check_nonnull: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: GuardAudit.lean:6:0: PystachyGuards.union_member_matches: axiom audit passed ([propext, Quot.sound])
+info: GuardAudit.lean:6:0: PystachyGuards.union_read_nonnull: axiom audit passed ([propext, Quot.sound])
+info: GuardAudit.lean:6:0: PystachyGuards.field_assigned: axiom audit passed ([propext, Quot.sound])
+ℹ [22/44] Replayed Audit
+info: Audit.lean:16:0: PystachyBoundary.check_iff: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyLayout.checked_projection: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyLayout.accepted_layout_projection: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyAlias.accepted_reference_roundtrip: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyAlias.accepted_alias_write: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyAlias.accepted_traces_reference: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyAlias.accepted_root_chain: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyCompanion.accepted_identity_roundtrip: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyCompanion.accepted_traces_identity: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyCompanion.accepted_root_chain: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyCompanion.accepted_boxed_root_chain: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyCompanion.accepted_copy_identity: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyCompanion.accepted_copy_traces_identity: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyCompanion.accepted_copied_root_chain: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyBoundary.reachable_facts: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyBoundary.accepted_payload_safe: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyAccess.reachable_invariant: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyAccess.accepted_access_safe: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyAccess.writeField_step: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyAccess.accepted_write_progress: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInt.known_fits: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInt.mod_fits: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInt.floordiv_fits: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyInt.shr_fits: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInt.shl_exact: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInt.bitwise_fits: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInt.and_mask: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInline.no_overflow_exact: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInline.no_overflow_fits: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyInline.accepted_arithmetic_exact: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.low_of_fit: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.promoting_decode: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyStorage.plain_view_safe: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.plain_marker_has_no_tail: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyStorage.null_digits_narrow: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.slot_fits_iff: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyStorage.pair_truth_zero: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.layout_has_tail: axiom audit passed ([])
+info: Audit.lean:16:0: PystachyStorage.accepted_low_word: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.accepted_plain_view: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.accepted_tail_read: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.accepted_narrowing: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.accepted_slot_narrowing: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.accepted_optional_slot_narrowing: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.accepted_stack_copy: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.erase_read_move_iff: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyStorage.projected_reachable: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyStorage.accepted_projected_payload: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:52:0: 'PystachyBoundary.accepted_payload_safe' depends on axioms: [propext, Quot.sound]
+info: Audit.lean:53:0: 'PystachyAccess.accepted_access_safe' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Audit.lean:54:0: 'PystachyInt.known_fits' depends on axioms: [propext, Quot.sound]
+Build completed successfully (44 jobs).
+/workspace/scratch/c2b093657c17/dev-venv/bin/python tools/lean_report.py --jobs 2 --start-method spawn --resume --progress --records /workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/whole.jsonl
+1384/2612 tests/programs/inference/recursive_alias_quoted.py 0.4s
+1385/2612 tests/programs/inference/recursive_alias_mutation.py 0.4s
+1386/2612 tests/programs/inference/reference_union_calls.py 0.2s
+1387/2612 tests/programs/inference/recursive_alias_values.py 0.2s
+1388/2612 tests/programs/inference/reference_union_four.py 0.1s
+1389/2612 tests/programs/inference/reference_union_inheritance.py 0.2s
+1390/2612 tests/programs/inference/reference_union_overlap.py 0.1s
+1391/2612 tests/programs/inference/reference_union_storage.py 0.2s
+1392/2612 tests/programs/inference/retype.py 0.1s
+1393/2612 tests/programs/inference/reference_union_streams.py 0.3s
+1394/2612 tests/programs/inference/scalar_union_arithmetic_order.py 0.2s
+1395/2612 tests/programs/inference/scalar_union_boolean_operand.py 0.2s
+1396/2612 tests/programs/inference/scalar_union_arithmetic.py 0.5s
+1397/2612 tests/programs/inference/scalar_union_chained_optional.py 0.1s
+1398/2612 tests/programs/inference/scalar_union_conditional_mixed.py 0.1s
+1399/2612 tests/programs/inference/scalar_union_config_events.py 0.2s
+1400/2612 tests/programs/inference/scalar_union_conditional_operand.py 0.4s
+1401/2612 tests/programs/inference/scalar_union_edges.py 0.2s
+1402/2612 tests/programs/inference/scalar_union_masked_operand.py 0.1s
+1403/2612 tests/programs/inference/scalar_union_mutation_and_loops.py 0.2s
+1404/2612 tests/programs/inference/scalar_union_operand_any.py 0.4s
+1405/2612 tests/programs/inference/scalar_union_operand_pair.py 0.2s
+1406/2612 tests/programs/inference/scalar_union_operand_mixed.py 0.5s
+1407/2612 tests/programs/inference/scalar_union_optional_narrowing.py 0.1s
+1408/2612 tests/programs/inference/scalar_union_order.py 0.1s
+1409/2612 tests/programs/inference/scalar_union_operations.py 0.3s
+1410/2612 tests/programs/inference/scalar_union_storage.py 0.1s
+1411/2612 tests/programs/inference/scalar_union_search.py 0.2s
+1412/2612 tests/programs/inference/typed_ir_numeric.py 0.2s
+1413/2612 tests/programs/inference/typed_ir_slots.py 0.2s
+1414/2612 tests/programs/inference/union_class_descriptor_fields.py 0.1s
+1415/2612 tests/programs/inference/union_empty_tuple_desc.py 0.1s
+1416/2612 tests/programs/inference/union_nested_class_desc.py 0.1s
+1417/2612 tests/programs/inference/union_order.py 0.2s
+1418/2612 tests/programs/inference/union_slots.py 0.3s
+1419/2612 tests/programs/inference/union_unbound_payload.py 0.1s
+1420/2612 tests/programs/io/bfile_basic.py 1.7s
+1421/2612 tests/programs/inference/union_sum.py 2.0s
+1422/2612 tests/programs/io/bfile_fifo_raw.py 0.2s
+1423/2612 tests/programs/io/bfile_method_open.py 0.3s
+1424/2612 tests/programs/io/bfile_errors.py 2.3s
+1425/2612 tests/programs/io/bfile_open_dead.py 0.1s
+1426/2612 tests/programs/io/bfile_modes.py 1.8s
+1427/2612 tests/programs/io/bfile_read_error.py 0.5s
+1428/2612 tests/programs/io/bfile_readlines_hint.py 0.5s
+1429/2612 tests/programs/io/bfile_temp.py 0.8s
+1430/2612 tests/programs/io/bfile_stdio_sync.py 1.1s
+1431/2612 tests/programs/io/bfile_temp_escape.py 0.5s
+1432/2612 tests/programs/io/file_bad_mode.py 0.1s
+1433/2612 tests/programs/io/file_closed_read.py 0.0s
+1434/2612 tests/programs/io/file_is_dir.py 0.0s
+1435/2612 tests/programs/io/file_missing.py 0.0s
+1436/2612 tests/programs/io/file_not_readable.py 0.1s
+1437/2612 tests/programs/io/file_not_writable.py 0.0s
+1438/2612 tests/programs/io/file_nul_open.py 0.0s
+1439/2612 tests/programs/io/bfile_truncate_read.py 0.7s
+1440/2612 tests/programs/io/file_nul_path.py 0.0s
+1441/2612 tests/programs/io/file_read_error.py 0.1s
+1442/2612 tests/programs/io/files_stdin.py 0.1s
+1443/2612 tests/programs/io/io_and_exit.py 0.1s
+1444/2612 tests/programs/io/io_buffering.py 0.1s
+1445/2612 tests/programs/io/files.py 0.3s
+1446/2612 tests/programs/io/io_close_pipe.py 0.1s
+1447/2612 tests/programs/io/io_close_temp_full.py 0.1s
+1448/2612 tests/programs/io/io_dropped_buffers.py 0.1s
+1449/2612 tests/programs/io/io_eof_grows.py 0.1s
+1450/2612 tests/programs/io/io_encoding_names.py 0.1s
+1451/2612 tests/programs/io/io_exit_full.py 0.0s
+1452/2612 tests/programs/io/io_input_closed_stderr.py 0.1s
+1453/2612 tests/programs/io/io_input_closed_stdin.py 0.1s
+1454/2612 tests/programs/io/io_input_closed_stdout.py 0.1s
+1455/2612 tests/programs/io/io_input_full.py 0.0s
+1456/2612 tests/programs/io/io_keyboard_interrupt.py 0.1s
+1457/2612 tests/programs/io/io_keyboard_interrupt_full.py 0.0s
+1458/2612 tests/programs/io/io_latin1_codepoints.py 0.1s
+1459/2612 tests/programs/io/io_latin1_unencodable.py 0.0s
+1460/2612 tests/programs/io/io_latin1_unencodable_with.py 0.0s
+1461/2612 tests/programs/io/io_latin1_read.py 0.1s
+1462/2612 tests/programs/io/io_open_newline_first.py 0.0s
+1463/2612 tests/programs/io/io_open_nul_encoding.py 0.0s
+1464/2612 tests/programs/io/io_print_file_temp.py 0.0s
+1465/2612 tests/programs/io/io_latin1_write.py 0.2s
+1466/2612 tests/programs/io/io_read_chunks.py 0.3s
+1467/2612 tests/programs/io/io_readline_chunks.py 0.3s
+1468/2612 tests/programs/io/io_rplus_cr_chunk.py 0.2s
+1469/2612 tests/programs/io/io_sigint.py 0.2s
+1470/2612 tests/programs/io/io_sigint_fifo.py 0.1s
+1471/2612 tests/programs/io/io_stdout_bigflush_full.py 0.1s
+1472/2612 tests/programs/io/io_stdout_close_full.py 0.0s
+1473/2612 tests/programs/io/io_stdout_closed_input.py 0.1s
+1474/2612 tests/programs/io/io_stdout_dropped_full.py 0.0s
+1475/2612 tests/programs/io/io_stdout_exit_full.py 0.0s
+1476/2612 tests/programs/io/io_stdout_flush_full.py 0.1s
+1477/2612 tests/programs/io/io_stdout_system.py 0.0s
+1478/2612 tests/programs/io/io_unbuffered_isdir.py 0.0s
+1479/2612 tests/programs/io/io_unbuffered_missing.py 0.0s
+1480/2612 tests/programs/io/io_unbuffered_newline.py 0.0s
+1481/2612 tests/programs/io/io_unbuffered_mode.py 0.0s
+1482/2612 tests/programs/io/io_write_count_after.py 0.0s
+1483/2612 tests/programs/io/io_utf8_write_count.py 0.1s
+1484/2612 tests/programs/io/io_write_count_nested.py 0.0s
+1485/2612 tests/programs/io/io_write_count_template.py 0.1s
+1486/2612 tests/programs/io/os_inheritable.py 0.1s
+1487/2612 tests/programs/io/os_makedirs.py 0.2s
+1488/2612 tests/programs/io/os_getcwd.py 0.3s
+1489/2612 tests/programs/io/os_makedirs_mode.py 0.1s
+1490/2612 tests/programs/io/path_join_format.py 0.1s
+1491/2612 tests/programs/io/pathlike_str.py 0.1s
+1492/2612 tests/programs/io/print_order.py 0.0s
+1493/2612 tests/programs/io/realpath.py 0.1s
+1494/2612 tests/programs/io/print_file_object.py 0.2s
+1495/2612 tests/programs/io/symlink_main.py 0.0s
+1496/2612 tests/programs/language/break_dels.py 0.0s
+1497/2612 tests/programs/language/bindings.py 0.1s
+1498/2612 tests/programs/language/break_exits.py 0.1s
+1499/2612 tests/programs/language/builtin_callable_shadow_guard.py 0.1s
+1500/2612 tests/programs/language/builtin_callable.py 0.1s
+1501/2612 tests/programs/language/builtin_hash.py 0.2s
+1502/2612 tests/programs/language/closure_import_scopes.py 0.1s
+1503/2612 tests/programs/language/closure_paths.py 0.1s
+1504/2612 tests/programs/language/closures.py 0.2s
+1505/2612 tests/programs/language/closures_mod.py 0.1s
+1506/2612 tests/programs/language/closures_more.py 0.4s
+1507/2612 tests/programs/language/closures_scopes.py 0.3s
+1508/2612 tests/programs/language/cond_none_exit.py 0.1s
+1509/2612 tests/programs/language/control.py 0.2s
+1510/2612 tests/programs/language/debug_name.py 0.1s
+1511/2612 tests/programs/language/decorator_names.py 0.2s
+1512/2612 tests/programs/language/decorators.py 0.2s
+1513/2612 tests/programs/language/decorators_mod.py 0.1s
+1514/2612 tests/programs/language/builtin_reduce_stream.py 3.9s
+1515/2612 tests/programs/language/deep_lambdas_main.py 2.6s
+1516/2612 tests/programs/language/defaults.py 0.2s
+1517/2612 tests/programs/language/del_global.py 0.1s
+1518/2612 tests/programs/language/del_in_loop.py 0.1s
+1519/2612 tests/programs/language/del_index_error.py 0.1s
+1520/2612 tests/programs/language/del_local_shadow.py 0.1s
+1521/2612 tests/programs/language/del_names.py 0.1s
+1522/2612 tests/programs/language/edge.py 0.3s
+1523/2612 tests/programs/language/ellipsis_stmt.py 0.1s
+1524/2612 tests/programs/language/else_del_global.py 0.1s
+1525/2612 tests/programs/language/else_dels.py 0.1s
+1526/2612 tests/programs/language/environment_mutation.py 0.4s
+1527/2612 tests/programs/language/exec_signal.py 0.1s
+1528/2612 tests/programs/language/ffi_own.py 0.1s
+1529/2612 tests/programs/language/file_descriptor_inheritance.py 0.3s
+1530/2612 tests/programs/language/flow_locals.py 0.2s
+1531/2612 tests/programs/language/flow_locals_deferred_read.py 0.1s
+1532/2612 tests/programs/language/flow_locals_del.py 0.0s
+1533/2612 tests/programs/language/fn_value_before_def.py 0.0s
+1534/2612 tests/programs/language/fn_value_global_later.py 0.0s
+1535/2612 tests/programs/language/fn_values.py 0.2s
+1536/2612 tests/programs/language/fn_values_mod.py 0.1s
+1537/2612 tests/programs/language/global_containers.py 0.1s
+1538/2612 tests/programs/language/global_set_before_binding.py 0.0s
+1539/2612 tests/programs/language/guarded_callback_bindings.py 0.1s
+1540/2612 tests/programs/language/guarded_callback_effects.py 0.1s
+1541/2612 tests/programs/language/guarded_callback_recursion.py 0.1s
+1542/2612 tests/programs/language/deep_nesting.py 3.7s
+1543/2612 tests/programs/language/guarded_callback_writes.py 0.1s
+1544/2612 tests/programs/language/ifexp_none_statement.py 0.1s
+1545/2612 tests/programs/language/kwargs.py 0.2s
+1546/2612 tests/programs/language/interpreter.py 0.5s
+1547/2612 tests/programs/language/lambda_global_later.py 0.1s
+1548/2612 tests/programs/language/kwargs_empty_items.py 0.4s
+1549/2612 tests/programs/language/loop_else_unbound.py 0.1s
+1550/2612 tests/programs/language/loop_else.py 0.1s
+1551/2612 tests/programs/language/match_binding.py 0.1s
+1552/2612 tests/programs/language/loops_mutation.py 0.2s
+1553/2612 tests/programs/language/match_capture_staging.py 0.2s
+1554/2612 tests/programs/language/match_condition_order.py 0.2s
+1555/2612 tests/programs/language/match_dataclasses.py 0.2s
+1556/2612 tests/programs/language/match_exceptions.py 0.1s
+1557/2612 tests/programs/language/match_large_hex.py 0.1s
+1558/2612 tests/programs/language/match_nested_dataclasses.py 0.1s
+1559/2612 tests/programs/language/match_literals.py 0.1s
+1560/2612 tests/programs/language/match_none_value.py 0.1s
+1561/2612 tests/programs/language/match_tuples.py 0.1s
+1562/2612 tests/programs/language/name_error_shims.py 0.1s
+1563/2612 tests/programs/language/match_python_int.py 0.3s
+1564/2612 tests/programs/language/nested_blocks.py 0.1s
+1565/2612 tests/programs/language/name_error_shims_bound.py 0.1s
+1566/2612 tests/programs/language/nested_scopes.py 0.1s
+1567/2612 tests/programs/language/parse_more.py 0.1s
+1568/2612 tests/programs/language/recursion_callable_frames.py 0.1s
+1569/2612 tests/programs/language/recursion_closed.py 0.2s
+1570/2612 tests/programs/language/recursion_counted_boundary.py 0.2s
+1571/2612 tests/programs/language/recursion_limit.py 0.1s
+1572/2612 tests/programs/language/recursion_guard.py 0.3s
+1573/2612 tests/programs/language/recursion_set_limit.py 0.1s
+1574/2612 tests/programs/language/recursion_limits.py 0.2s
+1575/2612 tests/programs/language/recursion_stack_floor.py 0.2s
+1576/2612 tests/programs/language/return_annotated_parameters.py 0.1s
+1577/2612 tests/programs/language/recursion_virtual_frames.py 0.3s
+1578/2612 tests/programs/language/return_no_arguments.py 0.2s
+1579/2612 tests/programs/language/return_no_arguments_none_recursion.py 0.1s
+1580/2612 tests/programs/language/return_none_call.py 0.1s
+1581/2612 tests/programs/language/return_no_arguments_void_recursion.py 0.1s
+1582/2612 tests/programs/language/return_special_unannotated.py 0.1s
+1583/2612 tests/programs/language/shadow_builtins.py 0.1s
+1584/2612 tests/programs/language/return_optional_class.py 0.2s
+1585/2612 tests/programs/language/system_nul.py 0.1s
+1586/2612 tests/programs/language/twice_imported.py 0.1s
+1587/2612 tests/programs/language/unbound.py 0.1s
+1588/2612 tests/programs/language/varargs_stack.py 0.7s
+1589/2612 tests/programs/language/summary_worklist.py 8.9s
+1590/2612 tests/programs/language/walrus_evaluation_order.py 0.2s
+1591/2612 tests/programs/language/walrus_mod.py 0.1s
+1592/2612 tests/programs/language/walrus_retype.py 0.0s
+1593/2612 tests/programs/language/walrus_true_branch.py 0.2s
+1594/2612 tests/programs/language/walrus_unbound.py 0.1s
+1595/2612 tests/programs/language/with_closed_file.py 0.0s
+1596/2612 tests/programs/language/with_cm.py 0.8s
+1597/2612 tests/programs/language/with_enter_close_fails.py 0.1s
+1598/2612 tests/programs/language/with_exit_close_fails.py 0.0s
+1599/2612 tests/programs/language/with_exit_close_ok.py 0.0s
+1600/2612 tests/programs/language/with_files.py 0.1s
+1601/2612 tests/programs/language/with_nested_exit_close_fails.py 0.0s
+1602/2612 tests/programs/language/with_nested_exit_order.py 0.0s
+1603/2612 tests/programs/language/with_parenthesized.py 0.0s
+1604/2612 tests/programs/language/with_raise_close_fails.py 0.0s
+1605/2612 tests/programs/library/builtins_iterables.py 0.1s
+1606/2612 tests/programs/library/collections_abc_module.py 0.3s
+1607/2612 tests/programs/library/contextlib_suppress_value.py 0.3s
+1608/2612 tests/programs/library/heapq_c_semantics.py 0.5s
+1609/2612 tests/programs/library/json_bulk_scan.py 1.2s
+1610/2612 tests/programs/library/json_char_offsets.py 1.1s
+1611/2612 tests/programs/library/json_decoder_override.py 0.3s
+1612/2612 tests/programs/library/json_decoder_override_base.py 1.6s
+1613/2612 tests/programs/library/json_delimiters.py 1.0s
+1614/2612 tests/programs/library/json_depth.py 1.0s
+1615/2612 tests/programs/library/json_encoder_strings.py 0.5s
+1616/2612 tests/programs/library/json_errors.py 0.7s
+1617/2612 tests/programs/library/json_long_text.py 0.9s
+1618/2612 tests/programs/library/json_mutation.py 1.0s
+1619/2612 tests/programs/library/json_raw_decode.py 1.0s
+1620/2612 tests/programs/library/json_roundtrip.py 1.1s
+1621/2612 tests/programs/library/json_scanner.py 1.0s
+1622/2612 tests/programs/language/walrus.py 23.6s
+1623/2612 tests/programs/library/lib_abc.py 0.2s
+1624/2612 tests/programs/library/json_unicode.py 0.9s
+1625/2612 tests/programs/library/lib_argparse_choice_error.py 10.6s
+1626/2612 tests/programs/library/lib_argparse_argv.py 11.0s
+1627/2612 tests/programs/library/lib_argparse_conversion.py 13.4s
+1628/2612 tests/programs/library/lib_argparse_conversion_order.py 14.5s
+1629/2612 tests/programs/library/lib_argparse_dormant.py 6.3s
+1630/2612 tests/programs/library/lib_argparse_dest.py 11.2s
+1631/2612 tests/programs/library/lib_argparse_equal_schemas.py 11.9s
+1632/2612 tests/programs/library/lib_argparse_help.py 10.8s
+1633/2612 tests/programs/library/lib_argparse_missing_value.py 12.0s
+1634/2612 tests/programs/library/lib_argparse_namespace.py 12.3s
+1635/2612 tests/programs/library/lib_argparse_nargs.py 10.6s
+1636/2612 tests/programs/library/lib_argparse_numeric_choices.py 11.1s
+1637/2612 tests/programs/library/lib_argparse_python_int_eq.py 85.0s
+1638/2612 tests/programs/library/lib_argparse_python_int.py 88.7s
+1639/2612 tests/programs/library/lib_argparse_required.py 5.6s
+1640/2612 tests/programs/library/lib_argparse_schema_builtin_names.py 14.9s
+1641/2612 tests/programs/library/lib_argparse_scopes.py 10.1s
+1642/2612 tests/programs/library/lib_argparse_schema_numeric_choices.py 27.7s
+1643/2612 tests/programs/library/lib_argparse_shadow.py 14.1s
+1644/2612 tests/programs/library/lib_argparse_token_abbrev.py 16.6s
+1645/2612 tests/programs/library/lib_argparse_token_unicode.py 15.1s
+1646/2612 tests/programs/library/lib_argparse_type_error.py 6.7s
+1647/2612 tests/programs/library/lib_argparse_unknown.py 11.2s
+1648/2612 tests/programs/library/lib_atexit.py 0.2s
+1649/2612 tests/programs/library/lib_atexit_exit.py 0.1s
+1650/2612 tests/programs/library/lib_atexit_uncaught.py 0.1s
+1651/2612 tests/programs/library/lib_binascii.py 1.3s
+1652/2612 tests/programs/library/lib_bisect.py 0.3s
+1653/2612 tests/programs/library/lib_bisect_key.py 0.4s
+1654/2612 tests/programs/library/lib_argparse_version.py 11.7s
+1655/2612 tests/programs/library/lib_codecs.py 1.4s
+1656/2612 tests/programs/library/lib_collections_constructors.py 0.9s
+1657/2612 tests/programs/library/lib_collections.py 2.4s
+1658/2612 tests/programs/library/lib_collections_counter.py 4.7s
+1659/2612 tests/programs/library/lib_collections_mutation.py 0.8s
+1660/2612 tests/programs/library/lib_collections_defaultdict.py 5.3s
+1661/2612 tests/programs/library/lib_collections_namedtuple.py 1.5s
+1662/2612 tests/programs/library/lib_collections_namedtuple_methods.py 1.2s
+1663/2612 tests/programs/library/lib_collections_namedtuple_mod.py 0.5s
+1664/2612 tests/programs/library/lib_collections_namedtuple_replace.py 0.4s
+1665/2612 tests/programs/library/lib_collections_operands.py 3.1s
+1666/2612 tests/programs/library/lib_collections_ordereddict.py 4.2s
+1667/2612 tests/programs/library/lib_collections_reinit.py 1.4s
+1668/2612 tests/programs/library/lib_colorsys.py 0.3s
+1669/2612 tests/programs/library/lib_collections_reversed.py 1.0s
+1670/2612 tests/programs/library/lib_copy.py 2.0s
+1671/2612 tests/programs/library/lib_copy_any.py 0.4s
+1672/2612 tests/programs/library/lib_copy_deep_grow.py 0.2s
+1673/2612 tests/programs/library/lib_copy_deep_live.py 0.4s
+1674/2612 tests/programs/library/lib_copy_deep_set_hook.py 0.2s
+1675/2612 tests/programs/library/lib_copy_deep_slots.py 0.2s
+1676/2612 tests/programs/library/lib_copy_deep_tuple_key.py 0.4s
+1677/2612 tests/programs/library/lib_copy_deepcopy_base.py 0.2s
+1678/2612 tests/programs/library/lib_copy_identity.py 0.2s
+1679/2612 tests/programs/library/lib_copy_native_any.py 0.4s
+1680/2612 tests/programs/library/lib_copy_native_any_promote.py 0.8s
+1681/2612 tests/programs/library/lib_contextlib.py 6.2s
+1682/2612 tests/programs/library/lib_curses_ascii.py 0.3s
+1683/2612 tests/programs/library/lib_datetime_date.py 7.4s
+1684/2612 tests/programs/library/lib_datetime_datetime.py 6.7s
+1685/2612 tests/programs/library/lib_datetime_dict_key.py 1.7s
+1686/2612 tests/programs/library/lib_datetime_hash.py 2.1s
+1687/2612 tests/programs/library/lib_datetime_time.py 4.5s
+1688/2612 tests/programs/library/lib_csv.py 23.7s
+1689/2612 tests/programs/library/lib_datetime_timedelta.py 5.0s
+1690/2612 tests/programs/library/lib_difflib_grouped.py 6.7s
+1691/2612 tests/programs/library/lib_difflib.py 12.8s
+1692/2612 tests/programs/library/lib_enum.py 2.4s
+1693/2612 tests/programs/library/lib_enum_any.py 1.3s
+1694/2612 tests/programs/library/lib_enum_base_lookup.py 0.8s
+1695/2612 tests/programs/library/lib_difflib_unified.py 6.6s
+1696/2612 tests/programs/library/lib_enum_flag.py 1.2s
+1697/2612 tests/programs/library/lib_enum_flag_numeric_lookup.py 1.2s
+1698/2612 tests/programs/library/lib_enum_flag_bits.py 2.1s
+1699/2612 tests/programs/library/lib_enum_format_str.py 1.0s
+1700/2612 tests/programs/library/lib_enum_flag_width.py 1.7s
+1701/2612 tests/programs/library/lib_enum_import.py 0.7s
+1702/2612 tests/programs/library/lib_enum_missing.py 0.4s
+1703/2612 tests/programs/library/lib_enum_mixin.py 0.7s
+1704/2612 tests/programs/library/lib_enum_intflag.py 1.2s
+1705/2612 tests/programs/library/lib_enum_reflected.py 0.3s
+1706/2612 tests/programs/library/lib_enum_values.py 0.6s
+1707/2612 tests/programs/library/lib_enum_plain_isinstance.py 1.1s
+1708/2612 tests/programs/library/lib_flag_base_lookup.py 0.8s
+1709/2612 tests/programs/library/lib_fnmatch.py 11.3s
+1710/2612 tests/programs/library/lib_fnmatch_raw_bytes.py 10.7s
+1711/2612 tests/programs/library/lib_functools.py 7.9s
+1712/2612 tests/programs/library/lib_functools_cache_object.py 1.0s
+1713/2612 tests/programs/library/lib_fnmatch_unicode_ranges.py 11.5s
+1714/2612 tests/programs/library/lib_functools_cmp_to_key.py 0.8s
+1715/2612 tests/programs/library/lib_functools_calls.py 4.3s
+1716/2612 tests/programs/library/lib_functools_mod.py 1.2s
+1717/2612 tests/programs/library/lib_functools_reduce.py 0.8s
+1718/2612 tests/programs/library/lib_functools_partial.py 0.9s
+1719/2612 tests/programs/library/lib_functools_wraps.py 0.2s
+1720/2612 tests/programs/library/lib_getopt.py 0.6s
+1721/2612 tests/programs/library/lib_gettext.py 8.2s
+1722/2612 tests/programs/library/lib_heapq.py 1.3s
+1723/2612 tests/programs/library/lib_glob.py 14.4s
+1724/2612 tests/programs/library/lib_heapq_topk.py 7.6s
+1725/2612 tests/programs/library/lib_html.py 17.8s
+1726/2612 tests/programs/library/lib_html_entities.py 18.9s
+1727/2612 tests/programs/library/lib_html_parser.py 16.2s
+1728/2612 tests/programs/library/lib_io.py 1.8s
+1729/2612 tests/programs/library/lib_html_parser_positions.py 15.4s
+1730/2612 tests/programs/library/lib_io_cmodule.py 0.9s
+1731/2612 tests/programs/library/lib_io_codepoints.py 0.4s
+1732/2612 tests/programs/library/lib_io_newline_decoder.py 0.7s
+1733/2612 tests/programs/library/lib_io_bytesio.py 6.9s
+1734/2612 tests/programs/library/lib_io_textiowrapper_bytesio.py 1.4s
+1735/2612 tests/programs/library/lib_io_textiowrapper_newlines_none.py 0.5s
+1736/2612 tests/programs/library/lib_io_textiowrapper_unreadable.py 0.5s
+1737/2612 tests/programs/library/lib_io_textiowrapper.py 6.8s
+1738/2612 tests/programs/library/lib_io_type_module.py 0.6s
+1739/2612 tests/programs/library/lib_itertools_argtypes.py 1.3s
+1740/2612 tests/programs/library/lib_itertools_gc.py 2.0s
+1741/2612 tests/programs/library/lib_itertools_combinatoric.py 5.1s
+1742/2612 tests/programs/library/lib_itertools_generators.py 2.7s
+1743/2612 tests/programs/library/lib_itertools_infinite.py 1.9s
+1744/2612 tests/programs/library/lib_itertools_islice.py 1.2s
+1745/2612 tests/programs/library/lib_itertools_groupby.py 4.1s
+1746/2612 tests/programs/library/lib_itertools_module.py 1.2s
+1747/2612 tests/programs/library/lib_itertools_tee.py 1.6s
+1748/2612 tests/programs/library/lib_itertools_range.py 5.5s
+1749/2612 tests/programs/library/lib_itertools_zip_longest.py 1.7s
+1750/2612 tests/programs/library/lib_itertools_zip_longest_fillvalue.py 0.8s
+1751/2612 tests/programs/library/lib_keyword.py 0.2s
+1752/2612 tests/programs/library/lib_itertools_terminating.py 5.9s
+1753/2612 tests/programs/library/lib_logging_config.py 14.8s
+1754/2612 tests/programs/library/lib_logging_int_min.py 53.9s
+1755/2612 tests/programs/library/lib_logging.py 68.8s

@@ -1,0 +1,8 @@
+usage: pystachy run FILE.py [ARGS...]   JIT-compile and run (LLVM ORC)
+       pystachy build FILE.py [-o EXE]  compile ahead of time to a native executable
+                    [--emit-ir RAW.ll] retain raw IR after a successful build
+       pystachy ext NAME.py [-o NAME.abi3.so]  compile to a CPython extension module (abi3, CPython 3.12+)
+       pystachy ir FILE.py [-o OUT.ll]  emit LLVM IR
+       pystachy check FILE.py           only parse it, with the checks CPython makes before running it
+       pystachy rt runtime.py [-o OUT.ll] emit the LLVM IR of the runtime's part written in the subset
+       pystachy --version               show version and source commit

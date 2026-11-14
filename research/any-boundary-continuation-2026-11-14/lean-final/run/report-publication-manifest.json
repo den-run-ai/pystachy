@@ -1,0 +1,123 @@
+{
+  "source_commit": "2df26bde21451abb89cc487f57b0a5531c655b8d",
+  "report_commit": "9e23abd6cb5e20881ef730b5836a986bb723e93b",
+  "publication_clone": "/workspace/scratch/1a96cd11db0d/lean-report-publish",
+  "publication_branch": "codex/lean-report-publication",
+  "changed_files": [
+    "tools/lean_boundary/REPORT.md"
+  ],
+  "report_path": "/workspace/scratch/1a96cd11db0d/lean-report-publish/tools/lean_boundary/REPORT.md",
+  "qa_report_path": "/workspace/scratch/1a96cd11db0d/lean-report-qa/tools/lean_boundary/REPORT.md",
+  "report_sha256": "d61511b4aba450ee2e01f981bb65f1644b373b7fd92ea3eebe0c9a58e71f6522",
+  "canonical_make_exit": 0,
+  "canonical_status_exit": 0,
+  "publication_status_before_commit_exit": 0,
+  "publication_status_after_commit_exit": 0,
+  "publication_worktree_clean": true,
+  "strict_qa_head_unchanged": true,
+  "strict_storage_state": "running; not included in canonical completion claim",
+  "canonical_programs": 2612,
+  "promoting_selection": 182,
+  "completed_inspection_or_checker_errors": 0,
+  "rows": [
+    {
+      "check": "Dynamic payload reads",
+      "programs": 293,
+      "functions": 1171,
+      "proved": 2618,
+      "obligations": 2618,
+      "rejected_functions": 0,
+      "unsupported_functions": 0
+    },
+    {
+      "check": "Unchecked list and dict accesses",
+      "programs": 1237,
+      "functions": 16230,
+      "proved": 86194,
+      "obligations": 86194,
+      "rejected_functions": 0,
+      "unsupported_functions": 0
+    },
+    {
+      "check": "Removed null checks",
+      "programs": 944,
+      "functions": 13240,
+      "proved": 136424,
+      "obligations": 136443,
+      "rejected_functions": 4,
+      "unsupported_functions": 0
+    },
+    {
+      "check": "Closed-union reads",
+      "programs": 277,
+      "functions": 2216,
+      "proved": 6636,
+      "obligations": 6951,
+      "rejected_functions": 31,
+      "unsupported_functions": 7
+    },
+    {
+      "check": "Union payload bits",
+      "programs": 336,
+      "functions": 1719,
+      "proved": 13287,
+      "obligations": 13536,
+      "rejected_functions": null,
+      "unsupported_functions": null
+    },
+    {
+      "check": "Field initialization",
+      "programs": 1440,
+      "functions": 17396,
+      "proved": 162280,
+      "obligations": 162517,
+      "rejected_functions": 1,
+      "unsupported_functions": 13
+    },
+    {
+      "check": "Collector scanning",
+      "programs": 1696,
+      "functions": 26488,
+      "proved": 191632,
+      "obligations": 192007,
+      "rejected_functions": 37,
+      "unsupported_functions": 3
+    },
+    {
+      "check": "Promoting-int fit claims",
+      "programs": 29,
+      "functions": 36,
+      "proved": 187,
+      "obligations": 187,
+      "rejected_functions": 0,
+      "unsupported_functions": 0
+    },
+    {
+      "check": "Promoting-int inline arithmetic",
+      "programs": 134,
+      "functions": 354,
+      "proved": 1698,
+      "obligations": 1698,
+      "rejected_functions": 0,
+      "unsupported_functions": 0
+    },
+    {
+      "check": "Promoting-int storage",
+      "programs": 169,
+      "functions": 1733,
+      "proved": 18658,
+      "obligations": 18658,
+      "rejected_functions": 0,
+      "unsupported_functions": 0
+    }
+  ],
+  "generated_header_date": "2026-11-15",
+  "generated_date_explanation": "lean_report.py uses time.strftime on the host local timezone. TZ is unset and the host is CET; local date was 2026-11-15 while UTC was 2026-11-14. The generated report was not edited.",
+  "host_timezone_names": [
+    "CET",
+    "CEST"
+  ],
+  "TZ_environment": null,
+  "captured_local_time": "2026-11-15T00:38:20.139621+01:00",
+  "captured_utc": "2026-11-14T23:38:20.139661+00:00"
+}

@@ -1,0 +1,53 @@
+{
+  "source_commit": "2df26bde21451abb89cc487f57b0a5531c655b8d",
+  "state": "complete",
+  "recovery_manifest": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/resume2-recovery-manifest.json",
+  "jobs": 1,
+  "results": [
+    {
+      "stage": "whole-report-resume2",
+      "command": [
+        "make",
+        "lean-report",
+        "PY=/workspace/scratch/c2b093657c17/dev-venv/bin/python",
+        "LEAN_REPORT_FLAGS=--jobs 1 --start-method spawn --resume --progress --records /workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/whole.resume2.jsonl"
+      ],
+      "returncode": 0,
+      "elapsed_seconds": 1881.545912027359,
+      "log": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/whole-report-resume2.log",
+      "log_sha256": "a5f0641754a5a00731ab85585bc5be34ee91d7de7d6df7ff040e0c040fa254cd"
+    },
+    {
+      "stage": "report-status",
+      "command": [
+        "/workspace/scratch/c2b093657c17/dev-venv/bin/python",
+        "tools/lean_report.py",
+        "--status"
+      ],
+      "returncode": 0,
+      "elapsed_seconds": 14.87945032119751,
+      "log": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/report-status.log",
+      "log_sha256": "2d93acbd3c0790ba1ad74b5ba753c07b84df7b54909b09b349a897acfff2ee83"
+    },
+    {
+      "stage": "strict-storage",
+      "command": [
+        "/workspace/scratch/c2b093657c17/dev-venv/bin/python",
+        "tools/check_lean_storage_corpus.py",
+        "--jobs",
+        "1",
+        "--progress",
+        "--report",
+        "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/storage.json"
+      ],
+      "returncode": 0,
+      "elapsed_seconds": 322.61095786094666,
+      "log": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/strict-storage.log",
+      "log_sha256": "b12af7b617ee815514a44164f69cf0804475bfacf3f66fc8b4b767be86a849b1"
+    }
+  ],
+  "end_utc": "2026-11-14T23:42:00.493295+00:00",
+  "git_status": " M tools/lean_boundary/REPORT.md\n",
+  "executables_unchanged": true,
+  "lean_inputs_unchanged": true
+}

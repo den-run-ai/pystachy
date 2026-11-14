@@ -1,0 +1,170 @@
+{
+  "status": "complete",
+  "source_commit": "2df26bde21451abb89cc487f57b0a5531c655b8d",
+  "report_commit": "9e23abd6cb5e20881ef730b5836a986bb723e93b",
+  "report_sha256": "d61511b4aba450ee2e01f981bb65f1644b373b7fd92ea3eebe0c9a58e71f6522",
+  "completed_at_utc": "2026-11-14T23:43:59.345854+00:00",
+  "canonical_programs": 2612,
+  "canonical_expected_inventory": {
+    "count": 2612,
+    "sha256": "e943ce02e791aecc589f9d46a92cef7f84ac9cbdbac6aa64bda2de4285b1b202"
+  },
+  "canonical_evaluated_unique_programs": 2612,
+  "canonical_execution_errors": 0,
+  "canonical_clean_inputs": {
+    "checkers": true,
+    "compiler": true,
+    "corpus": true
+  },
+  "canonical_status_exit": 0,
+  "final_post_storage_status_exit": 0,
+  "publication_status_before_and_after_commit_exit": 0,
+  "report_only_publication_worktree_clean": true,
+  "strict_qa_source_head_unchanged": true,
+  "qa_has_only_generated_report_change": true,
+  "executables_and_lean_inputs_unchanged": true,
+  "all_initial_valid_checkpoint_bytes_preserved": true,
+  "failed_rows_recomputed_in_full_scope": [
+    "tests/programs/library/lib_argparse_required.py",
+    "tests/programs/library/lib_logging_config.py"
+  ],
+  "failure_cause": "Unknown. Original abrupt pool termination and two compiler-child signal9 failures remain in preserved history. No proof gate or timeout was relaxed.",
+  "selected_scope_retry_not_grafted": true,
+  "final_report_worker_minutes": 74,
+  "canonical_rows": [
+    {
+      "check": "Dynamic payload reads",
+      "programs": 293,
+      "functions": 1171,
+      "proved": 2618,
+      "obligations": 2618,
+      "rejected_functions": 0,
+      "unsupported_functions": 0
+    },
+    {
+      "check": "Unchecked list and dict accesses",
+      "programs": 1237,
+      "functions": 16230,
+      "proved": 86194,
+      "obligations": 86194,
+      "rejected_functions": 0,
+      "unsupported_functions": 0
+    },
+    {
+      "check": "Removed null checks",
+      "programs": 944,
+      "functions": 13240,
+      "proved": 136424,
+      "obligations": 136443,
+      "rejected_functions": 4,
+      "unsupported_functions": 0
+    },
+    {
+      "check": "Closed-union reads",
+      "programs": 277,
+      "functions": 2216,
+      "proved": 6636,
+      "obligations": 6951,
+      "rejected_functions": 31,
+      "unsupported_functions": 7
+    },
+    {
+      "check": "Union payload bits",
+      "programs": 336,
+      "functions": 1719,
+      "proved": 13287,
+      "obligations": 13536,
+      "rejected_functions": null,
+      "unsupported_functions": null
+    },
+    {
+      "check": "Field initialization",
+      "programs": 1440,
+      "functions": 17396,
+      "proved": 162280,
+      "obligations": 162517,
+      "rejected_functions": 1,
+      "unsupported_functions": 13
+    },
+    {
+      "check": "Collector scanning",
+      "programs": 1696,
+      "functions": 26488,
+      "proved": 191632,
+      "obligations": 192007,
+      "rejected_functions": 37,
+      "unsupported_functions": 3
+    },
+    {
+      "check": "Promoting-int fit claims",
+      "programs": 29,
+      "functions": 36,
+      "proved": 187,
+      "obligations": 187,
+      "rejected_functions": 0,
+      "unsupported_functions": 0
+    },
+    {
+      "check": "Promoting-int inline arithmetic",
+      "programs": 134,
+      "functions": 354,
+      "proved": 1698,
+      "obligations": 1698,
+      "rejected_functions": 0,
+      "unsupported_functions": 0
+    },
+    {
+      "check": "Promoting-int storage",
+      "programs": 169,
+      "functions": 1733,
+      "proved": 18658,
+      "obligations": 18658,
+      "rejected_functions": 0,
+      "unsupported_functions": 0
+    }
+  ],
+  "strict_storage": {
+    "status": "accepted",
+    "totals": {
+      "accepted": 1733,
+      "boundaries": 865,
+      "error": 0,
+      "failed_programs": 0,
+      "functions": 5469,
+      "low_word_uses": 22690,
+      "obligation_functions": 1733,
+      "obligations": 18658,
+      "programs": 182,
+      "proof_batches": 1785,
+      "proved_obligations": 18658,
+      "rejected": 0,
+      "stack_copy_obligations": 60,
+      "stack_copy_reads": 120,
+      "tail_reads": 746,
+      "unclassified_functions": 0,
+      "unsupported": 0
+    },
+    "tool_seconds": 316.7,
+    "wall_seconds": 322.61095786094666,
+    "limitations": [
+      "Checks guard safety in normalized typed IR, not source or LLVM equivalence.",
+      "Snapshot fidelity, normalization, canonical integer encoding, immutable tuple views, runtime paired-word contracts and declared parameter layouts remain trusted.",
+      "Arithmetic fit claims are checked by the separate Lean integer checker.",
+      "Keyword-record tuple views use declared parameter or typed memory-read contracts; general keyword-record joins and transport are not modeled.",
+      "Stack tuple copies trust the call ABI: an on-stack tuple has all slots of its exact specialization layout; only complete same-index copies are supported."
+    ]
+  },
+  "known_unproved_categories": [
+    "Removed null checks:19 removals in4 rejected functions",
+    "Closed-union reads:315 reads;31 rejected and7 unsupported functions",
+    "Union payload bits:249 obligations, paired with union-read proofs",
+    "Field initialization:237 obligations;1 rejected and13 unsupported functions",
+    "Collector scanning:375 obligations;37 rejected and3 unsupported functions"
+  ],
+  "companion_contract_scope": "Copy/growth and initialized numeric companion readback/root edges under checked C shape and distinct physical fields. Valid live length/capacity, nonoverflowing extents, allocator/helper/memcpy semantics, fresh memory, source liveness during allocation and the C/IR adapter remain premises. General aliasing, materialization and collector correctness are not proved.",
+  "date_provenance": "lean_report.py uses time.strftime on the host local timezone. TZ is unset and the host is CET; local date was 2026-11-15 while UTC was 2026-11-14. The generated report was not edited.",
+  "public_report_path": "/workspace/scratch/1a96cd11db0d/lean-report-publish/tools/lean_boundary/REPORT.md",
+  "canonical_record_ledger": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/whole.resume2.jsonl",
+  "recovery_manifest": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/resume2-recovery-manifest.json",
+  "independent_review_manifest": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/compiler-independent-review-integrated.json"
+}

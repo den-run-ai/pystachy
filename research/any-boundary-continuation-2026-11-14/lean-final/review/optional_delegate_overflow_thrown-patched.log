@@ -1,0 +1,10 @@
+owned first 7
+child closed
+owned closed
+owned overflow
+owned done True
+borrowed first 7
+borrowed closed
+borrowed overflow
+borrowed next 9
+child closed

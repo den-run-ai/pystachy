@@ -1,0 +1,37 @@
+{
+  "limitations": [
+    "Checks guard safety in normalized typed IR, not source or LLVM equivalence.",
+    "Snapshot fidelity, normalization, canonical integer encoding, immutable tuple views, runtime paired-word contracts and declared parameter layouts remain trusted.",
+    "Arithmetic fit claims are checked by the separate Lean integer checker.",
+    "Keyword-record tuple views use declared parameter or typed memory-read contracts; general keyword-record joins and transport are not modeled.",
+    "Stack tuple copies trust the call ABI: an on-stack tuple has all slots of its exact specialization layout; only complete same-index copies are supported."
+  ],
+  "scope": "promoting-int storage guards of test programs and their imports",
+  "seconds": 316.7,
+  "status": "accepted",
+  "totals": {
+    "accepted": 1733,
+    "boundaries": 865,
+    "error": 0,
+    "failed_programs": 0,
+    "functions": 5469,
+    "low_word_uses": 22690,
+    "obligation_functions": 1733,
+    "obligations": 18658,
+    "programs": 182,
+    "proof_batches": 1785,
+    "proved_obligations": 18658,
+    "rejected": 0,
+    "stack_copy_obligations": 60,
+    "stack_copy_reads": 120,
+    "tail_reads": 746,
+    "unclassified_functions": 0,
+    "unsupported": 0
+  },
+  "program_inventory": {
+    "count": 182,
+    "sha256": "8070fab0a61c2e061e11bd0aa76aff4ba3fb6162786352006913d7597febc3be"
+  },
+  "all_programs_accepted": true,
+  "full_results": "run/storage.json.gz"
+}

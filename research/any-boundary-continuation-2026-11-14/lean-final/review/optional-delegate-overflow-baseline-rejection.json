@@ -1,0 +1,17 @@
+{
+  "command": [
+    "/workspace/scratch/c2b093657c17/dev-venv/bin/python",
+    "-E",
+    "-B",
+    "/workspace/scratch/1a96cd11db0d/lean-contracts/pystachy.py",
+    "ir",
+    "/workspace/scratch/1a96cd11db0d/lean-qualification/optional_delegate_overflow.py",
+    "-o",
+    "/workspace/scratch/1a96cd11db0d/lean-qualification/optional-delegate-overflow-before.ll"
+  ],
+  "returncode": 1,
+  "output": "/workspace/scratch/1a96cd11db0d/lean-qualification/optional_delegate_overflow.py:16: error: owned() yields int | None, but yield from delegates to a generator that yields int (compiling owned() for the call at /workspace/scratch/1a96cd11db0d/lean-qualification/optional_delegate_overflow.py:26)\n",
+  "elapsed_seconds": 0.8183248043060303,
+  "baseline_head": "6eb825c7b62f97a312b65319877ccfa26cbb2fbb",
+  "compiler_diff_from_adac": ""
+}

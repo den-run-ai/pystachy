@@ -1,0 +1,61 @@
+{
+  "reviewed_source_parent": "40dfd158f09dfa0e4f19a51d33c4893b434b57ae",
+  "source_hashes": {
+    "src/pystachy_compiler/generators.py": "d75289514bef26f297ae2af68abca254e3502966e2e29d1431ba983a92bea583",
+    "tests/deviations/python_int_optional_generator_cleanup.py": "7a5ddca065e558be150ec0827ddc15a1f687e431fcc36f759a72ed32351ef494",
+    "tests/deviations/python_int_optional_generator_cleanup.out": "4f50190dd3aa4d67e0d8ab83c31d76cc23c4a738c4a9c8a8970b3f60cc0c3557",
+    "tests/deviations/python_int_optional_generator_cleanup_protocol.py": "8479e8494f09d9de87365ff65494b929c8c30ee35e4f5eb35087843a613d61cc",
+    "tests/deviations/python_int_optional_generator_cleanup_protocol.out": "4f50190dd3aa4d67e0d8ab83c31d76cc23c4a738c4a9c8a8970b3f60cc0c3557"
+  },
+  "results": [
+    {
+      "case": "optional_delegate_overflow.py",
+      "command": [
+        "/workspace/scratch/c2b093657c17/dev-venv/bin/python",
+        "-E",
+        "-B",
+        "/workspace/scratch/1a96cd11db0d/generator-cleanup/pystachy.py",
+        "run",
+        "/workspace/scratch/1a96cd11db0d/lean-qualification/optional_delegate_overflow.py"
+      ],
+      "returncode": 0,
+      "output": "child entered\nchild closed\nowned closed\nowned overflow\nowned exhausted True\nchild entered\nborrowed closed\nborrowed overflow\nborrowed exhausted True\nchild resumed\nborrowed child next 3\nchild closed\n",
+      "source_sha256": "1e6579af6349db19c959dd6b3adc078c5e6f5d1a1c005fb0deff03129d04d51c",
+      "elapsed_seconds": 19.945589542388916,
+      "log": "/workspace/scratch/1a96cd11db0d/lean-qualification/optional_delegate_overflow-patched.log"
+    },
+    {
+      "case": "optional_delegate_overflow_raw_protocol.py",
+      "command": [
+        "/workspace/scratch/c2b093657c17/dev-venv/bin/python",
+        "-E",
+        "-B",
+        "/workspace/scratch/1a96cd11db0d/generator-cleanup/pystachy.py",
+        "run",
+        "/workspace/scratch/1a96cd11db0d/lean-qualification/optional_delegate_overflow_raw_protocol.py"
+      ],
+      "returncode": 0,
+      "output": "child entered\nchild closed\nowned closed\nowned overflow\nowned exhausted True\nchild entered\nborrowed closed\nborrowed overflow\nborrowed exhausted True\nchild resumed\nborrowed child next 3\nchild closed\n",
+      "source_sha256": "1bdcb18c21625776bd5e6cc08430e27ea874e802ee2ae5809c7cfadc6106cabe",
+      "elapsed_seconds": 1.022066354751587,
+      "log": "/workspace/scratch/1a96cd11db0d/lean-qualification/optional_delegate_overflow_raw_protocol-patched.log"
+    },
+    {
+      "case": "optional_delegate_overflow_thrown.py",
+      "command": [
+        "/workspace/scratch/c2b093657c17/dev-venv/bin/python",
+        "-E",
+        "-B",
+        "/workspace/scratch/1a96cd11db0d/generator-cleanup/pystachy.py",
+        "run",
+        "/workspace/scratch/1a96cd11db0d/lean-qualification/optional_delegate_overflow_thrown.py"
+      ],
+      "returncode": 0,
+      "output": "owned first 7\nchild closed\nowned closed\nowned overflow\nowned done True\nborrowed first 7\nborrowed closed\nborrowed overflow\nborrowed next 9\nchild closed\n",
+      "source_sha256": "72c51b1073d3d3c56962b305f91a5be9bf07fc5e877dd50cd615f4172983c0a8",
+      "elapsed_seconds": 0.9512531757354736,
+      "log": "/workspace/scratch/1a96cd11db0d/lean-qualification/optional_delegate_overflow_thrown-patched.log"
+    }
+  ],
+  "inputs_unchanged": true
+}
