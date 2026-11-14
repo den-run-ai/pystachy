@@ -9,7 +9,7 @@ import sys
 import tempfile
 import unittest
 
-from check_lean_boundary import Unsupported, check_all, normalize_snapshot
+from check_lean_boundary import Unsupported, check_all, normalize_snapshot, same_storage
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -948,6 +948,122 @@ class SnapshotHeaderTests(unittest.TestCase):
             with self.subTest(change=change), self.assertRaises(error):
                 check_all({**header, **change})
 
+
+
+# Short-circuit conditions of more than two operands, each join fed the one before, and a local
+# that an empty container gives a placeholder type before a filled one is assigned to it: code
+# as libraries write it (json_repair's parse_object.py has all three shapes).
+CHAINS = '''# pystachy: dynamic-any
+from typing import Any
+
+
+class Repairer:
+    def __init__(self, mode: str) -> None:
+        self.mode = mode
+
+    def is_object(self, schema: Any) -> bool:
+        return isinstance(schema, dict) and "type" in schema
+
+
+def chained_guard(schema: Any, repairer: Repairer | None) -> str:
+    if repairer is not None and repairer.mode == "salvage" and isinstance(schema, dict) and repairer.is_object(schema):
+        return "object"
+    return "other"
+
+
+def chained_twice(schema: Any, repairer: Repairer | None) -> str:
+    if repairer is not None and isinstance(schema, dict) and repairer.is_object(schema) and len(schema) > 1:
+        return "object"
+    return "other"
+
+
+def placeholder_slot(value: Any, known: dict[str, int]) -> list[str]:
+    names = []
+    if isinstance(value, dict):
+        names = [name for name in value if isinstance(name, str)]
+    return [name for name in known if name not in names]
+
+
+salvage = Repairer("salvage")
+for document in [{"type": "object", "x": 1}, True, None]:
+    print(chained_guard(document, salvage), chained_guard(document, None), chained_twice(document, salvage))
+print(placeholder_slot({"a": 1, 2: 3}, {"a": 1, "b": 2}), placeholder_slot(None, {"z": 0}))
+'''
+
+
+class ChainedJoinTests(SnapshotFixture):
+    function_filter = ""
+    check = ProvedCheckerTests.check
+
+    @classmethod
+    def setUpClass(cls):
+        source = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(source.cleanup)
+        cls.example = Path(source.name) / "chains.py"
+        cls.example.write_text(CHAINS)
+        super().setUpClass()
+
+    @staticmethod
+    def joins(function):
+        # the blocks that hold only a bool phi and a branch on it, by the phi's value
+        found = {}
+        for block in function["blocks"]:
+            operations = block["operations"]
+            if (len(operations) == 2 and operations[0]["op"] == "phi" and operations[0]["type"] == "bool"
+                    and operations[1]["op"] == "cbr"):
+                found[f"%t{operations[0]['results'][0]}"] = operations[0]
+        return found
+
+    def test_same_storage_matches_only_a_container_with_unknown_items(self):
+        for first, second in (("list[?]", "list[str]"), ("set[str]", "set[?]"), ("dict[?,?]", "dict[str,list[int]]"),
+                              ("list[list[?]]", "list[list[dyn]]"), ("dyn", "dyn"), ("list[?]", "list[?]")):
+            with self.subTest(first=first, second=second):
+                self.assertTrue(same_storage(first, second))
+        for first, second in (("?", "dyn"), ("dyn", "?"), ("list[?]", "set[str]"), ("dict[?,?]", "dict[str]"),
+                              ("dyn", "list[?]"), ("list[?]", "list"), ("list[str]", "list[int]"),
+                              ("dict[?,?]", "list[str,int]"), ("opt[?]", "dyn")):
+            with self.subTest(first=first, second=second):
+                self.assertFalse(same_storage(first, second))
+
+    @unittest.skipUnless(CHECKER.is_file(), "build tools/lean_boundary to run the proved checker")
+    def test_a_known_value_goes_through_each_join_it_feeds(self):
+        for name in ("chained_guard", "chained_twice"):
+            with self.subTest(function=name):
+                snapshot, function = self.selected(name)
+                joins = self.joins(function)
+                # (if the compiler stops lowering these conditions to joins that feed one another,
+                # this case no longer tests them)
+                fed = [(value, index) for value, phi in joins.items()
+                       for index, operand in enumerate(phi["operands"]) if operand["value"] in joins]
+                self.assertGreaterEqual(len(fed), 2)
+                candidate, metadata = normalize_snapshot(snapshot, name)
+                self.assertGreater(metadata["threaded_edges"], len(joins))
+                self.assertTrue(self.check(candidate))
+                # A join that claims the value of the join before it is true on the edge that
+                # join's false branch takes lets a payload read run without its guard.
+                outcomes = []
+                for value, index in fed:
+                    mutated, changed = self.selected(name)
+                    self.joins(changed)[value]["operands"][index]["value"] = "true"
+                    outcomes.append(self.check(self.normalized(mutated, name)))
+                self.assertIn(False, outcomes)
+
+    @unittest.skipUnless(CHECKER.is_file(), "build tools/lean_boundary to run the proved checker")
+    def test_a_placeholder_container_type_names_its_slot_and_no_other(self):
+        snapshot, function = self.selected("placeholder_slot")
+        local = next(slot for slot in function["slots"] if slot["text"] == "names")
+        address = f"%names.{local['results'][0]}"
+        named = {operand["type"] for block in function["blocks"] for op in block["operations"]
+                 for operand in op["operands"] if operand["value"] == address}
+        # (if the compiler names the slot one way throughout, this case no longer tests the rule)
+        self.assertGreater(len(named | {"*" + local["type"]}), 1)
+        self.assertTrue(self.check(self.normalized(snapshot, "placeholder_slot")))
+        for other in ("set[str]", "dict[str,str]", "dyn", "?"):
+            with self.subTest(slot=other):
+                mutated, changed = self.selected("placeholder_slot")
+                next(slot for slot in changed["slots"] if slot["text"] == "names")["type"] = other
+                with self.assertRaisesRegex(ValueError, "slot address has wrong type"):
+                    self.normalized(mutated, "placeholder_slot")
 
 
 if __name__ == "__main__":

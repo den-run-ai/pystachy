@@ -1,0 +1,7 @@
+standard salvage False True q
+on None x None text 7
+Color.RED Color.RED -1 1 c Job(mode='standard', level=0, done=False) idle
+enter
+body
+exit
+[exit 0]

@@ -1,16 +1,16 @@
 {
   "upstream": "mangiucugna/json_repair",
-  "tag": "v0.64.8",
-  "commit": "dc6d02b168656aa3dcaac6a119ecc47594d3526e",
-  "python": "3.13.16 (main, Oct  1 2026, 02:37:54) [GCC 13.3.0]",
-  "count": 943,
+  "tag": "v0.64.9",
+  "commit": "36d7a6ed53e777b5a5b9017e33d35ea2af8b7c6e",
+  "python": "3.13.18 (main, Oct 26 2026, 14:08:19) [Clang 23.1.3 ]",
+  "count": 962,
   "excluded_call_variants": [
     {
-      "source": "tests/test_json_repair.py:75 (test_missing_opening_brace_declines_integer_conversion_limit)",
+      "source": "tests/test_json_repair.py:114 (test_missing_opening_brace_declines_integer_conversion_limit)",
       "reason": "'raw'"
     },
     {
-      "source": "tests/test_json_repair.py:412 (test_repair_json_normalizes_real_parser_recursion_error)",
+      "source": "tests/test_json_repair.py:451 (test_repair_json_normalizes_real_parser_recursion_error)",
       "reason": "'payload'"
     },
     {
@@ -32,33 +32,37 @@
     {
       "source": "tests/test_parse_comment.py:139 (test_comment_before_colon_with_nested_schema_preserves_string_contents)",
       "reason": "out-of-scope keyword schema"
+    },
+    {
+      "source": "tests/test_parse_string.py:163 (test_repeated_string_delimiters_match_buffered_input)",
+      "reason": "'raw'"
     }
   ],
   "test_sha256": {
-    "test_json_repair.py": "d2dd1900bb1fae8cf811687b3a167420c5d6c809b4525a59e1060d987c9f1f81",
-    "test_parse_array.py": "b0223fa9b6bf9549ad96a8b2d2bc05c72d1d63be39485f2e46596178472d3ce9",
+    "test_json_repair.py": "8b98b157c15c03aceecf4b651f09c5babe2de74e5bde4167d51bd052ab44e7f9",
+    "test_parse_array.py": "3914b7b1bf5cc084410ead25dcf27d5f4b09235ff6bc3decbe55f1dd235f9324",
     "test_parse_comment.py": "d918051781f30003e41703a80eaacdcf403a4a985d23d0897ddec65e2afa8e44",
     "test_parse_number.py": "a57f665eb19726e9b91d577f4179ddcbf66ec16483be0fe8f308e8dc9d1ea4b7",
     "test_parse_object.py": "8c55e30bafd9cc638670d108f7df538b3ae361e18d5dd8a8ba121efdd5cad698",
-    "test_parse_string.py": "4f228cb94cf428d2d500972bc8a84467d6594d753d5fe47eb053b1bb7b350a00",
+    "test_parse_string.py": "e041abfdafd9a815f004a4866eabc5b6e9f16609e8368a4e19a6e9ebd2591674",
     "test_strict_mode.py": "80e8e3bd2bec3abd3cdb16fb132e99fb2487b6080570028f3347938cc3cea0dd",
     "utils/string_cases.py": "f3cfee61a7d9c31882410eef767d6f67dfa3ffc0603fe335814fb0b5c9d27cf7"
   },
   "source_sha256": {
     "src/json_repair/__init__.py": "b628a8b9e43ee7c9ac23a19fedcd23fd1c4faad3f13f5940277e4a838a228182",
     "src/json_repair/__main__.py": "09446d7ec0ac08fcdc6e07e031e1555413a9a0715aaebf54d4689b8a1f5f8850",
-    "src/json_repair/json_parser.py": "2e019c9fc3a5f0c6c870b909a0b89e1a4c4644159b96970ff159b67ec2e69a8e",
+    "src/json_repair/json_parser.py": "bff87229a64a2c695a0b2186b412b48024acb9b904a99417a2a496b58c0cefd9",
     "src/json_repair/json_repair.py": "781966cb53604fb5d22bac133419f25665171c90fd2bca16f8d43f701a0f6674",
     "src/json_repair/parse_array.py": "344a075148f227335734841b9112c7a34b769c24a36cae2c234e5fa756e6940b",
     "src/json_repair/parse_comment.py": "ffac379d49397ef86d11515af4bbfb6134869fb2c165e129b414e5dcbcdcc7c8",
     "src/json_repair/parse_number.py": "1923f4663ef3338926c73268eef41ba2e3832d6d270a4536dc0ab6d534838d01",
-    "src/json_repair/parse_object.py": "d7bc14d25fcd2008d99e596077da887ffdabe85aacc40725f756cb33ca691922",
-    "src/json_repair/parse_string.py": "c33063dffb9e953c729c96f9ca3001bc32253657825b91ce47011c502a6b1c86",
+    "src/json_repair/parse_object.py": "eb9373827d4935447a6930fc71f451aae57b300bd775c2d03827a0c187ef5687",
+    "src/json_repair/parse_string.py": "367f06d3eb91832e3adcc32c890bbf2642ae677b6a893f05034db8c722364c2d",
     "src/json_repair/parse_string_helpers/__init__.py": "147c8c7c55a20ac7ff9b056c20371d94a90c01f9a69f6e1e481e6ec19ec4bfe5",
     "src/json_repair/parse_string_helpers/object_value_context.py": "79ae7c810f687c2ceec60c0ca795f7fadb4ee2283086116225d09f3f78142987",
     "src/json_repair/parse_string_helpers/parse_boolean_or_null.py": "03f1539e41c361a30d58b974d8ecad686fc63f5c6d592be49efe69e2782d9816",
     "src/json_repair/parse_string_helpers/parse_json_llm_block.py": "c0f4a6fbc458df4124f07c738c290246d74bab8f827b3f8f241def3a4fef3f7c",
-    "src/json_repair/parser_parenthesized.py": "1883fbe066a7712301e8d42938e3b2a5e38ee9a685ffa6380e9fd2a272ab9138",
+    "src/json_repair/parser_parenthesized.py": "d286db4d452e8f9ea575e0e88cce1c884fe81d77e44e2c027d40aa815fe77468",
     "src/json_repair/parser_schema.py": "8036874cec101a2baee98f14e54c3e81a985e390ebdfd8df7e6c69f37ebe410a",
     "src/json_repair/schema_repair.py": "ea98ed737cdc968afc2f5c06a94cb3a140b6c2d37af277c238e8ef1d33c9dd8f",
     "src/json_repair/utils/__init__.py": "a60f2baac1ce87f3271604d46f939ada9f0b0ea67283bb4f1021aa0baad2cf28",

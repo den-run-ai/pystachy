@@ -1,18 +1,19 @@
 # pystachy: dynamic-any
+from enum import Enum, auto
 from types import TracebackType
+from typing import Literal
 
 
-# Pystachy port: private enum values are only compared and stacked.
-class ContextValues:
-    OBJECT_KEY = 1
-    OBJECT_VALUE = 2
-    ARRAY = 3
+class ContextValues(Enum):
+    OBJECT_KEY = auto()
+    OBJECT_VALUE = auto()
+    ARRAY = auto()
 
 
 class _JsonContextEntry:
     __slots__ = ("context", "value")
 
-    def __init__(self, context: "JsonContext", value: int) -> None:
+    def __init__(self, context: "JsonContext", value: ContextValues) -> None:
         self.context = context
         self.value = value
 
@@ -24,21 +25,21 @@ class _JsonContextEntry:
         _exc_type: type[BaseException] | None,
         _exc: BaseException | None,
         _traceback: TracebackType | None,
-    ) -> bool:
+    ) -> Literal[False]:
         self.context.reset()
         return False
 
 
 class JsonContext:
     def __init__(self) -> None:
-        self.context: list[int] = []
-        self.current: int | None = None
+        self.context: list[ContextValues] = []
+        self.current: ContextValues | None = None
         self.empty: bool = True
 
-    def enter(self, value: int) -> _JsonContextEntry:
+    def enter(self, value: ContextValues) -> _JsonContextEntry:
         return _JsonContextEntry(self, value)
 
-    def set(self, value: int) -> None:
+    def set(self, value: ContextValues) -> None:
         """
         Set a new context value.
 
@@ -59,12 +60,10 @@ class JsonContext:
         Returns:
             None
         """
-        # Pystachy port: empty stacks are normal; avoid native exception unwinding.
-        if self.context:
+        try:
             self.context.pop()
-        if self.context:
             self.current = self.context[-1]
-        else:
+        except IndexError:
             self.current = None
             self.empty = True
 

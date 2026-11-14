@@ -1,0 +1,89 @@
+182 recorded cases, of which upstream raises in 115 and the port differs in 0
+anchor {"error": "_WrappedReferencingError", "message": "Unresolvable: #name"}
+own $id {"error": "_WrappedReferencingError", "message": "Unresolvable: #/$defs/n"}
+remote {"error": "_WrappedReferencingError", "message": "Unresolvable: https://example.com/schema.json"}
+draft 3 {"error": "SchemaDefinitionError", "message": "Invalid schema: Draft 3 schemas are not supported."}
+own {"value": ["dict", [[["str", [97]], ["int", "1"]], [["str", [98]], ["str", [120]]]]]}
+own {"error": "ValueError", "message": "Unsupported $ref: https://example.com/root#/$defs/a~1b"}
+{
+  "name": "café",
+  "items": [
+    1,
+    2,
+    3
+  ],
+  "nested": {
+    "a": "tru",
+    "b": "nul"
+  },
+  "empty": [],
+  "none": {}
+}
+0
+{
+"name": "café",
+"items": [
+1,
+2,
+3
+],
+"nested": {
+"a": "tru",
+"b": "nul"
+},
+"empty": [],
+"none": {}
+}
+0
+{
+    "name": "caf\u00e9",
+    "items": [
+        1,
+        2,
+        3
+    ],
+    "nested": {
+        "a": "tru",
+        "b": "nul"
+    },
+    "empty": [],
+    "none": {}
+}
+0
+0 '{\n  "name": "café",\n  "items": [\n    1,\n    2,\n    3\n  ],\n  "nested": {\n    "a": "tru",\n    "b": "nul"\n  },\n  "empty": [],\n  "none": {}\n}'
+0 '{\n "name": "café",\n "items": [\n  1,\n  2,\n  3\n ],\n "nested": {\n  "a": "tru",\n  "b": "nul"\n },\n "empty": [],\n "none": {}\n}'
+0 '{\n  "a": 2,\n  "b": [\n    1,\n    2\n  ]\n}'
+{
+  "a": 2
+}
+0 '{"a": 1, "a": 2}'
+exit 1
+exit 1
+exit 1
+exit 1
+exit 1
+1
+{
+  "name": "café",
+  "items": [
+    1,
+    2,
+    3
+  ],
+  "nested": {
+    "a": "tru",
+    "b": "nul"
+  },
+  "empty": [],
+  "none": {}
+}
+0
+True
+0
+{name: "café", values: [true, null,],}
+{"name": "caf\u00e9", "values": [true, null]}
+0
+{"name": "café", "values": [true, null]}
+1
+b'{"value":"\\ud800"}'
+[exit 0]

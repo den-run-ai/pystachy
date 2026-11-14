@@ -1,7 +1,48 @@
 six recursive repair paths rejected
 nesting below the recursion limit repaired
 wide and sequential repairs preserved
-alternating comments and prose stay iterative
+alternating comments and prose follow the recursion limit
 comment logs and top-level flags preserved
 parser reusable after exceptions
+256 True
+256 1
+257 True
+257 1
+300 True
+300 1
+400 True
+400 1
+19996 True
+maximum recursion depth exceeded while decoding a JSON array from a unicode string
+{"a": 1}
+{"a": "x", "b": 2}
+{"a": {"b": 1}}
+{"a": true}
+{"a": [1, 2], "b": 3}
+{"a": null}
+{"a": "", "b": 2}
+{"a": false}
+{"a": -1.25}
+{"a": 12345678901234567890}
+[{"a": {"b": [1, false]}}, 2]
+[12]
+[[1, 2]]
+[12]
+[]
+[1]
+["", true, null]
+[12, 13]
+[/1,2] [2]
+[/abc] ["bc"]
+{"k":/42} {"k": ""}
+{"k":/ /*x*/true} {"k": ""}
+{"a": "", "b": 2}
+missing value
+{"a": ""}
+missing value
+{"a": ""}
+missing value
+{"a": ""}
+missing value
+comments preserved values
 [exit 0]

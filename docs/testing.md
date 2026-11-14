@@ -472,7 +472,7 @@ defined zero-time report.
 
 The step also invokes the existing `tests/upstream/json_repair/cli.py` checks (20
 process cases, including output-file effects, compared with CPython in JIT and AOT),
-replays the 943 recorded calls of the [JSON repair corpus](../tests/upstream/json_repair/README.md)
+replays the 962 recorded calls of the [JSON repair corpus](../tests/upstream/json_repair/README.md)
 through native JIT and AOT builds of the port, each checked by `tools/json_repair_parity.py`
 against the recorded CPython outcomes, and runs
 `examples/agent/http_smoke.py` with CPython, JIT and AOT launchers. The latter

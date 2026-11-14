@@ -1,0 +1,10 @@
+[None, None, 'h', 'é', 'l', 'l', 'o', 'h', 'é', 'l', 'l', 'o', None, None]
+<list index out of range> b [-999, -999, 10, 20, 30, 10, 20, 30, -999, -999]
+string index out of range string index out of range a ffay fxay fxy
+module-level string index out of range
+None True
+a False
+None True
+pop from empty list 1:[2, 3] 3:[1, 2] pop index out of range pop index out of range 1:[]
+empty: pop from empty list
+[exit 0]

@@ -1,0 +1,5 @@
+{"a": [1, 2.5, null, true, "x"], "big": 1234567890123, "n": {"k": "v"}}
+True 1234567890124 list
+[1, 'two', {'three': 3.0}]
+error: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)
+[exit 0]

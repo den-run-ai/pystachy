@@ -89,7 +89,7 @@ SCOPED = {
     "selfcls": "the class whose methods and fields are declared: gen_function saves, clears and restores it",
     "compshare": "names a comprehension's for clauses share: listcomp, hidden_loop and compfor save and restore it",
     "fchk": "records whose fields plain_desc checks: a recursion guard, around code that compiles nothing",
-    "appending": "set around str_append's read of an owned str local, which compiles nothing",
+    "appending": "set around the read of an owned str local by str_append, len() or a reading method, which compiles nothing",
     "building": "functions being compiled: a recursion guard, which a nested compile must see",
     "soft": "the display operand of a comparison, matched by identity at that node",
     "fieldbusy": "fields and globals that none_field and none_global search: a recursion guard",

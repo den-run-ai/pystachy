@@ -1,0 +1,15 @@
+True True False False False False
+'alpha' True False 2
+'alpha' True False 2
+'alph' False True 0
+'alphaa' False True 0
+'' True False 1
+'é' True False 1
+'e' False True 0
+'日本' True False 1
+'日' False True 0
+'gamma' False True 0
+True True False 2 2 0
+False False 0 0
+3
+[exit 0]

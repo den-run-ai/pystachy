@@ -11,6 +11,7 @@ from src.pystachy_compiler.specs import BFILE, BIG, EXCEPTIONS, GLUE, HASATTR, M
 from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import (
+    holds_dyn,
     opaque_class,
     atomic_dict,
     identity_abi,
@@ -46,6 +47,12 @@ from src.pystachy_compiler.utils import (
     typestr,
     unopt,
 )
+
+# str methods that only read their str, returning a bool or an int and keeping no reference to it:
+# a call of one on a str local that an append owns leaves it owned (Gen.str_append), so a loop that
+# appends and tests what it built (s += c, then s.endswith(...)) is linear, as CPython's is
+STR_PEEKS = ["startswith", "endswith", "find", "rfind", "index", "rindex", "count", "isdigit", "isalpha", "isalnum",
+             "isspace", "isupper", "islower", "istitle", "isascii", "isdecimal", "isnumeric"]
 
 
 def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str = "") -> Val:
@@ -86,6 +93,16 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
         r = self.struct_call(f.s, args, want)
         if r is not None:
             return r
+    if (f.kind == "attr" and f.s == "raw_decode" and f.kids[0].kind == "call" and len(f.kids[0].kids) == 1 and f.kids[0].kids[0].kind == "name"
+            and f.kids[0].kids[0].s == "json$JSONDecoder" and "json$JSONDecoder" not in self.ltype and self.dyn_policy(n.line)
+            and self.lib_fn(mk("name", "json$_raw_decode", n.line, []), "json$_raw_decode") and holds_dyn(want)):
+        # json.JSONDecoder().raw_decode(s, idx) of the default decoder, where its result becomes
+        # Any storage (want holds Any values), in a module that compiles Any as dynamic values:
+        # lib's function of Any values, as json.loads() is there (json_any, #779); the decoder
+        # object, which nothing else reads, is not made
+        r = self.json_any("json$_raw_decode", args, want, resultsoft)
+        if r is not None:
+            return r
     if len([a for a in args if a.kind == "starred" or a.kind == "dstar"]) > 0:
         return self.star_call(n, want, resultsoft, typeargs)
     if f.kind == "name" and f.s not in self.ltype:
@@ -107,7 +124,7 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
             vals = [self.expr(a.kids[0] if a.kind == "kw" else a, "") for a in args[1:]]
             self.wrap_names(w, args[1:], vals, "update_wrapper")
             return w
-        if (f.s == "json$loads" or f.s == "json$dumps" or f.s == "json$_raw_decode") and self.dyn_policy(n.line) and self.lib_fn(f, f.s):
+        if (f.s == "json$loads" or f.s == "json$load" or f.s == "json$dumps" or f.s == "json$dump" or f.s == "json$_raw_decode") and self.dyn_policy(n.line) and self.lib_fn(f, f.s):
             r = self.json_any(f.s, args, want, resultsoft)  # (of Any values: #779)
             if r is not None:
                 return r
@@ -203,7 +220,12 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
             if f.s == "copy" and len(args) == 0:
                 return self.refl_dict_copy(f.kids[0])  # (vars(x).copy(): reflection.py)
             self.err(VARS_USES)
-        o = self.expr(f.kids[0], self.default_want(f.kids[0], f.s, args, ""))
+        if f.kids[0].kind == "name" and f.s in STR_PEEKS and self.owns(f.kids[0].s):
+            self.appending = True  # (a str that str_append owns stays owned: the method only reads it, as len() does)
+            o = self.read(f.kids[0])
+            self.appending = False
+        else:
+            o = self.expr(f.kids[0], self.default_want(f.kids[0], f.s, args, ""))
         self.mcall = n
         r = self.method(o, f.s, args, want, resultsoft)
         if f.s != "close" and r.t != BFILE:  # (__enter__() and __iter__() return the file: it stays open)

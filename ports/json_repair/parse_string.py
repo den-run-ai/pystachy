@@ -1,18 +1,20 @@
 # pystachy: dynamic-any
-# Pystachy port: annotate recursive JSON values directly with dynamic Any.
-from typing import Any
+from bisect import bisect_right
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, cast
 
 from .parse_string_helpers.object_value_context import classify_object_value_comma, update_inline_container_stack
 from .parse_string_helpers.parse_boolean_or_null import parse_boolean_or_null
 from .parse_string_helpers.parse_json_llm_block import parse_json_llm_block
-from .utils.constants import STRING_DELIMITERS
+from .utils.constants import STRING_DELIMITERS, JSONReturnType
 from .utils.json_context import ContextValues
+
+if TYPE_CHECKING:
+    from .json_parser import JSONParser
 
 NO_DIRECT_RESULT = object()
 INLINE_CONTAINER_CLOSING_DELIMITERS = {"[": "]", "{": "}", "(": ")"}
-# Pystachy port: explicit immutable keys of the fixed delimiter table.
-INLINE_CONTAINER_OPENERS = ("[", "{", "(")
+INLINE_CONTAINER_OPENERS = tuple(INLINE_CONTAINER_CLOSING_DELIMITERS)
 LOW_SMART_QUOTE_SENTINEL = "\0"
 # Pystachy port: only this bounded tail is copied while accumulating a string.
 STRING_CHUNK_SIZE = 64
@@ -69,7 +71,7 @@ def _pop_low_smart_quote_span(state: StringParseState) -> None:
     state.rstring_delimiter = state.rstring_delimiter[:-1]
 
 
-def _try_parse_simple_quoted_string(self) -> str | None:
+def _try_parse_simple_quoted_string(self: "JSONParser") -> str | None:
     if self.get_char_at() != '"':
         return None
 
@@ -107,10 +109,10 @@ def _try_parse_simple_quoted_string(self) -> str | None:
         if next_char != ":":
             return None
     elif current_context == ContextValues.OBJECT_VALUE:
-        if next_char is not None and next_char not in {",", "}"}:
+        if next_char not in {",", "}", None}:
             return None
     elif current_context == ContextValues.ARRAY:
-        if next_char is not None and next_char not in {",", "]"}:
+        if next_char not in {",", "]", None}:
             return None
     elif next_char is not None:
         return None
@@ -120,7 +122,7 @@ def _try_parse_simple_quoted_string(self) -> str | None:
 
 
 def _append_literal_char(
-    self,
+    self: "JSONParser",
     state: StringParseState,
     current_char: str,
 ) -> str | None:
@@ -176,7 +178,7 @@ def _append_string_content(state: StringParseState, content: str) -> None:
 
 
 def _quote_belongs_to_regex_character_class(
-    self,
+    self: "JSONParser",
     state: StringParseState,
 ) -> bool:
     """Return whether the current quote is inside a compact ``[...]`` character class."""
@@ -211,7 +213,7 @@ def _replace_last_escape(state: StringParseState, content: str) -> None:
 
 
 def _cached_skip_to_character(
-    self,
+    self: "JSONParser",
     state: StringParseState,
     character: str | list[str],
     idx: int = 0,
@@ -250,8 +252,8 @@ def _cached_skip_to_character(
 
 
 def _prepare_string_entry(
-    self,
-) -> tuple[StringParseState | None, Any]:
+    self: "JSONParser",
+) -> tuple[StringParseState | None, object]:
     char = self.get_char_at()
     if char in ["#", "/"]:
         return None, self.parse_comment()
@@ -356,7 +358,7 @@ def _prepare_string_entry(
 
 
 def _normalize_escape_sequence(
-    self,
+    self: "JSONParser",
     state: StringParseState,
     char: str,
 ) -> tuple[bool, str | None]:
@@ -442,7 +444,7 @@ def _normalize_escape_sequence(
 
 
 def _brace_before_code_fence_belongs_to_string(
-    self,
+    self: "JSONParser",
     state: StringParseState,
     fence_idx: int,
 ) -> bool:
@@ -476,7 +478,7 @@ def _matching_string_delimiter(delimiter: str) -> str:
 
 
 def _bare_key_is_followed_by_colon(
-    self,
+    self: "JSONParser",
     key_idx: int,
 ) -> bool:
     key_char = self.get_char_at(key_idx)
@@ -494,7 +496,7 @@ def _bare_key_is_followed_by_colon(
 
 
 def _post_fence_container_starts_next_member(
-    self,
+    self: "JSONParser",
     container_end_idx: int,
 ) -> bool:
     after_container_idx = self.scroll_whitespaces(idx=container_end_idx)
@@ -509,7 +511,7 @@ def _post_fence_container_starts_next_member(
 
 
 def _starts_nested_inline_container(
-    self,
+    self: "JSONParser",
     idx: int,
 ) -> bool:
     opening_delimiter = self.get_char_at(idx)
@@ -540,7 +542,7 @@ def _starts_nested_inline_container(
 
 
 def _skip_inline_container(
-    self,
+    self: "JSONParser",
     idx: int,
 ) -> int | None:
     opening_delimiter = self.get_char_at(idx)
@@ -553,7 +555,7 @@ def _skip_inline_container(
         char = self.get_char_at(i)
         if not char:
             return None
-        if char is not None and char in STRING_DELIMITERS:
+        if char in STRING_DELIMITERS:
             end_delimiter = _matching_string_delimiter(char)
             i = self.skip_to_character(character=end_delimiter, idx=i + 1)
             if self.get_char_at(i) != end_delimiter:
@@ -570,7 +572,7 @@ def _skip_inline_container(
 
 
 def _scroll_comment_prefixed_member_start(
-    self,
+    self: "JSONParser",
     idx: int,
 ) -> int:
     idx = self.scroll_whitespaces(idx=idx)
@@ -608,7 +610,7 @@ def _scroll_comment_prefixed_member_start(
 
 
 def _quoted_object_member_follows(
-    self,
+    self: "JSONParser",
     quote_idx: int,
 ) -> bool:
     comma_idx = self.scroll_whitespaces(idx=quote_idx + 1)
@@ -620,14 +622,14 @@ def _quoted_object_member_follows(
 
 
 def _object_member_starts_at(
-    self,
+    self: "JSONParser",
     next_member_idx: int,
 ) -> bool:
     if self.get_char_at(next_member_idx) in ["}", None]:
         return False
 
     next_member = self.get_char_at(next_member_idx)
-    if next_member is not None and next_member in STRING_DELIMITERS:
+    if next_member in STRING_DELIMITERS:
         key_end_delimiter = _matching_string_delimiter(next_member)
         key_end_idx = self.skip_to_character(character=key_end_delimiter, idx=next_member_idx + 1)
         if self.get_char_at(key_end_idx) != key_end_delimiter:
@@ -642,7 +644,7 @@ def _object_member_starts_at(
 
 
 def _handle_right_delimiter_candidate(
-    self,
+    self: "JSONParser",
     state: StringParseState,
     char: str,
 ) -> tuple[bool, str | None, bool]:
@@ -738,16 +740,7 @@ def _handle_right_delimiter_candidate(
                 next_char = _append_literal_char(self, state, char)
                 return True, next_char, False
         elif self.context.current == ContextValues.ARRAY:
-            even_delimiters = next_c == outer_rstring_delimiter
-            while next_c == outer_rstring_delimiter:
-                i = self.skip_to_character(character=[outer_rstring_delimiter, "]"], idx=i + 1)
-                next_c = self.get_char_at(i)
-                if next_c != outer_rstring_delimiter:
-                    even_delimiters = False
-                    break
-                i = self.skip_to_character(character=[outer_rstring_delimiter, "]"], idx=i + 1)
-                next_c = self.get_char_at(i)
-            if even_delimiters:
+            if _array_quotes_pair_up(self, outer_rstring_delimiter, i):
                 self.log(
                     "While parsing a string in Array context, we detected a quoted section that would have closed the string but has a different meaning here, ignoring it",
                 )
@@ -766,7 +759,7 @@ def _handle_right_delimiter_candidate(
 
 
 def _scan_string_body(
-    self,
+    self: "JSONParser",
     state: StringParseState,
 ) -> str | None:
     outer_rstring_delimiter = _outer_rstring_delimiter(state)
@@ -887,7 +880,7 @@ def _scan_string_body(
                         if next_c and next_c != ":":
                             rstring_delimiter_missing = False
             else:
-                i = self.skip_to_character(character=":", idx=1)
+                i = _cached_skip_to_character(self, state, ":", idx=1)
                 next_c = self.get_char_at(i)
                 if next_c:
                     break
@@ -906,7 +899,7 @@ def _scan_string_body(
             and ContextValues.ARRAY in self.context.context
             and (not state.string_length or state.string_last != outer_rstring_delimiter)
         ):
-            i = self.skip_to_character(outer_rstring_delimiter)
+            i = _cached_skip_to_character(self, state, outer_rstring_delimiter)
             if not self.get_char_at(i):
                 break
         if self.context.current == ContextValues.OBJECT_VALUE and char == "}":
@@ -1008,7 +1001,7 @@ def _scan_string_body(
 
 
 def _finalize_string_result(
-    self,
+    self: "JSONParser",
     state: StringParseState,
     char: str | None,
 ) -> str:
@@ -1037,17 +1030,39 @@ def _finalize_string_result(
     return value
 
 
-def parse_string(self) -> Any:
+def parse_string(self: "JSONParser") -> JSONReturnType:
     state, direct_result = _prepare_string_entry(self)
     if direct_result is not NO_DIRECT_RESULT:
-        return direct_result
+        return cast("JSONReturnType", direct_result)
     assert state is not None
 
     char = _scan_string_body(self, state)
     return _finalize_string_result(self, state, char)
 
 
-def _only_whitespace_until(self, end: int) -> bool:
+def _array_quotes_pair_up(self: "JSONParser", delimiter: str, quote_idx: int) -> bool:
+    """Return whether the quotes from ``quote_idx`` up to the next ``]`` come in pairs."""
+    quote_index = self.index + quote_idx
+    scan = self.array_quote_scan
+    # Every quote after quote_index up to the same ] was already found by an earlier scan, so reuse it.
+    # Without this, each quote in a long array of strings rescans to the end of the array.
+    if not (
+        scan is not None and scan[0] is self.json_str and scan[1] == delimiter and scan[2] <= quote_index < scan[3]
+    ):
+        positions = []
+        i = quote_idx
+        while True:
+            i = self.skip_to_character(character=[delimiter, "]"], idx=i + 1)
+            if self.get_char_at(i) != delimiter:
+                break
+            positions.append(self.index + i)
+        scan = (self.json_str, delimiter, quote_index, self.index + i, positions)
+        self.array_quote_scan = scan
+    following_quotes = len(scan[4]) - bisect_right(scan[4], quote_index)
+    return following_quotes % 2 == 1
+
+
+def _only_whitespace_until(self: "JSONParser", end: int) -> bool:
     for j in range(1, end):
         c = self.get_char_at(j)
         if c is not None and not c.isspace():

@@ -118,7 +118,7 @@ The examples exercise current stdlib APIs and the
 iniconfig/jdcal/json_repair ports. The 35 cases include 16 JSON-repair cases for
 malformed/Unicode input, result objects, logs, fixture aliases and strict errors. These are
 original tests, not claims of complete upstream suite support. Keep the existing
-[943-case JSON-repair replay](../tests/upstream/json_repair/README.md) and extension
+[962-case JSON-repair replay](../tests/upstream/json_repair/README.md) and extension
 checks: this runner adds fixture/collection qualification rather than replacing
 those broader API checks.
 
@@ -226,11 +226,13 @@ No replacement `test.support` stubs are used. The exact methods, exclusions,
 original outcomes, source hashes and every generated phase appear in the JSON
 report. See [scope and reproduction](../tests/upstream/pytest/README.md).
 
-JSON repair has a separate source-backed qualifier for **53 cases from 40 test
-functions**, including all 21 strict-mode cases in its pinned source module:
+JSON repair has a separate source-backed qualifier for **40 test functions**, 53 cases at
+upstream 0.64.8, including all 21 strict-mode cases in its pinned source module. Its
+selection is pinned to 0.64.9, to which the port has moved; the counts below are those of
+its last run, against 0.64.8, and it has not run again:
 
 ```sh
-git clone --depth 1 --branch v0.64.8 \
+git clone --depth 1 --branch v0.64.9 \
   https://github.com/mangiucugna/json_repair.git build/json-repair-upstream
 python3 tools/pytest_native_json_repair.py --upstream build/json-repair-upstream \
   --compiler ./pystachy --json build/pytest-json-upstream.json
@@ -246,7 +248,7 @@ refinement and the current typed-dictionary-to-Any representation limitation.
 Adapted pytest and generated CPython/JIT/AOT must match the original case IDs
 and phase outcomes. The report inventories all **261 cases in the five selected
 source modules**, lists the 208 unselected cases, and records every other upstream
-test module as outside this scope. This supplements the existing 943-call API
+test module as outside this scope. This supplements the existing 962-call API
 replay; it does not qualify JSON repair's complete upstream test tree.
 
 ## Preserve deliberate failures

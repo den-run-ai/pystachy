@@ -17,7 +17,7 @@ unsupported forms, see [compatibility](compatibility.md).
 | Classes, dataclasses, `NamedTuple` | Fields have static types |
 | `Callable[[A, B], R]` | Fixed positional signature; also supports zero arguments |
 | `A \| B` | Explicit scalar unions, or up to four non-overlapping native class/file members |
-| `T \| None` | Optional values, including containers, `Callable`, generators (`Generator[Y, None, None] \| None`) and exceptions (`BaseException \| None`) |
+| `T \| None` | Optional values, including containers, `Callable`, files (`TextIO \| None`), generators (`Generator[Y, None, None] \| None`) and exceptions (`BaseException \| None`) |
 | `type[E]`, `type[E] \| None` | The class of an exception (`E` an exception class), as a context manager's `__exit__` takes it; see [context managers](semantics.md#context-managers) |
 | `TextIO` | Text files |
 | `Generator[Y, S, R]`; `Iterator[T]` or `Iterable[T]` as a generator function's return | Generator objects that yield `Y` (any generator function's) and take `S` from `send()`; see [generators](semantics.md#generators). Elsewhere `Iterator[T]` and `Iterable[T]` type nothing ([iterators](semantics.md#iterators)) |
@@ -44,13 +44,14 @@ messages.
 
 `tuple(xs)` copies a supported homogeneous list or a string into an immutable
 runtime-length tuple; later list mutation does not change it. A string converts to a tuple of
-its code points ([text](compatibility.md#text-and-file-positions)). `tuple(t)` returns an
+its code points ([text](compatibility.md#text-and-file-positions)), a dict to a tuple of its
+keys in insertion order, and a set to a tuple of its items. `tuple(t)` returns an
 existing tuple unchanged unless an annotation requests a representation conversion
 ([identity limitations](compatibility.md#functions-and-object-identity)). A fixed tuple literal can initialize `tuple[T, ...]`,
 including `()`, and a tuple display with a starred list makes one (`(*xs, 0)`). Supported
 operations are `len`, truth tests, integer indexing, slicing, iteration (also `enumerate`,
-`zip`, and `reversed`), unpacking, `list(t)`, representation and same-element-type equality
-and ordering. Bounds errors raise `IndexError` at runtime.
+`zip`, and `reversed`), membership (`in`, `not in`), unpacking, `list(t)`, representation and
+same-element-type equality and ordering. Bounds errors raise `IndexError` at runtime.
 Optional scalar elements use boxes when needed; widening an immutable tuple to
 optional elements copies its slots rather than reinterpreting numeric bits as pointers.
 
@@ -146,6 +147,26 @@ arguments: types, or number, `None`, `True`, `False` and `...` constants (`C[int
 other argument must still be an annotation. `re.Pattern[str]` and `re.Match[str]` are such
 annotations. `os.PathLike` and the supported `collections.abc` names are exceptions to the
 restriction on builtin module attributes.
+
+`Literal[...]` has the type of its values, which no annotation is checked against:
+`Literal["r", "w"]` is a `str`, `Literal[0, 1]` an `int`, `Literal[False]` a `bool`,
+`Literal[b""]` a `bytes`, `Literal[Color.RED]` the enum class, `Literal["a", None]` a
+`str | None` and `Literal["a", 1]` a `str | int`. Its strings are values, not forward
+references; a nested `Literal[...]` or an alias of one adds its values' types. Other arguments,
+such as a float, are rejected.
+
+`typing.cast(T, v)` returns `v` itself, whatever `T` says, as CPython does. `T` may be quoted.
+It only gives a display, a comprehension or a call that `v` is its expected type, as an
+annotation would: `cast(list[float], [])`, `cast("dict[str, int | None]", dict.fromkeys(names))`.
+
+A quoted annotation, or any annotation that CPython does not evaluate (one in a module that
+imports `annotations` from `__future__`, or of a function's variable or attribute), may name
+what only a top-level `if TYPE_CHECKING:` block imports from another module. It is the
+program's own class or type alias of that name where the program loads that module anyway,
+as in two modules that import each other for types only. Where it does not, the annotation
+types nothing: a parameter is typed by each call's argument, a return by what the function
+returns, and a variable by its value. Names imported there from `typing` and
+`collections.abc` keep their existing rules.
 
 `Final[T]` uses type `T` without enforcing immutability. `x: Final = value` infers the
 value's type; a class-body value must be a constant. `x: Final` alone binds nothing.
@@ -315,6 +336,11 @@ Narrowing applies to locals and parameters in these cases:
 - The appropriate branch of `x is None`, `x is not None`, truth tests, and supported
   `isinstance()` tests, including `elif` and `else`.
 - The right side of `x is not None and ...`, and conditional-expression branches.
+- For an optional `str`, `bytes` or number: the branch where `x == c` holds, or `x != c`
+  does not, for a constant `c` of those types (either operand order), and where `x in xs`
+  holds, or `x not in xs` does not, for a list, tuple or set display of such constants, a
+  `str` constant, or a variable holding a list, set, runtime-length tuple or dict whose items
+  or keys have one of those types. None of them equals `None`.
 - After an assertion or a guard whose `None` branch exits with `return`, `raise`,
   `continue`, `break`, `sys.exit()` or `assert False`.
 - After an assignment of a nonoptional value, or a loop where every exit proves it.
@@ -364,6 +390,8 @@ only when every incoming path agrees.
 Globals, fields and cells assigned by a `nonlocal` closure are not narrowed across
 calls. Copy their value to an ordinary local before testing it. The copy remains
 valid when the original storage is changed because the tagged box is immutable.
+One object's fields are narrowed: the [`argparse` Namespace](../../lib/compatibility.md#argparse)
+that `parse_args()` returned to a function's local, where the function only reads its fields.
 Container types stay invariant: `list[int]` cannot become `list[int | str]`.
 
 Truth tests, `bool()`, `str()`, `repr()`, printing, plain f-strings and `==`/`!=`
@@ -562,7 +590,10 @@ whose type holds its objects: `Base | Child` and `datetime | date` are the base 
 a whole declared member is supported, while narrowing a base member to a subclass is not yet
 implemented.
 
-Reference unions cannot mix with scalar or container members or exception types.
+Reference unions cannot mix with scalar or container members or exception types. A
+parameter annotated with such a mix, `filename: str | Path`, is typed by each call's
+argument, as a parameter without an annotation is, where a function or method may be a
+template; a return, field or variable annotated so is rejected.
 Callable fields, bound-method extraction and unpacked method arguments
 are unsupported. Use a typed local for an empty-container argument that needs an
 expected type. Field and property reads and stores dispatch on the member. A read of

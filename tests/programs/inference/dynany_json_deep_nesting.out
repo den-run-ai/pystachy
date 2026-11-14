@@ -1,0 +1,1223 @@
+1 depth 1 [0] | depth 1 {"a": 0} | depth 1 [0]
+63 depth 63 ]]]]]]]]]]]]]] | depth 63 }}}}}}}}}}}}}} | depth 63 }]}]}]}]}]}]}]
+64 depth 64 ]]]]]]]]]]]]]] | depth 64 }}}}}}}}}}}}}} | depth 65 }]}]}]}]}]}]}]
+65 depth 65 ]]]]]]]]]]]]]] | depth 65 }}}}}}}}}}}}}} | depth 65 }]}]}]}]}]}]}]
+66 depth 66 ]]]]]]]]]]]]]] | depth 66 }}}}}}}}}}}}}} | depth 67 }]}]}]}]}]}]}]
+130 depth 130 ]]]]]]]]]]]]]] | depth 130  | depth 131 }]}]}]}]}]}]}]
+600 depth 600  | depth 600  | depth 601 
+depth 9998 
+maximum recursion depth exceeded while decoding a JSON object from a unicode string
+maximum recursion depth exceeded while decoding a JSON array from a unicode string
+63 JSONDecodeError Expecting ',' delimiter: line 1 column 127 (char 126)
+63 JSONDecodeError Illegal trailing comma before end of array: line 1 column 65 (char 64)
+63 JSONDecodeError Expecting ',' delimiter: line 1 column 66 (char 65)
+63 JSONDecodeError Extra data: line 1 column 127 (char 126)
+63 JSONDecodeError Expecting ':' delimiter: line 1 column 69 (char 68)
+63 JSONDecodeError Expecting property name enclosed in double quotes: line 1 column 65 (char 64)
+63 JSONDecodeError Illegal trailing comma before end of object: line 1 column 71 (char 70)
+63 JSONDecodeError Expecting value: line 1 column 70 (char 69)
+63 depth 64 ]]]]]]]]]]]]]]
+63 depth 66 }}}}}}}}}}}}}}
+63 JSONDecodeError Expecting ',' delimiter: line 1 column 379 (char 378)
+63 JSONDecodeError Extra data: line 1 column 380 (char 379)
+64 JSONDecodeError Expecting ',' delimiter: line 1 column 129 (char 128)
+64 JSONDecodeError Illegal trailing comma before end of array: line 1 column 66 (char 65)
+64 JSONDecodeError Expecting ',' delimiter: line 1 column 67 (char 66)
+64 JSONDecodeError Extra data: line 1 column 129 (char 128)
+64 JSONDecodeError Expecting ':' delimiter: line 1 column 70 (char 69)
+64 JSONDecodeError Expecting property name enclosed in double quotes: line 1 column 66 (char 65)
+64 JSONDecodeError Illegal trailing comma before end of object: line 1 column 72 (char 71)
+64 JSONDecodeError Expecting value: line 1 column 71 (char 70)
+64 depth 65 ]]]]]]]]]]]]]]
+64 depth 67 }}}}}}}}}}}}}}
+64 JSONDecodeError Expecting ',' delimiter: line 1 column 385 (char 384)
+64 JSONDecodeError Extra data: line 1 column 386 (char 385)
+65 JSONDecodeError Expecting ',' delimiter: line 1 column 131 (char 130)
+65 JSONDecodeError Illegal trailing comma before end of array: line 1 column 67 (char 66)
+65 JSONDecodeError Expecting ',' delimiter: line 1 column 68 (char 67)
+65 JSONDecodeError Extra data: line 1 column 131 (char 130)
+65 JSONDecodeError Expecting ':' delimiter: line 1 column 71 (char 70)
+65 JSONDecodeError Expecting property name enclosed in double quotes: line 1 column 67 (char 66)
+65 JSONDecodeError Illegal trailing comma before end of object: line 1 column 73 (char 72)
+65 JSONDecodeError Expecting value: line 1 column 72 (char 71)
+65 depth 66 ]]]]]]]]]]]]]]
+65 depth 68 }}}}}}}}}}}}}}
+65 JSONDecodeError Expecting ',' delimiter: line 1 column 391 (char 390)
+65 JSONDecodeError Extra data: line 1 column 392 (char 391)
+70 JSONDecodeError Expecting ',' delimiter: line 1 column 141 (char 140)
+70 JSONDecodeError Illegal trailing comma before end of array: line 1 column 72 (char 71)
+70 JSONDecodeError Expecting ',' delimiter: line 1 column 73 (char 72)
+70 JSONDecodeError Extra data: line 1 column 141 (char 140)
+70 JSONDecodeError Expecting ':' delimiter: line 1 column 76 (char 75)
+70 JSONDecodeError Expecting property name enclosed in double quotes: line 1 column 72 (char 71)
+70 JSONDecodeError Illegal trailing comma before end of object: line 1 column 78 (char 77)
+70 JSONDecodeError Expecting value: line 1 column 77 (char 76)
+70 depth 71 ]]]]]]]]]]]]]]
+70 depth 73 }}}}}}}}}}}}}}
+70 JSONDecodeError Expecting ',' delimiter: line 1 column 421 (char 420)
+70 JSONDecodeError Extra data: line 1 column 422 (char 421)
+300 JSONDecodeError Expecting ',' delimiter: line 1 column 601 (char 600)
+300 JSONDecodeError Illegal trailing comma before end of array: line 1 column 302 (char 301)
+300 JSONDecodeError Expecting ',' delimiter: line 1 column 303 (char 302)
+300 JSONDecodeError Extra data: line 1 column 601 (char 600)
+300 JSONDecodeError Expecting ':' delimiter: line 1 column 306 (char 305)
+300 JSONDecodeError Expecting property name enclosed in double quotes: line 1 column 302 (char 301)
+300 JSONDecodeError Illegal trailing comma before end of object: line 1 column 308 (char 307)
+300 JSONDecodeError Expecting value: line 1 column 307 (char 306)
+300 depth 301 ]]]]]]]]]]]]]]
+300 depth 303 
+300 JSONDecodeError Expecting ',' delimiter: line 1 column 1801 (char 1800)
+300 JSONDecodeError Extra data: line 1 column 1802 (char 1801)
+[{"k": 2, "j": [1, 2, {"k": 3}]}, [3, 4], "s"]
+low limit depth 2001 
+k0 n0 plain 114 [1, "x", null, true, false, 2.5, -0.0, {"k": [], "j": {}, "t": [], "\u00e9": "\u2028\ud83d\ude00"}, [1, [2, [3]]]]
+k0 n0 compact 76 [1,"x",null,true,false,2.5,-0.0,{"k":[],"j":{},"t":[],"é":" 😀"},[1,[2,[3]]]]
+k0 n0 keys 112 {"2": "a", "2.5": "b", "false": "c", "null": "d", "s": {"z": 1, "y": [2, {"b": 1, "a": 2}]}, "10": [], "-1": {}}
+k0 n0 sorted 31 {"a": {"c": 2, "d": 1}, "b": 1}
+k0 n0 sorted mixed TypeError '<' not supported between instances of 'NoneType' and 'int'
+k0 n0 bad key TypeError keys must be str, int, float, bool or None, not tuple
+k0 n0 skip 17 {"a": 1, "b": {}}
+k0 n0 skip sorted TypeError '<' not supported between instances of 'tuple' and 'str'
+k0 n0 nan 15 [NaN, Infinity]
+k0 n0 no nan ValueError Out of range float values are not JSON compliant: -inf
+k0 n0 unserializable TypeError Object of type Obj is not JSON serializable
+k0 n0 default 37 [[{"k": [1, "s"]}], 7, [1, {"a": 7}]]
+k0 n0 default raises TypeError default() cannot convert type
+k0 n0 default loop ValueError Circular reference detected
+k0 n0 inserted 63 {"a": 1, "b": 0, "z": [2, {"q": 3}], "c3": 3, "c4": 4, "c5": 5}
+k0 n0 deleted 28 {"a": 1, "z": [2, {"q": 3}]}
+k0 n0 swapped TypeError keys must be str, int, float, bool or None, not tuple
+k0 n0 swapped skip 32 {"a": 1, "b": 0, "z": "swapped"}
+k0 n0 inserted sorted 36 {"a": 1, "b": 0, "z": [2, {"q": 3}]}
+k0 n0 cycle ValueError Circular reference detected
+k0 n0 cycle dict ValueError Circular reference detected
+k0 n0 cycle default ValueError Circular reference detected
+k0 n0 shared 54 [[1, 2], [1, 2], {"a": [1, 2], "b": [[1, 2], [1, 2]]}]
+k0 n63 plain 240 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n63 compact 202 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n63 keys 238 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n63 sorted 157 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n63 sorted mixed TypeError '<' not supported between instances of 'NoneType' and 'int'
+k0 n63 bad key TypeError keys must be str, int, float, bool or None, not tuple
+k0 n63 skip 143 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[{"a": 1, "b": {}}]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n63 skip sorted TypeError '<' not supported between instances of 'tuple' and 'str'
+k0 n63 nan 141 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[NaN, Infinity]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n63 no nan ValueError Out of range float values are not JSON compliant: -inf
+k0 n63 unserializable TypeError Object of type Obj is not JSON serializable
+k0 n63 default 163 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n63 default raises TypeError default() cannot convert type
+k0 n63 default loop ValueError Circular reference detected
+k0 n63 inserted 189 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n63 deleted 154 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n63 swapped TypeError keys must be str, int, float, bool or None, not tuple
+k0 n63 swapped skip 158 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n63 inserted sorted 162 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n63 cycle ValueError Circular reference detected
+k0 n63 cycle dict ValueError Circular reference detected
+k0 n63 cycle default ValueError Circular reference detected
+k0 n63 shared 180 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n64 plain 242 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n64 compact 204 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n64 keys 240 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n64 sorted 159 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n64 sorted mixed TypeError '<' not supported between instances of 'NoneType' and 'int'
+k0 n64 bad key TypeError keys must be str, int, float, bool or None, not tuple
+k0 n64 skip 145 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[{"a": 1, "b": {}}]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n64 skip sorted TypeError '<' not supported between instances of 'tuple' and 'str'
+k0 n64 nan 143 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[NaN, Infinity]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n64 no nan ValueError Out of range float values are not JSON compliant: -inf
+k0 n64 unserializable TypeError Object of type Obj is not JSON serializable
+k0 n64 default 165 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n64 default raises TypeError default() cannot convert type
+k0 n64 default loop ValueError Circular reference detected
+k0 n64 inserted 191 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n64 deleted 156 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n64 swapped TypeError keys must be str, int, float, bool or None, not tuple
+k0 n64 swapped skip 160 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n64 inserted sorted 164 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n64 cycle ValueError Circular reference detected
+k0 n64 cycle dict ValueError Circular reference detected
+k0 n64 cycle default ValueError Circular reference detected
+k0 n64 shared 182 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n65 plain 244 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n65 compact 206 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n65 keys 242 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n65 sorted 161 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n65 sorted mixed TypeError '<' not supported between instances of 'NoneType' and 'int'
+k0 n65 bad key TypeError keys must be str, int, float, bool or None, not tuple
+k0 n65 skip 147 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[{"a": 1, "b": {}}]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n65 skip sorted TypeError '<' not supported between instances of 'tuple' and 'str'
+k0 n65 nan 145 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[NaN, Infinity]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n65 no nan ValueError Out of range float values are not JSON compliant: -inf
+k0 n65 unserializable TypeError Object of type Obj is not JSON serializable
+k0 n65 default 167 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n65 default raises TypeError default() cannot convert type
+k0 n65 default loop ValueError Circular reference detected
+k0 n65 inserted 193 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n65 deleted 158 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n65 swapped TypeError keys must be str, int, float, bool or None, not tuple
+k0 n65 swapped skip 162 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n65 inserted sorted 166 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n65 cycle ValueError Circular reference detected
+k0 n65 cycle dict ValueError Circular reference detected
+k0 n65 cycle default ValueError Circular reference detected
+k0 n65 shared 184 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n90 plain 294 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n90 compact 256 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n90 keys 292 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n90 sorted 211 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n90 sorted mixed TypeError '<' not supported between instances of 'NoneType' and 'int'
+k0 n90 bad key TypeError keys must be str, int, float, bool or None, not tuple
+k0 n90 skip 197 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n90 skip sorted TypeError '<' not supported between instances of 'tuple' and 'str'
+k0 n90 nan 195 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n90 no nan ValueError Out of range float values are not JSON compliant: -inf
+k0 n90 unserializable TypeError Object of type Obj is not JSON serializable
+k0 n90 default 217 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n90 default raises TypeError default() cannot convert type
+k0 n90 default loop ValueError Circular reference detected
+k0 n90 inserted 243 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n90 deleted 208 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n90 swapped TypeError keys must be str, int, float, bool or None, not tuple
+k0 n90 swapped skip 212 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n90 inserted sorted 216 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n90 cycle ValueError Circular reference detected
+k0 n90 cycle dict ValueError Circular reference detected
+k0 n90 cycle default ValueError Circular reference detected
+k0 n90 shared 234 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k0 n63 indent 5832 [
+ [
+  [
+   [
+    [
+     [
+      [
+      ...      ]
+        ]
+       ]
+      ]
+     ]
+    ]
+   ]
+  ]
+ ]
+]
+k0 n63 indent keys 5443 [
+	[
+		[
+			[
+				[
+					[
+						[
+					 ... 					]
+								]
+							]
+						]
+					]
+				]
+			]
+		]
+	]
+]
+k0 n63 indent skip 8455 [
+  [
+    [
+      [
+        [
+           ...    ]
+            ]
+          ]
+        ]
+      ]
+    ]
+  ]
+]
+k0 n63 indent default 15133 [
+   [
+      [
+         [
+            [
+ ...   ]
+               ]
+            ]
+         ]
+      ]
+   ]
+]
+k0 n64 indent 5986 [
+ [
+  [
+   [
+    [
+     [
+      [
+      ...      ]
+        ]
+       ]
+      ]
+     ]
+    ]
+   ]
+  ]
+ ]
+]
+k0 n64 indent keys 5591 [
+	[
+		[
+			[
+				[
+					[
+						[
+					 ... 					]
+								]
+							]
+						]
+					]
+				]
+			]
+		]
+	]
+]
+k0 n64 indent skip 8717 [
+  [
+    [
+      [
+        [
+           ...    ]
+            ]
+          ]
+        ]
+      ]
+    ]
+  ]
+]
+k0 n64 indent default 15563 [
+   [
+      [
+         [
+            [
+ ...   ]
+               ]
+            ]
+         ]
+      ]
+   ]
+]
+k0 n66 indent 6300 [
+ [
+  [
+   [
+    [
+     [
+      [
+      ...      ]
+        ]
+       ]
+      ]
+     ]
+    ]
+   ]
+  ]
+ ]
+]
+k0 n66 indent keys 5893 [
+	[
+		[
+			[
+				[
+					[
+						[
+					 ... 					]
+								]
+							]
+						]
+					]
+				]
+			]
+		]
+	]
+]
+k0 n66 indent skip 9253 [
+  [
+    [
+      [
+        [
+           ...    ]
+            ]
+          ]
+        ]
+      ]
+    ]
+  ]
+]
+k0 n66 indent default 16441 [
+   [
+      [
+         [
+            [
+ ...   ]
+               ]
+            ]
+         ]
+      ]
+   ]
+]
+k1 n0 plain 114 [1, "x", null, true, false, 2.5, -0.0, {"k": [], "j": {}, "t": [], "\u00e9": "\u2028\ud83d\ude00"}, [1, [2, [3]]]]
+k1 n0 compact 76 [1,"x",null,true,false,2.5,-0.0,{"k":[],"j":{},"t":[],"é":" 😀"},[1,[2,[3]]]]
+k1 n0 keys 112 {"2": "a", "2.5": "b", "false": "c", "null": "d", "s": {"z": 1, "y": [2, {"b": 1, "a": 2}]}, "10": [], "-1": {}}
+k1 n0 sorted 31 {"a": {"c": 2, "d": 1}, "b": 1}
+k1 n0 sorted mixed TypeError '<' not supported between instances of 'NoneType' and 'int'
+k1 n0 bad key TypeError keys must be str, int, float, bool or None, not tuple
+k1 n0 skip 17 {"a": 1, "b": {}}
+k1 n0 skip sorted TypeError '<' not supported between instances of 'tuple' and 'str'
+k1 n0 nan 15 [NaN, Infinity]
+k1 n0 no nan ValueError Out of range float values are not JSON compliant: -inf
+k1 n0 unserializable TypeError Object of type Obj is not JSON serializable
+k1 n0 default 37 [[{"k": [1, "s"]}], 7, [1, {"a": 7}]]
+k1 n0 default raises TypeError default() cannot convert type
+k1 n0 default loop ValueError Circular reference detected
+k1 n0 inserted 63 {"a": 1, "b": 0, "z": [2, {"q": 3}], "c3": 3, "c4": 4, "c5": 5}
+k1 n0 deleted 28 {"a": 1, "z": [2, {"q": 3}]}
+k1 n0 swapped TypeError keys must be str, int, float, bool or None, not tuple
+k1 n0 swapped skip 32 {"a": 1, "b": 0, "z": "swapped"}
+k1 n0 inserted sorted 36 {"a": 1, "b": 0, "z": [2, {"q": 3}]}
+k1 n0 cycle ValueError Circular reference detected
+k1 n0 cycle dict ValueError Circular reference detected
+k1 n0 cycle default ValueError Circular reference detected
+k1 n0 shared 54 [[1, 2], [1, 2], {"a": [1, 2], "b": [[1, 2], [1, 2]]}]
+k1 n63 plain 555 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n63 compact 454 {"w":{"w":{"w":{"w":{"w":{"w":{"w":{"w": ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n63 keys 553 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n63 sorted 472 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n63 sorted mixed TypeError '<' not supported between instances of 'NoneType' and 'int'
+k1 n63 bad key TypeError keys must be str, int, float, bool or None, not tuple
+k1 n63 skip 458 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n63 skip sorted TypeError '<' not supported between instances of 'tuple' and 'str'
+k1 n63 nan 456 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n63 no nan ValueError Out of range float values are not JSON compliant: -inf
+k1 n63 unserializable TypeError Object of type Obj is not JSON serializable
+k1 n63 default 478 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n63 default raises TypeError default() cannot convert type
+k1 n63 default loop ValueError Circular reference detected
+k1 n63 inserted 504 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n63 deleted 469 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n63 swapped TypeError keys must be str, int, float, bool or None, not tuple
+k1 n63 swapped skip 473 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n63 inserted sorted 477 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n63 cycle ValueError Circular reference detected
+k1 n63 cycle dict ValueError Circular reference detected
+k1 n63 cycle default ValueError Circular reference detected
+k1 n63 shared 495 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n64 plain 562 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n64 compact 460 {"w":{"w":{"w":{"w":{"w":{"w":{"w":{"w": ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n64 keys 560 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n64 sorted 479 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n64 sorted mixed TypeError '<' not supported between instances of 'NoneType' and 'int'
+k1 n64 bad key TypeError keys must be str, int, float, bool or None, not tuple
+k1 n64 skip 465 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n64 skip sorted TypeError '<' not supported between instances of 'tuple' and 'str'
+k1 n64 nan 463 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n64 no nan ValueError Out of range float values are not JSON compliant: -inf
+k1 n64 unserializable TypeError Object of type Obj is not JSON serializable
+k1 n64 default 485 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n64 default raises TypeError default() cannot convert type
+k1 n64 default loop ValueError Circular reference detected
+k1 n64 inserted 511 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n64 deleted 476 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n64 swapped TypeError keys must be str, int, float, bool or None, not tuple
+k1 n64 swapped skip 480 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n64 inserted sorted 484 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n64 cycle ValueError Circular reference detected
+k1 n64 cycle dict ValueError Circular reference detected
+k1 n64 cycle default ValueError Circular reference detected
+k1 n64 shared 502 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n65 plain 569 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n65 compact 466 {"w":{"w":{"w":{"w":{"w":{"w":{"w":{"w": ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n65 keys 567 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n65 sorted 486 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n65 sorted mixed TypeError '<' not supported between instances of 'NoneType' and 'int'
+k1 n65 bad key TypeError keys must be str, int, float, bool or None, not tuple
+k1 n65 skip 472 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n65 skip sorted TypeError '<' not supported between instances of 'tuple' and 'str'
+k1 n65 nan 470 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n65 no nan ValueError Out of range float values are not JSON compliant: -inf
+k1 n65 unserializable TypeError Object of type Obj is not JSON serializable
+k1 n65 default 492 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n65 default raises TypeError default() cannot convert type
+k1 n65 default loop ValueError Circular reference detected
+k1 n65 inserted 518 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n65 deleted 483 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n65 swapped TypeError keys must be str, int, float, bool or None, not tuple
+k1 n65 swapped skip 487 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n65 inserted sorted 491 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n65 cycle ValueError Circular reference detected
+k1 n65 cycle dict ValueError Circular reference detected
+k1 n65 cycle default ValueError Circular reference detected
+k1 n65 shared 509 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n90 plain 744 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n90 compact 616 {"w":{"w":{"w":{"w":{"w":{"w":{"w":{"w": ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n90 keys 742 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n90 sorted 661 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n90 sorted mixed TypeError '<' not supported between instances of 'NoneType' and 'int'
+k1 n90 bad key TypeError keys must be str, int, float, bool or None, not tuple
+k1 n90 skip 647 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n90 skip sorted TypeError '<' not supported between instances of 'tuple' and 'str'
+k1 n90 nan 645 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n90 no nan ValueError Out of range float values are not JSON compliant: -inf
+k1 n90 unserializable TypeError Object of type Obj is not JSON serializable
+k1 n90 default 667 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n90 default raises TypeError default() cannot convert type
+k1 n90 default loop ValueError Circular reference detected
+k1 n90 inserted 693 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n90 deleted 658 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n90 swapped TypeError keys must be str, int, float, bool or None, not tuple
+k1 n90 swapped skip 662 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n90 inserted sorted 666 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n90 cycle ValueError Circular reference detected
+k1 n90 cycle dict ValueError Circular reference detected
+k1 n90 cycle default ValueError Circular reference detected
+k1 n90 shared 684 {"w": {"w": {"w": {"w": {"w": {"w": {"w" ... }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+k1 n63 indent 6147 {
+ "w": {
+  "w": {
+   "w": {
+    "w": {
+ ...      }
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ }
+}
+k1 n63 indent keys 5758 {
+	"w": {
+		"w": {
+			"w": {
+				"w": {
+ ... 					}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+k1 n63 indent skip 8770 {
+  "w": {
+    "w": {
+      "w": {
+      ...    }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+k1 n63 indent default 15448 {
+   "w": {
+      "w": {
+         "w": { ...   }
+               }
+            }
+         }
+      }
+   }
+}
+k1 n64 indent 6306 {
+ "w": {
+  "w": {
+   "w": {
+    "w": {
+ ...      }
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ }
+}
+k1 n64 indent keys 5911 {
+	"w": {
+		"w": {
+			"w": {
+				"w": {
+ ... 					}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+k1 n64 indent skip 9037 {
+  "w": {
+    "w": {
+      "w": {
+      ...    }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+k1 n64 indent default 15883 {
+   "w": {
+      "w": {
+         "w": { ...   }
+               }
+            }
+         }
+      }
+   }
+}
+k1 n66 indent 6630 {
+ "w": {
+  "w": {
+   "w": {
+    "w": {
+ ...      }
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ }
+}
+k1 n66 indent keys 6223 {
+	"w": {
+		"w": {
+			"w": {
+				"w": {
+ ... 					}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+k1 n66 indent skip 9583 {
+  "w": {
+    "w": {
+      "w": {
+      ...    }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+k1 n66 indent default 16771 {
+   "w": {
+      "w": {
+         "w": { ...   }
+               }
+            }
+         }
+      }
+   }
+}
+k2 n0 plain 114 [1, "x", null, true, false, 2.5, -0.0, {"k": [], "j": {}, "t": [], "\u00e9": "\u2028\ud83d\ude00"}, [1, [2, [3]]]]
+k2 n0 compact 76 [1,"x",null,true,false,2.5,-0.0,{"k":[],"j":{},"t":[],"é":" 😀"},[1,[2,[3]]]]
+k2 n0 keys 112 {"2": "a", "2.5": "b", "false": "c", "null": "d", "s": {"z": 1, "y": [2, {"b": 1, "a": 2}]}, "10": [], "-1": {}}
+k2 n0 sorted 31 {"a": {"c": 2, "d": 1}, "b": 1}
+k2 n0 sorted mixed TypeError '<' not supported between instances of 'NoneType' and 'int'
+k2 n0 bad key TypeError keys must be str, int, float, bool or None, not tuple
+k2 n0 skip 17 {"a": 1, "b": {}}
+k2 n0 skip sorted TypeError '<' not supported between instances of 'tuple' and 'str'
+k2 n0 nan 15 [NaN, Infinity]
+k2 n0 no nan ValueError Out of range float values are not JSON compliant: -inf
+k2 n0 unserializable TypeError Object of type Obj is not JSON serializable
+k2 n0 default 37 [[{"k": [1, "s"]}], 7, [1, {"a": 7}]]
+k2 n0 default raises TypeError default() cannot convert type
+k2 n0 default loop ValueError Circular reference detected
+k2 n0 inserted 63 {"a": 1, "b": 0, "z": [2, {"q": 3}], "c3": 3, "c4": 4, "c5": 5}
+k2 n0 deleted 28 {"a": 1, "z": [2, {"q": 3}]}
+k2 n0 swapped TypeError keys must be str, int, float, bool or None, not tuple
+k2 n0 swapped skip 32 {"a": 1, "b": 0, "z": "swapped"}
+k2 n0 inserted sorted 36 {"a": 1, "b": 0, "z": [2, {"q": 3}]}
+k2 n0 cycle ValueError Circular reference detected
+k2 n0 cycle dict ValueError Circular reference detected
+k2 n0 cycle default ValueError Circular reference detected
+k2 n0 shared 54 [[1, 2], [1, 2], {"a": [1, 2], "b": [[1, 2], [1, 2]]}]
+k2 n63 plain 240 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n63 compact 202 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n63 keys 238 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n63 sorted 157 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n63 sorted mixed TypeError '<' not supported between instances of 'NoneType' and 'int'
+k2 n63 bad key TypeError keys must be str, int, float, bool or None, not tuple
+k2 n63 skip 143 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[{"a": 1, "b": {}}]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n63 skip sorted TypeError '<' not supported between instances of 'tuple' and 'str'
+k2 n63 nan 141 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[NaN, Infinity]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n63 no nan ValueError Out of range float values are not JSON compliant: -inf
+k2 n63 unserializable TypeError Object of type Obj is not JSON serializable
+k2 n63 default 163 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n63 default raises TypeError default() cannot convert type
+k2 n63 default loop ValueError Circular reference detected
+k2 n63 inserted 189 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n63 deleted 154 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n63 swapped TypeError keys must be str, int, float, bool or None, not tuple
+k2 n63 swapped skip 158 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n63 inserted sorted 162 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n63 cycle ValueError Circular reference detected
+k2 n63 cycle dict ValueError Circular reference detected
+k2 n63 cycle default ValueError Circular reference detected
+k2 n63 shared 180 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n64 plain 242 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n64 compact 204 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n64 keys 240 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n64 sorted 159 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n64 sorted mixed TypeError '<' not supported between instances of 'NoneType' and 'int'
+k2 n64 bad key TypeError keys must be str, int, float, bool or None, not tuple
+k2 n64 skip 145 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[{"a": 1, "b": {}}]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n64 skip sorted TypeError '<' not supported between instances of 'tuple' and 'str'
+k2 n64 nan 143 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[NaN, Infinity]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n64 no nan ValueError Out of range float values are not JSON compliant: -inf
+k2 n64 unserializable TypeError Object of type Obj is not JSON serializable
+k2 n64 default 165 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n64 default raises TypeError default() cannot convert type
+k2 n64 default loop ValueError Circular reference detected
+k2 n64 inserted 191 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n64 deleted 156 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n64 swapped TypeError keys must be str, int, float, bool or None, not tuple
+k2 n64 swapped skip 160 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n64 inserted sorted 164 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n64 cycle ValueError Circular reference detected
+k2 n64 cycle dict ValueError Circular reference detected
+k2 n64 cycle default ValueError Circular reference detected
+k2 n64 shared 182 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n65 plain 244 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n65 compact 206 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n65 keys 242 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n65 sorted 161 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n65 sorted mixed TypeError '<' not supported between instances of 'NoneType' and 'int'
+k2 n65 bad key TypeError keys must be str, int, float, bool or None, not tuple
+k2 n65 skip 147 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[{"a": 1, "b": {}}]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n65 skip sorted TypeError '<' not supported between instances of 'tuple' and 'str'
+k2 n65 nan 145 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[NaN, Infinity]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n65 no nan ValueError Out of range float values are not JSON compliant: -inf
+k2 n65 unserializable TypeError Object of type Obj is not JSON serializable
+k2 n65 default 167 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n65 default raises TypeError default() cannot convert type
+k2 n65 default loop ValueError Circular reference detected
+k2 n65 inserted 193 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n65 deleted 158 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n65 swapped TypeError keys must be str, int, float, bool or None, not tuple
+k2 n65 swapped skip 162 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n65 inserted sorted 166 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n65 cycle ValueError Circular reference detected
+k2 n65 cycle dict ValueError Circular reference detected
+k2 n65 cycle default ValueError Circular reference detected
+k2 n65 shared 184 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n90 plain 294 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n90 compact 256 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n90 keys 292 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n90 sorted 211 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n90 sorted mixed TypeError '<' not supported between instances of 'NoneType' and 'int'
+k2 n90 bad key TypeError keys must be str, int, float, bool or None, not tuple
+k2 n90 skip 197 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n90 skip sorted TypeError '<' not supported between instances of 'tuple' and 'str'
+k2 n90 nan 195 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n90 no nan ValueError Out of range float values are not JSON compliant: -inf
+k2 n90 unserializable TypeError Object of type Obj is not JSON serializable
+k2 n90 default 217 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n90 default raises TypeError default() cannot convert type
+k2 n90 default loop ValueError Circular reference detected
+k2 n90 inserted 243 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n90 deleted 208 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n90 swapped TypeError keys must be str, int, float, bool or None, not tuple
+k2 n90 swapped skip 212 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n90 inserted sorted 216 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n90 cycle ValueError Circular reference detected
+k2 n90 cycle dict ValueError Circular reference detected
+k2 n90 cycle default ValueError Circular reference detected
+k2 n90 shared 234 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k2 n63 indent 5832 [
+ [
+  [
+   [
+    [
+     [
+      [
+      ...      ]
+        ]
+       ]
+      ]
+     ]
+    ]
+   ]
+  ]
+ ]
+]
+k2 n63 indent keys 5443 [
+	[
+		[
+			[
+				[
+					[
+						[
+					 ... 					]
+								]
+							]
+						]
+					]
+				]
+			]
+		]
+	]
+]
+k2 n63 indent skip 8455 [
+  [
+    [
+      [
+        [
+           ...    ]
+            ]
+          ]
+        ]
+      ]
+    ]
+  ]
+]
+k2 n63 indent default 15133 [
+   [
+      [
+         [
+            [
+ ...   ]
+               ]
+            ]
+         ]
+      ]
+   ]
+]
+k2 n64 indent 5986 [
+ [
+  [
+   [
+    [
+     [
+      [
+      ...      ]
+        ]
+       ]
+      ]
+     ]
+    ]
+   ]
+  ]
+ ]
+]
+k2 n64 indent keys 5591 [
+	[
+		[
+			[
+				[
+					[
+						[
+					 ... 					]
+								]
+							]
+						]
+					]
+				]
+			]
+		]
+	]
+]
+k2 n64 indent skip 8717 [
+  [
+    [
+      [
+        [
+           ...    ]
+            ]
+          ]
+        ]
+      ]
+    ]
+  ]
+]
+k2 n64 indent default 15563 [
+   [
+      [
+         [
+            [
+ ...   ]
+               ]
+            ]
+         ]
+      ]
+   ]
+]
+k2 n66 indent 6300 [
+ [
+  [
+   [
+    [
+     [
+      [
+      ...      ]
+        ]
+       ]
+      ]
+     ]
+    ]
+   ]
+  ]
+ ]
+]
+k2 n66 indent keys 5893 [
+	[
+		[
+			[
+				[
+					[
+						[
+					 ... 					]
+								]
+							]
+						]
+					]
+				]
+			]
+		]
+	]
+]
+k2 n66 indent skip 9253 [
+  [
+    [
+      [
+        [
+           ...    ]
+            ]
+          ]
+        ]
+      ]
+    ]
+  ]
+]
+k2 n66 indent default 16441 [
+   [
+      [
+         [
+            [
+ ...   ]
+               ]
+            ]
+         ]
+      ]
+   ]
+]
+k3 n0 plain 114 [1, "x", null, true, false, 2.5, -0.0, {"k": [], "j": {}, "t": [], "\u00e9": "\u2028\ud83d\ude00"}, [1, [2, [3]]]]
+k3 n0 compact 76 [1,"x",null,true,false,2.5,-0.0,{"k":[],"j":{},"t":[],"é":" 😀"},[1,[2,[3]]]]
+k3 n0 keys 112 {"2": "a", "2.5": "b", "false": "c", "null": "d", "s": {"z": 1, "y": [2, {"b": 1, "a": 2}]}, "10": [], "-1": {}}
+k3 n0 sorted 31 {"a": {"c": 2, "d": 1}, "b": 1}
+k3 n0 sorted mixed TypeError '<' not supported between instances of 'NoneType' and 'int'
+k3 n0 bad key TypeError keys must be str, int, float, bool or None, not tuple
+k3 n0 skip 17 {"a": 1, "b": {}}
+k3 n0 skip sorted TypeError '<' not supported between instances of 'tuple' and 'str'
+k3 n0 nan 15 [NaN, Infinity]
+k3 n0 no nan ValueError Out of range float values are not JSON compliant: -inf
+k3 n0 unserializable TypeError Object of type Obj is not JSON serializable
+k3 n0 default 37 [[{"k": [1, "s"]}], 7, [1, {"a": 7}]]
+k3 n0 default raises TypeError default() cannot convert type
+k3 n0 default loop ValueError Circular reference detected
+k3 n0 inserted 63 {"a": 1, "b": 0, "z": [2, {"q": 3}], "c3": 3, "c4": 4, "c5": 5}
+k3 n0 deleted 28 {"a": 1, "z": [2, {"q": 3}]}
+k3 n0 swapped TypeError keys must be str, int, float, bool or None, not tuple
+k3 n0 swapped skip 32 {"a": 1, "b": 0, "z": "swapped"}
+k3 n0 inserted sorted 36 {"a": 1, "b": 0, "z": [2, {"q": 3}]}
+k3 n0 cycle ValueError Circular reference detected
+k3 n0 cycle dict ValueError Circular reference detected
+k3 n0 cycle default ValueError Circular reference detected
+k3 n0 shared 54 [[1, 2], [1, 2], {"a": [1, 2], "b": [[1, 2], [1, 2]]}]
+k3 n63 plain 1028 [{"p": 61, "w": [60, [{"p": 58, "w": [57 ... 3": null}, 56], "t"], "3": null}, 59], "t"], "3": null}, 62]
+k3 n63 compact 822 [{"p":61,"w":[60,[{"p":58,"w":[57,[{"p": ... 53],"t"],"3":null},56],"t"],"3":null},59],"t"],"3":null},62]
+k3 n63 keys 1026 [{"p": 61, "w": [60, [{"p": 58, "w": [57 ... 3": null}, 56], "t"], "3": null}, 59], "t"], "3": null}, 62]
+k3 n63 sorted 157 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k3 n63 sorted mixed TypeError '<' not supported between instances of 'int' and 'str'
+k3 n63 bad key TypeError keys must be str, int, float, bool or None, not tuple
+k3 n63 skip 931 [{"p": 61, "w": [60, [{"p": 58, "w": [57 ... 3": null}, 56], "t"], "3": null}, 59], "t"], "3": null}, 62]
+k3 n63 skip sorted TypeError '<' not supported between instances of 'tuple' and 'str'
+k3 n63 nan 929 [{"p": 61, "w": [60, [{"p": 58, "w": [57 ... 3": null}, 56], "t"], "3": null}, 59], "t"], "3": null}, 62]
+k3 n63 no nan ValueError Out of range float values are not JSON compliant: -inf
+k3 n63 unserializable TypeError Object of type Obj is not JSON serializable
+k3 n63 default 951 [{"p": 61, "w": [60, [{"p": 58, "w": [57 ... 3": null}, 56], "t"], "3": null}, 59], "t"], "3": null}, 62]
+k3 n63 default raises TypeError default() cannot convert type
+k3 n63 default loop ValueError Circular reference detected
+k3 n63 inserted 977 [{"p": 61, "w": [60, [{"p": 58, "w": [57 ... 3": null}, 56], "t"], "3": null}, 59], "t"], "3": null}, 62]
+k3 n63 deleted 942 [{"p": 61, "w": [60, [{"p": 58, "w": [57 ... 3": null}, 56], "t"], "3": null}, 59], "t"], "3": null}, 62]
+k3 n63 swapped TypeError keys must be str, int, float, bool or None, not tuple
+k3 n63 swapped skip 946 [{"p": 61, "w": [60, [{"p": 58, "w": [57 ... 3": null}, 56], "t"], "3": null}, 59], "t"], "3": null}, 62]
+k3 n63 inserted sorted 162 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k3 n63 cycle ValueError Circular reference detected
+k3 n63 cycle dict ValueError Circular reference detected
+k3 n63 cycle default ValueError Circular reference detected
+k3 n63 shared 968 [{"p": 61, "w": [60, [{"p": 58, "w": [57 ... 3": null}, 56], "t"], "3": null}, 59], "t"], "3": null}, 62]
+k3 n64 plain 1039 [63, [{"p": 61, "w": [60, [{"p": 58, "w" ... ll}, 56], "t"], "3": null}, 59], "t"], "3": null}, 62], "t"]
+k3 n64 compact 831 [63,[{"p":61,"w":[60,[{"p":58,"w":[57,[{ ... t"],"3":null},56],"t"],"3":null},59],"t"],"3":null},62],"t"]
+k3 n64 keys 1037 [63, [{"p": 61, "w": [60, [{"p": 58, "w" ... ll}, 56], "t"], "3": null}, 59], "t"], "3": null}, 62], "t"]
+k3 n64 sorted 159 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k3 n64 sorted mixed TypeError '<' not supported between instances of 'int' and 'str'
+k3 n64 bad key TypeError keys must be str, int, float, bool or None, not tuple
+k3 n64 skip 942 [63, [{"p": 61, "w": [60, [{"p": 58, "w" ... ll}, 56], "t"], "3": null}, 59], "t"], "3": null}, 62], "t"]
+k3 n64 skip sorted TypeError '<' not supported between instances of 'tuple' and 'str'
+k3 n64 nan 940 [63, [{"p": 61, "w": [60, [{"p": 58, "w" ... ll}, 56], "t"], "3": null}, 59], "t"], "3": null}, 62], "t"]
+k3 n64 no nan ValueError Out of range float values are not JSON compliant: -inf
+k3 n64 unserializable TypeError Object of type Obj is not JSON serializable
+k3 n64 default 962 [63, [{"p": 61, "w": [60, [{"p": 58, "w" ... ll}, 56], "t"], "3": null}, 59], "t"], "3": null}, 62], "t"]
+k3 n64 default raises TypeError default() cannot convert type
+k3 n64 default loop ValueError Circular reference detected
+k3 n64 inserted 988 [63, [{"p": 61, "w": [60, [{"p": 58, "w" ... ll}, 56], "t"], "3": null}, 59], "t"], "3": null}, 62], "t"]
+k3 n64 deleted 953 [63, [{"p": 61, "w": [60, [{"p": 58, "w" ... ll}, 56], "t"], "3": null}, 59], "t"], "3": null}, 62], "t"]
+k3 n64 swapped TypeError keys must be str, int, float, bool or None, not tuple
+k3 n64 swapped skip 957 [63, [{"p": 61, "w": [60, [{"p": 58, "w" ... ll}, 56], "t"], "3": null}, 59], "t"], "3": null}, 62], "t"]
+k3 n64 inserted sorted 164 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k3 n64 cycle ValueError Circular reference detected
+k3 n64 cycle dict ValueError Circular reference detected
+k3 n64 cycle default ValueError Circular reference detected
+k3 n64 shared 979 [63, [{"p": 61, "w": [60, [{"p": 58, "w" ... ll}, 56], "t"], "3": null}, 59], "t"], "3": null}, 62], "t"]
+k3 n65 plain 1066 {"p": 64, "w": [63, [{"p": 61, "w": [60, ... "], "3": null}, 59], "t"], "3": null}, 62], "t"], "3": null}
+k3 n65 compact 853 {"p":64,"w":[63,[{"p":61,"w":[60,[{"p":5 ... ll},56],"t"],"3":null},59],"t"],"3":null},62],"t"],"3":null}
+k3 n65 keys 1064 {"p": 64, "w": [63, [{"p": 61, "w": [60, ... "], "3": null}, 59], "t"], "3": null}, 62], "t"], "3": null}
+k3 n65 sorted 161 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k3 n65 sorted mixed TypeError '<' not supported between instances of 'int' and 'str'
+k3 n65 bad key TypeError keys must be str, int, float, bool or None, not tuple
+k3 n65 skip 969 {"p": 64, "w": [63, [{"p": 61, "w": [60, ... "], "3": null}, 59], "t"], "3": null}, 62], "t"], "3": null}
+k3 n65 skip sorted TypeError '<' not supported between instances of 'tuple' and 'str'
+k3 n65 nan 967 {"p": 64, "w": [63, [{"p": 61, "w": [60, ... "], "3": null}, 59], "t"], "3": null}, 62], "t"], "3": null}
+k3 n65 no nan ValueError Out of range float values are not JSON compliant: -inf
+k3 n65 unserializable TypeError Object of type Obj is not JSON serializable
+k3 n65 default 989 {"p": 64, "w": [63, [{"p": 61, "w": [60, ... "], "3": null}, 59], "t"], "3": null}, 62], "t"], "3": null}
+k3 n65 default raises TypeError default() cannot convert type
+k3 n65 default loop ValueError Circular reference detected
+k3 n65 inserted 1015 {"p": 64, "w": [63, [{"p": 61, "w": [60, ... "], "3": null}, 59], "t"], "3": null}, 62], "t"], "3": null}
+k3 n65 deleted 980 {"p": 64, "w": [63, [{"p": 61, "w": [60, ... "], "3": null}, 59], "t"], "3": null}, 62], "t"], "3": null}
+k3 n65 swapped TypeError keys must be str, int, float, bool or None, not tuple
+k3 n65 swapped skip 984 {"p": 64, "w": [63, [{"p": 61, "w": [60, ... "], "3": null}, 59], "t"], "3": null}, 62], "t"], "3": null}
+k3 n65 inserted sorted 166 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k3 n65 cycle ValueError Circular reference detected
+k3 n65 cycle dict ValueError Circular reference detected
+k3 n65 cycle default ValueError Circular reference detected
+k3 n65 shared 1006 {"p": 64, "w": [63, [{"p": 61, "w": [60, ... "], "3": null}, 59], "t"], "3": null}, 62], "t"], "3": null}
+k3 n90 plain 1424 [{"p": 88, "w": [87, [{"p": 85, "w": [84 ... 3": null}, 83], "t"], "3": null}, 86], "t"], "3": null}, 89]
+k3 n90 compact 1146 [{"p":88,"w":[87,[{"p":85,"w":[84,[{"p": ... 80],"t"],"3":null},83],"t"],"3":null},86],"t"],"3":null},89]
+k3 n90 keys 1422 [{"p": 88, "w": [87, [{"p": 85, "w": [84 ... 3": null}, 83], "t"], "3": null}, 86], "t"], "3": null}, 89]
+k3 n90 sorted 211 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k3 n90 sorted mixed TypeError '<' not supported between instances of 'int' and 'str'
+k3 n90 bad key TypeError keys must be str, int, float, bool or None, not tuple
+k3 n90 skip 1327 [{"p": 88, "w": [87, [{"p": 85, "w": [84 ... 3": null}, 83], "t"], "3": null}, 86], "t"], "3": null}, 89]
+k3 n90 skip sorted TypeError '<' not supported between instances of 'tuple' and 'str'
+k3 n90 nan 1325 [{"p": 88, "w": [87, [{"p": 85, "w": [84 ... 3": null}, 83], "t"], "3": null}, 86], "t"], "3": null}, 89]
+k3 n90 no nan ValueError Out of range float values are not JSON compliant: -inf
+k3 n90 unserializable TypeError Object of type Obj is not JSON serializable
+k3 n90 default 1347 [{"p": 88, "w": [87, [{"p": 85, "w": [84 ... 3": null}, 83], "t"], "3": null}, 86], "t"], "3": null}, 89]
+k3 n90 default raises TypeError default() cannot convert type
+k3 n90 default loop ValueError Circular reference detected
+k3 n90 inserted 1373 [{"p": 88, "w": [87, [{"p": 85, "w": [84 ... 3": null}, 83], "t"], "3": null}, 86], "t"], "3": null}, 89]
+k3 n90 deleted 1338 [{"p": 88, "w": [87, [{"p": 85, "w": [84 ... 3": null}, 83], "t"], "3": null}, 86], "t"], "3": null}, 89]
+k3 n90 swapped TypeError keys must be str, int, float, bool or None, not tuple
+k3 n90 swapped skip 1342 [{"p": 88, "w": [87, [{"p": 85, "w": [84 ... 3": null}, 83], "t"], "3": null}, 86], "t"], "3": null}, 89]
+k3 n90 inserted sorted 216 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+k3 n90 cycle ValueError Circular reference detected
+k3 n90 cycle dict ValueError Circular reference detected
+k3 n90 cycle default ValueError Circular reference detected
+k3 n90 shared 1364 [{"p": 88, "w": [87, [{"p": 85, "w": [84 ... 3": null}, 83], "t"], "3": null}, 86], "t"], "3": null}, 89]
+k3 n63 indent 10001 [
+ {
+  "p": 61,
+  "w": [
+   60,
+   [
+    ... : null
+    },
+    59
+   ],
+   "t"
+  ],
+  "3": null
+ },
+ 62
+]
+k3 n63 indent keys 9612 [
+	{
+		"p": 61,
+		"w": [
+			60,
+			[
+			 ... : null
+				},
+				59
+			],
+			"t"
+		],
+		"3": null
+	},
+	62
+]
+k3 n63 indent skip 16005 [
+  {
+    "p": 61,
+    "w": [
+      60,
+ ...       59
+      ],
+      "t"
+    ],
+    "3": null
+  },
+  62
+]
+k3 n63 indent default 26064 [
+   {
+      "p": 61,
+      "w": [
+      ...       ],
+         "t"
+      ],
+      "3": null
+   },
+   62
+]
+k3 n64 indent 10271 [
+ 63,
+ [
+  {
+   "p": 61,
+   "w": [
+     ...    59
+    ],
+    "t"
+   ],
+   "3": null
+  },
+  62
+ ],
+ "t"
+]
+k3 n64 indent keys 9876 [
+	63,
+	[
+		{
+			"p": 61,
+			"w": [
+				 ... 			59
+				],
+				"t"
+			],
+			"3": null
+		},
+		62
+	],
+	"t"
+]
+k3 n64 indent skip 16490 [
+  63,
+  [
+    {
+      "p": 61,
+      " ...      "t"
+      ],
+      "3": null
+    },
+    62
+  ],
+  "t"
+]
+k3 n64 indent default 26824 [
+   63,
+   [
+      {
+         "p": 61,
+ ...       ],
+         "3": null
+      },
+      62
+   ],
+   "t"
+]
+k3 n66 indent 10833 [
+ {
+  "p": 64,
+  "w": [
+   63,
+   [
+    ... : null
+    },
+    62
+   ],
+   "t"
+  ],
+  "3": null
+ },
+ 65
+]
+k3 n66 indent keys 10426 [
+	{
+		"p": 64,
+		"w": [
+			63,
+			[
+			 ... : null
+				},
+				62
+			],
+			"t"
+		],
+		"3": null
+	},
+	65
+]
+k3 n66 indent skip 17493 [
+  {
+    "p": 64,
+    "w": [
+      63,
+ ...       62
+      ],
+      "t"
+    ],
+    "3": null
+  },
+  65
+]
+k3 n66 indent default 28388 [
+   {
+      "p": 64,
+      "w": [
+      ...       ],
+         "t"
+      ],
+      "3": null
+   },
+   65
+]
+4998 lists and conversions 9997 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+4999 lists and conversions RecursionError maximum recursion depth exceeded
+18 containers in 4990 and 4990 10235 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ... ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+19 containers in 4990 and 4990 RecursionError maximum recursion depth exceeded while encoding a JSON object
+looked for ValueError Circular reference detected
+cycle in 0 ValueError Circular reference detected
+loop in 0 ValueError Circular reference detected
+cycle in 70 ValueError Circular reference detected
+loop in 70 ValueError Circular reference detected
+unchecked cycle RecursionError maximum recursion depth exceeded while encoding a JSON object
+unchecked loop RecursionError maximum recursion depth exceeded
+[exit 0]

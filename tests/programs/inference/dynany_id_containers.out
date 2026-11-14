@@ -1,0 +1,9 @@
+True False True False True
+True False True False
+validator 0 validator 1 validator 0 validator 0 2
+True False
+True False True True
+True False True
+True True
+True 200
+[exit 0]

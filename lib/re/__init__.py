@@ -431,8 +431,19 @@ def _same(a: Item, b: Item) -> bool:
 
 def _uniq(items: list[Item]) -> list[Item]:
     # the set's members once each, in order (list(dict.fromkeys(items)))
-    seen: dict[tuple[int, int, int], bool] = {}
     out: list[Item] = []
+    if len(items) <= 16:
+        # (a short set, as most are, needs no table of keys)
+        for it in items:
+            new = True
+            for o in out:
+                if o.op == it.op and o.arg == it.arg and o.arg2 == it.arg2:
+                    new = False
+                    break
+            if new:
+                out.append(it)
+        return out
+    seen: dict[tuple[int, int, int], bool] = {}
     for it in items:
         key = (it.op, it.arg, it.arg2)
         if key not in seen:
@@ -1613,8 +1624,162 @@ def _setbits(charmap: list[int], ks: list[int]) -> bool:
     return True
 
 
+# _optimize_plain_charset's last set and what it made of it: see there
+_plain_set: list[Item] = []
+_plain_made = _Charset([], False)
+
+
+def _chunk_words(runs: list[tuple[int, int]], at: int, base: int) -> list[int]:
+    # the bitmap of the 256 characters from base, as _mk_bitmap makes it of their map: bit i of
+    # word j is character base + j * 32 + i, set where a run from runs[at] on holds it
+    words = [0, 0, 0, 0, 0, 0, 0, 0]
+    k = at
+    while k < len(runs) and runs[k][0] < base + 256:
+        lo = max(runs[k][0], base) - base
+        hi = min(runs[k][1], base + 256) - base
+        w = lo >> 5
+        while w << 5 < hi:
+            first = max(lo - (w << 5), 0)
+            last = min(hi - (w << 5), 32)
+            words[w] |= ((1 << last) - 1) & ~((1 << first) - 1)
+            w += 1
+        k += 1
+    return words
+
+
+def _optimize_plain_charset(charset: list[Item]) -> _Charset:
+    # _optimize_charset() of a set that ignores no case. CPython maps the set in 256 entries, or
+    # in 65,536 where a character is past Latin-1, and scans the map; these are the same items,
+    # made from the set's intervals alone (the map, its scans and the keys of its 256 chunks
+    # took a third of a millisecond for an average set, and milliseconds for a wide one)
+    global _plain_set, _plain_made
+    if charset is _plain_set:
+        # (a pattern that starts with a set optimizes it for its INFO block and again in place)
+        return _plain_made
+    made = _plain_charset(charset)
+    _plain_set = charset
+    _plain_made = made
+    return made
+
+
+def _forget_plain_charset() -> None:
+    # the memo holds no set past its pattern's compilation
+    global _plain_set, _plain_made
+    _plain_set = []
+    _plain_made = _Charset([], False)
+
+
+def _plain_charset(charset: list[Item]) -> _Charset:
+    out: list[Item] = []
+    tail: list[Item] = []
+    limit = 256
+    for it in charset:
+        if (it.op == LITERAL and it.arg >= 256) or (it.op == RANGE and it.arg2 >= 256):
+            limit = 65536
+            break
+    spans: list[tuple[int, int]] = []  # [lo, hi) of the characters below the limit
+    ordered = True
+    for it in charset:
+        if it.op == LITERAL:
+            if it.arg < limit:
+                if len(spans) > 0 and it.arg < spans[-1][0]:
+                    ordered = False
+                spans.append((it.arg, it.arg + 1))
+            else:
+                t = Item(LITERAL, it.arg)
+                t.arg2 = it.arg2
+                tail.append(t)
+        elif it.op == RANGE:
+            if it.arg < limit:
+                if len(spans) > 0 and it.arg < spans[-1][0]:
+                    ordered = False
+                spans.append((it.arg, min(it.arg2 + 1, limit)))
+            if it.arg2 >= limit:
+                tail.append(_range(it.arg, it.arg2))  # (its BMP characters are in spans too)
+        elif it.op == NEGATE:
+            out.append(it)
+        else:
+            tail.append(it)
+    if not ordered:
+        spans.sort()
+    runs: list[tuple[int, int]] = []  # the map's runs of characters: the spans, merged
+    for sp in spans:
+        if len(runs) > 0 and sp[0] <= runs[-1][1]:
+            if sp[1] > runs[-1][1]:
+                runs[-1] = (runs[-1][0], sp[1])
+        else:
+            runs.append(sp)
+    if len(runs) <= 2:
+        # use literal/range
+        for r in runs:
+            if r[1] - r[0] == 1:
+                out.append(Item(LITERAL, r[0]))
+            else:
+                out.append(_range(r[0], r[1] - 1))
+        for t in tail:
+            out.append(t)
+        # if the new representation is more compact
+        if len(out) < len(charset):
+            return _Charset(out, False)
+        # else original character set is good enough
+        return _Charset(charset, False)
+    if limit == 256:
+        # use bitmap
+        cs = Item(CHARSET, 0)
+        cs.codes = _chunk_words(runs, 0, 0)
+        out.append(cs)
+        for t in tail:
+            out.append(t)
+        return _Charset(out, False)
+    # a big charset, as _optimize_charset makes it: a chunk has bits only where a run reaches it,
+    # and the different chunks are numbered in the order they appear
+    seen: list[list[int]] = []  # the different chunks with a character, and their numbers
+    numbers: list[int] = []
+    empty = -1  # (the number of the chunk without one)
+    mapping = [0] * 256
+    block = 0
+    chunks: list[int] = []
+    at = 0  # (the first run that may reach the chunk)
+    for i in range(0, 65536, 256):
+        while at < len(runs) and runs[at][1] <= i:
+            at += 1
+        if at < len(runs) and runs[at][0] < i + 256:
+            words = _chunk_words(runs, at, i)
+            number = -1
+            for k in range(len(seen)):
+                if seen[k] == words:
+                    number = numbers[k]
+                    break
+            if number < 0:
+                number = block
+                block += 1
+                seen.append(words)
+                numbers.append(number)
+                chunks.extend(words)
+            mapping[i >> 8] = number
+        else:
+            if empty < 0:
+                empty = block
+                block += 1
+                chunks.extend([0, 0, 0, 0, 0, 0, 0, 0])
+            mapping[i >> 8] = empty
+    data = [0] * 65
+    data[0] = block
+    for w in range(64):
+        data[w + 1] = mapping[4 * w] | (mapping[4 * w + 1] << 8) | (mapping[4 * w + 2] << 16) | (mapping[4 * w + 3] << 24)
+    data.extend(chunks)
+    big = Item(BIGCHARSET, 0)
+    big.codes = data
+    out.append(big)
+    for t in tail:
+        out.append(t)
+    return _Charset(out, False)
+
+
 def _optimize_charset(charset: list[Item], case: _Case) -> _Charset:
     # internal: optimize character set (case.on: IGNORECASE and not LOCALE, CPython's fixup)
+    if not case.on:
+        return _optimize_plain_charset(charset)
     out: list[Item] = []
     tail: list[Item] = []
     charmap = [0] * 256
@@ -1941,6 +2106,7 @@ def _code(p: SubPattern, flags: int) -> list[int]:
     # compile the pattern
     _compile_code(code, p.data, flags)
     code.append(SUCCESS)
+    _forget_plain_charset()
     return code
 
 
@@ -1958,6 +2124,26 @@ class Pattern:
         self.flags = flags
         self.groups = groups
         self.groupindex = groupindex
+        self._indexgroup: list[str | None] = [None] * (groups + 1)
+        for k in groupindex:
+            self._indexgroup[groupindex[k]] = k
+        # (not _sre's) a _deferred() pattern has no code until an operation asks for it; these are
+        # whether it still has none, and the flags to compile it with
+        self._pending = False
+        self._pending_flags = 0
+        self._code = code
+        self._match_prefix = ""
+        self._charset_offsets: list[int] = []
+        self._charset_ascii: list[int] = []
+        self._prefilter: list[int] = []
+        self._fast = -1
+        if len(code) > 0:
+            self._set_code(code)
+
+    def _set_code(self, code: list[int]) -> None:
+        # (not _sre's) the pattern's code, and what an operation keeps of it
+        pattern = self.pattern
+        flags = self.flags
         self._code = code
         # INFO records the mandatory literal prefix after handling inline flags and captures.
         # Bound the extra work on hits. ASCII compares the same in all subject encodings.
@@ -1971,18 +2157,26 @@ class Pattern:
         # so purge() or cache eviction can release them with the pattern. Integer offsets into
         # the flattened tables keep the warm lookup on the compiler's inline list[int] reads.
         self._charset_offsets = [-1] * len(code)
-        self._charset_ascii: list[int] = []
-        self._prefilter: list[int] = []  # (the search's, found on its first use: see _sre._prefilter)
-        self._indexgroup: list[str | None] = [None] * (groups + 1)
-        for k in groupindex:
-            self._indexgroup[groupindex[k]] = k
+        self._charset_ascii = []
+        self._prefilter = []  # (the search's, found on its first use: see _sre._prefilter)
         # (not _sre's) the matcher generated for this pattern and code, or -1: see _run_match
         self._fast = _pystachy_re_specialized.lookup(pattern, flags, code)
+
+    def _compile_now(self) -> None:
+        # (not _sre's) the code of a _deferred() pattern, where an operation first needs it
+        p = parse(self.pattern, self._pending_flags)
+        code = _code(p, self._pending_flags)
+        if self._pending_flags | p.state.flags != self.flags or p.state.groups() - 1 != self.groups or len(p.state.groupdict) > 0:
+            raise RuntimeError("re._deferred(): the pattern does not have the flags and groups it was given")
+        self._pending = False
+        self._set_code(code)
 
     def _state(self, string: str, pos: int, endpos: int) -> "_sre.State[list[int]]":
         # state_init: pos and endpos clamped to the string, then made code point indices; where one
         # is inside a character's bytes, the match starts after that character, or ends before it.
         # The state's pos and endpos keep them as the caller gave them, for the match objects
+        if self._pending:
+            self._compile_now()
         n = len(string)
         pos = 0 if pos < 0 else n if pos > n else pos
         endpos = 0 if endpos < 0 else n if endpos > n else endpos
@@ -1996,6 +2190,8 @@ class Pattern:
 
     def _view_state(self, string: str, pos: int, endpos: int) -> "_sre.State[bytes]":
         # _state of a _flat string: its bytes, whose indices are its own (offs is [])
+        if self._pending:
+            self._compile_now()
         n = len(string)
         pos = 0 if pos < 0 else n if pos > n else pos
         endpos = 0 if endpos < 0 else n if endpos > n else endpos
@@ -2252,10 +2448,18 @@ class Pattern:
     def __eq__(self, other) -> bool:
         if not isinstance(other, Pattern):
             return False
-        return self is other or (self.flags == other.flags and self._code == other._code and self.pattern == other.pattern)
+        if self is other:
+            return True
+        if self._pending:
+            self._compile_now()
+        if other._pending:
+            other._compile_now()
+        return self.flags == other.flags and self._code == other._code and self.pattern == other.pattern
 
     def __hash__(self) -> int:
         # (CPython's also mixes in a hash of the code's bytes; equal patterns hash alike either way)
+        if self._pending:
+            self._compile_now()
         return hash(self.pattern) ^ self.flags ^ len(self._code)
 
 
@@ -2393,6 +2597,12 @@ def _compile(pattern, flags: int) -> Pattern:
         compiled = Pattern(pattern, flags | p.state.flags, code, p.state.groups() - 1, p.state.groupdict)
         if flags & SRE_FLAG_DEBUG != 0:
             return compiled
+    _remember(key, compiled)
+    return compiled
+
+
+def _remember(key: tuple[str, int], compiled: Pattern) -> None:
+    # internal: the pattern compiled for key, as the newest entry of both caches
     if len(_cache) >= _MAXCACHE:
         # The first key has gone longest without a front-cache miss refreshing it.
         oldest = key
@@ -2408,7 +2618,6 @@ def _compile(pattern, flags: int) -> Pattern:
             break
         del _cache_front[oldest]
     _cache_front[key] = compiled
-    return compiled
 
 
 def _compile_template(pattern: Pattern, repl: str) -> Template:
@@ -2487,6 +2696,25 @@ def finditer(pattern, string: str, flags: int = 0) -> list[Match]:
 def compile(pattern, flags: int = 0) -> Pattern:
     "Compile a regular expression pattern, returning a Pattern object."
     return _compile(pattern, flags)
+
+
+def _deferred(pattern: str, flags: int, groups: int) -> Pattern:
+    # (not CPython's) compile(pattern, flags) of a pattern known to compile, to have this many
+    # groups, none of them named, and to set no flag of its own: the Pattern at once, and its code
+    # where an operation first needs it. For the patterns a module of lib compiles as it loads
+    # (textwrap's five took a third of a million instructions in each program that imports
+    # argparse, which formats help with them). It is in the cache of compiled patterns, as a
+    # compiled one is: compile() of the same pattern and flags returns it.
+    key = (pattern, flags)
+    if key in _cache_front:
+        return _cache_front[key]
+    made = _cache.pop(key, None)
+    if made is None:
+        made = Pattern(pattern, flags | SRE_FLAG_UNICODE if flags & SRE_FLAG_ASCII == 0 else flags, [], groups, {})
+        made._pending = True
+        made._pending_flags = flags
+    _remember(key, made)
+    return made
 
 
 def purge() -> None:

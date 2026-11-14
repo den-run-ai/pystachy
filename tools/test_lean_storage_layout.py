@@ -9,8 +9,10 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 import check_lean_int
+import check_lean_storage as storage_adapter
 from check_lean_storage import DEFAULT_CHECKER, MIN, check_all
 
 
@@ -75,6 +77,20 @@ from fixed import contains
 print(contains([(1, 2)], (1, 2)), contains([(1, 2)], None))
 """
 
+KEYWORDS = """def scaled(n: int, scale: int = 1, shift: int = 0) -> int:
+    return n * scale + shift
+
+
+def forward(n: int, **options: int) -> int:
+    return scaled(n, **options)
+"""
+KEYWORDS_PROGRAM = """# pystachy: python-int
+import sys
+from keywords import forward
+n = len(sys.argv) * 2 ** 40
+print(forward(n, shift=2, scale=3), forward(n))
+"""
+
 
 def compile_snapshot(program, output, paths=()):
     environment = {key: value for key, value in os.environ.items() if not key.startswith("PYSTACHY_")}
@@ -116,6 +132,35 @@ class StorageLayoutTests(unittest.TestCase):
             cls.snapshots[name] = compile_snapshot(
                 ROOT / "tests/programs/numbers" / filename, directory / (name + "-snapshot"),
                 [ROOT / "tests/python_int_modules"])
+
+    def test_keyword_record_is_read_as_the_tuple_of_its_values(self):
+        # f(**options) reads the record kw[scale:int,shift:int] of a call's keyword arguments as
+        # the tuple of their values, which it is at run time
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        directory = Path(temporary.name)
+        (directory / "keywords.py").write_text(KEYWORDS, encoding="utf-8")
+        (directory / "program.py").write_text(KEYWORDS_PROGRAM, encoding="utf-8")
+        snapshot = compile_snapshot(directory / "program.py", directory / "snapshot")
+        forwards = [fn["symbol"] for fn in snapshot["functions"]
+                    if any(slot["type"].startswith("kw[") and slot["type"] != "kw[]" for slot in fn["slots"])]
+        self.assertEqual(len(forwards), 1, [fn["symbol"] for fn in snapshot["functions"]])
+        original = selected(snapshot, forwards[0])
+        views = [op for block in original["functions"][0]["blocks"] for op in block["operations"]
+                 if op["op"] == "tuple.load" and op["operands"][0]["type"] == "tuple[int,int]"]
+        self.assertEqual(len(views), 2, original["functions"][0]["blocks"])
+        self.assert_accepted(snapshot)
+        # The record's layout is compared with the view's, as a tuple's is: no view is taken on trust.
+        wider = copy.deepcopy(original)
+        for block in wider["functions"][0]["blocks"]:
+            for op in block["operations"]:
+                if op["op"] == "tuple.load" and op["operands"][0]["type"] == "tuple[int,int]":
+                    op["operands"][0]["type"] = "tuple[int+,int]"
+        report, code = check_all(wider)
+        self.assertNotEqual((report["status"], code), ("accepted", 0), report)
+        with mock.patch.object(storage_adapter, "record_tuple", lambda layout: layout):
+            report, code = check_all(original)
+        self.assertEqual(report["status"], "unsupported", report)
 
     def assert_accepted(self, snapshot):
         report, code = check_all(snapshot)

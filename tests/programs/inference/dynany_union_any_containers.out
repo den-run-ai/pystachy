@@ -1,0 +1,8 @@
+{'0': {'a': 1}, '1': [1, 'x', None], '2': 's', '3': 1.5, '4': 7, '5': True, '6': None}
+[{'a': 1}, [1, 'x', None], 's', 1.5, 7, True, None]
+(True, 1.5) (False, {'a': 1})
+[1, 'x', None, 3]
+{'a': 1, 'k': [1, 'x', None]}
+['s', {'a': 1}]
+True False True
+[exit 0]

@@ -159,6 +159,28 @@ class StorageSchemaTests(unittest.TestCase):
         with self.assertRaises((ValueError, storage.Unsupported)):
             storage.Normalize(fn).build()
 
+    def test_a_type_may_be_longer_than_a_name(self):
+        # stat's table of file modes is a nested tuple whose type takes 406 characters
+        def representation(items):
+            fn = function([block("entry", ins("ret.none"))], parameters=("tuple[" + ",".join(["int"] * items) + "]",))
+            self.assertEqual(len(fn["representation_metadata"]["sources"]), 1)
+            return fn
+
+        self.assertGreater(len(representation(200)["parameters"][0]["representation"]), 256)
+        storage.Normalize(representation(200)).build()
+        with self.assertRaisesRegex(ValueError, "invalid representation type"):
+            storage.Normalize(representation(storage.MAX_TYPE_TEXT // 4 + 1))
+        fn = representation(2)
+        fn["representation_metadata"]["sources"][0]["representation"] = ""
+        with self.assertRaisesRegex(ValueError, "invalid representation type"):
+            storage.Normalize(fn)
+
+    def test_a_keyword_record_is_the_tuple_of_its_values(self):
+        self.assertEqual(storage.record_tuple("kw[ensure_ascii:dyn]"), "tuple[dyn]")
+        self.assertEqual(storage.record_tuple("kw[a:int+,b:tuple[int,str]]"), "tuple[int+,tuple[int,str]]")
+        for layout in ("tuple[int+]", "list[kw[a:int]]", "dyn", "", None):
+            self.assertEqual(storage.record_tuple(layout), layout)
+
     def test_unknown_operation_fails_closed(self):
         fn = guarded_low()
         fn["blocks"][1]["operations"].insert(0, ins("new.unknown.effect"))

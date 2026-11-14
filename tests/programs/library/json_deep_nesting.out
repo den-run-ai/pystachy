@@ -1,0 +1,513 @@
+1 depth 1 [0] | depth 1 {"a": 0} | depth 1 [0]
+63 depth 63 ]]]]]]]]]]]]]] | depth 63 }}}}}}}}}}}}}} | depth 63 }]}]}]}]}]}]}]
+64 depth 64 ]]]]]]]]]]]]]] | depth 64 }}}}}}}}}}}}}} | depth 65 }]}]}]}]}]}]}]
+65 depth 65 ]]]]]]]]]]]]]] | depth 65 }}}}}}}}}}}}}} | depth 65 }]}]}]}]}]}]}]
+66 depth 66 ]]]]]]]]]]]]]] | depth 66 }}}}}}}}}}}}}} | depth 67 }]}]}]}]}]}]}]
+130 depth 130 ]]]]]]]]]]]]]] | depth 130  | depth 131 }]}]}]}]}]}]}]
+600 depth 600  | depth 600  | depth 601 
+depth 9998 
+maximum recursion depth exceeded while decoding a JSON object from a unicode string
+maximum recursion depth exceeded while decoding a JSON array from a unicode string
+63 JSONDecodeError Expecting ',' delimiter: line 1 column 127 (char 126)
+63 JSONDecodeError Illegal trailing comma before end of array: line 1 column 65 (char 64)
+63 JSONDecodeError Expecting ',' delimiter: line 1 column 66 (char 65)
+63 JSONDecodeError Extra data: line 1 column 127 (char 126)
+63 JSONDecodeError Expecting ':' delimiter: line 1 column 69 (char 68)
+63 JSONDecodeError Expecting property name enclosed in double quotes: line 1 column 65 (char 64)
+63 JSONDecodeError Illegal trailing comma before end of object: line 1 column 71 (char 70)
+63 JSONDecodeError Expecting value: line 1 column 70 (char 69)
+63 depth 64 ]]]]]]]]]]]]]]
+63 depth 66 }}}}}}}}}}}}}}
+63 JSONDecodeError Expecting ',' delimiter: line 1 column 379 (char 378)
+63 JSONDecodeError Extra data: line 1 column 380 (char 379)
+64 JSONDecodeError Expecting ',' delimiter: line 1 column 129 (char 128)
+64 JSONDecodeError Illegal trailing comma before end of array: line 1 column 66 (char 65)
+64 JSONDecodeError Expecting ',' delimiter: line 1 column 67 (char 66)
+64 JSONDecodeError Extra data: line 1 column 129 (char 128)
+64 JSONDecodeError Expecting ':' delimiter: line 1 column 70 (char 69)
+64 JSONDecodeError Expecting property name enclosed in double quotes: line 1 column 66 (char 65)
+64 JSONDecodeError Illegal trailing comma before end of object: line 1 column 72 (char 71)
+64 JSONDecodeError Expecting value: line 1 column 71 (char 70)
+64 depth 65 ]]]]]]]]]]]]]]
+64 depth 67 }}}}}}}}}}}}}}
+64 JSONDecodeError Expecting ',' delimiter: line 1 column 385 (char 384)
+64 JSONDecodeError Extra data: line 1 column 386 (char 385)
+65 JSONDecodeError Expecting ',' delimiter: line 1 column 131 (char 130)
+65 JSONDecodeError Illegal trailing comma before end of array: line 1 column 67 (char 66)
+65 JSONDecodeError Expecting ',' delimiter: line 1 column 68 (char 67)
+65 JSONDecodeError Extra data: line 1 column 131 (char 130)
+65 JSONDecodeError Expecting ':' delimiter: line 1 column 71 (char 70)
+65 JSONDecodeError Expecting property name enclosed in double quotes: line 1 column 67 (char 66)
+65 JSONDecodeError Illegal trailing comma before end of object: line 1 column 73 (char 72)
+65 JSONDecodeError Expecting value: line 1 column 72 (char 71)
+65 depth 66 ]]]]]]]]]]]]]]
+65 depth 68 }}}}}}}}}}}}}}
+65 JSONDecodeError Expecting ',' delimiter: line 1 column 391 (char 390)
+65 JSONDecodeError Extra data: line 1 column 392 (char 391)
+70 JSONDecodeError Expecting ',' delimiter: line 1 column 141 (char 140)
+70 JSONDecodeError Illegal trailing comma before end of array: line 1 column 72 (char 71)
+70 JSONDecodeError Expecting ',' delimiter: line 1 column 73 (char 72)
+70 JSONDecodeError Extra data: line 1 column 141 (char 140)
+70 JSONDecodeError Expecting ':' delimiter: line 1 column 76 (char 75)
+70 JSONDecodeError Expecting property name enclosed in double quotes: line 1 column 72 (char 71)
+70 JSONDecodeError Illegal trailing comma before end of object: line 1 column 78 (char 77)
+70 JSONDecodeError Expecting value: line 1 column 77 (char 76)
+70 depth 71 ]]]]]]]]]]]]]]
+70 depth 73 }}}}}}}}}}}}}}
+70 JSONDecodeError Expecting ',' delimiter: line 1 column 421 (char 420)
+70 JSONDecodeError Extra data: line 1 column 422 (char 421)
+300 JSONDecodeError Expecting ',' delimiter: line 1 column 601 (char 600)
+300 JSONDecodeError Illegal trailing comma before end of array: line 1 column 302 (char 301)
+300 JSONDecodeError Expecting ',' delimiter: line 1 column 303 (char 302)
+300 JSONDecodeError Extra data: line 1 column 601 (char 600)
+300 JSONDecodeError Expecting ':' delimiter: line 1 column 306 (char 305)
+300 JSONDecodeError Expecting property name enclosed in double quotes: line 1 column 302 (char 301)
+300 JSONDecodeError Illegal trailing comma before end of object: line 1 column 308 (char 307)
+300 JSONDecodeError Expecting value: line 1 column 307 (char 306)
+300 depth 301 ]]]]]]]]]]]]]]
+300 depth 303 
+300 JSONDecodeError Expecting ',' delimiter: line 1 column 1801 (char 1800)
+300 JSONDecodeError Extra data: line 1 column 1802 (char 1801)
+[{"k": 2, "j": [1, 2, {"k": 3}]}, [3, 4], "s"]
+low limit depth 2001 
+45 [1, "x", null, true, 2.5, {"k": [],  null, true, 2.5, {"k": [], "j": {}}]
+37 [1,"x",null,true,2.5,{"j":{},"k":[]} 1,"x",null,true,2.5,{"j":{},"k":[]}]
+60 [
+ 1,
+ "x",
+ null,
+ true,
+ 2.5,
+ {
+  ,
+ 2.5,
+ {
+  "k": [],
+  "j": {}
+ }
+]
+60 [
+	1,
+	"x",
+	null,
+	true,
+	2.5,
+	{
+	 ,
+	2.5,
+	{
+		"j": {},
+		"k": []
+	}
+]
+True
+45 [1, "x", null, true, 2.5, {"k": [],  null, true, 2.5, {"k": [], "j": {}}]
+37 [1,"x",null,true,2.5,{"j":{},"k":[]} 1,"x",null,true,2.5,{"j":{},"k":[]}]
+60 [
+ 1,
+ "x",
+ null,
+ true,
+ 2.5,
+ {
+  ,
+ 2.5,
+ {
+  "k": [],
+  "j": {}
+ }
+]
+60 [
+	1,
+	"x",
+	null,
+	true,
+	2.5,
+	{
+	 ,
+	2.5,
+	{
+		"j": {},
+		"k": []
+	}
+]
+True
+717 [61, [60, [59, [58, [57, [56, [55, [ , "s"], "s"], "s"], "s"], "s"], "s"]
+585 [61,[60,[59,[58,[57,[56,[55,[54,[53, ],"s"],"s"],"s"],"s"],"s"],"s"],"s"]
+9226 [
+ 61,
+ [
+  60,
+  [
+   59,
+   [
+     "
+   ],
+   "s"
+  ],
+  "s"
+ ],
+ "s"
+]
+9226 [
+	61,
+	[
+		60,
+		[
+			59,
+			[
+				 "
+			],
+			"s"
+		],
+		"s"
+	],
+	"s"
+]
+True
+1208 [61, {"b": 60, "a": [59, {"b": 58, " , "c": [58]}, "s"], "c": [60]}, "s"]
+983 [61,{"a":[59,{"a":[57,{"a":[55,{"a": "c":[58]},"s"],"b":60,"c":[60]},"s"]
+11794 [
+ 61,
+ {
+  "b": 60,
+  "a": [
+   59, "
+  ],
+  "c": [
+   60
+  ]
+ },
+ "s"
+]
+11794 [
+	61,
+	{
+		"a": [
+			59,
+			{
+				" ": 60,
+		"c": [
+			60
+		]
+	},
+	"s"
+]
+True
+728 [62, [61, [60, [59, [58, [57, [56, [ , "s"], "s"], "s"], "s"], "s"], "s"]
+594 [62,[61,[60,[59,[58,[57,[56,[55,[54, ],"s"],"s"],"s"],"s"],"s"],"s"],"s"]
+9500 [
+ 62,
+ [
+  61,
+  [
+   60,
+   [
+     "
+   ],
+   "s"
+  ],
+  "s"
+ ],
+ "s"
+]
+9500 [
+	62,
+	[
+		61,
+		[
+			60,
+			[
+				 "
+			],
+			"s"
+		],
+		"s"
+	],
+	"s"
+]
+True
+1235 {"b": 62, "a": [61, {"b": 60, "a": [ , "s"], "c": [60]}, "s"], "c": [62]}
+1005 {"a":[61,{"a":[59,{"a":[57,{"a":[55, ":60,"c":[60]},"s"],"b":62,"c":[62]}
+12151 {
+ "b": 62,
+ "a": [
+  61,
+  {
+   "b"   ]
+  },
+  "s"
+ ],
+ "c": [
+  62
+ ]
+}
+12151 {
+	"a": [
+		61,
+		{
+			"a": [
+				59 	"s"
+	],
+	"b": 62,
+	"c": [
+		62
+	]
+}
+True
+739 [63, [62, [61, [60, [59, [58, [57, [ , "s"], "s"], "s"], "s"], "s"], "s"]
+603 [63,[62,[61,[60,[59,[58,[57,[56,[55, ],"s"],"s"],"s"],"s"],"s"],"s"],"s"]
+9778 [
+ 63,
+ [
+  62,
+  [
+   61,
+   [
+     "
+   ],
+   "s"
+  ],
+  "s"
+ ],
+ "s"
+]
+9778 [
+	63,
+	[
+		62,
+		[
+			61,
+			[
+				 "
+			],
+			"s"
+		],
+		"s"
+	],
+	"s"
+]
+True
+1246 [63, {"b": 62, "a": [61, {"b": 60, " , "c": [60]}, "s"], "c": [62]}, "s"]
+1014 [63,{"a":[61,{"a":[59,{"a":[57,{"a": "c":[60]},"s"],"b":62,"c":[62]},"s"]
+12493 [
+ 63,
+ {
+  "b": 62,
+  "a": [
+   61, "
+  ],
+  "c": [
+   62
+  ]
+ },
+ "s"
+]
+12493 [
+	63,
+	{
+		"a": [
+			61,
+			{
+				" ": 62,
+		"c": [
+			62
+		]
+	},
+	"s"
+]
+True
+750 [64, [63, [62, [61, [60, [59, [58, [ , "s"], "s"], "s"], "s"], "s"], "s"]
+612 [64,[63,[62,[61,[60,[59,[58,[57,[56, ],"s"],"s"],"s"],"s"],"s"],"s"],"s"]
+10060 [
+ 64,
+ [
+  63,
+  [
+   62,
+   [
+     "
+   ],
+   "s"
+  ],
+  "s"
+ ],
+ "s"
+]
+10060 [
+	64,
+	[
+		63,
+		[
+			62,
+			[
+				 "
+			],
+			"s"
+		],
+		"s"
+	],
+	"s"
+]
+True
+1273 {"b": 64, "a": [63, {"b": 62, "a": [ , "s"], "c": [62]}, "s"], "c": [64]}
+1036 {"a":[63,{"a":[61,{"a":[59,{"a":[57, ":62,"c":[62]},"s"],"b":64,"c":[64]}
+12860 {
+ "b": 64,
+ "a": [
+  63,
+  {
+   "b"   ]
+  },
+  "s"
+ ],
+ "c": [
+  64
+ ]
+}
+12860 {
+	"a": [
+		63,
+		{
+			"a": [
+				61 	"s"
+	],
+	"b": 64,
+	"c": [
+		64
+	]
+}
+True
+761 [65, [64, [63, [62, [61, [60, [59, [ , "s"], "s"], "s"], "s"], "s"], "s"]
+621 [65,[64,[63,[62,[61,[60,[59,[58,[57, ],"s"],"s"],"s"],"s"],"s"],"s"],"s"]
+10346 [
+ 65,
+ [
+  64,
+  [
+   63,
+   [
+     "
+   ],
+   "s"
+  ],
+  "s"
+ ],
+ "s"
+]
+10346 [
+	65,
+	[
+		64,
+		[
+			63,
+			[
+				 "
+			],
+			"s"
+		],
+		"s"
+	],
+	"s"
+]
+True
+1284 [65, {"b": 64, "a": [63, {"b": 62, " , "c": [62]}, "s"], "c": [64]}, "s"]
+1045 [65,{"a":[63,{"a":[61,{"a":[59,{"a": "c":[62]},"s"],"b":64,"c":[64]},"s"]
+13212 [
+ 65,
+ {
+  "b": 64,
+  "a": [
+   63, "
+  ],
+  "c": [
+   64
+  ]
+ },
+ "s"
+]
+13212 [
+	65,
+	{
+		"a": [
+			63,
+			{
+				" ": 64,
+		"c": [
+			64
+		]
+	},
+	"s"
+]
+True
+1483 [128, [127, [126, [125, [124, [123,  , "s"], "s"], "s"], "s"], "s"], "s"]
+1217 [128,[127,[126,[125,[124,[123,[122,[ ],"s"],"s"],"s"],"s"],"s"],"s"],"s"]
+36457 [
+ 128,
+ [
+  127,
+  [
+   126,
+   [
+  "
+   ],
+   "s"
+  ],
+  "s"
+ ],
+ "s"
+]
+36457 [
+	128,
+	[
+		127,
+		[
+			126,
+			[
+	 "
+			],
+			"s"
+		],
+		"s"
+	],
+	"s"
+]
+True
+2533 {"b": 128, "a": [127, {"b": 126, "a" "s"], "c": [126]}, "s"], "c": [128]}
+2072 {"a":[127,{"a":[125,{"a":[123,{"a":[ 6,"c":[126]},"s"],"b":128,"c":[128]}
+46152 {
+ "b": 128,
+ "a": [
+  127,
+  {
+   "  ]
+  },
+  "s"
+ ],
+ "c": [
+  128
+ ]
+}
+46152 {
+	"a": [
+		127,
+		{
+			"a": [
+				1 s"
+	],
+	"b": 128,
+	"c": [
+		128
+	]
+}
+True
+19997 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+19997 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+RecursionError maximum recursion depth exceeded while encoding a JSON object
+ValueError Circular reference detected
+ValueError Circular reference detected
+744 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ , [1, 2]], [1, 2]], [1, 2]], [1, 2]]
+191 [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+ValueError Out of range float values are not JSON compliant: inf
+[[[[[[[[[[[Infinity, -0.0, 1e+22, "é ", {"n": NaN}]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+[exit 0]

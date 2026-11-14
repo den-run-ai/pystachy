@@ -111,7 +111,8 @@ them compare equal. See [numeric deviations](language/compatibility.md#numbers).
 |---|---|
 | `loads(s: str)` | Scalars, mixed arrays, nested objects; string keys; whitespace; last duplicate key wins |
 | `dumps(obj: JSONValue)` | Scalars and recursive lists/dicts; insertion-order objects; shared aliases; cycle detection |
-| Encoder keywords | `ensure_ascii=True`, `allow_nan=True`, `sort_keys=False`, `separators=None` or a two-string tuple |
+| `load(fp)`, `dump(obj, fp)` | `loads(fp.read())` and `fp.write(dumps(obj))` of a text file; `dump()` takes the encoder keywords and writes the document in one piece |
+| Encoder keywords | `ensure_ascii=True`, `allow_nan=True`, `sort_keys=False`, `separators=None` or a two-string tuple, `indent=None`, an `int` or a `str` |
 | `JSONDecoder()` | Default `decode(s)` and `raw_decode(s, idx=0)`; the latter returns a value and character end offset, without skipping leading whitespace or rejecting trailing text |
 | `JSONDecodeError` | `ValueError` subclass with `msg`, `doc`, `pos`, `lineno`, `colno` and formatted error text |
 
@@ -136,20 +137,28 @@ Deliberate limits:
 - Typed `JSONValue` integer tokens must fit signed 64-bit storage; a larger integer
   raises `OverflowError`. Dynamic `Any` decoding promotes larger integers as described
   below. Floating-point tokens use native double precision.
-- Nesting is native recursion, which `sys.setrecursionlimit()` bounds (#1021): each decoded
-  container is two counted calls, each encoded one a single call (two for a dict of `Any`
-  values). At the default limit of 1,000, about 500 containers decode and 1,000 encode
-  (500 such dicts); deeper nesting raises `RecursionError: maximum recursion depth exceeded`.
-  Under a raised limit, a fixed bound of 2,000 containers keeps the codec within an 8 MiB
-  native stack in every measured configuration, and raises CPython's messages:
-  `RecursionError: maximum recursion depth exceeded while decoding a JSON array from a
-  unicode string` (or `object`), or `while encoding a JSON object`. CPython's C codec
-  accepts 9,998 containers on Linux at any recursion limit
+- Decoding nests as CPython's C decoder does on Linux: 9,998 containers at any recursion
+  limit, and beyond them `RecursionError: maximum recursion depth exceeded while decoding a
+  JSON array from a unicode string` (or `object`). The first 64 containers are two counted
+  calls each; deeper ones are decoded without calls, so neither `sys.setrecursionlimit()` nor
+  the native stack bounds them.
+- `dumps()` nests as CPython's C encoder does on Linux, with or without an `indent`: 9,998
+  containers at any recursion limit, and beyond them `RecursionError: maximum recursion depth
+  exceeded while encoding a JSON object`. The first 64 containers are a counted call each (two
+  for a dict of `Any` values); deeper ones are encoded without calls. For `Any` values, a
+  `default()` conversion in progress counts as a container does, and a call of `default()`
+  needs one more level, where it raises `RecursionError: maximum recursion depth exceeded`:
+  9,997 conversions and containers around a call.
+- `dump()` is native recursion, a counted call for each container, which
+  `sys.setrecursionlimit()` bounds as it bounds CPython's `dump()`, whose encoder is Python
+  code (#1021): about 1,000 containers at the default limit. Under a raised limit, a fixed
+  bound of 2,000 containers keeps it within an 8 MiB native stack in every measured
+  configuration, where CPython's goes on
   ([deviation](../tests/deviations/json_limits.py)). Circular serialization raises
   `ValueError: Circular reference detected`.
-- Input is `str`; bytes/bytearray input, `load()`/`dump()`, configured `JSONDecoder` constructors,
+- Input is `str`; bytes/bytearray input, configured `JSONDecoder` constructors,
   `JSONEncoder`, hooks, custom conversion functions, `default`, `skipkeys`,
-  `check_circular`, `strict` and indentation are not implemented.
+  `check_circular` and `strict` are not implemented.
 - Object keys must be strings; tuple serialization and arbitrary user objects
   are outside the `JSONValue` representation. Unsupported APIs/types are normally
   compilation errors, not CPython's runtime errors.
@@ -176,6 +185,21 @@ except ImportError:
 This extension is for direct calls, like the `json.loads()` dynamic-storage route;
 passing the adapter as a callable value does not request dynamic result storage.
 
+Code written for CPython needs no adapter: `json.JSONDecoder().raw_decode(s, idx)`, called on
+a default decoder made in the same expression, decodes into `Any` containers where its result
+is expected to hold `Any` values, as `json.loads()` does. A return annotation gives that
+expectation, or the declared types of the names it is unpacked into:
+
+```python
+value: Any
+end: int
+value, end = json.JSONDecoder().raw_decode(text)
+```
+
+A decoder kept in a variable, and a result whose type nothing declares, stay typed
+(`tests/programs/inference/dynany_json_decoder_any.py`). `json.load()` and `json.dump()`
+follow `loads()` and `dumps()` (`tests/programs/inference/dynany_json_load_dump.py`).
+
 In a module that opts in to [dynamic `Any`](dynamic-any.md), `json.loads()` decodes into `Any`'s
 containers wherever its result becomes `Any` storage: an `Any` variable, argument or return value,
 or a `list[Any]`, `dict[str, Any]` or `list[dict[str, Any]]`, which have `Any`'s layout there.
@@ -194,7 +218,7 @@ The calling module does not need a `python-int` pragma. Conversion retains the r
 public `JSONDecoder` methods retain their signed-64-bit boundary.
 
 `dumps()` of `Any` values writes tuples as arrays, and int, float, bool and `None` keys as
-strings, and takes CPython's `skipkeys`, `check_circular` and `default` too. It raises CPython's
+strings, and takes CPython's `skipkeys`, `check_circular`, `default` and `indent` too. It raises CPython's
 `TypeError`s: `Object of type C is not JSON serializable` for a value JSON cannot hold, and `keys
 must be str, int, float, bool or None, not C`. It preserves wide integer values and
 keys; its other limits are those listed above.
@@ -411,7 +435,7 @@ python3.13 tools/json_check.py --native --gc-stress
 
 The regular fixtures compare against CPython's standard `json`; the separate
 [JSON limit fixture](../tests/deviations/json_limits.py) records deliberate integer
-and codec depth differences. The [runtime limit fixture](../tests/deviations/recursive_alias_limits.py)
+and `dump()` depth differences. The [runtime limit fixture](../tests/deviations/recursive_alias_limits.py)
 checks deep values, cycles and reuse after exception unwinding.
 [`tests/programs/library/json_scanner.py`](../tests/programs/library/json_scanner.py) covers the byte scanner's
 boundaries: positions after multibyte text, documents holding lone surrogates,

@@ -3,18 +3,21 @@
 
 This prototype implements loads(str), dumps(JSONValue) and the default JSONDecoder.
 Typed JSONValue integers use Pystachy's signed 64-bit range; the dynamic Any
-decoder promotes larger tokens. Nesting counts against sys.setrecursionlimit() and stops at
-2,000 containers, which keeps a raised limit within the native stack; object keys are str.
-Decoder hooks, bytes input, encoder subclasses, indentation and file APIs are not
-implemented. Containers are created with recursive JSONValue storage; narrowing
-keeps their original identity and mutable contents.
+decoder promotes larger tokens. Decoding nests as CPython's C decoder does, 9,998 containers at
+any recursion limit. Encoding counts against sys.setrecursionlimit() and stops at 2,000
+containers, which keeps a raised limit within the native stack; object keys are str.
+load(fp) and dump(obj, fp) read and write a text file's whole document. Decoder hooks, bytes
+input and encoder subclasses are not implemented. Containers are created with recursive
+JSONValue storage; narrowing keeps their original identity and mutable contents.
 """
+
+from typing import TextIO
 
 from _pystachy_bytescan import scan as _scan_bytes
 
 type JSONValue = None | bool | int | float | str | list[JSONValue] | dict[str, JSONValue]
 
-__all__ = ["loads", "dumps", "JSONDecoder", "JSONDecodeError", "JSONValue"]
+__all__ = ["load", "loads", "dump", "dumps", "JSONDecoder", "JSONDecodeError", "JSONValue"]
 
 
 class JSONDecodeError(ValueError):
@@ -72,6 +75,11 @@ def _u8next(data: bytes, i: int, n: int) -> int:
     return i + _u8len(data, i)
 
 
+# The first 64 nested containers are decoded by calls, which sys.setrecursionlimit() counts, and
+# deeper ones with the open containers on a list (deep()), up to CPython's bound: its C decoder
+# accepts 9,998 nested containers on Linux (its C recursion limit), whatever the recursion limit.
+# (The two numbers are literals where they are used, here and in _pystachy_json_any: a module
+# variable that another module reads is not identity-inert.)
 _STRING_TOKEN = b'"'
 _ARRAY_TOKEN = b"["
 _OBJECT_TOKEN = b"{"
@@ -257,6 +265,64 @@ class _Parser:
         if i == self.n or self.data[i] != 34:
             raise self.error("Expecting property name enclosed in double quotes", i)
         key = self.key()
+        self.skip()
+        i = self.pos
+        if i == self.n or self.data[i] != 58:
+            raise self.error("Expecting ':' delimiter", i)
+        self.pos = i + 1
+        self.skip()
+        return key
+
+    # begin(), next_item() and object_key() again, for the decoders of deeply nested containers
+    # (deep() and _pystachy_json_any._deep()). They are copies and not second callers, and
+    # deep_key() scans with escaped(), which every string with an escape already calls: a
+    # helper with one caller is inlined into the Any decoder's loops, and one with two was
+    # not, which cost 5% of the instructions of decoding small documents.
+    def deep_token(self) -> bytes:
+        # next_token()'s token of a container that comes next, else b" " (also at the end of the
+        # text, where the value's own decoder raises). A token and not a number: a number that
+        # an Any decoder takes from here would need its identity tracked.
+        i = self.pos
+        if i < self.n:
+            c = self.data[i]
+            if c == 91:
+                return _ARRAY_TOKEN
+            if c == 123:
+                return _OBJECT_TOKEN
+        return b" "
+
+    def deep_begin(self, array: bool) -> bool:
+        close = 93 if array else 125
+        self.pos += 1
+        self.skip()
+        if self.pos < self.n and self.data[self.pos] == close:
+            self.pos += 1
+            return True
+        return False
+
+    def deep_next(self, array: bool) -> bool:
+        close = 93 if array else 125
+        self.skip()
+        i = self.pos
+        if i == self.n:
+            raise self.error("Expecting ',' delimiter", i)
+        token = self.data[i]
+        if token == close:
+            self.pos = i + 1
+            return False
+        if token != 44:
+            raise self.error("Expecting ',' delimiter", i)
+        self.pos = i + 1
+        self.skip()
+        if self.pos < self.n and self.data[self.pos] == close:
+            raise self.error("Illegal trailing comma before end of " + ("array" if array else "object"), i)
+        return True
+
+    def deep_key(self) -> str:
+        i = self.pos
+        if i == self.n or self.data[i] != 34:
+            raise self.error("Expecting property name enclosed in double quotes", i)
+        key = self.escaped(i, i + 1)
         self.skip()
         i = self.pos
         if i == self.n or self.data[i] != 58:
@@ -559,6 +625,56 @@ class _Parser:
             if self.pos < self.n and data[self.pos] == 125:
                 raise self.error("Illegal trailing comma before end of object", i)
 
+    def deep(self, array: bool, depth: int) -> JSONValue:
+        # The container at depth and all that it holds, with the open containers on lists where
+        # array() and object() have them in calls. It stops where CPython's decoder does.
+        arrays: list[bool] = []
+        lists: list[list[JSONValue]] = []
+        dicts: list[dict[str, JSONValue]] = []
+        keys: list[str] = []
+        while True:
+            # open a container of the kind array says
+            if depth >= 9998:
+                raise RecursionError("maximum recursion depth exceeded while decoding a JSON "
+                                     + ("array" if array else "object") + " from a unicode string")
+            arrays.append(array)
+            if array:
+                opened: list[JSONValue] = []
+                lists.append(opened)
+            else:
+                mapping: dict[str, JSONValue] = {}
+                dicts.append(mapping)
+            depth += 1
+            more = not self.deep_begin(array)
+            while True:
+                array = arrays[-1]
+                if more:
+                    key = "" if array else self.deep_key()
+                    opener = self.deep_token()
+                    if opener is _ARRAY_TOKEN or opener is _OBJECT_TOKEN:
+                        keys.append(key)
+                        array = opener is _ARRAY_TOKEN
+                        break
+                    item = self.value(depth)  # (no container: a scalar, or the error for none)
+                    if array:
+                        lists[-1].append(item)
+                    else:
+                        dicts[-1][key] = item
+                else:
+                    # the innermost container is closed: it is the value, or an item of the one around it
+                    arrays.pop()
+                    depth -= 1
+                    done: JSONValue = lists.pop() if array else dicts.pop()
+                    if len(arrays) == 0:
+                        return done
+                    array = arrays[-1]
+                    if array:
+                        lists[-1].append(done)
+                    else:
+                        dicts[-1][keys[-1]] = done
+                    keys.pop()
+                more = self.deep_next(array)
+
     def value(self, depth: int) -> JSONValue:
         i = self.pos
         if i == self.n:
@@ -569,14 +685,10 @@ class _Parser:
             return self.string()
         if c == 123 or c == 91:
             # Each nested container is two calls that sys.setrecursionlimit() counts (value(),
-            # then array() or object()). Past 2,000 containers, a raised limit could exhaust the
-            # native stack in its largest-frame configurations (docs/json.md's JSON API limits).
-            if depth >= 2000:
-                if c == 91:
-                    raise RecursionError("maximum recursion depth exceeded"
-                                         " while decoding a JSON array from a unicode string")
-                raise RecursionError("maximum recursion depth exceeded"
-                                     " while decoding a JSON object from a unicode string")
+            # then array() or object()), for the first 64: deep() decodes the ones nested
+            # further, with neither calls nor the native stack.
+            if depth >= 64:
+                return self.deep(c == 91, depth)
             if c == 91:
                 return self.array(depth)
             return self.object(depth)
@@ -615,6 +727,11 @@ def loads(s: str) -> JSONValue:
         return _parse(_Parser(s, True))
 
 
+
+
+def load(fp: TextIO) -> JSONValue:
+    """Decode the JSON text that fp.read() returns, as loads() does."""
+    return loads(fp.read())
 
 
 class JSONDecoder:
@@ -670,18 +787,47 @@ def _parse(parser: _Parser, reject_bom: bool = True) -> JSONValue:
     return value
 
 
-_HEX = "0123456789abcdef"
-_HEX2: list[str] = [_HEX[i >> 4] + _HEX[i & 15] for i in range(256)]  # (a byte's two hex digits)
+# (Both tables are displays of constants: building them as the module loads, by joining digits,
+# cost each program that imports json about 95,000 instructions.)
+# a byte's two hex digits
+_HEX2: list[str] = [
+    "00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "0a", "0b", "0c", "0d", "0e", "0f",
+    "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "1a", "1b", "1c", "1d", "1e", "1f",
+    "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "2a", "2b", "2c", "2d", "2e", "2f",
+    "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "3a", "3b", "3c", "3d", "3e", "3f",
+    "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "4a", "4b", "4c", "4d", "4e", "4f",
+    "50", "51", "52", "53", "54", "55", "56", "57", "58", "59", "5a", "5b", "5c", "5d", "5e", "5f",
+    "60", "61", "62", "63", "64", "65", "66", "67", "68", "69", "6a", "6b", "6c", "6d", "6e", "6f",
+    "70", "71", "72", "73", "74", "75", "76", "77", "78", "79", "7a", "7b", "7c", "7d", "7e", "7f",
+    "80", "81", "82", "83", "84", "85", "86", "87", "88", "89", "8a", "8b", "8c", "8d", "8e", "8f",
+    "90", "91", "92", "93", "94", "95", "96", "97", "98", "99", "9a", "9b", "9c", "9d", "9e", "9f",
+    "a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9", "aa", "ab", "ac", "ad", "ae", "af",
+    "b0", "b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "b9", "ba", "bb", "bc", "bd", "be", "bf",
+    "c0", "c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "ca", "cb", "cc", "cd", "ce", "cf",
+    "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "d8", "d9", "da", "db", "dc", "dd", "de", "df",
+    "e0", "e1", "e2", "e3", "e4", "e5", "e6", "e7", "e8", "e9", "ea", "eb", "ec", "ed", "ee", "ef",
+    "f0", "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "fa", "fb", "fc", "fd", "fe", "ff",
+]
 # The escapes of the ASCII characters that need one: control characters, '"', '\\' and, with
 # ensure_ascii, DEL; the others' entries are unused.
-_ESCAPES: list[str] = ["\\u00" + _HEX2[c] for c in range(128)]
-_ESCAPES[8] = "\\b"
-_ESCAPES[9] = "\\t"
-_ESCAPES[10] = "\\n"
-_ESCAPES[12] = "\\f"
-_ESCAPES[13] = "\\r"
-_ESCAPES[34] = "\\\""
-_ESCAPES[92] = "\\\\"
+_ESCAPES: list[str] = [
+    "\\u0000", "\\u0001", "\\u0002", "\\u0003", "\\u0004", "\\u0005", "\\u0006", "\\u0007",
+    "\\b", "\\t", "\\n", "\\u000b", "\\f", "\\r", "\\u000e", "\\u000f",
+    "\\u0010", "\\u0011", "\\u0012", "\\u0013", "\\u0014", "\\u0015", "\\u0016", "\\u0017",
+    "\\u0018", "\\u0019", "\\u001a", "\\u001b", "\\u001c", "\\u001d", "\\u001e", "\\u001f",
+    "\\u0020", "\\u0021", "\\\"", "\\u0023", "\\u0024", "\\u0025", "\\u0026", "\\u0027",
+    "\\u0028", "\\u0029", "\\u002a", "\\u002b", "\\u002c", "\\u002d", "\\u002e", "\\u002f",
+    "\\u0030", "\\u0031", "\\u0032", "\\u0033", "\\u0034", "\\u0035", "\\u0036", "\\u0037",
+    "\\u0038", "\\u0039", "\\u003a", "\\u003b", "\\u003c", "\\u003d", "\\u003e", "\\u003f",
+    "\\u0040", "\\u0041", "\\u0042", "\\u0043", "\\u0044", "\\u0045", "\\u0046", "\\u0047",
+    "\\u0048", "\\u0049", "\\u004a", "\\u004b", "\\u004c", "\\u004d", "\\u004e", "\\u004f",
+    "\\u0050", "\\u0051", "\\u0052", "\\u0053", "\\u0054", "\\u0055", "\\u0056", "\\u0057",
+    "\\u0058", "\\u0059", "\\u005a", "\\u005b", "\\\\", "\\u005d", "\\u005e", "\\u005f",
+    "\\u0060", "\\u0061", "\\u0062", "\\u0063", "\\u0064", "\\u0065", "\\u0066", "\\u0067",
+    "\\u0068", "\\u0069", "\\u006a", "\\u006b", "\\u006c", "\\u006d", "\\u006e", "\\u006f",
+    "\\u0070", "\\u0071", "\\u0072", "\\u0073", "\\u0074", "\\u0075", "\\u0076", "\\u0077",
+    "\\u0078", "\\u0079", "\\u007a", "\\u007b", "\\u007c", "\\u007d", "\\u007e", "\\u007f",
+]
 
 
 def _quote(out: list[str], s: str, ensure_ascii: bool) -> None:
@@ -765,14 +911,35 @@ def _escape_chars(out: list[str], s: str, ensure_ascii: bool) -> None:
     out.append('"')
 
 
+def _indent_text(indent: JSONValue) -> str:
+    # one level of dumps()'s indent: the str itself, or that many spaces (none for 0 or less),
+    # as CPython makes it, ' ' * indent. (dumps() takes the indent as a JSONValue: an int or a
+    # str in the one type that a module that tracks no numeric identity may take, dynamic.py's
+    # identity_inert, where int | str holds an int with its object)
+    if isinstance(indent, str):
+        return indent
+    if isinstance(indent, bool):
+        return " " if indent else ""
+    if isinstance(indent, int):
+        return " " * indent
+    if indent is None:
+        return ""
+    kind = "float" if isinstance(indent, float) else "list" if isinstance(indent, list) else "dict"
+    raise TypeError("can't multiply sequence by non-int of type '" + kind + "'")
+
+
 class _Encoder:
     def __init__(self, ensure_ascii: bool, allow_nan: bool, sort_keys: bool,
-                 item_separator: str, key_separator: str) -> None:
+                 item_separator: str, key_separator: str, pretty: bool, indent: str, calls: int) -> None:
         self.ascii = ensure_ascii
         self.nan = allow_nan
         self.sort_keys = sort_keys
         self.item_separator = item_separator
         self.key_separator = key_separator
+        self.pretty = pretty  # (an indent was given: each item goes on its own line)
+        self.indent = indent
+        # (how many nested containers are a call of write() each: the deeper ones are deep()'s)
+        self.calls = calls
         self.out: list[str] = []
         self.lists: list[list[JSONValue]] = []
         self.dicts: list[dict[str, JSONValue]] = []
@@ -794,50 +961,202 @@ class _Encoder:
         elif isinstance(value, str):
             _quote(self.out, value, self.ascii)
         elif isinstance(value, list):
+            if depth >= self.calls:
+                self.deep(value, depth)
+                return
             for list_parent in self.lists:
                 if value is list_parent:
                     raise ValueError("Circular reference detected")
-            if depth >= 2000:  # (the decoder's bound on nesting, as value() explains)
+            if depth >= 2000:  # (dump()'s bound: one call for each container, within the native stack)
                 raise RecursionError("maximum recursion depth exceeded while encoding a JSON object")
             self.lists.append(value)
             self.out.append("[")
+            separator = self.item_separator
+            if self.pretty and len(value) > 0:
+                # (CPython writes an empty container on one line, with or without an indent)
+                inner = "\n" + self.indent * (depth + 1)
+                separator += inner
+                self.out.append(inner)
             first = True
             for item in value:
                 if not first:
-                    self.out.append(self.item_separator)
+                    self.out.append(separator)
                 first = False
                 self.write(item, depth + 1)
+            if self.pretty and len(value) > 0:
+                self.out.append("\n" + self.indent * depth)
             self.out.append("]")
             self.lists.pop()
         elif isinstance(value, dict):
+            if depth >= self.calls:
+                self.deep(value, depth)
+                return
             for dict_parent in self.dicts:
                 if value is dict_parent:
                     raise ValueError("Circular reference detected")
-            if depth >= 2000:  # (the decoder's bound on nesting, as value() explains)
+            if depth >= 2000:  # (dump()'s bound: one call for each container, within the native stack)
                 raise RecursionError("maximum recursion depth exceeded while encoding a JSON object")
             self.dicts.append(value)
             self.out.append("{")
             keys = sorted(value) if self.sort_keys else list(value)
+            separator = self.item_separator
+            if self.pretty and len(keys) > 0:
+                inner = "\n" + self.indent * (depth + 1)
+                separator += inner
+                self.out.append(inner)
             first = True
             for key in keys:
                 if not first:
-                    self.out.append(self.item_separator)
+                    self.out.append(separator)
                 first = False
                 _quote(self.out, key, self.ascii)
                 self.out.append(self.key_separator)
                 self.write(value[key], depth + 1)
+            if self.pretty and len(keys) > 0:
+                self.out.append("\n" + self.indent * depth)
             self.out.append("}")
             self.dicts.pop()
 
+    def deep(self, value: JSONValue, depth: int) -> None:
+        # The container at depth and all that it holds, as write() writes them, with the open
+        # containers on lists where write() has them in its calls: nesting then counts against
+        # neither the recursion limit nor the native stack, and stops where CPython's C encoder
+        # does, at 9,998 containers. That encoder counts a container before it looks for a
+        # circular reference, and so does this.
+        out = self.out
+        opened: set[int] = set()
+        for list_parent in self.lists:
+            opened.add(id(list_parent))
+        for dict_parent in self.dicts:
+            opened.add(id(dict_parent))
+        arrays: list[bool] = []
+        lists: list[list[JSONValue]] = []
+        dicts: list[dict[str, JSONValue]] = []
+        keys: list[list[str]] = []
+        at: list[int] = []
+        separators: list[str] = []
+        while True:
+            if isinstance(value, list):
+                if depth >= 9998:
+                    raise RecursionError("maximum recursion depth exceeded while encoding a JSON object")
+                if id(value) in opened:
+                    raise ValueError("Circular reference detected")
+                opened.add(id(value))
+                arrays.append(True)
+                lists.append(value)
+                at.append(0)
+                out.append("[")
+                depth += 1
+                if self.pretty:
+                    inner = "\n" + self.indent * depth
+                    separators.append(self.item_separator + inner)
+                    if len(value) > 0:
+                        out.append(inner)
+            elif isinstance(value, dict):
+                if depth >= 9998:
+                    raise RecursionError("maximum recursion depth exceeded while encoding a JSON object")
+                if id(value) in opened:
+                    raise ValueError("Circular reference detected")
+                opened.add(id(value))
+                arrays.append(False)
+                dicts.append(value)
+                keys.append(sorted(value) if self.sort_keys else list(value))
+                at.append(0)
+                out.append("{")
+                depth += 1
+                if self.pretty:
+                    inner = "\n" + self.indent * depth
+                    separators.append(self.item_separator + inner)
+                    if len(value) > 0:
+                        out.append(inner)
+            elif value is None:
+                # (a scalar, as write() writes it: a call of write() here would make the two one
+                # recursion, and its ordinary path the slower for it)
+                out.append("null")
+            elif isinstance(value, bool):
+                out.append("true" if value else "false")
+            elif isinstance(value, int):
+                out.append(str(value))
+            elif isinstance(value, float):
+                if value != value or value == float("inf") or value == -float("inf"):
+                    if not self.nan:
+                        raise ValueError("Out of range float values are not JSON compliant: " + repr(value))
+                    out.append("NaN" if value != value else "Infinity" if value > 0.0 else "-Infinity")
+                else:
+                    out.append(repr(value))
+            elif isinstance(value, str):
+                _quote(out, value, self.ascii)
+            # the next value to write: the next item of the innermost open container that has
+            # one, after closing those that have none
+            while True:
+                if len(arrays) == 0:
+                    return
+                i = at[-1]
+                if arrays[-1]:
+                    items = lists[-1]
+                    if i < len(items):
+                        if i > 0:
+                            out.append(separators[-1] if self.pretty else self.item_separator)
+                        at[-1] = i + 1
+                        value = items[i]
+                        break
+                    if self.pretty and i > 0:
+                        out.append("\n" + self.indent * (depth - 1))
+                    out.append("]")
+                    opened.discard(id(items))
+                    lists.pop()
+                else:
+                    names = keys[-1]
+                    if i < len(names):
+                        if i > 0:
+                            out.append(separators[-1] if self.pretty else self.item_separator)
+                        at[-1] = i + 1
+                        _quote(out, names[i], self.ascii)
+                        out.append(self.key_separator)
+                        value = dicts[-1][names[i]]
+                        break
+                    if self.pretty and i > 0:
+                        out.append("\n" + self.indent * (depth - 1))
+                    out.append("}")
+                    opened.discard(id(dicts[-1]))
+                    dicts.pop()
+                    keys.pop()
+                arrays.pop()
+                at.pop()
+                if self.pretty:
+                    separators.pop()
+                depth -= 1
+
 
 def dumps(obj: JSONValue, *, ensure_ascii: bool = True, allow_nan: bool = True,
-          sort_keys: bool = False, separators: tuple[str, str] | None = None) -> str:
+          sort_keys: bool = False, indent: JSONValue = None,
+          separators: tuple[str, str] | None = None) -> str:
     """Encode recursive JSON values; mutable container identity is preserved."""
-    item_separator = ", "
+    item_separator = ", " if indent is None else ","  # (an indented line ends without a space)
     key_separator = ": "
     if separators is not None:
         item_separator = separators[0]
         key_separator = separators[1]
-    encoder = _Encoder(ensure_ascii, allow_nan, sort_keys, item_separator, key_separator)
+    # (as CPython's C encoder, which nests 9,998 containers whatever the recursion limit: the
+    # first 64 are a call each)
+    encoder = _Encoder(ensure_ascii, allow_nan, sort_keys, item_separator, key_separator, indent is not None,
+                       _indent_text(indent), 64)
     encoder.write(obj, 0)
     return "".join(encoder.out)
+
+
+def dump(obj: JSONValue, fp: TextIO, *, ensure_ascii: bool = True, allow_nan: bool = True,
+         sort_keys: bool = False, indent: JSONValue = None,
+         separators: tuple[str, str] | None = None) -> None:
+    """Write the text dumps() returns to fp (one write, where CPython writes it in pieces)."""
+    item_separator = ", " if indent is None else ","
+    key_separator = ": "
+    if separators is not None:
+        item_separator = separators[0]
+        key_separator = separators[1]
+    # (as CPython's dump(), whose encoder is Python code: every container is a call, which the
+    # recursion limit bounds)
+    encoder = _Encoder(ensure_ascii, allow_nan, sort_keys, item_separator, key_separator, indent is not None,
+                       _indent_text(indent), 2001)
+    encoder.write(obj, 0)
+    fp.write("".join(encoder.out))

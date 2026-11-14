@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "upstream_commit": "dc6d02b168656aa3dcaac6a119ecc47594d3526e",
+  "upstream_commit": "36d7a6ed53e777b5a5b9017e33d35ea2af8b7c6e",
   "selected": {
     "test_json_repair.py": [
       "test_valid_top_level_string_preserved_with_strict_mode",

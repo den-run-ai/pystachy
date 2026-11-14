@@ -1,10 +1,68 @@
 # json_repair throughput
 
-These probes time `repair_json()` from the [adapted port](../../ports/json_repair/PORT.md)
-against pristine json_repair 0.64.1. Each checks complete outputs outside its timer, and
+These probes time `repair_json()` from the [json_repair port](../../ports/json_repair/PORT.md).
+The alpha.4 and earlier tables compare it with pristine json_repair 0.64.1. Each checks complete outputs outside its timer, and
 every variant must print identical witnesses. Startup, compilation, input creation and
 validation are not timed. The inputs model features of LLM output; they are not a sample
 of production failure frequencies.
+
+## Port re-based on upstream 0.64.9
+
+The port is now [upstream 0.64.9's source with a small patch set](../../ports/json_repair/PORT.md#differences-from-upstream)
+in place of the 0.64.8 rewrite. This compares the two ports with each other, both built by
+one compiler into AOT executables. It was measured on 12 November 2026 on a shared 4-vCPU
+Linux x86-64 VM (Intel Xeon @ 2.10 GHz) with LLVM 18.1.3. Ten pairs of processes, in two
+runs of five, ran each workload in alternating order, pinned to one CPU, with two warmup and
+seven measured batches; times are the best batch of each port. Instructions are steady-state
+callgrind counts: a process with the listed rounds less the same process with none. Witnesses
+are identical.
+[All batches, counts and source hashes](results/rebase-0.64.9-2026-11-12.json) are retained.
+
+| Workload, time per batch | 0.64.8 rewrite | 0.64.9 re-base | Time | Instructions |
+|---|---:|---:|---:|---:|
+| Ten mixed trace records (`bench.py 200`) | 11.60 ms | 11.66 ms | 1.01× | 1.01× |
+| Small valid objects (`facade.py valid 4000`) | 11.01 ms | 11.19 ms | 1.02× | 1.00× |
+| Small malformed objects (`facade.py malformed 400`) | 13.35 ms | 13.51 ms | 1.01× | 1.02× |
+| Same, serialized result | 15.43 ms | 15.34 ms | 0.99× | 1.02× |
+| Valid 8 KB string (`scaling.py valid 4000 200`) | 2.47 ms | 2.44 ms | 0.99× | 1.00× |
+| 2,000 escaped newlines (`scaling.py escaped 2000 10`) | 3.04 ms | 3.00 ms | 0.98× | 1.00× |
+| Non-ASCII text (`scaling.py unicode 2000 20`) | 3.12 ms | 3.19 ms | 1.02× | 1.00× |
+| Comma-dense text (`scaling.py comma 1000 10`) | 7.62 ms | 7.81 ms | 1.02× | 1.02× |
+| Logged repair (`scaling.py logs 1000 50`) | 0.36 ms | 0.37 ms | 1.03× | 1.00× |
+| 2,000 raw newlines (`scaling.py newline 2000 20`) | 3.63 ms | 3.65 ms | 1.00× | 1.00× |
+| Bare key, 10,000-character value (`scaling.py bare-key 10000 50`) | 0.73 ms | 0.67 ms | 0.93× | 1.01× |
+
+- The re-base executes 0 to 2% more instructions than the rewrite. Times on this shared host
+  vary by more than that between runs (single runs of five pairs put one workload or another
+  at 1.17× or 0.93×); the instruction counts are the comparison to rely on.
+- A program that imports the port and repairs one string starts as the rewrite's does: 0.709
+  million instructions against 0.696 million, 1.28 ms against 1.28 ms (the least of 3,000 runs
+  each, twice), in an executable of 557 KB against 513 KB. It loads 34 modules where the
+  rewrite loaded 24, and compiles in 0.59 s against 0.38 s.
+- [Schema-guided repair](../../ports/json_repair/PORT.md#what-schema-support-costs-a-program-without-a-schema),
+  added after these measurements, left repair itself as it was: 0.993 to 1.010 times the
+  instructions on these workloads (callgrind totals, one run each, not retained). A program
+  that passes no schema still carries the schema modules, the validator and `re`: it starts
+  in 723,491 instructions against 702,242 and is 1,243 KB against 567 KB.
+- Upstream's modules, compiled with only the changes the compiler needs, were about 2 to 8
+  times slower than the rewrite on these workloads in informal checks while re-basing (three
+  pairs, medians, not retained), started 18% slower and compiled in three times the time.
+  What closed the gap:
+  - The compiler raises an index error of `s[i]`, `xs[i]` and `xs.pop()` inside a `try`
+    statement in the function itself, so upstream's `try: return self.json_str[i]` /
+    `except IndexError` no longer goes through the unwinder; that took the ten-record mix from
+    about 2.0× to 1.2×.
+  - `x in strs` for an `x` that may be `None`, as upstream tests the next character, compares
+    strs directly, as a search for a str does; that took the comma-dense workload from 1.07×
+    to 1.02× in instructions.
+  - The rewrite's string module, comment scanning and root-scan avoidance are kept, and the
+    path of an array item or object member is formatted only with a schema.
+  - The port imports neither `argparse`, `pathlib` nor `re`
+    ([imports](../../ports/json_repair/PORT.md#imports)), and `re`, `json` and `textwrap` do
+    less as they load: a set of characters is compiled from its intervals, `json`'s escape
+    tables are constants, and `textwrap`'s patterns compile where they are first used.
+
+The tables below predate the re-base and compare the rewrite with pristine upstream.
 
 <a id="release-candidate-measurements"></a>
 

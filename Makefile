@@ -471,6 +471,7 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_parser_allocations.py
 	$(PY) -m unittest discover -s tools -p test_exception_bindings.py
 	$(PY) -m unittest discover -s tools -p test_inspect_compiler.py
+	$(PY) -m unittest discover -s tools -p test_str_append_peeks.py
 	$(PY) -m unittest discover -s tools -p 'test_lean_boundary*.py'
 	$(PY) -m unittest discover -s tools -p test_lean_access.py
 	$(PY) -m unittest discover -s tools -p test_lean_inline.py

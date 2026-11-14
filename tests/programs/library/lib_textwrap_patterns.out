@@ -1,0 +1,29 @@
+True True
+wordsep 96 1 {} True True True True True
+1 False True re.compile('\n        ( # any whitespace
+simple 32 1 {} True True True True True
+1 False True re.compile('([\\\t\\\n\\\x0b\\\x0c\\\r\\
+sentence 32 0 {} True True True True True
+1 False True re.compile('[a-z][\\.\\!\\?][\\"\\\']?\\
+only 40 0 {} True True True True True
+1 False True re.compile('^[ \t]+$', re.MULTILINE)
+leading 40 1 {} True True True True True
+1 False True re.compile('(^[ \t]*)(?:[^ \t\n])', re.M
+['a', '  ', 'b', '\t', 'c'] True True
+
+x
+ ['  ', '\t', '']
+The quick brown fox
+-- jumped over the
+lazy-dog.  And then?
+It slept well.
+a
+  b
+
+c
+['alpha be', 'ta-gamma', 'delta']
+Hello [...] > a
+
+> b
+
+[exit 0]

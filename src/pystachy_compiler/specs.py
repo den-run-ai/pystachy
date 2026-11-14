@@ -26,7 +26,7 @@ for _k in (MODDUNDERS + " __name__ __debug__ __cached__ __import__ __build_class
     MODNAMES[_k] = True
 # what an annotation that CPython evaluates may hold (Loader.not_type): these nodes, '|' of the
 # first five, subscripts of the first two
-ANNKINDS: list[str] = ["name", "attr", "index", "binop", "None", "str", "True", "False", "int", "float", "ellipsis", "tuple", "list", "unary", "noann", "starred"]
+ANNKINDS: list[str] = ["name", "attr", "index", "binop", "None", "str", "True", "False", "int", "float", "ellipsis", "tuple", "list", "unary", "noann", "starred", "bytes"]
 GENERICS: list[str] = ["list", "dict", "tuple", "set", "frozenset", "type"]
 
 
@@ -371,6 +371,9 @@ RANGE_METHODS = {"join": 1, "extend": 1, "fromkeys": 1, "fsum": 1, "prod": 1, "u
                  "difference": 3, "symmetric_difference": 3, "issubset": 3, "issuperset": 3, "isdisjoint": 3,
                  "intersection_update": 3, "difference_update": 3, "symmetric_difference_update": 3}
 OPTTYPES = "class types, str, bytes, int, float, bool, list, dict and tuple"
+# why a union of a class or file with a str, number or container has no type (Gen.union_type);
+# a parameter annotated with one is typed by each call's argument (Gen.declare_fn)
+MIXEDREFS = "reference unions cannot mix native references with scalar or container members"
 TYPEVAR = " is only supported in the annotations of a module-level function's parameters and return, which make the function a template, and of a generic class (Generic[T]) with an __init__, whose objects bind it"
 ANYUSE = "typing.Any is only supported in the parameter and return annotations of a function, or of a method that may be a template, in a class template's __init__ parameters, in iterator protocol returns, and in initialized module/local variables, which are inferred as if unannotated; annotate a concrete type here"
 STUB = "an @overload stub of 'NAME' must be followed by the def that implements it (calling a stub raises NotImplementedError)"
@@ -609,6 +612,7 @@ METHODS: dict[str, str] = {
     "vtuple.index": "int:*T,#,int=0,int=9223372036854775807", "vtuple.count": "int:*T,#",
     "file.read": "str:int=-1", "file.readline": "str:", "file.readlines": "list[str]:", "file.write": "int:str",
     "file.writelines": "None:list[str]", "file.close": "None:", "file.flush": "None:", "file.fileno": "int:",
+    "file.seekable": "bool:",
     "float.hex": "str:", "float.is_integer": "bool:", "int.bit_length": "int:", "int.bit_count": "int:",
     # bytes (runtime.py's pys_bytes_*: their RUNTIME entries take strs, the Strs a bytes is)
     "bytes.decode": "str:str=null,str=null", "bytes.hex": "str:", "bytes.join": "bytes:list[bytes]",
@@ -1097,6 +1101,7 @@ RUNTIME: dict[str, str] = {
     "file.writelines": "None:S,list[str]|R A I rL rF wF|",
     "file.flush": "None:S|R I rF wF|", "file.close": "None:S|R I rF wF|", "file.drop": "None:S|R I rF wF|",
     "file.closed": "bool:S|rF|", "file.name": "str:S|A rF|", "file.mode": "str:S|A rF|", "file.fileno": "int:S|R I rF|",
+    "file.seekable": "bool:S|R I rF|",
     # lib/_pystachy_bfile.py's binary files (__pys_bfile_*): a file of a binary mode, its reads and writes of bytes
     "bopen": "file:str,str,str,str,str,int|R A I rF|", "bfile.read": "bytes:file,int|R A I rF wF|",
     "bfile.readline": "bytes:file,int|R A I rF wF|", "bfile.write": "int:file,bytes|R A I rF wF|",

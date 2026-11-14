@@ -741,6 +741,7 @@ class Loader:
         self.stars: list[Node] = []
         self.starm: list[Mod] = []
         self.qdef = False  # is qstmts() in a function
+        self.qlazy = 0  # is qann() in an annotation that CPython does not evaluate (a string, ...)
         # the type parameters of the generic classes and defs (class C[T], def f[T]) it is in, by
         # name: the names of their own that they are qualified to (<class's or def's name>$$T,
         # unlike any other). A key prefixed by a space maps an original private spelling to its
@@ -1563,6 +1564,8 @@ class Loader:
         # of a variable that t's code no longer assigns, where all the from-imports of variables that
         # bind name there take that alias and nothing else binds it; else, once the last pass finds
         # no other alias to wait for, the import is an error. Did any import change?
+        # (an import whose source this pass makes an alias, as it settles an earlier one of a package
+        # that re-exports the name, is not in took yet: it waits for the next pass, as key in var says)
         took: dict[str, str] = {}  # (by where and name: the alias they take, "!" for two)
         var: dict[str, bool] = {}  # (and whether one of them takes a variable)
         for n in self.vtaken:
@@ -1592,7 +1595,7 @@ class Loader:
                 msg = f"cannot import name '{n.kids[1].s}' from '{n.kids[0].s}' here: its code binds it{what} only after the import that runs this one (not supported for {of})"
             elif was == "v" or (key in var and last):
                 msg = f"'{n.s}' is bound both as a variable and by an import (not supported)"
-            elif took[key] == "!" or (was != "" and was != k) or (now != "" and now != "v" and now != k):
+            elif took.get(key, k) == "!" or (was != "" and was != k) or (now != "" and now != "v" and now != k):
                 msg = f"'{n.s}' is bound by two imports, to different modules, functions or classes (not supported)"
             elif key in var:
                 continue  # (another of them takes a variable, which may yet be found an alias)
@@ -1953,6 +1956,24 @@ class Loader:
                 self.docsets.append(mk("docset", st.kids[0].kids[0].s, st.line, []))
                 self.docsetm.append(m)
                 continue
+            if blk is m.body and st.kind == "import" and st.s == "from":
+                for a in st.kids:
+                    if a.kind == "alias" and len(a.kids) == 2 and a.kids[0].s == "__future__.annotations":
+                        m.lazyann = True
+            if blk is m.body and st.kind == "if" and self.tc_test(m, st.kids[0], scope):
+                # (what its imports would bind: names for type checkers, Mod.tconly)
+                for imp in st.kids[1].kids:
+                    for a in imp.kids if imp.kind == "import" else NOKIDS:
+                        if a.kind == "alias" and a.s != "*":
+                            src = ""
+                            if imp.s == "from" and len(a.kids) == 2:
+                                src = a.kids[1].s
+                            elif imp.s.startswith("from.") and len(a.kids) == 2 and m.name != "" and (m.pdir != "" or "." in m.name):
+                                src = self.tc_relative(m, imp.s, a.kids[1].s)
+                            attr = a.kids[0].s[a.kids[0].s.rfind(".") + 1 :] if len(a.kids) == 2 else ""
+                            if src in ["typing", "typing_extensions", "collections.abc"]:
+                                continue  # (typing's names, which annotations name as before: Gen.typing_ref)
+                            m.tconly[a.s[: a.s.find(".")] if "." in a.s else a.s] = src + " " + attr if src != "" and attr != "" else ""
             run: list[Node] = []
             if self.static_if(m, st, scope, run) or self.optional(m, st, run, False) or (blk is m.body and self.unbound_try(m, st, out, blk.kids[i + 1 :], run)):
                 b = mk("block", "", st.line, run)
@@ -2069,6 +2090,17 @@ class Loader:
                 # sets a flag, and where it is not set the read raises CPython's UnboundLocalError, a
                 # lambda's its NameError)
                 self.checked[str(d.line)][nm] = True
+
+    def tc_test(self, m: Mod, e: Node, scope: dict[str, bool]) -> bool:
+        # is e, an if statement's test in m's code, typing's TYPE_CHECKING (as decide() takes it:
+        # the name, the module's attribute, or the module's own TYPE_CHECKING = False)
+        if e.kind == "attr" and e.s == "TYPE_CHECKING" and e.kids[0].kind == "name":
+            return self.special(m, e.kids[0].s, scope) == "typing"
+        if e.kind != "name":
+            return False
+        if self.special(m, e.s, scope) == "typing.TYPE_CHECKING":
+            return True
+        return e.s == "TYPE_CHECKING" and not self.incls and m.falseat >= 0 and m.falseat < self.pos
 
     def static_if(self, m: Mod, st: Node, scope: dict[str, bool], out: list[Node]) -> bool:
         # an if statement CPython decides at import time, as Pystachy does at compile time: a test of
@@ -3472,6 +3504,12 @@ class Loader:
                 del loc[nm]
             if doc:
                 loc["__doc__"] = False
+        elif k == "call" and len(n.kids) == 3 and self.cast_callee(m, n.kids[0], loc) and n.kids[1].kind not in ["kw", "starred", "dstar"]:
+            # typing.cast(T, v): T is a type, as an annotation is (a string in it is a forward
+            # reference); only v is a value
+            self.qexpr(m, n.kids[0], loc)
+            self.qann(m, n.kids[1], loc)
+            self.qexpr(m, n.kids[2], loc)
         else:
             # (a comprehension's iterable is qualified where it is, its other parts in its own scope,
             # where __doc__ is not a class body's: qstmts())
@@ -3518,19 +3556,99 @@ class Loader:
     def qann(self, m: Mod, n: Node, loc: dict[str, bool]) -> None:
         # an annotation; a string one (a forward reference), also inside list["Node"], is parsed
         # to qualify the names in it
-        if n.kind == "str":
+        quoted = n.kind == "str"
+        if quoted:
             e = Parser(Lexer(n.s, n.line).run()).test()
             self.quoted_types(e)
             n.kind = e.kind
             n.s = e.s
             n.kids = e.kids
-        if n.kind == "index" or n.kind == "tuple" or (n.kind == "binop" and n.s == "|"):
+            self.qlazy += 1
+        if n.kind == "name" and self.qlazy > 0 and n.s in m.tconly and n.s not in loc and self.kind(m, n.s) == "" and self.tc_target(m, n.s) != "":
+            # a name for type checkers (an if TYPE_CHECKING: import binds it) in an annotation
+            # that CPython does not evaluate: the program's class of that name (tc_target())
+            n.s = self.tc_target(m, n.s)
+        elif n.kind == "index" and self.literal_base(m, n.kids[0], loc):
+            # Literal["r", "w"]: its strings are values, not forward references; an enum member,
+            # a nested Literal[...] or an alias of one among them is qualified as an annotation is
+            self.qann(m, n.kids[0], loc)
+            for k in n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]:
+                if k.kind != "str":
+                    self.qann(m, k, loc)
+        elif n.kind == "index" or n.kind == "tuple" or (n.kind == "binop" and n.s == "|"):
             for k in n.kids:
                 self.qann(m, k, loc)
         else:
             self.qexpr(m, n, loc)
             if n.chk and n.kind == "badattr" and " has no attribute " in n.s:
                 fail(n.s, n.line)  # (an evaluated annotation: see Loader.reads)
+        if quoted:
+            self.qlazy -= 1
+
+    def tc_relative(self, m: Mod, s: str, path: str) -> str:
+        # the module that from .path import ... names in m (relative()), or "" where it is none
+        base = m.name if m.pdir != "" else m.name[: m.name.rfind(".")]
+        for _ in range(len(s) - 5):
+            base = base[: base.rfind(".")] if "." in base else ""
+        return "" if base == "" else base + "." + path if path != "" else base
+
+    def tc_target(self, m: Mod, name: str) -> str:
+        # the class (or type alias) of the program that name stands for in an annotation of m's
+        # code which CPython does not evaluate, where only a from-import in an if TYPE_CHECKING:
+        # block of m binds name (Mod.tconly): its qualified name, if the program loads that
+        # module anyway (no code runs for the annotation: the class is the one a type checker
+        # reads there); "" if it does not, or the name is no class or alias there
+        src = m.tconly.get(name, "")
+        if src == "":
+            return ""
+        mod = src[: src.find(" ")]
+        attr = src[src.find(" ") + 1 :]
+        if mod not in self.mods:
+            return ""
+        k = self.mods[mod].kinds.get(attr, "")
+        if k == "c":
+            return self.mods[mod].q + attr
+        return k[2:] if k.startswith("a:") or k.startswith("t:") else ""
+
+    def tc_ann(self, m: Mod, n: Node, loc: dict[str, bool], lazy: bool) -> bool:
+        # does annotation n in m's code name what only an import in an if TYPE_CHECKING: block of
+        # m binds (Mod.tconly), and which is no class of the program (tc_target()), where CPython
+        # does not evaluate it: in a string, a forward reference, or anywhere in an annotation
+        # that is not evaluated at all (lazy: the module imports annotations from __future__, or
+        # a function's variable or attribute is annotated). The name is one for type checkers,
+        # as the annotation is: what it annotates is typed as if it had no annotation (qstmts)
+        if len(m.tconly) == 0:
+            return False
+        if n.kind == "str":
+            return self.tc_ann(m, Parser(Lexer(n.s, n.line).run()).test(), loc, True)
+        if n.kind == "name":
+            return lazy and n.s in m.tconly and n.s not in loc and self.kind(m, n.s) == "" and self.tc_target(m, n.s) == ""
+        if n.kind == "attr":
+            return self.tc_ann(m, n.kids[0], loc, lazy)
+        if n.kind == "index" and self.literal_base(m, n.kids[0], loc):
+            return False  # (its strings are values)
+        for k in n.kids:
+            if self.tc_ann(m, k, loc, lazy):
+                return True
+        return False
+
+    def cast_callee(self, m: Mod, f: Node, loc: dict[str, bool]) -> bool:
+        # is f, what a call in m's code calls (not yet qualified), typing's cast: the name, as m
+        # imports it, or the attribute of the module (typing.cast)
+        if f.kind == "name":
+            return f.s not in loc and self.kind(m, f.s) == "b:typing.cast"
+        if f.kind == "attr" and f.s == "cast" and f.kids[0].kind == "name":
+            return f.kids[0].s not in loc and self.kind(m, f.kids[0].s) == "b:typing"
+        return False
+
+    def literal_base(self, m: Mod, b: Node, loc: dict[str, bool]) -> bool:
+        # is b, the base of a subscript in an annotation of m (not yet qualified), typing's
+        # Literal: the name, as m imports it, or the attribute of the module (typing.Literal)
+        if b.kind == "name":
+            return b.s not in loc and self.kind(m, b.s) == "b:typing.Literal"
+        if b.kind == "attr" and b.s == "Literal" and b.kids[0].kind == "name":
+            return b.kids[0].s not in loc and self.kind(m, b.kids[0].s) == "b:typing"
+        return False
 
     def quoted_types(self, n: Node) -> None:
         # A private type parameter's source spelling still names it in a forward annotation.
@@ -3611,10 +3729,16 @@ class Loader:
                 for d in st.kids[3:]:
                     if d.s != "async":
                         self.qdeco(m, d, loc, not cls)
+                self.qlazy += 1 if m.lazyann else 0
                 for p in st.kids[0].kids:
+                    if p.kids[0].kind != "noann" and self.tc_ann(m, p.kids[0], loc, m.lazyann):
+                        p.kids[0] = mk("noann", "", p.kids[0].line, [])  # (each call types it)
                     self.qann(m, p.kids[0], loc)
                     self.qexpr(m, p.kids[1], loc)
+                if st.kids[1].kind != "noann" and self.tc_ann(m, st.kids[1], loc, m.lazyann):
+                    st.kids[1] = mk("noann", "", st.kids[1].line, [])  # (what it returns types it)
                 self.qann(m, st.kids[1], loc)
+                self.qlazy -= 1 if m.lazyann else 0
                 # (a def in a function sees that function's names too: those it does not bind itself
                 # are the enclosing function's, which a closure reads)
                 own: dict[str, bool] = {}
@@ -3756,9 +3880,18 @@ class Loader:
                     st.s = ""
                     st.kids = [st.kids[0], v]
                     self.qstmts(m, [st], loc, cls)
+            elif k == "annassign" and len(st.kids) == 3 and not cls and self.tc_ann(m, st.kids[1], loc, m.lazyann or self.qdef):
+                # x: "T" = v, T a name for type checkers only (tc_ann): x = v, whose value types it
+                st.kind = "assign"
+                st.s = ""
+                st.kids = [st.kids[0], st.kids[2]]
+                self.qstmts(m, [st], loc, cls)
             elif k == "annassign":
                 self.qstore(m, st.kids[0], loc)
+                noeval = m.lazyann or (self.qdef and not cls)  # (a function's variable or attribute)
+                self.qlazy += 1 if noeval else 0
                 self.qann(m, st.kids[1], loc)
+                self.qlazy -= 1 if noeval else 0
                 for kid in st.kids[2:]:
                     self.qexpr(m, kid, loc)
             elif k == "assign":

@@ -1,8 +1,0 @@
-0
-{name: "café", values: [true, null,],}
-{"name": "caf\u00e9", "values": [true, null]}
-0
-{"name": "café", "values": [true, null]}
-1
-b'{"value":"\\ud800"}'
-[exit 0]

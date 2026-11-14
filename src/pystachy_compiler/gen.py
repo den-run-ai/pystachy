@@ -570,6 +570,7 @@ from src.pystachy_compiler.declarations import (
     gen_ann as declarations_ann,
     gen_ann_base as declarations_ann_base,
     gen_ann_items as declarations_ann_items,
+    gen_literal_ann as declarations_literal_ann,
     gen_ann_none as declarations_ann_none,
     gen_ann_problem as declarations_ann_problem,
     gen_any_in as declarations_any_in,
@@ -852,6 +853,7 @@ from src.pystachy_compiler.expressions import (
     gen_key_read as expressions_key_read,
     gen_knownobj as expressions_knownobj,
     gen_list_read as expressions_list_read,
+    gen_seq_bounds as expressions_seq_bounds,
     gen_bytes_read as expressions_bytes_read,
     gen_listcomp as expressions_listcomp,
     gen_lookup_key as expressions_lookup_key,
@@ -2822,6 +2824,9 @@ class Gen:
     def ann_items(self, xs: list[Node]) -> list[str]:
         return declarations_ann_items(self, xs)
 
+    def literal_ann(self, a: list[Node]) -> str:
+        return declarations_literal_ann(self, a)
+
     def unpack_ann(self, n: Node) -> str:
         return declarations_unpack_ann(self, n)
 
@@ -4491,6 +4496,9 @@ class Gen:
 
     def list_read(self, o: Val, i: Val) -> Val:
         return expressions_list_read(self, o, i)
+
+    def seq_bounds(self, i: Val, length: str, msg: str) -> Val:
+        return expressions_seq_bounds(self, i, length, msg)
 
     def bytes_read(self, o: Val, i: Val) -> Val:
         return expressions_bytes_read(self, o, i)

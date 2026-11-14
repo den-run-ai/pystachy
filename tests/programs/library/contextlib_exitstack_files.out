@@ -1,0 +1,3 @@
+['<t>', 'data a.txt', 'data b.txt', 'T', 'closed', '</t>']
+[True, True]
+[exit 0]

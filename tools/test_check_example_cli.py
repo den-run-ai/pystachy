@@ -26,7 +26,7 @@ class SmokeTests(unittest.TestCase):
         self.assertEqual(len(cli.case_names()), 24)
         self.assertEqual(len(set(cli.case_names())), 24)
         replay = cli.integrations()["json_repair_replay"]
-        self.assertEqual(replay, {"cases": 943, "modes": ["jit", "aot"]})
+        self.assertEqual(replay, {"cases": 962, "modes": ["jit", "aot"]})
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)
             original = cli.fixtures(directory)
@@ -159,8 +159,8 @@ class SmokeTests(unittest.TestCase):
                      lambda r: r["integrations"]["agent_http"].pop(), lambda r: r.update(error="skipped"),
                      lambda r: r["integrations"].pop("json_repair_replay"),
                      lambda r: r["integrations"]["json_repair_replay"]["modes"].pop(),
-                     lambda r: r["integrations"]["json_repair_replay"].update(cases=942),
-                     lambda r: r["integrations"]["json_repair_replay"].update(cases=943.0)]
+                     lambda r: r["integrations"]["json_repair_replay"].update(cases=961),
+                     lambda r: r["integrations"]["json_repair_replay"].update(cases=962.0)]
         for mutate in mutations:
             data = copy.deepcopy(valid)
             mutate(data)

@@ -1,8 +1,8 @@
 # JSON repair from CPython
 
-The companion module calls the schema-free [json_repair port](../../ports/json_repair/PORT.md)
-from a normal CPython application. It has its own import name, so an application
-can also install upstream `json_repair` for schema and file-wrapper APIs.
+The companion module calls the [json_repair port](../../ports/json_repair/PORT.md)'s
+schema-free repair from a normal CPython application. It has its own import name, so an
+application can also install upstream `json_repair` for schema and file-wrapper APIs.
 
 Build from the repository root on Linux with a built compiler, LLVM and
 GIL-enabled CPython 3.12 or later.
@@ -40,7 +40,7 @@ different results or a `ValueError` when CPython decodes a native result.
 
 The native calls follow the [extension thread and GIL contract](../../docs/ffi.md#threading-and-host-lifetime).
 
-Check the built module against all 943 [recorded API cases](../../tests/upstream/json_repair/README.md).
+Check the built module against all 962 [recorded API cases](../../tests/upstream/json_repair/README.md).
 The verifier checks the loaded extension and reuses the same corpus and comparison
 as the standalone replay. Omit the directory to verify an installed package.
 

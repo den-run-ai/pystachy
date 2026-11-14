@@ -9,6 +9,7 @@ from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val, tmpname
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, short
 from src.pystachy_compiler.specs import (
+    MIXEDREFS,
     ANYUSE,
     BIG,
     BIGOPT,
@@ -192,6 +193,10 @@ def gen_ann(self, n: Node) -> str:
             # (where no call types what it annotates, see declare_fn; a dynamic value in a module
             # that compiles Any so: dynamic.py)
             return "dyn" if self.dyn_policy(n.line) else "!" + ANYUSE
+        if s == "object" and self.dyn_policy(n.line):
+            # (object, the class of every value: what an Any value holds, in a module that compiles
+            # Any as dyn. A parameter annotated with it alone is a template's: declare_fn)
+            return "dyn"
         if s in self.unsupported:
             return "!" + self.unsupported[s]
         if s in self.typevars:
@@ -246,8 +251,10 @@ def gen_ann(self, n: Node) -> str:
             # (Annotated[Any, ...] in a module that compiles Any as dyn: its type, Any, where other
             # modules infer what it annotates; its metadata aside, as any_in reads it, #782)
             return self.ann(a[0])
-        if base == "literal" or base == "annotated":
-            return "!unsupported type annotation"  # (metadata is not an annotation: Literal["Any"], Annotated[int, "Any"])
+        if base == "literal":
+            return self.literal_ann(a)
+        if base == "annotated":
+            return "!unsupported type annotation"  # (metadata is not an annotation: Annotated[int, "Any"])
         if base == "iterator" or base == "generator":
             # Iterator[T], Generator[Y, None, R] (typing's or collections.abc's): a generator object
             # (an iterator of another kind, as #477 makes them, is not one of these)
@@ -303,6 +310,38 @@ def gen_ann(self, n: Node) -> str:
     if self.pathlike(n):
         return "!" + PATHLIKE
     return "!unsupported type annotation"
+
+def gen_literal_ann(self, a: list[Node]) -> str:
+    # Literal[v, ...]: the type of its values, as CPython checks no annotation against them
+    # (Literal["r", "w"] is a str, Literal[0, 1] an int, Literal[False] a bool, Literal[b""] a
+    # bytes, Literal[Color.RED] the enum class Color, Literal["a", None] a str | None and
+    # Literal["a", 1] a str | int); a nested Literal[...] or an alias of one adds its values'
+    # types. A string here is a value, not a forward reference.
+    ts: list[str] = []
+    for x in a:
+        k = x.kind
+        t = "!Literal[...] takes str, bytes, int and bool constants, None and enum members"
+        if k == "str" or k == "bytes":
+            t = k
+        elif k == "True" or k == "False":
+            t = "bool"
+        elif k == "None":
+            t = "None"
+        elif k == "int" or (k == "unary" and x.s == "-" and x.kids[0].kind == "int"):
+            t = BIG if self.int_policy(x.line) else "int"
+        elif k == "attr" and (x.kids[0].kind == "name" or x.kids[0].kind == "attr"):
+            c = self.ann(x.kids[0])
+            if c in self.classes and self.classes[c].exc == "":
+                t = c  # (an enum member: its class)
+        elif (k == "index" and self.typing_ref(x.kids[0]) == "Literal") or (k == "name" and x.s in self.taliases):
+            t = self.ann(x)
+        if t.startswith("!"):
+            return t
+        if t not in ts:
+            ts.append(t)
+    if len(ts) == 1:
+        return ts[0]
+    return self.union_type(narrowed(ts))
 
 def gen_class_family(self, ts: list[str]) -> str:
     # the type of an annotation A | B ... whose members include classes of the program derived
@@ -936,7 +975,7 @@ def gen_optional(self, t: str) -> str:
     if is_union(t):
         # (a union that holds a class's objects may be None, as the class's objects may)
         return t if len([m for m in umembers(t) if m in self.classes]) > 0 else self.ctype("opt", [t])
-    if (t == "str" or t == "bytes" or t == "exc" or t == "exctype" or self.isnum(t) or is_list(t) or is_dict(t) or is_set(t) or is_tuple(t) or is_vtuple(t) or is_callable(t) or is_gen(t)) and "?" not in t:
+    if (t == "str" or t == "bytes" or t == "file" or t == "exc" or t == "exctype" or self.isnum(t) or is_list(t) or is_dict(t) or is_set(t) or is_tuple(t) or is_vtuple(t) or is_callable(t) or is_gen(t)) and "?" not in t:
         return self.ctype("opt", [t])
     return ""
 
@@ -1189,6 +1228,12 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         # x: object, as in __eq__(self, other: object): a template's parameter, which each call
         # types (any argument: isinstance() narrows it), where a template may be
         if ps[i].kind == "param" and ps[i].kids[0].kind == "name" and ps[i].kids[0].s == "object" and not (cls != "" and i == 0 and f.deco != "staticmethod") and (cls == "" or template_ok(d.s) or init):
+            ps[i].kids[0] = mk("noann", "", d.line, [])
+    for i in range(len(ps)):
+        # x: str | Path, a union of a class with a str, number or container, which no one type
+        # holds: a template's parameter too, which each call types by its argument (one of the
+        # members, as CPython checks none), where a template may be
+        if ps[i].kind == "param" and ps[i].kids[0].kind != "noann" and not (cls != "" and i == 0 and f.deco != "staticmethod") and (cls == "" or template_ok(d.s) or init) and not f.prop and f.acc == "" and not f.extern and not f.export and not f.pyexport and self.ann(ps[i].kids[0]) == "!" + MIXEDREFS:
             ps[i].kids[0] = mk("noann", "", d.line, [])
     if (cls == "" or template_ok(d.s) or init) and not f.prop and f.acc == "" and not f.extern and not f.export and not f.pyexport and not self.dyn_policy(d.line):
         # typing.Any, also in list[Any] or Mapping[str, Any]: what it annotates is left to each

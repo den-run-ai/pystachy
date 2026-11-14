@@ -4,7 +4,7 @@
 @f.pop: pys_dict_find pys_repr pys_raise pys_dict_pop
 @f.drop: pys_alloc pys_dict_find pys_repr pys_raise pys_dict_pop
 @f.bump: pys_dict_entry pys_dict_val pys_dict_entry_set pys_raise pys_raise
-@f.bumpn: pys_dict_has pys_dict_entry pys_dict_val pys_dict_entry_set pys_raise pys_raise
+@f.bumpn: pys_dict_has pys_dict_entry pys_dict_val pys_dict_entry_set pys_raise
 @f.drop_opt: pys_dict_pop pys_raise
 @pys_obj_eq:
 @pys_obj_cmp:

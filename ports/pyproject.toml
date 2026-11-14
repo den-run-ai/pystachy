@@ -22,6 +22,7 @@ packages = [
     "iniconfig",
     "jdcal",
     "json_repair",
+    "json_repair._jsonschema",
     "json_repair.parse_string_helpers",
     "json_repair.utils",
     "ordered_set",

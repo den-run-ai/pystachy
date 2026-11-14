@@ -36,7 +36,7 @@ def original_scroll(text: str, index: int, idx: int, backwards: bool) -> int:
 
 checks = 0
 for text in ["", " ", "\t\n ", " a ", "a", "\u2003é😀\u2003", "é\t😀 "]:
-    parser = JSONParser(text, False)
+    parser = JSONParser(text, None, False)
     for index in range(-len(text) - 2, len(text) + 3):
         parser.index = index
         parser.skip_whitespaces()

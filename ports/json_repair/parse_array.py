@@ -1,35 +1,76 @@
 # pystachy: dynamic-any
-# Pystachy port: specialize schema-free parsing; recursive values use dynamic Any.
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
-from .utils.constants import STRING_DELIMITERS
+from .parser_schema import ArraySchemaConfig, resolve_parser_array_schema
+from .utils.constants import STRING_DELIMITERS, JSONReturnType
 from .utils.json_context import ContextValues
 from .utils.object_comparer import ObjectComparer
 
+if TYPE_CHECKING:
+    from .json_parser import JSONParser
+
+
+def _resolve_array_item_schema(
+    schema_config: ArraySchemaConfig | None,
+    idx: int,
+) -> tuple[dict[str, Any] | bool | None, bool]:
+    if schema_config is None:
+        return None, False
+
+    item_schema: dict[str, Any] | bool | None = None
+    drop_item = False
+    if isinstance(schema_config.items_schema, list):
+        if idx < len(schema_config.items_schema):
+            raw_schema = schema_config.items_schema[idx]
+            if raw_schema is not None and not isinstance(raw_schema, (dict, bool)):
+                raise ValueError("Schema must be an object.")
+            item_schema = cast("dict[str, Any] | bool | None", raw_schema)
+        elif schema_config.additional_items is False:
+            drop_item = True
+        elif isinstance(schema_config.additional_items, dict):
+            item_schema = cast("dict[str, Any]", schema_config.additional_items)
+        else:
+            item_schema = True
+    elif isinstance(schema_config.items_schema, dict):
+        item_schema = cast("dict[str, Any]", schema_config.items_schema)
+    else:
+        item_schema = True
+
+    return item_schema, drop_item
+
+
 def parse_array(
-    self,
+    self: "JSONParser",
     schema: dict[str, Any] | bool | None = None,
     path: str = "$",
     closing_delimiter: str = "]",
-) -> list[Any]:
+) -> list[JSONReturnType]:
     # <array> ::= '[' [ <json> *(', ' <json>) ] ']' ; A sequence of JSON values separated by commas
-    # Pystachy port: the public entry point rejects schemas.
-    if schema is not None:
-        raise ValueError("This port supports schema-free repair only.")
+    schema_repairer, _schema, schema_config = resolve_parser_array_schema(self.schema_repairer, schema)
+    salvage_mode = schema_repairer is not None and schema_repairer.schema_repair_mode == "salvage"
     array_is_object_value = self.context.current == ContextValues.OBJECT_VALUE
     closed_before_parent_member = False
 
-    arr: list[Any] = []
+    arr: list[JSONReturnType] = []
     with self.context.enter(ContextValues.ARRAY):
+        idx = 0
         while True:
-            self.skip_whitespace_and_comments(skip_bare_slashes=True)
+            self.skip_whitespace_and_comments()
             char = self.get_char_at()
             if char is None or char in [closing_delimiter, "}"]:
                 break
             if char == ",":
                 self.index += 1
                 continue
-            if char is not None and char in STRING_DELIMITERS:
+
+            item_schema, drop_item = _resolve_array_item_schema(schema_config, idx)
+            # Pystachy port: the path is only read with a schema; format it only then.
+            item_path = f"{path}[{idx}]" if schema_repairer is not None else path
+            active_schema_repairer = (
+                schema_repairer if schema_repairer is not None and not drop_item and not salvage_mode else None
+            )
+
+            if char in STRING_DELIMITERS:
                 # A string followed by ':' is often a missing object start; treat it as an object.
                 i = 1
                 i = self.skip_to_character(char, i)
@@ -39,11 +80,23 @@ def parse_array(
                         self.log("Closed unclosed array before object member after scalar items")
                         closed_before_parent_member = True
                         break
-                    value = self.parse_object()
+                    if active_schema_repairer is not None:
+                        # Schema-guided object parsing, then enforce schema on the parsed object.
+                        value = self.parse_object(item_schema, item_path)
+                        value = active_schema_repairer.repair_value(value, item_schema, item_path)
+                    else:
+                        # No schema (or dropping): still parse to keep the cursor in sync.
+                        value = self.parse_object()
                 else:
                     value = self.parse_string()
+                    if active_schema_repairer is not None:
+                        # Apply schema constraints/coercions to scalar values when configured.
+                        value = active_schema_repairer.repair_value(value, item_schema, item_path)
             else:
-                value = self.parse_json()
+                # Use schema-aware parsing to guide nested repairs when configured.
+                value = (
+                    self.parse_json(item_schema, item_path) if active_schema_repairer is not None else self.parse_json()
+                )
 
             if ObjectComparer.is_strictly_empty(value) and self.get_char_at() not in [closing_delimiter, ","]:
                 self.index += 1
@@ -51,8 +104,13 @@ def parse_array(
                 self.log(
                     "While parsing an array, found a stray '...'; ignoring it",
                 )
-            else:
+            elif not drop_item:
                 arr.append(value)
+            elif schema_repairer is not None:
+                # Record drops for visibility when schema forbids extra tuple items.
+                schema_repairer._log("Dropped extra array item not covered by schema", item_path)
+
+            idx += 1
 
         if char != closing_delimiter:
             self.log(

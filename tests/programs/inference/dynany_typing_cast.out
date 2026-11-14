@@ -1,0 +1,2 @@
+[1, 'a', None] [1, 'a'] text {'k': 1, 'j': 's'} (True, {'a': None, 'b': None}) {'x': [1]}
+[exit 0]

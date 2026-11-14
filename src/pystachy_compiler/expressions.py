@@ -115,6 +115,27 @@ def gen_narrows(self, n: Node, truth: bool, out: dict[str, str]) -> None:
         if (n.s == "is not" or n.s == "!=") == truth:
             nm = n.kids[0].s
             out[nm] = unopt(out[nm] if nm in out else self.now_type(nm))
+    elif k == "cmp" and len(n.kids) == 2 and ((n.s == "==" or n.s == "in") == truth) and (n.s == "==" or n.s == "!=" or n.s == "in" or n.s == "not in"):
+        # x == "a" (or "a" == x, x in ["a", "b"], x in "ab") that holds, and x != "a" (x not in
+        # ...) that does not: x, an optional str, bytes or number, equals a constant of those,
+        # which None equals none of, so it is not None
+        x = n.kids[0]
+        y = n.kids[1]
+        if (n.s == "==" or n.s == "!=") and x.kind != "name" and y.kind == "name":
+            x = n.kids[1]
+            y = n.kids[0]
+        ys = y.kids if (n.s == "in" or n.s == "not in") and y.kind in ["list", "tuple", "set"] else [y]
+        lits = len(ys) > 0 and all(e.kind in ["str", "bytes", "int", "float", "True", "False"] or (e.kind == "unary" and e.s == "-" and e.kids[0].kind in ["int", "float"]) for e in ys)
+        if not lits and (n.s == "in" or n.s == "not in") and y.kind == "name":
+            # (x in xs of a variable xs whose items, a dict's keys, are strs, bytes or numbers: no
+            # item of such a list, set, tuple or dict is None)
+            yt = self.ltype[y.s] if y.s in self.ltype else self.gtypes.get(y.s, "")  # (a read that fails raises before the test holds)
+            it = elem(yt) if is_list(yt) else selem(yt) if is_set(yt) else targs(yt)[0] if is_dict(yt) or is_vtuple(yt) else ""
+            lits = it in ["str", "bytes", "int", "float", "bool"]
+        if x.kind == "name" and lits and self.narrowable(x.s):
+            t = out[x.s] if x.s in out else self.now_type(x.s)
+            if is_opt(t) and unopt(t) in ["str", "bytes", "int", "float", "bool"]:
+                out[x.s] = unopt(t)
     elif k == "call" and len(n.kids) == 3 and n.kids[0].kind == "name" and n.kids[0].s == "isinstance" and (n.kids[1].kind == "name" or n.kids[1].kind == "walrus") and self.narrowable(n.kids[1].s):
         nm = n.kids[1].s
         t = out[nm] if nm in out else self.now_type(nm)
@@ -2875,6 +2896,8 @@ def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
         i = self.seq_index(n.kids[1], "TypeError: list indices must be integers or slices, not NoneType" if is_list(t) else "TypeError: string indices must be integers, not 'NoneType'")
         o = self.unwrap(o, sub)
         if t == "str":
+            if self.handler != "" and not self.rtmode:
+                i = self.seq_bounds(i, self.rt("pys_text_len", "i64", [f"ptr {o.v}"]), "IndexError: string index out of range")
             return Val(self.rt("pys_str_get", "ptr", [f"ptr {o.v}", f"i64 {i.v}"]), "str")
         return self.list_read(o, i)
     if is_dict(t):
@@ -2974,10 +2997,24 @@ def gen_pick(self, o: Val, tests: list[Val], exc: str, msg: str, what: str, want
     self.place(end)
     return Val(self.phi(ph), rt)
 
+def gen_seq_bounds(self, i: Val, length: str, msg: str) -> Val:
+    # The index i of a str or list of length items, in a try or with statement: checked here, so
+    # that one out of range raises msg's IndexError in this function, whose raise goes to the
+    # statement's landing code directly (lowering's eh_ir). The same error raised inside the
+    # runtime's function would come back through the unwinder, which costs a microsecond: code
+    # that reads past the end on purpose (try: s[i] / except IndexError:) pays that each time.
+    # The index that is returned is in range: i, or i + length for a negative one.
+    neg = self.num_cmp('<', i, Val("0", "int")).v
+    j = Val(self.select(neg, Val(self.scalar('add', [i, Val(length, 'int')]), "int"), i), "int")
+    self.guard(self.int_ucmp('>=', j, Val(length, "int")).v, msg)
+    return j
+
 def gen_list_read(self, o: Val, i: Val) -> Val:
     # Both operands have run, and o is not None. Check the current length: unsigned
     # comparison also sends every negative index to the runtime's normalization and errors.
     # No call or allocation separates this check from the existing inline list.load.
+    if self.handler != "" and not self.rtmode:
+        i = self.seq_bounds(i, self.list_len(o), "IndexError: list index out of range")
     if self.list_id_kind(o.t) != 0 and not self.fn.scalar_reads:
         return self.list_item(o, i)
     if o.t != "list[int]" or "listfast" not in self.opts:
@@ -4534,11 +4571,13 @@ def gen_compare(self, n: Node) -> Val:
     if len(ops) == 1:
         w = a.t
         rhs = n.kids[1]
-        if (ops[0] == "in" or ops[0] == "not in") and unopt(a.t) == "str" and rhs.kind == "list" and 0 < len(rhs.kids) <= 8 and all(e.kind == "str" or e.kind == "None" for e in rhs.kids):
+        if (ops[0] == "in" or ops[0] == "not in") and unopt(a.t) == "str" and (rhs.kind == "list" or (rhs.kind == "set" and any(e.kind == "None" for e in rhs.kids))) and 0 < len(rhs.kids) <= 8 and all(e.kind == "str" or e.kind == "None" for e in rhs.kids):
             # A short list of string/None literals cannot escape or run user code.
             # Compare its items directly, in order, without allocating the list.
             # The needle was evaluated once above; retain tuple membership's
-            # item-first equality and stop at the first match.
+            # item-first equality and stop at the first match. A set display of these
+            # with None among them, which no set of strs holds, is searched the same way:
+            # a str or None needle always hashes, and equal items are one item.
             end = self.label()
             ph = Ins("phi", "bool", "")
             for e in rhs.kids:
@@ -5037,6 +5076,11 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
                 return self.num_cmp(">=" if op == "in" else "<", Val(self.int_key_entry(b, a), "int"), Val("0", "int"))
             s = self.to_slot(self.dkey(a, selem(b.t)))
             r = self.rt("pys_set_has", "i64", [f"ptr {b.v}", f"i64 {s}"], self.key_fx(selem(b.t)))
+        elif is_vtuple(b.t):
+            # x in t of a runtime-length tuple: an item is x or equals it, as t.count(x) counts
+            # them (its items are numbers, strs and None: their equality runs no code of the program)
+            cnt = self.expr(mk("call", "", self.line, [mk("attr", "count", self.line, [self.vnode(b)]), self.vnode(a)]), "int")
+            return self.num_cmp("!=" if op == "in" else "==", cnt, Val("0", "int"))
         else:
             self.err(f"'in' is not supported for {b.t}")
         return self.num_cmp('!=' if op == 'in' else '==', Val(r, "int"), Val('0', "int"))

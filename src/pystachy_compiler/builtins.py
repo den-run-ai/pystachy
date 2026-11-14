@@ -431,6 +431,15 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return Val(self.rt("pys_ascii", "ptr", [f"ptr {rtext.v}"]), "str") if name == "ascii" else rtext
     if name == "bytes":
         return self.bytes_(args)
+    if name == "typing.cast":
+        # cast(T, v): v itself, as CPython returns it, whatever T says. T is a type for checkers,
+        # which no code checks; here it is only what a display, a comprehension or a call that v
+        # is can expect, as an annotation of T would tell it (cast(list[float], []),
+        # cast("list[Any]", [1, "a"]), cast("dict[str, Any]", dict.fromkeys(names)))
+        if len(args) != 2 or any(a.kind in ["kw", "starred", "dstar"] for a in args):
+            self.err("typing.cast() takes a type and a value by position: cast(T, v)")
+        t = self.ann(args[0]) if args[1].kind in ["list", "dict", "set", "tuple", "listcomp", "dictcomp", "setcomp", "call"] else "!"
+        return self.expr(args[1], want if t.startswith("!") or t == "None" else t, resultsoft=resultsoft)
     if name == "tuple":
         if len(args) > 1 or any(a.kind == "kw" for a in args):
             self.err("tuple() takes zero or one positional iterable argument")
@@ -458,8 +467,10 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             v = self.gen_list(v, "")
         if v.t == "bytes":
             v = Val(self.rt("pys_bytes_list", "ptr", [f"ptr {v.v}"]), "list[int]")
-        if self.iter_object(v.t) or v.t == RANGEC:
-            v = self.as_list(v, "tuple")  # (the items of its iterator object; a range's numbers)
+        if self.iter_object(v.t) or v.t == RANGEC or is_dict(v.t) or is_set(v.t):
+            # (the items of its iterator object; a range's numbers; a dict's keys in insertion
+            # order; a set's items in its iteration order: a fresh list of them, which the tuple copies)
+            v = self.as_list(v, "tuple")
         if not is_list(v.t):
             self.err(f"tuple() of {typestr(v.t)} is not supported: use a list, string or tuple")
         if unopt(elem(v.t)) not in ["int", "float", "bool", "str", "dyn"]:
@@ -845,6 +856,13 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             self.key_check(keyv, f"{name}()")
     if len(vals) == 1 and len(kws) == 0 and name in ["str", "repr", "bool", "id"] and self.dyn_policy(self.line) and self.refl_builtin_class(vals[0].t) != "":
         vals[0] = self.dyn_box(vals[0])
+    if len(vals) == 1 and len(kws) == 0 and name == "id":
+        idt = self.rec_type(vals[0].t)
+        if is_list(idt) or is_dict(idt) or is_set(idt) or idt == "str":
+            # its address, which is also the identity of an Any value that holds it (pys_dyn_id)
+            return Val(self.scalar_cast("ptrtoint", Val(vals[0].v, "%ptr"), "int"), "int")
+        if self.dyn_policy(self.line) and idt in self.classes and idt not in self.tmpl and self.dyn_boxable(idt) == "":
+            vals[0] = self.dyn_box(vals[0])  # (an object: its box's identity is its own)
     if len(vals) == 1 and len(kws) == 0 and vals[0].t == "dyn" and name in ["len", "str", "repr", "int", "float", "bool", "id", "abs"]:
         return self.dyn_builtin(name, vals[0])  # (by its box's type: dynamic.py)
     if name == "sum" and len(kws) == 0 and 1 <= len(vals) <= 2 and (vals[0].t == "dyn" or vals[0].t == "list[dyn]" or (len(vals) == 2 and vals[1].t == "dyn")):
@@ -2611,6 +2629,17 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
         return Val("null", "None")
     if is_dict(o.t) and m == "update":
         return self.update(o, args)
+    if o.t == "file" and m == "__enter__" and len(args) == 0:
+        # f.__enter__(): the file, if it is open, as a with statement enters it
+        c = self.rt("pys_file_closed", "i64", [f"ptr {o.v}"])
+        self.guard(self.num_cmp('!=', Val(c, "int"), Val('0', "int")).v, "ValueError: I/O operation on closed file.")
+        return o
+    if o.t == "file" and m == "__exit__" and len(args) == 3 and not any(a.kind == "kw" or a.kind == "starred" for a in args):
+        # f.__exit__(exc_type, exc, tb): closes the file, whatever the exception, and returns None
+        for a in args:
+            self.expr(a, "")
+        self.rt("pys_file_close", "void", [f"ptr {o.v}"])
+        return Val("null", "None")
     if o.t == "str" and (m == "format" or m == "format_map"):
         self.err(runtime_format(m))
     if (is_tuple(o.t) or is_vtuple(o.t)) and (m == "index" or m == "count"):
@@ -2814,7 +2843,11 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 v = Val("null", base)  # (each item in its place, in affix_any)
             if is_opt(v.t) and (join or key == "list.extend" or key == "file.writelines"):
                 v = self.unwrap(v, "TypeError: can only join an iterable" if join else "TypeError: 'NoneType' object is not iterable")
-            if join or (key == "list.extend" and (v.t in self.classes or is_gen(v.t))):
+            if key == "list.extend" and v.t == "str":
+                v = Val(self.rt("pys_str_list", "ptr", [f"ptr {v.v}"]), "list[str]")  # (a str's characters)
+            if join or (key == "list.extend" and (v.t in self.classes or is_gen(v.t) or v.t == "bytes" or is_dict(v.t) or is_set(v.t) or is_tuple(v.t) or is_vtuple(v.t))):
+                # (extend() of any iterable: an object's or a generator's items, a bytes's ints, a
+                # dict's keys, a set's or a tuple's items, as a new list of them)
                 v = self.as_list(v, "join" if join else "extend")
             if (key == "str.join" or key == "file.writelines") and v.t == "list[opt[str]]":
                 v = Val(v.v, "list[str]")  # (an item that is None raises when it runs, as CPython's error)
@@ -2927,6 +2960,11 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
         # f.write(s) as a statement: what it returns, the number of s's characters, is not counted
         self.rt("pys_file_put", "void", av)
         return Val("null", "None")
+    if base == "list" and m == "pop" and self.handler != "" and not self.rtmode and len(av) == 2:
+        # (in a try or with statement: pop()'s IndexErrors are raised here, as seq_bounds says)
+        length = self.list_len(o)
+        self.guard(self.num_cmp('==', Val(length, "int"), Val("0", "int")).v, "IndexError: pop from empty list")
+        av = [av[0], "i64 " + self.seq_bounds(Val(av[1][4:], "int"), length, "IndexError: pop index out of range").v]
     if self.list_id_kind(o.t) != 0:
         if m == "append" or m == "insert":
             self.list_store(o, idstore, m, av[1][4:] if m == "insert" else "")

@@ -2,7 +2,7 @@
 from json_repair.json_parser import JSONParser
 from json_repair.parse_string import StringParseState, _cached_skip_to_character
 
-parser = JSONParser("left' | é🌲\0a[b],:}right", logging=False)
+parser = JSONParser("left' | é🌲\0a[b],:}right", None, logging=False)
 state = StringParseState()
 distinct: list[list[str]] = [
     [], [""], ["'"], ['"'], ["\\"], ["🌲"], ["\0"], [","], ["ab"], ["a", "b"],

@@ -265,17 +265,19 @@ The existing unboxed-NaN identity deviation also applies: separately decoded
 
 The typed `JSONValue` path and public `JSONDecoder` methods reject integer tokens
 outside signed 64-bit range with `OverflowError`. Dynamic `Any` decoding promotes
-larger tokens, with a 4,300-digit conversion limit that raises `ValueError`. Nested
-containers count against `sys.setrecursionlimit()` and stop at 2,000 under a raised limit,
-beyond which the codec raises `RecursionError`; CPython's C codec accepts 9,998 at any limit
+larger tokens, with a 4,300-digit conversion limit that raises `ValueError`. Decoding and `dumps()`
+nest as CPython's C decoder and encoder do: 9,998 containers at any recursion limit, and their
+`RecursionError` beyond. `dump()` counts its containers against `sys.setrecursionlimit()`, as
+CPython's does, and stops at 2,000 under a raised limit, where CPython's goes on
 ([deviation](../tests/deviations/json_limits.py)).
 Text that Pystachy reads from a file, `input()` or `sys.argv` can hold bytes that
 are not UTF-8, which CPython rejects or escapes as it reads them. `loads()` counts
 each byte that starts no UTF-8 sequence as one character, as `str` does, in values
 and error positions ([deviation](../tests/deviations/json_invalid_utf8.py)).
 The default `JSONDecoder.decode()` and `raw_decode()` are supported with typed
-`JSONValue` storage. Bytes input, file APIs, configured decoder constructors,
-encoder classes, hooks, `strict` and indentation remain unsupported. Typed
+`JSONValue` storage. `load()` and `dump()` read and write a text file's whole document, and
+the encoders take `indent`. Bytes input, configured decoder constructors,
+encoder classes, hooks and `strict` remain unsupported. Typed
 `JSONValue` excludes non-string object keys, tuples, `default`, `skipkeys` and
 `check_circular`; the dynamic `Any` encoder supports those. Existing typed containers are not implicitly converted to
 recursive mutable storage. `ensure_ascii=False` returns non-ASCII and surrogate
@@ -1025,10 +1027,16 @@ arguments. `closing(thing)`, `nullcontext()`, `nullcontext(value)`, `suppress(A,
   exception).
 - A function that a manager decorates and that calls itself is rejected (the decorator's `inner()`
   calls itself before its return type is inferred): use the manager inside it instead.
-- `ExitStack`, `redirect_stdout`, `redirect_stderr`, `chdir` and the async managers
+- `ExitStack` enters managers of any classes, files and generator managers among them
+  (`enter_context()`), registers callbacks with their arguments (`callback()`) and the
+  `__exit__` of an object (`push()`), and has `pop_all()` and `close()`. Each is compiled for
+  the class it is given: what has no `__enter__` or `__exit__` is rejected as the program
+  compiles, where CPython raises `TypeError`. `push()` takes no plain function with
+  `__exit__`'s signature, a callback is given no traceback, and an exception that a callback
+  raises keeps the `__context__` it was raised with. The class derives from no class.
+- `redirect_stdout`, `redirect_stderr`, `chdir` and the async managers
   (`asynccontextmanager`, `aclosing`, `AsyncExitStack`, `AbstractAsyncContextManager`) are not
-  ported: the subset has no list of managers of different classes, no assignable `sys.stdout`,
-  no `os.getcwd()` and no `async def`.
+  ported: the subset has no assignable `sys.stdout`, no `os.getcwd()` and no `async def`.
 
 ## Numbers and randomness
 
@@ -1430,6 +1438,22 @@ so `type(result) is argparse.Namespace` is false and its name is compiler-genera
 Equality compares declared fields. A foreign operand returns false without
 reflected comparison. Distinct results sharing a NaN field can compare unequal
 under the native float identity rules.
+
+A test narrows an optional field where a function assigns `parse_args()`'s result to one local
+in its own statements and then only reads that local's fields, as command-line code does:
+
+```python
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-o", "--output")
+    args = parser.parse_args()
+    if args.output:
+        open(args.output, "w").close()  # args.output is a str here
+```
+
+Nothing else holds that Namespace, so no call can change its fields. A function that passes
+the Namespace on, stores to one of its fields or keeps it at module level reads the fields
+themselves, which a test does not narrow: copy the field to a local first.
 
 Code can raise and catch `argparse.ArgumentTypeError` when validating values.
 Parser declarations must stay in their owning scope. Runtime-defined schemas,

@@ -679,6 +679,12 @@ def gen_stmt_main(self, n: Node) -> None:
                 self.no_type(t0.kids[0].s)  # (d[k] = [] shows nothing of what d holds)
             if len(n.kids) == 2 and starred_target(t0) and (self.iterator_call(val) or self.is_mapcall(val) or (val.kind == "listcomp" and val.s == "gen")):
                 v = self.consume(val, "")  # (a, *b = range(n): UNPACK_EX takes every item first)
+            elif len(n.kids) == 2 and t0.kind == "tuple" and val.kind == "call" and not starred_target(t0):
+                # a, b = f(): the types its targets have already, where each has one, are what the
+                # call's result is expected to be, as one target's is (they type an empty display
+                # among what it returns, and select Any storage for json's decoder: Gen.json_any)
+                ts = [self.target_type(x) if x.kind == "name" else "" for x in t0.kids]
+                v = self.expr(val, self.ctype("tuple", ts) if "" not in ts and len([t for t in ts if "?" in t or t == NONEVAR]) == 0 else "")
             else:
                 v = self.expr(val, self.target_type(t0))
             src = self.joinsrc

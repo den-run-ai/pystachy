@@ -1,0 +1,166 @@
+{
+  "b": [
+    1,
+    2.5,
+    "x",
+    null,
+    true,
+    [],
+    {},
+    []
+  ],
+  "3": {
+    "k": [
+      [
+        1
+      ],
+      {
+        "z": 0
+      }
+    ]
+  },
+  "null": "\u00e9\n",
+  "1.5": false
+}
+{
+"b": [
+1,
+2.5,
+"x",
+null,
+true,
+[],
+{},
+[]
+],
+"3": {
+"k": [
+[
+1
+],
+{
+"z": 0
+}
+]
+},
+"null": "\u00e9\n",
+"1.5": false
+}
+{
+"b": [
+1,
+2.5,
+"x",
+null,
+true,
+[],
+{},
+[]
+],
+"3": {
+"k": [
+[
+1
+],
+{
+"z": 0
+}
+]
+},
+"null": "\u00e9\n",
+"1.5": false
+}
+{
+	"b": [
+		1,
+		2.5,
+		"x",
+		null,
+		true,
+		[],
+		{},
+		[]
+	],
+	"3": {
+		"k": [
+			[
+				1
+			],
+			{
+				"z": 0
+			}
+		]
+	},
+	"null": "é\n",
+	"1.5": false
+}
+{
+ "b" = [
+  1 ,
+  2.5 ,
+  "x" ,
+  null ,
+  true ,
+  [] ,
+  {} ,
+  []
+ ] ,
+ "3" = {
+  "k" = [
+   [
+    1
+   ] ,
+   {
+    "z" = 0
+   }
+  ]
+ } ,
+ "null" = "\u00e9\n" ,
+ "1.5" = false
+}
+True
+{
+  "kept": [
+    {
+      "x": 1,
+      "y": [
+        2,
+        []
+      ]
+    }
+  ]
+}
+'{}' '[\n {},\n {}\n]'
+{
+    "a": {
+        "b": 3,
+        "y": [
+            2
+        ]
+    },
+    "z": 1
+}
+ValueError Circular reference detected
+TypeError Object of type Point is not JSON serializable
+[
+   {
+      "a": [
+         1,
+         {
+            "b": null
+         },
+         {
+            "c": [
+               1,
+               2
+            ]
+         }
+      ]
+   },
+   "x"
+]
+True 16
+'[\n {\n  "a": [\n   1,\n   {\n    "b": null\n   },\n   {\n    "c": [\n     1,\n     2\n    ]\n   }\n  ]\n },\n "x"\n]' '[\n1,\n[\n2\n]\n]'
+TypeError can't multiply sequence by non-int of type 'float'
+True
+[exit 0]

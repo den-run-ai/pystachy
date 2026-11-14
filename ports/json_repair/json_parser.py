@@ -1,15 +1,8 @@
 # pystachy: dynamic-any
-# Pystachy port: annotate recursive JSON values directly with dynamic Any.
-from typing import Any
 import json
 from collections.abc import Callable
-
-# Pystachy port: explicit native Any decoder; ordinary CPython keeps its decoder.
-try:
-    from json import _raw_decode as raw_decode
-except ImportError:
-    def raw_decode(s: str, idx: int = 0) -> tuple[Any, int]:
-        return json.JSONDecoder().raw_decode(s, idx)
+from contextlib import ExitStack
+from typing import TYPE_CHECKING, Any, TextIO
 
 from .parse_array import parse_array as _parse_array
 from .parse_comment import parse_comment as _parse_comment
@@ -18,10 +11,19 @@ from .parse_number import parse_number as _parse_number
 from .parse_object import parse_object as _parse_object
 from .parse_string import parse_string as _parse_string
 from .parser_parenthesized import parenthesized_is_explicit_tuple, top_level_parenthesized_can_start_value
-from .utils.constants import STRING_DELIMITERS
-from .utils.json_context import JsonContext
+from .utils.constants import STRING_DELIMITERS, JSONReturnType
+from .utils.json_context import ContextValues, JsonContext
 from .utils.object_comparer import ObjectComparer
 
+if TYPE_CHECKING:
+    from .schema_repair import SchemaRepairer
+
+# Top-level characters that can start a value or a comment.
+# Pystachy port: the characters of upstream's two patterns, [{\[(#/] and that set with the string
+# delimiters. parse_json() scans for them itself: the two searches were this package's only use
+# of re, whose engine was two thirds of the code compiled into each program that imports it.
+TOP_LEVEL_VALUE_START = "{[(#/"
+TOP_LEVEL_VALUE_OR_QUOTE_START = TOP_LEVEL_VALUE_START + "".join(STRING_DELIMITERS)
 
 
 class JSONParser:
@@ -31,46 +33,59 @@ class JSONParser:
         schema: dict[str, Any] | bool | None = None,
         path: str = "$",
         closing_delimiter: str = "]",
-    ) -> list[Any]:
+    ) -> list[JSONReturnType]:
         return _parse_array(self, schema, path, closing_delimiter)
 
-    def parse_comment(self, record_top_level_value: bool = False) -> Any:
+    def parse_comment(self, record_top_level_value: bool = False) -> JSONReturnType:
         return _parse_comment(self, record_top_level_value=record_top_level_value)
 
-    def parse_number(self) -> Any:
+    def parse_number(self) -> JSONReturnType:
         return _parse_number(self)
 
     def parse_object(
         self,
         schema: dict[str, Any] | bool | None = None,
         path: str = "$",
-    ) -> Any:
+    ) -> JSONReturnType:
         return _parse_object(self, schema, path)
 
-    def parse_string(self) -> Any:
+    def parse_string(self) -> JSONReturnType:
         return _parse_string(self)
 
     def __init__(
         self,
         json_str: str,
+        json_fd: TextIO | None,
         logging: bool | None,
+        json_fd_chunk_length: int = 0,
         stream_stable: bool = False,
         strict: bool = False,
         try_valid_json_suffix: bool = False,
     ) -> None:
         # The string to parse
-        # Pystachy port: in-memory strings only.
         self.json_str: str = json_str
+        # Alternatively, the file description with a json file in it
+        if json_fd:
+            # Pystachy port: the stream's text (there is no chunked StringFileWrapper)
+            self.json_str = json_fd.read()
         # Index is our iterator that will keep track of which character we are looking at right now
         self.index: int = 0
         # This is used in the object member parsing to manage the special cases of missing quotes in key or value
         self.context = JsonContext()
-        self.deferred_contexts: list[int] = []
+        self.deferred_contexts: list[ContextValues] = []
         # Use this to log the activity, but only if logging is active
 
+        # This is a trick but a beautiful one. We call self.log in the code over and over even if it's not needed.
+        # We could add a guard in the code for each call but that would make this code unreadable, so here's this neat trick
+        # Replace self.log with a noop
         self.logging = logging
-        self.logger: list[Any] = []
-        # Pystachy port: log() guards logging instead of rebinding a method.
+        self.logger: list[Any] = []  # Pystachy port: Any items, as repair_json() returns them
+        self.log: Callable[[str], None]  # Pystachy port: one type for both functions
+        if logging:
+            self.log = self._log
+        else:
+            # No-op
+            self.log = lambda *args, **kwargs: None  # noqa: ARG005
         # When the json to be repaired is the accumulation of streaming json at a certain moment.
         # e.g. json obtained from llm response.
         # If this parameter to True will keep the repair results stable. For example:
@@ -85,19 +100,62 @@ class JSONParser:
         self.strict = strict
         self.try_valid_json_suffix = try_valid_json_suffix
         self.has_tried_valid_json_suffix = False
+        # Pystachy port: the source whose first root json.loads() rejected (repair_json()).
         self._deferred_initial_source: str | None = None
         self._last_parse_found_value = False
+        self.schema_repairer: SchemaRepairer | None = None
+        # Quote positions found by the last array-string lookahead, reused by the following quotes.
+        self.array_quote_scan: tuple[str, str, int, int, list[int]] | None = None
+        # Remember the rows already checked across successive table continuations.
+        self.row_length_scan: tuple[list[JSONReturnType], int, int | None, bool] | None = None
 
     def parse(
         self,
-    ) -> Any:
+    ) -> JSONReturnType:
         return self._parse_top_level(self.parse_json)
 
+    def parse_with_schema(
+        self,
+        repairer: "SchemaRepairer",
+        schema: dict[str, Any] | bool,
+    ) -> JSONReturnType:
+        """Parse with schema guidance enabled for all nested values."""
+        self.schema_repairer = repairer
+        if repairer.schema_repair_mode == "salvage":
+            return self._parse_top_level_salvage_with_schema(repairer, schema)
+        return self._parse_top_level(lambda: self.parse_json(schema, "$"))
 
+    def _parse_top_level_salvage_with_schema(
+        self,
+        repairer: "SchemaRepairer",
+        schema: dict[str, Any] | bool,
+    ) -> JSONReturnType:
+        """Return the first schema-valid top-level fragment while salvaging."""
+        last_error: ValueError | None = None
+        while self.index < len(self.json_str):
+            self.context.clear()
+            self.deferred_contexts.clear()
+            value = self.parse_json(schema, "$", finalize_schema=False, record_top_level_value=True)
+            if not self._last_parse_found_value:
+                break
+            try:
+                repaired = repairer.repair_value(value, schema, "$")
+                repairer.validate(repaired, schema)
+            except ValueError as exc:
+                last_error = exc
+                if self.index >= len(self.json_str):
+                    break
+                self.log("Skipped top-level fragment that did not match schema while salvaging")
+                continue
+            else:
+                return repaired
+        if last_error is not None:
+            raise last_error
+        return ""
 
     # Consolidate top-level parsing so we handle multiple sequential JSON values consistently
     # (including update semantics and strict-mode validation).
-    def _parse_top_level(self, parse_element: Callable[[], Any]) -> Any:
+    def _parse_top_level(self, parse_element: Callable[[], JSONReturnType]) -> JSONReturnType:
         json = parse_element()
         if self.index < len(self.json_str):
             self.log(
@@ -141,7 +199,14 @@ class JSONParser:
             idx -= 1
         return idx >= 0 and self.json_str[idx] == ","
 
-    def _initial_container_has_non_comma_trailing_content(self, source: str) -> bool:
+    def _initial_container_has_non_comma_trailing_content(self, source: str | None = None) -> bool:
+        # Pystachy port: _try_parse_valid_json_value() names the source to scan, the current one
+        # or the first root's that json.loads() rejected. Without one, upstream's check applies.
+        if source is None:
+            if self.index != 0 or not isinstance(self.json_str, str):
+                return True
+            source = self.json_str
+
         containers: list[str] = []
         in_string = False
         escaped = False
@@ -171,7 +236,7 @@ class JSONParser:
 
         return False
 
-    def _try_parse_valid_json_value(self) -> tuple[bool, Any]:
+    def _try_parse_valid_json_value(self) -> tuple[bool, JSONReturnType]:
         if (
             not self.try_valid_json_suffix
             or self.has_tried_valid_json_suffix
@@ -180,28 +245,32 @@ class JSONParser:
         ):
             return False, ""
 
+        # Pystachy port: a first root that json.loads() rejected is not scanned again. Only a
+        # later root needs to know whether that first root would have used the single
+        # raw-decode attempt.
         original = self._deferred_initial_source
         if self.index == 0:
             if original is not None or not self._initial_container_has_non_comma_trailing_content(self.json_str):
                 return False, ""
         elif original is not None:
-            # Only a later root needs to know whether the invalid first root
-            # would have used the single raw-decode attempt.
             self._deferred_initial_source = None
             if self._initial_container_has_non_comma_trailing_content(original):
                 self.has_tried_valid_json_suffix = True
                 return False, ""
 
         self.has_tried_valid_json_suffix = True
+        # Pystachy port: the declared types select Any storage for the decoded value.
+        value: JSONReturnType
+        end_idx: int
         try:
-            value, end_idx = raw_decode(self.json_str[self.index :])
+            value, end_idx = json.JSONDecoder().raw_decode(self.json_str[self.index :])
         except json.JSONDecodeError:
             return False, ""
 
         self.index += end_idx
         return True, value
 
-    def _try_parse_missing_opening_object(self, delimiter: str) -> tuple[bool, Any]:
+    def _try_parse_missing_opening_object(self, delimiter: str) -> tuple[bool, JSONReturnType]:
         if self.scroll_whitespaces(-self.index) != 0:
             return False, ""
 
@@ -220,8 +289,11 @@ class JSONParser:
         # Require a single insertion to explain the whole input, rather than
         # treating a quoted prose prefix or an inner container as an object.
         candidate = "{" + self.json_str[:]
+        # Pystachy port: the declared types select Any storage for the decoded value.
+        value: JSONReturnType
+        end_idx: int
         try:
-            value, end_idx = raw_decode(candidate)
+            value, end_idx = json.JSONDecoder().raw_decode(candidate)
         except ValueError:
             # Decoder limits (such as oversized integers) also mean the
             # insertion is insufficient; leave these inputs to normal repair.
@@ -241,23 +313,18 @@ class JSONParser:
         path: str = "$",
         finalize_schema: bool = True,
         record_top_level_value: bool = False,
-    ) -> Any:
-        """Parse the next JSON value (Pystachy port: schema-free)."""
+    ) -> JSONReturnType:
+        """Parse the next JSON value and, when configured, enforce schema constraints."""
         if record_top_level_value:
             self._last_parse_found_value = False
         if self.deferred_contexts:
             deferred_contexts, self.deferred_contexts = self.deferred_contexts, []
-            # Pystachy port: all deferred managers are JsonContext entries.
-            # Explicit unwind preserves ExitStack's reverse-order cleanup.
-            for context_value in deferred_contexts:
-                self.context.set(context_value)
-            try:
+            with ExitStack() as stack:
+                for context_value in deferred_contexts:
+                    stack.enter_context(self.context.enter(context_value))
                 return self.parse_json(schema, path, finalize_schema, record_top_level_value)
-            finally:
-                for context_value in reversed(deferred_contexts):
-                    self.context.reset()
 
-        repairer = None  # Pystachy port: schema-free parser.
+        repairer, schema = self._resolve_schema_for_parse(schema)
         check_initial_quote = self.index == 0 and self.context.empty
 
         while True:
@@ -265,6 +332,7 @@ class JSONParser:
             # None means that we are at the end of the string provided
             if char is None:
                 return ""
+            # Pystachy port: _try_parse_valid_json_value() decides whether to scan the root.
             if self.try_valid_json_suffix and self.context.empty and char in ["{", "["]:
                 parsed_suffix, value = self._try_parse_valid_json_value()
                 if parsed_suffix:
@@ -310,12 +378,6 @@ class JSONParser:
                 )
             if char in ["#", "/"]:
                 value = self.parse_comment(record_top_level_value)
-                if self.context.empty:
-                    # Pystachy port: continue iteratively even when prose lies
-                    # between comments. The old re-entry started at a nonzero
-                    # index, so it did not probe a missing opening object brace.
-                    check_initial_quote = False
-                    continue
                 return self._finalize_parsed_value(value, repairer, schema, path, finalize_schema)
             # Only probe a missing brace when normal dispatch would discard the
             # initial quote; later quoted prose must not start this recovery.
@@ -328,44 +390,69 @@ class JSONParser:
                     )
             # If everything else fails, we just ignore and move on
             self.index += 1
+            if self.context.empty and isinstance(self.json_str, str):
+                # Pystachy port: the scan that pattern.search(self.json_str, self.index) makes
+                starts = TOP_LEVEL_VALUE_OR_QUOTE_START if check_initial_quote else TOP_LEVEL_VALUE_START
+                index = self.index
+                while index < len(self.json_str) and self.json_str[index] not in starts:
+                    index += 1
+                self.index = index
 
+    def _resolve_schema_for_parse(
+        self,
+        schema: dict[str, Any] | bool | None,
+    ) -> tuple["SchemaRepairer | None", dict[str, Any] | bool | None]:
+        repairer = self.schema_repairer if self.schema_repairer is not None and schema not in (None, True) else None
+        if repairer is None:
+            return None, schema
+
+        schema = repairer.resolve_schema(schema)
+        if schema is True:
+            return None, schema
+        if schema is False:
+            raise ValueError("Schema does not allow any values.")
+        return repairer, schema
 
     def _finalize_parsed_value(
         self,
-        value: Any,
-        repairer,
+        value: JSONReturnType,
+        repairer: "SchemaRepairer | None",
         schema: dict[str, Any] | bool | None,
         path: str,
         finalize_schema: bool = True,
         record_top_level_value: bool = False,
-    ) -> Any:
+    ) -> JSONReturnType:
         if record_top_level_value:
             self._last_parse_found_value = True
-        # Pystachy port: schema-free values need no finalization.
-        return value
+        if repairer is None or not finalize_schema:
+            return value
+        return repairer.repair_value(value, schema, path)
 
     def get_char_at(self, count: int = 0) -> str | None:
-        # Pystachy port: EOF probes are normal; avoid native exception unwinding.
-        index = self.index + count
-        if -len(self.json_str) <= index < len(self.json_str):
-            return self.json_str[index]
-        return None
+        # Why not use something simpler? Because try/except in python is a faster alternative to an "if" statement that is often True
+        try:
+            return self.json_str[self.index + count]
+        except IndexError:
+            return None
 
     def skip_whitespaces(self) -> None:
         """
         This function quickly iterates on whitespaces, moving the self.index forward
         """
-        # Preserve Python's negative-index behavior for callers outside parse().
-        length = len(self.json_str)
-        while -length <= self.index < length and self.json_str[self.index].isspace():
-            self.index += 1
+        try:
+            char = self.json_str[self.index]
+            while char.isspace():
+                self.index += 1
+                char = self.json_str[self.index]
+        except IndexError:
+            pass
 
-    def skip_whitespace_and_comments(self, skip_bare_slashes: bool = False) -> None:
+    def skip_whitespace_and_comments(self) -> None:
         """Skip whitespace and recognized comments without parsing a value."""
         while True:
             self.skip_whitespaces()
             char = self.get_char_at()
-            if char != "#" and not (char == "/" and (skip_bare_slashes or self.get_char_at(1) in ["/", "*"])):
+            if char != "#" and not (char == "/" and self.get_char_at(1) in ("/", "*")):
                 return
             _skip_comment(self)
 
@@ -375,9 +462,13 @@ class JSONParser:
         Set backwards to scan toward the start.
         """
         step = -1 if backwards else 1
-        # Unlike skip_whitespaces(), this scan stops at a negative position.
-        while 0 <= self.index + idx < len(self.json_str) and self.json_str[self.index + idx].isspace():
-            idx += step
+        try:
+            char = self.json_str[self.index + idx]
+            while self.index + idx >= 0 and char.isspace():
+                idx += step
+                char = self.json_str[self.index + idx]
+        except IndexError:
+            pass
         return idx
 
     def skip_to_character(self, character: str | list[str], idx: int = 0) -> int:
@@ -385,30 +476,9 @@ class JSONParser:
         Advance from (self.index + idx) until we hit an *unescaped* target character.
         Returns the offset (idx) from self.index to that position, or the distance to the end if not found.
         """
+        targets = set(character) if isinstance(character, list) else {character}
         i = self.index + idx
         n = len(self.json_str)
-        # Pystachy port: use native search while preserving upstream escape boundaries.
-        if (
-            isinstance(self.json_str, str)
-            and isinstance(character, str)
-            and len(character) == 1
-            and character != "\\"
-            and i >= 0
-        ):
-            while i < n:
-                match = self.json_str.find(character, i)
-                if match < 0:
-                    return n - self.index
-                preceding = match - 1
-                # Preserve the scan's escape boundary when idx starts inside a backslash run.
-                while preceding >= i and self.json_str[preceding] == "\\":
-                    preceding -= 1
-                if (match - preceding - 1) % 2 == 0:
-                    return match - self.index
-                i = match + 1
-            return n - self.index
-
-        targets = set(character) if isinstance(character, list) else {character}
         backslashes = 0  # count of consecutive '\' immediately before current char
 
         while i < n:
@@ -440,7 +510,7 @@ class JSONParser:
         self,
         schema: dict[str, Any] | bool | None = None,
         path: str = "$",
-    ) -> Any:
+    ) -> JSONReturnType:
         explicit_tuple = self.parenthesized_is_explicit_tuple()
         self.index += 1
         values = self.parse_array(schema, path, closing_delimiter=")")
@@ -448,10 +518,7 @@ class JSONParser:
             return values
         return values[0]
 
-    def log(self, text: str) -> None:
-        # Pystachy port: avoid assigning bound methods/lambdas in __init__.
-        if not self.logging:
-            return
+    def _log(self, text: str) -> None:
         window: int = 10
         start: int = max(self.index - window, 0)
         end: int = min(self.index + window, len(self.json_str))

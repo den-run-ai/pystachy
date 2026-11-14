@@ -1,10 +1,5 @@
 JSON integer exceeds signed 64-bit range
 JSON integer exceeds signed 64-bit range
-maximum recursion depth exceeded
-maximum recursion depth exceeded
-depth accepted
-maximum recursion depth exceeded while decoding a JSON array from a unicode string
-maximum recursion depth exceeded while decoding a JSON object from a unicode string
 encode depth accepted
 maximum recursion depth exceeded while encoding a JSON object
 [exit 0]

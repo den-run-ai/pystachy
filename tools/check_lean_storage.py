@@ -16,7 +16,7 @@ import sys
 
 import check_lean_boundary as bridge
 import check_lean_int as arithmetic
-from src.pystachy_compiler.utils import is_tuple, targs, tslots, unopt
+from src.pystachy_compiler.utils import is_kw, is_tuple, kw_types, targs, tslots, unopt
 
 DEFAULT_CHECKER = bridge.DEFAULT_CHECKER
 Unsupported = bridge.Unsupported
@@ -45,6 +45,7 @@ PAIRS = {
     "dict.bkey_big_setdefault": (1, 3), "set.big_add": (1,), "set.big_has": (1,),
     "set.big_discard": (1,), "set.big_remove": (1,),
 }
+MAX_TYPE_TEXT = 4096  # of a representation's type, which unlike a name grows with its nesting
 # These instructions are total on machine integers. Their intermediate low words
 # may be speculative; obligations are retained until a non-speculative consumer.
 PURE = {"scalar.cmp", "num.cmp", "int.ucmp", "select", "slot.pack", "slot.unpack"}
@@ -58,6 +59,14 @@ def args(op):
 
 def result(op):
     return f"%t{op['results'][-1]}"
+
+
+def record_tuple(layout):
+    """A **kwargs record kw[a:A,b:B] is the tuple of its values at run time (utils.is_kw), and a
+    function reads it as that tuple. Any other layout is itself."""
+    if not layout or not is_kw(layout):
+        return layout
+    return "tuple[" + ",".join(kw_types(layout)) + "]"
 
 
 def pure(op):
@@ -81,7 +90,11 @@ class Normalize:
                     {"parameter", "allocation", "definition", "constant", "held_value", "held_read", "held_pair", "big_popitem", "search_hold"},
                     "invalid representation source")
             bridge.name(source.get("value"), "representation value")
-            bridge.name(source.get("representation"), "representation type")
+            # A type's text grows with its nesting: stat's table of file modes is a tuple type of
+            # 406 characters, more than a name's 256.
+            representation = source.get("representation")
+            require(isinstance(representation, str) and 0 < len(representation) <= MAX_TYPE_TEXT
+                    and "\0" not in representation, "invalid representation type")
             require(source["value"] not in seen_sources, "duplicate representation source")
             seen_sources.add(source["value"])
         self.defs = {}
@@ -283,7 +296,7 @@ class Normalize:
 
     def layout_type(self, value, depth=0):
         if value not in self.layout_cache:
-            self.layout_cache[value] = self._layout_type(value, depth)
+            self.layout_cache[value] = record_tuple(self._layout_type(value, depth))
         return self.layout_cache[value]
 
     def _layout_type(self, value, depth=0):
