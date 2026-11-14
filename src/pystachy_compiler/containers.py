@@ -851,6 +851,12 @@ def gen_dkey(self, k: Val, kt: str) -> Val:
         return self.as_int(k)  # (True is the key 1)
     if is_tuple(k.t) and k.t != kt and lookable(k.t, kt):
         return Val(k.v, kt)  # (a None where the keys hold a str finds none: runtime.c's hval)
+    if is_vtuple(kt) and is_tuple(k.t):
+        # (a runtime-length tuple's keys, #1460: a fixed tuple whose items it finds as the keys'
+        # items, True as 1, becomes one, as its items are)
+        ft = "tuple[" + ",".join([targs(kt)[0] for x in targs(k.t)]) + "]"
+        if k.t != ft and lookable(k.t, ft):
+            return self.coerce(Val(k.v, ft), kt)
     if is_sopt(k.t) and bool_for_int(unopt(k.t), kt):
         self.err(f"a {typestr(k.t)} key of a dict with {typestr(kt)} keys is supported by get() and in only, as CPython's KeyError would name it as the bool it is: test it with 'is not None' first")
     return self.coerce(k, kt)

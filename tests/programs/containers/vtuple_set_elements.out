@@ -1,0 +1,7 @@
+3 True False True [(), (False, True), (True,)]
+[(False, True), (True,)] [(False, True)]
+[(False, False), (False, True), (True,)] [(True,)] [(False, True)]
+2 True False [(0, 1), (0, 1, 2)]
+[()] True
+1 [('a', 'b')]
+[exit 0]
