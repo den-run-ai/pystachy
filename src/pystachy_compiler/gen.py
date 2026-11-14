@@ -1103,6 +1103,7 @@ from src.pystachy_compiler.program import (
     gen_subclass_problem as program_subclass_problem,
     gen_on_chain as program_on_chain,
     gen_trait_root as program_trait_root,
+    gen_role_field as program_role_field,
     gen_declarer as program_declarer,
     gen_declares as program_declares,
     gen_mro as program_mro,
@@ -1445,6 +1446,7 @@ class Gen:
         self.stkkey = self.nokey  # a tuple display that a lookup takes as its key (lookup_key): made in the frame
         self.cmpnode = self.nokey  # the operand of x is None (is not None) being compiled (see none_field)
         self.fieldcmp = False  # the field read being compiled is that operand
+        self.rolex = ""  # the object, typed as a secondary base, that the access being compiled knows to be of exactly that class (role_field)
         self.nonereads: dict[str, str] = {}  # Class.field -> where it was read as None, the only value it gets (none_field)
         self.fieldbusy: dict[str, bool] = {}  # Class.field whose type none_field is looking for
         self.attrvals: dict[str, list[Node]] = {}  # attribute name -> the values the program's code stores to it (attr_values)
@@ -3751,6 +3753,9 @@ class Gen:
 
     def trait_root(self, primary: str, secondary: str) -> str:
         return program_trait_root(self, primary, secondary)
+
+    def role_field(self, t: str, name: str) -> bool:
+        return program_role_field(self, t, name)
 
     def declarer(self, c: str, m: str) -> str:
         return program_declarer(self, c, m)

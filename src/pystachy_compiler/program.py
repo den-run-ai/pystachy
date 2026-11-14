@@ -60,18 +60,21 @@ from src.pystachy_compiler.utils import (
 )
 
 
-def role_body_uses_storage(n: Node, receiver: str, methods: list[str]) -> bool:
+def role_body_uses_storage(n: Node, receiver: str, methods: list[str], attrs: list[str]) -> bool:
     # Ordinary calls can use the role's public method contract without depending on
     # the layout of the concrete receiver. Check the explicit arguments normally.
+    # An attribute the role declares (attrs: role_attrs) is the concrete receiver's own field.
     if n.kind == "name":
         return n.s == receiver or n.s == "super"
+    if n.kind == "attr" and n.s in attrs and n.kids[0].kind == "name" and n.kids[0].s == receiver:
+        return False
     kids = n.kids
     if n.kind == "call" and kids[0].kind == "attr":
         target = kids[0]
         if target.s in methods and target.kids[0].kind == "name" and target.kids[0].s == receiver:
             kids = kids[1:]
     for child in kids:
-        if role_body_uses_storage(child, receiver, methods):
+        if role_body_uses_storage(child, receiver, methods, attrs):
             return True
     return False
 
@@ -187,9 +190,14 @@ def gen_subclass_problem(self, st: Node) -> str:
             role = self.classes[secondary]
             trait = role.base != ""
             methods = [d.s for d in role.node.kids[0].kids if d.kind == "def"]
+            attrs: list[str] = []  # (the attributes it declares, which its methods may read and store)
+            if not trait:
+                attrs = role_attrs(role.node)
             for d in role.node.kids[0].kids:
                 if d.kind == "pass" or (d.kind == "expr" and d.kids[0].kind == "str"):
                     continue
+                if not trait and d.kind == "annassign" and len(d.kids) == 2 and d.kids[0].kind == "name" and d.kids[0].s != "__slots__":
+                    continue  # (an attribute declared for the classes that combine it: role_field)
                 if trait and (d.kind == "assign" or d.kind == "annassign") and d.kids[0].kind == "name" and d.kids[0].s == "__slots__":
                     continue  # (an empty one: fieldless)
                 if trait and d.kind == "def" and not d.s.startswith("__") and len(d.kids[0].kids) > 0 and len([x for x in d.kids[3:] if len(x.kids) > 0 or (self.imported(x.s) != "abc.abstractmethod" and x.s not in ["property", "classmethod", "staticmethod"])]) == 0:
@@ -203,7 +211,9 @@ def gen_subclass_problem(self, st: Node) -> str:
                 abstract = len(d.kids) == 4 and len(d.kids[3].kids) == 0 and self.imported(d.kids[3].s) == "abc.abstractmethod"
                 if d.kind != "def" or d.s.startswith("__") or (len(d.kids) != 3 and not abstract) or len(d.kids[0].kids) == 0:
                     return why
-                if role_body_uses_storage(d.kids[2], d.kids[0].kids[0].s, methods):
+                if "_pys_cm_" + d.s in methods and len(attrs) > 0:
+                    continue  # (a @contextmanager method's own code is _pys_cm_<name>, checked as a method: this one makes its context manager, loader.py)
+                if role_body_uses_storage(d.kids[2], d.kids[0].kids[0].s, methods, attrs):
                     return "secondary base methods may not use super() or read or write the instance"
 
     if st.kids[1].kind == "name" and st.kids[1].s in self.classes and self.classes[st.kids[1].s].exc == "":
@@ -481,6 +491,22 @@ def gen_on_chain(self, c: str, a: str) -> bool:
             return True
         c = self.classes[c].base
     return False
+
+def role_attrs(c: Node) -> list[str]:
+    # the attributes class c (its class node) declares by annotation alone (x: T), which a
+    # secondary base may: no object has them until its class's code stores them
+    return [d.kids[0].s for d in c.kids[0].kids if d.kind == "annassign" and len(d.kids) == 2 and d.kids[0].kind == "name" and d.kids[0].s != "__slots__"]
+
+def gen_role_field(self, t: str, name: str) -> bool:
+    # is name an attribute that t, a root class some class names as a secondary base, declares
+    # (role_attrs): an object typed t is then one of t's own, with t's layout, or one of a class
+    # that combines t, which holds the attribute among its own fields (class_fields). A read or
+    # store through t therefore goes by the object's exact class (refl_split), where Gen.rolex
+    # names the object once that class is known
+    if t not in self.classes:
+        return False
+    ci = self.classes[t]
+    return ci.isrole and ci.base == "" and name in ci.ftypes and not name.startswith(" ")
 
 def gen_trait_root(self, primary: str, secondary: str) -> str:
     # the class of primary's chain (on_chain) that secondary base secondary derives from

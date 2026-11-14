@@ -1779,6 +1779,29 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
         elif st.kind != "def" and st.kind != "pass" and not (st.kind == "expr" and (st.kids[0].kind == "str" or st.kids[0].kind == "ellipsis")):
             what = "an assignment to anything but one name (x = v)" if st.kind == "assign" else "an expression statement" if st.kind == "expr" else f"a{'n' if st.kind[0] in 'aeiou' else ''} {st.kind} statement"
             self.err(f"a class body may only contain fields, methods, a docstring, pass and ..., not {what}")
+    inherited = self.classes[ci.base].roles if ci.base in self.classes else []
+    for r in ci.roles:
+        # the attributes its own secondary bases declare by annotation (role_attrs): its fields,
+        # as its class body's are, which a value of the base's type reads by the object's class
+        # (role_field). One that the class or its primary chain declares keeps that declaration,
+        # which must be of the same type
+        role = self.classes[r]
+        if r in inherited or role.base != "":
+            continue
+        self.declare_fields(role)
+        if not role.fields_ready and any(d.kind == "annassign" and len(d.kids) == 2 for d in role.node.kids[0].kids):
+            self.line = ci.node.line
+            self.bad_class(ci, f"the attributes secondary base {short(r)} declares are not known yet where '{short(ci.name)}' is declared (not supported)")
+        for x in role.fields:
+            if x.startswith(" ") or x in role.fdefault:
+                continue
+            self.line = ci.node.line
+            if x in ci.methods:
+                self.bad_class(ci, f"attribute '{x}' that secondary base {short(r)} declares is a method or property of '{short(ci.name)}' (not supported)")
+            elif x in ci.ftypes and (ci.ftypes[x] != role.ftypes[x] or x in ci.fdefault):
+                self.bad_class(ci, f"attribute '{x}' that secondary base {short(r)} declares as {typestr(role.ftypes[x])} is {'a class attribute' if x in ci.fdefault else typestr(ci.ftypes[x])} in '{short(ci.name)}' (not supported)")
+            elif x not in ci.ftypes:
+                self.add_field(ci, x, role.ftypes[x])
     for fl in ci.fields if dc and "no-init" not in ci.dcopts else []:
         # the positional parameters of the __init__ @dataclass writes, the base's fields first
         if fl in ci.fopts and "no-init" not in ci.fopts[fl] and "kw_only" not in ci.fopts[fl]:
@@ -2820,6 +2843,10 @@ def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
             self.err(f"reading the __doc__ of NamedTuple {short(o.t)} is not supported (Pystachy keeps no docstrings of classes)")
         self.err(f"'{shown(o.t)}' object has no attribute '{name}'")
     extra = " and no __dict__ for setting new attributes" if store else ""
+    if self.rolex != o.v and self.role_field(o.t, name):
+        # (the object may be a combining class's, whose layout holds the attribute elsewhere:
+        # o.name and its stores go by the exact class first)
+        self.err(f"attribute '{name}', which secondary base {short(o.t)} declares, is read and stored as o.{name} alone through that base (not supported here: use the combining class's type)")
     self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{name}'{extra}")
     if name in ci.fextra and ci.tag != 0:
         overrides = [sub for sub in self.classes.values() if sub.name != ci.name and self.derives(sub.name, ci.name) and (name in sub.methods or (name in sub.ftypes and name not in sub.fextra))]
