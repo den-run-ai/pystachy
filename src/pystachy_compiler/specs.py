@@ -870,7 +870,7 @@ RUNTIME: dict[str, str] = {
     # homogeneous runtime-length tuples (immutable copied slots)
     "vtuple.new": "%ptr:list[T]|R A rL wL|", "vtuple.from": "%ptr:%ptr,int|R A|",
     "vtuple.get_identity": "dyn:%ptr,int,int|R A rO wO|", "vtuple.set_identity": "None:%ptr,int,dyn,int|A rO wO|",
-    "vtuple.get": "int:%ptr,int|R|", "vtuple.list": "list[T]:%ptr|R A rO wO|", "vtuple.box": "%ptr:%ptr|R A|",
+    "vtuple.get": "int:%ptr,int|R|", "vtuple.list": "list[T]:%ptr|R A rO wO|", "vtuple.box": "%ptr:%ptr|R A rO wO|",
     "vtuple.slice": "%ptr:%ptr,int,int,int|R A rO wO|", "vtuple.concat": "%ptr:%ptr,%ptr|R A rO wO|",
     "vtuple.index": "int:%ptr,*T,#,int,int|R rL rD U?|", "vtuple.count": "int:%ptr,*T,#|R? rL rD U?|",
     # lists
