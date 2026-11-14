@@ -3710,14 +3710,17 @@ def gen_dunder(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
         if pw != "":
             self.err(f"** and pow() of objects are not supported ({tname(unopt(a.t))} {sh} {tname(b.t)} calls {pw})")
     rm = "__r" + m[2:]
-    if m != "" and op != "==" and op != "!=" and (shown == "" or shown == op) and b.t in self.classes and (a.t == "int" or a.t == "float" or a.t == "bool" or a.t == BIG) and rm in self.classes[b.t].methods:
+    if m != "" and op != "==" and op != "!=" and b.t in self.classes and (a.t == "int" or a.t == "float" or a.t == "bool" or a.t == BIG) and rm in self.classes[b.t].methods:
         # A builtin number on the left has no method for an object: CPython calls the object's
         # reflected method, with the operands evaluated left to right as they are here. No class is
-        # on the left, so no forward method or subclass priority can apply. (An augmented
-        # assignment would rebind its number to the method's result: still rejected below.) A
-        # None object raises CPython's TypeError, which names both operands' types.
-        self.notnone(b, f"TypeError: unsupported operand type(s) for {sh}: '{tname(a.t)}' and 'NoneType'")
-        return self.call_fn(self.classes[b.t].methods[rm], [b, a], [])
+        # on the left, so no forward method or subclass priority can apply. An augmented
+        # assignment rebinds its number to the method's result: it is this call where the result
+        # is a number of the type the target holds (n += member of an IntEnum), and is still
+        # rejected below where it is of another type. A None object raises CPython's TypeError,
+        # which names both operands' types.
+        if shown == "" or shown == op or self.dry(mk("call", "", self.line, [mk("attr", rm, self.line, [self.vnode(b)]), self.vnode(a)]), "") == a.t:
+            self.notnone(b, f"TypeError: unsupported operand type(s) for {sh}: '{tname(a.t)}' and 'NoneType'")
+            return self.call_fn(self.classes[b.t].methods[rm], [b, a], [])
     if m != "" and op != "==" and op != "!=" and b.t in self.classes and not (op == "%" and a.t == "str"):
         # A base-typed value may hold a subclass on either side. Python gives a strict
         # subclass's distinct reflected method priority over the left forward method,

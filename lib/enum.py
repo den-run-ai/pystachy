@@ -204,6 +204,16 @@ def _int_of(x, a, op: str):
     raise TypeError("unsupported operand type(s) for %s: '%s' and '%s'" % (op, type(a).__name__, type(x).__name__))
 
 
+def _int_left(x, a, op: str):
+    # left operand x of IntEnum member a's reflected operation op (x op a), as int's reflected
+    # operation takes it: x, a number; else CPython's TypeError, which names x's type first
+    if isinstance(x, int) or isinstance(x, float):
+        return x
+    if isinstance(x, IntEnum) or isinstance(x, IntFlag):
+        return x._value_
+    raise TypeError("unsupported operand type(s) for %s: '%s' and '%s'" % (op, type(x).__name__, type(a).__name__))
+
+
 class IntEnum(ReprEnum):
     """
     Enum where members are also (and must be) ints
@@ -287,6 +297,39 @@ class IntEnum(ReprEnum):
 
     def __rshift__(self, other):
         return self._value_ >> _int_of(other, self, '>>')
+
+    def __radd__(self, other):
+        return _int_left(other, self, '+') + self._value_
+
+    def __rsub__(self, other):
+        return _int_left(other, self, '-') - self._value_
+
+    def __rmul__(self, other):
+        return _int_left(other, self, '*') * self._value_
+
+    def __rtruediv__(self, other):
+        return _int_left(other, self, '/') / self._value_
+
+    def __rfloordiv__(self, other):
+        return _int_left(other, self, '//') // self._value_
+
+    def __rmod__(self, other):
+        return _int_left(other, self, '%') % self._value_
+
+    def __rlshift__(self, other):
+        return _int_left(other, self, '<<') << self._value_
+
+    def __rrshift__(self, other):
+        return _int_left(other, self, '>>') >> self._value_
+
+    def __rand__(self, other):
+        return _int_left(other, self, '&') & self._value_
+
+    def __ror__(self, other):
+        return _int_left(other, self, '|') | self._value_
+
+    def __rxor__(self, other):
+        return _int_left(other, self, '^') ^ self._value_
 
     def __neg__(self) -> int:
         return -self._value_
@@ -837,6 +880,39 @@ class IntFlag(Flag):
 
     def __invert__(self):
         return self._flag_type_()(~self._value_)
+
+    def __radd__(self, other):
+        return _int_left(other, self, '+') + self._value_
+
+    def __rsub__(self, other):
+        return _int_left(other, self, '-') - self._value_
+
+    def __rmul__(self, other):
+        return _int_left(other, self, '*') * self._value_
+
+    def __rtruediv__(self, other):
+        return _int_left(other, self, '/') / self._value_
+
+    def __rfloordiv__(self, other):
+        return _int_left(other, self, '//') // self._value_
+
+    def __rmod__(self, other):
+        return _int_left(other, self, '%') % self._value_
+
+    def __rlshift__(self, other):
+        return _int_left(other, self, '<<') << self._value_
+
+    def __rrshift__(self, other):
+        return _int_left(other, self, '>>') >> self._value_
+
+    def __ror__(self, other):
+        return self._flag_type_()(_intflag_of(other, self, '|') | self._value_)
+
+    def __rand__(self, other):
+        return self._flag_type_()(_intflag_of(other, self, '&') & self._value_)
+
+    def __rxor__(self, other):
+        return self._flag_type_()(_intflag_of(other, self, '^') ^ self._value_)
 
     def __neg__(self) -> int:
         return -self._value_
