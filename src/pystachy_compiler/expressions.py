@@ -4958,8 +4958,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         return Val(r if op == "in" else self.scalar('xor', [Val(r, 'bool'), Val('true', 'bool')]), "bool")
     if (op == "in" or op == "not in") and b.t == "str":
         a = self.unwrap(a, "TypeError: 'in <string>' requires string as left operand, not NoneType")
-    if (op == "in" or op == "not in") and a.t == "None" and ((is_dict(b.t) and targs(b.t)[0] not in self.classes) or (is_set(b.t) and selem(b.t) not in self.classes) or (is_list(b.t) and (self.optional(elem(b.t)) == "" or self.isnum(elem(b.t))) and elem(b.t) not in self.classes)):
-        return Val("false" if op == "in" else "true", "bool")  # None is no key of a dict (no element of a set) but an object's, and no number
+    if (op == "in" or op == "not in") and a.t == "None" and ((is_dict(b.t) and targs(b.t)[0] not in self.classes and not self.key_union(targs(b.t)[0])) or (is_set(b.t) and selem(b.t) not in self.classes and not self.key_union(selem(b.t))) or (is_list(b.t) and (self.optional(elem(b.t)) == "" or self.isnum(elem(b.t))) and elem(b.t) not in self.classes)):
+        return Val("false" if op == "in" else "true", "bool")  # None is no key of a dict (no element of a set) but an object's or a union of classes', and no number
     kt = targs(b.t)[0] if is_dict(b.t) else selem(b.t) if is_set(b.t) else ""
     if (op == "in" or op == "not in") and is_opt(a.t) and ((kt != "" and (unopt(a.t) == kt or (is_sopt(a.t) and bool_for_int(unopt(a.t), kt)) or (a.t == BIGOPT and kt == "int"))) or (is_sopt(a.t) and is_list(b.t) and (unopt(a.t) == elem(b.t) or self.isnum(elem(b.t))))):
         # None is no key of the dict (and no int of a list[int]); a promoting int's search is exact (bigints.py)

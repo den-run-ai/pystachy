@@ -2619,7 +2619,11 @@ static const char *repr_depth(Buf *b, I v, const char *d, I depth) {
     if (depth >= 512) rec_deep("RecursionError: maximum recursion depth exceeded while getting the repr of an object");
     repr_depth(b, v, recdesc(ref), depth + 1); return skip(ref);
   }
-  case 'U': { const char *end = skip(d - 1), *member = umember(&v, d - 1); repr_depth(b, v, member, depth); return end; }
+  case 'U': {
+    const char *end = skip(d - 1);
+    if (!v) { put(b, "None", 4); return end; }   /* (None, which a union of classes may hold: a KeyError's key, #1452) */
+    const char *member = umember(&v, d - 1); repr_depth(b, v, member, depth); return end;
+  }
   case 'A': { Dyn *x = (Dyn *)v; repr_depth(b, x->v, x->t->desc->s, depth); return d; }
   case 'G': put(b, "<generator object>", 18); return d;
   case 'Q': put(b, "<iterator object>", 17); return d;
