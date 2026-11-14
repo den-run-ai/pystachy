@@ -16,6 +16,11 @@ functions).
 A function that reaches a local variable of the runtime (state that a copy would split), uses the
 stack's or frame's address, handles exceptions itself or has metadata operands is not copied.
 Copies carry their attributes in line and no metadata (alias tags only add facts).
+
+A copy is spliced only for a function that a call which may run many times makes (hot_calls(): in a
+loop, or in a function that such a call, the runtime or a recursion may reach), and the program's
+other calls of it are marked noinline: code that runs once is not made larger, nor slower to
+compile, by copies that cannot pay for themselves (PYSTACHY_OPT=-jitloops inlines them all).
 """
 from __future__ import annotations
 
@@ -41,12 +46,17 @@ HEADER = "; pystachy jit helpers 1\n"
 
 def name_end(text: str, i: int) -> int:
     # the end of the name that starts at text[i] (after its @ or %): quoted, or of [-a-zA-Z$._0-9]
-    if i < len(text) and text[i] == '"':
+    n = len(text)
+    if i < n and text[i] == '"':
         j = text.find('"', i + 1)
-        return len(text) if j < 0 else j + 1
+        return n if j < 0 else j + 1
     j = i
-    while j < len(text) and (text[j].isalnum() or text[j] in "-$._"):
-        j += 1
+    while j < n:
+        c = ord(text[j])
+        if (c >= 97 and c <= 122) or (c >= 65 and c <= 90) or (c >= 48 and c <= 57) or c == 46 or c == 95 or c == 36 or c == 45:
+            j += 1
+        else:
+            return j
     return j
 
 
@@ -415,9 +425,241 @@ def module(table: str) -> str:
     return "".join(out)
 
 
-def splice(ir: str, table: str) -> str:
+def opcode_at(line: str) -> int:
+    # where an instruction's opcode begins ("  %x = call ..." -> at "call"), -1 for a line that holds none
+    if not line.startswith("  ") or line.startswith("   "):
+        return -1
+    if not line.startswith("  %"):
+        return 2
+    k = line.find(" = ", 3)
+    return -1 if k < 0 else k + 3
+
+
+def calls_at(line: str, o: int) -> bool:
+    # is the opcode at line[o] a call's or an invoke's?
+    return (line.startswith("call ", o) or line.startswith("invoke ", o) or line.startswith("tail call ", o)
+            or line.startswith("musttail call ", o) or line.startswith("notail call ", o))
+
+
+def callee_from(line: str, i: int) -> int:
+    # where the name that the call at line[i:] calls (@f or %fp) begins: the first name followed by its
+    # arguments' parenthesis, -1 if none
+    while i < len(line):
+        a = line.find("@", i)
+        p = line.find("%", i)
+        s = a if a >= 0 and (p < 0 or a < p) else p
+        if s < 0:
+            return -1
+        j = name_end(line, s + 1)
+        if j > s + 1 and j < len(line) and line[j] == "(":
+            return s
+        i = max(j, s + 1)
+    return -1
+
+
+def callee_at(line: str) -> int:
+    # where the name that a call or invoke instruction calls (@f or %fp) begins, -1 for another line
+    o = opcode_at(line)
+    return callee_from(line, o) if o >= 0 and calls_at(line, o) else -1
+
+
+def callee(line: str) -> str:
+    # the name that a call or invoke instruction calls, "" for another line
+    s = callee_at(line)
+    return "" if s < 0 else line[s : name_end(line, s + 1)]
+
+
+def noinline(line: str) -> str:
+    # a call or invoke instruction that the inliner may not inline: the attribute after its arguments
+    s = callee_at(line)
+    if s < 0:
+        return line
+    k = name_end(line, s + 1)
+    depth = 0
+    while k < len(line):
+        if line[k] == "(":
+            depth += 1
+        elif line[k] == ")":
+            depth -= 1
+            if depth == 0:
+                break
+        k += 1
+    return line[: k + 1] + " noinline" + line[k + 1 :]
+
+
+def cyclic(succ: list[list[int]]) -> list[bool]:
+    # which nodes of a graph (each node's successors) lie on a cycle: those of its strongly connected
+    # components of more than one node, or with an edge to itself (Tarjan's algorithm, without recursion)
+    n = len(succ)
+    index = [-1] * n
+    low = [0] * n
+    held = [False] * n
+    out = [False] * n
+    stack: list[int] = []
+    work: list[int] = []
+    at: list[int] = []  # (the next successor of each node of work to visit)
+    count = 0
+    for root in range(n):
+        if index[root] >= 0:
+            continue
+        index[root] = count
+        low[root] = count
+        count += 1
+        stack.append(root)
+        held[root] = True
+        work.append(root)
+        at.append(0)
+        while len(work) > 0:
+            v = work[-1]
+            k = at[-1]
+            if k < len(succ[v]):
+                at[-1] = k + 1
+                w = succ[v][k]
+                if index[w] < 0:
+                    index[w] = count
+                    low[w] = count
+                    count += 1
+                    stack.append(w)
+                    held[w] = True
+                    work.append(w)
+                    at.append(0)
+                elif held[w] and index[w] < low[v]:
+                    low[v] = index[w]
+                continue
+            work.pop()
+            at.pop()
+            if len(work) > 0 and low[v] < low[work[-1]]:
+                low[work[-1]] = low[v]
+            if low[v] == index[v]:
+                w = stack.pop()
+                held[w] = False
+                if w != v:
+                    out[w] = True
+                    out[v] = True
+                    while w != v:
+                        w = stack.pop()
+                        held[w] = False
+                        out[w] = True
+                elif v in succ[v]:
+                    out[v] = True
+    return out
+
+
+# the opcodes of the instructions that name blocks to branch to (as "label %name")
+BRANCHES = ["br ", "switch ", "invoke ", "indirectbr ", "callbr ", "catchswitch ", "catchret ", "cleanupret "]
+
+
+def hot_calls(lines: list[str], callees: dict[int, str]) -> dict[int, bool]:
+    # each call (or invoke) instruction of the program's functions, by its line (and in callees, the
+    # name it calls): True for one that may run many times, as far as the text shows. That is one in a
+    # loop (a cycle of its function's blocks), or in a function that such a call reaches, as one that
+    # the runtime calls (an exported function other than main, such as pys_obj_eq, which a dict's
+    # lookups call; or one whose address is taken: a callback, or what an indirect call may call), or
+    # a recursion, reaches
+    names: dict[str, int] = {}
+    first: list[int] = []
+    last: list[int] = []
+    i = 0
+    while i < len(lines):
+        if lines[i].startswith("define "):
+            names[first_name(lines[i])] = len(first)
+            first.append(i)
+            j = i
+            while j < len(lines) and lines[j] != "}":
+                j += 1
+            last.append(j)
+            i = j
+        i += 1
+    calls: dict[int, bool] = {}
+    owner: dict[int, int] = {}
+    edges: list[list[int]] = []
+    seeds: list[int] = []
+    for f in range(len(first)):
+        edges.append([])
+        header = lines[first[f]]
+        words = header[: header.find("@")].split(" ")
+        if "internal" not in words and "private" not in words and first_name(header) != "@main":
+            seeds.append(f)
+        # its blocks: the first (entry) holds what precedes a label
+        label: dict[str, int] = {}
+        targets: list[list[str]] = [[]]
+        sites: list[int] = []
+        blocks: list[int] = []
+        b = 0
+        for k in range(first[f] + 1, last[f]):
+            line = lines[k]
+            branches = line.startswith("    ")  # (a switch's cases, or another list of labels, continued)
+            if not line.startswith("  "):
+                if line == "" or line.startswith(";"):
+                    continue
+                name = line[: line.find('"', 1) + 1] if line.startswith('"') else line[: line.find(":")]
+                b = len(targets)
+                label["%" + name] = b
+                targets.append([])
+                continue
+            o = opcode_at(line)
+            if o >= 0 and calls_at(line, o):
+                c = callee_from(line, o)
+                if c >= 0:
+                    sites.append(k)
+                    blocks.append(b)
+                    callees[k] = line[c : name_end(line, c + 1)]
+                branches = line.startswith("invoke ", o) or line.startswith("callbr ", o)
+            elif o >= 0:
+                for w in BRANCHES:
+                    if line.startswith(w, o):
+                        branches = True
+            if branches:
+                p = line.find("label %")
+                while p >= 0:
+                    e = name_end(line, p + 7)
+                    targets[b].append(line[p + 6 : e])
+                    p = line.find("label %", e)
+        succ: list[list[int]] = []
+        for named in targets:
+            succ.append([label[x] for x in named if x in label])
+        looped = cyclic(succ)
+        for s in range(len(sites)):
+            k = sites[s]
+            calls[k] = looped[blocks[s]]
+            owner[k] = f
+            c = callees[k]
+            if c in names:
+                edges[f].append(names[c])
+                if looped[blocks[s]]:
+                    seeds.append(names[c])
+    # functions whose addresses are taken: named anywhere but as what a call calls
+    for line in lines:
+        p = line.find("@")
+        if p < 0 or line.startswith("define ") or line.startswith("declare ") or line.startswith(";"):
+            continue
+        while p >= 0:
+            e = name_end(line, p + 1)
+            t = line[p:e]
+            if t in names and (e >= len(line) or line[e] != "("):
+                seeds.append(names[t])
+            p = line.find("@", max(e, p + 1))
+    recursive = cyclic(edges)
+    for f in range(len(first)):
+        if recursive[f]:
+            seeds.append(f)
+    hot = [False] * len(first)
+    while len(seeds) > 0:
+        f = seeds.pop()
+        if not hot[f]:
+            hot[f] = True
+            seeds.extend(edges[f])
+    for k in calls:
+        if hot[owner[k]]:
+            calls[k] = True
+    return calls
+
+
+def splice(ir: str, table: str, loops: bool) -> str:
     # the program's IR with available_externally copies of the runtime functions it declares (those
-    # of table, prepare()'s text, whose signatures match), and the items they need that it lacks
+    # of table, prepare()'s text, whose signatures match), and the items they need that it lacks. With
+    # loops, only those that a call which may run many times makes (hot_calls()), whose other calls
+    # are marked noinline
     if not table.startswith(HEADER):
         return ir
     sigs: dict[str, str] = {}
@@ -449,15 +691,29 @@ def splice(ir: str, table: str) -> str:
             declared[n] = i
         elif line.startswith("define ") or line.startswith("@"):
             present[first_name(line)] = True
+    candidates = [n for n in declared if n in code and signature(lines[declared[n]]) == sigs[n]]
+    if len(candidates) == 0:
+        return ir
+    hot: dict[int, bool] = {}
+    callees: dict[int, str] = {}
+    wanted: dict[str, bool] = {}
+    if loops:
+        hot = hot_calls(lines, callees)
+        for k in hot:
+            if hot[k]:
+                wanted[callees[k]] = True
     todo: list[str] = []
-    replaced = 0
-    for n in declared:
-        if n in code and signature(lines[declared[n]]) == sigs[n]:
+    copied: dict[str, bool] = {}
+    for n in candidates:
+        if not loops or n in wanted:
             lines[declared[n]] = code[n]
             todo = todo + deps["helper " + n]
-            replaced += 1
-    if replaced == 0:
+            copied[n] = True
+    if len(copied) == 0:
         return ir
+    for k in hot:
+        if not hot[k] and callees[k] in copied:
+            lines[k] = noinline(lines[k])
     added: list[str] = []
     done: dict[str, bool] = {}
     while len(todo) > 0:

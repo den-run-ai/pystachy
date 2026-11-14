@@ -492,12 +492,18 @@ program calls only off `listfast`'s inline read: its copy put that cold path int
 pyperformance's json_loads loop 5% slower. The copies are kept beside the
 runtime as `runtime-py-*.jit` (an empty file where there are none), after `opt` verifies them as
 one module. `jit_helpers.splice()` then replaces each declaration that a program's module holds
-of a copied function, when its signature matches, and adds what the copy needs. After the
+of a copied function, when its signature matches, and adds what the copy needs. It does so only for
+a function that a call which may run many times makes (`jit_helpers.hot_calls()`): a call in a
+loop (a cycle of its function's blocks), or in a function that such a call, the runtime (an
+exported callback other than `main`, or a function whose address is taken) or a recursion reaches.
+The program's other calls of that function are marked `noinline` and stay calls, so code that runs
+once neither grows nor takes longer to compile; `PYSTACHY_OPT=-jitloops` inlines them all. After the
 inliner, `elim-avail-extern` turns the copies no call needs into declarations.
 `PYSTACHY_OPT=-jithelpers` turns this off. A runtime built with `PYSTACHY_CFLAGS`, as for a
 sanitizer, gets no copies. [`tools/jitprobe.py`](../tools/jitprobe.py) checks that a loop's
-calls are inlined and that no copy reaches the runner. `tests/programs/runtime/rt_inlined_helpers.py`
-checks their results and errors against CPython's.
+calls are inlined, that those of a function called once stay calls, and that no copy reaches the
+runner. `tests/programs/runtime/rt_inlined_helpers.py` checks their results and errors against
+CPython's.
 
 ### The JIT runner
 
