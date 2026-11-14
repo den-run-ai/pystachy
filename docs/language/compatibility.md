@@ -570,7 +570,9 @@ See [optional operations and narrowing](typing.md#optional-values-and-narrowing)
 
 - Nullable keys/elements except user objects; tuple keys containing unsupported members
   such as floats, lists or NamedTuples; NamedTuple, exception or frozenset keys/elements;
-  hashing these types except NamedTuples; classes with nonmethod `__hash__` / `__eq__`.
+  hashing these types except NamedTuples; classes with nonmethod `__hash__` / `__eq__`;
+  unions of classes as keys/elements where a member's classes define `__hash__` or `__eq__`,
+  and such unions as tuple-key items or as the keys of dicts compared with `==`.
 - Bool stored as int, including set elements, dict keys, tuple-key members, `setdefault` and
   displays. Bool-key lookup, `pop` and `del` work; augmented assignment requires an RHS that
   runs no user code and mutates no dict. Only `get` and `in` also accept optional bool keys.

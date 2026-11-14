@@ -110,8 +110,8 @@ Measure compilation and execution separately
 - **Strings** are stored as UTF-8; their lengths, indexing, slicing, iteration and search
   positions count code points, as CPython's do. A `bytes` holds bytes, and its items are ints.
 - **Dictionary keys and set elements** are integers, strings, `bytes`, objects (hashed by
-  identity, or by their class's `__hash__` and `__eq__`) and supported tuples, whose items may
-  include booleans.
+  identity, or by their class's `__hash__` and `__eq__`), unions of classes hashed by identity
+  and supported tuples, whose items may include booleans.
 - **Fixed-shape tuples** have at most nine items; a constant index gives the item's own type,
   and a variable index the union of the item types. **Runtime-length** `tuple[T, ...]` values
   check integer indexes at run time; their elements are `int`, `float`, `bool` or `str`,
