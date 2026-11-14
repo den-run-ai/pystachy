@@ -529,9 +529,9 @@ def gen_match(self, a: Node, t: str, tv: dict[str, str], tvs: list[str]) -> str:
     if base == "list" and is_list(t) and len(xs) == 1:
         return self.match(xs[0], elem(t), tv, tvs)
     if (base == "set" or base == "frozenset") and is_set(t) and len(xs) == 1:
-        return self.match(xs[0], selem(t), tv, tvs)
+        return self.match_key(xs[0], selem(t), tv, tvs)
     if base == "dict" and is_dict(t) and len(xs) == 2:
-        why = self.match(xs[0], targs(t)[0], tv, tvs)
+        why = self.match_key(xs[0], targs(t)[0], tv, tvs)
         return why if why != "" else self.match(xs[1], targs(t)[1], tv, tvs)
     if base == "tuple" and is_tuple(t):
         return self.match_items(xs, targs(t), tv, tvs)
@@ -542,6 +542,20 @@ def gen_match(self, a: Node, t: str, tv: dict[str, str], tvs: list[str]) -> str:
         why = self.match_items(xs[0].kids, sig[1:], tv, tvs)
         return why if why != "" else self.match(xs[1], sig[0], tv, tvs)
     return "it does not fit the parameter's annotation (or that annotation's type variables are not supported there: they are in T, list[T], dict[K, V], set[T], tuple[T, *Ts], T | None, Iterable[T], Callable[[T, *Ts], R], a generic class's C[T] and unions of these)"
+
+def gen_match_key(self, a: Node, t: str, tv: dict[str, str], tvs: list[str]) -> str:
+    # match for the element type of a set, or the key type of a dict: None is one (a set[None]'s,
+    # utils.none_key), and binds a type variable as any other type does, where an argument that is
+    # None itself binds none (match)
+    if a.kind == "str":
+        a = self.parse_expr(a.s)
+    if t != "None" or a.kind != "name" or not self.names_tv(a, tvs) or a.s in self.tvtuples:
+        return self.match(a, t, tv, tvs)
+    j = self.join(tv[a.s], t) if a.s in tv else t
+    if j == "":
+        return f"'{short(a.s)}' is {typestr(tv[a.s])} already, and {typestr(t)} here"
+    tv[a.s] = j
+    return ""
 
 def gen_match_items(self, xs: list[Node], ts: list[str], tv: dict[str, str], tvs: list[str]) -> str:
     # (see match) values of types ts for the items of tuple[...] or the parameters of

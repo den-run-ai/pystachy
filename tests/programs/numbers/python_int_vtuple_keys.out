@@ -1,0 +1,13 @@
+edge edge True True True
+edge True [(-9223372036854775808, 1)] [((-9223372036854775808, 1), 'edge')]
+edge 1 True
+edge edge True True True
+edge True [(-4611686018427387904, 1)] [((-4611686018427387904, 1), 'edge')]
+edge 1 True
+edge edge True True True
+edge True [(4611686018427387904, 1)] [((4611686018427387904, 1), 'edge')]
+edge 1 True
+edge edge True True True
+edge True [(9223372036854775807, 1)] [((9223372036854775807, 1), 'edge')]
+edge 1 True
+[exit 0]

@@ -170,7 +170,7 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         v = self.big_narrow(v)  # (into 64-bit storage, or as an int: bigints.py)
         if v.t == t:
             return v
-    if is_tuple(v.t) and BIG in v.t and t != "" and BIG not in t:
+    if is_tuple(unopt(v.t)) and BIG in v.t and t != "" and BIG not in t:
         if is_tuple(t) and self.join_hint(t, v.t):
             return Val("undef", t)  # (as an int location becomes a promoting int)
         v = self.big_tuple_narrow(v)  # (a tuple of promoting ints into 64-bit storage: the same tuple, bigints.py)
@@ -285,8 +285,8 @@ def gen_plain_desc(self, t: str, use: str) -> str:
         return "y" if use == "repr" else "s"  # (a bytes compares, orders and hashes as a str of its bytes)
     if is_opt(t) and t != NONEVAR:
         return "?" + self.desc(unopt(t), use)  # None or the value
-    if t == "None":
-        return "?s"  # (always None: a tuple's item)
+    if t == "None" or t == NONEVAR:
+        return "?s"  # (always None: a tuple's item, a set's element; a local that holds only None so far)
     sub = use if use == "repr" or use == "==" else "== " + use
     if is_list(t):
         return "L" + self.desc(held(elem(t)), sub)  # (a tuple of ints as a list holds it: bigints.held)

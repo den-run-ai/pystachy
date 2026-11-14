@@ -72,6 +72,7 @@ from src.pystachy_compiler.utils import (
     kw_types,
     lib_source,
     lt,
+    none_key,
     nones,
     nonetest,
     numeric_identity,
@@ -934,7 +935,9 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 return self.masked(n, want, resultsoft)
             if not operand_held(self, n.s, want):
                 a = self.expr(n.kids[0], want, resultsoft=resultsoft)
-                return self.arith(n.s, a, self.expr(n.kids[1], a.t, resultsoft=resultsoft))
+                # ({None} | {x}: a set of None alone does not type the display beside it)
+                bw = "" if is_set(a.t) and selem(a.t) == "None" and n.kids[1].kind == "set" else a.t
+                return self.arith(n.s, a, self.expr(n.kids[1], bw, resultsoft=resultsoft))
             ka: list[str] = []
             a = left_operand(self, n.kids[0], want, resultsoft, ka)  # (an operand is not the result)
             if len(ka) == 0:
@@ -2992,8 +2995,8 @@ def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
                 return self.big_dict_value(o, self.bool_find(o.v, kval, key))  # (an int past 64 bits: bigints.py)
             return self.held_value(self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {o.v}", f"i64 {self.bool_find(o.v, kval, key)}"]), kv[1]))
         if self.dict_int(t):
-            return self.big_dict_value(o, self.nonekey(kx, "", "pys_dict_entry", [f"ptr {o.v}", f"i64 {self.to_slot(kx)}"], self.key_fx(kv[0])))
-        return self.held_value(self.from_slot(self.nonekey(kx, "", "pys_dict_getitem", [f"ptr {o.v}", f"i64 {self.to_slot(kx)}"], self.key_fx(kv[0])), kv[1]))  # (a tuple of ints: bigints.held)
+            return self.big_dict_value(o, self.nonekey(kx, "", "pys_dict_entry", [f"ptr {o.v}", f"i64 {self.to_slot(kx)}"], self.key_fx(kv[0]), kv[0]))
+        return self.held_value(self.from_slot(self.nonekey(kx, "", "pys_dict_getitem", [f"ptr {o.v}", f"i64 {self.to_slot(kx)}"], self.key_fx(kv[0]), kv[0]), kv[1]))  # (a tuple of ints: bigints.held)
     if is_tuple(t) or t in self.nts:
         ts = targs(t) if is_tuple(t) else self.classes[t].fields  # (a NamedTuple's fields)
         c = self.const_of(n.kids[1], {}, True) if self.lit_context() else None
@@ -5103,7 +5106,11 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             return self.uequal(op, a, b)
         if op in ["<", "<=", ">", ">="] and not is_opt(a.t) and not is_opt(b.t) and self.uorders(a.t, b.t):
             return self.ucmp(op, a, b)  # (each member's ordering: union splitting)
-        if not ((op == "in" or op == "not in") and (is_tuple(b.t) or (is_list(b.t) and is_union(unopt(self.rec_type(elem(b.t)))) and self.ueq_type(elem(b.t))))):
+        # (a set's or dict's keys that are a union of classes compared by identity, of whose
+        # members a's are: runtime.c compares the objects the boxes hold, #1452)
+        kt = selem(b.t) if is_set(b.t) else targs(b.t)[0] if is_dict(b.t) else ""
+        keyed = kt != "" and not is_opt(a.t) and self.key_union(kt) and all([m in umembers(kt) for m in (umembers(a.t) if is_union(a.t) else [a.t])])
+        if not ((op == "in" or op == "not in") and (keyed or is_tuple(b.t) or (is_list(b.t) and is_union(unopt(self.rec_type(elem(b.t)))) and self.ueq_type(elem(b.t))))):
             self.err("comparing closed union values requires narrowing with isinstance() first")
     if (op == "in" or op == "not in") and is_kw(b.t):
         b = self.kw_list(b)  # (x in kwargs: among the names)
@@ -5233,8 +5240,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         return Val(r if op == "in" else self.scalar('xor', [Val(r, 'bool'), Val('true', 'bool')]), "bool")
     if (op == "in" or op == "not in") and b.t == "str":
         a = self.unwrap(a, "TypeError: 'in <string>' requires string as left operand, not NoneType")
-    if (op == "in" or op == "not in") and a.t == "None" and ((is_dict(b.t) and targs(b.t)[0] not in self.classes) or (is_set(b.t) and selem(b.t) not in self.classes) or (is_list(b.t) and (self.optional(elem(b.t)) == "" or self.isnum(elem(b.t))) and elem(b.t) not in self.classes)):
-        return Val("false" if op == "in" else "true", "bool")  # None is no key of a dict (no element of a set) but an object's, and no number
+    if (op == "in" or op == "not in") and a.t == "None" and ((is_dict(b.t) and targs(b.t)[0] not in self.classes and not self.key_union(targs(b.t)[0]) and not none_key(targs(b.t)[0])) or (is_set(b.t) and selem(b.t) not in self.classes and not self.key_union(selem(b.t)) and not none_key(selem(b.t))) or (is_list(b.t) and (self.optional(elem(b.t)) == "" or self.isnum(elem(b.t))) and elem(b.t) not in self.classes)):
+        return Val("false" if op == "in" else "true", "bool")  # None is no key of a dict (no element of a set) but an object's or a union of classes', and no number
     kt = targs(b.t)[0] if is_dict(b.t) else selem(b.t) if is_set(b.t) else ""
     if (op == "in" or op == "not in") and is_opt(a.t) and ((kt != "" and (unopt(a.t) == kt or (is_sopt(a.t) and bool_for_int(unopt(a.t), kt)) or (a.t == BIGOPT and kt == "int"))) or (is_sopt(a.t) and is_list(b.t) and (unopt(a.t) == elem(b.t) or self.isnum(elem(b.t))))):
         # None is no key of the dict (and no int of a list[int]); a promoting int's search is exact (bigints.py)
@@ -5352,7 +5359,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
                 sets_equal = Val(self.scalar("and", sets_empty), "bool")
                 return sets_equal if op == "==" else Val(self.scalar("xor", [sets_equal, Val("true", "bool")]), "bool")
             self.err(f"cannot compare {typestr(a.t)} {op} {typestr(b.t)}")
-        r = self.rt("pys_set_cmp", "i64", [f"ptr {a.v}", f"ptr {b.v}", f"i64 {ORDOP[op] if op in ORDOP else 4 if op == '==' else 5}"], self.key_fx(selem(a.t)) + self.key_fx(selem(b.t)))
+        ab = self.set_pair(a, b, self.wider(selem(a.t), selem(b.t)))  # (a set[str] and a set[str | None]: tables of one kind)
+        r = self.rt("pys_set_cmp", "i64", [f"ptr {ab[0].v}", f"ptr {ab[1].v}", f"i64 {ORDOP[op] if op in ORDOP else 4 if op == '==' else 5}"], self.key_fx(selem(a.t)) + self.key_fx(selem(b.t)))
         return self.num_cmp('!=', Val(r, "int"), Val('0', "int"))
     eq = op == "==" or op == "!="
     if eq and (a.t == "None") != (b.t == "None") and self.isnum(a.t if b.t == "None" else b.t):
@@ -5363,7 +5371,11 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         return self.ptr_cmp(op, a, b)
     if op in ORDOP and is_tuple(a.t) and is_tuple(b.t) and len(targs(a.t)) != len(targs(b.t)):
         return self.tuple_order(op, a, b)  # (of different lengths, which no one tuple type holds)
-    if (is_tuple(a.t) and BIG in a.t) or (is_tuple(b.t) and BIG in b.t):
+    if (is_tuple(unopt(a.t)) and BIG in a.t) or (is_tuple(unopt(b.t)) and BIG in b.t):
+        if is_opt(a.t) or is_opt(b.t):
+            # Optional tuple container reads keep the tuple's promoting layout.
+            # Test None before comparing the same nonnull tuple values below.
+            return self.optcmp(op, a, b)
         # a tuple of promoting ints: runtime.c's walks read its items (desc's J) where both are
         # builtin value trees (bigints.big_tree), as they compare tuples of 64-bit ints, and the
         # others are compared item by item here; a tuple[T, ...] holds 64-bit ints, as which the

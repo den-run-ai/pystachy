@@ -1320,7 +1320,6 @@ default rejection 3
 3 tests/errors/optimizations/opt_builtin_arg.py
 3 tests/errors/optimizations/opt_builtin_unsupported.py
 3 tests/errors/optimizations/opt_dataclass_default.py
-3 tests/errors/optimizations/opt_dict_key.py
 3 tests/errors/optimizations/opt_file.py
 3 tests/errors/optimizations/opt_isinstance_tuple_call.py
 3 tests/errors/optimizations/opt_isinstance_tuple_none.py
@@ -1338,11 +1337,9 @@ default rejection 3
 3 tests/errors/optimizations/opt_narrow_loop_else.py
 3 tests/errors/optimizations/opt_narrow_reassigned.py
 3 tests/errors/optimizations/opt_none_empty_list.py
-3 tests/errors/optimizations/opt_none_unknown.py
 3 tests/errors/optimizations/opt_return.py
 3 tests/errors/optimizations/opt_scalar_arg.py
 3 tests/errors/optimizations/opt_scalar_is.py
-3 tests/errors/optimizations/opt_scalar_key_type.py
 3 tests/errors/optimizations/opt_scalar_list_arg.py
 3 tests/errors/optimizations/opt_scalar_sum.py
 3 tests/errors/optimizations/opt_template_empty_none.py

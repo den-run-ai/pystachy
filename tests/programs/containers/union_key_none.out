@@ -1,0 +1,12 @@
+True False True False
+3 3 3 False True
+False True True False
+KeyError None KeyError(None)
+KeyError None KeyError(None)
+KeyError None KeyError(None)
+None False 4 4
+True 3 True
+False 2
+True 3
+False 2
+[exit 0]

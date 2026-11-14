@@ -2623,7 +2623,11 @@ static const char *repr_depth(Buf *b, I v, const char *d, I depth) {
     if (depth >= 512) rec_deep("RecursionError: maximum recursion depth exceeded while getting the repr of an object");
     repr_depth(b, v, recdesc(ref), depth + 1); return skip(ref);
   }
-  case 'U': { const char *end = skip(d - 1), *member = umember(&v, d - 1); repr_depth(b, v, member, depth); return end; }
+  case 'U': {
+    const char *end = skip(d - 1);
+    if (!v) { put(b, "None", 4); return end; }   /* (None, which a union of classes may hold: a KeyError's key, #1452) */
+    const char *member = umember(&v, d - 1); repr_depth(b, v, member, depth); return end;
+  }
   case 'A': { Dyn *x = (Dyn *)v; repr_depth(b, x->v, x->t->desc->s, depth); return d; }
   case 'G': put(b, "<generator object>", 18); return d;
   case 'Q': put(b, "<iterator object>", 17); return d;
@@ -2841,7 +2845,7 @@ static EqValue eqresolve(I v, const char *d) {
   while (*d == '?' || *d == 'U' || *d == 'R') {
     if (*d == 'R') { d = recdesc(d); edge = 1; continue; }
     if (*d == '?') { if (!v) return (EqValue){0, "n", edge}; v = unbox(v, ++d); }
-    else { I *box = (I *)v; d = utype(box[0], d); v = box[1]; }
+    else { if (!v) return (EqValue){0, "n", edge}; I *box = (I *)v; d = utype(box[0], d); v = box[1]; }   /* (None: a union key's, #1452) */
   }
   return (EqValue){v, d, edge};
 }
@@ -2855,8 +2859,9 @@ static int same_desc(const char *x, const char *y) {
 }
 static int eqpair_depth(I a, I b, const char *x, const char *y, I depth) {
   /* Only closed builtin value trees reach this path (the compiler rejects user
-     callbacks). Never decode b with x: equal Python types may have different
-     native element layouts, including nested unions and boxed optionals. */
+     callbacks), and objects that compare by identity (P: a union key's member).
+     Never decode b with x: equal Python types may have different native element
+     layouts, including nested unions and boxed optionals. */
   EQ_PROBE();
   EqValue ax = eqresolve(a, x), by = eqresolve(b, y);
   a = ax.value; x = ax.desc; b = by.value; y = by.desc;
@@ -2888,6 +2893,7 @@ static int eqpair_depth(I a, I b, const char *x, const char *y, I depth) {
   if (*x != *y && !(tx && ty)) return 0;
   if (*x == 'f') return dbl(a) == dbl(b);
   if (*x == 's') return a && b ? pys_str_eq((Str *)a, (Str *)b) : a == b;
+  if (*x == 'P') return a == b;   /* (objects of union keys' classes, which compare by identity: #1452) */
   if (*x == 'L') {
     List *p = (List *)a, *q = (List *)b;
     if (p->len != q->len) return 0;
@@ -4174,11 +4180,25 @@ static int khash(I kind) { return (kind & KTAG) || (kind > 1 && (*kraw(kind) == 
    before it are ints, strs, None, objects by identity and such tuples, which run no code */
 static uint64_t hval(I k, const char *d) {
   if (*d == 'H' || *d == 'A' || (*d == '?' && d[1] == 'H')) return 0;
-  if ((*d == '?' || *d == 's' || *d == 'T' || *d == 'P') && !k) {   /* None (also a looked-up key's) */
+  if (*d == 'U') { if (!k) return 0x9E3779B97F4A7C15ULL; d = umember(&k, d); return hval(k, d); }   /* (a union of classes: the object its box holds, #1452; None, see below) */
+  if ((*d == '?' || *d == 's' || *d == 'T' || *d == 'V' || *d == 'P') && !k) {   /* None (also a looked-up key's) */
     for (const char *z = *d == 's' || *d == 'P' ? d : skip(d); d < z; d++) if (*d == 'H') return 0;
     return 0x9E3779B97F4A7C15ULL;
   }
-  if (*d == '?') d++;
+  if (*d == '?') { d++; k = unbox(k, d); }           /* (an int | None key that is an int: the int its box holds) */
+  if (*d == 'V') {   /* a runtime-length tuple: its items, of its one descriptor, hashed as a tuple's below, and its length */
+    VTuple *t = (VTuple *)k; uint64_t h = 0x27D4EB2F165667C5ULL; const char *e = d + 1;
+    for (I i = 0; i < t->len; i++) {
+      I x = t->a[i]; uint64_t v;
+      if (*e == 'i' || *e == 'b') { v = (uint64_t)pys_hash_int(x); v = v ? v : 1; }
+      else if (*e == 's' || (*e == '?' && e[1] == 's')) v = x ? hstrd((Str *)x) : 0x9E3779B97F4A7C15ULL;
+      else { v = hval(x, e); if (!v) return 0; }
+      h = (h ^ v) * 0x100000001B3ULL;
+    }
+    h = (h ^ (uint64_t)t->len) * 0x100000001B3ULL;
+    h ^= h >> 29;
+    return h ? h : 1;
+  }
   if (*d != 'T') { Dict t = {.kind = *d == 's'}; return hsh(&t, k); }   /* (a P<id>'s: its address's) */
   uint64_t h = 0x27D4EB2F165667C5ULL; const char *e = d + 2;
   for (int i = 0; i < d[1] - '0'; i++) {
@@ -4845,6 +4865,7 @@ static I hitem(I k, const char *d) {                 /* the hash of a value k (a
   case 'T': return htuple((I *)k, d[1] - '0', d + 2, 1);
   case 'V': return htuple(((VTuple *)k)->a, ((VTuple *)k)->len, d + 1, 0);
   case 'P': case 'C': case 'Y': return hptr(k);   /* (class objects: by identity, as object's) */
+  case 'U': if (!k) return NONE_HASH; d = umember(&k, d); return hitem(k, d);   /* (a union of classes: the object its box holds, #1452) */
   case 'H': return ohash(k, d);
   case 'A': return pys_dyn_hash((Dyn *)k);
   case 'J': { opt_in(); Big x = jbig(k); return x.hi ? pys_mpz_hash(x.hi) : hint(x.lo); }   /* (a promoting int's two words) */

@@ -58,7 +58,7 @@ Runtime-length tuples concatenate (`a + b`, `a += b`) with each other and with f
 into a new tuple of one item type, or return the other operand itself where one is empty, as
 CPython does; items of a type and items that are `None`, or of that type or `None`, make a tuple
 of that type or `None` (`nums + (None,)`). They do not
-support repetition, membership, dictionary keys, or set elements yet. Their annotation is distinct
+support repetition or membership yet, but are dict keys and set elements (below). Their annotation is distinct
 from the fixed shape used by `*args`; `tuple()` takes a list, string, tuple, generator
 expression or `range`/`map`/`filter`/`reversed` call whose items are `int`, `float`,
 `bool`, `str` or optional versions of those types, the objects of iterator classes and
@@ -68,12 +68,19 @@ or `tuple(left + right for left, right in zip([1, 2], [3, 4]))`. This enables th
 without rewriting its capture loop or knowing the pattern's capture count at compile time.
 
 Dict keys are `int`, `str`, objects of the program's classes, or tuples containing `int`,
-`bool`, `str`, `str | None`, objects and nested tuples of these. An object whose class defines
+`bool`, `str`, `str | None`, objects and nested tuples of these. `None` is a key type too, and
+so is any of these types that may be `None`: `set[None]`, `set[str | None]` and
+`dict[int | None, V]` hold `None` as CPython does, found by `hash(None)` and identity. `{None}`
+is a `set[None]`, and `{None, "a"}` a `set[str | None]`. Runtime-length tuples of `int`,
+`bool`, `str` or `str | None` (`tuple[bool, ...]`) are keys too, equal to a tuple of the same
+items whatever its shape, as in CPython. An object whose class defines
 neither `__eq__` nor `__hash__` hashes and compares by identity; one whose class defines
 `__hash__` uses it and `__eq__`, which run where CPython calls them (once per insertion or
 lookup, and for each key of the same hash). A class that defines `__eq__` without `__hash__` is
 unhashable, as in CPython: adding or looking up its object raises `TypeError: unhashable type`.
-An object key may be `None`. Floats, frozensets, NamedTuples and exception objects cannot be
+A union of classes (`TypeInfo | TypeAlias`) is a key type where no class its objects may be of
+defines `__eq__` or `__hash__`: they hash and compare by identity, whichever member's they are,
+typed by their class or the union. An object key may be `None`. Floats, frozensets, NamedTuples and exception objects cannot be
 keys or set elements. `hash()` gives CPython's results for ints, floats, `None`, objects with
 `__hash__` and tuples and NamedTuples of these; a str's and an object's identity hash differ from CPython's,
 which change from run to run, but are equal for equal strs and for the same object.
@@ -337,11 +344,21 @@ assignment copy items that must fit as they are: a `list[list[str]]` cannot exte
 `list[list[str | None]]`, which would share its inner lists. Tuples can convert item by item.
 `join()` and `writelines()` check optional string items at runtime.
 
-An optional dict lookup key equal to `None` is absent: membership is false, `get()` and
-`pop()` use a supplied default, and indexing, deletion or a required `pop()` raise
-`KeyError: None`. Stores require a nonoptional key. A bool can look up or delete its equal
-integer key, but cannot be inserted into a dict of integer keys, since its printed value
-would differ from the integer.
+Where a dict's key type cannot be `None`, an optional lookup key equal to `None` is absent:
+membership is false, `get()` and `pop()` use a supplied default, and indexing, deletion or a
+required `pop()` raise `KeyError: None`. Stores require a nonoptional key. Where the key type
+can be `None`, as in `dict[str | None, V]`, `None` is stored and looked up like any other key.
+A bool can look up or delete its equal integer key, but cannot be inserted into a dict of
+integer keys, since its printed value would differ from the integer; among `int | None` keys
+it is rejected.
+
+Sets whose element types differ only in `None` combine: the operators and comparisons of a
+`set[str]` with a `set[str | None]` or a `set[None]` work on both, as `{a, b} - {None}` does
+for objects. `&=`, `-=`, `intersection()` and `difference()` take a set whose elements may
+also be `None`; `|=`, `^=`, `update()` and `union()` need the argument's elements to fit the
+set's own type. An `int | None` element is a box, so a `set[int]` and a `set[int | None]` do
+not combine. A type variable binds to `None` through a set's element or a dict's key
+(`set[T]` from a `set[None]`), but not from an argument that is `None` itself.
 
 ## Closed scalar unions
 
