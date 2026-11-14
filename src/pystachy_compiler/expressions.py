@@ -1442,7 +1442,10 @@ def gen_class_call(self, cn: Node, m: str, args: list[Node], want: str, resultso
     if f.bad == STUB.replace("NAME", m):
         self.err(f.bad)  # (an imported module's: CPython's stub raises NotImplementedError, however it is called)
     if f.deco == "":
-        if ci.tag > 0:
+        # C.m(o, ...) of a method of its objects: C's own, called on o, an object of C or of a
+        # class that derives from it, as CPython calls the function. Outside ordinary
+        # inheritance, C.__init__(o, ...) stays unsupported (class_call_init.py, mpz_unbound_init.py)
+        if ci.tag > 0 or m != "__init__":
             if len(args) == 0 or args[0].kind in ["kw", "starred", "dstar"]:
                 self.err(f"{short(cn.s)}.{m}() needs an instance as its first argument")
             o = self.expr(args[0], cn.s)

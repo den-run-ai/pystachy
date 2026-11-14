@@ -520,7 +520,7 @@ See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
   nonconstant defaults; `super` outside supported instance-method contexts, with an unrelated
   class or a different receiver.
 - **Methods and hooks:** using or assigning `cls` as a value; static/class decorators on special
-  methods; `C.m(o)` outside ordinary inheritance; decorators beyond staticmethod, classmethod,
+  methods; `C.__init__(o)` outside ordinary inheritance; decorators beyond staticmethod, classmethod,
   property/setter/deleter, dataclass and overload. Defining or inheriting `__new__`,
   `__getattr__`, `__getattribute__`, `__setattr__` or `__delattr__`, or a base defining
   `__init_subclass__`, is rejected.

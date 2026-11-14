@@ -330,8 +330,8 @@ clause `except (A, B): pass` (`statements.suppress_item`), and the loader makes 
 `@contextmanager` the generator method `_pys_cm_NAME` and a method `NAME` that calls
 `contextmanager()` on it bound (`loader.cm_methods`): it makes the `_GeneratorContextManager`
 itself, of the generator `C._pys_cm_NAME(self, ...)` of its own class `C` (so `super().NAME()`
-runs the base class's; `self._pys_cm_NAME(...)` where no class of the module derives from `C` or
-is a base of it) and of `_pys_cm_NAME` bound to `self` taken as an object of the class that
+runs the base class's, also where a subclass in another module overrides it) and of
+`_pys_cm_NAME` bound to `self` taken as an object of the class that
 first defines `NAME` so (`loader.cm_root`): `NAME` returns one type for every subclass. A program that reads `__cause__`
 (`Gen.causeread`) records it, `pys_exc_setcause`, for `raise ... from c` and PEP 479's
 `RuntimeError`.
