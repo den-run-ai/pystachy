@@ -3490,8 +3490,8 @@ class Gen:
     def gen_stream(self, name: str, v: Val, args: list[Node], want: str, resultsoft: bool) -> Val:
         return generators_gen_stream(self, name, v, args, want, resultsoft)
 
-    def gen_suspend(self, slot: str, k: int, sub: Val, thrown: str = "", hi: str = "") -> None:
-        return generators_gen_suspend(self, slot, k, sub, thrown, hi)
+    def gen_suspend(self, slot: str, k: int, sub: Val, thrown: str = "", hi: str = "", identity: str = "") -> None:
+        return generators_gen_suspend(self, slot, k, sub, thrown, hi, identity)
 
     def yield_from_iter(self, what: str) -> None:
         return generators_yield_from_iter(self, what)
@@ -3505,8 +3505,8 @@ class Gen:
     def yield_from_proto(self, v: Val, t: str, y: str, callee: FnInfo | None) -> Val:
         return generators_yield_from_proto(self, v, t, y, callee)
 
-    def gen_keep(self, w: list[str], ys: str, yh: str) -> None:
-        return generators_gen_keep(self, w, ys, yh)
+    def gen_keep(self, w: list[str], ys: str, yh: str, yi: str) -> None:
+        return generators_gen_keep(self, w, ys, yh, yi)
 
     def gen_slots(self, v: Val, y: str) -> list[str]:
         return generators_gen_slots(self, v, y)

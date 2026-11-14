@@ -291,17 +291,26 @@ second item. Conversion in the other direction checks and unboxes dynamic items
 
 Scalar `int` and `float` yields preserve the original numeric object through
 `next()` (including its default), iteration, unpacking, `send()`, `throw()` and
-`yield from`. In code tracking dynamic `Any` identity, those yield slots hold the
-source box; typed consumers check and unbox it while keeping its identity. This includes
-imported ordinary helpers and promoting integers. The coroutine frame already
-scans the slot, so its box and any wide payload remain reachable while suspended.
-Isolated nontracking modules retain raw numeric slots. A generator crossing into
-tracking code triggers the existing recompilation fallback before representations
-can mix, including generators erased to `Any` or nested in other generators. Generator return
-and optional/union numeric yield channels retain their existing identity limits.
+`yield from`. In identity-tracking code, the promise retains the raw number and
+one scanned nullable box companion. Existing source aliases keep their canonical
+box; fresh computed yields pass a null companion and box only when an observer
+requires their identity. A typed loop can transfer that fresh value to its lone
+local target without boxing. Named-source yields, defaults and multi-target
+unpacking remain conservative and may materialize boxes.
 
-Coverage: `dynany_identity_generator.py`,
-`dynany_identity_generator_protocol.py` and `python_int_generator_identity.py`.
+Consumers copy the companion into their own result slot before another resume,
+so later yields or closing the generator cannot overwrite a previous result's
+identity. Promoting integers retain their existing raw high pointer alongside the
+companion. Isolated nontracking modules retain their old raw slots and frame size.
+A generator crossing into tracking code triggers the existing recompilation
+fallback before representations can mix, including erasure to `Any` and nested
+generators. Generator return and optional/union numeric yield channels retain
+their existing identity limits.
+
+Coverage: `dynany_identity_generator.py`, `dynany_identity_generator_fresh.py`,
+`dynany_identity_generator_protocol.py`, `dynany_identity_generator_scope.py` and
+`python_int_generator_identity.py`. The [scoring workload](../bench/generator_identity/README.md)
+separates typed consumption, actual dynamic observation and repeated aliases.
 
 `yield from` boxes compatible typed yields into an `Any` yield channel, and checks
 and unboxes dynamic yields into a compatible concrete channel. Object and dynamic

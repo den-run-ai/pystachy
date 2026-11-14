@@ -1988,7 +1988,14 @@ def gen_for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], s
     for k in range(len(seqs) if not now else 0):
         vals.extend(self.seq_item(seqs[k], at[k], mode))
     if len(vals) == 1 and mode != "zip":
-        self.assign(tgt, vals[0])
+        moving = self.fn.idmove
+        # A single generator result owns this private nullable companion.
+        # Transfer it to one loop local as an ordinary lone assignment does.
+        self.fn.idmove = len(seqs) == 1 and is_gen(seqs[0].t) and vals[0].idexact and tgt.kind == "name"
+        try:
+            self.assign(tgt, vals[0])
+        finally:
+            self.fn.idmove = moving
     elif (tgt.kind == "tuple" or tgt.kind == "list") and len(tgt.kids) == len(vals) and not starred_target(tgt):
         for k2 in range(len(vals)):
             self.assign(tgt.kids[k2], vals[k2])

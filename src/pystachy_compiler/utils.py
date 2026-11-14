@@ -15,6 +15,9 @@ from src.pystachy_compiler.specs import (
     FX,
     FXALL,
     FXBIT,
+    GENSLOTS,
+    GENSLOTSB,
+    GENSLOTSX,
     INERT,
     LIST_READS,
     LIST_WRITES,
@@ -27,6 +30,18 @@ from src.pystachy_compiler.specs import (
     SPECSHOW,
 )
 from src.pystachy_compiler.syntax import Node
+
+
+def generator_identity(t: str, tracking: bool) -> bool:
+    # The scalar yield channels with a nullable object-identity companion.
+    return tracking and t in ["int", "float"]
+
+
+def generator_slots(protocol: bool, promoting: bool, identity: bool) -> int:
+    # The identity word follows the existing promise, so ordinary frames keep
+    # their old extent. The whole frame comes from scanned coroutine storage.
+    base = GENSLOTSB if promoting else GENSLOTSX if protocol else GENSLOTS
+    return base + (1 if identity else 0)
 
 
 def timing_start() -> float:
