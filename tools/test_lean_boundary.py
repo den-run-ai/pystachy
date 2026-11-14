@@ -104,6 +104,27 @@ print(function(*items))
 '''
 
 
+GENERIC_FAMILY = '''# pystachy: dynamic-any
+from typing import Any, Generic, TypeVar
+
+T = TypeVar("T")
+
+
+class Box(Generic[T]):
+    def __init__(self, value: T) -> None:
+        self.value = value
+
+
+def family_read(value: Any) -> Any:
+    if isinstance(value, Box):
+        return value.value
+    return None
+
+
+print(family_read(None), family_read(Box(1)), family_read(Box("text")))
+'''
+
+
 def store(address, value, typ):
     return {"op": "mem.store", "type": "", "text": "", "immediate": 0, "descriptor": "",
             "results": [], "targets": [],
@@ -301,6 +322,41 @@ class AdapterTests(SnapshotFixture):
             self.normalized(snapshot)
         self.assertNotIsInstance(raised.exception, Unsupported)
 
+    def test_payload_unpack_must_match_the_guarded_projection(self):
+        snapshot, function = self.selected()
+        _, _, unpack = self.operation(function, "slot.unpack")
+        unpack["type"] = "int"
+        with self.assertRaisesRegex(ValueError, "invalid slot.unpack shape"):
+            self.normalized(snapshot)
+
+    def test_payload_bits_cannot_escape_through_opaque_transport(self):
+        # A forged operand annotation must not hide the projection's raw slot.
+        for kind in ("call", "select", "phi", "mem.store", "scalar.cast"):
+            with self.subTest(kind=kind):
+                snapshot, function = self.selected()
+                block, index, payload = self.operation(function, "dyn.payload")
+                bits = f"%t{payload['results'][1]}"
+                block["operations"].insert(index + 1, instruction(
+                    kind, "int", text="opaque", results=[9030], operands=[(bits, "int")]))
+                with self.assertRaisesRegex(Unsupported, "direct slot.unpack"):
+                    self.normalized(snapshot)
+
+    def test_payload_internal_address_cannot_escape(self):
+        snapshot, function = self.selected()
+        block, index, payload = self.operation(function, "dyn.payload")
+        address = f"%t{payload['results'][0]}"
+        block["operations"].insert(index + 1, instruction(
+            "mach.load", "int", results=[9030], operands=[(address, "%ptr")]))
+        with self.assertRaisesRegex(ValueError, "internal address cannot be used"):
+            self.normalized(snapshot)
+
+    def test_payload_unpack_cannot_launder_its_operand_type(self):
+        snapshot, function = self.selected()
+        _, _, unpack = self.operation(function, "slot.unpack")
+        unpack["operands"][0]["type"] = "int"
+        with self.assertRaisesRegex(ValueError, "unpack requires a slot operand"):
+            self.normalized(snapshot)
+
     def test_unreachable_and_unlabeled_blocks_are_omitted(self):
         snapshot, function = self.selected()
         _, _, payload = self.operation(function, "dyn.payload")
@@ -489,6 +545,8 @@ class ProvedCheckerTests(SnapshotFixture):
         def wrong_tag(function):
             _, _, payload = self.operation(function, "dyn.payload")
             payload["text"] = "bool"
+            _, _, unpack = self.operation(function, "slot.unpack")
+            unpack["type"] = "bool"
         self.rejected_mutation(wrong_tag)
 
     def test_missing_guard_and_reversed_edges_reject(self):
@@ -714,6 +772,8 @@ class StateGuardTests(SnapshotFixture):
                 snapshot, function = self.selected(name)
                 _, _, payload = self.operation(function, "dyn.payload")
                 payload["text"] = wrong_tag
+                _, _, unpack = self.operation(function, "slot.unpack")
+                unpack["type"] = wrong_tag
                 self.assertFalse(self.check(self.normalized(snapshot, name)))
 
 
@@ -813,6 +873,8 @@ class ClassAndIntTests(SnapshotFixture):
         def read_subclass(snapshot, function):
             _, _, payload = self.operation(function, "dyn.payload")
             payload["text"] = "Sub"
+            _, _, unpack = self.operation(function, "slot.unpack")
+            unpack["type"] = "Sub"
         self.assertFalse(self.mutated("boundary_class", read_subclass))
 
     def test_int_read_accepts_bool_but_not_another_tag(self):
@@ -825,9 +887,36 @@ class ClassAndIntTests(SnapshotFixture):
         self.assertFalse(self.mutated("boundary_int", float_instead_of_bool))
 
         def read_as_bool(snapshot, function):
-            _, _, payload = self.operation(function, "dyn.payload")
-            payload["text"] = "bool"
+            block, index, payload = self.operation(function, "dyn.payload")
+            # Add a well-shaped bool projection under the existing int-or-bool
+            # guard. Even an unused read must satisfy its exact tag obligation.
+            block["operations"].insert(index, {**copy.deepcopy(payload),
+                                              "text": "bool", "results": [9030, 9031]})
         self.assertFalse(self.mutated("boundary_int", read_as_bool))
+
+    def test_int_payload_cannot_be_reannotated_as_a_pointer(self):
+        snapshot, function = self.selected("boundary_int")
+        _, _, payload = self.operation(function, "dyn.payload")
+        bits = f"%t{payload['results'][1]}"
+        use = next(operand for block in function["blocks"] for op in block["operations"]
+                   for operand in op["operands"] if operand["value"] == bits)
+        use["type"] = "%ptr"
+        with self.assertRaisesRegex(ValueError, "int bits require an int operand"):
+            self.normalized(snapshot, "boundary_int")
+
+    def test_int_payload_allows_only_the_runtime_box_slot_argument(self):
+        for kind, prefix in (("box", []), ("ubox", [("1", "int")])):
+            with self.subTest(constructor=kind):
+                snapshot, function = self.selected("boundary_int")
+                block, index, payload = self.operation(function, "dyn.payload")
+                bits = f"%t{payload['results'][1]}"
+                constructor = instruction("rt", "%ptr", text=kind, results=[9030],
+                                          operands=prefix + [(bits, "*T")])
+                block["operations"].insert(index + 1, constructor)
+                self.assertTrue(self.check(self.normalized(snapshot, "boundary_int")))
+                constructor["text"] = "opaque"
+                with self.assertRaisesRegex(ValueError, "int bits require an int operand"):
+                    self.normalized(snapshot, "boundary_int")
 
     def test_dispatch_cases_select_their_own_class(self):
         def swap_cases(snapshot, function):
@@ -858,6 +947,43 @@ class ClassAndIntTests(SnapshotFixture):
             corrupt(snapshot["dynamic_types"])
             with self.subTest(table=snapshot["dynamic_types"]), self.assertRaises(ValueError):
                 self.normalized(snapshot, function["symbol"])
+
+
+@unittest.skipUnless(CHECKER.is_file(), "build tools/lean_boundary to run the proved checker")
+class GenericFamilyTests(SnapshotFixture):
+    function_filter = ""
+    check = ProvedCheckerTests.check
+
+    @classmethod
+    def setUpClass(cls):
+        source = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(source.cleanup)
+        cls.example = Path(source.name) / "generic_family.py"
+        cls.example.write_text(GENERIC_FAMILY)
+        super().setUpClass()
+
+    def test_family_membership_preserves_separate_payload_guards(self):
+        report, status = check_all(self.snapshot, CHECKER)
+        self.assertEqual(status, 0, report)
+        self.assertGreater(report["totals"]["reads"], 0)
+        for name in ("family_read", "dyn.isinstance.Box"):
+            candidate, metadata = normalize_snapshot(self.snapshot, name)
+            self.assertEqual(metadata["payloads"], 0)
+            self.assertTrue(self.check(candidate))
+
+    def test_family_guard_cannot_justify_a_concrete_specialization_read(self):
+        payloads = [entry["payload"] for entry in self.snapshot["dynamic_types"]
+                    if entry["kind"] == 8 and entry["payload"].startswith("Box-")]
+        self.assertEqual(len(payloads), 2)
+        for payload_type in payloads:
+            with self.subTest(payload=payload_type):
+                snapshot, function = self.selected("family_read")
+                _, _, branch = self.operation(function, "cbr")
+                success = self.block(function, branch["targets"][0])
+                success["operations"].insert(0, instruction(
+                    "dyn.payload", "%slot", text=payload_type, results=[9030, 9031],
+                    operands=[("%a0", "dyn")]))
+                self.assertFalse(self.check(self.normalized(snapshot, "family_read")))
 
 
 class LibraryFunctionTests(SnapshotFixture):

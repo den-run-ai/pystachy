@@ -160,6 +160,49 @@ def shape(op, operands, results, targets=0, typ=None, texts=("",)):
             and (typ is None or op["type"] == typ), f"invalid {op['op']} shape")
 
 
+def check_payload_consumers(blocks):
+    """Tie a projection's claimed type to its direct consumers, before proving its guard.
+
+    dyn.payload lowers to an internal address and a slot of bits. Only int uses
+    those bits directly; every other type first unpacks that same slot as the
+    projection's declared type. Do not trust a consumer's operand annotation to
+    identify a producer, or let opaque transport hide a reinterpretation.
+    """
+    addresses = set()
+    payloads = {}
+    for block in blocks:
+        for op in block["operations"]:
+            if op["op"] == "dyn.payload":
+                shape(op, 1, 2, typ="%slot", texts=(op["text"],))
+                addresses.add(f"%t{op['results'][0]}")
+                payloads[f"%t{op['results'][1]}"] = op["text"]
+    for block in blocks:
+        for op in block["operations"]:
+            for position, operand in enumerate(op["operands"]):
+                value = operand["value"]
+                require(value not in addresses, "dyn.payload internal address cannot be used")
+                if value not in payloads:
+                    continue
+                typ = payloads[value]
+                if op["op"] == "slot.unpack":
+                    shape(op, 1, 1, typ=typ)
+                    require(operand["type"] == "%slot", "dyn.payload unpack requires a slot operand")
+                elif typ == "int":
+                    # The runtime ABI names an uninterpreted i64 slot *T. These
+                    # two constructors copy that word unchanged into a fresh
+                    # optional/union box; they do not dereference it as a pointer.
+                    boxed = op["op"] == "rt" and op["text"] in {"box", "ubox"}
+                    if boxed and operand["type"] == "*T":
+                        index = 1 if op["text"] == "ubox" else 0
+                        shape(op, index + 1, 1, typ="%ptr", texts=(op["text"],))
+                        require(position == index and (index == 0 or op["operands"][0]["type"] == "int"),
+                                "dyn.payload int boxing requires the runtime slot argument")
+                    else:
+                        require(operand["type"] == "int", "dyn.payload int bits require an int operand")
+                else:
+                    raise Unsupported("dyn.payload bits require direct slot.unpack of the declared type")
+
+
 def successors(node):
     if node["op"] == "stop":
         return []
@@ -548,6 +591,7 @@ def normalize_snapshot(snapshot, function, max_blocks=1024, max_instructions=MAX
                 pending.append(target)
     # Blocks that no edge reaches cannot run; they are omitted and counted.
     live = [block for block in blocks if block["label"] in reached]
+    check_payload_consumers(live)
     predecessors = {block["label"]: set() for block in live}
     for block in live:
         for target in edges[block["label"]]:
