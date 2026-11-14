@@ -11,16 +11,30 @@ the model does not establish that the exporter or runtime implements that model.
 | Closure cells and calls | Captured-container facts survive only valid reads; visible callee writes invalidate facts | Independent Python body-effect scan and cell ABI |
 | Promoting integers | Selected result-fit claims and actual checked `+`, `-`, `*` reconstruction paths | Other inline arithmetic, LLVM and integer runtime |
 | Integer storage | Low-word, tuple-tail, narrowing and complete stack-copy obligations | Exported representations, fresh allocation and stack ABI |
-| Null-check removal | Removed checks are redundant in the captured before-pass graph | Whole-pass equivalence and broader heap correlations |
-| Closed unions | Inventoried tag/payload reads have nonnull/member guards | Raw transport, dynamic reconstruction and unsupported forms |
+| Null-check removal | Removed checks are redundant in the captured before-pass graph, including through fields, globals, closure cells and box payloads | Whole-pass equivalence, box immutability across calls, runtime effect contracts and the classes table |
+| Closed unions | Inventoried tag/payload reads have nonnull/member guards, across writes and calls where no compiled code may write a union box, through joins; fields, globals, container items, parameters and results hold members of their declared unions, each write proved (an unassigned word only where field initialization, a definition check or call order does not exclude it); payload bits are read, boxed and stored in split locals only as their box's member | Reconstruction from other tag sources, closure cells, split slot records, IR operand/item types, runtime callbacks' arguments, the adapter's dominance and call-graph analyses and box immutability's typed-memory and runtime ABI |
+| Field initialization | Each field a class's code reads without an "is assigned" flag test is assigned before that code can see an object under construction, through `__init__`, other calls and closures called directly or through their `Callable` (whose cells stay private until an environment escapes) by inferred contracts | Class layouts and the closure layout, that only compiled allocations make objects of the program's classes and set flags after fields, and raw accesses of objects under construction (escapes) |
+| Collector scanning | No list, dict or set whose item, value or key array may be atomic (unscanned) reaches a use, argument, return or store whose type lets that array hold pointers, and words that may be pointers are written only into scanned arrays, from the allocator, type hole, key kind and `empty.kind` that made it, with each memory word typed once for the program ([GC.md](GC.md)) | Runtime array kinds through copies, columns and writes, exported holes and key descriptors, declared and item types, every function of a program accepted; strings and buffers, roots and lifetime are not covered |
 
 All accepted certificates are checked by Lean. Mutation controls exercise the
 Python adapters, including lost inventories, exceptional edges and forged facts.
-Parsing, inference, specialization, GC/lifetime, general optimization equivalence,
-exception semantics and LLVM lowering remain unproved.
+Parsing, inference, specialization, collector roots and lifetime, general optimization
+equivalence, exception semantics and LLVM lowering remain unproved.
+
+[REPORT.md](REPORT.md) gives every check's current counts over the whole test corpus and
+lists each function left unproved. `make lean-report` compiles each differential test program
+and deviation once, runs every check on it and rewrites that report; it took about 11
+minutes with four processes. No CI job runs it. Run it after a change to typed IR, to a pass
+a check covers or to a checker, and commit the report when its counts change;
+`python3.13 tools/lean_report.py --status` says which of its inputs (compiler, checkers,
+corpus) changed since. It keeps each program's result in `build/lean-report.jsonl` as it
+finishes, and `--resume` continues an interrupted run. The dated sweeps in each check's
+document explain the rejections it lists.
 
 [GUARDS.md](GUARDS.md) describes the bounded null/union CI examples and the strict
-full-corpus inventory command; full-corpus acceptance is not claimed.
+full-corpus inventory command; full-corpus acceptance is not claimed. Removed null
+checks are proved with the [access model](ACCESS.md)'s field, global and effect rules
+where the finite-tag model lacks them.
 Broader null/union correlations and unsupported forms are tracked in
 [#1270](https://github.com/den-run-ai/pystachy/issues/1270).
 
@@ -116,6 +130,13 @@ code are the worst function's: an error, then a rejection, then an unsupported
 form. A read in a block that nothing reaches cannot run; it counts as proved
 with its function. The snapshot must be a completed typed-after inspection even
 when no function reads a payload.
+
+`pystachy-boundary` and `pystachy-access` also take `--batch`: one candidate per
+input line and one result line per candidate, in order, until the input ends. Lean
+checks each line exactly as a run on that line alone checks it. The Python adapters
+keep one such process per thread and checker, replaced after a timeout or a
+malformed answer. A run's runtime start-up costs about 40 ms, where checking a
+typical candidate takes a few milliseconds.
 
 `tools/check_lean_corpus.py`, which `make check-lean-corpus` runs after building
 the checker, does that for the dynamic-`Any` corpus: each differential test
@@ -254,7 +275,9 @@ checks of the trusted Python bridge in addition to the kernel-checked model
 examples; they do not prove its fidelity.
 
 Generator functions, stores into boxes or descriptors and unknown operations
-are explicitly refused. No selected function is silently skipped. The Python
+are explicitly refused here; the union, field and collector checks model a
+generator's suspensions themselves ([GUARDS.md](GUARDS.md#field-initialization),
+[GC.md](GC.md)). No selected function is silently skipped. The Python
 bridge allows at most 4,096 instructions, 1,024 blocks, 16,384 normalized nodes,
 65,536 certificate facts holding 262,144 tags, 4 MiB candidate JSON, a 4 MiB
 snapshot (512 MiB with `--all`) and 200,000 inference iterations; the native
@@ -271,8 +294,9 @@ this needed: slice bounds of an `Any` value and `sum()` of `Any` values read int
 payloads that no tag test guarded (their compiler guards are
 [#1227](https://github.com/den-run-ai/pystachy/pull/1227)), and two length-hint
 and iterator helpers kept the names of landing blocks that lowering dropped.
-CI runs the same check on every code change, so a compiler change that leaves a
-payload read unproved fails.
+Main and manual CI runs the same check (the x86-64 `gc-jit-1` group), so a compiler
+change that leaves a payload read unproved fails there; [REPORT.md](REPORT.md) has the
+current counts.
 
 ## Trust and coverage limits
 
@@ -314,10 +338,10 @@ build/workflow files or development tool pins; it also runs on every main push
 and manual dispatch. PR selection uses the cumulative merge diff and runs
 conservatively if its history is missing. Five workflow tests exercise the
 actual selector against temporary Git histories. `make check-lean-corpus` runs in
-the x86_64 verification group `opt-in` of every PR that changes code, and in
-`runtime-cache` on main and manual runs; a sixth test keeps both jobs on one
-Lean archive; that target first runs the corpus tool's own tests
-(`tools/test_lean_corpus.py`). Both jobs download the pinned, SHA-256-checked
+the x86-64 verification group `gc-jit-1` on main and manual runs, and code PRs check
+the bounded examples in `contracts` ([GUARDS.md](GUARDS.md)); a sixth test keeps Lint
+and verification on one Lean archive; that target first runs the corpus tool's own
+tests (`tools/test_lean_corpus.py`). Both download the pinned, SHA-256-checked
 Linux Lean release; no PR job is added. Lean is not a compiler, runtime or
 installation dependency.
 

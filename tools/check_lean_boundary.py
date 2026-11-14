@@ -8,14 +8,19 @@ It proves neither full typed-IR validity nor the correctness of LLVM lowering.
 from __future__ import annotations
 
 import argparse
+import atexit
 from collections import deque
 import hashlib
+import heapq
 import json
 import os
 from pathlib import Path
+import select
 import stat
 import subprocess
 import sys
+import threading
+import time
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -73,6 +78,14 @@ INVOKES = {"rt", "call", "icall", "init", "gen.resume"}
 # slot's address makes it escape.
 SLOT_ACCESS = {"mem.load", "mem.store", "mach.load", "mach.store", "landing"}
 SUPPORTED_OPS = ORDINARY | TAG_OPS | TERMINATORS
+# A generator's own operations, as normalize_snapshot validates them for an adapter that models
+# a generator (generator_validation): its first resumption and each suspension are edges to where
+# it resumes (a suspension's results, the value sent in, are no operation's operands: a use of
+# one is refused) and its end stops; gen.promise without a handle reads its own promise, a
+# pointer the runtime made. A call of a generator function runs none of its body: it returns at
+# gen.start, and the caller runs while it is suspended. The adapter models both.
+GENERATOR_EDGES = {"gen.start": "br", "gen.yield": "br", "gen.ret": "ret.none"}
+
 LIMITATIONS = [
     "Only dyn.payload guard safety in each selected normalized function is checked.",
     "Python normalization, snapshot fidelity, the descriptor table, runtime tag and payload layout "
@@ -162,44 +175,53 @@ def live_locations(nodes):
     guard matters only when a successor's obligations need it; the normal backward
     propagation already retains those. Dead copies similarly need no source facts.
     """
-    reads = [{node["value"]} if node["op"] == "payload" else set() for node in nodes]
+    targets = [successors(node) for node in nodes]
     predecessors = [[] for _ in nodes]
-    for index, node in enumerate(nodes):
-        for target in successors(node):
+    for index, out in enumerate(targets):
+        for target in out:
             predecessors[target].append(index)
     live = [set() for _ in nodes]
-    pending = deque(range(len(nodes) - 1, -1, -1))
+    # (the least fixed point, which any order of visits reaches: later nodes first, as each
+    # depends on its successors)
+    pending = [-index for index in range(len(nodes))]
+    heapq.heapify(pending)
     queued = [True] * len(nodes)
     while pending:
-        index = pending.popleft()
+        index = -heapq.heappop(pending)
         queued[index] = False
         node = nodes[index]
-        later = set().union(*(live[target] for target in successors(node)))
+        out = targets[index]
+        later = live[out[0]].union(*(live[target] for target in out[1:])) if out else set()
         if node["op"] == "copy":
             # A copy's source matters only when its assigned value will be read.
             # Keeping dead copy sources live can grow a certificate quadratically.
-            needed = node["dst"] in later
-            later.discard(node["dst"])
-            if needed:
+            if node["dst"] in later:
+                later.discard(node["dst"])
                 later.add(node["src"])
         elif node["op"] == "havoc":
             later.discard(node["dst"])
-        else:
-            later |= reads[index]
+        elif node["op"] == "payload":
+            later.add(node["value"])
         if later != live[index]:
             live[index] = later
             for predecessor in predecessors[index]:
                 if not queued[predecessor]:
                     queued[predecessor] = True
-                    pending.append(predecessor)
+                    heapq.heappush(pending, -predecessor)
     return live
 
 
 def infer_certificate(nodes, entry=0):
     """Suggest forward must-facts: each confines a location's tag to a set. Lean independently
     checks every transfer. Facts about locations no later node reads are dropped: a successor
-    that needs one still reads it, so its predecessors keep it too."""
+    that needs one still reads it, so its predecessors keep it too. Nodes whose facts do not
+    change share them."""
     live = live_locations(nodes)
+    targets = [successors(node) for node in nodes]
+    edges = [0] * len(nodes)
+    for out in targets:
+        for target in out:
+            edges[target] += 1
     facts = [None] * len(nodes)
     facts[entry] = {}
     pending = deque([entry])
@@ -208,16 +230,18 @@ def infer_certificate(nodes, entry=0):
     fact_count = 0
     iterations = 0
     while pending:
+        # (in this order: the resource bound counts its visits and facts)
         index = pending.popleft()
         queued[index] = False
         known = facts[index]
         node = nodes[index]
         outgoing = known
-        if node["op"] in {"copy", "havoc"}:
-            outgoing = {value: tags for value, tags in known.items() if value != node["dst"]}
+        if node["op"] in {"copy", "havoc"} and (node["dst"] in known or node.get("src") in known):
+            outgoing = dict(known)
+            outgoing.pop(node["dst"], None)
             if node["op"] == "copy" and node["src"] in known:
                 outgoing[node["dst"]] = known[node["src"]]
-        for edge, target in enumerate(successors(node)):
+        for edge, target in enumerate(targets[index]):
             transferred = outgoing
             if node["op"] == "guard":
                 value, tested = node["value"], frozenset(node["tags"])
@@ -226,16 +250,34 @@ def infer_certificate(nodes, entry=0):
                     transferred[value] = known[value] & tested if value in known else tested
                 elif value in known:
                     transferred[value] = known[value] - tested
-            transferred = {value: tags for value, tags in transferred.items() if value in live[target]}
+            if not live[target].issuperset(transferred.keys()):
+                transferred = {value: tags for value, tags in transferred.items() if value in live[target]}
             previous = facts[target]
-            merged = (dict(transferred) if previous is None else
-                      {value: previous[value] | transferred[value] for value in previous.keys() & transferred.keys()})
-            if merged != previous:
-                fact_count += len(merged) - len(previous or ())
-                facts[target] = merged
-                if not queued[target]:
-                    queued[target] = True
-                    pending.append(target)
+            merged = transferred
+            if previous is not None and edges[target] == 1:
+                # (a node's facts only lose locations and gain tags, and so do those it gives: they
+                # are the join with what it gave before)
+                if transferred == previous:
+                    continue
+            elif previous is not None:
+                # (the locations both know, each with the tags of either: unchanged unless one is
+                # lost or gains a tag)
+                merged, changed = {}, len(transferred) < len(previous)
+                for value, tags in previous.items():
+                    other = transferred.get(value)
+                    if other is None:
+                        changed = True
+                    elif other is tags or other <= tags:
+                        merged[value] = tags
+                    else:
+                        merged[value], changed = tags | other, True
+                if not changed:
+                    continue
+            fact_count += len(merged) - len(previous or ())
+            facts[target] = merged
+            if not queued[target]:
+                queued[target] = True
+                pending.append(target)
         iterations += 1
         if iterations > 200000 or fact_count > MAX_FACTS:
             raise Unsupported("candidate inference exceeds the prototype's resource bound")
@@ -297,6 +339,25 @@ def condition_size(condition):
     return 1 if condition[0] in {"atom", "const", "opaque"} else sum(condition_size(c) for c in condition[1:])
 
 
+CONTAINER_KINDS = ("list[", "dict[", "set[", "frozenset[")
+
+
+def resolved_container(declared, used):
+    """A local whose type inference resolved after its slot was made, which keeps the
+    placeholder while its accesses name the resolved type: an empty container's (list[?],
+    dict[?,?]: a container of that kind) or a local first assigned None (specs.NONEVAR: an
+    optional object or optional union: a box pointer or null). Each lowers to a pointer, and
+    none is a dyn value."""
+    if not used.startswith("*") or "?" in used:
+        return False
+    resolved = used[1:]
+    if declared == "opt[None]":
+        return not (resolved in {"int", "float", "bool", "int+", "%byte", "%i32", "%slot", "dyn", "None"}
+                    or resolved.startswith(("union[", "opt[dyn")))
+    return "?" in declared and any(declared.startswith(kind) and resolved.startswith(kind)
+                                   for kind in CONTAINER_KINDS)
+
+
 def check_header(snapshot):
     """Every check reads a completed typed-after snapshot of inspection schema 1."""
     require(isinstance(snapshot, dict), "snapshot must be an object")
@@ -306,7 +367,52 @@ def check_header(snapshot):
         raise Unsupported("only completed typed-after snapshots are supported")
 
 
-def normalize_snapshot(snapshot, function):
+def short(typ):
+    """A type the validator reads (name bounds names at 256 characters): a longer one, such as a
+    constant table's tuple type, by a name made from its digest, the same for each use of it."""
+    if len(typ) <= 256:
+        return typ
+    pointer = "*" if typ.startswith("*") else ""
+    return f"{pointer}long.{hashlib.sha256(typ[len(pointer):].encode()).hexdigest()[:24]}"
+
+
+def word_validation(fn):
+    """fn as normalize_snapshot validates it for an adapter whose model reads the IR's own
+    operations and types, the field and collector checks: generator_validation's, with each type
+    by its short name and each list.store as the runtime write it stores as (the guard model here
+    refuses it, as it writes memory that model does not hold; theirs take its operands as words
+    written, escapes)."""
+    def renamed(op):
+        op = dict(op, type=short(op["type"]), operands=[dict(a, type=short(a["type"])) for a in op["operands"]])
+        return dict(op, op="rt", text="list.set") if op["op"] == "list.store" else op
+    return dict(generator_validation(fn, renamed), return_representation=short(fn.get("return_representation") or ""),
+                parameters=[dict(p, representation=short(p.get("representation") or "")) for p in fn["parameters"]])
+
+
+def generator_validation(fn, operation=lambda op: op):
+    """fn as normalize_snapshot validates it for an adapter that models generators: each
+    operation mapped by operation (the adapter's own renaming), then a generator's own
+    operations as their edges. Another function, a coroutine that is no generator among them,
+    keeps its flags and its own operations, which the validator refuses."""
+    if not fn.get("recursion", {}).get("generator"):
+        return dict(fn, slots=[operation(op) for op in fn["slots"]],
+                    blocks=[dict(block, operations=[operation(op) for op in block["operations"]])
+                            for block in fn["blocks"]])
+
+    def validated(op):
+        op = operation(op)
+        if op["op"] in GENERATOR_EDGES:
+            return dict(op, op=GENERATOR_EDGES[op["op"]], operands=[], results=[])
+        if op["op"] == "gen.promise" and not op["operands"]:
+            return dict(op, op="rt", text="gen.promise")
+        return op
+    return dict(fn, recursion=dict(fn["recursion"], generator=False, coroutine=False),
+                slots=[operation(op) for op in fn["slots"]],
+                blocks=[dict(block, operations=[validated(op) for op in block["operations"]])
+                        for block in fn["blocks"]])
+
+
+def normalize_snapshot(snapshot, function, max_blocks=1024, max_instructions=MAX_INSTRUCTIONS, certify=True):
     name(function, "function selector")
     check_header(snapshot)
     functions = snapshot.get("functions")
@@ -354,10 +460,10 @@ def normalize_snapshot(snapshot, function):
         for key, label in targets_of_checks.items()), "invalid check targets")
     blocks = fn.get("blocks")
     require(isinstance(blocks, list) and blocks, "invalid blocks")
-    if len(blocks) > 1024:
-        raise Unsupported("function exceeds 1024 blocks")
+    if len(blocks) > max_blocks:
+        raise Unsupported(f"function exceeds {max_blocks} blocks")
     slots = {}
-    require(isinstance(fn.get("slots"), list) and len(fn["slots"]) <= MAX_INSTRUCTIONS, "invalid slots")
+    require(isinstance(fn.get("slots"), list) and len(fn["slots"]) <= max_instructions, "invalid slots")
     for raw in fn["slots"]:
         # Slot kinds: storage, a local's "is assigned" flag and a stack tuple, whose register is
         # a tuple value rather than storage.
@@ -394,8 +500,8 @@ def normalize_snapshot(snapshot, function):
         if label != "":
             starts[label] = None
         total += len(operations)
-        if total > MAX_INSTRUCTIONS:
-            raise Unsupported(f"function exceeds {MAX_INSTRUCTIONS} instructions")
+        if total > max_instructions:
+            raise Unsupported(f"function exceeds {max_instructions} instructions")
         for offset, raw in enumerate(operations):
             op = instruction(raw)
             invoke = op["op"] in INVOKES and len(op["targets"]) == 2
@@ -498,7 +604,8 @@ def normalize_snapshot(snapshot, function):
     def check_operand(operand, label, offset, predecessor=None):
         value = operand["value"]
         if value in slots:
-            require(operand["type"] in {"*" + slots[value], "%ptr", "%addr"}, "slot address has wrong type")
+            require(operand["type"] in {"*" + slots[value], "%ptr", "%addr"}
+                    or resolved_container(slots[value], operand["type"]), "slot address has wrong type")
         elif value == "%idret":
             require(operand["type"] == "*dyn", "identity-return address has wrong type")
         elif value in identity_arguments:
@@ -872,7 +979,8 @@ def normalize_snapshot(snapshot, function):
         for key in ("next", "yes", "no"):
             if key in node:
                 node[key] = renumber[node[key]]
-    certificate = infer_certificate(nodes)
+    # (a caller that only validates the function needs no certificate: certify=False)
+    certificate = infer_certificate(nodes) if certify else []
     candidate = {"schema_version": 2, "program": {"entry": 0, "nodes": nodes}, "certificate": certificate}
     return candidate, {"function": symbol, "stage": "typed-after", "nodes": len(nodes),
                        "payloads": payloads, "paired_guards": paired_guards,
@@ -887,18 +995,110 @@ def encode(candidate):
     return encoded
 
 
+class Server:
+    """A Lean checker run with --batch: one encoded candidate per line in, one result line out,
+    in order. Lean checks each line as a separate run checks its whole input; the process only
+    shares the runtime's start-up, which costs a single run about 40 ms."""
+
+    def __init__(self, checker):
+        self.owner = os.getpid()
+        self.process = subprocess.Popen([checker, "--batch"], stdin=subprocess.PIPE,
+                                        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        os.set_blocking(self.process.stdin.fileno(), False)
+
+    def answer(self, encoded, timeout):
+        deadline = time.monotonic() + timeout
+        pending = memoryview(encoded.encode())
+        input_fd = self.process.stdin.fileno()
+        # A candidate may exceed the pipe's capacity. A checker that stops reading must
+        # exhaust the same deadline as one that stops answering, not block in write/flush.
+        while pending:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0 or not select.select([], [input_fd], [], remaining)[1]:
+                raise subprocess.TimeoutExpired(self.process.args, timeout)
+            try:
+                pending = pending[os.write(input_fd, pending):]
+            except BlockingIOError:
+                continue
+        output, received = self.process.stdout.fileno(), b""
+        while not received.endswith(b"\n"):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0 or not select.select([output], [], [], remaining)[0]:
+                raise subprocess.TimeoutExpired(self.process.args, timeout)
+            chunk = os.read(output, 65536)
+            require(chunk, "checker exited without a result")
+            received += chunk
+        require(received.count(b"\n") == 1, "checker answered more than once")
+        return json.loads(received, object_pairs_hook=unique_object)
+
+    def close(self):
+        try:
+            self.process.stdin.close()
+        except OSError:
+            pass  # (a checker that already exited)
+        try:
+            self.process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            self.process.kill()
+            self.process.wait()
+
+
+_servers = threading.local()
+_started = []
+_started_lock = threading.Lock()
+# (a corpus run's: each checker's result by the SHA-256 of a candidate it checked, as Lean's
+# result depends on the candidate line alone; None keeps none)
+RESULTS = None
+
+
+def checker_result(checker, encoded, timeout):
+    """The Lean checker's result for one encoded candidate (a line), from this thread's
+    long-lived process for that checker: started on first use and replaced after any failure,
+    so no candidate's result depends on another's."""
+    require(encoded.endswith("\n") and encoded.count("\n") == 1, "a candidate is one line")
+    path = str(Path(checker).resolve())
+    if RESULTS is not None:
+        key = (path, hashlib.sha256(encoded.encode()).hexdigest())
+        if key not in RESULTS:
+            RESULTS[key] = checked_result(path, encoded, timeout)
+        return dict(RESULTS[key])
+    return checked_result(path, encoded, timeout)
+
+
+def checked_result(path, encoded, timeout):
+    if getattr(_servers, "owner", None) != os.getpid():
+        _servers.owner, _servers.by_path = os.getpid(), {}
+    server = _servers.by_path.get(path)
+    if server is None:
+        server = _servers.by_path[path] = Server(path)
+        with _started_lock:
+            _started.append(server)
+    try:
+        return server.answer(encoded, timeout)
+    except BaseException:
+        del _servers.by_path[path]
+        server.process.kill()
+        server.close()
+        raise
+
+
+@atexit.register
+def _close_servers():
+    with _started_lock:
+        for server in _started:
+            if server.owner == os.getpid():
+                server.close()
+
+
 def run_checker(checker, encoded, metadata):
     """Whether the Lean checker accepts every proof obligation of one encoded candidate."""
-    completed = subprocess.run([str(Path(checker).resolve())], input=encoded, capture_output=True,
-                               text=True, timeout=10)
-    result = json.loads(completed.stdout, object_pairs_hook=unique_object)
+    result = checker_result(checker, encoded, timeout=10)
     require(isinstance(result, dict) and type(result.get("accepted")) is bool,
             "checker did not return an acceptance result")
-    require(result.get("nodes") == metadata["nodes"] and result.get("payloads") == metadata["payloads"],
+    require(set(result) == {"accepted", "nodes", "payloads"}, f"checker error: {result.get('error')}")
+    require(result["nodes"] == metadata["nodes"] and result["payloads"] == metadata["payloads"],
             "checker counts disagree with normalized input")
-    accepted = result["accepted"]
-    require(completed.returncode == (0 if accepted else 1), "checker result/exit status mismatch")
-    return accepted
+    return result["accepted"]
 
 
 def payload_functions(snapshot):

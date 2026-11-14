@@ -1442,11 +1442,23 @@ def gen_class_call(self, cn: Node, m: str, args: list[Node], want: str, resultso
     if f.bad == STUB.replace("NAME", m):
         self.err(f.bad)  # (an imported module's: CPython's stub raises NotImplementedError, however it is called)
     if f.deco == "":
-        if ci.tag > 0:
+        # C.m(o, ...) of a method of its objects: C's own, called on o, an object of C or of a
+        # class that derives from it, as CPython calls the function. Outside ordinary
+        # inheritance, C.__init__(o, ...) stays unsupported (class_call_init.py, mpz_unbound_init.py)
+        if ci.tag > 0 or m != "__init__":
             if len(args) == 0 or args[0].kind in ["kw", "starred", "dstar"]:
                 self.err(f"{short(cn.s)}.{m}() needs an instance as its first argument")
             o = self.expr(args[0], cn.s)
-            if o.t not in self.classes or not self.derives(o.t, cn.s):
+            own = cn.s
+            if cn.s in self.tmpl and o.t in self.classes and not self.derives(o.t, cn.s):
+                # (an object of a specialization of class template C, or of a class that derives
+                # from one: that specialization's method, which is C's for its types)
+                own = o.t
+                while own in self.classes and self.tmpl_of(own) != cn.s:
+                    own = self.classes[own].base
+                if own in self.classes and m in self.classes[own].methods:
+                    f = self.classes[own].methods[m]
+            if o.t not in self.classes or own not in self.classes or not self.derives(o.t, own):
                 self.err(f"{short(cn.s)}.{m}() needs an instance of {short(cn.s)}")
             self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
             return self.call_fn(f, [o], args[1:], want, direct=True, resultsoft=resultsoft)
@@ -1521,7 +1533,10 @@ def gen_percent(self, fmt: str, rhs: Node, lit: bool) -> Val:
         for x in rhs.kids:
             items.append(self.expr(x, ""))
     else:
-        v = self.ntup(self.expr(rhs, ""))  # (a NamedTuple is a tuple: its fields are the arguments)
+        v = self.expr(rhs, "")
+        if self.nt_wide(v):
+            return self.percent_opt(fmt, v)  # (None, or its fields as they are: nt_wide)
+        v = self.ntup(v)  # (a NamedTuple is a tuple: its fields are the arguments)
         if is_tuple(unopt(v.t)) and is_opt(v.t):
             return self.percent_opt(fmt, v)
         if is_tuple(v.t):
@@ -1534,7 +1549,8 @@ def gen_percent(self, fmt: str, rhs: Node, lit: bool) -> Val:
     return self.pformat(fmt, items, False, [])
 
 def gen_percent_opt(self, fmt: str, v: Val) -> Val:
-    # "format" % t, t a tuple or None: the tuple's items are the arguments, None is one argument
+    # "format" % t, t a tuple or None: the tuple's items are the arguments, None is one argument;
+    # also t a NamedTuple that may be None, whose fields ntup reads where it is not (nt_wide)
     l1 = self.label()
     l2 = self.label()
     l3 = self.label()
@@ -1546,7 +1562,7 @@ def gen_percent_opt(self, fmt: str, v: Val) -> Val:
         self.incoming(ph, a.v, self.cur)
     self.br(l3)
     self.place(l2)
-    tv = Val(v.v, unopt(v.t))
+    tv = self.ntup(v, True) if v.t in self.nts else Val(v.v, unopt(v.t))
     items: list[Val] = []
     for i in range(len(targs(tv.t))):
         items.append(self.tget(tv, i))
@@ -3666,7 +3682,7 @@ def gen_ntop(self, op: str, a: Val, b: Val, shown: str) -> Val:
         # (CPython asks a tuple's subclass first, and b's __radd__ & co where a has no __add__)
         self.err(f"{short(b.t)}.{rm} with a {typestr(a.t)} operand is not supported")
     if tl and (op == "==" or op == "!="):
-        return self.cmp2(op, self.ntup(a), self.ntup(b))
+        return self.nt_eq(op, a, b)
     if tl and cmp:
         return self.richcmp(op, a, b)
     if (op == "+" and tl) or (op == "*" and (a.t == "int" or b.t == "int")):
@@ -3701,6 +3717,47 @@ def gen_ntup(self, v: Val, known: bool = False) -> Val:
     self.incoming(ph, "null", l0)
     self.incoming(ph, t.v, l1)
     return Val(self.phi(ph), ph.t)
+
+def gen_nt_wide(self, v: Val) -> bool:
+    # whether ntup would narrow the promoting ints of NamedTuple v to 64-bit ints: where v may be
+    # None, as the tuple | None it then gives holds them (bigints.py, NARROW). Where an operation
+    # compares or formats v's fields as a tuple's, it tests v for None first and reads them as they
+    # are (ntup, known): narrowed, they would raise OverflowError past 64 bits and never equal a
+    # promoting int (#1439)
+    if v.t not in self.nts or v.v in self.nn:
+        return False
+    ci = self.classes[v.t]
+    return BIG in self.ctype("tuple", [ci.ftypes[x] for x in ci.fields])
+
+def gen_nt_eq(self, op: str, a: Val, b: Val) -> Val:
+    # a == b or a != b of NamedTuples and tuples, compared as tuples (ntup); one whose fields ntup
+    # would narrow (nt_wide) is None where it is None, else the tuple of its fields as they are
+    v = a if self.nt_wide(a) else b if self.nt_wide(b) else Val("", "")
+    if v.t == "":
+        return self.cmp2(op, self.ntup(a), self.ntup(b))
+    left = v is a
+    none = self.label()
+    some = self.label()
+    end = self.label()
+    ph = Ins("phi", "bool", "")
+    self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, none, some)
+    self.place(none)
+    nv = Val("null", "None")
+    r = self.nt_eq(op, nv if left else a, b if left else nv)
+    if not self.term:
+        self.incoming(ph, r.v, self.cur)
+    self.br(end)
+    self.place(some)
+    t = self.ntup(v, True)
+    r = self.nt_eq(op, t if left else a, b if left else t)
+    if not self.term:
+        self.incoming(ph, r.v, self.cur)
+    self.br(end)
+    self.place(end)
+    if len(ph.a) == 0:
+        self.unreachable()
+        return Val("undef", "bool")
+    return Val(self.phi(ph), "bool")
 
 def gen_cmp_method(self, t: str, m: str, other: str) -> str:
     # m, if class t defines it as a binary method that accepts an operand of type other
@@ -3769,9 +3826,11 @@ def gen_cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
                 return [sides[i], m, inv]
     return []
 
-def gen_inherit_cmp(self, op: str, a: Val, b: Val) -> Val:
+def gen_inherit_cmp(self, op: str, a: Val, b: Val, lenient: bool = False) -> Val:
     # Compare concrete runtime types, including None. Both operands matter: Python gives
     # the right operand's reflected comparison priority when its class is a strict subtype.
+    # lenient (tuple search, titem_eq): a pair whose method does not take the other operand,
+    # an error for ==, finds them not equal, as the search did before it dispatched on classes.
     # Each pair of the operands' alternatives (cmp_alts) is compiled as concrete_cmp compiles
     # it (cmp_widen: a template's parameter takes the operand as its static type), but pairs
     # whose code is the same (cmp_key) share one arm, and alternatives of a whose pairs share
@@ -3813,6 +3872,10 @@ def gen_inherit_cmp(self, op: str, a: Val, b: Val) -> Val:
             rows.append(row)
         group.append(row_of[s])
     if len(keys) == 1:
+        if lenient and keys[0].startswith("bad "):
+            return Val("false" if op == "==" else "true", "bool")
+        if lenient and keys[0].startswith("call "):
+            return self.cmp_try(op, keys[0], pairs[0][0], pairs[0][1])
         return self.ptr_cmp('==' if op == '==' else '!=', a, b) if keys[0] == "is" else self.concrete_cmp(op, pairs[0][0], pairs[0][1])
     arms = [self.label() for k in keys]
     tos = [[arms[i] for i in rw] for rw in rows]
@@ -3849,7 +3912,7 @@ def gen_inherit_cmp(self, op: str, a: Val, b: Val) -> Val:
                 i = rows[g][yi]
                 if i not in placed:
                     placed[i] = True
-                    self.cmp_arm(op, a, b, keys[i], pairs[i], arms[i], ph, end)
+                    self.cmp_arm(op, a, b, keys[i], pairs[i], arms[i], ph, end, lenient)
                 if yi == 0 and sb != "-" and sb != "":
                     self.place(sb)
                     self.cmp_tags(b, ys, tos[g])
@@ -3935,14 +3998,51 @@ def uniform(to: list[str]) -> bool:
             return False
     return True
 
-def gen_cmp_arm(self, op: str, a: Val, b: Val, k: str, p: list[Val], l: str, ph: Ins, end: str) -> None:
+def gen_cmp_arm(self, op: str, a: Val, b: Val, k: str, p: list[Val], l: str, ph: Ins, end: str, lenient: bool = False) -> None:
     # arm l of inherit_cmp, for key k: what concrete_cmp compiles for pair p, and then end, where
-    # phi ph takes its result ("is": the identity of the operands, which each alternative is)
+    # phi ph takes its result ("is": the identity of the operands, which each alternative is;
+    # lenient: a method that does not take the other operand finds them not equal)
     self.place(l)
-    r = self.ptr_cmp('==' if op == '==' else '!=', a, b) if k == "is" else self.concrete_cmp(op, p[0], p[1])
+    if lenient and k.startswith("bad "):
+        r = Val("false" if op == "==" else "true", "bool")
+    elif lenient and k.startswith("call "):
+        r = self.cmp_try(op, k, p[0], p[1])
+    else:
+        r = self.ptr_cmp('==' if op == '==' else '!=', a, b) if k == "is" else self.concrete_cmp(op, p[0], p[1])
     if not self.term:
         self.incoming(ph, r.v, self.cur)
         self.br(end)
+
+def gen_cmp_try(self, op: str, k: str, x: Val, y: Val) -> Val:
+    # concrete_cmp(op, x, y) for a lenient comparison (tuple search, titem_eq) of pair x, y, whose
+    # key k calls a method: an attempt (Gen.xtry), as a dynamic value's comparison method's call
+    # is (dynamic.py), since the search compiles a call for each pair of classes its operands may
+    # be of, which the program may never compare. Where that call does not compile (a template's
+    # instance whose body cannot take the operand, or a function of an imported module it is the
+    # first to call), the program is compiled again with the method declining the pair, as one
+    # that does not take the operand does (cmp_arm): the search rejects no program it compiled
+    # before it dispatched on classes (#409)
+    attempt = "search " + " ".join(k.split(" ")[2:])  # (the instance: whichever operand it is called on)
+    if attempt in self.xnot:
+        return Val("false" if op == "==" else "true", "bool")
+    previous = self.xtry
+    self.xtry = attempt
+    n = len(self.called)
+    r = self.concrete_cmp(op, x, y)
+    if len(self.called) > n:
+        # (the functions of imported modules it is the first to call, the last keys of called, are
+        # compiled inside the attempt, as dyn_prepare_factory compiles them: later, an error in
+        # one would reject the program)
+        fr = self.save()
+        while len(self.called) > n:
+            fresh = list(self.called)[n:]
+            n = len(self.called)
+            for ll in fresh:
+                if ll in self.lazy and ll not in self.compiled and not self.lazy[ll].generic:
+                    self.function(self.lazy[ll], self.lazy[ll].node.kids[2].kids)
+        self.restore(fr)
+    self.xtry = previous
+    return r
 
 def gen_cmp_rest(self, v: Val, alts: list[Val], to: list[str]) -> str:
     # where none of the tests of operand v's classes matches (cmp_tags): the target the most of
@@ -4612,11 +4712,33 @@ def gen_exc_eq(self, t: str, what: str = "") -> None:
                 what = what if what != "" else "between exceptions" if t == "exc" else f"between values of type {typestr(t)}"
                 self.err(f"== {what} is not supported where an exception class defines {m} ({short(c.name)} does): compare objects of the class itself, or use 'is'")
 
-def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) -> bool:
+def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str, lenient: bool = False) -> bool:
     # whether tuple item is x, or item == x, as CPython's PyObject_RichCompareBool(item, x, Py_EQ)
     # tests it for in, index() and count(): a branch to hit (where phi ph, if any, takes value)
-    # where it is, and on in a new block where it is not; False if no branch can reach hit
+    # where it is, and on in a new block where it is not; False if no branch can reach hit.
+    # lenient (a member of a union of classes, titem_union): objects compare as inherit_cmp's
+    # lenient comparison compares them, which no method that cannot take the other makes an error
+    if item.t != "dyn" and a.t != "dyn" and (self.reference_union(item.t) or self.reference_union(a.t)):
+        return self.titem_union(item, a, hit, ph, value)
     u = unopt(item.t)
+    if lenient and (item.t == "file" or a.t == "file"):
+        # (a file compares by identity, as CPython's do; where the other is an object of a class,
+        # its __eq__ then runs, as CPython calls it once the file's declines)
+        if not self.isref(item.t) or not self.isref(a.t):
+            return False
+        nf = self.label()
+        if ph is not None:
+            self.incoming(ph, value, self.cur)
+        self.cbr(self.ptr_cmp('==', item, a).v, hit, nf)
+        self.place(nf)
+        if item.t in self.classes or a.t in self.classes:
+            c = self.inherit_cmp("==", item, a, True)
+            nx = self.label()
+            if ph is not None:
+                self.incoming(ph, value, self.cur)
+            self.cbr(c.v, hit, nx)
+            self.place(nx)
+        return True
     identity = (item.t in self.classes or is_list(u) or is_dict(u) or is_set(u) or is_tuple(u) or is_vtuple(u)) and self.isref(a.t)
     if (item.t == "dyn" or a.t == "dyn") and self.comparable(item.t, a.t):
         # (an Any value: the same value first, also a float's, as the runtime's dyn_eqitem tests
@@ -4641,6 +4763,9 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) 
         self.place(nx)
     # Named tuples and homogeneous runtime tuples compare as tuples, including
     # numeric and optional element layouts accepted by ordinary equality.
+    wide = [x for x in [item, a] if self.nt_wide(x) and "__eq__" not in self.classes[x.t].methods]
+    if len(wide) > 0:
+        return self.titem_nt(item, a, wide[0] is item, hit, ph, value, lenient) or identity
     if item.t in self.nts and "__eq__" not in self.classes[item.t].methods:
         item = self.ntup(item)
     if a.t in self.nts and "__eq__" not in self.classes[a.t].methods:
@@ -4651,8 +4776,13 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) 
     if not paired and not nested and not setpair and not self.comparable(item.t, a.t) and self.boxwider(item.t, a.t) == "":
         # item == x of types whose values are never equal: CPython still calls the
         # item's __eq__(x), or where the item's class has none (a builtin type's
-        # declines) x's __eq__(item); with neither, they are not equal
-        c = self.foreign_eq(item, a)
+        # declines) x's __eq__(item); with neither, they are not equal. An object of a class
+        # with subclasses calls its runtime class's (#1430), as == does (inherit_cmp)
+        runtime = [x for x in [item.t, a.t] if x in self.classes and self.classes[x].exc == "" and self.classes[x].tag != 0 and len(self.cmp_kinds(x)) > 1]
+        if len(runtime) > 0 or (lenient and (item.t in self.classes or a.t in self.classes)):
+            c = self.inherit_cmp("==", item, a, True)
+        else:
+            c = self.foreign_eq(item, a)
         if c.t != "":
             nx = self.label()
             if ph is not None:
@@ -4663,6 +4793,8 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) 
     if paired:
         r = self.rt("pys_eq_pair", "i64", ["i64 " + self.to_slot(item), "i64 " + self.to_slot(a), f"ptr {self.sconst(self.desc(item.t, '=='))}", f"ptr {self.sconst(self.desc(a.t, '=='))}"])
         c = self.num_cmp('!=', Val(r, "int"), Val('0', "int"))
+    elif lenient and (item.t in self.classes or a.t in self.classes):
+        c = self.inherit_cmp("==", item, a, True)
     else:
         c = self.cmp2("==", item, a)
     nx = self.label()
@@ -4671,6 +4803,66 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) 
     self.cbr(c.v, hit, nx)
     self.place(nx)
     return True
+
+def gen_titem_union(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) -> bool:
+    # titem_eq where tuple item or x is a union of classes' objects or files (#1432): None where
+    # it is a null box, else its member's object, chosen by the tag, compared as an object of that
+    # class is, the same object first (titem_eq, lenient); the other side may be such a union too
+    v = item if self.reference_union(item.t) else a
+    o = a if v is item else item
+    done = self.label()
+    found = False
+    if v.v not in self.nn:
+        # (a class's union holds None as a null box, as a class's object is null)
+        some = self.label()
+        none = self.label()
+        self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, none, some)
+        self.place(none)
+        nv = Val("null", "None")
+        if self.titem_eq(nv if v is item else o, o if v is item else nv, hit, ph, value, True):
+            found = True
+        self.br(done)
+        self.place(some)
+    ms = umembers(unopt(v.t))
+    for i in range(len(ms)):
+        arm = self.label()
+        nx = self.label() if i + 1 < len(ms) else done
+        if i + 1 < len(ms):
+            self.cbr(self.utest(v, [ms[i]], False), arm, nx)
+        else:
+            self.br(arm)
+        self.place(arm)
+        x = self.uget(Val(v.v, unopt(v.t)), ms[i])
+        self.nn[x.v] = True
+        if self.titem_eq(x if v is item else o, o if v is item else x, hit, ph, value, True):
+            found = True
+        self.br(done)
+        if i + 1 < len(ms):
+            self.place(nx)
+    self.place(done)
+    return found
+
+def gen_titem_nt(self, item: Val, a: Val, left: bool, hit: str, ph: Ins | None, value: str, lenient: bool = False) -> bool:
+    # titem_eq of tuple item and x, where item (left) or x is a NamedTuple whose fields ntup would
+    # narrow (nt_wide): None where it is None, else the tuple of its fields as they are, as
+    # nt_eq compares them; the other may be such a NamedTuple too. Keep a union member's
+    # lenient comparison when either side is split into None and its fields.
+    v = item if left else a
+    none = self.label()
+    some = self.label()
+    done = self.label()
+    self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, none, some)
+    self.place(none)
+    nv = Val("null", "None")
+    found = self.titem_eq(nv if left else item, a if left else nv, hit, ph, value, lenient)
+    self.br(done)
+    self.place(some)
+    t = self.ntup(v, True)
+    if self.titem_eq(t if left else item, a if left else t, hit, ph, value, lenient):
+        found = True
+    self.br(done)
+    self.place(done)
+    return found
 
 def gen_union_same(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) -> bool:
     # Tuple search finds the same underlying object, even in separately boxed reference

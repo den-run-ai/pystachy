@@ -786,6 +786,8 @@ from src.pystachy_compiler.expressions import (
     gen_cls_bound as expressions_cls_bound,
     gen_cmp2 as expressions_cmp2,
     gen_titem_eq as expressions_titem_eq,
+    gen_titem_union as expressions_titem_union,
+    gen_titem_nt as expressions_titem_nt,
     gen_union_same as expressions_union_same,
     gen_cmp_method as expressions_cmp_method,
     gen_concrete_cmp as expressions_concrete_cmp,
@@ -798,6 +800,7 @@ from src.pystachy_compiler.expressions import (
     gen_enum_intlike as expressions_enum_intlike,
     gen_inherit_cmp as expressions_inherit_cmp,
     gen_cmp_alts as expressions_cmp_alts,
+    gen_cmp_try as expressions_cmp_try,
     gen_cmp_key as expressions_cmp_key,
     gen_cmp_arm as expressions_cmp_arm,
     gen_cmp_rest as expressions_cmp_rest,
@@ -862,6 +865,8 @@ from src.pystachy_compiler.expressions import (
     gen_nonefmt as expressions_nonefmt,
     gen_ntop as expressions_ntop,
     gen_ntup as expressions_ntup,
+    gen_nt_eq as expressions_nt_eq,
+    gen_nt_wide as expressions_nt_wide,
     gen_numkey as expressions_numkey,
     gen_obj_iter as expressions_obj_iter,
     gen_obj_iterator as expressions_obj_iterator,
@@ -4540,6 +4545,12 @@ class Gen:
     def ntup(self, v: Val, known: bool=False) -> Val:
         return expressions_ntup(self, v, known)
 
+    def nt_wide(self, v: Val) -> bool:
+        return expressions_nt_wide(self, v)
+
+    def nt_eq(self, op: str, a: Val, b: Val) -> Val:
+        return expressions_nt_eq(self, op, a, b)
+
     def cmp_method(self, t: str, m: str, other: str) -> str:
         return expressions_cmp_method(self, t, m, other)
 
@@ -4555,8 +4566,8 @@ class Gen:
     def cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
         return expressions_cmp_pick(self, op, at, bt)
 
-    def inherit_cmp(self, op: str, a: Val, b: Val) -> Val:
-        return expressions_inherit_cmp(self, op, a, b)
+    def inherit_cmp(self, op: str, a: Val, b: Val, lenient: bool = False) -> Val:
+        return expressions_inherit_cmp(self, op, a, b, lenient)
 
     def cmp_alts(self, v: Val) -> list[Val]:
         return expressions_cmp_alts(self, v)
@@ -4567,8 +4578,11 @@ class Gen:
     def cmp_key(self, op: str, a: Val, b: Val) -> str:
         return expressions_cmp_key(self, op, a, b)
 
-    def cmp_arm(self, op: str, a: Val, b: Val, k: str, p: list[Val], l: str, ph: Ins, end: str) -> None:
-        return expressions_cmp_arm(self, op, a, b, k, p, l, ph, end)
+    def cmp_arm(self, op: str, a: Val, b: Val, k: str, p: list[Val], l: str, ph: Ins, end: str, lenient: bool = False) -> None:
+        return expressions_cmp_arm(self, op, a, b, k, p, l, ph, end, lenient)
+
+    def cmp_try(self, op: str, k: str, x: Val, y: Val) -> Val:
+        return expressions_cmp_try(self, op, k, x, y)
 
     def cmp_rest(self, v: Val, alts: list[Val], to: list[str]) -> str:
         return expressions_cmp_rest(self, v, alts, to)
@@ -4624,8 +4638,14 @@ class Gen:
     def cmp2(self, op: str, a: Val, b: Val) -> Val:
         return expressions_cmp2(self, op, a, b)
 
-    def titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) -> bool:
-        return expressions_titem_eq(self, item, a, hit, ph, value)
+    def titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str, lenient: bool = False) -> bool:
+        return expressions_titem_eq(self, item, a, hit, ph, value, lenient)
+
+    def titem_union(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) -> bool:
+        return expressions_titem_union(self, item, a, hit, ph, value)
+
+    def titem_nt(self, item: Val, a: Val, left: bool, hit: str, ph: Ins | None, value: str, lenient: bool = False) -> bool:
+        return expressions_titem_nt(self, item, a, left, hit, ph, value, lenient)
 
     def union_same(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) -> bool:
         return expressions_union_same(self, item, a, hit, ph, value)

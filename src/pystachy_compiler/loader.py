@@ -118,10 +118,10 @@ def cm_methods(n: Node, names: list[str]) -> None:
     # a method decorated @contextmanager (names: as the module imports it) is the generator method
     # _pys_cm_NAME, and NAME(self, /, *args, **kwds) returns the manager that
     # contextmanager(self._pys_cm_NAME)(*args, **kwds) makes: what CPython's helper does, bound to
-    # the object (the subset has no decorated methods). Its generator is C's own: in a class C
-    # that derives from a class of the module or that one derives from, C._pys_cm_NAME(self,
-    # *args, **kwds) (super().NAME() runs the base class's), else self._pys_cm_NAME(...); and the
-    # function it keeps (for a decorator's calls, which make the generator again) is bound to self
+    # the object (the subset has no decorated methods). Its generator is C's own,
+    # C._pys_cm_NAME(self, *args, **kwds), so that super().NAME() runs the base class's, also
+    # where a subclass in another module overrides it (#1469); and the function it keeps (for a
+    # decorator's calls, which make the generator again) is bound to self
     # taken as an object of the class that first defines NAME so, so that NAME returns one type
     # whatever subclass self is. A generic class keeps contextmanager(self._pys_cm_NAME) (C alone
     # names no type there)
@@ -133,12 +133,6 @@ def cm_methods(n: Node, names: list[str]) -> None:
             bases[st.s] = [x.s for x in st.kids[1:] if x.kind == "name"]
         elif st.kind == "class":
             bases[st.s] = []
-    derived: dict[str, bool] = {}
-    for c in bases:
-        for x in bases[c]:
-            if x in bases:
-                derived[c] = True
-                derived[x] = True
     cms: list[str] = []
     top: list[Node] = []
     imported = False
@@ -151,14 +145,22 @@ def cm_methods(n: Node, names: list[str]) -> None:
                 if d.kind == "def" and len(d.kids) == 4 and d.kids[3].kind == "deco" and len(d.kids[3].kids) == 0 and d.kids[3].s in names and len(d.kids[0].kids) > 0 and d.kids[0].kids[0].kind == "param":
                     me = d.kids[0].kids[0].s
                     cms.append(st.s + "." + d.s)
+                    root = cm_root(st.s, d.s, bases, cms)
+                    # (NAME's own parameters are the def's names, args and kwds, but for one that
+                    # would hide a name NAME reads: def scope(C) in class C, class args)
+                    reads = [st.s, root, d.kids[3].s.split(".")[0]]
+                    a = "_pys_cm_args" if "args" in reads else "args"
+                    k = "_pys_cm_kwds" if "kwds" in reads else "kwds"
+                    if me in reads + [a, k, "_pys_cm_self", "_pys_cm_GCM"]:
+                        me = "_pys_cm_me"
                     if generic:
-                        src = f"def {d.s}({me}, /, *args, **kwds):\n    return {d.kids[3].s}({me}._pys_cm_{d.s})(*args, **kwds)\n"
+                        src = f"def {d.s}({me}, /, *{a}, **{k}):\n    return {d.kids[3].s}({me}._pys_cm_{d.s})(*{a}, **{k})\n"
                     else:
                         if not imported:
                             top.append(Parser(Lexer("from contextlib import _GeneratorContextManager as _pys_cm_GCM\n", st.line).file()).module().kids[0])
                             imported = True
-                        own = f"{st.s}._pys_cm_{d.s}({me}, *args, **kwds)" if st.s in derived else f"{me}._pys_cm_{d.s}(*args, **kwds)"
-                        src = f"def {d.s}({me}, /, *args, **kwds):\n    _pys_cm_self: {cm_root(st.s, d.s, bases, cms)} = {me}\n    return _pys_cm_GCM(_pys_cm_self._pys_cm_{d.s}, args, kwds, {own})\n"
+                        own = f"{st.s}._pys_cm_{d.s}({me}, *{a}, **{k})"
+                        src = f"def {d.s}({me}, /, *{a}, **{k}):\n    _pys_cm_self: {root} = {me}\n    return _pys_cm_GCM(_pys_cm_self._pys_cm_{d.s}, {a}, {k}, {own})\n"
                     w = Parser(Lexer(src, d.line).file()).module().kids[0]
                     d.s = "_pys_cm_" + d.s
                     d.kids = d.kids[:3]

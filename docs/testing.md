@@ -538,6 +538,24 @@ AOT workloads had over 20% within-revision wall-time spread (excluding removed `
 and optimized-away `unpack_sequence`). This small monitor does not cover memory, full models,
 end-to-end json_repair or all examples; broader benchmark history remains under #45.
 
+### Weekly AOT performance
+
+The eleven smoke workloads missed two AOT slowdowns: `words` after #667 and `float` after
+#1268 ([#1302](https://github.com/den-run-ai/pystachy/issues/1302)). The separate
+[Weekly performance workflow](../.github/workflows/performance-weekly.yml) runs on Mondays and
+on manual dispatch, never on PRs or pushes. Its two jobs each build the head's compiler and a
+base's: the fixed reference above, or main's first-parent commit of seven days before. They time
+every adapted pyperformance port (its `seconds` line) and every `bench/*.py` microbenchmark (the
+process) in AOT, with the head's workload sources and CPython's output, in three alternating
+base/head pairs on one CPU. A slowdown of at least 10% and 2 ms triggers three more pairs; both
+batches must meet it with disjoint ranges to emit an advisory warning. A workload that the base
+cannot build or run correctly has no comparison, as a compiler may predate it; its head is still
+checked. A head failure fails the job after the other workloads and the report. All commands,
+including compiler builds and confirmation runs, share an 11-minute deadline, leaving job time
+for setup, reporting and artifact upload. A budget-limited report is marked incomplete. The
+90-day `perf-weekly-*` JSON artifacts keep partial samples and each revision's failure. Replay a change locally with
+`python3 tools/perf_smoke.py --suite weekly --base OLD --head NEW --only bench/words`.
+
 ### PR budget
 
 A code PR can create **19 workflow job rows**, including the skipped full-only qualification
@@ -1004,11 +1022,17 @@ bounds and live, followed by `make check-lean-int` for promoting-integer
 runs `make check-lean-storage` for [storage guards](../tools/lean_boundary/STORAGE.md),
 including programs that import opted-in modules, and upload `lean-storage.json`.
 Code PRs and full CI retain `make check-lean-guards` in the x86 `contracts` group on the explicit
-`null_guards.py` and `union_guards.py` examples, uploading
+`null_guards.py`, `null_reloads.py`, `union_effects.py`, `union_guards.py`, `union_split.py`,
+`union_memory.py`, `union_defaults.py`, `gc_arrays.py` and `field_init.py` examples, uploading
 `lean-guards.json`. The selection and its limits are recorded in
-[GUARDS.md](../tools/lean_boundary/GUARDS.md). These enforce bounded null/union guard
-coverage; the strict full-corpus guard command remains an investigation tool with
-unsupported forms, not a passing whole-corpus gate. Arithmetic reports separately
+[GUARDS.md](../tools/lean_boundary/GUARDS.md). These enforce bounded null/union guard,
+field-initialization and collector-scanning coverage; the strict full-corpus guard command remains an investigation tool with
+unsupported forms, not a passing whole-corpus gate. No CI job runs every check over the
+whole corpus: `make lean-report` does, locally, and rewrites the small committed
+[report](../tools/lean_boundary/REPORT.md) of their counts and unproved functions. Run it
+after a change to typed IR, to a pass a Lean check covers or to a checker, and commit the
+report when it changes; `python3.13 tools/lean_report.py --status` names the inputs that
+changed since. Arithmetic reports separately
 count actual checked overflow reconstructions and other observed arithmetic.
 All sweeps use two local processes within existing jobs and their 15-minute limits.
 On full runs, the corpus and integer proofs start after `gc-jit-1` finishes;

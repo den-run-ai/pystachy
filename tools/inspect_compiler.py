@@ -142,6 +142,10 @@ class Observer:
         self.typed_after_only = typed_after_only
         self.guard_evidence = guard_evidence
         self.nullcheck_evidence: list[dict] = []
+        # The slots the unionslots pass split, by function object (kept alive with it, so that
+        # an id is never another function's): each pair's tag and payload slots and the type of
+        # the slot they replace, which the IR no longer names.
+        self.split_unions: dict[int, tuple] = {}
         self.before: list[dict] = []
         self.after: list[dict] = []
         self.captured_before = False
@@ -183,6 +187,7 @@ class Observer:
             "recursion": {"counted": fn.counted, "rdepth": fn.rdepth, "landed": fn.landed, "gdepth": fn.gdepth,
                           "generator": f.gen, "coroutine": fn.coro},
             "slots": [self.instruction(i) for i in fn.slots],
+            **({"split_unions": self.split_record(fn)} if self.guard_evidence else {}),
             # A check op raises from a separate block: its key (the op's descriptor, else its
             # text) -> that block's label.
             "check_targets": dict(fn.cold),
@@ -384,6 +389,44 @@ class Observer:
         return sorted(types, key=lambda t: t["symbol"])
 
     @staticmethod
+    def classes(gen) -> dict:
+        # Each class of the program: its single base (a class of the program, a builtin
+        # exception class or none) and its fieldless secondary base, which Gen.derives follows;
+        # the unrelated classes whose objects it may also be (a primary chain's and a secondary
+        # base's common subclass); and whether its objects begin with the class tag. An object of
+        # one class is no object of a class related to it none of these ways: their fields are
+        # other memory (Gen.disjoint).
+        return {name: {"base": info.base, "role": info.role, "overlaps": sorted(info.overlaps),
+                       "tagged": info.tag != 0} for name, info in sorted(gen.classes.items())}
+
+    @staticmethod
+    def key_descriptors(gen, functions) -> dict:
+        # @s.N -> its text, for each string constant an operand of the snapshot passes as a key
+        # kind (ptrtoint of its address) to a runtime function that makes a dict or a set
+        found = {}
+        for fn in functions:
+            for block in fn["blocks"]:
+                for op in block["operations"]:
+                    for operand in op["operands"][:1]:
+                        value = operand["value"]
+                        if (op["op"] == "rt" and op["text"].startswith(("dict.", "set.")) and value.startswith("ptrtoint (ptr @s.")
+                                and value.endswith(" to i64)")):
+                            name = value[len("ptrtoint (ptr "):-len(" to i64)")]
+                            number = name[3:]
+                            if number.isdigit() and int(number) < len(gen.strvals):
+                                found[name] = gen.strvals[int(number)]
+        return dict(sorted(found.items()))
+
+    @staticmethod
+    def class_layouts(gen) -> dict:
+        # Each class's struct as field.addr indexes it: its fields (a name beginning with a
+        # space is hidden storage), then each "is assigned" flag (fl_fields) and identity box.
+        # A field read tests its flag unless it has none or no read finds it unassigned
+        # (fsure), which check_lean_fields.py's obligations rely on.
+        return {name: {"fields": list(info.fields), "flags": dict(info.fflag), "sure": sorted(info.fsure)}
+                for name, info in sorted(gen.classes.items())}
+
+    @staticmethod
     def boundary_function(gen, fn) -> dict:
         operations, calls = Counter(), Counter()
         for block in fn.blocks:
@@ -553,6 +596,8 @@ class Observer:
                     if self.guard_evidence and name == "nullcheck":
                         self.nullcheck_evidence.append({"before": before, "after": after,
                                                         "reported_rewrites": result})
+                if before is not None and not self.typed_after_only:
+                    # (typed-after-only records no pass records or diffs: only guard evidence)
                     # Function metadata is not itself a typed operation rewrite.
                     previous, current = self.render(before), self.render(after)
                     changed = previous != current
@@ -648,6 +693,41 @@ class Observer:
             return wrapped
         return decorate
 
+    def split_record(self, fn) -> list:
+        """The split union slot pairs of fn that unionslots made and fn still holds."""
+        kept, entries = self.split_unions.get(id(fn), (None, []))
+        if kept is not fn:
+            return []
+        present = {f"%{s.s or 'h'}.{s.r[0]}" for s in fn.slots if len(s.r) == 1 and s.k == 0}
+        return [entry for entry in entries if entry["tag"] in present and entry["payload"] in present]
+
+    def unionslots_wrapper(self, original):
+        def wrapped(gen, fn, *args, **kwargs):
+            # optimizations.gen_unionslots replaces each slot it splits, in slot order, by a tag
+            # slot and a payload slot it appends in that order: pair them by that order and name
+            before = [(s.s, s.r[0], s.t) for s in fn.slots if s.k == 0 and len(s.r) == 1]
+            known = {id(s) for s in fn.slots}
+            result = original(gen, fn, *args, **kwargs)
+            remaining = {(s.s, s.r[0]) for s in fn.slots if s.k == 0 and len(s.r) == 1}  # (a flag keeps its number)
+            removed = [entry for entry in before if (entry[0], entry[1]) not in remaining]
+            created = [s for s in fn.slots if id(s) not in known]
+            entries = []
+            if len(created) == 2 * len(removed):
+                for index, (name, _, typ) in enumerate(removed):
+                    tag, payload = created[2 * index], created[2 * index + 1]
+                    base = name or "h"
+                    if (tag.s, payload.s) != (base + ".tag", base + ".pay") or tag.t != "int" or payload.t != "int":
+                        entries = []
+                        break
+                    entries.append({"tag": f"%{tag.s}.{tag.r[0]}", "payload": f"%{payload.s}.{payload.r[0]}",
+                                    "type": typ})
+            # (a record that does not pair up is left out: the adapter then refuses those slots)
+            if entries:
+                kept, recorded = self.split_unions.get(id(fn), (fn, []))
+                self.split_unions[id(fn)] = (fn, (recorded if kept is fn else []) + entries)
+            return result
+        return wrapped
+
     def lower_wrapper(self, original):
         def wrapped(gen, fn, *args, **kwargs):
             self.capture_before(gen)
@@ -687,6 +767,8 @@ class Observer:
                 for key in ("requires", "analyses", "preserves", "invalidates", "rerun")
             }
             self.wrap(Gen, contract.name, self.pass_wrapper(contract.name))
+        if self.guard_evidence:
+            self.wrap(Gen, "unionslots", self.unionslots_wrapper)
         for name in PROGRAM_PASS_UNITS:
             self.wrap(Gen, name, self.program_pass_wrapper(name))
         self.wrap(Gen, "eh_ir", self.pass_wrapper("exceptions"))
@@ -715,8 +797,16 @@ class Observer:
                             "attempt": self.attempt["index"] if self.attempt else 0, "functions": functions}
                 if name == "typed-after" and self.gen is not None:
                     snapshot["dynamic_types"] = self.dynamic_types(self.gen)
+                    snapshot["classes"] = self.classes(self.gen)
                     if self.guard_evidence:
+                        snapshot["class_layouts"] = self.class_layouts(self.gen)
                         snapshot["union_tags"] = dict(self.gen.utags)
+                        # (each type hole's resolved type, which lowering reads to allocate an empty
+                        # list or dict a later use typed: check_lean_gc.py)
+                        snapshot["holes"] = list(self.gen.holes)
+                        # (the text of each string constant whose address a dict or set's key kind
+                        # is, a hash descriptor: runtime.c's keymem reads its first character)
+                        snapshot["key_descriptors"] = self.key_descriptors(self.gen, functions)
                         snapshot["nullcheck_evidence"] = self.nullcheck_evidence
                         snapshot["guard_inventory"] = {"nullcheck_passes": len(self.nullcheck_evidence),
                             "removed_checks": sum(r["reported_rewrites"] for r in self.nullcheck_evidence)}

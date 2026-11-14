@@ -109,21 +109,42 @@ private def readInput : IO String := do
   | some text => return text
   | none => throw (IO.userError "input must be UTF-8")
 
-def main : IO UInt32 := do
+/-- One candidate's result and the exit status a run on that candidate alone returns. -/
+private def respond (input : String) : Json × UInt32 :=
+  match Json.parse input >>= parseInput with
+  | .error message => (Json.mkObj [("accepted", toJson false), ("error", toJson message)], 2)
+  | .ok (program, certificate) =>
+      let accepted := check program certificate
+      let payloads := program.nodes.foldl (fun count node =>
+        match node with | .payload .. => count + 1 | _ => count) (0 : Nat)
+      (Json.mkObj [("accepted", toJson accepted),
+        ("nodes", toJson program.nodes.length), ("payloads", toJson payloads)],
+        if accepted then 0 else 1)
+
+/-- `--batch`: each input line is one candidate, answered by one result line, in order, until
+the input ends. Each line is checked as a separate run checks its whole input; the only
+difference is that the runtime starts once per process instead of once per candidate. -/
+private def serve (input output : IO.FS.Stream) : IO Unit := do
+  repeat
+    let line ← input.getLine
+    if line.isEmpty then break
+    let response := if line.utf8ByteSize > 4194304 then
+        Json.mkObj [("accepted", toJson false), ("error", toJson "input exceeds 4 MiB")]
+      else (respond line).1
+    output.putStrLn response.compress
+    output.flush
+
+def main (args : List String) : IO UInt32 := do
   try
-    let input ← readInput
-    let parsed := Json.parse input >>= parseInput
-    match parsed with
-    | .error message =>
-        IO.println (Json.mkObj [("accepted", toJson false), ("error", toJson message)]).compress
-        return 2
-    | .ok (program, certificate) =>
-        let accepted := check program certificate
-        let payloads := program.nodes.foldl (fun count node =>
-          match node with | .payload .. => count + 1 | _ => count) (0 : Nat)
-        IO.println (Json.mkObj [("accepted", toJson accepted),
-          ("nodes", toJson program.nodes.length), ("payloads", toJson payloads)]).compress
-        return if accepted then 0 else 1
+    match args with
+    | [] =>
+        let (response, status) := respond (← readInput)
+        IO.println response.compress
+        return status
+    | ["--batch"] =>
+        serve (← IO.getStdin) (← IO.getStdout)
+        return 0
+    | _ => throw (IO.userError "usage: pystachy-boundary [--batch]")
   catch error =>
     IO.println (Json.mkObj [("accepted", toJson false), ("error", toJson error.toString)]).compress
     return 2

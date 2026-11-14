@@ -30,6 +30,13 @@ LIMITATIONS = [
     "its exact specialization layout; only complete same-index copies are supported.",
 ]
 MIN = "-9223372036854775808"
+# A set's slot holds its element where the element fits, unless it is at most this (TSLOT_BIG,
+# or runtime.c's ssent): then the set's digits give it (gen_big_slot's two).
+SET_SENTINEL = "-9223372036854775807"
+# Reads of a promoting int container's raw slot word (int_containers), by how the container
+# (the read's first operand) holds the int: as an item, a value, a key or an element.
+CONTAINER_READS = {"list.load": "item", "list.get": "item", "dict.val": "value", "dict.key": "key",
+                   "set.key": "element"}
 # Argument offsets at which runtime helpers accept one canonical (lo, digits) pair.
 PAIRS = {
     "big.op": (0, 2), "big.cmp": (0, 2), "big.truediv": (0, 2),
@@ -132,6 +139,7 @@ class Normalize:
                     self.layout.setdefault(result(o), o["type"])
         self.validate_ssa()
         self.stack_copy_loads, self.stack_copy_stores = self.stack_copies()
+        self.container_words = self.container_reads()
         self.stack_copy_sources = {copy[0] for copy in self.stack_copy_loads.values()}
         # Escaped slots are not private and cannot retain fit facts across calls.
         for b in self.blocks:
@@ -280,6 +288,69 @@ class Normalize:
         if op and op["op"] == "tuple.load" and is_tuple(op["text"]):
             return self.tuple_path(args(op)[0], depth + 1) + "/" + str(op["immediate"])
         return value
+
+    def container_reads(self):
+        """Raw slot words of the program's promoting int containers (int_containers), and phis of
+        them: an int list's item, an int-valued dict's value, an int-keyed dict's key and an int
+        set's element. gen_big_slot decodes each: the word is the int unless it is the marker
+        (MIN; for a set, at most SET_SENTINEL), where the container's digits give the int. A word
+        may only be tested for the marker, made the int with null digits (big.make, which only a
+        phi may take, on an edge where the word is not the marker: build's container-decode) or,
+        for a set, kept where its digits are null (select); else the function is unsupported."""
+        if not self.fn["representation_metadata"]["int_containers"]:
+            return {}
+        words = {}
+        uses = {}
+        for b in self.blocks:
+            for o in b["operations"]:
+                for j, a in enumerate(o["operands"]):
+                    uses.setdefault(a["value"], []).append((o, j))
+        for b in self.blocks:
+            for o in b["operations"]:
+                kind = CONTAINER_READS.get(o["op"] if o["op"] == "list.load" else o["text"] if o["op"] == "rt" else "")
+                if not kind or not o["results"] or not o["operands"]:
+                    continue
+                word = f"%t{o['results'][0]}"
+                receiver = o["operands"][0]
+                typ = receiver["type"] if receiver["type"] not in {"S", ""} else self.layout_type(receiver["value"])
+                typ = unopt(typ) if typ else typ
+                holds = None
+                if typ and kind == "item" and typ.startswith("list["):
+                    holds = targs(typ)[0] == "int"
+                elif typ and kind in {"value", "key"} and typ.startswith("dict["):
+                    holds = targs(typ)[1 if kind == "value" else 0] == "int"
+                elif typ and kind == "element" and typ.startswith(("set[", "frozenset[")):
+                    holds = targs(typ)[0] == "int"
+                if holds is None:
+                    # (a receiver whose type the snapshot does not name: one decoded as an int's)
+                    holds = any(u["op"] == "big.make" and j == 0 for u, j in uses.get(word, []))
+                if holds:
+                    words[word] = kind
+        changed = True
+        while changed:
+            changed = False
+            for b in self.blocks:
+                for o in b["operations"]:
+                    if o["op"] == "phi" and result(o) not in words:
+                        kinds = {words[a] for a in args(o) if a in words}
+                        if kinds:
+                            require(len(kinds) == 1, "phi joins different container words")
+                            words[result(o)] = kinds.pop()
+                            changed = True
+        for word, kind in words.items():
+            sentinel = ("sle", SET_SENTINEL) if kind == "element" else ("eq", MIN)
+            for o, j in uses.get(word, []):
+                a = args(o)
+                if o["op"] == "phi" or (o["op"] == "scalar.cmp" and j == 0 and (o["text"], a[1]) == sentinel):
+                    continue
+                if o["op"] == "big.make" and j == 0 and a[1] == "null":
+                    if any(u["op"] != "phi" or u["type"] != "int+" for u, _ in uses.get(result(o), [])):
+                        raise Unsupported("a container word's int is used before its marker test")
+                    continue
+                if o["op"] == "select" and j == 1 and kind == "element":
+                    continue
+                raise Unsupported("promoting container word used outside its decode")
+        return words
 
     def layout_type(self, value, depth=0):
         if value not in self.layout_cache:
@@ -479,6 +550,12 @@ class Normalize:
                     return self.condition(a[0], yes, self.condition(a[1], yes, no, depth + 1), depth + 1)
                 if op["text"] == "xor" and "true" in a:
                     return self.condition(a[1] if a[0] == "true" else a[0], no, yes, depth + 1)
+            if op["op"] == "scalar.cmp" and op["text"] == "sle" and len(a) == 2 and a[1] == SET_SENTINEL \
+                    and self.container_words.get(a[0]) == "element":
+                # (a set's slot at most SET_SENTINEL: its digits give the element)
+                test = self.add({"op": "guard", "value": self.marker(a[0]), "tags": ["marker"], "yes": yes, "no": no})
+                return self.add({"op": "guard", "value": self.marker(a[0]), "tags": ["marker", "ordinary"],
+                                 "yes": test, "no": 0})
             stack_test = op["op"] == "num.cmp" and any(
                 self.defs.get(v, {}).get("op") == "rt" and self.defs[v]["text"] == "on_stack" for v in a)
             if (op["op"] in {"scalar.cmp", "ptr.cmp"} or stack_test) and op["text"] in {"eq", "ne", "==", "!="}:
@@ -730,6 +807,10 @@ class Normalize:
                 elif k == "phi":
                     pass  # parallel assignments are put on incoming edges below
                 else:
+                    for value in (f"%t{n}" for n in op["results"]):
+                        if value in self.container_words:
+                            # (a new word: no marker test of an earlier one, as in a loop, holds for it)
+                            nxt = self.add({"op": "havoc", "dst": self.marker(value), "next": nxt})
                     if op["targets"]:
                         require(len(op["targets"]) == 2, "unknown operation control-flow targets")
                         nxt = self.add({"op": "choice", "yes": self.edge(op["targets"][0], label),
@@ -833,6 +914,7 @@ class Normalize:
             phis = [o for o in next(b for b in self.blocks if b["label"] == label)["operations"] if o["op"] == "phi"]
             assignments = []
             edge_checks = []
+            resets = []  # (the marker cells of the container words the phis define here)
             for op in phis:
                 require(len(op["targets"]) == len(op["operands"]), "malformed phi")
                 incoming = [a["value"] for p, a in zip(op["targets"], op["operands"], strict=True) if p == previous]
@@ -855,9 +937,17 @@ class Normalize:
                         index = args(op).index(incoming[0])
                         tag = "ordinary" if index == 0 else "marker"
                         edge_checks.append(("decode", "marker:" + destination[len("fit-cell:"):], tag))
+                    made = self.defs.get(incoming[0])
+                    if made and made["op"] == "big.make" and args(made)[0] in self.container_words:
+                        # (a container word taken as the int itself: only where it is not the marker)
+                        edge_checks.append(("container-decode", self.marker(args(made)[0]), "ordinary"))
                     assignments.append((destination, self.fit(incoming[0])))
                 else:
                     edge_checks.append(("needed", incoming[0], ""))
+                if result(op) in self.container_words:
+                    resets.append(self.marker(result(op)))
+            for cell in reversed(resets):
+                target = self.add({"op": "havoc", "dst": cell, "next": target})
             # Two passes preserve simultaneous phi semantics even on backedges.
             for j, (dst, _) in reversed(list(enumerate(assignments))):
                 target = self.add({"op": "copy", "dst": dst, "src": f"phi:{n}:{j}", "next": target})
@@ -868,6 +958,8 @@ class Normalize:
                     target = self.boundary(value, typ, target)
                 elif kind == "decode":
                     target = self.payload(value, typ, target, "tuple-decode", value)
+                elif kind == "container-decode":
+                    target = self.payload(value, typ, target, "container-decode", value)
                 else:
                     target = self.needed(value, target)
             self.nodes[n]["next"] = target

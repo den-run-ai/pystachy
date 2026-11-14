@@ -1,0 +1,207 @@
+"""Tests of the Lean verification report's tallies, rendering and input digests, and of how its
+workers compile programs and share results (lean_report.py).
+
+They need no Lean checker: records are made by hand, as check_program makes them, and the
+committed report is checked for its form, not rerun."""
+import hashlib
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import unittest
+from unittest import mock
+
+import lean_report as report
+
+META = {"commit": "0123456789ab", "date": "2026-11-13", "python": "3.13.0", "lean": "Lean 4.35.0", "minutes": 30,
+        "inputs": {"checkers": {"digest": "c" * 16}, "compiler": {"digest": "a" * 16}, "corpus": {"digest": "b" * 16}}}
+
+
+def row(obligations, proved, functions=1, unproved=()):
+    return {"functions": functions, "obligations": obligations, "proved": proved, "unproved": list(unproved)}
+
+
+def item(function, status="rejected", obligations=2, reason="a transfer is not justified"):
+    return {"function": function, "status": status, "obligations": obligations, "reason": reason}
+
+
+def record(program, **checks):
+    """A program's record with every check of a program that does not opt in to promoting ints."""
+    full = {key: row(0, 0, 0) for key, *_ in report.CHECKS if key not in ("int", "int_inline", "storage")}
+    return {"program": program, "checks": dict(full, **checks), "seconds": 1.0}
+
+
+class SummaryTests(unittest.TestCase):
+    def test_a_module_function_rejected_in_several_programs_is_listed_once(self):
+        shared = item("@m.logging$Manager.getLogger.2")
+        records = [record("a.py", fields=row(10, 8, 3, [shared])), record("b.py", fields=row(4, 2, 2, [shared])),
+                   record("c.py", fields=row(5, 5, 1)), record("d.py")]
+        fields = report.summarize(records)["checks"]["fields"]
+        self.assertEqual((fields["programs"], fields["functions"], fields["obligations"], fields["proved"]),
+                         (3, 6, 19, 15))
+        self.assertEqual(fields["rejected"], [{"function": "@m.logging$Manager.getLogger", "programs": ["a.py", "b.py"],
+                                               "obligations": 4, "reason": shared["reason"]}])
+
+    def test_a_program_function_is_its_programs_own(self):
+        records = [record("a.py", gc=row(3, 1, 1, [item("@main.init")])),
+                   record("b.py", gc=row(3, 1, 1, [item("@main.init", reason="another reason")]))]
+        rejected = report.summarize(records)["checks"]["gc"]["rejected"]
+        self.assertEqual([(r["function"], r["programs"], r["reason"]) for r in rejected],
+                         [("@main.init", ["a.py"], "a transfer is not justified"),
+                          ("@main.init", ["b.py"], "another reason")])
+
+    def test_unsupported_functions_are_counted_by_their_reason(self):
+        records = [record("a.py", union=row(5, 0, 3, [item("@f.g.1", "unsupported", None, "generators are outside"),
+                                                      item("@f.g.2", "unsupported", None, "generators are outside"),
+                                                      item("@f.h", "error", None, "union read %t3 at L4:2")])),
+                   record("b.py", union=row(2, 0, 1, [item("@f.k", "unsupported", None, "generators are outside")]))]
+        other = report.summarize(records)["checks"]["union"]["other"]
+        self.assertEqual(other, [{"status": "error", "reason": "union read", "programs": 1, "functions": 1},
+                                 {"status": "unsupported", "reason": "generators are outside", "programs": 2,
+                                  "functions": 2}])
+
+    def test_programs_and_checks_that_failed_are_kept(self):
+        partial = record("b.py")
+        partial["failed"] = {"guard_checks": "a malformed snapshot"}
+        summary = report.summarize([{"program": "a.py", "error": "inspection failed", "seconds": 1.0}, partial])
+        self.assertEqual(summary["programs"], 2)
+        self.assertEqual(summary["failed"], [{"program": "a.py", "reason": "inspection failed"},
+                                             {"program": "b.py", "reason": "guard_checks: a malformed snapshot"}])
+
+    def test_order_does_not_depend_on_completion(self):
+        first = [record("a.py", gc=row(3, 1, 2, [item("@m.x$f"), item("@m.x$g", obligations=1)])),
+                 record("b.py", gc=row(2, 0, 1, [item("@m.x$g", obligations=1)]))]
+        self.assertEqual(report.summarize(first), report.summarize(first[::-1]))
+        self.assertEqual([f["function"] for f in report.summarize(first)["checks"]["gc"]["rejected"]],
+                         ["@m.x$f", "@m.x$g"])
+
+    def test_names_and_reasons_drop_what_makes_them_one_functions_own(self):
+        self.assertEqual(report.base("@f._pystachy_copy$_memo_get.13"), "@f._pystachy_copy$_memo_get")
+        self.assertEqual(report.base("@main.init"), "@main.init")
+        self.assertEqual(report.kind("union read has no declared source domain: %t33"),
+                         "union read has no declared source domain")
+        self.assertEqual(report.kind("gives an object to unsupported ['@m.A.__init__']"), "gives an object to unsupported")
+        self.assertEqual(report.kind("union payload bits of no known member at L67:4"),
+                         "union payload bits of no known member")
+
+    def test_reasons_are_short_text(self):
+        found = report.unproved([{"function": "@f", "status": "rejected", "obligations": 1,
+                                  "error": [{"node": 3, "known": []}]},
+                                 {"function": "@g", "status": "accepted", "obligations": 4},
+                                 {"function": "@h", "status": "unsupported", "message": "a  b\n" * 100}],
+                                "obligations")
+        self.assertEqual([f["function"] for f in found], ["@f", "@h"])
+        self.assertEqual(found[0]["reason"], '[{"known": [], "node": 3}]')
+        self.assertEqual(len(found[1]["reason"]), report.MESSAGE)
+        self.assertTrue(found[1]["reason"].startswith("a b a b"))
+
+
+class RenderTests(unittest.TestCase):
+    def test_every_check_has_a_row_and_the_inputs_are_recorded(self):
+        records = [record("a.py", union=row(5, 3, 2, [item("@u", "unsupported", None, "a generator")]),
+                          gc=row(4, 2, 1, [item("@m.x$f.2")]), int=row(1, 1), int_inline=row(2, 2), storage=row(3, 3))]
+        text = report.render(report.summarize(records), META)
+        for _, title, document, _ in report.CHECKS:
+            self.assertIn(f"| [{title}]({document}) |", text)
+        self.assertIn("| 1 | 2 | 3 of 5 reads | 0 | 1 |", text)
+        self.assertIn("- unsupported, 1 function in 1 program: a generator", text)
+        self.assertIn("- `@m.x$f` in `a.py`, 2 obligations: a transfer is not justified", text)
+        self.assertIn("did not complete:\n\n- none\n", text)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "REPORT.md"
+            path.write_text(text)
+            self.assertEqual(report.recorded(path), META["inputs"])
+
+    def test_long_lists_are_cut(self):
+        items = [item(f"@f{i}") for i in range(report.LISTED + 3)]
+        text = report.render(report.summarize([record("a.py", gc=row(100, 0, len(items), items))]), META)
+        self.assertEqual(text.count("in `a.py`, 2 obligations"), report.LISTED)
+        self.assertIn("- and 3 more rejected functions", text)
+
+
+class RecordFileTests(unittest.TestCase):
+    def test_a_cut_last_line_is_dropped_and_the_last_record_of_a_program_kept(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "records.jsonl"
+            first, again = dict(record("a.py"), seconds=60.0), dict(record("a.py"), seconds=90.0)
+            path.write_text("\n".join(json.dumps(line) for line in (
+                {"header": {"commit": "x"}}, first, record("b.py"), again)) + '\n{"program": "c.p')
+            header, records = report.load(path)
+            self.assertEqual(header, {"commit": "x"})
+            self.assertEqual(sorted(r["program"] for r in records), ["a.py", "b.py"])
+            self.assertEqual(report.meta(header, records)["minutes"], 2)
+            path.write_text(json.dumps({"header": {}}) + '\n{"program"\n' + json.dumps(record("a.py")) + "\n")
+            with self.assertRaises(ValueError):
+                report.load(path)
+
+
+class StatusTests(unittest.TestCase):
+    def status(self, now):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "REPORT.md"
+            path.write_text(report.render(report.summarize([record("a.py")]), META))
+            with mock.patch.object(report, "inputs", return_value=now), mock.patch("builtins.print"):
+                return report.status(path)
+
+    def test_changed_or_uncommitted_inputs_are_stale(self):
+        same = {group: dict(item, clean=True) for group, item in META["inputs"].items()}
+        self.assertEqual(self.status(same), 0)
+        self.assertEqual(self.status(dict(same, compiler={"digest": "d" * 16, "clean": True})), 1)
+        self.assertEqual(self.status(dict(same, corpus=dict(same["corpus"], clean=False))), 1)
+
+    def test_each_input_group_has_a_digest(self):
+        found = report.inputs()
+        self.assertEqual(set(found), set(report.INPUTS))
+        self.assertTrue(all(len(item["digest"]) == 16 and type(item["clean"]) is bool for item in found.values()))
+
+
+class WorkerTests(unittest.TestCase):
+    PROGRAM = report.ROOT / "tools/lean_boundary/examples/generators.py"
+
+    def test_workers_share_each_result_by_its_kind_and_key(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database = report.results_database(Path(directory) / "results.db")
+            one, other, access = (report.Shared(database, kind) for kind in ("lean", "lean", "access"))
+            key = ("/checker", "0" * 64)
+            self.assertNotIn(key, other)
+            one[key] = {"accepted": True, "nodes": 3, "payloads": 1}
+            self.assertIn(key, other)
+            self.assertEqual(other[key], {"accepted": True, "nodes": 3, "payloads": 1})
+            self.assertIsNone(access.get(key))
+
+    def test_a_forked_compilation_writes_the_snapshot_inspect_compiler_does(self):
+        # (byte for byte: the records' digests and checks are the tool's own run's)
+        _, digest = report.inspect(str(self.PROGRAM), 120)
+        env = {key: value for key, value in os.environ.items() if not key.startswith("PYSTACHY_")}
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "inspection"
+            subprocess.run([sys.executable, str(report.ROOT / "tools/inspect_compiler.py"), str(self.PROGRAM),
+                            "--output", str(output), "--typed-after-only", "--guard-evidence"],
+                           env=dict(env, PYSTACHY_HOME=str(report.ROOT)), check=True, capture_output=True, timeout=120)
+            self.assertEqual(digest, hashlib.sha256((output / "typed-after.json").read_bytes()).hexdigest())
+
+    def test_a_rejected_program_and_a_compilation_past_its_time_fail(self):
+        with tempfile.TemporaryDirectory() as directory:
+            program = Path(directory) / "rejected.py"
+            program.write_text("x: int = 'one'\nprint(x)\n")
+            with self.assertRaisesRegex(ValueError, "inspection rejected"):
+                report.inspect(str(program), 120)
+            output = Path(directory) / "late"
+            output.mkdir()
+            with self.assertRaises(subprocess.TimeoutExpired):
+                report.compiled(self.PROGRAM, output, dict(os.environ), 0.01)
+
+
+class CommittedReportTests(unittest.TestCase):
+    def test_committed_report_has_every_check_and_its_inputs(self):
+        text = report.REPORT.read_text()
+        self.assertEqual(set(report.recorded()), set(report.INPUTS))
+        for _, title, document, _ in report.CHECKS:
+            self.assertIn(f"| [{title}]({document}) |", text)
+            self.assertTrue((report.REPORT.parent / document.split("#")[0]).is_file(), document)
+
+
+if __name__ == "__main__":
+    unittest.main()
