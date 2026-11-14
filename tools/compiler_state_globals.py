@@ -21,6 +21,7 @@ bigints.BIGOPS bigints.BKEY bigints.PROMOTES bigints.NUMOPS bigints.NUMCALLS
 cached_run.BUILD_ENV cached_run.CPU_FIELDS cached_run.KEYED_ENV
 cache_toolchain.SYSTEM_INPUTS
 driver.COMPILER_SOURCES driver.CPUID driver.LLJIT_LLVM driver.RTPARTS
+jit_helpers.BARRED jit_helpers.COLD jit_helpers.LINKAGE jit_helpers.SCALARS
 dynamic.XCMP dynamic.XOPS dynamic.BINOPS dynamic.UNOPS dynamic.CMPOPS
 dynamic.BINDUNDERS dynamic.BUILTIN dynamic_proof.BUILTIN_KINDS dynamic_proof.BUILTIN_PAYLOADS
 dynamic_proof.BOX_TAGS expressions.ORDERS
