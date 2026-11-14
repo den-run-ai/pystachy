@@ -9,4 +9,9 @@ closed
 typed retained True True True
 none True True
 closed
+widened next True
+scalar sent again
+widened send True
+widened throw True
+scalar closed
 [exit 0]

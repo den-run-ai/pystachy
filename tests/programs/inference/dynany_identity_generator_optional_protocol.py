@@ -25,6 +25,21 @@ def same(first: Any, last: Any) -> bool:
     return first is last
 
 
+def scalar(value: float) -> Generator[float, str | None, None]:
+    try:
+        command = yield value
+        print("scalar sent", command)
+        yield value
+    except ValueError:
+        yield value
+    finally:
+        print("scalar closed")
+
+
+def widened(value: float) -> Generator[float | None, str | None, None]:
+    yield from scalar(value)
+
+
 def check() -> None:
     original: Any = float("nan")
     g = dynamic(original)
@@ -41,6 +56,11 @@ def check() -> None:
     none = typed(None)
     print("none", next(none) is None, none.throw(ValueError("retry")) is None)
     none.close()
+    numbers = widened(original)
+    print("widened next", next(numbers) is original)
+    print("widened send", numbers.send("again") is original)
+    print("widened throw", numbers.throw(ValueError("retry")) is original)
+    numbers.close()
 
 
 check()

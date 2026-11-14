@@ -24,7 +24,7 @@ def check(value: Any) -> None:
     first = next(g)
     print("optional", first is value, next(g) is None, next(g) is value)
     h = forwarded(value)
-    print("forwarded", next(h) is None, next(h) is value, next(h) is value)
+    print("forwarded", next(h) is None, h.send(None) is value, h.send(None) is value)
     print("default", next(g, value) is value, next(g, None) is None)
     boxed: Any = optional(value)
     print("boxed", next(boxed) is value, next(boxed) is None, next(boxed) is value)
