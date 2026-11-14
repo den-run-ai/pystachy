@@ -95,6 +95,7 @@ CPython runs the source.
 | `collections.Counter` | `Lib/collections/__init__.py` | Typed dict wrapper keeping the Python class's methods and docstrings |
 | `collections.namedtuple` | `Lib/collections/__init__.py` | Made by the compiler (`Loader.nt_class`): the function's argument checks and messages, and a NamedTuple class template for the class |
 | `functools` | `Modules/_functoolsmodule.c`, `Lib/functools.py` | Generic cache wrapper, plus adapted reduction, comparison-key and `partial` fallbacks, and the unchanged `update_wrapper()` and `wraps()`, which the compiler applies |
+| `platform` | `Lib/platform.py` (SHA-256 `75fe9b94662e55b91e19602bb75e6ca6132f7a53fb22844fc44a507a639127e1`) | `uname()`, whose fields the runtime reads from `uname(2)` as `os.uname()` does, with `_unknown_as_blank()`; `system()`, `node()`, `release()`, `version()`, `machine()` and the Python version functions; their docstrings |
 | `_pystachy_string` | `Objects/stringlib/unicode_format.h`, `Objects/unicodeobject.c` | `_string.formatter_parser()` and `formatter_field_name_split()`, returning lists |
 | `re` | `Lib/re/`, `Modules/_sre/sre_lib.h`, `sre.c` | Typed parser/compiler and matching engine with an explicit context stack |
 | `_pyrandom` | `Modules/_randommodule.c`, `Python/pyhash.c` | `_random.Random`'s Mersenne Twister, seeding and state; float hashing for float seeds |

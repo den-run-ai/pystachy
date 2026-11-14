@@ -36,6 +36,7 @@
 #include <sys/resource.h>
 #include <sys/select.h>
 #include <sys/stat.h>
+#include <sys/utsname.h>
 #ifdef __APPLE__
 #include <sys/random.h>
 #endif
@@ -7400,6 +7401,11 @@ Str *pys_cache_file_hash(Str *path, I limit) {
 }
 
 I pys_getpid(void) { return getpid(); }
+Str *pys_uname(I i) {            /* platform.uname()'s fields (lib/platform.py): the i-th of uname(2)'s, as CPython's os.uname() */
+  struct utsname u;
+  if (uname(&u) < 0) ioerr(errno);
+  return cstr(i == 0 ? u.sysname : i == 1 ? u.nodename : i == 2 ? u.release : i == 3 ? u.version : u.machine);
+}
 Str *pys_getcwd(void) {          /* os.getcwd(): CPython's posix_getcwd(), whose buffer grows by 1024 bytes while getcwd() fails with ERANGE */
   size_t size = 1024;
   for (;;) {

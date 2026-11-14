@@ -21,7 +21,7 @@ the [module guide](README.md#module-guide) summarizes what each module supports.
 | [Collections and functional tools](#collections-and-functional-tools) | [`collections`](#collections), [`copy`](#copy), [`enum`](#enum), [`heapq`](#heapq), [`itertools`](#itertools), [`functools`](#functools), [`operator`](#operator), [`contextlib`](#contextlib) |
 | [Numbers and randomness](#numbers-and-randomness) | [`random`](#random), [`statistics`](#statistics), [`mpz`](#mpz) |
 | [Dates and times](#dates-and-times) | [`datetime`](#datetime) |
-| [Files, OS and command line](#files-os-and-command-line) | [`io`](#io), [Binary files](#binary-files), [Path modules](#path-modules), [`pathlib`](#pathlib), [`glob`](#glob), [`shutil`](#shutil), [`argparse`](#argparse), [`getopt`](#getopt) |
+| [Files, OS and command line](#files-os-and-command-line) | [`io`](#io), [Binary files](#binary-files), [Path modules](#path-modules), [`pathlib`](#pathlib), [`glob`](#glob), [`shutil`](#shutil), [`argparse`](#argparse), [`getopt`](#getopt), [`platform`](#platform) |
 | [Processes and threads](#processes-and-threads) | [`_thread`](#_thread), [`threading`](#threading), [`atexit`](#atexit) |
 | [Runtime services](#runtime-services) | [`abc`](#abc), [`types`](#types), [`warnings`](#warnings), [`logging`](#logging), [`traceback`](#traceback), [`weakref` and `_weakref` (prototype)](#weakref-and-_weakref-prototype) |
 | [Native interoperability](#native-interoperability) | [`ctypes`](#ctypes) |
@@ -1456,6 +1456,27 @@ prefixes, GNU option interleaving, a leading `+`, and `POSIXLY_CORRECT` through
 
 `longopts` must be `list[str]`; CPython also accepts one string. Messages are
 untranslated. Error messages and parsing otherwise follow the upstream code.
+
+### `platform`
+
+A subset implementation of CPython's `platform` ([test](../tests/programs/library/lib_platform.py)).
+
+- `uname()` gives the fields of the system's `uname(2)`, which CPython reads through
+  `os.uname()`: `system`, `node`, `release`, `version` and `machine`, a field that is
+  `unknown` as `''`. `system()`, `node()`, `release()`, `version()` and `machine()` are its
+  fields. Its result is a NamedTuple of those five; CPython's has a sixth item, `processor`,
+  which it reads from the command `uname -p`.
+- `python_implementation()` is `'Pystachy'`
+  ([deviation](../tests/deviations/lib_platform_implementation.py)): a program that tests it for
+  `'CPython'` or `'PyPy'` takes its other branch. `python_version()` and
+  `python_version_tuple()` give the version of the Python language that Pystachy compiles,
+  `sys.version_info`'s.
+
+Not supported, as compile-time errors where used: `platform()`, `processor()`,
+`architecture()`, `libc_ver()`, `freedesktop_os_release()`, `system_alias()`, the functions
+of other systems (`win32_ver()`, `mac_ver()` and the like) and those that describe CPython's
+build (`python_build()`, `python_compiler()`, `python_branch()`, `python_revision()`)
+([error test](../tests/errors/library/lib_platform_platform.py)).
 
 ## Processes and threads
 

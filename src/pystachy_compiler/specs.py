@@ -1050,7 +1050,7 @@ RUNTIME: dict[str, str] = {
     "repr_leave": "None:%ptr|I|", "alloc": "%ptr:int|A|", "new": "%ptr:int|A|", "gc_slow": "%ptr:int,int|A|", "on_stack": "int:%ptr|I|", "box": "%ptr:*T|A|", "ubox": "%ptr:int,*T|A|", "ubox_opt": "%ptr:int,%ptr,int|A|", "unpack_check": "None:int,int|R|", "unpack_ex_check": "None:int,int|R|",
     # errors and the process
     "raise": "None:str,str|R N|", "exit": "None:int|R N I|", "exit_msg": "None:str|R N I|", "argv": "list[str]:|I|", "warnoptions": "list[str]:|A I|",
-    "platform": "str:|A|", "errno": "int:str|R A|", "system": "int:str|R I|", "execv": "None:str,list[str]|R N A I rL|", "getpid": "int:|I|", "getcwd": "str:|R A I|", "exists": "bool:str|I|",
+    "platform": "str:|A|", "errno": "int:str|R A|", "system": "int:str|R I|", "execv": "None:str,list[str]|R N A I rL|", "getpid": "int:|I|", "getcwd": "str:|R A I|", "uname": "str:int|R A I|", "exists": "bool:str|I|",
     "path_join": "str:str,str|A|", "path_basename": "str:str|A|", "path_dirname": "str:str|A|", "path_split": "tuple[str,str]:str|A|",
     "path_splitext": "tuple[str,str]:str|A|", "path_isabs": "bool:str||", "path_normpath": "str:str|R A|",
     "path_abspath": "str:str|R A I|", "path_relpath": "str:str,str|R A I|", "path_expanduser": "str:str|R A I|",
