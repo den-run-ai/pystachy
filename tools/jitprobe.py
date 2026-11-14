@@ -11,7 +11,10 @@ PYSTACHY_JIT_LAUNCHER=lli) in both levels of code generation (#430): the runner 
 the -O it is given, and for -O0 lli's ORC links an object of llc's beside a main module that holds
 only the runtime callbacks' constructor. Each covers argv, exception unwinding, values that a loop
 passes to an except clause (critical edges split for -O0), coroutine lowering, GC stress, signal
-status and the PYSTACHY_TIMING record that names the runner.
+status and the PYSTACHY_TIMING record that names the runner. PYSTACHY_JIT_OPT=2, LLVM's -O2
+pipeline in place of the JIT's cleanup, keeps the same behavior under GC stress, and the module
+the runner executes shows -O2's GlobalOpt (main marked local_unnamed_addr, which the cleanup never
+does).
 """
 import argparse
 import os
@@ -177,6 +180,7 @@ def main():
         env = os.environ | {"PYSTACHY_PATH": str(temp), "PYSTACHY_PROGRAM_CACHE": "0", "PYSTACHY_CACHE": str(cache)}
         env.pop("PYSTACHY_JIT_INLINE", None)  # (the default's inliner is what is checked first)
         env.pop("PYSTACHY_JIT_CODEGEN", None)
+        env.pop("PYSTACHY_JIT_OPT", None)
         env.pop("PYSTACHY_TIMING", None)
         runners = {"lljit": env | {"PYSTACHY_LLVM": str(runnerdir), "PYSTACHY_JIT_LAUNCHER": "auto"},
                    "lli": env | {"PYSTACHY_LLVM": str(bindir), "PYSTACHY_JIT_LAUNCHER": "lli"}}
@@ -321,7 +325,34 @@ def main():
                     if signal_case.returncode != -signal.SIGTERM or not signal_case.stdout.endswith(b"out\n") or signal_case.stderr != b"last\n":
                         raise RuntimeError(f"{where}: codegen={mode} changed signal status/output: {signal_case}")
                 print(f"{where}: default and -O0 code generation ({'the runner' if runner else 'ORC, and llc objects'}) preserve argv, callback exceptions, except-clause values, GC stress and SIGTERM")
+                # PYSTACHY_JIT_OPT=2: LLVM's -O2 pipeline in place of the cleanup (#430). GlobalOpt,
+                # which -O2 runs and the cleanup does not, marks main local_unnamed_addr (no attribute
+                # that FunctionAttrs infers serves: the program calls the runtime, which it cannot see)
+                optimized_main = r"^define [^\n]*@main\([^\n]*\blocal_unnamed_addr\b"
+                if re.search(optimized_main, executed, re.MULTILINE):
+                    raise RuntimeError(f"{where}: the default cleanup marked main local_unnamed_addr: the -O2 check below proves nothing")
+                optimized = chosen | {"PYSTACHY_JIT_OPT": "2", "PYSTACHY_GC_STRESS_PROGRAM": "1"}
+                capture.unlink(missing_ok=True)
+                if run(cmd + ["run", str(source), *arguments], optimized) != expected:
+                    raise RuntimeError(f"{where}: PYSTACHY_JIT_OPT=2 output/argv/callback exception differs under GC stress")
+                tuned = capture.read_text()
+                if not re.search(optimized_main, tuned, re.MULTILINE):
+                    raise RuntimeError(f"{where}: PYSTACHY_JIT_OPT=2 did not run LLVM's -O2 pipeline (main is not local_unnamed_addr)")
+                remaining = {name for name in dead if f"@{name}(" in tuned}
+                if remaining:
+                    raise RuntimeError(f"{where}: PYSTACHY_JIT_OPT=2 let {len(remaining)} unused functions reach the JIT")
+                for callback in ("pys_obj_eq", "pys_obj_cmp", "pys_obj_repr"):
+                    if not re.search(rf"^define .*?@{callback}\(", tuned, re.MULTILINE):
+                        raise RuntimeError(f"{where}: PYSTACHY_JIT_OPT=2 removed runtime callback {callback}")
+                if run(cmd + ["run", str(coroutine)], optimized) != coroutine_expected:
+                    raise RuntimeError(f"{where}: PYSTACHY_JIT_OPT=2 coroutine output/finally differs under GC stress")
+                if re.search(r"\b(?:call|invoke)\b[^\n]*@llvm\.coro\.", capture.read_text()):
+                    raise RuntimeError(f"{where}: PYSTACHY_JIT_OPT=2 left an unlowered coroutine operation")
+                if run(cmd + ["run", str(handler)], optimized) != handler_expected:
+                    raise RuntimeError(f"{where}: PYSTACHY_JIT_OPT=2 values reaching an except clause differ")
+                print(f"{where}: PYSTACHY_JIT_OPT=2 runs -O2 and preserves argv, callback exceptions, coroutines, except-clause values and callbacks under GC stress")
             for setting, invalid in [("PYSTACHY_JIT_CODEGEN", value) for value in ("", "1", "-O0", "0;false")] + \
+                                    [("PYSTACHY_JIT_OPT", value) for value in ("", "0", "3", "O2")] + \
                                     [("PYSTACHY_JIT_LAUNCHER", value) for value in ("", "LLI", "lljit", "auto;lli")]:
                 invocation.unlink(missing_ok=True)
                 codegen.unlink(missing_ok=True)
@@ -330,7 +361,7 @@ def main():
                                           timeout=60, check=False)
                 if rejected.returncode == 0 or rejected.stdout or setting.encode() + b":" not in rejected.stderr or invocation.exists() or codegen.exists():
                     raise RuntimeError(f"{label}: invalid {setting}={invalid!r} was not rejected before the JIT")
-            print(f"{label}: invalid code generation and runner settings rejected")
+            print(f"{label}: invalid code generation, optimization and runner settings rejected")
     return 0
 
 

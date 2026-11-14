@@ -27,7 +27,7 @@ PYS=${COMPILER:-./pystachy}
 PY=${PY:-python3}
 MODES=${MODES:-jit aot}
 case $PYS in *" "*) ;; *) [ -x "$PYS" ] || { echo "tools/variants.sh: no compiler $PYS (make, or COMPILER=...)" >&2; exit 2; } ;; esac
-ign=$(env | sed -nE 's/^(PYSTACHY_(PATH|CFLAGS|GC|GC_STRESS|GC_STRESS_PROGRAM|IRCHECK|IRFX|OPT|JIT_INLINE|JIT_CODEGEN|JIT_LAUNCHER|UNICODE_AUDIT|ARGV0))=.*$/\1/p' | sort -u)
+ign=$(env | sed -nE 's/^(PYSTACHY_(PATH|CFLAGS|GC|GC_STRESS|GC_STRESS_PROGRAM|IRCHECK|IRFX|OPT|JIT_INLINE|JIT_OPT|JIT_CODEGEN|JIT_LAUNCHER|UNICODE_AUDIT|ARGV0))=.*$/\1/p' | sort -u)
 for e in $ign; do echo "tools/variants.sh: ignoring $e=$(printenv "$e")"; unset "$e"; done
 export PYSTACHY_HOME="$ROOT"
 W=$(mktemp -d "${TMPDIR:-/tmp}/pystachy-variants.XXXXXX") || exit 1

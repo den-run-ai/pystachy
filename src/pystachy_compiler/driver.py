@@ -643,6 +643,7 @@ def main() -> None:
     aotopt = aot_optimization() if cmd == "build" else "2"
     jitflags = ""
     codegen = "2"
+    jitopt = "1"
     runner = ""
     jitinline = JIT_INLINE
     if cmd == "run":
@@ -652,6 +653,12 @@ def main() -> None:
         codegen = os.getenv("PYSTACHY_JIT_CODEGEN", "2")
         if codegen != "0" and codegen != "2":
             fail(f"PYSTACHY_JIT_CODEGEN: {codegen} is not 0 (-O0 code generation) or 2 (the default)", 0)
+        # PYSTACHY_JIT_OPT=2: LLVM's -O2 pipeline over the program's module in place of the JIT's
+        # cleanup, for a program whose loops run long enough to repay optimizing at each launch: a
+        # startup/execution tradeoff, opt-in as -O0 code generation is (#430)
+        jitopt = os.getenv("PYSTACHY_JIT_OPT", "1")
+        if jitopt != "1" and jitopt != "2":
+            fail(f"PYSTACHY_JIT_OPT: {jitopt} is not 1 (the JIT's cleanup, the default) or 2 (LLVM's -O2 pipeline)", 0)
         # what runs the program (jit_launcher), read before the program cache, so that a hit rejects
         # what a run without it rejects
         runner = os.getenv("PYSTACHY_JIT_LAUNCHER", "auto")
@@ -1292,6 +1299,11 @@ def main() -> None:
             # coro-cleanup. A module without them keeps the pipeline above
             split = clean.replace("simplifycfg)", "simplifycfg,coro-elide),coro-split") if clean.startswith("cgscc(") else f"cgscc({clean},coro-split)"
             passes = f"coro-early,globaldce,always-inline,{split},coro-cleanup,globaldce"
+        if jitopt == "2":
+            # PYSTACHY_JIT_OPT=2: LLVM's -O2 pipeline, as an AOT build runs over the program, but for
+            # the runtime, which this tier still calls: it lowers coroutines itself, and its inliner
+            # takes no IR-line budget (PYSTACHY_JIT_INLINE). The steps below follow it unchanged
+            passes = "default<O2>"
         # SSA promotion can leave unused feedback cycles (including numeric identity
         # generations). Remove those after inlining and coroutine lowering are complete;
         # instcombine alone does not eliminate cycles with no externally used result.
