@@ -68,14 +68,14 @@ CHECKS = (
 # (union payload bits are proved with their function's union reads: one list names both)
 LISTED_WITH = {"union_payload": "union"}
 # What a report's counts are made from, as git pathspecs (a `*` also matches `/`): a change to
-# any of them may change them. Helper packages of the tests live directly in tests/; the runner
-# selects checks and controls compilation, so it is an input too.
+# any of them may change them. Sidecars can put the repository root on the import path,
+# so the corpus includes Python helpers outside tests/ too.
 INPUTS = {
     "compiler": ("pystachy.py", "VERSION", "src", "lib"),
     "checkers": ("tools/lean_report.py", "tools/inspect_compiler.py", "tools/check_lean_*.py", "tools/lean_boundary/*.lean",
                  "tools/lean_boundary/lakefile.toml", "tools/lean_boundary/lake-manifest.json",
                  "tools/lean_boundary/lean-toolchain"),
-    "corpus": ("tests/*.py", "tests/*.path"),
+    "corpus": ("*.py", "*.path"),
 }
 MARK = "<!-- lean-report "
 MESSAGE = 160  # characters of a reason kept in the report
@@ -88,14 +88,115 @@ def git(*args):
     return subprocess.run(["git", *args], cwd=ROOT, check=True, capture_output=True, text=True).stdout
 
 
-def inputs():
-    """Each input group's digest (its tracked files' modes and blob ids) and whether the
-    checkout has changes to it, untracked files included, that the digest does not show."""
+def namespace_inputs(sources, tracked, programs):
+    """Empty namespace directories can activate optional imports without a .py file.
+
+    Reuse the corpus's conservative import lookup, including imports in branches and
+    functions. Record existing namespace candidates; only indexed directory trees are
+    trusted. This need not scan generated directories or reject ordinary bytecode caches.
+    """
+    reach, namespaces, seen, lookups = corpus.Reach(), set(), set(), {}
+    pending = []
+    starts = {name for name in sources if name.startswith(("src/", "lib/", "tools/check_lean_"))
+              or name in ("tools/lean_report.py", "tools/inspect_compiler.py")
+              or any(Path(name).match(pattern) for pattern in corpus.PATTERNS)}
+    starts.update((ROOT / program).relative_to(ROOT).as_posix() for program in programs)
+    for name in starts:
+        path = ROOT / name
+        if path.suffix != ".py" or not path.is_file():
+            continue
+        directories = [path.resolve().parent, ROOT, ROOT / "tools", ROOT / "lib"]
+        sidecar = path.with_suffix(".path")
+        if sidecar.is_file():
+            directories += [ROOT / part for part in sidecar.read_text().strip().split(":") if part]
+        pending.append((path, tuple(directories)))
+    while pending:
+        path, directories = pending.pop()
+        if (path, directories) in seen:
+            continue
+        seen.add((path, directories))
+        _, imports = reach.facts(path)
+        for level, parts, names in imports:
+            if level >= len(path.parents):
+                continue  # invalid relative import; compilation will reject it
+            bases = directories if level == 0 else [path.parents[level - 1]]
+            for module in [parts] + [parts + [name] for name in names]:
+                if module:
+                    key = (tuple(bases), tuple(module))
+                    if key not in lookups:
+                        lookups[key] = reach.files(bases, module, namespaces)
+                    pending += [(source, directories) for source in lookups[key]]
+    indexed = {parent for name in tracked for parent in (ROOT / name).parents if parent.is_relative_to(ROOT)}
+    untrusted = [str(path.relative_to(ROOT)) for path in namespaces if path.resolve() not in indexed]
+    return sorted(untrusted), sorted(str(path.relative_to(ROOT)) for path in namespaces)
+
+
+def source_checkout(programs=()):
+    """Whether repository source and import paths have index-backed identities.
+
+    Git status omits ignored sources. Reject those, external search paths and source
+    symlinks escaping the checkout; index hashes cannot identify their contents.
+    Internal tracked links are safe because all repository Python sources are inputs.
+    Bytecode caches and other generated non-source files do not affect this audit.
+    """
+    entries = [entry.split("\t", 1) for entry in git("ls-files", "--stage", "-z").split("\0") if entry]
+    tracked = {name for _, name in entries}
+    links = {name for stage, name in entries if stage.startswith("120000 ")}
+    # No exclude-standard: this includes ignored files, including files in ignored
+    # directories. NUL separation also handles locally created unusual names.
+    others = {name for name in git("ls-files", "--others", "-z").split("\0") if name}
+    sources = {name for name in tracked | others if name.endswith((".py", ".path"))}
+    problems = [f"untracked or ignored source: {name}" for name in sorted(sources & others)]
+    root = ROOT.resolve()
+    for name in sources | links | others:
+        path = ROOT / name
+        if path.is_symlink() and (name in sources or path.is_dir()):
+            try:
+                target = path.resolve().relative_to(root).as_posix()
+                if name not in tracked or not (target in tracked or any(p.startswith(target + "/") for p in tracked)):
+                    problems.append(f"untracked source link or target: {name}")
+            except (OSError, RuntimeError, ValueError):
+                problems.append(f"source link outside checkout or unresolved: {name}")
+    for name in sources:
+        if name.endswith(".path"):
+            try:
+                for directory in (ROOT / name).read_text().strip().split(":"):
+                    if directory:
+                        (ROOT / directory).resolve().relative_to(root)
+            except (OSError, RuntimeError, ValueError):
+                problems.append(f"external or unreadable import path: {name}")
+    for program in programs:
+        try:
+            if (ROOT / program).suffix != ".py" or (ROOT / program).resolve().relative_to(root).as_posix() not in tracked:
+                problems.append(f"untracked program source: {program}")
+        except (OSError, RuntimeError, ValueError):
+            problems.append(f"external or unresolved program source: {program}")
+    namespaces = []
+    if not problems:
+        untrusted, namespaces = namespace_inputs(sources, tracked, programs)
+        problems += [f"untracked namespace directory: {name}" for name in untrusted]
+    return sorted(links), namespaces, problems[:8]
+
+
+def inputs(programs=()):
+    """Tracked modes/blob ids and namespace lookups, plus whether untracked working
+    contents make those identities insufficient for proof reuse."""
+    links, namespaces, problems = source_checkout(programs)
     found = {}
     for group, specs in INPUTS.items():
+        if group == "corpus":
+            specs = (*specs, *links)
         listed = git("ls-files", "--stage", "--", *specs)
         changed = git("status", "--porcelain", "--untracked-files=all", "--", *specs)
+        if group == "compiler":
+            # Loader.platform_test folds sys.platform before typed IR exists.
+            listed += "\nhost-platform-v1\n" + sys.platform
+        if group == "corpus":
+            listed += "\nnamespace-inputs-v1\n" + json.dumps(namespaces)
         found[group] = {"digest": hashlib.sha256(listed.encode()).hexdigest()[:16], "clean": changed == ""}
+    found["corpus"]["clean"] &= not problems
+    found["corpus"]["programs"] = sorted(set(programs))
+    found["corpus"]["untrusted"] = problems
     return found
 
 
@@ -432,7 +533,8 @@ def render(summary, meta):
              f"{number(summary['programs'])} differential test programs and deviations once, and each check below "
              "ran on its typed IR. Each row's document gives its model, its trust boundary and what its known "
              "rejections are; a new rejection is an investigation target, not by itself a compiler bug. "
-             f"Python {meta['python']}, {meta['lean']}; the checks took {number(meta['minutes'])} minutes of worker time.",
+             f"Python {meta['python']} on {meta.get('platform', 'an unrecorded platform')}, {meta['lean']}; "
+             f"the checks took {number(meta['minutes'])} minutes of worker time.",
              "", "| Check | Programs | Functions | Proved | Rejected | Unsupported |", "|---|--:|--:|--:|--:|--:|"]
     for key, title, document, unit in CHECKS:
         row = summary["checks"][key]
@@ -463,7 +565,8 @@ def render(summary, meta):
     lines += ["", "Programs or checks that did not complete:", ""]
     lines += [f"- `{item['program']}`: {item['reason']}" for item in summary["failed"]] or ["- none"]
     lines += ["", "## Inputs", "",
-              "Digests of the tracked files each group names (`tools/lean_report.py`'s `INPUTS`); "
+              "Digests of tracked source, host platform and namespace import lookups "
+              "(`tools/lean_report.py`'s `INPUTS`); "
               "`python3.13 tools/lean_report.py --status` compares them with a checkout. Regenerate after a "
               "change to typed IR, a pass a check covers or a checker, and commit the report when it changes.",
               "Only records made from clean inputs can be resumed. Dirty experimental inputs and older "
@@ -509,7 +612,12 @@ def recorded(path=REPORT):
 
 def status(path=REPORT):
     """Print which input groups differ from the report's; 0 when none does."""
-    before, now = recorded(path), inputs()
+    before = recorded(path)
+    programs = before.get("corpus", {}).get("programs", [])
+    if not isinstance(programs, list) or not all(isinstance(program, str) for program in programs):
+        print("corpus: invalid recorded program paths")
+        return 1
+    now = inputs(programs)
     stale = [group for group in INPUTS if before.get(group, {}).get("digest") != now[group]["digest"]
              or not clean_inputs(before) or not now[group]["clean"]]
     for group in INPUTS:
@@ -517,6 +625,8 @@ def status(path=REPORT):
             "changed" if before.get(group, {}).get("digest") != now[group]["digest"] else
             "uncommitted changes" if not now[group]["clean"] else "report lacks clean input provenance")
         print(f"{group}: {state}")
+    for problem in now["corpus"].get("untrusted", []):
+        print(f"  {problem}")
     return 1 if stale else 0
 
 
@@ -550,10 +660,11 @@ def main(argv=None):
         return 0
     if args.jobs < 1 or args.timeout <= 0:
         parser.error("use at least one worker and a positive timeout")
-    found = inputs()
+    found = inputs(args.programs)
     if args.output.resolve() == REPORT and (args.programs or not clean_inputs(found)):
         parser.error("the committed report needs the whole corpus and a checkout without changes to its inputs: "
-                     "pass --output for another file")
+                     "pass --output for another file" +
+                     ("; " + "; ".join(found["corpus"].get("untrusted", [])) if found["corpus"].get("untrusted") else ""))
     programs = args.programs or corpus.corpus()
     if len(set(programs)) != len(programs):
         parser.error("duplicate programs")
@@ -563,6 +674,7 @@ def main(argv=None):
     except OSError as error:
         parser.error(f"cannot read checker executable: {error}")
     header = {"commit": git("rev-parse", "--short=12", "HEAD").strip(), "python": platform.python_version(),
+              "platform": sys.platform,
               "lean": "Lean " + toolchain.rsplit(":v", 1)[-1],
               "checker_executables": executables,
               "inputs": found}
@@ -573,8 +685,8 @@ def main(argv=None):
         # dirty run cannot be resumed, and old headers omitted this provenance.
         if not clean_inputs(previous.get("inputs", {})) or not clean_inputs(found):
             parser.error(f"{args.records} lacks matching clean input provenance: run without --resume")
-        if {key: previous.get(key) for key in ("python", "lean", "inputs", "checker_executables")} != {
-                key: header[key] for key in ("python", "lean", "inputs", "checker_executables")}:
+        if {key: previous.get(key) for key in ("python", "platform", "lean", "inputs", "checker_executables")} != {
+                key: header[key] for key in ("python", "platform", "lean", "inputs", "checker_executables")}:
             parser.error(f"{args.records} was made from other inputs: run without --resume")
         header, wanted = previous, set(programs)
         records = [record for record in records if record["program"] in wanted]
@@ -594,7 +706,7 @@ def main(argv=None):
             if args.progress:
                 print(f"{len(records)}/{len(programs)} {records[-1]['program']} {records[-1]['seconds']}s",
                       file=sys.stderr, flush=True)
-    if inputs() != found:
+    if inputs(args.programs) != found:
         raise SystemExit("the report's inputs changed while it ran: run it again")
     if checker_executables(args.checker, args.access_checker) != executables:
         raise SystemExit("the checker executables changed while the report ran: run it again")

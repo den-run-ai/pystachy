@@ -36,6 +36,17 @@ rejects both kinds of records as evidence for a clean checkout. `--render` alway
 requires another `--output`, keeping historical or experimental records' original
 input provenance and labels. Generate the committed report through a full run or
 a validated `--resume`, which checks the whole corpus and execution identities.
+The corpus's import paths can include the repository root. Clean evidence therefore
+requires all repository Python sources and `.path` sidecars to be tracked and
+unchanged, including helpers outside `tests/`. Ignored Python sources, such as
+`build/ref` copies, need an experimental `--output` or a separate clean worktree;
+ordinary `__pycache__` bytecode files are harmless. External `.path` directories
+and source/package symlinks leaving the checkout cannot certify clean evidence.
+Tracked internal symlinks remain supported because their source targets are inputs too.
+Import lookups also account for namespace directories, including an empty directory
+that activates an optional import; untracked namespace candidates cannot certify clean
+evidence. The compiler identity includes `sys.platform`, which it folds before typed
+IR is generated, so a report from another host platform cannot be reused as current evidence.
 The dated sweeps in each check's document explain the rejections it lists.
 
 [GUARDS.md](GUARDS.md) describes the bounded null/union CI examples and the strict

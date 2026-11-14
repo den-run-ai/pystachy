@@ -161,6 +161,8 @@ class ResumeCheckerTests(unittest.TestCase):
                 original = (root / "records.jsonl").read_bytes()
                 self.assertEqual(report.main([*argv, "--resume"]), 0)
                 self.assertEqual(checked.call_count, 1)  # unchanged proofs are reused
+                with mock.patch.object(report.sys, "platform", "other-host"), self.assertRaises(SystemExit):
+                    report.main([*argv, "--resume"])
                 for path in (checker, access):
                     with self.subTest(changed=path.name):
                         path.write_bytes(b"replacement checker")
@@ -305,6 +307,144 @@ class ResumeInputTests(unittest.TestCase):
                     self.assertEqual(report.status(experiment), 1)
                     records.write_bytes(clean_records)
                 self.assertEqual(checked.call_count, calls)
+
+
+class ImportInputTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.root = Path(self.directory.name)
+        self.write(".gitignore", "ignored_*.py\nhelper.py\nignored_pkg/\ninspect_compiler/\nbuild/\n__pycache__/\n")
+        self.write("tests/probe.py", "from helper import value\nprint(value())\n")
+        self.write("tools/lean_boundary/lean-toolchain", "leanprover/lean4:v4.35.0\n")
+        subprocess.run(["git", "init", "-q", str(self.root)], check=True)
+        self.commit()
+
+    def write(self, name, text):
+        path = self.root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+        return path
+
+    def commit(self):
+        subprocess.run(["git", "add", "."], cwd=self.root, check=True)
+        subprocess.run(["git", "-c", "user.name=Test", "-c", "user.email=test@example.com",
+                        "commit", "-qm", "test inputs"], cwd=self.root, check=True)
+
+    def test_ignored_helper_changes_actual_snapshot_and_cannot_resume(self):
+        program = self.root / "tests/probe.py"
+        helper = self.write("tests/helper.py", "def value() -> int:\n    return 11\n")
+        # Use the real compiler and its library, with this real Git fixture's
+        # program/import directory. Only the later Lean verdict work is mocked.
+        _, first = report.inspect(str(program), 120)
+        checker = self.write("checker", "checker")
+        records, output = self.root / "records.jsonl", self.root / "report.md"
+        argv = ["--jobs", "1", "--checker", str(checker), "--access-checker", str(checker),
+                "--records", str(records), "--output", str(output)]
+        with mock.patch.object(report.corpus, "corpus", return_value=["tests/probe.py"]), \
+                mock.patch.object(report.storage_corpus, "select", return_value=[]), \
+                mock.patch.object(report, "check_program", return_value=record("tests/probe.py")) as checked, \
+                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            with mock.patch.object(report, "ROOT", self.root):
+                self.assertEqual(report.main(argv), 0)
+                original = records.read_bytes()
+                before = report.inputs()
+            helper.write_text("def value() -> int:\n    return 29\n")
+            _, second = report.inspect(str(program), 120)
+            self.assertNotEqual(first, second)
+            with mock.patch.object(report, "ROOT", self.root):
+                self.assertEqual(report.inputs()["corpus"]["digest"], before["corpus"]["digest"])
+                with self.subTest(action="resume"), self.assertRaises(SystemExit):
+                    report.main([*argv, "--resume"])
+                with self.subTest(action="status"):
+                    self.assertEqual(report.status(output), 1)
+                helper.unlink()
+                with self.subTest(action="cleaned resume"), self.assertRaises(SystemExit):
+                    report.main([*argv, "--resume"])
+                with self.subTest(action="cleaned status"):
+                    self.assertEqual(report.status(output), 1)
+                self.assertEqual(records.read_bytes(), original)
+                self.assertEqual(checked.call_count, 1)
+
+    def test_ignored_source_packages_and_reference_copies_are_untrusted(self):
+        with mock.patch.object(report, "ROOT", self.root):
+            clean = report.inputs()
+            self.assertTrue(report.clean_inputs(clean))
+            # Normal bytecode caches are not source inputs.
+            self.write("src/__pycache__/compiler.cpython-313.pyc", "cache")
+            self.assertEqual(report.inputs(), clean)
+            for name in ("src/ignored_helper.py", "lib/ignored_helper.py", "tests/ignored_helper.py",
+                         "tools/inspect_compiler/__init__.py", "tests/ignored_pkg/__init__.py",
+                         "build/ref/compiler.py", "__pycache__/ignored_helper.py"):
+                with self.subTest(source=name):
+                    path = self.write(name, "value = 11\n")
+                    self.assertFalse(report.clean_inputs(report.inputs()))
+                    path.unlink()
+                    self.assertEqual(report.inputs(), clean)
+
+    def test_sidecars_and_internal_links_cover_helpers_outside_tests(self):
+        helper = self.write("ports/fixture/value.py", "value = 11\n")
+        sidecar = self.write("tests/probe.path", "ports/fixture\n")
+        (self.root / "tests/alias.py").symlink_to("../ports/fixture/value.py")
+        (self.root / "tests/pkg").symlink_to("../ports/fixture", target_is_directory=True)
+        self.commit()
+        with mock.patch.object(report, "ROOT", self.root):
+            before = report.inputs()
+            self.assertTrue(report.clean_inputs(before))
+            helper.write_text("value = 29\n")
+            self.assertFalse(report.clean_inputs(report.inputs()))
+            self.commit()
+            after = report.inputs()
+            self.assertTrue(report.clean_inputs(after))
+            self.assertNotEqual(before["corpus"]["digest"], after["corpus"]["digest"])
+            with tempfile.TemporaryDirectory() as outside:
+                external = Path(outside)
+                (external / "value.py").write_text("value = 41\n")
+                sidecar.write_text(outside + "\n")
+                self.commit()
+                self.assertFalse(report.clean_inputs(report.inputs()))
+                sidecar.write_text("ports/fixture\n")
+                self.commit()
+                for name, target in (("tests/external.py", external / "value.py"),
+                                     ("tests/external_pkg", external)):
+                    with self.subTest(link=name):
+                        link = self.root / name
+                        link.symlink_to(target, target_is_directory=target.is_dir())
+                        self.commit()
+                        self.assertFalse(report.clean_inputs(report.inputs()))
+                        link.unlink()
+                        self.commit()
+                self.assertFalse(report.clean_inputs(report.inputs([str(external / "value.py")])))
+            self.assertTrue(report.clean_inputs(report.inputs()))
+
+    def test_empty_namespace_and_host_platform_change_proof_inputs(self):
+        program = self.write("tests/programs/core/namespace.py",
+                             "try:\n    import ghost\nexcept ImportError:\n    print(1)\nelse:\n    print(2)\n")
+        self.commit()
+        _, absent = report.inspect(str(program), 120)
+        with mock.patch.object(report, "ROOT", self.root):
+            before = report.inputs()
+            self.assertTrue(report.clean_inputs(before))
+        namespace = program.parent / "ghost"
+        namespace.mkdir()
+        _, present = report.inspect(str(program), 120)
+        self.assertNotEqual(absent, present)
+        with mock.patch.object(report, "ROOT", self.root):
+            self.assertFalse(report.clean_inputs(report.inputs()))
+            self.write("tests/programs/core/ghost/anchor.txt", "tracked directory\n")
+            self.commit()
+            indexed = report.inputs()
+            self.assertTrue(report.clean_inputs(indexed))
+            self.assertNotEqual(before["corpus"]["digest"], indexed["corpus"]["digest"])
+            (namespace / "anchor.txt").unlink()
+            namespace.rmdir()
+            self.assertNotEqual(report.inputs()["corpus"]["digest"], indexed["corpus"]["digest"])
+            with mock.patch.object(report.sys, "platform", "other-host"):
+                self.assertNotEqual(report.inputs()["compiler"]["digest"], before["compiler"]["digest"])
+                output = self.root / "report.md"
+                output.write_text(report.render(report.summarize([]), dict(META, inputs=before)))
+                with contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(report.status(output), 1)
 
 
 class StatusTests(unittest.TestCase):
