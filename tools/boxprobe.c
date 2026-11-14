@@ -19,7 +19,8 @@ Str *pys_obj_repr(I c, I a, I b) { (void)c; (void)a; (void)b; return cstr("<obje
 
 static uintptr_t held;                /* the one word that refers to the box a check holds */
 static Dyn *sibling;                  /* a live box of its chunk, and a live str of its str's chunk */
-static I *roots[] = {(I *)&held, (I *)&sibling};
+static List *sibling_list;            /* keeps the list chunk mapped for the atomic-box negative control */
+static I *roots[] = {(I *)&held, (I *)&sibling, (I *)&sibling_list};
 static const uintptr_t addr_xor = 0x5a5a5a5a5a5a5a5a;   /* an address xor this is not a root */
 static _Noreturn void bad(const char *what) { fprintf(stderr, "boxprobe: %s\n", what); exit(1); }
 
@@ -72,6 +73,48 @@ __attribute__((noinline)) static void sizes(void) {
   if (!s || s->size != 24) bad("an object of 16 bytes that is not a box has no byte of slack");
 }
 
+/* The wrapper is the only retained route to the list and its scanned numeric
+   companion after this frame returns. Check mutable aliases before collection,
+   then remove the wrapper's trace edge in the atomic-allocation negative control. */
+__attribute__((noinline)) static uintptr_t hold_list(int atomic) {
+  for (I attempt = 0; attempt < 1000; attempt++) {
+    List *list = pys_list_new_atomic(4);
+    sibling_list = pys_list_new_atomic(4);
+    if (gc_find(list) != gc_find(sibling_list)) continue;
+    pys_list_append(list, 1000);
+    Dyn *wrapper = pys_dyn_ref(&pys_dyntype_intlist, list);
+    List *alias = (List *)pys_dyn_unbox(wrapper, &pys_dyntype_intlist);
+    if (alias != list || alias->a != list->a || alias->ids != list->ids)
+      bad("reference round trip changed a mutable alias");
+    Dyn *item = pys_dyn_int(7000);
+    pys_dyn_setitem(wrapper, pys_dyn_int(0), item);
+    if (pys_list_get(alias, 0) != 7000 || pys_list_get_identity(alias, 0, 1) != item)
+      bad("write through boxed alias did not reach the original list");
+    pys_list_set(alias, 0, 8000);
+    if (pys_dyn_getitem(wrapper, pys_dyn_int(0))->v != 8000)
+      bad("write through typed alias did not reach the reference box");
+    if (atomic) {
+      Dyn *untraced = gc_box(1);
+      untraced->t = wrapper->t; untraced->v = wrapper->v;
+      wrapper = untraced;
+    }
+    held = (uintptr_t)wrapper;
+    return (uintptr_t)list ^ addr_xor;
+  }
+  bad("no two lists in one chunk");
+}
+
+__attribute__((noinline)) static void list_state(uintptr_t encoded, int alive) {
+  List *list = (List *)(encoded ^ addr_xor);
+  if (alive) {
+    if (list->len != 1 || list->a[0] != 8000 || !list->ids ||
+        ((Dyn *)list->ids[1])->t != &pys_dyntype_int || ((Dyn *)list->ids[1])->v != 8000)
+      bad("rooted reference box lost its mutable list or numeric companion");
+  } else if (list->cap || list->a || list->ids) {
+    bad("atomic reference box retained its otherwise unreachable list");
+  }
+}
+
 /* A box of the str "payload" that only held refers to, at offset off from the box. The box and its
    str share their chunks with sibling's, so a collection sweeps both chunks (rather than pooling
    them), and a dead box's slot is zeroed but for the free list's link in its first word. Returns
@@ -102,7 +145,7 @@ __attribute__((noinline)) static void dead(uintptr_t x) {
 }
 
 int main(void) {
-  gc_init(__builtin_frame_address(0), roots, 2);
+  gc_init(__builtin_frame_address(0), roots, 3);
   boxing_contracts();
   sizes();
   uintptr_t x = hold(8);               /* the payload word's address */
@@ -111,6 +154,12 @@ int main(void) {
   x = hold(16);                        /* one past the end: the next slot's address */
   scrub_collect();
   dead(x);
-  puts("boxprobe: boxing bits and reference addresses, 16-byte box slots, a box kept by its payload word's address, and the one-past-the-end control passed");
+  x = hold_list(0);
+  scrub_collect();
+  list_state(x, 1);
+  x = hold_list(1);
+  scrub_collect();
+  list_state(x, 0);
+  puts("boxprobe: boxing bits, mutable reference aliases, traced list companions, atomic-root negative control, 16-byte slots and one-past-the-end control passed");
   return 0;
 }
