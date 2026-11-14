@@ -19,7 +19,9 @@ from unittest import mock
 import lean_report as report
 
 META = {"commit": "0123456789ab", "date": "2026-11-13", "python": "3.13.0", "lean": "Lean 4.35.0", "minutes": 30,
-        "inputs": {"checkers": {"digest": "c" * 16}, "compiler": {"digest": "a" * 16}, "corpus": {"digest": "b" * 16}}}
+        "inputs": {"checkers": {"digest": "c" * 16, "clean": True},
+                   "compiler": {"digest": "a" * 16, "clean": True},
+                   "corpus": {"digest": "b" * 16, "clean": True}}}
 
 
 def row(obligations, proved, functions=1, unproved=()):
@@ -176,6 +178,133 @@ class ResumeCheckerTests(unittest.TestCase):
                     report.main([*argv, "--resume"])
                 self.assertEqual((root / "records.jsonl").read_bytes(), original)
                 self.assertEqual(checked.call_count, 1)
+
+
+class ResumeInputTests(unittest.TestCase):
+    def test_dirty_and_legacy_records_cannot_certify_clean_inputs(self):
+        # Keep the index unchanged while changing the consumed working files.
+        # These are real Git identities and cleanliness checks; only proof work
+        # is replaced, so a stale resume is observable as a skipped check_program.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            sources = {"compiler": "src/compiler.py", "checkers": "tools/check_lean_probe.py",
+                       "corpus": "tests/programs/probe.py"}
+            for name in [*sources.values(), "tools/lean_boundary/lean-toolchain"]:
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("leanprover/lean4:v4.35.0\n" if name.endswith("lean-toolchain") else "# original\n")
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            subprocess.run(["git", "add", "."], cwd=root, check=True)
+            subprocess.run(["git", "-c", "user.name=Test", "-c", "user.email=test@example.com",
+                            "commit", "-qm", "initial inputs"], cwd=root, check=True)
+            checker, access = root / "boundary", root / "access"
+            for path in (checker, access):
+                path.write_bytes(b"checker")
+            records, experiment, committed = root / "records.jsonl", root / "experiment.md", root / "REPORT.md"
+            argv = ["--jobs", "1", "--checker", str(checker), "--access-checker", str(access),
+                    "--records", str(records)]
+            with mock.patch.object(report, "ROOT", root), mock.patch.object(report, "REPORT", committed), \
+                    mock.patch.object(report.corpus, "corpus", return_value=[sources["corpus"]]), \
+                    mock.patch.object(report.storage_corpus, "select", return_value=[]), \
+                    mock.patch.object(report, "check_program", return_value=record(sources["corpus"])) as checked, \
+                    contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                clean = report.inputs()
+                self.assertTrue(all(item["clean"] for item in clean.values()))
+                for group, name in sources.items():
+                    source = root / name
+                    source.write_text("# dirty first\n")
+                    self.assertEqual(report.inputs()[group]["digest"], clean[group]["digest"])
+                    self.assertEqual(report.main([*argv, "--output", str(experiment)]), 0)
+                    before = records.read_bytes()
+                    calls = checked.call_count
+                    source.write_text("# dirty second\n")
+                    self.assertEqual(report.inputs()[group]["digest"], clean[group]["digest"])
+                    with self.subTest(group=group, action="dirty resume"):
+                        with self.assertRaises(SystemExit):
+                            report.main([*argv, "--output", str(experiment), "--resume"])
+                    source.write_text("# original\n")
+                    self.assertEqual(report.inputs(), clean)
+                    with self.subTest(group=group, action="clean resume"):
+                        with self.assertRaises(SystemExit):
+                            report.main([*argv, "--resume"])
+                    with self.subTest(group=group, action="clean report"):
+                        self.assertFalse(committed.exists(), "dirty proofs must not publish the clean report")
+                    with self.subTest(group=group, action="status"):
+                        self.assertEqual(report.status(experiment), 1)
+                    self.assertEqual(records.read_bytes(), before)
+                    self.assertEqual(checked.call_count, calls)
+                    committed.write_text("existing verified report\n")
+                    with self.subTest(group=group, action="render"), self.assertRaises(SystemExit):
+                        report.main([*argv, "--render"])
+                    with self.subTest(group=group, action="render output"):
+                        self.assertEqual(committed.read_text(), "existing verified report\n")
+                    committed.unlink(missing_ok=True)
+                # Clean, same-input resumes still reuse checked programs.
+                self.assertEqual(report.main(argv), 0)
+                calls = checked.call_count
+                self.assertEqual(report.main([*argv, "--resume"]), 0)
+                self.assertEqual(checked.call_count, calls)
+                clean_records = records.read_bytes()
+                # Rendering is historical output only, even with clean records:
+                # the full-run path certifies corpus and execution identities.
+                with self.assertRaises(SystemExit):
+                    report.main([*argv, "--render"])
+                # Legacy headers cannot distinguish this clean run from a dirty
+                # experimental run, so they must not be accepted implicitly.
+                header, rows = report.load(records)
+                for item in header["inputs"].values():
+                    item.pop("clean", None)
+                records.write_text("\n".join(json.dumps(line) for line in [{"header": header}, *rows]) + "\n")
+                legacy = records.read_bytes()
+                with self.subTest(action="legacy resume"), self.assertRaises(SystemExit):
+                    report.main([*argv, "--resume"])
+                self.assertEqual(records.read_bytes(), legacy)
+                self.assertEqual(checked.call_count, calls)
+                before = committed.read_bytes()
+                with self.subTest(action="legacy render"), self.assertRaises(SystemExit):
+                    report.main([*argv, "--render"])
+                with self.subTest(action="legacy render output"):
+                    self.assertEqual(committed.read_bytes(), before)
+                experiment.write_text(report.render(report.summarize(rows), report.meta(header, rows)))
+                with self.subTest(action="legacy status"):
+                    self.assertEqual(report.status(experiment), 1)
+                # Historical rendering cannot overwrite the canonical report for
+                # different current inputs, whether the change is committed or not.
+                records.write_bytes(clean_records)
+                before = committed.read_bytes()
+                source = root / sources["compiler"]
+                source.write_text("# changed compiler\n")
+                with self.subTest(action="render dirty checkout"), self.assertRaises(SystemExit):
+                    report.main([*argv, "--render"])
+                subprocess.run(["git", "add", sources["compiler"]], cwd=root, check=True)
+                subprocess.run(["git", "-c", "user.name=Test", "-c", "user.email=test@example.com",
+                                "commit", "-qm", "changed compiler"], cwd=root, check=True)
+                self.assertTrue(all(item["clean"] for item in report.inputs().values()))
+                with self.subTest(action="render changed clean checkout"), self.assertRaises(SystemExit):
+                    report.main([*argv, "--render"])
+                self.assertEqual(committed.read_bytes(), before)
+                # Alternate output keeps the old, visibly stale provenance.
+                self.assertEqual(report.main([*argv, "--render", "--output", str(experiment)]), 0)
+                self.assertEqual(report.status(experiment), 1)
+                source.write_text("# original\n")
+                subprocess.run(["git", "add", sources["compiler"]], cwd=root, check=True)
+                subprocess.run(["git", "-c", "user.name=Test", "-c", "user.email=test@example.com",
+                                "commit", "-qm", "restore compiler"], cwd=root, check=True)
+                for group_change in ("missing", "extra"):
+                    header, rows = report.load(records)
+                    if group_change == "missing":
+                        del header["inputs"]["compiler"]
+                    else:
+                        header["inputs"]["extra"] = {"digest": "d" * 16, "clean": True}
+                    records.write_text("\n".join(json.dumps(line) for line in [{"header": header}, *rows]) + "\n")
+                    for action in ("--resume", "--render"):
+                        with self.subTest(groups=group_change, action=action), self.assertRaises(SystemExit):
+                            report.main([*argv, action])
+                    self.assertEqual(committed.read_bytes(), before)
+                    self.assertEqual(report.main([*argv, "--render", "--output", str(experiment)]), 0)
+                    self.assertEqual(report.status(experiment), 1)
+                    records.write_bytes(clean_records)
+                self.assertEqual(checked.call_count, calls)
 
 
 class StatusTests(unittest.TestCase):

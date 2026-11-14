@@ -28,8 +28,15 @@ minutes with four processes. No CI job runs it. Run it after a change to typed I
 a check covers or to a checker, and commit the report when its counts change;
 `python3.13 tools/lean_report.py --status` says which of its inputs (compiler, checkers,
 corpus) changed since. It keeps each program's result in `build/lean-report.jsonl` as it
-finishes, and `--resume` continues an interrupted run. The dated sweeps in each check's
-document explain the rejections it lists.
+finishes, and `--resume` continues an interrupted run only when both the recorded inputs
+and the current checkout are clean and unchanged. Experimental runs with uncommitted
+inputs need `--output`; their records cannot be resumed, even after restoring the clean
+checkout. Older records without clean provenance also need a fresh run. `--status`
+rejects both kinds of records as evidence for a clean checkout. `--render` always
+requires another `--output`, keeping historical or experimental records' original
+input provenance and labels. Generate the committed report through a full run or
+a validated `--resume`, which checks the whole corpus and execution identities.
+The dated sweeps in each check's document explain the rejections it lists.
 
 [GUARDS.md](GUARDS.md) describes the bounded null/union CI examples and the strict
 full-corpus inventory command; full-corpus acceptance is not claimed. Removed null
