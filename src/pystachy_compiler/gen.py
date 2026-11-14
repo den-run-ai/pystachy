@@ -269,6 +269,7 @@ from src.pystachy_compiler.unions import (
     gen_utest as unions_utest,
     gen_to_union as unions_to_union,
     gen_narrow_val as unions_narrow_val,
+    gen_class_union as unions_class_union,
     gen_unarrowed as unions_unarrowed,
     gen_uisinst as unions_uisinst,
     gen_now_type as unions_now_type,
@@ -599,6 +600,7 @@ from src.pystachy_compiler.declarations import (
     gen_none_field as declarations_none_field,
     gen_none_field_store as declarations_none_field_store,
     gen_refine_field as declarations_refine_field,
+    gen_holds_union as declarations_holds_union,
     gen_set_elsewhere as declarations_set_elsewhere,
     gen_frozen as declarations_frozen,
     gen_frozen_store as declarations_frozen_store,
@@ -3068,6 +3070,9 @@ class Gen:
     def refine_field(self, ci: ClassInfo, name: str, t: str) -> None:
         return declarations_refine_field(self, ci, name, t)
 
+    def holds_union(self, t: str, seen: list[str]) -> bool:
+        return declarations_holds_union(self, t, seen)
+
     def none_field(self, cls: str, name: str, cmp: bool) -> str:
         return declarations_none_field(self, cls, name, cmp)
 
@@ -5247,6 +5252,9 @@ class Gen:
 
     def to_union(self, v: Val, t: str, what: str) -> Val:
         return unions_to_union(self, v, t, what)
+
+    def class_union(self, v: Val, nt: str) -> Val:
+        return unions_class_union(self, v, nt)
 
     def narrow_val(self, v: Val, nt: str) -> Val:
         return unions_narrow_val(self, v, nt)

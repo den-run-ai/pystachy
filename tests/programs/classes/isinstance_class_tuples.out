@@ -1,0 +1,5 @@
+['a', 'b', 'c'] assign a! - c -
+multi b True
+multi b assign a! 4 0
+ValueError no assignment
+[exit 0]

@@ -247,6 +247,8 @@ def gen_narrow_val(self, v: Val, nt: str) -> Val:
         return self.dyn_narrowed(v, nt)  # (a dynamic value's box, which a test proved holds an nt)
     if v.t in self.classes and nt in self.classes and (self.derives(nt, v.t) or nt in self.classes[v.t].overlaps):
         return Val(v.v, nt)
+    if v.t in self.classes and is_union(nt) and len([m for m in umembers(nt) if m not in self.classes]) == 0:
+        return self.class_union(v, nt)  # (isinstance(x, (A, B)) proved it an A or a B: narrows)
     if not is_union(unopt(v.t)):
         return self.deref(v)  # (an optional known not to be None)
     if nt == "None":
@@ -269,6 +271,35 @@ def gen_narrow_val(self, v: Val, nt: str) -> Val:
     ph = Ins("phi", nt, "")
     self.incoming(ph, "null", l0)
     self.incoming(ph, x.v, l1)
+    return Val(self.phi(ph), nt).identity(v)
+
+def gen_class_union(self, v: Val, nt: str) -> Val:
+    # v, an object of a class (not None), as a value of union nt of classes derived from v's,
+    # which a test proved it is one of: boxed as the member its class derives from, as found
+    # by its class tag (the last member's where no other's is: the test excluded the rest)
+    ms = umembers(nt)
+    tag = self.mload('int', v.v)
+    end = self.label()
+    ph = Ins("phi", nt, "")
+    for i in range(len(ms)):
+        m = ms[i]
+        if i + 1 < len(ms):
+            hit = "false"
+            for c in self.classes.values():
+                if c.tag > 0 and self.derives(c.name, m):
+                    x = self.num_cmp('==', Val(tag, "int"), Val(str(c.tag), "int")).v
+                    hit = x if hit == "false" else self.scalar('or', [Val(hit, 'bool'), Val(x, 'bool')])
+            yes = self.label()
+            no = self.label()
+            self.cbr(hit, yes, no)
+            self.place(yes)
+            self.incoming(ph, self.ubox(Val(v.v, m), m), self.cur)
+            self.br(end)
+            self.place(no)
+        else:
+            self.incoming(ph, self.ubox(Val(v.v, m), m), self.cur)
+            self.br(end)
+    self.place(end)
     return Val(self.phi(ph), nt).identity(v)
 
 def gen_unarrowed(self, v: Val) -> str:

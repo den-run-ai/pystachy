@@ -132,6 +132,31 @@ def gen_narrows(self, n: Node, truth: bool, out: dict[str, str]) -> None:
             # The runtime class check proved this pointer has the derived layout. Keep
             # the declared storage type, and refine only reads on this control-flow path.
             out[nm] = n.kids[2].s
+        elif truth and t in self.classes and self.classes[t].tag > 0 and n.kids[2].kind == "tuple" and len(n.kids[2].kids) > 0:
+            # isinstance(x, (A, B)) of classes derived from x's: one of them (#1325). One that
+            # derives from another is that one's; a single class narrows as above, more to their
+            # union, whose reads box the object as the member its class is (narrow_val). A union
+            # does not do all that its classes' base does (x == y, hash(x), a base-typed store), so
+            # the narrowing is an attempt that any error in its function declines (xtry, Rejoin):
+            # the next pass compiles the function as it did without it
+            ms: list[str] = []
+            for c in n.kids[2].kids:
+                if c.kind != "name" or c.s not in self.classes or self.classes[c.s].tag <= 0 or self.classes[c.s].exc != "" or not (self.derives(c.s, t) or c.s in self.classes[t].overlaps):
+                    return
+                if c.s not in ms:
+                    ms.append(c.s)
+            ms = [c for c in ms if len([b for b in ms if b != c and self.derives(c, b)]) == 0]
+            if len(ms) == 1:
+                out[nm] = ms[0]
+                return
+            u = self.union_type(ms)
+            attempt = f"narrow:{self.fnkey(self.curfn)}:{n.line}:{nm}:{u}"
+            if u.startswith("!") or attempt in self.xnot or self.curfn.infer or self.curfn.ret == "" or self.modlevel or dynamic_program():
+                # (nor where a return it infers could take the union to code outside the attempt,
+                # nor where dynamic Any's attempts, which end by clearing xtry, may end this one)
+                return
+            out[nm] = u
+            self.xtry = attempt
         elif self.isinst(t, n.kids[2]) == (-2 if truth else -3):
             out[nm] = unopt(t)
 

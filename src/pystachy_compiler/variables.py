@@ -659,6 +659,11 @@ def gen_none_global(self, name: str) -> str:
 def gen_none_global_resolve(self, name: str, t: str) -> None:
     # Unlike a local's pending slot, this read can belong to any function compiled earlier.
     # Keep its hint separate from union joins, which may override a declaration's type.
+    if self.xtry.startswith("narrow:") and self.holds_union(t, []):
+        # (a union isinstance(x, (A, B)) narrowed x to would type the global for code outside
+        # the attempt, also as a container's items ([x]), whether a store gives it its type or a
+        # read's lookahead finds it (if items is None: items = [x]): declined, see narrows)
+        self.err(f"'{short(name)}' would take a union that a narrowing made")
     if self.gtypes[name] == NONEVAR and t != NONEVAR and name in self.noneglobalpending:
         if self.final or self.rtmode:
             self.err(f"cannot infer the type of '{short(name)}' from None here; annotate it{self.where_def(name)} ({short(name)}: T | None = None)")
@@ -1198,6 +1203,10 @@ def gen_refine(self, name: str, t: str, glob: bool = False) -> None:
         if "?" in self.ret and name in self.qret.get(self.curfn.ll, "").split():
             self.adopt(t)  # the function returned it: so it returns t
     else:
+        if self.xtry.startswith("narrow:") and self.holds_union(t, []):
+            # (a union isinstance(x, (A, B)) narrowed x to would type the global's items for code
+            # outside the attempt: declined, see narrows)
+            self.err(f"'{short(name)}' would take a union that a narrowing made")
         for nm in [name] + self.twins(name):
             if nm == name or "?" in self.gtypes[nm]:
                 self.gtypes[nm] = t
@@ -1668,6 +1677,11 @@ def gen_default_want(self, r: Node, m: str, args: list[Node], vt: str) -> str:
     return ""
 
 def gen_new_global(self, name: str, t: str) -> None:
+    if self.xtry.startswith("narrow:") and self.holds_union(t, []):
+        # (a union isinstance(x, (A, B)) narrowed x to would type a global that a function's
+        # store creates (global items; items = x) for code outside the attempt: declined, as
+        # none_global_resolve declines one that only None was given so far)
+        self.err(f"'{short(name)}' would take a union that a narrowing made")
     if len(self.hints) > 0 and "global:" + name in self.hints:
         t = self.hints["global:" + name]  # (a join's type: as if annotated, see join_hint)
     elif t == NONEVAR:

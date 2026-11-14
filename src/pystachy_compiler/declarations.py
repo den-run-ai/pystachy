@@ -2511,11 +2511,45 @@ def gen_field_root(self, ci: ClassInfo, name: str) -> ClassInfo:
         ci = self.classes[ci.base]
     return ci
 
+def type_words(t: str) -> list[str]:
+    # the words of type t, its constructors' and classes' names (list, Box-1), split at its
+    # brackets, commas, bars and spaces
+    out: list[str] = []
+    w = ""
+    for ch in t:
+        if ch == "[" or ch == "]" or ch == "," or ch == "|" or ch == " ":
+            if w != "":
+                out.append(w)
+            w = ""
+        else:
+            w += ch
+    if w != "":
+        out.append(w)
+    return out
+
+def gen_holds_union(self, t: str, seen: list[str]) -> bool:
+    # does type t hold a union anywhere: itself or its parts, or a field of a class template's
+    # specialization it names (Box-1, whose value field a call Box(x) of narrowed x types A | B)
+    if "union[" in t:
+        return True
+    for c in type_words(t):
+        if c in self.classes and self.classes[c].origin != "" and c not in seen:
+            seen.append(c)
+            for ft in self.classes[c].ftypes.values():
+                if self.holds_union(ft, seen):
+                    return True
+    return False
+
 def gen_refine_field(self, ci: ClassInfo, name: str, t: str) -> None:
     # field name of class ci, which only None has been given so far (NONEVAR), holds a t from
     # here on: so does the field of the class that declares it and of each class deriving from
     # that one, whose objects begin with its fields. Its stores of None compiled so far store a
     # null pointer, which t's None is too (see optional)
+    if self.xtry.startswith("narrow:") and self.holds_union(t, []):
+        # (a union isinstance(x, (A, B)) narrowed x to would type the field for code outside
+        # the attempt, also as a container's items ([x]), whether a store gives it its type or a
+        # read's lookahead finds it (if self.x is None: self.x = [x]): declined, see narrows)
+        self.err(f"field '{name}' would take a union that a narrowing made")
     if t == "dyn":
         # (an Any value's None is a box: those stores, and the tests of the field by is None
         # compiled so far, see a null pointer, dynamic.py)
