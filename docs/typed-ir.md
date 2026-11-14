@@ -56,7 +56,9 @@ the current backend; WebAssembly remains future work, and dynamic `Any` values a
 4. `Gen.effects` computes summaries across the call graph.
 5. IR optimization passes run before exception lowering.
 6. `Gen.eh_ir` makes exceptional edges explicit where required.
-7. `Gen.lower` prints LLVM text; `Gen.program` then releases the function's temporary IR data.
+7. `Gen.lower` rewrites layout reads into machine operations (`Gen.machine_ir`, see
+   [machine lowering](#machine-lowering)) and prints LLVM text; `Gen.program` then releases
+   the function's temporary IR data.
 
 `PYSTACHY_IRCHECK=1` verifies IR before the passes and after transformations. Function effect
 summaries remain available after the rest of the function's IR is released.
@@ -723,6 +725,23 @@ verifier checks unwind edges and rejects leftover unprotected may-raise calls in
 The runtime uses table-driven native unwinding, rather than the error-flag scheme considered
 in the original design. `finally` and `with` cleanup are part of the shipped implementation;
 see [architecture](internals.md#errors-and-cleanup) for the runtime overview.
+
+## Machine lowering
+
+`Gen.lower` begins with `Gen.machine_ir`, the last typed-IR stage. Until then a read of a
+runtime layout keeps its meaning: `list.len`, `union.tag`, `union.payload`, `union.raw`,
+`dyn.type`, `dyn.payload` and `dyn.raw` carry their receiver's type, effects and guard proofs
+through the passes, the verifier and the inspection snapshots. The stage rewrites each into the
+`mach.addr` and `mach.load` operations that other header reads already use, from one table of
+word offsets (`WORD_READS` in `machine_ir.py`). The LLVM printer has no case for a layout read
+and rejects one that reaches it.
+
+The rewrite keeps every value number, label and source line, so the emitted LLVM is unchanged.
+With `PYSTACHY_IRCHECK=1`, `Gen.verify_machine` then checks that no layout read is left and
+that machine memory operations keep their shape; only there may a `mach.load` give a payload's
+opaque `%slot`. Other layout-dependent operations are still printed directly. Inline list
+items need a struct address and TBAA tags that `mach.addr` cannot express, and `tupleret`
+decides a fixed tuple's slots while its function is printed.
 
 <a id="13-defects-found-on-the-way"></a>
 <a id="6-migration-plan"></a>

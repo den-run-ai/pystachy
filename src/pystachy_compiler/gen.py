@@ -21,6 +21,11 @@ from src.pystachy_compiler.memory_ir import (
     gen_mload as memory_ir_mload,
     gen_mstore as memory_ir_mstore,
     gen_maddr as memory_ir_maddr,
+    gen_verify_memory as memory_ir_verify_memory,
+)
+from src.pystachy_compiler.machine_ir import (
+    gen_machine_ir as machine_ir_machine_ir,
+    gen_verify_machine as machine_ir_verify_machine,
 )
 from src.pystachy_compiler.bigints import (
     gen_big_builtin as bigints_big_builtin,
@@ -2647,6 +2652,15 @@ class Gen:
 
     def maddr(self, t: str, p: str, index: str, inbounds: bool = False) -> str:
         return memory_ir_maddr(self, t, p, index, inbounds)
+
+    def verify_memory(self, fn: IFn, b: Blk, i: Ins, slots: bool) -> None:
+        return memory_ir_verify_memory(self, fn, b, i, slots)
+
+    def machine_ir(self, fn: IFn) -> None:
+        return machine_ir_machine_ir(self, fn)
+
+    def verify_machine(self, fn: IFn) -> None:
+        return machine_ir_verify_machine(self, fn)
 
     def mem_load(self, a: Val) -> Val:
         return emission_mem_load(self, a)

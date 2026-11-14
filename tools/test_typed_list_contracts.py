@@ -16,6 +16,7 @@ from src.pystachy_compiler import diagnostics, utils
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.ir import FnInfo, IFn, Ins, Val
 from src.pystachy_compiler.loader import Loader
+from src.pystachy_compiler.machine_ir import machine_ops
 from src.pystachy_compiler.specs import LIST_READS, LIST_WRITES
 from src.pystachy_compiler.syntax import Node
 from src.pystachy_compiler.utils import ListLayout, list_read_error, list_write_error, rtsym
@@ -342,7 +343,8 @@ class ListReadContractTests(unittest.TestCase):
             self.assertEqual(g.out, ["  %t1 = call i64 @pys_list_get(ptr %a0, i64 0)"])
         i = list_read("list.len")
         g = Gen()
-        g.lower_ins(function_with(i), i)
+        for machine in machine_ops(i):
+            g.lower_ins(function_with(i), machine)
         self.assertEqual(g.out, ["  %t1 = load i64, ptr %a0"])
 
     def test_result_count_registry_rejects_missing_semantic_result(self):
