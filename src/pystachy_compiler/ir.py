@@ -178,6 +178,7 @@ class FnInfo:
         self.iters = False  # an __iter__ that returns an Iterator[T]: ret is the list[T] it steps through (see iter_ret)
         self.synthetic = False  # a dataclass's method that the compiler writes (Gen.synth), not the program
         self.deco = ""  # a method's @staticmethod or @classmethod (whose cls names the class), or "": it takes self
+        self.nullable_self = False  # explicit C.m(o, ...): o may be None; checks belong to the body
         self.prop = False  # a @property getter: an attribute read calls this instance method
         # a property's @name.setter or @name.deleter ("setter", "deleter"; its methods key is
         # name.setter): an assignment or del of the attribute calls it; accof: what the decorator

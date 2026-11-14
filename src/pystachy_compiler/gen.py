@@ -4838,8 +4838,8 @@ class Gen:
     def scalar_call_types(self, f: FnInfo, args: list[Node]) -> list[str]:
         return calls_scalar_call_types(self, f, args)
 
-    def call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str='', none: str='', cache: Val | None=None, direct: bool=False, resultsoft: bool = False, typeargs: str = "") -> Val:
-        return calls_call_fn(self, f, pre, args, want, none, cache, direct, resultsoft, typeargs)
+    def call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str='', none: str='', cache: Val | None=None, direct: bool=False, resultsoft: bool = False, typeargs: str = "", unbound: bool = False) -> Val:
+        return calls_call_fn(self, f, pre, args, want, none, cache, direct, resultsoft, typeargs, unbound)
 
     def virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: str, none: str, resultsoft: bool = False) -> Val:
         return calls_virtual_call(self, f, pre, args, want, none, resultsoft)
@@ -4925,8 +4925,8 @@ class Gen:
     def fn_sig(self, t: str) -> list[str]:
         return templates_fn_sig(self, t)
 
-    def instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "", resultsoft: bool = False, cmpfields: str = "") -> FnInfo:
-        return templates_instance(self, f, ts, nnp, want, resultsoft, cmpfields)
+    def instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "", resultsoft: bool = False, cmpfields: str = "", nullable_self: bool = False) -> FnInfo:
+        return templates_instance(self, f, ts, nnp, want, resultsoft, cmpfields, nullable_self)
 
     def dotted(self, n: Node) -> str:
         return builtins_dotted(self, n)

@@ -242,8 +242,9 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
         self.ret = f.ret
     self.numeric_proof(f, body)
     self.fn.numeric_only = f.scalar_only
-    if takes_self(f):
-        # callers check the receiver, so self is never None inside a method
+    if takes_self(f) and not f.nullable_self:
+        # Attribute calls check the receiver; explicit C.m(o, ...) may pass None and
+        # uses its own specialization without these assumptions (including self loads).
         self.nn["%a0"] = True
         if f.params[0] not in self.assigned:
             self.selfname = f.params[0]

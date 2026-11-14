@@ -8,7 +8,7 @@
 # sys.stdout and no os.getcwd() (lib/compatibility.md).
 import abc
 from types import TracebackType
-from typing import Self
+from typing import Generic, Self, TypeVar
 
 __all__ = ["contextmanager", "closing", "nullcontext",
            "AbstractContextManager", "ContextDecorator",
@@ -55,21 +55,38 @@ class ContextDecorator(object):
         return inner
 
 
-class _GeneratorContextManager:
+_Func = TypeVar("_Func")  # Pystachy port: preserve the function's concrete type through its setter.
+
+
+class _GeneratorContextManager(Generic[_Func]):
     """Helper for @contextmanager decorator."""
 
-    # Pystachy port: a class template, which derives from no class: _GeneratorContextManagerBase's
+    # Pystachy port: a class template (Generic retains func's type): _GeneratorContextManagerBase's
     # __init__ and _recreate_cm, and ContextDecorator's __call__ (without @wraps), are here (no
     # __doc__ of func's), and its caller makes the generator, func(*args, **kwds)
-    def __init__(self, func, args, kwds, gen):
+    def __init__(self, func: _Func, args, kwds, gen, _pys_factory, _pys_func_changed: bool = False):
         self.gen = gen
         # Pystachy port: one field at a time (self.func, self.args, self.kwds = func, args, kwds)
-        self.func = func
+        self._func = func
         self.args = args
         self.kwds = kwds
+        # Pystachy port: generated method wrappers retain their original metadata,
+        # but recreate the defining generator through a captured factory. A later func
+        # assignment restores the ordinary metadata call, even for the same receiver.
+        self._pys_factory = _pys_factory
+        self._pys_func_changed = _pys_func_changed
         # Pystachy port: whether __enter__ has deleted func, args and kwds (a field is not
         # deleted: reading one then raises CPython's AttributeError instead)
         self._deleted = False
+
+    @property
+    def func(self) -> _Func:
+        return self._func
+
+    @func.setter
+    def func(self, value: _Func) -> None:
+        self._func = value
+        self._pys_func_changed = True
 
     def _recreate_cm(self):
         # _GCMB instances are one-shot context managers, so the
@@ -77,7 +94,11 @@ class _GeneratorContextManager:
         # called
         if self._deleted:
             raise AttributeError("'_GeneratorContextManager' object has no attribute 'func'")
-        return _GeneratorContextManager(self.func, self.args, self.kwds, self.func(*self.args, **self.kwds))
+        if self._pys_func_changed:
+            gen = self.func(*self.args, **self.kwds)
+        else:
+            gen = self._pys_factory(self.args, self.kwds)
+        return _GeneratorContextManager(self.func, self.args, self.kwds, gen, self._pys_factory, self._pys_func_changed)
 
     def __call__(self, func):
         def inner(*args, **kwds):
@@ -162,7 +183,10 @@ class _GeneratorContextManagerFactory:
         self.func = func
 
     def __call__(self, /, *args, **kwds):
-        return _GeneratorContextManager(self.func, args, kwds, self.func(*args, **kwds))
+        # Pystachy port: retain packed-argument recreation alongside the public metadata.
+        func = self.func
+        factory = lambda args, kwds: func(*args, **kwds)
+        return _GeneratorContextManager(func, args, kwds, func(*args, **kwds), factory)
 
 
 def contextmanager(func):

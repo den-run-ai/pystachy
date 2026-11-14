@@ -1093,6 +1093,11 @@ joins discard refinements that no longer hold. Globals, fields and locals assign
 Only a single named derived class refines a base type; tuple/union tests and exception-class
 narrowing retain their existing restrictions.
 
+An explicit `C.method(obj, ...)` call evaluates all arguments before entering the method,
+including when the class-typed `obj` is `None`. A body that does not dereference it can
+complete; a field or method lookup on it raises at that lookup. In `obj.method(...)`, the
+receiver's attribute lookup still happens before argument evaluation.
+
 A class that derives from `abc.ABC`, or whose statement passes `metaclass=abc.ABCMeta`, has
 abstract methods: those decorated with `@abstractmethod` (also under `@property`,
 `@classmethod` or `@staticmethod`) until a subclass defines them again. Making an object of a
