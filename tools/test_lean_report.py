@@ -19,6 +19,8 @@ from unittest import mock
 import lean_report as report
 
 META = {"commit": "0123456789ab", "date": "2026-11-13", "python": "3.13.0", "lean": "Lean 4.35.0", "minutes": 30,
+        "completion": {"version": 1, "expected": report.inventory(["a.py"]),
+                       "evaluated": report.inventory(["a.py"]), "promoting": report.inventory([]), "failed": 0},
         "inputs": {"checkers": {"digest": "c" * 16, "clean": True},
                    "compiler": {"digest": "a" * 16, "clean": True},
                    "corpus": {"digest": "b" * 16, "clean": True}}}
@@ -676,6 +678,110 @@ class CanonicalOutputTests(unittest.TestCase):
         self.canonical.write_bytes(output.read_bytes())
         self.assertEqual(report.status(self.canonical), 1)
         self.assertEqual(report.status(self.alias()), 1)
+
+    def test_interrupted_full_run_cannot_certify_a_copied_partial_render(self):
+        # Exercise the real runner and JSONL writes, interrupting its second
+        # program. Only the costly proof work uses fixture records.
+        output = self.root / "interrupted.md"
+        self.checked.side_effect = [record(self.programs[0]), KeyboardInterrupt]
+        before = self.canonical.read_bytes()
+        with self.assertRaises(KeyboardInterrupt):
+            report.main(self.args)
+        self.assertEqual(self.canonical.read_bytes(), before)
+        header, records = report.load(self.root / "records.jsonl")
+        self.assertEqual(header["inputs"]["corpus"]["programs"], [])
+        self.assertEqual([r["program"] for r in records], self.programs[:1])
+        self.assertEqual(report.main([*self.args, "--render", "--output", str(output)]), 0)
+        self.canonical.write_bytes(output.read_bytes())
+        self.assertEqual(report.status(self.canonical), 1)
+        # Resume genuinely completes the missing program and restores status.
+        self.checked.reset_mock(side_effect=True)
+        self.checked.side_effect = lambda program, *_: record(program)
+        self.assertEqual(report.main([*self.args, "--resume"]), 0)
+        self.checked.assert_called_once()
+        self.assertEqual(self.checked.call_args.args[0], self.programs[1])
+        self.assertEqual(report.status(self.canonical), 0)
+
+    def test_missing_duplicate_or_different_records_cannot_certify_full_corpus(self):
+        self.assertEqual(report.main(self.args), 0)
+        records_path = self.root / "records.jsonl"
+        header, records = report.load(records_path)
+        output = self.root / "historical.md"
+        variants = (records[:1], [records[0], records[0]],
+                    [records[0], dict(records[1], program="tests/programs/core/other.py")])
+        for rows in variants:
+            with self.subTest(programs=[r["program"] for r in rows]):
+                records_path.write_text("\n".join(json.dumps(row) for row in [{"header": header}, *rows]) + "\n")
+                self.assertEqual(report.main([*self.args, "--render", "--output", str(output)]), 0)
+                self.canonical.write_bytes(output.read_bytes())
+                self.assertEqual(report.status(self.canonical), 1)
+        # Even matching expected/evaluated identities must name today's full
+        # corpus, not merely the same number of different programs.
+        wrong = dict(header, inventory=report.inventory(r["program"] for r in variants[-1]))
+        self.canonical.write_text(report.render(report.summarize(variants[-1]), report.meta(wrong, variants[-1])))
+        self.assertEqual(report.status(self.canonical), 1)
+
+    def test_legacy_or_malformed_completion_does_not_certify_canonical_report(self):
+        self.assertEqual(report.main(self.args), 0)
+        original = self.canonical.read_text()
+        completion = report.recorded_completion(self.canonical)
+        marker = next(line for line in original.splitlines() if line.startswith(report.COMPLETION_MARK))
+        bad = [None, {}, dict(completion, version=2), dict(completion, failed=False),
+               dict(completion, expected=dict(completion["expected"], count=True)),
+               dict(completion, evaluated=dict(completion["evaluated"], sha256="bad"))]
+        for value in bad:
+            with self.subTest(metadata=value):
+                self.canonical.write_text(original.replace(marker,
+                    report.COMPLETION_MARK + json.dumps(value) + " -->"))
+                self.assertEqual(report.status(self.canonical), 1)
+        for replacement in ("", report.COMPLETION_MARK + "{ -->", marker + "\n" + marker):
+            with self.subTest(marker=replacement):
+                self.canonical.write_text(original.replace(marker, replacement))
+                self.assertEqual(report.status(self.canonical), 1)
+        # Old records may still be rendered for investigation, but cannot be
+        # resumed or copied into the canonical report as completed evidence.
+        records_path = self.root / "records.jsonl"
+        header, records = report.load(records_path)
+        header.pop("inventory")
+        records_path.write_text("\n".join(json.dumps(row) for row in [{"header": header}, *records]) + "\n")
+        before = records_path.read_bytes()
+        with self.assertRaises(SystemExit):
+            report.main([*self.args, "--resume"])
+        self.assertEqual(records_path.read_bytes(), before)
+        output = self.root / "legacy.md"
+        self.assertEqual(report.main([*self.args, "--render", "--output", str(output)]), 0)
+        self.canonical.write_bytes(output.read_bytes())
+        self.assertEqual(report.status(self.canonical), 1)
+
+    def test_completed_proof_limitations_differ_from_incomplete_checks(self):
+        limitations = row(2, 0, unproved=[item("@limited", "unsupported"), item("@unproved")])
+        self.checked.side_effect = lambda program, *_: record(program, fields=limitations)
+        self.assertEqual(report.main(self.args), 0)
+        self.assertEqual(report.status(self.canonical), 0)
+        incomplete = (dict(record(self.programs[1]), failed={"gc_check": "interrupted"}),
+                      {"program": self.programs[1], "seconds": 1})
+        for last in incomplete:
+            with self.subTest(record=last):
+                self.checked.side_effect = [record(self.programs[0]), last]
+                self.assertEqual(report.main(self.args), 1)
+                self.assertEqual(report.status(self.canonical), 1)
+
+    def test_promoting_programs_need_their_conditional_checks(self):
+        with mock.patch.object(report.storage_corpus, "select", return_value=self.programs[1:]):
+            self.assertEqual(report.main(self.args), 1)
+            self.assertEqual(report.status(self.canonical), 1)
+            self.checked.side_effect = lambda program, *_: record(
+                program, **({key: row(0, 0, 0) for key in ("int", "int_inline", "storage")}
+                            if program == self.programs[1] else {}))
+            self.assertEqual(report.main(self.args), 0)
+            self.assertEqual(report.status(self.canonical), 0)
+            # Altering the declared conditional inventory cannot make missing
+            # checks certify a canonical report either.
+            header, _ = report.load(self.root / "records.jsonl")
+            header["promoting"] = []
+            rows = [record(program) for program in self.programs]
+            self.canonical.write_text(report.render(report.summarize(rows), report.meta(header, rows)))
+            self.assertEqual(report.status(self.canonical), 1)
 
 
 class WorkerTests(unittest.TestCase):

@@ -78,6 +78,7 @@ INPUTS = {
     "corpus": ("*.py", "*.path"),
 }
 MARK = "<!-- lean-report "
+COMPLETION_MARK = "<!-- lean-report-completion "
 MESSAGE = 160  # characters of a reason kept in the report
 LISTED = 25  # rejected functions listed per check; the record file keeps all
 
@@ -585,6 +586,40 @@ def plural(count, word):
     return f"{number(count)} {word}{'' if count == 1 else 's'}"
 
 
+def inventory(programs):
+    """An order-independent identity of the actual requested or evaluated names.
+
+    Keep duplicates: two records of one program do not cover two different programs.
+    """
+    names = sorted(programs, key=str.encode)
+    return {"count": len(names), "sha256": hashlib.sha256(json.dumps(names).encode()).hexdigest()}
+
+
+def valid_inventory(value):
+    return (isinstance(value, dict) and set(value) == {"count", "sha256"}
+            and type(value["count"]) is int and value["count"] >= 0
+            and isinstance(value["sha256"], str) and re.fullmatch(r"[0-9a-f]{64}", value["sha256"]) is not None)
+
+
+def completion_problem(value, expected=None, promoting=None):
+    """Completion is coverage, not acceptance of every proof obligation."""
+    if (not isinstance(value, dict) or set(value) != {"version", "expected", "evaluated", "promoting", "failed"}
+            or type(value["version"]) is not int or value["version"] != 1
+            or not valid_inventory(value["expected"]) or not valid_inventory(value["evaluated"])
+            or not valid_inventory(value["promoting"])
+            or type(value["failed"]) is not int or value["failed"] < 0):
+        return "completion metadata is missing or malformed"
+    if value["evaluated"] != value["expected"]:
+        return "evaluated program inventory does not match the requested inventory"
+    if expected is not None and value["evaluated"] != expected:
+        return "evaluated program inventory does not match the current corpus"
+    if promoting is not None and value["promoting"] != promoting:
+        return "promoting-int check inventory does not match the current corpus"
+    if value["failed"]:
+        return "programs or checks did not complete"
+    return ""
+
+
 def render(summary, meta):
     """The report's Markdown, from a summary and its metadata (commit, date, inputs)."""
     lines = ["# Lean verification report", "",
@@ -624,14 +659,22 @@ def render(summary, meta):
                          f"{plural(item['programs'], 'program')}: {item['reason']}")
     lines += ["", "Programs or checks that did not complete:", ""]
     lines += [f"- `{item['program']}`: {item['reason']}" for item in summary["failed"]] or ["- none"]
-    lines += ["", "## Inputs", "",
+    completion = meta.get("completion")
+    coverage = (f"Evaluation inventory: {number(completion['evaluated']['count'])} of "
+                f"{number(completion['expected']['count'])} requested programs; "
+                f"{'incomplete' if completion_problem(completion) else 'complete'}."
+                if isinstance(completion, dict) and valid_inventory(completion.get("expected"))
+                and valid_inventory(completion.get("evaluated")) else "Evaluation inventory: completion not recorded.")
+    lines += ["", coverage, "", "## Inputs", "",
               "Digests of tracked source, host platform and namespace import lookups "
               "(`tools/lean_report.py`'s `INPUTS`); "
               "`python3.13 tools/lean_report.py --status` compares them with a checkout. Regenerate after a "
               "change to typed IR, a pass a check covers or a checker, and commit the report when it changes.",
               "Only records made from clean inputs can be resumed. Dirty experimental inputs and older "
-              "records without clean provenance cannot certify a clean checkout.",
-              "", f"{MARK}{json.dumps(meta['inputs'], sort_keys=True)} -->", ""]
+              "records without clean provenance cannot certify a clean checkout. Canonical status also requires "
+              "the evaluated program inventory to cover the current corpus with no incomplete checks.",
+              "", f"{MARK}{json.dumps(meta['inputs'], sort_keys=True)} -->",
+              f"{COMPLETION_MARK}{json.dumps(completion, sort_keys=True)} -->", ""]
     for group, item in sorted(meta["inputs"].items()):
         note = "" if item.get("clean") is True else (
             " (uncommitted inputs)" if item.get("clean") is False else " (clean provenance not recorded)")
@@ -658,8 +701,20 @@ def load(path):
 
 def meta(header, records):
     """A report's metadata: its header, the date and the worker time its records took."""
+    conditional = {"int", "int_inline", "storage"}
+    required = {key for key, *_ in CHECKS} - conditional
+    promoting = header.get("promoting")
+    known = (isinstance(promoting, list) and all(isinstance(name, str) for name in promoting)
+             and len(set(promoting)) == len(promoting))
+    selected = set(promoting) if known else set()
     return dict(header, date=time.strftime("%Y-%m-%d"),
-                minutes=round(sum(record.get("seconds", 0) for record in records) / 60))
+                minutes=round(sum(record.get("seconds", 0) for record in records) / 60),
+                completion={"version": 1, "expected": header.get("inventory"),
+                            "evaluated": inventory(record["program"] for record in records),
+                            "promoting": inventory(promoting) if known else None,
+                            "failed": sum("error" in record or bool(record.get("failed"))
+                                          or not (required | (conditional if record["program"] in selected else set()))
+                                          .issubset(record.get("checks", {})) for record in records)})
 
 
 def recorded(path=REPORT):
@@ -680,8 +735,15 @@ def canonical_output(path):
         return False
 
 
+def recorded_completion(path):
+    lines = [line for line in path.read_text().splitlines() if line.startswith(COMPLETION_MARK)]
+    if len(lines) != 1 or not lines[0].endswith(" -->"):
+        raise ValueError("completion metadata is missing or malformed")
+    return json.loads(lines[0][len(COMPLETION_MARK):-len(" -->")])
+
+
 def status(path=REPORT):
-    """Print which input groups differ from the report's; 0 when none does."""
+    """Require complete coverage and unchanged inputs; canonical reports cover the full corpus."""
     before = recorded(path)
     programs = before.get("corpus", {}).get("programs", [])
     if not isinstance(programs, list) or not all(isinstance(program, str) for program in programs):
@@ -689,6 +751,16 @@ def status(path=REPORT):
         return 1
     if programs and canonical_output(path):
         print("corpus: the committed report records only selected programs")
+        return 1
+    try:
+        current = corpus.corpus() if canonical_output(path) else None
+        problem = completion_problem(recorded_completion(path),
+                                     inventory(current) if current is not None else None,
+                                     inventory(storage_corpus.select(current)) if current is not None else None)
+    except ValueError:
+        problem = "completion metadata is missing or malformed"
+    if problem:
+        print(f"completion: {problem}")
         return 1
     now = inputs(programs)
     stale = [group for group in INPUTS if before.get(group, {}).get("digest") != now[group]["digest"]
@@ -718,7 +790,7 @@ def main(argv=None):
     parser.add_argument("--resume", action="store_true",
                         help="reuse clean-input records matching this clean checkout, and check the rest")
     parser.add_argument("--render", action="store_true", help="only write the report from the record file")
-    parser.add_argument("--status", action="store_true", help="only compare the report's inputs with the checkout")
+    parser.add_argument("--status", action="store_true", help="only check report completion and current inputs")
     parser.add_argument("--progress", action="store_true", help="print each completed program to stderr")
     args = parser.parse_args(argv)
     if args.status:
@@ -741,6 +813,7 @@ def main(argv=None):
     programs = args.programs or corpus.corpus()
     if len(set(programs)) != len(programs):
         parser.error("duplicate programs")
+    promoting = set(storage_corpus.select(programs))
     toolchain = (ROOT / "tools/lean_boundary/lean-toolchain").read_text().strip()
     try:
         executables = checker_executables(args.checker, args.access_checker)
@@ -750,6 +823,8 @@ def main(argv=None):
               "platform": sys.platform,
               "lean": "Lean " + toolchain.rsplit(":v", 1)[-1],
               "checker_executables": executables,
+              "inventory": inventory(programs),
+              "promoting": sorted(promoting, key=str.encode),
               "inputs": found}
     records = []
     if args.resume and args.records.is_file():
@@ -758,8 +833,10 @@ def main(argv=None):
         # dirty run cannot be resumed, and old headers omitted this provenance.
         if not clean_inputs(previous.get("inputs", {})) or not clean_inputs(found):
             parser.error(f"{args.records} lacks matching clean input provenance: run without --resume")
-        if {key: previous.get(key) for key in ("python", "platform", "lean", "inputs", "checker_executables")} != {
-                key: header[key] for key in ("python", "platform", "lean", "inputs", "checker_executables")}:
+        if not valid_inventory(previous.get("inventory")):
+            parser.error(f"{args.records} lacks a valid program inventory: run without --resume")
+        identities = ("python", "platform", "lean", "inputs", "checker_executables", "inventory", "promoting")
+        if {key: previous.get(key) for key in identities} != {key: header[key] for key in identities}:
             parser.error(f"{args.records} was made from other inputs: run without --resume")
         header, wanted = previous, set(programs)
         records = [record for record in records if record["program"] in wanted]
@@ -768,7 +845,6 @@ def main(argv=None):
         args.records.write_text(json.dumps({"header": header}, sort_keys=True) + "\n")
     checked = {record["program"] for record in records}
     remaining = [program for program in programs if program not in checked]
-    promoting = set(storage_corpus.select(remaining))
     with tempfile.TemporaryDirectory(prefix="pystachy-lean-report-") as shared, \
             args.records.open("a") as output:
         database = results_database(Path(shared) / "results.db")
@@ -785,10 +861,11 @@ def main(argv=None):
         raise SystemExit("the checker executables changed while the report ran: run it again")
     records.sort(key=lambda record: record["program"].encode())
     summary = summarize(records)
-    args.output.write_text(render(summary, meta(header, records)))
+    details = meta(header, records)
+    args.output.write_text(render(summary, details))
     print(json.dumps({key: {k: v if isinstance(v, int) else len(v) for k, v in row.items()}
                       for key, row in summary["checks"].items()}, sort_keys=True))
-    return 1 if summary["failed"] else 0
+    return 1 if summary["failed"] or completion_problem(details["completion"]) else 0
 
 
 if __name__ == "__main__":
