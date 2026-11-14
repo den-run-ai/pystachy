@@ -99,6 +99,12 @@ def inputs():
     return found
 
 
+def clean_inputs(found):
+    """Only explicit clean provenance makes index digests safe to reuse."""
+    return (isinstance(found, dict) and set(found) == set(INPUTS)
+            and all(isinstance(found[group], dict) and found[group].get("clean") is True for group in INPUTS))
+
+
 def checker_executables(checker, access_checker):
     """The actual executables, including custom ones, whose verdicts a run may reuse."""
     found = {}
@@ -460,9 +466,13 @@ def render(summary, meta):
               "Digests of the tracked files each group names (`tools/lean_report.py`'s `INPUTS`); "
               "`python3.13 tools/lean_report.py --status` compares them with a checkout. Regenerate after a "
               "change to typed IR, a pass a check covers or a checker, and commit the report when it changes.",
+              "Only records made from clean inputs can be resumed. Dirty experimental inputs and older "
+              "records without clean provenance cannot certify a clean checkout.",
               "", f"{MARK}{json.dumps(meta['inputs'], sort_keys=True)} -->", ""]
     for group, item in sorted(meta["inputs"].items()):
-        lines.append(f"- {group}: `{item['digest']}`")
+        note = "" if item.get("clean") is True else (
+            " (uncommitted inputs)" if item.get("clean") is False else " (clean provenance not recorded)")
+        lines.append(f"- {group}: `{item['digest']}`{note}")
     return "\n".join(line.rstrip() for line in lines) + "\n"
 
 
@@ -501,10 +511,11 @@ def status(path=REPORT):
     """Print which input groups differ from the report's; 0 when none does."""
     before, now = recorded(path), inputs()
     stale = [group for group in INPUTS if before.get(group, {}).get("digest") != now[group]["digest"]
-             or not now[group]["clean"]]
+             or not clean_inputs(before) or not now[group]["clean"]]
     for group in INPUTS:
         state = "unchanged" if group not in stale else (
-            "changed" if before.get(group, {}).get("digest") != now[group]["digest"] else "uncommitted changes")
+            "changed" if before.get(group, {}).get("digest") != now[group]["digest"] else
+            "uncommitted changes" if not now[group]["clean"] else "report lacks clean input provenance")
         print(f"{group}: {state}")
     return 1 if stale else 0
 
@@ -522,7 +533,7 @@ def main(argv=None):
     parser.add_argument("--records", type=Path, default=RECORDS,
                         help="the record file, one JSON line per program as it finishes")
     parser.add_argument("--resume", action="store_true",
-                        help="keep the record file's programs, if its inputs are the checkout's, and check the rest")
+                        help="reuse clean-input records matching this clean checkout, and check the rest")
     parser.add_argument("--render", action="store_true", help="only write the report from the record file")
     parser.add_argument("--status", action="store_true", help="only compare the report's inputs with the checkout")
     parser.add_argument("--progress", action="store_true", help="print each completed program to stderr")
@@ -530,6 +541,9 @@ def main(argv=None):
     if args.status:
         return status(args.output)
     if args.render:
+        if args.output.resolve() == REPORT:
+            parser.error("--render needs --output for another file; generate the committed report "
+                         "with a full run or a validated --resume")
         header, records = load(args.records)
         records.sort(key=lambda record: record["program"].encode())
         args.output.write_text(render(summarize(records), meta(header, records)))
@@ -537,7 +551,7 @@ def main(argv=None):
     if args.jobs < 1 or args.timeout <= 0:
         parser.error("use at least one worker and a positive timeout")
     found = inputs()
-    if args.output.resolve() == REPORT and (args.programs or not all(item["clean"] for item in found.values())):
+    if args.output.resolve() == REPORT and (args.programs or not clean_inputs(found)):
         parser.error("the committed report needs the whole corpus and a checkout without changes to its inputs: "
                      "pass --output for another file")
     programs = args.programs or corpus.corpus()
@@ -551,10 +565,14 @@ def main(argv=None):
     header = {"commit": git("rev-parse", "--short=12", "HEAD").strip(), "python": platform.python_version(),
               "lean": "Lean " + toolchain.rsplit(":v", 1)[-1],
               "checker_executables": executables,
-              "inputs": {group: {"digest": item["digest"]} for group, item in found.items()}}
+              "inputs": found}
     records = []
     if args.resume and args.records.is_file():
         previous, records = load(args.records)
+        # Index digests do not identify dirty working contents. Even an unchanged
+        # dirty run cannot be resumed, and old headers omitted this provenance.
+        if not clean_inputs(previous.get("inputs", {})) or not clean_inputs(found):
+            parser.error(f"{args.records} lacks matching clean input provenance: run without --resume")
         if {key: previous.get(key) for key in ("python", "lean", "inputs", "checker_executables")} != {
                 key: header[key] for key in ("python", "lean", "inputs", "checker_executables")}:
             parser.error(f"{args.records} was made from other inputs: run without --resume")
