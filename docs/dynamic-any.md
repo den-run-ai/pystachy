@@ -877,14 +877,18 @@ rejects: no method can return `NotImplemented`, so the first one that runs gives
 
 An int or float of typed code that no variable's box slot holds is a new object where
 it becomes an `Any` value, where CPython's names, containers and classes hold one
-object. This affects numeric items of typed tuples, dicts and sets, including typed
-variadic argument tuples; typed lists with optional or union item types
+object. This affects numeric items of fixed typed tuples, dicts and sets, including
+variadic argument tuples represented as fixed shapes; typed lists with optional or
+union item types
 (`list[float | None]`, `list[int | float]`); and optional/union numeric generator
 yields. Scalar `int` and `float` generator yields retain their source objects.
 
-Yielding into dynamic item storage (`Iterator[Any]`) also retains the source box. The
-typed-tuple case remains in `tests/deviations/dynany_identity_boundary.py`; fresh
-displays with dynamic item destinations avoid that typed storage boundary. Typed
+Yielding into dynamic item storage (`Iterator[Any]`) also retains the source box.
+Numeric runtime-length `tuple[int, ...]` and `tuple[float, ...]` items retain their
+source boxes as described below. Fixed tuple to runtime-length tuple conversions
+can still lose numeric identity; fresh literal displays retain their module
+constants. Fresh displays with dynamic item destinations avoid that fixed typed
+storage boundary. Typed
 numeric lists retain their item objects as described under
 [Typed numeric list items](#typed-numeric-list-items).
 
@@ -1194,6 +1198,39 @@ Coverage: [dynany_identity_fields.py](../tests/programs/inference/dynany_identit
 [dynany_identity_field_kinds.py](../tests/programs/inference/dynany_identity_field_kinds.py),
 [dynany_identity_field_locals.py](../tests/programs/inference/dynany_identity_field_locals.py),
 [dynany_field_locals.py](../tests/ir/dynany_field_locals.py).
+
+### Numeric runtime-length tuple items
+
+In identity-tracking code, `tuple[int, ...]` and `tuple[float, ...]` retain their
+item objects through direct construction, typed-list construction, indexing,
+iteration, unpacking, slicing, concatenation and conversion back to a list.
+Source lists and tuples own separate companion arrays; mutating the list cannot
+change the tuple. Count/index searches and supported tuple comparisons test shared
+numeric identity before equality, including NaNs. Checked/promoting callers keep
+fitting integers' boxes; runtime-length integer tuples still reject values beyond
+their signed 64-bit storage range.
+
+The shared runtime tuple header now holds a nullable companion pointer after its
+length, adding eight bytes even in programs without dynamic Any. Raw item slots
+remain unboxed. Tracking constructors allocate a scanned array of `length + 1`
+words: one kind word and one nullable box pointer per item. Existing aliases keep
+their source box; fresh computations may remain null until observed. Copies must
+materialize pending identities before sharing items, so copying can allocate
+numeric boxes even when the program performs no later Any read. Proven scalar
+indexed arithmetic reads need no boxes. Ordinary programs allocate no companion.
+
+This supports item crossings through Any; boxing the entire native numeric tuple
+as Any remains rejected. Fixed-length tuple sources, optional/union item storage
+and widening numeric tuples to optional items remain separate identity gaps. In
+particular, converting an imported fixed tuple does not recover its item objects;
+annotated runtime-length tuple constants preserve them.
+Runtime-length tuple repetition and membership remain unsupported operations.
+
+Coverage: [dynany_identity_vtuples.py](../tests/programs/inference/dynany_identity_vtuples.py),
+[dynany_identity_vtuple_effects.py](../tests/programs/inference/dynany_identity_vtuple_effects.py),
+[python_int_vtuple_identity.py](../tests/programs/numbers/python_int_vtuple_identity.py).
+`make listprobe` checks companion ownership, scan kinds, lazy-copy identity and
+collection with an intentionally atomic companion as its negative control.
 
 ### Calls, defaults and return values
 

@@ -902,6 +902,7 @@ from src.pystachy_compiler.expressions import (
     gen_tuple_ as expressions_tuple_,
     gen_list_const as expressions_list_const,
     gen_vtuple_make as expressions_vtuple_make,
+    gen_vtuple_item as expressions_vtuple_item,
     gen_tuple_const as expressions_tuple_const,
     gen_dict_merge as expressions_dict_merge,
     gen_unroll as expressions_unroll,
@@ -4398,6 +4399,9 @@ class Gen:
 
     def tuple_(self, vals: list[Val]) -> Val:
         return expressions_tuple_(self, vals)
+
+    def vtuple_item(self, o: Val, index: Val) -> Val:
+        return expressions_vtuple_item(self, o, index)
 
     def vtuple_make(self, vals: list[Val], t: str) -> Val:
         return expressions_vtuple_make(self, vals, t)

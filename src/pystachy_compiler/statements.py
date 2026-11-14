@@ -2017,8 +2017,13 @@ def gen_seq_item(self, s: Val, j: str, mode: str) -> list[Val]:
     if is_list(s.t):
         return [self.list_item(s, Val(j, "int"))]
     if is_vtuple(s.t):
-        off = self.scalar('add', [Val(j, 'int'), Val('1', 'int')])
-        return [self.from_slot(self.mload('int', self.maddr('int', f'{s.v}', f'{off}')), targs(s.t)[0])]
+        et = targs(s.t)[0]
+        if self.list_id_kind(self.ctype("list", [unopt(et)])) != 0 and not is_opt(et) and not self.fn.scalar_reads:
+            return [self.vtuple_item(s, Val(j, "int"))]
+        # for_seq has checked the immutable length. Keep its unboxed/reference
+        # fast path: the raw slots follow the length and companion pointer.
+        off = self.scalar("add", [Val(j, "int"), Val("2", "int")])
+        return [self.from_slot(self.mload("int", self.maddr("int", s.v, off)), et)]
     if is_tuple(s.t) and targs(s.t)[0] == BIG:
         # (promoting ints: one's slot at j, and where it says so its Mpz word, past the items: bigints.py)
         return [self.big_item(s, Val(self.mload('int', self.maddr('int', f'{s.v}', f'{j}')), "int"), 0, j)]

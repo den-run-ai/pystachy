@@ -638,6 +638,52 @@ static void checked_boundary_rejection(void) {
   if (waitpid(child, &status, 0) != child || !WIFEXITED(status) || WEXITSTATUS(status) != 1 || strcmp(output, NARROW "\n"))
     bad("checked native store did not reject a wide int before modifying storage");
 }
+/* Tuple companions own their array and retain item boxes after every source
+   alias disappears. The atomic-array control must fail to retain the same box. */
+__attribute__((noinline)) static uintptr_t tuple_hold(int atomic_ids) {
+  const uintptr_t mask = 0x5a5a5a5a5a5a5a5a;
+  for (I i = 0; i < 1000; i++) {
+    Dyn *box = pys_dyn_float(0.125), *sibling = pys_dyn_float(0.25);
+    if (gc_find(box) != gc_find(sibling)) continue;
+    I raw[] = {box->v};
+    VTuple *tuple = pys_vtuple_from(raw, 1);
+    if (atomic_ids) {
+      tuple->ids = pys_alloc_atomic(2 * sizeof(I));
+      tuple->ids[0] = 2; tuple->ids[1] = (I)box;
+    } else pys_vtuple_set_identity(tuple, 0, box, 2);
+    buffers = pys_list_new(2);
+    pys_list_append(buffers, (I)tuple); pys_list_append(buffers, (I)sibling);
+    return (uintptr_t)box ^ mask;
+  }
+  bad("no tuple identity boxes in one chunk");
+}
+__attribute__((noinline)) static void tuple_alive(uintptr_t encoded, int expected) {
+  Dyn *box = (Dyn *)(encoded ^ 0x5a5a5a5a5a5a5a5a);
+  if (expected ? (box->t != &pys_dyntype_float || dbl(box->v) != 0.125) : box->v != 0)
+    bad(expected ? "tuple companion lost its item root" : "atomic tuple companion retained a box");
+}
+static void tuple_identities(void) {
+  Dyn *box = pys_dyn_float(NAN);
+  List *source = pys_list_new_atomic(2);
+  pys_list_append_identity(source, box->v, box, 2);
+  VTuple *tuple = pys_vtuple_new(source);
+  if (!tuple->ids || atomic(tuple) || atomic(tuple->ids) || tuple->ids == source->ids)
+    bad("tuple companion scan kind or source ownership");
+  pys_list_set_identity(source, 0, 0, pys_dyn_float(0.0), 2);
+  if (pys_vtuple_get_identity(tuple, 0, 2) != box) bad("list mutation changed tuple identity");
+  I fresh[] = {box->v, box->v};
+  VTuple *pending = pys_vtuple_from(fresh, 2);
+  pys_vtuple_set_identity(pending, 0, NULL, 2);
+  pys_vtuple_set_identity(pending, 1, NULL, 2);
+  VTuple *slice = pys_vtuple_slice(pending, 1, 2, 1);
+  VTuple *concat = pys_vtuple_concat(pending, pending);
+  List *copy = pys_vtuple_list(pending);
+  Dyn *original = pys_vtuple_get_identity(pending, 1, 2);
+  if (pys_vtuple_get_identity(slice, 0, 2) != original ||
+      pys_vtuple_get_identity(concat, 3, 2) != original || pys_list_get_identity(copy, 1, 2) != original)
+    bad("copy of an unobserved tuple item changed identity");
+  if (pys_vtuple_get_identity(pending, 0, 2) == original) bad("distinct fresh tuple items were interned");
+}
 int main(void) {
   gc_init(__builtin_frame_address(0), roots, 1);
   budget_candidates_in_child();
@@ -663,7 +709,12 @@ int main(void) {
       pys_dyn_getitem(wide_list, pys_dyn_int(0)) == pys_dyn_getitem(wide_list, pys_dyn_int(1)))
     bad("native companion did not retain distinct wide boxes through collection");
   checked_boundary_rejection();
+  tuple_identities();
+  uintptr_t tuple_box = tuple_hold(0);
+  scrub_collect(); tuple_alive(tuple_box, 1);
+  tuple_box = tuple_hold(1);
+  scrub_collect(); tuple_alive(tuple_box, 0);
   budgets();
-  puts("listprobe: empty-list reuse, inline short lists, range-list storage/mutation, pointer-free list kinds, numeric identity, promoting storage, native Any boundaries and large-object collections passed");
+  puts("listprobe: empty-list reuse, inline short lists, range-list storage/mutation, pointer-free list kinds, numeric identity, promoting storage, native Any boundaries, tuple identity roots and large-object collections passed");
   return 0;
 }
