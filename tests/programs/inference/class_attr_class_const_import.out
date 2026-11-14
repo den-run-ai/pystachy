@@ -1,0 +1,4 @@
+mods: init mods
+mods.shapes: init mods.shapes
+100 101 is_error 100 ['extra', 'goto', 'return'] ['extra', 'goto', 'return']
+[exit 0]

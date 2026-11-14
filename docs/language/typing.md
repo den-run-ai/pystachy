@@ -981,6 +981,16 @@ module that `lib/` stands in for a C module (`dec = codecs.utf_8_decode`), CPyth
 Python function is not: CPython binds it to the object as a method there, and Pystachy rejects
 that read.
 
+A field or class attribute given a set display whose items all have one type takes that type
+(`KEYWORDS = {"if", "else"}` is a `set[str]`); a list display gives its first item's. One
+given a class attribute read through an ordinary class declared earlier, or through a
+subclass that inherits it (`self.kind = Branch.BOOL`, `DEFAULT = Color.RED`), has that
+attribute's declared or inferred type. An imported module's class bodies and parameter
+defaults (`def show(kind: int = Branch.BOOL)`) read such attributes too, alone or as the items
+of displays whose items have one type, where the value has the type annotated. A generic
+class's attribute, a NamedTuple's `_fields`, a method and a class declared further down type
+nothing: annotate the field.
+
 A `@dataclass` writes `__init__` (which calls `__post_init__`), `__repr__` and `__eq__` unless
 its `init`, `repr` or `eq` option is false, and with `order=True` the comparisons of the tuples
 of its fields. Its options are `init`, `repr`, `eq`, `order`, `unsafe_hash`, `frozen`,

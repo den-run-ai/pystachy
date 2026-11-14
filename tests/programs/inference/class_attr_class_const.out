@@ -1,0 +1,4 @@
+100 is_ 7 %r:bool is_error(%r): [100, 101] 100
+Mode.SAFE True [<Mode.FAST: 'f'>, <Mode.SAFE: 's'>] True
+['b', 'e', 'x'] True False
+[exit 0]

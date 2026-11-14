@@ -1,0 +1,5 @@
+True False True False
+True True True [-3, 1, 2]
+['__all__', '__author__', '__doc__'] ['__all__', '__author__', '__doc__'] True [-3, 1, 2, 4] 2
+[0] [-3, 1, 2, 4] [-3, 1, 2, 4]
+[exit 0]

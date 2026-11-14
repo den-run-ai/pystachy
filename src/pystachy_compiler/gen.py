@@ -611,6 +611,7 @@ from src.pystachy_compiler.declarations import (
     gen_getfield as declarations_getfield,
     gen_guess as declarations_guess,
     gen_guess_iter as declarations_guess_iter,
+    gen_class_reads as declarations_class_reads,
     gen_guess_args as declarations_guess_args,
     gen_has_path as declarations_has_path,
     gen_imported_ref as declarations_imported_ref,
@@ -3058,6 +3059,9 @@ class Gen:
 
     def guess_iter(self, a: Node, f: FnInfo) -> str:
         return declarations_guess_iter(self, a, f)
+
+    def class_reads(self, e: Node, f: FnInfo, t: str) -> bool:
+        return declarations_class_reads(self, e, f, t)
 
     def field(self, o: Val, name: str, store: bool=False) -> Val:
         return declarations_field(self, o, name, store)
