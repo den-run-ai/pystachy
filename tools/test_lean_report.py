@@ -702,6 +702,48 @@ class CanonicalOutputTests(unittest.TestCase):
         self.assertEqual(self.checked.call_args.args[0], self.programs[1])
         self.assertEqual(report.status(self.canonical), 0)
 
+    def test_resume_repairs_truncated_or_unterminated_record_tail(self):
+        self.assertEqual(report.main(self.args), 0)
+        path = self.root / "records.jsonl"
+        lines = path.read_bytes().splitlines(keepends=True)
+        self.assertEqual(len(lines), 3)
+        partial = lines[2][:len(lines[2]) // 2]
+        variants = (lines[0] + lines[1] + partial,
+                    lines[0] + lines[1] + partial + b"\n",
+                    lines[0] + lines[1].rstrip(b"\n"))
+        for damaged in variants:
+            with self.subTest(tail=damaged[-40:]):
+                path.write_bytes(damaged)
+                self.checked.reset_mock()
+                self.assertEqual(report.main([*self.args, "--resume"]), 0)
+                self.checked.assert_called_once()
+                self.assertEqual(self.checked.call_args.args[0], self.programs[1])
+                self.assertTrue(path.read_bytes().startswith(lines[0] + lines[1]))
+                _, records = report.load(path)
+                self.assertEqual([row["program"] for row in records], self.programs)
+                # Repeated resume must reload both proofs, rather than append
+                # again onto an invalid line and make it an interior error.
+                repaired = path.read_bytes()
+                self.checked.reset_mock()
+                self.assertEqual(report.main([*self.args, "--resume"]), 0)
+                self.checked.assert_not_called()
+                self.assertEqual(path.read_bytes(), repaired)
+                self.assertEqual(len(report.load(path)[1]), 2)
+                self.assertEqual(report.status(self.canonical), 0)
+
+    def test_invalid_resume_does_not_repair_the_record_file(self):
+        self.assertEqual(report.main(self.args), 0)
+        path = self.root / "records.jsonl"
+        original = path.read_bytes()
+        path.write_bytes(original[:-20])
+        damaged = path.read_bytes()
+        (self.root / "checker").write_text("different checker\n")
+        self.checked.reset_mock()
+        with self.assertRaises(SystemExit):
+            report.main([*self.args, "--resume"])
+        self.assertEqual(path.read_bytes(), damaged)
+        self.checked.assert_not_called()
+
     def test_missing_duplicate_or_different_records_cannot_certify_full_corpus(self):
         self.assertEqual(report.main(self.args), 0)
         records_path = self.root / "records.jsonl"

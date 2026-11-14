@@ -1311,7 +1311,7 @@ def gen_exc_brepr(self, o: Val) -> Val:
     a = self.getfield(o, self.field(o, " args"), " args")
     return Val(self.rt("pys_exc_brepr", "ptr", [f"ptr {o.v}", f"ptr {a.v}"]), "str")
 
-def gen_super_call(self, sc: Node, m: str, args: list[Node], based: bool = False, read: bool = False, init_bound: bool = False) -> Val:
+def gen_super_call(self, sc: Node, m: str, args: list[Node], based: bool = False, read: bool = False, own_bound: bool = False) -> Val:
     # super().m(args) in a method of an exception class (based: Base.m(self, args), for its
     # base): the base's method m, or what BaseException's __init__ (keep the args), __str__ and
     # __repr__ do
@@ -1330,18 +1330,19 @@ def gen_super_call(self, sc: Node, m: str, args: list[Node], based: bool = False
     if me0 == "":
         self.err("super() in a class method (which binds cls, the class) or a static method without parameters is not supported")
     me = self.expr(mk("name", me0, sc.line, []), "")
-    if not init_bound and not based and not read and m == "__init__" and len(args) == 0 and me.v not in self.nn:
-        # An unbound super object retains its own no-argument initializer. For a
-        # bound receiver, keep the normal base initializer and its side effects.
+    start = sc.kids[1].s if ordinary and len(sc.kids) == 3 else cls
+    if not own_bound and not based and not read and m in ["__init__", "__str__", "__repr__"] and len(args) == 0 and me.v not in self.nn:
+        # An unbound super object retains its own initializer and string wrappers.
+        # For a bound receiver, keep the normal base method and its side effects.
         receiver = mk("name", me0, sc.line, [])
         condition = mk("cmp", "is", sc.line, [receiver, mk("None", "", sc.line, [])])
-        call = mk("superinit", "", sc.line, [sc])
-        return self.expr(mk("ifexp", "", sc.line, [condition, mk("None", "", sc.line, []), call]), "")
+        own = mk("None", "", sc.line, []) if m == "__init__" else mk("str", f"<super: <class '{short(start)}'>, NULL>", sc.line, [])
+        call = mk("superbound", m, sc.line, [sc])
+        return self.expr(mk("ifexp", "", sc.line, [condition, own, call]), "")
     if not based:
         # super(C, None) is unbound: its attribute lookup fails before call arguments.
         # Explicit C.m(None, ...) can reach here through a nullable specialization.
         self.notnone(me, f"AttributeError: 'super' object has no attribute '{m}'")
-    start = sc.kids[1].s if ordinary and len(sc.kids) == 3 else cls
     b = self.classes[start].base
     if b in self.classes and m in self.classes[b].methods:
         bm = self.classes[b].methods[m]

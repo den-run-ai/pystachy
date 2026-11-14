@@ -796,9 +796,9 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     self.line = n.line
     want = self.rec_type(want)
     k = n.kind
-    if k == "superinit":
-        # Bound arm of a nullable super initializer, already split from its own initializer.
-        return self.super_call(n.kids[0], "__init__", [], init_bound=True)
+    if k == "superbound":
+        # Bound arm of a nullable super call, already split from its own-object method.
+        return self.super_call(n.kids[0], n.s, [], own_bound=True)
     if k in ["matchbind", "matchconst", "matchvalue", "matchseq", "matchclass", "matchfield", "matchunsupported"]:
         return pattern_expr(self, n)
     if k == "cmfactory":
