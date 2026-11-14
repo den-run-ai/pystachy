@@ -1,0 +1,15 @@
+loop -84.65356991177077
+read 2.5 1.0 2
+once 0.5
+once past the end: IndexError list index out of range
+read 16.0 0.5 16
+once by zero: ZeroDivisionError float division by zero
+read -3.0 9.0 -3
+once of a negative: ValueError math domain error
+ints 3 2
+ints 68
+ints by zero: ZeroDivisionError integer division or modulo by zero
+ints -4 0
+negative shift: ValueError negative shift count
+loop again -84.65356991177077
+[exit 0]

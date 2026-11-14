@@ -1313,10 +1313,13 @@ def main() -> None:
         jir = jit_alloc(ir)  # (with the allocator's fast path: JITFAST)
         alloced = jir != ir
         # a program of up to JIT_INLINE lines of IR is inlined (below): the runtime's small functions
-        # that it calls, too, given the runtime's copies of them (jit_helpers)
+        # that it calls, too, given the runtime's copies of them (jit_helpers), where a loop calls them
+        # (PYSTACHY_OPT=-jitloops: everywhere)
         inlined = ir.split("; pystachy source locations\n")[0].count("\n") <= jitinline
         if inlined and jtable != "":
-            jir = jit_helpers.splice(jir, jtable)
+            spliced_at = timing_start()
+            jir = jit_helpers.splice(jir, jtable, "jitloops" in on)
+            timing_end("program.jit_helpers", spliced_at)
         if code == 0:
             f = open(ll, "w", encoding=RAW)
             # (the shared library's callbacks: RTSO; with llc, lli's main module holds them, below)

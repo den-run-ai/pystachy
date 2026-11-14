@@ -3,7 +3,8 @@
 The runtime text below is shaped as clang -O2 prints runtime.c's: attribute groups, metadata,
 private messages, a static cold failure path, a static variable and named struct types. With
 PYSTACHY_TEST_LLVM=<directory of opt> (or opt on PATH), the made module and the spliced program are
-verified by opt.
+verified by opt. LOOPS, shaped as the frontend prints a program, has calls that run many times (in
+a loop, or reached from one) and calls that run once, of which only the first are inlined.
 """
 import os
 import shutil
@@ -210,7 +211,7 @@ class SpliceTests(unittest.TestCase):
         self.table = jit_helpers.prepare(RUNTIME)
 
     def test_a_declared_function_of_the_same_signature_is_replaced(self):
-        out = jit_helpers.splice(PROGRAM, self.table)
+        out = jit_helpers.splice(PROGRAM, self.table, False)
         self.assertNotIn("declare i64 @pys_list_get(ptr, i64) #0", out)
         self.assertIn("define available_externally i64 @pys_list_get(", out)
         self.assertEqual(out.count("@pys_list_get("), 2)  # (its copy, and the call)
@@ -219,19 +220,20 @@ class SpliceTests(unittest.TestCase):
         self.assertEqual(out.count("declare void @pys_fail("), 1)
 
     def test_another_signature_keeps_the_declaration(self):
-        out = jit_helpers.splice(PROGRAM, self.table)
+        out = jit_helpers.splice(PROGRAM, self.table, False)
         self.assertIn("declare double @pys_fdiv(double, i64)", out)
         self.assertNotIn("@rtj.trap", out)
 
     def test_a_program_that_declares_none_is_unchanged(self):
         program = "define i64 @main() {\nentry:\n  ret i64 0\n}\n"
-        self.assertEqual(jit_helpers.splice(program, self.table), program)
-        self.assertEqual(jit_helpers.splice(PROGRAM, ""), PROGRAM)
-        self.assertEqual(jit_helpers.splice(PROGRAM, "; another table\n"), PROGRAM)
+        self.assertEqual(jit_helpers.splice(program, self.table, False), program)
+        self.assertEqual(jit_helpers.splice(program, self.table, True), program)
+        self.assertEqual(jit_helpers.splice(PROGRAM, "", False), PROGRAM)
+        self.assertEqual(jit_helpers.splice(PROGRAM, "; another table\n", True), PROGRAM)
 
     def test_what_a_copy_needs_is_added_once(self):
         program = PROGRAM.replace("declare double @pys_fdiv(double, i64)", "declare double @pys_fdiv(double, double)")
-        out = jit_helpers.splice(program, self.table)
+        out = jit_helpers.splice(program, self.table, False)
         self.assertIn("define available_externally double @pys_fdiv(", out)
         self.assertEqual(out.count("define internal fastcc void @rtj.trap("), 1)
         self.assertEqual(out.count("@rtj..str.2 = private"), 1)
@@ -245,14 +247,239 @@ class SpliceTests(unittest.TestCase):
         program = PROGRAM.replace("declare double @pys_fdiv(double, i64)", "declare double @pys_fdiv(double, double)")
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "program.ll"
-            path.write_text(jit_helpers.splice(program, self.table))
+            path.write_text(jit_helpers.splice(program, self.table, False))
             r = subprocess.run([tool, "-passes=always-inline,cgscc(inline),function(instcombine)", "-S", str(path), "-o", "-"],
                                capture_output=True, text=True)
             self.assertEqual(r.returncode, 0, r.stderr)
             self.assertNotIn("call i64 @pys_list_get(", r.stdout)
 
 
+LOOPS = """target triple = "x86_64-unknown-linux-gnu"
+
+declare i64 @pys_list_get(ptr, i64) #0
+declare double @pys_fdiv(double, double)
+declare void @pys_fail(ptr)
+
+define internal double @f.leaf(ptr %a0, double %a1) {
+entry:
+  %v = call i64 @pys_list_get(ptr %a0, i64 1)
+  %d = call double @f.deeper(double %a1)
+  ret double %d
+}
+define internal double @f.deeper(double %a0) {
+entry:
+  %q = call double @pys_fdiv(double %a0, double 3.0)
+  ret double %q
+}
+define internal double @f.run(ptr %a0, i64 %a1) {
+entry:
+  %first = call i64 @pys_list_get(ptr %a0, i64 0)
+  br label %L1
+L1:
+  %i = phi i64 [ 0, %entry ], [ %j, %L2 ]
+  %s = phi double [ 0.0, %entry ], [ %t, %L2 ]
+  %c = icmp slt i64 %i, %a1
+  br i1 %c, label %L2, label %L3
+L2:
+  %x = call i64 @pys_list_get(ptr %a0, i64 %i)
+  %y = sitofp i64 %x to double
+  %z = call double @f.leaf(ptr %a0, double %y)
+  %t = fadd double %s, %z
+  %j = add i64 %i, 1
+  br label %L1
+L3:
+  %r = call double @pys_fdiv(double %s, double 2.0)
+  ret double %r
+}
+define internal double @f.once(double %a0) {
+entry:
+  %r = call double @pys_fdiv(double %a0, double 4.0)
+  ret double %r
+}
+define i32 @main() {
+entry:
+  %l = alloca [4 x i64]
+  %a = call double @f.run(ptr %l, i64 3)
+  %b = call double @f.once(double %a)
+  ret i32 0
+}
+
+attributes #0 = { nounwind }
+"""
+
+REACHED = """declare i64 @pys_list_get(ptr, i64)
+declare void @pys_register(ptr)
+declare i32 @pys_personality(...)
+
+define internal i64 @f.rec(i64 %a0) {
+entry:
+  %c = icmp sgt i64 %a0, 0
+  br i1 %c, label %L1, label %L2
+L1:
+  %m = sub i64 %a0, 1
+  %r = call i64 @f.rec(i64 %m)
+  ret i64 %r
+L2:
+  %v = call i64 @pys_list_get(ptr null, i64 0)
+  ret i64 %v
+}
+define internal i64 @f.cb(ptr %a0) {
+entry:
+  %v = call i64 @pys_list_get(ptr %a0, i64 0)
+  ret i64 %v
+}
+define internal void @f.reg() {
+entry:
+  call void @pys_register(ptr @f.cb)
+  ret void
+}
+define internal i64 @f.eq(i64 %a0) {
+entry:
+  %v = call i64 @pys_list_get(ptr null, i64 %a0)
+  ret i64 %v
+}
+define i64 @pys_obj_eq(i64 %c, i64 %a, i64 %b) {
+entry:
+  %v = call i64 @f.eq(i64 %a)
+  ret i64 %v
+}
+define internal void @f.sw(i64 %a0) personality ptr @pys_personality {
+entry:
+  br label %L1
+L1:
+  %v = invoke i64 @pys_list_get(ptr null, i64 %a0) to label %L2 unwind label %L3
+L2:
+  switch i64 %v, label %L4 [
+    i64 0, label %L1
+    i64 1, label %L4
+  ]
+L3:
+  %lp = landingpad { ptr, i32 } cleanup
+  ret void
+L4:
+  %w = call i64 @pys_list_get(ptr null, i64 1)
+  ret void
+}
+define internal void @f.tried() personality ptr @pys_personality {
+entry:
+  %v = invoke i64 @pys_list_get(ptr null, i64 2) to label %L1 unwind label %L2
+L1:
+  ret void
+L2:
+  %lp = landingpad { ptr, i32 } cleanup
+  ret void
+}
+define i32 @main() {
+entry:
+  call void @f.reg()
+  %x = call i64 @f.rec(i64 3)
+  call void @f.sw(i64 2)
+  call void @f.tried()
+  ret i32 0
+}
+"""
+
+
+def hot_by_name(program: str) -> dict:
+    # each call's hotness, by its result's name (or callee, for one without)
+    lines = program.split("\n")
+    out = {}
+    for k, hot in jit_helpers.hot_calls(lines, {}).items():
+        line = lines[k].strip()
+        key = line.split(" = ")[0] if " = " in line else jit_helpers.callee(lines[k])
+        function = [x for x in lines[: k] if x.startswith("define ")][-1]
+        out[(jit_helpers.first_name(function), key)] = hot
+    return out
+
+
+class LoopTests(unittest.TestCase):
+    def setUp(self):
+        self.table = jit_helpers.prepare(RUNTIME)
+
+    def test_a_call_in_a_loop_or_reached_from_one_is_hot(self):
+        hot = hot_by_name(LOOPS)
+        self.assertEqual(hot, {
+            ("@f.leaf", "%v"): True, ("@f.leaf", "%d"): True, ("@f.deeper", "%q"): True,
+            ("@f.run", "%first"): False, ("@f.run", "%x"): True, ("@f.run", "%z"): True, ("@f.run", "%r"): False,
+            ("@f.once", "%r"): False, ("@main", "%a"): False, ("@main", "%b"): False})
+
+    def test_recursion_callbacks_and_the_runtime_s_calls_are_hot(self):
+        hot = hot_by_name(REACHED)
+        self.assertTrue(hot[("@f.rec", "%v")])  # (a recursion)
+        self.assertTrue(hot[("@f.cb", "%v")])  # (its address is taken)
+        self.assertTrue(hot[("@f.eq", "%v")])  # (an exported function, which the runtime calls, calls it)
+        self.assertFalse(hot[("@f.reg", "@pys_register")])
+        self.assertFalse(hot[("@main", "%x")])  # (main is called once)
+        # an invoke's successors and a switch's cases close the loop of L1 and L2; L4 lies after it
+        self.assertTrue(hot[("@f.sw", "%v")])
+        self.assertFalse(hot[("@f.sw", "%w")])
+        self.assertFalse(hot[("@f.tried", "%v")])
+        out = jit_helpers.splice(REACHED, self.table, True)
+        self.assertIn("%v = invoke i64 @pys_list_get(ptr null, i64 2) noinline to label %L1 unwind label %L2\n", out)
+
+    def test_only_a_function_that_a_hot_call_makes_is_copied(self):
+        out = jit_helpers.splice(LOOPS.replace("call i64 @pys_list_get(ptr %a0, i64 %i)", "add i64 %i, 0")
+                                 .replace("call i64 @pys_list_get(ptr %a0, i64 1)", "add i64 1, 0"), self.table, True)
+        self.assertIn("declare i64 @pys_list_get(ptr, i64) #0", out)
+        self.assertIn("call i64 @pys_list_get(ptr %a0, i64 0)\n", out)  # (no copy: left as it was)
+        self.assertIn("define available_externally double @pys_fdiv(", out)
+
+    def test_the_other_calls_of_a_copy_are_not_inlined(self):
+        out = jit_helpers.splice(LOOPS, self.table, True)
+        self.assertIn("define available_externally i64 @pys_list_get(", out)
+        self.assertIn("%first = call i64 @pys_list_get(ptr %a0, i64 0) noinline\n", out)
+        self.assertIn("%x = call i64 @pys_list_get(ptr %a0, i64 %i)\n", out)
+        self.assertIn("%r = call double @pys_fdiv(double %s, double 2.0) noinline\n", out)
+        self.assertIn("%r = call double @pys_fdiv(double %a0, double 4.0) noinline\n", out)
+        self.assertIn("%q = call double @pys_fdiv(double %a0, double 3.0)\n", out)
+        self.assertEqual(out.count(") noinline\n"), 3)
+        # PYSTACHY_OPT=-jitloops: every call may be inlined
+        self.assertNotIn(") noinline\n", jit_helpers.splice(LOOPS, self.table, False))
+
+    def test_a_program_of_cold_calls_only_is_unchanged(self):
+        self.assertEqual(jit_helpers.splice(PROGRAM, self.table, True), PROGRAM)
+
+    def test_the_inliner_keeps_the_calls_marked(self):
+        tool = opt()
+        if not tool:
+            self.skipTest("no opt (PYSTACHY_TEST_LLVM)")
+        with tempfile.TemporaryDirectory() as d:
+            for name, program, cold in [("loops.ll", LOOPS, 3), ("reached.ll", REACHED, 2)]:
+                path = Path(d) / name
+                path.write_text(jit_helpers.splice(program, self.table, True))
+                r = subprocess.run([tool, "-passes=cgscc(inline),elim-avail-extern", "-S", str(path), "-o", "-"],
+                                   capture_output=True, text=True)
+                self.assertEqual(r.returncode, 0, r.stderr)
+                self.assertNotIn("available_externally", r.stdout)
+                groups = dict(line[len("attributes "):].split(" = ", 1) for line in r.stdout.split("\n") if line.startswith("attributes #"))
+                # what is left of the copied functions' calls: the cold ones (the others are inlined),
+                # each marked noinline (the calls of @f.once and @f.run, inlined into main, with them)
+                calls = [x for x in r.stdout.split("\n") if x.startswith("  ") and ("@pys_list_get(" in x or "@pys_fdiv(" in x)]
+                self.assertEqual(len(calls), cold, r.stdout)
+                for call in calls:
+                    group = call[call.index(") #") + 2 :].split(" ")[0]
+                    self.assertIn("noinline", groups[group], call)
+
+
 class TextTests(unittest.TestCase):
+    def test_calls(self):
+        self.assertEqual(jit_helpers.callee("  %t31 = call ptr %t28(ptr %t30, ptr @f)"), "%t28")
+        self.assertEqual(jit_helpers.callee("  call void (ptr, ...) @printf(ptr @s)"), "@printf")
+        self.assertEqual(jit_helpers.callee("  %v = invoke i64 @f.g$h(i64 1) to label %a unwind label %b"), "@f.g$h")
+        self.assertEqual(jit_helpers.callee("define i64 @f(i64 %a)"), "")
+        self.assertEqual(jit_helpers.callee("  %x = add i64 %a, %b"), "")
+        self.assertEqual(jit_helpers.noinline("  %v = call noalias ptr @pys_new(i64 ptrtoint (ptr getelementptr (%T, ptr null, i32 1) to i64)) allockind(\"alloc\")"),
+                         "  %v = call noalias ptr @pys_new(i64 ptrtoint (ptr getelementptr (%T, ptr null, i32 1) to i64)) noinline allockind(\"alloc\")")
+        self.assertEqual(jit_helpers.noinline("  %v = invoke i64 @f(i64 1) to label %a unwind label %b"),
+                         "  %v = invoke i64 @f(i64 1) noinline to label %a unwind label %b")
+
+    def test_cycles(self):
+        self.assertEqual(jit_helpers.cyclic([[1], [2], []]), [False, False, False])
+        self.assertEqual(jit_helpers.cyclic([[0], [2], [1, 3], []]), [True, True, True, False])
+        self.assertEqual(jit_helpers.cyclic([[1], [2, 4], [3], [1], [4]]), [False, True, True, True, True])
+        self.assertEqual(jit_helpers.cyclic([]), [])
+
+
     def test_names(self):
         self.assertEqual(jit_helpers.tokens('call @a(ptr @"q x", ptr @a.b) %t.1 %0', "@"), ["@a", '@"q x"', "@a.b"])
         self.assertEqual(jit_helpers.rename("@a @ab @a.b %a", {"@a": "@z", "%a": "%y"}), "@z @ab @a.b %y")

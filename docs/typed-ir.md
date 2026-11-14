@@ -508,7 +508,7 @@ and focused alias, mutation and GC tests cover the exposed dynamic mutation path
 `OPTS` lists the available switches. `charslots`, `listget`, `listguard`, `dictfuse`, `unionslots` and
 `nullcheck` are whole-function IR passes. `callbacks` versions eligible functions after
 ordinary compilation and before effect summaries and recursion accounting;
-the remaining options select frontend or lowering choices, and `jithelpers` one of the JIT tier's.
+the remaining options select frontend or lowering choices, and `jithelpers` and `jitloops` the JIT tier's.
 
 `callbacks` finds a loop that calls an erased `Callable` parameter through a
 private, write-once slot. It emits at most two precompiled copies, guarded by the
@@ -565,6 +565,7 @@ before the next pass. Normal compilation does not add these verification scans.
 | `nullcheck` | Drop a check that a value is not None (before a read through it) where a passed test of the same value dominates it: the block after a check, or the branch of a null test where the value is not None, reached from nowhere else. The same value is the value, an equal one, or a load of a slot that only the entry block stores and only loads and stores use (a parameter the function never assigns). The check becomes a branch, its test goes once nothing reads it, the block after it joins its block where nothing else goes there, and a cold block no check goes to any more goes too; a walk down the dominator tree keeps the work linear ([#787](https://github.com/den-run-ai/pystachy/issues/787)) |
 | `allocelide` | Allocate an object or fixed tuple that holds no reference (every field or item an `int`, a `float` or a `bool`) with `pys_new`, a call that LLVM may delete when nothing keeps its object (`allockind`); the others keep `pys_alloc`, as without it, so that one the program still reads keeps what it holds. AOT builds inline the allocator's fast path into the calls left ([#1017](https://github.com/den-run-ai/pystachy/issues/1017), [internals](internals.md#whole-program-optimization)) |
 | `jithelpers` | In the JIT tier, give a program that the inliner runs over (`PYSTACHY_JIT_INLINE`) `available_externally` copies of the small runtime functions it calls, such as a `list[float]` read, float division or `math.sqrt()`, which LLVM may then inline into a loop as an AOT build does; a call it keeps reaches the runtime's own function ([#705](https://github.com/den-run-ai/pystachy/issues/705), [internals](internals.md#jit-aot-and-runtime-caching)) |
+| `jitloops` | With `jithelpers`, copy only the runtime functions that a call which may run many times makes (in a loop, or in a function that such a call, the runtime or a recursion reaches), and mark the program's other calls of them `noinline`, so that code which runs once is not made larger or slower to compile; without it every call may be inlined |
 
 `unionslots` also splits private `int | None`, `float | None` and `bool | None`
 locals into a presence slot (zero or one) and a payload slot. Inferred None-first
