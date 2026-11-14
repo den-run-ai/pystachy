@@ -1,0 +1,4650 @@
+{
+ "schema_version": 1,
+ "measurement": "pystachy run with calls of the runtime's small functions (PYSTACHY_OPT=-jithelpers) against their copies inlined (the default, #705). Uncached: the program cache off (PYSTACHY_PROGRAM_CACHE=0), so every run compiles; rounds interleaved in rotating order, each run pinned to one CPU (taskset -c 1), PYSTACHY_TIMING=1. Hits: the program cache on, in a private cache seeded with the runtime artifacts, one traced miss per variant (not reported: a private cache's first miss also builds the runtime's shared artifacts), then interleaved traced hits. Every run printed CPython 3.13's output.",
+ "fields": {
+  "wall_s": "the launch's wall time, start to exit",
+  "jit_optimize_s": "PYSTACHY_TIMING program.jit_optimize (opt)",
+  "compile_s": "driver.prepare_run (frontend, typed-IR passes, opt) + program.jit_load + program.jit_codegen",
+  "peak_rss_mib": "wait4's ru_maxrss: the largest process (driver, opt or the JIT runner)",
+  "knn_s, layout_s": "the UMAP probe's own stage timers (execution only)",
+  "loop_s": "a pyperformance port's timed loop (execution only)"
+ },
+ "measured_commit": "c162676b632b2d4c273b3c17b352350c6145ac0e",
+ "base_commit": "5f81cc2563d231501952104e991d858e670325ac",
+ "native_compiler_sha256": "165312cc55518a87de6638c385717656534fbd414216866d47742f9fa9a7d966",
+ "platform": "Linux-6.18.44-fc-v470-x86_64-with-glibc2.39",
+ "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+ "python": "3.13.18",
+ "llvm": "Ubuntu LLVM version 18.1.3",
+ "inputs_sha256": {
+  "events.txt": "09b0289a3ce9ed914e6e33e23fb47760d8a026e8fcc2e4cbaf5c050b3bbf9a14",
+  "imports.py": "3ef08c74f1794f4f058593e0a8183ce8d4c43fdb3425ca722519e5d3b78515f8",
+  "padded.py": "2d1d45b12572ecf1956add197e3a7f2fb14d04cc485c314d74e8120af209423f",
+  "rules.txt": "2829070326b1aefa23a0a0be9386976b1d8f949d19485f3ec9ec361934f00df7",
+  "tiny.py": "cc42155088fca5730758db72b2a5bca33112a941dfaa2d43098ec422ce4ea213",
+  "umap_core.py": "d9b64ce71d4cdcc438e30bdb556989644957dca3658593b3b7d5fcac6c673d34",
+  "examples/route/route.py": "352f80197e02e796f889a8b6a7789db6487b6e28f35d435b2c04d4eea6314c0d",
+  "bench/dictcount.py": "64f96d3eb32f5c8b1dfc77d73e5e8351c14bf80295f6d8cf13770f1a3ec93d9a",
+  "bench/dictkeys.py": "5af3945ba43fc28c9c38b99350c9d36d2d871888deb5a2ab9c9ba847614f276d",
+  "bench/dictlookup.py": "397ef1600b36ab4b524d915e2497e58590c7ca5f2a8a13d99812b15e1328c57a",
+  "bench/fib.py": "20035a6334baba74b250c187d92b915671a394d4fa5cabf703433bd938b4bd26",
+  "bench/itertools_loops.py": "5dc545398152df00558fc63df526dd7ee28d5ab82872eecc4406224cfa5f33ac",
+  "bench/json_records.py": "db9c24a00db64551b1911e99ec690fc10450d5d6e044ff25cf3a612cfa84bad4",
+  "bench/list_reads.py": "eb15120e5873d059c22ea267496932e873fdb875887c0965802ca78ba09f3928",
+  "bench/listindex.py": "572cd5011e2dc38e7c42eddee16719e8898829ae466bc740077840ceff66f886",
+  "bench/mandel.py": "b8b8db8a04632d915edf65a9ce5e59714adb061324041097dd09027a83393ebe",
+  "bench/memo.py": "f2c0d13b8136e5e5a5dc83d3ea62f8e26fb2ce4510d28966b5262b1c16e25760",
+  "bench/nbody.py": "1c163e560eea0d5196202fd19cb43c6c59c8db335f1157cbdd252af0e1eebc7b",
+  "bench/optional_scalars.py": "ff6dc5048a6917a477e2b4c11b71e856afa31617135ec0685d00ee59e3d04bad",
+  "bench/setdisplay.py": "eb63b54635824b45b45978310c4300bac10e3e65d8887f694cb19c5f7209ad4c",
+  "bench/sieve.py": "4749f7d74afd2915a10088ed65053b4f9aa5ba04c415ed7e90fd27cd14822359",
+  "bench/spectral.py": "0ba2115a31ca52d8b6a6d8949882c25bdce261ef8e756d976eb348c8cc11e0b0",
+  "bench/words.py": "e17e9c90dbf278baf541801ad04800510e3df2b9dc16afa1f53040bc710e61b7",
+  "bench/pyperformance/barnes_hut.py": "e68bffb93b84c4fb44d50dd0de057af886533efc969a5ea9424c1feff381ac3d",
+  "bench/pyperformance/bm_logging.py": "7483fcc7fcb36dd943f3790a324c997c50616ae0334e478c6aaec87a59d0ad00",
+  "bench/pyperformance/bpe_tokeniser.py": "9775aff77bb52efc6fb9828517ead0584552b1cba5afe73ef4d93e13972ca7de",
+  "bench/pyperformance/chaos.py": "228afbb7b936034eb83a616fb8ef88a267653d55906af6bd2f0e117faa4fb702",
+  "bench/pyperformance/comprehensions.py": "77f56acb32f987707f6d75e4867d9aca0ccab8854b1d88f674318f1d53383862",
+  "bench/pyperformance/fannkuch.py": "42d906410ede9419d8f3eceda729b2027d78085f455a0fbb0445e081b53df2cf",
+  "bench/pyperformance/float.py": "cc19566e50f47bc26d78324475260ff9808509266b70fffeff0091d1144388d0",
+  "bench/pyperformance/generators.py": "4c5b29669136d4cf7d51f039253b0fd5a21f35d0dd068e2f35a06a889f8d997f",
+  "bench/pyperformance/go.py": "521cffbc4d15cdd93e0693230143aa274e4e190dd3e5f49cb45c9745565c5a13",
+  "bench/pyperformance/hexiom.py": "988d2adb90f8ab6a67180200436e93290fdb077e218b7339bb4ac7caf1cd2502",
+  "bench/pyperformance/json_dumps.py": "00d75868e820e56f2281e061583d418574b6dda96de180d3cf3adc76cff532c2",
+  "bench/pyperformance/json_loads.py": "51d23d4d8dcc3dea512988ae424988be6bf17d70e9e6d2a09d908799b3319c77",
+  "bench/pyperformance/meteor_contest.py": "876ffc333e293ab11d19298002da139b6ccf88dd50e3e92b9384d4485c3a7340",
+  "bench/pyperformance/nbody.py": "2ec9c9e9c36cf2e819dc1026debbb7f9f901410ae36032795d60057c9f447e30",
+  "bench/pyperformance/nqueens.py": "5ccc5d1f8724daf6550b870d8031120653eef6df0fa93bddeb7afaa5e28f4b53",
+  "bench/pyperformance/pidigits.py": "34bb25524dd905c804a8ad5179f649277eed24b59765bc68df5c8f4c93248c39",
+  "bench/pyperformance/raytrace.py": "e5f71075698d02ac3e91fe99bf43799905c03651be4a41ff574c99790f5d2213",
+  "bench/pyperformance/regex_dna.py": "8f02c6b44688f6c1e3a96bbd0155367f3bf9327e65f42be2967008891e1aa2aa",
+  "bench/pyperformance/regex_effbot.py": "91ead8e732223797be1ed75d57d781ad6682ec25fc9464e41f336e73c842ef5a",
+  "bench/pyperformance/regex_v8.py": "a2bf22b48133192c4931bef3a65f2385337b3f1b1e4359ff67ebebe96821b490",
+  "bench/pyperformance/richards.py": "f290fb528a0086dc5fd98bdf866c591252d8c8a31c80415c051a6ae69c7e0c82",
+  "bench/pyperformance/richards_super.py": "376e2407aaaf91f880d2e53b0853455272183130e157afc56d1539a5f259496f",
+  "bench/pyperformance/scimark.py": "dd34b452b124fb104750aed8c82082fca734695561e221de47147ec13bec7629",
+  "bench/pyperformance/spectral_norm.py": "1f55b1a0cb7931bbdec446be916b762c7fd60cc0e34a3b76cfd02ec4b10bba79",
+  "bench/pyperformance/unpack_sequence.py": "a4c67ad1e0fc2c7dcc102c98042c0b9e08bf1b46ac980b7e1916294e34997a67"
+ },
+ "input_notes": "tiny.py, padded.py, imports.py, rules.txt and events.txt are tools/program_cache_probe.py's benchmark() workloads; umap_core.py is research/umap-numba-2026-11-13/umap_core.py of branch claude/dreamy-shannon-bb3cu1 at bc2df5cd, run as 10000 16 10 15 200 7",
+ "uncached": [
+  {
+   "workload": "tiny",
+   "command": [
+    "pystachy",
+    "run",
+    "tiny.py"
+   ],
+   "rounds": 7,
+   "median": {
+    "calls": {
+     "wall_s": 0.031,
+     "jit_optimize_s": 0.012,
+     "compile_s": 0.018,
+     "peak_rss_mib": 59.8
+    },
+    "helpers": {
+     "wall_s": 0.0333,
+     "jit_optimize_s": 0.0123,
+     "compile_s": 0.02,
+     "peak_rss_mib": 59.7
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 1.052,
+    "jit_optimize_s": 1.025,
+    "compile_s": 1.078
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.0373,
+      "jit_optimize_s": 0.0155,
+      "compile_s": 0.0221,
+      "peak_rss_mib": 59.8
+     },
+     {
+      "wall_s": 0.0323,
+      "jit_optimize_s": 0.0128,
+      "compile_s": 0.0189,
+      "peak_rss_mib": 59.8
+     },
+     {
+      "wall_s": 0.0335,
+      "jit_optimize_s": 0.0133,
+      "compile_s": 0.0194,
+      "peak_rss_mib": 59.8
+     },
+     {
+      "wall_s": 0.0253,
+      "jit_optimize_s": 0.0097,
+      "compile_s": 0.0145,
+      "peak_rss_mib": 59.7
+     },
+     {
+      "wall_s": 0.0246,
+      "jit_optimize_s": 0.0096,
+      "compile_s": 0.0142,
+      "peak_rss_mib": 59.7
+     },
+     {
+      "wall_s": 0.031,
+      "jit_optimize_s": 0.0119,
+      "compile_s": 0.018,
+      "peak_rss_mib": 59.9
+     },
+     {
+      "wall_s": 0.0309,
+      "jit_optimize_s": 0.012,
+      "compile_s": 0.0179,
+      "peak_rss_mib": 59.7
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.0355,
+      "jit_optimize_s": 0.0135,
+      "compile_s": 0.0211,
+      "peak_rss_mib": 59.7
+     },
+     {
+      "wall_s": 0.0335,
+      "jit_optimize_s": 0.0127,
+      "compile_s": 0.0202,
+      "peak_rss_mib": 59.7
+     },
+     {
+      "wall_s": 0.0336,
+      "jit_optimize_s": 0.0129,
+      "compile_s": 0.0202,
+      "peak_rss_mib": 59.8
+     },
+     {
+      "wall_s": 0.0269,
+      "jit_optimize_s": 0.0101,
+      "compile_s": 0.016,
+      "peak_rss_mib": 59.7
+     },
+     {
+      "wall_s": 0.0269,
+      "jit_optimize_s": 0.0099,
+      "compile_s": 0.0156,
+      "peak_rss_mib": 59.9
+     },
+     {
+      "wall_s": 0.0326,
+      "jit_optimize_s": 0.0122,
+      "compile_s": 0.0194,
+      "peak_rss_mib": 59.7
+     },
+     {
+      "wall_s": 0.0333,
+      "jit_optimize_s": 0.0123,
+      "compile_s": 0.02,
+      "peak_rss_mib": 59.8
+     }
+    ]
+   }
+  },
+  {
+   "workload": "padded",
+   "command": [
+    "pystachy",
+    "run",
+    "padded.py"
+   ],
+   "rounds": 5,
+   "median": {
+    "calls": {
+     "wall_s": 0.0636,
+     "jit_optimize_s": 0.0191,
+     "compile_s": 0.0501,
+     "peak_rss_mib": 61.8
+    },
+    "helpers": {
+     "wall_s": 0.0673,
+     "jit_optimize_s": 0.0197,
+     "compile_s": 0.0531,
+     "peak_rss_mib": 61.8
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 1.022,
+    "jit_optimize_s": 1.005,
+    "compile_s": 1.03
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.072,
+      "jit_optimize_s": 0.0215,
+      "compile_s": 0.0567,
+      "peak_rss_mib": 61.9
+     },
+     {
+      "wall_s": 0.0648,
+      "jit_optimize_s": 0.0195,
+      "compile_s": 0.0509,
+      "peak_rss_mib": 61.8
+     },
+     {
+      "wall_s": 0.0636,
+      "jit_optimize_s": 0.0189,
+      "compile_s": 0.0501,
+      "peak_rss_mib": 61.8
+     },
+     {
+      "wall_s": 0.0624,
+      "jit_optimize_s": 0.0191,
+      "compile_s": 0.0495,
+      "peak_rss_mib": 61.7
+     },
+     {
+      "wall_s": 0.0627,
+      "jit_optimize_s": 0.0191,
+      "compile_s": 0.0493,
+      "peak_rss_mib": 61.8
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.0696,
+      "jit_optimize_s": 0.0206,
+      "compile_s": 0.0546,
+      "peak_rss_mib": 61.8
+     },
+     {
+      "wall_s": 0.0673,
+      "jit_optimize_s": 0.0197,
+      "compile_s": 0.0531,
+      "peak_rss_mib": 61.9
+     },
+     {
+      "wall_s": 0.065,
+      "jit_optimize_s": 0.019,
+      "compile_s": 0.0516,
+      "peak_rss_mib": 61.8
+     },
+     {
+      "wall_s": 0.0636,
+      "jit_optimize_s": 0.0186,
+      "compile_s": 0.0502,
+      "peak_rss_mib": 61.9
+     },
+     {
+      "wall_s": 0.0761,
+      "jit_optimize_s": 0.0217,
+      "compile_s": 0.0585,
+      "peak_rss_mib": 61.7
+     }
+    ]
+   }
+  },
+  {
+   "workload": "imports",
+   "command": [
+    "pystachy",
+    "run",
+    "imports.py"
+   ],
+   "rounds": 5,
+   "median": {
+    "calls": {
+     "wall_s": 1.65,
+     "jit_optimize_s": 0.2444,
+     "compile_s": 1.6262,
+     "peak_rss_mib": 82.9
+    },
+    "helpers": {
+     "wall_s": 1.5153,
+     "jit_optimize_s": 0.2497,
+     "compile_s": 1.4927,
+     "peak_rss_mib": 83.0
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 0.918,
+    "jit_optimize_s": 0.92,
+    "compile_s": 0.918
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 1.5915,
+      "jit_optimize_s": 0.2444,
+      "compile_s": 1.5688,
+      "peak_rss_mib": 83.0
+     },
+     {
+      "wall_s": 1.6568,
+      "jit_optimize_s": 0.2283,
+      "compile_s": 1.6333,
+      "peak_rss_mib": 82.8
+     },
+     {
+      "wall_s": 1.6609,
+      "jit_optimize_s": 0.2849,
+      "compile_s": 1.6355,
+      "peak_rss_mib": 82.9
+     },
+     {
+      "wall_s": 1.3677,
+      "jit_optimize_s": 0.2187,
+      "compile_s": 1.3446,
+      "peak_rss_mib": 82.9
+     },
+     {
+      "wall_s": 1.65,
+      "jit_optimize_s": 0.2576,
+      "compile_s": 1.6262,
+      "peak_rss_mib": 83.0
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 1.3678,
+      "jit_optimize_s": 0.2216,
+      "compile_s": 1.3431,
+      "peak_rss_mib": 83.1
+     },
+     {
+      "wall_s": 1.4244,
+      "jit_optimize_s": 0.21,
+      "compile_s": 1.402,
+      "peak_rss_mib": 83.0
+     },
+     {
+      "wall_s": 1.6151,
+      "jit_optimize_s": 0.253,
+      "compile_s": 1.5918,
+      "peak_rss_mib": 83.1
+     },
+     {
+      "wall_s": 1.623,
+      "jit_optimize_s": 0.2497,
+      "compile_s": 1.6003,
+      "peak_rss_mib": 82.9
+     },
+     {
+      "wall_s": 1.5153,
+      "jit_optimize_s": 0.2621,
+      "compile_s": 1.4927,
+      "peak_rss_mib": 82.9
+     }
+    ]
+   }
+  },
+  {
+   "workload": "router",
+   "command": [
+    "pystachy",
+    "run",
+    "examples/route/route.py",
+    "rules.txt",
+    "events.txt",
+    "--names"
+   ],
+   "rounds": 5,
+   "median": {
+    "calls": {
+     "wall_s": 1.3662,
+     "jit_optimize_s": 0.2412,
+     "compile_s": 1.3439,
+     "peak_rss_mib": 80.7
+    },
+    "helpers": {
+     "wall_s": 1.3216,
+     "jit_optimize_s": 0.2022,
+     "compile_s": 1.2968,
+     "peak_rss_mib": 80.6
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 0.955,
+    "jit_optimize_s": 0.815,
+    "compile_s": 0.953
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 1.2676,
+      "jit_optimize_s": 0.2124,
+      "compile_s": 1.2436,
+      "peak_rss_mib": 79.3
+     },
+     {
+      "wall_s": 1.259,
+      "jit_optimize_s": 0.2307,
+      "compile_s": 1.2391,
+      "peak_rss_mib": 80.7
+     },
+     {
+      "wall_s": 1.3968,
+      "jit_optimize_s": 0.2412,
+      "compile_s": 1.3748,
+      "peak_rss_mib": 80.7
+     },
+     {
+      "wall_s": 1.3662,
+      "jit_optimize_s": 0.2506,
+      "compile_s": 1.3439,
+      "peak_rss_mib": 80.6
+     },
+     {
+      "wall_s": 1.3805,
+      "jit_optimize_s": 0.2435,
+      "compile_s": 1.3557,
+      "peak_rss_mib": 80.7
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 1.3309,
+      "jit_optimize_s": 0.239,
+      "compile_s": 1.3087,
+      "peak_rss_mib": 80.8
+     },
+     {
+      "wall_s": 1.2024,
+      "jit_optimize_s": 0.1881,
+      "compile_s": 1.1806,
+      "peak_rss_mib": 80.8
+     },
+     {
+      "wall_s": 1.3216,
+      "jit_optimize_s": 0.2054,
+      "compile_s": 1.2968,
+      "peak_rss_mib": 79.4
+     },
+     {
+      "wall_s": 1.3673,
+      "jit_optimize_s": 0.2022,
+      "compile_s": 1.343,
+      "peak_rss_mib": 80.6
+     },
+     {
+      "wall_s": 1.229,
+      "jit_optimize_s": 0.1607,
+      "compile_s": 1.2108,
+      "peak_rss_mib": 79.4
+     }
+    ]
+   }
+  },
+  {
+   "workload": "umap",
+   "command": [
+    "pystachy",
+    "run",
+    "umap_core.py",
+    "10000",
+    "16",
+    "10",
+    "15",
+    "200",
+    "7"
+   ],
+   "rounds": 3,
+   "median": {
+    "calls": {
+     "wall_s": 10.1126,
+     "jit_optimize_s": 0.0575,
+     "compile_s": 0.2233,
+     "peak_rss_mib": 118.3,
+     "data_s": 0.039,
+     "knn_s": 4.882,
+     "graph_s": 0.085,
+     "layout_s": 4.922
+    },
+    "helpers": {
+     "wall_s": 7.9535,
+     "jit_optimize_s": 0.0779,
+     "compile_s": 0.2856,
+     "peak_rss_mib": 122.8,
+     "data_s": 0.034,
+     "knn_s": 3.492,
+     "graph_s": 0.094,
+     "layout_s": 4.036
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 0.811,
+    "jit_optimize_s": 1.574,
+    "compile_s": 1.529,
+    "data_s": 0.872,
+    "knn_s": 0.784,
+    "graph_s": 1.106,
+    "layout_s": 0.813
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 10.1126,
+      "jit_optimize_s": 0.0608,
+      "compile_s": 0.2279,
+      "peak_rss_mib": 118.3,
+      "data_s": 0.043,
+      "knn_s": 4.882,
+      "graph_s": 0.083,
+      "layout_s": 4.847
+     },
+     {
+      "wall_s": 9.8124,
+      "jit_optimize_s": 0.0575,
+      "compile_s": 0.2233,
+      "peak_rss_mib": 118.3,
+      "data_s": 0.039,
+      "knn_s": 4.452,
+      "graph_s": 0.105,
+      "layout_s": 4.967
+     },
+     {
+      "wall_s": 10.1566,
+      "jit_optimize_s": 0.0479,
+      "compile_s": 0.178,
+      "peak_rss_mib": 118.2,
+      "data_s": 0.032,
+      "knn_s": 4.912,
+      "graph_s": 0.085,
+      "layout_s": 4.922
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 8.2054,
+      "jit_optimize_s": 0.0957,
+      "compile_s": 0.3485,
+      "peak_rss_mib": 122.8,
+      "data_s": 0.035,
+      "knn_s": 3.843,
+      "graph_s": 0.096,
+      "layout_s": 3.858
+     },
+     {
+      "wall_s": 7.9535,
+      "jit_optimize_s": 0.0753,
+      "compile_s": 0.2736,
+      "peak_rss_mib": 122.7,
+      "data_s": 0.034,
+      "knn_s": 3.492,
+      "graph_s": 0.093,
+      "layout_s": 4.036
+     },
+     {
+      "wall_s": 7.697,
+      "jit_optimize_s": 0.0779,
+      "compile_s": 0.2856,
+      "peak_rss_mib": 122.9,
+      "data_s": 0.029,
+      "knn_s": 3.219,
+      "graph_s": 0.094,
+      "layout_s": 4.045
+     }
+    ]
+   }
+  },
+  {
+   "workload": "nbody",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/nbody.py"
+   ],
+   "rounds": 3,
+   "median": {
+    "calls": {
+     "wall_s": 0.1154,
+     "jit_optimize_s": 0.0261,
+     "compile_s": 0.0533,
+     "peak_rss_mib": 62.1
+    },
+    "helpers": {
+     "wall_s": 0.1061,
+     "jit_optimize_s": 0.0199,
+     "compile_s": 0.0434,
+     "peak_rss_mib": 62.3
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 0.942,
+    "jit_optimize_s": 0.886,
+    "compile_s": 1.058
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.1202,
+      "jit_optimize_s": 0.0264,
+      "compile_s": 0.0533,
+      "peak_rss_mib": 62.1
+     },
+     {
+      "wall_s": 0.1154,
+      "jit_optimize_s": 0.0261,
+      "compile_s": 0.0536,
+      "peak_rss_mib": 62.2
+     },
+     {
+      "wall_s": 0.0851,
+      "jit_optimize_s": 0.0181,
+      "compile_s": 0.0373,
+      "peak_rss_mib": 62.0
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.1132,
+      "jit_optimize_s": 0.0234,
+      "compile_s": 0.0564,
+      "peak_rss_mib": 62.3
+     },
+     {
+      "wall_s": 0.0957,
+      "jit_optimize_s": 0.0199,
+      "compile_s": 0.0434,
+      "peak_rss_mib": 62.3
+     },
+     {
+      "wall_s": 0.1061,
+      "jit_optimize_s": 0.0197,
+      "compile_s": 0.0432,
+      "peak_rss_mib": 62.3
+     }
+    ]
+   }
+  },
+  {
+   "workload": "spectral",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/spectral.py"
+   ],
+   "rounds": 3,
+   "median": {
+    "calls": {
+     "wall_s": 0.0752,
+     "jit_optimize_s": 0.016,
+     "compile_s": 0.0305,
+     "peak_rss_mib": 61.5
+    },
+    "helpers": {
+     "wall_s": 0.0752,
+     "jit_optimize_s": 0.0212,
+     "compile_s": 0.0435,
+     "peak_rss_mib": 62.4
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 0.991,
+    "jit_optimize_s": 1.3,
+    "compile_s": 1.363
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.1141,
+      "jit_optimize_s": 0.0207,
+      "compile_s": 0.0439,
+      "peak_rss_mib": 61.5
+     },
+     {
+      "wall_s": 0.07,
+      "jit_optimize_s": 0.0159,
+      "compile_s": 0.0303,
+      "peak_rss_mib": 61.5
+     },
+     {
+      "wall_s": 0.0752,
+      "jit_optimize_s": 0.016,
+      "compile_s": 0.0305,
+      "peak_rss_mib": 61.5
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.0793,
+      "jit_optimize_s": 0.024,
+      "compile_s": 0.0478,
+      "peak_rss_mib": 62.4
+     },
+     {
+      "wall_s": 0.0694,
+      "jit_optimize_s": 0.0212,
+      "compile_s": 0.0413,
+      "peak_rss_mib": 62.4
+     },
+     {
+      "wall_s": 0.0752,
+      "jit_optimize_s": 0.0208,
+      "compile_s": 0.0435,
+      "peak_rss_mib": 62.5
+     }
+    ]
+   }
+  },
+  {
+   "workload": "mandel",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/mandel.py"
+   ],
+   "rounds": 3,
+   "median": {
+    "calls": {
+     "wall_s": 0.0872,
+     "jit_optimize_s": 0.0177,
+     "compile_s": 0.03,
+     "peak_rss_mib": 61.9
+    },
+    "helpers": {
+     "wall_s": 0.0842,
+     "jit_optimize_s": 0.0156,
+     "compile_s": 0.0277,
+     "peak_rss_mib": 62.1
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 0.947,
+    "jit_optimize_s": 0.975,
+    "compile_s": 1.041
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.0872,
+      "jit_optimize_s": 0.0177,
+      "compile_s": 0.03,
+      "peak_rss_mib": 62.0
+     },
+     {
+      "wall_s": 0.0902,
+      "jit_optimize_s": 0.0179,
+      "compile_s": 0.0315,
+      "peak_rss_mib": 61.9
+     },
+     {
+      "wall_s": 0.0736,
+      "jit_optimize_s": 0.016,
+      "compile_s": 0.0266,
+      "peak_rss_mib": 61.8
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.0755,
+      "jit_optimize_s": 0.0152,
+      "compile_s": 0.0267,
+      "peak_rss_mib": 62.1
+     },
+     {
+      "wall_s": 0.0854,
+      "jit_optimize_s": 0.0195,
+      "compile_s": 0.035,
+      "peak_rss_mib": 62.2
+     },
+     {
+      "wall_s": 0.0842,
+      "jit_optimize_s": 0.0156,
+      "compile_s": 0.0277,
+      "peak_rss_mib": 62.1
+     }
+    ]
+   }
+  },
+  {
+   "workload": "sieve",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/sieve.py"
+   ],
+   "rounds": 3,
+   "median": {
+    "calls": {
+     "wall_s": 0.2126,
+     "jit_optimize_s": 0.016,
+     "compile_s": 0.0262,
+     "peak_rss_mib": 122.3
+    },
+    "helpers": {
+     "wall_s": 0.2186,
+     "jit_optimize_s": 0.0212,
+     "compile_s": 0.0373,
+     "peak_rss_mib": 123.0
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 0.913,
+    "jit_optimize_s": 1.167,
+    "compile_s": 1.237
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.2832,
+      "jit_optimize_s": 0.0186,
+      "compile_s": 0.0318,
+      "peak_rss_mib": 122.2
+     },
+     {
+      "wall_s": 0.2126,
+      "jit_optimize_s": 0.0156,
+      "compile_s": 0.0256,
+      "peak_rss_mib": 122.6
+     },
+     {
+      "wall_s": 0.2104,
+      "jit_optimize_s": 0.016,
+      "compile_s": 0.0262,
+      "peak_rss_mib": 122.3
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.2305,
+      "jit_optimize_s": 0.0217,
+      "compile_s": 0.0393,
+      "peak_rss_mib": 123.0
+     },
+     {
+      "wall_s": 0.194,
+      "jit_optimize_s": 0.0212,
+      "compile_s": 0.0373,
+      "peak_rss_mib": 123.0
+     },
+     {
+      "wall_s": 0.2186,
+      "jit_optimize_s": 0.0165,
+      "compile_s": 0.0324,
+      "peak_rss_mib": 123.0
+     }
+    ]
+   }
+  },
+  {
+   "workload": "fib",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/fib.py"
+   ],
+   "rounds": 3,
+   "median": {
+    "calls": {
+     "wall_s": 0.0795,
+     "jit_optimize_s": 0.0171,
+     "compile_s": 0.0264,
+     "peak_rss_mib": 61.0
+    },
+    "helpers": {
+     "wall_s": 0.0887,
+     "jit_optimize_s": 0.0181,
+     "compile_s": 0.0295,
+     "peak_rss_mib": 61.1
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 1.012,
+    "jit_optimize_s": 0.985,
+    "compile_s": 1.034
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.0774,
+      "jit_optimize_s": 0.0171,
+      "compile_s": 0.0264,
+      "peak_rss_mib": 61.1
+     },
+     {
+      "wall_s": 0.0955,
+      "jit_optimize_s": 0.02,
+      "compile_s": 0.0302,
+      "peak_rss_mib": 61.0
+     },
+     {
+      "wall_s": 0.0795,
+      "jit_optimize_s": 0.0143,
+      "compile_s": 0.022,
+      "peak_rss_mib": 61.0
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.0783,
+      "jit_optimize_s": 0.0166,
+      "compile_s": 0.0273,
+      "peak_rss_mib": 60.9
+     },
+     {
+      "wall_s": 0.0913,
+      "jit_optimize_s": 0.0197,
+      "compile_s": 0.0297,
+      "peak_rss_mib": 61.1
+     },
+     {
+      "wall_s": 0.0887,
+      "jit_optimize_s": 0.0181,
+      "compile_s": 0.0295,
+      "peak_rss_mib": 61.1
+     }
+    ]
+   }
+  },
+  {
+   "workload": "dictcount",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/dictcount.py"
+   ],
+   "rounds": 3,
+   "median": {
+    "calls": {
+     "wall_s": 0.2035,
+     "jit_optimize_s": 0.0156,
+     "compile_s": 0.0307,
+     "peak_rss_mib": 95.3
+    },
+    "helpers": {
+     "wall_s": 0.2175,
+     "jit_optimize_s": 0.0196,
+     "compile_s": 0.0366,
+     "peak_rss_mib": 95.9
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 1.069,
+    "jit_optimize_s": 1.245,
+    "compile_s": 1.192
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.2415,
+      "jit_optimize_s": 0.0155,
+      "compile_s": 0.0402,
+      "peak_rss_mib": 95.4
+     },
+     {
+      "wall_s": 0.2035,
+      "jit_optimize_s": 0.0163,
+      "compile_s": 0.0307,
+      "peak_rss_mib": 95.3
+     },
+     {
+      "wall_s": 0.2003,
+      "jit_optimize_s": 0.0156,
+      "compile_s": 0.0284,
+      "peak_rss_mib": 95.3
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.2108,
+      "jit_optimize_s": 0.0193,
+      "compile_s": 0.0348,
+      "peak_rss_mib": 95.9
+     },
+     {
+      "wall_s": 0.2175,
+      "jit_optimize_s": 0.0196,
+      "compile_s": 0.0366,
+      "peak_rss_mib": 95.9
+     },
+     {
+      "wall_s": 0.2908,
+      "jit_optimize_s": 0.0214,
+      "compile_s": 0.0398,
+      "peak_rss_mib": 95.9
+     }
+    ]
+   }
+  },
+  {
+   "workload": "words",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/words.py"
+   ],
+   "rounds": 3,
+   "median": {
+    "calls": {
+     "wall_s": 0.1397,
+     "jit_optimize_s": 0.018,
+     "compile_s": 0.0324,
+     "peak_rss_mib": 113.5
+    },
+    "helpers": {
+     "wall_s": 0.137,
+     "jit_optimize_s": 0.0227,
+     "compile_s": 0.0419,
+     "peak_rss_mib": 114.2
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 0.969,
+    "jit_optimize_s": 1.261,
+    "compile_s": 1.293
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.13,
+      "jit_optimize_s": 0.0157,
+      "compile_s": 0.0312,
+      "peak_rss_mib": 113.5
+     },
+     {
+      "wall_s": 0.1457,
+      "jit_optimize_s": 0.0186,
+      "compile_s": 0.0357,
+      "peak_rss_mib": 113.5
+     },
+     {
+      "wall_s": 0.1397,
+      "jit_optimize_s": 0.018,
+      "compile_s": 0.0324,
+      "peak_rss_mib": 113.4
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.1384,
+      "jit_optimize_s": 0.0231,
+      "compile_s": 0.0433,
+      "peak_rss_mib": 114.1
+     },
+     {
+      "wall_s": 0.137,
+      "jit_optimize_s": 0.0217,
+      "compile_s": 0.0402,
+      "peak_rss_mib": 114.2
+     },
+     {
+      "wall_s": 0.1353,
+      "jit_optimize_s": 0.0227,
+      "compile_s": 0.0419,
+      "peak_rss_mib": 114.2
+     }
+    ]
+   }
+  },
+  {
+   "workload": "pp_chaos",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/chaos.py",
+    "10"
+   ],
+   "rounds": 3,
+   "median": {
+    "calls": {
+     "wall_s": 0.1883,
+     "jit_optimize_s": 0.0523,
+     "compile_s": 0.1262,
+     "peak_rss_mib": 98.5,
+     "loop_s": 0.0402
+    },
+    "helpers": {
+     "wall_s": 0.2149,
+     "jit_optimize_s": 0.05,
+     "compile_s": 0.1537,
+     "peak_rss_mib": 100.1,
+     "loop_s": 0.0364
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 1.123,
+    "jit_optimize_s": 0.977,
+    "compile_s": 1.212,
+    "loop_s": 0.894
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.1815,
+      "jit_optimize_s": 0.0523,
+      "compile_s": 0.1256,
+      "peak_rss_mib": 98.5,
+      "loop_s": 0.0325
+     },
+     {
+      "wall_s": 0.1956,
+      "jit_optimize_s": 0.0541,
+      "compile_s": 0.1342,
+      "peak_rss_mib": 98.5,
+      "loop_s": 0.0407
+     },
+     {
+      "wall_s": 0.1883,
+      "jit_optimize_s": 0.0472,
+      "compile_s": 0.1262,
+      "peak_rss_mib": 98.6,
+      "loop_s": 0.0402
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.2149,
+      "jit_optimize_s": 0.05,
+      "compile_s": 0.1537,
+      "peak_rss_mib": 100.3,
+      "loop_s": 0.0377
+     },
+     {
+      "wall_s": 0.2196,
+      "jit_optimize_s": 0.0555,
+      "compile_s": 0.1626,
+      "peak_rss_mib": 99.9,
+      "loop_s": 0.0364
+     },
+     {
+      "wall_s": 0.1798,
+      "jit_optimize_s": 0.0461,
+      "compile_s": 0.1314,
+      "peak_rss_mib": 100.1,
+      "loop_s": 0.0303
+     }
+    ]
+   }
+  },
+  {
+   "workload": "pp_float",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/float.py",
+    "10"
+   ],
+   "rounds": 3,
+   "median": {
+    "calls": {
+     "wall_s": 0.0986,
+     "jit_optimize_s": 0.018,
+     "compile_s": 0.0343,
+     "peak_rss_mib": 93.7,
+     "loop_s": 0.0441
+    },
+    "helpers": {
+     "wall_s": 0.0988,
+     "jit_optimize_s": 0.02,
+     "compile_s": 0.0431,
+     "peak_rss_mib": 95.2,
+     "loop_s": 0.0398
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 1.006,
+    "jit_optimize_s": 1.13,
+    "compile_s": 1.27,
+    "loop_s": 0.902
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.0894,
+      "jit_optimize_s": 0.0177,
+      "compile_s": 0.0333,
+      "peak_rss_mib": 93.6,
+      "loop_s": 0.0402
+     },
+     {
+      "wall_s": 0.0986,
+      "jit_optimize_s": 0.0202,
+      "compile_s": 0.0369,
+      "peak_rss_mib": 93.7,
+      "loop_s": 0.0441
+     },
+     {
+      "wall_s": 0.1155,
+      "jit_optimize_s": 0.018,
+      "compile_s": 0.0343,
+      "peak_rss_mib": 93.8,
+      "loop_s": 0.0649
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.0956,
+      "jit_optimize_s": 0.02,
+      "compile_s": 0.0423,
+      "peak_rss_mib": 95.2,
+      "loop_s": 0.0374
+     },
+     {
+      "wall_s": 0.0988,
+      "jit_optimize_s": 0.0193,
+      "compile_s": 0.0431,
+      "peak_rss_mib": 95.3,
+      "loop_s": 0.0398
+     },
+     {
+      "wall_s": 0.1162,
+      "jit_optimize_s": 0.0248,
+      "compile_s": 0.053,
+      "peak_rss_mib": 95.1,
+      "loop_s": 0.0444
+     }
+    ]
+   }
+  },
+  {
+   "workload": "pp_nbody",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/nbody.py",
+    "10"
+   ],
+   "rounds": 3,
+   "median": {
+    "calls": {
+     "wall_s": 0.1526,
+     "jit_optimize_s": 0.0226,
+     "compile_s": 0.0505,
+     "peak_rss_mib": 62.6,
+     "loop_s": 0.0855
+    },
+    "helpers": {
+     "wall_s": 0.1549,
+     "jit_optimize_s": 0.0314,
+     "compile_s": 0.077,
+     "peak_rss_mib": 64.5,
+     "loop_s": 0.064
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 1.015,
+    "jit_optimize_s": 1.389,
+    "compile_s": 1.574,
+    "loop_s": 0.749
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.1255,
+      "jit_optimize_s": 0.0198,
+      "compile_s": 0.0436,
+      "peak_rss_mib": 62.5,
+      "loop_s": 0.0665
+     },
+     {
+      "wall_s": 0.186,
+      "jit_optimize_s": 0.0226,
+      "compile_s": 0.0519,
+      "peak_rss_mib": 62.6,
+      "loop_s": 0.1166
+     },
+     {
+      "wall_s": 0.1526,
+      "jit_optimize_s": 0.0227,
+      "compile_s": 0.0505,
+      "peak_rss_mib": 62.6,
+      "loop_s": 0.0855
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.148,
+      "jit_optimize_s": 0.0332,
+      "compile_s": 0.077,
+      "peak_rss_mib": 64.5,
+      "loop_s": 0.0537
+     },
+     {
+      "wall_s": 0.1822,
+      "jit_optimize_s": 0.0314,
+      "compile_s": 0.0817,
+      "peak_rss_mib": 64.5,
+      "loop_s": 0.081
+     },
+     {
+      "wall_s": 0.1549,
+      "jit_optimize_s": 0.0305,
+      "compile_s": 0.0744,
+      "peak_rss_mib": 64.6,
+      "loop_s": 0.064
+     }
+    ]
+   }
+  },
+  {
+   "workload": "pp_raytrace",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/raytrace.py",
+    "4"
+   ],
+   "rounds": 3,
+   "median": {
+    "calls": {
+     "wall_s": 0.2051,
+     "jit_optimize_s": 0.0478,
+     "compile_s": 0.1519,
+     "peak_rss_mib": 98.7,
+     "loop_s": 0.0354
+    },
+    "helpers": {
+     "wall_s": 0.2213,
+     "jit_optimize_s": 0.0445,
+     "compile_s": 0.1609,
+     "peak_rss_mib": 99.7,
+     "loop_s": 0.0411
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 1.073,
+    "jit_optimize_s": 1.147,
+    "compile_s": 1.12,
+    "loop_s": 1.022
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.18,
+      "jit_optimize_s": 0.0388,
+      "compile_s": 0.127,
+      "peak_rss_mib": 98.7,
+      "loop_s": 0.0354
+     },
+     {
+      "wall_s": 0.2143,
+      "jit_optimize_s": 0.0478,
+      "compile_s": 0.1547,
+      "peak_rss_mib": 98.7,
+      "loop_s": 0.0402
+     },
+     {
+      "wall_s": 0.2051,
+      "jit_optimize_s": 0.0501,
+      "compile_s": 0.1519,
+      "peak_rss_mib": 98.9,
+      "loop_s": 0.0336
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.1932,
+      "jit_optimize_s": 0.0445,
+      "compile_s": 0.1422,
+      "peak_rss_mib": 99.8,
+      "loop_s": 0.034
+     },
+     {
+      "wall_s": 0.2213,
+      "jit_optimize_s": 0.0434,
+      "compile_s": 0.1609,
+      "peak_rss_mib": 99.7,
+      "loop_s": 0.0411
+     },
+     {
+      "wall_s": 0.2351,
+      "jit_optimize_s": 0.0588,
+      "compile_s": 0.1727,
+      "peak_rss_mib": 99.3,
+      "loop_s": 0.042
+     }
+    ]
+   }
+  },
+  {
+   "workload": "pp_scimark",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/scimark.py",
+    "2"
+   ],
+   "rounds": 3,
+   "median": {
+    "calls": {
+     "wall_s": 0.1567,
+     "jit_optimize_s": 0.0398,
+     "compile_s": 0.109,
+     "peak_rss_mib": 66.3,
+     "loop_s": 0.0291
+    },
+    "helpers": {
+     "wall_s": 0.2166,
+     "jit_optimize_s": 0.0628,
+     "compile_s": 0.181,
+     "peak_rss_mib": 69.2,
+     "loop_s": 0.0162
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 1.379,
+    "jit_optimize_s": 1.554,
+    "compile_s": 1.661,
+    "loop_s": 0.561
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.1487,
+      "jit_optimize_s": 0.039,
+      "compile_s": 0.106,
+      "peak_rss_mib": 66.3,
+      "loop_s": 0.0236
+     },
+     {
+      "wall_s": 0.1567,
+      "jit_optimize_s": 0.0404,
+      "compile_s": 0.109,
+      "peak_rss_mib": 66.5,
+      "loop_s": 0.0291
+     },
+     {
+      "wall_s": 0.1576,
+      "jit_optimize_s": 0.0398,
+      "compile_s": 0.1093,
+      "peak_rss_mib": 66.3,
+      "loop_s": 0.0303
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.1989,
+      "jit_optimize_s": 0.0502,
+      "compile_s": 0.1666,
+      "peak_rss_mib": 69.1,
+      "loop_s": 0.016
+     },
+     {
+      "wall_s": 0.2166,
+      "jit_optimize_s": 0.0628,
+      "compile_s": 0.181,
+      "peak_rss_mib": 69.2,
+      "loop_s": 0.0162
+     },
+     {
+      "wall_s": 0.2174,
+      "jit_optimize_s": 0.0647,
+      "compile_s": 0.1828,
+      "peak_rss_mib": 69.4,
+      "loop_s": 0.017
+     }
+    ]
+   }
+  },
+  {
+   "workload": "pp_spectral_norm",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/spectral_norm.py",
+    "10"
+   ],
+   "rounds": 3,
+   "median": {
+    "calls": {
+     "wall_s": 0.0757,
+     "jit_optimize_s": 0.0184,
+     "compile_s": 0.0369,
+     "peak_rss_mib": 65.0,
+     "loop_s": 0.0227
+    },
+    "helpers": {
+     "wall_s": 0.0734,
+     "jit_optimize_s": 0.0207,
+     "compile_s": 0.0448,
+     "peak_rss_mib": 65.5,
+     "loop_s": 0.012
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 0.93,
+    "jit_optimize_s": 1.103,
+    "compile_s": 1.179,
+    "loop_s": 0.529
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.0937,
+      "jit_optimize_s": 0.0258,
+      "compile_s": 0.052,
+      "peak_rss_mib": 65.0,
+      "loop_s": 0.0227
+     },
+     {
+      "wall_s": 0.0639,
+      "jit_optimize_s": 0.0159,
+      "compile_s": 0.0314,
+      "peak_rss_mib": 65.0,
+      "loop_s": 0.0185
+     },
+     {
+      "wall_s": 0.0757,
+      "jit_optimize_s": 0.0184,
+      "compile_s": 0.0369,
+      "peak_rss_mib": 65.0,
+      "loop_s": 0.0232
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.0734,
+      "jit_optimize_s": 0.0207,
+      "compile_s": 0.0457,
+      "peak_rss_mib": 65.3,
+      "loop_s": 0.012
+     },
+     {
+      "wall_s": 0.0736,
+      "jit_optimize_s": 0.0208,
+      "compile_s": 0.0448,
+      "peak_rss_mib": 65.5,
+      "loop_s": 0.012
+     },
+     {
+      "wall_s": 0.0704,
+      "jit_optimize_s": 0.0203,
+      "compile_s": 0.0435,
+      "peak_rss_mib": 65.5,
+      "loop_s": 0.012
+     }
+    ]
+   }
+  },
+  {
+   "workload": "pp_fannkuch",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/fannkuch.py",
+    "2"
+   ],
+   "rounds": 3,
+   "median": {
+    "calls": {
+     "wall_s": 0.238,
+     "jit_optimize_s": 0.0174,
+     "compile_s": 0.0332,
+     "peak_rss_mib": 94.2,
+     "loop_s": 0.1861
+    },
+    "helpers": {
+     "wall_s": 0.2512,
+     "jit_optimize_s": 0.0211,
+     "compile_s": 0.0462,
+     "peak_rss_mib": 95.1,
+     "loop_s": 0.1871
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 1.055,
+    "jit_optimize_s": 1.199,
+    "compile_s": 1.351,
+    "loop_s": 1.005
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.2345,
+      "jit_optimize_s": 0.0174,
+      "compile_s": 0.0324,
+      "peak_rss_mib": 94.1,
+      "loop_s": 0.1835
+     },
+     {
+      "wall_s": 0.2407,
+      "jit_optimize_s": 0.0164,
+      "compile_s": 0.0332,
+      "peak_rss_mib": 94.2,
+      "loop_s": 0.19
+     },
+     {
+      "wall_s": 0.238,
+      "jit_optimize_s": 0.0176,
+      "compile_s": 0.0342,
+      "peak_rss_mib": 94.2,
+      "loop_s": 0.1861
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.269,
+      "jit_optimize_s": 0.0229,
+      "compile_s": 0.0509,
+      "peak_rss_mib": 95.1,
+      "loop_s": 0.1989
+     },
+     {
+      "wall_s": 0.2279,
+      "jit_optimize_s": 0.019,
+      "compile_s": 0.0415,
+      "peak_rss_mib": 95.0,
+      "loop_s": 0.1694
+     },
+     {
+      "wall_s": 0.2512,
+      "jit_optimize_s": 0.0211,
+      "compile_s": 0.0462,
+      "peak_rss_mib": 95.2,
+      "loop_s": 0.1871
+     }
+    ]
+   }
+  },
+  {
+   "workload": "pp_nqueens",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/nqueens.py",
+    "10"
+   ],
+   "rounds": 3,
+   "median": {
+    "calls": {
+     "wall_s": 0.3131,
+     "jit_optimize_s": 0.0216,
+     "compile_s": 0.0428,
+     "peak_rss_mib": 99.1,
+     "loop_s": 0.2511
+    },
+    "helpers": {
+     "wall_s": 0.2641,
+     "jit_optimize_s": 0.0268,
+     "compile_s": 0.0554,
+     "peak_rss_mib": 100.3,
+     "loop_s": 0.1897
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 0.871,
+    "jit_optimize_s": 1.273,
+    "compile_s": 1.4,
+    "loop_s": 0.843
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.2811,
+      "jit_optimize_s": 0.0219,
+      "compile_s": 0.0446,
+      "peak_rss_mib": 99.1,
+      "loop_s": 0.2166
+     },
+     {
+      "wall_s": 0.3146,
+      "jit_optimize_s": 0.0182,
+      "compile_s": 0.039,
+      "peak_rss_mib": 99.1,
+      "loop_s": 0.2571
+     },
+     {
+      "wall_s": 0.3131,
+      "jit_optimize_s": 0.0216,
+      "compile_s": 0.0428,
+      "peak_rss_mib": 99.1,
+      "loop_s": 0.2511
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.2448,
+      "jit_optimize_s": 0.0218,
+      "compile_s": 0.0465,
+      "peak_rss_mib": 100.2,
+      "loop_s": 0.1826
+     },
+     {
+      "wall_s": 0.2641,
+      "jit_optimize_s": 0.0268,
+      "compile_s": 0.0554,
+      "peak_rss_mib": 100.4,
+      "loop_s": 0.1897
+     },
+     {
+      "wall_s": 0.3379,
+      "jit_optimize_s": 0.0275,
+      "compile_s": 0.0599,
+      "peak_rss_mib": 100.3,
+      "loop_s": 0.2585
+     }
+    ]
+   }
+  },
+  {
+   "workload": "pp_regex_dna",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/regex_dna.py",
+    "4"
+   ],
+   "rounds": 3,
+   "median": {
+    "calls": {
+     "wall_s": 1.6169,
+     "jit_optimize_s": 0.2372,
+     "compile_s": 1.419,
+     "peak_rss_mib": 99.9,
+     "loop_s": 0.1393
+    },
+    "helpers": {
+     "wall_s": 1.6181,
+     "jit_optimize_s": 0.2347,
+     "compile_s": 1.4294,
+     "peak_rss_mib": 99.7,
+     "loop_s": 0.1346
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 0.995,
+    "jit_optimize_s": 1.091,
+    "compile_s": 1.013,
+    "loop_s": 0.966
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 1.6166,
+      "jit_optimize_s": 0.2372,
+      "compile_s": 1.4028,
+      "peak_rss_mib": 99.6,
+      "loop_s": 0.1569
+     },
+     {
+      "wall_s": 1.6169,
+      "jit_optimize_s": 0.1951,
+      "compile_s": 1.419,
+      "peak_rss_mib": 99.9,
+      "loop_s": 0.1393
+     },
+     {
+      "wall_s": 1.6451,
+      "jit_optimize_s": 0.2901,
+      "compile_s": 1.4637,
+      "peak_rss_mib": 99.9,
+      "loop_s": 0.1252
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 1.6083,
+      "jit_optimize_s": 0.2588,
+      "compile_s": 1.4214,
+      "peak_rss_mib": 99.7,
+      "loop_s": 0.1296
+     },
+     {
+      "wall_s": 1.6524,
+      "jit_optimize_s": 0.2347,
+      "compile_s": 1.4589,
+      "peak_rss_mib": 99.7,
+      "loop_s": 0.1346
+     },
+     {
+      "wall_s": 1.6181,
+      "jit_optimize_s": 0.2296,
+      "compile_s": 1.4294,
+      "peak_rss_mib": 99.7,
+      "loop_s": 0.1367
+     }
+    ]
+   }
+  },
+  {
+   "workload": "pp_regex_effbot",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/regex_effbot.py",
+    "20"
+   ],
+   "rounds": 3,
+   "median": {
+    "calls": {
+     "wall_s": 1.6678,
+     "jit_optimize_s": 0.2301,
+     "compile_s": 1.3959,
+     "peak_rss_mib": 109.8,
+     "loop_s": 0.2628
+    },
+    "helpers": {
+     "wall_s": 1.4245,
+     "jit_optimize_s": 0.1821,
+     "compile_s": 1.1587,
+     "peak_rss_mib": 110.0,
+     "loop_s": 0.2319
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 0.854,
+    "jit_optimize_s": 0.809,
+    "compile_s": 0.851,
+    "loop_s": 0.882
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 1.6526,
+      "jit_optimize_s": 0.2467,
+      "compile_s": 1.409,
+      "peak_rss_mib": 109.8,
+      "loop_s": 0.2158
+     },
+     {
+      "wall_s": 1.6678,
+      "jit_optimize_s": 0.2252,
+      "compile_s": 1.362,
+      "peak_rss_mib": 109.9,
+      "loop_s": 0.2774
+     },
+     {
+      "wall_s": 1.6844,
+      "jit_optimize_s": 0.2301,
+      "compile_s": 1.3959,
+      "peak_rss_mib": 109.7,
+      "loop_s": 0.2628
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 1.4347,
+      "jit_optimize_s": 0.239,
+      "compile_s": 1.2019,
+      "peak_rss_mib": 110.0,
+      "loop_s": 0.2089
+     },
+     {
+      "wall_s": 1.4245,
+      "jit_optimize_s": 0.1821,
+      "compile_s": 1.1587,
+      "peak_rss_mib": 110.0,
+      "loop_s": 0.2373
+     },
+     {
+      "wall_s": 1.3677,
+      "jit_optimize_s": 0.18,
+      "compile_s": 1.113,
+      "peak_rss_mib": 109.9,
+      "loop_s": 0.2319
+     }
+    ]
+   }
+  },
+  {
+   "workload": "pp_regex_v8",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/regex_v8.py",
+    "20"
+   ],
+   "rounds": 3,
+   "median": {
+    "calls": {
+     "wall_s": 3.4798,
+     "jit_optimize_s": 0.2878,
+     "compile_s": 2.1854,
+     "peak_rss_mib": 131.8,
+     "loop_s": 0.2984
+    },
+    "helpers": {
+     "wall_s": 3.7763,
+     "jit_optimize_s": 0.3231,
+     "compile_s": 2.2857,
+     "peak_rss_mib": 128.6,
+     "loop_s": 0.3528
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 1.07,
+    "jit_optimize_s": 1.074,
+    "compile_s": 1.046,
+    "loop_s": 1.182
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 3.4798,
+      "jit_optimize_s": 0.2718,
+      "compile_s": 2.2224,
+      "peak_rss_mib": 131.8,
+      "loop_s": 0.2835
+     },
+     {
+      "wall_s": 3.4265,
+      "jit_optimize_s": 0.3096,
+      "compile_s": 2.0826,
+      "peak_rss_mib": 131.8,
+      "loop_s": 0.2984
+     },
+     {
+      "wall_s": 3.6213,
+      "jit_optimize_s": 0.2878,
+      "compile_s": 2.1854,
+      "peak_rss_mib": 128.2,
+      "loop_s": 0.3102
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 3.6535,
+      "jit_optimize_s": 0.274,
+      "compile_s": 2.0162,
+      "peak_rss_mib": 128.3,
+      "loop_s": 0.3921
+     },
+     {
+      "wall_s": 3.7763,
+      "jit_optimize_s": 0.3324,
+      "compile_s": 2.2926,
+      "peak_rss_mib": 128.6,
+      "loop_s": 0.3528
+     },
+     {
+      "wall_s": 3.8755,
+      "jit_optimize_s": 0.3231,
+      "compile_s": 2.2857,
+      "peak_rss_mib": 132.0,
+      "loop_s": 0.3181
+     }
+    ]
+   }
+  },
+  {
+   "workload": "pp_richards",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/richards.py",
+    "20"
+   ],
+   "rounds": 3,
+   "median": {
+    "calls": {
+     "wall_s": 0.2364,
+     "jit_optimize_s": 0.0663,
+     "compile_s": 0.2031,
+     "peak_rss_mib": 66.5,
+     "loop_s": 0.0144
+    },
+    "helpers": {
+     "wall_s": 0.223,
+     "jit_optimize_s": 0.0551,
+     "compile_s": 0.189,
+     "peak_rss_mib": 66.7,
+     "loop_s": 0.015
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 1.013,
+    "jit_optimize_s": 0.863,
+    "compile_s": 1.011,
+    "loop_s": 1.042
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.2202,
+      "jit_optimize_s": 0.0599,
+      "compile_s": 0.187,
+      "peak_rss_mib": 66.5,
+      "loop_s": 0.0144
+     },
+     {
+      "wall_s": 0.2676,
+      "jit_optimize_s": 0.0809,
+      "compile_s": 0.2309,
+      "peak_rss_mib": 66.5,
+      "loop_s": 0.016
+     },
+     {
+      "wall_s": 0.2364,
+      "jit_optimize_s": 0.0663,
+      "compile_s": 0.2031,
+      "peak_rss_mib": 65.9,
+      "loop_s": 0.0127
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.223,
+      "jit_optimize_s": 0.0551,
+      "compile_s": 0.189,
+      "peak_rss_mib": 66.7,
+      "loop_s": 0.015
+     },
+     {
+      "wall_s": 0.2913,
+      "jit_optimize_s": 0.0698,
+      "compile_s": 0.2507,
+      "peak_rss_mib": 66.5,
+      "loop_s": 0.0205
+     },
+     {
+      "wall_s": 0.2042,
+      "jit_optimize_s": 0.0538,
+      "compile_s": 0.175,
+      "peak_rss_mib": 66.9,
+      "loop_s": 0.0126
+     }
+    ]
+   }
+  },
+  {
+   "workload": "pp_go",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/go.py",
+    "4"
+   ],
+   "rounds": 3,
+   "median": {
+    "calls": {
+     "wall_s": 0.1548,
+     "jit_optimize_s": 0.0358,
+     "compile_s": 0.1041,
+     "peak_rss_mib": 79.9,
+     "loop_s": 0.0343
+    },
+    "helpers": {
+     "wall_s": 0.2142,
+     "jit_optimize_s": 0.0522,
+     "compile_s": 0.1525,
+     "peak_rss_mib": 80.9,
+     "loop_s": 0.0419
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 1.205,
+    "jit_optimize_s": 1.458,
+    "compile_s": 1.312,
+    "loop_s": 0.986
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.1906,
+      "jit_optimize_s": 0.0432,
+      "compile_s": 0.1288,
+      "peak_rss_mib": 79.9,
+      "loop_s": 0.0436
+     },
+     {
+      "wall_s": 0.1548,
+      "jit_optimize_s": 0.0356,
+      "compile_s": 0.104,
+      "peak_rss_mib": 80.0,
+      "loop_s": 0.0343
+     },
+     {
+      "wall_s": 0.1541,
+      "jit_optimize_s": 0.0358,
+      "compile_s": 0.1041,
+      "peak_rss_mib": 79.9,
+      "loop_s": 0.0342
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.2142,
+      "jit_optimize_s": 0.0514,
+      "compile_s": 0.1525,
+      "peak_rss_mib": 80.9,
+      "loop_s": 0.043
+     },
+     {
+      "wall_s": 0.1866,
+      "jit_optimize_s": 0.0522,
+      "compile_s": 0.1364,
+      "peak_rss_mib": 80.9,
+      "loop_s": 0.0332
+     },
+     {
+      "wall_s": 0.215,
+      "jit_optimize_s": 0.0522,
+      "compile_s": 0.154,
+      "peak_rss_mib": 80.9,
+      "loop_s": 0.0419
+     }
+    ]
+   }
+  },
+  {
+   "workload": "pp_hexiom",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/hexiom.py",
+    "100"
+   ],
+   "rounds": 3,
+   "median": {
+    "calls": {
+     "wall_s": 0.3044,
+     "jit_optimize_s": 0.0722,
+     "compile_s": 0.227,
+     "peak_rss_mib": 98.0,
+     "loop_s": 0.0568
+    },
+    "helpers": {
+     "wall_s": 0.3412,
+     "jit_optimize_s": 0.0824,
+     "compile_s": 0.2709,
+     "peak_rss_mib": 98.6,
+     "loop_s": 0.0524
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 1.128,
+    "jit_optimize_s": 1.108,
+    "compile_s": 1.196,
+    "loop_s": 0.923
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.3026,
+      "jit_optimize_s": 0.0768,
+      "compile_s": 0.2265,
+      "peak_rss_mib": 98.1,
+      "loop_s": 0.0566
+     },
+     {
+      "wall_s": 0.3044,
+      "jit_optimize_s": 0.0722,
+      "compile_s": 0.227,
+      "peak_rss_mib": 98.0,
+      "loop_s": 0.0568
+     },
+     {
+      "wall_s": 0.3168,
+      "jit_optimize_s": 0.0666,
+      "compile_s": 0.2347,
+      "peak_rss_mib": 97.8,
+      "loop_s": 0.0618
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.3412,
+      "jit_optimize_s": 0.0851,
+      "compile_s": 0.2709,
+      "peak_rss_mib": 98.6,
+      "loop_s": 0.0492
+     },
+     {
+      "wall_s": 0.3234,
+      "jit_optimize_s": 0.0799,
+      "compile_s": 0.2507,
+      "peak_rss_mib": 98.7,
+      "loop_s": 0.0524
+     },
+     {
+      "wall_s": 0.369,
+      "jit_optimize_s": 0.0824,
+      "compile_s": 0.2841,
+      "peak_rss_mib": 98.5,
+      "loop_s": 0.0636
+     }
+    ]
+   }
+  },
+  {
+   "workload": "pp_json_loads",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/json_loads.py",
+    "2000"
+   ],
+   "rounds": 3,
+   "median": {
+    "calls": {
+     "wall_s": 1.0384,
+     "jit_optimize_s": 0.0731,
+     "compile_s": 0.332,
+     "peak_rss_mib": 101.2,
+     "loop_s": 0.6857
+    },
+    "helpers": {
+     "wall_s": 1.1237,
+     "jit_optimize_s": 0.1012,
+     "compile_s": 0.3744,
+     "peak_rss_mib": 102.0,
+     "loop_s": 0.7268
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 1.098,
+    "jit_optimize_s": 1.12,
+    "compile_s": 1.077,
+    "loop_s": 1.102
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 1.3364,
+      "jit_optimize_s": 0.0916,
+      "compile_s": 0.4031,
+      "peak_rss_mib": 101.3,
+      "loop_s": 0.9086
+     },
+     {
+      "wall_s": 1.0384,
+      "jit_optimize_s": 0.0703,
+      "compile_s": 0.332,
+      "peak_rss_mib": 101.2,
+      "loop_s": 0.6857
+     },
+     {
+      "wall_s": 0.9168,
+      "jit_optimize_s": 0.0731,
+      "compile_s": 0.3025,
+      "peak_rss_mib": 101.2,
+      "loop_s": 0.5954
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 1.1237,
+      "jit_optimize_s": 0.1012,
+      "compile_s": 0.3744,
+      "peak_rss_mib": 102.0,
+      "loop_s": 0.7268
+     },
+     {
+      "wall_s": 1.2117,
+      "jit_optimize_s": 0.1035,
+      "compile_s": 0.4302,
+      "peak_rss_mib": 101.9,
+      "loop_s": 0.7559
+     },
+     {
+      "wall_s": 1.0071,
+      "jit_optimize_s": 0.0819,
+      "compile_s": 0.3259,
+      "peak_rss_mib": 102.1,
+      "loop_s": 0.6614
+     }
+    ]
+   }
+  },
+  {
+   "workload": "pp_json_dumps",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/json_dumps.py",
+    "20"
+   ],
+   "rounds": 3,
+   "median": {
+    "calls": {
+     "wall_s": 0.3149,
+     "jit_optimize_s": 0.0381,
+     "compile_s": 0.1403,
+     "peak_rss_mib": 99.7,
+     "loop_s": 0.1557
+    },
+    "helpers": {
+     "wall_s": 0.2955,
+     "jit_optimize_s": 0.0411,
+     "compile_s": 0.1528,
+     "peak_rss_mib": 100.6,
+     "loop_s": 0.1202
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 0.875,
+    "jit_optimize_s": 1.164,
+    "compile_s": 1.002,
+    "loop_s": 0.77
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.3553,
+      "jit_optimize_s": 0.0449,
+      "compile_s": 0.1558,
+      "peak_rss_mib": 99.6,
+      "loop_s": 0.1714
+     },
+     {
+      "wall_s": 0.3016,
+      "jit_optimize_s": 0.0286,
+      "compile_s": 0.1232,
+      "peak_rss_mib": 99.7,
+      "loop_s": 0.1557
+     },
+     {
+      "wall_s": 0.3149,
+      "jit_optimize_s": 0.0381,
+      "compile_s": 0.1403,
+      "peak_rss_mib": 99.7,
+      "loop_s": 0.152
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.2955,
+      "jit_optimize_s": 0.0411,
+      "compile_s": 0.1528,
+      "peak_rss_mib": 100.6,
+      "loop_s": 0.1202
+     },
+     {
+      "wall_s": 0.264,
+      "jit_optimize_s": 0.0333,
+      "compile_s": 0.1235,
+      "peak_rss_mib": 100.6,
+      "loop_s": 0.1199
+     },
+     {
+      "wall_s": 0.4253,
+      "jit_optimize_s": 0.0562,
+      "compile_s": 0.2226,
+      "peak_rss_mib": 100.4,
+      "loop_s": 0.174
+     }
+    ]
+   }
+  },
+  {
+   "workload": "pp_generators",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/generators.py",
+    "10"
+   ],
+   "rounds": 3,
+   "median": {
+    "calls": {
+     "wall_s": 0.3269,
+     "jit_optimize_s": 0.0338,
+     "compile_s": 0.0835,
+     "peak_rss_mib": 114.3,
+     "loop_s": 0.1872
+    },
+    "helpers": {
+     "wall_s": 0.329,
+     "jit_optimize_s": 0.0363,
+     "compile_s": 0.0908,
+     "peak_rss_mib": 115.2,
+     "loop_s": 0.1855
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 0.962,
+    "jit_optimize_s": 1.074,
+    "compile_s": 1.055,
+    "loop_s": 1.031
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.3269,
+      "jit_optimize_s": 0.0338,
+      "compile_s": 0.0835,
+      "peak_rss_mib": 114.5,
+      "loop_s": 0.1921
+     },
+     {
+      "wall_s": 0.3485,
+      "jit_optimize_s": 0.0443,
+      "compile_s": 0.1075,
+      "peak_rss_mib": 114.3,
+      "loop_s": 0.1872
+     },
+     {
+      "wall_s": 0.2433,
+      "jit_optimize_s": 0.0278,
+      "compile_s": 0.066,
+      "peak_rss_mib": 114.3,
+      "loop_s": 0.1391
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.2981,
+      "jit_optimize_s": 0.0363,
+      "compile_s": 0.0881,
+      "peak_rss_mib": 115.1,
+      "loop_s": 0.1639
+     },
+     {
+      "wall_s": 0.3351,
+      "jit_optimize_s": 0.0379,
+      "compile_s": 0.0908,
+      "peak_rss_mib": 115.2,
+      "loop_s": 0.193
+     },
+     {
+      "wall_s": 0.329,
+      "jit_optimize_s": 0.0332,
+      "compile_s": 0.0951,
+      "peak_rss_mib": 115.2,
+      "loop_s": 0.1855
+     }
+    ]
+   }
+  },
+  {
+   "workload": "long_richards",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/richards.py",
+    "200"
+   ],
+   "rounds": 5,
+   "median": {
+    "calls": {
+     "wall_s": 0.3894,
+     "jit_optimize_s": 0.0661,
+     "compile_s": 0.1978,
+     "peak_rss_mib": 66.9,
+     "loop_s": 0.1671
+    },
+    "helpers": {
+     "wall_s": 0.3978,
+     "jit_optimize_s": 0.0668,
+     "compile_s": 0.2221,
+     "peak_rss_mib": 67.1,
+     "loop_s": 0.157
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 1.006,
+    "jit_optimize_s": 1.009,
+    "compile_s": 1.171,
+    "loop_s": 1.032
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.3804,
+      "jit_optimize_s": 0.0661,
+      "compile_s": 0.2058,
+      "peak_rss_mib": 67.1,
+      "loop_s": 0.1553
+     },
+     {
+      "wall_s": 0.3894,
+      "jit_optimize_s": 0.0558,
+      "compile_s": 0.2009,
+      "peak_rss_mib": 66.2,
+      "loop_s": 0.1671
+     },
+     {
+      "wall_s": 0.336,
+      "jit_optimize_s": 0.0711,
+      "compile_s": 0.1901,
+      "peak_rss_mib": 66.8,
+      "loop_s": 0.1281
+     },
+     {
+      "wall_s": 0.3956,
+      "jit_optimize_s": 0.0662,
+      "compile_s": 0.1897,
+      "peak_rss_mib": 67.0,
+      "loop_s": 0.1863
+     },
+     {
+      "wall_s": 0.3961,
+      "jit_optimize_s": 0.0577,
+      "compile_s": 0.1978,
+      "peak_rss_mib": 66.9,
+      "loop_s": 0.1786
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.4442,
+      "jit_optimize_s": 0.0875,
+      "compile_s": 0.2805,
+      "peak_rss_mib": 67.0,
+      "loop_s": 0.1408
+     },
+     {
+      "wall_s": 0.3848,
+      "jit_optimize_s": 0.0528,
+      "compile_s": 0.1911,
+      "peak_rss_mib": 67.3,
+      "loop_s": 0.1766
+     },
+     {
+      "wall_s": 0.3249,
+      "jit_optimize_s": 0.0521,
+      "compile_s": 0.1665,
+      "peak_rss_mib": 67.1,
+      "loop_s": 0.142
+     },
+     {
+      "wall_s": 0.3978,
+      "jit_optimize_s": 0.0668,
+      "compile_s": 0.2221,
+      "peak_rss_mib": 67.0,
+      "loop_s": 0.157
+     },
+     {
+      "wall_s": 0.4381,
+      "jit_optimize_s": 0.0675,
+      "compile_s": 0.2338,
+      "peak_rss_mib": 67.2,
+      "loop_s": 0.1844
+     }
+    ]
+   }
+  },
+  {
+   "workload": "long_regex_effbot",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/regex_effbot.py",
+    "200"
+   ],
+   "rounds": 5,
+   "median": {
+    "calls": {
+     "wall_s": 3.7903,
+     "jit_optimize_s": 0.2512,
+     "compile_s": 1.2678,
+     "peak_rss_mib": 116.1,
+     "loop_s": 2.4933
+    },
+    "helpers": {
+     "wall_s": 3.7433,
+     "jit_optimize_s": 0.2494,
+     "compile_s": 1.4101,
+     "peak_rss_mib": 116.1,
+     "loop_s": 2.3083
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 0.976,
+    "jit_optimize_s": 0.993,
+    "compile_s": 1.017,
+    "loop_s": 1.038
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 3.7903,
+      "jit_optimize_s": 0.2561,
+      "compile_s": 1.2678,
+      "peak_rss_mib": 116.1,
+      "loop_s": 2.4933
+     },
+     {
+      "wall_s": 3.7957,
+      "jit_optimize_s": 0.188,
+      "compile_s": 1.14,
+      "peak_rss_mib": 115.9,
+      "loop_s": 2.6314
+     },
+     {
+      "wall_s": 3.5977,
+      "jit_optimize_s": 0.1813,
+      "compile_s": 1.3174,
+      "peak_rss_mib": 116.3,
+      "loop_s": 2.2571
+     },
+     {
+      "wall_s": 3.9964,
+      "jit_optimize_s": 0.2691,
+      "compile_s": 1.3867,
+      "peak_rss_mib": 116.1,
+      "loop_s": 2.5861
+     },
+     {
+      "wall_s": 3.4372,
+      "jit_optimize_s": 0.2512,
+      "compile_s": 1.2654,
+      "peak_rss_mib": 115.9,
+      "loop_s": 2.1466
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 3.9486,
+      "jit_optimize_s": 0.2333,
+      "compile_s": 1.2855,
+      "peak_rss_mib": 116.1,
+      "loop_s": 2.6367
+     },
+     {
+      "wall_s": 3.6523,
+      "jit_optimize_s": 0.2532,
+      "compile_s": 1.4528,
+      "peak_rss_mib": 116.1,
+      "loop_s": 2.1725
+     },
+     {
+      "wall_s": 3.5114,
+      "jit_optimize_s": 0.1878,
+      "compile_s": 1.1418,
+      "peak_rss_mib": 116.1,
+      "loop_s": 2.3439
+     },
+     {
+      "wall_s": 3.7433,
+      "jit_optimize_s": 0.2629,
+      "compile_s": 1.4101,
+      "peak_rss_mib": 116.1,
+      "loop_s": 2.3083
+     },
+     {
+      "wall_s": 3.8052,
+      "jit_optimize_s": 0.2494,
+      "compile_s": 1.4756,
+      "peak_rss_mib": 116.1,
+      "loop_s": 2.299
+     }
+    ]
+   }
+  },
+  {
+   "workload": "long_regex_v8",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/regex_v8.py",
+    "100"
+   ],
+   "rounds": 5,
+   "median": {
+    "calls": {
+     "wall_s": 4.9736,
+     "jit_optimize_s": 0.3251,
+     "compile_s": 2.2511,
+     "peak_rss_mib": 128.5,
+     "loop_s": 1.629
+    },
+    "helpers": {
+     "wall_s": 4.9663,
+     "jit_optimize_s": 0.3197,
+     "compile_s": 2.22,
+     "peak_rss_mib": 130.0,
+     "loop_s": 1.5388
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 0.969,
+    "jit_optimize_s": 1.099,
+    "compile_s": 0.986,
+    "loop_s": 0.93
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 4.9736,
+      "jit_optimize_s": 0.2819,
+      "compile_s": 2.2476,
+      "peak_rss_mib": 124.7,
+      "loop_s": 1.629
+     },
+     {
+      "wall_s": 4.9269,
+      "jit_optimize_s": 0.2795,
+      "compile_s": 2.1613,
+      "peak_rss_mib": 128.5,
+      "loop_s": 1.6551
+     },
+     {
+      "wall_s": 5.0192,
+      "jit_optimize_s": 0.3358,
+      "compile_s": 2.2511,
+      "peak_rss_mib": 127.2,
+      "loop_s": 1.5717
+     },
+     {
+      "wall_s": 4.9274,
+      "jit_optimize_s": 0.332,
+      "compile_s": 2.3387,
+      "peak_rss_mib": 131.9,
+      "loop_s": 1.4679
+     },
+     {
+      "wall_s": 5.3903,
+      "jit_optimize_s": 0.3251,
+      "compile_s": 2.3601,
+      "peak_rss_mib": 129.7,
+      "loop_s": 1.8845
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 4.7704,
+      "jit_optimize_s": 0.3097,
+      "compile_s": 2.1989,
+      "peak_rss_mib": 128.8,
+      "loop_s": 1.4904
+     },
+     {
+      "wall_s": 4.9785,
+      "jit_optimize_s": 0.3197,
+      "compile_s": 2.3283,
+      "peak_rss_mib": 128.5,
+      "loop_s": 1.4649
+     },
+     {
+      "wall_s": 4.9663,
+      "jit_optimize_s": 0.2875,
+      "compile_s": 2.22,
+      "peak_rss_mib": 130.8,
+      "loop_s": 1.5388
+     },
+     {
+      "wall_s": 4.7747,
+      "jit_optimize_s": 0.3305,
+      "compile_s": 2.2052,
+      "peak_rss_mib": 132.1,
+      "loop_s": 1.5507
+     },
+     {
+      "wall_s": 5.1433,
+      "jit_optimize_s": 0.3674,
+      "compile_s": 2.3484,
+      "peak_rss_mib": 130.0,
+      "loop_s": 1.7521
+     }
+    ]
+   }
+  },
+  {
+   "workload": "long_go",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/go.py",
+    "40"
+   ],
+   "rounds": 5,
+   "median": {
+    "calls": {
+     "wall_s": 0.4963,
+     "jit_optimize_s": 0.0374,
+     "compile_s": 0.1215,
+     "peak_rss_mib": 98.3,
+     "loop_s": 0.3281
+    },
+    "helpers": {
+     "wall_s": 0.4984,
+     "jit_optimize_s": 0.0447,
+     "compile_s": 0.13,
+     "peak_rss_mib": 99.3,
+     "loop_s": 0.3371
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 1.004,
+    "jit_optimize_s": 1.173,
+    "compile_s": 1.07,
+    "loop_s": 0.965
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.5523,
+      "jit_optimize_s": 0.0374,
+      "compile_s": 0.1215,
+      "peak_rss_mib": 98.6,
+      "loop_s": 0.4109
+     },
+     {
+      "wall_s": 0.4963,
+      "jit_optimize_s": 0.0557,
+      "compile_s": 0.1432,
+      "peak_rss_mib": 98.3,
+      "loop_s": 0.3281
+     },
+     {
+      "wall_s": 0.5541,
+      "jit_optimize_s": 0.0481,
+      "compile_s": 0.1352,
+      "peak_rss_mib": 98.2,
+      "loop_s": 0.3991
+     },
+     {
+      "wall_s": 0.4252,
+      "jit_optimize_s": 0.0353,
+      "compile_s": 0.1025,
+      "peak_rss_mib": 98.3,
+      "loop_s": 0.3054
+     },
+     {
+      "wall_s": 0.4292,
+      "jit_optimize_s": 0.0353,
+      "compile_s": 0.1028,
+      "peak_rss_mib": 98.3,
+      "loop_s": 0.3088
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.449,
+      "jit_optimize_s": 0.0447,
+      "compile_s": 0.13,
+      "peak_rss_mib": 99.3,
+      "loop_s": 0.3003
+     },
+     {
+      "wall_s": 0.4984,
+      "jit_optimize_s": 0.0442,
+      "compile_s": 0.1295,
+      "peak_rss_mib": 99.3,
+      "loop_s": 0.3481
+     },
+     {
+      "wall_s": 0.4988,
+      "jit_optimize_s": 0.0483,
+      "compile_s": 0.1421,
+      "peak_rss_mib": 99.3,
+      "loop_s": 0.3371
+     },
+     {
+      "wall_s": 0.5082,
+      "jit_optimize_s": 0.0494,
+      "compile_s": 0.1465,
+      "peak_rss_mib": 99.4,
+      "loop_s": 0.3416
+     },
+     {
+      "wall_s": 0.4383,
+      "jit_optimize_s": 0.0414,
+      "compile_s": 0.1215,
+      "peak_rss_mib": 99.6,
+      "loop_s": 0.298
+     }
+    ]
+   }
+  },
+  {
+   "workload": "long_json_loads",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/json_loads.py",
+    "10000"
+   ],
+   "rounds": 5,
+   "median": {
+    "calls": {
+     "wall_s": 3.8259,
+     "jit_optimize_s": 0.0907,
+     "compile_s": 0.4204,
+     "peak_rss_mib": 101.2,
+     "loop_s": 3.4328
+    },
+    "helpers": {
+     "wall_s": 4.1423,
+     "jit_optimize_s": 0.0983,
+     "compile_s": 0.3985,
+     "peak_rss_mib": 101.8,
+     "loop_s": 3.7428
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 1.016,
+    "jit_optimize_s": 1.159,
+    "compile_s": 1.009,
+    "loop_s": 1.033
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 3.8259,
+      "jit_optimize_s": 0.0942,
+      "compile_s": 0.3328,
+      "peak_rss_mib": 101.3,
+      "loop_s": 3.4729
+     },
+     {
+      "wall_s": 3.7961,
+      "jit_optimize_s": 0.0907,
+      "compile_s": 0.4224,
+      "peak_rss_mib": 101.2,
+      "loop_s": 3.3464
+     },
+     {
+      "wall_s": 3.7731,
+      "jit_optimize_s": 0.073,
+      "compile_s": 0.3181,
+      "peak_rss_mib": 101.2,
+      "loop_s": 3.4328
+     },
+     {
+      "wall_s": 3.8509,
+      "jit_optimize_s": 0.104,
+      "compile_s": 0.445,
+      "peak_rss_mib": 101.2,
+      "loop_s": 3.3791
+     },
+     {
+      "wall_s": 4.2409,
+      "jit_optimize_s": 0.0755,
+      "compile_s": 0.4204,
+      "peak_rss_mib": 101.2,
+      "loop_s": 3.7981
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 3.7778,
+      "jit_optimize_s": 0.1016,
+      "compile_s": 0.3985,
+      "peak_rss_mib": 101.9,
+      "loop_s": 3.358
+     },
+     {
+      "wall_s": 4.4048,
+      "jit_optimize_s": 0.1051,
+      "compile_s": 0.4261,
+      "peak_rss_mib": 101.8,
+      "loop_s": 3.9559
+     },
+     {
+      "wall_s": 4.3486,
+      "jit_optimize_s": 0.0983,
+      "compile_s": 0.4484,
+      "peak_rss_mib": 101.7,
+      "loop_s": 3.8779
+     },
+     {
+      "wall_s": 3.912,
+      "jit_optimize_s": 0.0982,
+      "compile_s": 0.3962,
+      "peak_rss_mib": 101.7,
+      "loop_s": 3.4908
+     },
+     {
+      "wall_s": 4.1423,
+      "jit_optimize_s": 0.0944,
+      "compile_s": 0.3784,
+      "peak_rss_mib": 101.8,
+      "loop_s": 3.7428
+     }
+    ]
+   }
+  },
+  {
+   "workload": "long_chaos",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/chaos.py",
+    "100"
+   ],
+   "rounds": 5,
+   "median": {
+    "calls": {
+     "wall_s": 0.445,
+     "jit_optimize_s": 0.0426,
+     "compile_s": 0.1201,
+     "peak_rss_mib": 99.6,
+     "loop_s": 0.2984
+    },
+    "helpers": {
+     "wall_s": 0.4716,
+     "jit_optimize_s": 0.0589,
+     "compile_s": 0.1853,
+     "peak_rss_mib": 101.1,
+     "loop_s": 0.2608
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 1.092,
+    "jit_optimize_s": 1.554,
+    "compile_s": 1.556,
+    "loop_s": 0.886
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.446,
+      "jit_optimize_s": 0.0379,
+      "compile_s": 0.1119,
+      "peak_rss_mib": 99.6,
+      "loop_s": 0.3138
+     },
+     {
+      "wall_s": 0.4639,
+      "jit_optimize_s": 0.0381,
+      "compile_s": 0.1201,
+      "peak_rss_mib": 99.5,
+      "loop_s": 0.3228
+     },
+     {
+      "wall_s": 0.445,
+      "jit_optimize_s": 0.043,
+      "compile_s": 0.1266,
+      "peak_rss_mib": 99.6,
+      "loop_s": 0.2984
+     },
+     {
+      "wall_s": 0.4386,
+      "jit_optimize_s": 0.0444,
+      "compile_s": 0.1239,
+      "peak_rss_mib": 99.8,
+      "loop_s": 0.2943
+     },
+     {
+      "wall_s": 0.4305,
+      "jit_optimize_s": 0.0426,
+      "compile_s": 0.1157,
+      "peak_rss_mib": 99.6,
+      "loop_s": 0.294
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.4111,
+      "jit_optimize_s": 0.0589,
+      "compile_s": 0.1741,
+      "peak_rss_mib": 101.1,
+      "loop_s": 0.2168
+     },
+     {
+      "wall_s": 0.5463,
+      "jit_optimize_s": 0.0465,
+      "compile_s": 0.1853,
+      "peak_rss_mib": 101.2,
+      "loop_s": 0.3355
+     },
+     {
+      "wall_s": 0.4716,
+      "jit_optimize_s": 0.0583,
+      "compile_s": 0.1655,
+      "peak_rss_mib": 101.2,
+      "loop_s": 0.2819
+     },
+     {
+      "wall_s": 0.4939,
+      "jit_optimize_s": 0.0786,
+      "compile_s": 0.2087,
+      "peak_rss_mib": 100.9,
+      "loop_s": 0.2608
+     },
+     {
+      "wall_s": 0.4703,
+      "jit_optimize_s": 0.0709,
+      "compile_s": 0.1995,
+      "peak_rss_mib": 100.9,
+      "loop_s": 0.2498
+     }
+    ]
+   }
+  },
+  {
+   "workload": "long_raytrace",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/raytrace.py",
+    "40"
+   ],
+   "rounds": 5,
+   "median": {
+    "calls": {
+     "wall_s": 0.3841,
+     "jit_optimize_s": 0.0415,
+     "compile_s": 0.143,
+     "peak_rss_mib": 99.6,
+     "loop_s": 0.2226
+    },
+    "helpers": {
+     "wall_s": 0.3867,
+     "jit_optimize_s": 0.0458,
+     "compile_s": 0.1469,
+     "peak_rss_mib": 100.5,
+     "loop_s": 0.2089
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 1.042,
+    "jit_optimize_s": 1.104,
+    "compile_s": 1.064,
+    "loop_s": 0.979
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.4167,
+      "jit_optimize_s": 0.0415,
+      "compile_s": 0.1507,
+      "peak_rss_mib": 99.6,
+      "loop_s": 0.2469
+     },
+     {
+      "wall_s": 0.3841,
+      "jit_optimize_s": 0.0491,
+      "compile_s": 0.143,
+      "peak_rss_mib": 99.6,
+      "loop_s": 0.2226
+     },
+     {
+      "wall_s": 0.3692,
+      "jit_optimize_s": 0.0426,
+      "compile_s": 0.138,
+      "peak_rss_mib": 99.6,
+      "loop_s": 0.2124
+     },
+     {
+      "wall_s": 0.3544,
+      "jit_optimize_s": 0.0399,
+      "compile_s": 0.1292,
+      "peak_rss_mib": 99.6,
+      "loop_s": 0.2064
+     },
+     {
+      "wall_s": 0.4201,
+      "jit_optimize_s": 0.0382,
+      "compile_s": 0.1469,
+      "peak_rss_mib": 99.6,
+      "loop_s": 0.2537
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.3712,
+      "jit_optimize_s": 0.0458,
+      "compile_s": 0.1443,
+      "peak_rss_mib": 100.7,
+      "loop_s": 0.2089
+     },
+     {
+      "wall_s": 0.4276,
+      "jit_optimize_s": 0.0452,
+      "compile_s": 0.1457,
+      "peak_rss_mib": 100.5,
+      "loop_s": 0.2615
+     },
+     {
+      "wall_s": 0.3635,
+      "jit_optimize_s": 0.0453,
+      "compile_s": 0.1469,
+      "peak_rss_mib": 100.5,
+      "loop_s": 0.1985
+     },
+     {
+      "wall_s": 0.3867,
+      "jit_optimize_s": 0.0554,
+      "compile_s": 0.1636,
+      "peak_rss_mib": 100.7,
+      "loop_s": 0.2033
+     },
+     {
+      "wall_s": 0.4379,
+      "jit_optimize_s": 0.0542,
+      "compile_s": 0.1707,
+      "peak_rss_mib": 100.5,
+      "loop_s": 0.2483
+     }
+    ]
+   }
+  },
+  {
+   "workload": "long_scimark",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/scimark.py",
+    "20"
+   ],
+   "rounds": 5,
+   "median": {
+    "calls": {
+     "wall_s": 0.4324,
+     "jit_optimize_s": 0.0402,
+     "compile_s": 0.1088,
+     "peak_rss_mib": 69.7,
+     "loop_s": 0.3009
+    },
+    "helpers": {
+     "wall_s": 0.3652,
+     "jit_optimize_s": 0.0639,
+     "compile_s": 0.184,
+     "peak_rss_mib": 72.6,
+     "loop_s": 0.1583
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 0.838,
+    "jit_optimize_s": 1.614,
+    "compile_s": 1.701,
+    "loop_s": 0.526
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.4628,
+      "jit_optimize_s": 0.0396,
+      "compile_s": 0.1082,
+      "peak_rss_mib": 69.6,
+      "loop_s": 0.3349
+     },
+     {
+      "wall_s": 0.4324,
+      "jit_optimize_s": 0.0419,
+      "compile_s": 0.1113,
+      "peak_rss_mib": 69.8,
+      "loop_s": 0.3009
+     },
+     {
+      "wall_s": 0.4295,
+      "jit_optimize_s": 0.0403,
+      "compile_s": 0.1088,
+      "peak_rss_mib": 69.8,
+      "loop_s": 0.3015
+     },
+     {
+      "wall_s": 0.3797,
+      "jit_optimize_s": 0.0361,
+      "compile_s": 0.098,
+      "peak_rss_mib": 69.7,
+      "loop_s": 0.2637
+     },
+     {
+      "wall_s": 0.4531,
+      "jit_optimize_s": 0.0402,
+      "compile_s": 0.1316,
+      "peak_rss_mib": 69.7,
+      "loop_s": 0.2987
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.3652,
+      "jit_optimize_s": 0.0639,
+      "compile_s": 0.184,
+      "peak_rss_mib": 72.7,
+      "loop_s": 0.1599
+     },
+     {
+      "wall_s": 0.3625,
+      "jit_optimize_s": 0.0643,
+      "compile_s": 0.1841,
+      "peak_rss_mib": 72.5,
+      "loop_s": 0.1583
+     },
+     {
+      "wall_s": 0.3961,
+      "jit_optimize_s": 0.0671,
+      "compile_s": 0.1924,
+      "peak_rss_mib": 72.6,
+      "loop_s": 0.184
+     },
+     {
+      "wall_s": 0.3273,
+      "jit_optimize_s": 0.0603,
+      "compile_s": 0.1667,
+      "peak_rss_mib": 72.6,
+      "loop_s": 0.1429
+     },
+     {
+      "wall_s": 0.3766,
+      "jit_optimize_s": 0.0626,
+      "compile_s": 0.1832,
+      "peak_rss_mib": 72.5,
+      "loop_s": 0.1546
+     }
+    ]
+   }
+  },
+  {
+   "workload": "long_nbody",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/nbody.py",
+    "100"
+   ],
+   "rounds": 5,
+   "median": {
+    "calls": {
+     "wall_s": 0.8798,
+     "jit_optimize_s": 0.0193,
+     "compile_s": 0.047,
+     "peak_rss_mib": 62.5,
+     "loop_s": 0.8176
+    },
+    "helpers": {
+     "wall_s": 0.6347,
+     "jit_optimize_s": 0.0271,
+     "compile_s": 0.0765,
+     "peak_rss_mib": 64.5,
+     "loop_s": 0.5456
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 0.717,
+    "jit_optimize_s": 1.383,
+    "compile_s": 1.345,
+    "loop_s": 0.666
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.9394,
+      "jit_optimize_s": 0.0312,
+      "compile_s": 0.0676,
+      "peak_rss_mib": 62.5,
+      "loop_s": 0.8507
+     },
+     {
+      "wall_s": 0.7462,
+      "jit_optimize_s": 0.0184,
+      "compile_s": 0.0442,
+      "peak_rss_mib": 62.5,
+      "loop_s": 0.6856
+     },
+     {
+      "wall_s": 0.8798,
+      "jit_optimize_s": 0.0193,
+      "compile_s": 0.047,
+      "peak_rss_mib": 62.5,
+      "loop_s": 0.8176
+     },
+     {
+      "wall_s": 0.9205,
+      "jit_optimize_s": 0.0191,
+      "compile_s": 0.046,
+      "peak_rss_mib": 62.5,
+      "loop_s": 0.8581
+     },
+     {
+      "wall_s": 0.8041,
+      "jit_optimize_s": 0.0226,
+      "compile_s": 0.0515,
+      "peak_rss_mib": 62.6,
+      "loop_s": 0.7349
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.6732,
+      "jit_optimize_s": 0.0362,
+      "compile_s": 0.0859,
+      "peak_rss_mib": 64.5,
+      "loop_s": 0.5662
+     },
+     {
+      "wall_s": 0.6376,
+      "jit_optimize_s": 0.0264,
+      "compile_s": 0.0765,
+      "peak_rss_mib": 64.5,
+      "loop_s": 0.5456
+     },
+     {
+      "wall_s": 0.5165,
+      "jit_optimize_s": 0.0267,
+      "compile_s": 0.0632,
+      "peak_rss_mib": 64.5,
+      "loop_s": 0.4382
+     },
+     {
+      "wall_s": 0.5912,
+      "jit_optimize_s": 0.034,
+      "compile_s": 0.0898,
+      "peak_rss_mib": 64.4,
+      "loop_s": 0.4824
+     },
+     {
+      "wall_s": 0.6347,
+      "jit_optimize_s": 0.0271,
+      "compile_s": 0.0673,
+      "peak_rss_mib": 64.6,
+      "loop_s": 0.5518
+     }
+    ]
+   }
+  },
+  {
+   "workload": "long_generators",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/generators.py",
+    "100"
+   ],
+   "rounds": 5,
+   "median": {
+    "calls": {
+     "wall_s": 1.6338,
+     "jit_optimize_s": 0.0293,
+     "compile_s": 0.0671,
+     "peak_rss_mib": 114.8,
+     "loop_s": 1.5237
+    },
+    "helpers": {
+     "wall_s": 1.5624,
+     "jit_optimize_s": 0.0368,
+     "compile_s": 0.0914,
+     "peak_rss_mib": 115.6,
+     "loop_s": 1.425
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 0.956,
+    "jit_optimize_s": 1.256,
+    "compile_s": 1.346,
+    "loop_s": 0.935
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 1.6055,
+      "jit_optimize_s": 0.028,
+      "compile_s": 0.0653,
+      "peak_rss_mib": 114.8,
+      "loop_s": 1.4985
+     },
+     {
+      "wall_s": 1.7438,
+      "jit_optimize_s": 0.032,
+      "compile_s": 0.0778,
+      "peak_rss_mib": 114.8,
+      "loop_s": 1.6233
+     },
+     {
+      "wall_s": 1.6338,
+      "jit_optimize_s": 0.0293,
+      "compile_s": 0.0671,
+      "peak_rss_mib": 114.7,
+      "loop_s": 1.5237
+     },
+     {
+      "wall_s": 1.4465,
+      "jit_optimize_s": 0.0265,
+      "compile_s": 0.0629,
+      "peak_rss_mib": 114.7,
+      "loop_s": 1.3437
+     },
+     {
+      "wall_s": 1.7004,
+      "jit_optimize_s": 0.0315,
+      "compile_s": 0.0803,
+      "peak_rss_mib": 114.8,
+      "loop_s": 1.5732
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 1.6554,
+      "jit_optimize_s": 0.0367,
+      "compile_s": 0.0914,
+      "peak_rss_mib": 115.7,
+      "loop_s": 1.5194
+     },
+     {
+      "wall_s": 1.6427,
+      "jit_optimize_s": 0.0356,
+      "compile_s": 0.0874,
+      "peak_rss_mib": 115.6,
+      "loop_s": 1.5115
+     },
+     {
+      "wall_s": 1.5624,
+      "jit_optimize_s": 0.0368,
+      "compile_s": 0.0903,
+      "peak_rss_mib": 115.7,
+      "loop_s": 1.425
+     },
+     {
+      "wall_s": 1.4683,
+      "jit_optimize_s": 0.0369,
+      "compile_s": 0.0929,
+      "peak_rss_mib": 115.6,
+      "loop_s": 1.3341
+     },
+     {
+      "wall_s": 1.463,
+      "jit_optimize_s": 0.0394,
+      "compile_s": 0.0994,
+      "peak_rss_mib": 115.6,
+      "loop_s": 1.3165
+     }
+    ]
+   }
+  },
+  {
+   "workload": "long_fannkuch",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/fannkuch.py",
+    "10"
+   ],
+   "rounds": 5,
+   "median": {
+    "calls": {
+     "wall_s": 0.8456,
+     "jit_optimize_s": 0.0166,
+     "compile_s": 0.0315,
+     "peak_rss_mib": 94.2,
+     "loop_s": 0.7944
+    },
+    "helpers": {
+     "wall_s": 0.8892,
+     "jit_optimize_s": 0.0208,
+     "compile_s": 0.0427,
+     "peak_rss_mib": 95.1,
+     "loop_s": 0.8315
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 1.041,
+    "jit_optimize_s": 1.175,
+    "compile_s": 1.292,
+    "loop_s": 1.032
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.7779,
+      "jit_optimize_s": 0.0166,
+      "compile_s": 0.0315,
+      "peak_rss_mib": 94.3,
+      "loop_s": 0.7295
+     },
+     {
+      "wall_s": 0.8456,
+      "jit_optimize_s": 0.0177,
+      "compile_s": 0.0342,
+      "peak_rss_mib": 94.2,
+      "loop_s": 0.7944
+     },
+     {
+      "wall_s": 0.7595,
+      "jit_optimize_s": 0.0153,
+      "compile_s": 0.0292,
+      "peak_rss_mib": 94.3,
+      "loop_s": 0.7146
+     },
+     {
+      "wall_s": 0.9246,
+      "jit_optimize_s": 0.0183,
+      "compile_s": 0.033,
+      "peak_rss_mib": 94.1,
+      "loop_s": 0.8758
+     },
+     {
+      "wall_s": 0.9701,
+      "jit_optimize_s": 0.0158,
+      "compile_s": 0.0301,
+      "peak_rss_mib": 94.2,
+      "loop_s": 0.9237
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.8099,
+      "jit_optimize_s": 0.0188,
+      "compile_s": 0.0393,
+      "peak_rss_mib": 95.2,
+      "loop_s": 0.7531
+     },
+     {
+      "wall_s": 0.9154,
+      "jit_optimize_s": 0.0208,
+      "compile_s": 0.0442,
+      "peak_rss_mib": 95.2,
+      "loop_s": 0.8534
+     },
+     {
+      "wall_s": 0.8926,
+      "jit_optimize_s": 0.0209,
+      "compile_s": 0.0427,
+      "peak_rss_mib": 95.1,
+      "loop_s": 0.8315
+     },
+     {
+      "wall_s": 0.8892,
+      "jit_optimize_s": 0.0172,
+      "compile_s": 0.0369,
+      "peak_rss_mib": 95.1,
+      "loop_s": 0.8361
+     },
+     {
+      "wall_s": 0.8762,
+      "jit_optimize_s": 0.0216,
+      "compile_s": 0.0462,
+      "peak_rss_mib": 95.1,
+      "loop_s": 0.8117
+     }
+    ]
+   }
+  },
+  {
+   "workload": "long_json_dumps",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/json_dumps.py",
+    "200"
+   ],
+   "rounds": 5,
+   "median": {
+    "calls": {
+     "wall_s": 1.4485,
+     "jit_optimize_s": 0.0308,
+     "compile_s": 0.1304,
+     "peak_rss_mib": 99.7,
+     "loop_s": 1.293
+    },
+    "helpers": {
+     "wall_s": 1.4218,
+     "jit_optimize_s": 0.0383,
+     "compile_s": 0.14,
+     "peak_rss_mib": 100.5,
+     "loop_s": 1.2544
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 0.978,
+    "jit_optimize_s": 1.247,
+    "compile_s": 1.139,
+    "loop_s": 0.97
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 1.4722,
+      "jit_optimize_s": 0.0308,
+      "compile_s": 0.1319,
+      "peak_rss_mib": 99.8,
+      "loop_s": 1.3189
+     },
+     {
+      "wall_s": 1.4485,
+      "jit_optimize_s": 0.0347,
+      "compile_s": 0.1325,
+      "peak_rss_mib": 99.6,
+      "loop_s": 1.293
+     },
+     {
+      "wall_s": 1.2654,
+      "jit_optimize_s": 0.0295,
+      "compile_s": 0.1113,
+      "peak_rss_mib": 99.9,
+      "loop_s": 1.1328
+     },
+     {
+      "wall_s": 1.3069,
+      "jit_optimize_s": 0.0329,
+      "compile_s": 0.1304,
+      "peak_rss_mib": 99.7,
+      "loop_s": 1.1552
+     },
+     {
+      "wall_s": 1.4589,
+      "jit_optimize_s": 0.029,
+      "compile_s": 0.1105,
+      "peak_rss_mib": 99.6,
+      "loop_s": 1.3238
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 1.2305,
+      "jit_optimize_s": 0.0339,
+      "compile_s": 0.1255,
+      "peak_rss_mib": 100.6,
+      "loop_s": 1.0848
+     },
+     {
+      "wall_s": 1.4164,
+      "jit_optimize_s": 0.0386,
+      "compile_s": 0.14,
+      "peak_rss_mib": 100.7,
+      "loop_s": 1.2544
+     },
+     {
+      "wall_s": 1.4334,
+      "jit_optimize_s": 0.0368,
+      "compile_s": 0.1268,
+      "peak_rss_mib": 100.4,
+      "loop_s": 1.2837
+     },
+     {
+      "wall_s": 1.4795,
+      "jit_optimize_s": 0.0548,
+      "compile_s": 0.1751,
+      "peak_rss_mib": 100.5,
+      "loop_s": 1.2811
+     },
+     {
+      "wall_s": 1.4218,
+      "jit_optimize_s": 0.0383,
+      "compile_s": 0.1475,
+      "peak_rss_mib": 100.5,
+      "loop_s": 1.2533
+     }
+    ]
+   }
+  },
+  {
+   "workload": "long_spectral_norm",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/spectral_norm.py",
+    "100"
+   ],
+   "rounds": 5,
+   "median": {
+    "calls": {
+     "wall_s": 0.2794,
+     "jit_optimize_s": 0.0198,
+     "compile_s": 0.0366,
+     "peak_rss_mib": 94.3,
+     "loop_s": 0.2221
+    },
+    "helpers": {
+     "wall_s": 0.1686,
+     "jit_optimize_s": 0.0218,
+     "compile_s": 0.0453,
+     "peak_rss_mib": 94.7,
+     "loop_s": 0.0982
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 0.648,
+    "jit_optimize_s": 1.099,
+    "compile_s": 1.18,
+    "loop_s": 0.504
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.2973,
+      "jit_optimize_s": 0.0227,
+      "compile_s": 0.0431,
+      "peak_rss_mib": 94.2,
+      "loop_s": 0.2351
+     },
+     {
+      "wall_s": 0.2813,
+      "jit_optimize_s": 0.0198,
+      "compile_s": 0.0366,
+      "peak_rss_mib": 94.3,
+      "loop_s": 0.2271
+     },
+     {
+      "wall_s": 0.2794,
+      "jit_optimize_s": 0.0199,
+      "compile_s": 0.0392,
+      "peak_rss_mib": 94.3,
+      "loop_s": 0.2221
+     },
+     {
+      "wall_s": 0.2336,
+      "jit_optimize_s": 0.0172,
+      "compile_s": 0.0333,
+      "peak_rss_mib": 94.4,
+      "loop_s": 0.1842
+     },
+     {
+      "wall_s": 0.2453,
+      "jit_optimize_s": 0.0171,
+      "compile_s": 0.0336,
+      "peak_rss_mib": 94.4,
+      "loop_s": 0.1949
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.1786,
+      "jit_optimize_s": 0.0218,
+      "compile_s": 0.0453,
+      "peak_rss_mib": 94.7,
+      "loop_s": 0.1161
+     },
+     {
+      "wall_s": 0.1992,
+      "jit_optimize_s": 0.0245,
+      "compile_s": 0.0569,
+      "peak_rss_mib": 94.7,
+      "loop_s": 0.1207
+     },
+     {
+      "wall_s": 0.1529,
+      "jit_optimize_s": 0.0191,
+      "compile_s": 0.0397,
+      "peak_rss_mib": 94.7,
+      "loop_s": 0.0963
+     },
+     {
+      "wall_s": 0.1514,
+      "jit_optimize_s": 0.0189,
+      "compile_s": 0.0393,
+      "peak_rss_mib": 94.7,
+      "loop_s": 0.0962
+     },
+     {
+      "wall_s": 0.1686,
+      "jit_optimize_s": 0.0232,
+      "compile_s": 0.0479,
+      "peak_rss_mib": 94.9,
+      "loop_s": 0.0982
+     }
+    ]
+   }
+  },
+  {
+   "workload": "long_float",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/float.py",
+    "100"
+   ],
+   "rounds": 5,
+   "median": {
+    "calls": {
+     "wall_s": 0.4166,
+     "jit_optimize_s": 0.0184,
+     "compile_s": 0.0346,
+     "peak_rss_mib": 98.6,
+     "loop_s": 0.3596
+    },
+    "helpers": {
+     "wall_s": 0.3676,
+     "jit_optimize_s": 0.0225,
+     "compile_s": 0.0493,
+     "peak_rss_mib": 100.0,
+     "loop_s": 0.3032
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 0.958,
+    "jit_optimize_s": 1.136,
+    "compile_s": 1.32,
+    "loop_s": 0.917
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.4168,
+      "jit_optimize_s": 0.0184,
+      "compile_s": 0.0345,
+      "peak_rss_mib": 98.6,
+      "loop_s": 0.3647
+     },
+     {
+      "wall_s": 0.4227,
+      "jit_optimize_s": 0.02,
+      "compile_s": 0.0385,
+      "peak_rss_mib": 98.6,
+      "loop_s": 0.3656
+     },
+     {
+      "wall_s": 0.4166,
+      "jit_optimize_s": 0.0201,
+      "compile_s": 0.0388,
+      "peak_rss_mib": 98.6,
+      "loop_s": 0.3596
+     },
+     {
+      "wall_s": 0.3475,
+      "jit_optimize_s": 0.0174,
+      "compile_s": 0.033,
+      "peak_rss_mib": 98.6,
+      "loop_s": 0.2985
+     },
+     {
+      "wall_s": 0.3662,
+      "jit_optimize_s": 0.0184,
+      "compile_s": 0.0346,
+      "peak_rss_mib": 98.5,
+      "loop_s": 0.3147
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.4019,
+      "jit_optimize_s": 0.0225,
+      "compile_s": 0.0493,
+      "peak_rss_mib": 100.0,
+      "loop_s": 0.3344
+     },
+     {
+      "wall_s": 0.3988,
+      "jit_optimize_s": 0.0227,
+      "compile_s": 0.0495,
+      "peak_rss_mib": 100.0,
+      "loop_s": 0.3308
+     },
+     {
+      "wall_s": 0.3456,
+      "jit_optimize_s": 0.0232,
+      "compile_s": 0.0512,
+      "peak_rss_mib": 100.1,
+      "loop_s": 0.2758
+     },
+     {
+      "wall_s": 0.3328,
+      "jit_optimize_s": 0.0194,
+      "compile_s": 0.0415,
+      "peak_rss_mib": 100.0,
+      "loop_s": 0.2752
+     },
+     {
+      "wall_s": 0.3676,
+      "jit_optimize_s": 0.0209,
+      "compile_s": 0.0465,
+      "peak_rss_mib": 99.9,
+      "loop_s": 0.3032
+     }
+    ]
+   }
+  },
+  {
+   "workload": "long_hexiom",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/hexiom.py",
+    "1000"
+   ],
+   "rounds": 5,
+   "median": {
+    "calls": {
+     "wall_s": 0.728,
+     "jit_optimize_s": 0.067,
+     "compile_s": 0.2223,
+     "peak_rss_mib": 99.1,
+     "loop_s": 0.4897
+    },
+    "helpers": {
+     "wall_s": 0.7053,
+     "jit_optimize_s": 0.0856,
+     "compile_s": 0.2665,
+     "peak_rss_mib": 99.7,
+     "loop_s": 0.4225
+    }
+   },
+   "paired_ratio_helpers_to_calls": {
+    "wall_s": 0.971,
+    "jit_optimize_s": 1.278,
+    "compile_s": 1.199,
+    "loop_s": 0.87
+   },
+   "runs": {
+    "calls": [
+     {
+      "wall_s": 0.8218,
+      "jit_optimize_s": 0.0748,
+      "compile_s": 0.249,
+      "peak_rss_mib": 98.9,
+      "loop_s": 0.5513
+     },
+     {
+      "wall_s": 0.7133,
+      "jit_optimize_s": 0.0692,
+      "compile_s": 0.2237,
+      "peak_rss_mib": 99.1,
+      "loop_s": 0.4693
+     },
+     {
+      "wall_s": 0.6182,
+      "jit_optimize_s": 0.0573,
+      "compile_s": 0.1903,
+      "peak_rss_mib": 99.1,
+      "loop_s": 0.4085
+     },
+     {
+      "wall_s": 0.728,
+      "jit_optimize_s": 0.0653,
+      "compile_s": 0.2182,
+      "peak_rss_mib": 99.0,
+      "loop_s": 0.4897
+     },
+     {
+      "wall_s": 0.7652,
+      "jit_optimize_s": 0.067,
+      "compile_s": 0.2223,
+      "peak_rss_mib": 99.1,
+      "loop_s": 0.5224
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.7053,
+      "jit_optimize_s": 0.0847,
+      "compile_s": 0.2622,
+      "peak_rss_mib": 99.8,
+      "loop_s": 0.4225
+     },
+     {
+      "wall_s": 0.6901,
+      "jit_optimize_s": 0.104,
+      "compile_s": 0.2665,
+      "peak_rss_mib": 99.7,
+      "loop_s": 0.4056
+     },
+     {
+      "wall_s": 0.6308,
+      "jit_optimize_s": 0.0727,
+      "compile_s": 0.2281,
+      "peak_rss_mib": 99.8,
+      "loop_s": 0.3792
+     },
+     {
+      "wall_s": 0.7807,
+      "jit_optimize_s": 0.0857,
+      "compile_s": 0.3083,
+      "peak_rss_mib": 99.6,
+      "loop_s": 0.4501
+     },
+     {
+      "wall_s": 0.7427,
+      "jit_optimize_s": 0.0856,
+      "compile_s": 0.2665,
+      "peak_rss_mib": 99.6,
+      "loop_s": 0.4545
+     }
+    ]
+   }
+  }
+ ],
+ "cache_hits": [
+  {
+   "workload": "umap",
+   "command": [
+    "pystachy",
+    "run",
+    "umap_core.py",
+    "10000",
+    "16",
+    "10",
+    "15",
+    "200",
+    "7"
+   ],
+   "rounds": 5,
+   "hit_median": {
+    "calls": {
+     "wall_s": 10.0558,
+     "data_s": 0.037,
+     "knn_s": 4.796,
+     "graph_s": 0.1,
+     "layout_s": 5.1
+    },
+    "helpers": {
+     "wall_s": 7.7593,
+     "data_s": 0.034,
+     "knn_s": 3.593,
+     "graph_s": 0.095,
+     "layout_s": 4.078
+    }
+   },
+   "hit_paired_ratio_helpers_to_calls": {
+    "wall_s": 0.776,
+    "data_s": 0.906,
+    "knn_s": 0.743,
+    "graph_s": 0.951,
+    "layout_s": 0.792
+   },
+   "hits": {
+    "calls": [
+     {
+      "wall_s": 10.0558,
+      "data_s": 0.035,
+      "knn_s": 4.796,
+      "graph_s": 0.096,
+      "layout_s": 5.077
+     },
+     {
+      "wall_s": 9.9951,
+      "data_s": 0.037,
+      "knn_s": 4.706,
+      "graph_s": 0.1,
+      "layout_s": 5.1
+     },
+     {
+      "wall_s": 9.6709,
+      "data_s": 0.032,
+      "knn_s": 4.909,
+      "graph_s": 0.099,
+      "layout_s": 4.576
+     },
+     {
+      "wall_s": 10.3729,
+      "data_s": 0.038,
+      "knn_s": 4.835,
+      "graph_s": 0.103,
+      "layout_s": 5.341
+     },
+     {
+      "wall_s": 10.2617,
+      "data_s": 0.038,
+      "knn_s": 4.779,
+      "graph_s": 0.107,
+      "layout_s": 5.271
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 7.9824,
+      "data_s": 0.034,
+      "knn_s": 3.649,
+      "graph_s": 0.095,
+      "layout_s": 4.151
+     },
+     {
+      "wall_s": 7.7593,
+      "data_s": 0.038,
+      "knn_s": 3.716,
+      "graph_s": 0.093,
+      "layout_s": 3.848
+     },
+     {
+      "wall_s": 7.6668,
+      "data_s": 0.029,
+      "knn_s": 3.417,
+      "graph_s": 0.096,
+      "layout_s": 4.078
+     },
+     {
+      "wall_s": 7.9944,
+      "data_s": 0.028,
+      "knn_s": 3.593,
+      "graph_s": 0.098,
+      "layout_s": 4.229
+     },
+     {
+      "wall_s": 7.7383,
+      "data_s": 0.034,
+      "knn_s": 3.51,
+      "graph_s": 0.077,
+      "layout_s": 4.064
+     }
+    ]
+   }
+  },
+  {
+   "workload": "nbody",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/nbody.py",
+    "100"
+   ],
+   "rounds": 5,
+   "hit_median": {
+    "calls": {
+     "wall_s": 0.7706,
+     "loop_s": 0.7153
+    },
+    "helpers": {
+     "wall_s": 0.5736,
+     "loop_s": 0.529
+    }
+   },
+   "hit_paired_ratio_helpers_to_calls": {
+    "wall_s": 0.748,
+    "loop_s": 0.744
+   },
+   "hits": {
+    "calls": [
+     {
+      "wall_s": 0.8107,
+      "loop_s": 0.7641
+     },
+     {
+      "wall_s": 0.8325,
+      "loop_s": 0.7865
+     },
+     {
+      "wall_s": 0.7556,
+      "loop_s": 0.7153
+     },
+     {
+      "wall_s": 0.706,
+      "loop_s": 0.6661
+     },
+     {
+      "wall_s": 0.7706,
+      "loop_s": 0.7131
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.662,
+      "loop_s": 0.6007
+     },
+     {
+      "wall_s": 0.5695,
+      "loop_s": 0.5227
+     },
+     {
+      "wall_s": 0.4907,
+      "loop_s": 0.4502
+     },
+     {
+      "wall_s": 0.5736,
+      "loop_s": 0.529
+     },
+     {
+      "wall_s": 0.5763,
+      "loop_s": 0.5303
+     }
+    ]
+   }
+  },
+  {
+   "workload": "scimark",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/scimark.py",
+    "20"
+   ],
+   "rounds": 5,
+   "hit_median": {
+    "calls": {
+     "wall_s": 0.3331,
+     "loop_s": 0.2901
+    },
+    "helpers": {
+     "wall_s": 0.202,
+     "loop_s": 0.1541
+    }
+   },
+   "hit_paired_ratio_helpers_to_calls": {
+    "wall_s": 0.632,
+    "loop_s": 0.568
+   },
+   "hits": {
+    "calls": [
+     {
+      "wall_s": 0.3303,
+      "loop_s": 0.2892
+     },
+     {
+      "wall_s": 0.3194,
+      "loop_s": 0.2715
+     },
+     {
+      "wall_s": 0.3331,
+      "loop_s": 0.2901
+     },
+     {
+      "wall_s": 0.3534,
+      "loop_s": 0.3022
+     },
+     {
+      "wall_s": 0.3646,
+      "loop_s": 0.3145
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.2008,
+      "loop_s": 0.1522
+     },
+     {
+      "wall_s": 0.202,
+      "loop_s": 0.1541
+     },
+     {
+      "wall_s": 0.2281,
+      "loop_s": 0.1779
+     },
+     {
+      "wall_s": 0.253,
+      "loop_s": 0.1856
+     },
+     {
+      "wall_s": 0.1972,
+      "loop_s": 0.147
+     }
+    ]
+   }
+  },
+  {
+   "workload": "spectral_norm",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/spectral_norm.py",
+    "100"
+   ],
+   "rounds": 5,
+   "hit_median": {
+    "calls": {
+     "wall_s": 0.2534,
+     "loop_s": 0.2023
+    },
+    "helpers": {
+     "wall_s": 0.1582,
+     "loop_s": 0.1167
+    }
+   },
+   "hit_paired_ratio_helpers_to_calls": {
+    "wall_s": 0.611,
+    "loop_s": 0.526
+   },
+   "hits": {
+    "calls": [
+     {
+      "wall_s": 0.283,
+      "loop_s": 0.2336
+     },
+     {
+      "wall_s": 0.2534,
+      "loop_s": 0.2023
+     },
+     {
+      "wall_s": 0.2275,
+      "loop_s": 0.1854
+     },
+     {
+      "wall_s": 0.3283,
+      "loop_s": 0.2838
+     },
+     {
+      "wall_s": 0.2372,
+      "loop_s": 0.1885
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.1686,
+      "loop_s": 0.1205
+     },
+     {
+      "wall_s": 0.1659,
+      "loop_s": 0.1174
+     },
+     {
+      "wall_s": 0.1389,
+      "loop_s": 0.0976
+     },
+     {
+      "wall_s": 0.1399,
+      "loop_s": 0.0983
+     },
+     {
+      "wall_s": 0.1582,
+      "loop_s": 0.1167
+     }
+    ]
+   }
+  },
+  {
+   "workload": "json_loads",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/json_loads.py",
+    "10000"
+   ],
+   "rounds": 5,
+   "hit_median": {
+    "calls": {
+     "wall_s": 3.7719,
+     "loop_s": 3.726
+    },
+    "helpers": {
+     "wall_s": 3.36,
+     "loop_s": 3.3139
+    }
+   },
+   "hit_paired_ratio_helpers_to_calls": {
+    "wall_s": 0.924,
+    "loop_s": 0.924
+   },
+   "hits": {
+    "calls": [
+     {
+      "wall_s": 3.9451,
+      "loop_s": 3.8981
+     },
+     {
+      "wall_s": 3.8022,
+      "loop_s": 3.7526
+     },
+     {
+      "wall_s": 3.7719,
+      "loop_s": 3.726
+     },
+     {
+      "wall_s": 3.215,
+      "loop_s": 3.1746
+     },
+     {
+      "wall_s": 3.6186,
+      "loop_s": 3.5786
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 3.5181,
+      "loop_s": 3.4708
+     },
+     {
+      "wall_s": 3.5151,
+      "loop_s": 3.467
+     },
+     {
+      "wall_s": 3.1083,
+      "loop_s": 3.0635
+     },
+     {
+      "wall_s": 3.0657,
+      "loop_s": 3.0251
+     },
+     {
+      "wall_s": 3.36,
+      "loop_s": 3.3139
+     }
+    ]
+   }
+  },
+  {
+   "workload": "richards",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/richards.py",
+    "200"
+   ],
+   "rounds": 5,
+   "hit_median": {
+    "calls": {
+     "wall_s": 0.2125,
+     "loop_s": 0.1638
+    },
+    "helpers": {
+     "wall_s": 0.207,
+     "loop_s": 0.1496
+    }
+   },
+   "hit_paired_ratio_helpers_to_calls": {
+    "wall_s": 0.931,
+    "loop_s": 0.913
+   },
+   "hits": {
+    "calls": [
+     {
+      "wall_s": 0.2094,
+      "loop_s": 0.1611
+     },
+     {
+      "wall_s": 0.2181,
+      "loop_s": 0.1673
+     },
+     {
+      "wall_s": 0.224,
+      "loop_s": 0.1715
+     },
+     {
+      "wall_s": 0.2125,
+      "loop_s": 0.1638
+     },
+     {
+      "wall_s": 0.2093,
+      "loop_s": 0.1618
+     }
+    ],
+    "helpers": [
+     {
+      "wall_s": 0.1874,
+      "loop_s": 0.1411
+     },
+     {
+      "wall_s": 0.2075,
+      "loop_s": 0.1543
+     },
+     {
+      "wall_s": 0.207,
+      "loop_s": 0.1496
+     },
+     {
+      "wall_s": 0.1978,
+      "loop_s": 0.1495
+     },
+     {
+      "wall_s": 0.2073,
+      "loop_s": 0.1546
+     }
+    ]
+   }
+  }
+ ],
+ "instructions_note": "callgrind's instruction count (Ir) of the program cache's executable, which clang builds from the module the JIT pipeline optimized, with each variant's runtime object; its output and the JIT's equal CPython 3.13's. Deterministic, unlike the times above on a shared host",
+ "instructions": [
+  {
+   "workload": "spectral_norm",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/spectral_norm.py",
+    "5"
+   ],
+   "calls": 188694470,
+   "helpers": 83939900,
+   "ratio_helpers_to_calls": 0.445
+  },
+  {
+   "workload": "nbody",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/nbody.py",
+    "5"
+   ],
+   "calls": 542742726,
+   "helpers": 319139259,
+   "ratio_helpers_to_calls": 0.588
+  },
+  {
+   "workload": "scimark",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/scimark.py",
+    "1"
+   ],
+   "calls": 221107200,
+   "helpers": 128107853,
+   "ratio_helpers_to_calls": 0.579
+  },
+  {
+   "workload": "chaos",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/chaos.py",
+    "2"
+   ],
+   "calls": 65341331,
+   "helpers": 58974160,
+   "ratio_helpers_to_calls": 0.903
+  },
+  {
+   "workload": "json_loads",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/json_loads.py",
+    "200"
+   ],
+   "calls": 917950051,
+   "helpers": 902254001,
+   "ratio_helpers_to_calls": 0.983
+  },
+  {
+   "workload": "richards",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/richards.py",
+    "10"
+   ],
+   "calls": 101463272,
+   "helpers": 92724855,
+   "ratio_helpers_to_calls": 0.914
+  },
+  {
+   "workload": "fannkuch",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/fannkuch.py",
+    "1"
+   ],
+   "calls": 985344587,
+   "helpers": 976954109,
+   "ratio_helpers_to_calls": 0.991
+  },
+  {
+   "workload": "regex_v8",
+   "command": [
+    "pystachy",
+    "run",
+    "bench/pyperformance/regex_v8.py",
+    "2"
+   ],
+   "calls": 18199270833,
+   "helpers": 18199270815,
+   "ratio_helpers_to_calls": 1.0
+  },
+  {
+   "workload": "umap",
+   "command": [
+    "pystachy",
+    "run",
+    "umap_core.py",
+    "1000",
+    "16",
+    "10",
+    "15",
+    "20",
+    "7"
+   ],
+   "calls": 1369015402,
+   "helpers": 996204835,
+   "ratio_helpers_to_calls": 0.728
+  }
+ ],
+ "corpus_note": "tests/run.sh ./pystachy jit, 4,643 cases, PYSTACHY_JOBS=4, PYSTACHY_PROGRAM_CACHE=0 (each case compiles): two runs of each variant, wall seconds",
+ "corpus_seconds": {
+  "calls": [
+   122,
+   126
+  ],
+  "helpers": [
+   129,
+   129
+  ]
+ }
+}

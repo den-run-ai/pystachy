@@ -474,7 +474,30 @@ those passes as well, so dead identity-generation loops do not reach code genera
 The default user-function inlining threshold is 20,000 lines of generated IR; larger programs
 skip that pass. The scalar recursion-accounting helpers remain inlined, including with
 `PYSTACHY_JIT_INLINE=0`; the recursion entry follows the user-function threshold (see
-below). The precompiled runtime is not inlined into JIT code.
+below).
+
+The precompiled runtime is a separate library, whose code LLVM cannot inline into the program,
+so a program that the inliner runs over also gets copies of the small runtime functions it calls
+([#705](https://github.com/den-run-ai/pystachy/issues/705)): a `list[float]` read or assignment,
+float division, `math.sqrt()`, a shift or an int `%` is then inlined into a loop, as an AOT build
+inlines the runtime. Once per runtime build, `jit_helpers.prepare()` copies from the runtime's
+optimized bitcode each exported `pys_*` function of at most 40 instructions and a scalar
+signature as an `available_externally` definition, which LLVM may inline but never compiles (a
+call it keeps reaches the library's function). A copy brings private copies of the messages and
+cold local functions it uses and declarations of the rest. Its attributes are written in line,
+its metadata dropped, and its struct types spelled as literal types. A function that reaches a
+local variable of the runtime (state a copy would split), a thread-local, the stack's or frame's
+address, an exception handler or a metadata operand is left out, as is `pys_bytes_get`, which a
+program calls only off `listfast`'s inline read: its copy put that cold path into loops and made
+pyperformance's json_loads loop 5% slower. The copies are kept beside the
+runtime as `runtime-py-*.jit` (an empty file where there are none), after `opt` verifies them as
+one module. `jit_helpers.splice()` then replaces each declaration that a program's module holds
+of a copied function, when its signature matches, and adds what the copy needs. After the
+inliner, `elim-avail-extern` turns the copies no call needs into declarations.
+`PYSTACHY_OPT=-jithelpers` turns this off. A runtime built with `PYSTACHY_CFLAGS`, as for a
+sanitizer, gets no copies. [`tools/jitprobe.py`](../tools/jitprobe.py) checks that a loop's
+calls are inlined and that no copy reaches the runner. `tests/programs/runtime/rt_inlined_helpers.py`
+checks their results and errors against CPython's.
 
 ### The JIT runner
 
@@ -723,8 +746,9 @@ into the calls that are left. Its `forceattrs` passes first swap `pys_new`'s `no
 it removes one and no longer adds `alwaysinline` beside `noinline` or `optnone`, so its first
 pass only removes them. Clang then compiles the module without optimizing it again.
 `ext` does the same between its `opt -O2` and its compilation. A module without `pys_new`
-keeps the single `clang -O2 -c` step. The JIT tier, which never inlines the shared runtime,
-puts its own copy of the fast path in the program's module (`lower_module.py`'s `JITFAST`): calls of
+keeps the single `clang -O2 -c` step. The JIT tier, whose copies of the runtime's small functions
+leave the allocator out (it counts in the collector's own variables), puts its own copy of the fast
+path in the program's module (`lower_module.py`'s `JITFAST`): calls of
 `pys_new` and `pys_alloc` stay calls (`noinline`) through its cleanup pipeline, which deletes
 what instcombine can prove unused, and the same last `forceattrs` and `always-inline` passes
 then inline the calls left. Each pops the runtime's free list of its class (`pys_fl`, a
@@ -842,7 +866,7 @@ are required before promotion. `make verify` keeps the standard tier.
 | `PYSTACHY_IRFX=1` | Print function effect summaries to stderr |
 | `PYSTACHY_UNICODE_AUDIT=1` | Compile the [Unicode audit](language/compatibility.md#unicode-audit) checks into the program and its imported library code |
 | `PYSTACHY_OPT` | Disable named optimizations with `-name`, comma-separated, or all with `-all`; see [IR passes](typed-ir.md#optimizations) |
-| `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT user-function inlining, including the recursion entry helper; `0` disables it (the scalar recursion helpers remain inlined) |
+| `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT user-function inlining, including the recursion entry helper and the runtime's small functions (`jithelpers`); `0` disables it (the scalar recursion helpers remain inlined) |
 | `PYSTACHY_JIT_CODEGEN=0\|2` | `0` generates the program's code at `-O0`: the JIT runner's `-O0`, or `llc -O0` for `lli`'s ORC to link; `2` (default) keeps ORC's level |
 | `PYSTACHY_JIT_LAUNCHER=auto\|lli` | What runs `pystachy run`'s programs: `auto` (default), Pystachy's [JIT runner](#the-jit-runner) where it can be built, else `lli`; `lli` always `lli` |
 | `PYSTACHY_PROGRAM_CACHE=0` | Disable the default Linux native [program cache](program-cache.md); unset, empty or `1` enables it where supported. Its [settings](program-cache.md#settings) section lists the variables that key or bypass it |

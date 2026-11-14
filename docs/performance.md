@@ -236,12 +236,22 @@ This inventory does not implement source-line annotations or explain missed pass
 | First-part split | `s.split(...)[0]` produces only the required string | [#317](https://github.com/den-run-ai/pystachy/pull/317) |
 | In-place str append | `s += t` and `s = s + t` on a str local grow its str in place while only the local holds it; past 8,200 bytes a second copy leaves room for as much again, trimmed after its length is unchanged across two sweeps | [#544](https://github.com/den-run-ai/pystachy/pull/544), [#567](https://github.com/den-run-ai/pystachy/issues/567); no switch |
 | JIT helper inlining | Runs user-function inlining for programs of at most 20,000 IR lines by default | `PYSTACHY_JIT_INLINE=0` disables it |
+| Runtime functions in JIT loops | Gives those programs copies of the small runtime functions they call (a `list[float]` read or assignment, float division, `math.sqrt()`, a shift, an int `%`), which the inliner then inlines, as AOT builds inline the runtime ([#705](https://github.com/den-run-ai/pystachy/issues/705)) | `PYSTACHY_OPT=-jithelpers` |
 
-`PYSTACHY_OPT=-all` disables the typed-IR passes. JIT inlining has a separate control:
-`PYSTACHY_JIT_INLINE=N` changes the size limit. It excludes the separately compiled runtime;
-AOT optimizes the program and runtime together. The measured tradeoffs are recorded in
+`PYSTACHY_OPT=-all` disables the typed-IR passes, and the runtime's copies for JIT loops. JIT
+inlining has a separate control: `PYSTACHY_JIT_INLINE=N` changes the size limit, for the program's
+functions and those copies alike; the rest of the separately compiled runtime stays calls, where
+AOT optimizes the program and the whole runtime together. The measured tradeoffs are recorded in
 [#333](https://github.com/den-run-ai/pystachy/pull/333); the pipeline is described in
 [compiler internals](internals.md).
+
+The copies cut the instructions a loop executes where it reads `list[float]` items, divides floats
+or calls `math.sqrt()`: pyperformance's spectral_norm runs 0.45× as many, scimark 0.58×, nbody
+0.59× and the UMAP probe 0.73× (callgrind, of the program cache's executables). A program cache
+hit, which compiles nothing, then takes 0.61× the time for spectral_norm and 0.78× for the UMAP
+probe. An uncached launch also compiles the inlined code: the JIT corpus took 4% longer, and a
+program up to 75 ms (scimark: 1.38× the time at its default size, 0.84× with ten times its loops).
+Times are paired medians on one x86-64 core ([results](../bench/results/jit-helpers-2026-11-14.json)).
 
 ## Start-up and memory
 

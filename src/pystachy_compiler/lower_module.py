@@ -31,8 +31,10 @@ declare ptr @pys_obj_repr(i64, i64, i64)
 
 
 # The JIT tier's allocations: runtime.c's fast path (gc_alloc), here in the program's module, since
-# the tier never inlines the shared runtime's code: a call of pys_alloc or pys_new pops a free list of
-# the runtime (pys_fl, a class's of 16 to 136 bytes, scanned) and calls pys_gc_slow for the rest.
+# the tier inlines none of the shared runtime's code but the copies of jit_helpers, which leave out
+# the allocator (it counts in the collector's own variables): a call of pys_alloc or pys_new pops a
+# free list of the runtime (pys_fl, a class's of 16 to 136 bytes, scanned) and calls pys_gc_slow for
+# the rest.
 # Both stay calls (noinline) through the cleanup pipeline, so that pys_new's calls, which allocelide
 # marks, stay visible as allocations, which instcombine deletes where nothing keeps their objects,
 # and so that the inliner weighs the calls as before (inlined at once, pys_alloc's fast path made a

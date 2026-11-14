@@ -4,7 +4,7 @@ import os
 import sys
 import tempfile
 import time
-from src.pystachy_compiler import cached_run, diagnostics, program_cache
+from src.pystachy_compiler import cached_run, diagnostics, jit_helpers, program_cache
 from src.pystachy_compiler.diagnostics import MAXNEST, RAW, NeedSliceEH, Rejoin, fail
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.lexer import Lexer
@@ -66,6 +66,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/gen.py',
     'src/pystachy_compiler/ir.py',
     'src/pystachy_compiler/ircheck.py',
+    'src/pystachy_compiler/jit_helpers.py',
     'src/pystachy_compiler/lexer.py',
     'src/pystachy_compiler/llvm_abi.py',
     'src/pystachy_compiler/loader.py',
@@ -960,6 +961,7 @@ def main() -> None:
     rso = tmp + "/runtime-so.c"
     rto = rtb[:-3] + ".o"  # the runtime as machine code, for the JIT tier
     rts = rtb[:-3] + ".so"  # and that as a shared library, which it loads on Linux (RTSO)
+    rtj = rtb[:-3] + ".jit"  # and the copies of its small functions for the tier's code (jit_helpers)
     # the runtime's bitcode and machine code are written to names of this process's own in the
     # cache's directory, then renamed over the cache once complete (in one file system, so that the
     # rename is atomic). The process ID alone is no such name: processes in separate PID namespaces
@@ -968,6 +970,7 @@ def main() -> None:
     part = f"{rtb}.{os.getpid()}.{own}"
     parto = f"{rto}.{os.getpid()}.{own}"
     partso = f"{rts}.{os.getpid()}.{own}"
+    partj = f"{rtj}.{os.getpid()}.{own}"
     f = open(ll, "w", encoding=RAW)
     f.write(address_runtime_ir(ir) if asan and cmd != "run" else ir)
     if cmd == "build":
@@ -1088,6 +1091,45 @@ def main() -> None:
             xp = f"{rts}.x.{os.getpid()}.{own}"
             useso = partso if timed_sh("runtime.shared_link", f"{{ printf '#!/bin/sh\\n' > {q(xp)} && chmod +x {q(xp)} && {q(xp)} && {tc[0]} -shared -fPIC -O2 -x c {q(rso)} -x none {q(useo)} -o {q(partso)} -Wl,-Bsymbolic -lm -ldl -Wno-unused-command-line-argument{ccflags}; }} 2> /dev/null") == 0 else ""
             sh(f"rm -f {q(xp)}")
+    # the copies of the runtime's small functions that the JIT tier's code may inline (#705), made
+    # from its bitcode once (jit_helpers.prepare: none for a runtime of PYSTACHY_CFLAGS, as a sanitizer
+    # instruments it, or with PYSTACHY_OPT=-jithelpers) and kept beside it, an empty file where there
+    # are none. A table that opt does not verify, or that cannot be made, is none
+    jtable = ""
+    madej = False
+    if code == 0 and cmd == "run" and cflags == "" and "jithelpers" in on:
+        if rtir == "" and os.path.exists(rtj):
+            try:
+                f = open(rtj, "r", encoding=RAW)
+                jtable = f.read()
+                f.close()
+            except OSError:
+                jtable = ""
+        else:
+            jstarted = timing_start()
+            dis = tmp + "/runtime-jit.ll"
+            chk = tmp + "/runtime-jit-check.ll"
+            if sh(f"{tc[3]} -S -passes=verify {q(usebc)} -o {q(dis)} 2> /dev/null") == 0:
+                f = open(dis, "r", encoding=RAW)
+                jtable = jit_helpers.prepare(f.read())
+                f.close()
+                if jtable != "":
+                    f = open(chk, "w", encoding=RAW)
+                    f.write(jit_helpers.module(jtable))
+                    f.close()
+                    if sh(f"{tc[3]} -passes=verify -disable-output {q(chk)} 2> /dev/null") != 0:
+                        jtable = ""
+            for p in [dis, chk]:
+                if os.path.exists(p):
+                    os.remove(p)
+            try:
+                f = open(partj, "w", encoding=RAW)
+                f.write(jtable)
+                f.close()
+                madej = True
+            except OSError:
+                pass  # (a cache that cannot be written: made again by the next run)
+            timing_end("runtime.jit_helpers", jstarted)
     # pystachy ext links two more C files, compiled as runtime.c is and cached beside it by the same
     # rules: pyembed.c (CPython in the process, hosting an extension module: its stdio hooks) and
     # pyext.c for the ABI; a program that embeds CPython (lib/pyobj.py) links pyembed.c alone. Each is
@@ -1131,15 +1173,17 @@ def main() -> None:
     # as they were (else it uses it alone), with the hashes learnt
     mvs: list[str] = []
     pub = code == 0 and trusted and len([t for t in times if not settled(t, now)]) == 0 and [stat3(p) for p in paths] == times and stat3(comp) == cst and [stat3(p) for p in sources] == sourceborn
-    if pub and (usebc == part or useo == parto or useso == partso):
+    if pub and (usebc == part or useo == parto or useso == partso or madej):
         if usebc == part:
             mvs.append(f"mv -f {q(part)} {q(rtb)}")
         if useo == parto:
             mvs.append(f"mv -f {q(parto)} {q(rto)}")
         if useso == partso:
             mvs.append(f"mv -f {q(partso)} {q(rts)}")
+        if madej:
+            mvs.append(f"mv -f {q(partj)} {q(rtj)}")
         old = f"{q(cache)}/runtime-py-{lin}-{'?' * 16}"
-        mvs.append(f"for f in {old}.bc {old}.o {old}.so {old}.target; do case $f in {q(rtb)} | {q(rto)} | {q(rts)} | {q(rtb[:-3] + '.target')}) ;; *) rm -f \"$f\" ;; esac; done")
+        mvs.append(f"for f in {old}.bc {old}.o {old}.so {old}.target {old}.jit; do case $f in {q(rtb)} | {q(rto)} | {q(rts)} | {q(rtb[:-3] + '.target')} | {q(rtj)}) ;; *) rm -f \"$f\" ;; esac; done")
     for g in glue:
         if pub and g[3] != "":
             old = f"{q(cache)}/runtime-py-{lin}-{'?' * 16}.{g[0]}.bc"
@@ -1267,6 +1311,12 @@ def main() -> None:
             timing_end("program.jit_runner." + ("lljit" if lljit != "" else "lli." + chosen[1]), looked)
         llcobj = codegen == "0" and lljit == ""
         jir = jit_alloc(ir)  # (with the allocator's fast path: JITFAST)
+        alloced = jir != ir
+        # a program of up to JIT_INLINE lines of IR is inlined (below): the runtime's small functions
+        # that it calls, too, given the runtime's copies of them (jit_helpers)
+        inlined = ir.split("; pystachy source locations\n")[0].count("\n") <= jitinline
+        if inlined and jtable != "":
+            jir = jit_helpers.splice(jir, jtable)
         if code == 0:
             f = open(ll, "w", encoding=RAW)
             # (the shared library's callbacks: RTSO; with llc, lli's main module holds them, below)
@@ -1278,7 +1328,7 @@ def main() -> None:
         # program of up to JIT_INLINE lines of IR has its own functions inlined into their callers
         # first, bottom-up (cgscc), each then cleaned up as before
         clean = "function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)"
-        if ir.split("; pystachy source locations\n")[0].count("\n") <= jitinline:
+        if inlined:
             clean = f"cgscc(inline,{clean})"
         # Recursion accounting helpers belong to the program module, even when the
         # runtime is a separate library. Inline only those explicitly marked helpers
@@ -1295,14 +1345,16 @@ def main() -> None:
         # SSA promotion can leave unused feedback cycles (including numeric identity
         # generations). Remove those after inlining and coroutine lowering are complete;
         # instcombine alone does not eliminate cycles with no externally used result.
-        late = "," + LATE_PASSES if jir != ir else ""
+        late = "," + LATE_PASSES if alloced else ""
         # LLVM's -O0 PHI elimination (seen in 18, 20 and 23) lowers a landing pad's PHI by reusing
         # an identical PHI of the invoke's normal successor, whose copies follow the call: an except
         # clause then read values its loop never set or had since changed. Splitting critical edges
         # last gives such successors predecessors of their own, and the landing pad its own copies,
         # whichever program generates the code at -O0 (the JIT runner, or llc)
         split = ",function(break-crit-edges)" if codegen == "0" else ""
-        fast = f"{llvm}opt -passes='{passes},function(early-cse,adce){late}{split}'" + (JITLATE if late != "" else "")
+        # (copies of the runtime's functions that no call needs any more, made declarations: jit_helpers)
+        spliced = ",elim-avail-extern" if inlined and jtable != "" and "available_externally" in jir else ""
+        fast = f"{llvm}opt -passes='{passes},function(early-cse,adce){spliced}{late}{split}'" + (JITLATE if late != "" else "")
         if code == 0:
             # the cache's library may lie on a file system mounted noexec since it was made (or copied
             # there), from which lli could map nothing: the shell that runs opt first asks whether this
@@ -1339,7 +1391,7 @@ def main() -> None:
                     if cachecode == 0 and cached_run.same_link_inputs(pclink, pclink2) and cached_run.link_inputs(pclink2, obj, useo):
                         pcexe = program_cache.publish(pcroot, pccontext, pcout)
                     if pcexe != "":
-                        for p in [ll, bc, obj, pcout, pclink, pclink2, pcerror, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, parto, partso, hp, rso]:
+                        for p in [ll, bc, obj, pcout, pclink, pclink2, pcerror, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, parto, partso, partj, hp, rso]:
                             if os.path.exists(p):
                                 os.remove(p)
                         os.rmdir(tmp)
@@ -1419,7 +1471,7 @@ def main() -> None:
                 # (the runner's -O: its level of code generation, which lli's ORC does not take)
                 launch = f"/dev/fd/{pinned[0].fileno()} -O{codegen}" if lljit != "" else f"{llvm}lli"
                 run = f"unset PYSTACHY_PROGRAM_CACHE_LOCK; {archive}{env}PYSTACHY_ARGV0={q(diagnostics.SRC)} exec {launch}{jitflags}{pe}{rt}{prog} /dev/fd/{inputs[0].fileno()} {' '.join([q(a) for a in rest])}"
-                for p in [bc, jobj, jmain, parto, partso, peo[2]]:
+                for p in [bc, jobj, jmain, parto, partso, partj, peo[2]]:
                     if p != "" and os.path.exists(p):
                         os.remove(p)
                 os.rmdir(tmp)
@@ -1428,7 +1480,7 @@ def main() -> None:
             finally:
                 for stream in reserved + inputs + pinned:
                     stream.close()
-    for p in [ll, abc, bc, obj, jobj, jmain, obc, lbc, pcout, pclink, pclink2, pcerror, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, parto, partso, hp, rso, tmp + "/runtime.i", tmp + "/runtime-preprocess.err", tmp + "/pyembed.c", tmp + "/pyext.c", peo[2]] + [g[3] for g in glue]:
+    for p in [ll, abc, bc, obj, jobj, jmain, obc, lbc, pcout, pclink, pclink2, pcerror, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, parto, partso, partj, hp, rso, tmp + "/runtime.i", tmp + "/runtime-preprocess.err", tmp + "/pyembed.c", tmp + "/pyext.c", peo[2]] + [g[3] for g in glue]:
         if os.path.exists(p):
             os.remove(p)
     os.rmdir(tmp)
