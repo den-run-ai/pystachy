@@ -1909,17 +1909,64 @@ double pys_big_float(I lo, void *hi) {         /* rounded once, to nearest even,
   if (isinf(r)) pys_fail("OverflowError: int too large to convert to float");
   return a->size < 0 ? -r : r;
 }
-/* no_builtin("pow") keeps pow a call of libm's, as in CPython's float_pow and math.pow. The AOT tier's
-   whole-program -O2 would otherwise rewrite a call with a constant argument: pow(x, 2.0) as x * x,
-   pow(x, -1.0) as 1.0 / x and pow(2.0, y) as exp2(y), which glibc's pow does not always round alike
-   (#656). It is on these two functions only: LLVM inlines no function with the attribute into one
-   without it, so -fno-builtin-pow over all of runtime.c would keep every runtime.c helper out of
-   runtime.py's code and the program's */
-__attribute__((no_builtin("pow"))) double pys_fpow(double a, double b) {   /* float ** float with CPython's errors */
-  if (a == 0 && b < 0 && isfinite(b)) pys_fail("ZeroDivisionError: 0.0 cannot be raised to a negative power");
-  if (a < 0 && isfinite(a) && isfinite(b) && b != floor(b)) pys_fail("ValueError: a negative number to a fractional power has a complex result (not supported)");
-  double r = pow(a, b);
-  if (isinf(r) && isfinite(a) && isfinite(b)) pys_fail("OverflowError: (34, 'Numerical result out of range')");
+/* Wherever libm's pow is finite, it is what CPython's float ** float (float_pow) and math.pow() return:
+   their special cases of zeros, infinities and NaNs give C99's values, and they raise only where pow is
+   not finite (0.0 to a negative power, a negative base to a fractional one, an overflow). So a power
+   runs inline in a program (AOT) and returns pow's value when it is finite; otherwise const helpers
+   choose CPython's error from the values alone, and pow_fail, which never returns, raises it. Nothing
+   on the way writes memory, so code that goes on past a power keeps what it holds in registers (a
+   loop its lists' lengths and items), and a power of values that a loop does not change may leave it.
+   The inline pow is llvm.pow, which LLVM knows writes no memory (libm sets errno there only for an
+   overflow, an underflow or a domain error, and no code reads errno after a power), of operands that
+   an empty asm hides (opaque). The AOT tier's whole-program -O2 would otherwise rewrite a call with a
+   constant argument: pow(x, 2.0) as x * x, pow(x, -1.0) as 1.0 / x and pow(2.0, y) as exp2(y), which
+   glibc's pow does not always round alike (#656). Without __builtin_elementwise_pow, libm_pow calls
+   libm's: no_builtin("pow") keeps LLVM from rewriting it, and from inlining it into a function
+   without the attribute (-fno-builtin-pow over all of runtime.c would keep every runtime.c helper out
+   of runtime.py's code and the program's) */
+static _Noreturn __attribute__((noinline, cold)) void pow_fail(int kind) {
+  pys_fail(kind == 0 ? "ZeroDivisionError: 0.0 cannot be raised to a negative power"
+           : kind == 1 ? "ValueError: a negative number to a fractional power has a complex result (not supported)"
+           : kind == 2 ? "OverflowError: (34, 'Numerical result out of range')"
+           : kind == 3 ? "ValueError: math domain error" : "OverflowError: math range error");
+}
+/* the error of a ** b, whose libm value r is not finite: pow_fail's kind, or -1 for none */
+__attribute__((noinline, const)) static int fpow_error(double a, double b, double r) {
+  if (a == 0 && b < 0 && isfinite(b)) return 0;
+  if (a < 0 && isfinite(a) && isfinite(b) && b != floor(b)) return 1;
+  return isinf(r) && isfinite(a) && isfinite(b) ? 2 : -1;
+}
+/* the error of math.pow(x, y), whose libm value r is not finite, as mchk decides: 0.0 to a negative
+   finite power, or a NaN of arguments that are not, is a domain error, an infinity of finite ones a range error */
+__attribute__((noinline, const)) static int mpow_error(double x, double y, double r) {
+  if (x == 0 && y < 0 && isfinite(y)) return 3;
+  if (isnan(r) && !isnan(x) && !isnan(y)) return 3;
+  return isinf(r) && isfinite(x) && isfinite(y) ? 4 : -1;
+}
+#if defined(__has_builtin)
+#if __has_builtin(__builtin_elementwise_pow)
+static inline double opaque(double x) {   /* x, which the optimizer cannot see through */
+#if defined(__x86_64__)
+  __asm__("" : "+x"(x));
+#elif defined(__aarch64__)
+  __asm__("" : "+w"(x));
+#else
+  volatile double v = x; x = v;
+#endif
+  return x;
+}
+#define INLINE_POW(a, b) __builtin_elementwise_pow(opaque(a), opaque(b))
+#endif
+#endif
+#ifndef INLINE_POW
+__attribute__((no_builtin("pow"), noinline, const)) static double libm_pow(double a, double b) { return pow(a, b); }
+#define INLINE_POW(a, b) libm_pow(a, b)
+#endif
+double pys_fpow(double a, double b) {   /* float ** float with CPython's errors */
+  double r = INLINE_POW(a, b);
+  if (fabs(r) < INFINITY) return r;
+  int e = fpow_error(a, b, r);
+  if (e >= 0) pow_fail(e);
   return r;
 }
 /* math functions raise like CPython's math module: a NaN from a non-NaN argument is a domain
@@ -1961,9 +2008,12 @@ double pys_m_ulp(double x) {          /* the distance from |x| to the next float
   double a = fabs(x), b = nextafter(a, INFINITY);
   return isinf(b) ? a - nextafter(a, -INFINITY) : b - a;
 }
-__attribute__((no_builtin("pow"))) double pys_m_pow(double x, double y) {   /* (no_builtin: see pys_fpow) */
-  if (x == 0 && y < 0 && isfinite(y)) pys_fail("ValueError: math domain error");
-  return mchk(pow(x, y), x, y, 1);
+double pys_m_pow(double x, double y) {   /* math.pow(): as pys_fpow, with math's errors */
+  double r = INLINE_POW(x, y);
+  if (fabs(r) < INFINITY) return r;
+  int e = mpow_error(x, y, r);
+  if (e >= 0) pow_fail(e);
+  return r;
 }
 /* no_builtin("fmod") keeps fmod a call of libm's. Once the guard below shows x is not infinite and y
    not zero, LLVM 20 to 22 rewrite fmod(x, y) as an frem marked as never NaN, although a NaN x or y still
