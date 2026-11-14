@@ -236,10 +236,12 @@ This inventory does not implement source-line annotations or explain missed pass
 | First-part split | `s.split(...)[0]` produces only the required string | [#317](https://github.com/den-run-ai/pystachy/pull/317) |
 | In-place str append | `s += t` and `s = s + t` on a str local grow its str in place while only the local holds it; past 8,200 bytes a second copy leaves room for as much again, trimmed after its length is unchanged across two sweeps | [#544](https://github.com/den-run-ai/pystachy/pull/544), [#567](https://github.com/den-run-ai/pystachy/issues/567); no switch |
 | JIT helper inlining | Runs user-function inlining for programs of at most 20,000 IR lines by default | `PYSTACHY_JIT_INLINE=0` disables it |
+| Runtime functions in JIT loops | Gives those programs copies of the small runtime functions they call (a `list[float]` read or assignment, float division, `math.sqrt()`, a shift, an int `%`), which the inliner then inlines, as AOT builds inline the runtime ([#705](https://github.com/den-run-ai/pystachy/issues/705)) | `PYSTACHY_OPT=-jithelpers` |
 
-`PYSTACHY_OPT=-all` disables the typed-IR passes. JIT inlining has a separate control:
-`PYSTACHY_JIT_INLINE=N` changes the size limit. It excludes the separately compiled runtime;
-AOT optimizes the program and runtime together. The measured tradeoffs are recorded in
+`PYSTACHY_OPT=-all` disables the typed-IR passes, and the runtime's copies for JIT loops. JIT
+inlining has a separate control: `PYSTACHY_JIT_INLINE=N` changes the size limit, for the program's
+functions and those copies alike; the rest of the separately compiled runtime stays calls, where
+AOT optimizes the program and the whole runtime together. The measured tradeoffs are recorded in
 [#333](https://github.com/den-run-ai/pystachy/pull/333); the pipeline is described in
 [compiler internals](internals.md).
 
