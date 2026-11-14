@@ -1,4 +1,3 @@
-# error: inheritance with generic class templates is not supported
 class Base:
     def get(self) -> int:
         return 0
