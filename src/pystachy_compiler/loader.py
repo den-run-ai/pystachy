@@ -531,6 +531,94 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
     n.kids = top
 
 
+def importlib_names(n: Node, out: dict[str, bool]) -> None:
+    # the names that the import statements in n bind importlib's import_module as, wherever
+    # they are (from importlib import import_module, or as another name; import importlib, or
+    # as il: il.import_module)
+    for st in n.kids:
+        for a in st.kids if st.kind == "import" else []:
+            if a.kind == "alias" and len(a.kids) == 2 and st.s == "from" and a.kids[0].s == "importlib.import_module":
+                out[a.s] = True
+            elif a.kind == "alias" and len(a.kids) == 2 and st.s != "from" and (a.kids[0].s == "importlib" or (a.s == "importlib" and a.kids[0].s.startswith("importlib."))):
+                out[a.s + ".import_module"] = True
+        if st.kind != "import":
+            importlib_names(st, out)
+
+
+def import_name(call: Node) -> str:
+    # the import statement that import_module(...), call, is where a string constant names the
+    # module: "import a.b as", or for a name relative to a constant package, or to
+    # __package__, "from . import b as" (the name it binds follows); else ""
+    args = call.kids[1:]
+    if len(args) == 0 or len(args) > 2 or args[0].kind != "str" or args[0].s == "":
+        return ""
+    name = args[0].s
+    package = ""
+    here = False
+    if len(args) == 2:
+        p = args[1].kids[0] if args[1].kind == "kw" and args[1].s == "package" else args[1]
+        if args[1].kind == "kw" and args[1].s != "package":
+            return ""
+        if p.kind == "str":
+            package = p.s
+        elif p.kind == "name" and p.s == "__package__":
+            here = True
+        elif p.kind != "None":
+            return ""
+    level = len(name) - len(name.lstrip("."))
+    parts = name[level:].split(".")
+    for x in parts + (package.split(".") if package != "" else []):
+        if x == "" or x in KEYWORDS or "0" <= x[0] <= "9" or not all([c == "_" or "A" <= c <= "Z" or "a" <= c <= "z" or "0" <= c <= "9" for c in x]):
+            return ""  # (no name an import statement can write)
+    if level == 0:
+        return f"import {name} as"
+    if here:
+        return f"from {'.' * level}{'.'.join(parts[:-1])} import {parts[-1]} as"
+    base = package.split(".") if package != "" else []
+    if len(base) < level:
+        return ""  # (beyond the top-level package, or no package: CPython's ImportError or TypeError)
+    return f"import {'.'.join(base[: len(base) - level + 1] + parts)} as"
+
+
+def import_calls(n: Node, names: dict[str, bool], made: list[int]) -> None:
+    # (importlib) importlib.import_module(NAME), where a string constant names the module and
+    # the call is a statement of its own or the value a statement assigns to one variable (names:
+    # as the module's import statements bind import_module), is the import statement of that
+    # module, which binds the variable: mod = import_module("a.b") is import a.b as mod. It
+    # runs where the call would, and raises its ImportError there. Pystachy resolves a
+    # program's imports while it compiles the program, so a call that names the module any
+    # other way stays a call of lib/importlib's function, which Gen.call_fn rejects.
+    for i in range(len(n.kids)):
+        st = n.kids[i]
+        call: Node | None = None
+        target = ""
+        if st.kind == "expr" and len(st.kids) == 1:
+            call = st.kids[0]
+        elif st.kind == "assign" and len(st.kids) == 2 and st.kids[0].kind == "name":
+            call = st.kids[1]
+            target = st.kids[0].s
+        elif st.kind == "annassign" and len(st.kids) == 3 and st.kids[0].kind == "name":
+            call = st.kids[2]
+            target = st.kids[0].s
+        src = ""
+        if call is not None and call.kind == "call" and dotted(call.kids[0]) in names:
+            src = import_name(call)
+        if src != "":
+            made[0] += 1
+            bound = target if target != "" else "_pys_import_" + str(made[0])
+            n.kids[i] = Parser(Lexer(src + " " + bound + "\n", st.line).file()).module().kids[0]
+        else:
+            import_calls(st, names, made)
+
+
+def import_module_calls(n: Node) -> None:
+    # (import_calls) of module body n
+    names: dict[str, bool] = {}
+    importlib_names(n, names)
+    if len(names) > 0:
+        import_calls(n, names, [0])
+
+
 def tb_import(n: Node) -> None:
     # from types import TracebackType (an __exit__'s annotation) imports lib/_pystachy_types.py's
     # TracebackType, which lib/types.py binds too, without the rest of lib/types.py
@@ -783,6 +871,7 @@ class Loader:
         m.body = self.parse_source(src, 1)
         tb_import(m.body)
         binary_opens(m.body)
+        import_module_calls(m.body)
         cm_methods(m.body, cm_names(m.body))
         enum_classes(m.body, enum_names(m.body))
         self.argparse(m.body)
@@ -1148,6 +1237,7 @@ class Loader:
         self.parsed[path] = self.parse_source(src, k * LINES + 1, self.in_lib(path))
         tb_import(self.parsed[path])
         binary_opens(self.parsed[path])
+        import_module_calls(self.parsed[path])
         cm_methods(self.parsed[path], cm_names(self.parsed[path]))
         enum_classes(self.parsed[path], enum_names(self.parsed[path]))
         self.argparse(self.parsed[path])
