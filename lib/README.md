@@ -39,6 +39,7 @@ described [below](#unchanged-cpython-files).
 | 🟢 `curses.ascii`, `this` | Unchanged CPython | ASCII character predicates and conversions; the Zen of Python | Subset string and type rules apply |
 | 🟡 `string` | Adapted CPython | Constants, `capwords`, `Template`, `Formatter` and its subclasses | No `Template` subclasses; `Formatter` arguments of one union, no attribute or item fields |
 | 🟡 `difflib` | Adapted CPython | `SequenceMatcher` (also the generator `get_grouped_opcodes()`), `unified_diff()`, `context_diff()`, `restore()`, `get_close_matches`, junk predicates and `Match` | String items; `ndiff()` and `Differ` need the yield type of a recursive generator, and `HtmlDiff` its class attributes' types |
+| 🟡 `pprint` | Adapted CPython | `pformat`, `pprint`, `pp`, `saferepr`, `isreadable`, `isrecursive` and `PrettyPrinter`, with every option: dicts, lists, tuples, sets, frozensets, strs and bytes wrapped as CPython wraps them | A value's static type selects how it is written; objects of classes are written as their `repr()` on one line; a dict's keys that are objects need `__lt__()`; no `Any` values; see [limits](compatibility.md#pprint) |
 | 🟡 `gettext` | Adapted CPython | `NullTranslations`, `textdomain`, `bindtextdomain` | Catalog lookups (`gettext()`, `translation()`, `install()`) do not compile: they import `locale` and key their cache by a class (#7); no subclass of `NullTranslations`; see [limits](compatibility.md#gettext) |
 
 ### Regular expressions

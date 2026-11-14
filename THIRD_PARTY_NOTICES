@@ -83,7 +83,9 @@ adapt that commit's Lib/test/test_textwrap.py. tests/programs/upstream/upstream_
 adapts selected methods from Lib/test/test_functools.py, whose source SHA-256 is
 recorded in its header. tests/programs/upstream/upstream_contextlib.py and tests/programs/upstream/upstream_generators_protocol.py
 adapt selected cases of that commit's Lib/test/test_contextlib.py and
-Lib/test/test_generators.py. They preserve the upstream assertions for the supported
+Lib/test/test_generators.py. tests/programs/upstream/upstream_pprint.py adapts selected
+methods of that commit's Lib/test/test_pprint.py, whose source SHA-256 is recorded in its
+header. They preserve the upstream assertions for the supported
 cases and disclose adaptations and exclusions; the same PSF license applies.
 
 CPython's selected copyreg registration functions

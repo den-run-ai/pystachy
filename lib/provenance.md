@@ -20,6 +20,7 @@ observable contract.
 | `html.parser` | `Lib/html/parser.py` | `4274e9112adf3fa57c7f9afa7c9b5c631456b18b7403cc627cc5027d02cdd2ae` |
 | `_markupbase` | `Lib/_markupbase.py` | `cb14dd6f2e2439eb70b806cd49d19911363d424c2b6b9f4b73c9c08022d47030` |
 | `difflib` | `Lib/difflib.py` | `1593ae08143632f4f81fea3beeeb279d803f8a9be922b12fe79664d78bba879d` |
+| `pprint` | `Lib/pprint.py` | `1585c8d74d7f485590db2af46680ae0a73737ca9fb66022b2bcbbc4c4925e203` |
 | `getopt` | `Lib/getopt.py` | `0ce875700c8798193b8e2748f7a27fc542cc4d525a1e6fc403767450ec92be99` |
 | `gettext` | `Lib/gettext.py` | `7178d6ebdd0647b003da0ccdffb9431bc5fcf5c3822a247b578fdb745162865d` |
 | `heapq` | `Lib/heapq.py` | `6d43277e5c76fc0f073cd388fcff852d14d068f6bb6d4886c340f8b75a1229a9` |
@@ -55,6 +56,12 @@ Its selected compiled output-format tests derive from `Lib/test/test_difflib.py`
 CPython commit `cbc944f4bc59639a444dd971c737788ba2283a91`, SHA-256
 `dc6b140c8dd31e6971888070ea5175a0ab72ecadbdc96956071ceb062f34e636`;
 the test header identifies selections and exclusions.
+`pprint` selects each value's method by its static type, where upstream looks
+`type(object).__repr__` up in a table; its loops over items have their bodies in methods of
+their own, so that a tuple's items keep their types. Its selected compiled tests derive from
+`Lib/test/test_pprint.py` at the same commit, SHA-256
+`e189a2517eb6569907fdfd8dcb5f820e96ce3cf97275aa288623b6441af91e19`; the
+[test header](../tests/programs/upstream/upstream_pprint.py) identifies selections and exclusions.
 `tomllib`'s package file, `Lib/tomllib/__init__.py`, is unchanged (lib/README.md); its other
 modules opt in to dynamic `Any` and carry the edits lib/compatibility.md lists. The files and the
 test data of `tests/programs/upstream/upstream_tomllib_data.py` were taken from the
