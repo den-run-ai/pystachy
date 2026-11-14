@@ -1,0 +1,38 @@
+1000 1 floordiv Overflow [<class 'decimal.Overflow'>]
+1000 1 divmod Overflow [<class 'decimal.Overflow'>]
+1000 1 mod 0
+1000 1 div Overflow [<class 'decimal.Overflow'>]
+999 1 floordiv 999
+999 1 divmod 999 0
+999 1 mod 0
+999 1 div 999
+99999 1 floordiv Overflow [<class 'decimal.Overflow'>]
+99999 1 divmod Overflow [<class 'decimal.Overflow'>]
+99999 1 mod 0
+99999 1 div Overflow [<class 'decimal.Overflow'>]
+1E+3 1 floordiv Overflow [<class 'decimal.Overflow'>]
+1E+3 1 divmod Overflow [<class 'decimal.Overflow'>]
+1E+3 1 mod 0
+1E+3 1 div Overflow [<class 'decimal.Overflow'>]
+-1000 1 floordiv Overflow [<class 'decimal.Overflow'>]
+-1000 1 divmod Overflow [<class 'decimal.Overflow'>]
+-1000 1 mod -0
+-1000 1 div Overflow [<class 'decimal.Overflow'>]
+5000 3 floordiv Overflow [<class 'decimal.Overflow'>]
+5000 3 divmod Overflow [<class 'decimal.Overflow'>]
+5000 3 mod 2
+5000 3 div Overflow [<class 'decimal.Overflow'>]
+1000 7 floordiv 142
+1000 7 divmod 142 6
+1000 7 mod 6
+1000 7 div 142.86
+100 3
+Overflow [<class 'decimal.Overflow'>]
+Overflow [<class 'decimal.Overflow'>]
+100 1 100.00 (Decimal('100.00'), Decimal('0.00'))
+1E+2 1 100.00 (Decimal('100.00'), Decimal('0.00'))
+9E+2 3 300.00 (Decimal('300.00'), Decimal('0.00'))
+10 1 10.00 (Decimal('10.00'), Decimal('0.00'))
+0 (Decimal('-0'), Decimal('7.00')) 0.00
+Infinity 1.50 -NaN7 Infinity
+[exit 0]

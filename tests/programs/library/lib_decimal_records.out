@@ -1,0 +1,8 @@
+['59.97', '42.46', '120.00'] 222.43 18.35 15.57
+Line(name='widget', price=Decimal('19.99'), quantity=3, discount=None) gadget 120
+0.00 [Decimal('-33.34'), Decimal('-33.33'), Decimal('-33.33')] -33.33 None 18
+[(Decimal('4.995'), ['gadget']), (Decimal('19.99'), ['widget', 'spare']), (Decimal('120'), ['service'])] True True 1
+(59, 999999) (7, 250000) (0, 0) (30, 0)
+1045.94 1045.94 1.04594 0.0459
+0.6 True False 0.60 1,234,567.89 12.5%
+[exit 0]
