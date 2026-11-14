@@ -210,6 +210,13 @@ def gen_inherit(self, ci: ClassInfo) -> None:
             # even when no inherited method is called.
             d = Node(f.orig.kind, f.orig.s, f.orig.line, [f.orig.kids[i] if i == 2 else clone(f.orig.kids[i]) for i in range(len(f.orig.kids))])
             g = self.declare_fn(d, ci.name, True)
+            if g.tvret == "":
+                # (f.orig was cloned after its declaration erased the TypeVar annotations: their
+                # binding plan, over the same parameters, carries over: tv_plan)
+                g.tvret = f.tvret
+                g.tvbparams = list(f.tvbparams)
+                g.tvbclass = list(f.tvbclass)
+                g.tvbpos = list(f.tvbpos)
             g.orig = f.orig
             g.clsuse = True
             g.pending = True
