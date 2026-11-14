@@ -167,7 +167,12 @@ def scalar(values: tuple[float, ...]) -> float:
     return values[0] + values[1]
 def expose(values: tuple[float, ...]) -> float:
     return values[0]
-print(scalar(make(2.0)), expose(make(3.0)))
+def iterate(values: tuple[float, ...]) -> float:
+    total = 0.0
+    for item in values:
+        total += item
+    return total
+print(scalar(make(2.0)), expose(make(3.0)), iterate(make(4.0)))
 """
         plain, _ = compile_source(source)
         tracked, _ = compile_source("# pystachy: dynamic-any\n" + source)
@@ -177,6 +182,23 @@ print(scalar(make(2.0)), expose(make(3.0)))
         self.assertEqual(calls.count("vtuple.set_identity"), 2)
         self.assertFalse(any(i.op == "rt" and i.s == "vtuple.get_identity" for i in tracked["scalar"]))
         self.assertTrue(any(i.op == "rt" and i.s == "vtuple.get_identity" for i in tracked["expose"]))
+        # Bounds are already established by the immutable tuple iteration loop.
+        # Ordinary typed iteration must stay an inline load, without a runtime
+        # getter or an identity allocation; tracked items keep their boxes.
+        self.assertFalse(any(i.op == "rt" and i.s.startswith("vtuple.get") for i in plain["iterate"]))
+        self.assertTrue(any(i.op == "rt" and i.s == "vtuple.get_identity" for i in tracked["iterate"]))
+
+    def test_reference_and_optional_iteration_keeps_inline_loads(self):
+        for et, value in (("str", '("a", "b")'), ("bool", "(True, False)"),
+                          ("float | None", "(1.5, None)"), ("str | None", '("a", None)')):
+            for prefix in ("", "# pystachy: dynamic-any\n"):
+                with self.subTest(element=et, tracked=bool(prefix)):
+                    captured, _ = compile_source(prefix + f"""
+def copied(values: tuple[{et}, ...]) -> list[{et}]:
+    return [item for item in values]
+print(copied({value}))
+""")
+                    self.assertFalse(any(i.op == "rt" and i.s.startswith("vtuple.get") for i in captured["copied"]))
 
     def test_native_operands_have_one_result_and_allocation_effect(self):
         g = Gen()
