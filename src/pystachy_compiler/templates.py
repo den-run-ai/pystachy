@@ -770,6 +770,11 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     g.home = f.home
     g.ret = want if yield_context else f.ret
     g.infer = f.ret == ""
+    if f.tvret != "" and g.ret == "":
+        # (accept(visitor) -> T of a visitor whose class derives from Visitor[X]: X, before the
+        # body runs, so that a recursive call knows it: tv_bound)
+        g.ret = self.tv_bound(f, ts)
+        g.infer = g.ret == ""
     g.rctx = "" if yield_context else want
     g.rsoft = resultsoft and want != ""
     g.rlocals = locals if want != "" else []

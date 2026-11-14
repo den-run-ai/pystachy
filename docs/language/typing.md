@@ -148,7 +148,12 @@ annotations. `os.PathLike` and the supported `collections.abc` names are excepti
 restriction on builtin module attributes.
 
 `Final[T]` uses type `T` without enforcing immutability. `x: Final = value` infers the
-value's type; a class-body value must be a constant. `x: Final` alone binds nothing.
+value's type. In a class body, a constant gives a field its type, and any other value makes a
+class attribute typed as an unannotated one is (`FLAGS: Final = ["a", "b"]`). Nested classes,
+dataclasses, `NamedTuple`s and classes that are not compiled (whose creation may read the
+annotation, as a `TypedDict`'s does) still need a constant or `Final[T]`. `x: Final` alone
+binds nothing. In the same classes, `x: ClassVar[T] = value` is the class attribute
+`x: T = value`; `ClassVar` without a value, and in a dataclass, is unsupported.
 `@overload` stubs are discarded when followed by their implementation; they do not create
 runtime overload dispatch. Decorators accepted on unused imported definitions are not
 necessarily supported on methods the program actually uses; see [module rules](modules.md).
@@ -757,7 +762,13 @@ annotations; it does not infer a new class-template specialization from runtime 
 A class specializes when its `__init__` has an unannotated parameter, a parameter annotated
 `object` or mentioning `Any` (also `list[Any]`, quoted or imported annotations), variadic parameters,
 a parameter or constructed field using another class template, an `Iterator[T]` or
-`Iterable[T]` parameter, or an `iter()` call. Calls whose fields have
+`Iterable[T]` parameter, or an `iter()` call. In a class that takes part in inheritance, a
+constructed field whose annotation, in the class body or at the store, is a type of its own
+(`deps: defaultdict[str, set[str]]`, then `self.deps = defaultdict(set)`) takes the object as
+that type rather than making the class a template. So does a class that the `__init__` of a
+class in a hierarchy takes as a parameter (`Checker(errors: Errors)`, not `*args` or
+`**kwargs`), also through another such class: it is then compiled as an ordinary class, used
+or not, so each field its `__init__` assigns needs a type. Calls whose fields have
 the same types share a specialization: `Box(1)` and `Box(2)` share one, while `Box("s")`
 uses another. Methods compile when needed; non-template special methods compile when the
 specialization is created.
@@ -899,6 +910,20 @@ class name or `Self` inside its methods and fields, or an explicit specializatio
 `"Pair[V, K]"`. A method's separate type variables (a module-level `TypeVar`, or its own,
 `def map[U](self, f: Callable[[T], U]) -> "Box[U]"`) make it a function template.
 
+A class can derive from a generic class without an `__init__` of its own, which binds nothing:
+`class TupleNameVisitor(RTypeVisitor[str])` derives from `RTypeVisitor`, whose type arguments
+are checked as the annotation `RTypeVisitor[str]` checks them, as can `class V(RTypeVisitor)`.
+A template method that returns its own type variable and takes a parameter annotated with it,
+as visitors are written (`def accept(self, visitor: RTypeVisitor[T]) -> T`), returns `str` for
+an argument whose class derives from `RTypeVisitor[str]`. That is decided before its body
+compiles, so a visitor's methods may call `accept()` again, and a field stored from
+`self.accept(TupleNameVisitor())` takes it too
+([test](../../tests/programs/classes/generic_visitor_postponed.py)). A variable annotated with
+the base holds any visitor, whose methods then dispatch to every visitor class and need one
+return type ([error test](../../tests/errors/classes/generic_visitor_base_variable.py)). A class
+cannot yet derive from a generic class whose `__init__` binds its type variables
+(`class IntBox(Box[int])`), nor pass on one of its own (`class Sub(RTypeVisitor[T])`).
+
 Function and class specializations share a limit of 4,096 per compilation. Additional
 nesting and size limits are listed in [compatibility](compatibility.md#templates-and-empty-containers).
 
@@ -972,6 +997,10 @@ A class-body default is a class attribute, read by instances until they assign t
 value. Later changes to the class attribute affect those instances. Unannotated class-body
 assignments infer their type, except in dataclasses and NamedTuples, where annotations are
 required. Supported subclasses also inherit their base's fields and class attributes.
+In a module-level class without decorators or a `NamedTuple` base, a later class-body value
+or method default may read a name the body binds once to a constant (`op_str = {ADD: "+"}`),
+as CPython reads the class namespace; lambdas and comprehensions past their first iterable
+do not see it.
 
 A class attribute may hold a function (`encode = enc`, as CPython's `encodings` modules bind
 their codec functions). It is read and called through its class or a subclass
@@ -1036,9 +1065,11 @@ class variables.
 ## Single inheritance
 
 An ordinary class may derive from one previously declared ordinary class, including an
-imported class. Annotate its `__init__` parameters; constructor-inferred class templates and
-`Generic` classes cannot participate in a hierarchy. Fields retain their declared or inferred
-types, and the existing field-inference rules still apply.
+imported class. Annotate its `__init__` parameters; constructor-inferred class templates cannot
+participate in a hierarchy. A generic base without its own `__init__` supports the
+[visitor subset](#explicit-generic-classes); bases whose constructor binds type variables and
+subclasses passing through their own type variables remain unsupported. Fields retain their
+declared or inferred types, and the existing field-inference rules still apply.
 
 Subclasses inherit fields, class attributes, methods and `__init__` when they do not define
 their own. Instance methods can override inherited methods. Calls through a base annotation

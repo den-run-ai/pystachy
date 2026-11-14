@@ -4,7 +4,7 @@ import os
 import sys
 import tempfile
 import time
-from src.pystachy_compiler import cached_run, diagnostics, program_cache
+from src.pystachy_compiler import aot_runtime, cached_run, diagnostics, program_cache
 from src.pystachy_compiler.diagnostics import MAXNEST, RAW, NeedSliceEH, Rejoin, fail
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.lexer import Lexer
@@ -41,6 +41,7 @@ COMPILER_SOURCES: list[str] = [
     'lib/_pystachy_cache.py',
     'src/__init__.py',
     'src/pystachy_compiler/__init__.py',
+    'src/pystachy_compiler/aot_runtime.py',
     'src/pystachy_compiler/analysis.py',
     'src/pystachy_compiler/argparse_schema.py',
     'src/pystachy_compiler/ctypes_schema.py',
@@ -616,6 +617,54 @@ def jit_launcher(runner: str, home: str, cache: str, lli: str, clang: str, src: 
     return ("", why if why != "" else "unsettled")
 
 
+def aot_build(tc: list[str], usebc: str, plain: bool, tmp: str, parts: list[str], ccflags: str) -> str:
+    # The precompiled runtime of pystachy build (aot_runtime): usebc linked to pys_plain's value
+    # (plain) and optimized again, which removes what that value never reaches, its unnamed
+    # globals named (name-anon-globals: UBSan's checks make thousands), split into the object's
+    # module and the interface, then parts: [the object (-ffunction-sections and -fdata-sections:
+    # the executable's link keeps what the program reaches), the interface, the late step's module
+    # (pys_new's body and what it needs: LATE_INLINE)]. "" if it is built, else why not: the tools'
+    # messages, which the build that then links the runtime into the program does not show
+    names = ["plain.ll", "aot-l.bc", "aot.ll", "aot-obj.ll", "aot-face.ll", "aot-new.ll", "aot.err"]
+    p = [tmp + "/" + n for n in names]
+    err = f" 2>> {q(p[6])}"
+    f = open(p[0], "w", encoding=RAW)
+    f.write(f"@pys_plain = constant i64 {1 if plain else 0}\n")
+    f.close()
+    # (plain.ll first: it has no data layout, which the runtime's then gives the module)
+    code = timed_sh("runtime.aot_specialize", f"{{ {tc[2]} {q(p[0])} {q(usebc)} -o {q(p[1])} && {tc[3]} -S -passes='default<O2>,name-anon-globals' {q(p[1])} -o {q(p[2])}; }}{err}")
+    views: list[str] = []
+    if code == 0 and os.path.exists(p[2]):
+        started = timing_start()
+        f = open(p[2], "r", encoding=RAW)
+        views = aot_runtime.split(f.read(), aot_runtime.BODY)
+        f.close()
+        for i in range(len(views)):
+            text = views[i] if i < 2 else aot_runtime.late_root(views[i])
+            f = open(p[3 + i], "w", encoding=RAW)
+            f.write(text + "\n")
+            f.close()
+        timing_end("runtime.aot_split", started)
+    why = ""
+    if code == 0 and len(views) == 0:
+        code = 1
+        why = "the runtime has a definition that another may replace, or an unnamed one\n"
+    sections = " -ffunction-sections -fdata-sections" if PLATFORM != "darwin" else ""
+    if code == 0:
+        code = timed_sh("runtime.aot_codegen", f"{tc[0]} -O2 -c -Xclang -disable-llvm-passes{sections} -x ir {q(p[3])} -o {q(parts[0])} -Wno-unused-command-line-argument{ccflags}{err}")
+    if code == 0:
+        # (opt without passes assembles and verifies the interface)
+        code = timed_sh("runtime.aot_interface", f"{{ {tc[3]} {q(p[4])} -o {q(parts[1])} && {tc[2]} --only-needed {q(p[5])} {q(parts[1])} -o {q(parts[2])}; }}{err}")
+    if code == 0 and len([x for x in parts if not os.path.exists(x)]) > 0:
+        code = 1
+    if code != 0:
+        why = why + text_of(p[6]) if why + text_of(p[6]) != "" else "a step failed\n"
+    for x in p:
+        if os.path.exists(x):
+            os.remove(x)
+    return why
+
+
 def main() -> None:
     # the parser and the code generator recurse for each level of nesting (at most MAXNEST), a
     # dozen calls deep each: more than CPython's default limit of 1,000 calls when it runs this file
@@ -970,11 +1019,6 @@ def main() -> None:
     partso = f"{rts}.{os.getpid()}.{own}"
     f = open(ll, "w", encoding=RAW)
     f.write(address_runtime_ir(ir) if asan and cmd != "run" else ir)
-    if cmd == "build":
-        # runtime.c's pys_plain, which -O2 reads with the runtime as one module: 1 removes the code
-        # that only values of those opt-ins reach (opt_in()), before it is optimized; the JIT tier
-        # and extension modules keep the runtime's weak 0
-        f.write(f"@pys_plain = constant i64 {1 if plain else 0}\n")
     # compiled code's objects that hold no reference from pys_new (allocelide, lowering's
     # alloc_call, which declares it only where it calls it): an AOT build or extension module is
     # optimized with pys_new out of line (runtime.c), so that LLVM deletes the allocations whose
@@ -1139,7 +1183,7 @@ def main() -> None:
         if useso == partso:
             mvs.append(f"mv -f {q(partso)} {q(rts)}")
         old = f"{q(cache)}/runtime-py-{lin}-{'?' * 16}"
-        mvs.append(f"for f in {old}.bc {old}.o {old}.so {old}.target; do case $f in {q(rtb)} | {q(rto)} | {q(rts)} | {q(rtb[:-3] + '.target')}) ;; *) rm -f \"$f\" ;; esac; done")
+        mvs.append(f"for f in {old}.bc {old}.o {old}.so {old}.target {old}.aot?.o {old}.aot?.bc {old}.aot?.late.bc {old}.aot?.fail; do case $f in {q(rtb)} | {q(rto)} | {q(rts)} | {q(rtb[:-3] + '.target')} | {q(rtb[:-3])}.aot*) ;; *) rm -f \"$f\" ;; esac; done")
     for g in glue:
         if pub and g[3] != "":
             old = f"{q(cache)}/runtime-py-{lin}-{'?' * 16}.{g[0]}.bc"
@@ -1170,6 +1214,50 @@ def main() -> None:
                 g[2] = g[1]
         if peo[1] == peo[2] and peo[2] != "" and not os.path.exists(peo[2]):
             peo[1] = peo[0]
+    # pystachy build links the precompiled runtime (aot_runtime): the cached runtime's, for
+    # pys_plain's value, beside it as runtime-py-<L>-<K>.aot<0|1>.o, .bc (the interface) and .late.bc
+    # (aot_build), built by the first build that may publish them. Otherwise (AddressSanitizer, which
+    # instruments the program on its own, a runtime built for this run alone, a step that fails),
+    # the needed part of the runtime is linked into the program, optimized and compiled with it. A
+    # build that fails leaves .aot<0|1>.fail, with the tools' messages, and later builds of that
+    # runtime do not try again (as the JIT runner's .fail)
+    aotrt = ["", "", ""]
+    aotparts = ["", "", "", ""]
+    if code == 0 and cmd == "build" and not asan and usebc == rtb:
+        base = rtb[:-3] + (".aot1" if plain else ".aot0")
+        names = [base + ".o", base + ".bc", base + ".late.bc", base + ".fail"]
+        if len([n for n in names[:3] if not os.path.exists(n)]) == 0:
+            aotrt = names[:3]
+        elif pub and not os.path.exists(names[3]):
+            aotparts = [f"{n}.{os.getpid()}.{own}" for n in names]
+            why = aot_build(tc, usebc, plain, tmp, aotparts[:3], ccflags)
+            if why == "":
+                aotrt = aotparts[:3]
+            else:
+                try:
+                    f = open(aotparts[3], "w", encoding=RAW)
+                    f.write(why)
+                    f.close()
+                except OSError:
+                    pass  # (a cache that cannot be written: the next build tries again)
+            if [stat3(p) for p in paths] == times and stat3(comp) == cst and [stat3(p) for p in sources] == sourceborn:
+                # (what it built, or after a failure its .fail alone)
+                old = q(rtb[: rtb.rfind("-") + 1]) + "?" * 16
+                sh("; ".join([f"mv -f {q(aotparts[i])} {q(names[i])} 2> /dev/null" for i in ([0, 1, 2] if why == "" else [3])])
+                   + f"; for f in {old}.aot?.o {old}.aot?.bc {old}.aot?.late.bc {old}.aot?.fail; do case $f in {q(rtb[:-3])}.aot*) ;; *) rm -f \"$f\" ;; esac; done")
+                if why == "":
+                    # Each rename can fail independently: keep that private
+                    # artifact, and use the published name of each moved one.
+                    for i in range(3):
+                        if not os.path.exists(aotparts[i]):
+                            aotrt[i] = names[i]
+    if cmd == "build" and aotrt[0] == "" and code == 0:
+        # runtime.c's pys_plain, which -O2 reads with the runtime as one module: 1 removes the code
+        # that only values of those opt-ins reach (opt_in()), before it is optimized; the JIT tier
+        # and extension modules keep the runtime's weak 0
+        f = open(ll, "a", encoding=RAW)
+        f.write(f"@pys_plain = constant i64 {1 if plain else 0}\n")
+        f.close()
     llvm = q(llvm) if llvm != "" else ""  # shell prefix: preserve spaces and literal metacharacters
     program = ll
     if code == 0 and asan and cmd != "run":
@@ -1182,9 +1270,9 @@ def main() -> None:
         program = abc
         if code != 0:
             msg = "cannot instrument generated program with AddressSanitizer (see PYSTACHY_LLVM, PYSTACHY_CFLAGS)"
-    link = f"{llvm}llvm-link --only-needed {q(program)} {q(usebc)} -o {q(bc)}"
+    link = f"{llvm}llvm-link --only-needed {q(program)} {q(usebc if aotrt[1] == '' else aotrt[1])} -o {q(bc)}"
     if embed and cmd == "build":
-        link = f"{llvm}llvm-link {q(program)} {q(glue[0][2])} -o {q(lnk)} && {llvm}llvm-link --only-needed {q(lnk)} {q(usebc)} -o {q(bc)}"
+        link = f"{llvm}llvm-link {q(program)} {q(glue[0][2])} -o {q(lnk)} && {llvm}llvm-link --only-needed {q(lnk)} {q(usebc if aotrt[1] == '' else aotrt[1])} -o {q(bc)}"
     libs = "".join([" " + (q(x) + " " + q("-Wl,-rpath," + x[: x.rfind("/")]) if "/" in x else q("-l:" + x)) for x in LIBS if x != "-"])  # (libpython)
     libs += " -ldl" if len(LINKDL) > 0 or embed or cmd == "ext" else ""  # (dlopen, dlsym: @ffi.extern, pyembed.c)
     if code != 0:
@@ -1205,23 +1293,33 @@ def main() -> None:
                   + f" && {llvm}opt -passes='internalize,default<O2>' -internalize-public-api-list={public} {q(bc)} -o {q(bc)}" + inline
                   + f" && {llvm}clang -O2 -fPIC -c {q(bc)} -o {q(obj)} -Wno-unused-command-line-argument{ccflags} && {llvm}clang -shared {q(obj)} -o {q(out)}{libs} -lm{cflags}")
     elif cmd == "build":
-        # AOT tier: default -O2 over program + runtime as one module. Experimental
-        # lower tiers trade optimization time for execution speed of temporary builds.
+        # AOT tier: default -O2 over the program and the runtime's interface (aot_runtime): the
+        # bodies it inlines are never compiled again, and the executable links the precompiled
+        # runtime, of which the linker keeps what the program reaches. Without the precompiled
+        # runtime, over program + runtime as one module. Experimental lower tiers trade
+        # optimization time for execution speed of temporary builds.
         # With allocelide, clang optimizes it to bitcode, the late step inlines pys_new, the
-        # allocator's fast path, into the remaining calls, and clang compiles that without
-        # optimizing it again (the same code generation: a module without pys_new keeps the one step)
+        # allocator's fast path, into the remaining calls (with the interface, from its late module,
+        # whose available_externally bodies then go), and clang compiles that without optimizing it
+        # again (the same code generation: a module without pys_new keeps the one step)
         if out == "":
             out = diagnostics.SRC[:-3] if diagnostics.SRC.endswith(".py") else diagnostics.SRC + ".exe"
         code = timed_sh("program.llvm_link", link)
         if code == 0 and newalloc:
             code = timed_sh("program.llvm_optimize", f"{llvm}clang -O{aotopt} -c -emit-llvm {q(bc)} -o {q(obc)} -Wno-unused-command-line-argument{ccflags}")
         if code == 0 and newalloc:
-            code = timed_sh("program.late_inline", f"{llvm}opt -passes={LATE_PASSES} {LATE_INLINE} {q(obc)} -o {q(lbc)}")
+            late = f"{llvm}opt -passes={LATE_PASSES} {LATE_INLINE} {q(obc)} -o {q(lbc)}"
+            if aotrt[2] != "":
+                # (pys_new's body, into -O2's module itself, which opt then reads, as without the
+                # precompiled runtime)
+                late = f"{llvm}llvm-link --only-needed {q(obc)} {q(aotrt[2])} -o {q(obc)} && {llvm}opt -passes={LATE_PASSES},elim-avail-extern,globaldce {LATE_INLINE} {q(obc)} -o {q(lbc)}"
+            code = timed_sh("program.late_inline", late)
         if code == 0:
             cc = f"{llvm}clang -O{aotopt} -c -Xclang -disable-llvm-passes {q(lbc)}" if newalloc else f"{llvm}clang -O{aotopt} -c {q(bc)}"
             code = timed_sh("program.codegen" if newalloc else "program.optimize_codegen", cc + f" -o {q(obj)} -Wno-unused-command-line-argument{ccflags}")
         if code == 0:
-            code = timed_sh("program.link", f"{llvm}clang {q(obj)} -o {q(out)}{libs} -lm{cflags}")
+            rt = "" if aotrt[0] == "" else f" {q(aotrt[0])}" + (" -Wl,-dead_strip" if PLATFORM == "darwin" else " -Wl,--gc-sections")
+            code = timed_sh("program.link", f"{llvm}clang {q(obj)}{rt} -o {q(out)}{libs} -lm{cflags}")
     else:
         # Match the precompiled runtime's target before instcombine folds sizeof/GEP.
         # LLVM's default layout gives i64 only four-byte alignment; ORC later installs
@@ -1428,7 +1526,7 @@ def main() -> None:
             finally:
                 for stream in reserved + inputs + pinned:
                     stream.close()
-    for p in [ll, abc, bc, obj, jobj, jmain, obc, lbc, pcout, pclink, pclink2, pcerror, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, parto, partso, hp, rso, tmp + "/runtime.i", tmp + "/runtime-preprocess.err", tmp + "/pyembed.c", tmp + "/pyext.c", peo[2]] + [g[3] for g in glue]:
+    for p in [ll, abc, bc, obj, jobj, jmain, obc, lbc, pcout, pclink, pclink2, pcerror, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, parto, partso, hp, rso, tmp + "/runtime.i", tmp + "/runtime-preprocess.err", tmp + "/pyembed.c", tmp + "/pyext.c", peo[2]] + [g[3] for g in glue] + [x for x in aotparts if x != ""]:
         if os.path.exists(p):
             os.remove(p)
     os.rmdir(tmp)

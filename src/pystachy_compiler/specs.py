@@ -374,6 +374,7 @@ OPTTYPES = "class types, str, bytes, int, float, bool, list, dict and tuple"
 TYPEVAR = " is only supported in the annotations of a module-level function's parameters and return, which make the function a template, and of a generic class (Generic[T]) with an __init__, whose objects bind it"
 ANYUSE = "typing.Any is only supported in the parameter and return annotations of a function, or of a method that may be a template, in a class template's __init__ parameters, in iterator protocol returns, and in initialized module/local variables, which are inferred as if unannotated; annotate a concrete type here"
 STUB = "an @overload stub of 'NAME' must be followed by the def that implements it (calling a stub raises NotImplementedError)"
+FINAL_FIELD = "a field annotated Final without a type needs a constant value (int, float, str or bool): annotate it Final[T]"
 PATHLIKE = "os.PathLike is only supported in a union with str (str | os.PathLike[str] is a str: Pystachy has no other path type)"
 FUTURE: dict[str, bool] = {}
 for _k in "annotations division absolute_import print_function generators nested_scopes with_statement unicode_literals generator_stop".split():
@@ -755,6 +756,11 @@ TEMPLATE_INSTANCES = 4096
 # a rejection fits tools/compilelimits.py's 256 MiB, hosted too (the corpus's largest total is
 # 4,736 bytes, tests/programs/apps/port_tomli_w_tables.py's 92 instances).
 TEMPLATE_RETAINED = 16777216
+# A method call through a base whose hierarchy has more concrete classes than this selects
+# the override in one shared function per receiver type, method and argument signature
+# (Gen.dispatch_call): each override's call, and LLVM's inlining of it, then exists once
+# rather than at every call site (a visitor's 100 classes at 100 sites took 251 s to build).
+DISPATCH_INLINE = 8
 # Effect letters: R may raise (in a program that has try or with, a raise allocates its exception, so a
 # collection may run before a handler takes it; if none does, the raise prints its message, flushes
 # stdout and exits); N never returns; A allocates on the way to returning (a collection may run, and

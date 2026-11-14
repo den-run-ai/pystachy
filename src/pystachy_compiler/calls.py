@@ -4,10 +4,10 @@ from src.pystachy_compiler.analysis import local_names, numeric_statement
 from src.pystachy_compiler.bigints import converts
 from src.pystachy_compiler.diagnostics import dynamic_program, shown, where
 from src.pystachy_compiler.generators import fresh_yield_context
-from src.pystachy_compiler.ir import Data, FnInfo, Ins, Val, tmpname
+from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val, tmpname
 from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.reflection import VARS_USES, refl_attr_fields, refl_formatter
-from src.pystachy_compiler.specs import BFILE, BIG, EXCEPTIONS, GLUE, HASATTR, MODATTRS, PYBUILTINS, RANGEC
+from src.pystachy_compiler.specs import BFILE, BIG, DISPATCH_INLINE, EXCEPTIONS, GLUE, HASATTR, MODATTRS, PYBUILTINS, RANGEC
 from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import (
@@ -1250,10 +1250,13 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
     cs = [c for c in self.classes.values() if c.tag > 0 and self.derives(c.name, o.t)]
     if len(cs) == 1:
         return self.call_fn(cs[0].methods[f.name], pre, args, want, none, direct=True, resultsoft=resultsoft)
+    shared = self.shared_dispatch(f, cs, pre, args)
     # Evaluate explicit arguments once, before reading the receiver tag (also for a None
     # callable). Defaults remain inside the selected branch. Overrides have the same typed
     # parameter interface; an unannotated argument is specialized from its value.
     bound: list[Node] = []
+    values: list[Val] = []
+    names: list[str] = []
     pos = len(pre)
     for a in args:
         j = f.params.index(a.s) if a.kind == "kw" and a.s in f.params else pos
@@ -1265,9 +1268,13 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
             value = captured
         argnode = self.vnode(value)
         bound.append(mk("kw", a.s, a.line, [argnode]) if a.kind == "kw" else argnode)
+        values.append(value)
+        names.append(a.s if a.kind == "kw" else "")
         if a.kind != "kw":
             pos += 1
     self.notnone(o, none if none != "" else f"AttributeError: 'NoneType' object has no attribute '{f.name}'")
+    if shared != "":
+        return self.dispatch_call(f, o, values, names, shared)
     tag = self.mload('int', o.v)
     end = self.label()
     vals: list[Val] = []
@@ -1317,6 +1324,72 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
         result.idcounter = self.alloca("int", "")
         result.idversion = "0"
     return result
+
+def gen_shared_dispatch(self, f: FnInfo, cs: list[ClassInfo], pre: list[Val], args: list[Node]) -> str:
+    # The result type of o.m(args), o of a hierarchy of the concrete classes cs, where the call
+    # selects m's override in a function it shares with every such call (dispatch_call), else
+    # "": the arms stay at the call site, where LLVM may inline each override, for at most
+    # DISPATCH_INLINE classes. Each arm's value must be its override's declared result,
+    # whatever the call's context wants, so a generator, an inferred or never-returning
+    # result, a method Pystachy cannot compile, an incompatible join (virtual_call reports
+    # it), star arguments, a dunder method that an operation calls (o.m() of one may compile
+    # to that operation: gen_method), an exception's, a dynamic program's numeric identity
+    # and a comparison helper keep their arms.
+    if len(cs) <= DISPATCH_INLINE or len(pre) != 1 or dynamic_program() or self.curfn.name == "<dispatch>" or self.curfn.cmpops:
+        return ""
+    if (f.name.startswith("__") and f.name.endswith("__")) or self.classes[pre[0].t].exc != "":
+        return ""
+    if any(a.kind == "starred" or a.kind == "dstar" for a in args):
+        return ""
+    t = ""
+    for c in cs:
+        m = c.methods[f.name]
+        if m.ret == "" or "?" in m.ret or m.gen or m.noret or m.iters or m.prop or m.deco != "" or m.bad != "" or m.pyexport:
+            return ""
+        t = m.ret if t == "" else self.join(t, m.ret)
+        if t == "":
+            return ""
+    return t
+
+def gen_dispatch_call(self, f: FnInfo, o: Val, values: list[Val], names: list[str], ret: str) -> Val:
+    # o.m(...) of the evaluated arguments values (keyword names: "" for a positional one), o checked
+    # not None, as virtual_call has done: a call of def <dispatch>(_o, _a0, ...): return _o.m(_a0, ...),
+    # compiled once for o's type, m and the arguments' types and keywords. Its own call keeps
+    # virtual_call's arm for each class, which reads the tag and runs the override as it would here.
+    key = o.t + "." + f.name + "(" + ",".join([(names[j] + "=" if names[j] != "" else "") + values[j].t for j in range(len(values))]) + ")"
+    if key not in self.dispatchers:
+        line = self.line
+        g = FnInfo("<dispatch>", f"@vd.{len(self.dispatchers)}", mk("def", "<dispatch>", line, []), "")
+        g.params = ["_o"] + [f"_a{j}" for j in range(len(values))]
+        g.ptypes = [o.t] + [v.t for v in values]
+        for _ in g.params:
+            g.defaults.append(mk("noann", "", line, []))
+            g.dglob.append("")
+            g.dtypes.append("")
+        g.ret = ret  # (known before its body compiles: an override's own call of m through it, recursion, reads it)
+        g.mod = self.curfn.mod
+        g.home = self.fn_home(self.curfn)
+        argnodes = [mk("kw", names[j], line, [mk("name", f"_a{j}", line, [])]) if names[j] != "" else mk("name", f"_a{j}", line, []) for j in range(len(values))]
+        call = mk("call", "", line, [mk("attr", f.name, line, [mk("name", "_o", line, [])])] + argnodes)
+        body = [mk("return", "", line, [call])] if ret != "None" else [mk("expr", "", line, [call])]
+        g.node.kids = [mk("params", "-1,-1", line, []), mk("noann", "", line, []), mk("block", "", line, body)]
+        self.dispatchers[key] = g
+        fr = self.save()
+        self.modlevel = False
+        self.lenient = False
+        self.function(g, body)
+        self.restore(fr)
+        self.line = line
+    g = self.dispatchers[key]
+    c = Ins("call", g.ret, g.ll)
+    c.a = [Val(o.v, o.t)] + [v for v in values if v.t != "None"]  # (an argument that is None is not passed)
+    if g.ret == "None":
+        self.add(c)
+        return Val("null", "None")
+    if g.ll in self.guessed:
+        self.guessed[self.curfn.ll] = self.guessed[g.ll]  # (what it returns may hold a guess)
+    self.put(c, 1)
+    return Val(tmpname(c.r[0]), g.ret)
 
 def gen_scalar_call_types(self, f: FnInfo, args: list[Node]) -> list[str]:
     # A complete, inert numeric call can specialize before evaluating its arguments.

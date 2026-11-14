@@ -47,8 +47,9 @@ flowchart TD
     llvm --> ext["ext: CPython extension"]
     runtime["C and subset runtime"] --> object["Cached runtime object"]
     runtime --> bitcode["Cached runtime bitcode"]
+    bitcode --> precompiled["Cached AOT runtime object and interface"]
     object --> jit
-    bitcode --> aot
+    precompiled --> aot
     bitcode --> ext
 ```
 
@@ -90,6 +91,14 @@ retain a copy of their context across internal retries.
 
 Ordinary single-inheritance hierarchies carry a class tag. Base-typed instance-method calls
 select a concrete implementation, then reuse method specialization for that receiver.
+Up to eight concrete classes (`DISPATCH_INLINE`), each call site tests the tag itself, and
+LLVM may inline the overrides there. Wider hierarchies select the override in one internal
+function per receiver type, method and argument types (`@vd.N`, `Gen.dispatch_call`), which
+the call sites share: a site costs one call rather than an arm per class, and each override
+is inlined once. Arguments are evaluated and the receiver checked before that call, and
+each arm keeps its override's defaults. Calls whose arms depend on context keep the
+per-site form: generators, inferred or never-returning results, dunder methods, exception
+classes, star arguments and dynamic programs.
 A comparison tests both operands' classes (a `switch` on an ordinary tag), but compiles
 each distinct call once: pairs of classes that call one method instance, on the same
 operand, share its code. A method that takes the other operand as a template's parameter
@@ -547,7 +556,9 @@ calls passes through a counted function or a counted resume. A source function o
 that can be entered again counts; any other neither checks nor counts, and keeps its
 snapshot only when one of its handlers restores it. A Callable's adapter (`@cv.N`) only
 forwards to its target and never counts: a cycle through it also passes through the
-function that makes the indirect call, which reaches `U`.
+function that makes the indirect call, which reaches `U`. Nor does a shared virtual
+dispatch (`@vd.N`, `Gen.dispatch_call`): a cycle through it also passes through the
+override it selects, a source function.
 
 A counted function's snapshot becomes its entry, `recursion.enter`: it raises
 `RecursionError` if the depth has reached the limit (before any local handler or body
@@ -683,19 +694,35 @@ native Linux CLI runs. Validated hits execute a previously linked JIT-tier
 program without rerunning the frontend or LLVM. `PYSTACHY_PROGRAM_CACHE=0`
 disables it; unsupported configurations use ordinary compilation.
 
-`build` links the runtime bitcode with the program and applies clang's `-O2` optimization
-pipeline, allowing optimization across that boundary. The program's module also defines
-`pys_plain`: 1 when no module opts in to dynamic `Any` or promoting ints, else 0. The runtime
+`build` links a precompiled runtime ([#706](https://github.com/den-run-ai/pystachy/issues/706),
+`aot_runtime.py`). The cached runtime bitcode, linked to a definition of `pys_plain` and
+optimized again with `-O2`, is compiled once to an object that every executable links, and each
+program is optimized with clang's `-O2` pipeline against an interface of the same module. The
+interface holds as `available_externally` definitions, which LLVM may inline and never compiles,
+the bodies of runtime functions of up to 200 instructions and of functions that switch on a
+parameter, whose calls with a constant selector cost only the selected case; it declares the
+rest. The module's local symbols become hidden symbols of the object under their own names, so
+an inlined body and the runtime's own code share one definition of each static. The
+executable's link keeps the runtime code the program reaches (`--gc-sections`, `-dead_strip`
+on macOS). The object, the interface and the late step's module (below) are cached beside the
+runtime as `.aot0.*` or `.aot1.*` and built by the first `build` that may publish them, in about
+5 seconds; `opt`'s `name-anon-globals` first names the unnamed globals that UBSan's checks add. A
+build with AddressSanitizer, a runtime built for one run alone or a failed step instead links the
+needed part of the runtime bitcode into the program's module and optimizes and compiles them
+together, as every `build` did before. A failed step leaves `.aot0.fail` or `.aot1.fail` with
+the tools' messages, and later builds of that runtime do not try again.
+
+`pys_plain` is 1 when no module opts in to dynamic `Any` or promoting ints, else 0. The runtime
 tests it (`opt_in()` in `runtime.c`) only on paths that values of those opt-ins lead to: ints
 past 64 bits in containers, promoting ints and list identity companions, which only those
 opt-ins create (every list operation that keeps a companion in step tests it first). For a
 plain program those paths become traps, and `-O2` drops static helpers that have no remaining
-caller from the executable. Explicit `mpz` users retain the helpers they need. The reusable
-runtime cache still contains all features. `make aotprobe` checks retained symbols and output
-for plain programs, direct opt-ins and imported opt-ins, and that a plain program's list store
-writes no companion. The JIT tier's precompiled runtime and `ext` keep the runtime's weak
-definition, 0. `ext` builds a shared CPython module with its boundary wrappers; see the
-[FFI guide](ffi.md).
+caller, from the `.aot1` runtime (or the program's module). Explicit `mpz` users retain the
+helpers they need. The reusable runtime cache still contains all features. `make aotprobe`
+checks retained symbols and output for plain programs, direct opt-ins and imported opt-ins, and
+that a plain program's list store writes no companion. The JIT tier's precompiled runtime and
+`ext` keep the runtime's weak definition, 0. `ext` builds a shared CPython module with its
+boundary wrappers; see the [FFI guide](ffi.md).
 
 Compiled code gets its objects and fixed tuples that hold no reference from `pys_new` (the
 `allocelide` optimization, [#1017](https://github.com/den-run-ai/pystachy/issues/1017)): those
@@ -717,7 +744,9 @@ collections that clear weak references, close dropped files and release `ffi.tra
 can come later than without `allocelide`. `runtime.c` keeps `pys_new` out of line so that
 `-O2` still sees those calls. Each surviving allocation then gets the allocator's fast path
 back: `build` optimizes the linked module to bitcode, and one `opt` run then inlines `pys_new`
-into the calls that are left. Its `forceattrs` passes first swap `pys_new`'s `noinline` (and the
+into the calls that are left (with the precompiled runtime, from the late module, which brings
+`pys_new`'s body back after `-O2` dropped the interface's bodies; `elim-avail-extern` then drops
+them again). Its `forceattrs` passes first swap `pys_new`'s `noinline` (and the
 `optnone` of a runtime compiled at `-O0`) for `alwaysinline` (the driver's `LATE_INLINE`), then
 `always-inline` inlines it. There are two (`LATE_PASSES`): LLVM 23 adds a forced attribute before
 it removes one and no longer adds `alwaysinline` beside `noinline` or `optnone`, so its first
@@ -775,9 +804,11 @@ Frontend phases are `load`, `prepare`, `discover`, `analysis`, `optimize`,
 `finalize` and `lower`, prefixed with `program.` or `runtime.`. `program.attempt`
 includes one inference attempt; retries repeat phase names. `program.frontend`
 contains all attempts. Runtime lookup, frontend, LLVM build, code generation and
-shared linking are separate records. AOT also reports LLVM linking, optimization,
-late allocator inlining, code generation and executable linking; a program without
-allocator calls combines optimization and code generation. Extension backend work
+shared linking are separate records, as are the precompiled AOT runtime's
+specialization, split, code generation and interface (`runtime.aot_*`). AOT also
+reports LLVM linking, optimization, late allocator inlining, code generation and
+executable linking; a program without allocator calls combines optimization and code
+generation. Extension backend work
 is one record. Failed commands retain their status and report elapsed time;
 a frontend failure can omit unfinished phases.
 

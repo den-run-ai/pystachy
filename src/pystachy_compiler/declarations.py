@@ -17,6 +17,7 @@ from src.pystachy_compiler.specs import (
     EXCATTRS,
     EXCFIELDS,
     EXCINIT,
+    FINAL_FIELD,
     FROZENERR,
     GLUE,
     IOPS,
@@ -830,17 +831,70 @@ def gen_typing_ref(self, n: Node) -> str:
         return p[p.rfind(".") + 1 :]
     return short(n.s) if short(n.s) in TYPING and "__future__.annotations" in self.imports.values() else ""
 
-def gen_typing_forms(self, m: Mod, body: list[Node], cls: bool) -> list[Node]:
-    # what typing decides before any code runs, in the statements of body (a class body if cls)
-    # and in those they hold: a def decorated with @overload is a stub that the def after it
-    # replaces, so it is dropped (unless no def of its name follows in its block, past other
-    # defs, or a default is more than a constant); x: Final = v is x = v outside class bodies,
-    # and a field typed by the constant v in one, x: Final[T] is x: T, and x: Final alone does
-    # nothing
+def class_binds(body: list[Node]) -> dict[str, int]:
+    # how often a class body binds each name, or {} where a statement may bind names otherwise
+    # than by a name target or a def (so that class_consts resolves none)
+    n: dict[str, int] = {}
+    for st in body:
+        if st.kind == "assign":
+            for t in st.kids[:-1]:
+                if t.kind != "name":
+                    return {}
+                n[t.s] = n.get(t.s, 0) + 1
+        elif st.kind == "annassign" and len(st.kids) == 3:
+            if st.kids[0].kind != "name":
+                return {}
+            n[st.kids[0].s] = n.get(st.kids[0].s, 0) + 1
+        elif st.kind == "def":
+            n[st.s] = n.get(st.s, 0) + 1
+        elif st.kind != "annassign" and st.kind != "pass" and st.kind != "expr":
+            return {}
+    return n
+
+
+def class_consts(e: Node, consts: dict[str, Node]) -> Node:
+    # class-body expression e, where each name it reads in the class scope that names one of the
+    # body's constants bound before it (consts) is that constant, as CPython reads it from the
+    # class namespace; a lambda's body and a comprehension past its first iterable read no class
+    # names (their names stay, an error where the default is compiled: no_class_names)
+    if e.kind == "name" and "$" not in e.s and e.s in consts:
+        c = clone(consts[e.s])
+        c.line = e.line
+        return c
+    if e.kind == "lambda":
+        return e
+    if e.kind == "listcomp" or e.kind == "asynccomp":
+        e.kids[2] = class_consts(e.kids[2], consts)
+        return e
+    for i in range(len(e.kids)):
+        e.kids[i] = class_consts(e.kids[i], consts)
+    return e
+
+
+def gen_typing_forms(self, m: Mod, body: list[Node], cls: bool, attrs: bool = False, top: bool = False) -> list[Node]:
+    # what typing decides before any code runs, in the statements of body (a class body if cls,
+    # the module's if top) and in those they hold: a def decorated with @overload is a stub that
+    # the def after it replaces, so it is dropped (unless no def of its name follows in its
+    # block, past other defs, or a default is more than a constant); x: Final = v is x = v
+    # outside class bodies, and in one a field typed by the constant v, or else, where attrs (the
+    # body of a module-level class without decorators or a NamedTuple base, which CPython
+    # creates without reading its annotations), the class attribute x = v, its s "Final" (the
+    # class has __annotations__: refl_annotated); x: Final[T] is x: T, x: ClassVar[T] = v is
+    # x: T = v where attrs (a dataclass's is no field), and x: Final alone does nothing. Where
+    # attrs, a name that the body binds once, to a constant, is that constant where the class
+    # scope reads it further on (class_consts)
     out: list[Node] = []
     defs: dict[str, bool] = {}
+    binds = class_binds(body) if attrs else {}
+    consts: dict[str, Node] = {}
     for i in range(len(body)):
         st = body[i]
+        if len(consts) > 0 and (st.kind == "assign" or st.kind == "annassign"):
+            st.kids[-1] = class_consts(st.kids[-1], consts) if st.kind == "assign" or len(st.kids) == 3 else st.kids[-1]
+        elif len(consts) > 0 and st.kind == "def":
+            for p in st.kids[0].kids:
+                if p.kind == "param":
+                    p.kids[1] = class_consts(p.kids[1], consts)  # (a default: evaluated where the def runs)
         stub = self.stub(m, st)
         self.line = st.line
         if stub and st.s in defs:
@@ -868,6 +922,8 @@ def gen_typing_forms(self, m: Mod, body: list[Node], cls: bool) -> list[Node]:
         a = st.kids[1] if st.kind == "annassign" else st
         if a.kind == "index" and self.typing_ref(a.kids[0]) == "Final":
             st.kids[1] = a.kids[1]
+        elif a.kind == "index" and attrs and len(st.kids) == 3 and st.kids[0].kind == "name" and a.kids[1].kind != "tuple" and self.typing_ref(a.kids[0]) == "ClassVar":
+            st.kids[1] = a.kids[1]  # (x: ClassVar[T] = v: the class attribute x: T = v, as a class-body default is)
         elif a is not st and len(st.kids) == 3 and not cls and self.typing_ref(a) == "Final":
             st.kind = "assign"
             st.kids = [st.kids[0], st.kids[2]]
@@ -878,16 +934,27 @@ def gen_typing_forms(self, m: Mod, body: list[Node], cls: bool) -> list[Node]:
                 st.kids[1] = mk("name", v.kind, v.line, [])
             elif v.kind == "True" or v.kind == "False":
                 st.kids[1] = mk("name", "bool", v.line, [])
+            elif attrs and st.kids[0].kind == "name":
+                # (a class attribute typed by its value, as x = v is: see class_fields; where its
+                # class is not compiled, the program's class loop rejects it as before)
+                st.kind = "assign"
+                st.s = "Final"
+                st.kids = [st.kids[0], v]
             else:
-                self.err("a field annotated Final without a type needs a constant value (int, float, str or bool): annotate it Final[T]")
+                self.err(FINAL_FIELD)
         elif a is not st and self.typing_ref(a) == "Final":
             st.kind = "pass"  # (x: Final alone binds nothing)
             st.kids = []
+        v = st.kids[-1] if (st.kind == "assign" and len(st.kids) == 2) or (st.kind == "annassign" and len(st.kids) == 3) else None
+        if v is not None and st.kids[0].kind == "name" and binds.get(st.kids[0].s, 0) == 1 and is_const(v) and v.kind != "noann":
+            consts[st.kids[0].s] = v
         for k in st.kids:
             if k.kind == "block":
-                k.kids = self.typing_forms(m, k.kids, st.kind == "class")
+                k.kids = self.typing_forms(m, k.kids, st.kind == "class", top and st.kind == "class" and len(st.kids) == 1)
             elif k.kind == "class":
-                k.kids[0].kids = self.typing_forms(m, k.kids[0].kids, True)  # (a subclass's)
+                # (a subclass's: decorators follow its block, and its bases it)
+                plain = top and len(k.kids) == 1 and len([b for b in st.kids[1:] if self.nt_base(b)]) == 0
+                k.kids[0].kids = self.typing_forms(m, k.kids[0].kids, True, plain)
             elif k.kind == "except":
                 k.kids[1].kids = self.typing_forms(m, k.kids[1].kids, False)
         out.append(st)
@@ -1179,6 +1246,7 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
     if tv != "" and (cls == "" or template_ok(d.s)):
         # def f(x: T) with T = TypeVar("T"): what mentions a TypeVar is left unannotated, as in
         # def f[T](x: T) (a template); also *args: *Ts
+        self.tv_plan(f, ps, d.kids[1], tvs)
         for p in ps:
             if self.typevar_in([p.kids[0]], tvs) != "":
                 p.kids[0] = mk("noann", "", d.line, [])
@@ -1416,6 +1484,40 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         else:
             held[i].kids[0] = anns[i]
     return f
+
+def gen_tv_plan(self, f: FnInfo, ps: list[Node], ret: Node, tvs: list[str]) -> None:
+    # def accept(self, visitor: Visitor[T]) -> T: a template whose return is its own TypeVar T
+    # (f.tvret), and the parameters annotated G[..., T, ...] of a generic class G (f.tvb*),
+    # whose argument binds T where its class derives from G[X, ...] (tv_bound)
+    r = self.parse_expr(ret.s) if ret.kind == "str" else ret
+    if r.kind != "name" or r.s not in self.typevars or r.s in tvs or r.s in self.tvtuples:
+        return
+    # (each index is f.params', which a class method's cls is not among: declare_fn)
+    skip = 1 if f.deco == "classmethod" and len(ps) > 0 and ps[0].kind == "param" else 0
+    for i in range(skip, len(ps)):
+        a = self.parse_expr(ps[i].kids[0].s) if ps[i].kids[0].kind == "str" else ps[i].kids[0]
+        if ps[i].kind != "param" or a.kind != "index" or a.kids[0].kind != "name" or a.kids[0].s not in self.tparams:
+            continue
+        xs = a.kids[1].kids if a.kids[1].kind == "tuple" else [a.kids[1]]
+        for k in range(len(xs)):
+            if xs[k].kind == "name" and xs[k].s == r.s:
+                f.tvret = r.s
+                f.tvbparams.append(i - skip)
+                f.tvbclass.append(a.kids[0].s)
+                f.tvbpos.append(k)
+
+def gen_tv_bound(self, f: FnInfo, ts: list[str]) -> str:
+    # what an instance of template f (tv_plan) returns for arguments of types ts: X, where the
+    # class of an argument for a parameter annotated G[..., T, ...] derives from G[..., X, ...]
+    # (class V(G[X]): generic_subclass), else "" (its returns decide, as for any template)
+    for i in range(len(f.tvbparams)):
+        j = f.tvbparams[i]
+        c = unopt(ts[j]) if j < len(ts) else ""
+        while c in self.classes:
+            if self.genbase.get(c, "") == f.tvbclass[i] and f.tvbpos[i] < len(self.genargs[c]):
+                return self.genargs[c][f.tvbpos[i]]
+            c = self.classes[c].base
+    return ""
 
 def gen_iter_ann(self, n: Node) -> str:
     # an __iter__'s (or __reversed__'s) return annotation Iterator[T] or Iterable[T] (typing's or collections.abc's):
@@ -1718,13 +1820,13 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
             if t != "" and bt != "" and (self.widens(t, bt) or self.boxes(t, bt) or (t == "int" and bt == BIG)):
                 t = bt  # (a class attribute of the base bound again, with a value of its type)
             if t == "" and ci.mod == "":
-                self.err(f"cannot infer the type of class attribute '{st.kids[0].s}'; annotate it ({st.kids[0].s}: T = ...)")
+                self.err(f"cannot infer the type of class attribute '{st.kids[0].s}'; annotate it ({st.kids[0].s}: {'Final[T]' if st.s == 'Final' else 'T'} = ...)")
             if t == "":
                 ci.bad = ci.bad if ci.bad != "" else f"class {shown(ci.name)} is not supported: cannot infer the type of class attribute '{st.kids[0].s}'"
                 t = "int"
             self.add_field(ci, st.kids[0].s, t)
             ci.fdefault[st.kids[0].s] = st.kids[1]
-            st.kind = "annassign"
+            st.kind = "annassign"  # (its s stays "Final" where typing_forms made it of x: Final = v)
             st.kids = [st.kids[0], mk("noann", "", st.line, []), st.kids[1]]
         elif st.kind != "def" and st.kind != "pass" and not (st.kind == "expr" and (st.kids[0].kind == "str" or st.kids[0].kind == "ellipsis")):
             what = "an assignment to anything but one name (x = v)" if st.kind == "assign" else "an expression statement" if st.kind == "expr" else f"a{'n' if st.kind[0] in 'aeiou' else ''} {st.kind} statement"
@@ -2335,6 +2437,10 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         m = e.kids[0].s
         if m in ms and ms[m].prop:
             return targs(ms[m].ret)[0] if is_callable(ms[m].ret) else ""
+        if m in ms and ms[m].bad == "" and ms[m].ret == "" and ms[m].tvret != "" and len([x for x in e.kids[1:] if x.kind == "kw" or x.kind == "starred" or x.kind == "dstar"]) == 0:
+            # self.accept(Visitor()) of a method -> T that a visitor's class binds (tv_bound); a
+            # static or class method's parameters do not include self
+            return self.tv_bound(ms[m], ([f.cls] if ms[m].deco == "" else []) + [self.guess(x, f) for x in e.kids[1:]])
         return "" if m not in ms else ms[m].ret if ms[m].bad == "" else "!" + ms[m].bad
     if k == "call" and e.kids[0].kind == "name" and e.kids[0].s == me:
         ms = self.classes[f.cls].methods  # self(...): self.__call__(...)

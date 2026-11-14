@@ -1,4 +1,4 @@
-# error: typing_classvar.py:6: error: typing.ClassVar (a class attribute) is not supported
+# x: ClassVar[T] = v in an ordinary class is the class attribute x: T = v (once rejected).
 from typing import ClassVar
 
 

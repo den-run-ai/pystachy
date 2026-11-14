@@ -1,0 +1,5 @@
+6 ['a', 'b'] ['strict a', 'a', 'strict b', 'b'] ['visitor', 'visitor', 'checker', 'checker', 'checker', 'checker']
+2 ['a', 'b'] [] ['checker', 'checker']
+1 0 True Errors
+1 6 ['q'] [6, 2, 1]
+[exit 0]
