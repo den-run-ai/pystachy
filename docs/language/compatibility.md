@@ -513,9 +513,9 @@ See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
 - **Inheritance:** multiple bases outside the [method-only secondary base](typing.md#a-method-only-secondary-base) subset; ordinary hierarchies involving layout-specialized templates, `Generic`,
   NamedTuple or builtins; mixed dataclass/ordinary hierarchies; decorated subclasses except
   dataclass-from-dataclass; changing method kind; incompatible virtual call signatures or
-  results; overridden static/class methods called through base-typed objects. Constructors
-  whose fields have fixed concrete storage may specialize their argument types within a
-  hierarchy ([class templates](typing.md#class-templates-and-generic-classes)).
+  results; overridden static/class methods called through base-typed objects. Independent
+  classes with fixed concrete fields may specialize constructor arguments without making
+  consumers' hierarchies generic ([class templates](typing.md#class-templates-and-generic-classes)).
 - **Inherited members:** assigning inherited class attributes through subclasses without their
   own defaults; changing field types; derived-only fields without supported narrowing;
   inherited `cls`-using classmethods through base-typed objects, across modules or with

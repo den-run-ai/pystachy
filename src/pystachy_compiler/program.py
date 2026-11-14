@@ -373,6 +373,19 @@ def fixed_properties(st: Node, fields: dict[str, str]) -> bool:
                 return False
     return True
 
+def fixed_receiver(n: Node, receiver: str, fields: dict[str, str]) -> bool:
+    # A field list from this body does not describe initialization delegated through
+    # self's methods, an alias or a helper. Such calls can reach a subclass's fields.
+    if n.kind == "call" and n.kids[0].kind == "attr":
+        target = n.kids[0].kids[0]
+        if target.kind == "name" and target.s == receiver:
+            return False
+    if n.kind == "attr" and n.kids[0].kind == "name" and n.kids[0].s == receiver:
+        return n.s in fields  # extracting a bound method can delegate initialization too
+    if n.kind == "name" and n.s == receiver:
+        return False
+    return all([fixed_receiver(k, receiver, fields) for k in n.kids])
+
 def gen_fixed_init(self, st: Node) -> bool:
     # Constructor arguments may specialize code without specializing storage. Keep the
     # source class itself when all its instance fields have concrete annotations; an
@@ -380,6 +393,18 @@ def gen_fixed_init(self, st: Node) -> bool:
     # needs the existing class-template path.
     if len(st.kids) != 1 or st.s in self.tparams or st.s in self.nts:
         return False
+    for n in self.cnodes.values():
+        # Keep direct hierarchy constructors on the existing template path. Making
+        # one nominal can admit an unused imported subclass whose overrides virtual
+        # dispatch would eagerly compile. cnodes includes excluded classes and
+        # later modules, and the loader has resolved imported and aliased bases.
+        if n.kind == "subclass":
+            if n.s == st.s:
+                return False
+            for b in n.kids[1:]:
+                base = b.kids[0] if b.kind == "index" else b
+                if base.kind == "name" and base.s == st.s:
+                    return False
     fields: dict[str, str] = {}
     init = st
     for d in st.kids[0].kids:
@@ -396,15 +421,10 @@ def gen_fixed_init(self, st: Node) -> bool:
         # guards. Retain those layouts, including their observable vars() order.
         return False
     receiver = init.kids[0].kids[0].s
-    if not self.fixed_stores(init.kids[2], receiver, fields):
+    if not self.fixed_stores(init.kids[2], receiver, fields) or not fixed_receiver(init.kids[2], receiver, fields):
         return False
     if not fixed_properties(st, fields):
         return False
-    base = self.classes[st.s].base if st.s in self.classes else ""
-    while base in self.classes:
-        if not fixed_properties(self.classes[base].node, fields):
-            return False
-        base = self.classes[base].base
     return fixed_assignments(init.kids[2], receiver, fields)
 
 def gen_init_template(self, st: Node) -> bool:
@@ -463,7 +483,7 @@ def gen_tmpl_of(self, c: str) -> str:
         return c
     return self.classes[c].origin if c in self.classes else ""
 
-def gen_class_problem(self, m: Mod, st: Node, exc: bool, ordinary: bool = False) -> str:
+def gen_class_problem(self, m: Mod, st: Node, exc: bool) -> str:
     # why a class of an imported module cannot be declared, or "": its __init__ (and the special
     # methods template_ok leaves out) needs annotated parameters, where another method's
     # unannotated ones make it a template, and its body may hold only fields, methods and a
@@ -488,7 +508,7 @@ def gen_class_problem(self, m: Mod, st: Node, exc: bool, ordinary: bool = False)
                 return f"method {b.s}() has a decorator"  # (an @overload stub's calls are the error: see declare_fn)
             if len(ps) == 0 and not static:
                 return f"method {b.s}() has no {'cls' if deco != '' else 'self'} parameter"
-            for i in range(len(ps) if not template_ok(b.s) and not (b.s == "__init__" and (not exc or ordinary and self.fixed_init(st)) and self.init_generic(st)) else 0):
+            for i in range(len(ps) if not template_ok(b.s) and not (b.s == "__init__" and not exc and self.init_generic(st)) else 0):
                 if ps[i].kind != "param":
                     return f"method {b.s}() takes *args or **kwargs"
                 if (i > 0 or static) and ps[i].kids[0].kind == "noann":
@@ -702,7 +722,6 @@ def gen_hook(self, st: Node) -> None:
         if nm in own:
             h = f"{short(st.s)}.{nm}"
     self.hooks[st.s] = h
-    self.cnodes[st.line] = st
 
 def gen_path_of(self, n: Node) -> str:
     # the dotted name an attribute chain spells (its first name qualified), or ""
@@ -978,9 +997,11 @@ def gen_program(self, mods: list[Mod]) -> str:
             self.unalias_all(m.body)
     class_counts: dict[str, int] = {}
     for m in mods:
-        for st in m.body.kids if m.name != "" else []:
+        for st in m.body.kids:
             if st.kind == "class" or st.kind == "subclass":
-                class_counts[st.s] = class_counts.get(st.s, 0) + 1
+                self.cnodes[st.line] = st
+                if m.name != "":
+                    class_counts[st.s] = class_counts.get(st.s, 0) + 1
     for m in mods:
         for st in m.body.kids:
             self.line = st.line
@@ -995,7 +1016,7 @@ def gen_program(self, mods: list[Mod]) -> str:
             elif st.kind == "subclass":
                 why = self.subclass_problem(st)
                 if why == "" and m.name != "":
-                    why = self.class_problem(m, st.kids[0], True, self.exc_base(st.kids[1]) == "")
+                    why = self.class_problem(m, st.kids[0], True)
             elif st.kind == "class" and m.name != "":
                 why = self.class_problem(m, st, False)
             if why != "" and m.name == "":

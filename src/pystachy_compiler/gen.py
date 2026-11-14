@@ -3752,8 +3752,8 @@ class Gen:
     def tmpl_of(self, c: str) -> str:
         return program_tmpl_of(self, c)
 
-    def class_problem(self, m: Mod, st: Node, exc: bool, ordinary: bool = False) -> str:
-        return program_class_problem(self, m, st, exc, ordinary)
+    def class_problem(self, m: Mod, st: Node, exc: bool) -> str:
+        return program_class_problem(self, m, st, exc)
 
     def abstract_defs(self, body: list[Node]) -> list[Node]:
         return program_abstract_defs(self, body)

@@ -9,11 +9,6 @@ class Converted:
         return self.text
 
 
-class Child(Converted):
-    def get(self) -> str:
-        return "child:" + self.text
-
-
 class Checked:
     def __init__(self, value) -> None:
         if isinstance(value, int):
@@ -26,5 +21,5 @@ def show(value: Converted) -> str:
     return value.get()
 
 
-print(show(Converted(7)), show(Child("x")))
+print(show(Converted(7)), show(Converted("x")))
 print(Checked(3).value, Checked("hello").value)
