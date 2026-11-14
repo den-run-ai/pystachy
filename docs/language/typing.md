@@ -767,16 +767,22 @@ from lists, tuples or generators. All such objects have the same static class an
 share a variable or container. This gives consumer classes concrete parameter types,
 so those consumers can use ordinary inheritance without becoming class templates. Its constructor
 and instance methods remain compiled on demand, including in an unused class in the
-main module. This path excludes classes appearing as a base or subclass in the import
-graph, explicit `Generic` classes, inferred fields, stored
+main module. Fixed-layout constructors also support ordinary inheritance, inherited
+initializers and `super().__init__`, including imported and aliased classes. All generic
+initializers in the hierarchy must meet the same storage rule. This path excludes
+explicit `Generic` classes, inferred fields, stored
 `Iterable`/`Iterator` fields, property stores, initialization delegated through `self`
 (including aliases and helpers), callable-controlled constructor layouts,
 deferred string field annotations and fields annotated with a specialization of another
 class template.
 
-Direct generic constructors in inheritance hierarchies retain the existing template
-restriction. This preserves lazy exclusion of unsupported imported subclasses: merely
-declaring an unused subclass must not make a working base-class call compile its overrides.
+An imported subclass becomes available when compiled code needs it, including class
+tests and annotations of a called helper. Its activation recompiles earlier dispatch sites
+with the complete set of used classes. Unused imported siblings and their overrides stay
+excluded; merely declaring them does not make a working base-class call compile their
+bodies. An initializer whose field types depend on its arguments still cannot take part
+in inheritance. Explicit `Base.__init__(self, ...)` delegation remains excluded from the
+fixed-layout proof because it passes the receiver to another callable.
 
 If `Box.__init__(self, value: Any) -> None` assigns `self.value = value`, it behaves like
 the unannotated constructor: `Box(1).value` is an `int`, and `Box("s").value` is a `str`.

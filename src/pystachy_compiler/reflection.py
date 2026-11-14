@@ -473,6 +473,8 @@ def gen_refl_dyn_type_cmp(self, n: Node) -> Val:
 
 
 def gen_refl_type_operand(self, n: Node) -> str:
+    if n.kind == "name" and n.s in self.deferred_hierarchies:
+        self.request_hierarchy(n.s)
     # what an operand of a type comparison names statically, as refl_record takes it: a class
     # or a builtin type named by its name (C, int, list, ...); "" for type(x) and x.__class__
     if self.refl_typeof(n) is not None:

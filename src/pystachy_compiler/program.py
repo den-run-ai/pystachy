@@ -5,12 +5,12 @@ import sys
 from src.pystachy_compiler.callbacks import specialize_callbacks
 from src.pystachy_compiler.reflection import refl_needs_eh, refl_props
 from src.pystachy_compiler.analysis import all_imports, collect, defines, module_ints, module_reads, module_strs, needs_eh, none_assigns, reads_builtin
-from src.pystachy_compiler.diagnostics import Rejoin, dynamic_program, fail, shown
+from src.pystachy_compiler.diagnostics import NeedHierarchy, Rejoin, dynamic_program, fail, shown
 from src.pystachy_compiler.dynamic import comparison_properties, comparison_storage
 from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_protocol
 from src.pystachy_compiler.ir import Val, ClassInfo, FnInfo, NOLABELS, NONUMS, NOVALS, one_nums_intact
 from src.pystachy_compiler.module import Mod
-from src.pystachy_compiler.names import RENAMED, short
+from src.pystachy_compiler.names import RENAMED, owner, short
 from src.pystachy_compiler.optimizations import call_counts
 from src.pystachy_compiler.specs import (
     ABSTRACT_DECOS,
@@ -132,7 +132,7 @@ def gen_subclass_problem(self, st: Node) -> str:
             return "inheritance from a NamedTuple is not supported"
         if self.is_dc(base_ci.name) and not dc:
             return "inheritance from a dataclass is only supported by a @dataclass class"
-        if base_ci.name in self.tparams or self.init_template(base_ci.node) or self.init_template(st.kids[0]):
+        if base_ci.name in self.tparams or self.init_template(base_ci.node) or self.init_template(st.kids[0]) or (st.s not in self.hierarchies and self.fixed_hierarchy(base_ci.name)):
             return "inheritance with generic class templates is not supported: " + self.template_fix([base_ci.node, st.kids[0]])
         if dc and not self.is_dc(base_ci.name):
             return "a @dataclass class whose base is not a dataclass is not supported"
@@ -390,24 +390,93 @@ def fixed_receiver(n: Node, receiver: str, fields: dict[str, str]) -> bool:
     return all([fixed_receiver(k, receiver, fields) for k in n.kids])
 
 def gen_fixed_init(self, st: Node) -> bool:
+    # An unused imported subclass stays excluded until a real use needs its hierarchy.
+    # A retry admits only that class and its ancestors, keeping unused sibling overrides
+    # out of closed-world dispatch. No constructor-dependent layout survives the retry.
+    if st.s not in self.hierarchies:
+        for n in self.cnodes.values():
+            if n.kind == "subclass":
+                if n.s == st.s:
+                    return False
+                for b in n.kids[1:]:
+                    base = b.kids[0] if b.kind == "index" else b
+                    if base.kind == "name" and base.s == st.s:
+                        return False
+    return self.fixed_layout(st)
+
+
+def gen_fixed_hierarchy(self, name: str) -> bool:
+    # An activated generic initializer anywhere in this primary chain changed the
+    # formerly excluded descendants' admission. Other ordinary hierarchies stay unchanged.
+    while name in self.classes:
+        ci = self.classes[name]
+        if name in self.hierarchies and self.init_generic(ci.node):
+            return True
+        name = ci.base
+    return False
+
+
+def gen_hierarchy_chain(self, name: str, chain: list[str]) -> bool:
+    # A requested declaration and its ordinary bases. Requiring every generic constructor
+    # to establish independent field types prevents specialization-dependent layouts from
+    # entering inheritance. This examines syntax, not any tentative inferred fields.
+    if name in chain:
+        return True
+    node = self.nokey
+    for n in self.cnodes.values():
+        if n.s == name:
+            node = n
+    if node is self.nokey:
+        return False
+    st = node.kids[0] if node.kind == "subclass" else node
+    if name in self.tparams or name in self.nts or len(st.kids) != 1:
+        return False
+    if self.init_generic(st) and not self.fixed_layout(st):
+        return False
+    chain.append(name)
+    if node.kind == "subclass":
+        for base in node.kids[1:]:
+            if base.kind != "name" or not self.hierarchy_chain(base.s, chain):
+                return False
+    return True
+
+
+def gen_request_hierarchy(self, name: str) -> None:
+    if self.xtry != "":
+        return  # a speculative adapter may decline without ever using this class
+    if len(self.newhints) > 0 and not self.final:
+        raise Rejoin()
+    chain: list[str] = []
+    if name not in self.hierarchies and self.hierarchy_chain(name, chain):
+        for c in chain:
+            self.hierarchies[c] = True
+        # Main-module declarations already require eager validity. Batch their safe
+        # chains, without inspecting references in unused imported bodies or branches.
+        # Imported subclasses still activate only on a compiled use.
+        for n in self.cnodes.values():
+            if n.kind == "subclass" and owner(n.s) == "" and n.s not in self.hierarchies:
+                local_chain: list[str] = []
+                if self.hierarchy_chain(n.s, local_chain):
+                    for c in local_chain:
+                        self.hierarchies[c] = True
+        raise NeedHierarchy()
+
+
+def gen_retry_hierarchy(self, msg: str) -> None:
+    # Deferred annotation failures may be kept on a lazy function/class until its first
+    # use. Retry only when that exact stored class diagnostic would become terminal.
+    for name in self.deferred_hierarchies:
+        if name in self.unsupported and self.unsupported[name] in msg:
+            self.request_hierarchy(name)
+
+
+def gen_fixed_layout(self, st: Node) -> bool:
     # Constructor arguments may specialize code without specializing storage. Keep the
     # source class itself when all its instance fields have concrete annotations; an
     # Iterable field, inferred field, explicit generic class or deferred annotation still
     # needs the existing class-template path.
     if len(st.kids) != 1 or st.s in self.tparams or st.s in self.nts:
         return False
-    for n in self.cnodes.values():
-        # Keep direct hierarchy constructors on the existing template path. Making
-        # one nominal can admit an unused imported subclass whose overrides virtual
-        # dispatch would eagerly compile. cnodes includes excluded classes and
-        # later modules, and the loader has resolved imported and aliased bases.
-        if n.kind == "subclass":
-            if n.s == st.s:
-                return False
-            for b in n.kids[1:]:
-                base = b.kids[0] if b.kind == "index" else b
-                if base.kind == "name" and base.s == st.s:
-                    return False
     fields: dict[str, str] = {}
     init = st
     for d in st.kids[0].kids:
@@ -426,9 +495,28 @@ def gen_fixed_init(self, st: Node) -> bool:
     receiver = init.kids[0].kids[0].s
     if not self.fixed_stores(init.kids[2], receiver, fields) or not fixed_receiver(init.kids[2], receiver, fields):
         return False
-    if not fixed_properties(st, fields):
+    if not fixed_properties(st, fields) or not self.fixed_base_properties(st.s, fields, []):
         return False
     return fixed_assignments(init.kids[2], receiver, fields)
+
+def gen_fixed_base_properties(self, name: str, fields: dict[str, str], seen: list[str]) -> bool:
+    # A subclass's annotated assignment may still call an inherited property's setter.
+    # Its annotation then establishes no storage, just as for a property declared here.
+    if name in seen:
+        return True
+    seen.append(name)
+    for n in self.cnodes.values():
+        if n.s == name and n.kind == "subclass":
+            for b in n.kids[1:]:
+                if b.kind != "name":
+                    return False
+                for parent in self.cnodes.values():
+                    if parent.s == b.s:
+                        st = parent.kids[0] if parent.kind == "subclass" else parent
+                        if not fixed_properties(st, fields) or not self.fixed_base_properties(b.s, fields, seen):
+                            return False
+    return True
+
 
 def gen_init_template(self, st: Node) -> bool:
     return self.init_generic(st) and not self.fixed_init(st)
@@ -511,7 +599,7 @@ def gen_class_problem(self, m: Mod, st: Node, exc: bool) -> str:
                 return f"method {b.s}() has a decorator"  # (an @overload stub's calls are the error: see declare_fn)
             if len(ps) == 0 and not static:
                 return f"method {b.s}() has no {'cls' if deco != '' else 'self'} parameter"
-            for i in range(len(ps) if not template_ok(b.s) and not (b.s == "__init__" and not exc and self.init_generic(st)) else 0):
+            for i in range(len(ps) if not template_ok(b.s) and not (b.s == "__init__" and (not exc or st.s in self.hierarchies) and self.init_generic(st)) else 0):
                 if ps[i].kind != "param":
                     return f"method {b.s}() takes *args or **kwargs"
                 if (i > 0 or static) and ps[i].kids[0].kind == "noann":
@@ -1022,7 +1110,12 @@ def gen_program(self, mods: list[Mod]) -> str:
                     why = self.class_problem(m, st.kids[0], True)
             elif st.kind == "class" and m.name != "":
                 why = self.class_problem(m, st, False)
+            deferred = st.kind == "subclass" and (why.startswith("inheritance with generic class templates") or any(b.kind == "name" and b.s in self.deferred_hierarchies for b in st.kids[1:]))
+            if deferred:
+                self.deferred_hierarchies[st.s] = True
             if why != "" and m.name == "":
+                if deferred:
+                    self.request_hierarchy(st.s)
                 self.err(why)
             if why != "":
                 # a class of an imported module that Pystachy cannot compile: an error only

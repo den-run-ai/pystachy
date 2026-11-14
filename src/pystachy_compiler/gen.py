@@ -1094,6 +1094,12 @@ from src.pystachy_compiler.program import (
     gen_fixed_ann as program_fixed_ann,
     gen_fixed_stores as program_fixed_stores,
     gen_fixed_init as program_fixed_init,
+    gen_fixed_layout as program_fixed_layout,
+    gen_fixed_base_properties as program_fixed_base_properties,
+    gen_fixed_hierarchy as program_fixed_hierarchy,
+    gen_hierarchy_chain as program_hierarchy_chain,
+    gen_request_hierarchy as program_request_hierarchy,
+    gen_retry_hierarchy as program_retry_hierarchy,
     gen_template_fix as program_template_fix,
     gen_left_out as program_left_out,
     gen_makes_tmpl as program_makes_tmpl,
@@ -1472,6 +1478,9 @@ class Gen:
         self.template_retained = 0  # and the bytes of their signatures
         self.retainers: dict[str, int] = {}  # and those of each template, by the name messages give it
         self.unsupported: dict[str, str] = {}  # classes of imported modules that cannot be compiled: why
+        # Program-wide names only: retained by fresh-Gen retries, never speculative layouts.
+        self.hierarchies: dict[str, bool] = {}
+        self.deferred_hierarchies: dict[str, bool] = {}
         self.cnodes: dict[int, Node] = {}  # every module-level class or subclass statement, by line
         self.hooks: dict[str, str] = {}  # see hook()
         self.chooks: dict[int, str] = {}
@@ -3739,6 +3748,24 @@ class Gen:
 
     def fixed_init(self, st: Node) -> bool:
         return program_fixed_init(self, st)
+
+    def fixed_layout(self, st: Node) -> bool:
+        return program_fixed_layout(self, st)
+
+    def fixed_base_properties(self, name: str, fields: dict[str, str], seen: list[str]) -> bool:
+        return program_fixed_base_properties(self, name, fields, seen)
+
+    def fixed_hierarchy(self, name: str) -> bool:
+        return program_fixed_hierarchy(self, name)
+
+    def hierarchy_chain(self, name: str, chain: list[str]) -> bool:
+        return program_hierarchy_chain(self, name, chain)
+
+    def request_hierarchy(self, name: str) -> None:
+        return program_request_hierarchy(self, name)
+
+    def retry_hierarchy(self, msg: str) -> None:
+        return program_retry_hierarchy(self, msg)
 
     def template_fix(self, cs: list[Node]) -> str:
         return program_template_fix(self, cs)

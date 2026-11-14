@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from compiler_state_probe import ROOT, Snapshot
 from src.pystachy_compiler import driver
-from src.pystachy_compiler.diagnostics import Rejoin
+from src.pystachy_compiler.diagnostics import NeedHierarchy, Rejoin
 from src.pystachy_compiler.ir import FnInfo
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.syntax import Node
@@ -105,6 +105,55 @@ class StateProbeTests(unittest.TestCase):
                 else:
                     target.clear()
                     target.update(value)
+
+    def test_hierarchy_retries_keep_only_names_and_do_not_spend_join_budget(self):
+        generations = []
+        test = self
+
+        class FakeLoader:
+            def __init__(self, dirs):
+                pass
+
+            def program(self, path, source):
+                return source
+
+        class FakeGen:
+            def __init__(self):
+                self.gtypes = {}
+                generations.append(self)
+
+            def program(self, source):
+                test.assertEqual(self.gtypes, {})
+                test.assertFalse(self.final)
+                count = len(self.hierarchies)
+                if count < 12:
+                    self.gtypes["tentative"] = "list[int]"
+                    self.hierarchies[f"helper$Child{count}"] = True
+                    raise NeedHierarchy()
+                return str(count)
+
+        with patch.dict(driver.compile_program.__globals__, Gen=FakeGen, Loader=FakeLoader):
+            self.assertEqual(driver.compile_program("hierarchy.py", "", [], ""), "12")
+            self.assertEqual(driver.compile_program("other.py", "", [], ""), "12")
+        self.assertEqual(len(generations), 26)
+        self.assertEqual(len({id(g) for g in generations}), 26)
+        self.assertIsNot(generations[0].hierarchies, generations[13].hierarchies)
+
+    def test_local_fixed_hierarchies_batch_declaration_retries(self):
+        source = "class Base:\n    def __init__(self, values):\n        self.value: int = len(values)\n"
+        source += "".join(f"class Child{i}(Base):\n    pass\n" for i in range(25))
+        source += "print(Child0([1, 2]).value)\n"
+        original = Gen.program
+        attempts = []
+
+        def counted(gen, mods):
+            attempts.append(gen)
+            return original(gen, mods)
+
+        with patch.object(Gen, "program", counted):
+            ir = driver.compile_program("hierarchy-batch.py", source, [], "")
+        self.assertIn("@main", ir)
+        self.assertEqual(len(attempts), 2)
 
     def test_restart_rewinds_known_globals_and_uses_fresh_gen(self):
         self.restart_contract(driver.compile_program)

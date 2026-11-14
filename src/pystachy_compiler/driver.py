@@ -5,7 +5,7 @@ import sys
 import tempfile
 import time
 from src.pystachy_compiler import cached_run, diagnostics, program_cache
-from src.pystachy_compiler.diagnostics import MAXNEST, RAW, NeedSliceEH, Rejoin, fail
+from src.pystachy_compiler.diagnostics import MAXNEST, RAW, NeedHierarchy, NeedSliceEH, Rejoin, fail
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.loader import Loader
@@ -119,6 +119,7 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
     idfull = False
     idtry = True
     slice_eh = False
+    hierarchies: dict[str, bool] = {}
     while True:
         attempt = timing_start()
         g = Gen()
@@ -128,6 +129,7 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
         g.prefix = os.path.realpath(dirs[-1] + "/..") if len(dirs) > 0 else ""
         g.hints = hints
         g.xnot = xnot
+        g.hierarchies = hierarchies
         g.final = passes >= JOINS
         g.idfull = idfull
         g.idtry = idtry
@@ -139,7 +141,11 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
             timing_end("program.load", loaded)
             return g.program(mods)
         except Rejoin as retry:
-            if isinstance(retry, NeedSliceEH):
+            if isinstance(retry, NeedHierarchy):
+                # Monotone class names, independent of union-join limits and identity retries.
+                # A fresh Gen discards all fields, functions and speculative state.
+                pass
+            elif isinstance(retry, NeedSliceEH):
                 slice_eh = True
             elif g.idevent != "" and not idfull:
                 if idtry and len(g.idhint) > 0:

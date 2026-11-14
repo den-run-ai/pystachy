@@ -97,6 +97,13 @@ operand, share its code. A method that takes the other operand as a template's p
 once for each receiver's class.
 Inherited fields keep the base layout; unrelated classes retain their existing layout.
 Explicit base calls and `super()` select a body directly while preserving the receiver.
+A hierarchy needing only constructor-code specialization is activated on demand. The
+retry registry retains qualified class names and their ancestors; a fresh `Gen` rebuilds
+layouts and dispatch sites, including calls compiled before the subclass was discovered.
+Unused imported subclasses retain deferred diagnostics, so their overrides do not enter
+dispatch merely because their base acquired a fixed layout. Speculative comparison
+adapters keep their existing decline path before a diagnostic can activate a hierarchy.
+The finite class registry is independent of the union-join retry budget.
 
 A known function value can become a direct call. Closures keep captured variables in shared
 cells, so `nonlocal` assignments remain visible. A typed `Callable` uses an adapter with a

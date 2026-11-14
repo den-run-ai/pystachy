@@ -544,6 +544,8 @@ def gen_isinst_reads(self, c: Node) -> None:
     elif c.kind == "name" and c.s in self.taliases:
         self.expr(c, "")  # (a type alias's variable, Pos = int, unbound before its assignment)
     elif c.kind == "name":
+        if c.s in self.deferred_hierarchies:
+            self.request_hierarchy(c.s)
         self.class_ahead(c.s)
         self.modchk(c)
         if (c.chk or self.foreign(c.s)) and c.s in self.gflag and c.s in self.classes:
