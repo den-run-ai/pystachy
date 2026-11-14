@@ -1330,6 +1330,10 @@ def gen_super_call(self, sc: Node, m: str, args: list[Node], based: bool = False
     if me0 == "":
         self.err("super() in a class method (which binds cls, the class) or a static method without parameters is not supported")
     me = self.expr(mk("name", me0, sc.line, []), "")
+    if not based:
+        # super(C, None) is unbound: its attribute lookup fails before call arguments.
+        # Explicit C.m(None, ...) can reach here through a nullable specialization.
+        self.notnone(me, f"AttributeError: 'super' object has no attribute '{m}'")
     start = sc.kids[1].s if ordinary and len(sc.kids) == 3 else cls
     b = self.classes[start].base
     if b in self.classes and m in self.classes[b].methods:
