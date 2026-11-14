@@ -15,10 +15,19 @@ private def index (json : Json) (name : String) : Except String Nat := do
   if value > 64 then throw "companion field exceeds 64 words"
   return value
 
+private def parseCopy (json : Json) : Except String PystachyCompanion.Copy := do
+  fields json ["array_scanned", "allocation_prefix", "source_offset", "target_offset", "copy_extra"]
+  let scanned ← (← json.getObjVal? "array_scanned").getBool?
+  let prefixWords ← index json "allocation_prefix"
+  let sourceOffset ← index json "source_offset"
+  let targetOffset ← index json "target_offset"
+  let extra ← index json "copy_extra"
+  return ⟨scanned, prefixWords, sourceOffset, targetOffset, extra⟩
+
 private def parse (json : Json) : Except String Contract := do
   fields json ["schema_version", "header_words", "header_scanned", "store_word", "read_word",
-    "array_scanned", "prefix_words", "store_offset", "read_offset"]
-  if (← (← json.getObjVal? "schema_version").getNat?) != 1 then
+    "array_scanned", "prefix_words", "store_offset", "read_offset", "growth", "slice"]
+  if (← (← json.getObjVal? "schema_version").getNat?) != 2 then
     throw "unsupported companion schema"
   let headerWords ← index json "header_words"
   let headerScanned ← (← json.getObjVal? "header_scanned").getBool?
@@ -28,8 +37,10 @@ private def parse (json : Json) : Except String Contract := do
   let prefixWords ← index json "prefix_words"
   let storeOffset ← index json "store_offset"
   let readOffset ← index json "read_offset"
+  let growth ← parseCopy (← json.getObjVal? "growth")
+  let slice ← parseCopy (← json.getObjVal? "slice")
   let header : Transfer := ⟨headerWords, headerScanned, [⟨storeWord, .reference⟩], readWord⟩
-  return ⟨header, arrayScanned, prefixWords, storeOffset, readOffset⟩
+  return ⟨header, arrayScanned, prefixWords, storeOffset, readOffset, growth, slice⟩
 
 private def readInput : IO String := do
   let stream ← IO.getStdin
