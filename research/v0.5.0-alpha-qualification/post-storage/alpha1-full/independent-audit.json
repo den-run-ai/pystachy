@@ -1,0 +1,178 @@
+{
+  "kind": "Independent agent audit of complete alpha1 Lean acceptance",
+  "status": "passed",
+  "created_utc": "2026-11-14T16:54:54.986693+00:00",
+  "census_commit": "6b9e89ee3eaef0c15cfe7ffb7d586ae9e4db9fd8",
+  "release_commit": "a73c56c92f3aad4b490307a5d1b882e487a57f55",
+  "identical_source_tree": "3c9a009434d68906889651d148cb29f6022d2f1f",
+  "inputs": {
+    "report.md": {
+      "path": "/workspace/scratch/7dd0519bc14a/lean-reports/alpha1-storage-lean-report.md",
+      "sha256": "982721b3fd411d6f23fa2c0e8230a8d1129f98ce46ab5d070d04e08391a99fc0",
+      "bytes": 14275
+    },
+    "records.jsonl": {
+      "path": "/workspace/scratch/7dd0519bc14a/lean-reports/alpha1-storage-lean-records.jsonl",
+      "sha256": "5d70d5faeaecbfb6ddf5a89ae31c5381a443a0d91dc5359c5729eaaf525e34b7",
+      "bytes": 2209364
+    },
+    "full-acceptance.json": {
+      "path": "/workspace/scratch/7dd0519bc14a/lean-reports/alpha1-storage-lean-full-acceptance.json",
+      "sha256": "047d7f0e171bfd6ab80b10cedc606a2e9fd46afd82197c5eefedc5fe0f914a1f",
+      "bytes": 694
+    },
+    "status.json": {
+      "path": "/workspace/scratch/7dd0519bc14a/lean-reports/alpha1-storage-lean-status.json",
+      "sha256": "278308d5ecf58670615dd1a6f6ff8061be17151cb844aaa6dd3e270b2968ab29",
+      "bytes": 942
+    },
+    "prepared.json": {
+      "path": "/workspace/scratch/7dd0519bc14a/lean-reports/alpha1-storage-lean-prepared.json",
+      "sha256": "c651093f5bf7f7cb537caa501997881f1c02bb7786b692f1b91754287fdd96d2",
+      "bytes": 930
+    },
+    "proof-delta.json": {
+      "path": "/workspace/scratch/7dd0519bc14a/lean-reports/alpha1-storage-lean-proof-delta.json",
+      "sha256": "504c56db12c446097a4b2355cf13534ab5d27a3f9463268c80873d27f5c78a69",
+      "bytes": 1288
+    },
+    "resume": {
+      "path": "/workspace/scratch/7dd0519bc14a/lean-reports/alpha1-resume-provenance.json",
+      "sha256": "21894c1a681f7229eda65bf1eeaedbd664c3f8d10ff3b1e5ecb7adab4eb6af4b",
+      "bytes": 12165
+    },
+    "equivalence": {
+      "path": "/workspace/scratch/7dd0519bc14a/lean-reports/alpha1-release-tree-equivalence.json",
+      "sha256": "65e04b29056cc27f3e6133106be14521c4462adba67d9ed808033e76e031228c",
+      "bytes": 463
+    },
+    "python": {
+      "path": "/workspace/scratch/7dd0519bc14a/lean-reports/python-assertion-preflight.json",
+      "sha256": "dac481137933c3ee16b9b1aeee5e5cae3d9c250c25d3515571432108bb872c67",
+      "bytes": 362
+    },
+    "validator": {
+      "path": "/workspace/scratch/7dd0519bc14a/lean-reports/verify-lean-storage-full.py",
+      "sha256": "d03010652a29b0a59f95ad365801fd21e63580a6f90e20c5898830a899cb7029",
+      "bytes": 4351
+    },
+    "comparator": {
+      "path": "/workspace/scratch/7dd0519bc14a/lean-reports/compare-alpha1-to-pre-repair.py",
+      "sha256": "1abe3eb0ff2debf8823b62086e773f477deaf543ccb4685e42a22d0fc5f405ea",
+      "bytes": 2318
+    },
+    "baseline": {
+      "path": "/workspace/scratch/c66a10c5a7b1/alpha1-lean-records.jsonl",
+      "sha256": "db139c135eacbb0720243aad936b11edb5a13e42f6ef01428c25f1962c6ed345",
+      "bytes": 2209649
+    },
+    "original_resume_prefix": {
+      "path": "/workspace/scratch/c66a10c5a7b1/alpha1-storage-lean-records.jsonl",
+      "sha256": "9f892e0413194d515f97bd7191ce115a6660822dc3b1f78291cc43ff93c4c590",
+      "bytes": 170735
+    }
+  },
+  "complete_programs": 2529,
+  "strict_storage_programs": 175,
+  "strict_storage_obligations_proved": 18582,
+  "independently_recomputed_proof_totals": {
+    "payload": {
+      "programs": 282,
+      "functions": 1156,
+      "obligations": 2583,
+      "proved": 2583
+    },
+    "access": {
+      "programs": 1215,
+      "functions": 16163,
+      "obligations": 86106,
+      "proved": 86106
+    },
+    "null": {
+      "programs": 910,
+      "functions": 13151,
+      "obligations": 136303,
+      "proved": 136284
+    },
+    "union": {
+      "programs": 276,
+      "functions": 2214,
+      "obligations": 6948,
+      "proved": 6633
+    },
+    "union_payload": {
+      "programs": 335,
+      "functions": 1717,
+      "obligations": 13533,
+      "proved": 13284
+    },
+    "fields": {
+      "programs": 1381,
+      "functions": 17087,
+      "obligations": 161382,
+      "proved": 161145
+    },
+    "gc": {
+      "programs": 1647,
+      "functions": 26198,
+      "obligations": 190800,
+      "proved": 190425
+    },
+    "int": {
+      "programs": 29,
+      "functions": 36,
+      "obligations": 187,
+      "proved": 187
+    },
+    "int_inline": {
+      "programs": 131,
+      "functions": 351,
+      "obligations": 1692,
+      "proved": 1692
+    },
+    "storage": {
+      "programs": 162,
+      "functions": 1710,
+      "obligations": 18582,
+      "proved": 18582
+    }
+  },
+  "full_markdown_exactly_reconstructs_from_records": true,
+  "full_inventory_and_all_required_checks_verified": true,
+  "clean_current_source_and_all_checker_hashes_verified": true,
+  "recorded_execution_and_acceptance_exit_codes_all_zero": true,
+  "resumed_original_185_records_byte_identical": true,
+  "new_failed_or_unproved_outcomes_relative_to_pre_repair": [],
+  "unexplained_proof_coverage_losses_relative_to_pre_repair": [],
+  "only_check_delta": {
+    "program": "tests/programs/classes/contextmanager_python_int_args.py",
+    "check": "storage",
+    "before": {
+      "functions": 13,
+      "obligations": 7,
+      "proved": 7,
+      "unproved": [
+        {
+          "function": "@c.0.1",
+          "obligations": null,
+          "reason": "tuple view has unknown source representation: %t25",
+          "status": "unsupported"
+        },
+        {
+          "function": "@m.contextlib$_GeneratorContextManager-1._recreate_cm.1",
+          "obligations": null,
+          "reason": "tuple view has unknown source representation: %t37",
+          "status": "unsupported"
+        }
+      ]
+    },
+    "after": {
+      "functions": 13,
+      "obligations": 19,
+      "proved": 19,
+      "unproved": []
+    }
+  },
+  "supports_publication_from_lean_evidence": true,
+  "scope": "Evidence-only verification, with no compiler/Lean reruns, source edits or network requests. This independently validates the complete frozen Lean evidence and its equality with the release source tree; workflow and publication artifact gates remain separate."
+}

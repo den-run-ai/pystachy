@@ -1,0 +1,41 @@
+{
+  "before_commit": "41cc2dde4705",
+  "after_commit": "6b9e89ee3eae",
+  "unique_programs": 2529,
+  "same_compiler_inputs": true,
+  "same_complete_program_inventory": true,
+  "all_nonstorage_checks_identical": true,
+  "all_other_storage_checks_identical": true,
+  "newly_modeled_and_proved_storage_obligations": 12,
+  "only_change": {
+    "program": "tests/programs/classes/contextmanager_python_int_args.py",
+    "check": "storage",
+    "before": {
+      "functions": 13,
+      "obligations": 7,
+      "proved": 7,
+      "unproved": [
+        {
+          "function": "@c.0.1",
+          "obligations": null,
+          "reason": "tuple view has unknown source representation: %t25",
+          "status": "unsupported"
+        },
+        {
+          "function": "@m.contextlib$_GeneratorContextManager-1._recreate_cm.1",
+          "obligations": null,
+          "reason": "tuple view has unknown source representation: %t37",
+          "status": "unsupported"
+        }
+      ]
+    },
+    "after": {
+      "functions": 13,
+      "obligations": 19,
+      "proved": 19,
+      "unproved": []
+    }
+  },
+  "before_records_sha256": "db139c135eacbb0720243aad936b11edb5a13e42f6ef01428c25f1962c6ed345",
+  "after_records_sha256": "5d70d5faeaecbfb6ddf5a89ae31c5381a443a0d91dc5359c5729eaaf525e34b7"
+}

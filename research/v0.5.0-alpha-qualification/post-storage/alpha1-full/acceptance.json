@@ -1,0 +1,16 @@
+{
+  "name": "alpha1",
+  "commit": "6b9e89ee3eae",
+  "full_census_count": 2529,
+  "unique_names_exactly_match_current_corpus": true,
+  "promoting_programs": 175,
+  "required_checks_present_in_every_record": true,
+  "strict_storage_all_selected_programs_accepted_without_unproved_functions": true,
+  "no_error_or_failed_checks": true,
+  "clean_inputs_match_current_source": true,
+  "checker_executables_match": true,
+  "all_three_prepared_lean_executable_hashes_match": true,
+  "full_completion_metadata_matches": true,
+  "report_sha256": "982721b3fd411d6f23fa2c0e8230a8d1129f98ce46ab5d070d04e08391a99fc0",
+  "records_sha256": "5d70d5faeaecbfb6ddf5a89ae31c5381a443a0d91dc5359c5729eaaf525e34b7"
+}
