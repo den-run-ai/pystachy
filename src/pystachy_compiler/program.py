@@ -158,7 +158,7 @@ def gen_subclass_problem(self, st: Node) -> str:
             # a trait, as mypyc's: a class of methods alone whose bases end at a class of the
             # primary base's chain, so its objects' fields come first in the primary's too)
             role = self.classes[secondary]
-            if (role.base != "" and self.trait_root(primary, secondary) == "") or len(role.node.kids) != 1 or secondary in self.nts or self.abc_class(secondary):
+            if (role.base != "" and self.trait_root(primary, secondary) == "" and len(self.role_chain(primary, secondary)) == 0) or len(role.node.kids) != 1 or secondary in self.nts or self.abc_class(secondary):
                 return why
             c = secondary
             while c in self.classes and not self.on_chain(primary, c):
@@ -188,12 +188,21 @@ def gen_subclass_problem(self, st: Node) -> str:
             return "super() in a class with a secondary base is not supported"
         for secondary in secondaries:
             role = self.classes[secondary]
-            trait = role.base != ""
-            methods = [d.s for d in role.node.kids[0].kids if d.kind == "def"]
+            trait = role.base != "" and self.trait_root(primary, secondary) != ""
+            # (an interface's own chain, role_chain: each class's body is checked as the base's)
+            chain = [secondary] if trait else self.role_chain(primary, secondary)
+            methods: list[str] = []
             attrs: list[str] = []  # (the attributes it declares, which its methods may read and store)
-            if not trait:
-                attrs = role_attrs(role.node)
-            for d in role.node.kids[0].kids:
+            for rc in chain:
+                methods += [d.s for d in self.classes[rc].node.kids[0].kids if d.kind == "def"]
+                if not trait:
+                    attrs += role_attrs(self.classes[rc].node)
+                    # (... and its properties, which the receiver's class may override)
+                    attrs += [d.s for d in self.classes[rc].node.kids[0].kids if d.kind == "def" and len([x for x in d.kids[3:] if x.s == "property" and len(x.kids) == 0]) > 0]
+            body: list[Node] = []
+            for rc in chain:
+                body += self.classes[rc].node.kids[0].kids
+            for d in body:
                 if d.kind == "pass" or (d.kind == "expr" and d.kids[0].kind == "str"):
                     continue
                 if not trait and d.kind == "annassign" and len(d.kids) == 2 and d.kids[0].kind == "name" and d.kids[0].s != "__slots__":
@@ -208,7 +217,8 @@ def gen_subclass_problem(self, st: Node) -> str:
                     continue
                 # (abc's @abstractmethod, without abc.ABCMeta, marks a method only: CPython makes
                 # its objects as any other's)
-                abstract = len(d.kids) == 4 and len(d.kids[3].kids) == 0 and self.imported(d.kids[3].s) == "abc.abstractmethod"
+                # (... and @property a getter, abstract or not, which the class may override)
+                abstract = d.kind == "def" and len(d.kids) > 3 and len([x for x in d.kids[3:] if len(x.kids) > 0 or (self.imported(x.s) != "abc.abstractmethod" and x.s != "property")]) == 0
                 if d.kind != "def" or d.s.startswith("__") or (len(d.kids) != 3 and not abstract) or len(d.kids[0].kids) == 0:
                     return why
                 if "_pys_cm_" + d.s in methods and len(attrs) > 0:
@@ -376,6 +386,7 @@ def gen_inherit(self, ci: ClassInfo) -> None:
         # (a generic secondary base's methods leave out the annotations that name its type
         # variables, declare_fn: an override's own types them, as a generic primary base's does)
         generic = r in self.tparams
+        trait = role.base != "" and len(self.role_chain(ci.base, r)) == 0  # (else an interface that extends another: as a root base)
         for method in role.methods:
             original = role.methods[method]
             if role.base != "" and self.on_chain(ci.base, self.declarer(r, method)):
@@ -391,7 +402,7 @@ def gen_inherit(self, ci: ClassInfo) -> None:
                     self.bad_class(ci, f"secondary bases {short(seen[method])} and {short(r)} both declare method '{method}' (not supported, also where {short(ci.name)} overrides it)")
                 seen[method] = seen.get(method, r)
                 first = self.mro_first(order, method)
-                if role.base != "" and first == r and method in b.methods:
+                if trait and first == r and method in b.methods:
                     # (the trait's comes first in CPython's method resolution order: before the
                     # primary chain's from the classes it derives from, and the primary base's
                     # earlier traits' and other bases' that do not declare it)
@@ -405,7 +416,7 @@ def gen_inherit(self, ci: ClassInfo) -> None:
                         if acc in ci.methods and acc not in role.methods:
                             del ci.methods[acc]  # (its property replaces the one with that accessor)
                     ci.methods[method] = original
-                elif role.base != "" and method in b.methods:
+                elif trait and method in b.methods:
                     pass  # (the class's own, or one that comes before the trait's: kept, and checked against it)
                 elif method in b.methods or (method in ci.methods and ci.methods[method].cls != ci.name):
                     # (also another secondary base's: CPython's method resolution order picks one)
@@ -421,7 +432,7 @@ def gen_inherit(self, ci: ClassInfo) -> None:
             # (an override may return a class that derives from what the secondary base's returns,
             # as one of a primary base's may: its objects are the base's, also in a trait's view)
             covariant = unopt(fn.ret) in self.classes and unopt(original.ret) in self.classes and (fn.ret == unopt(fn.ret)) == (original.ret == unopt(original.ret)) and self.derives(unopt(fn.ret), unopt(original.ret))
-            if fn is not original and (fn.cls == ci.name or role.base != "") and (
+            if fn is not original and (fn.cls == ci.name or trait) and (
                 fn.deco != original.deco or fn.prop != original.prop or not same or (fn.ret != original.ret and not (generic and original.ret == "") and not covariant)
                 or fn.posonly > original.posonly or fn.npos != original.npos
                 or fn.kwarg != original.kwarg or fn.vararg != original.vararg
@@ -498,15 +509,34 @@ def role_attrs(c: Node) -> list[str]:
     return [d.kids[0].s for d in c.kids[0].kids if d.kind == "annassign" and len(d.kids) == 2 and d.kids[0].kind == "name" and d.kids[0].s != "__slots__"]
 
 def gen_role_field(self, t: str, name: str) -> bool:
-    # is name an attribute that t, a root class some class names as a secondary base, declares
-    # (role_attrs): an object typed t is then one of t's own, with t's layout, or one of a class
-    # that combines t, which holds the attribute among its own fields (class_fields). A read or
-    # store through t therefore goes by the object's exact class (refl_split), where Gen.rolex
-    # names the object once that class is known
+    # is name an attribute that t declares (role_attrs), a class that some class names as a
+    # secondary base outside its primary chain, or that such a base derives from (role_chain): an
+    # object typed t is then one of t's own, with t's layout, or one of a class that combines
+    # t, which holds the attribute among its own fields (class_fields). A read or store through t
+    # therefore goes by the object's exact class (refl_split), where Gen.rolex names the object
+    # once that class is known
     if t not in self.classes:
         return False
     ci = self.classes[t]
-    return ci.isrole and ci.base == "" and name in ci.ftypes and not name.startswith(" ")
+    return ci.isiface and name in ci.ftypes and not name.startswith(" ")
+
+def gen_role_chain(self, primary: str, secondary: str) -> list[str]:
+    # the classes of secondary base secondary's own chain, itself first, where it is no trait of
+    # primary (trait_root): a root class, or one that derives from root classes alone, none of
+    # them of primary's chain, with secondary bases of its own, decorated or a dataclass, a
+    # NamedTuple, an exception or abstract base class (an interface that extends another, as
+    # mypy's TypeCheckerSharedApi(CheckerPluginInterface)); else []
+    out: list[str] = []
+    c = secondary
+    while c != "":
+        if c not in self.classes or self.on_chain(primary, c):
+            return []
+        info = self.classes[c]
+        if info.exc != "" or self.is_dc(c) or c in self.nts or len(info.roles) > 0 or len(info.node.kids) != 1 or self.abc_class(c):
+            return []
+        out.append(c)
+        c = info.base
+    return out
 
 def gen_trait_root(self, primary: str, secondary: str) -> str:
     # the class of primary's chain (on_chain) that secondary base secondary derives from
@@ -587,6 +617,9 @@ def gen_derives(self, c: str, base: str) -> bool:
         info = self.classes[c]
         if base in info.roles:
             return True
+        for r in info.roles:
+            if self.classes[r].base != "" and self.on_chain(self.classes[r].base, base):
+                return True  # (a class its secondary base derives from: role_chain, or a trait's, which c's chain has too)
         if info.excsecond != "" and exc_derives(info.excsecond, base):
             return True
         c = info.base
@@ -1253,23 +1286,33 @@ def gen_program(self, mods: list[Mod]) -> str:
         if ci.exc == "" and ci.base in self.classes:
             ci.tag = 1
             self.classes[ci.base].tag = 1
-            for role in ci.roles:
-                if role in self.classes[ci.base].roles:
+            for named in ci.roles:
+                if named in self.classes[ci.base].roles:
                     continue
-                self.classes[role].tag = 1
-                self.classes[role].isrole = True
-                # These unrelated static types can now denote the same instance: the
-                # primary ancestors, and the other secondary bases.
-                others: list[str] = [r for r in ci.roles if r != role]
-                ancestor = ci.base
-                while ancestor in self.classes:
-                    if not self.on_chain(role, ancestor):  # (a trait's own bases are its bases)
-                        others.append(ancestor)
-                    ancestor = self.classes[ancestor].base
-                for other in others:
-                    if role not in self.classes[other].overlaps:
-                        self.classes[other].overlaps.append(role)
-                        self.classes[role].overlaps.append(other)
+                # (an interface's own chain, role_chain: each class of it is a secondary base of
+                # this class too, and of the objects that a value of its type may be)
+                chain = self.role_chain(ci.base, named)
+                for role in chain if len(chain) > 0 else [named]:
+                    self.classes[role].tag = 1
+                    self.classes[role].isrole = True
+                    self.classes[role].isiface = self.classes[role].isiface or len(chain) > 0
+                    # These unrelated static types can now denote the same instance: the
+                    # primary ancestors, and the other secondary bases, each with the classes
+                    # it extends (role_chain).
+                    others: list[str] = []
+                    for r in ci.roles:
+                        if r != named:
+                            extended = self.role_chain(ci.base, r)
+                            others += extended if len(extended) > 0 else [r]
+                    ancestor = ci.base
+                    while ancestor in self.classes:
+                        if not self.on_chain(role, ancestor):  # (a trait's own bases are its bases)
+                            others.append(ancestor)
+                        ancestor = self.classes[ancestor].base
+                    for other in others:
+                        if role not in self.classes[other].overlaps:
+                            self.classes[other].overlaps.append(role)
+                            self.classes[role].overlaps.append(other)
     tag = 0
     for ci in self.classes.values():
         if ci.tag != 0:

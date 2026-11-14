@@ -1125,7 +1125,8 @@ base keeps them; one with several is rejected
 ([error test](../../tests/errors/classes/dynany_secondary_several.py)). An `isinstance`
 test between the base types checks the receiver's class tag.
 
-A secondary base must be a plain root class with ordinary instance methods, which may be
+A secondary base must be a plain root class, or derive from such classes alone (below), with
+ordinary instance methods, which may be
 marked `@abstractmethod` (without `abc.ABCMeta`) and may name the type variables of a generic
 base that binds nothing ([generic classes](#explicit-generic-classes)). Its
 methods may call another method declared on the same base, for example
@@ -1143,8 +1144,8 @@ and the class that combines the bases may call `super()` only for methods that n
 base defines: CPython's method resolution order puts the secondary bases after the primary's,
 where such a call could find them. Abstract base classes (`abc.ABC`), `__slots__` in the
 combined hierarchy (but with traits, below), and secondary bases with class attributes,
-properties, constructors or other special methods are outside this subset. Single inheritance
-from the combined class works, `super()` included.
+property setters, constructors or other special methods are outside this subset. Single
+inheritance from the combined class works, `super()` included.
 
 A secondary base may declare attributes by annotation alone, as mypy's plugin interfaces do
 (`options: Options`, `path: str`;
@@ -1158,6 +1159,16 @@ or a method is rejected
 ([error test](../../tests/errors/classes/inheritance_secondary_attr_types.py)). `del`, class
 patterns and `vars()` do not reach such an attribute through the base's type, and a generic
 base's attribute cannot name its type variables.
+
+A secondary base may derive from another, as an interface that extends one does (mypy's
+`TypeCheckerSharedApi(CheckerPluginInterface)`;
+[test](../../tests/programs/classes/inheritance_secondary_chain.py)): the class is of both
+types, each class of that chain follows the rules above, and none of them is a class of the
+primary chain (that is a trait, below). A secondary base's `@property` getter, abstract or not,
+is a method like its others, which the class may override with a property
+([test](../../tests/programs/classes/inheritance_secondary_properties.py)). An object of a class
+whose secondary base derives from another cannot be an `Any` value
+([error test](../../tests/errors/classes/dynany_secondary_chain.py)).
 
 A secondary base may also be a trait, as mypyc compiles them: a direct subclass of a class on
 the primary base's chain, above the primary base itself, that adds no fields (at most

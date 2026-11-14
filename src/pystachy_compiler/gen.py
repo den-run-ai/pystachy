@@ -1104,6 +1104,7 @@ from src.pystachy_compiler.program import (
     gen_on_chain as program_on_chain,
     gen_trait_root as program_trait_root,
     gen_role_field as program_role_field,
+    gen_role_chain as program_role_chain,
     gen_declarer as program_declarer,
     gen_declares as program_declares,
     gen_mro as program_mro,
@@ -3756,6 +3757,9 @@ class Gen:
 
     def role_field(self, t: str, name: str) -> bool:
         return program_role_field(self, t, name)
+
+    def role_chain(self, primary: str, secondary: str) -> list[str]:
+        return program_role_chain(self, primary, secondary)
 
     def declarer(self, c: str, m: str) -> str:
         return program_declarer(self, c, m)
