@@ -99,6 +99,15 @@ def inputs():
     return found
 
 
+def checker_executables(checker, access_checker):
+    """The actual executables, including custom ones, whose verdicts a run may reuse."""
+    found = {}
+    for kind, value in (("boundary", checker), ("access", access_checker)):
+        path = Path(value).resolve()
+        found[kind] = {"path": str(path), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+    return found
+
+
 def inspect(program, timeout):
     """The typed-after snapshot of one program with guard evidence, and its SHA-256: what
     `tools/inspect_compiler.py PROGRAM --typed-after-only --guard-evidence` writes, but compiled by
@@ -535,14 +544,19 @@ def main(argv=None):
     if len(set(programs)) != len(programs):
         parser.error("duplicate programs")
     toolchain = (ROOT / "tools/lean_boundary/lean-toolchain").read_text().strip()
+    try:
+        executables = checker_executables(args.checker, args.access_checker)
+    except OSError as error:
+        parser.error(f"cannot read checker executable: {error}")
     header = {"commit": git("rev-parse", "--short=12", "HEAD").strip(), "python": platform.python_version(),
               "lean": "Lean " + toolchain.rsplit(":v", 1)[-1],
+              "checker_executables": executables,
               "inputs": {group: {"digest": item["digest"]} for group, item in found.items()}}
     records = []
     if args.resume and args.records.is_file():
         previous, records = load(args.records)
-        if {key: previous.get(key) for key in ("python", "lean", "inputs")} != {
-                key: header[key] for key in ("python", "lean", "inputs")}:
+        if {key: previous.get(key) for key in ("python", "lean", "inputs", "checker_executables")} != {
+                key: header[key] for key in ("python", "lean", "inputs", "checker_executables")}:
             parser.error(f"{args.records} was made from other inputs: run without --resume")
         header, wanted = previous, set(programs)
         records = [record for record in records if record["program"] in wanted]
@@ -564,6 +578,8 @@ def main(argv=None):
                       file=sys.stderr, flush=True)
     if inputs() != found:
         raise SystemExit("the report's inputs changed while it ran: run it again")
+    if checker_executables(args.checker, args.access_checker) != executables:
+        raise SystemExit("the checker executables changed while the report ran: run it again")
     records.sort(key=lambda record: record["program"].encode())
     summary = summarize(records)
     args.output.write_text(render(summary, meta(header, records)))

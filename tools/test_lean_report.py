@@ -4,7 +4,9 @@ workers compile programs and share results (lean_report.py).
 They need no Lean checker: records are made by hand, as check_program makes them, and the
 committed report is checked for its form, not rerun."""
 import argparse
+import contextlib
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
@@ -136,6 +138,44 @@ class RecordFileTests(unittest.TestCase):
             path.write_text(json.dumps({"header": {}}) + '\n{"program"\n' + json.dumps(record("a.py")) + "\n")
             with self.assertRaises(ValueError):
                 report.load(path)
+
+
+class ResumeCheckerTests(unittest.TestCase):
+    def test_resume_requires_unchanged_readable_checker_executables(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            checker, access = root / "boundary", root / "access"
+            for path in (checker, access):
+                path.write_bytes(b"original checker")
+            argv = ["--jobs", "1", "--checker", str(checker), "--access-checker", str(access),
+                    "--records", str(root / "records.jsonl"), "--output", str(root / "report.md"), "first.py"]
+            found = {group: dict(item, clean=True) for group, item in META["inputs"].items()}
+            with mock.patch.object(report, "inputs", return_value=found), \
+                    mock.patch.object(report.storage_corpus, "select", return_value=[]), \
+                    mock.patch.object(report, "check_program", return_value=record("first.py")) as checked, \
+                    contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(report.main(argv), 0)
+                self.assertEqual(checked.call_count, 1)
+                original = (root / "records.jsonl").read_bytes()
+                self.assertEqual(report.main([*argv, "--resume"]), 0)
+                self.assertEqual(checked.call_count, 1)  # unchanged proofs are reused
+                for path in (checker, access):
+                    with self.subTest(changed=path.name):
+                        path.write_bytes(b"replacement checker")
+                        with self.assertRaises(SystemExit):
+                            report.main([*argv, "--resume"])
+                        self.assertEqual((root / "records.jsonl").read_bytes(), original)
+                        path.write_bytes(b"original checker")
+                alternate = root / "alternate"
+                alternate.write_bytes(checker.read_bytes())
+                changed_path = [str(alternate) if arg == str(checker) else arg for arg in argv]
+                with self.assertRaises(SystemExit):
+                    report.main([*changed_path, "--resume"])
+                access.unlink()
+                with self.assertRaises(SystemExit):
+                    report.main([*argv, "--resume"])
+                self.assertEqual((root / "records.jsonl").read_bytes(), original)
+                self.assertEqual(checked.call_count, 1)
 
 
 class StatusTests(unittest.TestCase):
