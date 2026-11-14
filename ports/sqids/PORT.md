@@ -57,9 +57,8 @@ machine conditions and limitations.
 
 ## Provenance
 
-Adapted from sqids 0.5.2; license: MIT.
-Edits remain marked `# Pystachy port:` in the source. The
-[port reference](PORT_REFERENCE.md) keeps upstream hashes, adaptation rationale and validation records.
+The source of sqids 0.5.2, unedited; license: MIT. The
+[port reference](PORT_REFERENCE.md) keeps upstream hashes, the two former edits and validation records.
 Historical compiler gaps in earlier port notes are not the current language specification;
 use the [language guide](../../docs/language.md) for present support.
 

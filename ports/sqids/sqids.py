@@ -64,8 +64,7 @@ class Sqids:
 
             self.__blocklist_exact_match = exact_match
             # When matching at the ends, `.startswith()` and `.endswith()` need a tuple.
-            # Pystachy port: tuple() of a list, as tuple() takes no set (M7)
-            self.__blocklist_match_at_ends = tuple(list(match_at_ends))
+            self.__blocklist_match_at_ends = tuple(match_at_ends)
             self.__blocklist_match_anywhere = match_anywhere
 
         self.__alphabet = self.__shuffle(alphabet)
@@ -187,10 +186,11 @@ class Sqids:
         if len(id_) == 3:
             return id_ in self.__blocklist_exact_match
 
-        # Pystachy port: a loop for startswith() and endswith() of a tuple (M1).
-        for word in self.__blocklist_match_at_ends:
-            if id_.startswith(word) or id_.endswith(word):
-                return True
+        if (
+            id_.startswith(self.__blocklist_match_at_ends)
+            or id_.endswith(self.__blocklist_match_at_ends)
+        ):
+            return True
 
         for word in self.__blocklist_match_anywhere:
             if word in id_:

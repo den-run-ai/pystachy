@@ -252,7 +252,7 @@ multiple iterable arguments where CPython's do.
 The common `str`, `list`, `dict` and `tuple` methods are implemented, including:
 
 - `find`, `index` and `count` with start and end bounds, including `None`.
-- `startswith` and `endswith`, including a tuple of strings.
+- `startswith` and `endswith`, including a tuple of strings of fixed or run-time length (`tuple[str, ...]`).
 - `split`, `rsplit`, `partition`, `rpartition`, `splitlines`, `removeprefix` and `removesuffix`.
 - `replace` with a count, also given as `count=`.
 - `center`, `ljust` and `rjust` with a fill character; `zfill`, `expandtabs`, `capitalize`,
@@ -288,10 +288,10 @@ arguments. Supported iteration contexts and other restrictions are in the
 
 | Module | Supported surface |
 |---|---|
-| `sys` | `argv`, `warnoptions`, `exit`, `stdin`/`stdout`/`stderr` (files), `maxsize`, `platform`, `implementation.name` (`"pystachy"`), `prefix`/`base_prefix`/`exec_prefix`/`base_exec_prefix`; see [runtime values](compatibility.md#modules-and-libraries). `setrecursionlimit`/`getrecursionlimit` enforce [native recursion limits](compatibility.md#recursion). |
+| `sys` | `argv`, `warnoptions`, `exit`, `stdin`/`stdout`/`stderr` (files), `maxsize`, `maxunicode`, `platform`, `implementation.name` (`"pystachy"`), `prefix`/`base_prefix`/`exec_prefix`/`base_exec_prefix`; see [runtime values](compatibility.md#modules-and-libraries). `setrecursionlimit`/`getrecursionlimit` enforce [native recursion limits](compatibility.md#recursion). |
 | `sys.version_info` | CPython 3.13.16's items and `major`, `minor`, `micro`, `releaselevel`, `serial`; see [representation differences](compatibility.md#modules-and-libraries). |
 | `sys.float_info` | `max`, `max_exp`, `max_10_exp`, `min`, `min_exp`, `min_10_exp`, `dig`, `mant_dig`, `epsilon`, `radix`, `rounds`, matching CPython for IEEE 754 doubles. `sys.float_info` itself is not a value. |
-| `os` | `system`, `execv`, `set_inheritable`, `getpid`, `getcwd`, `getenv`, `remove`, `unlink`, `rmdir`, `mkdir`, `makedirs` (`mode` and `exist_ok` by position or by name, in that order), `listdir`, `rename`, `replace`, `fspath`; `name`, `sep`, `curdir`, `pardir`, `extsep`, `pathsep`, `linesep`, `devnull`. |
+| `os` | `system`, `execv`, `set_inheritable`, `dup`, `dup2` (two descriptors), `close`, `getpid`, `getcwd`, `chdir` (a `str` path), `getenv`, `remove`, `unlink`, `rmdir`, `mkdir`, `makedirs` (`mode` and `exist_ok` by position or by name, in that order), `listdir`, `rename`, `replace`, `fspath`; `name`, `sep`, `curdir`, `pardir`, `extsep`, `pathsep`, `linesep`, `devnull`. |
 | `os.environ` | `os.environ[name]` reads (`KeyError` for a name that is not set), assignments and `del`; `name in os.environ`; `get(name)` and `get(name, default)`; direct `__setitem__(name, value)` and `pop(name, default)` calls, with `str` arguments. They read and update the process environment and `os.getenv()` together; `pop` requires an explicit `str` default. The mapping itself (iteration, `items()`, a value passed on) and saved bound methods are unsupported. |
 | `os.path` | `exists`, `lexists`, `isdir`, `isfile`, `islink`, `samefile`, `realpath`, `join`, `normcase`, `getsize`, `getmtime`, `getctime`; of `str` paths, `basename`, `dirname`, `split`, `splitext`, `isabs`, `normpath`, `abspath`, `relpath`, `expanduser` and `commonprefix` (of a `list[str]`); `sep`, `curdir`, `pardir`, `extsep`, `pathsep`, `devnull`. |
 | `time` | `time`, `time_ns`, `monotonic`, `perf_counter`, `process_time`, their `_ns` forms, and `sleep`. |

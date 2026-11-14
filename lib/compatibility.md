@@ -1373,7 +1373,9 @@ include `abspath`, `relpath`, `expanduser` and `commonprefix`.
   and passing a path is a compile-time error; `path.open()` opens one.
 - `expanduser()` of `~user`, and `open()` with `buffering`, `errors` or `newline`, raise
   `UnsupportedOperation` ([deviation](../tests/deviations/lib_pathlib_unsupported.py)).
-  Windows paths, `stat()`, `lstat()`, binary I/O (`read_bytes()`, `write_bytes()`), `walk()`,
+  `read_bytes()` and `write_bytes()` read and write the file's bytes; `open()` of a binary
+  mode raises `NotImplementedError`, as `open()` of a mode that is no literal does.
+  Windows paths, `stat()`, `lstat()`, `walk()`,
   `samefile()`, links, owners, `chmod()`, `as_uri()` and `full_match()` are not provided; a
   subclass's derived paths are `PurePath` or `Path` objects.
 

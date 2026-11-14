@@ -1,0 +1,11 @@
+15
+15 True b'\r\n\x00\xff' bytes
+2 b'ab' ab
+0 True True True
+b'caf\xc3\xa9\n' 6
+6 True
+read FileNotFoundError
+write FileNotFoundError
+IsADirectoryError
+False
+[exit 0]

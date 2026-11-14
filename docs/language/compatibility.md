@@ -717,8 +717,8 @@ See [reflection rules](semantics.md#reflection).
 
 ### Source text
 
-- Named Unicode escapes (`\N{...}`, including f-strings), non-ASCII identifiers, indentation
-  tabs, and source encodings outside UTF-8, Latin-1 and ASCII.
+- Named Unicode escapes (`\N{...}`, including f-strings), non-ASCII identifiers, and source
+  encodings outside UTF-8, Latin-1 and ASCII.
 - Nesting over 5,000 source levels (`**` and `lambda` count twice), or the 6,000-level CPython
   parser-stack budget. Grammar weights follow CPython 3.13: brackets 24–33, f-string fields
   33, blocks 7 and comparison operands 3. The check can stop a few dozen levels earlier.

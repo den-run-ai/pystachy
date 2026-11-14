@@ -122,6 +122,8 @@ CALLS: dict[str, str] = {
     "all(list[bool])": "pys_all:bool", "any(list[int])": "pys_any:bool", "all(list[int])": "pys_all:bool",
     "os.system(str)": "pys_system:int", "os.execv(str,list[str])": "pys_execv:None",
     "os.set_inheritable(int,int)": "pys_set_inheritable:None", "os.set_inheritable(int,bool)": "pys_set_inheritable:None",
+    "os.dup(int)": "pys_os_dup:int", "os.dup2(int,int)": "pys_os_dup2:int", "os.close(int)": "pys_os_close:None",
+    "os.chdir(str)": "pys_chdir:None",
     "os.getpid()": "pys_getpid:int", "os.getcwd()": "pys_getcwd:str", "os.path.exists(str)": "pys_exists:bool", "os.path.realpath(str)": "pys_realpath:str",
     "os.path.getsize(str)": "pys_getsize:int", "os.path.getmtime(str)": "pys_getmtime:float", "os.path.getctime(str)": "pys_getctime:float",
     "os.getenv(str,str)": "pys_getenv:str", "ffi.string_at(int,int)": "pys_string_at:str",
@@ -247,7 +249,7 @@ CTYPES: dict[str, str] = {"c_int": "i32 signext:0", "c_uint": "i32 zeroext:1", "
 for _k in "sys os os.path math tempfile typing dataclasses __future__ builtins time errno ffi select".split():
     MODULES[_k] = True
 MODATTRS: dict[str, bool] = {}
-for _k in ("sys.argv sys.warnoptions sys.maxsize sys.stdin sys.stdout sys.stderr sys.platform sys.byteorder sys.prefix sys.base_prefix "
+for _k in ("sys.argv sys.warnoptions sys.maxsize sys.maxunicode sys.stdin sys.stdout sys.stderr sys.platform sys.byteorder sys.prefix sys.base_prefix "
            "sys.exec_prefix sys.base_exec_prefix math.pi math.e math.inf math.tau math.nan "
            "os.name os.sep os.curdir os.pardir os.extsep os.pathsep os.linesep os.devnull "
            "os.path.sep os.path.curdir os.path.pardir os.path.extsep os.path.pathsep os.path.devnull").split():
@@ -1059,6 +1061,7 @@ RUNTIME: dict[str, str] = {
     "environ_set": "None:str,str|R A I|", "environ_pop": "str:str,str|R A I|",
     "environ_get": "str:str|R A I|", "environ_del": "None:str|R A I|", "makedirs": "None:str,int,bool|R A I|",
     "set_inheritable": "None:int,int|R A I|",
+    "os_dup": "int:int|R A I|", "os_dup2": "int:int,int|R A I|", "os_close": "None:int|R A I|", "chdir": "None:str|R A I|",
     "cache_lock": "int:str|I|", "cache_lock_fd": "int:|I|", "cache_file_hash": "str:str,int|A I|", "ignored_signals": "int:|I|",
     "listdir": "list[str]:str|R A I|", "listdir_cwd": "list[str]:|R A I|", "mkdir": "None:str,int|R A I|", "mkdir_default": "None:str|R A I|",
     "rename": "None:str,str|R A I|", "replace": "None:str,str|R A I|", "isdir": "bool:str|I|", "isfile": "bool:str|I|",

@@ -17,8 +17,7 @@
 #   c.__call__ assignments, test_hash's hash(f) of a function (rejected: "hash() of <function
 #   ...> is not supported"), class X with a 2**100 hash and Z(int)
 # - test_ord's ord() of bytes (rejected: "unsupported call ord(bytes)"): ord(b' ') & co; chr(0xff)
-#   and ord(chr(sys.maxunicode)) (chr() of a byte value is that byte, documented;
-#   "unsupported module attribute sys.maxunicode"); test_pow's complex results, its float pow()
+#   (chr() of a byte value is that byte, documented); test_pow's complex results, its float pow()
 #   with a modulus (rejected: "unsupported call pow(float,int,int)"), keyword arguments to
 #   pow() (rejected: "keyword argument 'exp' of pow() is not supported") and so the partial()s
 # - the TypeErrors of calls that do not fit (abs('a'), abs(), chr(65.0), hex({}), len of
@@ -228,6 +227,7 @@ def test_ord() -> None:
     check("ord('a')", ord('a'), 97)
     check("ord('\x80')", ord('\x80'), 128)
     check("ord('\xff')", ord('\xff'), 255)
+    check("sys.maxunicode", ord(chr(sys.maxunicode)), sys.maxunicode)
     check("0x10FFFF", ord(chr(0x10FFFF)), 0x10FFFF)
     check("0xFFFF", ord("\U0000FFFF"), 0x0000FFFF)
     check("0x10000", ord("\U00010000"), 0x00010000)

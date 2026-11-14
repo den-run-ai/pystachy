@@ -18,16 +18,14 @@ Archive SHA-256: `5ac08f0c5c9b6814bc2e7c79ee5931e0849d25d95c50e415771b022a44f58a
 |---|---|---|
 | `__init__.py` | `dec511d0fd42c1fb20907eba8161abdadf6278c31d1d0b341038e242a204eaa1` | none |
 | `constants.py` | `9b0e801cfcd48c0d028669d84a73a174a99f51da57ecc250e464a92eaf8ac1ae` | none |
-| `sqids.py` | `7e9765b179f1b25e4b9fdf71d606d2048b2a037ed089933d8a2243e67ffb761e` | 2 regions |
+| `sqids.py` | `7e9765b179f1b25e4b9fdf71d606d2048b2a037ed089933d8a2243e67ffb761e` | none |
 
 ## Adaptation record
 
-- Blocklists and character sets are upstream's sets and tuples. A custom blocklist's
-  `tuple()` of its match-at-ends set takes a list of it, as `tuple()` takes no set.
-- Reversed slices are upstream's `[::-1]`.
-- Prefix/suffix tuple checks become per-word loops, as `str.startswith()` takes no
-  runtime-length tuple. This loop is a measured cost when the adapted package runs under CPython.
-- The encode/decode/shuffle algorithms and defaults are retained, with marked changes in `sqids.py`.
+- The three files are upstream's, unedited: each has the SHA-256 above.
+- `sqids.py` had two marked regions until `tuple()` took a set and `str.startswith()` and
+  `str.endswith()` took a runtime-length tuple: a `tuple(list(...))` of the match-at-ends set,
+  and per-word loops for the prefix and suffix checks.
 - Until the re-baseline (#262), the sets were lists and strings, tested with `all()`, `any()`
   and character counts; the benchmark and validation snapshots below come from that port.
 

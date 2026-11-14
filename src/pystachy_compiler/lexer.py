@@ -4,6 +4,8 @@ from src.pystachy_compiler import diagnostics
 from src.pystachy_compiler.diagnostics import LINES, fail
 from src.pystachy_compiler.utils import codec, normcodec
 
+TABS = "inconsistent use of tabs and spaces in indentation"  # (CPython's TabError)
+
 
 KEYWORDS: dict[str, bool] = {}
 for _k in "False None True and as assert async await break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield".split():
@@ -271,6 +273,7 @@ class Lexer:
         src = self.src
         n = len(src)
         indents = [0]
+        altindents = [0]
         opens = self.opens
         if src.startswith(chr(239) + chr(187) + chr(191)):  # a UTF-8 byte order mark
             self.i = 3
@@ -278,13 +281,16 @@ class Lexer:
         while self.i < n:
             c = src[self.i]
             if bol and len(opens) == 0:
-                # the indentation, read as CPython's tokenizer reads it: spaces, form feeds and the
-                # backslashes that continue the line into the next one, whose spaces count too; the
+                # the indentation, read as CPython's tokenizer reads it: spaces, tabs, form feeds and
+                # the backslashes that continue the line into the next one, whose spaces count too; the
                 # first such backslash after a space gives the column (cont), and a line continued
-                # into a blank or comment line is blank
+                # into a blank or comment line is blank. A tab moves to the next multiple of eight;
+                # alt counts it as one column, and a line whose two columns order differently
+                # against the enclosing block's mixes tabs and spaces inconsistently (TabError)
                 col = 0
+                alt = 0
                 cont = 0
-                while self.i < n and (src[self.i] == " " or src[self.i] == "\f" or (src[self.i] == "\\" and (src.startswith("\n", self.i + 1) or self.i + 1 == n))):
+                while self.i < n and (src[self.i] == " " or src[self.i] == "\t" or src[self.i] == "\f" or (src[self.i] == "\\" and (src.startswith("\n", self.i + 1) or self.i + 1 == n))):
                     if src[self.i] == "\\":
                         cont = col if cont == 0 else cont
                         self.i += 2
@@ -292,7 +298,15 @@ class Lexer:
                         if self.i >= n:
                             self.stop("unexpected EOF while parsing", self.line - 1)
                     else:
-                        col = col + 1 if src[self.i] == " " else 0  # (a form feed restarts the count, as in CPython)
+                        if src[self.i] == " ":
+                            col += 1
+                            alt += 1
+                        elif src[self.i] == "\t":
+                            col = (col // 8 + 1) * 8
+                            alt += 1
+                        else:
+                            col = 0  # (a form feed restarts the count, as in CPython)
+                            alt = 0
                         self.i += 1
                 if self.i >= n:
                     break
@@ -301,32 +315,33 @@ class Lexer:
                     self.stop("unexpected character after line continuation character", self.line)
                     break
                 col = cont if cont > 0 else col
-                j = self.i
-                while j < n and (src[j] == " " or src[j] == "\t"):
-                    j += 1
-                if c == "\t" and (j >= n or src[j] == "\n" or src[j] == "#" or src[j] == "\r"):
-                    c = src[j] if j < n else "\n"  # a blank or comment line may be indented with tabs
+                alt = cont if cont > 0 else alt
                 if c == "\n" or c == "#" or c == "\r":
                     while self.i < n and src[self.i] != "\n":
                         self.i += 1
                     self.i += 1
                     self.line += 1
                     continue
-                if c == "\t":
-                    self.stop("tabs are not supported for indentation", self.line)
-                    break
                 bol = False
                 if col > indents[-1]:
                     if len(indents) == 100:
                         self.stop("too many levels of indentation", self.line)  # (CPython's MAXINDENT)
                         break
+                    if alt <= altindents[-1]:
+                        self.stop(TABS, self.line)
+                        break
                     indents.append(col)
+                    altindents.append(alt)
                     self.add("indent", "")
                 while col < indents[-1]:
                     indents.pop()
+                    altindents.pop()
                     self.add("dedent", "")
                 if col != indents[-1]:
                     self.stop("unindent does not match any outer indentation level", self.line)
+                    break
+                if alt != altindents[-1]:
+                    self.stop(TABS, self.line)
                     break
             elif c == "\n":
                 if len(opens) == 0:

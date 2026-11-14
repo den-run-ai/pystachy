@@ -98,6 +98,8 @@ def gen_modattr(self, path: str) -> Val:
         return Val(self.rt("pys_warnoptions", "ptr", []), "list[str]")
     if path == "sys.maxsize":
         return Val("9223372036854775807", "int")
+    if path == "sys.maxunicode":
+        return Val("1114111", "int")
     if path == "sys.stdin" or path == "sys.stdout" or path == "sys.stderr":
         return Val(self.rt("pys_std", "ptr", [f"i64 {0 if path == 'sys.stdin' else 1 if path == 'sys.stdout' else 2}"]), "file")
     if path == "math.pi":
@@ -458,8 +460,10 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             v = self.gen_list(v, "")
         if v.t == "bytes":
             v = Val(self.rt("pys_bytes_list", "ptr", [f"ptr {v.v}"]), "list[int]")
-        if self.iter_object(v.t) or v.t == RANGEC:
-            v = self.as_list(v, "tuple")  # (the items of its iterator object; a range's numbers)
+        if self.iter_object(v.t) or v.t == RANGEC or is_set(v.t) or is_dict(v.t):
+            # (the items of its iterator object; a range's numbers; a set's items or a dict's keys,
+            # in the order list() gives them)
+            v = self.as_list(v, "tuple")
         if not is_list(v.t):
             self.err(f"tuple() of {typestr(v.t)} is not supported: use a list, string or tuple")
         if unopt(elem(v.t)) not in ["int", "float", "bool", "str", "dyn"]:
@@ -2802,7 +2806,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 # index's later bounds may call back and rebind the query's source.
                 if m == "index" and v.idslot != "":
                     idquery.idfrom = self.dyn_id_box(v).v
-            if (base == "str" or base == "bytes") and (m == "startswith" or m == "endswith") and i == 0 and (is_tuple(unopt(v.t)) or v.t in self.nts):
+            if (base == "str" or base == "bytes") and (m == "startswith" or m == "endswith") and i == 0 and (is_tuple(unopt(v.t)) or is_vtuple(unopt(v.t)) or v.t in self.nts):
                 v = self.ntup(v)  # (a NamedTuple: the tuple of its fields, None if it is None)
                 for x in targs(unopt(v.t)):
                     if x != base and x != f"opt[{base}]":

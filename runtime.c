@@ -7322,6 +7322,23 @@ _Noreturn void pys_execv(Str *path, List *args) {   /* os.execv: the process bec
   execv(path->s, v);
   ioerr(errno);
 }
+static int os_fd(I fd) {              /* a file descriptor argument, as CPython converts it to a C int */
+  if (fd < INT_MIN || fd > INT_MAX) pys_fail("OverflowError: Python int too large to convert to C int");
+  return (int)fd;
+}
+I pys_os_dup(I fd) {                  /* os.dup(): a copy that child processes do not inherit, as CPython's _Py_dup() */
+  int r = fcntl(os_fd(fd), F_DUPFD_CLOEXEC, 0);
+  if (r < 0) ioerr(errno);
+  return r;
+}
+I pys_os_dup2(I fd, I fd2) {          /* os.dup2(fd, fd2): fd2 is inheritable, CPython's default, and is returned */
+  int from = os_fd(fd), to = os_fd(fd2);
+  if (dup2(from, to) < 0) ioerr(errno);
+  return to;
+}
+void pys_os_close(I fd) {             /* os.close(): the runtime's own buffers of a standard stream are not flushed */
+  if (close(os_fd(fd)) < 0) ioerr(errno);
+}
 void pys_set_inheritable(I fd, I inheritable) {
   if (fd < INT_MIN || fd > INT_MAX || inheritable < INT_MIN || inheritable > INT_MAX)
     pys_fail("OverflowError: Python int too large to convert to C int");
@@ -8599,6 +8616,7 @@ static _Noreturn void oserr(const char *path) {         /* raise CPython's OSErr
   repr_str(&b, cstr(path)); put(&b, "", 1); pys_fail(b.p);
 }
 void pys_remove(Str *p) { if (nul(p)) pys_fail("ValueError: remove: embedded null character in path"); if (unlink(p->s)) oserr(p->s); }
+void pys_chdir(Str *p) { if (nul(p)) pys_fail("ValueError: chdir: embedded null character in path"); if (chdir(p->s)) oserr(p->s); }
 void pys_rmdir(Str *p) { if (nul(p)) pys_fail("ValueError: rmdir: embedded null character in path"); if (rmdir(p->s)) oserr(p->s); }
 /* os.listdir(p): the names in directory p but . and .., in the order readdir gives them, as
    CPython's _posix_listdir lists them (os.listdir() lists ".") */
