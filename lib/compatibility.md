@@ -17,7 +17,7 @@ the [module guide](README.md#module-guide) summarizes what each module supports.
 | [Text](#text) | [`textwrap`](#textwrap), [`unicodedata`](#unicodedata), [`shlex`](#shlex), [`keyword`](#keyword), [`curses.ascii`](#cursesascii), [`string`](#string), [`difflib`](#difflib), [`gettext`](#gettext) |
 | [Regular expressions](#regular-expressions) | [`re`](#re), [`fnmatch`](#fnmatch) |
 | [Data formats and markup](#data-formats-and-markup) | [`json`](#json), [`tomllib`](#tomllib), [`csv`](#csv), [`html` and `html.parser`](#html-and-htmlparser), [`urllib.parse`](#urllibparse) |
-| [Binary data and encodings](#binary-data-and-encodings) | [`struct`](#struct), [`binascii`](#binascii), [`codecs`](#codecs) |
+| [Binary data and encodings](#binary-data-and-encodings) | [`struct`](#struct), [`binascii`](#binascii), [`base64`](#base64), [`codecs`](#codecs) |
 | [Collections and functional tools](#collections-and-functional-tools) | [`collections`](#collections), [`copy`](#copy), [`enum`](#enum), [`heapq`](#heapq), [`itertools`](#itertools), [`functools`](#functools), [`operator`](#operator), [`contextlib`](#contextlib) |
 | [Numbers and randomness](#numbers-and-randomness) | [`random`](#random), [`statistics`](#statistics), [`mpz`](#mpz) |
 | [Dates and times](#dates-and-times) | [`datetime`](#datetime) |
@@ -502,6 +502,40 @@ messages): `hexlify` and `b2a_hex` with `sep` and `bytes_per_sep`, `unhexlify` a
   `<built-in function hexlify>`. `a2b_base64.__doc__` is CPython's docstring without the
   indentation of its option's description, which CPython 3.13 removes from a Python function's
   docstring.
+
+### `base64`
+
+`base64` is CPython 3.13.16's `Lib/base64.py` with marked edits, on `binascii`. Every function
+of `__all__` gives CPython's results, errors and messages:
+
+- `b64encode()` and `b64decode()` with `altchars` and `validate`, and the `standard_` and
+  `urlsafe_` functions ([test](../tests/programs/library/lib_base64_b64.py));
+- `b32encode()`, `b32hexencode()` and their decoders with `casefold` and `map01`
+  ([test](../tests/programs/library/lib_base64_b32.py)), `b16encode()` and `b16decode()`
+  ([test](../tests/programs/library/lib_base64_b16.py)), all on RFC 4648's vectors
+  ([test](../tests/programs/library/lib_base64_rfc4648.py));
+- `a85encode()` with `foldspaces`, `wrapcol`, `pad` and `adobe`, and `a85decode()` with
+  `ignorechars` ([test](../tests/programs/library/lib_base64_a85.py)); `b85encode()`,
+  `b85decode()`, `z85encode()` and `z85decode()` ([test](../tests/programs/library/lib_base64_b85.py));
+- `encode()` and `decode()` of binary files and `io.BytesIO` objects, `encodebytes()` and
+  `decodebytes()` ([test](../tests/programs/library/lib_base64_files.py)).
+
+The edits replace what the subset lacks: `int.from_bytes()` and `to_bytes()`, a `bytearray`
+result, a bytes pattern of `re`, and a `struct` format made at run time. Run under CPython, the
+edited module passes the 40 tests of `test_base64`; a
+[checksum over pseudo-random inputs](../tests/programs/library/lib_base64_random.py) covers every
+codec.
+
+- Binary data is `bytes`, as Pystachy has no `bytearray`, `memoryview` or `array`. The decoders
+  also take a `str` of ASCII characters, as CPython's do. Another type of argument is a
+  compile-time error, where CPython raises `TypeError`
+  (error tests: [a str to encode](../tests/errors/library/lib_base64_encode_str.py),
+  [str `altchars` to encode](../tests/errors/library/lib_base64_altchars_str.py),
+  [an int to decode](../tests/errors/library/lib_base64_decode_int.py)).
+- `main()`, the script that `python -m base64` runs, does not compile: calling it is a
+  compile-time error ([error test](../tests/errors/library/lib_base64_main.py)).
+- `bytes_types`, the tuple of the classes `bytes` and `bytearray`, is not there
+  ([error test](../tests/errors/library/lib_base64_bytes_types.py)).
 
 ### `codecs`
 

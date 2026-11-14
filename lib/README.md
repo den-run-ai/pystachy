@@ -65,6 +65,7 @@ described [below](#unchanged-cpython-files).
 |---|---|---|---|
 | 🟡 `struct` | Unchanged CPython on a subset port of the C module `_struct` (`_pystachy_struct`) | `pack`, `unpack`, `unpack_from`, `iter_unpack`, `calcsize` and `Struct` for every code of the native and standard tables, with CPython's bytes, values and errors | The format must be known as the program compiles (`calcsize()` takes any); `bytes` buffers; no `pack_into` |
 | 🟢 `binascii` | Subset port of CPython's C module (`_pystachy_binascii`) | Hex with separators, base64 with strict mode, uu, quoted-printable, `crc32`, `crc_hqx`, `Error` and `Incomplete` | Bytes and ASCII-str arguments only; Python functions, not builtins |
+| 🟢 `base64` | Adapted CPython, on `binascii` | Base64 with `altchars` and `validate`, its standard and URL-safe functions, Base32 and Base32hex with `casefold` and `map01`, Base16, Ascii85, base85 and Z85, `encode()` and `decode()` of binary files, `encodebytes()` and `decodebytes()` | Bytes arguments, and ASCII-str ones for the decoders; no `main()` |
 | 🟡 `codecs` | Adapted CPython on a subset `_codecs` (`_pystachy_codecs`) | BOM constants, `encode`, `decode`, the UTF-8, Latin-1, ASCII and charmap codec functions, `lookup_error`, `register_error`, the incremental classes | No codec registry (`lookup()`); no UTF-16, UTF-32, UTF-7 or escape codecs |
 
 ### Collections and functional tools

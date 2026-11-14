@@ -1,0 +1,8 @@
+['encode', 'decode', 'encodebytes', 'decodebytes', 'b64encode', 'b64decode', 'b32encode', 'b32decode', 'b32hexencode', 'b32hexdecode', 'b16encode', 'b16decode', 'b85encode', 'b85decode', 'a85encode', 'a85decode', 'z85encode', 'z85decode', 'standard_b64encode', 'standard_b64decode', 'urlsafe_b64encode', 'urlsafe_b64decode']
+b'aGk=' b'hi' b'NBUQ====' b'hi'
+b'6869' b''
+b'YUdrPQ==' b'hi'
+[b'AA==', b'AQ==', b'Ag==', b'Aw==']
+{'a': b'VE', 'bc': b'Vq*'}
+aGk=! 1336
+[exit 0]
