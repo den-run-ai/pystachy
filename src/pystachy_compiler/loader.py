@@ -104,6 +104,21 @@ def cm_names(body: Node) -> list[str]:
     return out
 
 
+def abstract_cm_body(b: Node) -> bool:
+    # can function body b, of an abstract @contextmanager method, only raise: it has no yield
+    # and no return, and ends in a raise statement (after a docstring, as mypy's interfaces write
+    # them). CPython's helper then calls a function, not a generator function, which raises
+    return len(b.kids) > 0 and b.kids[-1].kind == "raise" and not has_kind(b, "yield") and not has_kind(b, "return") and not has_kind(b, "def") and not has_kind(b, "lambda")
+
+def cm_yields_none(a: Node) -> bool:
+    # is return annotation a Iterator[None] or Generator[None, None, None] (also qualified): the
+    # type of the generator that stands for an abstract method's, whose one yield yields None
+    if a.kind != "index" or len(a.kids) != 2:
+        return False
+    base = a.kids[0].s if a.kids[0].kind in ["name", "attr"] else ""
+    args = a.kids[1].kids if a.kids[1].kind == "tuple" else [a.kids[1]]
+    return base in ["Iterator", "Generator"] and len(args) in [1, 3] and len([x for x in args if x.kind != "None"]) == 0
+
 def cm_root(c: str, name: str, bases: dict[str, list[str]], cms: list[str]) -> str:
     # the first class from c up its bases (classes of the module, by name) that defines the
     # @contextmanager method name, the furthest up it; "" when none does
@@ -148,7 +163,36 @@ def cm_methods(n: Node, names: list[str]) -> None:
             generic = st.kind == "subclass" and len([x for x in st.kids[1:] if x.kind == "typeparams"]) > 0
             kept: list[Node] = []
             for d in b.kids:
-                if d.kind == "def" and len(d.kids) == 4 and d.kids[3].kind == "deco" and len(d.kids[3].kids) == 0 and d.kids[3].s in names and len(d.kids[0].kids) > 0 and d.kids[0].kids[0].kind == "param":
+                # (@abstractmethod with it, in either order, on a method that cannot yield: its
+                # body raises where CPython's helper calls it, below)
+                abstract = ""
+                if d.kind == "def" and len(d.kids) == 5 and not generic and d.kids[3].kind == "deco" and d.kids[4].kind == "deco" and len(d.kids[3].kids) + len(d.kids[4].kids) == 0:
+                    other = d.kids[4].s if d.kids[3].s in names else d.kids[3].s if d.kids[4].s in names else ""
+                    if other in ["abstractmethod", "abc.abstractmethod"] and abstract_cm_body(d.kids[2]) and cm_yields_none(d.kids[1]):
+                        abstract = other
+                if d.kind == "def" and abstract != "" and len(d.kids[0].kids) > 0 and d.kids[0].kids[0].kind == "param":
+                    # def NAME(self, ...): raise E, abstract and a context manager: CPython's helper
+                    # calls it for the generator, where it raises. _pys_cm_abs_NAME is that
+                    # function, which NAME calls first; _pys_cm_NAME is the generator the
+                    # overrides' managers are typed with, which nothing then makes
+                    me = d.kids[0].kids[0].s
+                    cms.append(st.s + "." + d.s)
+                    if not imported:
+                        top.append(Parser(Lexer("from contextlib import _GeneratorContextManager as _pys_cm_GCM\n", st.line).file()).module().kids[0])
+                        imported = True
+                    own = f"{st.s}._pys_cm_{d.s}({me}, *args, **kwds)" if st.s in derived else f"{me}._pys_cm_{d.s}(*args, **kwds)"
+                    src = f"@{abstract}\ndef {d.s}({me}, /, *args, **kwds):\n    {me}._pys_cm_abs_{d.s}(*args, **kwds)\n    _pys_cm_self: {cm_root(st.s, d.s, bases, cms)} = {me}\n    return _pys_cm_GCM(_pys_cm_self._pys_cm_{d.s}, args, kwds, {own})\n"
+                    w = Parser(Lexer(src, d.line).file()).module().kids[0]
+                    raises = clone(d)
+                    raises.s = "_pys_cm_abs_" + d.s
+                    raises.kids = [raises.kids[0], mk("noann", "", d.line, []), raises.kids[2]]
+                    d.s = "_pys_cm_" + d.s
+                    d.kids = d.kids[:3]
+                    d.kids[2].kids.append(Parser(Lexer("def _pys_cm_yield():\n    yield\n", d.line).file()).module().kids[0].kids[2].kids[0])
+                    kept.append(raises)
+                    kept.append(d)
+                    kept.append(w)
+                elif d.kind == "def" and len(d.kids) == 4 and d.kids[3].kind == "deco" and len(d.kids[3].kids) == 0 and d.kids[3].s in names and len(d.kids[0].kids) > 0 and d.kids[0].kids[0].kind == "param":
                     me = d.kids[0].kids[0].s
                     cms.append(st.s + "." + d.s)
                     if generic:

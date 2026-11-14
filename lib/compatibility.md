@@ -1011,7 +1011,13 @@ arguments. `closing(thing)`, `nullcontext()`, `nullcontext(value)`, `suppress(A,
   inherit and override such a method, and `super().NAME()` runs the base class's generator, but a
   manager that `super().NAME()` makes and that decorates a function makes its generator for each
   call with the method of the object's class; an override of a method of a class of another module is
-  rejected as the program compiles (the managers' types differ).
+  rejected as the program compiles (the managers' types differ). With `@abstractmethod` beside it,
+  in either order, the method's body may only raise (no `yield` or `return`, a `raise` last) and
+  its annotation yield `None` (`Iterator[None]`): a call of the abstract method raises there, as
+  CPython's helper does when it calls the function, and overrides are generators
+  ([test](../tests/programs/classes/contextmanager_abstract.py)). Its body is the method
+  `_pys_cm_abs_NAME`. An abstract method that could return, or yields another type, is rejected
+  ([error test](../tests/errors/classes/contextmanager_abstract_returns.py)).
 - `suppress()` as a `with` statement's item, with exception classes named, is compiled as an
   `except` clause that catches them; one kept as a value, or given exception classes held as
   values, is CPython's (its `__exit__` tests them with `issubclass()`). `with suppress(...) as x`
