@@ -630,6 +630,8 @@ from src.pystachy_compiler.declarations import (
     gen_path_union as declarations_path_union,
     gen_pathlike as declarations_pathlike,
     gen_scan_fields as declarations_scan_fields,
+    gen_scan_target as declarations_scan_target,
+    gen_target_types as declarations_target_types,
     gen_guess_varargs as declarations_guess_varargs,
     gen_self_type as declarations_self_type,
     gen_setfield as declarations_setfield,
@@ -3049,6 +3051,12 @@ class Gen:
 
     def scan_fields(self, ci: ClassInfo, f: FnInfo, body: list[Node], known: dict[str, bool]) -> None:
         return declarations_scan_fields(self, ci, f, body, known)
+
+    def scan_target(self, ci: ClassInfo, f: FnInfo, x: Node, t: str) -> None:
+        return declarations_scan_target(self, ci, f, x, t)
+
+    def target_types(self, f: FnInfo, x: Node, v: Node | None, t: str, out: list[Node], types: list[str]) -> None:
+        return declarations_target_types(self, f, x, v, t, out, types)
 
     def guess_args(self, init: FnInfo, args: list[Node], f: FnInfo) -> list[str]:
         return declarations_guess_args(self, init, args, f)

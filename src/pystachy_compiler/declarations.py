@@ -2167,11 +2167,60 @@ def gen_scan_fields(self, ci: ClassInfo, f: FnInfo, body: list[Node], known: dic
                 self.scan_fields(ci, g, g.node.kids[2].kids, {})
                 del self.scanning[ci.name + "." + name]
                 self.line = st.line
+        if k == "assign" and len(st.kids) == 2 and (st.kids[0].kind == "tuple" or st.kids[0].kind == "list") and self_target(st.kids[0], f.params[0]):
+            # self.a, self.b = v: fields typed by the items of v, all of whose types come first
+            # (CPython evaluates v before it assigns the targets)
+            xs: list[Node] = []
+            ts: list[str] = []
+            self.target_types(f, st.kids[0], st.kids[1], "", xs, ts)
+            for i in range(len(xs)):
+                self.scan_target(ci, f, xs[i], ts[i])
         for kid in st.kids:
             if kid.kind == "block":
                 self.scan_fields(ci, f, kid.kids, known)
             elif kid.kind == "except":
                 self.scan_fields(ci, f, kid.kids[1].kids, known)
+
+def self_target(x: Node, me: str) -> bool:
+    # is assignment target x, or a target of tuple or list target x, an attribute of me
+    if x.kind == "attr":
+        return x.kids[0].kind == "name" and x.kids[0].s == me
+    return (x.kind == "tuple" or x.kind == "list") and len([y for y in x.kids if self_target(y, me)]) > 0
+
+def gen_target_types(self, f: FnInfo, x: Node, v: Node | None, t: str, out: list[Node], types: list[str]) -> None:
+    # the targets in assignment target x, a tuple or list target, also nested, that take an item
+    # of value v (or, where v is None, of a value of type t), and the types of their items as
+    # guess infers them ("" where it cannot): a display's items one by one, a tuple's items by
+    # their positions, another iterable's all alike; none for a starred target
+    if x.kind != "tuple" and x.kind != "list":
+        out.append(x)
+        types.append(self.guess(v, f) if v is not None and x.kind == "attr" else t if v is None else "")
+        return
+    if len([y for y in x.kids if y.kind == "starred"]) > 0:
+        return
+    if v is not None and (v.kind == "tuple" or v.kind == "list") and len(v.kids) == len(x.kids) and len([y for y in v.kids if y.kind == "starred"]) == 0:
+        for i in range(len(x.kids)):
+            self.target_types(f, x.kids[i], v.kids[i], "", out, types)
+        return
+    t = self.guess(v, f) if v is not None else t
+    ts = targs(t) if is_tuple(t) else []
+    et = "int" if t == RANGEC else self.iter_elem(t)
+    for i in range(len(x.kids)):
+        self.target_types(f, x.kids[i], None, (ts[i] if len(ts) == len(x.kids) else "") if is_tuple(t) else et, out, types)
+
+def gen_scan_target(self, ci: ClassInfo, f: FnInfo, x: Node, t: str) -> None:
+    # a target x = self.k of a tuple or list target in __init__ (scan_fields), whose item has
+    # type t (target_types): a field k of type t, unless an earlier statement gave k its type.
+    # Where t is unknown (None, or an item guess cannot type), k is left to a later self.k = v,
+    # with no error here, as it was
+    ms = self.classes[ci.origin].methods if ci.origin != "" else ci.methods
+    if x.kind != "attr" or x.kids[0].kind != "name" or x.kids[0].s != f.params[0] or x.s in ci.ftypes or (x.s in ms and ms[x.s].prop):
+        return
+    jh = self.hints.get(f"field:{self.stable(ci.name)}.{x.s}", "") if len(self.hints) > 0 else ""
+    t = jh if jh != "" else t  # (a join's type: as if annotated, see join_hint)
+    if t != "" and t != "None" and t != NONEVAR and not t.startswith("!") and "?" not in t and ci.origin not in self.cnts:
+        ci.fguess[x.s] = True  # (inferred, as join_hint may widen it)
+        self.add_field(ci, x.s, t)
 
 def gen_guess_args(self, init: FnInfo, args: list[Node], f: FnInfo) -> list[str]:
     # the types of the arguments (but self) that the call of class template __init__ init with
@@ -2438,6 +2487,17 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         if kt.startswith("!") or vt.startswith("!"):
             return kt if kt.startswith("!") else vt
         return self.ctype("dict", [kt, vt]) if kt != "" and vt != "" and self.key_problem(kt) == "" else ""
+    if k == "call" and e.kids[0].kind == "name" and (e.kids[0].s == "set" or e.kids[0].s == "frozenset") and len(e.kids) == 2 and e.kids[1].kind not in ["kw", "starred", "dstar"] and not self.bound(e.kids[0].s):
+        # set(xs), frozenset(xs): a set of the items of a list, tuple, set, string or range, or of
+        # a dict's keys, of the type set_new gives it
+        arg = e.kids[1]
+        rng = arg.kind == "call" and arg.kids[0].kind == "name" and arg.kids[0].s == "range" and not self.bound("range")
+        t = "list[int]" if rng else self.guess(arg, f)
+        et = "int" if t == RANGEC else self.iter_elem(t)
+        if t.startswith("!") or et == "":
+            return t if t.startswith("!") else ""
+        et = self.none_items(et)
+        return self.ctype(e.kids[0].s, [et]) if "?" not in et and self.elem_problem(et) == "" else ""
     if k == "call" and e.kids[0].kind == "name" and (e.kids[0].s == "list" or e.kids[0].s == "sorted") and len(e.kids) == 2 and not self.bound(e.kids[0].s):
         # list(range(n)), list(xs), sorted(xs): a list of the items
         arg = e.kids[1]
