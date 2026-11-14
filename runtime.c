@@ -4094,6 +4094,7 @@ static uint64_t hstrd(Str *s) {                      /* a str key's hash */
 }
 static I ohash(I k, const char *d) { return pys_obj_eq(-1 - ocls(d + 1), k, 0); }   /* hash(k) of an H<id> */
 static I hitem(I k, const char *d);
+static I hfset(Set *s);
 static uint64_t dmask(Dict *d) { return (uint64_t)(d->kind & KTAG ? d->size : d->size * 2) - 1; }   /* idx's slots, less one */
 static int khash(I kind) { return (kind & KTAG) || (kind > 1 && (*kraw(kind) == '!' || strchr(kdesc(kind), 'H') || strchr(kdesc(kind), 'A'))); }   /* keys hashed by CPython's hash */
 /* a tuple or object key's hash (or its item's), by its descriptor d, never 0; 0 where d holds an
@@ -4106,6 +4107,12 @@ static uint64_t hval(I k, const char *d) {
     return 0x9E3779B97F4A7C15ULL;
   }
   if (*d == '?') d++;
+  if (*d == 'F') {   /* (of the hashes its table keeps: no code runs) */
+    /* where its elements' hashes are CPython's (an H<id> or A in its descriptor), so is its own,
+       in a table that keeps CPython's hashes (khash), 0 too: hcls takes it, as for a tuple's */
+    for (const char *c = d, *z = skip(d); c < z; c++) if (*c == 'H' || *c == 'A') return 0;
+    uint64_t h = (uint64_t)hfset((Set *)k); return h ? h : 1;
+  }
   if (*d != 'T') { Dict t = {.kind = *d == 's'}; return hsh(&t, k); }   /* (a P<id>'s: its address's) */
   uint64_t h = 0x27D4EB2F165667C5ULL; const char *e = d + 2;
   for (int i = 0; i < d[1] - '0'; i++) {
@@ -4759,6 +4766,19 @@ static I htuple(I *t, I n, const char *e, int each) {   /* tuplehash of n items,
   acc += (uint64_t)n ^ (2870177450012600261ULL ^ 3527539ULL);
   return acc == (uint64_t)-1 ? 1546275796 : (I)acc;
 }
+/* frozenset_hash: of the hashes of a frozenset's elements, which its table keeps (hs, -1 where a
+   slot holds none), in any order, as CPython's xors each shuffled one and then adds its size */
+static I hfset(Set *s) {
+  uint64_t h = 0;
+  for (uint64_t j = 0; j <= (uint64_t)s->mask; j++) {
+    uint64_t x = (uint64_t)s->hs[j];
+    if (s->hs[j] != -1) h ^= ((x ^ 89869747ULL) ^ (x << 16)) * 3644798167ULL;
+  }
+  h ^= ((uint64_t)s->len + 1) * 1927868237ULL;
+  h ^= (h >> 11) ^ (h >> 25);
+  h = h * 69069U + 907133923ULL;
+  return h == (uint64_t)-1 ? 590923713 : (I)h;
+}
 static I hitem(I k, const char *d) {                 /* the hash of a value k (a set's element, a tuple's item), by its descriptor */
   if (*d == '?' || *d == 's' || *d == 'P' || *d == 'H') {   /* (an object's static type may hold None) */
     if (!k) return NONE_HASH;                        /* (None: also a looked-up key's, see hval) */
@@ -4770,6 +4790,7 @@ static I hitem(I k, const char *d) {                 /* the hash of a value k (a
   case 's': return hstr((Str *)k);
   case 'f': return hdbl(dbl(k));
   case 'T': return htuple((I *)k, d[1] - '0', d + 2, 1);
+  case 'F': return hfset((Set *)k);
   case 'V': return htuple(((VTuple *)k)->a, ((VTuple *)k)->len, d + 1, 0);
   case 'P': case 'C': case 'Y': return hptr(k);   /* (class objects: by identity, as object's) */
   case 'H': return ohash(k, d);
