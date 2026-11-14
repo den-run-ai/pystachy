@@ -753,7 +753,7 @@ it removes one and no longer adds `alwaysinline` beside `noinline` or `optnone`,
 pass only removes them. Clang then compiles the module without optimizing it again.
 `ext` does the same between its `opt -O2` and its compilation. A module without `pys_new`
 keeps the single `clang -O2 -c` step. The JIT tier, which never inlines the shared runtime,
-puts its own copy of the fast path in the program's module (`lower_module.py`'s `JITFAST`): calls of
+puts its own copy of the fast path for sizes below 136 bytes in the program's module (`lower_module.py`'s `JITFAST`): calls of
 `pys_new` and `pys_alloc` stay calls (`noinline`) through its cleanup pipeline, which deletes
 what instcombine can prove unused, and the same last `forceattrs` and `always-inline` passes
 then inline the calls left. Each pops the runtime's free list of its class (`pys_fl`, a
