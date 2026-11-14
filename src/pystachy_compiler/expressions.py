@@ -4342,6 +4342,9 @@ def gen_eqcall(self, f: FnInfo, iseq: bool, a: Val, b: Val) -> Val:
     self.place(lend)
     return Val(self.phi(ph), "bool")
 
+LOW32_NODES = 256  # the nodes of a masked expression that gen_low32_tree looks at
+
+
 def wraps(e: Node) -> bool:
     # an int tree whose result's low 64 bits depend only on its operands' low 64 bits: +, -, * and
     # << (by an exact count), which wrapping 64-bit arithmetic gets right in those bits, under &, |
@@ -4351,6 +4354,65 @@ def wraps(e: Node) -> bool:
     if e.s == "+" or e.s == "-" or e.s == "*" or e.s == "<<":
         return True
     return (e.s == "&" or e.s == "|" or e.s == "^") and (wraps(e.kids[0]) or wraps(e.kids[1]))
+
+
+def gen_low32_const(self, e: Node) -> str:
+    # the value of e where it is an int constant from 0 to 2**32 - 1, a literal or the read of a
+    # module's int constant (moduleints: gen_read gives the literal after its checks), else ""
+    s = ""
+    if e.kind == "int":
+        s = e.s
+    elif e.kind == "name":
+        self.gtype(e.s)
+        if e.s in self.intglobals and self.globread(e.s) and self.gtypes.get(e.s, "") == "int":
+            s = self.intglobals[e.s]
+    return s if s.isdigit() and len(s) <= 10 and int(s) <= 4294967295 else ""
+
+
+def gen_low32_tree(self, e: Node, room: list[int]) -> bool:
+    # can gen_low32 compute the low 32 bits of e: int literals, the reads that cannot fail of int
+    # variables and the reads of modules' int constants, under +, -, *, &, | and ^ (whose low 32
+    # bits are those of their operands' low 32 bits), << by a literal count below 32 (the same),
+    # and >> by a literal count below 64 of such a variable. room[0] bounds the nodes looked at:
+    # the test is made at each & that masks, of every depth
+    room[0] -= 1
+    if room[0] < 0:
+        return False
+    if e.kind == "int":
+        return e.s.isdigit() and int_fits(e.s)
+    if e.kind == "name":
+        return self.static_type(e) == "int" or self.low32_const(e) != ""
+    if e.kind != "binop":
+        return False
+    if e.s == "<<" or e.s == ">>":
+        c = e.kids[1]
+        if c.kind != "int" or not c.s.isdigit() or len(c.s) > 2 or int(c.s) > (31 if e.s == "<<" else 63):
+            return False
+        if e.s == ">>":
+            return e.kids[0].kind == "name" and self.static_type(e.kids[0]) == "int"
+        return self.low32_tree(e.kids[0], room)
+    if e.s in CHECKED or e.s in IOPS:
+        return self.low32_tree(e.kids[0], room) and self.low32_tree(e.kids[1], room)
+    return False
+
+
+def gen_low32(self, e: Node) -> Val:
+    # the low 32 bits of int expression e (low32_tree), an %i32, its operands read in order: a
+    # variable's truncated, and x >> c's those of the 64-bit shift. Of a rotation written
+    # (x << c) | (x >> (32 - c)) LLVM then makes one of x's low 32 bits where it sees that x is
+    # below 2**32, as a masked value is: of the 64-bit shifts it does not, in a sum
+    if e.kind == "int":
+        return Val(str(int(e.s) % 4294967296), "%i32")
+    if e.kind == "name":
+        return Val(self.scalar_cast("trunc", Val(self.expr(e, "int").v, "int"), "%i32"), "%i32")
+    if e.s == ">>":
+        x = Val(self.expr(e.kids[0], "int").v, "int")
+        return Val(self.scalar_cast("trunc", Val(self.scalar("ashr", [x, Val(e.kids[1].s, "int")]), "int"), "%i32"), "%i32")
+    a = self.low32(e.kids[0])
+    if e.s == "<<":
+        return Val(self.scalar("shl", [a, Val(e.kids[1].s, "%i32")]), "%i32")
+    b = self.low32(e.kids[1])
+    return Val(self.scalar(IOPS[e.s] if e.s in IOPS else "add" if e.s == "+" else "sub" if e.s == "-" else "mul", [a, b]), "%i32")
 
 
 def gen_wflag(self, op: str, a: Val, b: Val) -> Val:
@@ -4374,6 +4436,11 @@ def gen_masked(self, n: Node, want: str, resultsoft: bool) -> Val:
     # other bits where the other side is exact and not negative, so CPython's result fits and is
     # the low bits'. Otherwise a step's overflow raises OverflowError, as it does in checked
     # arithmetic, but after the whole expression has been evaluated.
+    if not dynamic_program() and (self.low32_const(n.kids[0]) != "" or self.low32_const(n.kids[1]) != "") and self.low32_tree(n, [LOW32_NODES]):
+        # masked to 32 bits or fewer by a constant, of ints alone: the result is its sides' low 32
+        # bits' (no step's overflow can raise, the mask being exact and not negative), computed
+        # as 32-bit values
+        return Val(self.scalar_cast("zext", self.low32(n), "int"), "int")
     ka: list[str] = []
     a = self.wexpr(n.kids[0], want, resultsoft, "&", ka)
     x = a[0]

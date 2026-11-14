@@ -775,6 +775,9 @@ from src.pystachy_compiler.expressions import (
     gen_list_hint_type as expressions_list_hint_type,
     gen_argtype as expressions_argtype,
     gen_arith as expressions_arith,
+    gen_low32 as expressions_low32,
+    gen_low32_const as expressions_low32_const,
+    gen_low32_tree as expressions_low32_tree,
     gen_masked as expressions_masked,
     gen_wexpr as expressions_wexpr,
     gen_wflag as expressions_wflag,
@@ -4623,6 +4626,15 @@ class Gen:
 
     def masked(self, n: Node, want: str, resultsoft: bool) -> Val:
         return expressions_masked(self, n, want, resultsoft)
+
+    def low32(self, e: Node) -> Val:
+        return expressions_low32(self, e)
+
+    def low32_const(self, e: Node) -> str:
+        return expressions_low32_const(self, e)
+
+    def low32_tree(self, e: Node, room: list[int]) -> bool:
+        return expressions_low32_tree(self, e, room)
 
     def wexpr(self, e: Node, want: str, resultsoft: bool, op: str = "", kept: list[str] | None = None) -> list[Val]:
         return expressions_wexpr(self, e, want, resultsoft, op, kept)

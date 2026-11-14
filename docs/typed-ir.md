@@ -373,6 +373,20 @@ operators/conversions and extra metadata. These operations are pure; frontend gu
 retain responsibility for bounds, overflow and division checks. `select` also checks
 its boolean condition and matching result/value types.
 
+A masked expression that fits in 32 bits is computed in `%i32` operations and zero-extended
+(`gen_low32`): `x & y` with a constant from 0 to 2**32 - 1 on a side, a literal or a module's
+int constant, and on the other only int literals, such constants and the reads that cannot
+fail of int variables, under `+`, `-`, `*`, `&`, `|`, `^`, `<<` by a literal count below 32 and
+`>>` of such a variable by a literal count below 64. The value is the one the 64-bit steps
+give, the low 32 bits of each of those operations being those of its operands' low 32 bits.
+A variable's low bits are its truncation, and those of `x >> c` the truncated 64-bit shift.
+Of `(x << c) | (x >> (32 - c))` LLVM then makes one rotate instruction where it knows `x` to
+be below 2**32, as a masked value is; of the 64-bit shifts it does not, once it has
+reassociated them into a sum, as in a hash function's rounds. A program with Dynamic Any
+keeps the 64-bit steps.
+`tools/test_typed_masked_low32.py` pins which expressions take the path, and
+`tests/programs/numbers/int_masked_low32.py` compares their values with CPython's.
+
 `mach.load`, `mach.store` and `mach.addr` cover internal storage and indexed addresses
 that have no Python value type: closure code/environment pointers, loop/reduction
 temporaries, variable tuple traversal, string headers and bytes. Storage retains native value
