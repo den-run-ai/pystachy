@@ -627,8 +627,15 @@ left `float`'s `Point.__init__` out of line, 37% slower
 ([#1300](https://github.com/den-run-ai/pystachy/issues/1300)). The loop's call then is the
 callee's last, which LLVM inlines too.
 With `listguard`, inline list reads and stores carry TBAA tags under `fieldtbaa`'s root, of a
-list's items pointer and of an item, so that LLVM keeps a loop's items pointers in registers
-across its item stores and can vectorize the copy.
+list's length, of its items pointer and of an item, so that LLVM keeps a loop's lengths and items
+pointers in registers across its item stores and can vectorize the copy. A length load also
+carries a `!range` that rules out negative lengths. The driver gives `runtime.c`'s accesses
+through its `struct List` and `struct Slot` the same two tags when it builds the runtime
+(`retag_runtime_lists`), so that an item which inlined runtime code stores, as `pys_list_set`
+does, no longer makes compiled code reload a length or an items pointer, nor an object's field
+store make inlined runtime code reload them. `tools/test_runtime_list_tags.py` checks the
+rewrite, `tools/aotprobe.py` the linked module, and `tests/programs/containers/list_tag_alias.py`
+the orders that a wrong tag would change.
 
 For a statically known string variable `s`, the frontend can lower `ord(s[i])` and
 comparisons such as `s[i] == ":"` directly to `text.ord_at`. The comparison accepts
@@ -695,9 +702,10 @@ A field's TBAA tag names the class whose struct lays the field out. A derived cl
 begins with its base's, flags included, so an inherited field has its base's tag whichever class
 a reference names, and two references to one object agree (the rule of `Gen.disjoint`). The
 tags hang from a root of their own, so LLVM never sets them apart from the accesses of
-`runtime.c` (clang's root) or of `runtime.py` (its own): only the program's field accesses are
-told apart from each other. Tuple slots, union payloads, container slots and runtime calls carry
-no tag. `tests/programs/classes/field_alias.py` checks the orders that a wrong tag would change, and
+`runtime.c` (clang's root), but for its list accesses (above), or of `runtime.py` (its own): only
+the program's field and list accesses are told apart from each other. Tuple slots, union
+payloads, other containers' slots and runtime calls carry no tag.
+`tests/programs/classes/field_alias.py` checks the orders that a wrong tag would change, and
 `tests/ir/field_tbaa.tbaa` pins the tags (`tools/check_ir.sh`).
 Dictionary fusion is deliberately bounded; it does not promise to combine every equivalent
 lookup. Calls that may mutate containers, joins and exception handlers limit reuse.

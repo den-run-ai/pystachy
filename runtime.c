@@ -100,7 +100,9 @@ typedef struct { I len; uint64_t dict_hash; I chars1; char s[]; } Str; /* UTF-8 
 _Static_assert(offsetof(Str, len) == 0 && offsetof(Str, dict_hash) == 8 &&
                offsetof(Str, chars1) == 16 && offsetof(Str, s) == 24 && sizeof(Str) == 24,
                "Str ABI: len, dict_hash, chars1, bytes");
-typedef struct { I len, cap; I *a, *ids; } List; /* optional scanned numeric identity companion: kind, then boxes */
+typedef struct List { I len, cap; I *a, *ids; } List; /* optional scanned numeric identity companion: kind, then boxes */
+/* (clang names List's and Slot's TBAA types after their struct tags: the driver gives runtime.c's
+   accesses through them the tags that compiled code gives the same memory, retag_runtime_lists) */
 _Static_assert(offsetof(List, len) == 0 && offsetof(List, cap) == 8 && offsetof(List, a) == 16 &&
                offsetof(List, ids) == 24 && sizeof(List) == 32, "List ABI: raw prefix and identity companion");
 typedef struct { I len; I a[]; } VTuple;                /* immutable homogeneous tuple, counted inline slots */
@@ -3237,7 +3239,7 @@ static void reserve(List *l, I n) {
 }
 /* element access through a distinct struct type: TBAA then knows a store to an element
    never changes l->len or l->a, so LLVM hoists those loads out of loops */
-typedef struct { I v; } Slot;
+typedef struct Slot { I v; } Slot;
 #define AT(l, i) (((Slot *)(l)->a)[i].v)
 static __attribute__((noinline)) void list_append_boxed(List *l, I v) {
   I id = list_box(v, l->ids[0]);

@@ -307,12 +307,81 @@ def runtime_c_snapshot(source: str, directory: str) -> str:
     return "\n".join(out)
 
 
+def retag_runtime_lists(ll: str) -> str:
+    # runtime.c's IR (clang's -S output) with the TBAA access tags of its accesses through struct List
+    # and struct Slot replaced by those that lowering gives the same memory (Gen.list_tag, under the
+    # fieldtbaa root: lower_module's tbaa_nodes, "@list" and "@slot"). clang gives them types under a
+    # root of its own, which LLVM tells apart from no other root's: an item that inlined runtime code
+    # stores (pys_list_set) made compiled code reload every list's length and items pointer, and an
+    # object's field store made inlined runtime code reload them. Every other access keeps clang's
+    # tag, which a struct holding a List (Taken) uses too; ll is unchanged where it names neither type.
+    # It is part of runtime_c_key's recipe: a change to what it writes bumps that key's schema
+    lines = ll.split("\n")
+    types: dict[str, str] = {}  # (clang's struct type node of each, by its name, as "!N")
+    top = 0
+    for line in lines:
+        if not line.startswith("!") or line.find(" = ") < 0:
+            continue
+        name = line[1 : line.find(" ")]
+        if not name.isdigit():
+            continue
+        top = max(top, int(name))
+        if line.find(' = !{!"List", ') > 0:
+            types["!" + name] = "@list"
+        elif line.find(' = !{!"Slot", ') > 0:
+            types["!" + name] = "@slot"
+    if len(types) == 0:
+        return ll
+    root = top + 1
+    out: list[str] = []
+    for line in lines:
+        at = line.find(" = !{!")
+        if line.startswith("!") and at > 0 and line.endswith("}"):
+            ops = line[at + 5 : len(line) - 1].split(", ")
+            if len(ops) >= 3 and ops[0] in types and ops[2].startswith("i64 "):
+                # an access tag: its base type, its access type, the offset there, (a constant flag)
+                off = int(ops[2][4:])
+                if types[ops[0]] == "@list":
+                    ops[0] = f"!{root + 3}"
+                    ops[1] = f"!{root + 2}" if off >= 16 else f"!{root + 1}"
+                else:
+                    ops[0] = f"!{root + 4}"
+                    ops[1] = f"!{root + 1}"
+                line = line[: at + 4] + "{" + ", ".join(ops) + "}"
+        out.append(line)
+    out.append(f'!{root} = !{{!"pystachy fields"}}')
+    out.append(f'!{root + 1} = !{{!"int", !{root}, i64 0}}')
+    out.append(f'!{root + 2} = !{{!"pointer", !{root}, i64 0}}')
+    out.append(f'!{root + 3} = !{{!"@list", !{root + 1}, i64 0, !{root + 1}, i64 8, !{root + 2}, i64 16, !{root + 2}, i64 24}}')
+    out.append(f'!{root + 4} = !{{!"@slot", !{root + 1}, i64 0}}')
+    return "\n".join(out) + "\n"
+
+
+def retag_runtime_file(path: str) -> int:
+    # retag_runtime_lists of the IR file at path, in place: 0, or 1 where it cannot be written. A file
+    # that cannot be read (clang wrote none) stays as it is, for llvm-as to report
+    text = ""
+    try:
+        f = open(path, "r", encoding=RAW, newline="")
+        text = f.read()
+        f.close()
+    except OSError:
+        return 0
+    try:
+        f = open(path, "w", encoding=RAW, newline="")
+        f.write(retag_runtime_lists(text))
+        f.close()
+    except OSError:
+        return 1
+    return 0
+
+
 def runtime_c_key(source: str, paths: list[str], times: list[str], strip: str) -> str:
     # Preprocessing captures included headers, environment include paths and
     # target macros. Compile those exact bytes, rather than reopening headers.
     # No Pystachy executable, hosted source, runtime.py or typed-IR option belongs
     # here: they do not produce this C bitcode. Bump the schema for recipe changes.
-    identity = ["runtime-c-v2", PLATFORM, "-O2 -fexceptions -x cpp-output", strip]
+    identity = ["runtime-c-v3", PLATFORM, "-O2 -fexceptions -x cpp-output", strip, "retag_runtime_lists"]
     identity = identity + [os.path.realpath(p) for p in paths[:2]] + times[:2]
     return fnv("\n".join(identity) + "\n" + source)
 
@@ -1022,7 +1091,7 @@ def main() -> None:
             modules = f"{q(rcb)} {q(rpb)}"
             sanitize = f"{tc[0]} -O2 -emit-llvm -c -x ir {q(rpl)} -o {q(rpb)} -Wno-override-module -Wno-unused-command-line-argument{cflags} -mllvm -asan-with-comdat=0 -fexceptions && "
         cstarted = timing_start()
-        cbuild = f"{tc[0]} -O2 -S -emit-llvm -x c {q(rcc)} -o {q(rll)} -Wno-unused-command-line-argument{cflags}{ctorflags} -fexceptions && {strip} {q(rll)} > {q(rsl)} && {tc[1]} {q(rsl)} -o {q(rcb)}"
+        cbuild = f"{tc[0]} -O2 -S -emit-llvm -x c {q(rcc)} -o {q(rll)} -Wno-unused-command-line-argument{cflags}{ctorflags} -fexceptions && {strip} {q(rll)} > {q(rsl)}"
         ccached = ""
         cline = ""
         chit = False
@@ -1047,8 +1116,13 @@ def main() -> None:
                     # build may replace/prune the entry at any point. A missing,
                     # unreadable or malformed entry is a miss, not a build error.
                     chit = timed_sh("runtime.c_cache_read", f"(test -f {q(ccached)} && test ! -L {q(ccached)} && cp {q(ccached)} {q(rcb)} && {tc[3]} -passes=verify -disable-output {q(rcb)}) 2> /dev/null") == 0
-                    cbuild = f"{tc[0]} -O2 -S -emit-llvm -x cpp-output {q(pre)} -o {q(rll)} -Wno-unused-command-line-argument -fexceptions && {strip} {q(rll)} > {q(rsl)} && {tc[1]} {q(rsl)} -o {q(rcb)}"
+                    cbuild = f"{tc[0]} -O2 -S -emit-llvm -x cpp-output {q(pre)} -o {q(rll)} -Wno-unused-command-line-argument -fexceptions && {strip} {q(rll)} > {q(rsl)}"
         code = 0 if chit else timed_sh("runtime.c", sanitize + cbuild)
+        if code == 0 and not chit:
+            # (between clang and llvm-as: the bitcode cached and linked holds the shared list tags)
+            code = retag_runtime_file(rsl)
+            if code == 0:
+                code = timed_sh("runtime.c_assemble", f"{tc[1]} {q(rsl)} -o {q(rcb)}")
         if code == 0:
             code = timed_sh("runtime.link_optimize", f"{tc[2]} {modules} -o {q(lnk)} && {tc[3]} -O2 {q(lnk)} -o {q(part)}")
         if code == 0 and ccached != "" and not chit and [stat3(p) for p in paths[:2]] == times[:2]:

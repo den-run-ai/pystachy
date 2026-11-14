@@ -1563,6 +1563,7 @@ class Gen:
         self.ftags: dict[str, str] = {}
         self.tbaa: dict[str, int] = {}
         self.tbaacls: dict[str, bool] = {}
+        self.listlen = False  # a list's length was loaded: the module defines LISTLEN_RANGE
         # tupleret (Gen.tuple_rets): the functions lowered to return their tuple's slots by value,
         # by symbol, with how many slots, and the calls that take them so, by "<caller's symbol>
         # %tN"; while a function is lowered, the tuples it returns so, the slots its tuple.stores
