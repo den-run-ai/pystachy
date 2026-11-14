@@ -205,8 +205,10 @@ contextual inference. An untyped empty item, as in `([], 3)`, takes its type fro
 preceding items. A nested display whose own items provide a type participates in
 the normal common-type decision: examples include `({"a": [1], "b": []}, 1)` and
 `[list([1]), []]`. Functions following a `Callable` item use that item's callable
-type. These cases are covered by `dynany_display_empty.py`,
-`dynany_display_empty_nested.py` and `dynany_callables.py`.
+type. An item that reads a name a `:=` of the display binds, as `z` in `[z := x, z]`,
+takes no part in that decision, which comes before any item runs; the items then run in
+order. These cases are covered by `dynany_display_empty.py`,
+`dynany_display_empty_nested.py`, `dynany_callables.py` and `dynany_walrus_display.py`.
 
 [Inferred unions](language/typing.md#inferred-unions) remain distinct from dynamic
 displays. A variable or result receiving an `int` and a `float` is `int | float`;

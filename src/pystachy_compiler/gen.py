@@ -2274,8 +2274,8 @@ class Gen:
     def dyn_slice(self, o: Val, bs: list[Node]) -> Val:
         return dynamic_dyn_slice(self, o, bs)
 
-    def dyn_mixed(self, es: list[Node]) -> bool:
-        return dynamic_dyn_mixed(self, es)
+    def dyn_mixed(self, es: list[Node], display: list[Node]) -> bool:
+        return dynamic_dyn_mixed(self, es, display)
 
     def dyn_dry(self, e: Node) -> str:
         return dynamic_dyn_dry(self, e)

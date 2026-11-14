@@ -1166,7 +1166,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     if k == "list":
         et = elem(want) if is_list(want) and "?" not in want else ""
         soft = n is self.soft  # (an operand of ==: as its items are, see compare)
-        if et == "" and not soft and self.dyn_policy(n.line) and self.dyn_mixed(n.kids):
+        if et == "" and not soft and self.dyn_policy(n.line) and self.dyn_mixed(n.kids, n.kids):
             et = "dyn"  # (items of no one type: dynamic values, and the displays among them hold them too)
         items: list[Val] = []
         kept: dict[int, Val] = {}  # (tuples of promoting ints, which the list holds as they are: held)
@@ -1237,7 +1237,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     if k == "dict":
         kv = targs(want) if is_dict(want) and "?" not in want else ["", ""]
         soft = n is self.soft
-        if kv[1] == "" and not soft and self.dyn_policy(n.line) and (self.dyn_mixed([n.kids[i] for i in range(0, len(n.kids), 2)]) or self.dyn_mixed([n.kids[i] for i in range(1, len(n.kids), 2)])):
+        if kv[1] == "" and not soft and self.dyn_policy(n.line) and (self.dyn_mixed([n.kids[i] for i in range(0, len(n.kids), 2)], n.kids) or self.dyn_mixed([n.kids[i] for i in range(1, len(n.kids), 2)], n.kids)):
             kv = ["dyn", "dyn"]  # (keys or values of no one type: dynamic.py)
         ks: list[Val] = []
         vs: list[Val] = []
