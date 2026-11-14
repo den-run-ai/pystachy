@@ -1112,6 +1112,7 @@ def gen_stmt_main(self, n: Node) -> None:
                 xs = ef.ll[1:]
                 self.rt("pys_c_bind", "void", [f"ptr @ffi.fp.{xs}", f"ptr @ffi.lib.{xs}", f"ptr @ffi.sym.{xs}"])
         else:
+            self.modchk(n)  # (CPython reads its identity decorators before its body runs: Loader.identity_decos)
             self.hoist_class(self.classes[n.s])
         if n.s in self.gflag:
             self.mstore('bool', 'true', f'@g.{n.s}.def')

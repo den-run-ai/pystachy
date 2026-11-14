@@ -264,6 +264,9 @@ or generator/async initializers retain eager formatting
 - **Module `__doc__`:** without a docstring, if its first mention is in a `def` or
   `class` and module code later assigns it, an earlier read raises `NameError`
   instead of returning `None`.
+- **`mypy_extensions`:** Pystachy's own module makes the native integer names (`i64`,
+  `u8`, ...) aliases of `int`, so `i64 is int` and `i64.__name__ == "int"`; the package's
+  are classes whose calls return an `int`.
 
 | Runtime value | Difference |
 |---|---|
@@ -518,7 +521,7 @@ See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
 
 - **Inheritance:** multiple bases outside the [method-only secondary base](typing.md#a-method-only-secondary-base) subset; ordinary hierarchies involving templates, `Generic`,
   NamedTuple or builtins; mixed dataclass/ordinary hierarchies; decorated subclasses except
-  dataclass-from-dataclass; changing method kind; incompatible virtual call signatures or
+  dataclass-from-dataclass and [identity decorators](typing.md#single-inheritance); changing method kind; incompatible virtual call signatures or
   results; overridden static/class methods called through base-typed objects.
 - **Inherited members:** assigning inherited class attributes through subclasses without their
   own defaults; changing field types; derived-only fields without supported narrowing;

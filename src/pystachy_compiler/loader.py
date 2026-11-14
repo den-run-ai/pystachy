@@ -67,6 +67,7 @@ from src.pystachy_compiler.specs import (
     CTYPES,
     GENERICS,
     GLUE,
+    IDENTITY_DECOS,
     INT_HELPERS,
     ITERS,
     JSONANY,
@@ -3578,6 +3579,66 @@ class Loader:
         key = f"{m.name} {self.fkey if inf else ''} {x}"
         return f"{self.fragile[key]} {x} {'L' if inf else 'G'}" if key in self.fragile else ""
 
+    def identity_decos(self, m: Mod, st: Node, loc: dict[str, bool]) -> None:
+        # class statement st of m without the decorators that CPython applies to the class itself
+        # as the identity (IDENTITY_DECOS), innermost first: the first other decorator but
+        # @dataclass (which returns the class it takes) ends them, since what it returns, which
+        # those above it take, may be no class (@final above @object.__new__ sets an object's
+        # __final__). CPython still reads their names first, outermost first: st.mchk keeps the
+        # checks of those an import binds (fragile_chk), which Gen runs where the class
+        # statement does (modchk)
+        kept = [st.kids[0]]
+        checks: list[str] = []
+        for i in range(1, len(st.kids)):
+            d = st.kids[i]
+            if self.identity_deco(m, d, loc):
+                chk = self.fragile_chk(m, d.s[: d.s.find(".")] if "." in d.s else d.s, loc)
+                if chk != "":
+                    checks.insert(0, chk)
+                if self.deco_target(m, d, loc) == "typing.final":
+                    m.finals.append(st.s)  # (whose __final__ CPython sets: Gen checks that none binds one)
+            elif self.deco_target(m, d, loc) == "dataclasses.dataclass":
+                kept.append(d)  # (@dataclass returns the class it takes, which @final above it takes)
+            else:
+                kept.extend(st.kids[i:])
+                break
+        st.kids = kept
+        st.mchk = ";".join(checks)
+
+    def identity_deco(self, m: Mod, d: Node, loc: dict[str, bool]) -> bool:
+        # is decorator d, of a class statement of m, an identity decorator (identity_decos): the
+        # name an import binds to typing's final or to lib/'s mypy_extensions trait (not a
+        # module of the program's of that name), or typing.final through typing's module, or a
+        # call of mypy_extensions' mypyc_attr whose arguments are constants (CPython evaluates
+        # them, then applies the identity it returns)
+        q = self.deco_target(m, d, loc)
+        if q not in IDENTITY_DECOS:
+            return False
+        if "$" in q and (q[: q.find("$")] not in self.mods or not self.in_lib(self.mods[q[: q.find("$")]].path)):
+            return False
+        if IDENTITY_DECOS[q] == "":
+            return len(d.kids) == 0
+        if len(d.kids) != 1 or d.kids[0].kind != "call":
+            return False
+        for a in d.kids[0].kids[1:]:
+            v = a.kids[0] if a.kind == "kw" else a
+            if v.kind not in ["int", "float", "str", "bytes", "None", "True", "False"]:
+                return False
+        return True
+
+    def deco_target(self, m: Mod, d: Node, loc: dict[str, bool]) -> str:
+        # what decorator d of m's code names through an import: a builtin module's name
+        # (typing.final, dataclasses.dataclass) or a module's function (mypy_extensions$trait);
+        # "" for anything else (a local, a module's attribute, an expression)
+        if d.kind != "deco" or "?" in d.s:
+            return ""
+        root = d.s[: d.s.find(".")] if "." in d.s else d.s
+        if root in loc:
+            return ""
+        k = self.kind(m, root)
+        rest = d.s[len(root) :]
+        return k[2:] + rest if k.startswith("b:") else k[2:] if k.startswith("a:") and rest == "" else ""
+
     def qdeco(self, m: Mod, d: Node, loc: dict[str, bool], fn: bool = False) -> None:
         # a decorator: the first name of its dotted name (unless it surely names a builtin
         # there: deftime), and the arguments of a call. A def's (fn), which CPython calls on the
@@ -3742,6 +3803,7 @@ class Loader:
             elif k == "class":
                 # (a class body's own names, in loc once bound, stay unqualified where it reads them)
                 st.s = self.qname(m, st.s, loc)
+                self.identity_decos(m, st, loc)
                 for d in st.kids[1:]:
                     self.qdeco(m, d, loc)
                 # (class scopes do not nest; a class body's __doc__ is the class's docstring, which

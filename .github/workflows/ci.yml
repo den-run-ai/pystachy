@@ -136,9 +136,9 @@ jobs:
             *) tools/setup.sh --verify ;;
           esac
 
-      - name: Opt-in, widening and Lean corpus CPython dependency
+      - name: Opt-in, widening and Lean corpus CPython dependencies
         if: startsWith(matrix.group, 'dynany-optin-') || startsWith(matrix.group, 'python-int-optin-') || matrix.group == 'opt-in' || matrix.group == 'runtime-cache' || (matrix.group == 'gc-jit-1' && matrix.machine == 'x86_64')
-        run: python3 -m pip install "$(sed -n '/^typing_extensions==/p' tools/requirements-dev.txt)"
+        run: python3 -m pip install "$(sed -n '/^typing_extensions==/p' tools/requirements-dev.txt)" "$(sed -n '/^mypy_extensions==/p' tools/requirements-dev.txt)"
 
       - name: Workload pytest oracle dependency
         if: matrix.group == 'benchmarks' || ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))

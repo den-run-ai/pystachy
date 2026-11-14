@@ -453,6 +453,7 @@ def gen_class_effect(self, st: Node, why: str, runs: bool = True) -> bool:
     # the statement surely runs there (see body_effect, which gives the result)
     c = st.kids[0] if st.kind == "subclass" else st
     does = f"creates class {short(c.s)}"
+    self.modchk(c)  # (the names of the identity decorators the loader dropped: Loader.identity_decos)
     self.decorators(c, c.kids[1:], {})
     for b in st.kids[1:] if st.kind == "subclass" else []:
         self.line = b.line
@@ -1030,12 +1031,24 @@ def gen_program(self, mods: list[Mod]) -> str:
                         if "." in g.accof:
                             g.accof = self.class_ref(m, g.accof[: g.accof.rfind(".")]) + g.accof[g.accof.rfind(".") :]  # (@Base.x.setter)
                         self.classes[st.s].methods[key] = g
-                top.append(mk("cdefaults", st.s, st.line, []))
+                cd = mk("cdefaults", st.s, st.line, [])
+                cd.mchk = (st.kids[0] if st.kind == "subclass" else st).mchk  # (its identity decorators' reads: Loader.identity_decos)
+                top.append(cd)
             else:
                 top.append(st)
         tops.append(top)
     for ci in self.classes.values():
         self.inherit(ci)
+    for m in mods:
+        for q in m.finals:
+            # CPython's @final sets the class's __final__ to True, over what its body or a base's
+            # binds, which the class would read where the loader dropped the decorator
+            c = q
+            while c in self.classes and q in self.classes:
+                if "__final__" in self.body_names(self.classes[c].node):
+                    self.line = self.classes[q].node.line
+                    self.err(f"@final on class {short(q)} is not supported where {'its body' if c == q else 'the body of ' + short(c)} binds __final__ (CPython's @final sets __final__ to True)")
+                c = self.classes[c].base
     for ci in [x for x in self.classes.values()]:
         # (a dataclass's field annotated C[X] makes that specialization of generic class C here,
         # which specialize declares itself)

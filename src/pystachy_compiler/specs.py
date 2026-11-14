@@ -559,6 +559,11 @@ UNSUPPORTED: dict[str, str] = {
 INERT_DECOS: dict[str, str] = {"typing.overload": "f", "typing.final": "fco", "typing.no_type_check": "fco", "typing.override": "fco",
                                "staticmethod": "f", "classmethod": "f", "property": "f", "dataclasses.dataclass": "c",
                                "typing.runtime_checkable": "c", "object.__new__": "c", "ffi.extern": "f", "ffi.export": "f"}
+# class decorators that CPython applies as the identity, which the loader drops where they
+# decorate the class itself (Loader.identity_decos): typing's final (whose __final__ = True
+# Pystachy does not set), and lib/mypy_extensions.py's trait and mypyc_attr ("()": called with
+# constant arguments, mypyc's options, for a function that returns the identity)
+IDENTITY_DECOS: dict[str, str] = {"typing.final": "", "mypy_extensions$trait": "", "mypy_extensions$mypyc_attr": "()"}
 # node kinds that evaluate without effects
 INERT: dict[str, bool] = {}
 for _k in "int float str bytes complex None True False ellipsis noann omit".split():

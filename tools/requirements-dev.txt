@@ -1,11 +1,14 @@
-# make lint/typecheck's tools, make coverage's coverage.py, and the package outside the standard library that
+# make lint/typecheck's tools, make coverage's coverage.py, and the packages outside the standard library that
 # CPython imports when tests/record.sh records the tests (and make check-recordings checks them):
 # typing_extensions, which tests/programs/generics/typevar_templates.py and tests/mods/generic.py
-# import. For development and CI only (Pystachy needs none of them to build or run):
+# import, and mypy_extensions (mypy's dependency; Pystachy's own is lib/mypy_extensions.py), which
+# tests/programs/classes/class_identity_decorators.py imports. For development and CI only (Pystachy
+# needs none of them to build or run):
 #   python3 -m pip install -r tools/requirements-dev.txt
 coverage==7.17.1
 PyYAML==6.0.3
 mypy==2.4.1
+mypy_extensions==1.2.0
 packaging==26.3
 pytest==9.2.0
 ruff==0.17.3

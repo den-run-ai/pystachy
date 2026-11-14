@@ -1089,6 +1089,12 @@ inherited ones, and the comparisons it writes decline (return `NotImplemented` f
 of another class, so `Base(1) == Derived(1)` is false. `replace()` of a base-typed object
 makes an object of its own class.
 
+A class may also take identity decorators, which CPython applies to it unchanged:
+`typing.final` (also above `@dataclass`) and [`mypy_extensions`](../../lib/README.md#runtime-services)'
+`trait` and `mypyc_attr(...)` with constant arguments. The class is compiled as if
+undecorated; reading their names still raises `NameError` where their imports have not run,
+and `__final__` is not set (reading it is a compile-time error).
+
 Builtin subclasses, NamedTuple inheritance, inheritance between a
 dataclass and a class that is not one, other decorated subclasses, field/method name
 collisions, and overriding a method with another kind of method are unsupported. Inherited
