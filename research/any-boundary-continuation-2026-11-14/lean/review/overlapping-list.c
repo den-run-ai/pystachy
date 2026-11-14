@@ -1,0 +1,9384 @@
+/* Pystachy runtime: memory, strings, lists, dicts, formatting, printing and I/O.
+   `pystachy build` links it into every program as LLVM bitcode, so LLVM inlines these
+   helpers across the program boundary (whole-program optimization); `pystachy run`
+   links a precompiled object instead, since the JIT tier does not inline.
+   Value model: every container slot is 8 bytes (int, float bits, bool, or pointer). */
+#define _GNU_SOURCE
+#include <ctype.h>
+#include <dirent.h>
+#include <dlfcn.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <langinfo.h>
+#include <limits.h>
+#include <locale.h>
+#include <pthread.h>
+#include <pwd.h>
+#ifdef __APPLE__
+#include <xlocale.h>
+#endif
+#include <stdarg.h>
+#include <math.h>
+#include <signal.h>
+#include <stdatomic.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
+#ifdef __APPLE__
+#define pys_fpurge(f) ((void)fpurge(f))  /* Darwin's stdio.h: discard buffered input or output */
+#else
+#include <stdio_ext.h>
+#define pys_fpurge(f) __fpurge(f)
+#endif
+#include <stdlib.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <sys/resource.h>
+#include <sys/select.h>
+#include <sys/stat.h>
+#ifdef __APPLE__
+#include <sys/random.h>
+#endif
+#ifdef __linux__
+#include <sys/auxv.h>
+#include <sys/file.h>
+#endif
+#include <time.h>
+#include <unistd.h>
+#include <unwind.h>
+#include <utime.h>
+
+/* Research counters are compiled out of ordinary runtimes. These count requests
+   through C helpers, not physical memory traffic: generated LLVM/runtime.py copy
+   intrinsics, scalar stores, libc internals and foreign allocations are excluded.
+   Relaxed atomics keep callbacks on foreign threads free of counter data races. */
+#ifdef PYSTACHY_PROFILE_DATA
+static _Atomic uint64_t profile_alloc_calls, profile_alloc_bytes;
+static _Atomic uint64_t profile_memcpy_calls, profile_memcpy_bytes;
+static _Atomic uint64_t profile_memmove_calls, profile_memmove_bytes;
+static inline void profile_alloc(size_t n) {
+  atomic_fetch_add_explicit(&profile_alloc_calls, 1, memory_order_relaxed);
+  atomic_fetch_add_explicit(&profile_alloc_bytes, n, memory_order_relaxed);
+}
+static inline void *profile_copy(void *dst, const void *src, size_t n) {
+  atomic_fetch_add_explicit(&profile_memcpy_calls, 1, memory_order_relaxed);
+  atomic_fetch_add_explicit(&profile_memcpy_bytes, n, memory_order_relaxed);
+  return memcpy(dst, src, n);
+}
+static inline void *profile_move(void *dst, const void *src, size_t n) {
+  atomic_fetch_add_explicit(&profile_memmove_calls, 1, memory_order_relaxed);
+  atomic_fetch_add_explicit(&profile_memmove_bytes, n, memory_order_relaxed);
+  return memmove(dst, src, n);
+}
+#define memcpy(dst, src, n) profile_copy((dst), (src), (n))
+#define memmove(dst, src, n) profile_move((dst), (src), (n))
+#define PROFILE_ALLOC(n) profile_alloc((size_t)(n))
+#else
+#define PROFILE_ALLOC(n) ((void)0)
+#endif
+
+/* A float's shortest round-trip digits: Ryu's d2s (ryu/, upstream commit 4c0618b; ryu/README.md),
+   with its small tables. The driver's cached runtime is built from its files too, which RTPARTS
+   (pystachy.py) lists. Its functions are made static, so that no symbol of it leaves the runtime
+   (d2s and d2s_buffered, unused, are dropped), and its asserts are off, as in a release build
+   (assert() is then as it was, for the code that follows) */
+#define RYU_OPTIMIZE_SIZE
+static int d2s_buffered_n(double f, char *result);
+__attribute__((unused)) static void d2s_buffered(double f, char *result);
+__attribute__((unused)) static char *d2s(double f);
+#ifdef NDEBUG
+#include "/workspace/scratch/1a96cd11db0d/lean-contracts/ryu/d2s.c"
+#else
+#define NDEBUG
+#include "/workspace/scratch/1a96cd11db0d/lean-contracts/ryu/d2s.c"
+#undef NDEBUG
+#include <assert.h>
+#endif
+
+typedef int64_t I;
+typedef struct { I len; uint64_t dict_hash; I chars1; char s[]; } Str; /* UTF-8 bytes, NUL-terminated; lazy hash and code-point count + 1 (0: unset) */
+_Static_assert(offsetof(Str, len) == 0 && offsetof(Str, dict_hash) == 8 &&
+               offsetof(Str, chars1) == 16 && offsetof(Str, s) == 24 && sizeof(Str) == 24,
+               "Str ABI: len, dict_hash, chars1, bytes");
+typedef struct { I len, cap; union { I *a; I *ids; }; } List; /* optional scanned numeric identity companion: kind, then boxes */
+_Static_assert(offsetof(List, ids) == offsetof(List, a), "overlapping fields mutation");
+typedef struct { I len; I *ids; I a[]; } VTuple; /* immutable raw slots and optional scanned numeric identities */
+_Static_assert(offsetof(VTuple, len) == 0 && offsetof(VTuple, ids) == 8 &&
+               offsetof(VTuple, a) == 16 && sizeof(VTuple) == 16, "VTuple ABI: length, identities, raw items");
+typedef struct { I len, kind, n, size; I *keys, *vals; uint64_t *hs; int32_t *idx; I cut, vatomic; I *vb, *kb; } Dict; /* kind 0: int keys, 1: str, else a Str *: the descriptor of tuple or object keys; vatomic: the values are ints, floats or bools, whose arrays are atomic; vb: the Mpz of each value past 64 bits of a dict of ints, or null (dbig); kb: of each key past 64 bits of int keys, or null (kbig); see dicts */
+typedef struct { I len, kind, fill, mask, finger; I *keys, *hs, *kb; } Set; /* a set or frozenset, kind as Dict's; kb: the Mpz of each element past 64 bits of a set of ints, or null (sbig); see sets */
+typedef struct { char *p; I n, cap; } Buf;
+typedef struct Exc Exc;                                /* a raised exception (see exceptions) */
+#define NONE INT64_MIN                                 /* omitted slice bound */
+/* Weak, bounded hints for repeated nearby indexing (the native lexer does src[i]).
+   They are not GC roots: collect clears them before any object can be reclaimed or
+   its address reused, and an owned append invalidates its string's hint. */
+typedef struct { Str *s; I byte, point; } TextHint;
+/* GC_NO_ROOT(text_hints): weak hints cleared before collection and string mutation. */
+static TextHint text_hints[64];
+#ifndef TEXT_PROBE
+#define TEXT_PROBE() ((void)0)
+#endif
+/* A program that opts in to neither promoting ints (docs/python-int.md) nor dynamic Any
+   (docs/dynamic-any.md) makes none of the values that their code here serves: an int past 64
+   bits in a container (an Mpz in a list's BIGIDS companion, a dict's vb or kb, a set's kb), a
+   promoting int (descriptor J), or a list's identity companion (list_box: the small-int boxes).
+   Yet the code that walks lists, dicts, sets and descriptors (eqv, repr, hashing, lookups) reaches
+   theirs, which every AOT build would optimize and keep. So every path that only such a value
+   leads to calls opt_in() first: pystachy build links a precompiled runtime that -O2 optimized
+   with a definition of pys_plain (aot_runtime.py), or defines pys_plain in the program's module,
+   which -O2 optimizes with the runtime (driver.py): 1 for such a program, else 0. opt_in() is then
+   a trap or nothing, and -O2 drops those paths and the static functions only they reach before it
+   optimizes them. Elsewhere (pystachy run's precompiled runtime, an extension module) this weak
+   definition's 0 holds, and opt_in() costs a load where such a value was found. A plain program
+   that reached the trap would show a compiler bug, not its own: it aborts */
+__attribute__((weak)) const I pys_plain = 0;
+static _Noreturn __attribute__((noinline, cold)) void opt_in_trap(void) {
+  fputs("pystachy: internal error: a value of a feature the program does not opt in to\n", stderr);
+  abort();
+}
+static inline int opt_in(void) { if (pys_plain) opt_in_trap(); return 1; }
+
+/* ---------- memory: conservative mark-and-sweep garbage collector ----------
+   Non-moving, stop-the-world, single-threaded, and self-contained (only the C library).
+   Layout. A request for n bytes gets n + 1 (one byte of slack, so a pointer one past the
+   end still points into the object), rounded up to one of 40 size classes up to 8200
+   bytes: 16..136 in steps of 8, then four per power of two, each 8 bytes above a multiple
+   of a power of two so that 2^k-byte arrays fit tightly. A box takes 16 bytes exactly
+   (gc_box: code reads a box's two words and walks none). Small objects live in 64 KiB
+   chunks of one class each; larger objects take whole pages each. Both come from the page
+   heap (below), which maps memory itself rather than through malloc, so that the pages a
+   collection frees serve the next cycle without page faults, and without zeroing where they
+   are clean or their new object's caller writes every byte (gc_raw).
+   Every chunk and large object starts with a Seg header on a page boundary, and a two-level
+   page map (48-bit addresses, 4 KiB pages) sends each of its pages to that header, so "is
+   this word a pointer into the heap, and into which object" is a range check, two loads and
+   a multiply by the reciprocal of the slot size: O(1), interior pointers included.
+   Kinds. pys_alloc returns scanned memory (objects, tuples, list headers and the item arrays of
+   other lists, the value arrays of other dicts, the key arrays of dicts and sets of strs, tuples
+   and objects); pys_alloc_atomic returns memory that is never scanned (strings, Buf data, dict
+   hash and index arrays, set hash arrays, the item arrays of lists of ints, floats and bools (see
+   lists) and the value arrays of dicts of them (Dict.vatomic), the key arrays of dicts and sets
+   of ints, the merge buffers of sorts of ints and floats),
+   since none of it can hold a pointer. Each (class, kind) has a free list. Memory is
+   handed out zeroed: the sweep zeroes dead slots, so allocation pops a slot and clears its
+   link word (inlined into callers for the classes up to 136 bytes; the JIT tier inlines its
+   own copy, lower_module.py's JITFAST). The atomic classes past 136 bytes are cleared as they are
+   handed out instead, as much as the request asks for (LAZY), and not at all for gc_raw,
+   whose caller writes every byte it reads (new strs): their dead slots are never scanned, so
+   what they hold keeps nothing alive. A chunk's never-used
+   slots are linked about a page at a time, so memory the program has not needed stays
+   untouched (only a recycled chunk's must be zeroed). Links are stored complemented, so a
+   free slot never looks like a pointer, and accessed as may_alias words, so TBAA cannot
+   reorder them with the program's typed accesses to the first word of an object.
+   Roots, all conservative: the C stack from the collector's frame up to the frame of @main
+   (the generated @main passes its frame address to pys_init, so a @main.init inlined into
+   it is covered); callee-saved registers, which __builtin_unwind_init spills into the
+   collector's frame; the program's pointer-typed globals (@main passes a table of their
+   addresses: under the JIT they live in memory that no scanner would find); and the
+   runtime's own statics. Container slots hold ints, float bits or pointers, so every word of
+   a scanned object is a possible pointer. Marking uses an explicit stack and takes big
+   arrays in 4 KiB slices.
+   Policy. A collection runs when a free list or a large allocation needs memory and the
+   bytes handed out since the last one reach max(32 MiB, live bytes after it), so the heap
+   stays near twice the live set. A large allocation also runs one when the pointer-free
+   large objects (numeric arrays and strs, which marking never scans) handed out since the
+   last are at least half of those bytes and reach max(4 MiB, live bytes after it): each is a
+   run of pages that only a collection frees, so a program that mostly makes and drops big
+   arrays would otherwise go through 32 MiB of cold pages between collections, and while
+   little is live a collection costs little. Programs that
+   mostly make small objects or arrays of pointers keep the 32 MiB window and its timing:
+   there, a collection that big arrays started would come mid-computation, when much more is
+   live, or would scan a growing list again. A file open for writing holds malloc'd buffers,
+   which count as heap bytes (gc_ext: handed out, live, in the heap) in the 32 MiB window as
+   a large object's do, so files dropped without close() start collections too; a standard
+   stream's do not, as no collection frees them. Dead large objects and empty chunks go back
+   to the page heap, and a live str that appends grew gives back the room it left (str_trim);
+   the page heap keeps as many free pages as the next cycle may take and gives the rest back
+   to the system (pages_settle). PYSTACHY_GC_MIN=N sets N MiB for the 32 (#650). A chunk that
+   handed out nothing and lost nothing since the last sweep keeps its free list as is.
+   The code is compact on purpose: under the JIT it is compiled again at every program start.
+   Testing: PYSTACHY_GC_STRESS=N collects every N allocations, PYSTACHY_GC=off never
+   collects, PYSTACHY_GC=stats prints a summary at exit. */
+#define PAGE 4096
+#define CHUNK 65536                    /* small-object chunk */
+#define REGION ((I)2 << 20)            /* the page heap maps memory 2 MiB at a time, so aligned */
+#define RPAGES ((int)(REGION / PAGE))  /* pages per region */
+#define NBIN 36                        /* free-run lists: 1..32 pages, then up to 64, 128, 256, 512 */
+#define SMALL 8200                     /* largest size class */
+#define MQ 16                          /* ranges marking prefetches before it scans them (a power of two) */
+#define NK 80                          /* free lists: 40 classes x {scanned, atomic} */
+#define GC_MIN ((I)32 << 20)           /* least allocation between collections */
+#define BIG_MIN ((I)4 << 20)           /* least pointer-free large-object allocation between them */
+typedef uintptr_t __attribute__((may_alias)) W;   /* a heap or stack word: aliases every type */
+typedef struct Seg Seg;
+struct Seg {                           /* header on the first page of a chunk or large object */
+  Seg *next, *avail;                   /* chunk or large-object list; chunks with free slots */
+  char *start;                         /* first slot, or the large object */
+  I size, nobj, bump, lim;             /* slot size (large: bytes + 1) and count (large: the pages of
+                                          its run or mapping); slots [0, bump) have been handed out;
+                                          lim: bytes from start that can hold objects (bump * size,
+                                          large: size) */
+  I nfree, nlive, nmark;               /* slots in free; survivors of the last sweep (large: a str's
+                                          length + 1 then, str_trim); marked now */
+  uint64_t inv;                        /* ceil(2^40 / size): slot = offset * inv >> 40 */
+  W free;                              /* complemented head of the free slots not yet handed out */
+  I rg;                                /* the region whose pages it holds, plus one (0: a large
+                                          object's own mapping) */
+  int k, large, used, dirty;           /* free list 2 * class + atomic (large: atomic); slots were
+                                          handed out since the last sweep (large: a str that appends
+                                          grew, str_grow); [bump, nobj) needs zeroing */
+  uint64_t mark[];                     /* one bit per slot */
+};
+typedef struct {                       /* a region of the page heap: 2 MiB that it mapped */
+  char *base;                          /* its first page (NULL: an unmapped region's slot) */
+  uint64_t used[RPAGES / 64];          /* the pages that a chunk or large object holds */
+  uint64_t dirty[RPAGES / 64];         /* pages that may hold nonzero bytes: written since they
+                                          were mapped or purged */
+  uint64_t idle[RPAGES / 64];          /* dirty free pages that no allocation has taken since the
+                                          last sweep */
+  I nused;                             /* pages used */
+} Region;
+typedef struct { int32_t r, first, n; } PRun;   /* free pages [first, first + n) of region r */
+#define HB ((I)((sizeof(Seg) + 8 + 15) & ~(size_t)15))   /* large-object header: one mark word */
+static const short csize[NK / 2] = {16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128,
+  136, 168, 200, 232, 264, 328, 392, 456, 520, 648, 776, 904, 1032, 1288, 1544, 1800, 2056,
+  2568, 3080, 3592, 4104, 5128, 6152, 7176, 8200};
+/* GC_NO_ROOT(pys_fl, sfl): allocator free lists; marking would retain dead objects. */
+W *pys_fl[NK];                         /* free list being allocated from: external, for the JIT tier's
+                                          inlined fast path (lower_module.py's JITFAST) */
+static W *sfl[NK];                     /* its stand-in under stress */
+/* GC_NO_ROOT(avail, chunks, bigs, hcache, pmap): allocator metadata, not strong references. */
+static Seg *avail[NK], *chunks, *bigs, *hcache, ***pmap;   /* hcache: freed mappings of large objects */
+/* GC_NO_ROOT(regs, bins): page-heap metadata, malloc'd, which holds no reference. */
+static Region *regs;                   /* the page heap's regions */
+static PRun *bins[2][NBIN];            /* its free runs, by length (rebuilt by each sweep): [0] those
+                                          with dirty pages, which allocation takes first, [1] clean */
+static I nregs, cregs, nbin[2][NBIN], cbin[2][NBIN];
+static uintptr_t gc_lo, gc_hi;         /* bounds of the pages in the page map */
+static I gc_min = GC_MIN;              /* GC_MIN, or PYSTACHY_GC_MIN's */
+static I gc_allocd, gc_limit = GC_MIN, gc_live, gc_heap, gc_peak, gc_n, gc_ns, gc_stress, gc_tick;
+static I gc_big, gc_big_limit = BIG_MIN;   /* pointer-free large-object bytes handed out since the last collection */
+static I gc_ext;                       /* malloc'd bytes that heap objects hold: open files' buffers (see I/O) */
+static int gc_off, gc_stats;
+/* GC_NO_ROOT(gc_bottom): stack boundary; mark_roots scans the stack range explicitly. */
+static char *gc_bottom;                /* the stack is scanned from the collector up to here */
+/* GC_NO_ROOT(gc_roots): program root addresses; mark_roots scans their referenced slots. */
+static I **gc_roots, gc_nroots;        /* addresses of the program's pointer-typed globals */
+/* GC_NO_ROOT(mstk): temporary collector work stack, consumed during marking. */
+static uintptr_t *mstk;                /* mark stack of (address, bytes) ranges */
+static I msp, mcap;
+/* the (address, bytes) ranges that left the mark stack, prefetched, which marking scans next:
+   static, so that no collection's stack scan finds an earlier one's (collect) */
+static uintptr_t mq[2 * MQ];
+/* GC_ROOT(ch1): cached single-byte strings retained for later reads. */
+static Str *ch1[256];                  /* runtime statics that hold heap pointers (roots) */
+/* GC_ROOT(args): command-line argument list retained by the runtime. */
+static List *args;
+/* GC_ROOT(warnopts): lazily allocated sys.warnoptions survives its callers. */
+static List *warnopts;                 /* sys.warnoptions, made by its first read (pys_warnoptions) */
+/* GC_ROOT_RANGE(wr_fired): queued weak-reference callbacks must survive until invoked. */
+static void **wr_fired;                /* the fire functions of weak references whose referents died, */
+static I wr_head, wr_nfired, wr_cap;   /* [wr_head, wr_nfired) to run: roots (see weak references) */
+/* GC_ROOT(xr): active exception state outlives the frame that created it. */
+static struct { Exc *cur, *handled, *shown, *pend, *closed; } xr;   /* the exception raised last, the one being
+                                     handled, the uncaught one whose str() is being shown, the one a with-file's
+                                     close raised while unwinding (see exceptions), the one a generator raised
+                                     as close() closed it (see generators) */
+static int eh;                         /* the program has try or with: stored by pys_eh_on alone (see exceptions) */
+typedef void Thrower(Exc *);
+/* GC_NO_ROOT(xthrow): native code address, never a heap object. */
+static Thrower *xthrow;                /* where the funnels send what they raise: NULL until pys_eh_on (ditto),
+                                          or until an uncaught exception object is reported */
+typedef struct { void (*fn)(void *); void *arg; } Unwind;
+/* GC_ROOT_RANGE(unw): malloc-backed pending unwind actions contain heap arguments. */
+static Unwind *unw;                    /* unwind actions, malloc'd: their arguments are roots (see exceptions) */
+static I nunw, cunw;
+/* GC_ROOT_RANGE(protos): malloc-backed table retains exception class objects. */
+static Exc **protos;                   /* exception classes' class objects, malloc'd: roots (see exceptions) */
+static I nprotos, cprotos;
+
+static void out_flush(void);           /* stdout, before an error message (see I/O) */
+void pys_finish(void);                 /* every way out of the program runs it (lli skips atexit handlers) */
+static _Noreturn void oom(void) { out_flush(); fputs("MemoryError\n", stderr); pys_finish(); exit(1); }
+static I cls(I n) {                    /* size class for n bytes plus one byte of slack */
+  uint64_t r = (uint64_t)n + 1, y = r - 8;
+  if (r <= 136) return r <= 16 ? 0 : (I)((r + 7) >> 3) - 2;
+  int e = 63 - __builtin_clzll(y - 1);   /* 2^e < y <= 2^(e+1); classes are (5..8) * 2^(e-2) + 8 */
+  return 16 + (e - 7) * 4 + (I)((y + (1ULL << (e - 2)) - 1) >> (e - 2)) - 5;
+}
+__attribute__((noinline)) static void pmap_set(uintptr_t a, uintptr_t e, Seg *v) {
+  if (e >> 48) oom();                  /* map the pages of [a, e) to v (or unmap) */
+  if (v && (!gc_hi || a < gc_lo)) gc_lo = a;
+  if (v && e > gc_hi) gc_hi = e;
+  for (; a < e; a += PAGE) {
+    Seg **m = pmap[a >> 30];
+    if (!m && !(m = pmap[a >> 30] = calloc(1 << 18, sizeof *m))) oom();
+    m[a >> 12 & 0x3ffff] = v;
+  }
+}
+__attribute__((noinline)) static void mstk_grow(void) {
+  if (!(mstk = realloc(mstk, (mcap = 2 * mcap + 4096) * sizeof *mstk))) oom();
+}
+__attribute__((noinline, no_sanitize("address"))) static void scan(const W *p, const W *e) {
+  uintptr_t lo = gc_lo, span = gc_hi - gc_lo;   /* fixed while marking: keep them in registers */
+  Seg ***pm = pmap;
+  for (; p < e; p++) {                 /* mark every heap object a word in [p, e) points into */
+    uintptr_t w = *p, off, i = 0;
+    Seg **m, *s;
+    if (w - lo >= span || !(m = pm[w >> 30]) || !(s = m[w >> 12 & 0x3ffff])) continue;
+    if ((off = w - (uintptr_t)s->start) >= (uintptr_t)s->lim) continue;   /* header, tail, unused */
+    if (!s->large) i = off * s->inv >> 40;
+    if (s->mark[i >> 6] >> (i & 63) & 1) continue;
+    s->mark[i >> 6] |= 1ULL << (i & 63); s->nmark++;
+    if (s->k & 1) continue;            /* atomic: nothing to scan */
+    if (msp + 2 > mcap) mstk_grow();
+    mstk[msp++] = (uintptr_t)s->start + i * s->size;
+    mstk[msp++] = (uintptr_t)(s->large ? s->size & ~7 : s->size);
+  }
+}
+__attribute__((noinline, no_sanitize("address"))) static void mark_roots(void) {
+  scan((const W *)((uintptr_t)__builtin_frame_address(0) & ~(uintptr_t)7), (const W *)gc_bottom);
+  for (I i = 0; i < gc_nroots; i++) scan((const W *)gc_roots[i], (const W *)gc_roots[i] + 1);
+  scan((const W *)ch1, (const W *)(ch1 + 256));
+  scan((const W *)&args, (const W *)(&args + 1));
+  scan((const W *)&warnopts, (const W *)(&warnopts + 1));
+  if (nprotos) scan((const W *)protos, (const W *)(protos + nprotos));
+  if (wr_nfired > wr_head) scan((const W *)(wr_fired + wr_head), (const W *)(wr_fired + wr_nfired));   /* (NULL before the first) */
+  if (xthrow) {                        /* exceptions are on, or one is being reported (NULL: none to scan) */
+    scan((const W *)&xr, (const W *)(&xr + 1));
+    if (nunw) scan((const W *)unw, (const W *)(unw + nunw));   /* unw is NULL before the first */
+  }
+}
+/* The atomic classes past the inlined ones (168 bytes and up): their dead slots are not cleared,
+   since gc_slow clears what an allocation asks for (gc_raw callers write every byte they read).
+   Nothing scans such a slot, so what a dead object left there keeps nothing alive */
+#define LAZY(k) ((k) & 1 && (k) >> 1 >= 16)
+__attribute__((noinline)) static void rebuild(Seg *s) {   /* free list of unmarked slots below bump */
+  I n = s->bump, sz = s->size;
+  int z = !LAZY(s->k);
+  W *tail = &s->free;
+  s->nfree = n - s->nmark; s->nlive = s->nmark; s->used = 0;
+  for (I i = 0, j; i < n; i = j) {     /* runs of equal mark bits, a mark word at a time */
+    uint64_t w = s->mark[i >> 6] >> (i & 63), r = w & 1 ? ~w : w;
+    j = r ? i + __builtin_ctzll(r) : (i | 63) + 1;
+    if (j > n) j = n;
+    if (w & 1) continue;               /* [i, j) survived */
+    if (z) memset(s->start + i * sz, 0, (j - i) * sz);   /* [i, j) is dead or free */
+#pragma clang loop unroll(disable) vectorize(disable)
+    for (I x = i; x < j; x++) { *tail = ~(uintptr_t)(s->start + x * sz); tail = (W *)(s->start + x * sz); }
+  }
+  *tail = ~(uintptr_t)0;
+}
+/* ---------- the page heap ----------
+   Chunks and large objects take runs of whole pages from regions of 2 MiB, which the runtime maps
+   itself, aligned to 2 MiB (no allocator header or spare page beside them); an object of more pages
+   than a region's gets a mapping of its own. A region's bitmaps tell its used pages and those that
+   may be dirty. A page mapped or purged since it was last written reads as zero, so a zeroed
+   allocation clears only the dirty pages it takes (it never faults a fresh page in), and one whose
+   caller writes every byte (gc_raw) clears none. Only a sweep frees pages, so it makes the free
+   runs again, coalesced, from the bitmaps; until the next, an allocation takes the shortest run
+   that fits, one with dirty pages before a clean one (lists by length, lowest addresses first),
+   and leaves the rest of it. Each sweep keeps as many dirty free pages as the next cycle may
+   take: their memory is reused without page faults or the kernel's zeroing. It purges the others
+   (MADV_DONTNEED; elsewhere a fresh mapping over them), those a whole cycle left idle first
+   (pages_settle). A large object's own mapping, once freed, is kept for one of as many pages or
+   up to a quarter fewer, within the same budget. PAGE describes the collector's map, not the kernel:
+   ARM64 can use 16 or 64 KiB pages, so purging takes whole system pages. Transparent huge pages
+   (MADV_HUGEPAGE on regions) were measured and left off: #615's program peaked at 932 MiB of
+   RSS instead of 679 MiB, and smaller heaps ran no faster */
+static I os_page(void) {               /* the system's page size; 0 if unusable */
+  static long page;
+  if (!page) page = sysconf(_SC_PAGESIZE);
+  return page > 0 && !(page & (page - 1)) && page <= REGION ? page : 0;
+}
+static void heap_add(I bytes) { if ((gc_heap += bytes) > gc_peak) gc_peak = gc_heap; }
+static char *map_pages(I bytes) {      /* bytes (whole system pages) of zero pages, aligned to REGION */
+  size_t len = (size_t)bytes + REGION;
+  char *p = mmap(0, len, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  if (p == MAP_FAILED) oom();
+  uintptr_t a = ((uintptr_t)p + REGION - 1) & ~(uintptr_t)(REGION - 1), e = a + bytes;
+  if (a > (uintptr_t)p) munmap(p, a - (uintptr_t)p);
+  if ((uintptr_t)p + len > e) munmap((void *)e, (uintptr_t)p + len - e);
+  return (char *)a;
+}
+static I purge(uintptr_t a, uintptr_t e) {   /* the whole system pages in [a, e) back to the system,
+                                                zero when next read: their bytes (0: none) */
+  I page = os_page();
+  if (!page) return 0;
+  a = (a + page - 1) & ~(uintptr_t)(page - 1); e &= ~(uintptr_t)(page - 1);
+  if (a >= e) return 0;
+#ifdef __linux__
+  if (madvise((void *)a, e - a, MADV_DONTNEED)) return 0;
+#else
+  if (mmap((void *)a, e - a, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0) != (void *)a) oom();
+#endif
+  return (I)(e - a);
+}
+static void bits(uint64_t *m, I i, I n, int v) {   /* bits [i, i + n) of m, all v */
+  while (n > 0) {
+    I k = 64 - (i & 63) < n ? 64 - (i & 63) : n;
+    uint64_t f = (k == 64 ? ~0ULL : (1ULL << k) - 1) << (i & 63);
+    if (v) m[i >> 6] |= f; else m[i >> 6] &= ~f;
+    i += k; n -= k;
+  }
+}
+static I nbits(const uint64_t *m, I i, I n) {   /* the bits of [i, i + n) of m that are set */
+  I c = 0;
+  while (n > 0) {
+    I k = 64 - (i & 63) < n ? 64 - (i & 63) : n;
+    c += __builtin_popcountll(m[i >> 6] >> (i & 63) & (k == 64 ? ~0ULL : (1ULL << k) - 1));
+    i += k; n -= k;
+  }
+  return c;
+}
+static I next_bit(const uint64_t *m, I i, int v) {   /* the first bit at or past i that is v (RPAGES: none) */
+  for (; i < RPAGES; i = (i | 63) + 1) {
+    uint64_t w = (v ? m[i >> 6] : ~m[i >> 6]) >> (i & 63);
+    if (w) return i + __builtin_ctzll(w);
+  }
+  return RPAGES;
+}
+static int run_bin(I n) { return n <= 32 ? (int)n - 1 : 27 + (63 - __builtin_clzll((uint64_t)n - 1)); }
+__attribute__((noinline)) static void run_push(int c, I r, I first, I n) {   /* c: 1 for a clean run */
+  int b = run_bin(n);
+  if (nbin[c][b] == cbin[c][b] && !(bins[c][b] = realloc(bins[c][b], (cbin[c][b] = 2 * cbin[c][b] + 16) * sizeof(PRun)))) oom();
+  bins[c][b][nbin[c][b]++] = (PRun){(int32_t)r, (int32_t)first, (int32_t)n};
+}
+/* np pages (at most RPAGES) from the shortest free run that holds them, one with dirty pages if
+   any does (their memory is in use already: a clean page costs a page fault and the kernel's
+   zeroing), or from a new region: their address. *rg: their region plus one; *dirty: whether any
+   of them may be dirty. The heap counts the clean ones from now (it counts dirty free pages already) */
+static char *pages_take(I np, I *rg, int *dirty) {
+  I r = -1, first = 0;
+  for (int c = 0; c < 2 && r < 0; c++)
+    for (int b = run_bin(np); b < NBIN && r < 0; b++)
+      for (I j = nbin[c][b] - 1; j >= 0; j--) {
+        PRun u = bins[c][b][j];
+        if (u.n < np) continue;        /* (a list of runs of several lengths) */
+        bins[c][b][j] = bins[c][b][--nbin[c][b]];
+        if (u.n > np) run_push(c, u.r, u.first + np, u.n - np);
+        r = u.r; first = u.first;
+        break;
+      }
+  if (r < 0) {                         /* a new region, whose pages are all free and zero */
+    for (r = 0; r < nregs && regs[r].base; r++) {}
+    if (r == nregs && nregs++ == cregs && !(regs = realloc(regs, (cregs = 2 * cregs + 16) * sizeof *regs))) oom();
+    memset(&regs[r], 0, sizeof *regs);
+    regs[r].base = map_pages(REGION);
+    if (np < RPAGES) run_push(1, r, np, RPAGES - np);
+  }
+  Region *g = &regs[r];
+  I d = nbits(g->dirty, first, np);
+  bits(g->used, first, np, 1); bits(g->idle, first, np, 0); g->nused += np;
+  heap_add((np - d) * PAGE);
+  *rg = r + 1; *dirty = d != 0;
+  return g->base + first * PAGE;
+}
+static void pages_give(I rg, uintptr_t a, I np) {   /* in a sweep: the np pages from a are free (dirty) */
+  Region *g = &regs[rg - 1];
+  I first = (I)((a - (uintptr_t)g->base) / PAGE);
+  bits(g->used, first, np, 0); bits(g->dirty, first, np, 1); g->nused -= np;
+}
+static I pages_purge(Region *g, I first, I n) {   /* purge free pages [first, first + n): the dirty ones made clean */
+  uintptr_t a = (uintptr_t)g->base + first * PAGE, e = a + n * PAGE;
+  I page = os_page(), c;
+  if (!purge(a, e)) return 0;
+  a = (a + page - 1) & ~(uintptr_t)(page - 1); e &= ~(uintptr_t)(page - 1);   /* (what purge gave back) */
+  first = (I)((a - (uintptr_t)g->base) / PAGE); n = (I)((e - a) / PAGE);
+  c = nbits(g->dirty, first, n);
+  bits(g->dirty, first, n, 0);
+  heap_add(-c * PAGE);
+  return c;
+}
+static void zero_dirty(I rg, char *p, char *e) {   /* clear [p, e) where its pages may be dirty */
+  Region *g = &regs[rg - 1];
+  while (p < e) {
+    I i = (I)((p - g->base) / PAGE);
+    char *q = g->base + (i + 1) * PAGE < e ? g->base + (i + 1) * PAGE : e;
+    if (g->dirty[i >> 6] >> (i & 63) & 1) memset(p, 0, q - p);
+    p = q;
+  }
+}
+/* the end of a sweep: the free pages kept for the next cycle, then its free runs. It keeps keep
+   bytes of dirty free pages, the next cycle's allocation with half as much again for chunks and
+   page-rounded large objects that fit no free run, so a program whose heap stays as large purges
+   nothing. Past that, the oldest freed mappings go first (kept one cycle only, #650's nodes
+   program mapped a 2 MiB list array afresh, 513 page faults, each time its steps per cycle went
+   from three to four), then the pages that the last cycle left idle, then regions all free
+   (unmapped), then other free runs, the last regions' first. Out of line: inlined into collect, its array of runs would make
+   collect's frame 2 KiB larger, and marking scans that frame (stale words there retained dead
+   objects: microGPT's last collection kept 20.6 MiB instead of 14.7) */
+__attribute__((noinline)) static void pages_settle(Seg *freed, I keep) {
+  I d = 0;
+  for (I r = 0; r < nregs; r++)        /* the dirty free pages */
+    for (int w = 0; regs[r].base && w < RPAGES / 64; w++) d += __builtin_popcountll(regs[r].dirty[w] & ~regs[r].used[w]) * PAGE;
+  for (Seg *s = freed, *t; s; s = t) { t = s->next; s->next = hcache; hcache = s; }   /* (newest first) */
+  for (Seg **pp = &hcache, *s; (s = *pp);) {   /* freed mappings within keep, the newest first */
+    if (d + s->nfree > keep) { *pp = s->next; heap_add(-s->nfree); munmap(s, s->nobj * PAGE); continue; }
+    d += s->nfree; pp = &s->next;
+  }
+  for (I r = nregs - 1; r >= 0 && d > keep; r--)    /* the idle pages */
+    for (I i = 0, j; regs[r].base && d > keep && (i = next_bit(regs[r].idle, i, 1)) < RPAGES; i = j) {
+      j = next_bit(regs[r].idle, i, 0);
+      d -= pages_purge(&regs[r], i, j - i) * PAGE;
+    }
+  for (I r = nregs - 1; r >= 0 && d > keep; r--) {   /* regions all free: unmapped */
+    Region *g = &regs[r];
+    if (!g->base || g->nused) continue;
+    I c = nbits(g->dirty, 0, RPAGES) * PAGE;
+    munmap(g->base, REGION); g->base = 0; heap_add(-c); d -= c;
+  }
+  for (I r = nregs - 1; r >= 0 && d > keep; r--)    /* other free runs */
+    for (I i = 0, j; regs[r].base && d > keep && (i = next_bit(regs[r].used, i, 0)) < RPAGES; i = j) {
+      j = next_bit(regs[r].used, i, 1);
+      d -= pages_purge(&regs[r], i, j - i) * PAGE;
+    }
+  memset(nbin, 0, sizeof nbin);
+  for (I r = nregs - 1; r >= 0; r--) {   /* the runs, so that each list hands out its lowest first */
+    Region *g = &regs[r];
+    int32_t at[RPAGES + 1]; int n = 0;
+    for (int w = 0; g->base && w < RPAGES / 64; w++) g->idle[w] = g->dirty[w] & ~g->used[w];
+    for (I i = 0, j; g->base && (i = next_bit(g->used, i, 0)) < RPAGES; i = j) {
+      j = next_bit(g->used, i, 1); at[n++] = (int32_t)i; at[n++] = (int32_t)j;
+    }
+    while (n) { n -= 2; run_push(!nbits(g->dirty, at[n], at[n + 1] - at[n]), r, at[n], at[n + 1] - at[n]); }
+  }
+}
+/* s, a live large str that appends grew (str_grow), gives back the room past its length where
+   more than a quarter of it is unused (the copy that made s left room for as much again), once it
+   has not grown since the last sweep: a str that a loop is still appending to keeps its room, as
+   giving it back would only make the next append copy it. The str stays where it is; the whole
+   pages past it leave the page map and go back to the system, and the heap counts them no longer */
+static void str_trim(Seg *s) {
+  I len = ((Str *)s->start)->len, m = (I)sizeof(Str) + len + 1, n = s->size - 1;
+  if (s->nlive != len + 1) { s->nlive = len + 1; return; }
+  if (4 * (n - m) <= n) return;
+  uintptr_t a = ((uintptr_t)s->start + m + PAGE) & ~(uintptr_t)(PAGE - 1), e = (uintptr_t)s->start + s->size;
+  I keep = (I)((a - (uintptr_t)s) / PAGE);
+  s->size = s->lim = m + 1;
+  pmap_set(a, e, 0);
+  if (keep >= s->nobj) return;
+  if (s->rg) {                         /* free pages of its region, purged */
+    pages_give(s->rg, a, s->nobj - keep);
+    pages_purge(&regs[s->rg - 1], keep + (I)(((uintptr_t)s - (uintptr_t)regs[s->rg - 1].base) / PAGE), s->nobj - keep);
+    s->nobj = keep;
+  } else {                             /* its own mapping keeps its length */
+    I c = purge(a, (uintptr_t)s + s->nobj * PAGE);
+    s->nfree -= c; heap_add(-c);
+  }
+}
+static void sweep(void) {
+  I live = 0, spare = 0;
+  Seg *freed = 0;                      /* large objects' own mappings freed now */
+  memset(pys_fl, 0, sizeof pys_fl); memset(sfl, 0, sizeof sfl); memset(avail, 0, sizeof avail);
+  for (Seg **pp = &chunks, *s; (s = *pp);) {
+    I sz = s->size, m = s->nmark;
+    if (!m) {                          /* empty: its pages go back to the page heap */
+      *pp = s->next;
+      pmap_set((uintptr_t)s, (uintptr_t)s + CHUNK, 0); pages_give(s->rg, (uintptr_t)s, CHUNK / PAGE);
+      continue;
+    }
+    live += m * sz;
+    if (s->used || m != s->nlive) rebuild(s);   /* else nothing was allocated or died here */
+    memset(s->mark, 0, (s->bump + 63) / 64 * 8); s->nmark = 0;
+    if (s->nfree || s->bump < s->nobj) {
+      s->avail = avail[s->k]; avail[s->k] = s; spare += (s->nfree + s->nobj - s->bump) * sz;
+    }
+    pp = &s->next;
+  }
+  for (Seg **pp = &bigs, *s; (s = *pp);) {
+    if (s->mark[0]) { s->mark[0] = 0; if (s->used) str_trim(s); live += s->size; pp = &s->next; continue; }
+    *pp = s->next;                     /* the header lives in its pages: unmap, then free them */
+    pmap_set((uintptr_t)s, (uintptr_t)s->start + s->size, 0);
+    if (s->rg) pages_give(s->rg, (uintptr_t)s, s->nobj);
+    else { s->next = freed; freed = s; }
+  }
+  live += gc_ext;                      /* the buffers of the files still open (files_sweep closed the others) */
+  gc_live = live; gc_allocd = 0; gc_limit = live > gc_min ? live : gc_min;
+  gc_big = 0; gc_big_limit = live > BIG_MIN ? live : BIG_MIN;
+  pages_settle(freed, gc_limit + gc_limit / 2 - spare);   /* keep the free pages the next cycle may need */
+}
+static I nfiles;                       /* open files (see I/O): closed by the collector when unreachable */
+static void files_sweep(void);
+static I ntrk;                         /* Python references Pystachy objects own (ffi.track, see I/O) */
+static void trk_sweep(void);
+static int gc_marked(const void *p);
+static void weakrefs_sweep(void);
+__attribute__((noinline)) static void collect(void) {
+  struct timespec t0, t1;
+  memset(text_hints, 0, sizeof text_hints);
+  __builtin_unwind_init();             /* spill the callee-saved registers into this frame */
+  if (gc_stats) clock_gettime(CLOCK_MONOTONIC, &t0);
+  mark_roots();
+  /* trace; big arrays in 4 KiB slices keep the stack short. A range off the stack waits in mq,
+     its first 128 bytes prefetched, while the MQ - 1 before it are scanned: the cache misses of
+     reading the objects, most of what collecting a big heap costs, overlap. The same objects are
+     marked */
+  unsigned qh = 0, qc = 0;
+  while (msp || qc) {
+    if (msp && qc < MQ) {
+      I n = (I)mstk[msp - 1]; const W *p = (const W *)mstk[msp - 2];
+      if (n > 4096) { mstk[msp - 2] = (uintptr_t)(p + 512); mstk[msp - 1] = (uintptr_t)(n - 4096); n = 4096; }
+      else msp -= 2;
+      __builtin_prefetch(p);
+      if (n > 64) __builtin_prefetch(p + 8);
+      unsigned t = 2 * ((qh + qc++) & (MQ - 1));
+      mq[t] = (uintptr_t)p; mq[t + 1] = (uintptr_t)n;
+      continue;
+    }
+    const W *p = (const W *)mq[2 * qh]; I n = (I)mq[2 * qh + 1];
+    qh = (qh + 1) & (MQ - 1); qc--;
+    scan(p, p + n / 8);
+  }
+  weakrefs_sweep();                    /* clear weak targets before any memory is reclaimed */
+  if (nfiles) files_sweep();
+  if (ntrk) trk_sweep();
+  sweep(); gc_n++;
+  if (gc_stats) {
+    clock_gettime(CLOCK_MONOTONIC, &t1);
+    gc_ns += (t1.tv_sec - t0.tv_sec) * 1000000000 + t1.tv_nsec - t0.tv_nsec;
+  }
+}
+/* The allocator's frames that a collection's caller holds are scanned as roots, words that no
+   one set included: the page heap's calls, whose results come back through memory, are made from
+   frames of their own (noinline) that exist only after the collection */
+__attribute__((noinline)) static Seg *chunk_new(int k) {   /* a chunk from the page heap; its slots come lazily */
+  I sz = csize[k >> 1], hdr = ((I)sizeof(Seg) + (CHUNK / sz + 63) / 64 * 8 + 15) & ~15, rg;
+  int dirty;
+  Seg *s = (Seg *)pages_take(CHUNK / PAGE, &rg, &dirty);   /* dirty: old objects need zeroing */
+  pmap_set((uintptr_t)s, (uintptr_t)s + CHUNK, s);
+  memset(s, 0, hdr);
+  s->rg = rg; s->k = k; s->size = sz; s->inv = ((1ULL << 40) + sz - 1) / sz; s->dirty = dirty;
+  s->start = (char *)s + hdr; s->nobj = (CHUNK - hdr) / sz; s->free = ~(uintptr_t)0;
+  s->next = chunks; chunks = s; avail[k] = s;
+  return s;
+}
+/* a large object of n bytes (how as gc_slow's): a header on its first page, then the object */
+__attribute__((noinline)) static void *big_new(I n, int how) {
+  I np = (HB + n + 1 + PAGE - 1) / PAGE, rg = 0, mapped = 0;
+  int dirty = 1;
+  Seg *s = 0;
+  if (np <= RPAGES) s = (Seg *)pages_take(np, &rg, &dirty);
+  else {                               /* its own mapping: a freed one that fits, or a new one */
+    for (Seg **pp = &hcache; (s = *pp); pp = &s->next)
+      if (s->nobj >= np && s->nobj - np <= np / 4) {
+        *pp = s->next; np = s->nobj; mapped = np * PAGE;
+        heap_add(mapped - s->nfree);   /* the pages str_trim purged count again: writing the object brings them back */
+        break;
+      }
+    if (!s) {
+      I page = os_page() ? os_page() : PAGE, bytes = (np * PAGE + page - 1) & ~(page - 1);
+      s = (Seg *)map_pages(bytes); np = bytes / PAGE; mapped = bytes; dirty = 0; heap_add(bytes);
+    }
+  }
+  memset(s, 0, HB);
+  s->rg = rg; s->nobj = np; s->nfree = mapped; s->large = 1; s->k = how & 1; s->size = s->lim = n + 1; s->start = (char *)s + HB;
+  pmap_set((uintptr_t)s, (uintptr_t)s->start + s->size, s);
+  if (how != 3 && dirty) { if (rg) zero_dirty(rg, s->start, s->start + n + 1); else memset(s->start, 0, n + 1); }
+  s->next = bigs; bigs = s; gc_allocd += n; if (how & 1) gc_big += n;
+  return s->start;
+}
+static void refill(int k) {            /* give free list k more free slots */
+  Seg *s = avail[k];
+  if (!s && !gc_off && gc_allocd >= gc_limit) { collect(); s = avail[k]; }
+  if (!s) s = chunk_new(k);
+  I sz = s->size;
+  if (~s->free) {                      /* the slots the last sweep freed */
+    pys_fl[k] = (W *)~s->free; s->free = ~(uintptr_t)0; gc_allocd += s->nfree * sz; s->nfree = 0;
+  } else {                             /* about a page of never-used slots, so untouched memory stays so */
+    I i = s->bump, j = i + (PAGE + sz - 1) / sz;
+    if (j > s->nobj) j = s->nobj;
+    if (s->dirty && !LAZY(k)) memset(s->start + i * sz, 0, (j - i) * sz);
+#pragma clang loop unroll(disable) vectorize(disable)
+    for (I x = i; x < j; x++) *(W *)(s->start + x * sz) = ~(uintptr_t)(x + 1 < j ? s->start + (x + 1) * sz : 0);
+    pys_fl[k] = (W *)(s->start + i * sz); s->bump = j; s->lim = j * sz; gc_allocd += (j - i) * sz;
+  }
+  s->used = 1;
+  if (s->bump == s->nobj) avail[k] = s->avail;   /* nothing left after this */
+}
+/* how: 0, scanned memory; 1, atomic; 3, atomic whose every byte that is read the caller writes
+   first (gc_raw), which no class past the inlined ones (LAZY) nor large object clears */
+__attribute__((noinline)) static void *gc_slow(I n, int how) {
+  int atomic = how & 1;
+  if ((uint64_t)n > (uint64_t)1 << 40) oom();
+  if (gc_stress && ++gc_tick >= gc_stress) { gc_tick = 0; collect(); }
+  if (n >= SMALL) {                    /* large object */
+    if (!gc_off && (gc_allocd + n >= gc_limit ||
+        (gc_big + (atomic ? n : 0) >= gc_big_limit && 2 * gc_big >= gc_allocd))) collect();
+    return big_new(n, how);
+  }
+  int k = 2 * (int)cls(n) + atomic;
+  if (gc_stress) pys_fl[k] = sfl[k];       /* under stress every allocation comes through here */
+  if (!pys_fl[k]) refill(k);
+  W *p = pys_fl[k];
+  pys_fl[k] = (W *)~*p;
+  if (!LAZY(k)) *p = 0;                /* the rest of its slot is clear */
+  else if (how != 3) memset(p, 0, n + 1);
+  if (gc_stress) { sfl[k] = pys_fl[k]; pys_fl[k] = 0; }
+  return p;
+}
+static inline __attribute__((always_inline)) void *gc_alloc(I n, int atomic) {
+  PROFILE_ALLOC(n);
+  if ((uint64_t)n < 136) {             /* fast path, inlined: pop a zeroed slot of a class 16..136 */
+    W **h = &pys_fl[2 * (n < 8 ? 0 : (n + 8) / 8 - 2) + atomic], *p = *h;
+    if (__builtin_expect(p != 0, 1)) { *h = (W *)~*p; *p = 0; return p; }
+  }
+  return gc_slow(n, atomic);
+}
+/* The slow path of the JIT tier's fast path (lower_module.py's JITFAST: a program it runs pops pys_fl
+   itself, as gc_alloc does, and calls this for the rest) */
+void *pys_gc_slow(I n, I atomic) { PROFILE_ALLOC(n); return gc_slow(n, (int)atomic); }
+/* atomic memory whose bytes may be those of an object that died: for a caller that writes every
+   byte it (or anything) reads, as a new str's whose header, bytes and NUL it stores. The classes
+   the fast path serves come clear anyway */
+static void *gc_raw(I n) {
+  if ((uint64_t)n < 136) return gc_alloc(n, 1);
+  PROFILE_ALLOC(n);
+  return gc_slow(n, 3);
+}   /* (an allocator: check_runtime's ALLOC) */
+__attribute__((malloc, returns_nonnull)) void *pys_alloc(I n) { return gc_alloc(n, 0); }
+__attribute__((malloc, returns_nonnull)) void *pys_alloc_atomic(I n) { return gc_alloc(n, 1); }
+/* Compiled code's own objects and fixed tuples (alloc.fixed) that hold no reference, only ints,
+   floats and bools, come from pys_new (lowering's alloc_call), which stays out of line so that
+   LLVM sees each allocation: the program marks its calls allockind("alloc,zeroed"), and LLVM
+   deletes one whose object nothing keeps. The others come from pys_alloc: LLVM may leave the
+   address of such a marked object dead while the program still reads its fields, and the
+   collector would then not see what it holds. Once that optimization has run, an AOT build
+   inlines pys_new, the fast path, into the calls that remain (driver.py's LATE_INLINE). It is
+   gc_alloc, whose slots come zeroed */
+__attribute__((noinline, malloc, returns_nonnull)) void *pys_new(I n) { return gc_alloc(n, 0); }
+/* A box, a dynamic value's DynType and payload or a closed union's tag and payload: 16 bytes in a
+   16-byte slot (the class for 15 bytes and the byte of slack). The slack keeps an object alive
+   through a pointer one past its end, which code walking the object leaves; code reads a box's two
+   words from the box's address and walks none, so no such pointer is ever the only one to a box
+   (#800) */
+static inline void *gc_box(int atomic) { return atomic ? pys_alloc_atomic(15) : pys_alloc(15); }
+/* Experimental weak references. A handle's pointers live in atomic memory: neither the target,
+   nor the next registry entry, nor the fire function is a strong edge. The registry itself is
+   NOT a collector root. Prune dead handles before sweeping their storage, and clear surviving
+   handles whose targets were not marked before the target's address can be reused.
+   The fire function of a reference with a callback (_weakref's, a Callable[[], None] that calls
+   the callback with the reference, and that the reference object keeps alive) goes to wr_fired
+   where a collection clears its target while it is itself marked, so while the reference is:
+   once, newest handle first, as CPython calls a referent's callbacks, a newest reference first.
+   wr_fired is a root until _weakref takes the function to call it (pys_weakref_fired): a
+   collection runs no code, and a dead reference's callback is not called, as in CPython. A
+   handle can outlive its reference object (a stale word keeps it marked): the collection that
+   frees its fire function forgets it, before the function's slot can be reused. */
+typedef struct WeakRef WeakRef;
+struct WeakRef { WeakRef *next; void *target; void *fire; };
+/* GC_NO_ROOT(weakrefs): weak registry; weakrefs_sweep removes unmarked referents. */
+static WeakRef *weakrefs;
+void *pys_weakref_new(void *target, void *fire) {
+  WeakRef *ref = pys_alloc_atomic(sizeof *ref);
+  ref->target = target;
+  ref->fire = fire;
+  ref->next = weakrefs;
+  weakrefs = ref;
+  return ref;
+}
+void *pys_weakref_get(WeakRef *ref) { return ref->target; }
+void *pys_weakref_fired(void) {        /* the next fire function to call, once; NULL: none */
+  if (wr_head == wr_nfired) return NULL;
+  void *f = wr_fired[wr_head];
+  wr_fired[wr_head++] = NULL;
+  if (wr_head == wr_nfired) wr_head = wr_nfired = 0;
+  return f;
+}
+__attribute__((noinline)) static void weakrefs_sweep(void) {
+  for (WeakRef **link = &weakrefs, *ref; (ref = *link);) {
+    if (!gc_marked(ref)) { *link = ref->next; continue; }
+    if (ref->fire && !gc_marked(ref->fire)) ref->fire = NULL;
+    if (ref->target && !gc_marked(ref->target)) {
+      ref->target = NULL;
+      if (ref->fire) {
+        if (wr_nfired == wr_cap && !(wr_fired = realloc(wr_fired, (wr_cap = 2 * wr_cap + 16) * sizeof *wr_fired))) oom();
+        wr_fired[wr_nfired++] = ref->fire;
+      }
+      ref->fire = NULL;
+    }
+    link = &ref->next;
+  }
+}
+static Seg *gc_seg(const void *p) {    /* the chunk or large object that holds p (from gc_alloc): p can hold
+                                          its size less the byte of slack, as for the n that cls(n) took */
+  uintptr_t a = (uintptr_t)p;
+  return pmap[a >> 30][a >> 12 & 0x3ffff];
+}
+static Seg *gc_find(const void *p) {   /* gc_seg of any pointer: 0 where it is not in the heap (a constant) */
+  uintptr_t a = (uintptr_t)p;
+  Seg **m = pmap[a >> 30];
+  return m ? m[a >> 12 & 0x3ffff] : 0;
+}
+/* Whether x is in a frame between this one and @main's: the *args tuple that a call made in its
+   own frame (Gen.stack_tuple), which the function called copies before it keeps it
+   (Gen.keep_stack). Not inlined: the frames of its callers, where such a tuple lives, are then all
+   above this one's. */
+__attribute__((noinline)) I pys_on_stack(void *x) {
+  uintptr_t p = (uintptr_t)x;
+  return p >= (uintptr_t)__builtin_frame_address(0) && p < (uintptr_t)gc_bottom;
+}
+static void gc_extern(I n) {           /* n malloc'd bytes more that heap objects hold (fewer: n < 0), counted as the
+                                          heap's own; whoever allocates them collects first, as gc_slow would */
+  if (n > 0) gc_allocd += n;
+  gc_ext += n;
+  heap_add(n);
+}
+static I trk_report(I *ex);
+static void gc_report(void) {
+  fprintf(stderr, "gc: %lld collections, %.1f ms; heap peak %.1f MiB; live %.1f MiB at the last\n",
+          (long long)gc_n, gc_ns / 1e6, gc_peak / 1048576.0, gc_live / 1048576.0);
+  I ex, n = trk_report(&ex);
+  if (n >= 0) fprintf(stderr, "gc: Python references released: %lld after collections, %lld at exit\n", (long long)n, (long long)ex);
+}
+static void gc_init(char *sb, I **roots, I nroots) {
+  const char *e = getenv("PYSTACHY_GC");
+  gc_bottom = sb + 2 * sizeof(void *); /* sb is @main's frame address: include its frame record */
+  gc_roots = roots; gc_nroots = nroots;
+  if (!(pmap = calloc(1 << 18, sizeof *pmap))) oom();
+  gc_off = e && !strcmp(e, "off");
+  gc_stats = e && !strcmp(e, "stats");
+  if (!gc_off && (e = getenv("PYSTACHY_GC_STRESS")) && atoll(e) > 0) gc_stress = atoll(e);
+  /* PYSTACHY_GC_MIN=N: N MiB (1 to 2^20) of allocation between collections at least, for GC_MIN's 32
+     (#650): a program trades memory for fewer collections, or the reverse */
+  if ((e = getenv("PYSTACHY_GC_MIN")) && atoll(e) > 0 && atoll(e) <= (I)1 << 20) gc_limit = gc_min = (I)atoll(e) << 20;
+}
+
+/* errors end the program after flushing stdout; a flush that fails is reported at exit, as
+   CPython reports it, with status 120. In a program that has try or with (pys_eh_on) they are
+   raised instead, and end the program the same way if nothing catches them (see exceptions).
+   They reach that code only through xthrow, which nothing but pys_eh_on and the report of an
+   uncaught exception stores: a program without try or with links neither, so LLVM folds xthrow to
+   NULL and keeps none of it, and the funnels compile to the code they had before. */
+static volatile sig_atomic_t io_intr;  /* a Ctrl-C waiting for the I/O layer to finish a call (see I/O) */
+static _Noreturn void kbint_exit(void);
+static int kbint;                      /* the program ends with KeyboardInterrupt: pys_finish dies by SIGINT */
+static Exc *exc_new(Str *kind, Str *msg, Str *args);
+static Exc *exc_raise(Str *kind, Str *msg);
+static Exc *exc_line(const char *m);
+static Exc *exc_exit(I c, Str *msg);
+static const char *exc_name(Exc *e, int *n);
+Str *pys_exc_repr(Exc *e);
+Str *pys_exc_type(Exc *e);
+void *pys_exc_id(Exc *e);
+static void unwind_push(void (*fn)(void *), void *arg);
+static void unwind_pop(void);
+static void ewrite(const char *s, I n) {   /* text to stderr, whose errors="backslashreplace" (CPython's
+                                             sys.stderr) writes a surrogate, held in its three-byte form, as \udcff */
+  I i = 0, j = 0;
+  for (; i + 2 < n; i++)
+    if ((unsigned char)s[i] == 0xED && ((unsigned char)s[i + 1] & 0xE0) == 0xA0 && ((unsigned char)s[i + 2] & 0xC0) == 0x80) {
+      char t[8];
+      fwrite(s + j, 1, i - j, stderr);
+      fwrite(t, 1, snprintf(t, sizeof t, "\\u%04x", 0xD000 | (s[i + 1] & 0x3F) << 6 | (s[i + 2] & 0x3F)), stderr);
+      j = i + 3; i += 2;
+    }
+  fwrite(s + j, 1, n - j, stderr);
+}
+_Noreturn void pys_fail(const char *m) {           /* m: "Kind: message", or "Kind" */
+  if (io_intr) kbint_exit();
+  if (xthrow) xthrow(exc_line(m));
+  out_flush(); ewrite(m, strlen(m)); fputc('\n', stderr); pys_finish(); exit(1);
+}
+_Noreturn void pys_raise(Str *kind, Str *msg) {     /* raise kind(msg): CPython's last traceback line */
+  if (xthrow) xthrow(exc_raise(kind, msg));
+  out_flush();
+  fwrite(kind->s, 1, kind->len, stderr);
+  if (msg->len) { fputs(": ", stderr); ewrite(msg->s, msg->len); }
+  fputc('\n', stderr);
+  kbint = !strcmp(kind->s, "KeyboardInterrupt");
+  pys_finish();
+  exit(1);
+}
+_Noreturn void pys_exit(I c) { if (xthrow) xthrow(exc_exit(c, 0)); pys_finish(); exit((int)c); }   /* sys.exit(c): status c */
+_Noreturn void pys_exit_msg(Str *msg) {          /* sys.exit(msg): msg to stderr, status 1 */
+  if (xthrow) xthrow(exc_exit(0, msg));
+  out_flush(); ewrite(msg->s, msg->len); fputc('\n', stderr); pys_finish(); exit(1);
+}
+
+__attribute__((noinline)) static void put(Buf *b, const char *s, I n) {   /* not inlined: keeps repr small */
+  if (b->n + n > b->cap) {
+    I c = b->cap * 2 + n + 64; char *p = gc_raw(c);   /* (the bytes past b->n are never read) */
+    if (b->n) memcpy(p, b->p, b->n);
+    b->p = p; b->cap = c;
+  }
+  if (n) { memcpy(b->p + b->n, s, n); b->n += n; }   /* n = 0 on an empty Buf: b->p is NULL */
+}
+
+/* ---------- strings ---------- */
+Str *pys_str(const char *p, I n) {
+  Str *s = gc_raw(sizeof(Str) + n + 1);   /* (every byte written: the header, the bytes and the NUL) */
+  s->len = n; s->dict_hash = 0; s->chars1 = n < 2 ? n + 1 : 0; if (n) memcpy(s->s, p, n); s->s[n] = 0; return s;
+}
+static Str *cstr(const char *p) { return pys_str(p, strlen(p)); }
+static Str *done(Buf *b) { return pys_str(b->p, b->n); }
+/* float text: CPython converts floats without the C locale (its own dtoa), so a Python that shares the
+   process and calls setlocale (an embedded or hosting CPython, or a C function) must not change it:
+   then (c_num, set by pys_c_numeric) snprintf and strtod run in the C locale */
+/* GC_NO_ROOT(c_num): libc locale handle, outside the Pystachy heap. */
+static locale_t c_num;
+void pys_c_numeric(void) { if (!c_num) c_num = newlocale(LC_ALL_MASK, "C", (locale_t)0); }
+static double fstrtod(const char *s, char **e) {
+  locale_t o = c_num ? uselocale(c_num) : (locale_t)0;
+  double r = strtod(s, e);
+  if (o) uselocale(o);
+  return r;
+}
+__attribute__((format(printf, 3, 4))) static int fsnprintf(char *b, size_t n, const char *f, ...) {
+  va_list a; va_start(a, f);
+  locale_t o = c_num ? uselocale(c_num) : (locale_t)0;
+  int r = vsnprintf(b, n, f, a);
+  if (o) uselocale(o);
+  va_end(a); return r;
+}
+static I u8enc(char *o, I c);
+static Str *byte1(unsigned char c) {  /* the one str of byte c: chr(c), s[i], a 1-byte slice */
+  if (!ch1[c]) { char b = (char)c; ch1[c] = pys_str(&b, 1); }
+  return ch1[c];
+}
+Str *pys_chr(I c) {                    /* below 256 the byte itself (str holds bytes); above, UTF-8 */
+  if (c < 0 || c > 0x10FFFF) pys_fail("ValueError: chr() arg not in range(0x110000)");
+  if (c > 255) { char b[4]; return pys_str(b, u8enc(b, c)); }
+  return byte1((unsigned char)c);
+}
+static I u8char(const char *p, I n, I *cp) {   /* the character at p (n > 0 bytes left): its code point and byte
+                                                  count; a UTF-8 sequence as chr() writes it, else one byte */
+  unsigned char c = p[0]; I k = c > 0xF4 ? 1 : c >= 0xF0 ? 4 : c >= 0xE0 ? 3 : c >= 0xC2 ? 2 : 1, v = c & (0x7F >> k);
+  *cp = c;
+  if (k == 1 || k > n) return 1;
+  for (I i = 1; i < k; i++) { if ((p[i] & 0xC0) != 0x80) return 1; v = v << 6 | (p[i] & 0x3F); }
+  if (v < (k == 2 ? 0x80 : k == 3 ? 0x800 : 0x10000) || v > 0x10FFFF) return 1;
+  *cp = v; return k;
+}
+I pys_ord(Str *s) {                    /* a byte, or one UTF-8 encoded character */
+  I cp, n = 0;
+  if (s->len && u8char(s->s, s->len, &cp) == s->len) return cp;
+  for (I i = 0; i < s->len; n++) i += u8char(s->s + i, s->len - i, &cp);   /* the length in characters */
+  char b[96]; snprintf(b, 96, "TypeError: ord() expected a character, but string of length %lld found", (long long)n); pys_fail(b);
+}
+Str *pys_pct_char(Str *s) {            /* "%c" % s: s must be one character, as for ord() */
+  I cp;
+  if (!s->len || u8char(s->s, s->len, &cp) != s->len) pys_fail("TypeError: %c requires int or char");
+  return s;
+}
+Str *pys_pct_chr(I c) {                /* "%c" % i: the character, UTF-8 encoded also below 256 (unlike chr()) */
+  if (c < 0 || c > 0x10FFFF) pys_fail("OverflowError: %c arg not in range(0x110000)");
+  char b[4];
+  return c < 128 ? pys_chr(c) : pys_str(b, u8enc(b, c));
+}
+Str *pys_ascii(Str *r);                       /* ascii(): the repr-escaping pass is in runtime.py */
+static I idx(I i, I n, const char *m) { if (i < 0) i += n; if (i < 0 || i >= n) pys_fail(m); return i; }
+static void span(I *lo, I *hi, I n) {
+  if (*lo == NONE) *lo = 0; else if (*lo < 0 && (*lo += n) < 0) *lo = 0; else if (*lo > n) *lo = n;
+  if (*hi == NONE) *hi = n; else if (*hi < 0 && (*hi += n) < 0) *hi = 0; else if (*hi > n) *hi = n;
+  if (*hi < *lo) *hi = *lo;
+}
+/* lo:hi:st over n items, as CPython's PySlice_Unpack and PySlice_AdjustIndices: the slice's
+   first index goes to *lo, and the number of its items is returned (they are *lo + i * st).
+   NONE is an omitted bound; a step of -2**63 becomes -(2**63 - 1), as in CPython */
+static I sspan(I *lo, I hi, I *st, I n) {
+  I s = *st;
+  if (!s) pys_fail("ValueError: slice step cannot be zero");
+  if (s < -INT64_MAX) *st = s = -INT64_MAX;
+  if (*lo == NONE) *lo = s < 0 ? n - 1 : 0;
+  else if (*lo < 0 && (*lo += n) < 0) *lo = s < 0 ? -1 : 0;
+  else if (*lo >= n) *lo = s < 0 ? n - 1 : n;
+  if (hi == NONE) hi = s < 0 ? -1 : n;
+  else if (hi < 0 && (hi += n) < 0) hi = s < 0 ? -1 : 0;
+  else if (hi >= n) hi = s < 0 ? n - 1 : n;
+  if (s < 0) return hi < *lo ? (*lo - hi - 1) / -s + 1 : 0;
+  return *lo < hi ? (hi - *lo - 1) / s + 1 : 0;
+}
+Str *pys_str_get(Str *s, I i) { return pys_chr((unsigned char)s->s[idx(i, s->len, "IndexError: string index out of range")]); }
+/* bytes: a Str whose bytes are the bytes object's. Its operations are a str's, which work on bytes,
+   but where a bytes item is an int (b[i], iteration), and in their messages and repr(); they have
+   names of their own, so that a str's that comes to work on code points leaves them as they are */
+I pys_bytes_get(Str *s, I i) { return (unsigned char)s->s[idx(i, s->len, "IndexError: index out of range")]; }
+/* the one empty str that an empty slice is, as CPython has one; a 1-byte slice is pys_chr's str of
+   its byte (byte1), as s[i] is, so that the parts of ",,,".split(",") are no new strs. Nothing writes a
+   str in place but what made it (pys_str_iadd's owned str is one an append allocated, _rt.str_new's
+   fill), except hstrd's cached dict_hash, which the bytes determine: str0 is zeroed and writable,
+   as a literal is, and the GC skips it as it does a literal (not in its heap) */
+/* GC_NO_ROOT(str0): static empty string; this union contains no heap pointers. */
+static union { Str s; char b[sizeof(Str) + 1]; } str0;
+static Str *short_slice(Str *s, I lo, I n) { return n ? byte1((unsigned char)s->s[lo]) : &str0.s; }
+Str *pys_str_slice(Str *s, I lo, I hi) {      /* all of s is s itself, as in CPython: s[:], a strip that strips nothing */
+  span(&lo, &hi, s->len);
+  I n = hi - lo;
+  return n == s->len ? s : n < 2 ? short_slice(s, lo, n) : pys_str(s->s + lo, n);
+}
+Str *pys_str_slice_step(Str *s, I lo, I hi, I st) {   /* s[lo:hi:st], over bytes as s[lo:hi] is */
+  I n = sspan(&lo, hi, &st, s->len);
+  if (st == 1 && n == s->len) return s;
+  if (n < 2) return short_slice(s, lo, n);   /* (n = 0: lo, unread, may be past either end) */
+  if (st == 1) return pys_str(s->s + lo, n);
+  Str *r = gc_raw(sizeof(Str) + n + 1); r->len = n; r->dict_hash = 0; r->s[n] = 0;
+  int ascii = 1;
+  for (I i = 0; i < n; i++) {
+    r->s[i] = s->s[lo + i * st];
+    ascii &= (unsigned char)r->s[i] < 128;
+  }
+  r->chars1 = ascii ? n + 1 : 0;
+  return r;
+}
+Str *pys_bytes_slice(Str *s, I lo, I hi) { return pys_str_slice(s, lo, hi); }
+Str *pys_bytes_slice_step(Str *s, I lo, I hi, I st) { return pys_str_slice_step(s, lo, hi, st); }
+/* Public str operations use code points; runtime.py and bytes retain the byte operations
+   above. Keeping len as the byte length preserves allocation, hashing, I/O and _rt's
+   contracts. chars1 caches the logical length; equality with len + 1 gives the byte fast
+   path. UTF-8 surrogates are individual code points, as in Python strings. Invalid raw
+   bytes retain u8char's one-byte fallback until the separate decoding-boundary work. */
+static I ascii_end(const char *p, I i, I n) {   /* the first index from i of a byte >= 128 in p[:n], or n */
+  for (; i + 32 <= n; i += 32) {                 /* (32 bytes at a time, which compilers vectorize) */
+    uint64_t w[4];
+    memcpy(w, p + i, 32);
+    if ((w[0] | w[1] | w[2] | w[3]) & 0x8080808080808080ULL) break;
+  }
+  while (i < n && (unsigned char)p[i] < 128) i++;
+  return i;
+}
+#ifndef BYTESCAN_WORD
+#define BYTESCAN_WORD() ((void)0)
+#endif
+#ifndef BYTESCAN_BYTE
+#define BYTESCAN_BYTE() ((void)0)
+#endif
+static I byte_scan(const char *p, I i, I end, unsigned first, unsigned second, unsigned below) {
+  /* Skip eight bytes only after proving all are ordinary. memcpy permits every alignment
+     and reads only within [i, end); neither a NUL terminator nor allocation padding is read.
+     Refine a matching word in byte order: subtraction can mark neighboring lanes through
+     borrowing, and the same code must work on both little- and big-endian targets. */
+  if (below <= 128 && end - i >= 8) {
+    const uint64_t ones = UINT64_C(0x0101010101010101), highs = UINT64_C(0x8080808080808080);
+    uint64_t a = ones * first, b = ones * second, low = ones * below;
+    do {
+      uint64_t w;
+      memcpy(&w, p + i, sizeof w);
+      BYTESCAN_WORD();
+      uint64_t x = w ^ a, y = w ^ b;
+      if ((((x - ones) & ~x) | ((y - ones) & ~y) | ((w - low) & ~w)) & highs) break;
+      i += 8;
+    } while (end - i >= 8);
+  }
+  while (i < end) {
+    unsigned c = (unsigned char)p[i];
+    BYTESCAN_BYTE();
+    if (c == first || c == second || c < below) break;
+    i++;
+  }
+  return i;
+}
+I pys_bytes_scan(Str *s, I start, I end, I first, I second, I below) {
+  if (start < 0 || end < start) pys_fail("IndexError: byte scan out of range");
+  if (!s) pys_fail("TypeError: object of type 'NoneType' has no len()");
+  if (end > s->len) pys_fail("IndexError: byte scan out of range");
+  if ((uint64_t)first > 255 || (uint64_t)second > 255 || (uint64_t)below > 256)
+    pys_fail("ValueError: invalid byte scan predicate");
+  return byte_scan(s->s, start, end, (unsigned)first, (unsigned)second, (unsigned)below);
+}
+I pys_text_len(Str *s) {
+  if (!s->chars1) {
+    I n = 0, cp, i = 0;
+    while (i < s->len) {              /* an ASCII run is a code point per byte, as u8char reads it */
+      I j = ascii_end(s->s, i, s->len);
+      n += j - i;
+      i = j;
+      if (i < s->len) { i += u8char(s->s + i, s->len - i, &cp); n++; }
+    }
+    s->chars1 = n + 1;
+  }
+  return s->chars1 - 1;
+}
+static TextHint *text_hint_slot(Str *s) {
+  uintptr_t p = (uintptr_t)s;
+  return &text_hints[((p >> 4) ^ (p >> 12) ^ (p >> 20)) & 63];
+}
+static TextHint *text_hint(Str *s) {
+  TextHint *h = text_hint_slot(s);
+  if (h->s != s) *h = (TextHint){s, 0, 0};
+  return h;
+}
+static I text_before(Str *s, I at) {   /* preceding character, for a valid nonzero byte boundary */
+  if ((unsigned char)s->s[at - 1] < 128) return at - 1;
+  I start = at - 1, cp;
+  while (start > 0 && at - start < 4 && (s->s[start] & 0xC0) == 0x80) start--;
+  return u8char(s->s + start, at - start, &cp) == at - start ? start : at - 1;
+}
+static I text_offset(Str *s, I n) {   /* byte offset of code point n, with 0 <= n <= text_len(s) */
+  if (s->chars1 == s->len + 1 || !n) return n;
+  I len = s->chars1 - 1;
+  if (n == len) return s->len;   /* default search/slice endpoints must not evict an interior hint */
+  TextHint *h = text_hint(s);
+  I at = h->byte, point = h->point, cp, distance = point > n ? point - n : n - point;
+  if (n < distance) { at = point = 0; distance = n; }
+  if (len - n < distance) { at = s->len; point = len; }
+  while (point < n) { TEXT_PROBE(); at += u8char(s->s + at, s->len - at, &cp); point++; }
+  while (point > n) { TEXT_PROBE(); at = text_before(s, at); point--; }
+  h->byte = at; h->point = point; return at;
+}
+static I text_index(Str *s, I at) {   /* code-point index at a byte boundary (round up for raw invalid needles) */
+  if (s->chars1 == s->len + 1 || !at) return at;
+  I len = s->chars1 - 1;
+  if (at == s->len) return len;
+  TextHint *h = text_hint(s);
+  I byte = h->byte, point = h->point, cp, distance = byte > at ? byte - at : at - byte;
+  if (at < distance) { byte = point = 0; distance = at; }
+  if (s->len - at < distance) { byte = s->len; point = len; }
+  while (byte < at) { TEXT_PROBE(); byte += u8char(s->s + byte, s->len - byte, &cp); point++; }
+  while (byte > at) {
+    TEXT_PROBE(); I before = text_before(s, byte);
+    if (before < at) break;
+    byte = before; point--;
+  }
+  h->byte = byte; h->point = point; return point;
+}
+Str *pys_text_chr(I c) {
+  if (c < 0 || c > 0x10FFFF) pys_fail("ValueError: chr() arg not in range(0x110000)");
+  char b[4];
+  Str *s = c < 128 ? byte1((unsigned char)c) : pys_str(b, u8enc(b, c));
+  s->chars1 = 2; return s;
+}
+Str *pys_text_get(Str *s, I i) {
+  i = idx(i, pys_text_len(s), "IndexError: string index out of range");
+  if (s->chars1 == s->len + 1) return byte1((unsigned char)s->s[i]);
+  I at = text_offset(s, i), cp, k = u8char(s->s + at, s->len - at, &cp);
+  Str *r = k == 1 ? byte1((unsigned char)s->s[at]) : pys_str(s->s + at, k);
+  r->chars1 = 2; return r;
+}
+I pys_text_ord_at(Str *s, I i) {
+  i = idx(i, pys_text_len(s), "IndexError: string index out of range");
+  if (s->chars1 == s->len + 1) return (unsigned char)s->s[i];
+  I at = text_offset(s, i), cp;
+  u8char(s->s + at, s->len - at, &cp);
+  return cp;
+}
+Str *pys_text_at(Str *s, I at) {   /* linear iteration's byte cursor, always at a character boundary */
+  if (at < 0 || at >= s->len) pys_fail("IndexError: string index out of range");
+  if ((unsigned char)s->s[at] < 128) return byte1((unsigned char)s->s[at]);
+  I cp, k = u8char(s->s + at, s->len - at, &cp);
+  Str *r = k == 1 ? byte1((unsigned char)s->s[at]) : pys_str(s->s + at, k);
+  r->chars1 = 2; return r;
+}
+I pys_text_next(Str *s, I at) {
+  if (at < 0 || at >= s->len) pys_fail("IndexError: string index out of range");
+  if ((unsigned char)s->s[at] < 128) return at + 1;
+  I cp;
+  return at + u8char(s->s + at, s->len - at, &cp);
+}
+I pys_text_prev(Str *s, I at) {
+  if (!at) return -1;   /* exhausted reverse iterator */
+  if (at < 0 || at > s->len) pys_fail("IndexError: string index out of range");
+  return text_before(s, at);
+}
+Str *pys_text_slice(Str *s, I lo, I hi) {
+  span(&lo, &hi, pys_text_len(s));
+  Str *r = pys_str_slice(s, text_offset(s, lo), text_offset(s, hi));
+  r->chars1 = hi - lo + 1; return r;
+}
+static int text_selected(I i, I lo, I st, I n) {
+  if (st > 0) return i >= lo && (i - lo) / st < n && (i - lo) % st == 0;
+  return i <= lo && (lo - i) / -st < n && (lo - i) % -st == 0;
+}
+Str *pys_text_slice_step(Str *s, I lo, I hi, I st) {
+  I len = pys_text_len(s), n = sspan(&lo, hi, &st, len);
+  if (!n) return &str0.s;
+  if (st == 1) return pys_text_slice(s, lo, lo + n);
+  if (len == s->len) return pys_str_slice_step(s, lo, hi, st);
+  /* Two linear passes: size the exact byte buffer, then copy selected characters.
+     A negative step fills backwards, without reversing any UTF-8 sequence. */
+  I m = 0, cp, k, chars1 = n + 1;
+  for (I at = 0, i = 0; at < s->len; at += k, i++) {
+    k = u8char(s->s + at, s->len - at, &cp);
+    if (text_selected(i, lo, st, n)) {
+      m += k;
+      /* Raw one-byte fallbacks can join into a valid UTF-8 sequence after slicing.
+         Only complete characters preserve the selected count at the new seams. */
+      if (k == 1 && (unsigned char)s->s[at] >= 128) chars1 = 0;
+    }
+  }
+  Str *r = pys_alloc_atomic(sizeof(Str) + m + 1); r->len = m; r->chars1 = chars1;
+  I out = st > 0 ? 0 : m;
+  for (I at = 0, i = 0; at < s->len; at += k, i++) {
+    k = u8char(s->s + at, s->len - at, &cp);
+    if (text_selected(i, lo, st, n)) {
+      if (st < 0) out -= k;
+      memcpy(r->s + out, s->s + at, k);
+      if (st > 0) out += k;
+    }
+  }
+  return r;
+}
+static I text_cat_count(I chars1, I len, Str *b) {
+  if (!len) return b->len ? b->chars1 : 1;
+  if (!b->len) return chars1;
+  /* A leading continuation byte can complete an invalid raw sequence at the seam.
+     Otherwise cached counts add, including Unicode and the common ASCII append. */
+  return chars1 && b->chars1 && (b->s[0] & 0xC0) != 0x80 ? chars1 + b->chars1 - 1 : 0;
+}
+Str *pys_str_add(Str *a, Str *b) {
+  Str *s = gc_raw(sizeof(Str) + a->len + b->len + 1);
+  s->len = a->len + b->len; s->dict_hash = 0; s->chars1 = text_cat_count(a->chars1, a->len, b);
+  memcpy(s->s, a->s, a->len); memcpy(s->s + a->len, b->s, b->len); s->s[s->len] = 0; return s;
+}
+/* s += t of a str local (Gen.str_append). owned: an append made s and nothing else holds it (nor
+   hashed it: dict_hash is 0), so t goes into s's own memory while it has room (gc_seg). Else a new
+   str of the size needed, which a small object's slot rounds up. Each copy of an owned str then
+   takes a larger size class, and past 136 bytes they grow by a seventh to a quarter: appending in a
+   loop is linear, as CPython's resizing in place of a str that one reference holds makes it, and a
+   str that appends build and a program keeps takes no more memory. A large object (8,200 bytes or
+   more) has no slack (#567). The first large copy of an owned str fits exactly, as most strs that
+   cross 8,200 bytes stop soon after, and is marked (Seg.used); the copy of a marked owned str gets
+   room for as much again, so one that keeps growing is copied log(n) times, and the collector
+   gives back the room of one that a program keeps (str_trim). A copy of a marked str that is not
+   owned (a read may have kept it) fits exactly and stays marked, so the next append's copy has
+   room: a loop that reads the local now and then copies it twice per read, as it would without
+   the mark. The copy is out of line, and t is not passed to it: LLVM inlines the rest, and a
+   constant t stays one */
+__attribute__((noinline)) static Str *str_grow(Str *s, I m, I owned) {   /* s in a new str of m bytes */
+  Seg *g = gc_find(s);
+  int big = g && g->large && g->used;
+  Str *r = gc_raw(owned && big ? 2 * m : m);   /* (pys_str_iadd stores its chars1, bytes and NUL) */
+  if (m >= SMALL && (owned || big)) gc_seg(r)->used = 1;
+  r->len = s->len; r->dict_hash = 0; memcpy(r->s, s->s, s->len); return r;
+}
+Str *pys_str_iadd(Str *s, Str *t, I owned) {
+  I n = s->len + t->len, m = (I)sizeof(Str) + n + 1, chars1 = text_cat_count(s->chars1, s->len, t);
+  if (!owned || m > gc_seg(s)->size - 1) s = str_grow(s, m, owned);
+  else if (s->chars1 != s->len + 1) {
+    TextHint *hint = text_hint_slot(s);
+    if (hint->s == s) hint->s = 0;
+  }
+  memcpy(s->s + s->len, t->s, t->len); s->s[n] = 0; s->len = n; s->chars1 = chars1; return s;
+}
+/* the first n (3 to 8) of a..h as one str, each copied once: the pieces of an f-string or a % format.
+   The loops run eight times, so they unroll where LLVM inlines a call (n is a constant there) */
+Str *pys_str_cat(I n, Str *a, Str *b, Str *c, Str *d, Str *e, Str *f, Str *g, Str *h) {
+  Str *p[8] = {a, b, c, d, e, f, g, h};
+  I len = 0, chars1 = 1;
+  for (int i = 0; i < 8; i++) if (i < n) { chars1 = text_cat_count(chars1, len, p[i]); len += p[i]->len; }
+  Str *s = gc_raw(sizeof(Str) + len + 1); s->len = len; s->dict_hash = 0; s->chars1 = chars1;
+  char *w = s->s;
+  for (int i = 0; i < 8; i++) if (i < n) { memcpy(w, p[i]->s, p[i]->len); w += p[i]->len; }
+  *w = 0; return s;
+}
+Str *pys_str_mul(Str *a, I n) {       /* as CPython's _PyBytes_Repeat: one byte is a memset, else the copied
+                                         prefix doubles, log2(n) memcpys rather than n */
+  if (n < 0 || !a->len) n = 0;
+  if (n && a->len > INT64_MAX / n) pys_fail("OverflowError: repeated string is too long");
+  if (a->len * n > INT64_MAX - 64) pys_fail("MemoryError");
+  I m = a->len * n, k = a->len, c;
+  Str *s = gc_raw(sizeof(Str) + m + 1); s->len = m; s->dict_hash = 0; s->s[m] = 0;
+  s->chars1 = !n ? 1 : a->chars1 && (n == 1 || (a->s[0] & 0xC0) != 0x80) ? (a->chars1 - 1) * n + 1 : 0;
+  if (k == 1) memset(s->s, a->s[0], m);
+  else if (m) {
+    memcpy(s->s, a->s, k);
+    for (; k < m; k += c) { c = k < m - k ? k : m - k; memcpy(s->s + k, s->s, c); }
+  }
+  return s;
+}
+Str *pys_bytes_add(Str *a, Str *b) { return pys_str_add(a, b); }
+Str *pys_bytes_mul(Str *a, I n) { return pys_str_mul(a, n); }
+I pys_str_eq(Str *a, Str *b) { return a == b || (a->len == b->len && !memcmp(a->s, b->s, a->len)); }
+I pys_str_cmp(Str *a, Str *b) {
+  int c = memcmp(a->s, b->s, a->len < b->len ? a->len : b->len);
+  return c ? c : (a->len > b->len) - (a->len < b->len);
+}
+/* the str methods are in runtime.py */
+I pys_str_find(Str *h, Str *n, I st, I en);
+I pys_str_rfind(Str *h, Str *n, I st, I en);
+I pys_str_index(Str *h, Str *n, I st, I en);
+I pys_str_rindex(Str *h, Str *n, I st, I en);
+I pys_str_count(Str *h, Str *n, I st, I en);
+I pys_str_contains(Str *h, Str *n);
+I pys_bytes_has(Str *b, I x);
+I pys_bytes_contains(Str *h, Str *n);
+I pys_str_startswith(Str *s, Str *p, I st, I en);
+I pys_str_endswith(Str *s, Str *p, I st, I en);
+static int text_bounds(Str *s, I *st, I *en) {
+  I n = pys_text_len(s);
+  if (*st < 0 && (*st += n) < 0) *st = 0;
+  if (*en > n) *en = n;
+  else if (*en < 0 && (*en += n) < 0) *en = 0;
+  return *st <= *en;   /* unlike slices, a start past the end does not match an empty needle */
+}
+/* start 0 and an end at or past the byte length, which no code-point count exceeds: the whole
+   str, whose byte bounds text_bounds and text_offset would give too, without counting the code
+   points of a receiver that no operation has counted (s.upper().startswith("L"), #1301). The
+   other bounds take an out-of-line path, so that LLVM inlines a call with the default bounds
+   (0 and INT64_MAX), whose test then folds away */
+static int text_whole(Str *s, I st, I en) { return st == 0 && en >= s->len; }
+__attribute__((noinline)) static I text_tail(Str *s, Str *p, I st, I en, int end) {
+  if (!text_bounds(s, &st, &en)) return 0;
+  st = text_offset(s, st); en = text_offset(s, en);
+  return end ? pys_str_endswith(s, p, st, en) : pys_str_startswith(s, p, st, en);
+}
+I pys_text_find(Str *s, Str *p, I st, I en) {
+  if (!text_bounds(s, &st, &en)) return -1;
+  I at = pys_str_find(s, p, text_offset(s, st), text_offset(s, en));
+  return at < 0 ? -1 : text_index(s, at);
+}
+I pys_text_rfind(Str *s, Str *p, I st, I en) {
+  if (!text_bounds(s, &st, &en)) return -1;
+  I at = pys_str_rfind(s, p, text_offset(s, st), text_offset(s, en));
+  return at < 0 ? -1 : text_index(s, at);
+}
+I pys_text_index(Str *s, Str *p, I st, I en) {
+  I at = pys_text_find(s, p, st, en);
+  if (at < 0) pys_fail("ValueError: substring not found");
+  return at;
+}
+I pys_text_rindex(Str *s, Str *p, I st, I en) {
+  I at = pys_text_rfind(s, p, st, en);
+  if (at < 0) pys_fail("ValueError: substring not found");
+  return at;
+}
+I pys_text_count(Str *s, Str *p, I st, I en) {
+  if (!text_bounds(s, &st, &en)) return 0;
+  return !p->len ? en - st + 1 : pys_str_count(s, p, text_offset(s, st), text_offset(s, en));
+}
+I pys_text_startswith(Str *s, Str *p, I st, I en) {
+  return text_whole(s, st, en) ? pys_str_startswith(s, p, 0, s->len) : text_tail(s, p, st, en, 0);
+}
+I pys_text_endswith(Str *s, Str *p, I st, I en) {
+  return text_whole(s, st, en) ? pys_str_endswith(s, p, 0, s->len) : text_tail(s, p, st, en, 1);
+}
+Str *pys_str_replace(Str *s, Str *a, Str *b);
+Str *pys_str_replace_count(Str *s, Str *a, Str *b, I count);
+Str *pys_str_strip(Str *s, Str *cs);
+Str *pys_str_lstrip(Str *s, Str *cs);
+Str *pys_str_rstrip(Str *s, Str *cs);
+I pys_str_isdigit(Str *s);
+I pys_str_isalpha(Str *s);
+I pys_str_isalnum(Str *s);
+I pys_str_isspace(Str *s);
+I pys_str_isupper(Str *s);
+I pys_str_islower(Str *s);
+Str *pys_str_upper(Str *s);
+Str *pys_str_lower(Str *s);
+Str *pys_str_ljust(Str *s, I w, Str *fill);
+Str *pys_str_rjust(Str *s, I w, Str *fill);
+Str *pys_str_center(Str *s, I w, Str *fill);
+Str *pys_str_zfill(Str *s, I w);
+void **pys_str_partition(Str *s, Str *sep);
+void **pys_str_rpartition(Str *s, Str *sep);
+Str *pys_str_removeprefix(Str *s, Str *p);
+Str *pys_str_removesuffix(Str *s, Str *p);
+Str *pys_str_swapcase(Str *s);
+Str *pys_str_capitalize(Str *s);
+Str *pys_str_title(Str *s);
+I pys_str_istitle(Str *s);
+I pys_str_isascii(Str *s);
+I pys_str_isdecimal(Str *s);
+I pys_str_isnumeric(Str *s);
+Str *pys_str_casefold(Str *s);
+Str *pys_str_expandtabs(Str *s, I size);
+Str *pys_str_join(Str *sep, List *l);
+List *pys_str_split(Str *s, Str *sep, I maxsplit);
+List *pys_str_rsplit(Str *s, Str *sep, I maxsplit);
+List *pys_str_splitlines(Str *s, I keep);
+Str *pys_str_int(I v) { char b[32]; return pys_str(b, snprintf(b, 32, "%lld", (long long)v)); }
+Str *pys_str_float(double d) {               /* Python repr(): shortest round-trip digits */
+  char b[40], dig[24], o[64], *w = o;
+  if (isnan(d)) return cstr("nan");
+  if (isinf(d)) return cstr(d > 0 ? "inf" : "-inf");
+  if (d == 0) return cstr(signbit(d) ? "-0.0" : "0.0");
+  /* "-D.DDDE-X": the fewest digits that read back as d, and of those the closest to d, as CPython's
+     dtoa (mode 0) gives them. (Not the first p at which the nearest p-digit decimal reads back: at
+     a power of two, whose lower neighbour is twice as close as its upper one, that decimal can
+     fail where another of p digits reads back) */
+  b[d2s_buffered_n(d, b)] = 0;
+  int nd = 0, neg = b[0] == '-';
+  char *q = b + neg;
+  for (; *q != 'E'; q++) if (*q != '.') dig[nd++] = *q;
+  int e = atoi(q + 1) + 1;                      /* position of the decimal point */
+  while (nd > 1 && dig[nd - 1] == '0') nd--;
+  if (neg) *w++ = '-';
+  if (e > -4 && e <= 16) {
+    if (e <= 0) { *w++ = '0'; *w++ = '.'; for (int i = 0; i < -e; i++) *w++ = '0'; memcpy(w, dig, nd); w += nd; }
+    else if (e >= nd) { memcpy(w, dig, nd); w += nd; for (int i = nd; i < e; i++) *w++ = '0'; *w++ = '.'; *w++ = '0'; }
+    else { memcpy(w, dig, e); w += e; *w++ = '.'; memcpy(w, dig + e, nd - e); w += nd - e; }
+  } else {
+    *w++ = dig[0];
+    if (nd > 1) { *w++ = '.'; memcpy(w, dig + 1, nd - 1); w += nd - 1; }
+    w += sprintf(w, "e%c%02d", e - 1 < 0 ? '-' : '+', abs(e - 1));
+  }
+  return pys_str(o, w - o);
+}
+Str *pys_float_hex(double d) {                /* float.hex(): CPython spells zero 0x0.0p+0, NaN unsigned */
+  char b[40];
+  if (isnan(d)) return cstr("nan");
+  if (d == 0) return cstr(signbit(d) ? "-0x0.0p+0" : "0x0.0p+0");
+  return pys_str(b, fsnprintf(b, 40, "%.13a", d));
+}
+I pys_float_is_integer(double d) { return isfinite(d) && d == floor(d); }
+/* int() and float() of a string follow Python's grammar (whitespace around the number, a sign,
+   digits with single underscores between them, 0x/0o/0b prefixes), not strtoll/strtod's */
+static void repr_str(Buf *b, Str *s);
+static _Noreturn void failf(const char *f, ...);
+/* Compile-time opt-in audit instrumentation calls this at byte-oriented str boundaries.
+   No header/cache change or default-path work: scan only audit builds; runtime.py's own
+   intentional byte operations are not instrumented. This is conservative, not UTF-8 validation. */
+void pys_str_audit(Str *s, Str *op) {
+  for (I i = 0; i < s->len; i++) if ((unsigned char)s->s[i] >= 128)
+    failf("NotImplementedError: Unicode audit: %s on non-ASCII str uses byte/ASCII semantics", op->s);
+}
+I pys_f2i(double d);
+static _Noreturn void badlit(const char *what, I base, Str *s) {   /* int() (base >= 0) shows at most 200 */
+  Buf b = {0}; char t[64]; I r, k = 0, cp;                          /* characters of the repr (%.200R) */
+  put(&b, what, strlen(what));
+  if (base >= 0) put(&b, t, snprintf(t, 64, " with base %lld", (long long)base));
+  put(&b, ": ", 2); r = b.n; repr_str(&b, s);
+  if (base >= 0) for (I i = r; i < b.n; i += u8char(b.p + i, b.n - i, &cp)) if (k++ == 200) { b.n = i; break; }
+  put(&b, "", 1); pys_fail(b.p);
+}
+static int digitv(char c) { return c >= '0' && c <= '9' ? c - '0' : (c | 32) >= 'a' && (c | 32) <= 'z' ? (c | 32) - 'a' + 10 : 99; }
+static int aws(unsigned char c) { return c == ' ' || (c >= 9 && c <= 13); }   /* int()/float() strip only these */
+static const int32_t decruns[] = {      /* Unicode 15.1 (CPython 3.13): first of each run of decimal digits 0-9 */
+  0x660, 0x6f0, 0x7c0, 0x966, 0x9e6, 0xa66, 0xae6, 0xb66, 0xbe6, 0xc66, 0xce6, 0xd66,
+  0xde6, 0xe50, 0xed0, 0xf20, 0x1040, 0x1090, 0x17e0, 0x1810, 0x1946, 0x19d0, 0x1a80, 0x1a90,
+  0x1b50, 0x1bb0, 0x1c40, 0x1c50, 0xa620, 0xa8d0, 0xa900, 0xa9d0, 0xa9f0, 0xaa50, 0xabf0, 0xff10,
+  0x104a0, 0x10d30, 0x11066, 0x110f0, 0x11136, 0x111d0, 0x112f0, 0x11450, 0x114d0, 0x11650, 0x116c0, 0x11730,
+  0x118e0, 0x11950, 0x11c50, 0x11d50, 0x11da0, 0x11f50, 0x16a60, 0x16ac0, 0x16b50, 0x1d7ce, 0x1d7d8, 0x1d7e2,
+  0x1d7ec, 0x1d7f6, 0x1e140, 0x1e2f0, 0x1e4f0, 0x1e950, 0x1fbf0,
+};
+static int aspace(I c) { return c == ' ' || (c >= 9 && c <= 13) || (c >= 28 && c <= 31); }
+static int uspace(I cp) {              /* str.isspace() (Unicode 15.1, CPython 3.13): ASCII's and these (runtime.py's uspace) */
+  return cp < 0x80 ? aspace(cp) : cp == 0x85 || cp == 0xA0 || cp == 0x1680 || (cp >= 0x2000 && cp <= 0x200A) ||
+                                  cp == 0x2028 || cp == 0x2029 || cp == 0x202F || cp == 0x205F || cp == 0x3000;
+}
+static Str *asciinum(Str *s) {         /* CPython's first step for int()/float() of a non-ASCII string: a
+                                          Unicode space becomes ' ', a decimal digit its ASCII digit, and
+                                          any other character '?', where the text then ends */
+  I i = 0;
+  while (i < s->len && !(s->s[i] & 0x80)) i++;
+  if (i == s->len) return s;
+  Buf b = {0}; put(&b, s->s, i);
+  while (i < s->len) {                 /* the characters u8char sees: a lone byte is chr() of it, as in CPython */
+    I cp, n = u8char(s->s + i, s->len - i, &cp);
+    if (cp < 0x80) { put(&b, s->s + i++, 1); continue; }
+    char o = '?';
+    if (uspace(cp)) o = ' ';
+    for (I r = 0; o == '?' && r < (I)(sizeof decruns / sizeof *decruns); r++)
+      if (cp >= decruns[r] && cp < decruns[r] + 10) o = (char)('0' + cp - decruns[r]);
+    put(&b, &o, 1);
+    if (o == '?') break;
+    i += n;
+  }
+  return done(&b);
+}
+I pys_int_str(Str *s, I base) {               /* CPython's PyLong_FromString on the ASCII form, checks in its order */
+  if (base != 0 && (base < 2 || base > 36)) pys_fail("ValueError: int() base must be >= 2 and <= 36, or 0");
+  Str *t = asciinum(s);
+  const char *p = t->s, *e = t->s + t->len, *q; I b0 = base, nd = 0;
+  while (p < e && aws(*p)) p++;
+  while (e > p && aws(e[-1])) e--;
+  int neg = 0, octal = 0, prev = 0;            /* octal: base 0 and a leading 0, which only 0 may have */
+  if (p < e && (*p == '+' || *p == '-')) neg = *p++ == '-';
+  if (e - p >= 2 && p[0] == '0') {
+    int pb = (p[1] | 32) == 'x' ? 16 : (p[1] | 32) == 'o' ? 8 : (p[1] | 32) == 'b' ? 2 : 0;
+    if (pb && (base == 0 || base == pb)) { base = pb; p += 2; if (p < e && *p == '_') p++; }
+  }
+  if (base == 0) { base = 10; octal = p < e && *p == '0'; }
+  uint64_t u = 0, lim = neg ? (uint64_t)1 << 63 : ((uint64_t)1 << 63) - 1; int ovf = 0;
+  for (q = p; q < e && (digitv(*q) < base || (*q == '_' && q > p && prev != '_')); prev = *q++) {
+    if (*q == '_') continue;                   /* digits, with single underscores between them */
+    int dv = digitv(*q); nd++;
+    if (u > (lim - dv) / base) ovf = 1; else u = u * base + dv;
+  }
+  while (q < e && aws(*q)) q++;                /* whitespace before an embedded NUL, where CPython's C string ends */
+  if (!nd || prev == '_' || (q < e && *q)) badlit("ValueError: invalid literal for int()", b0, s);
+  if ((base & (base - 1)) && nd > 4300)        /* CPython's limit for its quadratic conversion */
+    failf("ValueError: Exceeds the limit (4300 digits) for integer string conversion: value has %lld digits; "
+          "use sys.set_int_max_str_digits() to increase the limit", (long long)nd);
+  if (q < e || (octal && u)) badlit("ValueError: invalid literal for int()", b0, s);
+  if (ovf) pys_fail("OverflowError: int() result does not fit in 64 bits");
+  return neg ? (I)(0 - u) : (I)u;
+}
+/* Explicit arbitrary-precision integers; ordinary int keeps its checked i64 ABI. */
+#include "/workspace/scratch/1a96cd11db0d/lean-contracts/mpz/mpz.c"
+
+double pys_float_str(Str *s) {
+  Str *t = asciinum(s);
+  const char *p = t->s, *e = t->s + t->len;
+  while (p < e && aws(*p)) p++;
+  while (e > p && aws(e[-1])) e--;
+  const char *q = p;
+  if (q < e && (*q == '+' || *q == '-')) q++;
+  I n = e - q;
+  int special = (n == 3 && !strncasecmp(q, "inf", 3)) ||
+                (n == 8 && !strncasecmp(q, "infinity", 8)) ||
+                (n == 3 && !strncasecmp(q, "nan", 3));
+  int digits = 0, prev = 0, underscores = 0;
+  /* Preserve Python's lexical checks before asking libc to validate decimal
+     syntax. In particular, reject NUL, hex floats and misplaced underscores. */
+  if (!special) for (; q < e; q++) {
+    char c = *q;
+    if (c >= '0' && c <= '9') { digits = 1; prev = 1; continue; }
+    if (c == '_' && prev && q + 1 < e && q[1] >= '0' && q[1] <= '9') {
+      prev = 0; underscores = 1; continue;
+    }
+    if (c == '.' || c == 'e' || c == 'E' ||
+        ((c == '+' || c == '-') && q > p && (q[-1] | 32) == 'e')) { prev = 0; continue; }
+    badlit("ValueError: could not convert string to float", -1, s);
+  }
+  if (!special && !digits) badlit("ValueError: could not convert string to float", -1, s);
+  const char *parse = p, *limit = e;
+  Buf b = {0};
+  if (underscores) {
+    /* Filtering remains necessary, but reserve once instead of growing for
+       individual characters. Never pass the unfiltered source to strtod. */
+    b.cap = e - p + 1; b.p = gc_raw(b.cap);
+    for (q = p; q < e; q++) if (*q != '_') b.p[b.n++] = *q;
+    b.p[b.n] = 0;
+    parse = b.p; limit = b.p + b.n;
+  } else if (e != t->s + t->len) {
+    /* A trimmed end is not a terminator. Copy exactly the validated span so
+       strtod cannot consume a suffix beyond its logical end. */
+    put(&b, p, e - p); put(&b, "", 1);
+    parse = b.p; limit = b.p + b.n - 1;
+  }
+  /* Direct only when e is the real string terminator. All bytes up to it were
+     validated above; Str owns that terminator even for embedded/sliced text. */
+  char *end; double v = fstrtod(parse, &end);
+  if (end != limit) badlit("ValueError: could not convert string to float", -1, s);
+  return v;
+}
+
+/* ---------- arithmetic with Python semantics ----------
+   ints are 64-bit: a result CPython would represent as a big int raises OverflowError */
+#define ZDE "ZeroDivisionError: integer division or modulo by zero"
+#define OVF "OverflowError: integer result does not fit in 64 bits"
+I pys_floordiv(I a, I b) {
+  if (!b) pys_fail(ZDE);
+  if (b == -1) { if (a == INT64_MIN) pys_fail(OVF); return -a; }
+  I q = a / b; return (a % b && (a < 0) != (b < 0)) ? q - 1 : q;
+}
+I pys_mod(I a, I b) {
+  if (!b) pys_fail("ZeroDivisionError: integer modulo by zero");
+  if (b == -1) return 0;
+  I r = a % b; return (r && (r < 0) != (b < 0)) ? r + b : r;
+}
+I pys_pow(I a, I b);
+I pys_powmod(I a, I b, I m) {                 /* pow(a, b, m) as CPython's long_pow, in 128 bits: products cannot overflow */
+  if (!m) pys_fail("ValueError: pow() 3rd argument cannot be 0");
+  __int128 n = m < 0 ? -(__int128)m : m, x = a, r = 1;
+  if (n == 1) return 0;
+  if (b < 0) {                                 /* a negative exponent: the power of a's inverse modulo |m| */
+    __int128 p = x, q = n, s = 1, t = 0;       /* long_invmod: Euclid with floor division */
+    while (q) {
+      __int128 d = p / q - (p % q && (p < 0) != (q < 0)), u = p - d * q, w = s - d * t;
+      p = q; q = u; s = t; t = w;
+    }
+    if (p != 1) pys_fail("ValueError: base is not invertible for the given modulus");
+    x = s;
+  }
+  x %= n;
+  if (x < 0) x += n;
+  for (unsigned __int128 e = b < 0 ? -(__int128)b : b; e; e >>= 1) { if (e & 1) r = r * x % n; x = x * x % n; }
+  return (I)(m < 0 && r ? r - n : r);          /* the result has the sign of m */
+}
+I pys_shl(I a, I b) {
+  if (b < 0) pys_fail("ValueError: negative shift count");
+  if (!a) return 0;
+  I r = b > 63 ? 0 : (I)((uint64_t)a << b);
+  if (b > 63 || r >> b != a) pys_fail(OVF);
+  return r;
+}
+I pys_shr(I a, I b) { if (b < 0) pys_fail("ValueError: negative shift count"); return a >> (b > 63 ? 63 : b); }
+I pys_int_bit_length(I a) {                  /* int.bit_length() and bit_count() count the bits of |a|: 2**63 for -2**63 */
+  uint64_t x = a < 0 ? 0 - (uint64_t)a : (uint64_t)a;
+  return x ? 64 - __builtin_clzll(x) : 0;    /* (clz(0) is undefined) */
+}
+I pys_int_bit_count(I a) { return __builtin_popcountll(a < 0 ? 0 - (uint64_t)a : (uint64_t)a); }
+double pys_fdiv(double a, double b) { if (b == 0) pys_fail("ZeroDivisionError: float division by zero"); return a / b; }
+double pys_idiv(I a, I b) {                  /* int / int, rounded once like CPython's true division */
+  if (!b) pys_fail("ZeroDivisionError: division by zero");
+  uint64_t x = a < 0 ? 0 - (uint64_t)a : (uint64_t)a, y = b < 0 ? 0 - (uint64_t)b : (uint64_t)b;
+  if (!x || (x <= (1ULL << 53) && y <= (1ULL << 53))) return (double)a / (double)b;   /* both exact: one rounding; 0 / b is a signed 0 (and clz(0) below is undefined) */
+  int k = 55 + (63 - __builtin_clzll(y)) - (63 - __builtin_clzll(x)); if (k < 0) k = 0;
+  unsigned __int128 num = (unsigned __int128)x << k, q = num / y; int sticky = num % y != 0;
+  double r = ldexp((double)(uint64_t)(q | sticky), -k);   /* q has 55+ bits: the sticky bit makes the conversion round once */
+  return (a < 0) != (b < 0) ? -r : r;
+}
+I pys_cmp_if(I i, double d) {                  /* exact compare of an int with a float: -1, 0, 1, or 2 if unordered */
+  if (isnan(d)) return 2;
+  if (d >= 9223372036854775808.0) return -1;
+  if (d < -9223372036854775808.0) return 1;
+  double t = trunc(d); I j = (I)t;
+  if (i != j) return i < j ? -1 : 1;
+  return d > t ? -1 : d < t ? 1 : 0;
+}
+/* ---------- promoting ints (# pystachy: python-int, docs/python-int.md) ----------
+   An int of a module that opts in is two words, {lo, hi}: hi is NULL and lo the value where it
+   fits in 64 bits; otherwise hi is the value's immutable Mpz, which never fits, and lo is 0.
+   Compiled code does 64-bit operands and results inline and calls these for the rest. Every
+   result is demoted where it fits, so a value has one representation: values whose hi is NULL
+   are equal where their lo are, and a value with an Mpz never equals one without. */
+typedef struct { I lo; void *hi; } Big;
+typedef struct Dyn Dyn;
+void *pys_dyn_big_ptr(Dyn *x);
+static Big big_small(I v) { Big r = {v, NULL}; return r; }
+static Big big_of(Mpz *m) {                    /* m's value, demoted where it fits */
+  I n = zn(m);
+  if (n < 3 || (n == 3 && m->d[2] < 16)) {     /* at most 64 bits of magnitude */
+    uint64_t u = 0;
+    for (I i = n; i; i--) u = (u << 30) | m->d[i - 1];
+    if (m->size >= 0 && u <= INT64_MAX) return big_small((I)u);
+    if (m->size < 0 && u <= UINT64_C(1) << 63) return big_small((I)(0 - u));
+  }
+  Big r = {0, m}; return r;
+}
+static Big big_wide(__int128 v) {              /* an exact 128-bit result of two 64-bit operands */
+  if (v >= INT64_MIN && v <= INT64_MAX) return big_small((I)v);
+  unsigned __int128 u = v < 0 ? -(unsigned __int128)v : (unsigned __int128)v; I n = 0;
+  Mpz *m = zalloc(5);                          /* 2^127 has 128 bits: five 30-bit digits */
+  for (; u; u >>= 30) m->d[n++] = (uint32_t)(u & 0x3FFFFFFF);
+  m->size = v < 0 ? -n : n; Big r = {0, m}; return r;
+}
+/* room in the caller's frame for the Mpz of a value that fits (three 30-bit digits hold 64 bits),
+   whose size and digits are written and read as the union's Mpz */
+typedef union { Mpz m; uint64_t words[3]; } MpzTmp;
+/* a value as an Mpz: its own, or one that fits written into tmp. The pys_mpz_* functions only read
+   their operands and return fresh values or the shared zero (a shift by 0 returns its operand,
+   which big_of then demotes), so none of tmp outlives the call that made it */
+static Mpz *big_mpz(I lo, void *hi, MpzTmp *tmp) {
+  if (hi) return hi;
+  Mpz *t = &tmp->m; uint64_t u = lo < 0 ? 0 - (uint64_t)lo : (uint64_t)lo; I n = 0;
+  for (; u; u >>= 30) t->d[n++] = (uint32_t)(u & 0x3FFFFFFF);
+  t->size = lo < 0 ? -n : n; return t;
+}
+static int big_pow64(I a, I b, I *out) {       /* a ** b for b >= 0, where it fits in 64 bits */
+  I r = 1, x = a;
+  if (a == 0 || a == 1) { *out = b ? a : 1; return 1; }
+  if (a == -1) { *out = b & 1 ? -1 : 1; return 1; }
+  for (;;) {                                   /* |a| >= 2: past 63 steps it no longer fits */
+    if ((b & 1) && __builtin_mul_overflow(r, x, &r)) return 0;
+    if (!(b >>= 1)) { *out = r; return 1; }
+    if (__builtin_mul_overflow(x, x, &x)) return 0;
+  }
+}
+/* a op b; op is pys_mpz_binop's 0 + 1 - 2 * 3 // 4 % 5 & 6 | 7 ^, or 8 <<, 9 >>, 10 ** */
+Big pys_big_op(I alo, void *ahi, I blo, void *bhi, I op) {
+  if (!ahi && !bhi) {                          /* both fit: where the compiled 64-bit step overflowed */
+    I r;
+    switch (op) {
+    case 0: return big_wide((__int128)alo + blo);
+    case 1: return big_wide((__int128)alo - blo);
+    case 2: return big_wide((__int128)alo * blo);
+    case 3: return blo == -1 ? big_wide(-(__int128)alo) : big_small(pys_floordiv(alo, blo));
+    case 4: return big_small(pys_mod(alo, blo));
+    case 5: return big_small(alo & blo);
+    case 6: return big_small(alo | blo);
+    case 7: return big_small(alo ^ blo);
+    case 8:
+      if (blo < 0) pys_fail("ValueError: negative shift count");
+      if (!alo) return big_small(0);
+      if (blo < 64 && (r = (I)((uint64_t)alo << blo)) >> blo == alo) return big_small(r);
+      break;
+    case 9: return big_small(pys_shr(alo, blo));
+    case 10:
+      if (blo < 0) pys_fail(alo ? "ValueError: negative exponent for int ** int" : "ZeroDivisionError: 0.0 cannot be raised to a negative power");
+      if (big_pow64(alo, blo, &r)) return big_small(r);
+      break;
+    default: pys_fail("ValueError: invalid int operation");
+    }
+  }
+  MpzTmp ta, tb;
+  Mpz *a = big_mpz(alo, ahi, &ta);
+  if (op <= 7) return big_of(pys_mpz_binop(a, big_mpz(blo, bhi, &tb), op));
+  int negative = bhi ? ((Mpz *)bhi)->size < 0 : blo < 0;
+  if (op == 8 || op == 9) {
+    if (negative) pys_fail("ValueError: negative shift count");
+    /* a left shift by 2**62 or more of a nonzero value needs more memory than there is: CPython's
+       MemoryError, where pys_mpz_shift's size check would raise OverflowError near 2**63 */
+    if (!bhi && (op == 9 || !zn(a) || blo < (I)1 << 62)) return big_of(pys_mpz_shift(a, blo, op == 9));
+    if (op == 9 || !zn(a)) return big_small(op == 9 && a->size < 0 ? -1 : 0);
+    pys_fail("MemoryError");                   /* a count past 64 bits: CPython runs out of memory */
+  }
+  if (op != 10) pys_fail("ValueError: invalid int operation");
+  if (negative) pys_fail(zn(a) ? "ValueError: negative exponent for int ** int" : "ZeroDivisionError: 0.0 cannot be raised to a negative power");
+  if (!bhi) return big_of(pys_mpz_pow(a, blo));
+  /* an exponent past 64 bits: only 0, 1 and -1 have a power that fits in memory */
+  if (!ahi && (alo == 0 || alo == 1)) return big_small(alo);
+  if (!ahi && alo == -1) return big_small(((Mpz *)bhi)->d[0] & 1 ? -1 : 1);
+  pys_fail("MemoryError");
+}
+I pys_big_cmp(I alo, void *ahi, I blo, void *bhi) {   /* -1, 0 or 1 */
+  if (!ahi && !bhi) return (alo > blo) - (alo < blo);
+  if (ahi && bhi) return pys_mpz_cmp(ahi, bhi);
+  /* one Mpz, which never fits: its sign orders it past every 64-bit value */
+  return ahi ? (((Mpz *)ahi)->size < 0 ? -1 : 1) : (((Mpz *)bhi)->size < 0 ? 1 : -1);
+}
+I pys_big_cmp_float(I lo, void *hi, double d) {   /* exactly, as CPython: -1, 0, 1, or 2 where d is a NaN */
+  if (!hi) return pys_cmp_if(lo, d);
+  if (isnan(d)) return 2;
+  Mpz *a = hi;
+  if (isinf(d)) return d > 0 ? -1 : 1;
+  if (fabs(d) < 9223372036854775808.0) return a->size < 0 ? -1 : 1;   /* a is past 2^63 */
+  int e; double m = frexp(fabs(d), &e);        /* |d| = m * 2^e, 0.5 <= m < 1, an integer here */
+  Mpz *t = pys_mpz_shift(pys_mpz_from_int((I)ldexp(m, 53)), e - 53, 0);
+  return pys_mpz_cmp(a, d < 0 ? pys_mpz_unary(t, 0) : t);
+}
+Str *pys_big_str(I lo, void *hi) { return hi ? pys_mpz_str(hi) : pys_str_int(lo); }
+Big pys_big_from_str(Str *s, I base) { return big_of(pys_mpz_from_str(s, base)); }
+Big pys_big_from_float(double d) {             /* int(d): truncated toward zero, exactly */
+  if (isnan(d)) pys_fail("ValueError: cannot convert float NaN to integer");
+  if (isinf(d)) pys_fail("OverflowError: cannot convert float infinity to integer");
+  if (d > -9223372036854775808.0 && d < 9223372036854775808.0) return big_small((I)d);
+  int e; double m = frexp(fabs(d), &e);        /* |d| = m * 2^e: an integer, 53 bits shifted left */
+  Mpz *t = pys_mpz_shift(pys_mpz_from_int((I)ldexp(m, 53)), e - 53, 0);
+  return big_of(d < 0 ? pys_mpz_unary(t, 0) : t);
+}
+I pys_big_hash(I lo, void *hi) {               /* CPython's: the magnitude modulo 2^61 - 1, then the sign */
+  if (hi) return pys_mpz_hash(hi);
+  uint64_t m = (lo < 0 ? 0 - (uint64_t)lo : (uint64_t)lo) % ((UINT64_C(1) << 61) - 1);
+  I r = lo < 0 ? -(I)m : (I)m; return r == -1 ? -2 : r;
+}
+I pys_big_bit_length(I lo, void *hi) { return hi ? pys_mpz_bit_length(hi) : pys_int_bit_length(lo); }
+I pys_big_bit_count(I lo, void *hi) {          /* the ones of |x| */
+  if (!hi) return pys_int_bit_count(lo);
+  Mpz *a = hi; I c = 0;
+  for (I i = zn(a); i; i--) c += __builtin_popcount(a->d[i - 1]);
+  return c;
+}
+Str *pys_format_int(I v, I isbool, Str *spec);
+Str *pys_format_float(double x, Str *spec);
+Str *pys_format_bigdigits(I neg, Str *digits, Str *spec);
+double pys_big_float(I lo, void *hi);
+Str *pys_big_format(I lo, void *hi, Str *spec) {   /* format(x, spec), as CPython formats an int */
+  if (!hi) return pys_format_int(lo, 0, spec);
+  /* the type is the spec's last character, where it is a letter or %: a fill character is
+     followed by its alignment */
+  int t = spec->len ? (unsigned char)spec->s[spec->len - 1] : 0;
+  if (t && strchr("eEfFgG%", t)) return pys_format_float(pys_big_float(lo, hi), spec);
+  if (t == 'c') pys_fail("OverflowError: Python int too large to convert to C long");   /* (CPython's, for a code past 64 bits) */
+  Mpz *a = hi; int bits = t == 'b' ? 1 : t == 'o' ? 3 : t == 'x' || t == 'X' ? 4 : 0;
+  Str *digits;
+  if (!bits) digits = pys_mpz_str(pys_mpz_unary(a, 1));   /* (CPython's 4300-digit limit applies) */
+  else {                                       /* |x| in base 2, 8 or 16, from its bits */
+    const char *hex = t == 'X' ? "0123456789ABCDEF" : "0123456789abcdef";
+    I nbits = pys_mpz_bit_length(a), nd = (nbits + bits - 1) / bits;
+    char *buf = pys_alloc_atomic(nd + 1);
+    for (I k = 0; k < nd; k++) {               /* digit k from the least significant */
+      unsigned v = 0;
+      for (int j = bits - 1; j >= 0; j--) {
+        I bit = k * bits + j, w = bit / 30;
+        v = v << 1 | (w < zn(a) ? (a->d[w] >> (bit % 30)) & 1 : 0);
+      }
+      buf[nd - 1 - k] = hex[v];
+    }
+    digits = pys_str(buf, nd);
+  }
+  return pys_format_bigdigits(a->size < 0, digits, spec);
+}
+Big pys_big_powmod(I alo, void *ahi, I blo, void *bhi, I mlo, void *mhi) {   /* pow(a, b, m), as CPython's long_pow */
+  if (!ahi && !bhi && !mhi) return big_small(pys_powmod(alo, blo, mlo));
+  MpzTmp ta, tb, tm;
+  Mpz *a = big_mpz(alo, ahi, &ta), *b = big_mpz(blo, bhi, &tb), *m = big_mpz(mlo, mhi, &tm);
+  if (!zn(m)) pys_fail("ValueError: pow() 3rd argument cannot be 0");
+  Mpz *n = pys_mpz_unary(m, 1), *x = a;        /* n = |m| */
+  if (zn(n) == 1 && n->d[0] == 1) return big_small(0);
+  if (b->size < 0) {                           /* a negative exponent: the power of a's inverse modulo n */
+    Mpz *p = x, *q = n, *s = pys_mpz_from_int(1), *t = pys_mpz_from_int(0);   /* long_invmod: Euclid */
+    while (zn(q)) {
+      Mpz *d = pys_mpz_binop(p, q, 3), *u = pys_mpz_binop(p, pys_mpz_binop(d, q, 2), 1), *w = pys_mpz_binop(s, pys_mpz_binop(d, t, 2), 1);
+      p = q; q = u; s = t; t = w;
+    }
+    if (zn(p) != 1 || p->size < 0 || p->d[0] != 1) pys_fail("ValueError: base is not invertible for the given modulus");
+    x = s; b = pys_mpz_unary(b, 1);
+  }
+  x = pys_mpz_binop(x, n, 4);                  /* 0 <= x < n */
+  Mpz *r = pys_mpz_from_int(1);
+  for (I i = pys_mpz_bit_length(b); i; i--) {  /* left to right: square, then multiply where the bit is set */
+    r = pys_mpz_binop(pys_mpz_binop(r, r, 2), n, 4);
+    if ((b->d[(i - 1) / 30] >> ((i - 1) % 30)) & 1) r = pys_mpz_binop(pys_mpz_binop(r, x, 2), n, 4);
+  }
+  if (m->size < 0 && zn(r)) r = pys_mpz_binop(r, n, 1);   /* the result has the sign of m */
+  return big_of(r);
+}
+/* A list of ints holds an item past 64 bits as -2**63 in its slot and the item's Mpz in a
+   companion of kind BIGIDS (the list code's identity companion, which see) */
+enum { BIGIDS = 3 };
+#define NARROW "OverflowError: Python int too large to convert to C long"
+static int big_list(List *l) { return l->ids && (l->ids[0] & 3) == BIGIDS && opt_in(); }   /* may l hold an item past 64 bits */
+/* A numeric identity companion holds Dyn boxes, including a wide integer's box. A
+   BIGIDS companion is still only Mpzs until an observer asks for identities. */
+static Mpz *lbig(List *l, I i) {
+  if (l->a[i] != INT64_MIN || !l->ids) return NULL;
+  if (big_list(l)) return (Mpz *)l->ids[i + 1];
+  return (l->ids[0] & 3) == 1 && l->ids[i + 1] && opt_in() ? pys_dyn_big_ptr((Dyn *)l->ids[i + 1]) : NULL;
+}
+static Big litem(List *l, I i) { Mpz *m = lbig(l, i); Big r = {m ? 0 : l->a[i], m}; return r; }   /* l[i] as a promoting int */
+/* A promoting int in a descriptor walk (descriptor J) is a pointer to two words, its slot and its
+   Mpz: the value and null where it fits, else -2**63 and the Mpz, as the box of an int | None of a
+   module that opts in holds it (pys_big_box; -2**63 itself has a null Mpz). A fixed tuple holds its
+   promoting int item i of n so: the slot is the item's, and the Mpz word is slot n + i, which such
+   a tuple has wherever the item's slot holds -2**63 (the compiler copies a tuple of 64-bit ints
+   that holds -2**63 where one of promoting ints is expected), so the walks hand them on as titem's
+   two words; pys_refl_vars makes them of a field's {lo, hi} */
+static Big jbig(I v) { const I *w = (const I *)v; Mpz *m = w[0] == INT64_MIN && opt_in() ? (Mpz *)w[1] : NULL; Big r = {m ? 0 : w[0], m}; return r; }
+static I titem(const I *t, I n, I i, const char *e, I *w) {   /* item i of tuple t of n items, of descriptor e: J's in w */
+  if (*e != 'J' || !opt_in()) return t[i];
+  w[0] = t[i]; w[1] = t[i] == INT64_MIN ? t[n + i] : 0;
+  return (I)w;
+}
+/* and a set of ints holds an element past 64 bits as -2**63 or -2**63 + 1 in its slot, and its Mpz
+   in that slot's word of kb (see sets) */
+static Mpz *sbig(Set *s, I j) { return s->keys[j] <= INT64_MIN + 1 && s->kb && opt_in() ? (Mpz *)s->kb[j] : NULL; }
+static int list_has_big(List *l) {   /* does l hold an item past 64 bits */
+  if (l->ids && opt_in()) for (I i = 0; i < l->len; i++) if (lbig(l, i)) return 1;
+  return 0;
+}
+static void list_narrow(List *l) { if (list_has_big(l)) pys_fail(NARROW); }   /* l's ints for 64-bit code */
+/* In a program whose lists hold promoting ints, its lists, dicts (keys and values) and sets hold a
+   tuple of ints in the layout of a tuple of promoting ints (the compiler's bigints.held): a tuple of
+   theirs whose int, also one of a tuple it holds, is -2**63 has that int's Mpz word (titem), which
+   a tuple of 64-bit ints lacks, so the compiler stores a copy of such a tuple there */
+static I mpz_cmp_float(Mpz *m, double d) {   /* m, past 64 bits, against d, exactly and allocating nothing: -1, 0, 1, or 2 for a NaN */
+  if (isnan(d)) return 2;
+  if (isinf(d)) return d > 0 ? -1 : 1;
+  if (fabs(d) < 9223372036854775808.0) return m->size < 0 ? -1 : 1;   /* (|m| >= 2**63 > |d|) */
+  int e; double f = frexp(fabs(d), &e);        /* |d| = f * 2**e, 0.5 <= f < 1: an int of mant << (e - 53) */
+  union { Mpz m; uint64_t words[1 + 18]; } t;  /* (its 30-bit digits: at most 35 below 2**1024) */
+  I sh = e - 53, k = sh / 30, n = 0;
+  unsigned __int128 v = (unsigned __int128)(uint64_t)ldexp(f, 53) << (sh % 30);
+  for (; n < k; n++) t.m.d[n] = 0;
+  for (; v; v >>= 30) t.m.d[n++] = (uint32_t)(v & 0x3FFFFFFF);
+  t.m.size = d < 0 ? -n : n;
+  return pys_mpz_cmp(m, &t.m);
+}
+Big pys_big_sum(List *l, I slo, void *shi) {   /* sum(l, start) of a list of ints: past 64 bits, exactly */
+  I i = 0, big = l->ids != NULL;
+  if (!shi) {                                  /* 64-bit additions until one overflows or an item is past 64 bits */
+    I s = slo, t;
+    for (; i < l->len; i++) { if ((big && lbig(l, i)) || __builtin_add_overflow(s, l->a[i], &t)) break; s = t; }
+    if (i == l->len) return big_small(s);
+    slo = s;
+  }
+  Big acc = {slo, shi};
+  for (; i < l->len; i++) { Big x = litem(l, i); acc = pys_big_op(acc.lo, acc.hi, x.lo, x.hi, 0); }
+  return acc;
+}
+enum { TD_MANT = 53, TD_MIN_EXP = -1021, TD_MAX_EXP = 1024 };   /* <float.h>'s DBL_MANT_DIG, DBL_MIN_EXP, DBL_MAX_EXP */
+/* a / b, rounded once: CPython 3.13.16's long_true_divide (Objects/longobject.c), whose steps and
+   rounding of the low digit this follows on the Mpz core, used under the Python Software Foundation
+   License Version 2 (THIRD_PARTY_NOTICES) */
+double pys_big_truediv(I alo, void *ahi, I blo, void *bhi) {
+  if (!ahi && !bhi) return pys_idiv(alo, blo);
+  MpzTmp ta, tb;
+  Mpz *a = big_mpz(alo, ahi, &ta), *b = big_mpz(blo, bhi, &tb);
+  if (!zn(b)) pys_fail("ZeroDivisionError: division by zero");
+  int negate = (a->size < 0) != (b->size < 0);
+  if (!zn(a)) return negate ? -0.0 : 0.0;
+  /* x = |a| * 2**-shift, with shift chosen so that x // |b| has DBL_MANT_DIG + 2 or 3 bits (or
+     fewer, for a subnormal result); the bits shifted or divided away make the sticky bit */
+  I diff = pys_mpz_bit_length(a) - pys_mpz_bit_length(b);
+  if (diff > TD_MAX_EXP) goto overflow;
+  if (diff < TD_MIN_EXP - TD_MANT - 1) return negate ? -0.0 : 0.0;
+  I shift = (diff > TD_MIN_EXP ? diff : TD_MIN_EXP) - TD_MANT - 2;
+  Mpz *m = pys_mpz_unary(a, 1), *x;              /* |a|: fresh */
+  int inexact = 0;
+  if (shift <= 0) x = pys_mpz_shift(m, -shift, 0);
+  else { x = pys_mpz_shift(m, shift, 1); inexact = pys_mpz_cmp(pys_mpz_shift(x, shift, 0), m) != 0; }
+  Mpz *d = pys_mpz_unary(b, 1), *q = pys_mpz_binop(x, d, 3);   /* q: a fresh quotient, never 0 */
+  if (zn(pys_mpz_binop(x, d, 4))) inexact = 1;
+  I qbits = pys_mpz_bit_length(q);
+  I extra = (qbits > TD_MIN_EXP - shift ? qbits : TD_MIN_EXP - shift) - TD_MANT;   /* 2 or 3 */
+  uint32_t mask = (uint32_t)1 << (extra - 1), low = q->d[0] | (uint32_t)inexact;
+  if ((low & mask) && (low & (3U * mask - 1U))) low += mask;   /* round half to even (a carry stays in the digit) */
+  q->d[0] = low & ~(2U * mask - 1U);
+  double dq = 0;                                 /* exact: at most 54 bits */
+  for (I i = zn(q); i; i--) dq = dq * 1073741824.0 + q->d[i - 1];
+  if (shift + qbits >= TD_MAX_EXP && (shift + qbits > TD_MAX_EXP || dq == ldexp(1.0, (int)qbits))) goto overflow;
+  double r = ldexp(dq, (int)shift);
+  return negate ? -r : r;
+overflow:
+  pys_fail("OverflowError: integer division result too large for a float");
+}
+double pys_big_float(I lo, void *hi) {         /* rounded once, to nearest even, as CPython's int.__float__ */
+  if (!hi) return (double)lo;
+  Mpz *a = hi; I n = zn(a), k = n < 3 ? n : 3, bits = pys_mpz_bit_length(a);
+  if (bits > 1024) pys_fail("OverflowError: int too large to convert to float");
+  /* the top digits, at most 90 bits, then 64 of them with a sticky bit for the rest */
+  unsigned __int128 top = 0; int sticky = 0;
+  for (I i = n; i > n - k; i--) top = (top << 30) | a->d[i - 1];
+  for (I i = n - k; i && !sticky; i--) sticky = a->d[i - 1] != 0;
+  I e = (n - k) * 30, tb = bits - e, s = tb > 64 ? tb - 64 : 0;
+  if (s) { sticky |= (top & (((unsigned __int128)1 << s) - 1)) != 0; top >>= s; e += s; }
+  double r = ldexp((double)((uint64_t)top | (uint64_t)sticky), (int)e);   /* 64 bits: the sticky bit is below the rounding */
+  if (isinf(r)) pys_fail("OverflowError: int too large to convert to float");
+  return a->size < 0 ? -r : r;
+}
+/* no_builtin("pow") keeps pow a call of libm's, as in CPython's float_pow and math.pow. The AOT tier's
+   whole-program -O2 would otherwise rewrite a call with a constant argument: pow(x, 2.0) as x * x,
+   pow(x, -1.0) as 1.0 / x and pow(2.0, y) as exp2(y), which glibc's pow does not always round alike
+   (#656). It is on these two functions only: LLVM inlines no function with the attribute into one
+   without it, so -fno-builtin-pow over all of runtime.c would keep every runtime.c helper out of
+   runtime.py's code and the program's */
+__attribute__((no_builtin("pow"))) double pys_fpow(double a, double b) {   /* float ** float with CPython's errors */
+  if (a == 0 && b < 0 && isfinite(b)) pys_fail("ZeroDivisionError: 0.0 cannot be raised to a negative power");
+  if (a < 0 && isfinite(a) && isfinite(b) && b != floor(b)) pys_fail("ValueError: a negative number to a fractional power has a complex result (not supported)");
+  double r = pow(a, b);
+  if (isinf(r) && isfinite(a) && isfinite(b)) pys_fail("OverflowError: (34, 'Numerical result out of range')");
+  return r;
+}
+/* math functions raise like CPython's math module: a NaN from a non-NaN argument is a domain
+   error, an infinity from finite arguments a range error (or a domain error for log and sqrt) */
+static double mchk(double r, double x, double y, int ovf) {
+  if (isnan(r) && !isnan(x) && !isnan(y)) pys_fail("ValueError: math domain error");
+  if (isinf(r) && isfinite(x) && isfinite(y)) pys_fail(ovf ? "OverflowError: math range error" : "ValueError: math domain error");
+  return r;
+}
+#define M1(f, ovf) double pys_m_##f(double x) { return mchk(f(x), x, 0, ovf); }
+M1(sqrt, 0) M1(sin, 0) M1(cos, 0) M1(tan, 0) M1(asin, 0) M1(acos, 0) M1(atan, 0) M1(sinh, 1) M1(cosh, 1) M1(tanh, 0)
+M1(exp, 1) M1(log, 0) M1(log2, 0) M1(log10, 0) M1(fabs, 0) M1(log1p, 0) M1(expm1, 1) M1(exp2, 1) M1(cbrt, 0)
+M1(asinh, 0) M1(acosh, 0) M1(atanh, 0) M1(erf, 0) M1(erfc, 0)
+double pys_m_ldexp(double x, I i) {   /* CPython's: an exponent beyond int's range is clamped */
+  if (x == 0 || !isfinite(x)) return x;
+  double r = ldexp(x, i > 0x7FFFFFFF ? 0x7FFFFFFF : i < -0x7FFFFFFF ? -0x7FFFFFFF : (int)i);
+  if (isinf(r)) pys_fail("OverflowError: math range error");
+  return r;
+}
+void **pys_m_frexp(double x) {        /* (m, e), a tuple of a float and an int */
+  int e = 0; double m = isnan(x) || isinf(x) || x == 0 ? x : frexp(x, &e);
+  I *t = pys_alloc(16); memcpy(t, &m, 8); t[1] = e; return (void **)t;
+}
+void **pys_m_modf(double x) {         /* (fractional part, integral part); an infinity's is (+-0.0, x), as in CPython */
+  double i, f = isinf(x) ? copysign(0.0, x) : isnan(x) ? x : modf(x, &i);
+  if (isinf(x) || isnan(x)) i = x;
+  I *t = pys_alloc(16); memcpy(t, &f, 8); memcpy(t + 1, &i, 8); return (void **)t;
+}
+double pys_m_nextafter(double x, double y) { return nextafter(x, y); }
+double pys_m_remainder(double x, double y) { return mchk(remainder(x, y), x, y, 0); }
+double pys_m_fma(double x, double y, double z) {   /* x * y + z, rounded once */
+  double r = fma(x, y, z);
+  if (isnan(r) && !isnan(x) && !isnan(y) && !isnan(z)) pys_fail("ValueError: invalid operation in fma");
+  if (isinf(r) && isfinite(x) && isfinite(y) && isfinite(z)) pys_fail("OverflowError: overflow in fma");
+  return r;
+}
+double pys_m_ulp(double x) {          /* the distance from |x| to the next float away from zero (or below the largest) */
+  if (isnan(x) || isinf(x)) return fabs(x);
+  double a = fabs(x), b = nextafter(a, INFINITY);
+  return isinf(b) ? a - nextafter(a, -INFINITY) : b - a;
+}
+__attribute__((no_builtin("pow"))) double pys_m_pow(double x, double y) {   /* (no_builtin: see pys_fpow) */
+  if (x == 0 && y < 0 && isfinite(y)) pys_fail("ValueError: math domain error");
+  return mchk(pow(x, y), x, y, 1);
+}
+/* no_builtin("fmod") keeps fmod a call of libm's. Once the guard below shows x is not infinite and y
+   not zero, LLVM 20 to 22 rewrite fmod(x, y) as an frem marked as never NaN, although a NaN x or y still
+   reaches it. Without the attribute the AOT tier inlines this function into the program, where
+   math.isnan() of the result then folds to false (LLVM 23 no longer marks it; see pys_fpow for pow) */
+__attribute__((no_builtin("fmod"))) double pys_m_fmod(double x, double y) {
+  /* A NaN in either argument propagates even with an infinite dividend or zero divisor. */
+  if ((isinf(x) || y == 0) && !isnan(x) && !isnan(y)) pys_fail("ValueError: math domain error");
+  return fmod(x, y);
+}
+double pys_m_atan2(double y, double x) { return atan2(y, x); }
+/* math.hypot is CPython's vector_norm, not libm's hypot, so its last bit agrees: lossless scaling
+   by a power of two, exact squares (fma), compensated summation and a differential correction of
+   the square root; it never raises (inf on overflow) */
+typedef struct { double hi, lo; } DL;
+static DL dl_fast_sum(double a, double b) { double x = a + b; return (DL){x, (a - x) + b}; }
+static DL dl_mul(double x, double y) { double z = x * y; return (DL){z, fma(x, y, -z)}; }
+static double vnorm(double *v, I n, double max) {
+#pragma clang fp contract(off)
+  double csum = 1.0, frac1 = 0.0, frac2 = 0.0, x, h, scale; DL pr, sm; int e;
+  if (max == 0.0 || n <= 1) return max;
+  frexp(max, &e);
+  if (e < -1023) { for (I i = 0; i < n; i++) v[i] /= 0x1p-1022; return 0x1p-1022 * vnorm(v, n, max / 0x1p-1022); }
+  scale = ldexp(1.0, -e);
+  for (I i = 0; i < n; i++) {
+    x = v[i] * scale; pr = dl_mul(x, x); sm = dl_fast_sum(csum, pr.hi);
+    csum = sm.hi; frac1 += pr.lo; frac2 += sm.lo;
+  }
+  h = sqrt(csum - 1.0 + (frac1 + frac2));
+  pr = dl_mul(-h, h); sm = dl_fast_sum(csum, pr.hi);
+  csum = sm.hi; frac1 += pr.lo; frac2 += sm.lo;
+  x = csum - 1.0 + (frac1 + frac2);
+  h += x / (2.0 * h);
+  return h / scale;
+}
+double pys_m_hypot(double x, double y) {
+  double v[2] = {fabs(x), fabs(y)}, max = 0.0;
+  for (int i = 0; i < 2; i++) if (v[i] > max) max = v[i];   /* a NaN is never the max */
+  if (isinf(max)) return max;
+  if (isnan(x) || isnan(y)) return NAN;
+  return vnorm(v, 2, max);
+}
+double pys_m_copysign(double x, double y) { return copysign(x, y); }
+double pys_m_logb(double x, double b) {   /* log(x) / log(b), and a base of 1 divides by zero, as in CPython */
+  double n = mchk(log(x), x, 0, 0), d = mchk(log(b), b, 0, 0);
+  if (d == 0) pys_fail("ZeroDivisionError: float division by zero");
+  return n / d;
+}
+double pys_m_degrees(double x);
+double pys_m_radians(double x);
+I pys_m_isfinite(double x) { return isfinite(x); }
+I pys_m_isinf(double x) { return isinf(x); }
+I pys_m_isnan(double x) { return isnan(x); }
+I pys_m_trunc(double x) { return pys_f2i(trunc(x)); }
+/* Portions derived from CPython's Modules/mathmodule.c: Copyright (c) 2001-2024 Python Software
+   Foundation; All Rights Reserved; used under the PSF License Agreement (see THIRD_PARTY_NOTICES). */
+I pys_m_isclose(double a, double b, double rel_tol, double abs_tol);
+/* math.gamma and math.lgamma are CPython 3.13.16's m_tgamma and m_lgamma (Modules/mathmodule.c),
+   which do not use libm's tgamma and lgamma: their Lanczos approximation, reflection formula and
+   special cases, with their comments, so that every result is CPython's to the last bit. The
+   edits: Py_ macros are C99's, the asserts are dropped, and errno is a parameter (CPython clears
+   errno, calls the function and raises as is_error() says; the libm calls here set errno only
+   where the function sets it too), which pys_m_gamma and pys_m_lgamma test as math_1a does, and
+   each function body starts with #pragma clang fp contract(off): no multiply-add is fused */
+static const double pi = 3.141592653589793238462643383279502884197;
+static const double logpi = 1.144729885849400174143427351353058711647;
+
+static double
+m_sinpi(double x)
+{
+#pragma clang fp contract(off)
+    double y, r;
+    int n;
+    /* this function should only ever be called for finite arguments */
+    y = fmod(fabs(x), 2.0);
+    n = (int)round(2.0*y);
+    switch (n) {
+    case 0:
+        r = sin(pi*y);
+        break;
+    case 1:
+        r = cos(pi*(y-0.5));
+        break;
+    case 2:
+        /* N.B. -sin(pi*(y-1.0)) is *not* equivalent: it would give
+           -0.0 instead of 0.0 when y == 1.0. */
+        r = sin(pi*(1.0-y));
+        break;
+    case 3:
+        r = -cos(pi*(y-1.5));
+        break;
+    case 4:
+        r = sin(pi*(y-2.0));
+        break;
+    default:
+        __builtin_unreachable();
+    }
+    return copysign(1.0, x)*r;
+}
+
+/* Implementation of the real gamma function.  Kept here to work around
+   issues (see e.g. gh-70309) with quality of libm's tgamma/lgamma implementations
+   on various platforms (Windows, MacOS).  In extensive but non-exhaustive
+   random tests, this function proved accurate to within <= 10 ulps across the
+   entire float domain.  Note that accuracy may depend on the quality of the
+   system math functions, the pow function in particular.  Special cases
+   follow C99 annex F.  The parameters and method are tailored to platforms
+   whose double format is the IEEE 754 binary64 format.
+
+   Method: for x > 0.0 we use the Lanczos approximation with parameters N=13
+   and g=6.024680040776729583740234375; these parameters are amongst those
+   used by the Boost library.  Following Boost (again), we re-express the
+   Lanczos sum as a rational function, and compute it that way.  The
+   coefficients below were computed independently using MPFR, and have been
+   double-checked against the coefficients in the Boost source code.
+
+   For x < 0.0 we use the reflection formula.
+
+   There's one minor tweak that deserves explanation: Lanczos' formula for
+   Gamma(x) involves computing pow(x+g-0.5, x-0.5) / exp(x+g-0.5).  For many x
+   values, x+g-0.5 can be represented exactly.  However, in cases where it
+   can't be represented exactly the small error in x+g-0.5 can be magnified
+   significantly by the pow and exp calls, especially for large x.  A cheap
+   correction is to multiply by (1 + e*g/(x+g-0.5)), where e is the error
+   involved in the computation of x+g-0.5 (that is, e = computed value of
+   x+g-0.5 - exact value of x+g-0.5).  Here's the proof:
+
+   Correction factor
+   -----------------
+   Write x+g-0.5 = y-e, where y is exactly representable as an IEEE 754
+   double, and e is tiny.  Then:
+
+     pow(x+g-0.5,x-0.5)/exp(x+g-0.5) = pow(y-e, x-0.5)/exp(y-e)
+     = pow(y, x-0.5)/exp(y) * C,
+
+   where the correction_factor C is given by
+
+     C = pow(1-e/y, x-0.5) * exp(e)
+
+   Since e is tiny, pow(1-e/y, x-0.5) ~ 1-(x-0.5)*e/y, and exp(x) ~ 1+e, so:
+
+     C ~ (1-(x-0.5)*e/y) * (1+e) ~ 1 + e*(y-(x-0.5))/y
+
+   But y-(x-0.5) = g+e, and g+e ~ g.  So we get C ~ 1 + e*g/y, and
+
+     pow(x+g-0.5,x-0.5)/exp(x+g-0.5) ~ pow(y, x-0.5)/exp(y) * (1 + e*g/y),
+
+   Note that for accuracy, when computing r*C it's better to do
+
+     r + e*g/y*r;
+
+   than
+
+     r * (1 + e*g/y);
+
+   since the addition in the latter throws away most of the bits of
+   information in e*g/y.
+*/
+
+#define LANCZOS_N 13
+static const double lanczos_g = 6.024680040776729583740234375;
+static const double lanczos_g_minus_half = 5.524680040776729583740234375;
+static const double lanczos_num_coeffs[LANCZOS_N] = {
+    23531376880.410759688572007674451636754734846804940,
+    42919803642.649098768957899047001988850926355848959,
+    35711959237.355668049440185451547166705960488635843,
+    17921034426.037209699919755754458931112671403265390,
+    6039542586.3520280050642916443072979210699388420708,
+    1439720407.3117216736632230727949123939715485786772,
+    248874557.86205415651146038641322942321632125127801,
+    31426415.585400194380614231628318205362874684987640,
+    2876370.6289353724412254090516208496135991145378768,
+    186056.26539522349504029498971604569928220784236328,
+    8071.6720023658162106380029022722506138218516325024,
+    210.82427775157934587250973392071336271166969580291,
+    2.5066282746310002701649081771338373386264310793408
+};
+
+/* denominator is x*(x+1)*...*(x+LANCZOS_N-2) */
+static const double lanczos_den_coeffs[LANCZOS_N] = {
+    0.0, 39916800.0, 120543840.0, 150917976.0, 105258076.0, 45995730.0,
+    13339535.0, 2637558.0, 357423.0, 32670.0, 1925.0, 66.0, 1.0};
+
+/* gamma values for small positive integers, 1 though NGAMMA_INTEGRAL */
+#define NGAMMA_INTEGRAL 23
+static const double gamma_integral[NGAMMA_INTEGRAL] = {
+    1.0, 1.0, 2.0, 6.0, 24.0, 120.0, 720.0, 5040.0, 40320.0, 362880.0,
+    3628800.0, 39916800.0, 479001600.0, 6227020800.0, 87178291200.0,
+    1307674368000.0, 20922789888000.0, 355687428096000.0,
+    6402373705728000.0, 121645100408832000.0, 2432902008176640000.0,
+    51090942171709440000.0, 1124000727777607680000.0,
+};
+
+/* Lanczos' sum L_g(x), for positive x */
+
+static double
+lanczos_sum(double x)
+{
+#pragma clang fp contract(off)
+    double num = 0.0, den = 0.0;
+    int i;
+    /* evaluate the rational function lanczos_sum(x).  For large
+       x, the obvious algorithm risks overflow, so we instead
+       rescale the denominator and numerator of the rational
+       function by x**(1-LANCZOS_N) and treat this as a
+       rational function in 1/x.  This also reduces the error for
+       larger x values.  The choice of cutoff point (5.0 below) is
+       somewhat arbitrary; in tests, smaller cutoff values than
+       this resulted in lower accuracy. */
+    if (x < 5.0) {
+        for (i = LANCZOS_N; --i >= 0; ) {
+            num = num * x + lanczos_num_coeffs[i];
+            den = den * x + lanczos_den_coeffs[i];
+        }
+    }
+    else {
+        for (i = 0; i < LANCZOS_N; i++) {
+            num = num / x + lanczos_num_coeffs[i];
+            den = den / x + lanczos_den_coeffs[i];
+        }
+    }
+    return num/den;
+}
+
+
+static double
+m_tgamma(double x, int *err)
+{
+#pragma clang fp contract(off)
+    double absx, r, y, z, sqrtpow;
+
+    /* special cases */
+    if (!isfinite(x)) {
+        if (isnan(x) || x > 0.0)
+            return x;  /* tgamma(nan) = nan, tgamma(inf) = inf */
+        else {
+            *err = EDOM;
+            return NAN;  /* tgamma(-inf) = nan, invalid */
+        }
+    }
+    if (x == 0.0) {
+        *err = EDOM;
+        /* tgamma(+-0.0) = +-inf, divide-by-zero */
+        return copysign(INFINITY, x);
+    }
+
+    /* integer arguments */
+    if (x == floor(x)) {
+        if (x < 0.0) {
+            *err = EDOM;  /* tgamma(n) = nan, invalid for */
+            return NAN; /* negative integers n */
+        }
+        if (x <= NGAMMA_INTEGRAL)
+            return gamma_integral[(int)x - 1];
+    }
+    absx = fabs(x);
+
+    /* tiny arguments:  tgamma(x) ~ 1/x for x near 0 */
+    if (absx < 1e-20) {
+        r = 1.0/x;
+        if (isinf(r))
+            *err = ERANGE;
+        return r;
+    }
+
+    /* large arguments: assuming IEEE 754 doubles, tgamma(x) overflows for
+       x > 200, and underflows to +-0.0 for x < -200, not a negative
+       integer. */
+    if (absx > 200.0) {
+        if (x < 0.0) {
+            return 0.0/m_sinpi(x);
+        }
+        else {
+            *err = ERANGE;
+            return HUGE_VAL;
+        }
+    }
+
+    y = absx + lanczos_g_minus_half;
+    /* compute error in sum */
+    if (absx > lanczos_g_minus_half) {
+        /* note: the correction can be foiled by an optimizing
+           compiler that (incorrectly) thinks that an expression like
+           a + b - a - b can be optimized to 0.0.  This shouldn't
+           happen in a standards-conforming compiler. */
+        double q = y - absx;
+        z = q - lanczos_g_minus_half;
+    }
+    else {
+        double q = y - lanczos_g_minus_half;
+        z = q - absx;
+    }
+    z = z * lanczos_g / y;
+    if (x < 0.0) {
+        r = -pi / m_sinpi(absx) / absx * exp(y) / lanczos_sum(absx);
+        r -= z * r;
+        if (absx < 140.0) {
+            r /= pow(y, absx - 0.5);
+        }
+        else {
+            sqrtpow = pow(y, absx / 2.0 - 0.25);
+            r /= sqrtpow;
+            r /= sqrtpow;
+        }
+    }
+    else {
+        r = lanczos_sum(absx) / exp(y);
+        r += z * r;
+        if (absx < 140.0) {
+            r *= pow(y, absx - 0.5);
+        }
+        else {
+            sqrtpow = pow(y, absx / 2.0 - 0.25);
+            r *= sqrtpow;
+            r *= sqrtpow;
+        }
+    }
+    if (isinf(r))
+        *err = ERANGE;
+    return r;
+}
+
+/*
+   lgamma:  natural log of the absolute value of the Gamma function.
+   For large arguments, Lanczos' formula works extremely well here.
+*/
+
+static double
+m_lgamma(double x, int *err)
+{
+#pragma clang fp contract(off)
+    double r;
+    double absx;
+
+    /* special cases */
+    if (!isfinite(x)) {
+        if (isnan(x))
+            return x;  /* lgamma(nan) = nan */
+        else
+            return HUGE_VAL; /* lgamma(+-inf) = +inf */
+    }
+
+    /* integer arguments */
+    if (x == floor(x) && x <= 2.0) {
+        if (x <= 0.0) {
+            *err = EDOM;  /* lgamma(n) = inf, divide-by-zero for */
+            return HUGE_VAL; /* integers n <= 0 */
+        }
+        else {
+            return 0.0; /* lgamma(1) = lgamma(2) = 0.0 */
+        }
+    }
+
+    absx = fabs(x);
+    /* tiny arguments: lgamma(x) ~ -log(fabs(x)) for small x */
+    if (absx < 1e-20)
+        return -log(absx);
+
+    /* Lanczos' formula.  We could save a fraction of a ulp in accuracy by
+       having a second set of numerator coefficients for lanczos_sum that
+       absorbed the exp(-lanczos_g) term, and throwing out the lanczos_g
+       subtraction below; it's probably not worth it. */
+    r = log(lanczos_sum(absx)) - lanczos_g;
+    r += (absx - 0.5) * (log(absx + lanczos_g - 0.5) - 1);
+    if (x < 0.0)
+        /* Use reflection formula to get value for negative x. */
+        r = logpi - log(fabs(m_sinpi(absx))) - log(absx) - r;
+    if (isinf(r))
+        *err = ERANGE;
+    return r;
+}
+static double merrno(double r, int e) {   /* math_1a's is_error(): ERANGE below 1.5 is an underflow, no error */
+  if (e == EDOM) pys_fail("ValueError: math domain error");
+  if (e == ERANGE && fabs(r) >= 1.5) pys_fail("OverflowError: math range error");
+  return r;
+}
+double pys_m_gamma(double x) { int e = 0; double r = m_tgamma(x, &e); return merrno(r, e); }
+double pys_m_lgamma(double x) { int e = 0; double r = m_lgamma(x, &e); return merrno(r, e); }
+/* math.gcd, lcm, isqrt, factorial, comb, perm, fsum and prod are in runtime.py */
+I pys_m_gcd(I a, I b);
+I pys_m_lcm(I a, I b);
+I pys_m_isqrt(I n);
+I pys_m_factorial(I n);
+I pys_m_comb(I n, I k);
+I pys_m_perm(I n, I k);
+double pys_m_fsum(List *l);
+I pys_m_prod_int(List *l, I start);
+double pys_m_prod_float(List *l, double start);
+List *pys_m_floats(List *l);
+
+static double pymod(double a, double b, double *q) {   /* CPython's float_divmod */
+  double m = fmod(a, b), d = (a - m) / b;
+  if (m) { if ((b < 0) != (m < 0)) { m += b; d -= 1; } } else m = copysign(0, b);
+  if (d) { double f = floor(d); if (d - f > 0.5) f += 1; d = f; } else d = copysign(0, a / b);
+  *q = d; return m;
+}
+double pys_fmod(double a, double b) { double q; if (b == 0) pys_fail("ZeroDivisionError: float modulo by zero"); return pymod(a, b, &q); }
+double pys_ffloordiv(double a, double b) { double q; if (b == 0) pys_fail("ZeroDivisionError: float floor division by zero"); pymod(a, b, &q); return q; }
+I pys_f2i(double d) {
+  if (isnan(d)) pys_fail("ValueError: cannot convert float NaN to integer");
+  if (isinf(d)) pys_fail("OverflowError: cannot convert float infinity to integer");
+  if (!(d >= -9223372036854775808.0 && d < 9223372036854775808.0)) pys_fail("OverflowError: float too large for a 64-bit int");
+  return (I)d;
+}
+I pys_round(double d) { return pys_f2i(nearbyint(d)); }
+I pys_round_int(I x, I n) {                  /* round(x, n) of an int: x, or for n < 0 the nearest multiple of
+                                                10**-n, ties to the even multiple */
+  if (n >= 0) return x;
+  __int128 m = 1, q, r;
+  for (I i = 0; i < -n && i < 20; i++) m *= 10;   /* (10**20 > 2 * |x|: a farther n gives 0 too) */
+  q = x / m; r = x % m;
+  if (r < 0) { r += m; q--; }                     /* x = q * m + r, 0 <= r < m */
+  if (2 * r > m || (2 * r == m && (q & 1))) q++;
+  q *= m;
+  if (q > INT64_MAX || q < INT64_MIN) pys_fail(OVF);
+  return (I)q;
+}
+double pys_round_n(double x, I n) {           /* round(x, n): half-even on the exact decimal value */
+  static char b[1500], o[1500];
+  if (!isfinite(x) || n > 400) return x;
+  if (n >= 0) { fsnprintf(b, sizeof b, "%.*f", (int)n, x); return fstrtod(b, 0); }
+  if (n < -308 && fabs(x) < 1e308) return copysign(0.0, x);
+  int k = n < -400 ? 400 : (int)-n, len = fsnprintf(b, sizeof b, "%.1080f", fabs(x));
+  int h = (int)(strchr(b, '.') - b) - k, up = 0, m = h;   /* keep h integer digits, drop k */
+  if (h < 0) return copysign(0.0, x);
+  if (b[h] != '5') up = b[h] > '5';
+  else { up = -1; for (int i = h + 1; i < len; i++) if (b[i] > '0') { up = 1; break; } }
+  memcpy(o, b, h);
+  if (up < 0) up = h > 0 && (o[h - 1] - '0') % 2;          /* exact tie: round half to even */
+  if (up) { int i = m - 1; while (i >= 0 && o[i] == '9') o[i--] = '0'; if (i >= 0) o[i]++; else { memmove(o + 1, o, m); o[0] = '1'; m++; } }
+  if (!m) o[m++] = '0';
+  memset(o + m, '0', k); o[m + k] = 0;
+  double r = fstrtod(o, 0);
+  if (isinf(r)) pys_fail("OverflowError: rounded value too large to represent");
+  return copysign(r, x);
+}
+I pys_floor(double d) { return pys_f2i(floor(d)); }
+I pys_ceil(double d) { return pys_f2i(ceil(d)); }
+
+/* ---------- generic repr / equality / ordering driven by a type descriptor ----------
+   i int, f float, b bool, s str, L<e> list, D<k><v> dict, T<n><e...> tuple, V<e> counted tuple, S<e> set, F<e>
+   frozenset, O<id> object of class number id: the program defines pys_obj_eq/cmp/repr, which dispatch on it. The id
+   has three digits or more (O007, O1234): a letter, a '.' or the end of the descriptor follows it (a union
+   puts a '.', which skip consumes, after a member's descriptor that ends in an id: tags are digits);
+   ?<e> None (null) or a value of <e>; E an exception (an Exc);
+   U<n>:<tag>:<e>... a tagged union, n program-wide tags and their member descriptors;
+   R<n>: a recursive alias edge, n bytes backwards from R to an enclosing descriptor;
+   A a dynamic value's box (see dynamic values), walked by its DynType's descriptor, Z the
+   function a box holds, which compares and hashes by identity; Y a class object's canonical
+   reflection record (distinct from its instances); J a promoting int (a fixed
+   tuple's item, the box of an int | None of a module that opts in, a field), its two words
+   (jbig).
+   skip treats R as a leaf; value operations follow it without changing the slot layout.
+   A dict's key kind and a set's element kind (Dict.kind) and their tuples' items have P<id> and
+   H<id> where the type is a class: P where no class its objects may be of defines __eq__ or
+   __hash__, so that they hash and compare by identity alone, else H, hashed by the program's
+   pys_obj_eq(-1 - id, a, 0) (object's identity hash, __hash__'s, or TypeError where __eq__ makes
+   a class unhashable) and compared as O<id>; both print as O<id> does */
+I pys_obj_eq(I c, I a, I b);
+I pys_obj_cmp(I c, I op, I a, I b);
+Str *pys_obj_repr(I c, I a, I b);
+typedef struct DynType DynType;   /* (see dynamic values) */
+struct DynType { I kind; Str *desc; Str *name; I cls; const DynType *base; I flags; Dyn *(*iter)(Dyn *); Dyn *(*next)(Dyn *); I (*len)(Dyn *); };
+struct Dyn { const DynType *t; I v; };
+_Static_assert(sizeof(Dyn) == 16, "a dynamic value's box is gc_box's 16 bytes");
+typedef struct DynIter DynIter;
+I pys_dyn_eq(Dyn *a, Dyn *b);
+I pys_dyn_cmp(Dyn *a, Dyn *b, I op);
+I pys_dyn_hash(Dyn *x);
+Dyn *pys_dyn_int(I v);
+Dyn *pys_dyn_big(I lo, void *hi);
+Dyn *pys_dyn_float(double x);
+extern const Dyn pys_dyn_none_box;
+static int dyn_eqitem(Dyn *a, Dyn *b);
+static int dyn_keyeq(Dyn *a, Dyn *b);
+static uint64_t hdyn(Dyn *x);
+DynIter *pys_dyn_iter(Dyn *o);
+Dyn *pys_dyn_next(DynIter *it);
+static I dyn_user_len(Dyn *o);
+static I ocls(const char *d) {   /* three digits, then those of an id of 1000 or more */
+  I c = (d[0] - '0') * 100 + (d[1] - '0') * 10 + d[2] - '0';
+  for (d += 3; *d >= '0' && *d <= '9'; d++) c = c * 10 + *d - '0';
+  return c;
+}
+Str *pys_default_repr(Str *cls, void *p) {
+  const char *f = "<%s object at %p>"; int n = snprintf(0, 0, f, cls->s, p);
+  Str *s = pys_alloc_atomic(sizeof(Str) + n + 1); s->len = n; snprintf(s->s, n + 1, f, cls->s, p); return s;
+}
+/* GC_NO_ROOT(busy): active repr arguments remain rooted by their callers and unwind actions. */
+static void **busy; static I nbusy, cbusy;   /* objects whose generated __repr__ is running */
+static void unbusy(void *p) { for (I i = nbusy - 1; i >= 0; i--) if (busy[i] == p) { busy[i] = busy[--nbusy]; return; } }
+I pys_repr_enter(void *p) {
+  for (I i = 0; i < nbusy; i++) if (busy[i] == p) return 0;
+  if (nbusy == cbusy && !(busy = realloc(busy, (cbusy = cbusy * 2 + 8) * sizeof(void *)))) oom();   /* not catchable */
+  busy[nbusy++] = p;
+  if (eh) unwind_push(unbusy, p);      /* a raise that leaves the __repr__ ends it too */
+  return 1;
+}
+void pys_repr_leave(void *p) { unbusy(p); if (eh) unwind_pop(); }
+/* An int | None, float | None or bool | None (descriptor ?i, ?f, ?b) is a pointer to an immutable
+   box of its value's 8 bytes (a bool's 0 or 1), and None is null. The box's second word is null,
+   so that every int's box is also one of a promoting int (docs/python-int.md) */
+void *pys_box(I v) { I *p = gc_box(1); p[0] = v; p[1] = 0; return p; }
+/* the box of a promoting int, {lo, hi}: pys_box's where it fits; past 64 bits, -2**63 and its
+   Mpz, in a box the collector scans */
+void *pys_big_box(I lo, void *hi) {
+  if (!hi) return pys_box(lo);
+  I *p = gc_box(0); p[0] = INT64_MIN; ((void **)p)[1] = hi; return p;
+}
+/* Closed union: a program-wide tag and the value's 8-byte slot. The collector
+   scans the box for str, container or native reference payloads. None remains null. */
+void *pys_ubox(I tag, I v) { I *p = gc_box(0); p[0] = tag; p[1] = v; return p; }
+void *pys_ubox_opt(I tag, void *p, I deref) { return p ? pys_ubox(tag, deref ? *(I *)p : (I)p) : NULL; }
+
+static I unbox(I v, const char *d) { return *d == 'i' || *d == 'f' || *d == 'b' ? *(I *)v : v; }   /* the value of a ?d */
+static I unum(const char **d) {   /* a count or tag terminated by ':' (compiler-generated descriptors) */
+  I n = 0;
+  while (**d >= '0' && **d <= '9') { n = n * 10 + **d - '0'; (*d)++; }
+  (*d)++;
+  return n;
+}
+static const char *skip(const char *d) {
+  char c = *d++;
+  if (c == 'R') { unum(&d); return d; }
+  if (c == 'O' || c == 'P' || c == 'H') { d += 3; while (*d >= '0' && *d <= '9') d++; return d + (*d == '.'); }   /* (a union member's ends at a '.' before the next member's tag) */
+  if (c == 'L' || c == 'V' || c == '?' || c == 'S' || c == 'F') return skip(d);
+  if (c == 'D') return skip(skip(d));
+  if (c == 'T') for (int n = *d++ - '0'; n > 0; n--) d = skip(d);
+  if (c == 'U') for (I n = unum(&d); n > 0; n--) { unum(&d); d = skip(d); }
+  return d;
+}
+static const char *recdesc(const char *d) {
+  while (*d == 'R') { const char *n = d + 1; d -= unum(&n); }
+  return d;
+}
+/* A recursive alias's edge (R) is the one way a descriptor lets a value nest without bound, so
+   repr_depth and eqpair_depth count the edges they follow and raise here past 512. Nothing else
+   calls it: tools/check_runtime.py gives what reaches it R?, which the compiler makes R where the
+   op's descriptor holds an R (Gen.opfx); other descriptors never get here */
+static _Noreturn void rec_deep(const char *m) { pys_fail(m); }
+/* a list's int past 64 bits (BIGIDS), a set's (sbig) or a dict's (dbig), with more digits than
+   CPython's limit for an int's text, in repr_depth: its ValueError, which the compiler's RUNTIME
+   counts as rec_deep's (R?: Gen.opfx makes it R where a descriptor holds a list, set or dict of ints,
+   in a program whose lists, sets and dicts hold promoting ints) */
+static _Noreturn void digits_deep(void) { pys_fail(DIGITS_LIMIT); }
+static const char *utype(I tag, const char *d) {
+  d++;
+  for (I n = unum(&d); n > 0; n--) { if (unum(&d) == tag) return d; d = skip(d); }
+  __builtin_unreachable();   /* the compiler's descriptor covers every possible tag */
+}
+static const char *umember(I *v, const char *d) {
+  I *box = (I *)*v, tag = box[0];
+  *v = box[1];
+  return utype(tag, d);
+}
+static double dbl(I v) { double x; memcpy(&x, &v, 8); return x; }
+static int printable(I c);
+static char rquote(const char *s, I n) { return memchr(s, '\'', n) && !memchr(s, '"', n) ? '"' : '\''; }
+static void repr_bytes(Buf *b, Str *s) {   /* a bytes's repr(), as CPython's PyBytes_Repr writes it: b and rquote's
+                                              quotes; \t, \n, \r, \xhh below 32 and from 127 on, \\ and the quote */
+  char q = rquote(s->s, s->len), t[4] = {'\\', 'x', 0, 0};
+  put(b, "b", 1);
+  put(b, &q, 1);
+  for (I i = 0, n; i < s->len; i += n) {
+    for (n = 0; i + n < s->len; n++) {   /* a run of printable ASCII: one put */
+      unsigned char c = s->s[i + n];
+      if (c < 32 || c > 126 || c == q || c == '\\') break;
+    }
+    if (n) { put(b, s->s + i, n); continue; }
+    unsigned char c = s->s[i];
+    n = 1;
+    if (c == q || c == '\\' || c == '\t' || c == '\n' || c == '\r') {
+      t[1] = c == '\t' ? 't' : c == '\n' ? 'n' : c == '\r' ? 'r' : (char)c;
+      put(b, t, 2);
+      t[1] = 'x';
+    } else {
+      t[2] = "0123456789abcdef"[c >> 4];
+      t[3] = "0123456789abcdef"[c & 15];
+      put(b, t, 4);
+    }
+  }
+  put(b, &q, 1);
+}
+static I resc(char *t, const char *s, I len, char q, I *n) {   /* the character at s as CPython's unicode_repr writes it
+                                                                 between quotes q, into t (12 bytes); *n: its bytes in s */
+  I c;
+  *n = u8char(s, len, &c);
+  if (c == q || c == '\\') { t[0] = '\\'; t[1] = (char)c; return 2; }
+  if (c == '\n' || c == '\r' || c == '\t') { t[0] = '\\'; t[1] = c == '\n' ? 'n' : c == '\r' ? 'r' : 't'; return 2; }
+  if (c < 32 || c == 127 || (c > 127 && !printable(c)))   /* not printable: \xhh, \uhhhh or \Uhhhhhhhh */
+    return snprintf(t, 12, c < 0x100 ? "\\x%02llx" : c < 0x10000 ? "\\u%04llx" : "\\U%08llx", (long long)c);
+  memcpy(t, s, *n);
+  return *n;
+}
+static void repr_str(Buf *b, Str *s) {
+  char q = rquote(s->s, s->len), t[12];
+  put(b, &q, 1);
+  for (I i = 0, n; i < s->len; i += n) {
+    for (n = 0; i + n < s->len; n++) {   /* a run of printable ASCII, which resc copies as it is: one put */
+      unsigned char c = s->s[i + n];
+      if (c < 32 || c > 126 || c == q || c == '\\') break;
+    }
+    if (n) put(b, s->s + i, n);
+    else put(b, t, resc(t, s->s + i, s->len - i, q, &n));
+  }
+  put(b, &q, 1);
+}
+/* KTAG on Dict.kind: the dict's keys are hashed by CPython's hash (their descriptor has an H), and
+   its idx has CPython's size slots. build sets it at a table's first build, since the compiler may
+   store a descriptor into an empty dict (typed_empty); kdesc is the descriptor of a kind > 1 */
+#define KTAG 2
+/* ! asks for Python's hash/probe scheme even for native scalar keys in an
+   opt-in Dynamic Any program. It is a Dict.kind marker, not a value descriptor. */
+/* 1|KTAG is the immediate str/bytes kind: the same layout and hash scheme as !s. */
+static const char *kraw(I kind) { return kind == (1 | KTAG) ? "!s" : ((Str *)(kind & ~(I)KTAG))->s; }
+static const char *kdesc(I kind) { const char *d = kraw(kind); return d + (*d == '!'); }
+/* Is entry e live? Legacy tables use hash 0/key 0 as a hole; Python-hash
+   tables reserve hash -1 so native integer zero remains a live key. */
+static int dlive(Dict *d, I e) {
+  /* Python hash -1 is reserved (normalized to -2), whereas a live native 0
+     key has both hash and slot 0. Legacy tables retain their zero holes. */
+  return d->kind & KTAG ? d->hs[e] != (uint64_t)-1 : d->hs[e] || d->keys[e];
+}
+/* A value past 64 bits of a dict of ints holds -2**63 in its slot, as a list's item does, and its
+   Mpz in the entry's word of vb, an array as long as the entries' that the collector scans, which
+   the first such value makes (dbig_make); every other entry's word is null, and every store of a
+   value clears its entry's word (dbig_clear). Compiled code reads the Mpz where it reads -2**63
+   (pys_dict_big_val) */
+static inline void dbig_clear(Dict *d, I e) { if (d->vb) d->vb[e] = 0; }
+static void dbig_make(Dict *d) { if (!d->vb) d->vb = pys_alloc(d->size * 2 / 3 * 8); }
+static Mpz *dbig(Dict *d, I e) { return d->vb && d->vals[e] == INT64_MIN && opt_in() ? (Mpz *)d->vb[e] : NULL; }
+static int dict_has_big(Dict *d) {   /* does d hold a value past 64 bits */
+  if (d->vb) for (I e = 0; e < d->n; e++) if (d->vb[e] && dlive(d, e)) return 1;
+  return 0;
+}
+/* and a key past 64 bits of a dict of int keys holds -2**63 in its slot, and its Mpz in the entry's
+   word of kb, which the first such key makes (dbput), as vb holds a value's; its hash is hbig's
+   (see dicts), so the lookups of 64-bit keys never find it. The words of entries past the last are
+   null (a deletion clears its entry's, builds and copies make new arrays), so an insertion of a
+   64-bit key writes none */
+static inline void kbig_clear(Dict *d, I e) { if (d->kb) d->kb[e] = 0; }
+static Mpz *kbig(Dict *d, I e) { return d->keys[e] == INT64_MIN && d->kb && opt_in() ? (Mpz *)d->kb[e] : NULL; }
+static int dict_has_big_key(Dict *d) {   /* does d hold a key past 64 bits */
+  if (d->kb && opt_in()) for (I e = 0; e < d->n; e++) if (d->kb[e] && dlive(d, e)) return 1;
+  return 0;
+}
+/* depth counts the recursive alias edges (R) followed: a recursive value can nest without bound,
+   so following more than 512 raises RecursionError, as CPython's repr does for deep nesting; other
+   reprs, a class's own __repr__ among them, are limited only by the native stack. A local depth
+   argument survives native unwinding without mutable state. */
+static const char *repr_depth(Buf *b, I v, const char *d, I depth) {
+  switch (*d++) {
+  case 'R': {
+    const char *ref = d - 1;
+    if (depth >= 512) rec_deep("RecursionError: maximum recursion depth exceeded while getting the repr of an object");
+    repr_depth(b, v, recdesc(ref), depth + 1); return skip(ref);
+  }
+  case 'U': { const char *end = skip(d - 1), *member = umember(&v, d - 1); repr_depth(b, v, member, depth); return end; }
+  case 'A': { Dyn *x = (Dyn *)v; repr_depth(b, x->v, x->t->desc->s, depth); return d; }
+  case 'G': put(b, "<generator object>", 18); return d;
+  case 'Q': put(b, "<iterator object>", 17); return d;
+  case 'Z': put(b, "<function>", 10); return d;   /* (a dynamic value's function: by identity, unnamed) */
+  case 'Y': {   /* a class value: ReflRec's first words are name, qualname and module */
+    Str **r = (Str **)v;
+    put(b, "<class '", 8);
+    if (strcmp(r[2]->s, "builtins")) { put(b, r[2]->s, r[2]->len); put(b, ".", 1); }
+    put(b, r[1]->s, r[1]->len); put(b, "'>", 2); return d;
+  }
+  case 'i': { char t[32]; put(b, t, snprintf(t, 32, "%lld", (long long)v)); return d; }
+  case 'J': {                                       /* a promoting int's two words (jbig) */
+    opt_in(); Big x = jbig(v);
+    if (x.hi) { Str *s = mpz_digits(x.hi); if (!s) digits_deep(); put(b, s->s, s->len); }
+    else { char t[32]; put(b, t, snprintf(t, 32, "%lld", (long long)x.lo)); }
+    return d;
+  }
+  case 'j': {                                       /* a dynamic wide int's immutable Mpz */
+    opt_in(); Str *s = mpz_digits((Mpz *)v); if (!s) digits_deep(); put(b, s->s, s->len); return d;
+  }
+  case 'f': { Str *s = pys_str_float(dbl(v)); put(b, s->s, s->len); return d; }
+  case 'b': put(b, v ? "True" : "False", v ? 4 : 5); return d;
+  case 's': if (v) repr_str(b, (Str *)v); else put(b, "None", 4); return d;   /* (see hval) */
+  case 'y': if (v) repr_bytes(b, (Str *)v); else put(b, "None", 4); return d;
+  case 'L': {                                       /* a list or dict being printed already (through an object) is [...] or {...} */
+    List *l = (List *)v;
+    if (!pys_repr_enter(l)) { put(b, "[...]", 5); return skip(d); }
+    put(b, "[", 1);
+    for (I i = 0; i < l->len; i++) {
+      if (i) put(b, ", ", 2);
+      Mpz *m = lbig(l, i);   /* (an int past 64 bits: BIGIDS) */
+      if (m) { Str *s = mpz_digits(m); if (!s) digits_deep(); put(b, s->s, s->len); } else repr_depth(b, l->a[i], d, depth);
+    }
+    put(b, "]", 1); pys_repr_leave(l); return skip(d);
+  }
+  case 'D': {
+    Dict *m = (Dict *)v; const char *dv = skip(d);
+    if (!pys_repr_enter(m)) { put(b, "{...}", 5); return skip(dv); }
+    put(b, "{", 1);
+    for (I e = 0, k = 0; e < m->n; e++) {
+      if (!dlive(m, e)) continue;
+      if (k++) put(b, ", ", 2);
+      I key = m->keys[e], val = m->vals[e];         /* (a key's __repr__ may empty the dict) */
+      Mpz *big = dbig(m, e), *kbm = kbig(m, e);     /* (a value, a key past 64 bits) */
+      if (kbm) { Str *s = mpz_digits(kbm); if (!s) digits_deep(); put(b, s->s, s->len); } else repr_depth(b, key, d, depth);
+      put(b, ": ", 2);
+      if (big) { Str *s = mpz_digits(big); if (!s) digits_deep(); put(b, s->s, s->len); } else repr_depth(b, val, dv, depth);
+    }
+    put(b, "}", 1); pys_repr_leave(m); return skip(dv);
+  }
+  case 'S': case 'F': {                             /* set() or {1, 2}; frozenset() or frozenset({1, 2}) */
+    Set *s = (Set *)v; int f = d[-1] == 'F';
+    if (!s->len) { put(b, f ? "frozenset()" : "set()", f ? 11 : 5); return skip(d); }
+    put(b, f ? "frozenset({" : "{", f ? 11 : 1);
+    for (I i = 0, n = 0; i <= s->mask; i++) if (s->hs[i] != -1) {
+      if (n++) put(b, ", ", 2);
+      Mpz *m = sbig(s, i);   /* (an int past 64 bits: kb) */
+      if (m) { Str *t = mpz_digits(m); if (!t) digits_deep(); put(b, t->s, t->len); } else repr_depth(b, s->keys[i], d, depth);
+    }
+    put(b, f ? "})" : "}", f ? 2 : 1); return skip(d);
+  }
+  case 'T': {
+    if (!v) { put(b, "None", 4); return skip(d - 1); }
+    int n = *d++ - '0'; I *t = (I *)v, w[2]; put(b, "(", 1);
+    for (int i = 0; i < n; i++) { if (i) put(b, ", ", 2); d = repr_depth(b, titem(t, n, i, d, w), d, depth); }
+    put(b, n == 1 ? ",)" : ")", n == 1 ? 2 : 1); return d;
+  }
+  case 'V': {
+    if (!v) { put(b, "None", 4); return skip(d); }
+    VTuple *t = (VTuple *)v;
+    if (!pys_repr_enter(t)) { put(b, "(...)", 5); return skip(d); }
+    put(b, "(", 1);
+    for (I i = 0; i < t->len; i++) { if (i) put(b, ", ", 2); repr_depth(b, t->a[i], d, depth); }
+    put(b, t->len == 1 ? ",)" : ")", t->len == 1 ? 2 : 1);
+    pys_repr_leave(t); return skip(d);
+  }
+  case 'O': case 'P': case 'H': { Str *s = pys_obj_repr(ocls(d), v, 0); put(b, s->s, s->len); return skip(d - 1); }
+  case '?': if (v) return repr_depth(b, unbox(v, d), d, depth); put(b, "None", 4); return skip(d);
+  case 'E': { Str *s = pys_exc_repr((Exc *)v); put(b, s->s, s->len); return d; }
+  case 'C': { Str *s = pys_exc_type((Exc *)v); put(b, s->s, s->len); return d; }   /* an exception class (its class object) */
+  }
+  return d;
+}
+static const char *repr(Buf *b, I v, const char *d) { return repr_depth(b, v, d, 0); }
+Str *pys_repr(I v, Str *d) { Buf b = {0}; repr(&b, v, d->s); return done(&b); }
+/* A class's reflection record (the compiler's reflection.py; lowered by lower_module.py): an
+   internal constant per class that reaches a reflective site, whose address is the class's
+   identity (type(x)). Its name table lists the names the class's objects answer to, sorted by
+   their bytes, each with a kind the compiler reads; its field table gives the fields of an
+   object's __dict__ in their order: name, type descriptor, byte offset in the object and that
+   of its "is assigned" flag (-1: always assigned) */
+typedef struct { Str *name; I kind; } ReflName;
+typedef struct { Str *name, *desc; I off, flag; } ReflField;
+typedef struct { Str *name, *qual, *mod; I flags, nnames; ReflName *names; I nfields; ReflField *fields; } ReflRec;
+I pys_refl_find(ReflRec *r, Str *s) {   /* the index of name s in r's name table, or -1 */
+  I lo = 0, hi = r->nnames;
+  while (lo < hi) {
+    I mid = lo + (hi - lo) / 2, c = pys_str_cmp(r->names[mid].name, s);
+    if (c == 0) return mid;
+    if (c < 0) lo = mid + 1; else hi = mid;
+  }
+  return -1;
+}
+Str *pys_refl_vars(ReflRec *r, char *o) {   /* repr(vars(o)): o's assigned fields, each by its descriptor */
+  Buf b = {0};
+  if (!pys_repr_enter(o)) { put(&b, "{...}", 5); return done(&b); }   /* (a field's repr printing o's again) */
+  put(&b, "{", 1);
+  for (I i = 0, k = 0; i < r->nfields; i++) {
+    ReflField *f = &r->fields[i];
+    if (f->flag >= 0 && !*(unsigned char *)(o + f->flag)) continue;
+    if (k++) put(&b, ", ", 2);
+    repr_str(&b, f->name); put(&b, ": ", 2);
+    I v = 0, w[2];
+    if (f->desc->s[0] == 'b') v = *(unsigned char *)(o + f->off) & 1;
+    else if (f->desc->s[0] == 'J' && opt_in()) { memcpy(w, o + f->off, 16); if (w[1]) w[0] = INT64_MIN; v = (I)w; }   /* a promoting int's {lo, hi}: jbig's words */
+    else memcpy(&v, o + f->off, 8);
+    repr(&b, v, f->desc->s);
+  }
+  put(&b, "}", 1);
+  pys_repr_leave(o);
+  return done(&b);
+}
+static I entry(Dict *d, I k);
+static I dfind(Dict *d, I k, uint64_t h, I *free);
+static I dbfind(Dict *d, Mpz *m, uint64_t h, I *free);
+I pys_set_cmp(Set *a, Set *b, I op);
+static int list_same_item(List *a, I i, List *b, I j) {
+  return a->ids && b->ids && opt_in() && ((a == b && i == j) ||
+         (a->ids[i + 1] && a->ids[i + 1] == b->ids[j + 1]));
+}
+static int eqv(I a, I b, const char *d);
+static int eqpair(I a, I b, const char *x, const char *y);
+static int eqitem(I a, I b, const char *d);
+static int list_item_eq(List *x, I i, List *y, I j, const char *d) {   /* x[i] == y[j] of lists of one type */
+  Mpz *m = lbig(x, i), *n = lbig(y, j);   /* (ints past 64 bits, BIGIDS: equal to their values only) */
+  if (m || n) return m && n && pys_mpz_cmp(m, n) == 0;
+  return list_same_item(x, i, y, j) || eqitem(x->a[i], y->a[j], d);
+}
+/* Container items use identity before equality (PyObject_RichCompareBool). Keep this
+   separate from direct comparison: equal unboxed float bits need not compare equal,
+   and an optional scalar's box does not give that scalar Python object identity. */
+static int eqitem(I a, I b, const char *d) {
+  d = recdesc(d);
+  char c = d[*d == '?'];
+  if (c == 'U') return eqpair(a, b, d, d);
+  if (c == 'A') return dyn_eqitem((Dyn *)a, (Dyn *)b);
+  return (a == b && (c == 'L' || c == 'D' || c == 'T' || c == 'V' || c == 'S' || c == 'F')) || eqv(a, b, d);
+}
+#ifndef EQ_PROBE
+#define EQ_PROBE()
+#endif
+static int eqv(I a, I b, const char *d) {
+  d = recdesc(d);
+  EQ_PROBE();
+  switch (*d) {
+  case 'U': return eqpair(a, b, d, d);
+  case 'A': return pys_dyn_eq((Dyn *)a, (Dyn *)b);
+  case 'J': { opt_in(); Big x = jbig(a), y = jbig(b); return pys_big_cmp(x.lo, x.hi, y.lo, y.hi) == 0; }
+  case 'f': return dbl(a) == dbl(b);
+  case 's': return a && b ? pys_str_eq((Str *)a, (Str *)b) : a == b;   /* (None in a looked-up key, see hval) */
+  case 'L': {   /* an __eq__ may change either list: as CPython's list_richcompare, re-read both
+                   lengths at every step, and once a list has no item left, compare them */
+    List *x = (List *)a, *y = (List *)b; I i = 0;
+    if (x->len != y->len) return 0;
+    while (i < x->len && i < y->len && list_item_eq(x, i, y, i, d + 1)) i++;
+    return (i >= x->len || i >= y->len) && x->len == y->len;
+  }
+  case 'D': {   /* (as CPython's dict_equal, with the hashes x keeps, where y's are of the same kind) */
+    Dict *x = (Dict *)a, *y = (Dict *)b; const char *dv = skip(d + 1);
+    int same = x->kind == y->kind || (x->kind > 1 && y->kind > 1 && !strcmp(kdesc(x->kind), kdesc(y->kind)));
+    if (x->len != y->len) return 0;
+    for (I e = 0; e < x->n; e++) {
+      if (!dlive(x, e)) continue;
+      I val = x->vals[e]; Mpz *xb = dbig(x, e), *xk = kbig(x, e);   /* (a key past 64 bits: dbfind) */
+      I f = xk ? dbfind(y, xk, x->hs[e], 0) : same ? dfind(y, x->keys[e], x->hs[e], 0) : entry(y, x->keys[e]);   /* (a key's __eq__ may empty x) */
+      if ((xk || same) && f >= 0) f = y->idx[f] - 1;
+      if (f < 0) return 0;
+      Mpz *yb = dbig(y, f);   /* (values past 64 bits: equal to their values only) */
+      if (xb || yb ? !(xb && yb && pys_mpz_cmp(xb, yb) == 0) : !eqitem(val, y->vals[f], dv)) return 0;
+    }
+    return 1;
+  }
+  case 'T': {
+    I *x = (I *)a, *y = (I *)b, n = d[1] - '0', wx[2], wy[2]; const char *e = d + 2;
+    if (!x || !y) return x == y;
+    for (I i = 0; i < n; i++, e = skip(e)) {
+      if (*e == 'J' && x[i] != INT64_MIN && y[i] != INT64_MIN) { if (x[i] != y[i]) return 0; continue; }   /* (promoting ints that fit: their slots) */
+      if (!eqitem(titem(x, n, i, e, wx), titem(y, n, i, e, wy), e)) return 0;
+    }
+    return 1;
+  }
+  case 'V': {
+    VTuple *x = (VTuple *)a, *y = (VTuple *)b;
+    if (x == y) return 1;
+    if (!x || !y) return x == y;
+    if (x->len != y->len) return 0;
+    for (I i = 0; i < x->len; i++)
+      if (!(x->ids && y->ids && x->ids[i + 1] && x->ids[i + 1] == y->ids[i + 1]) && !eqitem(x->a[i], y->a[i], d + 1)) return 0;
+    return 1;
+  }
+  case 'S': case 'F': return pys_set_cmp((Set *)a, (Set *)b, 4);   /* (a set equals a frozenset of its elements) */
+  case 'O': case 'H': return a == b || pys_obj_eq(ocls(d + 1), a, b);   /* identity first, like CPython */
+  case 'P': case 'C': case 'Y': return a == b;
+  case '?': return a && b ? eqv(unbox(a, d + 1), unbox(b, d + 1), d + 1) : a == b;   /* None equals only None */
+  case 'E': return pys_exc_id((Exc *)a) == pys_exc_id((Exc *)b);
+  }
+  return a == b;
+}
+typedef struct { I value; const char *desc; int edge; } EqValue;
+static EqValue eqresolve(I v, const char *d) {
+  /* Each operand has its own layout: an optional number is a one-slot box,
+     a union is a tag/payload box, and a concrete container is its original pointer.
+     edge: whether a recursive alias's edge (R) led here */
+  int edge = 0;
+  while (*d == '?' || *d == 'U' || *d == 'R') {
+    if (*d == 'R') { d = recdesc(d); edge = 1; continue; }
+    if (*d == '?') { if (!v) return (EqValue){0, "n", edge}; v = unbox(v, ++d); }
+    else { I *box = (I *)v; d = utype(box[0], d); v = box[1]; }
+  }
+  return (EqValue){v, d, edge};
+}
+static int big_eq(Mpz *m, I b, const char *y) {   /* the int m past 64 bits == value b of descriptor y */
+  EqValue r = eqresolve(b, y);
+  return *r.desc == 'f' && mpz_cmp_float(m, dbl(r.value)) == 0;   /* (no 64-bit int or bool equals it) */
+}
+static int same_desc(const char *x, const char *y) {
+  size_t n = (size_t)(skip(x) - x);
+  return n == (size_t)(skip(y) - y) && !memcmp(x, y, n);
+}
+static int eqpair_depth(I a, I b, const char *x, const char *y, I depth) {
+  /* Only closed builtin value trees reach this path (the compiler rejects user
+     callbacks). Never decode b with x: equal Python types may have different
+     native element layouts, including nested unions and boxed optionals. */
+  EQ_PROBE();
+  EqValue ax = eqresolve(a, x), by = eqresolve(b, y);
+  a = ax.value; x = ax.desc; b = by.value; y = by.desc;
+  int tx = *x == 'T' || *x == 'V', ty = *y == 'T' || *y == 'V';
+  /* The original container's identity survives separate union boxes. Besides
+     matching Python, this keeps a shared DAG from expanding into its logical tree.
+     Scalar boxes deliberately confer no numeric identity (notably for NaNs). */
+  if (a == b && (*x == *y || (tx && ty)) && (*x == 'L' || *x == 'D' || tx)) return 1;
+  /* Recursive values can form cycles after parsing. Distinct cycles raise, as
+     Python does, while shared descendants retain the identity shortcut above.
+     depth counts the recursive alias edges followed, as repr_depth's does, and is
+     checked before any leaf is compared, so the 513th edge raises whatever it leads
+     to; a local depth argument survives native unwinding without mutable state. */
+  if (ax.edge || by.edge) {
+    if (depth >= 512) rec_deep("RecursionError: maximum recursion depth exceeded in comparison");
+    depth++;
+  }
+  if (*x == 'n' || *y == 'n') return *x == *y;
+  if ((*x == 'J' || *y == 'J') && opt_in()) {   /* a promoting int (jbig) and a number, exactly; another type equals it never */
+    Big p = jbig(*x == 'J' ? a : b); I v = *x == 'J' ? b : a; const char *e = *x == 'J' ? y : x;
+    if (*e == 'J') { Big q = jbig(v); return pys_big_cmp(p.lo, p.hi, q.lo, q.hi) == 0; }
+    if (*e == 'f') return (p.hi ? mpz_cmp_float(p.hi, dbl(v)) : pys_cmp_if(p.lo, dbl(v))) == 0;   /* (allocating nothing) */
+    return (*e == 'i' || *e == 'b') && !p.hi && p.lo == v;
+  }
+  int nx = *x == 'i' || *x == 'b', ny = *y == 'i' || *y == 'b';
+  if (nx && ny) return a == b;
+  if (nx && *y == 'f') return pys_cmp_if(a, dbl(b)) == 0;
+  if (*x == 'f' && ny) return pys_cmp_if(b, dbl(a)) == 0;
+  if (*x != *y && !(tx && ty)) return 0;
+  if (*x == 'f') return dbl(a) == dbl(b);
+  if (*x == 's') return a && b ? pys_str_eq((Str *)a, (Str *)b) : a == b;
+  if (*x == 'L') {
+    List *p = (List *)a, *q = (List *)b;
+    if (p->len != q->len) return 0;
+    for (I i = 0; i < p->len; i++) {
+      Mpz *m = lbig(p, i), *n = lbig(q, i);   /* (ints past 64 bits: BIGIDS) */
+      if (m || n) { if (m && n ? pys_mpz_cmp(m, n) != 0 : !big_eq(m ? m : n, m ? q->a[i] : p->a[i], m ? y + 1 : x + 1)) return 0; continue; }
+      if (!list_same_item(p, i, q, i) && !eqpair_depth(p->a[i], q->a[i], x + 1, y + 1, depth)) return 0;
+    }
+    return 1;
+  }
+  if (*x == 'D') {
+    Dict *p = (Dict *)a, *q = (Dict *)b; const char *kx = x + 1, *ky = y + 1;
+    const char *vx = skip(kx), *vy = skip(ky);
+    if (p->len != q->len) return 0;
+    int lookup = same_desc(kx, ky) || ((*kx == 'i' || *kx == 'b') && (*ky == 'i' || *ky == 'b'));
+    for (I i = 0; i < p->n; i++) {
+      if (!dlive(p, i)) continue;
+      I j = -1; Mpz *pk = kbig(p, i);
+      if (pk) { j = dbfind(q, pk, p->hs[i], 0); if (j >= 0) j = q->idx[j] - 1; }   /* (a key past 64 bits equals such a key only) */
+      else if (lookup) j = entry(q, p->keys[i]);
+      else for (I k = 0; k < q->n; k++) if (dlive(q, k) && !kbig(q, k) && eqpair_depth(p->keys[i], q->keys[k], kx, ky, depth)) { j = k; break; }
+      if (j < 0) return 0;
+      Mpz *m = dbig(p, i), *n = dbig(q, j);   /* (values past 64 bits: dbig) */
+      if (m || n) { if (m && n ? pys_mpz_cmp(m, n) != 0 : !big_eq(m ? m : n, m ? q->vals[j] : p->vals[i], m ? vy : vx)) return 0; continue; }
+      if (!eqpair_depth(p->vals[i], q->vals[j], vx, vy, depth)) return 0;
+    }
+    return 1;
+  }
+  if (tx) {
+    if (!a || !b) return a == b;
+    I nx = *x == 'T' ? x[1] - '0' : ((VTuple *)a)->len, ny = *y == 'T' ? y[1] - '0' : ((VTuple *)b)->len;
+    if (nx != ny) return 0;
+    I *p = *x == 'T' ? (I *)a : ((VTuple *)a)->a, *q = *y == 'T' ? (I *)b : ((VTuple *)b)->a, wx[2], wy[2];
+    const char *ex = x + (*x == 'T' ? 2 : 1), *ey = y + (*y == 'T' ? 2 : 1);
+    for (I i = 0; i < nx; i++) {
+      if (*x == 'V' && *y == 'V' && ((VTuple *)a)->ids && ((VTuple *)b)->ids && ((VTuple *)a)->ids[i + 1] && ((VTuple *)a)->ids[i + 1] == ((VTuple *)b)->ids[i + 1]) continue;
+      if (!eqpair_depth(*x == 'T' ? titem(p, nx, i, ex, wx) : p[i], *y == 'T' ? titem(q, ny, i, ey, wy) : q[i], ex, ey, depth)) return 0;
+      if (*x == 'T') ex = skip(ex);
+      if (*y == 'T') ey = skip(ey);
+    }
+    return 1;
+  }
+  __builtin_unreachable();   /* the compiler permits only the builtin value descriptors above */
+}
+static int eqpair(I a, I b, const char *x, const char *y) { return eqpair_depth(a, b, x, y, 0); }
+/* a == b of two strs (descriptor "s", which the compiler passes for every str == str and
+   str != str) is eqv's answer for 's', taken without its descriptor walk */
+I pys_eq(I a, I b, Str *d) {
+  if (d->s[0] == 's') return a && b ? pys_str_eq((Str *)a, (Str *)b) : a == b;
+  return eqv(a, b, d->s);
+}
+I pys_eq_pair(I a, I b, Str *x, Str *y) { return eqpair(a, b, x->s, y->s); }
+/* a OP b for op 0..3 = < <= > >=, as CPython compares: sequences find the first pair of
+   items that are not equal (identity, then ==) and apply OP to that pair only, else compare
+   lengths; objects go through the program's rich comparison (reflection, TypeError) */
+static int cmpop(I c, I op) { return op == 0 ? c < 0 : op == 1 ? c <= 0 : op == 2 ? c > 0 : c >= 0; }
+static const char *tyname(char d);
+static const char *vtyname(I v, const char *d) { return tyname(*d == 'U' ? *eqresolve(v, d).desc : *d); }   /* v's (a union's: its member's) */
+static int opv(I a, I b, const char *d, I op) {
+  switch (*d) {
+  case 'f': { double x = dbl(a), y = dbl(b); return op == 0 ? x < y : op == 1 ? x <= y : op == 2 ? x > y : x >= y; }
+  case 's': return cmpop(pys_str_cmp((Str *)a, (Str *)b), op);
+  case 'L': {
+    List *x = (List *)a, *y = (List *)b; I i = 0;
+    while (i < x->len && i < y->len && list_item_eq(x, i, y, i, d + 1)) i++;
+    if (i < x->len && i < y->len && (lbig(x, i) || lbig(y, i))) {   /* (an int past 64 bits: BIGIDS) */
+      Big p = litem(x, i), q = litem(y, i); return cmpop(pys_big_cmp(p.lo, p.hi, q.lo, q.hi), op);
+    }
+    if (i < x->len && i < y->len) return opv(x->a[i], y->a[i], d + 1, op);
+    return cmpop((x->len > y->len) - (x->len < y->len), op);
+  }
+  case 'J': { opt_in(); Big x = jbig(a), y = jbig(b); return cmpop(pys_big_cmp(x.lo, x.hi, y.lo, y.hi), op); }
+  case 'T': {
+    I *x = (I *)a, *y = (I *)b, n = d[1] - '0', wx[2], wy[2]; const char *e = d + 2;
+    for (I i = 0; i < n; i++, e = skip(e)) {
+      if (*e == 'J' && x[i] != INT64_MIN && y[i] != INT64_MIN) {   /* (as eqv's) */
+        if (x[i] != y[i]) return cmpop((x[i] > y[i]) - (x[i] < y[i]), op);
+        continue;
+      }
+      I p = titem(x, n, i, e, wx), q = titem(y, n, i, e, wy);
+      if (!eqitem(p, q, e)) return opv(p, q, e, op);
+    }
+    return cmpop(0, op);
+  }
+  case 'V': {
+    VTuple *x = (VTuple *)a, *y = (VTuple *)b; I i = 0;
+    if (x == y) return cmpop(0, op);
+    while (i < x->len && i < y->len && ((x->ids && y->ids && x->ids[i + 1] && x->ids[i + 1] == y->ids[i + 1]) || eqitem(x->a[i], y->a[i], d + 1))) i++;
+    if (i < x->len && i < y->len) return opv(x->a[i], y->a[i], d + 1, op);
+    return cmpop((x->len > y->len) - (x->len < y->len), op);
+  }
+  case 'S': case 'F': return pys_set_cmp((Set *)a, (Set *)b, op) != 0;   /* subsets */
+  case 'O': return pys_obj_cmp(ocls(d + 1), op, a, b) != 0;
+  case 'A': return pys_dyn_cmp((Dyn *)a, (Dyn *)b, op);
+  case 'K': return opv(((I *)a)[0], ((I *)b)[0], d + 1, op);   /* key='s records {key, value}: their keys */
+  case 'U': {   /* numbers of a union (the compiler orders no other): an int and a float exactly, as CPython */
+    EqValue x = eqresolve(a, d), y = eqresolve(b, d);
+    int nx = *x.desc != 'f', ny = *y.desc != 'f';
+    if (nx && ny) return cmpop((x.value > y.value) - (x.value < y.value), op);
+    if (!nx && !ny) return opv(x.value, y.value, "f", op);
+    I c = nx ? pys_cmp_if(x.value, dbl(y.value)) : pys_cmp_if(y.value, dbl(x.value));
+    return c != 2 && cmpop(nx ? c : -c, op);   /* (2: a NaN, for which no ordering holds) */
+  }
+  case 'D': failf("TypeError: '%s' not supported between instances of 'dict' and 'dict'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=");
+  case '?':
+    if (a && b) return opv(unbox(a, d + 1), unbox(b, d + 1), d + 1, op);
+    failf("TypeError: '%s' not supported between instances of '%s' and '%s'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=",
+          a ? vtyname(a, d + 1) : "NoneType", b ? vtyname(b, d + 1) : "NoneType");
+  case 'C': case 'Y': failf("TypeError: '%s' not supported between instances of 'type' and 'type'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=");
+  case 'E': {
+    int m, n; const char *x = exc_name((Exc *)a, &m), *y = exc_name((Exc *)b, &n);
+    failf("TypeError: '%s' not supported between instances of '%.*s' and '%.*s'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=", m, x, n, y);
+  }
+  }
+  return cmpop((a > b) - (a < b), op);
+}
+I pys_cmpop(I a, I b, Str *d, I op) { return opv(a, b, d->s, op); }
+
+void pys_unpack_check(I have, I want) {
+  char b[96];
+  if (have < want) snprintf(b, 96, "ValueError: not enough values to unpack (expected %lld, got %lld)", (long long)want, (long long)have);
+  else if (have > want) snprintf(b, 96, "ValueError: too many values to unpack (expected %lld)", (long long)want);
+  else return;
+  pys_fail(b);
+}
+
+/* a, *b, c = xs: the starred target takes the items the others leave, which may be none */
+void pys_unpack_ex_check(I have, I want) {
+  char b[128];
+  if (have >= want) return;
+  snprintf(b, 128, "ValueError: not enough values to unpack (expected at least %lld, got %lld)", (long long)want, (long long)have);
+  pys_fail(b);
+}
+
+/* Variable-length tuples own copied slots; later list mutation cannot change the
+   tuple. Scanned allocation retains pointer-valued elements and optional boxes.
+   The source remains live through the allocation because memcpy reads it after. */
+void pys_list_identity(List *l, I kind);
+static I list_box(I value, I kind);
+
+/* Identities are immutable once materialized. Copies own their companion arrays,
+   but share the item boxes. Materialize before sharing a pending numeric item. */
+static void vtuple_ids(VTuple *t, I kind) {
+  opt_in();
+  if (!t->ids) {
+    if (t->len > INT64_MAX / (I)sizeof(I) - 1) oom();
+    I *ids = pys_alloc((t->len + 1) * sizeof(I));
+    ids[0] = kind; t->ids = ids;
+  }
+}
+static void vtuple_identity(VTuple *t) {
+  if (t->ids && opt_in())
+    for (I i = 0; i < t->len; i++)
+      if (!t->ids[i + 1]) t->ids[i + 1] = list_box(t->a[i], t->ids[0]);
+}
+void pys_vtuple_set_identity(VTuple *t, I index, Dyn *box, I kind) {
+  vtuple_ids(t, kind); t->ids[index + 1] = (I)box;
+}
+Dyn *pys_vtuple_get_identity(VTuple *t, I index, I kind) {
+  if (!t) pys_fail("TypeError: 'NoneType' object is not subscriptable");
+  index = idx(index, t->len, "IndexError: tuple index out of range");
+  vtuple_ids(t, kind);
+  if (!t->ids[index + 1]) t->ids[index + 1] = list_box(t->a[index], kind);
+  return (Dyn *)t->ids[index + 1];
+}
+
+VTuple *pys_vtuple_from(I *src, I count) {
+  if (count < 0 || count > (INT64_MAX - (I)sizeof(VTuple)) / (I)sizeof(I)) pys_fail("MemoryError");
+  if (count && !src) pys_fail("TypeError: 'NoneType' object is not iterable");
+  VTuple *t = pys_alloc(sizeof(VTuple) + count * sizeof(I));
+  t->len = count;
+  if (count) memcpy(t->a, src, count * sizeof(I));
+  return t;
+}
+VTuple *pys_vtuple_new(List *src) {
+  if (!src) pys_fail("TypeError: 'NoneType' object is not iterable");
+  list_narrow(src);   /* (a tuple[int, ...] holds 64-bit ints: BIGIDS) */
+  VTuple *t = pys_vtuple_from(src->a, src->len);
+  if (src->ids && !big_list(src) && opt_in()) {
+    pys_list_identity(src, src->ids[0]);
+    vtuple_ids(t, src->ids[0]);
+    memcpy(t->ids + 1, src->ids + 1, src->len * sizeof(I));
+  }
+  return t;
+}
+/* Immutable widening from int/float/bool to the same scalar | None. The
+   compiler restricts this helper to unboxed scalar source elements. */
+VTuple *pys_vtuple_box(VTuple *src) {
+  if (!src) pys_fail("TypeError: 'NoneType' object is not iterable");
+  VTuple *t = pys_vtuple_from(src->a, src->len);
+  for (I i = 0; i < src->len; i++) t->a[i] = (I)pys_box(src->a[i]);
+  if (src->ids && opt_in()) {
+    vtuple_identity(src);
+    vtuple_ids(t, src->ids[0] | 8);
+    memcpy(t->ids + 1, src->ids + 1, src->len * sizeof(I));
+  }
+  return t;
+}
+I pys_vtuple_get(VTuple *t, I index) {
+  if (!t) pys_fail("TypeError: 'NoneType' object is not subscriptable");
+  return t->a[idx(index, t->len, "IndexError: tuple index out of range")];
+}
+/* a + b: a new tuple of the items of both, or the other operand itself where one is empty, as
+   CPython's tupleconcat gives it */
+VTuple *pys_vtuple_concat(VTuple *a, VTuple *b) {
+  if (!a->len) return b;
+  if (!b->len) return a;
+  if (a->len > (INT64_MAX - (I)sizeof(VTuple)) / (I)sizeof(I) - b->len) pys_fail("MemoryError");
+  VTuple *t = pys_alloc(sizeof(VTuple) + (a->len + b->len) * sizeof(I));
+  t->len = a->len + b->len;
+  memcpy(t->a, a->a, a->len * sizeof(I));
+  memcpy(t->a + a->len, b->a, b->len * sizeof(I));
+  if ((a->ids || b->ids) && opt_in()) {
+    I kind = a->ids ? a->ids[0] : b->ids[0];
+    vtuple_ids(a, kind); vtuple_ids(b, kind);
+    vtuple_identity(a); vtuple_identity(b); vtuple_ids(t, kind);
+    memcpy(t->ids + 1, a->ids + 1, a->len * sizeof(I));
+    memcpy(t->ids + a->len + 1, b->ids + 1, b->len * sizeof(I));
+  }
+  return t;
+}
+VTuple *pys_vtuple_slice(VTuple *t, I lo, I hi, I st) {   /* t[lo:hi:st]; all of t is t itself, as in CPython */
+  I n = sspan(&lo, hi, &st, t->len);
+  if (st == 1 && n == t->len) return t;
+  VTuple *r = pys_alloc(sizeof(VTuple) + n * sizeof(I));
+  r->len = n;
+  for (I i = 0; i < n; i++) r->a[i] = t->a[lo + i * st];
+  if (t->ids && opt_in()) {
+    vtuple_identity(t); vtuple_ids(r, t->ids[0]);
+    for (I i = 0; i < n; i++) r->ids[i + 1] = t->ids[lo + i * st + 1];
+  }
+  return r;
+}
+static int eqitem(I a, I b, const char *d);
+I pys_vtuple_index(VTuple *t, I v, Str *d, I st, I en) {   /* tuple.index(v, start, stop), as tuple_index_impl */
+  if (st < 0 && (st += t->len) < 0) st = 0;
+  if (en < 0) en += t->len;
+  for (I j = st; j < en && j < t->len; j++) if (eqitem(t->a[j], v, d->s)) return j;
+  pys_fail("ValueError: tuple.index(x): x not in tuple");
+}
+I pys_vtuple_count(VTuple *t, I v, Str *d) { I c = 0; for (I i = 0; i < t->len; i++) c += eqitem(t->a[i], v, d->s); return c; }
+
+/* ---------- lists ----------
+   A list's header is scanned. Its item array is atomic when the items cannot be pointers: the
+   compiler makes list[int], list[float] and list[bool] with pys_list_new_atomic, and a list's
+   type never changes (lists are invariant, and only an empty result whose type is still open
+   is typed later: its array is scanned). Growth, copies, slices, + and * make new arrays of
+   the kind of the arrays they copy (atomic_items), so a list keeps its kind for its lifetime,
+   and an emptied list keeps it in the sentinel it is left with.
+   A scanned list made for at most INLINE_CAP items keeps them in its header's own object,
+   right after the header (l->a == inline_items(l)): one 72-byte allocation instead of a 32-byte
+   header and a 40-byte array, so the many short lists of a program (a compiler's operand and
+   child lists) cost one allocation and one object to mark each. Growth past INLINE_CAP moves
+   the items to an array of their own and clears the inline ones. An emptied list is left the
+   sentinel empty_inline, so that its next items go back inline. */
+#define INLINE_CAP 4                   /* the inline items' capacity, the least that any list has */
+static I empty_list[1];                /* valid even for zero-byte copies; distinct from sort's sentinel */
+static I empty_identity_int[1] = {1}, empty_identity_float[1] = {2}, empty_identity_big[1] = {3};
+static I empty_identity_optint[1] = {9}, empty_identity_optfloat[1] = {10};
+static I *empty_identity(I kind) {
+  if (kind & 8) return (kind & 3) == 1 ? empty_identity_optint : empty_identity_optfloat;
+  return (kind & 3) == 1 ? empty_identity_int : (kind & 3) == 2 ? empty_identity_float : empty_identity_big;
+}
+static I empty_atomic[1];              /* the same, for a list whose array was atomic */
+static I empty_inline[1];              /* and for one whose items were inline (scanned) */
+static I *inline_items(List *l) { return (I *)(l + 1); }
+static int atomic_items(const I *a) {  /* is the item array a atomic? its kind, from the page map */
+  uintptr_t w = (uintptr_t)a; Seg **m, *s;
+  if (a == empty_atomic) return 1;
+  return w - gc_lo < gc_hi - gc_lo && (m = pmap[w >> 30]) && (s = m[w >> 12 & 0x3ffff]) && (s->k & 1);
+}
+static void empty(List *l) {           /* detach an empty list's historical storage without allocating */
+  if (l->cap) {                        /* cap 0 during sort: preserve its mutation marker */
+    if (l->a == inline_items(l)) l->a = empty_inline;   /* (whoever removed its items cleared their slots) */
+    else l->a = atomic_items(l->a) ? empty_atomic : empty_list;
+    l->cap = 0;
+    if (l->ids && opt_in()) l->ids = empty_identity(l->ids[0]);
+  }
+}
+static I *item_array(I n, int atomic) { return atomic ? pys_alloc_atomic(n * 8) : pys_alloc(n * 8); }
+static List *list_new(I cap, int atomic) {
+  if (!atomic && cap <= INLINE_CAP) {  /* 64 bytes: the slack byte falls in the 72-byte class's last 8 */
+    List *l = pys_alloc(sizeof(List) + INLINE_CAP * sizeof(I));
+    l->cap = INLINE_CAP; l->a = inline_items(l); return l;
+  }
+  /* The allocator adds one slack byte. Request the full 32-byte header without
+     promoting it to the next size class; the former 24-byte header used 32 too. */
+  List *l = pys_alloc(sizeof(List) - 1);
+  l->cap = cap > INLINE_CAP ? cap : INLINE_CAP;
+  l->a = item_array(l->cap, atomic); return l;
+}
+List *pys_list_new(I cap) { return list_new(cap, 0); }
+List *pys_list_new_atomic(I cap) { return list_new(cap, 1); }   /* a list[int], list[float] or list[bool] */
+/* Large scalar literals emit one copy operation plus immutable pointer-free slots, never
+   a live list's storage or an identity companion. LLVM may inline this helper and expand
+   memcpy as appropriate; the header and atomic item array are freshly allocated each time. */
+List *pys_list_from_const(const I *values, I n) {
+  if ((uint64_t)n > INT64_MAX / sizeof(I)) oom();
+  List *l = list_new(n, 1);
+  if (n) memcpy(l->a, values, n * sizeof(I));
+  l->len = n;
+  return l;
+}
+/* Only dynamic program graphs request this companion. The numeric array remains raw and
+   atomic, preserving its C ABI. A raw in-place store clears its companion without allocating;
+   a later observation or sharing operation materializes that new object. Pure moves carry
+   the null marker with the value. Bit 2 of the companion header marks pending entries.
+   Bit 3 marks an optional numeric slot: null for None, otherwise the address of
+   its representation box. That box is separate from the item's Python identity.
+   Copies must materialize before sharing, so separate reads
+   of copied items cannot create unrelated boxes.
+   A list of ints with no identity observer keeps the Mpz of an item past 64 bits in a
+   companion of kind BIGIDS instead, the
+   item's slot holding -2**63, as a tuple's does, and the entries of its other items (-2**63 among
+   them) null: list_box makes none, so the code above and below keeps it in step as it is. (BIGIDS,
+   big_list and lbig are with the promoting ints' code.) An identity observer upgrades
+   that companion to integer boxes once; the raw array stays unboxed and atomic.
+   Only a program that opts in makes a companion: list_identity_slow, which calls opt_in()
+   first, and the BIGIDS ones of promoting ints' stores (big_companion) and of a dict's or a
+   set's ints past 64 bits (col, pys_set_list). So each list operation that a plain program
+   calls tests opt_in() where it finds a companion, before it keeps the companion in step (the
+   *_identity and *_big entry points, which only programs that opt in call, need not): a plain
+   AOT program's -O2 makes that test a trap and drops the rest from its stores, appends, pops,
+   inserts, copies and sorts (pys_plain) */
+void pys_list_narrow(List *l) { list_narrow(l); }
+static I list_box(I value, I kind) {
+  opt_in();
+  if (kind & 8) {
+    if (!value) return (I)&pys_dyn_none_box;
+    value = *(I *)value;
+  }
+  return (kind & 3) == BIGIDS ? 0 : (I)((kind & 3) == 1 ? pys_dyn_int(value) : pys_dyn_float(dbl(value)));
+}
+static __attribute__((noinline)) void list_identity_slow(List *l, I kind) {
+  opt_in();
+  if (big_list(l) && (kind & 3) == 1) {
+    if (!l->cap) { l->ids = empty_identity_int; return; }
+    for (I i = 0; i < l->len; i++) {
+      Mpz *m = l->a[i] == INT64_MIN ? (Mpz *)l->ids[i + 1] : NULL;
+      l->ids[i + 1] = (I)pys_dyn_big(m ? 0 : l->a[i], m);
+    }
+    l->ids[0] = 1;
+    return;
+  }
+  if (!l->ids) {
+    /* Companion allocation limits use the allocator's fatal MemoryError convention. */
+    if (l->cap > INT64_MAX / (I)sizeof(I) - 1) oom();
+    I *ids = pys_alloc((l->cap + 1) * sizeof(I));
+    ids[0] = kind & 11; l->ids = ids;
+  }
+  for (I i = 0; i < l->len; i++)
+    if (!l->ids[i + 1]) l->ids[i + 1] = list_box(l->a[i], l->ids[0]);
+  l->ids[0] &= 11;
+}
+void pys_list_identity(List *l, I kind) {
+  /* Keep the clean check small enough to inline into getters/stores in the
+     precompiled JIT runtime as well as AOT. Only missing/dirty storage calls out. */
+  if (!l->ids || (l->ids[0] & 4) || ((kind & 3) == 1 && big_list(l))) list_identity_slow(l, kind);
+}
+static void identity_pair(List *a, List *b) {   /* before list a takes list b's items */
+  if ((a->ids || b->ids) && opt_in()) {
+    I kind = a->ids ? a->ids[0] : b->ids[0];
+    if ((a->ids && (a->ids[0] & 11) == 1) || (b->ids && (b->ids[0] & 11) == 1)) kind = 1;
+    if ((kind & 3) == BIGIDS) {   /* (promoting ints: a needs a companion where b has one) */
+      if (b->ids) pys_list_identity(a, kind);
+      return;
+    }
+    pys_list_identity(a, kind); pys_list_identity(b, kind);
+  }
+}
+void pys_list_forget_identity(List *l) {
+  /* The CPython FFI twin copies every native array element back after a call. Even an
+     unchanged numeric payload becomes a fresh Python value there. */
+  if (l->ids && !big_list(l)) {
+    for (I i = 0; i < l->len; i++) l->ids[i + 1] = list_box(l->a[i], l->ids[0]);
+    l->ids[0] &= 11;
+  }
+}
+
+List *pys_m_ufloats(List *l, Str *d) {   /* math.fsum()'s floats of a list of a union's numbers (d the union's) */
+  List *r = pys_list_new_atomic(l->len);
+  for (I i = 0; i < l->len; i++) {
+    EqValue x = eqresolve(l->a[i], d->s);
+    double f = *x.desc == 'f' ? dbl(x.value) : (double)x.value;
+    memcpy(&r->a[i], &f, 8);
+  }
+  r->len = l->len;
+  return r;
+}
+List *pys_vtuple_list(VTuple *t) {
+  if (!t) pys_fail("TypeError: 'NoneType' object is not iterable");
+  List *l = pys_list_new(t->len);
+  if (t->len) memcpy(l->a, t->a, t->len * sizeof(I));
+  l->len = t->len;
+  if (t->ids && opt_in()) {
+    vtuple_identity(t);
+    if (l->cap > INT64_MAX / (I)sizeof(I) - 1) oom();
+    l->ids = pys_alloc((l->cap + 1) * sizeof(I));
+    memcpy(l->ids, t->ids, (t->len + 1) * sizeof(I));
+  }
+  return l;
+}
+static void reserve(List *l, I n) {
+  if (n <= l->cap) return;
+  I c = l->cap * 2 > n ? l->cap * 2 : n, *a;
+  if (c < INLINE_CAP) c = INLINE_CAP;
+  if (l->a == empty_inline && c == INLINE_CAP) a = inline_items(l);   /* (emptied, and its items fit inline again) */
+  else {
+    a = item_array(c, atomic_items(l->a));
+    memcpy(a, l->a, l->len * 8);
+    if (l->a == inline_items(l)) memset(l->a, 0, INLINE_CAP * sizeof(I));   /* (moved: the header keeps none of them) */
+  }
+  l->a = a;
+  if (l->ids && opt_in()) {
+    if (c > INT64_MAX / (I)sizeof(I) - 1) oom();
+    I *ids = pys_alloc((c + 1) * sizeof(I));
+    memcpy(ids, l->ids, (l->len + 1) * sizeof(I)); l->ids = ids;
+  }
+  l->cap = c;
+}
+/* element access through a distinct struct type: TBAA then knows a store to an element
+   never changes l->len or l->a, so LLVM hoists those loads out of loops */
+typedef struct { I v; } Slot;
+#define AT(l, i) (((Slot *)(l)->a)[i].v)
+static __attribute__((noinline)) void list_append_boxed(List *l, I v) {
+  I id = list_box(v, l->ids[0]);
+  if (l->len == l->cap) reserve(l, l->len + 1);
+  l->ids[l->len + 1] = id; AT(l, l->len++) = v;
+}
+void pys_list_append(List *l, I v) {
+  /* Leave the ordinary append small enough for LLVM to inline, including in an
+     opt-in program. The companion path retains allocation order and GC roots. */
+  if (l->ids && opt_in()) { list_append_boxed(l, v); return; }
+  if (l->len == l->cap) reserve(l, l->len + 1);
+  AT(l, l->len++) = v;
+}
+void pys_list_append_identity(List *l, I v, Dyn *id, I kind) {
+  pys_list_identity(l, kind);
+  if (l->len == l->cap) reserve(l, l->len + 1);
+  l->ids[l->len + 1] = (I)id; AT(l, l->len++) = v;
+}
+Dyn *pys_list_get_identity(List *l, I i, I kind) {
+  i = idx(i, l->len, "IndexError: list index out of range");
+  pys_list_identity(l, kind); return (Dyn *)l->ids[i + 1];
+}
+I pys_list_get(List *l, I i) { return AT(l, idx(i, l->len, "IndexError: list index out of range")); }
+void pys_list_set(List *l, I i, I v) {
+  i = idx(i, l->len, "IndexError: list assignment index out of range");
+  if (l->ids && opt_in()) { l->ids[i + 1] = 0; if (!big_list(l)) l->ids[0] |= 4; }   /* pending fresh identity; no allocation (an int that fits: BIGIDS) */
+  AT(l, i) = v;
+}
+void pys_list_set_identity(List *l, I i, I v, Dyn *id, I kind) {
+  i = idx(i, l->len, "IndexError: list assignment index out of range");
+  pys_list_identity(l, kind); l->ids[i + 1] = (I)id; AT(l, i) = v;
+}
+/* a slot a list no longer uses is zeroed: the collector scans the whole array, so a stale
+   pointer there would keep the removed item alive (and a removed file open) */
+I pys_list_pop(List *l, I i) {
+  if (!l->len) pys_fail("IndexError: pop from empty list");
+  i = idx(i, l->len, "IndexError: pop index out of range");
+  I v = l->a[i];
+  if (l->ids && opt_in()) { memmove(l->ids + i + 1, l->ids + i + 2, (l->len - i - 1) * 8); l->ids[l->len] = 0; }
+  memmove(l->a + i, l->a + i + 1, (l->len - i - 1) * 8); l->a[--l->len] = 0;
+  if (!l->len) empty(l);
+  return v;
+}
+Dyn *pys_list_pop_identity(List *l, I i, I kind) {
+  if (!l->len) pys_fail("IndexError: pop from empty list");
+  i = idx(i, l->len, "IndexError: pop index out of range");
+  pys_list_identity(l, kind); Dyn *id = (Dyn *)l->ids[i + 1];
+  pys_list_pop(l, i); return id;
+}
+void pys_list_del(List *l, I i) {
+  i = idx(i, l->len, "IndexError: list assignment index out of range");
+  pys_list_pop(l, i);
+}
+void pys_list_insert(List *l, I i, I v) {
+  if (i < 0 && (i += l->len) < 0) i = 0;
+  if (i > l->len) i = l->len;
+  I id = l->ids && opt_in() ? list_box(v, l->ids[0]) : 0;
+  reserve(l, l->len + 1);
+  if (l->ids && opt_in()) { memmove(l->ids + i + 2, l->ids + i + 1, (l->len - i) * 8); l->ids[i + 1] = id; }
+  memmove(l->a + i + 1, l->a + i, (l->len - i) * 8); l->a[i] = v; l->len++;
+}
+void pys_list_insert_identity(List *l, I i, I v, Dyn *id, I kind) {
+  if (i < 0 && (i += l->len) < 0) i = 0;
+  if (i > l->len) i = l->len;
+  pys_list_identity(l, kind); reserve(l, l->len + 1);
+  memmove(l->ids + i + 2, l->ids + i + 1, (l->len - i) * 8); l->ids[i + 1] = (I)id;
+  memmove(l->a + i + 1, l->a + i, (l->len - i) * 8); l->a[i] = v; l->len++;
+}
+/* An item past 64 bits of a list of ints (BIGIDS, above): its slot holds -2**63, and its entry
+   in the companion, which the first such item makes, its Mpz. Compiled code stores an int that
+   fits as before (the stores above clear its entry), and reads the Mpz where it reads -2**63 */
+static void big_companion(List *l) {
+  if (!l->ids) {
+    if (l->cap > INT64_MAX / (I)sizeof(I) - 1) oom();
+    I *ids = pys_alloc((l->cap + 1) * sizeof(I));
+    ids[0] = BIGIDS; l->ids = ids;
+  }
+}
+static I big_companion_item(List *l, Mpz *m) { return big_list(l) ? (I)m : (I)pys_dyn_big(0, m); }
+void pys_list_set_big(List *l, I i, Mpz *m) {
+  i = idx(i, l->len, "IndexError: list assignment index out of range");
+  big_companion(l); I box = big_companion_item(l, m); l->ids[i + 1] = box; AT(l, i) = INT64_MIN;
+}
+void pys_list_append_big(List *l, Mpz *m) {
+  big_companion(l);
+  I box = big_companion_item(l, m);
+  if (l->len == l->cap) reserve(l, l->len + 1);
+  l->ids[l->len + 1] = box; AT(l, l->len++) = INT64_MIN;
+}
+void pys_list_insert_big(List *l, I i, Mpz *m) {
+  if (i < 0 && (i += l->len) < 0) i = 0;
+  if (i > l->len) i = l->len;
+  big_companion(l); I box = big_companion_item(l, m); reserve(l, l->len + 1);
+  memmove(l->ids + i + 2, l->ids + i + 1, (l->len - i) * 8); l->ids[i + 1] = box;
+  memmove(l->a + i + 1, l->a + i, (l->len - i) * 8); l->a[i] = INT64_MIN; l->len++;
+}
+Mpz *pys_list_big_at(List *l, I i) {   /* the Mpz of the item at index i (as pys_list_get takes it) whose slot holds -2**63, or NULL */
+  if (i < 0) i += l->len;
+  return lbig(l, i);
+}
+Big pys_list_big_pop(List *l, I i) {   /* l.pop(i) of a list of ints, as a promoting int */
+  if (!l->len) pys_fail("IndexError: pop from empty list");
+  i = idx(i, l->len, "IndexError: pop index out of range");
+  Big r = litem(l, i);
+  pys_list_pop(l, i); return r;
+}
+void pys_list_extend(List *l, List *m) {
+  identity_pair(l, m); I n = m->len; reserve(l, l->len + n);
+  if (l->ids && opt_in()) { if (m->ids) memcpy(l->ids + l->len + 1, m->ids + 1, n * 8); else memset(l->ids + l->len + 1, 0, n * 8); }   /* (m's ints fit) */
+  memcpy(l->a + l->len, m->a, n * 8); l->len += n;
+}
+List *pys_list_slice(List *l, I lo, I hi) {
+  span(&lo, &hi, l->len);
+  if (l->ids && opt_in()) pys_list_identity(l, l->ids[0]);
+  List *r = list_new(hi - lo, atomic_items(l->a));
+  if (l->ids && opt_in()) { pys_list_identity(r, l->ids[0]); memcpy(r->ids + 1, l->ids + lo + 1, (hi - lo) * 8); }
+  memcpy(r->a, l->a + lo, (hi - lo) * 8); r->len = hi - lo; return r;
+}
+Str *pys_str_join_slice(Str *sep, List *l, I lo, I hi) {
+  span(&lo, &hi, l->len);
+  /* join only reads this view and calls no user code. Its interior pointer keeps the
+     scanned item storage alive across the result allocation (see the collector). */
+  List view = {.len = hi - lo, .cap = hi - lo, .a = lo < hi ? l->a + lo : NULL};
+  return pys_str_join(sep, &view);
+}
+List *pys_list_copy(List *l) { return pys_list_slice(l, NONE, NONE); }
+void pys_list_clear(List *l) { memset(l->a, 0, l->len * 8); if (l->ids && opt_in()) memset(l->ids + 1, 0, l->len * 8); l->len = 0; empty(l); }
+List *pys_list_slice_step(List *l, I lo, I hi, I st) {
+  I n = sspan(&lo, hi, &st, l->len);
+  if (l->ids && opt_in()) pys_list_identity(l, l->ids[0]);
+  List *r = list_new(n, atomic_items(l->a));
+  if (l->ids && opt_in()) pys_list_identity(r, l->ids[0]);
+  for (I i = 0; i < n; i++) {
+    r->a[i] = l->a[lo + i * st];
+    if (l->ids && opt_in()) r->ids[i + 1] = l->ids[lo + i * st + 1];
+  }
+  r->len = n; return r;
+}
+/* l[lo:hi:st] = v and del l[lo:hi:st], as CPython's list_ass_subscript: with a step of 1, any
+   number of v's items replace the slice's (v == l is copied first); another step needs one of
+   v's for each item. Slots left unused are zeroed, and an emptied list detaches its storage
+   (see pys_list_pop) */
+void pys_list_set_slice(List *l, I lo, I hi, I st, List *v) {
+  I n = l->len, k = sspan(&lo, hi, &st, n), m = v->len;
+  if (v == l) v = pys_list_copy(l);
+  identity_pair(l, v);
+  if (st != 1) {
+    if (m != k) failf("ValueError: attempt to assign sequence of size %lld to extended slice of size %lld", (long long)m, (long long)k);
+    for (I i = 0; i < k; i++) {
+      l->a[lo + i * st] = v->a[i];
+      if (l->ids && opt_in()) l->ids[lo + i * st + 1] = v->ids ? v->ids[i + 1] : 0;   /* (v's ints fit) */
+    }
+    return;
+  }
+  if (n + m - k == 0) { pys_list_clear(l); return; }
+  if (m > k) reserve(l, n + m - k);
+  if (l->ids && opt_in()) {
+    memmove(l->ids + lo + m + 1, l->ids + lo + k + 1, (n - lo - k) * 8);
+    if (m < k) memset(l->ids + n + m - k + 1, 0, (k - m) * 8);
+    if (v->ids) memcpy(l->ids + lo + 1, v->ids + 1, m * 8); else memset(l->ids + lo + 1, 0, m * 8);
+  }
+  memmove(l->a + lo + m, l->a + lo + k, (n - lo - k) * 8);
+  if (m < k) memset(l->a + n + m - k, 0, (k - m) * 8);
+  memcpy(l->a + lo, v->a, m * 8);
+  l->len = n + m - k;
+}
+void pys_list_del_slice(List *l, I lo, I hi, I st) {
+  I n = l->len, k = sspan(&lo, hi, &st, n), w = n - k;
+  if (st == 1) {
+    memmove(l->a + lo, l->a + lo + k, (n - lo - k) * 8);
+    if (l->ids && opt_in()) memmove(l->ids + lo + 1, l->ids + lo + k + 1, (n - lo - k) * 8);
+  }
+  else if (k) {
+    if (st < 0) { lo += st * (k - 1); st = -st; }   /* the same items, first to last */
+    w = lo;
+    for (I i = lo, j = 0; i < n; i++)
+      if (j < k && i == lo + j * st) j++;
+      else { l->a[w] = l->a[i]; if (l->ids && opt_in()) l->ids[w + 1] = l->ids[i + 1]; w++; }
+  }
+  memset(l->a + w, 0, k * 8);
+  if (l->ids && opt_in()) memset(l->ids + w + 1, 0, k * 8);
+  if (!(l->len = w)) empty(l);
+}
+List *pys_list_add(List *a, List *b) {
+  if ((a->ids && !big_list(a)) || (b->ids && !big_list(b))) identity_pair(a, b);   /* (identities: the extends carry promoting ints') */
+  List *r = list_new(a->len + b->len, atomic_items(a->a) && atomic_items(b->a));
+  pys_list_extend(r, a); pys_list_extend(r, b); return r;
+}
+static void repeat_items(I *a, I k, I m) {     /* a[0, k) repeated through a[k, m): the copied prefix
+                                                   doubles, log2(m / k) memcpys rather than m / k, as
+                                                   pys_str_mul copies (#649) */
+  for (I c; k < m; k += c) { c = k < m - k ? k : m - k; memcpy(a + k, a, c * 8); }
+}
+void pys_list_imul(List *l, I n) {               /* xs *= n, in place */
+  I m = l->len;
+  if (n <= 0 || !m) { pys_list_clear(l); return; }
+  if (m > (INT64_MAX >> 4) / n) pys_fail("MemoryError");
+  if (l->ids && opt_in()) pys_list_identity(l, l->ids[0]);
+  reserve(l, m * n);
+  repeat_items(l->a, m, m * n);
+  if (l->ids && opt_in()) repeat_items(l->ids + 1, m, m * n);
+  l->len = m * n;
+}
+List *pys_list_mul(List *a, I n) {               /* xs * n. A new list's items are zero, so one item of
+                                                    zero bits (0, 0.0, False, None) is not copied */
+  I m = a->len;
+  if (!m) n = 0;
+  if (n > 0 && m > (INT64_MAX >> 4) / n) pys_fail("MemoryError");
+  if (a->ids && opt_in()) pys_list_identity(a, a->ids[0]);
+  List *r = list_new(n > 0 ? m * n : 0, atomic_items(a->a));
+  if (n > 0 && (m > 1 || a->a[0])) { memcpy(r->a, a->a, m * 8); repeat_items(r->a, m, m * n); }
+  if (a->ids && opt_in()) {
+    pys_list_identity(r, a->ids[0]);
+    if (n > 0) { memcpy(r->ids + 1, a->ids + 1, m * 8); repeat_items(r->ids + 1, m, m * n); }
+  }
+  r->len = n > 0 ? m * n : 0; return r;
+}
+/* Searches of a list of ints or bools that has no companion (so no item past 64 bits and no
+   identity boxes: lbig is null for each), and of a list of strs, compare slots as eqitem does
+   for the descriptors "i", "b" and "s", without its descriptor walk for each item: 1 where the
+   slots' values decide, 2 where pys_str_eq does (a null slot, None, equals only None). No
+   program code runs in these comparisons, so the list cannot change under the search */
+static inline int scalar_items(const List *l, const char *d) {
+  if (d[1] || l->ids) return 0;
+  return d[0] == 'i' || d[0] == 'b' ? 1 : d[0] == 's' ? 2 : 0;
+}
+static inline int str_item_eq(I a, I b) { return a && b ? pys_str_eq((Str *)a, (Str *)b) : a == b; }
+I pys_list_find(List *l, I v, Str *d) {
+  int k = scalar_items(l, d->s);
+  if (k == 1) { for (I i = 0, n = l->len, *a = l->a; i < n; i++) if (a[i] == v) return i; return -1; }
+  if (k == 2) { for (I i = 0, n = l->len, *a = l->a; i < n; i++) if (str_item_eq(a[i], v)) return i; return -1; }
+  for (I i = 0; i < l->len; i++) if (!lbig(l, i) && eqitem(l->a[i], v, d->s)) return i;
+  return -1;
+}
+I pys_list_find_pair(List *l, I v, Str *d, Str *vd) {
+  for (I i = 0; i < l->len; i++) { Mpz *m = lbig(l, i); if (m ? big_eq(m, v, vd->s) : eqpair(l->a[i], v, d->s, vd->s)) return i; }
+  return -1;
+}
+static I index_in(List *l, I v, const char *d, I st, I en) {   /* the first i in [st, en) where l[i] == v, or -1 */
+  if (st < 0 && (st += l->len) < 0) st = 0;
+  if (en < 0 && (en += l->len) < 0) en = 0;
+  int k = scalar_items(l, d);
+  I e = en < l->len ? en : l->len;   /* (the list keeps its length while slots are compared: scalar_items) */
+  if (k == 1) { for (I j = st, *a = l->a; j < e; j++) if (a[j] == v) return j; return -1; }
+  if (k == 2) { for (I j = st, *a = l->a; j < e; j++) if (str_item_eq(a[j], v)) return j; return -1; }
+  for (I j = st; j < en && j < l->len; j++) if (!lbig(l, j) && eqitem(l->a[j], v, d)) return j;
+  return -1;
+}
+static _Noreturn void not_in_list(I x, const char *xd) {
+  Buf b = {0}; put(&b, "ValueError: ", 12); repr(&b, x, xd); put(&b, " is not in list", 16); pys_fail(b.p);
+}
+I pys_list_index(List *l, I v, Str *d, I st, I en) {   /* list.index(v, start, stop) */
+  I i = index_in(l, v, d->s, st, en);
+  if (i < 0) not_in_list(v, d->s);
+  return i;
+}
+I pys_list_index_as(List *l, I v, Str *d, I st, I en, I ok, I x, Str *xd) {  /* list.index(x, start, stop) of a number x
+                                     of another type than the items: v is the item equal to x, if there is one (ok) */
+  I i = ok ? index_in(l, v, d->s, st, en) : -1;
+  if (i < 0) not_in_list(x, xd->s);
+  return i;
+}
+I pys_list_count(List *l, I v, Str *d) {
+  I c = 0; int k = scalar_items(l, d->s);
+  if (k == 1) { for (I i = 0, n = l->len, *a = l->a; i < n; i++) c += a[i] == v; return c; }
+  if (k == 2) { for (I i = 0, n = l->len, *a = l->a; i < n; i++) c += str_item_eq(a[i], v); return c; }
+  for (I i = 0; i < l->len; i++) c += !lbig(l, i) && eqitem(l->a[i], v, d->s);
+  return c;
+}
+void pys_list_remove(List *l, I v, Str *d) {
+  I i = pys_list_find(l, v, d);
+  if (i < 0) pys_fail("ValueError: list.remove(x): x not in list");
+  if (i < l->len) pys_list_del(l, i);              /* an __eq__ that shrank the list past i: CPython deletes nothing */
+}
+/* x in l (op 0: x's first index, or -1), l.count(x) (1), l.index(x, st, en) (2) and l.remove(x) (3)
+   of a list of ints l in a program that opts in to promoting ints, where x is a promoting int
+   ({lo, hi}) or, where isf, a float (of bits lo), which an int past 64 bits may equal: exactly */
+static int big_item_is(List *l, I i, I lo, Mpz *hi, I isf) {
+  Mpz *m = lbig(l, i);
+  if (isf) return m ? pys_big_cmp_float(0, m, dbl(lo)) == 0 : pys_cmp_if(l->a[i], dbl(lo)) == 0;
+  return m || hi ? m && hi && pys_mpz_cmp(m, hi) == 0 : l->a[i] == lo;
+}
+I pys_list_big_find(List *l, I lo, Mpz *hi, I isf, I op, I st, I en) {
+  if (op != 2) { st = 0; en = INT64_MAX; }
+  if (st < 0 && (st += l->len) < 0) st = 0;
+  if (en < 0 && (en += l->len) < 0) en = 0;
+  I c = 0;
+  for (I i = st; i < en && i < l->len; i++) {
+    if (!big_item_is(l, i, lo, hi, isf)) continue;
+    if (op == 1) { c++; continue; }
+    if (op == 3) pys_list_del(l, i);
+    return i;
+  }
+  if (op == 1) return c;
+  if (op == 3) pys_fail("ValueError: list.remove(x): x not in list");
+  if (op == 2) {
+    Str *s = isf ? pys_str_float(dbl(lo)) : pys_big_str(lo, hi);
+    Buf b = {0}; put(&b, "ValueError: ", 12); put(&b, s->s, s->len); put(&b, " is not in list", 16); pys_fail(b.p);
+  }
+  return -1;
+}
+/* Numeric queries retain the query's identity as well as its raw value. This is
+   observable for NaNs in membership, count/index/remove and sequence comparison. */
+static int list_query_eq(List *l, I i, I v, Dyn *id, const char *d, const char *vd) {
+  if (*vd == 'A') pys_list_identity(l, l->ids[0]);   /* __eq__ may have made a raw store at the next index */
+  Dyn *item = (Dyn *)l->ids[i + 1];
+  if (item == id) return 1;
+  if (*vd == 'A') return pys_dyn_eq(item, id);   /* the original query may be wide or run __eq__ */
+  Mpz *m = lbig(l, i);
+  return m ? big_eq(m, v, vd) : eqpair(l->a[i], v, d, vd);
+}
+I pys_list_find_identity(List *l, I v, Dyn *id, Str *d, Str *vd, I kind) {
+  pys_list_identity(l, kind);
+  for (I i = 0; i < l->len; i++) if (list_query_eq(l, i, v, id, d->s, vd->s)) return i;
+  return -1;
+}
+I pys_list_index_identity(List *l, I v, Dyn *id, Str *d, Str *vd, I kind, I st, I en) {
+  pys_list_identity(l, kind);
+  if (st < 0 && (st += l->len) < 0) st = 0;
+  if (en < 0 && (en += l->len) < 0) en = 0;
+  for (I i = st; i < en && i < l->len; i++) if (list_query_eq(l, i, v, id, d->s, vd->s)) return i;
+  not_in_list(v, vd->s);
+}
+I pys_list_count_identity(List *l, I v, Dyn *id, Str *d, Str *vd, I kind) {
+  pys_list_identity(l, kind); I n = 0;
+  for (I i = 0; i < l->len; i++) n += list_query_eq(l, i, v, id, d->s, vd->s);
+  return n;
+}
+void pys_list_remove_identity(List *l, I v, Dyn *id, Str *d, Str *vd, I kind) {
+  I i = pys_list_find_identity(l, v, id, d, vd, kind);
+  if (i < 0) pys_fail("ValueError: list.remove(x): x not in list");
+  if (i < l->len) pys_list_del(l, i);
+}
+static void rev(I *a, I n) { for (I i = 0, j = n - 1; i < j; i++, j--) { I t = a[i]; a[i] = a[j]; a[j] = t; } }
+void pys_list_reverse(List *l) { rev(l->a, l->len); if (l->ids && opt_in()) rev(l->ids + 1, l->len); }
+/* Portions derived from CPython's Objects/listobject.c: Copyright (c) 2001-2024 Python Software
+   Foundation; All Rights Reserved; used under the PSF License Agreement (see THIRD_PARTY_NOTICES). */
+/* list.sort is CPython 3.13's timsort (Objects/listobject.c, designed in listsort.txt), ported
+   function by function so that it makes exactly CPython's sequence of `<` comparisons, which is
+   observable (where NaNs end up, what an __lt__ with side effects sees): each ISLT(x, y) there is
+   one LT(x, y) here, in the same order. Natural runs, extended to minrun items by binary insertion,
+   are merged as the powersort policy decides; a merge copies the shorter run to a buffer and
+   gallops while one side keeps winning. key= sorts records of the keys and the items (below,
+   pys_list_keyed); CPython's type-specialized compares make the same comparisons as opv. As in CPython (ob_item NULL, allocated -1), the list looks empty while it is
+   sorted, and growing it from __lt__ makes the sort fail afterwards. Items can exist only in the
+   merge buffer when a comparison runs the collector: the buffer is scanned memory, and it and the
+   item array stay in volatile fields of the MergeState (MS) on the stack. A comparison that
+   raises into a try leaves the list with all its items, in the order reached, as in CPython: an
+   unwind action (sort_undo) copies back the items that are only in the merge buffer, from where
+   the merge noted them last (KEEP, before each comparison that may raise), undoes reverse='s
+   reversal and gives the list its array back. What it needs is in a record on the heap (Undo),
+   so that it can run when the sort's frame is gone, and the merges find it in a static (keep_u),
+   not in the MS: a program without try or with (eh 0) keeps the sort it had, instruction for
+   instruction. In one with either, the notes (3 stores a comparison) cost a sort of objects a
+   few percent. Speed: the common item types compare inline, and binary insertion and the
+   one-at-a-time merging of ints and floats use selects, as random data makes their branches
+   unpredictable (merging strings or objects keeps the branches, which let the CPU fetch their
+   data early). */
+#define MIN_GALLOP 7
+typedef struct { I s, n; int power; } Run;          /* a pending run: start, length, powersort power */
+typedef struct {
+  const char *d; int kind; I cls;                   /* element descriptor; its kind (below) and class id */
+  I *volatile a, *volatile t;                       /* item array and merge buffer: roots for the collector */
+  I n, nt, min_gallop; int np; Run p[64];           /* items; buffer size; the stack of pending runs */
+} MS;
+typedef struct Undo {                               /* for sort_undo: the list, its item array, length, */
+  List *l; I *a, n, cap; int rev;                   /* capacity and reverse=; KEEP notes fs[:fn], the */
+  I *fd, *fs, fn;                                   /* items only in the buffer, and fd, where they go back; */
+  struct Undo *outer;                               /* keep_u when the sort began */
+} Undo;
+/* GC_NO_ROOT(keep_u): points to the active sort frame; its stack/unwind action roots the values. */
+static Undo *keep_u;                                /* the Undo of the sort running (a comparison may sort */
+                                                    /* another list), NULL if it needs none; set only when eh */
+#define KEEP(dst, src, k) do { Undo *u_ = keep_u; u_->fd = (dst); u_->fs = (src); u_->fn = (k); } while (0)
+static I sorting[1];                                /* the items of a list while it is being sorted */
+enum { INT = 1, FLOAT, STR, OBJ };                  /* kinds of items whose ISLT is inline */
+static inline int islt(MS *ms, I x, I y) {          /* ISLT: opv(x, y, d, 0), its common cases inline */
+  int k = ms->kind;
+  return k == INT ? x < y : k == FLOAT ? dbl(x) < dbl(y) : k == STR ? pys_str_cmp((Str *)x, (Str *)y) < 0 :
+         k == OBJ ? pys_obj_cmp(ms->cls, 0, x, y) != 0 : opv(x, y, ms->d, 0);
+}
+#define LT(x, y) islt(ms, x, y)
+static void binarysort(MS *ms, I *a, I n, I ok) {   /* a[:ok] is sorted: binary insertion of the rest */
+  for (ok += !ok; ok < n; ok++) {
+    I L = 0, R = ok, x = a[ok];
+    do { I M = (L + R) >> 1; if (__builtin_unpredictable(LT(x, a[M]))) R = M; else L = M + 1; } while (L < R);   /* selects */
+    memmove(a + L + 1, a + L, (ok - L) * 8); a[L] = x;
+  }
+}
+static I count_run(MS *ms, I *a, I n) {             /* length of the run that starts a[:n], made ascending */
+  I k = 1, neq = 0;
+  while (k < n && !LT(a[k], a[k - 1])) k++;
+  if (k == n) return k;
+  if (k > 1) { if (LT(a[0], a[k - 1])) return k; rev(a, k); }   /* all equal so far: descending */
+  for (k++; k < n; k++) {                           /* descending: stretches of equal items are */
+    if (LT(a[k], a[k - 1])) { rev(a + k - neq - 1, neq + 1); neq = 0; }   /* reversed on the way, */
+    else if (LT(a[k - 1], a[k])) break;             /* so the final reversal keeps them in order */
+    else neq++;
+  }
+  rev(a + k - neq - 1, neq + 1); rev(a, k);
+  while (k < n && !LT(a[k], a[k - 1])) k++;         /* reversed, it may go on ascending */
+  return k;
+}
+/* gallop_left (right 0) and gallop_right (right 1): where key goes in the sorted a[:n], searching
+   outwards from a[hint]; the k with a[k-1] < key <= a[k], or a[k-1] <= key < a[k]. PRE(x) says x
+   goes before key: x < key for gallop_left, not key < x for gallop_right. */
+static I gallop(MS *ms, I key, I *a, I n, I hint, int right) {
+#define PRE(x) (right ? !LT(key, x) : LT(x, key))
+  I ofs = 1, last = 0, k;
+  if (PRE(a[hint])) {                               /* right, until a[hint+ofs] does not go before key */
+    I max = n - hint;
+    while (ofs < max && PRE(a[hint + ofs])) { last = ofs; ofs = (ofs << 1) + 1; }
+    if (ofs > max) ofs = max;
+    last += hint; ofs += hint;
+  } else {                                          /* left, until a[hint-ofs] goes before key */
+    I max = hint + 1;
+    while (ofs < max && !PRE(a[hint - ofs])) { last = ofs; ofs = (ofs << 1) + 1; }
+    if (ofs > max) ofs = max;
+    k = last; last = hint - ofs; ofs = hint - k;
+  }
+  for (last++; last < ofs;) { I m = last + ((ofs - last) >> 1); if (PRE(a[m])) last = m + 1; else ofs = m; }
+  return ofs;
+#undef PRE
+}
+static I *getmem(MS *ms, I need) {                  /* merge_getmem, growing geometrically */
+  if (need > ms->nt) {                               /* (ints and floats: nothing in it to scan) */
+    ms->nt = need > 2 * ms->nt ? need : 2 * ms->nt;
+    ms->t = ms->kind == INT || ms->kind == FLOAT ? pys_alloc_atomic(ms->nt * 8) : pys_alloc(ms->nt * 8);
+  }
+  return ms->t;
+}
+/* The merges, written once (MERGES) and compiled twice: merge_lo and merge_hi, where NOTE notes
+   nothing, are those merge_at calls for a sort that needs no Undo, the code they had before;
+   merge_lo_k and merge_hi_k, where NOTE is KEEP, those it calls (by merge_keep) when eh and
+   keep_u: a program without try or with does not keep them */
+#define MERGES(SFX, NOTE) \
+static void merge_lo##SFX(MS *ms, I *a, I na, I *b, I nb) {   /* na <= nb: a goes to the buffer, merge from the left */ \
+  I *d = a, *pa = memcpy(getmem(ms, na), a, na * 8), *pb = b, k, mg = ms->min_gallop;                                   \
+  *d++ = *pb++;                                                                                                         \
+  if (--nb == 0) goto done;                                                                                             \
+  if (na == 1) goto copyb;                                                                                              \
+  for (;;) {                                                                                                            \
+    I ac = 0, bc = 0, w;                            /* times a and b won in a row */                                    \
+    if (ms->kind == INT || ms->kind == FLOAT) do {  /* one item at a time: scalars by selects */                        \
+      w = LT(*pb, *pa); *d++ = w ? *pb : *pa;                                                                           \
+      pb += w; nb -= w; pa += !w; na -= !w; bc = w ? bc + 1 : 0; ac = w ? 0 : ac + 1;                                   \
+    } while (nb && na > 1 && ac < mg && bc < mg);   /* a step moves one side: all of CPython's exits */                 \
+    else for (;;) {                                 /* the others by branches */                                        \
+      NOTE(d, pa, na);                                                                                                  \
+      if (LT(*pb, *pa)) { *d++ = *pb++; bc++; ac = 0; if (--nb == 0 || bc >= mg) break; }                               \
+      else { *d++ = *pa++; ac++; bc = 0; if (--na == 1 || ac >= mg) break; }                                            \
+    }                                                                                                                   \
+    if (!nb) goto done;                                                                                                 \
+    if (na == 1) goto copyb;                                                                                            \
+    mg++;                                                                                                               \
+    do {                                            /* galloping */                                                     \
+      mg -= mg > 1; ms->min_gallop = mg;                                                                                \
+      NOTE(d, pa, na);                                                                                                  \
+      ac = k = gallop(ms, *pb, pa, na, 0, 1);                                                                           \
+      if (k) { memcpy(d, pa, k * 8); d += k; pa += k; na -= k; if (na == 1) goto copyb; if (!na) goto done; }           \
+      *d++ = *pb++;                                                                                                     \
+      if (--nb == 0) goto done;                                                                                         \
+      NOTE(d, pa, na);                                                                                                  \
+      bc = k = gallop(ms, *pa, pb, nb, 0, 0);                                                                           \
+      if (k) { memmove(d, pb, k * 8); d += k; pb += k; if ((nb -= k) == 0) goto done; }                                 \
+      *d++ = *pa++;                                                                                                     \
+      if (--na == 1) goto copyb;                                                                                        \
+    } while (ac >= MIN_GALLOP || bc >= MIN_GALLOP);                                                                     \
+    ms->min_gallop = ++mg;                          /* penalize leaving galloping mode */                               \
+  }                                                                                                                     \
+done:                                                                                                                   \
+  if (na) memcpy(d, pa, na * 8);                                                                                        \
+  return;                                                                                                               \
+copyb:                                              /* the last of a goes after the rest of b */                        \
+  memmove(d, pb, nb * 8); d[nb] = *pa;                                                                                  \
+}                                                                                                                       \
+static void merge_hi##SFX(MS *ms, I *a, I na, I *b, I nb) {   /* na > nb: b goes to the buffer, merge from the right */ \
+  I *t = memcpy(getmem(ms, nb), b, nb * 8), *d = b + nb, *pa = b, *pb = t + nb, k, mg = ms->min_gallop;                 \
+  *--d = *--pa;                                     /* d, pa, pb: just past the next slot, a's and b's last */          \
+  if (--na == 0) goto done;                                                                                             \
+  if (nb == 1) goto copya;                                                                                              \
+  for (;;) {                                                                                                            \
+    I ac = 0, bc = 0, w;                                                                                                \
+    if (ms->kind == INT || ms->kind == FLOAT) do {                                                                      \
+      w = LT(pb[-1], pa[-1]); *--d = w ? pa[-1] : pb[-1];                                                               \
+      pa -= w; na -= w; pb -= !w; nb -= !w; ac = w ? ac + 1 : 0; bc = w ? 0 : bc + 1;                                   \
+    } while (na && nb > 1 && ac < mg && bc < mg);                                                                       \
+    else for (;;) {                                                                                                     \
+      NOTE(d - nb, t, nb);                                                                                              \
+      if (LT(pb[-1], pa[-1])) { *--d = *--pa; ac++; bc = 0; if (--na == 0 || ac >= mg) break; }                         \
+      else { *--d = *--pb; bc++; ac = 0; if (--nb == 1 || bc >= mg) break; }                                            \
+    }                                                                                                                   \
+    if (!na) goto done;                                                                                                 \
+    if (nb == 1) goto copya;                                                                                            \
+    mg++;                                                                                                               \
+    do {                                                                                                                \
+      mg -= mg > 1; ms->min_gallop = mg;                                                                                \
+      NOTE(d - nb, t, nb);                                                                                              \
+      ac = k = na - gallop(ms, pb[-1], a, na, na - 1, 1);                                                               \
+      if (k) { d -= k; pa -= k; memmove(d, pa, k * 8); if ((na -= k) == 0) goto done; }                                 \
+      *--d = *--pb;                                                                                                     \
+      if (--nb == 1) goto copya;                                                                                        \
+      NOTE(d - nb, t, nb);                                                                                              \
+      bc = k = nb - gallop(ms, pa[-1], t, nb, nb - 1, 0);                                                               \
+      if (k) { d -= k; pb -= k; memcpy(d, pb, k * 8); nb -= k; if (nb == 1) goto copya; if (!nb) goto done; }           \
+      *--d = *--pa;                                                                                                     \
+      if (--na == 0) goto done;                                                                                         \
+    } while (ac >= MIN_GALLOP || bc >= MIN_GALLOP);                                                                     \
+    ms->min_gallop = ++mg;                                                                                              \
+  }                                                                                                                     \
+done:                                                                                                                   \
+  if (nb) memcpy(d - nb, t, nb * 8);                                                                                    \
+  return;                                                                                                               \
+copya:                                              /* the first of b goes before the rest of a */                      \
+  d -= na; pa -= na; memmove(d, pa, na * 8); d[-1] = pb[-1];                                                            \
+}
+#define NOTHING(dst, src, k)
+MERGES(, NOTHING)
+MERGES(_k, KEEP)
+static __attribute__((noinline)) void merge_keep(MS *ms, I *a, I na, I *b, I nb) {
+  if (na <= nb) merge_lo_k(ms, a, na, b, nb); else merge_hi_k(ms, a, na, b, nb);
+}
+static void merge_at(MS *ms, int i) {               /* merge pending runs i and i+1 */
+  Run *p = ms->p;
+  I *a = ms->a + p[i].s, na = p[i].n, *b = a + na, nb = p[i + 1].n, k;
+  p[i].n = na + nb;
+  if (i == ms->np - 3) p[i + 1] = p[i + 2];
+  ms->np--;
+  k = gallop(ms, *b, a, na, 0, 1);                  /* a[:k] and then b[nb:] are in place already */
+  a += k;
+  if (!(na -= k) || !(nb = gallop(ms, a[na - 1], b, nb, nb - 1, 0))) return;
+  if (eh && keep_u) { merge_keep(ms, a, na, b, nb); keep_u->fn = 0; }   /* every item is in the array again */
+  else if (na <= nb) merge_lo(ms, a, na, b, nb); else merge_hi(ms, a, na, b, nb);
+}
+static void found_new_run(MS *ms, I n2) {           /* powersort: merge the runs below of greater power */
+  if (!ms->np) return;
+  Run *p = ms->p + ms->np - 1;
+  I n = ms->n, a = 2 * p->s + p->n, b = a + p->n + n2;   /* powerloop: twice the two runs' midpoints */
+  int power = 0;
+  for (;; a <<= 1, b <<= 1) {                       /* the first bit where a/n and b/n differ */
+    power++;
+    if (a >= n) { a -= n; b -= n; } else if (b >= n) break;
+  }
+  while (ms->np > 1 && ms->p[ms->np - 2].power > power) merge_at(ms, ms->np - 2);
+  ms->p[ms->np - 1].power = power;
+}
+static void sort_undo(void *p) {
+  Undo *u = p;
+  if (u->fn) memcpy(u->fd, u->fs, u->fn * 8);
+  if (u->rev) rev(u->a, u->n);
+  u->l->len = u->n; u->l->cap = u->cap; u->l->a = u->a;
+  keep_u = u->outer;
+}
+List *pys_list_keyed(List *l, List *keys, I taken);
+void pys_list_unkey(List *l, List *p);
+static I big_cmp_items(const Big *x, const Big *y) { return pys_big_cmp(x->lo, x->hi, y->lo, y->hi); }
+static void big_sift(Big *v, I i, I n) {   /* heapsort's sift of v[i] down the max-heap v[0, n) */
+  for (I c; (c = 2 * i + 1) < n; i = c) {
+    if (c + 1 < n && big_cmp_items(&v[c], &v[c + 1]) < 0) c++;
+    if (big_cmp_items(&v[i], &v[c]) >= 0) return;
+    Big t = v[i]; v[i] = v[c]; v[c] = t;
+  }
+}
+static List *big_ranks(List *k) {   /* k's ints, some past 64 bits (BIGIDS), as their ranks: 64-bit ints in their order */
+  I n = k->len, m = 0;
+  if (n > INT64_MAX / (I)sizeof(Big)) oom();
+  Big *v = pys_alloc(n * sizeof(Big));        /* (scanned: Mpz pointers) */
+  for (I i = 0; i < n; i++) v[i] = litem(k, i);
+  for (I i = n / 2; i--;) big_sift(v, i, n);   /* (an int's comparisons run no code of the program's) */
+  for (I i = n; i-- > 1;) { Big t = v[0]; v[0] = v[i]; v[i] = t; big_sift(v, 0, i); }
+  for (I i = 0; i < n; i++) if (!m || big_cmp_items(&v[i], &v[m - 1])) v[m++] = v[i];
+  List *r = pys_list_new_atomic(n);
+  for (I i = 0; i < n; i++) {
+    Big x = litem(k, i); I lo = 0, hi = m - 1;
+    while (lo < hi) { I mid = lo + (hi - lo) / 2; if (big_cmp_items(&v[mid], &x) < 0) lo = mid + 1; else hi = mid; }
+    r->a[i] = lo;
+  }
+  r->len = n; return r;
+}
+void pys_list_sort_r(List *l, Str *d, I reverse);
+static void big_merge_sort(Mpz **v, Mpz **t, I n) {   /* v[0, n) by value, through t (n slots) */
+  for (I w = 1; w < n; w *= 2) {
+    for (I lo = 0; lo < n; lo += 2 * w) {
+      I mid = lo + w < n ? lo + w : n, hi = lo + 2 * w < n ? lo + 2 * w : n, i = lo, j = mid, k = lo;
+      while (i < mid && j < hi) t[k++] = pys_mpz_cmp(v[j], v[i]) < 0 ? v[j++] : v[i++];
+      while (i < mid) t[k++] = v[i++];
+      while (j < hi) t[k++] = v[j++];
+    }
+    memcpy(v, t, n * sizeof(Mpz *));
+  }
+}
+static void big_sort(List *l, Str *d, I reverse) {
+  /* sort() of a list of ints that holds some past 64 bits (BIGIDS): those that are negative go
+     before every 64-bit int and the others after them, so the 64-bit ints sort as before and
+     only the others are compared as Mpzs. (An int's comparisons run no code of the program's,
+     and equal ints cannot be told apart, so this order is the sort's.) */
+  I n = l->len, k = 0, nb = 0, neg = 0, *ids = l->ids;
+  if (n > INT64_MAX / (I)(2 * sizeof(Mpz *))) oom();
+  Mpz **b = pys_alloc(2 * n * sizeof(Mpz *));   /* (scanned: the Mpzs, then the merge's room) */
+  for (I i = 0; i < n; i++) {
+    Mpz *m = lbig(l, i);
+    if (m) { b[nb++] = m; neg += m->size < 0; } else l->a[k++] = l->a[i];
+  }
+  l->len = k; l->ids = NULL; pys_list_sort_r(l, d, 0); l->len = n; l->ids = ids;
+  big_merge_sort(b, b + nb, nb);
+  memmove(l->a + neg, l->a, k * 8);
+  for (I i = 0; i < n; i++) {
+    Mpz *m = i < neg ? b[i] : i >= neg + k ? b[i - k] : NULL;
+    if (m) l->a[i] = INT64_MIN;
+    ids[i + 1] = (I)m;
+  }
+  if (reverse) { rev(l->a, n); rev(ids + 1, n); }
+}
+void pys_list_sort_r(List *l, Str *d, I reverse) {
+  if (big_list(l) && !list_has_big(l)) {   /* (promoting ints that fit: no companion entry to move) */
+    I *ids = l->ids; l->ids = NULL; pys_list_sort_r(l, d, reverse); l->ids = ids; return;
+  }
+  if (big_list(l)) { big_sort(l, d, reverse); return; }
+  if (l->ids && opt_in()) {
+    /* Numeric comparisons cannot call user code. Move a record containing the number
+       and its box through the same stable timsort, preserving NaN comparison order. */
+    List *p = pys_list_keyed(l, l, 0);
+    struct { I len; uint64_t hash; I chars1; char text[3]; } kd = {2, 0, 3, {'K', *d->s, 0}};
+    pys_list_sort_r(p, (Str *)&kd, reverse); pys_list_unkey(l, p); return;
+  }
+  I n = l->len, cap = l->cap, *a = l->a, m = n, r = 0, c = *d->s;
+  MS ms = {.d = d->s, .kind = c == 'i' || c == 'b' ? INT : c == 'f' ? FLOAT : c == 's' ? STR : c == 'O' ? OBJ : 0,
+           .cls = c == 'O' ? ocls(d->s + 1) : 0, .a = a, .n = n, .min_gallop = MIN_GALLOP};
+  Undo *u = 0, *outer = keep_u;
+  if (eh && n > 1 && (ms.kind == OBJ || !ms.kind)) {   /* a comparison may raise into a try */
+    u = pys_alloc(sizeof(Undo));
+    u->l = l; u->a = a; u->n = n; u->cap = cap; u->rev = reverse != 0; u->outer = outer;
+    unwind_push(sort_undo, u);
+  }
+  if (eh) keep_u = u;
+  l->len = l->cap = 0; l->a = sorting;
+  if (n > 1) {
+    if (reverse) rev(a, n);                         /* reverse=True: reverse, sort stably, reverse back */
+    while (m >= 64) { r |= m & 1; m >>= 1; }        /* merge_compute_minrun */
+    m += r;
+    for (I lo = 0, k; lo < n; lo += k) {
+      k = count_run(&ms, a + lo, n - lo);
+      if (k < m) { I f = n - lo < m ? n - lo : m; binarysort(&ms, a + lo, f, k); k = f; }   /* extend to minrun */
+      found_new_run(&ms, k);
+      ms.p[ms.np++] = (Run){lo, k, 0};
+    }
+    while (ms.np > 1) {                             /* merge_force_collapse */
+      int i = ms.np - 2;
+      if (i > 0 && ms.p[i - 1].n < ms.p[i + 1].n) i--;
+      merge_at(&ms, i);
+    }
+    if (reverse) rev(a, n);
+  }
+  if (eh) { keep_u = outer; if (u) unwind_pop(); }
+  if (l->a != sorting) {                            /* items added meanwhile are dropped, as in CPython */
+    if (eh) { l->len = n; l->cap = cap; l->a = a; }
+    pys_fail("ValueError: list modified during sort");
+  }
+  l->len = n; l->cap = cap; l->a = a;
+}
+void pys_list_sort(List *l, Str *d) { pys_list_sort_r(l, d, 0); }
+/* key= (sorted(xs, key=f), xs.sort(key=f)): CPython sorts the keys and moves the values along with
+   them (its sortslice). Here each key and its value make a record {key, value}, and a list of the
+   records sorts by the descriptor K followed by the keys' (opv compares two records' first slots),
+   so the sort makes CPython's comparisons, in its order; the values then go back in the order of
+   the records (pys_list_unkey). xs.sort(key=f) gives its items up while compiled code calls f on
+   each (pys_list_take), as CPython's list does: it looks empty meanwhile, a change to it makes the
+   sort fail afterwards (pys_list_give), and a raise gives it its items back (untake): as they were
+   if a key call raised, else in the order the sort reached when a comparison raised. */
+typedef struct { List t; List *l, *p; } Taken;     /* the items l gave up, and the records sorting them */
+static void untake(void *p) {
+  Taken *k = p;
+  if (k->p) pys_list_unkey(&k->t, k->p);
+  k->l->len = k->t.len; k->l->cap = k->t.cap; k->l->a = k->t.a; k->l->ids = k->t.ids;
+}
+List *pys_list_take(List *l) {
+  Taken *k = pys_alloc(sizeof(Taken) - 1);   /* the allocator adds its slack byte */
+  k->t = *l; k->l = l; k->p = 0;
+  if (l->ids && opt_in()) l->ids = empty_identity(l->ids[0]);
+  l->len = l->cap = 0; l->a = sorting;
+  if (eh) unwind_push(untake, k);
+  return &k->t;
+}
+List *pys_list_keyed(List *l, List *keys, I taken) {   /* the records of l's items and their keys */
+  if (l->ids && opt_in()) pys_list_identity(l, l->ids[0]);
+  if (list_has_big(keys)) keys = big_ranks(keys);   /* (ints past 64 bits: sorted by their ranks) */
+  I n = l->len, width = l->ids && opt_in() ? 3 : 2;
+  if (l->ids && opt_in() && n > (INT64_MAX - 8) / (width * 8)) oom();
+  I *r = pys_alloc(n * width * 8 + 8);
+  List *p = pys_list_new(n);
+  for (I i = 0; i < n; i++) {
+    r[width * i] = keys->a[i]; r[width * i + 1] = l->a[i];
+    if (l->ids && opt_in()) r[width * i + 2] = l->ids[i + 1];
+    p->a[i] = (I)(r + width * i);
+  }
+  p->len = n;
+  if (taken) ((Taken *)l)->p = p;                    /* (l is what pys_list_take returned) */
+  return p;
+}
+void pys_list_unkey(List *l, List *p) {
+  for (I i = 0; i < p->len; i++) {
+    l->a[i] = ((I *)p->a[i])[1];
+    if (l->ids && opt_in()) l->ids[i + 1] = ((I *)p->a[i])[2];
+  }
+}
+void pys_list_give(List *t) {
+  Taken *k = (Taken *)t;
+  int changed = k->l->a != sorting;                 /* items added meanwhile are dropped, as in CPython */
+  if (eh) unwind_pop();
+  untake(k);
+  if (changed) pys_fail("ValueError: list modified during sort");
+}
+I pys_list_minmax(List *l, Str *d, I max) {   /* keeps the item it compared, whatever the comparison did to l */
+  if (!l->len) pys_fail(max ? "ValueError: max() iterable argument is empty" : "ValueError: min() iterable argument is empty");
+  list_narrow(l);
+  I m = l->a[0];
+  for (I i = 1; i < l->len; i++) { I v = l->a[i]; if (opv(v, m, d->s, max ? 2 : 0)) m = v; }   /* item > max / item < min */
+  return m;
+}
+Big pys_list_big_minmax(List *l, I max) {   /* min(l) or max(l) of a list of ints, as a promoting int: the first of equal ones */
+  if (!l->len) pys_fail(max ? "ValueError: max() iterable argument is empty" : "ValueError: min() iterable argument is empty");
+  Big m = litem(l, 0);
+  for (I i = 1; i < l->len; i++) {
+    Big v = litem(l, i);
+    I c = v.hi || m.hi ? pys_big_cmp(v.lo, v.hi, m.lo, m.hi) : (v.lo > m.lo) - (v.lo < m.lo);
+    if (max ? c > 0 : c < 0) m = v;
+  }
+  return m;
+}
+Dyn *pys_list_minmax_identity(List *l, Str *d, I max, I kind) {
+  if (!l->len) pys_fail(max ? "ValueError: max() iterable argument is empty" : "ValueError: min() iterable argument is empty");
+  pys_list_identity(l, kind); I at = 0;
+  for (I i = 1; i < l->len; i++) {
+    Mpz *m = lbig(l, i), *n = lbig(l, at);
+    if (m || n) {
+      I c = pys_big_cmp(m ? 0 : l->a[i], m, n ? 0 : l->a[at], n);
+      if (max ? c > 0 : c < 0) at = i;
+    } else if (opv(l->a[i], l->a[at], d->s, max ? 2 : 0)) at = i;
+  }
+  return (Dyn *)l->ids[at + 1];
+}
+I pys_any(List *l) { for (I i = 0; i < l->len; i++) if (l->a[i]) return 1; return 0; }
+I pys_all(List *l) { for (I i = 0; i < l->len; i++) if (!l->a[i]) return 0; return 1; }
+I pys_sum_int(List *l, I s) { list_narrow(l); for (I i = 0; i < l->len; i++) if (__builtin_add_overflow(s, l->a[i], &s)) pys_fail(OVF); return s; }
+double pys_sum_float(List *l, double s);
+double pys_sum_float_int(List *l, I s);
+double pys_sum_int_float(List *l, double s) { for (I i = 0; i < l->len; i++) s += (double)l->a[i]; return s; }   /* ints: not compensated */
+double pys_m_dist(List *p, List *q) {   /* math.dist: hypot's vnorm of the differences of two lists of floats */
+  if (p->len != q->len) pys_fail("ValueError: both points must have the same number of dimensions");
+  double b[16], *v = p->len > 16 ? pys_alloc_atomic(p->len * 8) : b, max = 0.0; int nan = 0;
+  for (I i = 0; i < p->len; i++) {
+    v[i] = fabs(dbl(p->a[i]) - dbl(q->a[i])); nan |= isnan(v[i]);
+    if (v[i] > max) max = v[i];   /* a NaN is never the max */
+  }
+  if (isinf(max)) return max;
+  return nan ? NAN : vnorm(v, p->len, max);
+}
+double pys_m_hypot_list(List *p) {   /* math.hypot of other than two coordinates (math_hypot): vnorm of a list of floats */
+  double b[16], *v = p->len > 16 ? pys_alloc_atomic(p->len * 8) : b, max = 0.0; int nan = 0;
+  for (I i = 0; i < p->len; i++) {
+    v[i] = fabs(dbl(p->a[i])); nan |= isnan(v[i]);
+    if (v[i] > max) max = v[i];
+  }
+  if (isinf(max)) return max;
+  return nan ? NAN : vnorm(v, p->len, max);
+}
+I pys_range_len(I a, I b, I s);
+I pys_range_has(I x, I a, I b, I s);
+List *pys_range_list(I a, I b, I s) {   /* list(range(a, b, s)): allocated once at its length, as CPython does */
+  uint64_t n = (uint64_t)pys_range_len(a, b, s);
+  if (n > INT64_MAX) pys_fail("OverflowError: Python int too large to convert to C ssize_t");
+  if (n > INT64_MAX >> 4) pys_fail("MemoryError");
+  /* Compiler contract: this result stays list[int]. Reboxing to optional/union
+     items requires a fresh scanned array; it must never retype this backing in place. */
+  List *l = list_new((I)n, 1);   /* range items are always unboxed ints; the header still holds a pointer */
+  for (uint64_t i = 0; i < n; i++) l->a[i] = (I)((uint64_t)a + i * (uint64_t)s);   /* wraps to the item */
+  l->len = (I)n; return l;
+}
+List *pys_str_list(Str *s) { List *l = pys_list_new(s->len); for (I i = 0; i < s->len; i++) pys_list_append(l, (I)pys_chr((unsigned char)s->s[i])); return l; }
+List *pys_text_list(Str *s) {
+  List *l = pys_list_new(pys_text_len(s));
+  for (I at = 0, cp, k; at < s->len; at += k) {
+    k = u8char(s->s + at, s->len - at, &cp);
+    Str *c = k == 1 ? byte1((unsigned char)s->s[at]) : pys_str(s->s + at, k);
+    c->chars1 = 2; pys_list_append(l, (I)c);
+  }
+  return l;
+}
+List *pys_bytes_list(Str *s) {   /* list(b): a list[int], whose array is atomic as the compiler makes them */
+  I n = s->len;
+  List *l = pys_list_new_atomic(n);
+  I *a = l->a;                   /* (locals, so that the stores need not be assumed to change n, a or */
+  const unsigned char *b = (const unsigned char *)s->s;   /* s's bytes: the loop vectorizes) */
+  for (I i = 0; i < n; i++) a[i] = b[i];
+  l->len = n; return l;
+}
+
+/* ---------- dicts: CPython's compact ordered layout ---------- */
+/* Entries (keys, vals, hs) are kept in insertion order. A deleted entry stays in place as a
+   hole with hash 0 until the table is rebuilt, so deletion is O(1) and a loop's position
+   stays valid. idx is open addressing over 2*size slots holding entry + 1 (0 empty, -1
+   deleted). The sizes are CPython 3.13's, because they decide what a loop that changes its
+   dict sees: size is a power of two >= 8 (0 before the first insertion and after clear()),
+   at most size*2/3 entries are used (popitem's, which it cuts off the end, still count: cut),
+   and inserting into a full table rebuilds it without holes at the size for len*3. An int key's hash is one round of SplitMix64's mixer: the
+   first shift folds the key's high bits into its low ones, the multiply spreads them up and
+   the last shift brings the product's high bits down, so keys that differ only in their high
+   bits (i << 46) get unrelated low bits, and distinct ints never share a hash (a bijection).
+   A str key's hash is FNV-1a of its bytes with the high half folded into the low. A tuple key
+   (kind is its type descriptor: items int, bool, str, None or a str, objects, and such tuples)
+   mixes its items' hashes, None's a constant, and its keys are equal as == compares them. An
+   object key (kind P<id> or H<id>, see the descriptors) hashes as the int its address is (P).
+   A key whose kind has an H, an object hashed by its class or a tuple with one, hashes as
+   CPython's hash of it (khash), 0 included (a hole has no key either: dlive), which is a set's,
+   so that a set of a dict's keys and the like (sets) take them without hashing them again, as
+   CPython's do: __hash__ runs once for each insertion or lookup, and __eq__ for each key of the
+   same hash that the probes meet (the key itself is found first, whatever its hash now; a dict
+   copy that inserts the keys compares them too: pys_dict_from). Such a dict's idx has CPython's
+   size slots, not 2*size (KTAG
+   on its kind, set by build, says so), so its probes visit CPython's slots in CPython's order,
+   a slot again where CPython's do, and __eq__ runs as often; one that changes the table or that
+   key makes the lookup start again, as CPython's lookdict does. A lookup
+   in a table that fits in the cache takes a few ns, so each costs only one multiply (per
+   byte for str). The probe sequence is CPython's: the first slot is the hash's low bits, and
+   each step mixes five more of its bits in (perturb), so keys whose hashes share their low
+   bits part after a few steps instead of piling up in one cluster. Unlike a linear probe's,
+   its second slot is in another cache line, which tables larger than the cache pay for.
+   tools/dictprobe.c counts the slots that lookups visit (DICT_PROBE), and the keys that dkeyeq
+   compares (DICT_KEYEQ). */
+#ifndef DICT_PROBE
+#define DICT_PROBE()
+#endif
+#ifndef DICT_KEYEQ
+#define DICT_KEYEQ()
+#endif
+#ifndef DICT_HASH_GENERIC
+#define DICT_HASH_GENERIC()
+#endif
+#ifndef DICT_STRING_EMPTY
+#define DICT_STRING_EMPTY()
+#endif
+#define NONE_HASH 0xFCA86420                         /* hash(None) since CPython 3.12 */
+I pys_hash_str(Str *s);                  /* the hash functions are in runtime.py */
+I pys_hash_int(I k);
+static I hint(I k);
+static I hstr(Str *s);
+static uint64_t hsh(Dict *d, I k);
+static uint64_t hstrd(Str *s) {                      /* a str key's hash */
+  if (!s->dict_hash) {                  /* zeroed allocations and writable literals start uncached */
+    uint64_t h = (uint64_t)pys_hash_str(s);
+    s->dict_hash = h == (uint64_t)-1 ? (uint64_t)-2 : h ? h : 1;   /* cache both sentinel normalizations, also for tuple items */
+  }
+  return s->dict_hash;
+}
+static I ohash(I k, const char *d) { return pys_obj_eq(-1 - ocls(d + 1), k, 0); }   /* hash(k) of an H<id> */
+static I hitem(I k, const char *d);
+static uint64_t dmask(Dict *d) { return (uint64_t)(d->kind & KTAG ? d->size : d->size * 2) - 1; }   /* idx's slots, less one */
+static int khash(I kind) { return (kind & KTAG) || (kind > 1 && (*kraw(kind) == '!' || strchr(kdesc(kind), 'H') || strchr(kdesc(kind), 'A'))); }   /* keys hashed by CPython's hash */
+/* a tuple or object key's hash (or its item's), by its descriptor d, never 0; 0 where d holds an
+   H<id> (khash), before any item is hashed by its class: hsh then takes CPython's hash. The items
+   before it are ints, strs, None, objects by identity and such tuples, which run no code */
+static uint64_t hval(I k, const char *d) {
+  if (*d == 'H' || *d == 'A' || (*d == '?' && d[1] == 'H')) return 0;
+  if ((*d == '?' || *d == 's' || *d == 'T' || *d == 'P') && !k) {   /* None (also a looked-up key's) */
+    for (const char *z = *d == 's' || *d == 'P' ? d : skip(d); d < z; d++) if (*d == 'H') return 0;
+    return 0x9E3779B97F4A7C15ULL;
+  }
+  if (*d == '?') d++;
+  if (*d != 'T') { Dict t = {.kind = *d == 's'}; return hsh(&t, k); }   /* (a P<id>'s: its address's) */
+  uint64_t h = 0x27D4EB2F165667C5ULL; const char *e = d + 2;
+  for (int i = 0; i < d[1] - '0'; i++) {
+    /* an int, bool, str or str | None item (a key's tuple holds only those, objects and such
+       tuples) is hashed in place, as the call for it would hash it, without walking its
+       descriptor again; a promoting int (J) too, by its slot, or where that holds -2**63 by its
+       Mpz word's hash (titem's; -2**63 itself has none) */
+    I x = ((I *)k)[i]; uint64_t v;
+    if (*e == 'i' || *e == 'b' || (*e == 'J' && x != INT64_MIN)) { v = (uint64_t)pys_hash_int(x); v = v ? v : 1; e++; }
+    else if (*e == 's' || (*e == '?' && e[1] == 's')) { v = x ? hstrd((Str *)x) : 0x9E3779B97F4A7C15ULL; e += 1 + (*e == '?'); }
+    else if (*e == 'J' && opt_in()) { Mpz *m = (Mpz *)((I *)k)[d[1] - '0' + i]; v = (uint64_t)(m ? pys_mpz_hash(m) : pys_hash_int(x)); v = v ? v : 1; e++; }
+    else { v = hval(x, e); if (!v) return 0; e = skip(e); }
+    h = (h ^ v) * 0x100000001B3ULL;
+  }
+  h ^= h >> 29;
+  return h ? h : 1;
+}
+/* CPython's hash of a key whose descriptor d holds an H<id>; a call of its own, which keeps hsh as
+   small as the lookups of int and str keys need */
+__attribute__((noinline)) static uint64_t hcls(I k, const char *d) { DICT_HASH_GENERIC(); return (uint64_t)hitem(k, d); }
+static uint64_t hkey(I k, const char *d) {   /* a tuple or object key's, or an Any key's (hdyn) */
+  if (*d == 'A' && !d[1]) return hdyn((Dyn *)k);
+  uint64_t h = hval(k, d); return h ? h : hcls(k, d);
+}
+static uint64_t hint1(I k) { uint64_t h = (uint64_t)pys_hash_int(k); return h ? h : 1; }   /* an int key's: 0 marks a hole */
+/* A wide key follows its table's hash scheme too. Python-hash tables compare
+   across native and dynamic layouts, so a wide key there can have the hash of
+   -2**63, its slot's sentinel: their probe (dfindc) skips wide entries (dlook).
+   Legacy tables mix the Python hash through hint1, which gives -2**63 a hash of
+   its own (pys_hash_int is a bijection, and is neither 0 nor 1 at -2**63), and
+   CPython's hash is never -2**63: a lookup of the 64-bit key -2**63 there never
+   meets a wide entry of its hash, so their probes need no such test. */
+static uint64_t hbig(Dict *d, Mpz *m) { I h = pys_mpz_hash(m); return khash(d->kind) ? (uint64_t)h : hint1(h); }
+/* The hash of key k of a table of kind > 1. Marked native str/int keys use the same
+   hashes as hitem, including None and -1 normalization, without its descriptor walk.
+   Other marked descriptors retain the general path and its callback behavior. */
+static inline __attribute__((always_inline)) uint64_t hobj(I kind, I k) {
+  const char *d = kraw(kind);
+  if (*d != '!') return hkey(k, d);
+  if (!d[2]) {
+    if (d[1] == 's') return (uint64_t)(k ? hstr((Str *)k) : NONE_HASH);
+    if (d[1] == 'i') return (uint64_t)hint(k);
+  }
+  return hcls(k, d + 1);
+}
+static uint64_t hsh(Dict *d, I k) {                  /* kind: 0 int keys, 1 str keys, else a tuple or object key's descriptor */
+  return (d->kind & ~(I)KTAG) == 1 ? hstrd((Str *)k) : d->kind > 1 ? hobj(d->kind, k) : hint1(k);
+}
+/* items i of tuples x and y of n items, promoting ints (J) one of whose slots holds -2**63: equal,
+   by their two words (titem); a call of its own, which keeps keq small */
+__attribute__((noinline)) static int jeq(const I *x, const I *y, I n, I i) {
+  I wx[2], wy[2]; return eqv(titem(x, n, i, "J", wx), titem(y, n, i, "J", wy), "J");
+}
+/* tuple keys of descriptor d: eqv's answer; pure: 2 instead at the first item whose comparison
+   may run the program's code (an object, a tuple of its own), before comparing it. Inlined into
+   the probes (dlook), whose loop so compares tuples of ints, bools and strs without a call */
+static inline __attribute__((always_inline)) int keq(I a, I b, const char *d, int pure) {
+  I *x = (I *)a, *y = (I *)b; const char *e = d + 2;
+  if (!x || !y) return x == y;
+  for (int i = 0; i < d[1] - '0'; i++) {
+    /* an int, bool, str or str | None item in place, a promoting int (J) too, by its slots where
+       neither is -2**63 (else jeq), another as eqitem compares it */
+    if (*e == 'i' || *e == 'b') { if (x[i] != y[i]) return 0; e++; }
+    else if (*e == 's' || (*e == '?' && e[1] == 's')) {
+      if (x[i] != y[i] && (!x[i] || !y[i] || !pys_str_eq((Str *)x[i], (Str *)y[i]))) return 0;
+      e += 1 + (*e == '?');
+    }
+    else if (*e == 'J' && opt_in()) { if (x[i] == INT64_MIN || y[i] == INT64_MIN ? !jeq(x, y, d[1] - '0', i) : x[i] != y[i]) return 0; e++; }
+    else { if (pure) return 2; if (!eqitem(x[i], y[i], e)) return 0; e = skip(e); }
+  }
+  return 1;
+}
+static int keyeq(I a, I b, const char *d) {   /* keys of descriptor d: an Any key is found as itself first, as an item is */
+  return *d == 'T' ? keq(a, b, d, 0) : *d == 'A' ? dyn_eqitem((Dyn *)a, (Dyn *)b) : eqv(a, b, d);
+}
+static I keysize(I n) { I s = 8; while (s < n) s *= 2; return s; }   /* calculate_log2_keysize */
+static I *keymem(I kind, I n) {      /* the key array of a dict or set of this kind: an int key holds no pointer */
+  return kind && !(kind > (1 | KTAG) && (*kdesc(kind) == 'i' || *kdesc(kind) == 'b')) ? pys_alloc(n * 8) : pys_alloc_atomic(n * 8);
+}
+/* is d's key x, of entry e, equal to k (kind > 1): 1 or 0, or -1 where an __eq__ changed the table
+   or that entry, after which CPython's lookdict starts again. Out of dfind's loop, which compares
+   tuples of ints, bools and strs in place (keq's pure), and keeps the lookup's state in registers */
+__attribute__((noinline)) static int dkeyeq(Dict *d, I e, I x, I k) {
+  DICT_KEYEQ();
+  int32_t *ix = d->idx; int eq = keyeq(x, k, kdesc(d->kind));
+  return d->idx != ix || d->keys[e] != x ? -1 : eq;
+}
+static I dfindc(Dict *d, I k, uint64_t h, I *free);
+static I dfinds(Dict *d, I k, uint64_t h, I *free, uint64_t m);
+static I dempty(Dict *d, uint64_t h);
+/* the probes for key k, whose hash is h, over idx's m + 1 slots: k's idx slot or -1, and *free
+   where to insert it (the first hole or empty slot they met; after an __eq__, which may have
+   filled that hole, the one dempty finds then, as CPython's insertdict takes find_empty_slot's);
+   objs: d's keys may be tuples or objects (kind > 1, compared by keq or dkeyeq, an Any key's by
+   dyn_keyeq first), else they are ints or strs; 2: they are hashed by CPython's hash (KTAG), so a
+   key is found as itself before its hash is compared, as compare_generic does, whatever the hash
+   its __hash__ gives now; 3: immediate str keys, with no user comparison, in a KTAG table or a
+   native one (dfinds). Immutable strings retain their hash, so 3 can test it before
+   reading/comparing a key. 0 (dfindi) and 1 meet no str key. Only 2 skips the entries of int keys
+   past 64 bits (kbig), whose slots hold -2**63, before it finds a key as itself; in the others'
+   tables such an entry never has the hash of a lookup of -2**63 (hbig): their hash test skips it. */
+static inline __attribute__((always_inline)) I dlook(Dict *d, I k, uint64_t h, I *free, uint64_t m, int objs) {
+  I f = -1; int ran = 0;
+  for (uint64_t i = h & m, p = h;; p >>= 5, i = (i * 5 + p + 1) & m) {
+    DICT_PROBE();
+    int32_t e = d->idx[i];
+    if (!e) { if (free) *free = ran ? dempty(d, h) : f < 0 ? (I)i : f; return -1; }
+    if (e < 0) { if (f < 0) f = i; }
+    else if (objs == 2 && kbig(d, e - 1)) continue;   /* (a wide key's sentinel is never the native scalar query) */
+    else if (objs == 2 && d->keys[e - 1] == k) return i;
+    else if (d->hs[e - 1] == h) {
+      I x = d->keys[e - 1];
+      if (x == k || (objs == 3 && pys_str_eq((Str *)x, (Str *)k))) return i;
+      if (objs && objs != 3 && d->kind > 1) {
+        const char *s = kdesc(d->kind);
+        int eq = *s == 'T' ? keq(x, k, s, 1) : *s == 'A' && !s[1] ? dyn_keyeq((Dyn *)x, (Dyn *)k) : 2;
+        if (eq == 2) { eq = dkeyeq(d, e - 1, x, k); ran = 1; }
+        if (eq < 0) return dfind(d, k, h, free);
+        if (eq) return i;
+      }
+    }
+  }
+}
+/* k's idx slot or -1; *free: where to insert k, whose hash is h. A KTAG dict's idx has size slots
+   (dfindc), another's 2*size; dfindi is dfind for native int keys, dfinds for str keys */
+static I dfind(Dict *d, I k, uint64_t h, I *free) {
+  if (!d->size) return -1;
+  if ((d->kind & ~(I)KTAG) == 1) return dfinds(d, k, h, free, dmask(d));
+  if (d->kind & KTAG) return dfindc(d, k, h, free);
+  return dlook(d, k, h, free, d->size * 2 - 1, 1);
+}
+__attribute__((noinline)) static I dfindi(Dict *d, I k, uint64_t h, I *free) { return d->size ? dlook(d, k, h, free, d->size * 2 - 1, 0) : -1; }
+__attribute__((noinline)) static I dfindc(Dict *d, I k, uint64_t h, I *free) { return dlook(d, k, h, free, d->size - 1, 2); }
+/* The string probe, of a KTAG or a native table (m: dmask's): no callbacks, so keep its register
+   saves separate from the generic probe; one probe for both keeps dhfind's call sites as few */
+__attribute__((noinline)) static I dfinds(Dict *d, I k, uint64_t h, I *free, uint64_t m) { return dlook(d, k, h, free, m, 3); }
+/* dfind of key k, which it hashes (hsh) into *hp first: one test of the kind for both */
+static inline __attribute__((always_inline)) I dhfind(Dict *d, I k, uint64_t *hp, I *free) {
+  if ((d->kind & ~(I)KTAG) == 1) {
+    *hp = hstrd((Str *)k);
+    if (!d->size) return -1;
+    uint64_t m = dmask(d);
+    /* Fresh string insertions usually find an empty first slot. Read-only lookups
+       skip this check; tombstones and occupied slots retain their full probe. */
+    if (free) {
+      I i = *hp & m;
+      if (!d->idx[i]) { DICT_PROBE(); DICT_STRING_EMPTY(); *free = i; return -1; }
+    }
+    return dfinds(d, k, *hp, free, m);
+  }
+  if (d->kind > 1) {
+    *hp = hobj(d->kind, k);
+    if (!d->size) return -1;
+    return d->kind & KTAG ? dfindc(d, k, *hp, free) : dfind(d, k, *hp, free);
+  }
+  return dfindi(d, k, *hp = hint1(k), free);
+}
+/* the idx slot of key m, an int past 64 bits whose hash is h (hbig), or -1, and *free as dlook's:
+   an entry of that hash whose key's Mpz (kbig) is equal to m */
+static I dbfind(Dict *d, Mpz *m, uint64_t h, I *free) {
+  if (!d->size) return -1;
+  I f = -1;
+  for (uint64_t k = dmask(d), i = h & k, p = h;; p >>= 5, i = (i * 5 + p + 1) & k) {
+    DICT_PROBE();
+    int32_t e = d->idx[i];
+    if (!e) { if (free) *free = f < 0 ? (I)i : f; return -1; }
+    if (e < 0) { if (f < 0) f = i; }
+    else if (d->hs[e - 1] == h) { Mpz *x = kbig(d, e - 1); if (x && (x == m || pys_mpz_cmp(x, m) == 0)) return (I)i; }
+  }
+}
+static I dempty(Dict *d, uint64_t h) {               /* find_empty_slot: hash h's first idx slot that is a hole or empty */
+  for (uint64_t m = dmask(d), p = h, i = p & m;; p >>= 5, i = (i * 5 + p + 1) & m) { DICT_PROBE(); if (d->idx[i] <= 0) return (I)i; }
+}
+static void build(Dict *d, Dict *src, I size) {      /* d := src's items in a table of this size, holes dropped */
+  if (khash(d->kind)) d->kind |= KTAG;
+  I u = size * 2 / 3, *k = keymem(d->kind, u), *v = item_array(u, (int)d->vatomic), n = 0, m = d->kind & KTAG ? size - 1 : size * 2 - 1;
+  I *vb = src->vb ? pys_alloc(u * 8) : 0, *kb = src->kb ? pys_alloc(u * 8) : 0;
+  uint64_t *hs = pys_alloc_atomic(u * 8); int32_t *ix = pys_alloc_atomic((m + 1) * 4);
+  if (vb || kb)   /* (the live entries' words, in their new order: a pass of its own) */
+    for (I e = 0, j = 0; e < src->n; e++) if (dlive(src, e)) { if (vb) vb[j] = src->vb[e]; if (kb) kb[j] = src->kb[e]; j++; }
+  for (I e = 0; e < src->n; e++) {
+    uint64_t h = src->hs[e], p = h, i = p & m;
+    if (!dlive(src, e)) continue;
+    DICT_PROBE();
+    while (ix[i]) { p >>= 5; i = (i * 5 + p + 1) & m; DICT_PROBE(); }
+    k[n] = src->keys[e]; v[n] = src->vals[e]; hs[n] = h; ix[i] = (int32_t)++n;
+  }
+  d->len = n; d->n = n; d->cut = 0; d->size = size; d->keys = k; d->vals = v; d->hs = hs; d->idx = ix; d->vb = vb; d->kb = kb;
+}
+static Dict *dict_new(I kind, I n, I vatomic) {      /* a display of n items is presized, as in CPython */
+  Dict *d = pys_alloc(sizeof(Dict) - 1); d->kind = kind; d->vatomic = vatomic;   /* (the allocator adds its byte of slack: 96 bytes, as before kb) */
+  if (n > 5) build(d, d, n > 87381 ? 1 << 17 : keysize((n * 3 + 1) / 2));
+  return d;
+}
+Dict *pys_dict_new(I kind, I n) { return dict_new(kind, n, 0); }
+/* a dict of int, float or bool values, which the compiler makes with this: the arrays of its values
+   are atomic, and so are those of its copies (dict.copy(), dict(d)); dict.fromkeys and the
+   empty dicts that a template returns while their type is open are made by pys_dict_new */
+Dict *pys_dict_new_atomic(I kind, I n) { return dict_new(kind, n, 1); }
+static _Noreturn void keyerr(Dict *d, I k) {
+  Buf b = {0}; put(&b, "KeyError: ", 10); repr(&b, k, d->kind > 1 ? kdesc(d->kind) : d->kind ? "s" : "i"); put(&b, "", 1); pys_fail(b.p);
+}
+/* The entry points that hash a key stay calls in a program's AOT build (LOOKUP). runtime.py's string
+   hash compiles to less code than the C loop it replaced, which brought them under LLVM's inline
+   threshold: copied into every lookup of the compiler, they made its executable 14% larger and its
+   AOT build 16% longer, for 1-2% of speed on dict benchmarks (docs/runtime-in-subset.md 2.11) */
+#define LOOKUP __attribute__((noinline))
+static inline __attribute__((always_inline)) I entry(Dict *d, I k) { uint64_t h; I i = dhfind(d, k, &h, 0); return i < 0 ? -1 : d->idx[i] - 1; }
+LOOKUP I pys_dict_has(Dict *d, I k) { return entry(d, k) >= 0; }
+LOOKUP I pys_dict_getitem(Dict *d, I k) { I e = entry(d, k); if (e < 0) keyerr(d, k); return d->vals[e]; }
+/* one lookup where a has or a getitem of a key comes before a getitem or a set of it, and no
+   dict changes between (the compiler's dictfuse): k's entry, or -1 (find) or a KeyError (entry);
+   pys_dict_val reads that entry's value, and entry_set writes it as pys_dict_set overwrites one,
+   which moves no entry */
+LOOKUP I pys_dict_find(Dict *d, I k) { return entry(d, k); }
+/* Equality reuses the source entry's stored hash: rerunning __hash__ here
+   would add effects and could hide a key whose hash changed since insertion.
+   The source key/value can disappear during lookup; snapshot its key/hash
+   before dfind, which restarts when a callback changes the target table. */
+LOOKUP I pys_dict_eq_find(Dict *d, Dict *source, I e) {
+  I k = source->keys[e]; uint64_t h = source->hs[e]; Mpz *m = kbig(source, e);
+  I i = m ? dbfind(d, m, h, 0) : dfind(d, k, h, 0);
+  return i < 0 ? -1 : d->idx[i] - 1;
+}
+/* A pair of key layouts supplies its own equality callback. Both tables use
+   Python's hash/probe scheme from construction; the query keeps its stored
+   hash. With unequal hashes the callback tests identity alone: a native and
+   boxed key may share one object whose hash changed between insertions. Raw
+   slot identity is not valid across distinct layouts. As lookdict, retry if
+   a callback replaces the table or its current key. A raw numeric slot travels
+   with its Mpz companion, with zero low bits for a wide value, so the callback
+   never confuses a wide key with its storage sentinel. */
+LOOKUP I pys_dict_eq_pair_find(Dict *d, Dict *source, I e, I (*equal)(I, I, I, I, I)) {
+  I k = source->keys[e]; uint64_t h = source->hs[e]; Mpz *km = kbig(source, e);
+restart:
+  if (!d->size) return -1;
+  for (uint64_t m = dmask(d), i = h & m, p = h;; p >>= 5, i = (i * 5 + p + 1) & m) {
+    int32_t entry = d->idx[i];
+    if (!entry) return -1;
+    if (entry < 0) continue;
+    I x = d->keys[entry - 1]; int32_t *ix = d->idx; Mpz *xm = kbig(d, entry - 1);
+    I eq = equal(xm ? 0 : x, (I)xm, km ? 0 : k, (I)km, d->hs[entry - 1] == h);
+    if (d->idx != ix || d->idx[i] != entry || d->keys[entry - 1] != x || kbig(d, entry - 1) != xm) goto restart;
+    if (eq) return entry - 1;
+  }
+}
+LOOKUP I pys_dict_entry(Dict *d, I k) { I e = entry(d, k); if (e < 0) keyerr(d, k); return e; }
+void pys_dict_entry_set(Dict *d, I e, I v) { d->vals[e] = v; dbig_clear(d, e); }
+void pys_dict_entry_set_big(Dict *d, I e, I lo, Mpz *m) {   /* entry_set of a promoting int (pys_dict_set_big) */
+  if (!m) { pys_dict_entry_set(d, e, lo); return; }
+  d->vals[e] = INT64_MIN; dbig_make(d); d->vb[e] = (I)m;
+}
+LOOKUP I pys_dict_get(Dict *d, I k, I dflt) { I e = entry(d, k); return e < 0 ? dflt : d->vals[e]; }
+__attribute__((noinline)) static I dgrow(Dict *d, uint64_t h) {   /* insertion_resize: hash h's idx slot in the larger table */
+  build(d, d, keysize(d->len * 3)); return dempty(d, h);
+}
+static int dfull(Dict *d) {   /* used >= floor(2*size/3), without dividing on each insertion */
+  /* size is zero or a positive power of two (at most 2**62); n+cut never exceeds
+     its capacity, so both unsigned products fit, including the empty table. */
+  return (uint64_t)(d->n + d->cut) * 3 + 2 >= (uint64_t)d->size * 2;
+}
+static inline __attribute__((always_inline)) void dadd(Dict *d, I k, uint64_t h, I v, I f) {   /* k, which d has not, into idx slot f (dfind's *free) */
+  if (dfull(d)) f = dgrow(d, h);    /* (full; popitem's cut entries still count) */
+  /* Both companion words are already null past n: allocation zeroes them, and
+     deletion/popitem clear them before an entry can be reused. Existing-key stores
+     still clear vb, since they may replace a value past 64 bits. */
+  d->keys[d->n] = k; d->vals[d->n] = v; d->hs[d->n] = h; d->idx[f] = (int32_t)++d->n; d->len++;
+}
+static I dset(Dict *d, I k, uint64_t h, I v) {   /* d[k] = v, k's hash h: the entry */
+  I f = -1, i = dfind(d, k, h, &f);
+  if (i >= 0) { I e = d->idx[i] - 1; d->vals[e] = v; dbig_clear(d, e); return e; }
+  dadd(d, k, h, v, f); return d->n - 1;
+}
+LOOKUP void pys_dict_set(Dict *d, I k, I v) {
+  uint64_t h; I f = -1, i = dhfind(d, k, &h, &f);
+  if (i >= 0) { I e = d->idx[i] - 1; d->vals[e] = v; dbig_clear(d, e); }
+  else dadd(d, k, h, v, f);
+}
+/* d[k] = {lo, m}, a promoting int: past 64 bits, -2**63 and its Mpz (dbig) */
+LOOKUP void pys_dict_set_big(Dict *d, I k, I lo, Mpz *m) {
+  if (!m) { pys_dict_set(d, k, lo); return; }
+  uint64_t h; I f = -1, i = dhfind(d, k, &h, &f), e;
+  if (i >= 0) { e = d->idx[i] - 1; d->vals[e] = INT64_MIN; }
+  else { dadd(d, k, h, INT64_MIN, f); e = d->n - 1; }
+  dbig_make(d); d->vb[e] = (I)m;
+}
+/* d[k] = v of key k past 64 bits, its Mpz m, whose hash is h (hbig): its entry */
+static I dbadd(Dict *d, Mpz *m, uint64_t h, I v, I f) {   /* and of key m, which d has not, into idx slot f (dbfind's *free) */
+  dadd(d, INT64_MIN, h, v, f);
+  if (!d->kb) d->kb = pys_alloc(d->size * 2 / 3 * 8);
+  d->kb[d->n - 1] = (I)m; return d->n - 1;
+}
+static I dbput(Dict *d, Mpz *m, uint64_t h, I v) {
+  I f = -1, i = dbfind(d, m, h, &f);
+  if (i >= 0) { I e = d->idx[i] - 1; d->vals[e] = v; dbig_clear(d, e); return e; }
+  return dbadd(d, m, h, v, f);
+}
+static I dtake(Dict *d, I i) {                       /* the value of the entry in idx slot i, which is deleted */
+  I e = d->idx[i] - 1, v = d->vals[e];
+  d->idx[i] = -1; d->hs[e] = d->kind & KTAG ? (uint64_t)-1 : 0; d->keys[e] = d->vals[e] = 0; dbig_clear(d, e); kbig_clear(d, e); d->len--;
+  return v;
+}
+/* d.pop(k)'s lookup (dhfind's), as CPython's dict_pop, which does not hash k where d is empty;
+   del d[k] (pys_dict_del) hashes it first, as PyDict_DelItem. Only a class's __hash__ can tell
+   them apart (kind > 1): the compiler calls pys_dict_pop for del of other keys */
+static inline __attribute__((always_inline)) I dpfind(Dict *d, I k) {
+  if (d->kind == 1) return d->size ? dfinds(d, k, hstrd((Str *)k), 0, d->size * 2 - 1) : -1;
+  if (d->kind > 1) { uint64_t h; return d->len ? dhfind(d, k, &h, 0) : -1; }
+  return dfindi(d, k, hint1(k), 0);
+}
+static I dpop(Dict *d, I k, I dflt, int has) {   /* d.pop(k) (has: d.pop(k, dflt)) */
+  I i = dpfind(d, k);
+  if (i < 0) { if (!has) keyerr(d, k); return dflt; }
+  return dtake(d, i);
+}
+I pys_dict_pop(Dict *d, I k) { return dpop(d, k, 0, 0); }
+I pys_dict_pop_default(Dict *d, I k, I dflt) { return dpop(d, k, dflt, 1); }
+/* entry e's (key, value) tuple; big: of promoting ints (bigints.py, utils.tslots), whose key or
+   value past 64 bits holds -2**63 and its Mpz in slot 2 or 3, else of 64-bit ints. (That tuple is
+   one of promoting ints too, where neither slot holds -2**63: only there is an Mpz word read) */
+static inline I *dpair(Dict *d, I e, int big) {
+  I *t;
+  if (big && (d->keys[e] == INT64_MIN || d->vals[e] == INT64_MIN)) { t = pys_alloc(32); t[2] = (I)kbig(d, e); t[3] = (I)dbig(d, e); }
+  else t = pys_alloc(16);
+  t[0] = d->keys[e]; t[1] = d->vals[e];
+  return t;
+}
+/* d.popitem() (dict_popitem_impl): the last entry's (key, value) tuple. The entries end where it
+   was, as CPython sets dk_nentries, so the holes before it are not walked again: popping every
+   item takes linear time. Its idx slot is found by its position (lookdict_index), not its key,
+   and stays deleted, so the entries cut off still fill the table until it is rebuilt (CPython
+   does not give dk_usable back): otherwise inserts after pops would use up its empty slots.
+   big: the tuple of promoting ints (dpair) */
+static inline __attribute__((always_inline)) I *dpopitem(Dict *d, int big) {
+  if (!d->len) pys_fail("KeyError: 'popitem(): dictionary is empty'");
+  I e = d->n - 1;
+  while (!dlive(d, e)) e--;   /* (a class's key may hash to 0: see dlive) */
+  if (!big && (dbig(d, e) || kbig(d, e))) pys_fail(NARROW);
+  uint64_t h = d->hs[e], m = dmask(d), i = h & m, p = h;
+  DICT_PROBE();
+  while (d->idx[i] != e + 1) { p >>= 5; i = (i * 5 + p + 1) & m; DICT_PROBE(); }
+  I *t = dpair(d, e, big);
+  d->idx[i] = -1; d->hs[e] = d->kind & KTAG ? (uint64_t)-1 : 0; d->keys[e] = d->vals[e] = 0; dbig_clear(d, e); kbig_clear(d, e); d->len--; d->cut += d->n - e; d->n = e;
+  return t;
+}
+I *pys_dict_popitem(Dict *d) { return dpopitem(d, 0); }
+I *pys_dict_big_popitem(Dict *d) { return dpopitem(d, 1); }   /* (of a dict of ints or of int keys) */
+I pys_dict_del(Dict *d, I k) { uint64_t h; I i = dhfind(d, k, &h, 0); if (i < 0) keyerr(d, k); return dtake(d, i); }
+/* d.get(k) and d.pop(k, None) of int, float and bool values: the value's box, or dflt (None or a box) */
+LOOKUP I pys_dict_getbox(Dict *d, I k, I dflt) { I e = entry(d, k); return e < 0 ? dflt : (I)pys_big_box(d->vals[e], dbig(d, e)); }
+LOOKUP I pys_dict_popbox(Dict *d, I k, I dflt) {
+  I i = dpfind(d, k);
+  if (i < 0) return dflt;
+  Mpz *m = dbig(d, d->idx[i] - 1);
+  return (I)pys_big_box(dtake(d, i), m);
+}
+LOOKUP I pys_dict_setdefault(Dict *d, I k, I v) {   /* one hash and one lookup, as CPython's */
+  uint64_t h; I f = -1, i = dhfind(d, k, &h, &f);
+  if (i >= 0) return d->vals[d->idx[i] - 1];
+  dadd(d, k, h, v, f); return v;
+}
+/* d.pop(k) (has: d.pop(k, {lo, m})) and d.setdefault(k, {lo, m}) of a dict of ints, whose value
+   may be past 64 bits: the promoting int */
+Big pys_dict_big_pop(Dict *d, I k, I has, I lo, Mpz *m) {
+  I i = dpfind(d, k);
+  if (i < 0) { if (!has) keyerr(d, k); Big r = {lo, m}; return r; }
+  Mpz *b = dbig(d, d->idx[i] - 1);
+  I v = dtake(d, i);
+  Big r = {b ? 0 : v, b}; return r;
+}
+LOOKUP Big pys_dict_big_setdefault(Dict *d, I k, I lo, Mpz *m) {
+  uint64_t h; I f = -1, i = dhfind(d, k, &h, &f);
+  if (i >= 0) { I e = d->idx[i] - 1; Mpz *b = dbig(d, e); Big r = {b ? 0 : d->vals[e], b}; return r; }
+  dadd(d, k, h, m ? INT64_MIN : lo, f);
+  if (m) { dbig_make(d); d->vb[d->n - 1] = (I)m; }
+  Big r = {lo, m}; return r;
+}
+void pys_dict_narrow(Dict *d) { if (dict_has_big(d)) pys_fail(NARROW); }   /* d's values for 64-bit code (items()) */
+void pys_dict_clear(Dict *d) { d->len = d->n = d->cut = d->size = 0; d->keys = d->vals = d->vb = d->kb = 0; d->hs = 0; d->idx = 0; }
+/* the entry of key {lo, m} of a dict of int keys, a promoting int (past 64 bits, its Mpz m: kbig):
+   find's, or -1; entry's, or KeyError; put's, which adds the key with the value 0 where d has none
+   (the compiler stores the value next: pys_dict_entry_set); and del d[k] */
+static _Noreturn void bkeyerr(Mpz *m) {   /* the KeyError of a dict's key or a set's element m, past 64 bits */
+  Str *t = mpz_digits(m);   /* (past CPython's 4300 digits: what its traceback prints, which cannot write it) */
+  Buf b = {0}; put(&b, "KeyError: ", 10);
+  if (t) put(&b, t->s, t->len); else put(&b, "<exception str() failed>", 24);
+  put(&b, "", 1); pys_fail(b.p);
+}
+LOOKUP I pys_dict_big_find(Dict *d, I lo, Mpz *m) {
+  if (!m) return entry(d, lo);
+  I i = dbfind(d, m, hbig(d, m), 0); return i < 0 ? -1 : d->idx[i] - 1;
+}
+LOOKUP I pys_dict_big_entry(Dict *d, I lo, Mpz *m) { I e = pys_dict_big_find(d, lo, m); if (e < 0) { if (m) bkeyerr(m); keyerr(d, lo); } return e; }
+LOOKUP I pys_dict_big_put(Dict *d, I lo, Mpz *m) {
+  if (m) return dbput(d, m, hbig(d, m), 0);
+  uint64_t h; I f = -1, i = dhfind(d, lo, &h, &f);
+  if (i >= 0) return d->idx[i] - 1;
+  dadd(d, lo, h, 0, f); return d->n - 1;
+}
+void pys_dict_big_del(Dict *d, I lo, Mpz *m) {
+  if (!m) { pys_dict_del(d, lo); return; }
+  I i = dbfind(d, m, hbig(d, m), 0);
+  if (i < 0) bkeyerr(m);
+  dtake(d, i);
+}
+/* get(k), pop(k), setdefault(k, v) and their boxes, as the functions above without bkey_, of a
+   dict of int keys and a promoting int key {lo, m}: one that fits as theirs; past 64 bits, by the
+   idx slot dbfind finds. bkey_big_pop and bkey_big_setdefault are big_pop's and big_setdefault's */
+LOOKUP I pys_dict_bkey_get(Dict *d, I lo, Mpz *m, I dflt) {
+  if (!m) return pys_dict_get(d, lo, dflt);
+  I i = dbfind(d, m, hbig(d, m), 0); return i < 0 ? dflt : d->vals[d->idx[i] - 1];
+}
+LOOKUP I pys_dict_bkey_getbox(Dict *d, I lo, Mpz *m, I dflt) {
+  if (!m) return pys_dict_getbox(d, lo, dflt);
+  I i = dbfind(d, m, hbig(d, m), 0); if (i < 0) return dflt;
+  I e = d->idx[i] - 1; return (I)pys_big_box(d->vals[e], dbig(d, e));
+}
+static I dbpop(Dict *d, Mpz *m, I dflt, int has) {   /* (dpop's) */
+  I i = dbfind(d, m, hbig(d, m), 0);
+  if (i < 0) { if (!has) bkeyerr(m); return dflt; }
+  return dtake(d, i);
+}
+LOOKUP I pys_dict_bkey_pop(Dict *d, I lo, Mpz *m) { return m ? dbpop(d, m, 0, 0) : pys_dict_pop(d, lo); }
+LOOKUP I pys_dict_bkey_pop_default(Dict *d, I lo, Mpz *m, I dflt) { return m ? dbpop(d, m, dflt, 1) : pys_dict_pop_default(d, lo, dflt); }
+LOOKUP I pys_dict_bkey_popbox(Dict *d, I lo, Mpz *m, I dflt) {
+  if (!m) return pys_dict_popbox(d, lo, dflt);
+  I i = dbfind(d, m, hbig(d, m), 0); if (i < 0) return dflt;
+  Mpz *b = dbig(d, d->idx[i] - 1);
+  return (I)pys_big_box(dtake(d, i), b);
+}
+LOOKUP I pys_dict_bkey_setdefault(Dict *d, I lo, Mpz *m, I v) {
+  if (!m) return pys_dict_setdefault(d, lo, v);
+  uint64_t h = hbig(d, m); I f = -1, i = dbfind(d, m, h, &f);
+  if (i >= 0) return d->vals[d->idx[i] - 1];
+  dbadd(d, m, h, v, f); return v;
+}
+LOOKUP Big pys_dict_bkey_big_pop(Dict *d, I klo, Mpz *km, I has, I lo, Mpz *m) {
+  if (!km) return pys_dict_big_pop(d, klo, has, lo, m);
+  I i = dbfind(d, km, hbig(d, km), 0);
+  if (i < 0) { if (!has) bkeyerr(km); Big r = {lo, m}; return r; }
+  Mpz *b = dbig(d, d->idx[i] - 1);
+  I v = dtake(d, i);
+  Big r = {b ? 0 : v, b}; return r;
+}
+LOOKUP Big pys_dict_bkey_big_setdefault(Dict *d, I klo, Mpz *km, I lo, Mpz *m) {
+  if (!km) return pys_dict_big_setdefault(d, klo, lo, m);
+  uint64_t h = hbig(d, km); I f = -1, i = dbfind(d, km, h, &f);
+  if (i >= 0) { I e = d->idx[i] - 1; Mpz *b = dbig(d, e); Big r = {b ? 0 : d->vals[e], b}; return r; }
+  I e = dbadd(d, km, h, m ? INT64_MIN : lo, f);
+  if (m) { dbig_make(d); d->vb[e] = (I)m; }
+  Big r = {lo, m}; return r;
+}
+/* for loops: entry e's key and value; the next entry from e (reversed: the previous one), or
+   -1 at the end, failing like CPython's dict iterators when the dict changed meanwhile:
+   used = len when the loop started, count = items produced so far. As in CPython 3.13.16, a
+   reversed loop also ends at a position past the entries (a rebuild made the table smaller) */
+I pys_dict_key(Dict *d, I e) { return d->keys[e]; }
+I pys_dict_val(Dict *d, I e) { return d->vals[e]; }
+/* Private optional scalar reads: snapshot a found entry, or zero without touching storage. */
+I pys_dict_val_or_zero(Dict *d, I e) { return e < 0 ? 0 : d->vals[e]; }
+Mpz *pys_dict_big_val(Dict *d, I e) { return dbig(d, e); }   /* the Mpz of entry e's value, where pys_dict_val gave -2**63 */
+Mpz *pys_dict_big_key(Dict *d, I e) { return kbig(d, e); }   /* and of its key, where pys_dict_key gave -2**63 */
+I pys_dict_end(Dict *d) { return d->n; }
+/* Equality walks current live entries after each value comparison. Unlike an
+   iterator, callbacks may clear or resize the dict without a mutation error. */
+I pys_dict_eq_next(Dict *d, I e) {
+  while (e < d->n && !dlive(d, e)) e++;
+  return e < d->n ? e : -1;
+}
+static void changed(Dict *d, I used) { if (d->len != used) pys_fail("RuntimeError: dictionary changed size during iteration"); }
+I pys_dict_next(Dict *d, I e, I used, I count) {
+  changed(d, used);
+  while (e < d->n && !dlive(d, e)) e++;
+  if (e >= d->n) return -1;
+  if (count >= used) pys_fail("RuntimeError: dictionary keys changed during iteration");
+  return e;
+}
+I pys_dict_prev(Dict *d, I e, I used, I count) {
+  changed(d, used);
+  if (e < 0 || e >= d->n) return -1;
+  while (e >= 0 && !dlive(d, e)) e--;
+  if (e >= 0 && count >= used) pys_fail("RuntimeError: dictionary keys changed during iteration");
+  return e;
+}
+static List *col(Dict *d, I *a) {    /* the keys or values in a list whose array is of a's kind (an int key's: atomic) */
+  List *l = list_new(d->len, atomic_items(a));
+  I *b = a == d->vals ? d->vb : d->kb;   /* (an int past 64 bits, -2**63 in a: dbig, kbig) */
+  for (I e = 0; e < d->n; e++) if (dlive(d, e)) {
+    Mpz *m = b && a[e] == INT64_MIN && opt_in() ? (Mpz *)b[e] : NULL;   /* (the new list's BIGIDS companion) */
+    if (m && !l->ids) { l->ids = pys_alloc((l->cap + 1) * sizeof(I)); l->ids[0] = BIGIDS; }
+    if (m) l->ids[l->len + 1] = (I)m;
+    l->a[l->len++] = a[e];
+  }
+  return l;
+}
+List *pys_dict_keys(Dict *d) { return col(d, d->keys); }
+List *pys_dict_values(Dict *d) { return col(d, d->vals); }
+List *pys_dict_items(Dict *d) {
+  if (dict_has_big_key(d)) pys_fail(NARROW);   /* (a tuple's int is a 64-bit one here: and its values, pys_dict_narrow) */
+  List *l = pys_list_new(d->len);
+  for (I e = 0; e < d->n; e++) if (dlive(d, e)) l->a[l->len++] = (I)dpair(d, e, 0);
+  return l;
+}
+/* and those of a dict of ints or of int keys, in a program whose lists hold promoting ints (the
+   compiler's bigints.big_items): an int key or value past 64 bits has its Mpz word (dpair) */
+List *pys_dict_big_items(Dict *d) {
+  List *l = pys_list_new(d->len);
+  for (I e = 0; e < d->n; e++) if (dlive(d, e)) l->a[l->len++] = (I)dpair(d, e, 1);
+  return l;
+}
+/* copies, as CPython 3.13 makes them, since their tables decide what a loop that changes the copy
+   sees: dict(d) merges d into a new empty dict, which clones a table without holes that is not
+   sparse (8 slots, or more items than USABLE_FRACTION(size / 2)) and otherwise inserts the items
+   into a table sized for them (estimate_log2_keysize); dict.copy() clones a table with at most a
+   third of holes, and otherwise merges the same way. Keys hashed by their class (KTAG) are
+   inserted one by one (pys_dict_update), as CPython's insertdict, which runs __eq__ for each key
+   of the same hash that its probes meet; other keys compare equal to none of the others */
+static void retable(Dict *r, Dict *d) {              /* r := d's table, holes included */
+  I u = d->size * 2 / 3, x = (I)(dmask(d) + 1) * 4;
+  r->kind |= d->kind & KTAG;                         /* (r's descriptor is d's) */
+  r->keys = keymem(r->kind, u); r->vals = item_array(u, (int)r->vatomic); r->hs = pys_alloc_atomic(u * 8); r->idx = pys_alloc_atomic(x);
+  memcpy(r->keys, d->keys, d->n * 8); memcpy(r->vals, d->vals, d->n * 8); memcpy(r->hs, d->hs, d->n * 8);
+  memcpy(r->idx, d->idx, x); r->len = d->len; r->n = d->n; r->cut = d->cut; r->size = d->size;
+  r->vb = d->vb ? memcpy(pys_alloc(u * 8), d->vb, d->n * 8) : 0;
+  r->kb = d->kb ? memcpy(pys_alloc(u * 8), d->kb, d->n * 8) : 0;
+}
+static Dict *dict_clone(Dict *d) { Dict *r = dict_new(d->kind, 0, d->vatomic); retable(r, d); return r; }
+static int clean(Dict *d) { return d->len && d->len == d->n && (d->size == 8 || d->size / 2 * 2 / 3 < d->len); }
+void pys_dict_update(Dict *d, Dict *o);
+Dict *pys_dict_from(Dict *d) {
+  if (clean(d)) return dict_clone(d);
+  Dict *r = dict_new(d->kind, 0, d->vatomic);
+  if (d->kind & KTAG) pys_dict_update(r, d);
+  else if (d->len) build(r, d, keysize((d->len * 3 + 1) / 2));
+  return r;
+}
+Dict *pys_dict_copy(Dict *d) { return d->len && d->len >= d->n * 2 / 3 ? dict_clone(d) : pys_dict_from(d); }
+/* d.update(o) of a dict of d's type, as CPython 3.13's dict_dict_merge: an empty d takes a clone
+   of o's table where dict(o) would, else d is resized once for both dicts' items (if o has more
+   than d's table could take), then o's items are inserted in order (with the hashes o keeps) */
+void pys_dict_update(Dict *d, Dict *o) {
+  if (o == d || !o->len) return;
+  if (!d->len && clean(o)) { retable(d, o); return; }
+  if ((d->size ? d->size : 8) * 2 / 3 < o->len) build(d, d, keysize(((d->len + o->len) * 3 + 1) / 2));
+  I used = o->len;
+  for (I e = 0; e < o->n; e++) if (dlive(o, e)) {
+    Mpz *m = dbig(o, e), *k = kbig(o, e);
+    I f = k ? dbput(d, k, o->hs[e], o->vals[e]) : dset(d, o->keys[e], o->hs[e], o->vals[e]);
+    if (m) { dbig_make(d); d->vb[f] = (I)m; }
+    /* A key comparison can mutate o. Check after insertion, as dict_dict_merge does,
+       so a callback's own exception wins and value-only changes remain allowed. */
+    if (o->len != used) pys_fail("RuntimeError: dict mutated during update");
+  }
+}
+/* d.update(pairs) of a list of (key, value) tuples, and dict.fromkeys(keys, v) of a list: one
+   insertion per item, as PyDict_MergeFromSeq2 and _PyDict_FromKeys make them */
+void pys_dict_update_pairs(Dict *d, List *l) { for (I i = 0; i < l->len; i++) { I *t = (I *)l->a[i]; pys_dict_set(d, t[0], t[1]); } }
+/* and of such a list that a program's lists hold as tuples of promoting ints (bigints.held), into a
+   dict of ints or of int keys: kj (vj) says that the key (the value) is an int, whose Mpz past 64
+   bits is in the tuple's slot 2 (3), read where its slot holds -2**63 (dpair's layout) */
+void pys_dict_update_pairs_big(Dict *d, List *l, I kj, I vj) {
+  for (I i = 0; i < l->len; i++) {
+    I *t = (I *)l->a[i];
+    Mpz *k = kj && t[0] == INT64_MIN ? (Mpz *)t[2] : NULL, *m = vj && t[1] == INT64_MIN ? (Mpz *)t[3] : NULL;
+    if (k) { I e = dbput(d, k, hbig(d, k), t[1]); if (m) { dbig_make(d); d->vb[e] = (I)m; } }
+    else if (m) pys_dict_set_big(d, t[0], 0, m);
+    else pys_dict_set(d, t[0], t[1]);
+  }
+}
+__attribute__((noinline)) static void fromkeys_big(Dict *d, List *l, I v) {   /* of a list of ints that may hold one past 64 bits (BIGIDS: kbig) */
+  for (I i = 0; i < l->len; i++) { Mpz *m = lbig(l, i); if (m) dbput(d, m, hbig(d, m), v); else pys_dict_set(d, l->a[i], v); }
+}
+Dict *pys_dict_fromkeys(I kind, List *l, I v) {
+  Dict *d = pys_dict_new(kind, 0);
+  if (l->ids && opt_in()) fromkeys_big(d, l, v);   /* (a path of its own, so that the others' loop stays as it was) */
+  else for (I i = 0; i < l->len; i++) pys_dict_set(d, l->a[i], v);
+  return d;
+}
+/* dict.fromkeys(o, v) of a dict o: sized for o's keys at once, as dict_dict_fromkeys does */
+Dict *pys_dict_fromkeys_dict(Dict *o, I v) {
+  Dict *d = pys_dict_new(o->kind, 0);
+  build(d, d, keysize((o->len * 3 + 1) / 2));
+  for (I e = 0; e < o->n; e++) if (dlive(o, e)) { Mpz *k = kbig(o, e); if (k) dbput(d, k, o->hs[e], v); else dset(d, o->keys[e], o->hs[e], v); }
+  return d;
+}
+
+/* ---------- sets: CPython's setobject.c ----------
+   A set or frozenset is CPython 3.13's table, since its slots decide the order in which a loop,
+   print() or list() sees the elements: there is no entry array in insertion order, as a dict
+   has, but mask + 1 slots (a power of two, 8 at first and after clear()) with each element
+   where its probes first found room. A probe looks at up to ten adjacent slots (one at the end
+   of the table), then moves on by CPython's perturbed step. hs[i] is the hash of keys[i], or -1
+   in a slot that holds no element: keys[i] is then 0 if none ever was there (which ends a
+   lookup), 1 if one was removed (CPython's dummy, which an insertion reuses: the last one its
+   probes passed). fill counts the slots that are not empty, dummies too, and len the elements.
+   An insertion that brings fill to 3/5 of the slots rebuilds the table, without dummies, for 4
+   times the elements (2 times above 50000); merges and differences resize as CPython's do, and
+   set(s), s | t, s & t, ... are made as CPython makes them, since that decides their tables
+   too. The hashes are CPython's where its own do not change from run to run, so that a set of
+   them iterates in CPython's order: an int's is the int modulo 2**61 - 1 with its sign (-1 is
+   -2), a bool's 0 or 1, None's 0xFCA86420, a tuple's xxHash's rounds over its items', an
+   object's what its __hash__ gives (-1 is -2); a str's is the dict's hash of it (CPython's
+   depends on PYTHONHASHSEED, so no order is CPython's for strs), and an object's identity hash
+   CPython's of its address (which no run repeats). kind is Dict.kind: 0 int elements, 1 str,
+   else a Str *, the descriptor of tuple or object elements; equality is a dict key's, and an
+   __eq__ that changes the table or the element it compares makes the lookup start again, as in
+   CPython. A frozenset is a set that the compiler gives no method that changes it.
+   An element past 64 bits of a set of ints (in a program that opts in to promoting ints) has
+   CPython's hash (pys_mpz_hash), and its Mpz is in its slot's word of kb, an array as long as the
+   table that the collector scans, which the first such element makes (sbput); a slot that holds
+   no such element has a null word there (a new table has no kb, a removal clears its word). Its
+   slot holds a sentinel (ssent): -2**63, or -2**63 + 1 where its hash is -2**63's (-4), so that no
+   64-bit element of its hash is its sentinel: the lookups of 64-bit elements never meet it, and
+   only sbfind compares Mpz. The operations that move elements from a table carry their Mpz (sbig),
+   those of 64-bit elements (pys_set_add, ...) none. */
+#define LINEAR_PROBES 9
+static I hint(I v) {                                 /* long_hash */
+  uint64_t u = v < 0 ? 0 - (uint64_t)v : (uint64_t)v;
+  I h = (I)(u % ((1ULL << 61) - 1));
+  h = v < 0 ? -h : h;
+  return h == -1 ? -2 : h;
+}
+static I hstr(Str *s) { return (I)hstrd(s); }   /* hstrd caches both sentinel normalizations */
+static I hptr(I p) { uint64_t y = (uint64_t)p; y = y >> 4 | y << 60; return (I)y == -1 ? -2 : (I)y; }   /* _Py_HashPointer */
+static I hdbl(double v) {                            /* _Py_HashDouble; a NaN's is 0, as a float here has no identity */
+  /* v is m * 2**e for an int m of 53 bits: m * 2**e modulo 2**61 - 1 (where 2**61 is 1), with
+     v's sign, as CPython's loop over frexp's bits makes it */
+  if (!isfinite(v)) return isinf(v) ? (v > 0 ? 314159 : -314159) : 0;
+  const uint64_t M = (1ULL << 61) - 1;
+  uint64_t b, m, x; memcpy(&b, &v, 8);
+  int e = (int)(b >> 52 & 0x7ff);
+  m = b & ((1ULL << 52) - 1);
+  if (e) m |= 1ULL << 52; else e = 1;                /* (a subnormal's) */
+  e -= 1075;
+  e = e >= 0 ? e % 61 : 61 - 1 - ((-1 - e) % 61);
+  x = ((m << e) & M) | m >> (61 - e);
+  x = b >> 63 ? 0 - x : x;
+  return (I)x == -1 ? -2 : (I)x;
+}
+static I hitem(I k, const char *d);
+static I htuple(I *t, I n, const char *e, int each) {   /* tuplehash of n items, of descriptors from e on (each), or all e */
+  uint64_t acc = 2870177450012600261ULL; I w[2];
+  for (I i = 0; i < n; i++) {
+    /* (an int item's hash, and a promoting int's that fits, in place: hitem's) */
+    I x = t[i], h = each && (*e == 'i' || (*e == 'J' && x != INT64_MIN)) ? hint(x) : hitem(each ? titem(t, n, i, e, w) : x, e);
+    acc += (uint64_t)h * 14029467366897019727ULL;
+    acc = acc << 31 | acc >> 33;
+    acc *= 11400714785074694791ULL;
+    if (each) e = skip(e);
+  }
+  acc += (uint64_t)n ^ (2870177450012600261ULL ^ 3527539ULL);
+  return acc == (uint64_t)-1 ? 1546275796 : (I)acc;
+}
+static I hitem(I k, const char *d) {                 /* the hash of a value k (a set's element, a tuple's item), by its descriptor */
+  if (*d == '?' || *d == 's' || *d == 'P' || *d == 'H') {   /* (an object's static type may hold None) */
+    if (!k) return NONE_HASH;                        /* (None: also a looked-up key's, see hval) */
+    k = unbox(k, d + (*d == '?'));
+    d += *d == '?';
+  }
+  switch (*d) {
+  case 'b': return k;
+  case 's': return hstr((Str *)k);
+  case 'f': return hdbl(dbl(k));
+  case 'T': return htuple((I *)k, d[1] - '0', d + 2, 1);
+  case 'V': return htuple(((VTuple *)k)->a, ((VTuple *)k)->len, d + 1, 0);
+  case 'P': case 'C': case 'Y': return hptr(k);   /* (class objects: by identity, as object's) */
+  case 'H': return ohash(k, d);
+  case 'A': return pys_dyn_hash((Dyn *)k);
+  case 'J': { opt_in(); Big x = jbig(k); return x.hi ? pys_mpz_hash(x.hi) : hint(x.lo); }   /* (a promoting int's two words) */
+  }
+  return hint(k);
+}
+static I shash(Set *s, I k) { return s->kind == 0 ? hint(k) : s->kind == 1 ? hstr((Str *)k) : hitem(k, ((Str *)s->kind)->s); }
+/* is x, the element in slot j, equal to k (kind > 1; their hashes are): 1 or 0, or -1 where an
+   __eq__ changed the table or that slot, after which CPython's set_lookkey and set_add_entry start
+   again; add (set_add_entry's): 1 where x is equal, whatever changed (its found_active comes
+   before that test). A table of 8 slots is CPython's smalltable, which stays the same table when
+   it is rebuilt at that size, cleared or swapped (s &= t): only its slot j tells. Out of their
+   loops, as dkeyeq is out of dfind's */
+__attribute__((noinline)) static int sxeq(Set *s, uint64_t j, I x, I k, int add) {
+  I *keys = s->keys; uint64_t m = s->mask; int eq = eqv(x, k, ((Str *)s->kind)->s);
+  if (eq && add) return 1;
+  return (s->keys != keys && (m != 7 || s->mask != 7)) || s->keys[j] != x ? -1 : eq;
+}
+static int seq(Set *s, uint64_t j, I x, I k, int add) {   /* sxeq's answer, a tuple of ints, bools and strs in place */
+  const char *d = ((Str *)s->kind)->s; int eq = *d == 'T' ? keq(x, k, d, 1) : 2;
+  return eq == 2 ? sxeq(s, j, x, k, add) : eq;
+}
+/* hash(v) of a value of descriptor d (an object's by its class's __hash__: H<id>) */
+I pys_hash(I v, Str *d) { return hitem(v, d->s); }
+I pys_hash_id(void *p) { return hptr((I)p); }        /* object.__hash__ */
+/* ---------- dynamic values ----------
+   A module whose first lines, before any code, hold the comment "# pystachy: dynamic-any"
+   compiles typing.Any as a dynamic type (docs/dynamic-any.md). A value of it is a pointer to
+   an immutable 16-byte box {DynType *t, I v}. t is a constant: the program defines one for each
+   class whose objects it boxes, and this section the builtin ones. kind tells the builtin kinds
+   (and a class's objects) apart, name is type(x).__name__, desc the payload's layout as the
+   descriptor walks above read it, cls a class's O<id> and base its base class's DynType. v is
+   the payload's slot: an int's, float's or bool's bits, or the original pointer of a str,
+   list, dict, tuple or object, so that boxing never copies a container or gives an alias a
+   second layout. Most containers a box may hold have boxes for items (list[Any] LA, dict[Any,
+   Any] DAA, tuple VA): descriptor A is such a slot, which the walks follow through its box's
+   DynType. Native list[int] also crosses by reference, under a distinct descriptor: its
+   numeric backing stays atomic, its identity companion holds the item boxes, and every
+   dynamic store checks the native element contract before changing that slot. The checked
+   and promoting variants both have payload descriptor Li; their distinct DynTypes record
+   whether a dynamic store may keep a wide integer. None is the constant box pys_dyn_none_box
+   and never null, which is an unbound
+   variable's; True, False and the ints from -5 to 256 are constant boxes too (as the program
+   makes each int literal's), and other in-range numbers' boxes are atomic. A wide int keeps
+   immutable Mpz digits through a scanned box, under the same Python kind with its own
+   payload descriptor. An int's, a float's and a bound method's box is its
+   identity for `is` and id() (pys_dyn_id), other values' their payload's (#797). */
+enum { DK_NONE, DK_BOOL, DK_INT, DK_FLOAT, DK_STR, DK_LIST, DK_DICT, DK_TUPLE, DK_OBJ, DK_FUNC, DK_ITER, DK_GEN, DK_TYPE };
+enum { DF_EQ = 1, DF_CMP = 2, DF_HASH = 4, DF_BOXID = 8, DF_NE = 16, DF_X = 32, DF_ITER = 64, DF_BIG = 128, DF_ROLE = 256 };   /* a class's ==, ordering, hash and != run the program's
+                                                                     helpers; a box of this type is its own identity (a bound method's);
+                                                                     the class's comparison methods take a value of any type (dobj) */
+#define DSTR(id, lit) static struct { I len; uint64_t h; I c1; char s[sizeof lit]; } id = {sizeof lit - 1, 0, sizeof lit, lit}
+DSTR(dd_none, "?s"); DSTR(dd_bool, "b"); DSTR(dd_int, "i"); DSTR(dd_bigint, "j"); DSTR(dd_float, "f"); DSTR(dd_str, "s");
+DSTR(dd_list, "LA"); DSTR(dd_intlist, "Li"); DSTR(dd_dict, "DAA"); DSTR(dd_tuple, "VA");
+DSTR(dd_type, "Y"); DSTR(dn_type, "type");
+DSTR(dn_none, "NoneType"); DSTR(dn_bool, "bool"); DSTR(dn_int, "int"); DSTR(dn_float, "float"); DSTR(dn_str, "str");
+DSTR(dn_list, "list"); DSTR(dn_dict, "dict"); DSTR(dn_tuple, "tuple");
+#define DTYPE(id, k, d, n) const DynType id = {k, (Str *)&d, (Str *)&n, -1, 0, 0, 0, 0, 0} /* GC_NO_ROOT(pys_dyntype_none, pys_dyntype_bool, pys_dyntype_int, pys_dyntype_float, pys_dyntype_str, pys_dyntype_list, pys_dyntype_intlist, pys_dyntype_biglist, pys_dyntype_dict, pys_dyntype_tuple): immutable descriptors reference only static strings. */
+DTYPE(pys_dyntype_none, DK_NONE, dd_none, dn_none); DTYPE(pys_dyntype_bool, DK_BOOL, dd_bool, dn_bool);
+DTYPE(pys_dyntype_int, DK_INT, dd_int, dn_int); DTYPE(pys_dyntype_float, DK_FLOAT, dd_float, dn_float);
+/* GC_NO_ROOT(pys_dyntype_bigint): immutable descriptor references only static strings. */
+const DynType pys_dyntype_bigint = {DK_INT, (Str *)&dd_bigint, (Str *)&dn_int, -1, 0, DF_BIG | DF_BOXID, 0, 0, 0};
+DTYPE(pys_dyntype_str, DK_STR, dd_str, dn_str); DTYPE(pys_dyntype_list, DK_LIST, dd_list, dn_list);
+DTYPE(pys_dyntype_intlist, DK_LIST, dd_intlist, dn_list); DTYPE(pys_dyntype_biglist, DK_LIST, dd_intlist, dn_list);
+DTYPE(pys_dyntype_dict, DK_DICT, dd_dict, dn_dict); DTYPE(pys_dyntype_tuple, DK_TUPLE, dd_tuple, dn_tuple);
+/* GC_NO_ROOT(pys_dyntype_type): immutable descriptor references only static strings. */
+DTYPE(pys_dyntype_type, DK_TYPE, dd_type, dn_type);
+const Dyn pys_dyn_none_box = {&pys_dyntype_none, 0}; /* GC_NO_ROOT(pys_dyn_none_box, pys_dyn_true_box, pys_dyn_false_box): immutable scalar boxes reference only static type descriptors. */
+const Dyn pys_dyn_true_box = {&pys_dyntype_bool, 1}, pys_dyn_false_box = {&pys_dyntype_bool, 0};
+#define DI(v) {&pys_dyntype_int, v}
+#define DI4(v) DI(v), DI(v + 1), DI(v + 2), DI(v + 3)
+#define DI16(v) DI4(v), DI4(v + 4), DI4(v + 8), DI4(v + 12)
+#define DI64(v) DI16(v), DI16(v + 16), DI16(v + 32), DI16(v + 48)
+/* GC_NO_ROOT(smallint): immutable integer boxes reference only static type descriptors. */
+static const Dyn smallint[262] = {DI4(-5), DI(-1), DI64(0), DI64(64), DI64(128), DI64(192), DI(256)};   /* -5 to 256 */
+#define DNONE ((Dyn *)&pys_dyn_none_box)
+#define DKIND(x) ((x)->t->kind)
+#define DNAME(x) ((x)->t->name->s)
+static int dnum(const Dyn *x) { return DKIND(x) == DK_INT || DKIND(x) == DK_BOOL; }
+static int dwide(const Dyn *x) { return x->t == &pys_dyntype_bigint; }
+/* The native dynamic-list paths need companions. Plain programs can still use
+   generic formatting helpers, but cannot carry either opt-in descriptor. */
+static int dyn_native_list_type(const DynType *t) { return (t == &pys_dyntype_intlist || t == &pys_dyntype_biglist) && opt_in(); }
+static int dyn_native_list(const Dyn *x) { return dyn_native_list_type(x->t); }
+static Big dbigint(const Dyn *x) { return dwide(x) ? (Big){0, (void *)x->v} : big_small(x->v); }
+void *pys_dyn_big_ptr(Dyn *x) { return dwide(x) ? (void *)x->v : NULL; }
+static I dsmall(const Dyn *x) { if (dwide(x)) pys_fail(NARROW); return x->v; }
+Dyn *pys_dyn_int(I v) {
+  if ((uint64_t)v + 5 < 262) return (Dyn *)&smallint[v + 5];   /* (unsigned: v + 5 overflows from INT64_MAX - 4) */
+  Dyn *d = gc_box(1); d->t = &pys_dyntype_int; d->v = v; return d;
+}
+/* A wide int keeps its immutable Mpz in a scanned box. The public kind remains int;
+   the private descriptor separates its pointer payload from a small int's bits. */
+Dyn *pys_dyn_big(I lo, void *hi) {
+  if (!hi) return pys_dyn_int(lo);
+  Dyn *d = gc_box(0); d->t = &pys_dyntype_bigint; d->v = (I)hi; return d;
+}
+static Dyn *dboxbig(Big x) { return pys_dyn_big(x.lo, x.hi); }
+Dyn *pys_dyn_float(double x) { Dyn *d = gc_box(1); d->t = &pys_dyntype_float; memcpy(&d->v, &x, 8); return d; }
+/* The compiler proves that box is null or exactly this numeric object's box.
+   Taking its value (never its slot address) leaves all binding writes in the caller. */
+Dyn *pys_dyn_int_box(I value, Dyn *box) { return box ? box : pys_dyn_int(value); }
+Dyn *pys_dyn_big_box(I lo, void *hi, Dyn *box) { return box ? box : pys_dyn_big(lo, hi); }
+Dyn *pys_dyn_float_box(double value, Dyn *box) { return box ? box : pys_dyn_float(value); }
+static Dyn *dbool(I b) { return (Dyn *)(b ? &pys_dyn_true_box : &pys_dyn_false_box); }
+/* a reference of type t: None where it is null (an object of a class type may be None) */
+Dyn *pys_dyn_ref(const DynType *t, void *p) {
+  if (!p) return DNONE;
+  if (dyn_native_list_type(t)) pys_list_identity((List *)p, 1);
+  Dyn *d = gc_box(0); d->t = t; d->v = (I)p; return d;
+}
+static Dyn *dlist(List *l) { return pys_dyn_ref(&pys_dyntype_list, l); }
+static Dyn *dstr(Str *s) { return pys_dyn_ref(&pys_dyntype_str, s); }
+static Dyn *dtuple(VTuple *t) { return pys_dyn_ref(&pys_dyntype_tuple, t); }
+static Dyn *ddict(Dict *d) { return pys_dyn_ref(&pys_dyntype_dict, d); }
+/* A Python list tag is not a proof that its slots hold Dyn pointers. Keep every dynamic
+   list read/write behind the payload descriptor, including method calls and iterators.
+   The native companion gives reads the original integer box, even in a checked caller
+   reading a promoting list. Wide integers use the existing -2**63 slot sentinel. */
+static Dyn *dyn_list_at(Dyn *o, I i) {
+  return dyn_native_list(o) ? pys_list_get_identity((List *)o->v, i, 1) : (Dyn *)pys_list_get((List *)o->v, i);
+}
+static I dyn_list_slot(Dyn *o, Dyn *v) {
+  if (DKIND(v) != DK_INT) failf("TypeError: native list[int] requires int, got %s", DNAME(v));
+  if (dwide(v) && o->t == &pys_dyntype_intlist) pys_fail(NARROW);
+  return dwide(v) ? INT64_MIN : v->v;
+}
+static void dyn_list_store(Dyn *o, I i, Dyn *v, I method) {   /* 0 append, 1 insert, 2 item assignment */
+  List *l = (List *)o->v;
+  if (method == 2) i = idx(i, l->len, "IndexError: list assignment index out of range");
+  if (dyn_native_list(o)) {
+    I slot = dyn_list_slot(o, v);
+    if (method == 0) pys_list_append_identity(l, slot, v, 1);
+    else if (method == 1) pys_list_insert_identity(l, i, slot, v, 1);
+    else pys_list_set_identity(l, i, slot, v, 1);
+  } else {
+    if (method == 0) pys_list_append(l, (I)v);
+    else if (method == 1) pys_list_insert(l, i, (I)v);
+    else pys_list_set(l, i, (I)v);
+  }
+}
+/* A fresh dynamic list has unrestricted boxed storage; it inherits item identities,
+   never the native source's future store restriction. This is also copy()'s path. */
+static List *dyn_list_boxed_slice(Dyn *o, I lo, I hi, I st) {
+  List *l = (List *)o->v;
+  if (!dyn_native_list(o)) return st == 1 ? pys_list_slice(l, lo, hi) : pys_list_slice_step(l, lo, hi, st);
+  I n = sspan(&lo, hi, &st, l->len);
+  pys_list_identity(l, 1);
+  List *r = pys_list_new(n);
+  for (I i = 0; i < n; i++) r->a[i] = l->ids[lo + i * st + 1];
+  r->len = n; return r;
+}
+static void dyn_list_extend(Dyn *a, Dyn *b) {
+  if (DKIND(b) == DK_LIST) {
+    if (a->t == b->t) { pys_list_extend((List *)a->v, (List *)b->v); return; }
+    I n = ((List *)b->v)->len;   /* snapshot: even two wrappers of one list extend only its original items */
+    for (I i = 0; i < n; i++) dyn_list_store(a, 0, dyn_list_at(b, i), 0);
+    return;
+  }
+  if (DKIND(b) == DK_TUPLE) {
+    VTuple *t = (VTuple *)b->v;
+    for (I i = 0; i < t->len; i++) dyn_list_store(a, 0, (Dyn *)t->a[i], 0);
+    return;
+  }
+  DynIter *it = pys_dyn_iter(b);   /* consume and store each item before requesting the next */
+  if (b->t->len && dyn_user_len(b) > INT64_MAX / (I)sizeof(I)) pys_fail("MemoryError");
+  for (Dyn *v; (v = pys_dyn_next(it));) dyn_list_store(a, 0, v, 0);
+}
+/* DF_ROLE descriptors extend the ordinary layout with one fieldless secondary base. */
+typedef struct { DynType type; const DynType *role; } DynRoleType;
+static int derives(const DynType *a, const DynType *b) { for (; a; a = a->base) if (a == b) return 1; return 0; }
+/* does x have type t as a typed variable, argument or field of type t takes it (pys_dyn_unbox):
+   x's type is t; or t is a class's, and x an object of a class that derives from it, or None (a
+   class's values may be None). The program's @o.x.<class> uses this to retain the typed call
+   when a concrete comparison-operand annotation matches. */
+I pys_dyn_isa(Dyn *x, const DynType *t) { return x->t == t || (t->kind == DK_INT && DKIND(x) == DK_INT) || (t->kind == DK_OBJ && (DKIND(x) == DK_NONE || derives(x->t, t))); }
+I pys_dyn_role_isa(Dyn *x, const DynType *t) {
+  return pys_dyn_isa(x, t) || ((x->t->flags & DF_ROLE) && ((const DynRoleType *)x->t)->role == t);
+}
+/* is box x its own copy (lib/copy.py's __pys_copy_is_own and __pys_deepcopy_is_own of an Any
+   value): None, a bool, an int, a float or a str, as CPython's copy gives it; for copy.copy()
+   (deep 0) also a tuple or a function */
+I pys_dyn_copy_is_own(Dyn *x, I deep) { int k = DKIND(x); return k <= DK_STR || k == DK_TYPE || (!deep && (k == DK_TUPLE || k == DK_FUNC)); }
+/* lib/copy.py's memo retains the payload, so typed and Any aliases have one key and
+   one copy. A deep list copy preserves its original physical layout; reboxing a
+   memo hit uses that descriptor. Shallow dynamic copy() remains unrestricted. */
+void *pys_dyn_copy_ref(Dyn *x, Dyn *like) {
+  if (DKIND(x) != DK_LIST || x->t != like->t) pys_fail("TypeError: deep copy changed an Any list's storage layout");
+  return (void *)x->v;
+}
+Dyn *pys_dyn_copy_restore(void *p, Dyn *like) {
+  if (DKIND(like) != DK_LIST) pys_fail("TypeError: dynamic deep-copy memo requires a list");
+  return pys_dyn_ref(like->t, p);
+}
+Dyn *pys_dyn_copy_list(Dyn *x) {
+  if (DKIND(x) != DK_LIST) pys_fail("TypeError: dynamic deep-copy list requires a list");
+  return pys_dyn_ref(x->t, pys_list_copy((List *)x->v));
+}
+
+/* type(x) is type(y) of the boxes of DynTypes a and b (null where no box holds a value of that
+   type). Generators, functions and builtin iterators can have distinct storage descriptors
+   for one Python type. Only compiler-owned builtin iterator classes carry DF_ITER: a user
+   class with the same name remains distinct. This does not make their payloads interchangeable. */
+I pys_dyn_same_type(const DynType *a, const DynType *b) {
+  if (a == b) return 1;
+  if (!a || !b) return 0;
+  if (a->kind == DK_INT && b->kind == DK_INT) return 1;
+  if (a->kind == DK_LIST && b->kind == DK_LIST) return 1;
+  if (a->kind == DK_GEN && b->kind == DK_GEN) return 1;
+  if (a->kind == DK_FUNC && b->kind == DK_FUNC) return strcmp(a->name->s, b->name->s) == 0;
+  int ai = a->kind == DK_ITER || (a->kind == DK_OBJ && (a->flags & DF_ITER));
+  int bi = b->kind == DK_ITER || (b->kind == DK_OBJ && (b->flags & DF_ITER));
+  return ai && bi && strcmp(a->name->s, b->name->s) == 0;
+}
+/* x as a value of type t, which the compiler expects: its payload (None's is 0) where x has that
+   type (pys_dyn_isa), else TypeError, where CPython would not check the annotation
+   (docs/dynamic-any.md) */
+I pys_dyn_unbox(Dyn *x, const DynType *t) {
+  if (pys_dyn_role_isa(x, t)) return t->kind == DK_INT ? dsmall(x) : x->v;
+  if (t == &pys_dyntype_list && dyn_native_list(x)) pys_fail("TypeError: native list[int] cannot be used as list[Any]");
+  if (dyn_native_list_type(t) && DKIND(x) == DK_LIST) {
+    if (!dyn_native_list(x)) pys_fail("TypeError: boxed list[Any] cannot be used as native list[int]");
+    pys_fail("TypeError: native list[int] integer storage policies differ");
+  }
+  failf("TypeError: expected %s, got %s", t->name->s, DNAME(x));
+}
+Big pys_dyn_big_unbox(Dyn *x) {
+  if (DKIND(x) == DK_INT) return dbigint(x);
+  failf("TypeError: expected int, got %s", DNAME(x));
+}
+
+/* repr(), str(), truth, format() */
+Str *pys_dyn_repr(Dyn *x) { return pys_repr(x->v, x->t->desc); }
+Str *pys_dyn_str(Dyn *x) { return DKIND(x) == DK_STR ? (Str *)x->v : pys_repr(x->v, x->t->desc); }
+I pys_dyn_truth(Dyn *x) {
+  switch (DKIND(x)) {
+  case DK_NONE: return 0;
+  case DK_BOOL: case DK_INT: return x->v != 0;
+  case DK_FLOAT: return dbl(x->v) != 0;
+  case DK_STR: return ((Str *)x->v)->len != 0;
+  case DK_LIST: return ((List *)x->v)->len != 0;
+  case DK_DICT: return ((Dict *)x->v)->len != 0;
+  case DK_TUPLE: return ((VTuple *)x->v)->len != 0;
+  }
+  return 1;   /* an object of a class without __bool__ and __len__ (the program tests those first) */
+}
+
+/* ==, ordering and hash, also of a box in a container (descriptor A). Objects of one class, or of a
+   class and its subclass, compare as typed code compares them, through the program's helpers of the
+   class both are objects of (dhier); an object and another value, an object of an unrelated class
+   among them, as CPython's do_richcompare: the left operand's method, else the right one's reflected
+   method (dobj), else identity for == and != and TypeError for an ordering. There is no
+   NotImplemented (#499): the first method that runs gives the result. An unavailable compiled
+   body raises explicitly, rather than silently replacing the method with identity. */
+static const DynType *dhier(Dyn *a, Dyn *b) {
+  if (DKIND(a) != DK_OBJ || DKIND(b) != DK_OBJ) return 0;
+  return pys_dyn_role_isa(b, a->t) ? a->t : pys_dyn_role_isa(a, b->t) ? b->t : 0;
+}
+/* comparison k (0 ==, 1 !=, 2 <, 3 <=, 4 >, 5 >=) of the object a with b by a's class's own method,
+   which the program's helper calls with b as an Any value (pys_obj_cmp(-1 - id, 1 + k, a, b)): 0 or 1,
+   its result, 2 where a is no object or its class has no such method, as object's methods decline,
+   or 3 where its method's body cannot compile for b. Only absence may try the reflected method;
+   an unavailable body is not Python's NotImplemented and must never become a boolean result. */
+static I dobj(Dyn *a, Dyn *b, I k) {
+  if (DKIND(a) != DK_OBJ || !(a->t->flags & DF_X)) return 2;
+  I r = pys_obj_cmp(-1 - a->t->cls, 1 + k, a->v, (I)b);
+  if (r == 3) {
+    const char *method = k == 0 ? "__eq__" : k == 1 ? "__ne__" : k == 2 ? "__lt__" : k == 3 ? "__le__" : k == 4 ? "__gt__" : "__ge__";
+    failf("TypeError: unsupported dynamic comparison: %s.%s could not be compiled for %s", DNAME(a), method, DNAME(b));
+  }
+  return r;
+}
+/* Different list descriptors still denote the same Python type. Compare each payload
+   through its own item reader; decoding both with the left descriptor would reinterpret
+   integers as pointers (or pointers as integers). Keep the ordinary same-layout paths in
+   eqv/opv, including their existing treatment of nested dynamic graphs. A callback may
+   change either list, so lengths, and the ordering pair after equality, are read again. */
+static I dyn_list_compare(Dyn *a, Dyn *b, I op) {   /* op -1 ==, 0..3 ordering */
+  List *x = (List *)a->v, *y = (List *)b->v; I i = 0;
+  if (op < 0 && x->len != y->len) return 0;
+  while (i < x->len && i < y->len) {
+    Dyn *left = dyn_list_at(a, i), *right = dyn_list_at(b, i);
+    if (!dyn_eqitem(left, right)) break;
+    i++;
+  }
+  if (i >= x->len || i >= y->len)
+    return op < 0 ? x->len == y->len : cmpop((x->len > y->len) - (x->len < y->len), op);
+  if (op < 0) return 0;
+  Dyn *left = dyn_list_at(a, i), *right = dyn_list_at(b, i);
+  return pys_dyn_cmp(left, right, op);
+}
+I pys_dyn_eq(Dyn *a, Dyn *b) {
+  int ka = DKIND(a), kb = DKIND(b);
+  if (ka == DK_OBJ || kb == DK_OBJ) {
+    const DynType *t = dhier(a, b);
+    if (t) return t->flags & DF_EQ ? pys_obj_eq(t->cls, a->v, b->v) : a->v == b->v;   /* (x == x runs __eq__ too; a container's search tries identity first) */
+    I r = dobj(a, b, 0);
+    if (r == 2) r = dobj(b, a, 0);
+    return r >= 2 ? 0 : r;   /* (no method that runs: identity, and these are not one object) */
+  }
+  if (dnum(a) && dnum(b)) {
+    if (!dwide(a) && !dwide(b)) return a->v == b->v;
+    Big x = dbigint(a), y = dbigint(b); return pys_big_cmp(x.lo, x.hi, y.lo, y.hi) == 0;
+  }
+  if (ka == DK_FLOAT || kb == DK_FLOAT) {
+    if (ka == DK_FLOAT && kb == DK_FLOAT) return dbl(a->v) == dbl(b->v);
+    if (ka == DK_FLOAT && dnum(b)) { Big y = dbigint(b); return pys_big_cmp_float(y.lo, y.hi, dbl(a->v)) == 0; }
+    if (kb == DK_FLOAT && dnum(a)) { Big x = dbigint(a); return pys_big_cmp_float(x.lo, x.hi, dbl(b->v)) == 0; }
+    return 0;
+  }
+  if (ka != kb) return 0;
+  if (ka == DK_NONE) return 1;
+  if (ka == DK_FUNC) return a->t == b->t && a->v == b->v;   /* the same function, and object or env */
+  if (ka == DK_LIST && a->t != b->t) return dyn_list_compare(a, b, -1);
+  return eqv(a->v, b->v, a->t->desc->s);
+}
+/* a != b: where the class both objects are of (as for ==) or a subclass defines __ne__ (DF_NE),
+   the program's helper, pys_obj_cmp(-1 - id, 0, a, b), runs it as typed code does; else not ==,
+   as object.__ne__ inverts __eq__. An object and another value: as for ==, by __ne__ */
+I pys_dyn_ne(Dyn *a, Dyn *b) {
+  if (DKIND(a) == DK_OBJ || DKIND(b) == DK_OBJ) {
+    const DynType *t = dhier(a, b);
+    if (t) return t->flags & DF_NE ? pys_obj_cmp(-1 - t->cls, 0, a->v, b->v) != 0 : !pys_dyn_eq(a, b);
+    I r = dobj(a, b, 1);   /* (a's __ne__, else not its __eq__, as object.__ne__ inverts it) */
+    if (r == 2) r = dobj(b, a, 1);
+    return r >= 2 ? 1 : r;
+  }
+  return !pys_dyn_eq(a, b);
+}
+/* the items of a container: identity first, as CPython's PyObject_RichCompareBool (a float box
+   is a float object here, so a NaN equals itself in a list) */
+static int dyn_eqitem(Dyn *a, Dyn *b) { return a == b || (DKIND(a) != DK_FLOAT && a->t == b->t && a->v == b->v) || pys_dyn_eq(a, b); }
+/* two keys of an Any-keyed dict whose comparison runs no code (dlook, #780): 1 or 0 for boxes of
+   one type that compares by payload, a str by its bytes and an int or a bool by its value; else 2,
+   for dkeyeq to compare as dyn_eqitem does (1, 1.0 and True are one key; a NaN; objects) */
+static int dyn_keyeq(Dyn *a, Dyn *b) {
+  if (a->t != b->t) return 2;
+  int k = DKIND(a);
+  if (dwide(a)) return pys_mpz_cmp((Mpz *)a->v, (Mpz *)b->v) == 0;
+  return k == DK_STR ? a->v == b->v || pys_str_eq((Str *)a->v, (Str *)b->v) : k == DK_INT || k == DK_BOOL ? a->v == b->v : 2;
+}
+static _Noreturn void dyn_noorder(Dyn *a, Dyn *b, I op) {
+  failf("TypeError: '%s' not supported between instances of '%s' and '%s'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=", DNAME(a), DNAME(b));
+}
+I pys_dyn_cmp(Dyn *a, Dyn *b, I op) {   /* a OP b, op 0..3: < <= > >= */
+  int ka = DKIND(a), kb = DKIND(b);
+  if (ka == DK_OBJ || kb == DK_OBJ) {
+    const DynType *t = dhier(a, b);
+    if (t && (t->flags & DF_CMP)) return pys_obj_cmp(t->cls, op, a->v, b->v) != 0;
+    if (!t) {
+      I r = dobj(a, b, 2 + op);
+      if (r == 2) r = dobj(b, a, 2 + (op ^ 2));   /* (the reflected method: < and >, <= and >= swap) */
+      if (r < 2) return r;
+    }
+    dyn_noorder(a, b, op);
+  }
+  if (dnum(a) && dnum(b)) {
+    if (!dwide(a) && !dwide(b)) return cmpop((a->v > b->v) - (a->v < b->v), op);
+    Big x = dbigint(a), y = dbigint(b); return cmpop(pys_big_cmp(x.lo, x.hi, y.lo, y.hi), op);
+  }
+  if ((ka == DK_FLOAT || dnum(a)) && (kb == DK_FLOAT || dnum(b))) {
+    if (ka == DK_FLOAT && kb == DK_FLOAT) return opv(a->v, b->v, "f", op);
+    Big x = dbigint(ka == DK_FLOAT ? b : a);
+    I c = ka == DK_FLOAT ? -pys_big_cmp_float(x.lo, x.hi, dbl(a->v)) : pys_big_cmp_float(x.lo, x.hi, dbl(b->v));
+    return c == 2 || c == -2 ? 0 : cmpop(c, op);   /* (a NaN: unordered, every comparison false) */
+  }
+  if (ka != kb || (ka != DK_STR && ka != DK_LIST && ka != DK_TUPLE)) dyn_noorder(a, b, op);
+  if (ka == DK_LIST && a->t != b->t) return dyn_list_compare(a, b, op);
+  return opv(a->v, b->v, a->t->desc->s, op);
+}
+/* an Any key's hash (hkey): a str's cached one in one call, else pys_dyn_hash's, which is the same */
+static uint64_t hdyn(Dyn *x) { return (uint64_t)(DKIND(x) == DK_STR ? hstr((Str *)x->v) : pys_dyn_hash(x)); }
+I pys_dyn_hash(Dyn *x) {
+  switch (DKIND(x)) {
+  case DK_NONE: return NONE_HASH;
+  case DK_BOOL: case DK_INT: return dwide(x) ? pys_mpz_hash((Mpz *)x->v) : hint(x->v);
+  case DK_FLOAT: return hdbl(dbl(x->v));
+  case DK_STR: return hstr((Str *)x->v);
+  case DK_TUPLE: return htuple(((VTuple *)x->v)->a, ((VTuple *)x->v)->len, "A", 0);
+  case DK_OBJ: return x->t->flags & DF_HASH ? pys_obj_eq(-1 - x->t->cls, x->v, 0) : hptr(x->v);
+  case DK_FUNC: case DK_ITER: case DK_GEN: case DK_TYPE: return hptr(x->v);
+  }
+  failf("TypeError: unhashable type: '%s'", DNAME(x));
+}
+
+/* A typed integer query in a canonical Any dictionary, without materializing its box.
+   Return the entry, -1 for absence, or -2 before a comparison that needs the original
+   query object. The caller boxes its original value on that last path and repeats the
+   ordinary lookup. All comparisons before the fallback were pure, so this preserves
+   callback order, identity and mutation restarts. Hashes and probe order stay unchanged;
+   this helper neither allocates nor mutates the dictionary. */
+LOOKUP I pys_dict_find_int_nobox(Dict *d, I value) {
+  if (!d->size) return -1;
+  uint64_t h = (uint64_t)hint(value), m = d->size - 1;
+  for (uint64_t i = h & m, p = h;; p >>= 5, i = (i * 5 + p + 1) & m) {
+    DICT_PROBE();
+    int32_t e = d->idx[i];
+    if (!e) return -1;
+    if (e > 0 && d->hs[e - 1] == h) {
+      Dyn *key = (Dyn *)d->keys[e - 1];
+      if (key->t != &pys_dyntype_int && key->t != &pys_dyntype_bool) return -2;
+      if (key->v == value) return e - 1;
+    }
+  }
+}
+
+/* arithmetic: op 0..11 = + - * / // % ** << >> & | ^ (the program runs a class's dunders first) */
+/* GC_NO_ROOT(dops): operator names are C string literals. */
+static const char *const dops[] = {"+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"};
+/* (CPython's text names an in-place operator by its own symbol, **= too, and ** as "** or pow()") */
+static _Noreturn void dyn_unsupported(Dyn *a, Dyn *b, I op, int inplace) {
+  failf("TypeError: unsupported operand type(s) for %s%s: '%s' and '%s'", dops[op], inplace ? "=" : op == 6 ? " or pow()" : "", DNAME(a), DNAME(b));
+}
+static Dyn *dyn_repeat(Dyn *seq, Dyn *n) {   /* seq * n, for a str, list or tuple and an int (or bool) */
+  if (dwide(n)) pys_fail("OverflowError: cannot fit 'int' into an index-sized integer");
+  I k = n->v < 0 ? 0 : n->v;
+  if (DKIND(seq) == DK_STR) return dstr(pys_str_mul((Str *)seq->v, k));
+  if (DKIND(seq) == DK_LIST) {
+    if (!dyn_native_list(seq)) return dlist(pys_list_mul((List *)seq->v, k));
+    I nitems = ((List *)seq->v)->len;
+    if (!k || !nitems) return dlist(pys_list_new(0));
+    if (nitems > (INT64_MAX >> 4) / k) pys_fail("MemoryError");
+    List *r = dyn_list_boxed_slice(seq, NONE, NONE, 1);
+    pys_list_imul(r, k); return dlist(r);
+  }
+  VTuple *t = (VTuple *)seq->v;
+  if (k == 1 || !t->len) return seq;   /* (CPython's tuple * 1 is the tuple itself) */
+  if (!k) return dtuple(pys_alloc(sizeof(VTuple)));   /* (the empty tuple) */
+  if (t->len > (INT64_MAX - (I)sizeof(VTuple)) / (I)sizeof(I) / k) pys_fail("MemoryError");   /* (its size in bytes fits) */
+  VTuple *r = pys_alloc(sizeof(VTuple) + t->len * k * sizeof(I)); r->len = t->len * k;
+  for (I i = 0; i < k; i++) memcpy(r->a + i * t->len, t->a, t->len * sizeof(I));
+  return dtuple(r);
+}
+static int dseq(const Dyn *x) { return DKIND(x) == DK_STR || DKIND(x) == DK_LIST || DKIND(x) == DK_TUPLE; }
+static Dyn *dyn_binop(Dyn *a, Dyn *b, I op, int inplace, int promote) {   /* a OP b, or a's in-place fallback (inplace) */
+  int ka = DKIND(a), kb = DKIND(b);
+  if (dnum(a) && dnum(b)) {
+    if (promote || dwide(a) || dwide(b)) {
+      Big x = dbigint(a), y = dbigint(b);
+      if (op == 3) return pys_dyn_float(pys_big_truediv(x.lo, x.hi, y.lo, y.hi));
+      if (op == 6 && (y.hi ? ((Mpz *)y.hi)->size < 0 : y.lo < 0))
+        return pys_dyn_float(pys_fpow(pys_big_float(x.lo, x.hi), pys_big_float(y.lo, y.hi)));
+      /* Bool's bitwise operators return bool, including in a promoting module. */
+      if (op >= 9 && ka == DK_BOOL && kb == DK_BOOL)
+        return dbool(op == 9 ? a->v & b->v : op == 10 ? a->v | b->v : a->v ^ b->v);
+      I k = op <= 2 ? op : op == 4 ? 3 : op == 5 ? 4 : op == 6 ? 10 : op == 7 ? 8 : op == 8 ? 9 : op - 4;
+      return dboxbig(pys_big_op(x.lo, x.hi, y.lo, y.hi, k));
+    }
+    I x = a->v, y = b->v, r;
+    switch (op) {
+    case 0: if (__builtin_add_overflow(x, y, &r)) pys_fail(OVF); return pys_dyn_int(r);
+    case 1: if (__builtin_sub_overflow(x, y, &r)) pys_fail(OVF); return pys_dyn_int(r);
+    case 2: if (__builtin_mul_overflow(x, y, &r)) pys_fail(OVF); return pys_dyn_int(r);
+    case 3: return pys_dyn_float(pys_idiv(x, y));
+    case 4: return pys_dyn_int(pys_floordiv(x, y));
+    case 5: return pys_dyn_int(pys_mod(x, y));
+    case 6: return y < 0 ? pys_dyn_float(pys_fpow((double)x, (double)y)) : pys_dyn_int(pys_pow(x, y));   /* (2 ** -1 is 0.5) */
+    case 7: return pys_dyn_int(pys_shl(x, y));
+    case 8: return pys_dyn_int(pys_shr(x, y));
+    case 9: case 10: case 11: {
+      r = op == 9 ? x & y : op == 10 ? x | y : x ^ y;
+      return ka == DK_BOOL && kb == DK_BOOL ? dbool(r) : pys_dyn_int(r);   /* (True & False is a bool) */
+    }
+    }
+  }
+  if ((ka == DK_FLOAT || dnum(a)) && (kb == DK_FLOAT || dnum(b)) && op <= 6) {
+    Big ax = dbigint(a), bx = dbigint(b);
+    double x = ka == DK_FLOAT ? dbl(a->v) : pys_big_float(ax.lo, ax.hi), y = kb == DK_FLOAT ? dbl(b->v) : pys_big_float(bx.lo, bx.hi);
+    switch (op) {
+    case 0: return pys_dyn_float(x + y);
+    case 1: return pys_dyn_float(x - y);
+    case 2: return pys_dyn_float(x * y);
+    case 3: return pys_dyn_float(pys_fdiv(x, y));
+    case 4: return pys_dyn_float(pys_ffloordiv(x, y));
+    case 5: return pys_dyn_float(pys_fmod(x, y));
+    case 6: return pys_dyn_float(pys_fpow(x, y));
+    }
+  }
+  if (op == 0 && dseq(a)) {
+    if (ka != kb) failf("TypeError: can only concatenate %s (not \"%s\") to %s", DNAME(a), DNAME(b), DNAME(a));
+    if (ka == DK_STR) return dstr(pys_str_add((Str *)a->v, (Str *)b->v));
+    if (ka == DK_LIST) {
+      if (!dyn_native_list(a) && !dyn_native_list(b)) return dlist(pys_list_add((List *)a->v, (List *)b->v));
+      I na = ((List *)a->v)->len, nb = ((List *)b->v)->len;
+      if (na > INT64_MAX / (I)sizeof(I) - nb) pys_fail("MemoryError");
+      List *r = pys_list_new(na + nb);
+      for (I i = 0; i < na; i++) pys_list_append(r, (I)dyn_list_at(a, i));
+      for (I i = 0; i < nb; i++) pys_list_append(r, (I)dyn_list_at(b, i));
+      return dlist(r);
+    }
+    VTuple *x = (VTuple *)a->v, *y = (VTuple *)b->v;
+    if (!y->len) return a;
+    if (!x->len) return b;
+    VTuple *r = pys_alloc(sizeof(VTuple) + (x->len + y->len) * sizeof(I)); r->len = x->len + y->len;
+    memcpy(r->a, x->a, x->len * sizeof(I)); memcpy(r->a + x->len, y->a, y->len * sizeof(I));
+    return dtuple(r);
+  }
+  if (op == 10 && ka == DK_DICT && kb == DK_DICT) {   /* d | e: a new dict of d's items updated with e's, as dict.__or__ */
+    Dict *r = pys_dict_copy((Dict *)a->v);
+    pys_dict_update(r, (Dict *)b->v);
+    return ddict(r);
+  }
+  if (inplace && op == 2 && (ka == DK_DICT || ka == DK_OBJ))
+    dyn_unsupported(a, b, op, inplace);   /* (CPython's *= repeats a sequence on the right only where the left operand's type has no
+                                             sequence methods: a dict's and an object's have them, though no repeat) */
+  if (op == 2 && (dseq(a) || dseq(b))) {
+    Dyn *s = dseq(a) ? a : b, *n = s == a ? b : a;
+    if (!dnum(n)) failf("TypeError: can't multiply sequence by non-int of type '%s'", DNAME(n));
+    return dyn_repeat(s, n);
+  }
+  dyn_unsupported(a, b, op, inplace);
+}
+Dyn *pys_dyn_binop(Dyn *a, Dyn *b, I op) { return dyn_binop(a, b, op, 0, 0); }
+Dyn *pys_dyn_binop_promote(Dyn *a, Dyn *b, I op) { return dyn_binop(a, b, op, 0, 1); }
+void pys_dyn_update(Dict *d, Dyn *x);
+/* a OP= b: a list extends or repeats itself in place, as list's __iadd__ and __imul__ do, and a
+   dict updates itself, as dict's __ior__ does (dict.update(b): a mapping, or pairs); other values
+   have no in-place operation and make a new value */
+static Dyn *dyn_inplace(Dyn *a, Dyn *b, I op, int promote) {
+  if (DKIND(a) == DK_DICT && op == 10) { pys_dyn_update((Dict *)a->v, b); return a; }
+  if (DKIND(a) == DK_LIST && op == 0) {
+    dyn_list_extend(a, b); return a;
+  }
+  if (DKIND(a) == DK_LIST && op == 2) {
+    if (!dnum(b)) failf("TypeError: can't multiply sequence by non-int of type '%s'", DNAME(b));
+    if (dwide(b)) pys_fail("OverflowError: cannot fit 'int' into an index-sized integer");
+    pys_list_imul((List *)a->v, b->v < 0 ? 0 : b->v);
+    return a;
+  }
+  return dyn_binop(a, b, op, 1, promote);
+}
+Dyn *pys_dyn_inplace(Dyn *a, Dyn *b, I op) { return dyn_inplace(a, b, op, 0); }
+Dyn *pys_dyn_inplace_promote(Dyn *a, Dyn *b, I op) { return dyn_inplace(a, b, op, 1); }
+static Dyn *dyn_unary(Dyn *a, I op, int promote) {   /* op 0..3: - + ~ abs */
+  if (dnum(a) && (promote || dwide(a))) {
+    Big x = dbigint(a);
+    if (op == 1 && DKIND(a) == DK_INT) return a;
+    if (op == 3 && (x.hi ? ((Mpz *)x.hi)->size >= 0 : x.lo >= 0)) return DKIND(a) == DK_INT ? a : pys_dyn_int(x.lo);
+    if (op == 0 || op == 3) return dboxbig(pys_big_op(0, NULL, x.lo, x.hi, 1));
+    if (op == 2) return dboxbig(pys_big_op(x.lo, x.hi, -1, NULL, 7));
+    return pys_dyn_int(x.lo);   /* +bool is int */
+  }
+  if (op == 3) {
+    if (dnum(a)) {
+      if (a->v == INT64_MIN) pys_fail(OVF);
+      /* CPython keeps a nonnegative exact int's identity; bool's result is an int. */
+      return DKIND(a) == DK_INT && a->v >= 0 ? a : pys_dyn_int(a->v < 0 ? -a->v : a->v);
+    }
+    if (DKIND(a) == DK_FLOAT) return pys_dyn_float(fabs(dbl(a->v)));
+    failf("TypeError: bad operand type for abs(): '%s'", DNAME(a));
+  }
+  if (dnum(a)) {
+    if (op == 0) { if (a->v == INT64_MIN) pys_fail(OVF); return pys_dyn_int(-a->v); }
+    return pys_dyn_int(op == 1 ? a->v : ~a->v);   /* (+True is 1) */
+  }
+  if (DKIND(a) == DK_FLOAT && op < 2) return op == 1 ? a : pys_dyn_float(-dbl(a->v));
+  failf("TypeError: bad operand type for unary %s: '%s'", op == 0 ? "-" : op == 1 ? "+" : "~", DNAME(a));
+}
+Dyn *pys_dyn_unary(Dyn *a, I op) { return dyn_unary(a, op, 0); }
+Dyn *pys_dyn_unary_promote(Dyn *a, I op) { return dyn_unary(a, op, 1); }
+
+/* len(), items, membership and iteration of the builtin containers and str */
+I pys_dyn_len(Dyn *x) {
+  switch (DKIND(x)) {
+  case DK_STR: return pys_text_len((Str *)x->v);
+  case DK_LIST: return ((List *)x->v)->len;
+  case DK_DICT: return ((Dict *)x->v)->len;
+  case DK_TUPLE: return ((VTuple *)x->v)->len;
+  }
+  failf("TypeError: object of type '%s' has no len()", DNAME(x));
+}
+static I dindex(Dyn *o, Dyn *k) {   /* k as a sequence's index: an int or a bool */
+  if (dnum(k)) {
+    if (dwide(k)) pys_fail("IndexError: cannot fit 'int' into an index-sized integer");
+    return k->v;
+  }
+  if (DKIND(o) == DK_STR) failf("TypeError: string indices must be integers, not '%s'", DNAME(k));
+  failf("TypeError: %s indices must be integers or slices, not %s", DNAME(o), DNAME(k));
+}
+Dyn *pys_dyn_getitem(Dyn *o, Dyn *k) {
+  switch (DKIND(o)) {
+  case DK_LIST: return dyn_list_at(o, dindex(o, k));
+  case DK_DICT: return (Dyn *)pys_dict_getitem((Dict *)o->v, (I)k);
+  case DK_TUPLE: { VTuple *t = (VTuple *)o->v; return (Dyn *)t->a[idx(dindex(o, k), t->len, "IndexError: tuple index out of range")]; }
+  case DK_STR: return dstr(pys_text_get((Str *)o->v, dindex(o, k)));
+  }
+  failf("TypeError: '%s' object is not subscriptable", DNAME(o));
+}
+void pys_dyn_setitem(Dyn *o, Dyn *k, Dyn *v) {
+  if (DKIND(o) == DK_LIST) { dyn_list_store(o, dindex(o, k), v, 2); return; }
+  if (DKIND(o) == DK_DICT) { pys_dict_set((Dict *)o->v, (I)k, (I)v); return; }
+  failf("TypeError: '%s' object does not support item assignment", DNAME(o));
+}
+void pys_dyn_delitem(Dyn *o, Dyn *k) {
+  if (DKIND(o) == DK_LIST) { pys_list_del((List *)o->v, dindex(o, k)); return; }
+  if (DKIND(o) == DK_DICT) { pys_dict_del((Dict *)o->v, (I)k); return; }
+  failf("TypeError: '%s' object doesn't support item deletion", DNAME(o));
+}
+I pys_dyn_contains(Dyn *o, Dyn *k) {   /* k in o */
+  switch (DKIND(o)) {
+  case DK_LIST: {   /* (an __eq__ may change the list: re-read its length at every step) */
+    List *l = (List *)o->v;
+    for (I i = 0; i < l->len; i++) if (dyn_eqitem(dyn_list_at(o, i), k)) return 1;
+    return 0;
+  }
+  case DK_TUPLE: { VTuple *t = (VTuple *)o->v; for (I i = 0; i < t->len; i++) if (dyn_eqitem((Dyn *)t->a[i], k)) return 1; return 0; }
+  case DK_DICT: return pys_dict_has((Dict *)o->v, (I)k);
+  case DK_STR:
+    if (DKIND(k) != DK_STR) failf("TypeError: 'in <string>' requires string as left operand, not %s", DNAME(k));
+    return pys_str_contains((Str *)o->v, (Str *)k->v);
+  }
+  if (DKIND(o) != DK_ITER && !o->t->iter) failf("TypeError: argument of type '%s' is not iterable", DNAME(o));
+  DynIter *it = pys_dyn_iter(o);
+  for (Dyn *v; (v = pys_dyn_next(it));) if (dyn_eqitem(v, k)) return 1;
+  return 0;
+}
+/* Builtin iterators retain the original container and read its live items. Exhaustion is
+   sticky, and releases that container. A custom iterator can recover after StopIteration;
+   its callback therefore receives every next() call, even after it returned null. */
+struct DynIter { Dyn *o; I i, used, count, step; uint64_t left; int reverse, range, done; };
+DSTR(dd_iter, "Q");
+DSTR(dn_listiter, "list_iterator"); DSTR(dn_tupleiter, "tuple_iterator");
+DSTR(dn_dictiter, "dict_keyiterator"); DSTR(dn_striter, "str_ascii_iterator");
+DSTR(dn_listrev, "list_reverseiterator"); DSTR(dn_dictrev, "dict_reversekeyiterator");
+DSTR(dn_reverse, "reversed"); DSTR(dn_rangeiter, "range_iterator");
+/* GC_NO_ROOT(dt_listiter, dt_tupleiter, dt_dictiter, dt_striter, dt_listrev, dt_dictrev,
+   dt_reverse, dt_rangeiter): immutable iterator descriptors reference only static strings. */
+DTYPE(dt_listiter, DK_ITER, dd_iter, dn_listiter); DTYPE(dt_tupleiter, DK_ITER, dd_iter, dn_tupleiter);
+DTYPE(dt_dictiter, DK_ITER, dd_iter, dn_dictiter); DTYPE(dt_striter, DK_ITER, dd_iter, dn_striter);
+DTYPE(dt_listrev, DK_ITER, dd_iter, dn_listrev); DTYPE(dt_dictrev, DK_ITER, dd_iter, dn_dictrev);
+DTYPE(dt_reverse, DK_ITER, dd_iter, dn_reverse); DTYPE(dt_rangeiter, DK_ITER, dd_iter, dn_rangeiter);
+/* These wrappers are user-code boundaries, also tracked by check_runtime.py. */
+static Dyn *dyn_user_iter(Dyn *o) { return o->t->iter(o); }
+static Dyn *dyn_user_next(Dyn *o) { return o->t->next(o); }
+static I dyn_user_len(Dyn *o) { return o->t->len(o); }
+static int dyn_builtin_iterable(Dyn *o) {
+  I k = DKIND(o);
+  return k == DK_LIST || k == DK_TUPLE || k == DK_DICT || k == DK_STR;
+}
+static int dyn_iterable(Dyn *o) { return dyn_builtin_iterable(o) || DKIND(o) == DK_ITER || o->t->iter; }
+Dyn *pys_dyn_iter_check(Dyn *o) {
+  if (DKIND(o) != DK_ITER && !o->t->next) failf("TypeError: iter() returned non-iterator of type '%s'", DNAME(o));
+  return o;
+}
+static DynIter *dyn_builtin_iter(Dyn *o, int reverse) {
+  DynIter *it = pys_alloc(sizeof(DynIter)); it->o = o; it->reverse = reverse;
+  I k = DKIND(o);
+  if (k == DK_DICT) {
+    Dict *d = (Dict *)o->v;
+    it->used = d->len;
+    if (reverse) it->i = d->n - 1;
+  } else if (reverse) {
+    it->i = k == DK_LIST ? ((List *)o->v)->len - 1 : k == DK_TUPLE ? ((VTuple *)o->v)->len - 1 : ((Str *)o->v)->len;
+  }
+  return it;
+}
+Dyn *pys_dyn_iter_box(Dyn *o) {
+  if (DKIND(o) == DK_ITER) return o;
+  if (dyn_builtin_iterable(o)) {
+    const DynType *t = DKIND(o) == DK_LIST ? &dt_listiter : DKIND(o) == DK_TUPLE ? &dt_tupleiter : DKIND(o) == DK_DICT ? &dt_dictiter : &dt_striter;
+    return pys_dyn_ref(t, dyn_builtin_iter(o, 0));
+  }
+  if (o->t->iter) return pys_dyn_iter_check(dyn_user_iter(o));
+  failf("TypeError: '%s' object is not iterable", DNAME(o));
+}
+DynIter *pys_dyn_iter(Dyn *o) {
+  if (DKIND(o) == DK_ITER) return (DynIter *)o->v;
+  if (dyn_builtin_iterable(o)) return dyn_builtin_iter(o, 0);
+  o = pys_dyn_iter_box(o);
+  if (DKIND(o) == DK_ITER) return (DynIter *)o->v;
+  DynIter *it = pys_alloc(sizeof(DynIter)); it->o = o;
+  return it;
+}
+Dyn *pys_dyn_next_box(Dyn *o) {
+  if (DKIND(o) == DK_ITER) return pys_dyn_next((DynIter *)o->v);
+  if (o->t->next) return dyn_user_next(o);
+  failf("TypeError: '%s' object is not an iterator", DNAME(o));
+}
+Dyn *pys_dyn_next(DynIter *it) {   /* the next item, or null at the end */
+  if (it->done) return 0;
+  if (it->range) {
+    if (!it->left) { it->done = 1; return 0; }
+    I v = it->i; it->left--;
+    it->i = (I)((uint64_t)it->i + (uint64_t)it->step);
+    return pys_dyn_int(v);
+  }
+  Dyn *o = it->o;
+  if (o->t->next) return dyn_user_next(o);
+  switch (DKIND(o)) {
+  case DK_LIST: {
+    List *l = (List *)o->v;
+    if (it->i >= 0 && it->i < l->len) {
+      Dyn *v = dyn_list_at(o, it->i); it->i += it->reverse ? -1 : 1; return v;
+    }
+    break;
+  }
+  case DK_TUPLE: {
+    VTuple *t = (VTuple *)o->v;
+    if (it->i >= 0 && it->i < t->len) {
+      Dyn *v = (Dyn *)t->a[it->i]; it->i += it->reverse ? -1 : 1; return v;
+    }
+    break;
+  }
+  case DK_DICT: {
+    Dict *d = (Dict *)o->v;
+    if (it->used != d->len) it->used = -1;   /* a size error stays an error even if the size is restored */
+    /* A size error stays live, but a keys-changed error exhausts the iterator.
+       Check the count here, after locating an entry, so both directions can
+       release their source before raising, as CPython does. */
+    I e = it->reverse ? pys_dict_prev(d, it->i, it->used, -1) : pys_dict_next(d, it->i, it->used, -1);
+    if (e < 0) break;
+    if (it->count >= it->used) {
+      it->done = 1; it->o = 0;
+      pys_fail("RuntimeError: dictionary keys changed during iteration");
+    }
+    it->i = e + (it->reverse ? -1 : 1); it->count++;
+    return (Dyn *)d->keys[e];
+  }
+  case DK_STR: {
+    Str *s = (Str *)o->v;
+    if (it->reverse) {
+      if (it->i <= 0) break;
+      it->i = pys_text_prev(s, it->i);
+      return dstr(pys_text_at(s, it->i));
+    }
+    if (it->i >= s->len) break;
+    Str *c = pys_text_at(s, it->i); it->i = pys_text_next(s, it->i);
+    return dstr(c);
+  }
+  default: return pys_dyn_next_box(o);
+  }
+  it->done = 1; it->o = 0;
+  return 0;
+}
+Dyn *pys_dyn_reversed(Dyn *o) {
+  if (!dyn_builtin_iterable(o)) failf("TypeError: '%s' object is not reversible", DNAME(o));
+  const DynType *t = DKIND(o) == DK_LIST ? &dt_listrev : DKIND(o) == DK_DICT ? &dt_dictrev : &dt_reverse;
+  return pys_dyn_ref(t, dyn_builtin_iter(o, 1));
+}
+Dyn *pys_dyn_range_iter(I start, I stop, I step, I reverse) {
+  uint64_t n = (uint64_t)pys_range_len(start, stop, step);
+  DynIter *it = pys_alloc(sizeof(DynIter)); it->range = 1; it->left = n;
+  it->i = reverse && n ? (I)((uint64_t)start + (n - 1) * (uint64_t)step) : start;
+  it->step = reverse ? (I)(-(uint64_t)step) : step;
+  return pys_dyn_ref(&dt_rangeiter, it);
+}
+/* the box of slot v of descriptor d, of a fresh result that a builtin method gave (a str's split, a
+   dict's items): a number, a str, a box, None or a value, a tuple of these (made one of boxes) */
+static Dyn *dyn_of(I v, const char *d) {
+  switch (*d) {
+  case 'i': return pys_dyn_int(v);
+  case 'j': return pys_dyn_big(0, (void *)v);
+  case 'J': return dboxbig(jbig(v));
+  case 'b': return dbool(v);
+  case 'f': return pys_dyn_float(dbl(v));
+  case 's': return dstr((Str *)v);
+  case 'A': return (Dyn *)v;
+  case '?': return v ? dyn_of(unbox(v, d + 1), d + 1) : DNONE;
+  case 'T': {
+    I n = d[1] - '0', w[2]; const char *e = d + 2;
+    VTuple *t = pys_alloc(sizeof(VTuple) + n * sizeof(I)); t->len = n;
+    for (I i = 0; i < n; i++, e = skip(e)) t->a[i] = (I)dyn_of(titem((I *)v, n, i, e, w), e);
+    return dtuple(t);
+  }
+  }
+  failf("TypeError: a value of descriptor %s cannot become an Any value", d);
+}
+List *pys_dyn_list_of(List *src, Str *d) {   /* a list of boxes of src's items, of descriptor d */
+  int ids = src->ids && !big_list(src);
+  if (ids) pys_list_identity(src, src->ids[0]);
+  List *l = pys_list_new(src->len);
+  for (I i = 0; i < src->len; i++) {
+    Mpz *m = lbig(src, i);
+    pys_list_append(l, ids ? src->ids[i + 1] : m ? (I)pys_dyn_big(0, m) : (I)dyn_of(src->a[i], d->s));
+  }
+  return l;
+}
+/* a slice's bound (or, not bound, its step) that is an Any value: None is an omitted one (NONE, a
+   step's 1), an int or a bool its value (a bound of -2**63 is -2**63 + 1, as the compiler clamps a
+   typed one's), else CPython's TypeError (no object here has __index__) */
+static I dbound(Dyn *x, int bound) {
+  if (DKIND(x) == DK_NONE) return bound ? NONE : 1;
+  if (DKIND(x) != DK_INT && DKIND(x) != DK_BOOL) pys_fail("TypeError: slice indices must be integers or None or have an __index__ method");
+  if (dwide(x)) return ((Mpz *)x->v)->size < 0 ? -INT64_MAX : INT64_MAX;
+  return bound && x->v == NONE ? NONE + 1 : x->v;
+}
+I pys_dyn_index_bound(Dyn *x, I bound) { return dbound(x, bound != 0); }
+/* The compiler resolves a method argument's __index__ before this call, retaining
+   its integer box. insert/pop need Py_ssize_t, while index's bounds clamp wide ints. */
+static I dyn_list_method_index(Dyn *x) {
+  if (!dnum(x)) failf("TypeError: '%s' object cannot be interpreted as an integer", DNAME(x));
+  if (dwide(x)) pys_fail("OverflowError: Python int too large to convert to C ssize_t");
+  return x->v;
+}
+void pys_dyn_list_descriptor(Dyn *o, Str *method) {
+  if (DKIND(o) != DK_LIST)
+    failf("TypeError: descriptor '%s' for 'list' objects doesn't apply to a '%s' object", method->s, DNAME(o));
+}
+Dyn *pys_dyn_list_method(Dyn *o, I op, Dyn *a, Dyn *b, Dyn *c) {
+  /* Arity and keyword checks belong to the shared compiler binder. Missing optional
+     arguments are null, not None. Both boxed and native lists use these operations so
+     an Any source can extend either layout without an unchecked list[Any] payload. */
+  if (DKIND(o) != DK_LIST) failf("TypeError: expected list, got %s", DNAME(o));
+  List *l = (List *)o->v;
+  switch (op) {
+  case 0: dyn_list_store(o, 0, a, 0); return DNONE;   /* append */
+  case 1: dyn_list_store(o, dyn_list_method_index(a), b, 1); return DNONE;   /* insert */
+  case 2: {   /* pop: return the full stored integer, including its identity */
+    I i = a ? dyn_list_method_index(a) : -1;
+    return dyn_native_list(o) ? pys_list_pop_identity(l, i, 1) : (Dyn *)pys_list_pop(l, i);
+  }
+  case 3: dyn_list_extend(o, a); return DNONE;   /* extend: checked, incremental stores */
+  case 4: case 5: case 6: {   /* count, index, remove: queries need not be integers */
+    I start = 0, stop = INT64_MAX, count = 0;
+    if (op == 5) {
+      if ((b && !dnum(b)) || (c && !dnum(c))) pys_fail("TypeError: slice indices must be integers or have an __index__ method");
+      start = b ? dbound(b, 1) : 0; stop = c ? dbound(c, 1) : INT64_MAX;
+      if (start < 0 && (start += l->len) < 0) start = 0;
+      if (stop < 0 && (stop += l->len) < 0) stop = 0;
+    }
+    for (I i = start; i < stop && i < l->len; i++) {
+      if (!dyn_eqitem(dyn_list_at(o, i), a)) continue;
+      if (op == 4) { count++; continue; }
+      if (op == 5) return pys_dyn_int(i);
+      if (i < l->len) pys_list_del(l, i);   /* an equality callback may have removed this index */
+      return DNONE;
+    }
+    if (op == 4) return pys_dyn_int(count);
+    if (op == 5) not_in_list((I)a, "A");
+    pys_fail("ValueError: list.remove(x): x not in list");
+  }
+  case 7: return dlist(dyn_list_boxed_slice(o, NONE, NONE, 1));   /* copy */
+  case 8: pys_list_clear(l); return DNONE;
+  case 9: pys_list_reverse(l); return DNONE;
+  }
+  pys_fail("TypeError: unsupported dynamic list method");
+}
+/* Slice assignment uses the same explicit list-layout contract as item stores.
+   The compiler performs receiver checks before executing the bounds' __index__
+   methods, and supplies converted bounds here. Augmented assignment may read a str
+   or tuple slice before its eventual assignment is rejected. */
+void pys_dyn_list_check(Dyn *o, I operation) {   /* 0 read, 1 assignment, 2 deletion */
+  int k = DKIND(o);
+  if (k == DK_LIST || (!operation && (k == DK_STR || k == DK_TUPLE))) return;
+  if (!operation) failf("TypeError: '%s' object is not subscriptable", DNAME(o));
+  if (operation == 1) failf("TypeError: '%s' object does not support item assignment", DNAME(o));
+  failf("TypeError: '%s' object doesn't support item deletion", DNAME(o));
+}
+Dyn *pys_dyn_list_slice(Dyn *o, I lo, I hi, I st) {
+  pys_dyn_list_check(o, 0);
+  if (!st) pys_fail("ValueError: slice step cannot be zero");
+  if (DKIND(o) == DK_LIST) return dlist(dyn_list_boxed_slice(o, lo, hi, st));
+  if (DKIND(o) == DK_STR) return dstr(st == 1 ? pys_text_slice((Str *)o->v, lo, hi) : pys_text_slice_step((Str *)o->v, lo, hi, st));
+  return dtuple(pys_vtuple_slice((VTuple *)o->v, lo, hi, st));
+}
+List *pys_dyn_list(Dyn *o);
+/* PySequence_Fast replaces TypeError only while obtaining the first iterator.
+   The compiler wraps this call when a user iterator may throw. Re-iteration,
+   the length hint and consumption of the items remain outside that handler. */
+Dyn *pys_dyn_slice_source(Dyn *value) {
+  if (!dyn_iterable(value)) pys_fail("TypeError: must assign iterable to extended slice");
+  return DKIND(value) == DK_LIST || DKIND(value) == DK_TUPLE ? value : pys_dyn_iter_box(value);
+}
+void pys_dyn_list_set_slice(Dyn *o, I lo, I hi, I st, Dyn *value) {
+  pys_dyn_list_check(o, 1);
+  if (!st) pys_fail("ValueError: slice step cannot be zero");
+  List *v = pys_dyn_list(value);
+  List *l = (List *)o->v;
+  if (dyn_native_list(o)) {
+    I first = lo, step = st, n = sspan(&first, hi, &step, l->len);
+    if (step != 1 && v->len != n)
+      failf("ValueError: attempt to assign sequence of size %lld to extended slice of size %lld", (long long)v->len, (long long)n);
+    /* Validate every replacement before modifying the target, while retaining
+       callbacks' effects during materialization. The scratch native list uses the
+       same numeric slots and scanned identity companion as the original. */
+    for (I i = 0; i < v->len; i++) dyn_list_slot(o, (Dyn *)v->a[i]);
+    List *native = pys_list_new_atomic(v->len);
+    for (I i = 0; i < v->len; i++) {
+      Dyn *item = (Dyn *)v->a[i];
+      pys_list_append_identity(native, dwide(item) ? INT64_MIN : item->v, item, 1);
+    }
+    v = native;
+  }
+  pys_list_set_slice(l, lo, hi, st, v);
+}
+void pys_dyn_list_del_slice(Dyn *o, I lo, I hi, I st) {
+  pys_dyn_list_check(o, 2);
+  pys_list_del_slice((List *)o->v, lo, hi, st);
+}
+/* o[lo:hi:st] of an Any value, with its bounds and step as Any values (None where omitted), as
+   CPython's sequences take the slice: a str's, list's or tuple's items, a new value of its type (all
+   of a str or tuple is itself), the step converted first, as PySlice_Unpack does; a dict's KeyError
+   is the slice's, which no dict holds as a key, once the slice is hashed as CPython 3.12's are (its
+   start, stop and step in turn: an unhashable one's TypeError, an object's __hash__) */
+Dyn *pys_dyn_slice(Dyn *o, Dyn *lo, Dyn *hi, Dyn *st) {
+  int k = DKIND(o);
+  if (k == DK_DICT) {
+    pys_dyn_hash(lo); pys_dyn_hash(hi); pys_dyn_hash(st);
+    Buf b = {0}; put(&b, "KeyError: slice(", 16); repr(&b, (I)lo, "A"); put(&b, ", ", 2); repr(&b, (I)hi, "A");
+    put(&b, ", ", 2); repr(&b, (I)st, "A"); put(&b, ")", 2); pys_fail(b.p);
+  }
+  if (k != DK_STR && k != DK_LIST && k != DK_TUPLE) failf("TypeError: '%s' object is not subscriptable", DNAME(o));
+  I s = dbound(st, 0);
+  if (!s) pys_fail("ValueError: slice step cannot be zero");
+  I a = dbound(lo, 1), z = dbound(hi, 1);
+  return pys_dyn_list_slice(o, a, z, s);
+}
+/* d.update(x) of a dict of Any values: another dict's items, else x's items, each an iterable of
+   two, whose items it takes as CPython's dict.update does (a dict's are its keys), with its
+   messages for one of another length, or no iterable */
+void pys_dyn_update(Dict *d, Dyn *x) {
+  if (DKIND(x) == DK_DICT) { pys_dict_update(d, (Dict *)x->v); return; }
+  DynIter *it = pys_dyn_iter(x);
+  I n = 0;
+  for (Dyn *e; (e = pys_dyn_next(it)); n++) {
+    if (!dyn_iterable(e)) failf("TypeError: cannot convert dictionary update sequence element #%lld to a sequence", (long long)n);
+    /* PySequence_Fast uses a builtin list/tuple directly; otherwise it materializes the
+       iterator, calling that iterator's __iter__ and length hint, not the original pair's. */
+    List *kv = pys_dyn_list(DKIND(e) == DK_LIST || DKIND(e) == DK_TUPLE ? e : pys_dyn_iter_box(e));
+    if (kv->len != 2) failf("ValueError: dictionary update sequence element #%lld has length %lld; 2 is required", (long long)n, (long long)kv->len);
+    pys_dict_set(d, kv->a[0], kv->a[1]);
+  }
+}
+/* Runtime-sized call packs own fresh scanned containers. Their elements retain the original
+   boxes (including native-list identity companions); no typed aliased storage is reinterpreted.
+   A null name callback denotes LIST_EXTEND's mixed-positional path. A sole *source is
+   materialized after keyword merges by the compiler. Calling an object's __str__ to name
+   an unpacking error must happen only when the error is known, after argument evaluation. */
+static Str *dyn_call_text(Dyn *value, Str *(*convert)(Dyn *)) { return convert(value); }
+static _Noreturn void dyn_call_error(Buf *b) {
+  /* Keyword names and an object's __str__ may contain NUL; retain their byte lengths. */
+  pys_raise(cstr("TypeError"), pys_str(b->p, b->n));
+}
+void pys_dyn_star_extend(List *dest, Dyn *source, Dyn *callee, Str *(*name)(Dyn *)) {
+  if (!dyn_iterable(source)) {
+    if (!name) failf("TypeError: Value after * must be an iterable, not %s", DNAME(source));
+    Str *who = dyn_call_text(callee, name);
+    Buf b = {0}; put(&b, who->s, who->len);
+    const char *m = " argument after * must be an iterable, not ";
+    put(&b, m, strlen(m)); put(&b, source->t->name->s, source->t->name->len);
+    dyn_call_error(&b);
+  }
+  if (DKIND(source) == DK_LIST) {
+    I n = ((List *)source->v)->len;
+    for (I i = 0; i < n; i++) pys_list_append(dest, (I)dyn_list_at(source, i));
+    return;
+  }
+  if (DKIND(source) == DK_TUPLE) {
+    VTuple *t = (VTuple *)source->v;
+    for (I i = 0; i < t->len; i++) pys_list_append(dest, t->a[i]);
+    return;
+  }
+  DynIter *it = pys_dyn_iter(source);   /* __iter__ validation precedes the length hint */
+  if (source->t->len && dyn_user_len(source) > INT64_MAX / (I)sizeof(I)) pys_fail("MemoryError");
+  for (Dyn *x; (x = pys_dyn_next(it));) pys_list_append(dest, (I)x);
+}
+static _Noreturn void dyn_kw_duplicate(Dyn *callee, Str *(*name)(Dyn *), Dyn *key, Str *(*stringify)(Dyn *)) {
+  /* CPython formats the callable before the key; either conversion can itself raise. */
+  Str *who = dyn_call_text(callee, name);
+  Str *keyname = DKIND(key) == DK_STR ? (Str *)key->v : dyn_call_text(key, stringify);
+  Buf b = {0}; put(&b, who->s, who->len);
+  const char *m = " got multiple values for keyword argument '";
+  put(&b, m, strlen(m)); put(&b, keyname->s, keyname->len); put(&b, "'", 1);
+  dyn_call_error(&b);
+}
+/* ** accepts builtin dynamic dicts. Custom mapping protocols remain an explicit boundary.
+   Merge with each source entry's stored hash: hashing it again would add __hash__ calls.
+   Non-string keys are checked only after every mapping has merged, as CALL_FUNCTION_EX does. */
+void pys_dyn_kw_merge(Dict *dest, Dyn *source, Dyn *callee, Str *(*name)(Dyn *), Str *(*stringify)(Dyn *)) {
+  if (DKIND(source) != DK_DICT) {
+    if (DKIND(source) == DK_OBJ) pys_fail("NotImplementedError: dynamic ** calls require builtin dict mappings");
+    Str *who = dyn_call_text(callee, name);
+    Buf b = {0}; put(&b, who->s, who->len);
+    const char *m = " argument after ** must be a mapping, not ";
+    put(&b, m, strlen(m)); put(&b, source->t->name->s, source->t->name->len);
+    dyn_call_error(&b);
+  }
+  Dict *from = (Dict *)source->v;
+  if (!from->len) return;
+  int empty = !dest->len;
+  if (empty && clean(from)) { retable(dest, from); return; }
+  if ((dest->size ? dest->size : 8) * 2 / 3 < from->len)
+    build(dest, dest, keysize(((dest->len + from->len) * 3 + 1) / 2));
+  I used = from->len;
+  for (I e = 0; e < from->n; e++) if (dlive(from, e)) {
+    I key = from->keys[e], value = from->vals[e];
+    uint64_t hash = from->hs[e];   /* comparisons can replace the source table */
+    if (!empty && dfind(dest, key, hash, NULL) >= 0) dyn_kw_duplicate(callee, name, (Dyn *)key, stringify);
+    /* _PyDict_MergeEx first checks a nonempty destination for a duplicate, then insertdict
+       looks up the key again. A second comparison can run code or change its answer. An
+       initially empty destination skips the duplicate check for the complete merge. */
+    dset(dest, key, hash, value);
+    if (from->len != used) pys_fail("RuntimeError: dict mutated during update");
+  }
+}
+static I dyn_param_find(Str *names, I *starts, I np, Str *key) {
+  for (I j = 0; j < np; j++) {
+    I n = starts[j + 1] - starts[j] - (j + 1 < np);
+    if (key->len == n && !memcmp(key->s, names->s + starts[j], n)) return j;
+  }
+  return -1;
+}
+static void dyn_param_put(Buf *b, Str *names, I *starts, I np, I j) {
+  put(b, names->s + starts[j], starts[j + 1] - starts[j] - (j + 1 < np));
+}
+/* Bind a fixed signature to nullable slots. names has '\1'-separated ALL parameter names;
+   required has one '1' (required) or '0' (default) per name. npos and posonly are absolute
+   parameter indices, own implicit receiver/env slots are already filled, and off adjusts
+   counts for classmethod's omitted cls (+1) or a closure's synthetic env (-1).
+   Implicit and omitted-default result slots stay NULL, distinct from boxed None. The
+   generated adapter supplies definition-time defaults, then calls its ordinary compiled fn. */
+List *pys_dyn_bind(List *pos, Dict *kw, Str *fname, Str *names, Str *required, I npos, I posonly, I own, I off) {
+  I np = required->len;
+  I *starts = pys_alloc_atomic((np + 1) * sizeof(I));
+  I count = 1; starts[0] = 0;
+  for (I i = 0; i < names->len; i++) if (names->s[i] == '\1' && count < np) starts[count++] = i + 1;
+  starts[np] = names->len;
+  List *bound = pys_list_new(np); bound->len = np;
+  for (I i = 0; i < pos->len && i + own < npos; i++) bound->a[i + own] = pos->a[i];
+  /* CPython checks the complete keyword tuple's strings before matching any parameter. */
+  for (I e = 0; e < kw->n; e++) if (dlive(kw, e) && DKIND((Dyn *)kw->keys[e]) != DK_STR)
+    pys_fail("TypeError: keywords must be strings");
+  for (I e = 0; e < kw->n; e++) if (dlive(kw, e)) {
+    Str *key = (Str *)((Dyn *)kw->keys[e])->v;
+    I j = dyn_param_find(names, starts, np, key);
+    if (j < 0 || j < posonly) {
+      Buf b = {0}; put(&b, fname->s, fname->len);
+      I po = 0;
+      for (I k = 0; k < kw->n; k++) if (dlive(kw, k)) {
+        Str *s = (Str *)((Dyn *)kw->keys[k])->v;
+        I index = dyn_param_find(names, starts, np, s);
+        if (index >= 0 && index < posonly) po++;
+      }
+      if (po) {
+        const char *m = "() got some positional-only arguments passed as keyword arguments: '";
+        put(&b, m, strlen(m)); I added = 0;
+        /* Positional-only complaints list signature order, not keyword insertion order. */
+        for (I index = 0; index < posonly; index++) {
+          for (I k = 0; k < kw->n; k++) if (dlive(kw, k)) {
+            Str *s = (Str *)((Dyn *)kw->keys[k])->v;
+            if (dyn_param_find(names, starts, np, s) == index) {
+              if (added++) put(&b, ", ", 2);
+              dyn_param_put(&b, names, starts, np, index);
+              break;
+            }
+          }
+        }
+      } else {
+        const char *m = "() got an unexpected keyword argument '";
+        put(&b, m, strlen(m)); put(&b, key->s, key->len);
+      }
+      put(&b, "'", 1); dyn_call_error(&b);
+    }
+    if (j < own || bound->a[j]) {
+      Buf b = {0}; put(&b, fname->s, fname->len);
+      const char *m = "() got multiple values for argument '";
+      put(&b, m, strlen(m)); put(&b, key->s, key->len); put(&b, "'", 1);
+      dyn_call_error(&b);
+    }
+    bound->a[j] = kw->vals[e];
+  }
+  I given = pos->len + own;
+  if (given > npos) {
+    I defaults = 0, kwgiven = 0;
+    for (I j = 0; j < npos; j++) if (required->s[j] != '1') defaults++;
+    for (I j = npos; j < np; j++) if (bound->a[j]) kwgiven++;
+    char counts[240];
+    int n;
+    if (defaults) n = snprintf(counts, sizeof counts, "() takes from %lld to %lld positional arguments but %lld", (long long)(npos + off - defaults), (long long)(npos + off), (long long)(given + off));
+    else n = snprintf(counts, sizeof counts, "() takes %lld positional argument%s but %lld", (long long)(npos + off), npos + off != 1 ? "s" : "", (long long)(given + off));
+    Buf b = {0}; put(&b, fname->s, fname->len); put(&b, counts, n);
+    if (kwgiven) {
+      n = snprintf(counts, sizeof counts, " positional argument%s (and %lld keyword-only argument%s)", given + off != 1 ? "s" : "", (long long)kwgiven, kwgiven != 1 ? "s" : "");
+      put(&b, counts, n);
+    }
+    const char *tail = given + off == 1 && !kwgiven ? " was given" : " were given";
+    put(&b, tail, strlen(tail)); dyn_call_error(&b);
+  }
+  for (int kind = 0; kind < 2; kind++) {
+    I missing = 0;
+    for (I j = own; j < np; j++) if (!bound->a[j] && required->s[j] == '1' && (j < npos) == !kind) missing++;
+    if (!missing) continue;
+    Buf b = {0}; put(&b, fname->s, fname->len); char message[128];
+    int n = snprintf(message, sizeof message, "() missing %lld required %s argument%s: ", (long long)missing, kind ? "keyword-only" : "positional", missing != 1 ? "s" : "");
+    put(&b, message, n); I added = 0;
+    for (I j = own; j < np; j++) if (!bound->a[j] && required->s[j] == '1' && (j < npos) == !kind) {
+      if (added) {
+        const char *sep = added + 1 == missing ? missing == 2 ? " and " : ", and " : ", ";
+        put(&b, sep, strlen(sep));
+      }
+      put(&b, "'", 1); dyn_param_put(&b, names, starts, np, j); put(&b, "'", 1); added++;
+    }
+    dyn_call_error(&b);
+  }
+  return bound;
+}
+/* list(o): a new list of o's items; str.join's items, which must be strs (CPython's message) */
+List *pys_dyn_list(Dyn *o) {
+  DynIter *it = pys_dyn_iter(o);   /* __iter__ and its validation precede __len__'s hint */
+  I cap = o->t->len ? dyn_user_len(o) : DKIND(o) == DK_LIST ? ((List *)o->v)->len : 0;
+  if (cap < 0) cap = 0;   /* TypeError in a length hint is declined, unlike a negative __len__ */
+  if (cap > INT64_MAX / (I)sizeof(I)) pys_fail("MemoryError");
+  List *l = pys_list_new(cap);
+  for (Dyn *x; (x = pys_dyn_next(it));) pys_list_append(l, (I)x);
+  return l;
+}
+List *pys_dyn_strs(Dyn *o) {
+  if (!dyn_iterable(o)) pys_fail("TypeError: can only join an iterable");
+  /* PySequence_Fast first obtains an iterator, then materializes that iterator. The
+     second __iter__ and length hint belong to the iterator, not the original iterable.
+     Builtin lists/tuples need no protocol calls. Validate items only after consumption;
+     the private fresh list's scanned slots can then hold the strings themselves. */
+  List *l = pys_dyn_list(DKIND(o) == DK_LIST || DKIND(o) == DK_TUPLE ? o : pys_dyn_iter_box(o));
+  for (I i = 0; i < l->len; i++) {
+    Dyn *x = (Dyn *)l->a[i];
+    if (DKIND(x) != DK_STR) failf("TypeError: sequence item %lld: expected str instance, %s found", (long long)i, DNAME(x));
+    l->a[i] = x->v;
+  }
+  return l;
+}
+/* a, b = o: o's items, which must be n, all taken before the first is stored (CPython's unpack_iterable) */
+VTuple *pys_dyn_unpack(Dyn *o, I n) {
+  if (!dyn_iterable(o)) failf("TypeError: cannot unpack non-iterable %s object", DNAME(o));
+  VTuple *t = pys_alloc(sizeof(VTuple) + n * sizeof(I)); t->len = n;
+  DynIter *it = pys_dyn_iter(o); I k = 0;
+  for (Dyn *x; (x = pys_dyn_next(it));) {
+    if (k == n) failf("ValueError: too many values to unpack (expected %lld)", (long long)n);
+    t->a[k++] = (I)x;
+  }
+  if (k < n) failf("ValueError: not enough values to unpack (expected %lld, got %lld)", (long long)n, (long long)k);
+  return t;
+}
+/* id(x): a reference's own address, as the identity of the object it is; a number's box's (the
+   collector moves nothing, so neither changes while the value lives) */
+I pys_dyn_id(Dyn *x) { return DKIND(x) >= DK_STR && !(x->t->flags & DF_BOXID) ? x->v : (I)x; }
+/* int(x) and float(x) */
+I pys_dyn_int_of(Dyn *x) {
+  switch (DKIND(x)) {
+  case DK_BOOL: case DK_INT: return dsmall(x);
+  case DK_FLOAT: return pys_f2i(dbl(x->v));
+  case DK_STR: return pys_int_str((Str *)x->v, 10);
+  }
+  failf("TypeError: int() argument must be a string, a bytes-like object or a real number, not '%s'", DNAME(x));
+}
+Big pys_dyn_big_of(Dyn *x) {
+  switch (DKIND(x)) {
+  case DK_BOOL: case DK_INT: return dbigint(x);
+  case DK_FLOAT: return pys_big_from_float(dbl(x->v));
+  case DK_STR: return pys_big_from_str((Str *)x->v, 10);
+  }
+  failf("TypeError: int() argument must be a string, a bytes-like object or a real number, not '%s'", DNAME(x));
+}
+Dyn *pys_dyn_int_box_of(Dyn *x) {
+  return DKIND(x) == DK_INT ? x : dboxbig(pys_dyn_big_of(x));
+}
+double pys_dyn_float_of(Dyn *x) {
+  switch (DKIND(x)) {
+  case DK_BOOL: case DK_INT: { Big a = dbigint(x); return pys_big_float(a.lo, a.hi); }
+  case DK_FLOAT: return dbl(x->v);
+  case DK_STR: return pys_float_str((Str *)x->v);
+  }
+  failf("TypeError: float() argument must be a string or a real number, not '%s'", DNAME(x));
+}
+/* An Any query does not have to have the integer table's storage type. Numeric
+   comparisons need no allocation; a user's comparison may retain its argument,
+   so that path receives a heap box, never the address of this temporary. */
+static int int_query_eq(I lo, Mpz *m, Dyn *query) {
+  Dyn key = {m ? &pys_dyntype_bigint : &pys_dyntype_int, m ? (I)m : lo};
+  return pys_dyn_eq(DKIND(query) == DK_OBJ ? pys_dyn_big(lo, m) : &key, query);
+}
+LOOKUP I pys_dict_int_find_any(Dict *d, Dyn *query) {
+  uint64_t h = hdyn(query);                         /* hash once, even when empty */
+restart:;
+  if (!d->size) return -1;
+  for (uint64_t mask = dmask(d), i = h & mask, p = h;; p >>= 5, i = (i * 5 + p + 1) & mask) {
+    DICT_PROBE();
+    int32_t e = d->idx[i];
+    if (!e) return -1;
+    if (e > 0 && d->hs[e - 1] == h) {
+      I value = d->keys[e - 1]; Mpz *m = kbig(d, e - 1); int32_t *table = d->idx;
+      int equal = int_query_eq(value, m, query);
+      if (d->idx != table || d->idx[i] != e || d->keys[e - 1] != value || kbig(d, e - 1) != m) goto restart;
+      if (equal) return e - 1;
+    }
+  }
+}
+/* A preceding lookup found this entry; no user operation occurs between that
+   lookup and deletion. Locate its index without hashing/comparing the key again. */
+void pys_dict_entry_del(Dict *d, I e) {
+  uint64_t mask = dmask(d), h = d->hs[e], i = h & mask, p = h;
+  while (d->idx[i] != e + 1) { p >>= 5; i = (i * 5 + p + 1) & mask; DICT_PROBE(); }
+  dtake(d, i);
+}
+static void stable(Set *s, I size) {                 /* an empty table of size slots */
+  /* the 8 slots of a new or cleared set are scanned whatever its kind: the compiler gives an empty
+     set from a template the kind of the type its caller expects (typed_empty) only after it is
+     made. A larger table comes from insertions, of the set's own kind by then (a dict's tables
+     come at its first insertion, so a dict needs no such care) */
+  s->keys = size > 8 ? keymem(s->kind, size) : pys_alloc(size * 8);
+  s->hs = pys_alloc_atomic(size * 8); memset(s->hs, 0xff, size * 8);
+  s->mask = size - 1; s->fill = 0; s->kb = 0;
+}
+/* (the allocator adds its byte of slack: the header keeps 64 bytes, as before kb) */
+Set *pys_set_new(I kind) { Set *s = pys_alloc(sizeof(Set) - 1); s->kind = kind; stable(s, 8); return s; }
+static I slook(Set *s, I k, I h) {                   /* set_lookkey: k's slot, else the empty one that ends its probes */
+  uint64_t mask = s->mask, i = (uint64_t)h & mask, perturb = (uint64_t)h;
+  for (;; perturb >>= 5, i = (i * 5 + 1 + perturb) & mask) {
+    I probes = i + LINEAR_PROBES <= mask ? LINEAR_PROBES : 0;
+    for (uint64_t j = i;; j++) {
+      DICT_PROBE();
+      if (s->hs[j] == h) {
+        I x = s->keys[j];
+        if (x == k || (s->kind == 1 && pys_str_eq((Str *)x, (Str *)k))) return (I)j;
+        if (s->kind > 1) {
+          int eq = seq(s, j, x, k, 0);
+          if (eq < 0) return slook(s, k, h);
+          if (eq) return (I)j;
+        }
+      }
+      else if (s->hs[j] == -1 && !s->keys[j]) return (I)j;
+      if (!probes--) break;
+    }
+  }
+}
+static uint64_t sclean(Set *s, I k, I h) {           /* set_insert_clean: k into a table that has no dummy, nor k; its slot */
+  uint64_t mask = s->mask, i = (uint64_t)h & mask, perturb = (uint64_t)h, e;
+  for (;; perturb >>= 5, i = (i * 5 + 1 + perturb) & mask) {
+    if (s->hs[e = i] == -1) break;
+    if (i + LINEAR_PROBES <= mask) {
+      int j = 0;
+      while (j < LINEAR_PROBES && s->hs[++e] != -1) j++;
+      if (j < LINEAR_PROBES) break;
+    }
+  }
+  s->keys[e] = k; s->hs[e] = h;
+  return e;
+}
+/* the slot of element m, an int past 64 bits of hash h, else -1 less the empty slot that ends its
+   probes, and *free the last dummy they passed (set_lookkey and set_add_entry for m) */
+static I sbfind(Set *s, Mpz *m, I h, I *free) {
+  I k = h == -4 ? INT64_MIN + 1 : INT64_MIN;          /* (its sentinel: ssent) */
+  uint64_t mask = s->mask, i = (uint64_t)h & mask, perturb = (uint64_t)h;
+  *free = -1;
+  for (;; perturb >>= 5, i = (i * 5 + 1 + perturb) & mask) {
+    I probes = i + LINEAR_PROBES <= mask ? LINEAR_PROBES : 0;
+    for (uint64_t j = i;; j++) {
+      DICT_PROBE();
+      if (s->hs[j] == h && s->keys[j] == k) { Mpz *x = sbig(s, j); if (x && (x == m || pys_mpz_cmp(x, m) == 0)) return (I)j; }
+      else if (s->hs[j] == -1 && s->keys[j]) *free = (I)j;
+      else if (s->hs[j] == -1) return -1 - (I)j;
+      if (!probes--) break;
+    }
+  }
+}
+/* slot j's element is past 64 bits: its Mpz m, in kb (out of the loops that store elements) */
+__attribute__((noinline, cold)) static void sbput(Set *s, uint64_t j, Mpz *m) {
+  if (!s->kb) s->kb = pys_alloc((s->mask + 1) * 8);
+  s->kb[j] = (I)m;
+}
+static void sresize(Set *s, I minused) {             /* set_table_resize: the first size > minused, without dummies */
+  I size = 8, m = s->mask, *keys = s->keys, *hs = s->hs, *kb = s->kb;
+  while (size <= minused) size <<= 1;
+  if (size == 8 && m == 7 && s->fill == s->len) return;   /* (the small table without dummies stays as it is) */
+  stable(s, size); s->fill = s->len;
+  if (!kb) { for (I i = 0; i <= m; i++) if (hs[i] != -1) sclean(s, keys[i], hs[i]); return; }
+  for (I i = 0; i <= m; i++) if (hs[i] != -1) { uint64_t e = sclean(s, keys[i], hs[i]); if (keys[i] <= INT64_MIN + 1 && kb[i]) sbput(s, e, (Mpz *)kb[i]); }
+}
+/* set_add_entry: k, whose hash is h, unless an equal element is there; into the last dummy its
+   probes passed, else the empty slot that ends them. An __eq__ that changed the table or the slot
+   it compared makes it start again, and so does one that filled that dummy (or dropped it, in a
+   rebuild of the small table), as CPython's does: k would overwrite another element */
+static void sadd(Set *s, I k, I h) {
+restart:;
+  uint64_t mask = s->mask, i = (uint64_t)h & mask, perturb = (uint64_t)h;
+  I free = -1;
+  for (;; perturb >>= 5, i = (i * 5 + 1 + perturb) & mask) {
+    I probes = i + LINEAR_PROBES <= mask ? LINEAR_PROBES : 0;
+    for (uint64_t j = i;; j++) {
+      DICT_PROBE();
+      if (s->hs[j] == h) {
+        I x = s->keys[j];
+        if (x == k || (s->kind == 1 && pys_str_eq((Str *)x, (Str *)k))) return;
+        if (s->kind > 1) {
+          int eq = seq(s, j, x, k, 1);
+          if (eq < 0) goto restart;
+          if (eq) return;
+        }
+      }
+      else if (s->hs[j] == -1 && s->keys[j]) free = (I)j;
+      else if (s->hs[j] == -1) {
+        if (free >= 0 && s->kind > 1 && !(s->hs[free] == -1 && s->keys[free])) goto restart;
+        if (free >= 0) { s->keys[free] = k; s->hs[free] = h; s->len++; return; }
+        s->keys[j] = k; s->hs[j] = h; s->len++;
+        if ((uint64_t)++s->fill * 5 >= mask * 3) sresize(s, s->len > 50000 ? s->len * 2 : s->len * 4);
+        return;
+      }
+      if (!probes--) break;
+    }
+  }
+}
+static int sdiscard(Set *s, I k, I h) {              /* set_discard_entry: was k there */
+  I j = slook(s, k, h);
+  if (s->hs[j] == -1) return 0;
+  s->keys[j] = 1; s->hs[j] = -1; s->len--;
+  return 1;
+}
+static int shas(Set *s, I k, I h) { I j = slook(s, k, h); return s->hs[j] != -1; }   /* (s->hs once slook is done: an __eq__ may replace it) */
+/* sadd, sdiscard and shas of m, an int past 64 bits of hash h (sbfind) */
+static void sbadd(Set *s, Mpz *m, I h) {
+  I free, j = sbfind(s, m, h, &free), k = h == -4 ? INT64_MIN + 1 : INT64_MIN;
+  if (j >= 0) return;
+  if (free >= 0) { s->keys[free] = k; s->hs[free] = h; sbput(s, free, m); s->len++; return; }
+  j = -1 - j; s->keys[j] = k; s->hs[j] = h; sbput(s, j, m); s->len++;
+  if ((uint64_t)++s->fill * 5 >= (uint64_t)s->mask * 3) sresize(s, s->len > 50000 ? s->len * 2 : s->len * 4);
+}
+static int sbdiscard(Set *s, Mpz *m, I h) {
+  I free, j = sbfind(s, m, h, &free);
+  if (j < 0) return 0;
+  s->keys[j] = 1; s->hs[j] = -1; s->kb[j] = 0; s->len--;
+  return 1;
+}
+static int sbhas(Set *s, Mpz *m, I h) { I free; return sbfind(s, m, h, &free) >= 0; }
+/* the same of element k of hash h, past 64 bits where its Mpz m is not null: for an element taken
+   from a table (sbig) or a list (lbig), whose 64-bit ones take the paths above */
+static void saddm(Set *s, I k, I h, Mpz *m) { if (m) sbadd(s, m, h); else sadd(s, k, h); }
+static int sdiscardm(Set *s, I k, I h, Mpz *m) { return m ? sbdiscard(s, m, h) : sdiscard(s, k, h); }
+static int shasm(Set *s, I k, I h, Mpz *m) { return m ? sbhas(s, m, h) : shas(s, k, h); }
+static void smerge(Set *s, Set *o) {                 /* set_merge: o's elements into s */
+  if (o == s || !o->len) return;
+  if ((s->fill + o->len) * 5 >= s->mask * 3) sresize(s, (s->len + o->len) * 2);
+  if (!s->fill && s->mask == o->mask && o->fill == o->len) {   /* tables of one size, o's without dummies: a copy */
+    memcpy(s->keys, o->keys, (o->mask + 1) * 8); memcpy(s->hs, o->hs, (o->mask + 1) * 8);
+    if (o->kb) s->kb = memcpy(pys_alloc((o->mask + 1) * 8), o->kb, (o->mask + 1) * 8);   /* (s, with no fill, has no kb) */
+    s->fill = o->fill; s->len = o->len; return;
+  }
+  if (!s->fill) {
+    s->fill = s->len = o->len;
+    for (I i = 0; i <= o->mask; i++) if (o->hs[i] != -1) { uint64_t e = sclean(s, o->keys[i], o->hs[i]); Mpz *m = sbig(o, i); if (m) sbput(s, e, m); }
+    return;
+  }
+  for (I i = 0; i <= o->mask; i++) if (o->hs[i] != -1) saddm(s, o->keys[i], o->hs[i], sbig(o, i));
+}
+static void sshrink(Set *s) {                        /* after a difference: a rebuild once a quarter of the slots are dummies */
+  if ((uint64_t)(s->fill - s->len) > (uint64_t)s->mask / 4) sresize(s, s->len > 50000 ? s->len * 2 : s->len * 4);
+}
+/* (an element's __eq__ may change the sets these loops go through: each takes an element and its
+   hash before it looks them up) */
+static void ssymupd(Set *s, Set *o) {                /* set_symmetric_difference_update_set */
+  for (I i = 0; i <= o->mask; i++) { I k = o->keys[i], h = o->hs[i]; if (h == -1) continue; Mpz *m = sbig(o, i); if (!sdiscardm(s, k, h, m)) saddm(s, k, h, m); }
+}
+static int ssubset(Set *a, Set *b) {                 /* set_issubset of a set */
+  if (a->len > b->len) return 0;
+  for (I i = 0; i <= a->mask; i++) if (a->hs[i] != -1 && !shasm(b, a->keys[i], a->hs[i], sbig(a, i))) return 0;
+  return 1;
+}
+LOOKUP void pys_set_add(Set *s, I k) { sadd(s, k, shash(s, k)); }
+LOOKUP I pys_set_has(Set *s, I k) { return shas(s, k, shash(s, k)); }
+LOOKUP void pys_set_discard(Set *s, I k) { sdiscard(s, k, shash(s, k)); }
+LOOKUP void pys_set_remove(Set *s, I k) {
+  if (sdiscard(s, k, shash(s, k))) return;
+  Buf b = {0}; put(&b, "KeyError: ", 10); repr(&b, k, s->kind > 1 ? ((Str *)s->kind)->s : s->kind ? "s" : "i"); put(&b, "", 1); pys_fail(b.p);
+}
+I pys_set_pop(Set *s) {                              /* set_pop: the first element from the finger on */
+  if (!s->len) pys_fail("KeyError: 'pop from an empty set'");
+  I i = s->finger & s->mask;
+  while (s->hs[i] == -1) if (++i > s->mask) i = 0;
+  if (sbig(s, i)) pys_fail(NARROW);   /* (pys_set_big_pop's) */
+  I k = s->keys[i];
+  s->keys[i] = 1; s->hs[i] = -1; s->len--; s->finger = i + 1;
+  return k;
+}
+/* s.add(x), x in s, s.discard(x) and s.remove(x) of a set of ints and a promoting int x, {lo, m}: one
+   that fits as its 64-bit int; past 64 bits, its Mpz m, of CPython's hash (sbfind) */
+LOOKUP void pys_set_big_add(Set *s, I lo, Mpz *m) { if (m) sbadd(s, m, pys_mpz_hash(m)); else pys_set_add(s, lo); }
+LOOKUP I pys_set_big_has(Set *s, I lo, Mpz *m) { return m ? sbhas(s, m, pys_mpz_hash(m)) : pys_set_has(s, lo); }
+LOOKUP I pys_set_int_find_any(Set *s, Dyn *query) {
+  I h = (I)hdyn(query);                             /* preserve __hash__ side effects */
+restart:;
+  uint64_t mask = s->mask, i = (uint64_t)h & mask, perturb = (uint64_t)h;
+  for (;; perturb >>= 5, i = (i * 5 + 1 + perturb) & mask) {
+    I probes = i + LINEAR_PROBES <= mask ? LINEAR_PROBES : 0;
+    for (uint64_t j = i;; j++) {
+      DICT_PROBE();
+      if (s->hs[j] == h) {
+        I value = s->keys[j], *table = s->keys; Mpz *m = sbig(s, j);
+        int equal = int_query_eq(value, m, query);
+        if ((s->keys != table && (mask != 7 || s->mask != 7)) || s->hs[j] != h || s->keys[j] != value || sbig(s, j) != m) goto restart;
+        if (equal) return (I)j;
+      } else if (s->hs[j] == -1 && !s->keys[j]) return -1;
+      if (!probes--) break;
+    }
+  }
+}
+void pys_set_slot_del(Set *s, I j) {
+  s->keys[j] = 1; s->hs[j] = -1; if (s->kb) s->kb[j] = 0; s->len--;
+}
+LOOKUP void pys_set_big_discard(Set *s, I lo, Mpz *m) { if (m) sbdiscard(s, m, pys_mpz_hash(m)); else pys_set_discard(s, lo); }
+LOOKUP void pys_set_big_remove(Set *s, I lo, Mpz *m) {
+  if (!m) { pys_set_remove(s, lo); return; }
+  if (!sbdiscard(s, m, pys_mpz_hash(m))) bkeyerr(m);
+}
+Mpz *pys_set_big_key(Set *s, I i) { return sbig(s, i); }   /* the Mpz of the element in slot i, where pys_set_key gave -2**63 or -2**63 + 1 */
+Big pys_set_big_pop(Set *s) {                        /* s.pop() of a set of ints, as a promoting int */
+  if (!s->len) pys_fail("KeyError: 'pop from an empty set'");
+  I i = s->finger & s->mask;
+  while (s->hs[i] == -1) if (++i > s->mask) i = 0;
+  Mpz *m = sbig(s, i); I k = s->keys[i];
+  if (m) s->kb[i] = 0;
+  s->keys[i] = 1; s->hs[i] = -1; s->len--; s->finger = i + 1;
+  Big r = {m ? 0 : k, m}; return r;
+}
+void pys_set_clear(Set *s) { stable(s, 8); s->len = 0; }
+/* set(o), s.copy() and frozenset(o) of a set o: o merged into a new set */
+Set *pys_set_copy(Set *s) { Set *r = pys_set_new(s->kind); smerge(r, s); return r; }
+/* s.update(o) (s |= o) of a set o; of a list (any other iterable's items), one insertion per item;
+   of a dict, one resize for all its keys, then theirs in order */
+void pys_set_update(Set *s, Set *o) { smerge(s, o); }
+/* item i of list l as an element of s: *k, and *m the Mpz of an int past 64 bits (BIGIDS); its hash,
+   taken before a lookup (an __eq__ may change l) */
+static I lelem(Set *s, List *l, I i, I *k, Mpz **m) { *k = l->a[i]; *m = lbig(l, i); return *m ? pys_mpz_hash(*m) : shash(s, *k); }
+void pys_set_update_list(Set *s, List *l) { for (I i = 0; i < l->len; i++) { I k; Mpz *m; I h = lelem(s, l, i, &k, &m); saddm(s, k, h, m); } }
+/* the set's hash of d's key e: CPython's takes the dict's, which an H kind's is (c: khash) */
+static I dhash(Set *s, Dict *d, I e, int c) { return c ? (I)d->hs[e] : shash(s, d->keys[e]); }
+/* s.update(d) (op 0), the removal of d's keys from s (1) and s ^= d (2) of a dict of int keys that
+   may hold a key past 64 bits (d->kb: kbig), whose hash is CPython's of it: a path of its own, so
+   that the loops of the others stay as they were */
+__attribute__((noinline)) static void sdict_big(Set *s, Dict *d, int c, int op) {
+  for (I e = 0; e < d->n; e++) if (dlive(d, e)) {
+    Mpz *m = kbig(d, e); I k = d->keys[e], h = m ? pys_mpz_hash(m) : dhash(s, d, e, c);
+    if (op && sdiscardm(s, k, h, m)) continue;
+    if (op != 1) saddm(s, k, h, m);
+  }
+}
+void pys_set_update_dict(Set *s, Dict *d) {
+  int c = khash(d->kind);
+  if ((s->fill + d->len) * 5 >= s->mask * 3) sresize(s, (s->len + d->len) * 2);
+  if (d->kb && opt_in()) { sdict_big(s, d, c, 0); return; }
+  for (I e = 0; e < d->n; e++) if (dlive(d, e)) sadd(s, d->keys[e], dhash(s, d, e, c));
+}
+/* s.union(..., o, ...) after the first: o, unless it is s itself (r: the union so far) */
+void pys_set_union_more(Set *r, Set *s, Set *o) { if (o != s) smerge(r, o); }
+Set *pys_set_or(Set *a, Set *b) { Set *r = pys_set_copy(a); if (b != a) smerge(r, b); return r; }
+/* s & o (set_intersection): the elements of the smaller set (o if both have as many), in its order,
+   that the other has; of a list, its items in order that s has, until there are as many as s has */
+Set *pys_set_and(Set *a, Set *b) {
+  if (a == b) return pys_set_copy(a);
+  Set *r = pys_set_new(a->kind);
+  if (b->len > a->len) { Set *t = a; a = b; b = t; }
+  for (I i = 0; i <= b->mask; i++) { I k = b->keys[i], h = b->hs[i]; if (h == -1) continue; Mpz *m = sbig(b, i); if (shasm(a, k, h, m)) saddm(r, k, h, m); }
+  return r;
+}
+Set *pys_set_and_list(Set *s, List *l) {
+  Set *r = pys_set_new(s->kind);
+  for (I i = 0; i < l->len; i++) {
+    I k; Mpz *m; I h = lelem(s, l, i, &k, &m);
+    if (shasm(s, k, h, m)) { saddm(r, k, h, m); if (r->len >= s->len) break; }
+  }
+  return r;
+}
+/* s &= o and s.intersection_update(...): s takes the table of the intersection (set_swap_bodies) */
+void pys_set_assign(Set *s, Set *t) { s->len = t->len; s->fill = t->fill; s->mask = t->mask; s->keys = t->keys; s->hs = t->hs; s->kb = t->kb; }
+/* s -= o and s.difference_update(o) (set_difference_update_internal): o's elements discarded (those
+   of s & o, if o is more than 8 times larger); a list's items in order */
+void pys_set_isub(Set *s, Set *o) {
+  if (s == o) { pys_set_clear(s); return; }
+  if ((o->len >> 3) > s->len) o = pys_set_and(s, o);
+  for (I i = 0; i <= o->mask; i++) if (o->hs[i] != -1) sdiscardm(s, o->keys[i], o->hs[i], sbig(o, i));
+  sshrink(s);
+}
+void pys_set_isub_list(Set *s, List *l) { for (I i = 0; i < l->len; i++) { I k; Mpz *m; I h = lelem(s, l, i, &k, &m); sdiscardm(s, k, h, m); } sshrink(s); }
+/* s - o (set_difference): a copy of s less o's elements if s has more than 4 times as many, else
+   the elements of s that o has not, inserted into a new set; of a list, the copy less its items;
+   of a dict, as of a set, with its keys */
+Set *pys_set_sub(Set *a, Set *b) {
+  if ((a->len >> 2) > b->len) { Set *r = pys_set_copy(a); pys_set_isub(r, b); return r; }
+  Set *r = pys_set_new(a->kind);
+  for (I i = 0; i <= a->mask; i++) { I k = a->keys[i], h = a->hs[i]; if (h == -1) continue; Mpz *m = sbig(a, i); if (!shasm(b, k, h, m)) saddm(r, k, h, m); }
+  return r;
+}
+Set *pys_set_sub_list(Set *s, List *l) { Set *r = pys_set_copy(s); pys_set_isub_list(r, l); return r; }
+Set *pys_set_sub_dict(Set *s, Dict *d) {
+  int c = khash(d->kind);
+  if ((s->len >> 2) > d->len) {
+    Set *r = pys_set_copy(s);
+    if (d->kb && opt_in()) sdict_big(r, d, c, 1);
+    else for (I e = 0; e < d->n; e++) if (dlive(d, e)) sdiscard(r, d->keys[e], dhash(r, d, e, c));
+    sshrink(r);
+    return r;
+  }
+  Set *r = pys_set_new(s->kind);
+  for (I i = 0; i <= s->mask; i++) {
+    I k = s->keys[i], h = s->hs[i];
+    if (h == -1) continue;
+    Mpz *m = sbig(s, i);   /* (an int past 64 bits: a key past 64 bits, dbfind) */
+    if ((m ? dbfind(d, m, hbig(d, m), 0) : c ? dfind(d, k, (uint64_t)h, 0) : entry(d, k)) < 0) saddm(r, k, h, m);
+  }
+  return r;
+}
+/* s ^ o (set_symmetric_difference): a new set of o's elements (a list's items, a dict's keys), with
+   each element of s then removed if it is there, else added */
+Set *pys_set_xor(Set *a, Set *b) { Set *r = pys_set_new(a->kind); smerge(r, b); ssymupd(r, a); return r; }
+Set *pys_set_xor_list(Set *s, List *l) { Set *r = pys_set_new(s->kind); pys_set_update_list(r, l); ssymupd(r, s); return r; }
+Set *pys_set_xor_dict(Set *s, Dict *d) { Set *r = pys_set_new(s->kind); pys_set_update_dict(r, d); ssymupd(r, s); return r; }
+/* s ^= o and s.symmetric_difference_update(o): each element of o removed from s if it is there, else
+   added (s ^= s empties s); a list's items go through a set of them first, a dict's keys do not */
+void pys_set_ixor(Set *s, Set *o) { if (s == o) pys_set_clear(s); else ssymupd(s, o); }
+void pys_set_ixor_list(Set *s, List *l) { Set *o = pys_set_new(s->kind); pys_set_update_list(o, l); ssymupd(s, o); }
+void pys_set_ixor_dict(Set *s, Dict *d) {
+  int c = khash(d->kind);
+  if (d->kb && opt_in()) { sdict_big(s, d, c, 2); return; }
+  for (I e = 0; e < d->n; e++) if (dlive(d, e)) { I k = d->keys[e], h = dhash(s, d, e, c); if (!sdiscard(s, k, h)) sadd(s, k, h); }
+}
+/* a op b for op 0..5 = < <= > >= == != (set_richcompare): subsets and equality */
+I pys_set_cmp(Set *a, Set *b, I op) {
+  switch (op) {
+  case 0: return a->len < b->len && ssubset(a, b);
+  case 1: return ssubset(a, b);
+  case 2: return a->len > b->len && ssubset(b, a);
+  case 3: return ssubset(b, a);
+  case 4: return a->len == b->len && ssubset(a, b);
+  }
+  return a->len != b->len || !ssubset(a, b);
+}
+/* s.issubset(l), s.issuperset(l) and s.isdisjoint(...) */
+I pys_set_le_list(Set *s, List *l) { return pys_set_and_list(s, l)->len == s->len; }
+I pys_set_ge_list(Set *s, List *l) { for (I i = 0; i < l->len; i++) { I k; Mpz *m; I h = lelem(s, l, i, &k, &m); if (!shasm(s, k, h, m)) return 0; } return 1; }
+I pys_set_isdisjoint(Set *a, Set *b) {
+  if (a == b) return !a->len;
+  if (b->len > a->len) { Set *t = a; a = b; b = t; }
+  for (I i = 0; i <= b->mask; i++) if (b->hs[i] != -1 && shasm(a, b->keys[i], b->hs[i], sbig(b, i))) return 0;
+  return 1;
+}
+I pys_set_isdisjoint_list(Set *s, List *l) { for (I i = 0; i < l->len; i++) { I k; Mpz *m; I h = lelem(s, l, i, &k, &m); if (shasm(s, k, h, m)) return 0; } return 1; }
+/* for loops: the slot of the next element from slot i, or -1 at the end, failing like CPython's set
+   iterator when the set changed size meanwhile (used: its len when the loop started) */
+I pys_set_next(Set *s, I i, I used) {
+  if (s->len != used) pys_fail("RuntimeError: Set changed size during iteration");
+  while (i <= s->mask && s->hs[i] == -1) i++;
+  return i > s->mask ? -1 : i;
+}
+I pys_set_key(Set *s, I i) { return s->keys[i]; }
+/* list(s), sorted(s), ...: the elements in the order a loop sees them */
+List *pys_set_list(Set *s) {
+  List *l = list_new(s->len, atomic_items(s->keys));   /* (an int set's table past 8 slots is atomic) */
+  for (I i = 0; i <= s->mask; i++) if (s->hs[i] != -1) {
+    Mpz *m = sbig(s, i);   /* (an int past 64 bits: -2**63 and the list's BIGIDS companion) */
+    if (m && !l->ids) { l->ids = pys_alloc((l->cap + 1) * sizeof(I)); l->ids[0] = BIGIDS; }
+    if (m) l->ids[l->len + 1] = (I)m;
+    l->a[l->len++] = m ? INT64_MIN : s->keys[i];
+  }
+  return l;
+}
+
+/* ---------- formatting: f"{x:spec}" ---------- */
+/* CPython's format-spec mini-language for int (and bool), float and str:
+   [[fill]align][sign][z][#][0][width][grouping][.precision][type]. Widths count code points;
+   other types accept only an empty spec, which the compiler turns into str(). */
+static _Noreturn void failf(const char *f, ...) {
+  char b[512]; va_list a; va_start(a, f); vsnprintf(b, sizeof b, f, a); va_end(a); pys_fail(b);
+}
+static I u8enc(char *o, I c) {
+  if (c < 0x80) { o[0] = c; return 1; }
+  if (c < 0x800) { o[0] = 0xC0 | c >> 6; o[1] = 0x80 | (c & 63); return 2; }
+  if (c < 0x10000) { o[0] = 0xE0 | c >> 12; o[1] = 0x80 | (c >> 6 & 63); o[2] = 0x80 | (c & 63); return 3; }
+  o[0] = 0xF0 | c >> 18; o[1] = 0x80 | (c >> 12 & 63); o[2] = 0x80 | (c >> 6 & 63); o[3] = 0x80 | (c & 63); return 4;
+}
+static const char *tyname(char d) {
+  return d == 'i' || d == 'J' ? "int" : d == 'b' ? "bool" : d == 'f' ? "float" : d == 's' ? "str" : d == 'L' ? "list" : d == 'D' ? "dict" : d == 'T' || d == 'V' ? "tuple" : d == 'S' ? "set" : d == 'F' ? "frozenset" : d == 'C' || d == 'Y' ? "type" : "object";
+}
+/* The mini-language itself is in runtime.py (pys_format_str, _int, _float); pys_format picks one
+   by the descriptor, and pys_fmt_float writes the digits of a float for a presentation type with
+   snprintf, as CPython's float formatting writes them. */
+Str *pys_format_str(Str *s, Str *spec);
+Str *pys_format_int(I v, I isbool, Str *spec);
+Str *pys_format_float(double x, Str *spec);
+Str *pys_format(I v, Str *desc, Str *spec) {
+  const char *ds = desc->s;
+  if (*ds == 'A') {   /* (a dynamic value: its own; an object's or a function's with a spec: object.__format__'s error) */
+    Dyn *x = (Dyn *)v;
+    if ((DKIND(x) == DK_OBJ || DKIND(x) == DK_FUNC || DKIND(x) == DK_ITER || DKIND(x) == DK_GEN || DKIND(x) == DK_TYPE) && spec->len) failf("TypeError: unsupported format string passed to %s.__format__", DNAME(x));
+    v = x->v; ds = x->t->desc->s;
+  }
+  if (*ds == '?') {                            /* None or a value */
+    if (!v && spec->len) failf("TypeError: unsupported format string passed to NoneType.__format__");
+    if (!v) return cstr("None");
+    v = unbox(v, ++ds);
+  }
+  if (*ds == 'U') ds = umember(&v, ds);
+  if (*ds == 'j') { opt_in(); return pys_big_format(0, (void *)v, spec); }   /* (a dynamic wide int: repr's 'j') */
+  char d = *ds;
+  if ((d != 'i' && d != 'b' && d != 'f' && d != 's') || (d == 'b' && !spec->len)) {   /* format(True, "") is str(True) */
+    if (spec->len) failf("TypeError: unsupported format string passed to %s.__format__", tyname(d));
+    Buf b = {0}; repr(&b, v, ds); return done(&b);
+  }
+  return d == 's' ? pys_format_str((Str *)v, spec) : d == 'f' ? pys_format_float(dbl(v), spec) : pys_format_int(v, d == 'b', spec);
+}
+Str *pys_fmt_float(double m, I type, I prec, I alt) {   /* |x| = m for type (0: none) and prec (-1: none) */
+  int up = type && strchr("EFG", (int)type);
+  char tb[1100];
+  I tsz = (prec > 0 ? prec : 0) + 400; char *t = tsz > (I)sizeof tb ? pys_alloc_atomic(tsz) : tb; I n;
+  if (isnan(m) || isinf(m)) n = fsnprintf(t, tsz, "%s%s", isnan(m) ? (up ? "NAN" : "nan") : (up ? "INF" : "inf"), type == '%' ? "%" : "");
+  else if (!type && prec < 0) {
+    Str *r = pys_str_float(m); n = r->len; memcpy(t, r->s, n + 1);
+    char *e = strchr(t, 'e');                 /* '#': a point even in 1e+16 */
+    if (alt && e && !memchr(t, '.', e - t)) { memmove(e + 1, e, n - (e - t) + 1); *e = '.'; n++; }
+  }
+  else if (!type) {                          /* like 'g', but the exponent starts at p-1 and a ".0" stays */
+    int pr = prec ? (int)prec : 1;
+    fsnprintf(t, tsz, "%.*e", pr - 1, m);
+    int X = atoi(strchr(t, 'e') + 1), ex = X < -4 || X >= pr - 1;
+    n = ex ? fsnprintf(t, tsz, alt ? "%#.*e" : "%.*e", pr - 1, m) : fsnprintf(t, tsz, alt ? "%#.*f" : "%.*f", pr - 1 - X, m);
+    if (!alt) {                              /* drop the mantissa's trailing zeros, as 'g' does */
+      char *e = strchr(t, 'e'); I me = e ? e - t : n;
+      if (memchr(t, '.', me)) { I k = me; while (t[k - 1] == '0') k--; if (t[k - 1] == '.') k--; memmove(t + k, t + me, n - me + 1); n -= me - k; }
+    }
+    if (!ex && !memchr(t, '.', n)) { t[n++] = '.'; t[n++] = '0'; t[n] = 0; }
+  } else if (alt && (type == 'g' || type == 'G' || type == 'n')) {
+    /* glibc's %#g drops the zeros when rounding carries into the exponent (1.e+06): choose
+       the notation from the rounded exponent, as CPython does, and keep every digit */
+    int pr = prec < 0 ? 6 : prec ? (int)prec : 1;
+    fsnprintf(t, tsz, "%.*e", pr - 1, m);
+    int X = atoi(strchr(t, 'e') + 1);
+    n = X < -4 || X >= pr ? fsnprintf(t, tsz, type == 'G' ? "%#.*E" : "%#.*e", pr - 1, m) : fsnprintf(t, tsz, "%#.*f", pr - 1 - X, m);
+  } else {
+    char c = type == 'n' ? 'g' : type == '%' ? 'f' : type, f[16]; int pr = prec < 0 ? 6 : (int)prec;
+    snprintf(f, 16, alt ? "%%#.%d%c" : "%%.%d%c", pr, c);
+    n = fsnprintf(t, tsz, f, type == '%' ? m * 100 : m);
+    if (type == '%') { t[n++] = '%'; t[n] = 0; }
+  }
+  return pys_str(t, n);
+}
+
+/* ---------- I/O and process ---------- */
+/* Text files as CPython's open() makes them, over C stdio: its argument checks in its order,
+   newline translation, and positions when a "+" file switches between reading and writing.
+   Writes reach the OS when CPython's do: its TextIOWrapper keeps written text pending until
+   8 KiB have gathered (or a write of 8 KiB or more comes), then hands it to a BufferedWriter
+   of st_blksize bytes (buffering=, when above 1), which keeps a piece that fits below its
+   size and writes anything bigger at once; buffering=1, and a terminal, flush every write that
+   holds "\n" or "\r". Here the pending text has a buffer of its own and C stdio's buffer is
+   the BufferedWriter's. sys.stdout is such a file too, unless it is a terminal, which keeps C
+   stdio's line buffering. A file that becomes unreachable is closed by the collector (CPython
+   closes it when its last reference goes), the compiler closes a file used in one expression,
+   open(p).read(), right after that use, and the files still open at exit are closed in the
+   order they were opened; when such an implicit close fails, the error is reported as
+   CPython's finalizer reports it and the program goes on. sys.stdin, sys.stdout and
+   sys.stderr are files too. A UTF-8 file's text is its bytes, unchecked; a Latin-1 file's
+   bytes are characters U+0000..U+00FF, which a str holds as UTF-8, as it holds every other
+   (decode() makes the str of what a read got, latin1() the bytes of what a write gives). */
+typedef struct {
+  FILE *f; Str *name, *mode, *enc;   /* enc: encoding= as given, NULL when not given */
+  I rd, wr, closed, nl, last, std;   /* nl: newline None 0, "" 1, "\n" 2, "\r" 3, "\r\n" 4; last: 1 wrote, 2 read */
+  I rstart, rcons;                   /* where the current run of reads began; raw bytes it consumed */
+  I lat, emu, lb, pn, bn, bs, kept;  /* Latin-1; CPython's write layers emulated: line buffered, bytes pending
+                                        (in pb) and buffered (in stdio's buffer, of bs bytes); errno of a failed
+                                        write whose data CPython keeps (so writing it again fails again) */
+  char *pb, *buf; dev_t dev; ino_t ino;   /* the two buffers (malloc'd); the file that was opened */
+  I bin;                               /* a binary file (see pys_bopen): CPython's BufferedReader 1, BufferedWriter 2,
+                                          BufferedRandom 3 or FileIO 4; 0 for text */
+} File;
+/* GC_NO_ROOT(std_in, std_out, std_err): static streams; names/modes are static and buffers malloc-backed. */
+static File std_in, std_out, std_err;
+/* GC_NO_ROOT(files): weak open-file registry; files_sweep closes unmarked heap files. */
+static File **files;                   /* the open files, malloc'd: the collector does not see them */
+static I cfiles;
+static const char *errcls(int e) {     /* CPython's OSError subclass for an errno (EWOULDBLOCK is EAGAIN) */
+  return e == ENOENT ? "FileNotFoundError" : e == EEXIST ? "FileExistsError" : e == EISDIR ? "IsADirectoryError" :
+    e == ENOTDIR ? "NotADirectoryError" : e == EACCES || e == EPERM ? "PermissionError" : e == EINTR ? "InterruptedError" :
+    e == EPIPE || e == ESHUTDOWN ? "BrokenPipeError" : e == ECONNRESET ? "ConnectionResetError" :
+    e == ECONNABORTED ? "ConnectionAbortedError" : e == ECONNREFUSED ? "ConnectionRefusedError" : e == ECHILD ? "ChildProcessError" :
+    e == EAGAIN || e == EALREADY || e == EINPROGRESS ? "BlockingIOError" : e == ESRCH ? "ProcessLookupError" :
+    e == ETIMEDOUT ? "TimeoutError" : "OSError";
+}
+static inline __attribute__((always_inline)) const char *ioerr_line(char *b, int e) {   /* b[160] = "Kind: [Errno e] strerror" */
+  snprintf(b, 160, "%s: [Errno %d] %s", errcls(e), e, strerror(e)); return b;
+}
+static _Noreturn void ioerr(int e) { char b[160]; pys_fail(ioerr_line(b, e)); }   /* a failed write, flush or close raises, as in CPython */
+
+/* Ctrl-C. CPython's handler only notes the signal; KeyboardInterrupt is raised between two
+   bytecodes, and the program ends as for an uncaught exception, then by SIGINT. Here the handler
+   ends the program at once (stdout and the open files flushed, KeyboardInterrupt printed), which
+   is safe while no stdio call runs: no FILE is locked or half updated, and nothing allocates. If
+   the I/O layer is inside one (io_busy), the handler only notes the signal and returns; without
+   SA_RESTART a blocked read or write then returns early, and the layer ends the program through
+   the ordinary KeyboardInterrupt exit when it leaves (io_out). */
+static volatile sig_atomic_t io_busy;
+static int sigint_on;
+static void io_in(void) { io_busy++; atomic_signal_fence(memory_order_seq_cst); }
+static void io_out(void) { atomic_signal_fence(memory_order_seq_cst); if (!--io_busy && io_intr) kbint_exit(); }
+static void drain(File *f) { if (f->pn) fwrite(f->pb, 1, f->pn, f->f); fflush(f->f); }   /* all it holds, errors aside */
+static void on_sigint(int s) {
+  if (io_busy) { io_intr = 1; return; }
+  static const char k[] = "KeyboardInterrupt\n";
+  sigset_t m; sigemptyset(&m); sigaddset(&m, s);
+  signal(s, SIG_DFL); sigprocmask(SIG_UNBLOCK, &m, 0);   /* another Ctrl-C kills at once */
+  if (!std_out.closed) drain(&std_out);
+  if (write(2, k, sizeof k - 1) < 0) {}
+  for (I i = 0; i < nfiles; i++) if (files[i]->wr && !files[i]->closed) drain(files[i]);
+  raise(s); _exit(130);
+}
+static void leaving(void) { if (sigint_on) signal(SIGINT, SIG_DFL); sigint_on = 0; }
+static _Noreturn void die_sigint(void) {   /* CPython's exit_sigint: killed by SIGINT, or status 130 if it is blocked */
+  signal(SIGINT, SIG_DFL); raise(SIGINT); exit(130);
+}
+
+/* the write layers (see above): pn bytes pending in the text layer, bn in the buffered layer */
+static int osflush(File *f, int keep) {   /* stdio writes what it holds: 0, or the errno of a failure; stdio then
+                                             drops the data, which CPython keeps when keep */
+  if (!fflush(f->f) && !ferror(f->f)) return 0;
+  int e = errno ? errno : EIO;
+  pys_fpurge(f->f); clearerr(f->f);
+  if (keep && !f->kept) f->kept = e;
+  return e;
+}
+static int bput(File *f, const char *a, I na, const char *b, I nb) {   /* BufferedWriter.write() of a then b */
+  I p = na + nb; int e;
+  if (p <= f->bs - f->bn && p < f->bs) { fwrite(a, 1, na, f->f); fwrite(b, 1, nb, f->f); f->bn += p; return 0; }
+  if (f->bn && (e = osflush(f, 1))) return e;   /* what it holds is written first (and kept if that fails), */
+  fwrite(a, 1, na, f->f); fwrite(b, 1, nb, f->f);
+  f->bn = p < f->bs ? p : 0;                   /* then a piece below its size is kept, a bigger one written */
+  return f->bn ? 0 : osflush(f, 0);
+}
+static int tflush(File *f) {           /* TextIOWrapper.flush(): the pending text, then the buffered layer */
+  I n = f->pn; int e;
+  f->pn = 0;
+  if ((e = bput(f, f->pb, n, "", 0)) || !f->bn) return e;
+  f->bn = 0;
+  return osflush(f, 1);
+}
+static int wput(File *f, const char *s, I n) {   /* TextIOWrapper.write() of n bytes: 0 or an errno */
+  int e, lf = f->lb && (memchr(s, '\n', n) || memchr(s, '\r', n));
+  I k = f->pn;
+  if (k + n < 8192 && !lf) { memcpy(f->pb + k, s, n); f->pn += n; return 0; }
+  f->pn = 0;                           /* 8 KiB pending, or a line: all of it goes on; a write */
+  if (n >= 8192 && k && (e = bput(f, f->pb, k, "", 0))) return e;   /* of 8 KiB goes after the rest */
+  if ((e = n >= 8192 && k ? bput(f, s, n, "", 0) : bput(f, f->pb, k, s, n)) || !lf || !f->bn) return e;
+  f->bn = 0;
+  return osflush(f, 1);
+}
+static int flush1(File *f) {           /* flush(): 0 or an errno */
+  if (f->kept) { pys_fpurge(f->f); f->pn = f->bn = 0; return f->kept; }   /* CPython writes the kept data first, which fails again */
+  return f->emu ? tflush(f) : osflush(f, 0);
+}
+static int shut(File *f) {             /* close(): a flush, then the file is closed even if it failed; 0 or an errno */
+  int e = flush1(f);
+  f->closed = 1; f->kept = 0;
+  if (f->std) return e;                /* sys.stdout.close(): the stream stays open underneath */
+  if (fclose(f->f) && !e) e = errno;
+  if (f->pb) gc_extern(-(f->bin ? 0 : 8192) - f->bs);   /* what setbuf1 counted */
+  free(f->pb); f->pb = f->buf = 0;
+  return e;
+}
+
+/* an implicit close that failed: CPython's finalizer reports it and the program goes on */
+static const char *defenc(void) {      /* the encoding CPython names for a file opened without encoding=: "utf-8" in
+                                          its UTF-8 mode, which the C and POSIX locales turn on, else the locale's */
+  static char e[40];
+  if (!*e) {
+    char old[64]; snprintf(old, sizeof old, "%s", setlocale(LC_CTYPE, 0));   /* (a host's own is put back) */
+    const char *l = setlocale(LC_CTYPE, "");
+    snprintf(e, sizeof e, "%s", l && strcmp(l, "C") && strcmp(l, "POSIX") ? nl_langinfo(CODESET) : "utf-8");
+    setlocale(LC_CTYPE, old);
+  }
+  return e;
+}
+typedef struct { char b[256]; I n; } EBuf;   /* stderr text gathered on the stack: a report may come from inside a
+                                                collection, where nothing may be allocated */
+static void eput(EBuf *o, const char *s, I n) {
+  for (I k; n > 0; s += k, n -= k) {
+    if (o->n == (I)sizeof o->b) { fwrite(o->b, 1, o->n, stderr); o->n = 0; }
+    k = (I)sizeof o->b - o->n < n ? (I)sizeof o->b - o->n : n;
+    memcpy(o->b + o->n, s, k); o->n += k;
+  }
+}
+static void erepr(EBuf *o, const char *k, const char *s, I n) {   /* k, then repr() of the string s[0, n) */
+  char q = rquote(s, n), t[12];
+  eput(o, k, strlen(k)); eput(o, &q, 1);
+  for (I i = 0, m; i < n; i += m) eput(o, t, resc(t, s + i, n - i, q, &m));
+  eput(o, &q, 1);
+}
+static void report(File *f, int e) {
+  if (io_intr) return;                 /* the error is the EINTR of a Ctrl-C, which ends the program */
+  EBuf o; char t[160]; const char *d = defenc();
+  o.n = 0;
+  if (f->bin) {                        /* <_io.BufferedWriter name='p'>, <_io.FileIO name='p' mode='wb' closefd=True> */
+    const char *cls = f->bin == 1 ? "BufferedReader" : f->bin == 2 ? "BufferedWriter" : f->bin == 3 ? "BufferedRandom" : "FileIO";
+    snprintf(t, sizeof t, "Exception ignored in: <_io.%s name=", cls);
+    erepr(&o, t, f->name->s, f->name->len);
+    if (f->bin == 4) { erepr(&o, " mode=", f->mode->s, f->mode->len); eput(&o, " closefd=True", 13); }
+  } else {
+    erepr(&o, "Exception ignored in: <_io.TextIOWrapper name=", f->name->s, f->name->len);
+    erepr(&o, " mode=", f->mode->s, f->mode->len);
+    erepr(&o, " encoding=", f->enc ? f->enc->s : d, f->enc ? f->enc->len : (I)strlen(d));
+  }
+  int n = snprintf(t, sizeof t, ">\n%s: [Errno %d] %s\n", errcls(e), e, strerror(e));
+  eput(&o, t, n < (int)sizeof t ? n : (int)sizeof t - 1);
+  fwrite(o.b, 1, o.n, stderr);
+}
+
+static void out_flush(void) {          /* CPython's flush_io() when the program's code ends, before any traceback:
+                                          a failure is ignored, and fails again at exit if CPython kept the data */
+  leaving();
+  if (!std_out.closed) flush1(&std_out);
+}
+static _Noreturn void kbint_exit(void) {   /* a Ctrl-C noted during a stdio call: an uncaught KeyboardInterrupt */
+  io_intr = 0;
+  clearerr(stdout);                    /* the call it cut short failed with EINTR */
+  for (I i = 0; i < nfiles; i++) if (!files[i]->closed) clearerr(files[i]->f);
+  out_flush(); fputs("KeyboardInterrupt\n", stderr);
+  kbint = 1; pys_finish(); exit(130);
+}
+/* GC_NO_ROOT(finish_hook): native code address installed by the CPython glue. */
+static int (*finish_hook)(void);       /* lib/pyobj.py: finalize the CPython the program embeds (pys_at_finish); 1 if
+                                          flushing its sys.stdout failed, which CPython's exit status 120 shows */
+void pys_at_finish(int (*f)(void)) { finish_hook = f; }
+void pys_files_exit(void) {            /* the open files closed in the order they were opened (a failure is reported) */
+  int e;
+  for (I i = 0; i < nfiles; i++) if (!files[i]->closed && (e = shut(files[i]))) report(files[i], e);
+  nfiles = 0;
+}
+/* GC_NO_ROOT(exit_hook): address of a program global already scanned through gc_roots. */
+static void **exit_hook;               /* the address of atexit's _hook (lib/_pystachy_atexit.py), a Callable */
+void pys_exit_hook(void **hook) { exit_hook = hook; }   /* the program's main gives it, where it imports atexit */
+void pys_finish(void) {                /* at exit, what CPython's shows of its end: stdout flushed after the code (see
+                                          out_flush), atexit's callbacks run (once its module has run: CPython's
+                                          finalization runs them first), an embedded CPython finalized (finish_hook,
+                                          pyembed.c), the collector's report, stdout flushed in
+                                          finalization (a failure is reported, status 120), the open files closed in
+                                          the order they were opened (a failure is reported), and an uncaught
+                                          KeyboardInterrupt's end by SIGINT */
+  static int done;
+  if (done++) return;
+  out_flush();
+  if (exit_hook && *exit_hook) {       /* a Callable: {code, env}, code taking env */
+    void **c = *exit_hook;
+    exit_hook = 0;
+    ((void (*)(void *))c[0])(c[1]);
+  }
+  int bad = finish_hook ? finish_hook() : 0, e;   /* an embedded CPython's end (pyembed.c), after the program's
+                                                    output and its atexit callbacks */
+  if (gc_stats) gc_report();
+#ifdef PYSTACHY_PROFILE_DATA
+  fprintf(stderr, "pystachy-data: {\"schema\":1,\"c_gc_alloc_calls\":%llu,\"c_gc_requested_bytes\":%llu,"
+          "\"c_memcpy_calls\":%llu,\"c_memcpy_requested_bytes\":%llu,\"c_memmove_calls\":%llu,"
+          "\"c_memmove_requested_bytes\":%llu,\"gc_collections\":%lld,\"gc_peak_heap_bytes\":%lld}\n",
+          (unsigned long long)atomic_load_explicit(&profile_alloc_calls, memory_order_relaxed),
+          (unsigned long long)atomic_load_explicit(&profile_alloc_bytes, memory_order_relaxed),
+          (unsigned long long)atomic_load_explicit(&profile_memcpy_calls, memory_order_relaxed),
+          (unsigned long long)atomic_load_explicit(&profile_memcpy_bytes, memory_order_relaxed),
+          (unsigned long long)atomic_load_explicit(&profile_memmove_calls, memory_order_relaxed),
+          (unsigned long long)atomic_load_explicit(&profile_memmove_bytes, memory_order_relaxed),
+          (long long)gc_n, (long long)gc_peak);
+#endif
+  if (!std_out.closed && (e = flush1(&std_out))) {
+    fprintf(stderr, "Exception ignored on flushing sys.stdout:\n%s: [Errno %d] %s\n", errcls(e), e, strerror(e));
+    bad = 1;
+  }
+  pys_files_exit();
+  if (kbint) die_sigint();
+  if (bad) { fflush(NULL); _exit(120); }
+}
+static int gc_marked(const void *p) {
+  uintptr_t w = (uintptr_t)p; Seg **m, *s;
+  if (w - gc_lo >= gc_hi - gc_lo || !(m = pmap[w >> 30]) || !(s = m[w >> 12 & 0x3ffff])) return 1;
+  I i = s->large ? 0 : (I)((w - (uintptr_t)s->start) * s->inv >> 40);
+  return s->mark[i >> 6] >> (i & 63) & 1;
+}
+static void files_sweep(void) {        /* after marking: close the open files nothing refers to */
+  I j = 0;
+  io_in();
+  for (I i = 0; i < nfiles; i++) {
+    File *f = files[i]; int e;
+    if (f->closed) continue;
+    if (!gc_marked(f)) { if ((e = shut(f))) report(f, e); continue; }
+    files[j++] = f;
+  }
+  nfiles = j;
+  io_out();
+}
+static _Noreturn void oserr(const char *path);
+static _Noreturn void closed_err(void) { pys_fail("ValueError: I/O operation on closed file."); }
+/* CPython in the process (pyembed.c: lib/pyobj.py embedding it, or an extension module's host): std_hook
+   sees each write to sys.stdout or sys.stderr (n < 0: a flush) first, and takes it (1) when it goes
+   through Python's sys.stdout or sys.stderr; in_hook reads sys.stdin through Python's (kind 0 input(),
+   1 readline(), 2 read(n)) */
+/* GC_NO_ROOT(std_hook, in_hook): native code addresses installed by the CPython glue. */
+static int (*std_hook)(const char *, I, I);
+static Str *(*in_hook)(I, Str *, I);
+static void put1(File *f, const char *s, I n) {   /* write(): through CPython's layers, or C stdio's (stderr, a terminal) */
+  if (f->closed) closed_err();
+  if (std_hook && f->std && f->wr && std_hook(s, n, f == &std_err ? 2 : 1)) return;
+  int e = f->emu ? wput(f, s, n) : (f == &std_err ? ewrite(s, n) : (void)fwrite(s, 1, n, f->f), ferror(f->f) ? osflush(f, 0) : 0);
+  if (e) ioerr(e);
+}
+static void setbuf1(File *f, I bs) {   /* CPython's write layers: 8 KiB of pending text (none in a binary file), then
+                                          bs bytes buffered; a file's (not a standard stream's) count as heap bytes
+                                          (see memory) */
+  I pend = f->bin ? 0 : 8192;
+  if (!(f->pb = malloc(pend + bs))) oom();
+  if (!f->std) gc_extern(pend + bs);
+  f->buf = f->pb + pend; f->bs = bs; f->emu = 1;
+  setvbuf(f->f, f->buf, _IOFBF, bs);
+}
+static int jit;                        /* pystachy run: the program runs in the JIT runner's or lli's process */
+I pys_jit(void) { return jit; }
+static int lost;                       /* bit i: descriptor i (stdin, stdout, stderr) was not open when the program
+                                          started. CPython's sys.stdin, sys.stdout or sys.stderr is None then, for
+                                          the whole run, even once open() reuses the descriptor (pys_input_lost) */
+static void stack_floor(int mapped);   /* the native stack's floor (see the recursion depth) */
+static int handoff_number(const char **p, unsigned long max, unsigned long *v) {   /* decimal digits, at most max */
+  const char *s = *p; unsigned long x = 0;
+  if (*s < '0' || *s > '9') return 0;
+  for (; *s >= '0' && *s <= '9'; s++) if ((x = x * 10 + (unsigned long)(*s - '0')) > max) return 0;
+  *v = x; *p = s; return 1;
+}
+/* pystachy run: the JIT runner (lljit.c) or lli runs the program in its own process. In lli, LLVM's start-up
+   replaced the dispositions of the signals it handles (llvm/lib/Support/Unix/Signals.inc: IntSigs, KillSigs,
+   InfoSigs and SIGPIPE) with handlers of its own, which print lli's stack (SIGQUIT's, then let the program
+   run on), ignore SIGUSR1, and hide an inherited ignored SIGINT from pys_init's test; the JIT runner sets
+   none. The driver (driver.py, where it becomes the runner or lli) hands the program what it needs to start
+   as a built one does, in PYSTACHY_JIT_HANDOFF="MASK;FD,...", consumed here before any of the program's
+   code runs and removed from the environment, so that no child sees it:
+   - MASK: the standard signals the driver ignored, bit s-1 for signal s. An exec keeps ignored signals
+     ignored and sets caught ones to their defaults, so these are all that lli inherited: each signal that
+     LLVM caught is ignored or default again (lli's crash handlers dropped: the program dies by the signal);
+   - FD,...: the descriptors the driver opened for the runner or lli, its inputs (the main module, which is
+     the program's bitcode, or with lli and PYSTACHY_JIT_CODEGEN=0 the module beside llc's object of the
+     program; the runtime; the embedding's object; that object of llc's), the runner's own file, and
+     /dev/null on each standard stream that the caller had closed, which then neither the inputs nor lli's
+     own files could take. All are closed: the program and its children see the caller's descriptors.
+   A value not of that form is ignored as a whole; LLVM's handlers are dropped all the same. */
+__attribute__((minsize)) static void jit_handoff(void) {
+  static const int llvm[] = {SIGHUP, SIGINT, SIGTERM, SIGUSR2, SIGILL, SIGTRAP, SIGABRT, SIGFPE, SIGBUS, SIGSEGV, SIGQUIT,
+                             SIGSYS, SIGXCPU, SIGXFSZ, SIGPIPE, SIGUSR1
+#ifdef SIGEMT
+                             , SIGEMT
+#endif
+#ifdef SIGINFO
+                             , SIGINFO
+#endif
+  };
+  const char *p = getenv("PYSTACHY_JIT_HANDOFF");
+  unsigned long ign = 0, fd;
+  int fds[8], n = 0;
+  if (p) {
+    int ok = handoff_number(&p, 0x7fffffffUL, &ign) && *p++ == ';';
+    if (ok && *p)
+      for (;;) {
+        if (n == 8 || !handoff_number(&p, INT_MAX, &fd)) { ok = 0; break; }
+        fds[n++] = (int)fd;
+        if (*p != ',') break;
+        p++;
+      }
+    if (!ok || *p) { ign = 0; n = 0; }
+  }
+  for (int i = 0; i < n; i++) close(fds[i]);
+  for (size_t i = 0; i < sizeof llvm / sizeof *llvm; i++) {
+    struct sigaction sa;
+    if (!sigaction(llvm[i], 0, &sa) && sa.sa_handler != SIG_IGN && sa.sa_handler != SIG_DFL)
+      signal(llvm[i], llvm[i] < 32 && ign >> (llvm[i] - 1) & 1 ? SIG_IGN : SIG_DFL);
+  }
+  unsetenv("PYSTACHY_JIT_HANDOFF");
+}
+__attribute__((minsize)) void pys_init(int argc, char **argv, char *sb, I **roots, I nroots) {   /* first call of @main */
+  gc_init(sb, roots, nroots);
+  stack_floor(0);
+  args = pys_list_new(argc); for (int i = 0; i < argc; i++) pys_list_append(args, (I)cstr(argv[i]));
+  char *a0 = getenv("PYSTACHY_ARGV0");  /* pystachy run: sys.argv[0] is the script, as in CPython */
+  /* A caller's stray ARGV0 is ordinary environment data for the native compiler,
+     cached executables and AOT programs. Only the driver's JIT handoff consumes it. */
+  jit = a0 != 0 && getenv("PYSTACHY_JIT_HANDOFF") != 0;
+  if (jit) {
+    if (argc) args->a[0] = (I)cstr(a0);
+    unsetenv("PYSTACHY_ARGV0");
+    jit_handoff();                    /* and it starts with the caller's descriptors and signal dispositions */
+  }
+  std_in.f = stdin; std_in.rd = 1; std_in.nl = 2; std_in.std = 1;   /* CPython's stdin: newline="\n" */
+  std_out.f = stdout; std_out.wr = 1; std_out.std = 1;
+  std_err.f = stderr; std_err.wr = 1; std_err.std = 1;
+  for (int i = 0; i < 3; i++) if (fcntl(i, F_GETFD) < 0) lost |= 1 << i;   /* (CPython's is_valid_fd): once pystachy
+                                       run's start-up above is done, and before the program opens a file */
+  struct stat st;
+  if (!isatty(1) && !fstat(1, &st)) setbuf1(&std_out, st.st_blksize > 1 ? st.st_blksize : 8192);
+  signal(SIGPIPE, SIG_IGN);            /* as CPython: a closed pipe is an error, not a signal, */
+  signal(SIGXFSZ, SIG_IGN);            /* and so is a write past the file-size limit (EFBIG) */
+  struct sigaction sa;                 /* and Ctrl-C is KeyboardInterrupt, unless SIGINT is ignored */
+  if (!sigaction(SIGINT, 0, &sa) && sa.sa_handler != SIG_IGN) {
+    memset(&sa, 0, sizeof sa); sa.sa_handler = on_sigint; sigemptyset(&sa.sa_mask);
+    sigint_on = !sigaction(SIGINT, &sa, 0);
+  }
+}
+/* pystachy ext: CPython hosts the program (pyext.c), and owns main, the signals and sys.stdout.
+   pys_init_lib is pys_init without argv, signal handlers or stdout's emulation (writes go to
+   std_hook); every call from Python is bracketed by pys_enter(its frame)/pys_leave, and the
+   outermost one's frame bounds the stack scan, as @main's does. One thread only (pyext.c). */
+static I lib_depth;
+void pys_set_hooks(int (*s)(const char *, I, I), Str *(*i)(I, Str *, I)) { std_hook = s; in_hook = i; }
+void pys_enter(char *sb) { if (!lib_depth++) gc_bottom = sb + 2 * sizeof(void *); }
+I pys_leave(void) { return --lib_depth; }
+void pys_out_sync(void) {              /* embedded CPython is about to run: what Pystachy wrote to stdout goes first */
+  if (!std_out.closed) flush1(&std_out);   /* fflush of an empty stream is harmless; no libc-specific pending probe */
+}
+void pys_init_lib(I **roots, I nroots) {
+  pys_c_numeric();                     /* (the host may call setlocale) */
+  stack_floor(1);                     /* (the importing thread's; the host may have raised its limit) */
+  if (!pmap) {                         /* (else an import that failed is tried again) */
+    gc_init(gc_bottom - 2 * sizeof(void *), roots, nroots);
+    std_in.f = stdin; std_in.rd = 1; std_in.nl = 2; std_in.std = 1;
+    std_out.f = stdout; std_out.wr = 1; std_out.std = 1;
+    std_err.f = stderr; std_err.wr = 1; std_err.std = 1;
+  }
+  args = pys_list_new(0);              /* sys.argv: the host's (pyext.c's pyx_argv appends it) */
+  warnopts = 0;                        /* and sys.warnoptions (pyx_argv appends the host's, if any) */
+}
+List *pys_argv(void) { return args; }
+List *pys_warnoptions(void) {          /* sys.warnoptions: [], CPython's for a program run without -W options (and
+                                          without PYTHONWARNINGS or PYTHONDEVMODE, which Pystachy does not read) */
+  if (!warnopts) warnopts = pys_list_new(0);
+  return warnopts;
+}
+File *pys_std(I i) { return i == 0 ? &std_in : i == 1 ? &std_out : &std_err; }
+void pys_write(Str *s, I fd) { io_in(); put1(fd == 2 ? &std_err : &std_out, s->s, s->len); io_out(); }
+void pys_file_flush(File *f);
+void pys_flush(void) { pys_file_flush(&std_out); }
+void pys_input_lost(void) {            /* input()'s first check, as CPython's: RuntimeError if sys.stdin, sys.stdout or
+                                          sys.stderr is None, lost at startup (in that order). Embedded or hosted by
+                                          CPython, Pystachy's input() is Python's (in_hook), which checks Python's */
+  if (lost && !in_hook)
+    pys_fail(lost & 1 ? "RuntimeError: lost sys.stdin" : lost & 2 ? "RuntimeError: lost sys.stdout" : "RuntimeError: lost sys.stderr");
+}
+Str *pys_input(Str *prompt) {          /* CPython: the standard streams are checked (pys_input_lost); the prompt, if
+                                          given, is written to sys.stdout, which is then flushed (a failure is
+                                          ignored); then a line from sys.stdin */
+  char *line = 0; size_t cap = 0;
+  if (in_hook) return in_hook(0, prompt, 0);   /* (Python's input(), with its sys.stdin and sys.stdout) */
+  pys_input_lost();
+  io_in();
+  if (prompt) put1(&std_out, prompt->s, prompt->len);
+  if (!std_out.closed && !std_out.kept) flush1(&std_out);
+  if (std_in.closed) closed_err();
+  if (feof(stdin)) clearerr(stdin);    /* CPython reads again after the end (a terminal goes on after Ctrl-D) */
+  ssize_t n = getline(&line, &cap, stdin);
+  io_out();
+  if (n < 0) { free(line); pys_fail("EOFError: EOF when reading a line"); }
+  if (n && line[n - 1] == '\n') n--;
+  Str *s = pys_str(line, n); free(line); return s;
+}
+static int nul(Str *s) { return memchr(s->s, 0, s->len) != 0; }
+static int codec(Str *e) {             /* encoding= as CPython's codec lookup finds it: 1 UTF-8, 2 Latin-1, 0 another.
+                                          The name is normalized (lowercase; a run of characters other than ASCII
+                                          letters, digits and "." is one "_" between them), then it must be an alias,
+                                          or one with "." read as "_", or the codec's module name */
+  /* GC_NO_ROOT(codec.alias, codec.module): codec spellings are C string literals. */
+  static const char *alias[2] = {" utf8 u8 utf utf8_ucs2 utf8_ucs4 cp65001 ",
+    " latin1 latin l1 iso8859_1 iso_8859_1 iso_8859_1_1987 iso_ir_100 iso8859 8859 cp819 ibm819 csisolatin1 "},
+    *module[2] = {" utf_8 ", " latin_1 "};
+  char b[48] = " "; int n = 1, punct = 0, dot = 0;
+  for (I i = 0; i < e->len; i++) {
+    unsigned char c = e->s[i];
+    if (!isalnum(c) && c != '.') { punct = 1; continue; }
+    if (n > 40) return 0;
+    if (punct && n > 1) b[n++] = '_';
+    punct = 0; dot |= c == '.'; b[n++] = (char)tolower(c);
+  }
+  b[n++] = ' '; b[n] = 0;
+  if (dot) for (char *p = b; *p; p++) if (*p == '.') *p = '_';
+  for (int k = 0; k < 2; k++) if (strstr(alias[k], b) || (!dot && !strcmp(b, module[k]))) return k + 1;
+  return 0;
+}
+/* is a file of files[] open for writing to the file (dev, ino)? A leaf of its own: inlined into
+   pys_open, the File it finds could stay in a callee-saved register there (as one build's
+   register allocation left it), which collect() spills and scans, so that the collection meant to
+   close that unreachable writer would find it reachable and keep it, its buffer unwritten */
+__attribute__((noinline)) static int writing(dev_t dev, ino_t ino) {
+  for (I i = 0; i < nfiles; i++)
+    if (files[i]->wr && !files[i]->closed && files[i]->dev == dev && files[i]->ino == ino) return 1;
+  return 0;
+}
+/* CPython opens ordinary text and binary files as non-inheritable. An exec
+   through /proc/self/fd/N can therefore pin an inode without leaking N into the program. */
+static void file_cloexec(FILE *f, Str *path) {
+  if (fcntl(fileno(f), F_SETFD, FD_CLOEXEC) == -1) {
+    int saved = errno; fclose(f); errno = saved; oserr(path->s);
+  }
+}
+File *pys_open(Str *path, Str *mode, Str *enc, Str *nl, I buffering) {   /* CPython's checks, in its order */
+  int x = 0, r = 0, w = 0, a = 0, plus = 0, t = 0, b = 0, lat = 1;
+  if (nul(mode) || (enc && nul(enc)) || (nl && nul(nl))) pys_fail("ValueError: embedded null character");
+  for (I i = 0; i < mode->len; i++) {
+    char c = mode->s[i];
+    int *p = c == 'x' ? &x : c == 'r' ? &r : c == 'w' ? &w : c == 'a' ? &a : c == '+' ? &plus : c == 't' ? &t : c == 'b' ? &b : 0;
+    if (!p || *p) failf("ValueError: invalid mode: '%s'", mode->s);
+    *p = 1;
+  }
+  if (t && b) pys_fail("ValueError: can't have text and binary mode at once");
+  if (x + r + w + a > 1) pys_fail("ValueError: must have exactly one of create/read/write/append mode");
+  if (b) pys_fail("NotImplementedError: open() of a binary mode makes a binary file only where the mode is a literal (open(file, \"rb\")): this open() makes text files");   /* (loader.py's binary_opens) */
+  if (nul(path)) pys_fail("ValueError: embedded null byte");
+  if (!(x + r + w + a)) pys_fail("ValueError: Must have exactly one of create/read/write/append mode and at most one plus");
+  io_in();
+  struct stat st;
+  if (nfiles && !gc_off && !stat(path->s, &st) && writing(st.st_dev, st.st_ino))   /* a writer to this file that */
+    collect();                         /* nothing refers to any more has been closed by CPython: a collection closes it first */
+  char m[4] = {x || w ? 'w' : r ? 'r' : 'a', plus ? '+' : 0, 0, 0};
+  if (x) m[plus ? 2 : 1] = 'x';        /* glibc: O_EXCL */
+  FILE *f = fopen(path->s, m);
+  if (!f && (errno == EMFILE || errno == ENFILE) && !gc_off) { collect(); f = fopen(path->s, m); }   /* unreachable files closed */
+  if (!f) oserr(path->s);
+  file_cloexec(f, path);
+  if (fstat(fileno(f), &st)) memset(&st, 0, sizeof st);
+  else if (S_ISDIR(st.st_mode)) { fclose(f); errno = EISDIR; oserr(path->s); }
+  if (!buffering) { fclose(f); pys_fail("ValueError: can't have unbuffered text I/O"); }   /* the file is created by now */
+  I k = !nl ? 0 : !nl->len ? 1 : !strcmp(nl->s, "\n") ? 2 : !strcmp(nl->s, "\r") ? 3 : !strcmp(nl->s, "\r\n") ? 4 : -1;
+  if (k < 0) { fclose(f); failf("ValueError: illegal newline value: %s", nl->s); }
+  if (enc && !(lat = codec(enc))) {      /* checked once the file is open, as CPython does */
+    fclose(f); failf("NotImplementedError: only UTF-8 and Latin-1 files are supported, not encoding '%s'", enc->s);
+  }
+  File *o = pys_alloc(sizeof(File));
+  o->f = f; o->name = path; o->mode = mode; o->enc = enc; o->rd = r || plus; o->wr = !r || plus; o->nl = k;
+  o->lat = lat == 2; o->dev = st.st_dev; o->ino = st.st_ino;
+  if (o->wr) {                         /* buffering=1, or -1 on a terminal: line buffered */
+    I bs = buffering > 1 ? buffering : st.st_blksize > 1 ? st.st_blksize : 8192;
+    o->lb = buffering == 1 || (buffering < 0 && isatty(fileno(f)));
+    if (!gc_off && gc_allocd + 8192 + bs >= gc_limit) collect();   /* its buffers are heap bytes: as gc_slow */
+    setbuf1(o, bs);
+  }
+  if (a) fseek(f, 0, SEEK_END);        /* CPython starts an append file at its end */
+  o->rstart = a ? ftell(f) : 0;
+  if (nfiles == cfiles && !(files = realloc(files, (cfiles = 2 * cfiles + 16) * sizeof *files))) oom();
+  files[nfiles++] = o;
+  io_out();
+  return o;
+}
+static void usable(File *f, int rd) {  /* f is open, for reading (rd) or for writing */
+  if (f->closed) closed_err();
+  if (rd ? !f->rd : !f->wr) pys_fail(rd ? "io.UnsupportedOperation: not readable" : "io.UnsupportedOperation: not writable");
+}
+static void use(File *f, int rd) {     /* check a read (rd) or write, and reposition between them */
+  usable(f, rd);
+  if (rd && feof(f->f)) clearerr(f->f);   /* CPython reads again after the end: the file may have grown */
+  if (f->std || f->last == (rd ? 2 : 1)) return;
+  if (rd) {                            /* after writing: what was written reaches the file, and reads start there */
+    int e = flush1(f);
+    if (e) ioerr(e);
+    f->rstart = ftell(f->f); f->rcons = 0;
+  } else if (f->last == 2) {           /* after reading: CPython's text layer read ahead in 8 KiB chunks; with */
+    I end = f->rstart + (f->rcons + 8191) / 8192 * 8192, size;   /* newline None or "", a chunk that ends in */
+    char c;                            /* "\r" pulls in the next one, to see whether "\n" follows */
+    if (f->nl < 2 && f->rcons && f->rcons % 8192 == 0 && pread(fileno(f->f), &c, 1, end - 1) == 1 && c == '\r') end += 8192;
+    fseek(f->f, 0, SEEK_END); size = ftell(f->f);
+    fseek(f->f, end < size ? end : size, SEEK_SET);
+  }
+  f->last = rd ? 2 : 1;
+}
+/* stdio's EOF of a read: 0 at the end of the file. A read error raises CPython's OSError, and the file reads
+   again later (clearerr): CPython's error is no end of the file. The EINTR of a Ctrl-C raises KeyboardInterrupt
+   (pys_fail); another EINTR, of a signal a handler took, reads again: 1, as CPython retries (PEP 475) */
+static int again(File *f) {
+  if (!ferror(f->f)) return 0;
+  int e = errno ? errno : EIO;
+  clearerr(f->f);
+  if (e == EINTR && !io_intr) return 1;
+  ioerr(e);
+}
+/* Every byte of readline and bounded read passes through get and getnl. Keep both buffered paths
+   inline even when the EOF/error retry path grows; a call per byte regressed streaming examples
+   (fileprobe's IR guard). Inlining get alone can push getnl past the compiler's inline budget. */
+static inline __attribute__((always_inline)) int get(File *f) {
+  int c;
+  while ((c = getc_unlocked(f->f)) == EOF && again(f)) {}
+  f->rcons += c != EOF; return c;
+}
+static void unget(File *f, int c) { ungetc(c, f->f); f->rcons--; }
+static inline __attribute__((always_inline)) int getnl(File *f, int c) { /* newline=None reads "\r\n" and "\r" as "\n" */
+  if (c == '\r' && !f->nl) { int d = get(f); if (d != '\n' && d != EOF) unget(f, d); c = '\n'; }
+  return c;
+}
+static Str *decode(File *f, Buf *b) {  /* the str of the bytes a read got: in a Latin-1 file each is a character,
+                                          which from 0x80 on is two bytes of UTF-8 in the str */
+  I h = 0;
+  if (f->lat) for (I i = 0; i < b->n; i++) h += (unsigned char)b->p[i] >> 7;
+  if (!h) return done(b);
+  Str *s = pys_alloc_atomic(sizeof(Str) + b->n + h + 1);
+  char *w = s->s;
+  s->len = b->n + h;
+  for (I i = 0; i < b->n; i++) w += u8enc(w, (unsigned char)b->p[i]);
+  return s;
+}
+static Str *read1(File *f, I n) {      /* n < 0: to the end; else n characters (in a Latin-1 file, n bytes) */
+  use(f, 1); Buf b = {0};
+  if (n < 0) {
+    char t[1 << 16];
+    for (;;) {
+      size_t k = fread(t, 1, sizeof t, f->f);
+      if (k) { put(&b, t, k); f->rcons += k; }
+      if (k < sizeof t && !again(f)) break;   /* the end (a read error raises) */
+    }
+    I j = 0;
+    if (!f->nl) for (I i = 0; i < b.n; i++) { char c = b.p[i]; if (c == '\r') { c = '\n'; i += i + 1 < b.n && b.p[i + 1] == '\n'; } b.p[j++] = c; }
+    if (!f->nl) b.n = j;
+    return decode(f, &b);
+  }
+  /* n characters: their bytes gather in t, and go to b only when t is full, as readline's do (a
+     put() per byte took most of the time); a read that fits in t becomes its str without b */
+  char t[4096]; I m = 0; int trailing = 0;
+  for (I k = 0; k < n || trailing;) {
+    int c = get(f);
+    if (c == EOF) break;
+    if (f->lat || (c & 0xC0) != 0x80) {
+      if (k == n) { unget(f, c); break; }   /* malformed UTF-8 ended before its expected continuation */
+      k++;
+      trailing = !f->lat && c >= 0xC2 && c <= 0xF4 ? c >= 0xF0 ? 3 : c >= 0xE0 ? 2 : 1 : 0;
+    } else if (trailing) trailing--;
+    t[m++] = (char)getnl(f, c);
+    if (m == (I)sizeof t) { put(&b, t, m); m = 0; }
+    /* A completed character satisfies read(n) without probing the next one:
+       that probe blocks on live pipes, even for read(0). Universal newline=""
+       still needs to resolve a final CR, like getnl does for newline=None. */
+    if (k == n && !trailing && c == '\r' && f->nl == 1) {
+      int d = get(f);
+      if (d != EOF) unget(f, d);
+    }
+  }
+  if (b.n) put(&b, t, m);
+  else b = (Buf){t, m, m};
+  return decode(f, &b);
+}
+Str *pys_file_read(File *f, I n) {
+  if (in_hook && f == &std_in && !f->closed) return in_hook(2, 0, n < 0 ? -1 : n);
+  io_in(); Str *s = read1(f, n); io_out(); return s;
+}
+Str *pys_file_readline(File *f) {      /* a line ends as newline= says: None "\n" after translation; "" any of
+                                          "\n" "\r" "\r\n"; otherwise exactly that string */
+  if (in_hook && f == &std_in && !f->closed) return in_hook(1, 0, 0);
+  /* the bytes gather in t, and go to b only when t is full: a put() per byte took most of a
+     line's time. A line that fits in t becomes its str without b */
+  io_in(); use(f, 1); Buf b = {0}; int c; char t[256]; I k = 0;
+  while ((c = get(f)) != EOF) {
+    char ch = getnl(f, c); t[k++] = ch;
+    if (k == (I)sizeof t) { put(&b, t, k); k = 0; }
+    if (ch == '\n' && f->nl != 3 && f->nl != 4) break;
+    if (ch == '\r' && f->nl == 3) break;
+    if (ch == '\r' && (f->nl == 1 || f->nl == 4)) {
+      int d = get(f);
+      if (d == '\n') { t[k++] = '\n'; break; }   /* (t has room: a full t went to b above) */
+      if (d != EOF) unget(f, d);
+      if (f->nl == 1) break;
+    }
+  }
+  io_out();
+  if (b.n) put(&b, t, k);
+  else b = (Buf){t, k, k};             /* the line fit in t: decode() reads it from there */
+  return decode(f, &b);
+}
+List *pys_file_readlines(File *f) {
+  List *l = pys_list_new(0);
+  for (Str *s; (s = pys_file_readline(f))->len;) pys_list_append(l, (I)s);
+  return l;
+}
+static _Noreturn void unencodable(const char *p, I n, I c, I start, I end) {   /* CPython's UnicodeEncodeError of
+                                                    characters [start, end) of the text p[0, n), the first one c */
+  char m[160]; int h = snprintf(m, sizeof m, "UnicodeEncodeError: ");
+  if (end > start + 1)
+    snprintf(m + h, sizeof m - h, "'latin-1' codec can't encode characters in position %lld-%lld: ordinal not in range(256)",
+             (long long)start, (long long)end - 1);
+  else
+    snprintf(m + h, sizeof m - h, "'latin-1' codec can't encode character '\\%c%0*llx' in position %lld: ordinal not in range(256)",
+             c > 0xFFFF ? 'U' : 'u', c > 0xFFFF ? 8 : 4, (unsigned long long)c, (long long)start);
+  if (io_intr) kbint_exit();
+  if (xthrow) {                        /* (pys_fail's, with the args that repr(e) shows: encoding, text, start, end, reason) */
+    Buf b = {0}; char t[64];
+    put(&b, "'latin-1', ", 11); repr_str(&b, pys_str(p, n));
+    put(&b, t, snprintf(t, sizeof t, ", %lld, %lld, 'ordinal not in range(256)'", (long long)start, (long long)end));
+    xthrow(exc_new(pys_str(m, h - 2), cstr(m + h), done(&b)));
+  }
+  pys_fail(m);
+}
+static I latin1(char *o, const char *p, I n) {   /* the n bytes of a write's text to a Latin-1 file as the file's
+                                                    bytes, into o: one for each character u8char finds (a byte
+                                                    that is not UTF-8, as chr() makes, is one), whose count it
+                                                    returns. As CPython's codec, the first run of characters above
+                                                    U+00FF raises UnicodeEncodeError, before any of them is written */
+  I m = 0, k, c;
+  for (I i = 0; i < n; i += k, m++) {
+    k = u8char(p + i, n - i, &c);
+    if (c > 0xFF) {
+      I c0 = c, end = m + 1;
+      for (I j = i + k; j < n && (k = u8char(p + j, n - j, &c), c > 0xFF); j += k) end++;
+      unencodable(p, n, c0, m, end);
+    }
+    o[m] = (char)c;
+  }
+  return m;
+}
+void pys_file_put(File *f, Str *s) {   /* f.write(s) whose result is not used. newline="\r" or "\r\n" writes
+                                          "\n" as that. A Latin-1 file's text is encoded first, as CPython's (an
+                                          error leaves the file as it was) */
+  io_in(); usable(f, 0);
+  const char *p = s->s, *q; I n = s->len;
+  if (f->nl >= 3 && memchr(p, '\n', n)) {
+    Buf b = {0};
+    for (I i = 0; i < n; i = q - p + 1) {
+      if (!(q = memchr(p + i, '\n', n - i))) q = p + n;
+      put(&b, p + i, q - p - i);
+      if (q < p + n) put(&b, "\r\n", f->nl == 3 ? 1 : 2);
+    }
+    p = b.p; n = b.n;
+  }
+  if (f->lat) {                        /* (CPython's position of an error counts the "\r"s added) */
+    char *o = pys_alloc_atomic(n + 1);
+    n = latin1(o, p, n); p = o;
+  }
+  use(f, 0); put1(f, p, n);
+  io_out();
+}
+I pys_file_write(File *f, Str *s) {   /* the number of s's characters, as len() counts them, as CPython's */
+  pys_file_put(f, s);
+  return pys_text_len(s);
+}
+void pys_file_writelines(File *f, List *l) {
+  for (I i = 0; i < l->len; i++) {
+    if (!l->a[i]) pys_fail("TypeError: write() argument must be str, not None");   /* a str | None item */
+    pys_file_put(f, (Str *)l->a[i]);
+  }
+}
+void pys_file_flush(File *f) {
+  if (f->closed) closed_err();
+  if (std_hook && f->std && f->wr && std_hook(0, -1, f == &std_err ? 2 : 1)) return;
+  io_in(); int e = flush1(f); io_out();
+  if (e) ioerr(e);
+}
+void pys_file_close(File *f) {
+  if (f->closed) return;
+  io_in(); int e = shut(f); io_out();
+  if (e) ioerr(e);
+}
+void pys_file_drop(File *f) {          /* the compiler's close of a file used in one expression: as CPython's finalizer */
+  if (f->closed) return;
+  io_in(); int e = shut(f); if (e) report(f, e); io_out();
+}
+I pys_file_closed(File *f) { return f->closed; }
+I pys_file_fileno(File *f) {           /* the OS descriptor; a closed file raises FileIO's error, without the "." */
+  if (f->closed) pys_fail("ValueError: I/O operation on closed file");
+  return fileno(f->f);
+}
+Str *pys_file_name(File *f) { return f->name ? f->name : cstr(f == &std_in ? "<stdin>" : f == &std_out ? "<stdout>" : "<stderr>"); }
+Str *pys_file_mode(File *f) { return f->mode ? f->mode : cstr(f == &std_in ? "r" : "w"); }
+/* Binary files: open() of a mode with "b", which lib/_pystachy_bfile.py's classes hold. CPython makes a FileIO
+   (buffering=0: bin 4), or a BufferedReader, BufferedWriter or BufferedRandom over one (bin 1, 2, 3), whose
+   bytes are read and written as they are. A buffered file's writes reach the OS as bput() says, and its
+   reads and writes are at its position, as CPython's BufferedRandom moves the OS file's position to its own
+   between them; a FileIO writes at once. open() checks its arguments in CPython's order (its encoding,
+   errors and newline are the program's, which must be None) */
+File *pys_bopen(Str *path, Str *mode, Str *enc, Str *errs, Str *nl, I buffering) {
+  int x = 0, r = 0, w = 0, a = 0, plus = 0, t = 0, b = 0;
+  if (nul(mode) || (enc && nul(enc)) || (errs && nul(errs)) || (nl && nul(nl))) pys_fail("ValueError: embedded null character");
+  for (I i = 0; i < mode->len; i++) {
+    char c = mode->s[i];
+    int *p = c == 'x' ? &x : c == 'r' ? &r : c == 'w' ? &w : c == 'a' ? &a : c == '+' ? &plus : c == 't' ? &t : c == 'b' ? &b : 0;
+    if (!p || *p) failf("ValueError: invalid mode: '%s'", mode->s);
+    *p = 1;
+  }
+  if (t && b) pys_fail("ValueError: can't have text and binary mode at once");
+  if (x + r + w + a > 1) pys_fail("ValueError: must have exactly one of create/read/write/append mode");
+  if (enc) pys_fail("ValueError: binary mode doesn't take an encoding argument");
+  if (errs) pys_fail("ValueError: binary mode doesn't take an errors argument");
+  if (nl) pys_fail("ValueError: binary mode doesn't take a newline argument");
+  if (nul(path)) pys_fail("ValueError: embedded null byte");
+  if (!(x + r + w + a)) pys_fail("ValueError: Must have exactly one of create/read/write/append mode and at most one plus");
+  io_in();
+  struct stat st;
+  if (nfiles && !gc_off && !stat(path->s, &st) && writing(st.st_dev, st.st_ino))   /* as pys_open: a writer to this */
+    collect();                         /* file that nothing refers to any more has been closed by CPython */
+  char m[4] = {x || w ? 'w' : r ? 'r' : 'a', plus ? '+' : 0, 0, 0};
+  if (x) m[plus ? 2 : 1] = 'x';        /* glibc: O_EXCL */
+  FILE *f = fopen(path->s, m);
+  if (!f && (errno == EMFILE || errno == ENFILE) && !gc_off) { collect(); f = fopen(path->s, m); }
+  if (!f) oserr(path->s);
+  file_cloexec(f, path);
+  if (fstat(fileno(f), &st)) memset(&st, 0, sizeof st);
+  else if (S_ISDIR(st.st_mode)) { fclose(f); errno = EISDIR; oserr(path->s); }
+  File *o = pys_alloc(sizeof(File));
+  o->f = f; o->name = path; o->rd = r || plus; o->wr = !r || plus; o->nl = 2;
+  o->mode = cstr(x ? (plus ? "xb+" : "xb") : a ? (plus ? "ab+" : "ab") : plus ? "rb+" : r ? "rb" : "wb");   /* FileIO's */
+  o->bin = !buffering ? 4 : plus ? 3 : r ? 1 : 2; o->dev = st.st_dev; o->ino = st.st_ino;
+  if (!buffering) setvbuf(f, 0, _IONBF, 0);
+  else {                               /* buffering=, when above 1, else st_blksize bytes (1 is the program's error) */
+    I bs = buffering > 1 ? buffering : st.st_blksize > 1 ? st.st_blksize : 8192;
+    if (!gc_off && gc_allocd + bs >= gc_limit) collect();   /* its buffer is heap bytes: as gc_slow */
+    setbuf1(o, bs);
+  }
+  if (a) fseeko(f, 0, SEEK_END);       /* FileIO starts an append file at its end */
+  if (nfiles == cfiles && !(files = realloc(files, (cfiles = 2 * cfiles + 16) * sizeof *files))) oom();
+  files[nfiles++] = o;
+  io_out();
+  return o;
+}
+static void buse(File *f, int rd) {    /* a binary file's read (rd) or write, at its position */
+  if (rd && feof(f->f)) clearerr(f->f);   /* CPython reads again after the end: the file may have grown */
+  if (f->last == (rd ? 2 : 1)) return;
+  if (rd && f->last == 1) { int e = flush1(f); if (e) ioerr(e); }   /* what was written reaches the file first */
+  else if (!rd && f->last == 2) fseeko(f->f, 0, SEEK_CUR);   /* (C stdio: a write after a read repositions) */
+  f->last = rd ? 2 : 1;
+}
+static void bsync(File *f) {          /* before a descriptor operation: rewind unread input and invalidate stdio's
+                                          cached offset. Purging alone lets glibc's fseeko reuse stale buffer bytes.
+                                          Flush BEFORE moving the descriptor, or it can rewind from the new offset. */
+  int e = osflush(f, 0); if (e) ioerr(e);
+  pys_fpurge(f->f);                   /* also discard BSD/macOS input buffers */
+}
+static void bposition(File *f) {      /* a raw OS read/write moved the descriptor; stdio learns its new position */
+  off_t at = lseek(fileno(f->f), 0, SEEK_CUR);
+  if (at >= 0 && fseeko(f->f, at, SEEK_SET)) ioerr(errno);   /* pipes and terminals need no position sync */
+}
+Str *pys_bfile_read(File *f, I n) {    /* read(n): n bytes, or what remains (n < 0: all of it). A read error raises */
+  io_in(); buse(f, 1);
+  Buf b = {0}; char t[1 << 16];
+  if (f->bin == 4 && n >= 0) {         /* FileIO's read(n) is one read of the OS, which ends short where a pipe or a
+                                          terminal has fewer bytes (fread waits for n) */
+    bsync(f);
+    char *p = n <= (I)sizeof t ? t : malloc(n);
+    ssize_t r;
+    if (!p) oom();
+    while ((r = read(fileno(f->f), p, n)) < 0 && errno == EINTR && !io_intr) {}
+    if (r < 0) { int e = errno; if (p != t) free(p); ioerr(e); }
+    if (r) put(&b, p, r);
+    if (p != t) free(p);
+    bposition(f);
+    io_out();
+    return done(&b);
+  }
+  for (I left = n; left;) {
+    size_t want = left < 0 || left > (I)sizeof t ? sizeof t : (size_t)left, k = fread(t, 1, want, f->f);
+    if (k) put(&b, t, k);
+    if (left > 0) left -= (I)k;
+    if (k < want && !again(f)) break;   /* the end */
+  }
+  io_out();
+  return done(&b);
+}
+Str *pys_bfile_readline(File *f, I limit) {   /* readline(limit): through b"\n", at most limit bytes (limit < 0: all) */
+  io_in(); buse(f, 1);
+  Buf b = {0}; int c; char t[256]; I k = 0;
+  for (I n = 0; n != limit; n++) {
+    while ((c = getc_unlocked(f->f)) == EOF && again(f)) {}
+    if (c == EOF) break;
+    t[k++] = (char)c;
+    if (k == (I)sizeof t) { put(&b, t, k); k = 0; }
+    if (c == '\n') break;
+  }
+  io_out();
+  if (b.n) put(&b, t, k);
+  else b = (Buf){t, k, k};             /* the line fit in t */
+  return done(&b);
+}
+I pys_bfile_write(File *f, Str *s) {   /* write(b): a raw file may accept fewer bytes than b holds */
+  io_in(); buse(f, 0);
+  if (f->bin == 4) {                 /* FileIO makes one write: fwrite retries a short write, losing its progress
+                                          if that retry fails (for example at the process's file-size limit) */
+    bsync(f);
+    ssize_t n;
+    while ((n = write(fileno(f->f), s->s, s->len)) < 0 && errno == EINTR && !io_intr) {}
+    if (n < 0) ioerr(errno);
+    bposition(f);
+    io_out();
+    return n;
+  }
+  int e = f->emu ? bput(f, s->s, s->len, "", 0) : ((void)fwrite(s->s, 1, s->len, f->f), ferror(f->f) ? osflush(f, 0) : 0);
+  if (e) ioerr(e);
+  io_out();
+  return s->len;
+}
+I pys_bfile_seek(File *f, I pos, I whence) {   /* seek(pos, whence): the new position, through the OS's lseek (whence
+                                                  3 and 4 are Linux's SEEK_DATA and SEEK_HOLE) */
+  io_in(); int e = flush1(f); if (e) ioerr(e);
+  off_t at = ftello(f->f), r, to = pos;   /* (where a read left the file, before stdio's read-ahead) */
+  if (at < 0) ioerr(errno);
+  if (whence == SEEK_CUR && __builtin_add_overflow(at, pos, &to)) ioerr(EINVAL);   /* (the OS's error for it) */
+  bsync(f);
+  r = lseek(fileno(f->f), to, whence == SEEK_CUR ? SEEK_SET : whence);
+  if (r < 0) {
+    e = errno;
+    (void)fseeko(f->f, at, SEEK_SET);   /* keep the logical position and the original seek error */
+    f->last = 0;
+    ioerr(e);
+  }
+  if (fseeko(f->f, r, SEEK_SET)) ioerr(errno);
+  f->last = 0;
+  io_out();
+  return r;
+}
+I pys_bfile_tell(File *f) {            /* tell(): the position, written bytes that are still buffered included */
+  off_t r = ftello(f->f);
+  if (r < 0) ioerr(errno);
+  return r;
+}
+I pys_bfile_isatty(File *f) { return isatty(fileno(f->f)); }
+I pys_bfile_seekable(File *f) { return lseek(fileno(f->f), 0, SEEK_CUR) >= 0; }   /* as FileIO's: the OS can seek it */
+I pys_bfile_truncate(File *f, I size) {   /* truncate(size): what was written reaches the file first, and a buffered
+                                             file's read-ahead is dropped, as BufferedRandom rewinds its raw file to
+                                             its position, which stays: reads go on from there, in the file as it is */
+  io_in(); int e = flush1(f); if (e) ioerr(e);
+  off_t at = f->bin != 4 ? ftello(f->f) : 0;   /* (a pipe's ESPIPE, as BufferedRandom's rewind raises it) */
+  if (at < 0) ioerr(errno);
+  if (f->bin != 4) bsync(f);          /* discard both read-ahead and its cached offset before changing the file */
+  if (ftruncate(fileno(f->f), size)) ioerr(errno);
+  if (f->bin != 4) {
+    if (fseeko(f->f, at, SEEK_SET)) ioerr(errno);   /* any new read-ahead sees the truncated file */
+    f->last = 0;
+  }
+  io_out();
+  return size;
+}
+/* lib/io.py's TextIOWrapper (_pystachy_io): the encoding of one made without encoding=, a file's (CPython's
+   locale.getpreferredencoding(False)); the one encoding="locale" names, CPython's locale.getencoding(): the
+   codeset of the LC_CTYPE locale the environment names, where CPython coerces the C locale to C.UTF-8 (PEP 538,
+   which LC_ALL turns off); and its io.UnsupportedOperation, as a file's */
+Str *pys_io_defenc(void) { return cstr(defenc()); }
+Str *pys_io_locenc(void) {
+  static char e[40];
+  if (!*e) {
+    /* GC_NO_ROOT(pys_io_locenc.utf8): locale candidates are C string literals. */
+    static const char *const utf8[] = {"C.UTF-8", "C.utf8", "UTF-8"};   /* (the coercion's, in its order) */
+    char old[64]; snprintf(old, sizeof old, "%s", setlocale(LC_CTYPE, 0));   /* (a host's own is put back) */
+    const char *l = setlocale(LC_CTYPE, ""), *all = getenv("LC_ALL");
+    if (!l) l = setlocale(LC_CTYPE, "C");   /* (a locale the system does not have: CPython's stays C) */
+    if (l && !strcmp(l, "C") && !(all && *all))
+      for (int i = 0; i < 3 && !setlocale(LC_CTYPE, utf8[i]); i++) {}
+    const char *c = nl_langinfo(CODESET);
+    snprintf(e, sizeof e, "%s", c && *c ? c : "UTF-8");
+    setlocale(LC_CTYPE, old);
+  }
+  return cstr(e);
+}
+_Noreturn void pys_io_unsupported(Str *msg) { failf("io.UnsupportedOperation: %s", msg->s); }
+I pys_system(Str *c) {
+  if (nul(c)) pys_fail("ValueError: embedded null byte");
+  return system(c->s);                 /* like CPython, without flushing stdout first */
+}
+_Noreturn void pys_execv(Str *path, List *args) {   /* os.execv: the process becomes path's program (its buffered output is
+                                            lost, as CPython's); the runtime's SIGINT handler is not inherited */
+  if (nul(path)) pys_fail("ValueError: execv: embedded null character in path");
+  if (!args->len) pys_fail("ValueError: execv() arg 2 must not be empty");
+  if (!((Str *)args->a[0])->len) pys_fail("ValueError: execv() arg 2 first element cannot be empty");
+  char **v = pys_alloc((args->len + 1) * sizeof *v);
+  for (I i = 0; i < args->len; i++) { if (nul((Str *)args->a[i])) pys_fail("ValueError: embedded null byte"); v[i] = ((Str *)args->a[i])->s; }
+  execv(path->s, v);
+  ioerr(errno);
+}
+void pys_set_inheritable(I fd, I inheritable) {
+  if (fd < INT_MIN || fd > INT_MAX || inheritable < INT_MIN || inheritable > INT_MAX)
+    pys_fail("OverflowError: Python int too large to convert to C int");
+  int flags = fcntl((int)fd, F_GETFD);
+  if (flags < 0 || fcntl((int)fd, F_SETFD, inheritable ? flags & ~FD_CLOEXEC : flags | FD_CLOEXEC) < 0)
+    ioerr(errno);
+}
+/* lib/_pystachy_cache.py's private ignored_signals(), for the driver's JIT launch: the standard signals
+   this process ignores, bit s-1 for signal s, which the program that lli runs restores (jit_handoff) */
+I pys_ignored_signals(void) {
+  I m = 0;
+  for (int s = 1; s < 32; s++) {
+    struct sigaction sa;
+    if (!sigaction(s, 0, &sa) && sa.sa_handler == SIG_IGN) m |= (I)1 << (s - 1);
+  }
+  return m;
+}
+/* Private native-program cache primitives: no wait and no diagnostics. Retain
+   only descriptors we allocated; inherited descriptors belong to the caller.
+   Successful replacement releases our previous lock, and exec closes the new one. */
+static int cache_lock_fd = -1;
+I pys_cache_lock_fd(void) { return cache_lock_fd; }
+I pys_cache_lock(Str *path) {
+#ifdef __linux__
+  if (nul(path)) return -1;
+  int fd = open(path->s, O_RDONLY | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK);
+  if (fd < 0) return -1;
+  struct stat st;
+  if (fstat(fd, &st) || !S_ISREG(st.st_mode) || st.st_uid != geteuid()) {
+    close(fd); return -1;
+  }
+  if (flock(fd, LOCK_EX | LOCK_NB)) {
+    int saved = errno; close(fd);
+    return saved == EWOULDBLOCK || saved == EAGAIN ? 0 : -1;
+  }
+  if (cache_lock_fd >= 0) close(cache_lock_fd);
+  cache_lock_fd = fd;
+  return 1;
+#else
+  (void)path;
+  return -1;
+#endif
+}
+/* Private cache helper: FNV-1a over raw file bytes, matching the compiler's
+   Latin-1 loop exactly. Failures return an empty string so callers can miss. */
+Str *pys_cache_file_hash(Str *path, I limit) {
+  if (nul(path) || limit < 0) return cstr("");
+  int fd;
+  do fd = open(path->s, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
+  while (fd < 0 && errno == EINTR);
+  if (fd < 0) return cstr("");
+  struct stat st;
+  int ok = !fstat(fd, &st) && S_ISREG(st.st_mode) && st.st_size >= 0
+    && (uint64_t)st.st_size <= (uint64_t)limit;
+  uint64_t hash = UINT64_C(0xcbf29ce484222325), total = 0;
+  unsigned char bytes[16384];
+  while (ok) {
+    ssize_t n;
+    do n = read(fd, bytes, sizeof bytes); while (n < 0 && errno == EINTR);
+    if (n < 0) { ok = 0; break; }
+    if (!n) break;
+    if ((uint64_t)n > (uint64_t)limit - total) { ok = 0; break; }
+    total += (uint64_t)n;
+    for (ssize_t i = 0; i < n; ++i)
+      hash = (hash ^ bytes[i]) * UINT64_C(0x100000001b3);
+  }
+  if (close(fd)) ok = 0;
+  if (!ok) return cstr("");
+  char text[17];
+  for (int i = 15; i >= 0; --i) {
+    text[i] = "0123456789abcdef"[hash & 15];
+    hash >>= 4;
+  }
+  text[16] = 0;
+  return cstr(text);
+}
+
+I pys_getpid(void) { return getpid(); }
+Str *pys_getcwd(void) {          /* os.getcwd(): CPython's posix_getcwd(), whose buffer grows by 1024 bytes while getcwd() fails with ERANGE */
+  size_t size = 1024;
+  for (;;) {
+    char *b = pys_alloc_atomic(size);
+    if (getcwd(b, size)) return cstr(b);
+    if (errno != ERANGE) ioerr(errno);
+    size += 1024;
+  }
+}
+
+/* _thread.stack_size validates a requested setting even though this runtime
+   creates no threads. PTHREAD_STACK_MIN can be a runtime sysconf query (larger
+   on ARM systems with larger signal contexts); 32 KiB alone is not sufficient.
+   Let pthread validate its remaining platform restrictions without starting a
+   thread or changing a process-wide default. */
+I pys_thread_stack_valid(I size) {
+  if (!size) return 1;
+  if (size < 32768) return 0;
+  size_t minimum = 32768;
+#ifdef PTHREAD_STACK_MIN
+  long platform_minimum = PTHREAD_STACK_MIN;
+  if (platform_minimum > 32768) minimum = (size_t)platform_minimum;
+#endif
+  if ((uint64_t)size < minimum) return 0;
+  pthread_attr_t attributes;
+  if (pthread_attr_init(&attributes)) return 0;
+  int invalid = pthread_attr_setstacksize(&attributes, (size_t)size);
+  pthread_attr_destroy(&attributes);
+  return !invalid;
+}
+/* Native recursion depth (docs/internals.md#native-recursion-depth): one outer module frame, then
+   each active call of a source function that recursion can repeat (the compiler leaves the
+   functions that cannot be entered again while active uncounted), including an active generator
+   resume (not its suspended frame). Generated entries and normal returns balance enter/leave;
+   each exception landing restores the depth saved by its function's entry, since the unwinder
+   has skipped the returns of callees. A failed entry does not change the depth. Like the rest
+   of the runtime this state belongs to its one execution thread (pyext.c enforces that for extensions).
+   The limit is logical; the native stack's floor (below) bounds the same entries physically.
+   Mutable ABI shared with the program's inlined guards (lower_module): three i64 words,
+   active depth, requested limit, then the stack floor. Both JIT and AOT guards use this same
+   storage, kept in one cache line. */
+__attribute__((aligned(32))) I pys_recursion_state[3] = {1, 1000, 0};
+_Static_assert(sizeof(I) == 8 && sizeof(pys_recursion_state) == 24,
+               "Recursion ABI: three i64 words, active depth, requested limit, then stack floor");
+_Noreturn void pys_recursion_error(void) { pys_fail("RecursionError: maximum recursion depth exceeded"); }
+_Noreturn void pys_recursion_stack_error(void) {
+  pys_fail("RecursionError: maximum recursion depth exceeded (the native stack is nearly full)");
+}
+/* The native stack's floor (#1015), the state's third word: an entry that finds the stack pointer
+   below it raises RecursionError as one past the limit does, however high sys.setrecursionlimit()
+   is set, so that handlers and finally blocks run where the thread's stack would otherwise run out
+   (a SIGSEGV). The stack grows down on every supported target; the floor lies STACK_MARGIN above
+   the lowest address of the thread's stack, or an eighth of a stack below 8 * STACK_MARGIN. The
+   margin is what the deepest counted frame may still use without another entry: the functions that
+   cannot recur (uncounted), the runtime's own calls (a repr or comparison follows at most 512 nested
+   containers: about 150 KiB), the unwinder raising the error (under 5 KiB), and a signal handler's
+   frame (docs/internals.md#native-recursion-depth). 0, no floor (the unsigned comparison never
+   fails), where the bounds are unknown or do not hold this frame (a switched stack).
+   A frame already within the margin gets the floor too: the next counted entry below it raises,
+   and those from higher frames, once it has returned, are checked as usual. Set by pys_init on the
+   program's thread (the main thread of the JIT runner or lli under the JIT) and by pys_init_lib on
+   the thread that imports an extension module, the only one that may call it (pyext.c). Linux's main thread's
+   bounds from exec assume that its stack can grow to RLIMIT_STACK. Extension initialization and
+   glibc's fallback also inspect mappings below the stack, which can stop it sooner (#1032); maps
+   and limits changed after initialization remain outside this check. */
+#if defined(__has_feature)
+#if __has_feature(address_sanitizer)
+#define STACK_ASAN 1
+#endif
+#endif
+#if defined(__SANITIZE_ADDRESS__) || defined(STACK_ASAN)
+#define STACK_MARGIN ((uintptr_t)512 << 10)   /* (ASan's frames and its runtime need more) */
+#else
+#define STACK_MARGIN ((uintptr_t)256 << 10)
+#endif
+#if defined(__linux__)
+/* The preceding VMA can stop a growing main stack before RLIMIT_STACK (#1032). Linux leaves
+   stack_guard_gap above an accessible VMA (not PROT_NONE): the supported default is 256 pages,
+   not 1 MiB on every target. Never discard the stack's already mapped part. A failed inspection
+   retains the platform bounds; /proc and mappings changed after initialization are not a promise.
+   Read once only for extensions or glibc's fallback, keeping ordinary program startup cheap. */
+static uintptr_t stack_mapping_bottom(uintptr_t here, uintptr_t page) {
+  FILE *f = fopen("/proc/self/maps", "r");
+  if (!f) return 0;
+  uintptr_t previous = 0, bottom = 0;
+  int accessible = 0;
+  char line[512], perm[5];
+  unsigned long from, to;
+  while (fgets(line, sizeof line, f)) {
+    if (sscanf(line, "%lx-%lx %4s", &from, &to, perm) != 3 || strlen(perm) != 4 || from >= to || previous > from) break;
+    if (from <= here && here < to) {
+      bottom = previous;
+      if (bottom && accessible) {
+        bottom = page && page <= (UINTPTR_MAX - bottom) / 256 ? bottom + 256 * page : from;
+        if (bottom > from) bottom = from;
+      }
+      break;
+    }
+    if (to > here) break;
+    previous = to;
+    accessible = perm[0] == 'r' || perm[1] == 'w' || perm[2] == 'x';
+    if (!strchr(line, '\n')) { int c; while ((c = fgetc(f)) != '\n' && c != EOF) {} }
+  }
+  if (ferror(f)) bottom = 0;
+  fclose(f);
+  return bottom;
+}
+#endif
+static void stack_floor_at(uintptr_t here, int mapped) {   /* (here: the caller's frame address) */
+  uintptr_t lo = 0, hi = 0;
+  (void)mapped;
+#if defined(__APPLE__)
+  pthread_t self = pthread_self();
+  size_t size = pthread_get_stacksize_np(self);
+  hi = (uintptr_t)pthread_get_stackaddr_np(self);   /* (the highest address) */
+  lo = hi > size ? hi - size : 0;
+#elif defined(__linux__)
+  /* Linux's main thread, without glibc's parse of /proc/self/maps (about 100,000 instructions at
+     every start): exec copies the program's file name (AT_EXECFN) to the top of the stack's mapping,
+     just below its last word, and RLIMIT_STACK bounds the mapping, glibc's computation too. A loader
+     run as a program (ld.so ./prog) points AT_EXECFN at an argument instead, which no page boundary
+     follows: then, on another thread (an extension module's importer) and under an unlimited stack,
+     glibc's pthread_getattr_np reports the bounds (musl's reports only the main thread's mapped part:
+     other C libraries get no floor there). The fallback and extensions also clamp to mapped bounds. */
+  const char *name = (const char *)getauxval(AT_EXECFN);
+  long pagesize = sysconf(_SC_PAGESIZE);
+  uintptr_t page = pagesize > 0 && !(pagesize & (pagesize - 1)) ? (uintptr_t)pagesize : 0;
+  uintptr_t end = name ? (uintptr_t)name + strlen(name) + 1 + sizeof(void *) : 0;
+  struct rlimit rl;
+  if (end > page && page && !(end & (page - 1)) && here < end && !getrlimit(RLIMIT_STACK, &rl) &&
+      rl.rlim_cur < end - page && end - here < rl.rlim_cur) {   /* (RLIM_INFINITY is not) */
+    hi = end; lo = (end - rl.rlim_cur + page - 1) & ~(page - 1);
+  }
+#if defined(__GLIBC__)
+  int pthread_getattr_np(pthread_t, pthread_attr_t *);   /* (<pthread.h>'s with _GNU_SOURCE, which the probes
+                                                             that include this file set too late) */
+  pthread_attr_t attr;
+  void *addr;
+  size_t size;
+  if (!lo) {
+    mapped = 1;
+    if (!pthread_getattr_np(pthread_self(), &attr)) {
+      if (!pthread_attr_getstack(&attr, &addr, &size) && size <= UINTPTR_MAX - (uintptr_t)addr) {
+        lo = (uintptr_t)addr; hi = lo + size;
+      }
+      pthread_attr_destroy(&attr);
+    }
+  }
+#endif
+  if (mapped && lo && lo <= here && here <= hi) {
+    uintptr_t bottom = stack_mapping_bottom(here, page);
+    if (bottom > lo) lo = bottom;
+  }
+#endif
+  uintptr_t margin = (hi - lo) / 8 < STACK_MARGIN ? (hi - lo) / 8 : STACK_MARGIN;
+  pys_recursion_state[2] = lo && lo <= here && here <= hi ? (I)(lo + margin) : 0;
+}
+static void stack_floor(int mapped) { stack_floor_at((uintptr_t)__builtin_frame_address(0), mapped); }
+/* the C entries, as the program's own helpers (lower_module's recursion_ir) do it */
+I pys_recursion_enter(void) {
+  if (pys_recursion_state[0] >= pys_recursion_state[1]) pys_recursion_error();
+  if ((uintptr_t)__builtin_frame_address(0) < (uintptr_t)pys_recursion_state[2]) pys_recursion_stack_error();
+  return ++pys_recursion_state[0];
+}
+/* a generator resume's entry (lower_module's pys.recursion.resume), given the generator's state
+   word: one that fails finishes the generator first (2, specs.py's GENDONE), as CPython clears a
+   frame whose entry exceeds the limit */
+I pys_recursion_resume(I *state) {
+  if (pys_recursion_state[0] >= pys_recursion_state[1]) {
+    *state = 2;
+    pys_recursion_error();
+  }
+  if ((uintptr_t)__builtin_frame_address(0) < (uintptr_t)pys_recursion_state[2]) {
+    *state = 2;
+    pys_recursion_stack_error();
+  }
+  return ++pys_recursion_state[0];
+}
+void pys_recursion_leave(void) { pys_recursion_state[0]--; }
+I pys_recursion_depth(void) { return pys_recursion_state[0]; }
+void pys_recursion_restore(I depth) { pys_recursion_state[0] = depth; }
+void pys_setrecursionlimit(I n) {
+  if (n > INT32_MAX || n < INT32_MIN) pys_fail("OverflowError: Python int too large to convert to C int");
+  if (n < 1) pys_fail("ValueError: recursion limit must be greater or equal than 1");
+  if (n <= pys_recursion_state[0])
+    failf("RecursionError: cannot set the recursion limit to %lld at the recursion depth %lld: the limit is too low",
+          (long long)n, (long long)pys_recursion_state[0]);
+  pys_recursion_state[1] = n;
+}
+I pys_getrecursionlimit(void) { return pys_recursion_state[1]; }
+Str *pys_platform(void) {              /* sys.platform */
+#if defined(__linux__)
+  return cstr("linux");
+#elif defined(__APPLE__)
+  return cstr("darwin");
+#elif defined(__FreeBSD__)
+  return cstr("freebsd");
+#else
+  return cstr("unknown");
+#endif
+}
+I pys_exists(Str *p) { return !nul(p) && access(p->s, F_OK) == 0; }
+static struct stat stat1(Str *p) {     /* os.stat(p), which os.path.getsize, getmtime and getctime read */
+  struct stat st;
+  if (nul(p)) pys_fail("ValueError: stat: embedded null character in path");
+  if (stat(p->s, &st)) oserr(p->s);
+  return st;
+}
+static double stat_secs(struct timespec t) {   /* CPython's float of a time, sec + nsec * 1e-9: in two */
+  double f = t.tv_nsec * 1e-9;                 /* statements, which clang does not fuse into an FMA */
+  return t.tv_sec + f;
+}
+I pys_getsize(Str *p) { return stat1(p).st_size; }
+#ifdef __APPLE__
+double pys_getmtime(Str *p) { return stat_secs(stat1(p).st_mtimespec); }
+double pys_getctime(Str *p) { return stat_secs(stat1(p).st_ctimespec); }
+#else
+double pys_getmtime(Str *p) { return stat_secs(stat1(p).st_mtim); }
+double pys_getctime(Str *p) { return stat_secs(stat1(p).st_ctim); }
+#endif
+Str *pys_path_join(Str *a, Str *b) {     /* os.path.join(a, b), as posixpath.join steps through its parts */
+  if ((b->len && b->s[0] == '/') || !a->len) return b;
+  if (a->s[a->len - 1] == '/') return pys_str_add(a, b);
+  Str *s = pys_alloc_atomic(sizeof(Str) + a->len + b->len + 2);
+  s->len = a->len + 1 + b->len; memcpy(s->s, a->s, a->len); s->s[a->len] = '/'; memcpy(s->s + a->len + 1, b->s, b->len);
+  return s;
+}
+/* POSIX environment text uses UTF-8 with surrogateescape, as CPython's os.environ.
+   Keep the common ASCII paths allocation-free until a value is returned. These
+   codec functions are implemented in runtime.py and share the ordinary codec checks. */
+Str *pys_str_encode(Str *, Str *, Str *);
+Str *pys_bytes_decode(Str *, Str *, Str *);
+static Str *env_encoded(Str *s) {
+  return memchr(s->s, 0xed, s->len) ? pys_str_encode(s, 0, cstr("surrogateescape")) : s;
+}
+static Str *env_decoded(const char *v) {
+  Str *s = cstr(v);
+  for (I i = 0; i < s->len; i++)
+    if ((unsigned char)s->s[i] >= 0x80) return pys_bytes_decode(s, 0, cstr("surrogateescape"));
+  return s;
+}
+/* os.path.expanduser(p), as posixpath's: a leading "~" is $HOME or, without it, the home
+   directory the password database has for the process's user, and "~name" is user name's; a
+   user the database does not have leaves p as it is. The home loses its trailing slashes, and
+   "/" is the result where nothing is left */
+Str *pys_path_expanduser(Str *p) {
+  if (!p->len || p->s[0] != '~') return p;
+  I i = 1;
+  while (i < p->len && p->s[i] != '/') i++;
+  const char *home;
+  if (i == 1) {
+    home = getenv("HOME");
+    if (!home) { struct passwd *pw = getpwuid(getuid()); if (!pw) return p; home = pw->pw_dir; }
+  } else {
+    Str *name = env_encoded(pys_str(p->s + 1, i - 1));
+    if (nul(name)) pys_fail("ValueError: embedded null byte");
+    struct passwd *pw = getpwnam(name->s);
+    if (!pw) return p;
+    home = pw->pw_dir;
+  }
+  Str *h = env_decoded(home);
+  I n = h->len;
+  while (n && h->s[n - 1] == '/') n--;
+  if (!n && i == p->len) return cstr("/");
+  Buf b = {0}; put(&b, h->s, n); put(&b, p->s + i, p->len - i);
+  return done(&b);
+}
+Str *pys_getenv(Str *k, Str *dflt) {
+  k = env_encoded(k);
+  char *v = nul(k) || strchr(k->s, '=') ? 0 : getenv(k->s);
+  return v ? env_decoded(v) : dflt;
+}
+void pys_environ_set(Str *k, Str *v) {
+  k = env_encoded(k); v = env_encoded(v);
+  if (nul(k) || nul(v)) pys_fail("ValueError: embedded null byte");
+  if (strchr(k->s, '=')) pys_fail("ValueError: illegal environment variable name");
+  if (setenv(k->s, v->s, 1)) ioerr(errno);
+}
+static _Noreturn void environ_missing(Str *k) {   /* KeyError(k), as os.environ raises it for a name it has not */
+  Buf b = {0}; put(&b, "KeyError: ", 10); repr_str(&b, k); put(&b, "", 1); pys_fail(b.p);
+}
+Str *pys_environ_get(Str *k) {                    /* os.environ[k] */
+  Str *v = pys_getenv(k, 0);
+  if (!v) environ_missing(k);
+  return v;
+}
+void pys_environ_del(Str *k) {                    /* del os.environ[k] */
+  /* as CPython's __delitem__: os.unsetenv() of the name first, whose errors are its own (a NUL
+     byte is no file system name's, and no name or one with '=' is unsetenv()'s EINVAL), and
+     only then KeyError for a name the environment has not */
+  Str *e = env_encoded(k);
+  if (nul(e)) pys_fail("ValueError: embedded null byte");
+  if (!e->len || strchr(e->s, '=')) ioerr(EINVAL);
+  int had = getenv(e->s) != 0;
+  if (unsetenv(e->s)) ioerr(errno);
+  if (!had) environ_missing(k);
+}
+Str *pys_environ_pop(Str *k, Str *dflt) {
+  k = env_encoded(k);
+  char *v = nul(k) || strchr(k->s, '=') ? 0 : getenv(k->s);
+  if (!v) return dflt;
+  Str *old = env_decoded(v);  /* copy the value before unsetenv invalidates it */
+  if (unsetenv(k->s)) ioerr(errno);
+  return old;
+}
+
+/* ---------- exceptions: table-driven unwinding (the Itanium C++ ABI's) ----------
+   A program that has try or with calls pys_eh_on when it starts. From then on a raise (pys_fail,
+   pys_raise, sys.exit, pys_throw) makes an Exc, which begins with the unwinder's header,
+   notes it (a root of the collector) and calls _Unwind_ForcedUnwind, which asks
+   pys_personality, the personality routine of every compiled function with landing pads,
+   whether the call that frame is in is covered by one; frames without (the runtime's, and
+   compiled code outside a try) are passed over. If one is, control goes to it. Every landing
+   pad catches everything, so the first one found is the handler: one phase finds and enters
+   it, where _Unwind_RaiseException would walk the frames twice (a search phase, then this),
+   which made each raise from a call cost about twice as much (CFI interpreting dominates). The
+   unwinding is virtual until a landing pad is entered: if none is, the stack is as it was, and
+   the raise ends the program as it
+   always did: CPython's last traceback line and exit status, a SystemExit's status or
+   message, a KeyboardInterrupt's death by SIGINT, a user exception object as "disp: str(e)"
+   ("disp" when that is empty, "<exception str() failed>" when its __str__ raises, as
+   CPython's). Before pys_eh_on every raise ends the program that way at once. Code that does
+   not raise pays nothing for a try, but a with registers and forgets its cleanup action and
+   list.sort of objects notes where its items are (a few percent; see list.sort); a raise costs
+   about a microsecond. A program
+   without try or with keeps none of this: the funnels reach it through xthrow, and what else tests
+   eh (the unwind actions below) folds away, as only pys_eh_on stores either. It links
+   pys_throw and the report only when it raises a user exception object.
+   Compiled code's side. A function with landing pads names `personality ptr @pys_personality`;
+   a call in a try that may raise is an invoke whose unwind label is a landing pad,
+   `landingpad { ptr, i32 } catch ptr null`: every pad catches everything, and the code tests
+   the exception with pys_exc_in and throws again what it does not handle. A try notes
+   pys_try_mark() and pys_exc_handled() as it starts; its landing pad first calls
+   pys_exc_begin(the pad's pointer, the mark), which returns the Exc (a throw to a landing of
+   the same function may instead branch to it with the Exc itself, the same address). The
+   exception being handled (a bare raise's, CPython's exc_info) is a global: pys_exc_begin sets
+   it, and every way out of a handler restores the one its try noted (pys_exc_restore).
+   What compiled code raises. The funnels raise what they always ended the program with:
+   pys_fail("Kind: message"), pys_raise(kind, msg) for kind(msg) of a str msg known not to be
+   empty and for kind() (msg empty), pys_exit(c) for sys.exit(c) of an int c (not a bool),
+   pys_exit_msg(m) for sys.exit(m) of a str m. The kind is a class's bare name, but for one the
+   runtime raises, io.UnsupportedOperation (reading a file open for writing, writing one open
+   for reading), whose bases are OSError and ValueError: the names an except clause of either,
+   of Exception or of BaseException matches (pys_exc_in) include it. pys_raise takes Gen's
+   "SyntaxError: x" line as kind too. Anything else is pys_throw of an Exc that pys_exc_new(kind,
+   str(e), args) makes, args being what repr(e) shows in its parentheses ("" for no argument,
+   "5", "'a', 'b'"): ValueError(5), KeyError('a', 'b') (str "('a', 'b')"), KeyError('a') (str
+   "'a'"), ValueError('') (str ""). A SystemExit whose code is None, a bool or an int is
+   pys_exc_exit(status, str(code), repr(code)), so that nothing catching it ends the program
+   with that status and no output: pys_exc_exit(0, "", "") for sys.exit(), sys.exit(None) and
+   raise SystemExit (str(e) "", repr SystemExit()), (0, "None", "None") for SystemExit(None),
+   (1, "True", "True") for sys.exit(True). Another code is pys_exc_new("SystemExit", str(code),
+   args): str(code) and status 1. sys.exit(t) of a tuple t (not raise SystemExit(t)) takes t's
+   items as the args: sys.exit(()) is sys.exit(), sys.exit((3,)) is sys.exit(3). The traceback
+   shows a SyntaxError, IndentationError or TabError as "kind: " + str(msg or "<no detail
+   available>"), msg being its first argument (None without): pys_exc_detail(e, that text)
+   gives an Exc that line, while str(e) stays str(msg) ("None" without). A user exception
+   object is pys_exc_user(obj); its class's exit function makes a SystemExit subclass end the
+   program as the builtin one its code makes. Its line is "disp: str(e)", where str(e) without
+   a __str__ is its builtin base's: of KeyError, repr(arg) for one argument; of OSError and its
+   subclasses, "[Errno a] b" for two (3 to 5 add filenames to str(e) and drop them from args:
+   reject them); an ExcClass cannot give the SyntaxError family's line: reject such classes.
+   What a raise leaves half done is put right in pys_exc_begin: the I/O layer's busy count,
+   which defers a Ctrl-C, goes back to zero (compiled code never runs inside a stdio call),
+   and the unwind actions registered since the try's mark run, the latest first, each popped
+   before it runs. A with statement's file is closed as its __exit__ would close it, a list
+   being sorted gets its items back (list.sort), and an object whose generated __repr__ was
+   running leaves the repr guard. The frames between are gone by then, so what an action
+   needs is on the heap. When nothing catches a raise, every action runs before the report.
+   No action raises: a with-file whose close fails notes its OSError, and once the actions
+   have run, it takes the place of the exception (the last such one, as the outermost
+   __exit__'s would), which pys_exc_begin returns to the try (CPython's __exit__ runs in the
+   try's body) or the report shows. An action compiled code registers (pys_unwind_push) must
+   not raise either: a landing pad calls pys_exc_begin, and what it raised would leave the pad
+   past its try.
+   The rest raises before it changes anything (list and dict operations; open() closes the
+   file it opened first), builds new objects that become garbage (strings, containers,
+   formatting) or never raises (the collector and its closing of unreachable files).
+   Not catchable: an allocation that fails (oom), a Ctrl-C (kbint_exit), a stack overflow. */
+typedef struct ExcClass {              /* a user exception class: compiled code emits one constant each */
+  Str *kind;                           /* unique name, which pys_exc_in matches */
+  Str *disp;                           /* name in an uncaught exception's line: "mod.Class", "Class" in __main__ */
+  Str *(*str)(void *obj), *(*repr)(void *obj);
+  Exc *(*exit)(void *obj);             /* a class deriving from SystemExit: the builtin SystemExit (pys_exc_exit,
+                                          pys_exc_new) its object's code ends the program as; else NULL */
+} ExcClass;
+struct Exc {                           /* GC-allocated, 16-byte aligned (exc_alloc); a user object's first */
+  struct _Unwind_Exception ue;         /* field points to its ExcClass. First: the unwinder's header */
+  Str *kind;                           /* "KeyError", or the user class's ExcClass->kind */
+  Str *msg;                            /* str(e) of a builtin exception; NULL for a user object */
+  void *obj;                           /* the user exception object, or NULL */
+  I code, has_code;                    /* SystemExit: its status (has_code 0: msg is a code's str, status 1) */
+  Str *args;                           /* repr(e) is the class's name and (args); NULL: made from msg */
+  Str *detail;                         /* uncaught: "kind: detail", even when empty; NULL: msg (pys_exc_detail) */
+  struct Exc *cause;                   /* e.__cause__ (raise ... from c, PEP 479's RuntimeError), or NULL; set
+                                          only in a program that reads it (pys_exc_setcause) */
+};
+_Static_assert(offsetof(Exc, ue) == 0, "a landing pad's pointer is the Exc");
+#define PYS_EXC 0x5059535441434859ULL  /* the header's exception_class: "PYSTACHY" */
+#define XCLS(e) (*(ExcClass **)(e)->obj)
+static _Noreturn void throw_(Exc *e);
+static Thrower *hide(Thrower *f) {     /* f, stored where the funnels find it: were its value seen, LLVM */
+  __asm__("" : "+r"(f));               /* would call throw_ directly there, and every program would link it */
+  return f;
+}
+void pys_eh_on(void) { eh = 1; xthrow = hide(throw_); }
+static Exc *exc_alloc(void) {          /* at a slot's first 16-byte boundary (an interior pointer keeps the slot) */
+  return (Exc *)(((uintptr_t)pys_alloc(sizeof(Exc) + 15) + 15) & ~(uintptr_t)15);
+}
+static Exc *exc_new(Str *kind, Str *msg, Str *args) { Exc *e = exc_alloc(); e->kind = kind; e->msg = msg; e->args = args; return e; }
+Exc *pys_exc_new(Str *kind, Str *msg, Str *args) { return exc_new(kind, msg, args); }
+Exc *pys_exc_user(void *obj) { Exc *e = exc_alloc(); e->kind = (*(ExcClass **)obj)->kind; e->obj = obj; return e; }
+Exc *pys_exc_exit(I code, Str *str, Str *args) {   /* SystemExit with an int status; str(e), its args */
+  Exc *e = exc_new(cstr("SystemExit"), str, args); e->code = code; e->has_code = 1; return e;
+}
+Exc *pys_exc_detail(Exc *e, Str *d) { e->detail = d; return e; }   /* the SyntaxError family's (above) */
+static Exc *exc_raise(Str *kind, Str *msg) {   /* pys_raise's; a kind "SyntaxError: x" (Gen's) is split */
+  const char *c = msg->len ? 0 : strstr(kind->s, ": ");
+  if (!c) return exc_new(kind, msg, 0);
+  msg = pys_str(c + 2, kind->s + kind->len - (c + 2));   /* all of it: str(msg) may hold a NUL */
+  return pys_exc_detail(exc_new(pys_str(kind->s, c - kind->s), msg, 0), msg);
+}
+static Exc *exc_exit(I c, Str *m) {   /* sys.exit(c) of an int, or sys.exit(m) of a str: status 1 */
+  if (!m) { Str *s = pys_str_int(c); return pys_exc_exit(c, s, s); }
+  Buf b = {0}; repr_str(&b, m); return exc_new(cstr("SystemExit"), m, done(&b));
+}
+static Exc *exc_line(const char *m) {  /* pys_fail's "Kind: message"; the args its message does not show */
+  const char *c = strstr(m, ": "), *t, *r;
+  Str *k = pys_str(m, c ? c - m : (I)strlen(m)), *s = cstr(c ? c + 2 : ""), *a = 0;
+  if (s->len > 1 && s->s[0] == '(' && !strcmp(k->s, "OverflowError")) a = pys_str(s->s + 1, s->len - 2);   /* (34, '...') */
+  else if (!strncmp(s->s, "[Errno ", 7) && (t = strstr(s->s, "] ")) && !strcmp(k->s, errcls(atoi(s->s + 7)))) {
+    Buf b = {0}; int n = atoi(s->s + 7);     /* an OSError, of n's class (a ValueError can show a repr like it): */
+    put(&b, s->s + 7, t - s->s - 7); put(&b, ", ", 2);   /* (errno, strerror), without the filenames after */
+    r = strerror(n); t += 2;                             /* strerror, which can hold ": " */
+    repr_str(&b, strncmp(t, r, strlen(r)) ? pys_str(t, s->s + s->len - t) : cstr(r));   /* another text: all of it */
+    a = done(&b);
+  }
+  return exc_new(k, s, a);
+}
+static const char *short_name(Str *k, int *n) {   /* a class's name without its module (*n: its length) */
+  const char *p = k->s + k->len;
+  while (p > k->s && p[-1] != '.') p--;  /* not memrchr: tools/dictprobe.c includes this file after <time.h> */
+  *n = (int)(k->s + k->len - p);
+  return p;
+}
+static const char *exc_name(Exc *e, int *n) { return short_name(e->obj ? XCLS(e)->disp : e->kind, n); }
+Str *pys_exc_str(Exc *e) { return e->obj ? XCLS(e)->str(e->obj) : e->msg; }
+Str *pys_exc_repr(Exc *e) {            /* CPython's: the class's name without its module, then its args */
+  if (e->obj) return XCLS(e)->repr(e->obj);
+  Buf b = {0}; Str *m = e->msg; int n; const char *k = exc_name(e, &n);
+  put(&b, k, n);
+  put(&b, "(", 1);
+  if (e->args) put(&b, e->args->s, e->args->len);
+  else if (e->has_code || !strcmp(e->kind->s, "KeyError")) put(&b, m->s, m->len);   /* a KeyError's message is its key's repr */
+  else if (m->len) repr_str(&b, m);
+  put(&b, ")", 1); return done(&b);
+}
+Str *pys_exc_ostr(void *obj) { return (*(ExcClass **)obj)->str(obj); }    /* str(e) of a user exception object */
+Str *pys_exc_orepr(void *obj) { return (*(ExcClass **)obj)->repr(obj); }  /* and repr(e) */
+Str *pys_exc_errcls(I e) { return cstr(e < 0 || e > 0x7FFFFFFF ? "OSError" : errcls((int)e)); }   /* OSError(e, text)'s class */
+Str *pys_exc_name(Exc *e) { int n; const char *k = exc_name(e, &n); return pys_str(k, n); }   /* type(e).__name__ */
+void pys_exc_setcause(Exc *e, Exc *c) { e->cause = c; }
+Exc *pys_exc_cause(Exc *e) { return e->cause; }
+Str *pys_exc_type(Exc *e) {            /* str(type(e)): "<class 'KeyError'>", "<class '__main__.C'>" */
+  Buf b = {0}; put(&b, "<class '", 8);
+  if (e->obj && !memchr(XCLS(e)->disp->s, '.', XCLS(e)->disp->len)) put(&b, "__main__.", 9);   /* (also __main__$ValueError's) */
+  Str *d = e->obj ? XCLS(e)->disp : e->kind;
+  put(&b, d->s, d->len); put(&b, "'>", 2); return done(&b);
+}
+Str *pys_exc_cls(void *obj) {          /* and of a user exception object, which may be None */
+  int n; const char *k = obj ? short_name((*(ExcClass **)obj)->disp, &n) : "NoneType";
+  return obj ? pys_str(k, n) : cstr(k);
+}
+Str *pys_exc_brepr(void *obj, Str *args) {   /* BaseException.__repr__ of one: its class's name, then (args) */
+  Buf b = {0}; int n; const char *k = short_name((*(ExcClass **)obj)->disp, &n);
+  put(&b, k, n); put(&b, "(", 1); put(&b, args->s, args->len); put(&b, ")", 1); return done(&b);
+}
+static int name_in(const char *p, const char *end, Str *k) {   /* k is one of the names in [p, end): "\1A\1B\1" */
+  for (; (p = memchr(p, 1, end - p)) && end - p > k->len + 1; p++)
+    if (!memcmp(p + 1, k->s, k->len) && p[k->len + 1] == 1) return 1;
+  return 0;
+}
+I pys_exc_in(Exc *e, Str *names) { return name_in(names->s, names->s + names->len, e->kind); }   /* e's kind is one of names */
+void *pys_exc_obj(Exc *e) { return e->obj; }
+void *pys_exc_id(Exc *e) { return e->obj ? e->obj : e; }   /* for is and ==: its object (each raise makes an Exc) */
+Exc *pys_exc_handled(void) { return xr.handled; }
+void pys_exc_restore(Exc *e) { xr.handled = e; }
+/* Exception classes as values. A class object is its class's one Exc (protos), which nothing
+   raises: its kind, an empty msg and, for a class of the program, an obj that is one word holding
+   the class's ExcClass, so that what reads an exception's class reads a class object alike
+   (pys_exc_name, pys_exc_type). is, ==, hash() and dict keys take its address, as each class has
+   one, and pys_exc_canon gives an exception's (type(e)). The compiler gives a test of a class
+   against one it does not name (issubclass(a, b), isinstance(e, b)) its classes, each with those it
+   is or derives from (tree, "\2K\1K\1A\1B\1\2K2..."), and makes an object of a class of the
+   program from a class object by the function its table (pys_exc_ctor) holds for the class; a
+   builtin class's is pys_exc_make's */
+Exc *pys_exc_proto(Str *kind, void *xcls) {   /* the class object of builtin class kind, or of ExcClass xcls */
+  for (I i = 0; i < nprotos; i++)
+    if (xcls ? protos[i]->obj && XCLS(protos[i]) == xcls : !protos[i]->obj && pys_str_eq(protos[i]->kind, kind)) return protos[i];
+  Exc *e = exc_new(xcls ? ((ExcClass *)xcls)->kind : kind, cstr(""), 0);
+  if (xcls) { void **o = pys_alloc(sizeof *o); *o = xcls; e->obj = o; }
+  if (nprotos == cprotos && !(protos = realloc(protos, (cprotos = 2 * cprotos + 16) * sizeof *protos))) oom();
+  return protos[nprotos++] = e;
+}
+Exc *pys_exc_canon(Exc *e) { return e->obj ? pys_exc_proto(0, XCLS(e)) : pys_exc_proto(e->kind, 0); }   /* type(e) */
+I pys_exc_sub(Exc *a, Exc *b, Str *tree) {    /* a's class (a's, an exception's or a class object's) is b's or derives from it */
+  Str *k = a->kind;
+  for (const char *p = tree->s, *end = p + tree->len; (p = memchr(p, 2, end - p)); p++)
+    if (end - p > k->len + 1 && !memcmp(p + 1, k->s, k->len) && p[k->len + 1] == 1) {
+      const char *q = memchr(p + 1, 2, end - p - 1);
+      return name_in(p + k->len + 1, q ? q : end, b->kind);
+    }
+  return pys_str_eq(k, b->kind);
+}
+Str *pys_exc_module(Exc *e) {           /* C.__module__: builtins, a builtin class's own module (io), the program's
+                                           (its displayed name but the last part: mods.errs.Missing's mods.errs) */
+  if (!e->obj) { const char *d = memchr(e->kind->s, '.', e->kind->len); return d ? pys_str(e->kind->s, d - e->kind->s) : cstr("builtins"); }
+  Str *k = XCLS(e)->disp; I n = k->len;
+  while (n > 0 && k->s[n - 1] != '.') n--;
+  return n ? pys_str(k->s, n - 1) : cstr("__main__");
+}
+void pys_exc_setmodule(ExcClass *c, Str *mod) {   /* C.__module__ = mod of a user class: the name its uncaught
+                                                    exceptions show ("Class" for __main__, as traceback's), which
+                                                    pys_exc_module reads back. The class lives as long as the
+                                                    program, so the name is no heap object */
+  int n; const char *q = short_name(c->disp, &n);
+  if (mod->len == 8 && !memcmp(mod->s, "builtins", 8)) pys_fail("NotImplementedError: a class's __module__ = 'builtins' is not supported");
+  int top = mod->len == 8 && !memcmp(mod->s, "__main__", 8);
+  I len = top ? n : mod->len + 1 + n;
+  Str *o = c->disp;   /* the name it has already (a function that assigns it on each call): kept. A name
+                         replaced is not freed: an uncaught exception's line holds it while the class's
+                         __str__ runs, which may assign another */
+  if (o->len == len && (top ? !memcmp(o->s, q, n) : !memcmp(o->s, mod->s, mod->len) && o->s[mod->len] == '.' && !memcmp(o->s + mod->len + 1, q, n))) return;
+  Str *d = malloc(sizeof(Str) + len + 1);
+  if (!d) oom();
+  d->len = len; d->dict_hash = 0; d->chars1 = 0;
+  char *p = d->s;
+  if (!top) { memcpy(p, mod->s, mod->len); p += mod->len; *p++ = '.'; }
+  memcpy(p, q, n); p[n] = 0;
+  c->disp = d;
+}
+void *pys_exc_ctor(Exc *c, void **table) {   /* the function table holds for class object c's class, {ExcClass, function}
+                                              pairs ended by NULL, or NULL */
+  if (c->obj) for (; *table; table += 2) if (*table == XCLS(c)) return table[1];
+  return 0;
+}
+/* an object of the builtin class of class object c, called with n (0 or 1) arguments: one whose
+   str() is s and repr() r, flags 2 true, 4 an int, bool or None, the status code (a SystemExit's);
+   flags 8 and 16 for raise c and raise ... from c, where c is NoneType's class object.
+   A class of the program that has no function in pys_exc_ctor's table (one whose __init__ takes
+   another type) raises TypeError, as do the builtin classes whose __new__ takes more arguments */
+Exc *pys_exc_make(Exc *c, I n, Str *s, Str *r, I flags, I code) {
+  Str *k = c->kind; int m; const char *nm = exc_name(c, &m);
+  if (c->obj) failf("TypeError: a call of class object %.*s with an argument of this type is not supported (its __init__ takes another type)", m, nm);
+  if (!strcmp(k->s, "NoneType"))   /* type() of an exception that is None; flags 8 raise c, 16 raise ... from c */
+    failf("%s", flags & 8 ? "TypeError: exceptions must derive from BaseException" : flags & 16 ? "TypeError: exception causes must derive from BaseException"
+                : "TypeError: a call of class object NoneType is not supported (CPython's returns None)");
+  if (!strcmp(k->s, "SystemExit")) return !n ? pys_exc_exit(0, cstr(""), cstr("")) : flags & 4 ? pys_exc_exit(code, s, s) : exc_new(k, s, r);
+  if (!strcmp(k->s, "UnicodeDecodeError") || !strcmp(k->s, "UnicodeEncodeError") || !strcmp(k->s, "UnicodeTranslateError"))
+    failf("TypeError: function takes exactly %d arguments (%lld given)", k->s[7] == 'T' ? 4 : 5, (long long)n);
+  if (!strcmp(k->s, "BaseExceptionGroup") || !strcmp(k->s, "ExceptionGroup"))
+    failf("TypeError: BaseExceptionGroup.__new__() takes exactly 2 arguments (%lld given)", (long long)n);
+  if (!strcmp(k->s, "SyntaxError") || !strcmp(k->s, "IndentationError") || !strcmp(k->s, "TabError"))
+    return pys_exc_detail(!n ? exc_new(k, cstr("None"), cstr("")) : exc_new(k, s, r), n && flags & 2 ? s : cstr("<no detail available>"));
+  if (!n) return exc_new(k, cstr(""), 0);
+  return !strcmp(k->s, "KeyError") ? exc_new(k, r, 0) : exc_new(k, s, r);
+}
+static void unwind_push(void (*fn)(void *), void *arg) {   /* run fn(arg) if a raise leaves this frame */
+  if (nunw == cunw && !(unw = realloc(unw, (cunw = 2 * cunw + 16) * sizeof *unw))) oom();
+  unw[nunw++] = (Unwind){fn, arg};
+}
+static void unwind_pop(void) { nunw--; }   /* the frame is left another way: forget the latest action */
+void pys_unwind_push(void (*fn)(void *), void *arg) { unwind_push(fn, arg); }
+void pys_unwind_pop(void) { unwind_pop(); }
+static void close_with(void *p) {      /* __exit__ of a with-file: a close that fails replaces the exception */
+  File *f = p; char b[160];
+  if (f->closed) return;
+  io_in(); int e = shut(f); io_out();
+  if (e) xr.pend = exc_line(ioerr_line(b, e));
+}
+void pys_unwind_file(File *f) { unwind_push(close_with, f); }   /* with open(...) as f */
+static void unwind_to(I mark) { while (nunw > mark) { Unwind u = unw[--nunw]; u.fn(u.arg); } }
+I pys_try_mark(void) { return nunw; }
+/* Generators (docs/internals.md#generators). A suspended generator leaves none of its unwind
+   actions (its with-files') among the program's: as it suspends it sets those above the depth
+   where it was resumed aside, in a scanned block of its own (pys_gen_leave), and takes them up
+   again where it is resumed next (pys_gen_enter, which returns the depth below them: its try
+   statements' marks are relative to it). So its consumer's try statements and with blocks
+   unwind only their own actions, and a generator resumed from another depth finds its own. */
+typedef struct { I n; Unwind u[]; } Aside;
+I pys_gen_enter(void *aside) {
+  I base = nunw;
+  Aside *a = aside;
+  for (I i = 0; a && i < a->n; i++) unwind_push(a->u[i].fn, a->u[i].arg);
+  return base;
+}
+void *pys_gen_leave(I base) {
+  if (nunw <= base) return 0;
+  Aside *a = pys_alloc(sizeof(Aside) + (size_t)(nunw - base) * sizeof(Unwind));
+  a->n = nunw - base;
+  memcpy(a->u, unw + base, (size_t)a->n * sizeof(Unwind));
+  nunw = base;
+  return a;
+}
+/* What closing a generator that a loop owns raises, and its yield after GeneratorExit, are
+   reported as CPython reports an exception it ignores (unraisable), and the loop goes on: the
+   first line names the generator by its __qualname__ (and its promise's address, where CPython
+   shows the object's), the last is the exception's, as an uncaught one's (no traceback lines).
+   A generator that close() closes (its promise's command word, slot 3, is 2: specs.GENCLOSEC)
+   raises what it raises out of close(): its landing block, which hands it here as it would
+   report it, leaves it for close() instead (pys_gen_closed takes it once the generator has
+   finished, before any other code runs), so the generator's own code is the same either way */
+static void gen_ignored_in(Str *name, void *p) {
+  out_flush();
+  fputs("Exception ignored in: <generator object ", stderr);
+  ewrite(name->s, name->len);
+  fprintf(stderr, " at %p>\n", p);
+}
+void pys_gen_ignored(Str *name, void *p) {
+  gen_ignored_in(name, p);
+  fputs("RuntimeError: generator ignored GeneratorExit\n", stderr);
+}
+void pys_gen_unraisable(Exc *e, Str *name, void *p) {
+  if (((I *)p)[3] == 2) { xr.closed = e; return; }
+  gen_ignored_in(name, p);
+  Str *k = e->obj ? XCLS(e)->disp : e->kind, *m = e->obj ? XCLS(e)->str(e->obj) : e->detail ? e->detail : e->msg;
+  fwrite(k->s, 1, k->len, stderr);
+  if (m->len || e->detail) { fputs(": ", stderr); ewrite(m->s, m->len); }
+  fputc('\n', stderr);
+}
+Exc *pys_gen_closed(void) { Exc *e = xr.closed; xr.closed = 0; return e; }
+Exc *pys_exc_begin(void *ue, I mark) { /* a landing starts: put right what the raise left, handle the Exc */
+  Exc *e = ue;
+  xr.cur = e; io_busy = 0;
+  atomic_signal_fence(memory_order_seq_cst);
+  if (io_intr) kbint_exit();           /* a Ctrl-C the I/O layer deferred */
+  unwind_to(mark);
+  if (xr.pend) { e = xr.cur = xr.pend; xr.pend = 0; }   /* a close that failed: the try handles its OSError */
+  xr.handled = e;
+  return e;
+}
+static _Noreturn void exc_report(Exc *e, Str *m) {   /* "kind: m" ("kind" when m is empty), status 1 */
+  Str *k = e->obj ? XCLS(e)->disp : e->kind;
+  fwrite(k->s, 1, k->len, stderr);
+  if (m->len || e->detail) { fputs(": ", stderr); ewrite(m->s, m->len); }
+  fputc('\n', stderr);
+  kbint = !e->obj && !strcmp(k->s, "KeyboardInterrupt");
+  pys_finish();
+  exit(1);
+}
+static _Noreturn void uncaught(Exc *e) {   /* as pys_raise, pys_exit and pys_exit_msg end the program */
+  if (e->obj) {                        /* compiled code runs: what it raises and nothing catches ends in throw_ */
+    xr.shown = e; xthrow = hide(throw_);
+    if (XCLS(e)->exit) e = XCLS(e)->exit(e->obj);   /* SystemExit's subclasses end the program as it does */
+  }
+  if (!e->obj && !strcmp(e->kind->s, "SystemExit")) {
+    if (e->has_code) { pys_finish(); exit((int)e->code); }
+    out_flush(); ewrite(e->msg->s, e->msg->len); fputc('\n', stderr); pys_finish(); exit(1);
+  }
+  out_flush();
+  exc_report(e, e->obj ? XCLS(e)->str(e->obj) : e->detail ? e->detail : e->msg);
+}
+static _Unwind_Reason_Code stop_none(int v, _Unwind_Action a, _Unwind_Exception_Class c, struct _Unwind_Exception *ue,
+                                     struct _Unwind_Context *ctx, void *arg) {   /* the forced unwind goes on to the end */
+  (void)v; (void)a; (void)c; (void)ue; (void)ctx; (void)arg;
+  return _URC_NO_REASON;
+}
+static _Noreturn void throw_(Exc *e) {
+  xr.cur = e;
+  if (eh) {
+    e->ue.exception_class = PYS_EXC;
+    _Unwind_ForcedUnwind(&e->ue, stop_none, 0);   /* comes back only if nothing catches e: the stack is as it was */
+  }
+  unwind_to(0);
+  if (xr.pend) { e = xr.cur = xr.pend; xr.pend = 0; }
+  if (xr.shown) exc_report(xr.shown, cstr("<exception str() failed>"));   /* raised by its __str__, as CPython */
+  uncaught(e);
+}
+_Noreturn void pys_throw(Exc *e) { throw_(e); }
+_Noreturn void pys_reraise(void) {     /* a bare raise */
+  if (!xr.handled) pys_raise(cstr("RuntimeError"), cstr("No active exception to reraise"));
+  throw_(xr.handled);
+}
+/* The personality routine. The LSDA (.gcc_except_table) of a function is a header (where the
+   landing pads' offsets start, the type table, the call-site encoding), a call-site table
+   (start, length, landing pad, action) sorted by start, and action records (a type filter,
+   the next record). Its numbers are DWARF pointer encodings: a format (enc & 15) and how
+   to apply it (enc & 0x70; 0x80: through a pointer). Pystachy's pads catch everything
+   (`catch ptr null`, a null type); a cleanup pad would work too. Another language's
+   exceptions, and forced unwinding, go past compiled frames untouched. */
+static const uint8_t *dw_val(const uint8_t *p, int enc, uint64_t *v) {   /* a number in format enc & 15 */
+  uint64_t r = 0; unsigned s = 0; uint8_t b;
+  switch (enc & 15) {
+  case 0: case 4: case 12: memcpy(&r, p, 8); p += 8; break;   /* absptr, udata8, sdata8 */
+  case 2: { uint16_t x; memcpy(&x, p, 2); r = x; p += 2; break; }
+  case 3: { uint32_t x; memcpy(&x, p, 4); r = x; p += 4; break; }
+  case 10: { int16_t x; memcpy(&x, p, 2); r = (uint64_t)(int64_t)x; p += 2; break; }
+  case 11: { int32_t x; memcpy(&x, p, 4); r = (uint64_t)(int64_t)x; p += 4; break; }
+  case 1: case 9:                      /* uleb128, sleb128 */
+    do { b = *p++; if (s < 64) r |= (uint64_t)(b & 127) << s; s += 7; } while (b & 128);
+    if ((enc & 15) == 9 && s < 64 && b & 64) r |= ~(uint64_t)0 << s;
+    break;
+  default: return 0;
+  }
+  *v = r; return p;
+}
+static const uint8_t *dw_ptr(const uint8_t *p, int enc, struct _Unwind_Context *ctx, uint64_t *v) {   /* a pointer */
+  uint64_t base = 0;
+  switch (enc & 0x70) {
+  case 0x00: break;                                       /* absptr */
+  case 0x10: base = (uintptr_t)p; break;                  /* pcrel: from where it is stored */
+#ifdef __APPLE__
+  /* Darwin has no text/data-relative unwind bases. Reject these encodings, as an unknown
+     encoding below, rather than treating their offset as an absolute pointer. */
+  case 0x20: case 0x30: return 0;
+#else
+  case 0x20: base = _Unwind_GetTextRelBase(ctx); break;   /* textrel */
+  case 0x30: base = _Unwind_GetDataRelBase(ctx); break;   /* datarel */
+#endif
+  case 0x40: base = _Unwind_GetRegionStart(ctx); break;   /* funcrel */
+  case 0x50: p = (const uint8_t *)(((uintptr_t)p + 7) & ~(uintptr_t)7); break;   /* aligned */
+  default: return 0;
+  }
+  if (!(p = dw_val(p, enc, v))) return 0;
+  if (*v) { *v += base; if (enc & 0x80) memcpy(v, (const void *)(uintptr_t)*v, 8); }   /* indirect; 0 stays null */
+  return p;
+}
+_Unwind_Reason_Code pys_personality(int version, _Unwind_Action actions, _Unwind_Exception_Class cls,
+                                    struct _Unwind_Exception *ue, struct _Unwind_Context *ctx) {
+#ifdef __APPLE__
+  const uint8_t *p = (const uint8_t *)_Unwind_GetLanguageSpecificData(ctx), *tt = 0, *at;
+#else
+  const uint8_t *p = _Unwind_GetLanguageSpecificData(ctx), *tt = 0, *at;
+#endif
+  uint64_t start = _Unwind_GetRegionStart(ctx), lpbase = start, n, cs, len, lp, act;
+  int search = actions & _UA_SEARCH_PHASE, before = 0, ttenc, csenc;
+  _Unwind_Reason_Code bad = search ? _URC_FATAL_PHASE1_ERROR : _URC_FATAL_PHASE2_ERROR;
+  if (version != 1) return bad;
+  if (cls != PYS_EXC || !p) return _URC_CONTINUE_UNWIND;   /* (another forced unwind: thread cancellation) */
+  uint64_t ip = _Unwind_GetIPInfo(ctx, &before) - !before;   /* in the call instruction, not after it */
+  int lpenc = *p++;
+  if (lpenc != 0xff && !(p = dw_ptr(p, lpenc, ctx, &lpbase))) return bad;
+  if ((ttenc = *p++) != 0xff) { if (!(p = dw_val(p, 1, &n))) return bad; tt = p + n; }
+  csenc = *p++;
+  if (!(p = dw_val(p, 1, &n))) return bad;
+  for (at = p + n; p < at;) {          /* at: the action records, after the call sites */
+    if (!(p = dw_val(p, csenc, &cs)) || !(p = dw_val(p, csenc, &len)) || !(p = dw_val(p, csenc, &lp)) || !(p = dw_val(p, 1, &act)))
+      return bad;
+    if (ip < start + cs) break;        /* sorted: nothing covers ip */
+    if (ip >= start + cs + len) continue;
+    if (!lp) return _URC_CONTINUE_UNWIND;   /* a call that may raise, without a landing pad */
+    uint64_t sel = 0, cleanup = !act, f, next, ti;
+    for (const uint8_t *a = at + act - 1, *d; act;) {   /* catch clauses (filter > 0), cleanup (0) */
+      if (!(a = dw_val(a, 9, &f))) return bad;
+      d = a;
+      if (!(a = dw_val(a, 9, &next))) return bad;
+      if ((int64_t)f > 0) {            /* the filter-th type before tt: null catches everything */
+        int k = ttenc & 15, sz = k == 2 || k == 10 ? 2 : k == 3 || k == 11 ? 4 : k == 0 || k == 4 || k == 12 ? 8 : 0;
+        if (!tt || !sz || !dw_ptr(tt - f * sz, ttenc, ctx, &ti)) return bad;
+        if (!ti) { sel = f; break; }
+      } else if (!f) cleanup = 1;
+      if (!next) break;
+      a = d + next;
+    }
+    if (search) return sel ? _URC_HANDLER_FOUND : _URC_CONTINUE_UNWIND;
+    int hf = (actions & (_UA_HANDLER_FRAME | _UA_FORCE_UNWIND)) != 0;   /* (pys_throw's forced unwind: a catch is the handler) */
+    if (hf ? !sel : !cleanup) return _URC_CONTINUE_UNWIND;
+    _Unwind_SetGR(ctx, __builtin_eh_return_data_regno(0), (uintptr_t)ue);
+    _Unwind_SetGR(ctx, __builtin_eh_return_data_regno(1), hf ? sel : 0);
+    _Unwind_SetIP(ctx, lpbase + lp);
+    return _URC_INSTALL_CONTEXT;
+  }
+  return _URC_CONTINUE_UNWIND;         /* no entry: a call that cannot raise */
+}
+
+/* ---------- the time module: clocks and sleep ---------- */
+static I clock_ns(clockid_t c) { struct timespec t; clock_gettime(c, &t); return (I)t.tv_sec * 1000000000 + t.tv_nsec; }
+static double ns_secs(I ns) { return ns % 1000000000 == 0 ? (double)(ns / 1000000000) : (double)ns / 1e9; }   /* as CPython */
+double pys_time(void) { return ns_secs(clock_ns(CLOCK_REALTIME)); }
+I pys_time_ns(void) { return clock_ns(CLOCK_REALTIME); }
+double pys_monotonic(void) { return ns_secs(clock_ns(CLOCK_MONOTONIC)); }
+I pys_monotonic_ns(void) { return clock_ns(CLOCK_MONOTONIC); }
+double pys_process_time(void) { return ns_secs(clock_ns(CLOCK_PROCESS_CPUTIME_ID)); }
+I pys_process_time_ns(void) { return clock_ns(CLOCK_PROCESS_CPUTIME_ID); }
+/* time.strftime(fmt, time.localtime(secs)), or of time.gmtime(secs) where utc, for
+   lib/_pystachy_time.py (logging's Formatter.formatTime()): what CPython 3.13 gives on Linux. The
+   time is floored to whole seconds, as time.localtime() floors it, and converted with
+   localtime_r() or gmtime_r(); then, as time_strftime() and time_strftime1() do, each run of
+   ASCII characters other than NUL goes to strftime(), whose buffer grows from 1024 bytes until the
+   result fits or the buffer reaches 256 times the run's length (an empty result), and the
+   characters from there up to the next '%' are copied as they are */
+Str *pys_strftime_at(Str *fmt, double secs, I utc) {
+  if (secs != secs) pys_fail("ValueError: Invalid value NaN (not a number)");
+  double f = floor(secs);
+  if (!(f >= -9223372036854775808.0 && f < 9223372036854775808.0)) pys_fail("OverflowError: timestamp out of range for platform time_t");
+  time_t t = (time_t)f;
+  struct tm tm;
+  errno = 0;
+  if ((utc ? gmtime_r(&t, &tm) : localtime_r(&t, &tm)) == NULL) ioerr(errno ? errno : EINVAL);
+  if (tm.tm_isdst < -1) tm.tm_isdst = -1;
+  else if (tm.tm_isdst > 1) tm.tm_isdst = 1;
+  Buf out = {0};
+  const char *s = fmt->s;
+  I n = fmt->len, i = 0;
+  size_t size = 1024;
+  char *buf = pys_alloc_atomic(size);
+  while (i < n) {
+    I a = i;
+    while (i < n && s[i] != 0 && (unsigned char)s[i] < 128) i++;
+    if (i > a) {
+      char *seg = pys_alloc_atomic(i - a + 1);
+      memcpy(seg, s + a, i - a); seg[i - a] = 0;
+      for (;;) {
+        size_t len = strftime(buf, size, seg, &tm);
+        if (len == 0 && size < 256 * (size_t)(i - a)) { size += size; buf = pys_alloc_atomic(size); continue; }
+        put(&out, buf, (I)len);
+        break;
+      }
+    }
+    I b = i;
+    while (i < n && s[i] != '%') i++;
+    if (i > b) put(&out, s + b, i - b);
+  }
+  return done(&out);
+}
+void pys_sleep(double s) {             /* time.sleep: resumes after a signal (PEP 475); Ctrl-C raises KeyboardInterrupt */
+  if (s != s) pys_fail("ValueError: Invalid value NaN (not a number)");
+  if (s < 0) pys_fail("ValueError: sleep length must be non-negative");
+  if (s >= 9.2e9) pys_fail("OverflowError: timestamp too large to convert to C _PyTime_t");
+  struct timespec t = {(time_t)s, (long)((s - (double)(time_t)s) * 1e9)}, r;
+  if (t.tv_nsec >= 1000000000) { t.tv_sec++; t.tv_nsec -= 1000000000; }
+  while (nanosleep(&t, &r) != 0 && errno == EINTR) { if (io_intr) kbint_exit(); t = r; }
+}
+void pys_sleep_int(I s) { pys_sleep((double)s); }
+
+/* ---------- select: a POSIX integer-descriptor subset ---------- */
+static int select_fds(List *fds, fd_set *set, int maxfd) {
+  FD_ZERO(set);
+  for (I i = 0; i < fds->len; i++) {
+    I fd = fds->a[i];
+    if (fd < INT32_MIN || fd > INT32_MAX) pys_fail("OverflowError: Python int too large to convert to C int");
+    if (fd < 0) failf("ValueError: file descriptor cannot be a negative integer (%lld)", (long long)fd);
+    if (fd >= FD_SETSIZE) pys_fail("ValueError: filedescriptor out of range in select()");
+    /* CPython converts and validates the first excess item before its count
+       error; items beyond that one must not replace the earlier error. */
+    if (i >= FD_SETSIZE) pys_fail("ValueError: too many file descriptors in select()");
+    FD_SET((int)fd, set);  /* checked before the macro indexes its fixed-size bitmap */
+    if (fd > maxfd) maxfd = (int)fd;
+  }
+  return maxfd;
+}
+void **pys_select(List *r, List *w, List *x, double timeout, I blocking) {
+  list_narrow(r); list_narrow(w); list_narrow(x);   /* (file descriptors past 64 bits: BIGIDS) */
+  if (!blocking) {
+    if (isnan(timeout)) pys_fail("ValueError: Invalid value NaN (not a number)");
+    if (timeout >= 9223372036.854776 || timeout <= -9223372036.854776)
+      pys_fail("OverflowError: timestamp out of range for C PyTime_t");
+    if (timeout < 0) pys_fail("ValueError: timeout must be non-negative");
+  }
+  fd_set original[3], ready[3];
+  int maxfd = select_fds(r, &original[0], -1);
+  maxfd = select_fds(w, &original[1], maxfd);
+  maxfd = select_fds(x, &original[2], maxfd);
+  double deadline = blocking ? 0 : pys_monotonic() + timeout;
+  double remaining = timeout;
+  for (;;) {
+    ready[0] = original[0]; ready[1] = original[1]; ready[2] = original[2];
+    struct timespec tv = {0, 0};
+    if (!blocking) {
+      tv.tv_sec = (time_t)remaining;
+      tv.tv_nsec = (long)ceil((remaining - (double)tv.tv_sec) * 1e9);
+      if (tv.tv_nsec >= 1000000000) { tv.tv_sec++; tv.tv_nsec -= 1000000000; }
+    }
+    /* Block SIGINT until the kernel starts waiting: if it arrived after io_in
+       but before select, the handler would merely note it and select could wait
+       forever. pselect atomically restores the caller's mask for the wait. */
+    sigset_t blocked, previous;
+    sigemptyset(&blocked); sigaddset(&blocked, SIGINT);
+    if (sigprocmask(SIG_BLOCK, &blocked, &previous)) ioerr(errno);
+    if (io_intr) {
+      if (sigprocmask(SIG_SETMASK, &previous, NULL)) ioerr(errno);
+      kbint_exit();
+    }
+    io_in();
+    int n = pselect(maxfd + 1, &ready[0], &ready[1], &ready[2], blocking ? NULL : &tv, &previous);
+    int e = errno;
+    int mask_error = sigprocmask(SIG_SETMASK, &previous, NULL) ? errno : 0;
+    io_out();  /* a pending SIGINT retains the runtime's KeyboardInterrupt behavior */
+    if (mask_error) ioerr(mask_error);
+    if (n >= 0) break;
+    if (e != EINTR) ioerr(e);
+    if (!blocking) {
+      remaining = deadline - pys_monotonic();
+      if (remaining <= 0) {
+        FD_ZERO(&ready[0]); FD_ZERO(&ready[1]); FD_ZERO(&ready[2]);
+        break;
+      }
+    }
+  }
+  List *inputs[3] = {r, w, x};
+  void **out = pys_alloc(24);  /* a scanned fixed tuple keeps each result list alive */
+  for (int k = 0; k < 3; k++) {
+    List *src = inputs[k], *dst = pys_list_new_atomic(src->len);
+    out[k] = dst;
+    int ids = src->ids && opt_in() && !big_list(src);   /* (a list of promoting ints' companion holds no identities: BIGIDS) */
+    if (ids) pys_list_identity(src, src->ids[0]);
+    for (I i = 0; i < src->len; i++)
+      if (FD_ISSET((int)src->a[i], &ready[k])) {
+        if (ids) pys_list_append_identity(dst, src->a[i], (Dyn *)src->ids[i + 1], src->ids[0]);
+        else pys_list_append(dst, src->a[i]);
+      }
+  }
+  return out;
+}
+
+/* ---------- the errno module: the platform's error numbers ---------- */
+/* GC_NO_ROOT(errnos): errno names are C string literals. */
+static const struct { const char *name; int value; } errnos[] = {
+#ifdef EPERM
+  {"EPERM", EPERM},
+#endif
+#ifdef ENOENT
+  {"ENOENT", ENOENT},
+#endif
+#ifdef ESRCH
+  {"ESRCH", ESRCH},
+#endif
+#ifdef EINTR
+  {"EINTR", EINTR},
+#endif
+#ifdef EIO
+  {"EIO", EIO},
+#endif
+#ifdef ENXIO
+  {"ENXIO", ENXIO},
+#endif
+#ifdef E2BIG
+  {"E2BIG", E2BIG},
+#endif
+#ifdef ENOEXEC
+  {"ENOEXEC", ENOEXEC},
+#endif
+#ifdef EBADF
+  {"EBADF", EBADF},
+#endif
+#ifdef ECHILD
+  {"ECHILD", ECHILD},
+#endif
+#ifdef EAGAIN
+  {"EAGAIN", EAGAIN},
+#endif
+#ifdef ENOMEM
+  {"ENOMEM", ENOMEM},
+#endif
+#ifdef EACCES
+  {"EACCES", EACCES},
+#endif
+#ifdef EFAULT
+  {"EFAULT", EFAULT},
+#endif
+#ifdef ENOTBLK
+  {"ENOTBLK", ENOTBLK},
+#endif
+#ifdef EBUSY
+  {"EBUSY", EBUSY},
+#endif
+#ifdef EEXIST
+  {"EEXIST", EEXIST},
+#endif
+#ifdef EXDEV
+  {"EXDEV", EXDEV},
+#endif
+#ifdef ENODEV
+  {"ENODEV", ENODEV},
+#endif
+#ifdef ENOTDIR
+  {"ENOTDIR", ENOTDIR},
+#endif
+#ifdef EISDIR
+  {"EISDIR", EISDIR},
+#endif
+#ifdef EINVAL
+  {"EINVAL", EINVAL},
+#endif
+#ifdef ENFILE
+  {"ENFILE", ENFILE},
+#endif
+#ifdef EMFILE
+  {"EMFILE", EMFILE},
+#endif
+#ifdef ENOTTY
+  {"ENOTTY", ENOTTY},
+#endif
+#ifdef ETXTBSY
+  {"ETXTBSY", ETXTBSY},
+#endif
+#ifdef EFBIG
+  {"EFBIG", EFBIG},
+#endif
+#ifdef ENOSPC
+  {"ENOSPC", ENOSPC},
+#endif
+#ifdef ESPIPE
+  {"ESPIPE", ESPIPE},
+#endif
+#ifdef EROFS
+  {"EROFS", EROFS},
+#endif
+#ifdef EMLINK
+  {"EMLINK", EMLINK},
+#endif
+#ifdef EPIPE
+  {"EPIPE", EPIPE},
+#endif
+#ifdef EDOM
+  {"EDOM", EDOM},
+#endif
+#ifdef ERANGE
+  {"ERANGE", ERANGE},
+#endif
+#ifdef EDEADLK
+  {"EDEADLK", EDEADLK},
+#endif
+#ifdef ENAMETOOLONG
+  {"ENAMETOOLONG", ENAMETOOLONG},
+#endif
+#ifdef ENOLCK
+  {"ENOLCK", ENOLCK},
+#endif
+#ifdef ENOSYS
+  {"ENOSYS", ENOSYS},
+#endif
+#ifdef ENOTEMPTY
+  {"ENOTEMPTY", ENOTEMPTY},
+#endif
+#ifdef ELOOP
+  {"ELOOP", ELOOP},
+#endif
+#ifdef EWOULDBLOCK
+  {"EWOULDBLOCK", EWOULDBLOCK},
+#endif
+#ifdef ENOMSG
+  {"ENOMSG", ENOMSG},
+#endif
+#ifdef EIDRM
+  {"EIDRM", EIDRM},
+#endif
+#ifdef ENOSTR
+  {"ENOSTR", ENOSTR},
+#endif
+#ifdef ENODATA
+  {"ENODATA", ENODATA},
+#endif
+#ifdef ETIME
+  {"ETIME", ETIME},
+#endif
+#ifdef ENOSR
+  {"ENOSR", ENOSR},
+#endif
+#ifdef EREMOTE
+  {"EREMOTE", EREMOTE},
+#endif
+#ifdef ENOLINK
+  {"ENOLINK", ENOLINK},
+#endif
+#ifdef EPROTO
+  {"EPROTO", EPROTO},
+#endif
+#ifdef EMULTIHOP
+  {"EMULTIHOP", EMULTIHOP},
+#endif
+#ifdef EBADMSG
+  {"EBADMSG", EBADMSG},
+#endif
+#ifdef EOVERFLOW
+  {"EOVERFLOW", EOVERFLOW},
+#endif
+#ifdef EILSEQ
+  {"EILSEQ", EILSEQ},
+#endif
+#ifdef EUSERS
+  {"EUSERS", EUSERS},
+#endif
+#ifdef ENOTSOCK
+  {"ENOTSOCK", ENOTSOCK},
+#endif
+#ifdef EDESTADDRREQ
+  {"EDESTADDRREQ", EDESTADDRREQ},
+#endif
+#ifdef EMSGSIZE
+  {"EMSGSIZE", EMSGSIZE},
+#endif
+#ifdef EPROTOTYPE
+  {"EPROTOTYPE", EPROTOTYPE},
+#endif
+#ifdef ENOPROTOOPT
+  {"ENOPROTOOPT", ENOPROTOOPT},
+#endif
+#ifdef EPROTONOSUPPORT
+  {"EPROTONOSUPPORT", EPROTONOSUPPORT},
+#endif
+#ifdef ESOCKTNOSUPPORT
+  {"ESOCKTNOSUPPORT", ESOCKTNOSUPPORT},
+#endif
+#ifdef EOPNOTSUPP
+  {"EOPNOTSUPP", EOPNOTSUPP},
+#endif
+#ifdef ENOTSUP
+  {"ENOTSUP", ENOTSUP},
+#endif
+#ifdef EPFNOSUPPORT
+  {"EPFNOSUPPORT", EPFNOSUPPORT},
+#endif
+#ifdef EAFNOSUPPORT
+  {"EAFNOSUPPORT", EAFNOSUPPORT},
+#endif
+#ifdef EADDRINUSE
+  {"EADDRINUSE", EADDRINUSE},
+#endif
+#ifdef EADDRNOTAVAIL
+  {"EADDRNOTAVAIL", EADDRNOTAVAIL},
+#endif
+#ifdef ENETDOWN
+  {"ENETDOWN", ENETDOWN},
+#endif
+#ifdef ENETUNREACH
+  {"ENETUNREACH", ENETUNREACH},
+#endif
+#ifdef ENETRESET
+  {"ENETRESET", ENETRESET},
+#endif
+#ifdef ECONNABORTED
+  {"ECONNABORTED", ECONNABORTED},
+#endif
+#ifdef ECONNRESET
+  {"ECONNRESET", ECONNRESET},
+#endif
+#ifdef ENOBUFS
+  {"ENOBUFS", ENOBUFS},
+#endif
+#ifdef EISCONN
+  {"EISCONN", EISCONN},
+#endif
+#ifdef ENOTCONN
+  {"ENOTCONN", ENOTCONN},
+#endif
+#ifdef ESHUTDOWN
+  {"ESHUTDOWN", ESHUTDOWN},
+#endif
+#ifdef ETOOMANYREFS
+  {"ETOOMANYREFS", ETOOMANYREFS},
+#endif
+#ifdef ETIMEDOUT
+  {"ETIMEDOUT", ETIMEDOUT},
+#endif
+#ifdef ECONNREFUSED
+  {"ECONNREFUSED", ECONNREFUSED},
+#endif
+#ifdef EHOSTDOWN
+  {"EHOSTDOWN", EHOSTDOWN},
+#endif
+#ifdef EHOSTUNREACH
+  {"EHOSTUNREACH", EHOSTUNREACH},
+#endif
+#ifdef EALREADY
+  {"EALREADY", EALREADY},
+#endif
+#ifdef EINPROGRESS
+  {"EINPROGRESS", EINPROGRESS},
+#endif
+#ifdef ESTALE
+  {"ESTALE", ESTALE},
+#endif
+#ifdef EDQUOT
+  {"EDQUOT", EDQUOT},
+#endif
+#ifdef ECANCELED
+  {"ECANCELED", ECANCELED},
+#endif
+#ifdef EOWNERDEAD
+  {"EOWNERDEAD", EOWNERDEAD},
+#endif
+#ifdef ENOTRECOVERABLE
+  {"ENOTRECOVERABLE", ENOTRECOVERABLE},
+#endif
+};
+I pys_errno(Str *name) {
+  for (size_t i = 0; i < sizeof errnos / sizeof errnos[0]; i++) if (strcmp(errnos[i].name, name->s) == 0) return errnos[i].value;
+  Buf b = {0}; put(&b, "AttributeError: module 'errno' has no attribute '", 49); put(&b, name->s, name->len); put(&b, "'", 2); pys_fail(b.p);
+}
+
+/* ---------- temporary directories: tempfile.mkdtemp, os.remove, os.rmdir ---------- */
+static _Noreturn void oserr(const char *path) {         /* raise CPython's OSError subclass for errno */
+  int e = errno; Buf b = {0}; char t[32];
+  const char *k = errcls(e), *m = strerror(e);
+  put(&b, k, strlen(k)); put(&b, t, snprintf(t, sizeof t, ": [Errno %d] ", e)); put(&b, m, strlen(m)); put(&b, ": ", 2);
+  repr_str(&b, cstr(path)); put(&b, "", 1); pys_fail(b.p);
+}
+void pys_remove(Str *p) { if (nul(p)) pys_fail("ValueError: remove: embedded null character in path"); if (unlink(p->s)) oserr(p->s); }
+void pys_rmdir(Str *p) { if (nul(p)) pys_fail("ValueError: rmdir: embedded null character in path"); if (rmdir(p->s)) oserr(p->s); }
+/* os.listdir(p): the names in directory p but . and .., in the order readdir gives them, as
+   CPython's _posix_listdir lists them (os.listdir() lists ".") */
+List *pys_listdir(Str *p) {
+  if (nul(p)) pys_fail("ValueError: listdir: embedded null character in path");
+  DIR *d = opendir(p->s);
+  if (!d) oserr(p->s);
+  List *l = pys_list_new(0);
+  for (;;) {
+    errno = 0;
+    struct dirent *e = readdir(d);
+    if (!e) break;
+    const char *n = e->d_name;
+    if (n[0] == '.' && (n[1] == 0 || (n[1] == '.' && n[2] == 0))) continue;
+    pys_list_append(l, (I)pys_str(n, (I)strlen(n)));
+  }
+  int err = errno;
+  closedir(d);
+  if (err) { errno = err; oserr(p->s); }
+  return l;
+}
+List *pys_listdir_cwd(void) { return pys_listdir(pys_str(".", 1)); }
+/* os.mkdir(p, mode): CPython's posix_mkdir */
+void pys_mkdir(Str *p, I mode) { if (nul(p)) pys_fail("ValueError: mkdir: embedded null character in path"); if (mkdir(p->s, (mode_t)mode)) oserr(p->s); }
+void pys_mkdir_default(Str *p) { pys_mkdir(p, 0777); }
+/* os.makedirs(name, mode, exist_ok), as CPython 3.13's steps: a parent that does not exist is made
+   first, with the default mode, and its FileExistsError (someone made it meanwhile) is passed
+   over; then name itself, whose failure exist_ok forgives where name is a directory */
+I pys_isdir(Str *p);
+static void path_split(Str *p, Str **head, Str **tail) {   /* posixpath.split(p) */
+  I i = p->len;
+  while (i > 0 && p->s[i - 1] != '/') i--;
+  I j = i;
+  while (j > 0 && p->s[j - 1] == '/') j--;
+  *head = pys_str(p->s, j ? j : i); *tail = pys_str(p->s + i, p->len - i);
+}
+static void makedirs(Str *name, I mode, I exist_ok, int top) {
+  Str *head, *tail;
+  path_split(name, &head, &tail);
+  if (!tail->len) path_split(head, &head, &tail);
+  if (head->len && tail->len && !pys_exists(head)) {
+    makedirs(head, 0777, exist_ok, 0);
+    if (tail->len == 1 && tail->s[0] == '.') return;       /* (xxx/newdir/. exists once xxx/newdir does) */
+  }
+  if (nul(name)) pys_fail("ValueError: mkdir: embedded null character in path");
+  if (mode < INT_MIN || mode > INT_MAX) pys_fail("OverflowError: Python int too large to convert to C int");
+  if (mkdir(name->s, (mode_t)mode)) {
+    int e = errno;
+    if (exist_ok && pys_isdir(name)) return;
+    if (!top && e == EEXIST) return;                       /* (the caller's except FileExistsError: pass) */
+    errno = e; oserr(name->s);
+  }
+}
+void pys_makedirs(Str *name, I mode, I exist_ok) { makedirs(name, mode, exist_ok, 1); }
+static _Noreturn void oserr2(const char *a, const char *b) {   /* the OSError of a call of two paths: 'a' -> 'b' */
+  int e = errno; Buf bf = {0}; char t[32];
+  const char *k = errcls(e), *m = strerror(e);
+  put(&bf, k, strlen(k)); put(&bf, t, snprintf(t, sizeof t, ": [Errno %d] ", e)); put(&bf, m, strlen(m)); put(&bf, ": ", 2);
+  repr_str(&bf, cstr(a)); put(&bf, " -> ", 4); repr_str(&bf, cstr(b)); put(&bf, "", 1); pys_fail(bf.p);
+}
+/* os.rename(a, b) and os.replace(a, b), which POSIX's rename(2) both are */
+void pys_rename(Str *a, Str *b) { if (nul(a) || nul(b)) pys_fail("ValueError: rename: embedded null character in path"); if (rename(a->s, b->s)) oserr2(a->s, b->s); }
+void pys_replace(Str *a, Str *b) { if (nul(a) || nul(b)) pys_fail("ValueError: replace: embedded null character in path"); if (rename(a->s, b->s)) oserr2(a->s, b->s); }
+/* os.path.isdir, isfile, islink and lexists: genericpath's and posixpath's, false where stat() or lstat() fails */
+I pys_isdir(Str *p) { struct stat st; return !nul(p) && stat(p->s, &st) == 0 && S_ISDIR(st.st_mode); }
+I pys_isfile(Str *p) { struct stat st; return !nul(p) && stat(p->s, &st) == 0 && S_ISREG(st.st_mode); }
+I pys_islink(Str *p) { struct stat st; return !nul(p) && lstat(p->s, &st) == 0 && S_ISLNK(st.st_mode); }
+I pys_lexists(Str *p) { struct stat st; return !nul(p) && lstat(p->s, &st) == 0; }
+/* lib/pathlib.py's and lib/shutil.py's __pys_stat_mode(p, follow): the st_mode of os.stat(p) (of
+   os.lstat(p) where follow is 0), or -1 where pathlib ignores the error (ENOENT, ENOTDIR, EBADF and
+   ELOOP: _ignore_error) or for an embedded null character (ValueError); another error raises */
+I pys_stat_mode(Str *p, I follow) {
+  struct stat st;
+  if (nul(p)) return -1;
+  if ((follow ? stat(p->s, &st) : lstat(p->s, &st)) == 0) return st.st_mode;
+  if (errno == ENOENT || errno == ENOTDIR || errno == EBADF || errno == ELOOP) return -1;
+  oserr(p->s);
+}
+/* lib/pathlib.py's __pys_touch(p, mode, exist_ok): Path.touch(), the times of a file that exists
+   made now where exist_ok, else os.open(p, O_CREAT | O_WRONLY, mode), with O_EXCL unless exist_ok */
+void pys_touch(Str *p, I mode, I exist_ok) {
+  if (nul(p)) pys_fail("ValueError: open: embedded null character in path");
+  if (exist_ok && utime(p->s, NULL) == 0) return;
+  int fd = open(p->s, O_CREAT | O_WRONLY | (exist_ok ? 0 : O_EXCL), (mode_t)mode);
+  if (fd < 0) oserr(p->s);
+  close(fd);
+}
+/* lib/shutil.py's __pys_copyfile(a, b) and __pys_copymode(a, b): the bytes of file a written to
+   file b (CPython's copyfile once its checks pass), and a's permission bits given to b (chmod).
+   a is opened, and checked as CPython's FileIO checks it (open() of a directory succeeds on Linux,
+   then fstat() makes it IsADirectoryError), before b is opened, which truncates b */
+void pys_copyfile(Str *a, Str *b) {
+  if (nul(a) || nul(b)) pys_fail("ValueError: open: embedded null character in path");
+  FILE *in = fopen(a->s, "rb");
+  if (!in) oserr(a->s);
+  struct stat st;
+  if (fstat(fileno(in), &st) == 0 && S_ISDIR(st.st_mode)) { fclose(in); errno = EISDIR; oserr(a->s); }
+  FILE *out = fopen(b->s, "wb");
+  if (!out) { int e = errno; fclose(in); errno = e; oserr(b->s); }
+  char buf[65536];
+  size_t n;
+  while ((n = fread(buf, 1, sizeof buf, in)) > 0)
+    if (fwrite(buf, 1, n, out) != n) { int e = errno; fclose(in); fclose(out); errno = e; oserr(b->s); }
+  int rerr = ferror(in) ? errno : 0;
+  fclose(in);
+  if (fclose(out)) oserr(b->s);
+  if (rerr) { errno = rerr; oserr(a->s); }
+}
+void pys_copymode(Str *a, Str *b) {
+  struct stat st;
+  if (nul(a) || nul(b)) pys_fail("ValueError: stat: embedded null character in path");
+  if (stat(a->s, &st)) oserr(a->s);
+  if (chmod(b->s, st.st_mode & 07777)) oserr(b->s);
+}
+/* lib/shutil.py's __pys_rmtree(path, ignore_errors): rmtree() as CPython 3.13 runs it on Linux,
+   its _rmtree_safe_fd. Each directory is opened through its parent's descriptor, and fstat()
+   must find the device and inode that lstat() found before its entries are read and removed
+   through that descriptor, so that a directory replaced by a link meanwhile is not followed. The
+   steps, their order and their errors are CPython's: a stack of steps (lstat, open, check and
+   scan; close; rmdir), a directory's other entries unlinked as its scan meets them and its
+   subdirectories pushed, so walked last first. An error carries the path of the step that met
+   it (CPython sets err.filename = path), a link's is an OSError of no errno ("[Errno None] None:
+   'path'"), and FileNotFoundError is one only for the top directory and for a close. CPython's
+   onexc re-raises it once the descriptors left on the stack are closed, or, where ignore_errors,
+   passes over it: the step ends, but an entry's unlink error lets the scan go on. The walk's
+   paths and names are malloc'd: it allocates nothing the collector sees until it raises. */
+typedef struct { int op, dirfd, top; char *path, *name; } RmStep;   /* op: 0 lstat (then open, check, scan), 1 close, 2 rmdir */
+typedef struct {
+  RmStep *a; I n, cap, ignore;                     /* the steps to run */
+  RmStep cur;                                      /* the step running */
+  char **names; unsigned char *types; I nn, ncap;  /* its scan's entries, and their d_type */
+} RmWalk;
+static char *rm_dup(const char *s) { size_t n = strlen(s); char *p = malloc(n + 1); if (!p) oom(); memcpy(p, s, n + 1); return p; }
+static void rm_push(RmWalk *w, int op, int dirfd, int top, char *path, char *name) {   /* takes path and name */
+  if (w->n == w->cap) { I c = w->cap * 2 + 16; RmStep *a = realloc(w->a, c * sizeof(RmStep)); if (!a) oom(); w->a = a; w->cap = c; }
+  w->a[w->n++] = (RmStep){op, dirfd, top, path, name};
+}
+static void rm_entries_free(RmWalk *w) { for (I i = 0; i < w->nn; i++) free(w->names[i]); w->nn = 0; }
+static _Noreturn void rm_raise(RmWalk *w, int e) {   /* onexc's raise, then rmtree's finally: close what is open */
+  Buf b = {0};
+  if (e) {
+    char t[32]; const char *k = errcls(e), *m = strerror(e);
+    put(&b, k, strlen(k)); put(&b, t, snprintf(t, sizeof t, ": [Errno %d] ", e)); put(&b, m, strlen(m)); put(&b, ": ", 2);
+  } else put(&b, "OSError: [Errno None] None: ", 28);
+  repr_str(&b, cstr(w->cur.path)); put(&b, "", 1);
+  rm_entries_free(w); free(w->names); free(w->types);
+  free(w->cur.path); free(w->cur.name);
+  while (w->n > 0) { RmStep *s = &w->a[--w->n]; if (s->op == 1) close(s->dirfd); free(s->path); free(s->name); }
+  free(w->a);
+  pys_fail(b.p);
+}
+static void rm_scan(RmWalk *w, int fd) {   /* entries = list(os.scandir(fd)), then each entry's unlink or push */
+  RmStep *c = &w->cur;
+  int d = dup(fd);                         /* (os.scandir(fd) reads a duplicate of it) */
+  DIR *dp = d < 0 ? NULL : fdopendir(d);
+  if (!dp) {
+    int e = errno; if (d >= 0) close(d);
+    if (e != ENOENT || c->top) { if (!w->ignore) rm_raise(w, e); }
+    return;
+  }
+  for (;;) {
+    errno = 0;
+    struct dirent *de = readdir(dp);
+    if (!de) break;
+    const char *nm = de->d_name;
+    if (nm[0] == '.' && (nm[1] == 0 || (nm[1] == '.' && nm[2] == 0))) continue;
+    if (w->nn == w->ncap) {
+      I k = w->ncap * 2 + 16; char **a = realloc(w->names, k * sizeof(char *)); if (!a) oom(); w->names = a;
+      unsigned char *t = realloc(w->types, k); if (!t) oom(); w->types = t; w->ncap = k;
+    }
+    w->names[w->nn] = rm_dup(nm); w->types[w->nn++] = de->d_type;
+  }
+  int e = errno;
+  closedir(dp);
+  if (e) {
+    rm_entries_free(w);
+    if (e != ENOENT || c->top) { if (!w->ignore) rm_raise(w, e); }
+    return;
+  }
+  size_t pl = strlen(c->path);
+  for (I i = 0; i < w->nn; i++) {
+    const char *nm = w->names[i];
+    int isdir = w->types[i] == DT_DIR;     /* entry.is_dir(follow_symlinks=False): d_type, or an lstat */
+    if (w->types[i] == DT_UNKNOWN) {
+      struct stat es;
+      if (fstatat(fd, nm, &es, AT_SYMLINK_NOFOLLOW)) { if (errno == ENOENT) continue; }
+      else isdir = S_ISDIR(es.st_mode);
+    }
+    if (isdir) {                           /* fullname = os.path.join(path, name), walked later */
+      size_t nl = strlen(nm);
+      char *full = malloc(pl + nl + 2); if (!full) oom();
+      memcpy(full, c->path, pl); size_t k = pl;
+      if (pl && c->path[pl - 1] != '/') full[k++] = '/';
+      memcpy(full + k, nm, nl + 1);
+      rm_push(w, 0, fd, 0, full, rm_dup(nm));
+      continue;
+    }
+    if (unlinkat(fd, nm, 0) && errno != ENOENT && !w->ignore) rm_raise(w, errno);
+  }
+  rm_entries_free(w);
+}
+static void rm_step(RmWalk *w) {
+  RmStep *c = &w->cur;
+  *c = w->a[--w->n];
+  if (c->op == 1) {                        /* os.close(dirfd) */
+    if (close(c->dirfd) && !w->ignore) rm_raise(w, errno);
+  } else if (c->op == 2) {                 /* os.rmdir(name, dir_fd=dirfd) */
+    if ((c->top ? rmdir(c->name) : unlinkat(c->dirfd, c->name, AT_REMOVEDIR)) && (errno != ENOENT || c->top) && !w->ignore)
+      rm_raise(w, errno);
+  } else {
+    struct stat orig, now;
+    int r = c->top ? lstat(c->name, &orig) : fstatat(c->dirfd, c->name, &orig, AT_SYMLINK_NOFOLLOW);
+    int fd = r ? -1 : openat(c->top ? AT_FDCWD : c->dirfd, c->name, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
+    if (fd < 0) {                          /* lstat's or open's error */
+      if ((errno != ENOENT || c->top) && !w->ignore) rm_raise(w, errno);
+    } else {
+      int ok = !fstat(fd, &now), e = errno;
+      int same = ok && now.st_dev == orig.st_dev && now.st_ino == orig.st_ino;
+      if (same) rm_push(w, 2, c->dirfd, c->top, rm_dup(c->path), rm_dup(c->name));
+      rm_push(w, 1, fd, c->top, rm_dup(c->path), rm_dup(c->name));
+      if (!same) {                         /* fstat's error, or a link: symlinks to directories are forbidden (GH-46010) */
+        if (!w->ignore) rm_raise(w, ok ? 0 : e);
+      } else rm_scan(w, fd);
+    }
+  }
+  free(c->path); free(c->name); c->path = c->name = NULL;
+}
+void pys_rmtree(Str *path, I ignore_errors) {
+  if (nul(path)) pys_fail("ValueError: lstat: embedded null character in path");
+  RmWalk w = {0};
+  w.ignore = ignore_errors;
+  rm_push(&w, 0, -1, 1, rm_dup(path->s), rm_dup(path->s));
+  while (w.n > 0) rm_step(&w);
+  free(w.a); free(w.names); free(w.types);
+}
+/* os.path.samefile(a, b): genericpath's, whether stat() finds one device and inode for both */
+I pys_samefile(Str *a, Str *b) {
+  struct stat x, y;
+  if (nul(a) || nul(b)) pys_fail("ValueError: stat: embedded null character in path");
+  if (stat(a->s, &x)) oserr(a->s);
+  if (stat(b->s, &y)) oserr(b->s);
+  return x.st_dev == y.st_dev && x.st_ino == y.st_ino;
+}
+typedef struct { Str **a; I n, cap; } Parts;            /* a stack of path components; NULL marks a resolved link */
+static void parts_push(Parts *p, Str *s) {
+  if (p->n == p->cap) { I c = p->cap * 2 + 16; Str **a = pys_alloc(c * sizeof(Str *)); if (p->n) memcpy(a, p->a, p->n * sizeof(Str *)); p->a = a; p->cap = c; }
+  p->a[p->n++] = s;
+}
+static I parts_split(Parts *p, const char *s, I n) {    /* push s.split("/") reversed, so that it pops in order */
+  I k = p->n;
+  for (I i = n, j = n; i >= 0; i--) if (i == 0 || s[i - 1] == '/') { parts_push(p, pys_str(s + i, j - i)); j = i - 1; }
+  return p->n - k;
+}
+Str *pys_realpath(Str *f) {    /* os.path.realpath(f): CPython 3.13's posixpath.realpath (strict=False), step for step */
+  if (nul(f)) pys_fail("ValueError: lstat: embedded null character in path");
+  Parts rest = {0}, seen = {0};                          /* seen: link path, then its resolved path (NULL: not yet) */
+  I count = parts_split(&rest, f->s, f->len);
+  Str *path;
+  if (f->len && f->s[0] == '/') path = cstr("/");
+  else {
+    char *c = getcwd(NULL, 0);
+    if (!c) {
+      int e = errno; Buf b = {0}; char t[32]; const char *k = errcls(e), *m = strerror(e);
+      put(&b, k, strlen(k)); put(&b, t, snprintf(t, sizeof t, ": [Errno %d] ", e)); put(&b, m, strlen(m)); put(&b, "", 1); pys_fail(b.p);
+    }
+    path = cstr(c); free(c);
+  }
+  while (count) {
+    Str *name = rest.a[--rest.n];
+    if (!name) {                                         /* a link's target is resolved */
+      Str *l = rest.a[--rest.n];
+      for (I i = 0; i < seen.n; i += 2) if (seen.a[i] == l) seen.a[i + 1] = path;
+      continue;
+    }
+    count--;
+    if (!name->len || (name->len == 1 && name->s[0] == '.')) continue;
+    if (name->len == 2 && name->s[0] == '.' && name->s[1] == '.') {
+      I i = path->len - 1;
+      while (path->s[i] != '/') i--;
+      path = pys_str(path->s, i ? i : 1);
+      continue;
+    }
+    Buf b = {0}; put(&b, path->s, path->len); if (path->len > 1) put(&b, "/", 1); put(&b, name->s, name->len);
+    Str *np = done(&b);
+    struct stat st;
+    if (lstat(np->s, &st) || !S_ISLNK(st.st_mode)) { path = np; continue; }   /* (errors are ignored) */
+    I k = -1;
+    for (I i = 0; i < seen.n; i += 2) if (seen.a[i]->len == np->len && !memcmp(seen.a[i]->s, np->s, np->len)) k = i;
+    if (k >= 0) { path = seen.a[k + 1] ? seen.a[k + 1] : np; continue; }   /* (NULL: a loop, kept as it is) */
+    Str *t = 0;
+    for (I n = 256; !t; n *= 2) {
+      char *buf = pys_alloc_atomic(n); ssize_t r = readlink(np->s, buf, n);
+      if (r < 0) break;
+      if (r < n) t = pys_str(buf, r);
+    }
+    if (!t) { path = np; continue; }
+    if (t->len && t->s[0] == '/') path = cstr("/");
+    parts_push(&seen, np); parts_push(&seen, 0);
+    parts_push(&rest, np); parts_push(&rest, 0);
+    count += parts_split(&rest, t->s, t->len);
+  }
+  return path;
+}
+static void abspath(Buf *r, const char *d) {            /* os.path.abspath + "/": no symlink resolution */
+  char cwd[4096]; Buf b = {0};
+  if (*d != '/' && getcwd(cwd, sizeof cwd)) { put(&b, cwd, strlen(cwd)); put(&b, "/", 1); }
+  put(&b, d, strlen(d)); put(r, "/", 1);
+  for (I i = 0, j; i < b.n; i = j + 1) {                /* one path component per round: drop "" and ".", pop on ".." */
+    for (j = i; j < b.n && b.p[j] != '/'; j++) {}
+    if (j - i == 2 && b.p[i] == '.' && b.p[i + 1] == '.') { if (r->n > 1) for (r->n--; r->p[r->n - 1] != '/'; r->n--) {} }
+    else if (j > i && !(j - i == 1 && b.p[i] == '.')) { put(r, b.p + i, j - i); put(r, "/", 1); }
+  }
+}
+Str *pys_mkdtemp(void) {     /* like CPython: first usable of $TMPDIR $TEMP $TMP /tmp /var/tmp /usr/tmp cwd, mode 0700 */
+  /* GC_NO_ROOT(pys_mkdtemp.env, pys_mkdtemp.none): environment names and error prefix are C literals. */
+  static const char *env[] = {"TMPDIR", "TEMP", "TMP"}, *none = "FileNotFoundError: [Errno 2] No usable temporary directory found in [";
+  const char *c[7]; int n = 0; char cwd[4096];
+  for (int i = 0; i < 3; i++) { char *v = getenv(env[i]); if (v && *v) c[n++] = v; }
+  c[n++] = "/tmp"; c[n++] = "/var/tmp"; c[n++] = "/usr/tmp"; c[n++] = getcwd(cwd, sizeof cwd) ? cwd : ".";
+  for (int i = 0; i < n; i++) {
+    Buf b = {0}; abspath(&b, c[i]); put(&b, "tmpXXXXXXXX", 12);
+    for (int tries = 0; tries < 10000; tries++) {   /* CPython's names: "tmp" and 8 of [a-z0-9_] */
+      unsigned char r[8]; char *x = b.p + b.n - 9;
+      if (getentropy(r, 8)) for (int k = 0; k < 8; k++) r[k] = rand();
+      for (int k = 0; k < 8; k++) x[k] = "abcdefghijklmnopqrstuvwxyz0123456789_"[r[k] % 37];
+      if (!mkdir(b.p, 0700)) return cstr(b.p);
+      if (errno != EEXIST) break;
+    }
+  }
+  Buf b = {0}; put(&b, none, strlen(none));
+  for (int i = 0; i < n; i++) { if (i) put(&b, ", ", 2); repr_str(&b, cstr(c[i])); }
+  put(&b, "]", 2); pys_fail(b.p);
+}
+
+/* ---------- tables ---------- */
+/* BEGIN GENERATED UNICODE CLASSIFICATION */
+/* Generated by tools/unicode_classification_tables.py from CPython 3.13.16, Unicode 15.1.0.
+   Each entry is (transition code point << 4) | alpha/digit/decimal/numeric flags.
+   Do not edit: regenerate with --write; --check verifies every code point. */
+static const uint32_t unicode_classification[] = {
+  0x0, 0x30e, 0x3a0, 0x411, 0x5b0, 0x611, 0x7b0, 0xaa1, 0xab0, 0xb2a, 0xb40, 0xb51,
+  0xb60, 0xb9a, 0xba1, 0xbb0, 0xbc8, 0xbf0, 0xc01, 0xd70, 0xd81, 0xf70, 0xf81, 0x2c20,
+  0x2c61, 0x2d20, 0x2e01, 0x2e50, 0x2ec1, 0x2ed0, 0x2ee1, 0x2ef0, 0x3701, 0x3750, 0x3761, 0x3780,
+  0x37a1, 0x37e0, 0x37f1, 0x3800, 0x3861, 0x3870, 0x3881, 0x38b0, 0x38c1, 0x38d0, 0x38e1, 0x3a20,
+  0x3a31, 0x3f60, 0x3f71, 0x4820, 0x48a1, 0x5300, 0x5311, 0x5570, 0x5591, 0x55a0, 0x5601, 0x5890,
+  0x5d01, 0x5eb0, 0x5ef1, 0x5f30, 0x6201, 0x64b0, 0x660e, 0x66a0, 0x66e1, 0x6700, 0x6711, 0x6d40,
+  0x6d51, 0x6d60, 0x6e51, 0x6e70, 0x6ee1, 0x6f0e, 0x6fa1, 0x6fd0, 0x6ff1, 0x7000, 0x7101, 0x7110,
+  0x7121, 0x7300, 0x74d1, 0x7a60, 0x7b11, 0x7b20, 0x7c0e, 0x7ca1, 0x7eb0, 0x7f41, 0x7f60, 0x7fa1,
+  0x7fb0, 0x8001, 0x8160, 0x81a1, 0x81b0, 0x8241, 0x8250, 0x8281, 0x8290, 0x8401, 0x8590, 0x8601,
+  0x86b0, 0x8701, 0x8880, 0x8891, 0x88f0, 0x8a01, 0x8ca0, 0x9041, 0x93a0, 0x93d1, 0x93e0, 0x9501,
+  0x9510, 0x9581, 0x9620, 0x966e, 0x9700, 0x9711, 0x9810, 0x9851, 0x98d0, 0x98f1, 0x9910, 0x9931,
+  0x9a90, 0x9aa1, 0x9b10, 0x9b21, 0x9b30, 0x9b61, 0x9ba0, 0x9bd1, 0x9be0, 0x9ce1, 0x9cf0, 0x9dc1,
+  0x9de0, 0x9df1, 0x9e20, 0x9e6e, 0x9f01, 0x9f20, 0x9f48, 0x9fa0, 0x9fc1, 0x9fd0, 0xa051, 0xa0b0,
+  0xa0f1, 0xa110, 0xa131, 0xa290, 0xa2a1, 0xa310, 0xa321, 0xa340, 0xa351, 0xa370, 0xa381, 0xa3a0,
+  0xa591, 0xa5d0, 0xa5e1, 0xa5f0, 0xa66e, 0xa700, 0xa721, 0xa750, 0xa851, 0xa8e0, 0xa8f1, 0xa920,
+  0xa931, 0xaa90, 0xaaa1, 0xab10, 0xab21, 0xab40, 0xab51, 0xaba0, 0xabd1, 0xabe0, 0xad01, 0xad10,
+  0xae01, 0xae20, 0xae6e, 0xaf00, 0xaf91, 0xafa0, 0xb051, 0xb0d0, 0xb0f1, 0xb110, 0xb131, 0xb290,
+  0xb2a1, 0xb310, 0xb321, 0xb340, 0xb351, 0xb3a0, 0xb3d1, 0xb3e0, 0xb5c1, 0xb5e0, 0xb5f1, 0xb620,
+  0xb66e, 0xb700, 0xb711, 0xb728, 0xb780, 0xb831, 0xb840, 0xb851, 0xb8b0, 0xb8e1, 0xb910, 0xb921,
+  0xb960, 0xb991, 0xb9b0, 0xb9c1, 0xb9d0, 0xb9e1, 0xba00, 0xba31, 0xba50, 0xba81, 0xbab0, 0xbae1,
+  0xbba0, 0xbd01, 0xbd10, 0xbe6e, 0xbf08, 0xbf30, 0xc051, 0xc0d0, 0xc0e1, 0xc110, 0xc121, 0xc290,
+  0xc2a1, 0xc3a0, 0xc3d1, 0xc3e0, 0xc581, 0xc5b0, 0xc5d1, 0xc5e0, 0xc601, 0xc620, 0xc66e, 0xc700,
+  0xc788, 0xc7f0, 0xc801, 0xc810, 0xc851, 0xc8d0, 0xc8e1, 0xc910, 0xc921, 0xca90, 0xcaa1, 0xcb40,
+  0xcb51, 0xcba0, 0xcbd1, 0xcbe0, 0xcdd1, 0xcdf0, 0xce01, 0xce20, 0xce6e, 0xcf00, 0xcf11, 0xcf30,
+  0xd041, 0xd0d0, 0xd0e1, 0xd110, 0xd121, 0xd3b0, 0xd3d1, 0xd3e0, 0xd4e1, 0xd4f0, 0xd541, 0xd570,
+  0xd588, 0xd5f1, 0xd620, 0xd66e, 0xd708, 0xd790, 0xd7a1, 0xd800, 0xd851, 0xd970, 0xd9a1, 0xdb20,
+  0xdb31, 0xdbc0, 0xdbd1, 0xdbe0, 0xdc01, 0xdc70, 0xde6e, 0xdf00, 0xe011, 0xe310, 0xe321, 0xe340,
+  0xe401, 0xe470, 0xe50e, 0xe5a0, 0xe811, 0xe830, 0xe841, 0xe850, 0xe861, 0xe8b0, 0xe8c1, 0xea40,
+  0xea51, 0xea60, 0xea71, 0xeb10, 0xeb21, 0xeb40, 0xebd1, 0xebe0, 0xec01, 0xec50, 0xec61, 0xec70,
+  0xed0e, 0xeda0, 0xedc1, 0xee00, 0xf001, 0xf010, 0xf20e, 0xf2a8, 0xf340, 0xf401, 0xf480, 0xf491,
+  0xf6d0, 0xf881, 0xf8d0, 0x10001, 0x102b0, 0x103f1, 0x1040e, 0x104a0, 0x10501, 0x10560, 0x105a1, 0x105e0,
+  0x10611, 0x10620, 0x10651, 0x10670, 0x106e1, 0x10710, 0x10751, 0x10820, 0x108e1, 0x108f0, 0x1090e, 0x109a0,
+  0x10a01, 0x10c60, 0x10c71, 0x10c80, 0x10cd1, 0x10ce0, 0x10d01, 0x10fb0, 0x10fc1, 0x12490, 0x124a1, 0x124e0,
+  0x12501, 0x12570, 0x12581, 0x12590, 0x125a1, 0x125e0, 0x12601, 0x12890, 0x128a1, 0x128e0, 0x12901, 0x12b10,
+  0x12b21, 0x12b60, 0x12b81, 0x12bf0, 0x12c01, 0x12c10, 0x12c21, 0x12c60, 0x12c81, 0x12d70, 0x12d81, 0x13110,
+  0x13121, 0x13160, 0x13181, 0x135b0, 0x1369a, 0x13728, 0x137d0, 0x13801, 0x13900, 0x13a01, 0x13f60, 0x13f81,
+  0x13fe0, 0x14011, 0x166d0, 0x166f1, 0x16800, 0x16811, 0x169b0, 0x16a01, 0x16eb0, 0x16ee8, 0x16f11, 0x16f90,
+  0x17001, 0x17120, 0x171f1, 0x17320, 0x17401, 0x17520, 0x17601, 0x176d0, 0x176e1, 0x17710, 0x17801, 0x17b40,
+  0x17d71, 0x17d80, 0x17dc1, 0x17dd0, 0x17e0e, 0x17ea0, 0x17f08, 0x17fa0, 0x1810e, 0x181a0, 0x18201, 0x18790,
+  0x18801, 0x18850, 0x18871, 0x18a90, 0x18aa1, 0x18ab0, 0x18b01, 0x18f60, 0x19001, 0x191f0, 0x1946e, 0x19501,
+  0x196e0, 0x19701, 0x19750, 0x19801, 0x19ac0, 0x19b01, 0x19ca0, 0x19d0e, 0x19daa, 0x19db0, 0x1a001, 0x1a170,
+  0x1a201, 0x1a550, 0x1a80e, 0x1a8a0, 0x1a90e, 0x1a9a0, 0x1aa71, 0x1aa80, 0x1b051, 0x1b340, 0x1b451, 0x1b4d0,
+  0x1b50e, 0x1b5a0, 0x1b831, 0x1ba10, 0x1bae1, 0x1bb0e, 0x1bba1, 0x1be60, 0x1c001, 0x1c240, 0x1c40e, 0x1c4a0,
+  0x1c4d1, 0x1c50e, 0x1c5a1, 0x1c7e0, 0x1c801, 0x1c890, 0x1c901, 0x1cbb0, 0x1cbd1, 0x1cc00, 0x1ce91, 0x1ced0,
+  0x1cee1, 0x1cf40, 0x1cf51, 0x1cf70, 0x1cfa1, 0x1cfb0, 0x1d001, 0x1dc00, 0x1e001, 0x1f160, 0x1f181, 0x1f1e0,
+  0x1f201, 0x1f460, 0x1f481, 0x1f4e0, 0x1f501, 0x1f580, 0x1f591, 0x1f5a0, 0x1f5b1, 0x1f5c0, 0x1f5d1, 0x1f5e0,
+  0x1f5f1, 0x1f7e0, 0x1f801, 0x1fb50, 0x1fb61, 0x1fbd0, 0x1fbe1, 0x1fbf0, 0x1fc21, 0x1fc50, 0x1fc61, 0x1fcd0,
+  0x1fd01, 0x1fd40, 0x1fd61, 0x1fdc0, 0x1fe01, 0x1fed0, 0x1ff21, 0x1ff50, 0x1ff61, 0x1ffd0, 0x2070a, 0x20711,
+  0x20720, 0x2074a, 0x207a0, 0x207f1, 0x2080a, 0x208a0, 0x20901, 0x209d0, 0x21021, 0x21030, 0x21071, 0x21080,
+  0x210a1, 0x21140, 0x21151, 0x21160, 0x21191, 0x211e0, 0x21241, 0x21250, 0x21261, 0x21270, 0x21281, 0x21290,
+  0x212a1, 0x212e0, 0x212f1, 0x213a0, 0x213c1, 0x21400, 0x21451, 0x214a0, 0x214e1, 0x214f0, 0x21508, 0x21831,
+  0x21858, 0x218a0, 0x2460a, 0x24698, 0x2474a, 0x247d8, 0x2488a, 0x24918, 0x249c0, 0x24eaa, 0x24eb8, 0x24f5a,
+  0x24fe8, 0x24ffa, 0x25000, 0x2776a, 0x277f8, 0x2780a, 0x27898, 0x278aa, 0x27938, 0x27940, 0x2c001, 0x2ce50,
+  0x2ceb1, 0x2cef0, 0x2cf21, 0x2cf40, 0x2cfd8, 0x2cfe0, 0x2d001, 0x2d260, 0x2d271, 0x2d280, 0x2d2d1, 0x2d2e0,
+  0x2d301, 0x2d680, 0x2d6f1, 0x2d700, 0x2d801, 0x2d970, 0x2da01, 0x2da70, 0x2da81, 0x2daf0, 0x2db01, 0x2db70,
+  0x2db81, 0x2dbf0, 0x2dc01, 0x2dc70, 0x2dc81, 0x2dcf0, 0x2dd01, 0x2dd70, 0x2dd81, 0x2ddf0, 0x2e2f1, 0x2e300,
+  0x30051, 0x30078, 0x30080, 0x30218, 0x302a0, 0x30311, 0x30360, 0x30388, 0x303b1, 0x303d0, 0x30411, 0x30970,
+  0x309d1, 0x30a00, 0x30a11, 0x30fb0, 0x30fc1, 0x31000, 0x31051, 0x31300, 0x31311, 0x318f0, 0x31928, 0x31960,
+  0x31a01, 0x31c00, 0x31f01, 0x32000, 0x32208, 0x322a0, 0x32488, 0x32500, 0x32518, 0x32600, 0x32808, 0x328a0,
+  0x32b18, 0x32c00, 0x34001, 0x34059, 0x34061, 0x34839, 0x34841, 0x382a9, 0x382b1, 0x3b4d9, 0x3b4e1, 0x4dc00,
+  0x4e009, 0x4e011, 0x4e039, 0x4e041, 0x4e079, 0x4e081, 0x4e099, 0x4e0a1, 0x4e249, 0x4e251, 0x4e5d9, 0x4e5e1,
+  0x4e8c9, 0x4e8d1, 0x4e949, 0x4e951, 0x4e969, 0x4e971, 0x4eac9, 0x4ead1, 0x4ebf9, 0x4ec11, 0x4edf9, 0x4ee01,
+  0x4ee89, 0x4ee91, 0x4f0d9, 0x4f0e1, 0x4f709, 0x4f711, 0x4fe99, 0x4fea1, 0x50069, 0x50071, 0x51049, 0x51051,
+  0x51469, 0x51471, 0x51699, 0x516a1, 0x516b9, 0x516c1, 0x516d9, 0x516e1, 0x53419, 0x53421, 0x53439, 0x53461,
+  0x534c9, 0x534d1, 0x53c19, 0x53c51, 0x56db9, 0x56dc1, 0x58f19, 0x58f21, 0x58f99, 0x58fa1, 0x5e7a9, 0x5e7b1,
+  0x5efe9, 0x5f001, 0x5f0c9, 0x5f0f1, 0x5f109, 0x5f111, 0x62d09, 0x62d11, 0x62fe9, 0x62ff1, 0x634c9, 0x634d1,
+  0x67d29, 0x67d31, 0x6d1e9, 0x6d1f1, 0x6f069, 0x6f071, 0x73969, 0x73971, 0x767e9, 0x767f1, 0x76959, 0x76961,
+  0x79ed9, 0x79ee1, 0x80869, 0x80871, 0x842c9, 0x842d1, 0x8cae9, 0x8caf1, 0x8cb39, 0x8cb41, 0x8d309, 0x8d311,
+  0x920e9, 0x920f1, 0x94a99, 0x94aa1, 0x96219, 0x96221, 0x96469, 0x96471, 0x964c9, 0x964d1, 0x96789, 0x96791,
+  0x96f69, 0x96f71, 0xa48d0, 0xa4d01, 0xa4fe0, 0xa5001, 0xa60d0, 0xa6101, 0xa620e, 0xa62a1, 0xa62c0, 0xa6401,
+  0xa66f0, 0xa67f1, 0xa69e0, 0xa6a01, 0xa6e68, 0xa6f00, 0xa7171, 0xa7200, 0xa7221, 0xa7890, 0xa78b1, 0xa7cb0,
+  0xa7d01, 0xa7d20, 0xa7d31, 0xa7d40, 0xa7d51, 0xa7da0, 0xa7f21, 0xa8020, 0xa8031, 0xa8060, 0xa8071, 0xa80b0,
+  0xa80c1, 0xa8230, 0xa8308, 0xa8360, 0xa8401, 0xa8740, 0xa8821, 0xa8b40, 0xa8d0e, 0xa8da0, 0xa8f21, 0xa8f80,
+  0xa8fb1, 0xa8fc0, 0xa8fd1, 0xa8ff0, 0xa900e, 0xa90a1, 0xa9260, 0xa9301, 0xa9470, 0xa9601, 0xa97d0, 0xa9841,
+  0xa9b30, 0xa9cf1, 0xa9d0e, 0xa9da0, 0xa9e01, 0xa9e50, 0xa9e61, 0xa9f0e, 0xa9fa1, 0xa9ff0, 0xaa001, 0xaa290,
+  0xaa401, 0xaa430, 0xaa441, 0xaa4c0, 0xaa50e, 0xaa5a0, 0xaa601, 0xaa770, 0xaa7a1, 0xaa7b0, 0xaa7e1, 0xaab00,
+  0xaab11, 0xaab20, 0xaab51, 0xaab70, 0xaab91, 0xaabe0, 0xaac01, 0xaac10, 0xaac21, 0xaac30, 0xaadb1, 0xaade0,
+  0xaae01, 0xaaeb0, 0xaaf21, 0xaaf50, 0xab011, 0xab070, 0xab091, 0xab0f0, 0xab111, 0xab170, 0xab201, 0xab270,
+  0xab281, 0xab2f0, 0xab301, 0xab5b0, 0xab5c1, 0xab6a0, 0xab701, 0xabe30, 0xabf0e, 0xabfa0, 0xac001, 0xd7a40,
+  0xd7b01, 0xd7c70, 0xd7cb1, 0xd7fc0, 0xf9001, 0xf96b9, 0xf96c1, 0xf9739, 0xf9741, 0xf9789, 0xf9791, 0xf9b29,
+  0xf9b31, 0xf9d19, 0xf9d21, 0xf9d39, 0xf9d41, 0xf9fd9, 0xf9fe1, 0xfa6e0, 0xfa701, 0xfada0, 0xfb001, 0xfb070,
+  0xfb131, 0xfb180, 0xfb1d1, 0xfb1e0, 0xfb1f1, 0xfb290, 0xfb2a1, 0xfb370, 0xfb381, 0xfb3d0, 0xfb3e1, 0xfb3f0,
+  0xfb401, 0xfb420, 0xfb431, 0xfb450, 0xfb461, 0xfbb20, 0xfbd31, 0xfd3e0, 0xfd501, 0xfd900, 0xfd921, 0xfdc80,
+  0xfdf01, 0xfdfc0, 0xfe701, 0xfe750, 0xfe761, 0xfefd0, 0xff10e, 0xff1a0, 0xff211, 0xff3b0, 0xff411, 0xff5b0,
+  0xff661, 0xffbf0, 0xffc21, 0xffc80, 0xffca1, 0xffd00, 0xffd21, 0xffd80, 0xffda1, 0xffdd0, 0x100001, 0x1000c0,
+  0x1000d1, 0x100270, 0x100281, 0x1003b0, 0x1003c1, 0x1003e0, 0x1003f1, 0x1004e0, 0x100501, 0x1005e0, 0x100801, 0x100fb0,
+  0x101078, 0x101340, 0x101408, 0x101790, 0x1018a8, 0x1018c0, 0x102801, 0x1029d0, 0x102a01, 0x102d10, 0x102e18, 0x102fc0,
+  0x103001, 0x103208, 0x103240, 0x1032d1, 0x103418, 0x103421, 0x1034a8, 0x1034b0, 0x103501, 0x103760, 0x103801, 0x1039e0,
+  0x103a01, 0x103c40, 0x103c81, 0x103d00, 0x103d18, 0x103d60, 0x104001, 0x1049e0, 0x104a0e, 0x104aa0, 0x104b01, 0x104d40,
+  0x104d81, 0x104fc0, 0x105001, 0x105280, 0x105301, 0x105640, 0x105701, 0x1057b0, 0x1057c1, 0x1058b0, 0x1058c1, 0x105930,
+  0x105941, 0x105960, 0x105971, 0x105a20, 0x105a31, 0x105b20, 0x105b31, 0x105ba0, 0x105bb1, 0x105bd0, 0x106001, 0x107370,
+  0x107401, 0x107560, 0x107601, 0x107680, 0x107801, 0x107860, 0x107871, 0x107b10, 0x107b21, 0x107bb0, 0x108001, 0x108060,
+  0x108081, 0x108090, 0x1080a1, 0x108360, 0x108371, 0x108390, 0x1083c1, 0x1083d0, 0x1083f1, 0x108560, 0x108588, 0x108601,
+  0x108770, 0x108798, 0x108801, 0x1089f0, 0x108a78, 0x108b00, 0x108e01, 0x108f30, 0x108f41, 0x108f60, 0x108fb8, 0x109001,
+  0x109168, 0x1091c0, 0x109201, 0x1093a0, 0x109801, 0x109b80, 0x109bc8, 0x109be1, 0x109c08, 0x109d00, 0x109d28, 0x10a001,
+  0x10a010, 0x10a101, 0x10a140, 0x10a151, 0x10a180, 0x10a191, 0x10a360, 0x10a40a, 0x10a448, 0x10a490, 0x10a601, 0x10a7d8,
+  0x10a7f0, 0x10a801, 0x10a9d8, 0x10aa00, 0x10ac01, 0x10ac80, 0x10ac91, 0x10ae50, 0x10aeb8, 0x10af00, 0x10b001, 0x10b360,
+  0x10b401, 0x10b560, 0x10b588, 0x10b601, 0x10b730, 0x10b788, 0x10b801, 0x10b920, 0x10ba98, 0x10bb00, 0x10c001, 0x10c490,
+  0x10c801, 0x10cb30, 0x10cc01, 0x10cf30, 0x10cfa8, 0x10d001, 0x10d240, 0x10d30e, 0x10d3a0, 0x10e60a, 0x10e698, 0x10e7f0,
+  0x10e801, 0x10eaa0, 0x10eb01, 0x10eb20, 0x10f001, 0x10f1d8, 0x10f271, 0x10f280, 0x10f301, 0x10f460, 0x10f518, 0x10f550,
+  0x10f701, 0x10f820, 0x10fb01, 0x10fc58, 0x10fcc0, 0x10fe01, 0x10ff70, 0x110031, 0x110380, 0x11052a, 0x1105b8, 0x11066e,
+  0x110700, 0x110711, 0x110730, 0x110751, 0x110760, 0x110831, 0x110b00, 0x110d01, 0x110e90, 0x110f0e, 0x110fa0, 0x111031,
+  0x111270, 0x11136e, 0x111400, 0x111441, 0x111450, 0x111471, 0x111480, 0x111501, 0x111730, 0x111761, 0x111770, 0x111831,
+  0x111b30, 0x111c11, 0x111c50, 0x111d0e, 0x111da1, 0x111db0, 0x111dc1, 0x111dd0, 0x111e18, 0x111f50, 0x112001, 0x112120,
+  0x112131, 0x1122c0, 0x1123f1, 0x112410, 0x112801, 0x112870, 0x112881, 0x112890, 0x1128a1, 0x1128e0, 0x1128f1, 0x1129e0,
+  0x1129f1, 0x112a90, 0x112b01, 0x112df0, 0x112f0e, 0x112fa0, 0x113051, 0x1130d0, 0x1130f1, 0x113110, 0x113131, 0x113290,
+  0x1132a1, 0x113310, 0x113321, 0x113340, 0x113351, 0x1133a0, 0x1133d1, 0x1133e0, 0x113501, 0x113510, 0x1135d1, 0x113620,
+  0x114001, 0x114350, 0x114471, 0x1144b0, 0x11450e, 0x1145a0, 0x1145f1, 0x114620, 0x114801, 0x114b00, 0x114c41, 0x114c60,
+  0x114c71, 0x114c80, 0x114d0e, 0x114da0, 0x115801, 0x115af0, 0x115d81, 0x115dc0, 0x116001, 0x116300, 0x116441, 0x116450,
+  0x11650e, 0x1165a0, 0x116801, 0x116ab0, 0x116b81, 0x116b90, 0x116c0e, 0x116ca0, 0x117001, 0x1171b0, 0x11730e, 0x1173a8,
+  0x1173c0, 0x117401, 0x117470, 0x118001, 0x1182c0, 0x118a01, 0x118e0e, 0x118ea8, 0x118f30, 0x118ff1, 0x119070, 0x119091,
+  0x1190a0, 0x1190c1, 0x119140, 0x119151, 0x119170, 0x119181, 0x119300, 0x1193f1, 0x119400, 0x119411, 0x119420, 0x11950e,
+  0x1195a0, 0x119a01, 0x119a80, 0x119aa1, 0x119d10, 0x119e11, 0x119e20, 0x119e31, 0x119e40, 0x11a001, 0x11a010, 0x11a0b1,
+  0x11a330, 0x11a3a1, 0x11a3b0, 0x11a501, 0x11a510, 0x11a5c1, 0x11a8a0, 0x11a9d1, 0x11a9e0, 0x11ab01, 0x11af90, 0x11c001,
+  0x11c090, 0x11c0a1, 0x11c2f0, 0x11c401, 0x11c410, 0x11c50e, 0x11c5a8, 0x11c6d0, 0x11c721, 0x11c900, 0x11d001, 0x11d070,
+  0x11d081, 0x11d0a0, 0x11d0b1, 0x11d310, 0x11d461, 0x11d470, 0x11d50e, 0x11d5a0, 0x11d601, 0x11d660, 0x11d671, 0x11d690,
+  0x11d6a1, 0x11d8a0, 0x11d981, 0x11d990, 0x11da0e, 0x11daa0, 0x11ee01, 0x11ef30, 0x11f021, 0x11f030, 0x11f041, 0x11f110,
+  0x11f121, 0x11f340, 0x11f50e, 0x11f5a0, 0x11fb01, 0x11fb10, 0x11fc08, 0x11fd50, 0x120001, 0x1239a0, 0x124008, 0x1246f0,
+  0x124801, 0x125440, 0x12f901, 0x12ff10, 0x130001, 0x134300, 0x134411, 0x134470, 0x144001, 0x146470, 0x168001, 0x16a390,
+  0x16a401, 0x16a5f0, 0x16a60e, 0x16a6a0, 0x16a701, 0x16abf0, 0x16ac0e, 0x16aca0, 0x16ad01, 0x16aee0, 0x16b001, 0x16b300,
+  0x16b401, 0x16b440, 0x16b50e, 0x16b5a0, 0x16b5b8, 0x16b620, 0x16b631, 0x16b780, 0x16b7d1, 0x16b900, 0x16e401, 0x16e808,
+  0x16e970, 0x16f001, 0x16f4b0, 0x16f501, 0x16f510, 0x16f931, 0x16fa00, 0x16fe01, 0x16fe20, 0x16fe31, 0x16fe40, 0x170001,
+  0x187f80, 0x188001, 0x18cd60, 0x18d001, 0x18d090, 0x1aff01, 0x1aff40, 0x1aff51, 0x1affc0, 0x1affd1, 0x1afff0, 0x1b0001,
+  0x1b1230, 0x1b1321, 0x1b1330, 0x1b1501, 0x1b1530, 0x1b1551, 0x1b1560, 0x1b1641, 0x1b1680, 0x1b1701, 0x1b2fc0, 0x1bc001,
+  0x1bc6b0, 0x1bc701, 0x1bc7d0, 0x1bc801, 0x1bc890, 0x1bc901, 0x1bc9a0, 0x1d2c08, 0x1d2d40, 0x1d2e08, 0x1d2f40, 0x1d3608,
+  0x1d3790, 0x1d4001, 0x1d4550, 0x1d4561, 0x1d49d0, 0x1d49e1, 0x1d4a00, 0x1d4a21, 0x1d4a30, 0x1d4a51, 0x1d4a70, 0x1d4a91,
+  0x1d4ad0, 0x1d4ae1, 0x1d4ba0, 0x1d4bb1, 0x1d4bc0, 0x1d4bd1, 0x1d4c40, 0x1d4c51, 0x1d5060, 0x1d5071, 0x1d50b0, 0x1d50d1,
+  0x1d5150, 0x1d5161, 0x1d51d0, 0x1d51e1, 0x1d53a0, 0x1d53b1, 0x1d53f0, 0x1d5401, 0x1d5450, 0x1d5461, 0x1d5470, 0x1d54a1,
+  0x1d5510, 0x1d5521, 0x1d6a60, 0x1d6a81, 0x1d6c10, 0x1d6c21, 0x1d6db0, 0x1d6dc1, 0x1d6fb0, 0x1d6fc1, 0x1d7150, 0x1d7161,
+  0x1d7350, 0x1d7361, 0x1d74f0, 0x1d7501, 0x1d76f0, 0x1d7701, 0x1d7890, 0x1d78a1, 0x1d7a90, 0x1d7aa1, 0x1d7c30, 0x1d7c41,
+  0x1d7cc0, 0x1d7cee, 0x1d8000, 0x1df001, 0x1df1f0, 0x1df251, 0x1df2b0, 0x1e0301, 0x1e06e0, 0x1e1001, 0x1e12d0, 0x1e1371,
+  0x1e13e0, 0x1e140e, 0x1e14a0, 0x1e14e1, 0x1e14f0, 0x1e2901, 0x1e2ae0, 0x1e2c01, 0x1e2ec0, 0x1e2f0e, 0x1e2fa0, 0x1e4d01,
+  0x1e4ec0, 0x1e4f0e, 0x1e4fa0, 0x1e7e01, 0x1e7e70, 0x1e7e81, 0x1e7ec0, 0x1e7ed1, 0x1e7ef0, 0x1e7f01, 0x1e7ff0, 0x1e8001,
+  0x1e8c50, 0x1e8c78, 0x1e8d00, 0x1e9001, 0x1e9440, 0x1e94b1, 0x1e94c0, 0x1e950e, 0x1e95a0, 0x1ec718, 0x1ecac0, 0x1ecad8,
+  0x1ecb00, 0x1ecb18, 0x1ecb50, 0x1ed018, 0x1ed2e0, 0x1ed2f8, 0x1ed3e0, 0x1ee001, 0x1ee040, 0x1ee051, 0x1ee200, 0x1ee211,
+  0x1ee230, 0x1ee241, 0x1ee250, 0x1ee271, 0x1ee280, 0x1ee291, 0x1ee330, 0x1ee341, 0x1ee380, 0x1ee391, 0x1ee3a0, 0x1ee3b1,
+  0x1ee3c0, 0x1ee421, 0x1ee430, 0x1ee471, 0x1ee480, 0x1ee491, 0x1ee4a0, 0x1ee4b1, 0x1ee4c0, 0x1ee4d1, 0x1ee500, 0x1ee511,
+  0x1ee530, 0x1ee541, 0x1ee550, 0x1ee571, 0x1ee580, 0x1ee591, 0x1ee5a0, 0x1ee5b1, 0x1ee5c0, 0x1ee5d1, 0x1ee5e0, 0x1ee5f1,
+  0x1ee600, 0x1ee611, 0x1ee630, 0x1ee641, 0x1ee650, 0x1ee671, 0x1ee6b0, 0x1ee6c1, 0x1ee730, 0x1ee741, 0x1ee780, 0x1ee791,
+  0x1ee7d0, 0x1ee7e1, 0x1ee7f0, 0x1ee801, 0x1ee8a0, 0x1ee8b1, 0x1ee9c0, 0x1eea11, 0x1eea40, 0x1eea51, 0x1eeaa0, 0x1eeab1,
+  0x1eebc0, 0x1f100a, 0x1f10b8, 0x1f10d0, 0x1fbf0e, 0x1fbfa0, 0x200001, 0x200019, 0x200021, 0x200649, 0x200651, 0x200e29,
+  0x200e31, 0x201219, 0x201221, 0x2092a9, 0x2092b1, 0x209839, 0x209841, 0x2098c9, 0x2098d1, 0x2099c9, 0x2099d1, 0x20aea9,
+  0x20aeb1, 0x20afd9, 0x20afe1, 0x20b199, 0x20b1a1, 0x223909, 0x223911, 0x229989, 0x229991, 0x23b1b9, 0x23b1c1, 0x2626d9,
+  0x2626e1, 0x2a6e00, 0x2a7001, 0x2b73a0, 0x2b7401, 0x2b81e0, 0x2b8201, 0x2cea20, 0x2ceb01, 0x2ebe10, 0x2ebf01, 0x2ee5e0,
+  0x2f8001, 0x2f8909, 0x2f8911, 0x2fa1e0, 0x300001, 0x3134b0, 0x313501, 0x323b00,
+};
+/* END GENERATED UNICODE CLASSIFICATION */
+
+I pys_unicode_flags(I cp) {  /* pure lookup, shared by str's five classification predicates */
+  if (cp < 0 || cp >= 0x110000) return 0;
+  I lo = 0, hi = sizeof unicode_classification / sizeof *unicode_classification;
+  while (lo < hi) {
+    I mid = (lo + hi) / 2;
+    if ((unicode_classification[mid] >> 4) <= cp) lo = mid + 1; else hi = mid;
+  }
+  return unicode_classification[lo - 1] & 15;  /* the first transition is U+0000 */
+}
+
+/* str.isprintable(), CPython's Py_UNICODE_ISPRINTABLE: false for the categories Cc Cf Cs Co Cn Zl
+   Zp and Zs (but U+0020), which repr() escapes. The code points from U+0080 on where it changes,
+   for Unicode 15.1 (unicodedata.unidata_version in CPython 3.13), as printed by
+   python3 -c 'p = lambda c: 0x80 <= c < 0x110000 and not chr(c).isprintable(); print(", ".join(hex(c) for c in range(0x80, 0x110000) if p(c) != p(c - 1)))' */
+static const int32_t pchange[] = {
+  0x80, 0xa1, 0xad, 0xae, 0x378, 0x37a, 0x380, 0x384, 0x38b, 0x38c, 0x38d, 0x38e, 0x3a2, 0x3a3, 0x530, 0x531, 0x557,
+  0x559, 0x58b, 0x58d, 0x590, 0x591, 0x5c8, 0x5d0, 0x5eb, 0x5ef, 0x5f5, 0x606, 0x61c, 0x61d, 0x6dd, 0x6de, 0x70e,
+  0x710, 0x74b, 0x74d, 0x7b2, 0x7c0, 0x7fb, 0x7fd, 0x82e, 0x830, 0x83f, 0x840, 0x85c, 0x85e, 0x85f, 0x860, 0x86b,
+  0x870, 0x88f, 0x898, 0x8e2, 0x8e3, 0x984, 0x985, 0x98d, 0x98f, 0x991, 0x993, 0x9a9, 0x9aa, 0x9b1, 0x9b2, 0x9b3,
+  0x9b6, 0x9ba, 0x9bc, 0x9c5, 0x9c7, 0x9c9, 0x9cb, 0x9cf, 0x9d7, 0x9d8, 0x9dc, 0x9de, 0x9df, 0x9e4, 0x9e6, 0x9ff,
+  0xa01, 0xa04, 0xa05, 0xa0b, 0xa0f, 0xa11, 0xa13, 0xa29, 0xa2a, 0xa31, 0xa32, 0xa34, 0xa35, 0xa37, 0xa38, 0xa3a,
+  0xa3c, 0xa3d, 0xa3e, 0xa43, 0xa47, 0xa49, 0xa4b, 0xa4e, 0xa51, 0xa52, 0xa59, 0xa5d, 0xa5e, 0xa5f, 0xa66, 0xa77,
+  0xa81, 0xa84, 0xa85, 0xa8e, 0xa8f, 0xa92, 0xa93, 0xaa9, 0xaaa, 0xab1, 0xab2, 0xab4, 0xab5, 0xaba, 0xabc, 0xac6,
+  0xac7, 0xaca, 0xacb, 0xace, 0xad0, 0xad1, 0xae0, 0xae4, 0xae6, 0xaf2, 0xaf9, 0xb00, 0xb01, 0xb04, 0xb05, 0xb0d,
+  0xb0f, 0xb11, 0xb13, 0xb29, 0xb2a, 0xb31, 0xb32, 0xb34, 0xb35, 0xb3a, 0xb3c, 0xb45, 0xb47, 0xb49, 0xb4b, 0xb4e,
+  0xb55, 0xb58, 0xb5c, 0xb5e, 0xb5f, 0xb64, 0xb66, 0xb78, 0xb82, 0xb84, 0xb85, 0xb8b, 0xb8e, 0xb91, 0xb92, 0xb96,
+  0xb99, 0xb9b, 0xb9c, 0xb9d, 0xb9e, 0xba0, 0xba3, 0xba5, 0xba8, 0xbab, 0xbae, 0xbba, 0xbbe, 0xbc3, 0xbc6, 0xbc9,
+  0xbca, 0xbce, 0xbd0, 0xbd1, 0xbd7, 0xbd8, 0xbe6, 0xbfb, 0xc00, 0xc0d, 0xc0e, 0xc11, 0xc12, 0xc29, 0xc2a, 0xc3a,
+  0xc3c, 0xc45, 0xc46, 0xc49, 0xc4a, 0xc4e, 0xc55, 0xc57, 0xc58, 0xc5b, 0xc5d, 0xc5e, 0xc60, 0xc64, 0xc66, 0xc70,
+  0xc77, 0xc8d, 0xc8e, 0xc91, 0xc92, 0xca9, 0xcaa, 0xcb4, 0xcb5, 0xcba, 0xcbc, 0xcc5, 0xcc6, 0xcc9, 0xcca, 0xcce,
+  0xcd5, 0xcd7, 0xcdd, 0xcdf, 0xce0, 0xce4, 0xce6, 0xcf0, 0xcf1, 0xcf4, 0xd00, 0xd0d, 0xd0e, 0xd11, 0xd12, 0xd45,
+  0xd46, 0xd49, 0xd4a, 0xd50, 0xd54, 0xd64, 0xd66, 0xd80, 0xd81, 0xd84, 0xd85, 0xd97, 0xd9a, 0xdb2, 0xdb3, 0xdbc,
+  0xdbd, 0xdbe, 0xdc0, 0xdc7, 0xdca, 0xdcb, 0xdcf, 0xdd5, 0xdd6, 0xdd7, 0xdd8, 0xde0, 0xde6, 0xdf0, 0xdf2, 0xdf5,
+  0xe01, 0xe3b, 0xe3f, 0xe5c, 0xe81, 0xe83, 0xe84, 0xe85, 0xe86, 0xe8b, 0xe8c, 0xea4, 0xea5, 0xea6, 0xea7, 0xebe,
+  0xec0, 0xec5, 0xec6, 0xec7, 0xec8, 0xecf, 0xed0, 0xeda, 0xedc, 0xee0, 0xf00, 0xf48, 0xf49, 0xf6d, 0xf71, 0xf98,
+  0xf99, 0xfbd, 0xfbe, 0xfcd, 0xfce, 0xfdb, 0x1000, 0x10c6, 0x10c7, 0x10c8, 0x10cd, 0x10ce, 0x10d0, 0x1249, 0x124a,
+  0x124e, 0x1250, 0x1257, 0x1258, 0x1259, 0x125a, 0x125e, 0x1260, 0x1289, 0x128a, 0x128e, 0x1290, 0x12b1, 0x12b2,
+  0x12b6, 0x12b8, 0x12bf, 0x12c0, 0x12c1, 0x12c2, 0x12c6, 0x12c8, 0x12d7, 0x12d8, 0x1311, 0x1312, 0x1316, 0x1318,
+  0x135b, 0x135d, 0x137d, 0x1380, 0x139a, 0x13a0, 0x13f6, 0x13f8, 0x13fe, 0x1400, 0x1680, 0x1681, 0x169d, 0x16a0,
+  0x16f9, 0x1700, 0x1716, 0x171f, 0x1737, 0x1740, 0x1754, 0x1760, 0x176d, 0x176e, 0x1771, 0x1772, 0x1774, 0x1780,
+  0x17de, 0x17e0, 0x17ea, 0x17f0, 0x17fa, 0x1800, 0x180e, 0x180f, 0x181a, 0x1820, 0x1879, 0x1880, 0x18ab, 0x18b0,
+  0x18f6, 0x1900, 0x191f, 0x1920, 0x192c, 0x1930, 0x193c, 0x1940, 0x1941, 0x1944, 0x196e, 0x1970, 0x1975, 0x1980,
+  0x19ac, 0x19b0, 0x19ca, 0x19d0, 0x19db, 0x19de, 0x1a1c, 0x1a1e, 0x1a5f, 0x1a60, 0x1a7d, 0x1a7f, 0x1a8a, 0x1a90,
+  0x1a9a, 0x1aa0, 0x1aae, 0x1ab0, 0x1acf, 0x1b00, 0x1b4d, 0x1b50, 0x1b7f, 0x1b80, 0x1bf4, 0x1bfc, 0x1c38, 0x1c3b,
+  0x1c4a, 0x1c4d, 0x1c89, 0x1c90, 0x1cbb, 0x1cbd, 0x1cc8, 0x1cd0, 0x1cfb, 0x1d00, 0x1f16, 0x1f18, 0x1f1e, 0x1f20,
+  0x1f46, 0x1f48, 0x1f4e, 0x1f50, 0x1f58, 0x1f59, 0x1f5a, 0x1f5b, 0x1f5c, 0x1f5d, 0x1f5e, 0x1f5f, 0x1f7e, 0x1f80,
+  0x1fb5, 0x1fb6, 0x1fc5, 0x1fc6, 0x1fd4, 0x1fd6, 0x1fdc, 0x1fdd, 0x1ff0, 0x1ff2, 0x1ff5, 0x1ff6, 0x1fff, 0x2010,
+  0x2028, 0x2030, 0x205f, 0x2070, 0x2072, 0x2074, 0x208f, 0x2090, 0x209d, 0x20a0, 0x20c1, 0x20d0, 0x20f1, 0x2100,
+  0x218c, 0x2190, 0x2427, 0x2440, 0x244b, 0x2460, 0x2b74, 0x2b76, 0x2b96, 0x2b97, 0x2cf4, 0x2cf9, 0x2d26, 0x2d27,
+  0x2d28, 0x2d2d, 0x2d2e, 0x2d30, 0x2d68, 0x2d6f, 0x2d71, 0x2d7f, 0x2d97, 0x2da0, 0x2da7, 0x2da8, 0x2daf, 0x2db0,
+  0x2db7, 0x2db8, 0x2dbf, 0x2dc0, 0x2dc7, 0x2dc8, 0x2dcf, 0x2dd0, 0x2dd7, 0x2dd8, 0x2ddf, 0x2de0, 0x2e5e, 0x2e80,
+  0x2e9a, 0x2e9b, 0x2ef4, 0x2f00, 0x2fd6, 0x2ff0, 0x3000, 0x3001, 0x3040, 0x3041, 0x3097, 0x3099, 0x3100, 0x3105,
+  0x3130, 0x3131, 0x318f, 0x3190, 0x31e4, 0x31ef, 0x321f, 0x3220, 0xa48d, 0xa490, 0xa4c7, 0xa4d0, 0xa62c, 0xa640,
+  0xa6f8, 0xa700, 0xa7cb, 0xa7d0, 0xa7d2, 0xa7d3, 0xa7d4, 0xa7d5, 0xa7da, 0xa7f2, 0xa82d, 0xa830, 0xa83a, 0xa840,
+  0xa878, 0xa880, 0xa8c6, 0xa8ce, 0xa8da, 0xa8e0, 0xa954, 0xa95f, 0xa97d, 0xa980, 0xa9ce, 0xa9cf, 0xa9da, 0xa9de,
+  0xa9ff, 0xaa00, 0xaa37, 0xaa40, 0xaa4e, 0xaa50, 0xaa5a, 0xaa5c, 0xaac3, 0xaadb, 0xaaf7, 0xab01, 0xab07, 0xab09,
+  0xab0f, 0xab11, 0xab17, 0xab20, 0xab27, 0xab28, 0xab2f, 0xab30, 0xab6c, 0xab70, 0xabee, 0xabf0, 0xabfa, 0xac00,
+  0xd7a4, 0xd7b0, 0xd7c7, 0xd7cb, 0xd7fc, 0xf900, 0xfa6e, 0xfa70, 0xfada, 0xfb00, 0xfb07, 0xfb13, 0xfb18, 0xfb1d,
+  0xfb37, 0xfb38, 0xfb3d, 0xfb3e, 0xfb3f, 0xfb40, 0xfb42, 0xfb43, 0xfb45, 0xfb46, 0xfbc3, 0xfbd3, 0xfd90, 0xfd92,
+  0xfdc8, 0xfdcf, 0xfdd0, 0xfdf0, 0xfe1a, 0xfe20, 0xfe53, 0xfe54, 0xfe67, 0xfe68, 0xfe6c, 0xfe70, 0xfe75, 0xfe76,
+  0xfefd, 0xff01, 0xffbf, 0xffc2, 0xffc8, 0xffca, 0xffd0, 0xffd2, 0xffd8, 0xffda, 0xffdd, 0xffe0, 0xffe7, 0xffe8,
+  0xffef, 0xfffc, 0xfffe, 0x10000, 0x1000c, 0x1000d, 0x10027, 0x10028, 0x1003b, 0x1003c, 0x1003e, 0x1003f, 0x1004e,
+  0x10050, 0x1005e, 0x10080, 0x100fb, 0x10100, 0x10103, 0x10107, 0x10134, 0x10137, 0x1018f, 0x10190, 0x1019d, 0x101a0,
+  0x101a1, 0x101d0, 0x101fe, 0x10280, 0x1029d, 0x102a0, 0x102d1, 0x102e0, 0x102fc, 0x10300, 0x10324, 0x1032d, 0x1034b,
+  0x10350, 0x1037b, 0x10380, 0x1039e, 0x1039f, 0x103c4, 0x103c8, 0x103d6, 0x10400, 0x1049e, 0x104a0, 0x104aa, 0x104b0,
+  0x104d4, 0x104d8, 0x104fc, 0x10500, 0x10528, 0x10530, 0x10564, 0x1056f, 0x1057b, 0x1057c, 0x1058b, 0x1058c, 0x10593,
+  0x10594, 0x10596, 0x10597, 0x105a2, 0x105a3, 0x105b2, 0x105b3, 0x105ba, 0x105bb, 0x105bd, 0x10600, 0x10737, 0x10740,
+  0x10756, 0x10760, 0x10768, 0x10780, 0x10786, 0x10787, 0x107b1, 0x107b2, 0x107bb, 0x10800, 0x10806, 0x10808, 0x10809,
+  0x1080a, 0x10836, 0x10837, 0x10839, 0x1083c, 0x1083d, 0x1083f, 0x10856, 0x10857, 0x1089f, 0x108a7, 0x108b0, 0x108e0,
+  0x108f3, 0x108f4, 0x108f6, 0x108fb, 0x1091c, 0x1091f, 0x1093a, 0x1093f, 0x10940, 0x10980, 0x109b8, 0x109bc, 0x109d0,
+  0x109d2, 0x10a04, 0x10a05, 0x10a07, 0x10a0c, 0x10a14, 0x10a15, 0x10a18, 0x10a19, 0x10a36, 0x10a38, 0x10a3b, 0x10a3f,
+  0x10a49, 0x10a50, 0x10a59, 0x10a60, 0x10aa0, 0x10ac0, 0x10ae7, 0x10aeb, 0x10af7, 0x10b00, 0x10b36, 0x10b39, 0x10b56,
+  0x10b58, 0x10b73, 0x10b78, 0x10b92, 0x10b99, 0x10b9d, 0x10ba9, 0x10bb0, 0x10c00, 0x10c49, 0x10c80, 0x10cb3, 0x10cc0,
+  0x10cf3, 0x10cfa, 0x10d28, 0x10d30, 0x10d3a, 0x10e60, 0x10e7f, 0x10e80, 0x10eaa, 0x10eab, 0x10eae, 0x10eb0, 0x10eb2,
+  0x10efd, 0x10f28, 0x10f30, 0x10f5a, 0x10f70, 0x10f8a, 0x10fb0, 0x10fcc, 0x10fe0, 0x10ff7, 0x11000, 0x1104e, 0x11052,
+  0x11076, 0x1107f, 0x110bd, 0x110be, 0x110c3, 0x110d0, 0x110e9, 0x110f0, 0x110fa, 0x11100, 0x11135, 0x11136, 0x11148,
+  0x11150, 0x11177, 0x11180, 0x111e0, 0x111e1, 0x111f5, 0x11200, 0x11212, 0x11213, 0x11242, 0x11280, 0x11287, 0x11288,
+  0x11289, 0x1128a, 0x1128e, 0x1128f, 0x1129e, 0x1129f, 0x112aa, 0x112b0, 0x112eb, 0x112f0, 0x112fa, 0x11300, 0x11304,
+  0x11305, 0x1130d, 0x1130f, 0x11311, 0x11313, 0x11329, 0x1132a, 0x11331, 0x11332, 0x11334, 0x11335, 0x1133a, 0x1133b,
+  0x11345, 0x11347, 0x11349, 0x1134b, 0x1134e, 0x11350, 0x11351, 0x11357, 0x11358, 0x1135d, 0x11364, 0x11366, 0x1136d,
+  0x11370, 0x11375, 0x11400, 0x1145c, 0x1145d, 0x11462, 0x11480, 0x114c8, 0x114d0, 0x114da, 0x11580, 0x115b6, 0x115b8,
+  0x115de, 0x11600, 0x11645, 0x11650, 0x1165a, 0x11660, 0x1166d, 0x11680, 0x116ba, 0x116c0, 0x116ca, 0x11700, 0x1171b,
+  0x1171d, 0x1172c, 0x11730, 0x11747, 0x11800, 0x1183c, 0x118a0, 0x118f3, 0x118ff, 0x11907, 0x11909, 0x1190a, 0x1190c,
+  0x11914, 0x11915, 0x11917, 0x11918, 0x11936, 0x11937, 0x11939, 0x1193b, 0x11947, 0x11950, 0x1195a, 0x119a0, 0x119a8,
+  0x119aa, 0x119d8, 0x119da, 0x119e5, 0x11a00, 0x11a48, 0x11a50, 0x11aa3, 0x11ab0, 0x11af9, 0x11b00, 0x11b0a, 0x11c00,
+  0x11c09, 0x11c0a, 0x11c37, 0x11c38, 0x11c46, 0x11c50, 0x11c6d, 0x11c70, 0x11c90, 0x11c92, 0x11ca8, 0x11ca9, 0x11cb7,
+  0x11d00, 0x11d07, 0x11d08, 0x11d0a, 0x11d0b, 0x11d37, 0x11d3a, 0x11d3b, 0x11d3c, 0x11d3e, 0x11d3f, 0x11d48, 0x11d50,
+  0x11d5a, 0x11d60, 0x11d66, 0x11d67, 0x11d69, 0x11d6a, 0x11d8f, 0x11d90, 0x11d92, 0x11d93, 0x11d99, 0x11da0, 0x11daa,
+  0x11ee0, 0x11ef9, 0x11f00, 0x11f11, 0x11f12, 0x11f3b, 0x11f3e, 0x11f5a, 0x11fb0, 0x11fb1, 0x11fc0, 0x11ff2, 0x11fff,
+  0x1239a, 0x12400, 0x1246f, 0x12470, 0x12475, 0x12480, 0x12544, 0x12f90, 0x12ff3, 0x13000, 0x13430, 0x13440, 0x13456,
+  0x14400, 0x14647, 0x16800, 0x16a39, 0x16a40, 0x16a5f, 0x16a60, 0x16a6a, 0x16a6e, 0x16abf, 0x16ac0, 0x16aca, 0x16ad0,
+  0x16aee, 0x16af0, 0x16af6, 0x16b00, 0x16b46, 0x16b50, 0x16b5a, 0x16b5b, 0x16b62, 0x16b63, 0x16b78, 0x16b7d, 0x16b90,
+  0x16e40, 0x16e9b, 0x16f00, 0x16f4b, 0x16f4f, 0x16f88, 0x16f8f, 0x16fa0, 0x16fe0, 0x16fe5, 0x16ff0, 0x16ff2, 0x17000,
+  0x187f8, 0x18800, 0x18cd6, 0x18d00, 0x18d09, 0x1aff0, 0x1aff4, 0x1aff5, 0x1affc, 0x1affd, 0x1afff, 0x1b000, 0x1b123,
+  0x1b132, 0x1b133, 0x1b150, 0x1b153, 0x1b155, 0x1b156, 0x1b164, 0x1b168, 0x1b170, 0x1b2fc, 0x1bc00, 0x1bc6b, 0x1bc70,
+  0x1bc7d, 0x1bc80, 0x1bc89, 0x1bc90, 0x1bc9a, 0x1bc9c, 0x1bca0, 0x1cf00, 0x1cf2e, 0x1cf30, 0x1cf47, 0x1cf50, 0x1cfc4,
+  0x1d000, 0x1d0f6, 0x1d100, 0x1d127, 0x1d129, 0x1d173, 0x1d17b, 0x1d1eb, 0x1d200, 0x1d246, 0x1d2c0, 0x1d2d4, 0x1d2e0,
+  0x1d2f4, 0x1d300, 0x1d357, 0x1d360, 0x1d379, 0x1d400, 0x1d455, 0x1d456, 0x1d49d, 0x1d49e, 0x1d4a0, 0x1d4a2, 0x1d4a3,
+  0x1d4a5, 0x1d4a7, 0x1d4a9, 0x1d4ad, 0x1d4ae, 0x1d4ba, 0x1d4bb, 0x1d4bc, 0x1d4bd, 0x1d4c4, 0x1d4c5, 0x1d506, 0x1d507,
+  0x1d50b, 0x1d50d, 0x1d515, 0x1d516, 0x1d51d, 0x1d51e, 0x1d53a, 0x1d53b, 0x1d53f, 0x1d540, 0x1d545, 0x1d546, 0x1d547,
+  0x1d54a, 0x1d551, 0x1d552, 0x1d6a6, 0x1d6a8, 0x1d7cc, 0x1d7ce, 0x1da8c, 0x1da9b, 0x1daa0, 0x1daa1, 0x1dab0, 0x1df00,
+  0x1df1f, 0x1df25, 0x1df2b, 0x1e000, 0x1e007, 0x1e008, 0x1e019, 0x1e01b, 0x1e022, 0x1e023, 0x1e025, 0x1e026, 0x1e02b,
+  0x1e030, 0x1e06e, 0x1e08f, 0x1e090, 0x1e100, 0x1e12d, 0x1e130, 0x1e13e, 0x1e140, 0x1e14a, 0x1e14e, 0x1e150, 0x1e290,
+  0x1e2af, 0x1e2c0, 0x1e2fa, 0x1e2ff, 0x1e300, 0x1e4d0, 0x1e4fa, 0x1e7e0, 0x1e7e7, 0x1e7e8, 0x1e7ec, 0x1e7ed, 0x1e7ef,
+  0x1e7f0, 0x1e7ff, 0x1e800, 0x1e8c5, 0x1e8c7, 0x1e8d7, 0x1e900, 0x1e94c, 0x1e950, 0x1e95a, 0x1e95e, 0x1e960, 0x1ec71,
+  0x1ecb5, 0x1ed01, 0x1ed3e, 0x1ee00, 0x1ee04, 0x1ee05, 0x1ee20, 0x1ee21, 0x1ee23, 0x1ee24, 0x1ee25, 0x1ee27, 0x1ee28,
+  0x1ee29, 0x1ee33, 0x1ee34, 0x1ee38, 0x1ee39, 0x1ee3a, 0x1ee3b, 0x1ee3c, 0x1ee42, 0x1ee43, 0x1ee47, 0x1ee48, 0x1ee49,
+  0x1ee4a, 0x1ee4b, 0x1ee4c, 0x1ee4d, 0x1ee50, 0x1ee51, 0x1ee53, 0x1ee54, 0x1ee55, 0x1ee57, 0x1ee58, 0x1ee59, 0x1ee5a,
+  0x1ee5b, 0x1ee5c, 0x1ee5d, 0x1ee5e, 0x1ee5f, 0x1ee60, 0x1ee61, 0x1ee63, 0x1ee64, 0x1ee65, 0x1ee67, 0x1ee6b, 0x1ee6c,
+  0x1ee73, 0x1ee74, 0x1ee78, 0x1ee79, 0x1ee7d, 0x1ee7e, 0x1ee7f, 0x1ee80, 0x1ee8a, 0x1ee8b, 0x1ee9c, 0x1eea1, 0x1eea4,
+  0x1eea5, 0x1eeaa, 0x1eeab, 0x1eebc, 0x1eef0, 0x1eef2, 0x1f000, 0x1f02c, 0x1f030, 0x1f094, 0x1f0a0, 0x1f0af, 0x1f0b1,
+  0x1f0c0, 0x1f0c1, 0x1f0d0, 0x1f0d1, 0x1f0f6, 0x1f100, 0x1f1ae, 0x1f1e6, 0x1f203, 0x1f210, 0x1f23c, 0x1f240, 0x1f249,
+  0x1f250, 0x1f252, 0x1f260, 0x1f266, 0x1f300, 0x1f6d8, 0x1f6dc, 0x1f6ed, 0x1f6f0, 0x1f6fd, 0x1f700, 0x1f777, 0x1f77b,
+  0x1f7da, 0x1f7e0, 0x1f7ec, 0x1f7f0, 0x1f7f1, 0x1f800, 0x1f80c, 0x1f810, 0x1f848, 0x1f850, 0x1f85a, 0x1f860, 0x1f888,
+  0x1f890, 0x1f8ae, 0x1f8b0, 0x1f8b2, 0x1f900, 0x1fa54, 0x1fa60, 0x1fa6e, 0x1fa70, 0x1fa7d, 0x1fa80, 0x1fa89, 0x1fa90,
+  0x1fabe, 0x1fabf, 0x1fac6, 0x1face, 0x1fadc, 0x1fae0, 0x1fae9, 0x1faf0, 0x1faf9, 0x1fb00, 0x1fb93, 0x1fb94, 0x1fbcb,
+  0x1fbf0, 0x1fbfa, 0x20000, 0x2a6e0, 0x2a700, 0x2b73a, 0x2b740, 0x2b81e, 0x2b820, 0x2cea2, 0x2ceb0, 0x2ebe1, 0x2ebf0,
+  0x2ee5e, 0x2f800, 0x2fa1e, 0x30000, 0x3134b, 0x31350, 0x323b0, 0xe0100, 0xe01f0
+};
+static int printable(I c) {            /* c >= 0x80: printable unless an odd number of changes are <= c */
+  I lo = 0, hi = sizeof pchange / sizeof *pchange;
+  while (lo < hi) { I m = (lo + hi) / 2; if (pchange[m] <= c) lo = m + 1; else hi = m; }
+  return !(lo & 1);
+}
+/* @ffi.extern: copy a returned char * into str/bytes storage (must: 0 optional, 1 str, 2 bytes). */
+Str *pys_cstr(const char *p, I must) {
+  if (!p && must) pys_fail(must == 2 ? "ValueError: a C function declared -> bytes returned NULL" : "ValueError: a C function declared -> str returned NULL");
+  return p ? cstr(p) : 0;
+}
+Str *pys_string_at(I a, I n) {         /* ffi.string_at: n bytes at a, as ctypes.string_at */
+  if (n < 0) pys_fail("ValueError: ffi.string_at() takes a length >= 0");
+  return pys_str((const char *)a, n);
+}
+Str *pys_bytes_at(I a, I n) {          /* copy foreign bytes; only -1 scans for a NUL */
+  if (n < -1) pys_fail("ValueError: ffi.bytes_at() takes a length >= -1");
+  if (!a && n != 0) pys_fail("ValueError: ffi.bytes_at() cannot read a NULL pointer");
+  const char *p = a ? (const char *)a : "";
+  return pys_str(p, n == -1 ? (I)strlen(p) : n);
+}
+/* ffi.track (lib/pyobj.py): a value, a PyObject *, that object o owns. The table is malloc'd, out
+   of the collector's sight: once a collection finds o unmarked, the value moves to a queue that
+   ffi.collected() takes one at a time (released then, outside collect: Py_DecRef runs Python code).
+   The Python object a value holds is memory the collector does not see: it counts as allocated,
+   TRK_BYTES plus n, the object's size as lib/pyobj.py measures it (sys.getsizeof), and starts a
+   collection as an allocation of that size would, so that dropped owners are found as soon as
+   their size would be if it were the heap's */
+#define TRK_BYTES 512
+typedef struct { void *o; I v; } Trk;  /* (a free slot: o is NULL, v the next free one) */
+/* GC_NO_ROOT(trk): weak owner table; values are CPython references, outside this heap. */
+static Trk *trk;
+/* GC_NO_ROOT(dq): queued CPython references, outside the Pystachy heap. */
+static I ctrk, trk_free = -1, *dq, ndq, cdq, trk_gc, trk_exit;
+I pys_track(void *o, I v, I n) {
+  gc_allocd += TRK_BYTES + (n > 0 ? n : 0);
+  if (!gc_off && gc_allocd >= gc_limit) collect();   /* (as an allocation of that size would: o is live in the caller) */
+  I i = trk_free;
+  if (i >= 0) trk_free = trk[i].v;
+  else {
+    if (ntrk == ctrk && !(trk = realloc(trk, (ctrk = 2 * ctrk + 64) * sizeof *trk))) oom();
+    i = ntrk++;
+  }
+  trk[i].o = o; trk[i].v = v;
+  return i;
+}
+void pys_untrack(I i) { if (i >= 0 && i < ntrk && trk[i].o) { trk[i].o = 0; trk[i].v = trk_free; trk_free = i; } }
+static void trk_sweep(void) {          /* after marking */
+  for (I i = 0; i < ntrk; i++)
+    if (trk[i].o && !gc_marked(trk[i].o)) {
+      if (ndq == cdq && !(dq = realloc(dq, (cdq = 2 * cdq + 64) * sizeof *dq))) oom();
+      dq[ndq++] = trk[i].v; trk_gc++; pys_untrack(i);
+    }
+}
+I pys_collected(void) { return ndq ? dq[--ndq] : 0; }   /* a value whose owner a collection found dropped, once; 0: none */
+static I trk_report(I *ex) { *ex = trk_exit; return trk ? trk_gc : -1; }
+I pys_trk_pop(void) {                  /* at exit (pyembed.c): every value not released yet, then 0 */
+  static I i = -1;
+  if (ndq) return dq[--ndq];
+  if (i < 0) i = ntrk;
+  while (i > 0) if (trk[--i].o) { I v = trk[i].v; pys_untrack(i); trk_exit++; return v; }
+  return 0;
+}
+I pys_c_check(I v, I k) {              /* @ffi.extern: an int as C's int (0), unsigned int (1), unsigned 64-bit (2), or such a result (3) */
+  /* GC_NO_ROOT(pys_c_check.m): conversion error messages are C string literals. */
+  static const char *m[] = {"OverflowError: Python int too large to convert to C int", "OverflowError: Python int too large to convert to C unsigned int",
+                            "OverflowError: can't convert negative int to unsigned", "OverflowError: C unsigned result is too large for int"};
+  if (k == 0 ? v != (int32_t)v : k == 1 ? v < 0 || v > 0xFFFFFFFFLL : v < 0) pys_fail(m[k == 1 && v < 0 ? 2 : k]);
+  return v;
+}
+void pys_c_str(Str *s) { if (nul(s)) pys_fail("ValueError: embedded null character"); }   /* a str passed as const char * */
+void *pys_c_at(List *l, I k) {         /* ffi.at(xs, k), a list passed from its index k: its items from there */
+  list_narrow(l);   /* (C reads 64-bit ints: BIGIDS) */
+  if (k < 0 || k > l->len) {
+    char b[112]; snprintf(b, 112, "IndexError: ffi.at() index %lld is out of range for a list of %lld items", (long long)k, (long long)l->len); pys_fail(b);
+  }
+  return l->a + k;
+}
+/* @ffi.extern("lib"): when the def statement runs, the C function is looked up in lib's own handle, as
+   ctypes.CDLL(lib or None) finds it: dlopen(RTLD_NOW | RTLD_LOCAL), then dlsym; a failure raises what
+   ctypes raises, OSError or AttributeError with dlerror's text. Under pystachy run, the JIT runner's or
+   lli's own libraries (libLLVM's dependencies) are in the global scope: RTLD_DEEPBIND keeps lib and its
+   dependencies first */
+static void *c_library(const char *lib) {
+  pys_c_numeric();                     /* (a C function may call setlocale) */
+#ifdef RTLD_DEEPBIND
+  int deep = jit ? RTLD_DEEPBIND : 0;
+#else
+  int deep = 0;
+#endif
+  void *h = dlopen(*lib ? lib : 0, RTLD_NOW | RTLD_LOCAL | deep);
+  if (!h) failf("OSError: %s", dlerror());
+  return h;                           /* dlopen caches handles; retained for the process lifetime */
+}
+I pys_load_library(Str *lib) {
+  pys_c_str(lib);
+  return (I)c_library(lib->s);
+}
+void pys_c_bind(void **slot, const char *lib, const char *sym) {
+  void *h = c_library(lib);
+  dlerror();
+  void *p = dlsym(h, sym);
+  const char *e = p ? 0 : dlerror();
+  if (e) failf("AttributeError: %s", e);
+  *slot = p;
+}

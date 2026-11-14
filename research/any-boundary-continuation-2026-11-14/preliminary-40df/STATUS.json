@@ -1,0 +1,7 @@
+{
+  "source": "40dfd158f09dfa0e4f19a51d33c4893b434b57ae",
+  "public_source": "100c3a14194fb0c91c3df50bb8d725e9cbef14d6",
+  "status": "superseded preliminary validation",
+  "reason": "Independent review found new optional int delegation can skip owned child finally on narrowing overflow; final validation must use corrected compiler and regressions.",
+  "full_report_complete": false
+}

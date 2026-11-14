@@ -1,0 +1,59 @@
+{
+  "local_commit": "2df26bde21451abb89cc487f57b0a5531c655b8d",
+  "public_source_commit": "adf5a12a147649d01018dd49c8167610812ada00",
+  "tree": "30d991ebec23d92140381b4cd6fe6892a31b5a2b",
+  "binary_sha256": "960326040b35ed71405c188ff4627d119925351dd084430c18a213ff416c31e2",
+  "source_status": "clean",
+  "native_input_files_verified": 169,
+  "selected_cases": 74,
+  "checks_per_pass": 141,
+  "stage_results": [
+    {
+      "name": "native-normal",
+      "exit_code": 0,
+      "counts": {
+        "passed": 141,
+        "failed": 0
+      }
+    },
+    {
+      "name": "native-gc",
+      "exit_code": 0,
+      "counts": {
+        "passed": 141,
+        "failed": 0
+      }
+    },
+    {
+      "name": "runtime-probes",
+      "exit_code": 0,
+      "counts": null
+    },
+    {
+      "name": "ir-contracts",
+      "exit_code": 0,
+      "counts": null
+    },
+    {
+      "name": "runtime-contracts",
+      "exit_code": 0,
+      "counts": null
+    },
+    {
+      "name": "recordings",
+      "exit_code": 0,
+      "counts": null
+    },
+    {
+      "name": "lint",
+      "exit_code": 0,
+      "counts": null
+    }
+  ],
+  "evidence_sha256": {
+    "inputs.json": "a2ee4de68f13736c5196fa6a68be248ac52dec9edac0908b72bda0126e179a19",
+    "results.json": "79252c641da8303ed91aa73b40a739d44b0a6528a44e301a27d3eede0015ad63",
+    "final.json": "bd7efac130368bf20cfb6e177ec603eeb9eb01e61e244d1776e9103e3e02aa93",
+    "selection.txt": "9afe79869a3477252eac588143ef86b278ac6fda2625ca45a3d727586edf80ae"
+  }
+}

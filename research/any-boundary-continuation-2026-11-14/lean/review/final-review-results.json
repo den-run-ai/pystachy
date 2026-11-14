@@ -1,0 +1,42 @@
+{
+  "overlapping-list": {
+    "error": "ValueError: overlapping or invalid companion header fields"
+  },
+  "widened-slot": {
+    "error": "ValueError: raw list slot stride or value offset disagrees with companion storage"
+  },
+  "live": {
+    "candidate": {
+      "schema_version": 2,
+      "header_words": 4,
+      "header_scanned": true,
+      "store_word": 3,
+      "read_word": 3,
+      "array_scanned": true,
+      "prefix_words": 1,
+      "store_offset": 1,
+      "read_offset": 1,
+      "growth": {
+        "array_scanned": true,
+        "allocation_prefix": 1,
+        "source_offset": 0,
+        "target_offset": 0,
+        "copy_extra": 1
+      },
+      "slice": {
+        "array_scanned": true,
+        "allocation_prefix": 1,
+        "source_offset": 1,
+        "target_offset": 1,
+        "copy_extra": 0
+      }
+    },
+    "accepted": true
+  },
+  "reviewed_inputs": {
+    "tools/check_lean_companion.py": "dfed254fe96e73a9e09dd7989b68c621a4302f9928ac32403427d8d7f2eb6959",
+    "tools/lean_boundary/PystachyCompanion.lean": "bcde7810b27b6c00d575eaf50e8afa7437c5cfee36fb18e4d7827a3ab77f5c30",
+    "tools/lean_boundary/CompanionMain.lean": "83bdba5487544a624f4aea813d85806a83191443f14655ca8f8a12f3c472d941",
+    "tools/lean_boundary/README.md": "6a55b72b9358fe65968bdde88df0fd029b511b95778502985f6cc1f84d836855"
+  }
+}

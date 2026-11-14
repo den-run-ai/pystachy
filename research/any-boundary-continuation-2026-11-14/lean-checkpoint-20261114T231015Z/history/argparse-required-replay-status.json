@@ -1,0 +1,16 @@
+{
+  "command": [
+    "/workspace/scratch/c2b093657c17/dev-venv/bin/python",
+    "tools/lean_report.py",
+    "tests/programs/library/lib_argparse_required.py",
+    "--jobs",
+    "1",
+    "--progress",
+    "--output",
+    "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/argparse-required-replay.md",
+    "--records",
+    "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/argparse-required-replay.jsonl"
+  ],
+  "returncode": 0,
+  "elapsed_seconds": 62.655415058135986
+}

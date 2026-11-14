@@ -1,0 +1,11 @@
+child entered
+owned closed
+owned overflow
+owned exhausted True
+child entered
+borrowed closed
+borrowed overflow
+borrowed exhausted True
+child resumed
+borrowed child next 3
+child closed

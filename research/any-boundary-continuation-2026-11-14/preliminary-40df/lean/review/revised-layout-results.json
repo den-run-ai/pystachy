@@ -1,0 +1,33 @@
+{
+  "overlapping-list": {
+    "error": "ValueError: overlapping or invalid companion header fields"
+  },
+  "widened-slot": {
+    "candidate": {
+      "schema_version": 2,
+      "header_words": 4,
+      "header_scanned": true,
+      "store_word": 3,
+      "read_word": 3,
+      "array_scanned": true,
+      "prefix_words": 1,
+      "store_offset": 1,
+      "read_offset": 1,
+      "growth": {
+        "array_scanned": true,
+        "allocation_prefix": 1,
+        "source_offset": 0,
+        "target_offset": 0,
+        "copy_extra": 1
+      },
+      "slice": {
+        "array_scanned": true,
+        "allocation_prefix": 1,
+        "source_offset": 1,
+        "target_offset": 1,
+        "copy_extra": 0
+      }
+    },
+    "accepted": true
+  }
+}

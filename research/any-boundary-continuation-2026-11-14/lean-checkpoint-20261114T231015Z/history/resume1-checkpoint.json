@@ -1,0 +1,7 @@
+{
+  "source_commit": "2df26bde21451abb89cc487f57b0a5531c655b8d",
+  "records_sha256": "d60900cbac74451b36bf49a6650af842960ef541cc72856a92c3303de52583ea",
+  "records": 1383,
+  "reason": "BrokenProcessPool abrupt worker termination; no recorded inspection/checker errors; cause not determined.",
+  "resume_policy": "Tool-enforced clean input, inventory, Python/platform/Lean and checker path/hash equality; no source or record editing."
+}

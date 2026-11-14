@@ -1,0 +1,38 @@
+/workspace/scratch/1a96cd11db0d/companion-mutation-evidence.json
+[
+  {
+    "name": "reserve_drop_last_identity",
+    "before_normalized": true,
+    "after": "unsupported companion function shape: reserve"
+  },
+  {
+    "name": "slice_shift_source_to_kind_header",
+    "before_normalized": true,
+    "after": "unsupported companion function shape: pys_list_slice"
+  },
+  {
+    "name": "reserve_atomic_companion",
+    "before_normalized": true,
+    "after": false
+  },
+  {
+    "name": "reserve_attachment_lost",
+    "before_normalized": true,
+    "after": "unsupported companion function shape: reserve"
+  },
+  {
+    "name": "overlapping_raw_and_identity_fields",
+    "before_normalized": true,
+    "after": "overlapping or invalid companion header fields"
+  },
+  {
+    "name": "identity_member_macro_redirect",
+    "before_normalized": true,
+    "after": "unsupported companion function shape: list_identity_slow"
+  },
+  {
+    "name": "padded_raw_slot_stride",
+    "before_normalized": true,
+    "after": "raw list slot stride or value offset disagrees with companion storage"
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "source": "/workspace/scratch/1a96cd11db0d/lean-qualification/optional_delegate_overflow.py",
+  "source_sha256": "1e6579af6349db19c959dd6b3adc078c5e6f5d1a1c005fb0deff03129d04d51c",
+  "command": [
+    "/workspace/scratch/1a96cd11db0d/native-qa/pystachy",
+    "/workspace/scratch/1a96cd11db0d/lean-qualification/optional_delegate_overflow.py"
+  ],
+  "returncode": 2,
+  "elapsed_seconds": 0.01008152961730957,
+  "output": "usage: pystachy run FILE.py [ARGS...]   JIT-compile and run (LLVM ORC)\n       pystachy build FILE.py [-o EXE]  compile ahead of time to a native executable\n                    [--emit-ir RAW.ll] retain raw IR after a successful build\n       pystachy ext NAME.py [-o NAME.abi3.so]  compile to a CPython extension module (abi3, CPython 3.12+)\n       pystachy ir FILE.py [-o OUT.ll]  emit LLVM IR\n       pystachy check FILE.py           only parse it, with the checks CPython makes before running it\n       pystachy rt runtime.py [-o OUT.ll] emit the LLVM IR of the runtime's part written in the subset\n       pystachy --version               show version and source commit\n",
+  "binary_sha256": "8b51b743c22cd6c673881928e81a4e202e06e80e57ec71c1c1f0bf96dd00fd3f"
+}

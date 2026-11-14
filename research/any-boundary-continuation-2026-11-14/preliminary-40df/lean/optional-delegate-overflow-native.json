@@ -1,0 +1,13 @@
+{
+  "source": "/workspace/scratch/1a96cd11db0d/lean-qualification/optional_delegate_overflow.py",
+  "source_sha256": "1e6579af6349db19c959dd6b3adc078c5e6f5d1a1c005fb0deff03129d04d51c",
+  "command": [
+    "/workspace/scratch/1a96cd11db0d/native-qa/pystachy",
+    "run",
+    "/workspace/scratch/1a96cd11db0d/lean-qualification/optional_delegate_overflow.py"
+  ],
+  "returncode": 0,
+  "elapsed_seconds": 0.1424088478088379,
+  "output": "child entered\nowned closed\nowned overflow\nowned exhausted True\nchild entered\nborrowed closed\nborrowed overflow\nborrowed exhausted True\nchild resumed\nborrowed child next 3\nchild closed\n",
+  "binary_sha256": "8b51b743c22cd6c673881928e81a4e202e06e80e57ec71c1c1f0bf96dd00fd3f"
+}

@@ -1,0 +1,28 @@
+[
+  {
+    "case": "raw-protocol",
+    "command": [
+      "/workspace/scratch/1a96cd11db0d/native-qa/pystachy",
+      "run",
+      "/workspace/scratch/1a96cd11db0d/lean-qualification/optional_delegate_overflow_raw_protocol.py"
+    ],
+    "source_sha256": "1bdcb18c21625776bd5e6cc08430e27ea874e802ee2ae5809c7cfadc6106cabe",
+    "returncode": 0,
+    "output": "child entered\nowned closed\nowned overflow\nowned exhausted True\nchild entered\nborrowed closed\nborrowed overflow\nborrowed exhausted True\nchild resumed\nborrowed child next 3\nchild closed\n",
+    "elapsed_seconds": 0.16888093948364258,
+    "log": "/workspace/scratch/1a96cd11db0d/lean-qualification/optional-delegate-overflow-raw-protocol.log"
+  },
+  {
+    "case": "dynamic-control",
+    "command": [
+      "/workspace/scratch/1a96cd11db0d/native-qa/pystachy",
+      "run",
+      "/workspace/scratch/1a96cd11db0d/lean-qualification/optional_delegate_overflow_dynamic_control.py"
+    ],
+    "source_sha256": "78231e9c81afb1c21ee938ef86c926141c2ff70e67e17b7747c845a2c6343460",
+    "returncode": 0,
+    "output": "child entered\nchild closed\nowned closed\nowned overflow\nowned exhausted True\nchild entered\nborrowed closed\nborrowed overflow\nborrowed exhausted True\nchild resumed\nborrowed child next 3\nchild closed\n",
+    "elapsed_seconds": 0.111358642578125,
+    "log": "/workspace/scratch/1a96cd11db0d/lean-qualification/optional-delegate-overflow-dynamic-control.log"
+  }
+]

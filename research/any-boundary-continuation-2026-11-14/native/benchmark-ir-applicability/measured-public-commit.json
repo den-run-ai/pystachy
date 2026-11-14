@@ -1,0 +1,39 @@
+{
+  "observed_at": "2026-11-14T22:41:06.678Z",
+  "request_url": "https://api.github.com/repos/den-run-ai/pystachy/git/commits/b77d496547b733f4c121400ad1334f54aa33e1f8",
+  "data": {
+    "sha": "b77d496547b733f4c121400ad1334f54aa33e1f8",
+    "node_id": "C_kwDOU_6QTtoAKGI3N2Q0OTY1NDdiNzMzZjRjMTIxNDAwYWQxMzM0ZjU0YWEzM2UxZjg",
+    "url": "https://api.github.com/repos/den-run-ai/pystachy/git/commits/b77d496547b733f4c121400ad1334f54aa33e1f8",
+    "html_url": "https://github.com/den-run-ai/pystachy/commit/b77d496547b733f4c121400ad1334f54aa33e1f8",
+    "author": {
+      "name": "Denis Akhiyarov",
+      "email": "denis.akhiyarov@gmail.com",
+      "date": "2026-11-14T22:26:17Z"
+    },
+    "committer": {
+      "name": "Denis Akhiyarov",
+      "email": "denis.akhiyarov@gmail.com",
+      "date": "2026-11-14T22:26:17Z"
+    },
+    "tree": {
+      "sha": "7f6dfe900836cf9dd70cbd214e51a32b5bc04c58",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/git/trees/7f6dfe900836cf9dd70cbd214e51a32b5bc04c58"
+    },
+    "message": "Preserve optional numeric generator yield identities",
+    "parents": [
+      {
+        "sha": "adac7f4c88fd86ddaecbb889042b778c701b29ed",
+        "url": "https://api.github.com/repos/den-run-ai/pystachy/git/commits/adac7f4c88fd86ddaecbb889042b778c701b29ed",
+        "html_url": "https://github.com/den-run-ai/pystachy/commit/adac7f4c88fd86ddaecbb889042b778c701b29ed"
+      }
+    ],
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  }
+}

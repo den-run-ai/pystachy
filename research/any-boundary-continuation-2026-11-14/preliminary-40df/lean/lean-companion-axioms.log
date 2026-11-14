@@ -1,0 +1,7 @@
+PystachyCompanion.accepted_identity_roundtrip: axiom audit passed ([propext])
+PystachyCompanion.accepted_traces_identity: axiom audit passed ([propext, Quot.sound])
+PystachyCompanion.accepted_root_chain: axiom audit passed ([propext, Quot.sound])
+PystachyCompanion.accepted_boxed_root_chain: axiom audit passed ([propext, Quot.sound])
+PystachyCompanion.accepted_copy_identity: axiom audit passed ([propext, Quot.sound])
+PystachyCompanion.accepted_copy_traces_identity: axiom audit passed ([propext, Quot.sound])
+PystachyCompanion.accepted_copied_root_chain: axiom audit passed ([propext, Quot.sound])

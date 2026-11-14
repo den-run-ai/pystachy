@@ -1,0 +1,18 @@
+mkdir -p build
+./pystachy rt runtime.py -o build/listprobe-rt.ll
+"/workspace/scratch/c2b093657c17/toolchains/llvm18/payload/usr/lib/llvm-18/bin/"clang -O2 -S -emit-llvm tools/listprobe.c -o build/listprobe.ll
+"/workspace/scratch/c2b093657c17/toolchains/llvm18/payload/usr/lib/llvm-18/bin/"llvm-link build/listprobe-rt.ll build/listprobe.ll -o build/listprobe.bc
+"/workspace/scratch/c2b093657c17/toolchains/llvm18/payload/usr/lib/llvm-18/bin/"clang -O2 build/listprobe.bc -o build/listprobe -lm
+build/listprobe
+listprobe: empty-list reuse, inline short lists, range-list storage/mutation, pointer-free list kinds, numeric identity, promoting storage, native Any boundaries, tuple identity roots and large-object collections passed
+PYSTACHY_GC_STRESS=1 build/listprobe
+listprobe: empty-list reuse, inline short lists, range-list storage/mutation, pointer-free list kinds, numeric identity, promoting storage, native Any boundaries, tuple identity roots and large-object collections passed
+mkdir -p build
+./pystachy rt runtime.py -o build/boxprobe-rt.ll
+"/workspace/scratch/c2b093657c17/toolchains/llvm18/payload/usr/lib/llvm-18/bin/"clang -O2 -S -emit-llvm tools/boxprobe.c -o build/boxprobe.ll
+"/workspace/scratch/c2b093657c17/toolchains/llvm18/payload/usr/lib/llvm-18/bin/"llvm-link build/boxprobe-rt.ll build/boxprobe.ll -o build/boxprobe.bc
+"/workspace/scratch/c2b093657c17/toolchains/llvm18/payload/usr/lib/llvm-18/bin/"clang -O2 build/boxprobe.bc -o build/boxprobe -lm
+build/boxprobe
+boxprobe: boxing bits, mutable reference aliases, traced list companions, atomic-root negative control, 16-byte slots and one-past-the-end control passed
+PYSTACHY_GC_STRESS=1 build/boxprobe
+boxprobe: boxing bits, mutable reference aliases, traced list companions, atomic-root negative control, 16-byte slots and one-past-the-end control passed

@@ -1,0 +1,252 @@
+cd tools/lean_boundary && lake build
+ℹ [20/44] Replayed GuardAudit
+info: GuardAudit.lean:6:0: PystachyGuards.removed_check_nonnull: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: GuardAudit.lean:6:0: PystachyGuards.union_member_matches: axiom audit passed ([propext, Quot.sound])
+info: GuardAudit.lean:6:0: PystachyGuards.union_read_nonnull: axiom audit passed ([propext, Quot.sound])
+info: GuardAudit.lean:6:0: PystachyGuards.field_assigned: axiom audit passed ([propext, Quot.sound])
+ℹ [22/44] Replayed Audit
+info: Audit.lean:16:0: PystachyBoundary.check_iff: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyLayout.checked_projection: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyLayout.accepted_layout_projection: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyAlias.accepted_reference_roundtrip: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyAlias.accepted_alias_write: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyAlias.accepted_traces_reference: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyAlias.accepted_root_chain: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyCompanion.accepted_identity_roundtrip: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyCompanion.accepted_traces_identity: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyCompanion.accepted_root_chain: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyCompanion.accepted_boxed_root_chain: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyCompanion.accepted_copy_identity: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyCompanion.accepted_copy_traces_identity: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyCompanion.accepted_copied_root_chain: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyBoundary.reachable_facts: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyBoundary.accepted_payload_safe: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyAccess.reachable_invariant: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyAccess.accepted_access_safe: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyAccess.writeField_step: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyAccess.accepted_write_progress: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInt.known_fits: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInt.mod_fits: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInt.floordiv_fits: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyInt.shr_fits: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInt.shl_exact: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInt.bitwise_fits: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInt.and_mask: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInline.no_overflow_exact: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInline.no_overflow_fits: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyInline.accepted_arithmetic_exact: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.low_of_fit: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.promoting_decode: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyStorage.plain_view_safe: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.plain_marker_has_no_tail: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyStorage.null_digits_narrow: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.slot_fits_iff: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyStorage.pair_truth_zero: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.layout_has_tail: axiom audit passed ([])
+info: Audit.lean:16:0: PystachyStorage.accepted_low_word: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.accepted_plain_view: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.accepted_tail_read: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.accepted_narrowing: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.accepted_slot_narrowing: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.accepted_optional_slot_narrowing: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.accepted_stack_copy: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.erase_read_move_iff: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyStorage.projected_reachable: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyStorage.accepted_projected_payload: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:52:0: 'PystachyBoundary.accepted_payload_safe' depends on axioms: [propext, Quot.sound]
+info: Audit.lean:53:0: 'PystachyAccess.accepted_access_safe' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Audit.lean:54:0: 'PystachyInt.known_fits' depends on axioms: [propext, Quot.sound]
+Build completed successfully (44 jobs).
+/workspace/scratch/c2b093657c17/dev-venv/bin/python tools/lean_report.py --jobs 2 --start-method spawn --progress --records /workspace/scratch/1a96cd11db0d/lean-qualification/whole.jsonl
+1/2610 tests/deviations/bfile_mode_computed.py 1.2s
+2/2610 tests/deviations/circular_attr.py 0.1s
+3/2610 tests/deviations/class_creation.py 0.0s
+4/2610 tests/deviations/bfile_append_buffer.py 1.4s
+5/2610 tests/deviations/complex_pow.py 0.0s
+6/2610 tests/deviations/container_nan_identity.py 0.1s
+7/2610 tests/deviations/contextmanager_derived_none_metadata.py 0.2s
+8/2610 tests/deviations/ctypes_pointer_range.py 0.1s
+9/2610 tests/deviations/dataclass_direct_compare.py 0.1s
+10/2610 tests/deviations/dict_key_repr_at_raise.py 0.1s
+11/2610 tests/deviations/dict_views.py 0.0s
+12/2610 tests/deviations/dict_values_snapshot.py 0.1s
+13/2610 tests/deviations/dyn_star_reducer_unsupported_body.py 0.1s
+14/2610 tests/deviations/dyn_star_reducer_boundaries.py 0.1s
+15/2610 tests/deviations/dynany_abs_overflow.py 0.1s
+16/2610 tests/deviations/dynany_annotation_check.py 0.0s
+17/2610 tests/deviations/dynany_builtin_star_error.py 0.0s
+18/2610 tests/deviations/dynany_builtin_keywords.py 0.2s
+19/2610 tests/deviations/dynany_class_callable.py 0.1s
+20/2610 tests/deviations/dynany_class_construct_field.py 0.1s
+21/2610 tests/deviations/dynany_class_factory_methods.py 0.1s
+22/2610 tests/deviations/dynany_class_live_metadata.py 0.1s
+23/2610 tests/deviations/dynany_cmp_declined_annotations.py 0.2s
+24/2610 tests/deviations/dynany_cmp_declined_declarations.py 0.2s
+25/2610 tests/deviations/dynany_cmp_field_reflection.py 0.1s
+26/2610 tests/deviations/dynany_cmp_field_shadow.py 0.1s
+27/2610 tests/deviations/dynany_cmp_proof_bound.py 0.2s
+28/2610 tests/deviations/dynany_cmp_rebinding_native_store.py 0.3s
+29/2610 tests/deviations/dynany_cmp_unavailable_containers.py 0.2s
+30/2610 tests/deviations/dynany_cmp_unavailable_ops.py 0.3s
+31/2610 tests/deviations/dynany_cmp_unavailable_reflection.py 0.1s
+32/2610 tests/deviations/dynany_cmp_uncompiled_body.py 0.1s
+33/2610 tests/deviations/dynany_generator_channel_check.py 0.1s
+34/2610 tests/deviations/dynany_generator_channel_check_protocol.py 0.1s
+35/2610 tests/deviations/dynany_identity_boundary.py 0.1s
+36/2610 tests/deviations/dynany_json_reinsert.py 1.0s
+37/2610 tests/deviations/dynany_key_none_objects.py 0.3s
+38/2610 tests/deviations/dynany_native_int_list_store.py 0.8s
+39/2610 tests/deviations/dynany_str_mod.py 0.1s
+40/2610 tests/deviations/dynany_tuple_item_check.py 0.1s
+41/2610 tests/deviations/dynany_unbox_container.py 0.1s
+42/2610 tests/deviations/exc_arg_repr_raises.py 0.1s
+43/2610 tests/deviations/exc_class_call_init_type.py 0.1s
+44/2610 tests/deviations/exc_class_call_nonetype.py 0.1s
+45/2610 tests/deviations/exc_class_module_builtins.py 0.1s
+46/2610 tests/deviations/exc_overflow.py 0.1s
+47/2610 tests/deviations/exc_syntax_error_truth.py 0.1s
+48/2610 tests/deviations/format_spec_unicode_digits.py 0.1s
+49/2610 tests/deviations/from_import_unbound.py 0.1s
+50/2610 tests/deviations/gen_finalization.py 0.1s
+51/2610 tests/deviations/gen_genexp_close_timing.py 0.1s
+52/2610 tests/deviations/gen_pep479_no_try.py 0.0s
+53/2610 tests/deviations/gen_stop_value.py 0.1s
+54/2610 tests/deviations/int_masked_overflow.py 0.1s
+55/2610 tests/deviations/int_parse_overflow.py 0.1s
+56/2610 tests/deviations/io_encoding_unknown.py 0.1s
+57/2610 tests/deviations/io_iter_write_read.py 0.1s
+58/2610 tests/deviations/io_rplus_big_read.py 0.1s
+59/2610 tests/deviations/json_invalid_utf8.py 1.1s
+60/2610 tests/deviations/json_limits.py 1.0s
+61/2610 tests/deviations/key_object_none_unordered.py 0.2s
+62/2610 tests/deviations/lib_atexit_unregister.py 0.1s
+63/2610 tests/deviations/lib_binascii_sep_none.py 0.1s
+64/2610 tests/deviations/lib_codecs_lookup.py 0.5s
+65/2610 tests/deviations/lib_collections.py 0.3s
+66/2610 tests/deviations/lib_collections_mappings.py 0.6s
+67/2610 tests/deviations/lib_copy_any_object.py 0.3s
+68/2610 tests/deviations/dynany_class_construct_deferred.py 10.0s
+69/2610 tests/deviations/lib_datetime.py 3.3s
+70/2610 tests/deviations/lib_csv.py 3.7s
+71/2610 tests/deviations/lib_functools_partial_attrs.py 0.1s
+72/2610 tests/deviations/lib_fnmatch_byte_boundaries.py 1.4s
+73/2610 tests/deviations/lib_io_newline_decoder_object.py 0.2s
+74/2610 tests/deviations/lib_io_newline_decoder_tuple.py 0.2s
+75/2610 tests/deviations/lib_io_textiowrapper.py 0.7s
+76/2610 tests/deviations/lib_itertools_close.py 0.2s
+77/2610 tests/deviations/lib_itertools_ended.py 0.3s
+78/2610 tests/deviations/lib_itertools_exception.py 0.3s
+79/2610 tests/deviations/lib_itertools_groupby_nan.py 0.7s
+80/2610 tests/deviations/lib_itertools_hasattr.py 0.3s
+81/2610 tests/deviations/lib_itertools_protocol.py 0.4s
+82/2610 tests/deviations/lib_itertools_reenter.py 0.3s
+83/2610 tests/deviations/lib_itertools_tee_list.py 0.5s
+84/2610 tests/deviations/lib_html_parser_names.py 41.3s
+85/2610 tests/deviations/lib_markupbase_constructor.py 6.1s
+86/2610 tests/deviations/lib_module_doc.py 0.4s
+87/2610 tests/deviations/lib_pathlib_unsupported.py 3.2s
+88/2610 tests/deviations/lib_random.py 1.4s
+89/2610 tests/deviations/lib_re.py 10.6s
+90/2610 tests/deviations/lib_logging_exc_info.py 60.4s
+91/2610 tests/deviations/lib_re_cache_policy.py 6.4s
+92/2610 tests/deviations/lib_re_bounded_decoding.py 10.8s
+93/2610 tests/deviations/lib_re_decoding.py 10.4s
+94/2610 tests/deviations/lib_re_purge_decoding.py 10.0s
+95/2610 tests/deviations/lib_shlex.py 6.5s
+96/2610 tests/deviations/lib_shutil_unsupported.py 0.4s
+97/2610 tests/deviations/lib_statistics.py 1.1s
+98/2610 tests/deviations/lib_re_release.py 11.8s
+99/2610 tests/deviations/lib_string.py 5.2s
+100/2610 tests/deviations/lib_struct_iter_unpack.py 0.2s
+101/2610 tests/deviations/lib_struct_unsigned64.py 0.1s
+102/2610 tests/deviations/lib_thread_deadlock.py 0.1s
+103/2610 tests/deviations/lib_thread_start.py 0.1s
+104/2610 tests/deviations/lib_traceback_context.py 0.1s
+105/2610 tests/deviations/lib_types_mappingproxy_eq_other.py 0.1s
+106/2610 tests/deviations/lib_string_formatter_fields.py 7.4s
+107/2610 tests/deviations/lib_urllib_parse.py 10.8s
+108/2610 tests/deviations/lib_warnings_location.py 9.8s
+109/2610 tests/deviations/lib_weakref_all.py 0.4s
+110/2610 tests/deviations/math_fsum_generator.py 0.1s
+111/2610 tests/deviations/math_prod.py 0.1s
+112/2610 tests/deviations/math_varargs_overflow.py 0.1s
+113/2610 tests/deviations/module_doc_unbound.py 0.1s
+114/2610 tests/deviations/none_left_reflected.py 0.1s
+115/2610 tests/deviations/overflow.py 0.1s
+116/2610 tests/deviations/platform_implementation_name.py 0.1s
+117/2610 tests/deviations/python_int_limits.py 4.0s
+118/2610 tests/deviations/python_int_optional_generator_width.py 0.2s
+119/2610 tests/deviations/recursion_native_stack.py 0.1s
+120/2610 tests/deviations/recursion_uncounted_frames.py 0.1s
+121/2610 tests/deviations/recursive_alias_limits.py 0.2s
+122/2610 tests/deviations/return_missing_value.py 0.1s
+123/2610 tests/deviations/round_int_overflow.py 0.1s
+124/2610 tests/deviations/rt_chr_surrogate.py 0.1s
+125/2610 tests/deviations/rt_lcm_overflow.py 0.1s
+126/2610 tests/deviations/scalar_union_nan_identity.py 0.1s
+127/2610 tests/deviations/star_rebound_self.py 0.1s
+128/2610 tests/deviations/super_init_class_property.py 0.1s
+129/2610 tests/deviations/super_init_dynamic_receiver.py 0.1s
+130/2610 tests/deviations/sys_version_info_tuple.py 0.1s
+131/2610 tests/deviations/lib_warnings_message_type.py 9.8s
+132/2610 tests/deviations/tuple_runtime_identity.py 0.1s
+133/2610 tests/deviations/with_traceback_none.py 0.1s
+134/2610 tests/programs/apps/algorithms.py 0.4s
+135/2610 tests/deviations/threading_start.py 11.7s
+136/2610 tests/programs/apps/example_agent.py 2.2s
+137/2610 tests/programs/apps/byte_bpe.py 12.9s
+138/2610 tests/programs/apps/example_column.py 0.8s
+139/2610 tests/programs/apps/example_cut.py 0.6s
+140/2610 tests/programs/apps/example_csvstat.py 1.8s
+141/2610 tests/programs/apps/example_id_filter.py 1.4s
+142/2610 tests/programs/apps/example_latency.py 1.2s
+143/2610 tests/programs/apps/example_linediff.py 7.4s
+144/2610 tests/programs/apps/example_mazepath.py 1.3s
+145/2610 tests/programs/apps/example_montecarlo.py 1.8s
+146/2610 tests/programs/apps/example_mailmerge.py 12.5s
+147/2610 tests/programs/apps/example_nanogpt.py 5.2s
+148/2610 tests/programs/apps/example_nanogpt_training.py 4.0s
+149/2610 tests/programs/apps/example_ndarray_edges.py 1.8s
+150/2610 tests/programs/apps/example_ndarray.py 7.3s
+151/2610 tests/programs/apps/example_ndarray_elementwise.py 4.2s
+152/2610 tests/programs/apps/example_ndarray_upstream.py 5.4s
+153/2610 tests/programs/apps/example_route.py 10.1s
+154/2610 tests/programs/apps/example_route_empty.py 10.9s
+155/2610 tests/programs/apps/example_suggest.py 7.0s
+156/2610 tests/programs/apps/example_topk.py 0.9s
+157/2610 tests/programs/apps/guarded_score.py 0.4s
+158/2610 tests/programs/apps/match_dispatch_workloads.py 0.6s
+159/2610 tests/programs/apps/miniui_headless.py 8.4s
+160/2610 tests/programs/apps/ouro2_arith.py 0.1s
+161/2610 tests/programs/apps/ouro2_bignum.py 0.2s
+162/2610 tests/programs/apps/ouro2_calc.py 0.2s
+163/2610 tests/programs/apps/ouro2_classes.py 0.3s
+164/2610 tests/programs/apps/ouro2_dp.py 0.5s
+165/2610 tests/programs/apps/ouro2_globals.py 0.1s
+166/2610 tests/programs/apps/ouro2_grid.py 0.2s
+167/2610 tests/programs/apps/ouro2_hashmap.py 0.2s
+168/2610 tests/programs/apps/ouro2_hello.py 0.1s
+169/2610 tests/programs/apps/ouro2_lists.py 0.2s
+170/2610 tests/programs/apps/ouro2_order.py 0.1s
+171/2610 tests/programs/apps/ouro2_queens.py 0.1s
+172/2610 tests/programs/apps/ouro2_semantics.py 0.4s
+173/2610 tests/programs/apps/ouro2_sorts.py 0.2s
+174/2610 tests/programs/apps/ouro2_strings.py 0.2s
+175/2610 tests/programs/apps/ouro2_vm.py 0.3s
+176/2610 tests/programs/apps/example_urlstats.py 13.4s
+177/2610 tests/programs/apps/port_convertdate_datetime.py 3.2s
+178/2610 tests/programs/apps/port_convertdate_calendars.py 4.8s
+179/2610 tests/programs/apps/port_convertdate_holidays.py 2.8s
+180/2610 tests/programs/apps/port_convertdate_star.py 2.1s
+181/2610 tests/programs/apps/port_iniconfig_api.py 1.1s
+182/2610 tests/programs/apps/port_iniconfig_parse.py 0.8s
+183/2610 tests/programs/apps/port_jdcal_convert.py 0.5s
+184/2610 tests/programs/apps/port_jdcal_extremes.py 0.3s
+185/2610 tests/programs/apps/port_json_repair.py 14.2s
+186/2610 tests/programs/apps/port_json_repair_accumulator.py 14.5s
+187/2610 tests/programs/apps/port_json_repair_bigints_limits.py 12.3s
+188/2610 tests/programs/apps/port_json_repair_bigints.py 13.0s
+189/2610 tests/programs/apps/port_json_repair_bounds.py 2.7s
+190/2610 tests/programs/apps/port_json_repair_comments.py 12.6s
+191/2610 tests/programs/apps/port_json_repair_depth.py 11.6s
+192/2610 tests/programs/apps/port_json_repair_escape.py 12.4s

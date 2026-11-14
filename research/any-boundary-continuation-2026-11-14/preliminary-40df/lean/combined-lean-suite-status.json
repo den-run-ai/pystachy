@@ -1,0 +1,10 @@
+{
+  "commit": "40dfd158f09dfa0e4f19a51d33c4893b434b57ae",
+  "command": [
+    "make",
+    "check-lean-boundary",
+    "PY=/workspace/scratch/c2b093657c17/dev-venv/bin/python"
+  ],
+  "exit": 0,
+  "completed": 1794695093.001877
+}

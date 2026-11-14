@@ -1,0 +1,72 @@
+[
+  {
+    "case": "tests/programs/inference/dynany_identity_generator_optional.py",
+    "old_lines": 2301,
+    "new_lines": 2684,
+    "changed_functions": [
+      "dyn.next",
+      "f.check",
+      "f.dynamic.1",
+      "f.floats.1",
+      "f.forward.1",
+      "f.integers.1",
+      "f.narrowed.1"
+    ],
+    "added_functions": [],
+    "removed_functions": [],
+    "globals_changed": true,
+    "old_identity_mentions": 0,
+    "new_identity_mentions": 16
+  },
+  {
+    "case": "tests/programs/inference/dynany_identity_generator_optional_fresh.py",
+    "old_lines": 1857,
+    "new_lines": 2302,
+    "changed_functions": [
+      "f.advance.1",
+      "f.advance_alias.1",
+      "f.aliases.1",
+      "f.check",
+      "f.fresh.1",
+      "f.literal.1",
+      "f.retained.1"
+    ],
+    "added_functions": [],
+    "removed_functions": [],
+    "globals_changed": true,
+    "old_identity_mentions": 0,
+    "new_identity_mentions": 24
+  },
+  {
+    "case": "tests/programs/inference/dynany_identity_generator_optional_scope.py",
+    "old_lines": 815,
+    "new_lines": 914,
+    "changed_functions": [
+      "dyn.next",
+      "f.producer$integers.1",
+      "f.producer$values.1",
+      "main.init"
+    ],
+    "added_functions": [],
+    "removed_functions": [],
+    "globals_changed": true,
+    "old_identity_mentions": 0,
+    "new_identity_mentions": 12
+  },
+  {
+    "case": "tests/deviations/python_int_optional_generator_width.py",
+    "old_lines": 1269,
+    "new_lines": 1390,
+    "changed_functions": [
+      "f.direct.1",
+      "f.forwarded.1",
+      "f.optional.1",
+      "main.init"
+    ],
+    "added_functions": [],
+    "removed_functions": [],
+    "globals_changed": true,
+    "old_identity_mentions": 0,
+    "new_identity_mentions": 6
+  }
+]

@@ -1,0 +1,227 @@
+[
+  {
+    "name": "cpython-python_int_optional_generator_cleanup",
+    "command": [
+      "/workspace/scratch/c2b093657c17/dev-venv/bin/python",
+      "tests/deviations/python_int_optional_generator_cleanup.py"
+    ],
+    "environment_overrides": {},
+    "returncode": 0,
+    "stdout": "case 9223372036854775808 False\nchild entered\nowned wide 9223372036854775808\nchild resumed\nowned done False\nchild finally\nowned finally\nowned done again True\nchild entered\nborrowed wide 9223372036854775808\nchild resumed\nborrowed done False\nchild finally\nborrowed next None\nborrowed child done True\nborrowed finally\nborrowed done again True\ncase 9223372036854775808 True\nchild entered\nowned first 7\nowned wide 9223372036854775808\nchild resumed\nowned done False\nchild finally\nowned finally\nowned done again True\nchild entered\nborrowed first 7\nborrowed wide 9223372036854775808\nchild resumed\nborrowed done False\nchild finally\nborrowed next None\nborrowed child done True\nborrowed finally\nborrowed done again True\ncase -9223372036854775809 False\nchild entered\nowned wide -9223372036854775809\nchild resumed\nowned done False\nchild finally\nowned finally\nowned done again True\nchild entered\nborrowed wide -9223372036854775809\nchild resumed\nborrowed done False\nchild finally\nborrowed next None\nborrowed child done True\nborrowed finally\nborrowed done again True\ncase -9223372036854775809 True\nchild entered\nowned first 7\nowned wide -9223372036854775809\nchild resumed\nowned done False\nchild finally\nowned finally\nowned done again True\nchild entered\nborrowed first 7\nborrowed wide -9223372036854775809\nchild resumed\nborrowed done False\nchild finally\nborrowed next None\nborrowed child done True\nborrowed finally\nborrowed done again True\n",
+    "stderr": "",
+    "log": "/workspace/scratch/1a96cd11db0d/generator-cleanup-results/cpython-python_int_optional_generator_cleanup.log",
+    "log_sha256": "d5a087fe07fe1c89a45b49add023b59fc379400fde2606585b16d068b9483bfc"
+  },
+  {
+    "name": "cpython-python_int_optional_generator_cleanup_protocol",
+    "command": [
+      "/workspace/scratch/c2b093657c17/dev-venv/bin/python",
+      "tests/deviations/python_int_optional_generator_cleanup_protocol.py"
+    ],
+    "environment_overrides": {},
+    "returncode": 0,
+    "stdout": "case 9223372036854775808 False\nchild entered\nowned wide 9223372036854775808\nchild resumed\nowned done False\nchild finally\nowned finally\nowned done again True\nchild entered\nborrowed wide 9223372036854775808\nchild resumed\nborrowed done False\nchild finally\nborrowed next None\nborrowed child done True\nborrowed finally\nborrowed done again True\ncase 9223372036854775808 True\nchild entered\nowned first 7\nowned wide 9223372036854775808\nchild resumed\nowned done False\nchild finally\nowned finally\nowned done again True\nchild entered\nborrowed first 7\nborrowed wide 9223372036854775808\nchild resumed\nborrowed done False\nchild finally\nborrowed next None\nborrowed child done True\nborrowed finally\nborrowed done again True\ncase -9223372036854775809 False\nchild entered\nowned wide -9223372036854775809\nchild resumed\nowned done False\nchild finally\nowned finally\nowned done again True\nchild entered\nborrowed wide -9223372036854775809\nchild resumed\nborrowed done False\nchild finally\nborrowed next None\nborrowed child done True\nborrowed finally\nborrowed done again True\ncase -9223372036854775809 True\nchild entered\nowned first 7\nowned wide -9223372036854775809\nchild resumed\nowned done False\nchild finally\nowned finally\nowned done again True\nchild entered\nborrowed first 7\nborrowed wide -9223372036854775809\nchild resumed\nborrowed done False\nchild finally\nborrowed next None\nborrowed child done True\nborrowed finally\nborrowed done again True\n",
+    "stderr": "",
+    "log": "/workspace/scratch/1a96cd11db0d/generator-cleanup-results/cpython-python_int_optional_generator_cleanup_protocol.log",
+    "log_sha256": "d5a087fe07fe1c89a45b49add023b59fc379400fde2606585b16d068b9483bfc"
+  },
+  {
+    "name": "old40df-negative",
+    "command": [
+      "tests/run.sh",
+      "/workspace/scratch/1a96cd11db0d/native-qa/pystachy",
+      "jit aot",
+      "tests/deviations/python_int_optional_generator_cleanup.py",
+      "tests/deviations/python_int_optional_generator_cleanup_protocol.py"
+    ],
+    "environment_overrides": {
+      "PYSTACHY_HOME": "/workspace/scratch/1a96cd11db0d/native-qa"
+    },
+    "returncode": 1,
+    "stdout": "FAIL deviations/python_int_optional_generator_cleanup (jit)\n3d2\n< child finally\n22d20\n< child finally\n41d38\n< child finally\n60d56\n< child finally\nFAIL deviations/python_int_optional_generator_cleanup (aot)\n3d2\n< child finally\n22d20\n< child finally\n41d38\n< child finally\n60d56\n< child finally\nFAIL deviations/python_int_optional_generator_cleanup_protocol (jit)\n3d2\n< child finally\n22d20\n< child finally\n41d38\n< child finally\n60d56\n< child finally\nFAIL deviations/python_int_optional_generator_cleanup_protocol (aot)\n3d2\n< child finally\n22d20\n< child finally\n41d38\n< child finally\n60d56\n< child finally\nselected 2 cases\n0 passed, 4 failed\n",
+    "stderr": "",
+    "log": "/workspace/scratch/1a96cd11db0d/generator-cleanup-results/old40df-negative.log",
+    "log_sha256": "310c756a1c392018bb44de6105cdfd12a2c435cf300a56dada4693c61c22e093"
+  },
+  {
+    "name": "control-old-python_int_optional_generator_cleanup",
+    "command": [
+      "/workspace/scratch/1a96cd11db0d/native-qa/pystachy",
+      "run",
+      "/workspace/scratch/1a96cd11db0d/generator-cleanup-results/dynamic-python_int_optional_generator_cleanup.py"
+    ],
+    "environment_overrides": {
+      "PYSTACHY_HOME": "/workspace/scratch/1a96cd11db0d/native-qa"
+    },
+    "returncode": 0,
+    "stdout": "case 9223372036854775808 False\nchild entered\nchild finally\nowned caught\nowned finally\nowned overflow\nowned done True\nowned done again True\nchild entered\nborrowed caught\nborrowed finally\nborrowed overflow\nborrowed done True\nchild resumed\nborrowed next 9\nchild finally\nborrowed child done True\nborrowed done again True\ncase 9223372036854775808 True\nchild entered\nowned first 7\nchild finally\nowned caught\nowned finally\nowned overflow\nowned done True\nowned done again True\nchild entered\nborrowed first 7\nborrowed caught\nborrowed finally\nborrowed overflow\nborrowed done True\nchild resumed\nborrowed next 9\nchild finally\nborrowed child done True\nborrowed done again True\ncase -9223372036854775809 False\nchild entered\nchild finally\nowned caught\nowned finally\nowned overflow\nowned done True\nowned done again True\nchild entered\nborrowed caught\nborrowed finally\nborrowed overflow\nborrowed done True\nchild resumed\nborrowed next 9\nchild finally\nborrowed child done True\nborrowed done again True\ncase -9223372036854775809 True\nchild entered\nowned first 7\nchild finally\nowned caught\nowned finally\nowned overflow\nowned done True\nowned done again True\nchild entered\nborrowed first 7\nborrowed caught\nborrowed finally\nborrowed overflow\nborrowed done True\nchild resumed\nborrowed next 9\nchild finally\nborrowed child done True\nborrowed done again True\n",
+    "stderr": "",
+    "log": "/workspace/scratch/1a96cd11db0d/generator-cleanup-results/control-old-python_int_optional_generator_cleanup.log",
+    "log_sha256": "29d47d31d5efdabb6ea34039d14dd8077252368d72df765d1896812499814038"
+  },
+  {
+    "name": "control-new-python_int_optional_generator_cleanup",
+    "command": [
+      "/workspace/scratch/c2b093657c17/dev-venv/bin/python",
+      "-m",
+      "pystachy",
+      "run",
+      "/workspace/scratch/1a96cd11db0d/generator-cleanup-results/dynamic-python_int_optional_generator_cleanup.py"
+    ],
+    "environment_overrides": {},
+    "returncode": 0,
+    "stdout": "case 9223372036854775808 False\nchild entered\nchild finally\nowned caught\nowned finally\nowned overflow\nowned done True\nowned done again True\nchild entered\nborrowed caught\nborrowed finally\nborrowed overflow\nborrowed done True\nchild resumed\nborrowed next 9\nchild finally\nborrowed child done True\nborrowed done again True\ncase 9223372036854775808 True\nchild entered\nowned first 7\nchild finally\nowned caught\nowned finally\nowned overflow\nowned done True\nowned done again True\nchild entered\nborrowed first 7\nborrowed caught\nborrowed finally\nborrowed overflow\nborrowed done True\nchild resumed\nborrowed next 9\nchild finally\nborrowed child done True\nborrowed done again True\ncase -9223372036854775809 False\nchild entered\nchild finally\nowned caught\nowned finally\nowned overflow\nowned done True\nowned done again True\nchild entered\nborrowed caught\nborrowed finally\nborrowed overflow\nborrowed done True\nchild resumed\nborrowed next 9\nchild finally\nborrowed child done True\nborrowed done again True\ncase -9223372036854775809 True\nchild entered\nowned first 7\nchild finally\nowned caught\nowned finally\nowned overflow\nowned done True\nowned done again True\nchild entered\nborrowed first 7\nborrowed caught\nborrowed finally\nborrowed overflow\nborrowed done True\nchild resumed\nborrowed next 9\nchild finally\nborrowed child done True\nborrowed done again True\n",
+    "stderr": "",
+    "log": "/workspace/scratch/1a96cd11db0d/generator-cleanup-results/control-new-python_int_optional_generator_cleanup.log",
+    "log_sha256": "29d47d31d5efdabb6ea34039d14dd8077252368d72df765d1896812499814038"
+  },
+  {
+    "name": "control-old-python_int_optional_generator_cleanup_protocol",
+    "command": [
+      "/workspace/scratch/1a96cd11db0d/native-qa/pystachy",
+      "run",
+      "/workspace/scratch/1a96cd11db0d/generator-cleanup-results/dynamic-python_int_optional_generator_cleanup_protocol.py"
+    ],
+    "environment_overrides": {
+      "PYSTACHY_HOME": "/workspace/scratch/1a96cd11db0d/native-qa"
+    },
+    "returncode": 0,
+    "stdout": "case 9223372036854775808 False\nchild entered\nchild finally\nowned caught\nowned finally\nowned overflow\nowned done True\nowned done again True\nchild entered\nborrowed caught\nborrowed finally\nborrowed overflow\nborrowed done True\nchild resumed\nborrowed next 9\nchild finally\nborrowed child done True\nborrowed done again True\ncase 9223372036854775808 True\nchild entered\nowned first 7\nchild finally\nowned caught\nowned finally\nowned overflow\nowned done True\nowned done again True\nchild entered\nborrowed first 7\nborrowed caught\nborrowed finally\nborrowed overflow\nborrowed done True\nchild resumed\nborrowed next 9\nchild finally\nborrowed child done True\nborrowed done again True\ncase -9223372036854775809 False\nchild entered\nchild finally\nowned caught\nowned finally\nowned overflow\nowned done True\nowned done again True\nchild entered\nborrowed caught\nborrowed finally\nborrowed overflow\nborrowed done True\nchild resumed\nborrowed next 9\nchild finally\nborrowed child done True\nborrowed done again True\ncase -9223372036854775809 True\nchild entered\nowned first 7\nchild finally\nowned caught\nowned finally\nowned overflow\nowned done True\nowned done again True\nchild entered\nborrowed first 7\nborrowed caught\nborrowed finally\nborrowed overflow\nborrowed done True\nchild resumed\nborrowed next 9\nchild finally\nborrowed child done True\nborrowed done again True\n",
+    "stderr": "",
+    "log": "/workspace/scratch/1a96cd11db0d/generator-cleanup-results/control-old-python_int_optional_generator_cleanup_protocol.log",
+    "log_sha256": "29d47d31d5efdabb6ea34039d14dd8077252368d72df765d1896812499814038"
+  },
+  {
+    "name": "control-new-python_int_optional_generator_cleanup_protocol",
+    "command": [
+      "/workspace/scratch/c2b093657c17/dev-venv/bin/python",
+      "-m",
+      "pystachy",
+      "run",
+      "/workspace/scratch/1a96cd11db0d/generator-cleanup-results/dynamic-python_int_optional_generator_cleanup_protocol.py"
+    ],
+    "environment_overrides": {},
+    "returncode": 0,
+    "stdout": "case 9223372036854775808 False\nchild entered\nchild finally\nowned caught\nowned finally\nowned overflow\nowned done True\nowned done again True\nchild entered\nborrowed caught\nborrowed finally\nborrowed overflow\nborrowed done True\nchild resumed\nborrowed next 9\nchild finally\nborrowed child done True\nborrowed done again True\ncase 9223372036854775808 True\nchild entered\nowned first 7\nchild finally\nowned caught\nowned finally\nowned overflow\nowned done True\nowned done again True\nchild entered\nborrowed first 7\nborrowed caught\nborrowed finally\nborrowed overflow\nborrowed done True\nchild resumed\nborrowed next 9\nchild finally\nborrowed child done True\nborrowed done again True\ncase -9223372036854775809 False\nchild entered\nchild finally\nowned caught\nowned finally\nowned overflow\nowned done True\nowned done again True\nchild entered\nborrowed caught\nborrowed finally\nborrowed overflow\nborrowed done True\nchild resumed\nborrowed next 9\nchild finally\nborrowed child done True\nborrowed done again True\ncase -9223372036854775809 True\nchild entered\nowned first 7\nchild finally\nowned caught\nowned finally\nowned overflow\nowned done True\nowned done again True\nchild entered\nborrowed first 7\nborrowed caught\nborrowed finally\nborrowed overflow\nborrowed done True\nchild resumed\nborrowed next 9\nchild finally\nborrowed child done True\nborrowed done again True\n",
+    "stderr": "",
+    "log": "/workspace/scratch/1a96cd11db0d/generator-cleanup-results/control-new-python_int_optional_generator_cleanup_protocol.log",
+    "log_sha256": "29d47d31d5efdabb6ea34039d14dd8077252368d72df765d1896812499814038"
+  },
+  {
+    "name": "hosted-native",
+    "command": [
+      "tests/run.sh",
+      "/workspace/scratch/c2b093657c17/dev-venv/bin/python -m pystachy",
+      "jit aot",
+      "tests/deviations/python_int_optional_generator_cleanup.py",
+      "tests/deviations/python_int_optional_generator_cleanup_protocol.py",
+      "tests/deviations/python_int_optional_generator_width.py",
+      "tests/programs/generators/gen_yield_from_close.py",
+      "tests/programs/generators/gen_yield_from_protocol.py",
+      "tests/programs/inference/dynany_generator_channel_protocol.py",
+      "tests/programs/inference/dynany_generator_channel_typed_list.py",
+      "tests/programs/inference/dynany_generator_channel_values.py",
+      "tests/programs/inference/dynany_identity_generator.py",
+      "tests/programs/inference/dynany_identity_generator_fresh.py",
+      "tests/programs/inference/dynany_identity_generator_optional.py",
+      "tests/programs/inference/dynany_identity_generator_optional_fresh.py",
+      "tests/programs/inference/dynany_identity_generator_optional_protocol.py",
+      "tests/programs/inference/dynany_identity_generator_optional_scope.py",
+      "tests/programs/inference/dynany_identity_generator_optional_widen.py",
+      "tests/programs/inference/dynany_identity_generator_protocol.py",
+      "tests/programs/inference/dynany_identity_generator_scope.py",
+      "tests/programs/numbers/python_int_generator_identity.py",
+      "tests/programs/numbers/python_int_generator_optional_identity.py"
+    ],
+    "environment_overrides": {},
+    "returncode": 0,
+    "stdout": "selected 19 cases\n38 passed, 0 failed\n",
+    "stderr": "",
+    "log": "/workspace/scratch/1a96cd11db0d/generator-cleanup-results/hosted-native.log",
+    "log_sha256": "393ab2e0bf6ac658c9c5752dd3c830e5fd8e8fb075448290d9dcdc4e7b93d76d"
+  },
+  {
+    "name": "hosted-native-gc",
+    "command": [
+      "tests/run.sh",
+      "/workspace/scratch/c2b093657c17/dev-venv/bin/python -m pystachy",
+      "jit aot",
+      "tests/deviations/python_int_optional_generator_cleanup.py",
+      "tests/deviations/python_int_optional_generator_cleanup_protocol.py",
+      "tests/deviations/python_int_optional_generator_width.py",
+      "tests/programs/generators/gen_yield_from_close.py",
+      "tests/programs/generators/gen_yield_from_protocol.py",
+      "tests/programs/inference/dynany_generator_channel_protocol.py",
+      "tests/programs/inference/dynany_generator_channel_typed_list.py",
+      "tests/programs/inference/dynany_generator_channel_values.py",
+      "tests/programs/inference/dynany_identity_generator.py",
+      "tests/programs/inference/dynany_identity_generator_fresh.py",
+      "tests/programs/inference/dynany_identity_generator_optional.py",
+      "tests/programs/inference/dynany_identity_generator_optional_fresh.py",
+      "tests/programs/inference/dynany_identity_generator_optional_protocol.py",
+      "tests/programs/inference/dynany_identity_generator_optional_scope.py",
+      "tests/programs/inference/dynany_identity_generator_optional_widen.py",
+      "tests/programs/inference/dynany_identity_generator_protocol.py",
+      "tests/programs/inference/dynany_identity_generator_scope.py",
+      "tests/programs/numbers/python_int_generator_identity.py",
+      "tests/programs/numbers/python_int_generator_optional_identity.py"
+    ],
+    "environment_overrides": {
+      "PYSTACHY_GC_STRESS_PROGRAM": "1"
+    },
+    "returncode": 0,
+    "stdout": "selected 19 cases\n38 passed, 0 failed\n",
+    "stderr": "",
+    "log": "/workspace/scratch/1a96cd11db0d/generator-cleanup-results/hosted-native-gc.log",
+    "log_sha256": "393ab2e0bf6ac658c9c5752dd3c830e5fd8e8fb075448290d9dcdc4e7b93d76d"
+  },
+  {
+    "name": "generator-units",
+    "command": [
+      "/workspace/scratch/c2b093657c17/dev-venv/bin/python",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools",
+      "-p",
+      "test_typed_generator_identity.py"
+    ],
+    "environment_overrides": {},
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "...............\n----------------------------------------------------------------------\nRan 15 tests in 0.114s\n\nOK\n",
+    "log": "/workspace/scratch/1a96cd11db0d/generator-cleanup-results/generator-units.log",
+    "log_sha256": "5df24371c046d4b714f0262aff2f41c9858120b83e38040998bc0f9b4fe99f9e"
+  },
+  {
+    "name": "ruff",
+    "command": [
+      "/workspace/scratch/c2b093657c17/dev-venv/bin/ruff",
+      "check",
+      "src/pystachy_compiler/generators.py",
+      "tests/deviations/python_int_optional_generator_cleanup.py",
+      "tests/deviations/python_int_optional_generator_cleanup_protocol.py"
+    ],
+    "environment_overrides": {},
+    "returncode": 0,
+    "stdout": "All checks passed!\n",
+    "stderr": "",
+    "log": "/workspace/scratch/1a96cd11db0d/generator-cleanup-results/ruff.log",
+    "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+  },
+  {
+    "name": "diff-check",
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "environment_overrides": {},
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "",
+    "log": "/workspace/scratch/1a96cd11db0d/generator-cleanup-results/diff-check.log",
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+]

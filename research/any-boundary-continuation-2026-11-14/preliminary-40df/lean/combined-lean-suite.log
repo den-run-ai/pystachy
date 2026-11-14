@@ -1,0 +1,184 @@
+cd tools/lean_boundary && lake build
+✔ [11/44] Built PystachyInt (4.4s)
+✔ [13/44] Built PystachyBoundary (5.3s)
+✔ [15/44] Built PystachyInt:c.o (872ms)
+✔ [16/44] Built PystachyBoundary:c.o (899ms)
+✔ [17/44] Built PystachyLayout (2.1s)
+✔ [19/44] Built PystachyInline (2.1s)
+✔ [21/44] Built PystachyGuards (2.3s)
+✔ [23/44] Built PystachyLayout:c.o (285ms)
+✔ [24/44] Built PystachyStorage (2.5s)
+ℹ [26/44] Built GuardAudit (3.7s)
+info: GuardAudit.lean:6:0: PystachyGuards.removed_check_nonnull: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: GuardAudit.lean:6:0: PystachyGuards.union_member_matches: axiom audit passed ([propext, Quot.sound])
+info: GuardAudit.lean:6:0: PystachyGuards.union_read_nonnull: axiom audit passed ([propext, Quot.sound])
+info: GuardAudit.lean:6:0: PystachyGuards.field_assigned: axiom audit passed ([propext, Quot.sound])
+✔ [28/44] Built AliasMain (11s)
+✔ [29/44] Built IntMain (7.1s)
+✔ [30/44] Built Main (4.4s)
+✔ [31/44] Built AliasMain:c.o (365ms)
+✔ [32/44] Built IntMain:c.o (816ms)
+✔ [33/44] Built Main:c.o (1.4s)
+✔ [34/44] Built «pystachy-int»:exe (1.7s)
+✔ [35/44] Built «pystachy-alias»:exe (2.5s)
+✔ [36/44] Built PystachyAccess (15s)
+✔ [38/44] Built «pystachy-boundary»:exe (2.1s)
+✔ [39/44] Built PystachyAccess:c.o (8.4s)
+ℹ [40/44] Built Audit (11s)
+info: Audit.lean:16:0: PystachyBoundary.check_iff: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyLayout.checked_projection: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyLayout.accepted_layout_projection: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyAlias.accepted_reference_roundtrip: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyAlias.accepted_alias_write: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyAlias.accepted_traces_reference: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyAlias.accepted_root_chain: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyCompanion.accepted_identity_roundtrip: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyCompanion.accepted_traces_identity: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyCompanion.accepted_root_chain: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyCompanion.accepted_boxed_root_chain: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyCompanion.accepted_copy_identity: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyCompanion.accepted_copy_traces_identity: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyCompanion.accepted_copied_root_chain: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyBoundary.reachable_facts: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyBoundary.accepted_payload_safe: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyAccess.reachable_invariant: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyAccess.accepted_access_safe: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyAccess.writeField_step: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyAccess.accepted_write_progress: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInt.known_fits: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInt.mod_fits: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInt.floordiv_fits: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyInt.shr_fits: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInt.shl_exact: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInt.bitwise_fits: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInt.and_mask: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInline.no_overflow_exact: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInline.no_overflow_fits: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyInline.accepted_arithmetic_exact: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.low_of_fit: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.promoting_decode: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyStorage.plain_view_safe: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.plain_marker_has_no_tail: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyStorage.null_digits_narrow: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.slot_fits_iff: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyStorage.pair_truth_zero: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.layout_has_tail: axiom audit passed ([])
+info: Audit.lean:16:0: PystachyStorage.accepted_low_word: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.accepted_plain_view: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.accepted_tail_read: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.accepted_narrowing: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.accepted_slot_narrowing: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.accepted_optional_slot_narrowing: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.accepted_stack_copy: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.erase_read_move_iff: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyStorage.projected_reachable: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyStorage.accepted_projected_payload: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:52:0: 'PystachyBoundary.accepted_payload_safe' depends on axioms: [propext, Quot.sound]
+info: Audit.lean:53:0: 'PystachyAccess.accepted_access_safe' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Audit.lean:54:0: 'PystachyInt.known_fits' depends on axioms: [propext, Quot.sound]
+✔ [42/44] Built AccessMain (12s)
+✔ [43/44] Built AccessMain:c.o (1.2s)
+✔ [44/44] Built «pystachy-access»:exe (1.6s)
+Build completed successfully (44 jobs).
+LEAN_BOUNDARY_REQUIRED=1 /workspace/scratch/c2b093657c17/dev-venv/bin/python -m unittest discover -s tools -p 'test_lean_boundary*.py'
+.................................................................................................................................
+----------------------------------------------------------------------
+Ran 129 tests in 132.525s
+
+OK
+LEAN_BOUNDARY_REQUIRED=1 /workspace/scratch/c2b093657c17/dev-venv/bin/python -m unittest discover -s tools -p test_lean_access.py
+...............................
+----------------------------------------------------------------------
+Ran 31 tests in 6.981s
+
+OK
+LEAN_BOUNDARY_REQUIRED=1 /workspace/scratch/c2b093657c17/dev-venv/bin/python -m unittest discover -s tools -p test_lean_inline.py
+.........
+----------------------------------------------------------------------
+Ran 9 tests in 0.868s
+
+OK
+LEAN_BOUNDARY_REQUIRED=1 /workspace/scratch/c2b093657c17/dev-venv/bin/python -m unittest discover -s tools -p test_lean_effects.py
+.................
+----------------------------------------------------------------------
+Ran 17 tests in 0.100s
+
+OK
+LEAN_BOUNDARY_REQUIRED=1 /workspace/scratch/c2b093657c17/dev-venv/bin/python -m unittest discover -s tools -p test_lean_closure_cells.py
+......
+----------------------------------------------------------------------
+Ran 6 tests in 0.444s
+
+OK
+LEAN_BOUNDARY_REQUIRED=1 /workspace/scratch/c2b093657c17/dev-venv/bin/python -m unittest discover -s tools -p test_lean_range_bounds.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.376s
+
+OK
+LEAN_BOUNDARY_REQUIRED=1 /workspace/scratch/c2b093657c17/dev-venv/bin/python -m unittest discover -s tools -p 'test_lean_guard*.py'
+............................................
+----------------------------------------------------------------------
+Ran 44 tests in 1.251s
+
+OK
+LEAN_BOUNDARY_REQUIRED=1 /workspace/scratch/c2b093657c17/dev-venv/bin/python -m unittest discover -s tools -p test_lean_null_access.py
+......................
+----------------------------------------------------------------------
+Ran 22 tests in 1.342s
+
+OK
+LEAN_BOUNDARY_REQUIRED=1 /workspace/scratch/c2b093657c17/dev-venv/bin/python -m unittest discover -s tools -p test_lean_union_effects.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 0.951s
+
+OK
+LEAN_BOUNDARY_REQUIRED=1 /workspace/scratch/c2b093657c17/dev-venv/bin/python -m unittest discover -s tools -p test_lean_union_split.py
+...
+----------------------------------------------------------------------
+Ran 3 tests in 1.158s
+
+OK
+LEAN_BOUNDARY_REQUIRED=1 /workspace/scratch/c2b093657c17/dev-venv/bin/python -m unittest discover -s tools -p test_lean_union_memory.py
+.........
+----------------------------------------------------------------------
+Ran 9 tests in 1.219s
+
+OK
+LEAN_BOUNDARY_REQUIRED=1 /workspace/scratch/c2b093657c17/dev-venv/bin/python -m unittest discover -s tools -p test_lean_gc.py
+...................
+----------------------------------------------------------------------
+Ran 19 tests in 2.225s
+
+OK
+LEAN_BOUNDARY_REQUIRED=1 /workspace/scratch/c2b093657c17/dev-venv/bin/python -m unittest discover -s tools -p test_lean_generators.py
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.990s
+
+OK
+LEAN_BOUNDARY_REQUIRED=1 /workspace/scratch/c2b093657c17/dev-venv/bin/python -m unittest discover -s tools -p test_lean_fields.py
+.......
+----------------------------------------------------------------------
+Ran 7 tests in 8.450s
+
+OK
+LEAN_BOUNDARY_REQUIRED=1 /workspace/scratch/c2b093657c17/dev-venv/bin/python -m unittest discover -s tools -p test_lean_int.py
+.............
+----------------------------------------------------------------------
+Ran 13 tests in 1.434s
+
+OK
+LEAN_BOUNDARY_REQUIRED=1 /workspace/scratch/c2b093657c17/dev-venv/bin/python -m unittest discover -s tools -p 'test_lean_storage*.py'
+..........................................................
+----------------------------------------------------------------------
+Ran 58 tests in 19.132s
+
+OK
+/workspace/scratch/c2b093657c17/dev-venv/bin/python -m unittest discover -s tools -p test_lean_layout_metadata.py
+..........
+----------------------------------------------------------------------
+Ran 10 tests in 1.312s
+
+OK

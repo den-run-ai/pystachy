@@ -1,0 +1,8 @@
+{
+  "before_and_after_inputs_identical": true,
+  "old_identity_sha256": "888429611aac081cab6435204c3bd5f24b52dc7067210c99f3fd01473a7284a9",
+  "new_identity_sha256": "54b724ae67da030ea998fc57c86f5d8d05be7dd4dd2dbfdf5784daed4c0af61c",
+  "audit_cases_sha256": "a003afc1020d09a37df30c2ae1237d57840883c0c706861d1fc8f15bc697e1c3",
+  "wrapper_sha256": "131c982466c059c9d20ef506ef75637db33e8e5f6f24c3c7a36c740b040f6301",
+  "raw_exit": 1
+}

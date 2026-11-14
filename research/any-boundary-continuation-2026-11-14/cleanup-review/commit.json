@@ -1,0 +1,41 @@
+{
+  "commit": "fc73f066eb4850e665145626a4200ac07e95904d",
+  "tree": "0027db383852de23c0640f5b58944d2e74f7a6ae",
+  "status": "",
+  "changed_files": {
+    "src/pystachy_compiler/generators.py": "d75289514bef26f297ae2af68abca254e3502966e2e29d1431ba983a92bea583",
+    "tests/deviations/python_int_optional_generator_cleanup.out": "4f50190dd3aa4d67e0d8ab83c31d76cc23c4a738c4a9c8a8970b3f60cc0c3557",
+    "tests/deviations/python_int_optional_generator_cleanup.py": "7a5ddca065e558be150ec0827ddc15a1f687e431fcc36f759a72ed32351ef494",
+    "tests/deviations/python_int_optional_generator_cleanup_protocol.out": "4f50190dd3aa4d67e0d8ab83c31d76cc23c4a738c4a9c8a8970b3f60cc0c3557",
+    "tests/deviations/python_int_optional_generator_cleanup_protocol.py": "8479e8494f09d9de87365ff65494b929c8c30ee35e4f5eb35087843a613d61cc"
+  },
+  "evidence_files": {
+    "inputs.json": "dada0eaea34cbd1fe9345adcdeeea9bacfe79e13478b84f8d2d5e564a62f916e",
+    "control-new-python_int_optional_generator_cleanup.log": "29d47d31d5efdabb6ea34039d14dd8077252368d72df765d1896812499814038",
+    "final.json": "749e1f1d0bcacb2dcad4cb48b22a81019d740725a1f5f846e16e61adcae3e629",
+    "generator-units.log": "5df24371c046d4b714f0262aff2f41c9858120b83e38040998bc0f9b4fe99f9e",
+    "dynamic-python_int_optional_generator_cleanup.py": "f95e1228608c5ccc8b3ab2b1fa980221fa3306edac76cb8711a708c0d53f59b9",
+    "ruff.log": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+    "cpython-python_int_optional_generator_cleanup_protocol.log": "d5a087fe07fe1c89a45b49add023b59fc379400fde2606585b16d068b9483bfc",
+    "control-old-python_int_optional_generator_cleanup.log": "29d47d31d5efdabb6ea34039d14dd8077252368d72df765d1896812499814038",
+    "hosted-native-gc.log": "393ab2e0bf6ac658c9c5752dd3c830e5fd8e8fb075448290d9dcdc4e7b93d76d",
+    "control-new-python_int_optional_generator_cleanup_protocol.log": "29d47d31d5efdabb6ea34039d14dd8077252368d72df765d1896812499814038",
+    "results.json": "c176881b839c3436f385b960d338742e4e1f9b8d0a1b7a58c6fff9cfbd20a56b",
+    "diff-check.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "control-old-python_int_optional_generator_cleanup_protocol.log": "29d47d31d5efdabb6ea34039d14dd8077252368d72df765d1896812499814038",
+    "old40df-negative.log": "310c756a1c392018bb44de6105cdfd12a2c435cf300a56dada4693c61c22e093",
+    "hosted-native.log": "393ab2e0bf6ac658c9c5752dd3c830e5fd8e8fb075448290d9dcdc4e7b93d76d",
+    "focused-ir.json": "6096f71a6637c66f77c04b8c367b9565bc714477771cb9a02f631dec13fc4a32",
+    "cpython-python_int_optional_generator_cleanup.log": "d5a087fe07fe1c89a45b49add023b59fc379400fde2606585b16d068b9483bfc",
+    "dynamic-python_int_optional_generator_cleanup_protocol.py": "9be88e93f23045b03a363aa083b66169b94b263546c150e061a80641d8c7139b"
+  },
+  "independent_review": "/workspace/scratch/1a96cd11db0d/lean-qualification/compiler-independent-review-final.json",
+  "normal_checks": 38,
+  "gc_checks": 38,
+  "generator_unit_tests": 15,
+  "new_ir_cases": 2,
+  "old40df_negative_checks": {
+    "passed": 0,
+    "failed": 4
+  }
+}

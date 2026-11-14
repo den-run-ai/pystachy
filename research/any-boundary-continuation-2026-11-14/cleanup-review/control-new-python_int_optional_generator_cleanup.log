@@ -1,0 +1,76 @@
+case 9223372036854775808 False
+child entered
+child finally
+owned caught
+owned finally
+owned overflow
+owned done True
+owned done again True
+child entered
+borrowed caught
+borrowed finally
+borrowed overflow
+borrowed done True
+child resumed
+borrowed next 9
+child finally
+borrowed child done True
+borrowed done again True
+case 9223372036854775808 True
+child entered
+owned first 7
+child finally
+owned caught
+owned finally
+owned overflow
+owned done True
+owned done again True
+child entered
+borrowed first 7
+borrowed caught
+borrowed finally
+borrowed overflow
+borrowed done True
+child resumed
+borrowed next 9
+child finally
+borrowed child done True
+borrowed done again True
+case -9223372036854775809 False
+child entered
+child finally
+owned caught
+owned finally
+owned overflow
+owned done True
+owned done again True
+child entered
+borrowed caught
+borrowed finally
+borrowed overflow
+borrowed done True
+child resumed
+borrowed next 9
+child finally
+borrowed child done True
+borrowed done again True
+case -9223372036854775809 True
+child entered
+owned first 7
+child finally
+owned caught
+owned finally
+owned overflow
+owned done True
+owned done again True
+child entered
+borrowed first 7
+borrowed caught
+borrowed finally
+borrowed overflow
+borrowed done True
+child resumed
+borrowed next 9
+child finally
+borrowed child done True
+borrowed done again True

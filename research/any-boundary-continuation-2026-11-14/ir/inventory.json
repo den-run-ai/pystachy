@@ -1,0 +1,26 @@
+{
+  "baseline_count": 4634,
+  "candidate_count": 4649,
+  "added_paths": [
+    "tests/deviations/python_int_optional_generator_cleanup.py",
+    "tests/deviations/python_int_optional_generator_cleanup_protocol.py",
+    "tests/deviations/python_int_optional_generator_width.py",
+    "tests/errors/classes/constructor_dependency_preuse_variable.py",
+    "tests/programs/classes/constructor_dependency_preuse.py",
+    "tests/programs/classes/constructor_dependency_preuse_alias.py",
+    "tests/programs/classes/constructor_dependency_preuse_qualified.py",
+    "tests/programs/classes/constructor_dependency_preuse_quoted.py",
+    "tests/programs/classes/constructor_dependency_preuse_speculative.py",
+    "tests/programs/classes/constructor_dependency_standalone.py",
+    "tests/programs/inference/dynany_identity_generator_optional.py",
+    "tests/programs/inference/dynany_identity_generator_optional_fresh.py",
+    "tests/programs/inference/dynany_identity_generator_optional_protocol.py",
+    "tests/programs/inference/dynany_identity_generator_optional_scope.py",
+    "tests/programs/inference/dynany_identity_generator_optional_widen.py",
+    "tests/programs/numbers/python_int_generator_optional_identity.py"
+  ],
+  "removed_paths": [
+    "tests/errors/classes/constructor_dependency_preuse.py"
+  ],
+  "changed_sources": []
+}

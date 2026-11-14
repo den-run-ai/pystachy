@@ -1,0 +1,130 @@
+{
+  "baseline_ref": "adac7f4c88fd86ddaecbb889042b778c701b29ed",
+  "candidate_ref": "2df26bde21451abb89cc487f57b0a5531c655b8d",
+  "baseline_corpus_count": 4634,
+  "candidate_corpus_count": 4649,
+  "total_comparisons": 4650,
+  "completed": 4650,
+  "pending": 0,
+  "libraries_byte_identical": true,
+  "normalization": "Exact old/new frozen compiler lib prefixes, plus separately reviewed installation prefixes in an explicit case allowlist; all source files were checked not to contain either frozen-home path",
+  "counts": {
+    "unchanged": 4351,
+    "library-path-only difference": 282,
+    "improved acceptance": 11,
+    "meaningful IR change": 4,
+    "reviewed installation-path-only difference": 2
+  },
+  "candidate_counts": {
+    "unchanged": 4351,
+    "library-path-only difference": 282,
+    "improved acceptance": 10,
+    "meaningful IR change": 4,
+    "reviewed installation-path-only difference": 2
+  },
+  "supplemental_counts": {
+    "improved acceptance": 1
+  },
+  "status_counts": [
+    {
+      "old": 0,
+      "new": 0,
+      "count": 2705
+    },
+    {
+      "old": 1,
+      "new": 0,
+      "count": 11
+    },
+    {
+      "old": 1,
+      "new": 1,
+      "count": 1934
+    }
+  ],
+  "raw_oracle_difference_count": 299,
+  "raw_oracle_exit": 1,
+  "canonical_test_counts": {
+    "old": 4531,
+    "new": 4546
+  },
+  "source_file_counts": {
+    "old": 10240,
+    "new": 10282
+  },
+  "identities": {
+    "old": {
+      "key": "old",
+      "home": "/workspace/scratch/1a96cd11db0d/ir-audit-final/home-old",
+      "source_ref": "adac7f4c88fd86ddaecbb889042b778c701b29ed",
+      "source_tree": "ddb2991da45e803167a0cf46a11020389a01f485",
+      "archive_sha256": "f4116c785157c3c97458fdf55a61b55f5a8ef2ca797b51e02492cc555d1d471b",
+      "binary_source": "/workspace/scratch/6e931c3f8732/pystachy/pystachy",
+      "binary_sha256": "5dc9973d3a0ff8b79b8ae9ba2ca7d81347b460c8de0a015d6b2acd898c2ebf6e",
+      "evidence": {
+        "manifest": "/workspace/scratch/6e931c3f8732/integrated-effects-bootstrap-manifest.json",
+        "manifest_sha256": "b60bb1fc3129fc6e98427c7298657bd56d517759a5141450527410ace85efb04",
+        "build_source": "d68c9837ccad11e46b29a8955cc125c1a33cb77b",
+        "identical_native_inputs": [
+          "pystachy.py",
+          "pystachy_cli.py",
+          "pystachy_toolchain.py",
+          "src",
+          "lib",
+          "runtime.c",
+          "runtime.py",
+          "ryu",
+          "mpz",
+          "lljit.c",
+          "VERSION",
+          ".python-version"
+        ]
+      },
+      "canonical_count": 4531
+    },
+    "new": {
+      "key": "new",
+      "home": "/workspace/scratch/1a96cd11db0d/ir-audit-final/home-new",
+      "source_ref": "2df26bde21451abb89cc487f57b0a5531c655b8d",
+      "source_tree": "30d991ebec23d92140381b4cd6fe6892a31b5a2b",
+      "archive_sha256": "0184e03f15f5cb88411469d84226550eb29e0d93771f922e02e31cfc0daf522e",
+      "binary_source": "/workspace/scratch/1a96cd11db0d/pystachy/pystachy",
+      "binary_sha256": "960326040b35ed71405c188ff4627d119925351dd084430c18a213ff416c31e2",
+      "evidence": {
+        "candidate_ref": "2df26bde21451abb89cc487f57b0a5531c655b8d",
+        "manifest": "/workspace/scratch/1a96cd11db0d/final-bootstrap/manifest.json",
+        "manifest_sha256": "00d86bf85b28ec6e5372a4755f481f89bc80f9830100ff0a223998ebc4c4f924",
+        "build_source": "2df26bde21451abb89cc487f57b0a5531c655b8d",
+        "identical_native_inputs": [
+          "pystachy.py",
+          "pystachy_cli.py",
+          "pystachy_toolchain.py",
+          "src",
+          "lib",
+          "runtime.c",
+          "runtime.py",
+          "ryu",
+          "mpz",
+          "lljit.c",
+          "VERSION",
+          ".python-version"
+        ],
+        "bootstrap_log": "/workspace/scratch/1a96cd11db0d/final-bootstrap/bootstrap.log",
+        "bootstrap_log_sha256": "f5597a9fbd61c72940c6729c3519fefa88fcf1a9ec7f0cbeed112909bd11260b",
+        "fixedpoint_hashes": {
+          "stage1.ll": "ffbfbe5be125676be0d25dc3b5b0c8b8edfb64c6c73d24795c034ca3a116d174",
+          "stage2.ll": "ffbfbe5be125676be0d25dc3b5b0c8b8edfb64c6c73d24795c034ca3a116d174",
+          "stage3.ll": "ffbfbe5be125676be0d25dc3b5b0c8b8edfb64c6c73d24795c034ca3a116d174",
+          "rt1.ll": "cd645bebc4fea57b4824b5393843fea99bb31880a31a79dd825e1f34c388f830",
+          "rt2.ll": "cd645bebc4fea57b4824b5393843fea99bb31880a31a79dd825e1f34c388f830",
+          "rt3.ll": "cd645bebc4fea57b4824b5393843fea99bb31880a31a79dd825e1f34c388f830"
+        }
+      },
+      "canonical_count": 4546
+    }
+  },
+  "public_candidate_commit": "adf5a12a147649d01018dd49c8167610812ada00",
+  "public_candidate_tree": "30d991ebec23d92140381b4cd6fe6892a31b5a2b",
+  "public_compiled_source_commit": "adf5a12a147649d01018dd49c8167610812ada00",
+  "checkpoint_status": "final source audit, including owned optional-integer delegation cleanup"
+}

@@ -1,0 +1,98 @@
+{
+  "status": "immutable_interrupted_run_history",
+  "captured_at_utc": "2026-11-14T23:13:46.025671+00:00",
+  "files": {
+    "initial-manifest.json": {
+      "path": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/initial-manifest.json",
+      "sha256": "72e90ab93aa70dab8668eda8677f47098e66f68953dd0d4ffa7509f37fd59477",
+      "bytes": 5041
+    },
+    "compiler-independent-review-integrated.json": {
+      "path": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/compiler-independent-review-integrated.json",
+      "sha256": "e4043edca77ed4beae9d7ae318eff4d12e18afa9b9c73ab32a09a5bc2245fdd6",
+      "bytes": 7850
+    },
+    "whole-report.log": {
+      "path": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/whole-report.log",
+      "sha256": "35141381411b15c3bd033f241334d3a131714a34685faec8c3cd5116adaa900d",
+      "bytes": 95033
+    },
+    "whole.attempt1.jsonl": {
+      "path": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/whole.attempt1.jsonl",
+      "sha256": "d60900cbac74451b36bf49a6650af842960ef541cc72856a92c3303de52583ea",
+      "bytes": 1177551
+    },
+    "run-status.attempt1.json": {
+      "path": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/run-status.attempt1.json",
+      "sha256": "f52a1890a865b8a1ca66edf1f7110c87085e1e74c8ecc70faa82a28f000f1d20",
+      "bytes": 828
+    },
+    "results.attempt1.json": {
+      "path": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/results.attempt1.json",
+      "sha256": "f3c7729c9bd68b25b57650bbf2c444dd1ead42db20c2d01fd216e939ba5230c6",
+      "bytes": 564
+    },
+    "resume1-checkpoint.json": {
+      "path": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/resume1-checkpoint.json",
+      "sha256": "e1a23e334b8243d742abbbd35bcf874a73de4a6a935a55aac59d49ebf104e245",
+      "bytes": 436
+    },
+    "whole.jsonl": {
+      "path": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/whole.jsonl",
+      "sha256": "7bf7bcbee34d73d11ad19ce4255f73865ce32d356b3c2699f9785bc6e867cfa4",
+      "bytes": 1505212
+    },
+    "whole-report-resume1.log": {
+      "path": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/whole-report-resume1.log",
+      "sha256": "d713dc1ad70de874e36ea2049927133d94b19a6a3a0912d76308b0355c8765d3",
+      "bytes": 28253
+    },
+    "run-status.resume1-interrupted.json": {
+      "path": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/run-status.resume1-interrupted.json",
+      "sha256": "00c5478af5e0271ebd4b0eb1d8259730f1d4de628d4fca0ccb0d451ec0ea65a4",
+      "bytes": 818
+    },
+    "results.pre-resume2.json": {
+      "path": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/results.pre-resume2.json",
+      "sha256": "f3c7729c9bd68b25b57650bbf2c444dd1ead42db20c2d01fd216e939ba5230c6",
+      "bytes": 564
+    },
+    "resume2-recovery-manifest.json": {
+      "path": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/resume2-recovery-manifest.json",
+      "sha256": "f34863a9fd568d5d52037ab4794928859565f14f7d796ec6bfa072b6a003ad88",
+      "bytes": 3615
+    },
+    "argparse-required-replay.md": {
+      "path": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/argparse-required-replay.md",
+      "sha256": "48d4f4ca03fadb33f8ef39d1bce79698aefbf4de40cf6dd7ed14c2d64d8d930f",
+      "bytes": 3496
+    },
+    "argparse-required-replay.jsonl": {
+      "path": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/argparse-required-replay.jsonl",
+      "sha256": "02346fc2cd09474409b0b15080bc7d2cdbba8f738bc677634fe1e051fe00a602",
+      "bytes": 2169
+    },
+    "argparse-required-replay.log": {
+      "path": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/argparse-required-replay.log",
+      "sha256": "3e68691669e9d0447e8ed101440a6787786b839ad18c4194185d1f2f499ba797",
+      "bytes": 1094
+    },
+    "argparse-required-replay-status.json": {
+      "path": "/workspace/scratch/1a96cd11db0d/lean-qualification/final-2df26bde/argparse-required-replay-status.json",
+      "sha256": "f3709f6f660a127f170bf4363f431262d99760c56e1b35fc7e85488c354083b0",
+      "bytes": 503
+    }
+  },
+  "live_excluded": [
+    "whole.resume2.jsonl",
+    "whole-report-resume2.log",
+    "run-status.json",
+    "results.json"
+  ],
+  "future_live_excluded": [
+    "report-status.log",
+    "strict-storage.log",
+    "storage.json"
+  ],
+  "runner_note": "Orchestration was Python stdin; exact make/Python stage commands are recorded in preserved results/status and recovery manifests. No standalone final-Lean runner source file was created."
+}

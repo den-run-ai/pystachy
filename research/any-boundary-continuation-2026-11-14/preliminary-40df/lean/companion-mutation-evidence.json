@@ -1,0 +1,199 @@
+{
+  "base": "adac7f4c88fd86ddaecbb889042b778c701b29ed",
+  "runtime_sha256": "89dcd1978f1e1e580e10142d2d06e9bae89178fc9fac8766d77aa54dba6eb1cb",
+  "baseline_adapter_sha256": "c433723f2fe94877fc06e879feb9d468705be1c58d1f89598cf1fba00ca37d1d",
+  "current_adapter_sha256": "dfed254fe96e73a9e09dd7989b68c621a4302f9928ac32403427d8d7f2eb6959",
+  "toolchain": {
+    "python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+    "clang": "/workspace/scratch/c2b093657c17/toolchains/llvm18/payload/usr/lib/llvm-18/bin/clang"
+  },
+  "baseline_scope": "The prior normalizer did not inventory reserve/slice and did not require raw/identity fields to be disjoint. Results below distinguish baseline normalized candidates from current adapter/kernel rejection; they make no baseline runtime correctness claim.",
+  "cases": [
+    {
+      "name": "reserve_drop_last_identity",
+      "old": "memcpy(ids, l->ids, (l->len + 1) * sizeof(I)); l->ids = ids;",
+      "new": "memcpy(ids, l->ids, l->len * sizeof(I)); l->ids = ids;",
+      "before": {
+        "normalized": true,
+        "candidate": {
+          "schema_version": 1,
+          "header_words": 4,
+          "header_scanned": true,
+          "store_word": 3,
+          "read_word": 3,
+          "array_scanned": true,
+          "prefix_words": 1,
+          "store_offset": 1,
+          "read_offset": 1
+        }
+      },
+      "after": {
+        "normalized": false,
+        "error": "unsupported companion function shape: reserve"
+      }
+    },
+    {
+      "name": "slice_shift_source_to_kind_header",
+      "old": "memcpy(r->ids + 1, l->ids + lo + 1, (hi - lo) * 8);",
+      "new": "memcpy(r->ids + 1, l->ids + lo, (hi - lo) * 8);",
+      "before": {
+        "normalized": true,
+        "candidate": {
+          "schema_version": 1,
+          "header_words": 4,
+          "header_scanned": true,
+          "store_word": 3,
+          "read_word": 3,
+          "array_scanned": true,
+          "prefix_words": 1,
+          "store_offset": 1,
+          "read_offset": 1
+        }
+      },
+      "after": {
+        "normalized": false,
+        "error": "unsupported companion function shape: pys_list_slice"
+      }
+    },
+    {
+      "name": "reserve_atomic_companion",
+      "old": "I *ids = pys_alloc((c + 1) * sizeof(I));",
+      "new": "I *ids = pys_alloc_atomic((c + 1) * sizeof(I));",
+      "before": {
+        "normalized": true,
+        "candidate": {
+          "schema_version": 1,
+          "header_words": 4,
+          "header_scanned": true,
+          "store_word": 3,
+          "read_word": 3,
+          "array_scanned": true,
+          "prefix_words": 1,
+          "store_offset": 1,
+          "read_offset": 1
+        }
+      },
+      "after": {
+        "normalized": true,
+        "candidate": {
+          "schema_version": 2,
+          "header_words": 4,
+          "header_scanned": true,
+          "store_word": 3,
+          "read_word": 3,
+          "array_scanned": true,
+          "prefix_words": 1,
+          "store_offset": 1,
+          "read_offset": 1,
+          "growth": {
+            "array_scanned": false,
+            "allocation_prefix": 1,
+            "source_offset": 0,
+            "target_offset": 0,
+            "copy_extra": 1
+          },
+          "slice": {
+            "array_scanned": true,
+            "allocation_prefix": 1,
+            "source_offset": 1,
+            "target_offset": 1,
+            "copy_extra": 0
+          }
+        },
+        "kernel_accepted": false
+      }
+    },
+    {
+      "name": "reserve_attachment_lost",
+      "old": "memcpy(ids, l->ids, (l->len + 1) * sizeof(I)); l->ids = ids;",
+      "new": "memcpy(ids, l->ids, (l->len + 1) * sizeof(I));",
+      "before": {
+        "normalized": true,
+        "candidate": {
+          "schema_version": 1,
+          "header_words": 4,
+          "header_scanned": true,
+          "store_word": 3,
+          "read_word": 3,
+          "array_scanned": true,
+          "prefix_words": 1,
+          "store_offset": 1,
+          "read_offset": 1
+        }
+      },
+      "after": {
+        "normalized": false,
+        "error": "unsupported companion function shape: reserve"
+      }
+    },
+    {
+      "name": "overlapping_raw_and_identity_fields",
+      "old": "typedef struct { I len, cap; I *a, *ids; } List; /* optional scanned numeric identity companion: kind, then boxes */\n_Static_assert(offsetof(List, len) == 0 && offsetof(List, cap) == 8 && offsetof(List, a) == 16 &&\n               offsetof(List, ids) == 24 && sizeof(List) == 32, \"List ABI: raw prefix and identity companion\");",
+      "new": "typedef struct { I len, cap; union { I *a; I *ids; }; } List; /* optional scanned numeric identity companion: kind, then boxes */\n_Static_assert(offsetof(List, len) == 0 && offsetof(List, cap) == 8 && offsetof(List, a) == 16 &&\n               offsetof(List, ids) == 16 && sizeof(List) == 24, \"List ABI: raw prefix and identity companion\");",
+      "before": {
+        "normalized": true,
+        "candidate": {
+          "schema_version": 1,
+          "header_words": 3,
+          "header_scanned": true,
+          "store_word": 2,
+          "read_word": 2,
+          "array_scanned": true,
+          "prefix_words": 1,
+          "store_offset": 1,
+          "read_offset": 1
+        }
+      },
+      "after": {
+        "normalized": false,
+        "error": "overlapping or invalid companion header fields"
+      }
+    },
+    {
+      "name": "identity_member_macro_redirect",
+      "old": "static List *list_new(I cap, int atomic) {",
+      "new": "#define ids a\nstatic List *list_new(I cap, int atomic) {",
+      "before": {
+        "normalized": true,
+        "candidate": {
+          "schema_version": 1,
+          "header_words": 4,
+          "header_scanned": true,
+          "store_word": 2,
+          "read_word": 2,
+          "array_scanned": true,
+          "prefix_words": 1,
+          "store_offset": 1,
+          "read_offset": 1
+        }
+      },
+      "after": {
+        "normalized": false,
+        "error": "unsupported companion function shape: list_identity_slow"
+      }
+    },
+    {
+      "name": "padded_raw_slot_stride",
+      "old": "typedef struct { I v; } Slot;",
+      "new": "typedef struct { I padding, v; } Slot;",
+      "before": {
+        "normalized": true,
+        "candidate": {
+          "schema_version": 1,
+          "header_words": 4,
+          "header_scanned": true,
+          "store_word": 3,
+          "read_word": 3,
+          "array_scanned": true,
+          "prefix_words": 1,
+          "store_offset": 1,
+          "read_offset": 1
+        }
+      },
+      "after": {
+        "normalized": false,
+        "error": "raw list slot stride or value offset disagrees with companion storage"
+      }
+    }
+  ]
+}

@@ -1,0 +1,106 @@
+cd tools/lean_boundary && lake build
+ℹ [20/44] Replayed GuardAudit
+info: GuardAudit.lean:6:0: PystachyGuards.removed_check_nonnull: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: GuardAudit.lean:6:0: PystachyGuards.union_member_matches: axiom audit passed ([propext, Quot.sound])
+info: GuardAudit.lean:6:0: PystachyGuards.union_read_nonnull: axiom audit passed ([propext, Quot.sound])
+info: GuardAudit.lean:6:0: PystachyGuards.field_assigned: axiom audit passed ([propext, Quot.sound])
+ℹ [22/44] Replayed Audit
+info: Audit.lean:16:0: PystachyBoundary.check_iff: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyLayout.checked_projection: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyLayout.accepted_layout_projection: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyAlias.accepted_reference_roundtrip: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyAlias.accepted_alias_write: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyAlias.accepted_traces_reference: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyAlias.accepted_root_chain: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyCompanion.accepted_identity_roundtrip: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyCompanion.accepted_traces_identity: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyCompanion.accepted_root_chain: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyCompanion.accepted_boxed_root_chain: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyCompanion.accepted_copy_identity: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyCompanion.accepted_copy_traces_identity: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyCompanion.accepted_copied_root_chain: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyBoundary.reachable_facts: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyBoundary.accepted_payload_safe: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyAccess.reachable_invariant: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyAccess.accepted_access_safe: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyAccess.writeField_step: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyAccess.accepted_write_progress: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInt.known_fits: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInt.mod_fits: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInt.floordiv_fits: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyInt.shr_fits: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInt.shl_exact: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInt.bitwise_fits: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInt.and_mask: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInline.no_overflow_exact: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyInline.no_overflow_fits: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyInline.accepted_arithmetic_exact: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.low_of_fit: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.promoting_decode: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyStorage.plain_view_safe: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.plain_marker_has_no_tail: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyStorage.null_digits_narrow: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.slot_fits_iff: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyStorage.pair_truth_zero: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.layout_has_tail: axiom audit passed ([])
+info: Audit.lean:16:0: PystachyStorage.accepted_low_word: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.accepted_plain_view: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.accepted_tail_read: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.accepted_narrowing: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.accepted_slot_narrowing: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.accepted_optional_slot_narrowing: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.accepted_stack_copy: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:16:0: PystachyStorage.erase_read_move_iff: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyStorage.projected_reachable: axiom audit passed ([propext])
+info: Audit.lean:16:0: PystachyStorage.accepted_projected_payload: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:52:0: 'PystachyBoundary.accepted_payload_safe' depends on axioms: [propext, Quot.sound]
+info: Audit.lean:53:0: 'PystachyAccess.accepted_access_safe' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Audit.lean:54:0: 'PystachyInt.known_fits' depends on axioms: [propext, Quot.sound]
+Build completed successfully (44 jobs).
+/workspace/scratch/c2b093657c17/dev-venv/bin/python tools/lean_report.py --jobs 2 --progress --records /workspace/scratch/1a96cd11db0d/lean-qualification/whole.jsonl
+Traceback (most recent call last):
+  File "/workspace/scratch/1a96cd11db0d/lean-report-qa/tools/lean_report.py", line 893, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "/workspace/scratch/1a96cd11db0d/lean-report-qa/tools/lean_report.py", line 872, in main
+    for record in checked_records(args, remaining, promoting, database):
+                  ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/1a96cd11db0d/lean-report-qa/tools/lean_report.py", line 499, in checked_records
+    work = [pool.submit(check_program, program, program in promoting, args.timeout, args.checker,
+            ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        args.access_checker) for program in programs]
+                        ^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/c2b093657c17/toolchains/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/concurrent/futures/process.py", line 838, in submit
+    self._adjust_process_count()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/workspace/scratch/c2b093657c17/toolchains/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/concurrent/futures/process.py", line 797, in _adjust_process_count
+    self._spawn_process()
+    ~~~~~~~~~~~~~~~~~~~^^
+  File "/workspace/scratch/c2b093657c17/toolchains/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/concurrent/futures/process.py", line 815, in _spawn_process
+    p.start()
+    ~~~~~~~^^
+  File "/workspace/scratch/c2b093657c17/toolchains/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/multiprocessing/process.py", line 121, in start
+    self._popen = self._Popen(self)
+                  ~~~~~~~~~~~^^^^^^
+  File "/workspace/scratch/c2b093657c17/toolchains/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/multiprocessing/context.py", line 307, in _Popen
+    return Popen(process_obj)
+  File "/workspace/scratch/c2b093657c17/toolchains/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/multiprocessing/popen_forkserver.py", line 35, in __init__
+    super().__init__(process_obj)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/workspace/scratch/c2b093657c17/toolchains/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/multiprocessing/popen_fork.py", line 20, in __init__
+    self._launch(process_obj)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/workspace/scratch/c2b093657c17/toolchains/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/multiprocessing/popen_forkserver.py", line 51, in _launch
+    self.sentinel, w = forkserver.connect_to_new_process(self._fds)
+                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/workspace/scratch/c2b093657c17/toolchains/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/multiprocessing/forkserver.py", line 85, in connect_to_new_process
+    self.ensure_running()
+    ~~~~~~~~~~~~~~~~~~~^^
+  File "/workspace/scratch/c2b093657c17/toolchains/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/multiprocessing/forkserver.py", line 147, in ensure_running
+    with socket.socket(socket.AF_UNIX) as listener:
+         ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/c2b093657c17/toolchains/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py", line 233, in __init__
+    _socket.socket.__init__(self, family, type, proto, fileno)
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 1] Operation not permitted
+make: *** [Makefile:550: lean-report] Error 1

@@ -1,0 +1,7 @@
+{
+  "original_sha256": "7baa4d09a86103485f6b6c87a739162347b97542051d80b6cfb57c8a108587d5",
+  "wrapper": "/workspace/scratch/1a96cd11db0d/ir-audit-final/retaining-irsame.sh",
+  "wrapper_sha256": "131c982466c059c9d20ef506ef75637db33e8e5f6f24c3c7a36c740b040f6301",
+  "audit_cases_sha256": "a003afc1020d09a37df30c2ae1237d57840883c0c706861d1fc8f15bc697e1c3",
+  "semantics": "Unchanged tools/irsame.sh comparison, retaining all changed IR/messages and status/hash evidence for every final corpus input plus exact removed/changed original baseline case bytes"
+}

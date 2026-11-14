@@ -1,0 +1,107 @@
+[
+  {
+    "case": "tests/programs/classes/constructor_dependency_preuse.py",
+    "constructors-main": {
+      "returncode": 1,
+      "stderr": "/workspace/scratch/1a96cd11db0d/constructors/tests/programs/classes/constructor_dependency_preuse.py:4: error: class mods.constructor_dependency.NestedErrors is not supported: class mods.constructor_dependency.Options is a class template (its __init__ takes a parameter without an annotation): each call makes an object of a specialization of its own, which an annotation cannot name here; leave the annotation out (specializing mods.constructor_dependency.NestedErrors(Options[bool, Counter[str]]) for the call at /workspace/scratch/1a96cd11db0d/constructors/tests/programs/classes/constructor_dependency_preuse.py:4)\n"
+    },
+    "constructors-before": {
+      "returncode": 1,
+      "stderr": "/workspace/scratch/1a96cd11db0d/constructors/tests/programs/classes/constructor_dependency_preuse.py:4: error: class mods.constructor_dependency.NestedErrors is not supported: class mods.constructor_dependency.Options is a class template (its __init__ takes a parameter without an annotation): each call makes an object of a specialization of its own, which an annotation cannot name here; leave the annotation out (specializing mods.constructor_dependency.NestedErrors(Options[bool, Counter[str]]) for the call at /workspace/scratch/1a96cd11db0d/constructors/tests/programs/classes/constructor_dependency_preuse.py:4)\n"
+    },
+    "constructors": {
+      "returncode": 0,
+      "stderr": ""
+    }
+  },
+  {
+    "case": "tests/programs/classes/constructor_dependency_preuse_alias.py",
+    "constructors-main": {
+      "returncode": 1,
+      "stderr": "/workspace/scratch/1a96cd11db0d/constructors/tests/programs/classes/constructor_dependency_preuse_alias.py:5: error: class mods.constructor_dependency.NestedErrors is not supported: class mods.constructor_dependency.Options is a class template (its __init__ takes a parameter without an annotation): each call makes an object of a specialization of its own, which an annotation cannot name here; leave the annotation out (specializing mods.constructor_dependency.NestedErrors(Options[bool, Counter[str]]) for the call at /workspace/scratch/1a96cd11db0d/constructors/tests/programs/classes/constructor_dependency_preuse_alias.py:5)\n"
+    },
+    "constructors-before": {
+      "returncode": 1,
+      "stderr": "/workspace/scratch/1a96cd11db0d/constructors/tests/programs/classes/constructor_dependency_preuse_alias.py:5: error: class mods.constructor_dependency.NestedErrors is not supported: class mods.constructor_dependency.Options is a class template (its __init__ takes a parameter without an annotation): each call makes an object of a specialization of its own, which an annotation cannot name here; leave the annotation out (specializing mods.constructor_dependency.NestedErrors(Options[bool, Counter[str]]) for the call at /workspace/scratch/1a96cd11db0d/constructors/tests/programs/classes/constructor_dependency_preuse_alias.py:5)\n"
+    },
+    "constructors": {
+      "returncode": 0,
+      "stderr": ""
+    }
+  },
+  {
+    "case": "tests/programs/classes/constructor_dependency_preuse_qualified.py",
+    "constructors-main": {
+      "returncode": 1,
+      "stderr": "/workspace/scratch/1a96cd11db0d/constructors/tests/programs/classes/constructor_dependency_preuse_qualified.py:6: error: class mods.constructor_preuse.QualifiedErrors is not supported: class mods.constructor_dependency.Options is a class template (its __init__ takes a parameter without an annotation): each call makes an object of a specialization of its own, which an annotation cannot name here; leave the annotation out (specializing mods.constructor_preuse.QualifiedErrors(Options[bool, Counter[str]]) for the call at /workspace/scratch/1a96cd11db0d/constructors/tests/programs/classes/constructor_dependency_preuse_qualified.py:6)\n"
+    },
+    "constructors-before": {
+      "returncode": 1,
+      "stderr": "/workspace/scratch/1a96cd11db0d/constructors/tests/programs/classes/constructor_dependency_preuse_qualified.py:6: error: class mods.constructor_preuse.QualifiedErrors is not supported: class mods.constructor_dependency.Options is a class template (its __init__ takes a parameter without an annotation): each call makes an object of a specialization of its own, which an annotation cannot name here; leave the annotation out (specializing mods.constructor_preuse.QualifiedErrors(Options[bool, Counter[str]]) for the call at /workspace/scratch/1a96cd11db0d/constructors/tests/programs/classes/constructor_dependency_preuse_qualified.py:6)\n"
+    },
+    "constructors": {
+      "returncode": 0,
+      "stderr": ""
+    }
+  },
+  {
+    "case": "tests/programs/classes/constructor_dependency_preuse_quoted.py",
+    "constructors-main": {
+      "returncode": 1,
+      "stderr": "/workspace/scratch/1a96cd11db0d/constructors/tests/programs/classes/constructor_dependency_preuse_quoted.py:6: error: class mods.constructor_preuse.QuotedErrors is not supported: class mods.constructor_dependency.Options is a class template (its __init__ takes a parameter without an annotation): each call makes an object of a specialization of its own, which an annotation cannot name here; leave the annotation out (specializing mods.constructor_preuse.QuotedErrors(Options[bool, Counter[str]]) for the call at /workspace/scratch/1a96cd11db0d/constructors/tests/programs/classes/constructor_dependency_preuse_quoted.py:6)\n"
+    },
+    "constructors-before": {
+      "returncode": 1,
+      "stderr": "/workspace/scratch/1a96cd11db0d/constructors/tests/programs/classes/constructor_dependency_preuse_quoted.py:6: error: class mods.constructor_preuse.QuotedErrors is not supported: class mods.constructor_dependency.Options is a class template (its __init__ takes a parameter without an annotation): each call makes an object of a specialization of its own, which an annotation cannot name here; leave the annotation out (specializing mods.constructor_preuse.QuotedErrors(Options[bool, Counter[str]]) for the call at /workspace/scratch/1a96cd11db0d/constructors/tests/programs/classes/constructor_dependency_preuse_quoted.py:6)\n"
+    },
+    "constructors": {
+      "returncode": 0,
+      "stderr": ""
+    }
+  },
+  {
+    "case": "tests/programs/classes/constructor_dependency_preuse_speculative.py",
+    "constructors-main": {
+      "returncode": 0,
+      "stderr": ""
+    },
+    "constructors-before": {
+      "returncode": 0,
+      "stderr": ""
+    },
+    "constructors": {
+      "returncode": 0,
+      "stderr": ""
+    }
+  },
+  {
+    "case": "tests/programs/classes/constructor_dependency_standalone.py",
+    "constructors-main": {
+      "returncode": 1,
+      "stderr": "/workspace/scratch/1a96cd11db0d/constructors/tests/programs/classes/constructor_dependency_standalone.py:6: error: class mods.constructor_dependency.NestedErrors is not supported: class mods.constructor_dependency.Options is a class template (its __init__ takes a parameter without an annotation): each call makes an object of a specialization of its own, which an annotation cannot name here; leave the annotation out (specializing mods.constructor_dependency.NestedErrors(Options[bool, Counter[str]]) for the call at /workspace/scratch/1a96cd11db0d/constructors/tests/programs/classes/constructor_dependency_standalone.py:6)\n"
+    },
+    "constructors-before": {
+      "returncode": 1,
+      "stderr": "/workspace/scratch/1a96cd11db0d/constructors/tests/programs/classes/constructor_dependency_standalone.py:6: error: class mods.constructor_dependency.NestedErrors is not supported: class mods.constructor_dependency.Options is a class template (its __init__ takes a parameter without an annotation): each call makes an object of a specialization of its own, which an annotation cannot name here; leave the annotation out (specializing mods.constructor_dependency.NestedErrors(Options[bool, Counter[str]]) for the call at /workspace/scratch/1a96cd11db0d/constructors/tests/programs/classes/constructor_dependency_standalone.py:6)\n"
+    },
+    "constructors": {
+      "returncode": 0,
+      "stderr": ""
+    }
+  },
+  {
+    "case": "tests/errors/classes/constructor_dependency_preuse_variable.py",
+    "constructors-main": {
+      "returncode": 1,
+      "stderr": "/workspace/scratch/1a96cd11db0d/constructors/tests/errors/classes/constructor_dependency_preuse_variable.py:7: error: class mods.constructor_preuse.VariableErrors is not supported: class mods.constructor_dependency.Variable is a class template (its __init__ takes a parameter without an annotation): each call makes an object of a specialization of its own, which an annotation cannot name here; leave the annotation out (specializing mods.constructor_preuse.VariableErrors(Variable[int]) for the call at /workspace/scratch/1a96cd11db0d/constructors/tests/errors/classes/constructor_dependency_preuse_variable.py:7)\n"
+    },
+    "constructors-before": {
+      "returncode": 1,
+      "stderr": "/workspace/scratch/1a96cd11db0d/constructors/tests/errors/classes/constructor_dependency_preuse_variable.py:7: error: class mods.constructor_preuse.VariableErrors is not supported: class mods.constructor_dependency.Variable is a class template (its __init__ takes a parameter without an annotation): each call makes an object of a specialization of its own, which an annotation cannot name here; leave the annotation out (specializing mods.constructor_preuse.VariableErrors(Variable[int]) for the call at /workspace/scratch/1a96cd11db0d/constructors/tests/errors/classes/constructor_dependency_preuse_variable.py:7)\n"
+    },
+    "constructors": {
+      "returncode": 1,
+      "stderr": "/workspace/scratch/1a96cd11db0d/constructors/tests/errors/classes/constructor_dependency_preuse_variable.py:7: error: class mods.constructor_preuse.VariableErrors is not supported: class mods.constructor_dependency.Variable is a class template (its __init__ takes a parameter without an annotation): each call makes an object of a specialization of its own, which an annotation cannot name here; leave the annotation out (specializing mods.constructor_preuse.VariableErrors(Variable[int]) for the call at /workspace/scratch/1a96cd11db0d/constructors/tests/errors/classes/constructor_dependency_preuse_variable.py:7)\n"
+    }
+  }
+]

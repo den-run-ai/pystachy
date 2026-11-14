@@ -1,0 +1,18 @@
+{
+  "commit": "272ec688339c29962501d507c247da9273250764",
+  "tree": "7579ea9ada55898c7bc3cf6c8f1e06faed7ae809",
+  "binary_sha256": "8b51b743c22cd6c673881928e81a4e202e06e80e57ec71c1c1f0bf96dd00fd3f",
+  "fixedpoints": {
+    "stage1.ll": "f8fe017ec9e5492c987743b8f795d87df641ca6943c26d6fa0c1008be794f77e",
+    "stage2.ll": "f8fe017ec9e5492c987743b8f795d87df641ca6943c26d6fa0c1008be794f77e",
+    "stage3.ll": "f8fe017ec9e5492c987743b8f795d87df641ca6943c26d6fa0c1008be794f77e",
+    "rt1.ll": "cd645bebc4fea57b4824b5393843fea99bb31880a31a79dd825e1f34c388f830",
+    "rt2.ll": "cd645bebc4fea57b4824b5393843fea99bb31880a31a79dd825e1f34c388f830",
+    "rt3.ll": "cd645bebc4fea57b4824b5393843fea99bb31880a31a79dd825e1f34c388f830"
+  },
+  "compiler_ir_lines": 940918,
+  "runtime_ir_lines": 21214,
+  "temporary_tier": 0,
+  "final_tier": 2,
+  "log_sha256": "5ecf166d39b7fc842e2c8b6b32bc624ce5336b74a16c5a71eb6c513194147051"
+}

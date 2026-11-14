@@ -1,0 +1,82 @@
+{
+  "repository": "den-run-ai/pystachy",
+  "base": "adac7f4c88fd86ddaecbb889042b778c701b29ed",
+  "commits": [
+    {
+      "local": "8cc65f440b94e1b13a3f4015eda51bfef3f805bc",
+      "remote": "b77d496547b733f4c121400ad1334f54aa33e1f8",
+      "tree": "7f6dfe900836cf9dd70cbd214e51a32b5bc04c58"
+    },
+    {
+      "local": "272ec688339c29962501d507c247da9273250764",
+      "remote": "55a1095f298ffb05fc695bb586e2f562c7f5512b",
+      "tree": "7579ea9ada55898c7bc3cf6c8f1e06faed7ae809"
+    },
+    {
+      "local": "35f75d931c64158006db97caf9d00a55a6749a6a",
+      "remote": "8c8fe468aec678810b5c342a4a9df846d8ddc27d",
+      "tree": "14d7b29f1a9bec895c386bbf4ace148b35825275"
+    },
+    {
+      "local": "0f0ef4fb542f744c652cd86799561dbaac7f3cc9",
+      "remote": "60e00fbf200f5e45cbae4e958f252fb806fd566f",
+      "tree": "a6a2ccaac913ae9f746d0cd40d8486905dba6986"
+    },
+    {
+      "local": "e3b124b0b08bae10a198b28908806b0f2cf4316a",
+      "remote": "604991f0c8e6dbdd85effb88366e870c6216ffe5",
+      "tree": "d874c1a5770e3b25d3536d869ba652161f45da5f"
+    },
+    {
+      "local": "40dfd158f09dfa0e4f19a51d33c4893b434b57ae",
+      "remote": "100c3a14194fb0c91c3df50bb8d725e9cbef14d6",
+      "tree": "9fcecb667975b75dd2b631a3eeb9313477561113"
+    },
+    {
+      "local": "cf0c8d18244224edd9385f922871f871d41b6833",
+      "remote": "2a758d1e29a3440f700c94eecb4204a77160fb16",
+      "tree": "3f6e69e353c1e2d2522233e58a46ac4b1e9f592e"
+    },
+    {
+      "local": "2df26bde21451abb89cc487f57b0a5531c655b8d",
+      "remote": "adf5a12a147649d01018dd49c8167610812ada00",
+      "tree": "30d991ebec23d92140381b4cd6fe6892a31b5a2b"
+    }
+  ],
+  "qualification_checkpoint": {
+    "status": "incomplete_provisional_recovery_checkpoint",
+    "completed_qualification": false,
+    "source_commit": "2df26bde21451abb89cc487f57b0a5531c655b8d",
+    "public_source_commit": "adf5a12a147649d01018dd49c8167610812ada00",
+    "source_tree": "30d991ebec23d92140381b4cd6fe6892a31b5a2b",
+    "manifest": "lean-checkpoint-20261114T231015Z/checkpoint-manifest.json",
+    "manifest_sha256": "b88e33d2418f6f6486ee06b3dcfd1aca7fdea8990cd1f47d1e71845777da5a68",
+    "snapshot_capture_time_utc": "2026-11-14T23:10:15.759353+00:00",
+    "complete_program_records": 1776,
+    "expected_programs": 2612,
+    "completed_gates": [
+      "three-stage compiler/runtime bootstrap",
+      "complete IR comparison",
+      "selected native JIT/AOT and program GC stress",
+      "normal/stressed listprobe and boxprobe",
+      "full native IR and runtime contract checks",
+      "pinned CPython recordings and full lint"
+    ],
+    "pending_gates": [
+      "canonical whole-corpus Lean report completion",
+      "strict 182-program promoting-integer storage corpus",
+      "CI, Lint and Submission format on exact final PR head"
+    ],
+    "preliminary_ci": {
+      "head": "2a758d1e29a3440f700c94eecb4204a77160fb16",
+      "ci": "success",
+      "lint": "success",
+      "submission_format": "success",
+      "qualifies_final_source": false
+    },
+    "history_preserved": true,
+    "live_report_files_excluded": true,
+    "reproducible_elf_files_excluded": true,
+    "runtime_caches_excluded": true
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "state": "superseded_incomplete",
+  "source_commit": "40dfd158f09dfa0e4f19a51d33c4893b434b57ae",
+  "reason": "Independent review reproduced missed owned-delegate cleanup on the newly admitted promoting-int to optional generator yield-from narrowing error; root ordered stop pending source fix.",
+  "session_id": 78564,
+  "exit_code": 130,
+  "record_count": 193,
+  "record_kinds": {
+    "header": 1,
+    "program": 192
+  },
+  "finished_utc": "2026-11-14T22:31:54.147899+00:00",
+  "git_status": "",
+  "canonical_report_written": false,
+  "strict_storage_started": false,
+  "artifacts": {
+    "whole.forkserver.jsonl": {
+      "size": 10857,
+      "sha256": "3f3482e873f6b2d29d7671268444f12762c187ea98011d3e7df0a1161298fccd"
+    },
+    "initial-manifest.json": {
+      "size": 3692,
+      "sha256": "2ce80dcb541652127f401d5c6749483add222479c2a24876543abfdaa83e811c"
+    },
+    "whole-report.forkserver.log": {
+      "size": 9542,
+      "sha256": "7d8279ca037cb393be4b931fb126c8d1bc590175a286d75004ea335cfc363abf"
+    },
+    "whole.jsonl": {
+      "size": 178698,
+      "sha256": "d9213af2e880360cf7677fbdb56d706f29ca6b58315a14f22306847a86351ae1"
+    },
+    "whole-report.log": {
+      "size": 16670,
+      "sha256": "c4a41a96c1b1b917b10d972ad420fda46fbd060c35f900c7a8f089fb99fc0422"
+    }
+  },
+  "completed_program_records": 192,
+  "expected_program_inventory": 2610
+}

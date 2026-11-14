@@ -1,0 +1,11 @@
+{
+  "command": [
+    "tools/check_ir.sh",
+    "/workspace/scratch/c2b093657c17/dev-venv/bin/python -m pystachy",
+    "tests/deviations/python_int_optional_generator_cleanup.py",
+    "tests/deviations/python_int_optional_generator_cleanup_protocol.py"
+  ],
+  "returncode": 0,
+  "stdout": "the IR check and llvm-as accept the IR of 2 programs\n",
+  "stderr": ""
+}

@@ -1,0 +1,38 @@
+FAIL deviations/python_int_optional_generator_cleanup (jit)
+3d2
+< child finally
+22d20
+< child finally
+41d38
+< child finally
+60d56
+< child finally
+FAIL deviations/python_int_optional_generator_cleanup (aot)
+3d2
+< child finally
+22d20
+< child finally
+41d38
+< child finally
+60d56
+< child finally
+FAIL deviations/python_int_optional_generator_cleanup_protocol (jit)
+3d2
+< child finally
+22d20
+< child finally
+41d38
+< child finally
+60d56
+< child finally
+FAIL deviations/python_int_optional_generator_cleanup_protocol (aot)
+3d2
+< child finally
+22d20
+< child finally
+41d38
+< child finally
+60d56
+< child finally
+selected 2 cases
+0 passed, 4 failed

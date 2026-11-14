@@ -1,0 +1,72 @@
+case 9223372036854775808 False
+child entered
+owned wide 9223372036854775808
+child resumed
+owned done False
+child finally
+owned finally
+owned done again True
+child entered
+borrowed wide 9223372036854775808
+child resumed
+borrowed done False
+child finally
+borrowed next None
+borrowed child done True
+borrowed finally
+borrowed done again True
+case 9223372036854775808 True
+child entered
+owned first 7
+owned wide 9223372036854775808
+child resumed
+owned done False
+child finally
+owned finally
+owned done again True
+child entered
+borrowed first 7
+borrowed wide 9223372036854775808
+child resumed
+borrowed done False
+child finally
+borrowed next None
+borrowed child done True
+borrowed finally
+borrowed done again True
+case -9223372036854775809 False
+child entered
+owned wide -9223372036854775809
+child resumed
+owned done False
+child finally
+owned finally
+owned done again True
+child entered
+borrowed wide -9223372036854775809
+child resumed
+borrowed done False
+child finally
+borrowed next None
+borrowed child done True
+borrowed finally
+borrowed done again True
+case -9223372036854775809 True
+child entered
+owned first 7
+owned wide -9223372036854775809
+child resumed
+owned done False
+child finally
+owned finally
+owned done again True
+child entered
+borrowed first 7
+borrowed wide -9223372036854775809
+child resumed
+borrowed done False
+child finally
+borrowed next None
+borrowed child done True
+borrowed finally
+borrowed done again True

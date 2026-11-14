@@ -1,0 +1,6 @@
+mypy --config-file mypy.ini
+Success: no issues found in 58 source files
+ruff check
+All checks passed!
+ruff check --no-force-exclude bench/pyperformance/pytest/*.py
+All checks passed!

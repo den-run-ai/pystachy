@@ -1,0 +1,4 @@
+/workspace/scratch/c2b093657c17/dev-venv/bin/python -c 'import glob, py_compile as c; [c.compile(p, doraise=True, invalidation_mode=c.PycInvalidationMode.CHECKED_HASH) for p in ["pystachy.py"] + sorted(glob.glob("src/**/*.py", recursive=True))]'
+tests/run.sh "/workspace/scratch/c2b093657c17/dev-venv/bin/python -m pystachy" "jit aot" tests/programs/classes/constructor_*.py tests/errors/classes/constructor_*.py
+selected 44 cases
+81 passed, 0 failed

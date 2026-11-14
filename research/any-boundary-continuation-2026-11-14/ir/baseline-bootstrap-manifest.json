@@ -1,0 +1,19 @@
+{
+  "source_commit": "d68c9837ccad11e46b29a8955cc125c1a33cb77b",
+  "source_tree": "e8509e11b8eb7bbceb51fd35d0d1ffa8df03da5b",
+  "clean": true,
+  "binary": "5dc9973d3a0ff8b79b8ae9ba2ca7d81347b460c8de0a015d6b2acd898c2ebf6e",
+  "build_binary": "5dc9973d3a0ff8b79b8ae9ba2ca7d81347b460c8de0a015d6b2acd898c2ebf6e",
+  "compiler_stages": [
+    "0190ee6340b55748fe3373cf7b47fbe1ed21ccc6a8fdf3b651acbc8330e088fb",
+    "0190ee6340b55748fe3373cf7b47fbe1ed21ccc6a8fdf3b651acbc8330e088fb",
+    "0190ee6340b55748fe3373cf7b47fbe1ed21ccc6a8fdf3b651acbc8330e088fb"
+  ],
+  "runtime_stages": [
+    "cd645bebc4fea57b4824b5393843fea99bb31880a31a79dd825e1f34c388f830",
+    "cd645bebc4fea57b4824b5393843fea99bb31880a31a79dd825e1f34c388f830",
+    "cd645bebc4fea57b4824b5393843fea99bb31880a31a79dd825e1f34c388f830"
+  ],
+  "compiler_lines": 940800,
+  "runtime_lines": 21214
+}

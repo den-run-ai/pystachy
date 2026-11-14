@@ -1,0 +1,15 @@
+{
+  "commit": "272ec688339c29962501d507c247da9273250764",
+  "command": [
+    "make",
+    "PY=/workspace/scratch/c2b093657c17/dev-venv/bin/python",
+    "BOOTSTRAP_AOT_OPT=0"
+  ],
+  "cleared": "All inherited PYSTACHY_* and PYTHONHOME/PYTHONPATH",
+  "overrides": {
+    "PYSTACHY_LLVM": "/workspace/scratch/c2b093657c17/toolchains/llvm18/payload/usr/lib/llvm-18/bin",
+    "PYSTACHY_JOBS": "2",
+    "PYSTACHY_CACHE": "/workspace/scratch/1a96cd11db0d/build-cache"
+  },
+  "started": 1794694541.6816163
+}

@@ -1,0 +1,4 @@
+/workspace/scratch/c2b093657c17/dev-venv/bin/python -c 'import glob, py_compile as c; [c.compile(p, doraise=True, invalidation_mode=c.PycInvalidationMode.CHECKED_HASH) for p in ["pystachy.py"] + sorted(glob.glob("src/**/*.py", recursive=True))]'
+tests/run.sh "/workspace/scratch/c2b093657c17/dev-venv/bin/python -m pystachy" "jit aot" tests/programs/inference/dynany_identity_generator_optional_fresh.py tests/deviations/python_int_optional_generator_width.py
+selected 2 cases
+4 passed, 0 failed
