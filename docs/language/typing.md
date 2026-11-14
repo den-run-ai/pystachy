@@ -632,7 +632,7 @@ Ordinary methods with unannotated parameters, `*args` or `**kwargs` also special
 `self` or `cls`. A parameter annotated `object` is such a parameter too, as in
 `def __eq__(self, other: object) -> bool`, which `isinstance()` narrows; a class template's
 `__init__` can take one too. Other non-template methods cannot. The supported binary operator, comparison, `__call__`,
-`__getitem__`, `__setitem__`, `__delitem__` and `__contains__` methods can be templates.
+`__getitem__`, `__setitem__`, `__delitem__`, `__contains__` and `__round__` methods can be templates.
 `__iter__` and `__next__` also infer omitted return annotations; other special methods require
 concrete annotations. `__init__` is handled by class specialization below. A template method cannot change a field's
 established type, and comparison methods must return `bool`.

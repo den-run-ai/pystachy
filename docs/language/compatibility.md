@@ -492,7 +492,8 @@ See [object protocols](semantics.md#object-protocols) and
   constructors storing an iterator whose concrete class depends on their arguments.
   Fixed-field constructors may consume `Iterator[T]` / `Iterable[T]`.
 - **Fallbacks and power:** `__getitem__`-only iteration/membership; `__len__` / `__getitem__`
-  fallback for `reversed`; reflected arithmetic; `NotImplemented` outside a
+  fallback for `reversed`; reflected arithmetic between two objects, `__rdivmod__` and `__rpow__`;
+  `int(o)` through `__trunc__`; `NotImplemented` outside a
   [comparison method's `return`](semantics.md#object-protocols); object or optional
   numeric power exponents; three-argument object `pow`. Before `**=`, narrow a base-typed
   receiver if only its subclass defines `__ipow__`.

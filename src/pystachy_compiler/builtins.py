@@ -36,6 +36,7 @@ from src.pystachy_compiler.specs import (
     OPTCALLS,
     OPTTYPES,
     OSCONST,
+    PROTOCOL_MATH,
     PYBUILTINS,
     OBJECTC,
     RANGEC,
@@ -1052,6 +1053,54 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     if name == "divmod" and len(vals) == 2 and t in self.classes and "__divmod__" in self.classes[t].methods:
         self.none_operand("divmod()", v, vals[1])
         return self.method(v, "__divmod__", [self.vnode(vals[1])], want, resultsoft)
+    if (name == "int" or name == "float") and len(vals) == 1 and t in self.classes:
+        # int(o) is o.__int__(), else o.__index__(); float(o) is o.__float__(), else o.__index__()
+        # as a float. CPython checks the result's type where the call returns: here the method's
+        # result type, when the call is compiled
+        conversion = "__int__" if name == "int" else "__float__"
+        protocol = conversion if conversion in self.classes[t].methods else "__index__" if "__index__" in self.classes[t].methods else ""
+        kinds = self.refl_concrete(t)
+        chosen = [conversion if conversion in self.classes[c].methods else "__index__" if "__index__" in self.classes[c].methods else "" for c in kinds]
+        if len([p for p in chosen if p != protocol]) > 0:
+            # A class derived from t defines a method that t has not (__int__ where t has
+            # __index__, or the only one): CPython asks the object's own class, so each class
+            # the object may be of calls its own, and one that has none raises CPython's error
+            self.notnone(v, "TypeError: " + NONEARG[name])
+            arms: list[Val] = []
+            blocks: list[str] = []
+            end = self.label()
+            for lf in self.refl_split_class(v):
+                self.place(lf.label)
+                own = chosen[kinds.index(lf.c)]
+                if own == "":
+                    self.raise_("TypeError", self.sconst(NONEARG[name].replace("NoneType", tname(lf.c))))
+                    continue
+                conv = self.method(lf.v, own, [])
+                if own == "__float__" and conv.t != "float":
+                    self.err(f"{tname(lf.c)}.__float__ returned non-float (type {tname(conv.t)})")
+                if own != "__float__" and conv.t != "int" and conv.t != BIG:
+                    self.err(f"{own} returned non-int (type {tname(conv.t)})")
+                if not self.term:
+                    arms.append(conv if name == "int" or own == "__float__" else self.as_float(conv))
+                    blocks.append(self.cur)
+                    self.br(end)
+            return self.refl_phi(arms, blocks, end, name + "()")
+        if protocol != "":
+            self.notnone(v, "TypeError: " + NONEARG[name])
+            conv = self.method(v, protocol, [])
+            if protocol == "__float__" and conv.t != "float":
+                self.err(f"{tname(t)}.__float__ returned non-float (type {tname(conv.t)})")
+            if protocol != "__float__" and conv.t != "int" and conv.t != BIG:
+                self.err(f"{protocol} returned non-int (type {tname(conv.t)})")
+            return conv if name == "int" or protocol == "__float__" else self.as_float(conv)
+    if name == "round" and t in self.classes and "__round__" in self.classes[t].methods:
+        # round(o) is o.__round__(), and round(o, n) is o.__round__(n) (round(o, None) is round(o))
+        self.notnone(v, "TypeError: " + NONEARG[name])
+        return self.method(v, "__round__", [self.vnode(digits_arg) for digits_arg in vals[1:]], want, resultsoft)
+    if name in PROTOCOL_MATH and len(vals) == 1 and t in self.classes and PROTOCOL_MATH[name] in self.classes[t].methods:
+        # math.floor(o) is o.__floor__(), math.ceil(o) is o.__ceil__() and math.trunc(o) is o.__trunc__()
+        self.notnone(v, "TypeError: must be real number, not NoneType" if name != "math.trunc" else "TypeError: type NoneType doesn't define __trunc__ method")
+        return self.method(v, PROTOCOL_MATH[name], [], want, resultsoft)
     if is_kw(t) and name == "len":
         return Val(str(len(kw_names(t))), "int")
     if is_kw(t) and name == "dict" and len(vals) == 1:

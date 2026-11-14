@@ -1,0 +1,20 @@
+Money.__radd__ 1
+Money.__add__ 1
+Money(350) Money(750) Money(750) 1.0 2 200 Money(350)
+2 250 255 4 256
+Loud.__radd__ 1
+Money.__add__ 1
+Money(-1) Money(750) Money(750) 1.0 2 200 Money(350)
+2 250 255 4 256
+left
+right
+Money.__radd__ 2
+Money(205)
+1.75 3.0 3.0 [Money(0), Money(3), Money(6)]
+Money.__radd__ 0
+Money.__radd__ 2
+Money(201)
+Money.__radd__ 1
+Money(101)
+TypeError: unsupported operand type(s) for +: 'int' and 'NoneType'
+[exit 0]

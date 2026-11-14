@@ -1118,7 +1118,9 @@ def template_ok(name: str) -> bool:
         return True
     # Power may also declare an optional modulus parameter: normal call binding checks
     # its signature, rather than SPECIAL's fixed binary-method arity.
-    return name in "__call__ __getitem__ __setitem__ __delitem__ __contains__ __enter__ __exit__ __pow__ __ipow__ __deepcopy__".split() or (name in SPECIAL and SPECIAL[name].startswith("2:"))
+    # round(o) and round(o, n) call __round__ as written, and it returns an int for the one and an
+    # object for the other: a template's parameter types each call's result.
+    return name in "__call__ __getitem__ __setitem__ __delitem__ __contains__ __enter__ __exit__ __pow__ __ipow__ __deepcopy__ __round__".split() or (name in SPECIAL and SPECIAL[name].startswith("2:"))
 
 
 def takes_self(f: FnInfo) -> bool:

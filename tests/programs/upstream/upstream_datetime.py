@@ -23,7 +23,7 @@
 # order. 223 of these methods' 334 assertions are adopted, all but these (datetimetester.py
 # line numbers):
 # EXCLUDED upstream cases:
-# - reflected operators (rejected: "reflected operator methods are not supported (int *
+# - reflected operators (rejected when adopted: "reflected operator methods are not supported (int *
 #   timedelta calls timedelta.__rmul__)", also float *, date * and date + datetime): 562-614 of
 #   test_computations (22 assertions), 876 877, 1309 1315; `//`, `*` of other operands
 #   (compile-time TypeErrors here: "unsupported operand type(s) for //: 'int' and 'timedelta'",
