@@ -1,0 +1,217 @@
+{
+ "program": [
+  "bench/pyperformance/hexiom.py",
+  "100"
+ ],
+ "rounds": 3,
+ "runs": {
+  "calls": [
+   {
+    "wall": 0.25603984800000035,
+    "peak_rss_mib": 97.87890625,
+    "program.cache_lookup": 8.299e-06,
+    "program.load": 0.013859143,
+    "program.prepare": 0.004460856,
+    "program.discover": 0.005161343,
+    "program.analysis": 0.000603014,
+    "program.optimize": 0.002160152,
+    "program.finalize": 0.000443604,
+    "program.lower": 0.001886867,
+    "program.attempt": 0.028733461,
+    "program.frontend": 0.028785294,
+    "runtime.cache_lookup": 0.0002815,
+    "program.jit_runner.lljit": 3.1806e-05,
+    "program.jit_optimize": 0.055972277,
+    "driver.prepare_run": 0.087651651,
+    "program.jit_load": 0.003934758,
+    "program.jit_codegen": 0.09569996,
+    "timer.loop": 0.04913098799988802
+   },
+   {
+    "wall": 0.2546419440000136,
+    "peak_rss_mib": 97.9609375,
+    "program.cache_lookup": 7.764e-06,
+    "program.load": 0.013725904,
+    "program.prepare": 0.004470367,
+    "program.discover": 0.005046193,
+    "program.analysis": 0.000618353,
+    "program.optimize": 0.002264624,
+    "program.finalize": 0.000414945,
+    "program.lower": 0.001960036,
+    "program.attempt": 0.028654749,
+    "program.frontend": 0.028701958,
+    "runtime.cache_lookup": 0.000256721,
+    "program.jit_runner.lljit": 3.442e-05,
+    "program.jit_optimize": 0.055932466,
+    "driver.prepare_run": 0.087318679,
+    "program.jit_load": 0.003540892,
+    "program.jit_codegen": 0.094290628,
+    "timer.loop": 0.05113720500003183
+   },
+   {
+    "wall": 0.26309020799999416,
+    "peak_rss_mib": 97.81640625,
+    "program.cache_lookup": 6.851e-06,
+    "program.load": 0.014181244,
+    "program.prepare": 0.004531399,
+    "program.discover": 0.005270867,
+    "program.analysis": 0.000651631,
+    "program.optimize": 0.002207651,
+    "program.finalize": 0.000402511,
+    "program.lower": 0.001864601,
+    "program.attempt": 0.029265941,
+    "program.frontend": 0.029312306,
+    "runtime.cache_lookup": 0.000264904,
+    "program.jit_runner.lljit": 3.27e-05,
+    "program.jit_optimize": 0.060556994,
+    "driver.prepare_run": 0.092453336,
+    "program.jit_load": 0.003477698,
+    "program.jit_codegen": 0.100531254,
+    "timer.loop": 0.048024496999914845
+   }
+  ],
+  "helpers": [
+   {
+    "wall": 0.37094387400020423,
+    "peak_rss_mib": 98.390625,
+    "program.cache_lookup": 7.11e-06,
+    "program.load": 0.020222641,
+    "program.prepare": 0.006570694,
+    "program.discover": 0.007262791,
+    "program.analysis": 0.00096327,
+    "program.optimize": 0.00293979,
+    "program.finalize": 0.000578434,
+    "program.lower": 0.002461288,
+    "program.attempt": 0.04125357,
+    "program.frontend": 0.041299611,
+    "runtime.cache_lookup": 0.00034687,
+    "program.jit_runner.lljit": 5.5251e-05,
+    "program.jit_optimize": 0.085221736,
+    "driver.prepare_run": 0.132316179,
+    "program.jit_load": 0.004897943,
+    "program.jit_codegen": 0.164085931,
+    "timer.loop": 0.04987975199992434
+   },
+   {
+    "wall": 0.27542371000026833,
+    "peak_rss_mib": 98.6015625,
+    "program.cache_lookup": 8.53e-06,
+    "program.load": 0.013915552,
+    "program.prepare": 0.004571938,
+    "program.discover": 0.005082398,
+    "program.analysis": 0.000587893,
+    "program.optimize": 0.002190237,
+    "program.finalize": 0.000424157,
+    "program.lower": 0.001874968,
+    "program.attempt": 0.028856237,
+    "program.frontend": 0.028905093,
+    "runtime.cache_lookup": 0.00029407,
+    "program.jit_runner.lljit": 3.7793e-05,
+    "program.jit_optimize": 0.069560252,
+    "driver.prepare_run": 0.103274832,
+    "program.jit_load": 0.003585256,
+    "program.jit_codegen": 0.107130252,
+    "timer.loop": 0.043113117999837414
+   },
+   {
+    "wall": 0.2718383839996932,
+    "peak_rss_mib": 98.37890625,
+    "program.cache_lookup": 7.304e-06,
+    "program.load": 0.013066982,
+    "program.prepare": 0.004319267,
+    "program.discover": 0.00490972,
+    "program.analysis": 0.000516642,
+    "program.optimize": 0.002052176,
+    "program.finalize": 0.000419518,
+    "program.lower": 0.001775143,
+    "program.attempt": 0.027226651,
+    "program.frontend": 0.02727173,
+    "runtime.cache_lookup": 0.000232695,
+    "program.jit_runner.lljit": 3.5734e-05,
+    "program.jit_optimize": 0.068332764,
+    "driver.prepare_run": 0.100175897,
+    "program.jit_load": 0.003651868,
+    "program.jit_codegen": 0.106753366,
+    "timer.loop": 0.04288106900003186
+   }
+  ]
+ },
+ "summary": {
+  "wall": {
+   "calls": 0.25603984800000035,
+   "helpers": 0.27542371000026833
+  },
+  "peak_rss_mib": {
+   "calls": 97.87890625,
+   "helpers": 98.390625
+  },
+  "program.cache_lookup": {
+   "calls": 7.764e-06,
+   "helpers": 7.304e-06
+  },
+  "program.load": {
+   "calls": 0.013859143,
+   "helpers": 0.013915552
+  },
+  "program.prepare": {
+   "calls": 0.004470367,
+   "helpers": 0.004571938
+  },
+  "program.discover": {
+   "calls": 0.005161343,
+   "helpers": 0.005082398
+  },
+  "program.analysis": {
+   "calls": 0.000618353,
+   "helpers": 0.000587893
+  },
+  "program.optimize": {
+   "calls": 0.002207651,
+   "helpers": 0.002190237
+  },
+  "program.finalize": {
+   "calls": 0.000414945,
+   "helpers": 0.000424157
+  },
+  "program.lower": {
+   "calls": 0.001886867,
+   "helpers": 0.001874968
+  },
+  "program.attempt": {
+   "calls": 0.028733461,
+   "helpers": 0.028856237
+  },
+  "program.frontend": {
+   "calls": 0.028785294,
+   "helpers": 0.028905093
+  },
+  "runtime.cache_lookup": {
+   "calls": 0.000264904,
+   "helpers": 0.00029407
+  },
+  "program.jit_runner.lljit": {
+   "calls": 3.27e-05,
+   "helpers": 3.7793e-05
+  },
+  "program.jit_optimize": {
+   "calls": 0.055972277,
+   "helpers": 0.069560252
+  },
+  "driver.prepare_run": {
+   "calls": 0.087651651,
+   "helpers": 0.103274832
+  },
+  "program.jit_load": {
+   "calls": 0.003540892,
+   "helpers": 0.003651868
+  },
+  "program.jit_codegen": {
+   "calls": 0.09569996,
+   "helpers": 0.107130252
+  },
+  "timer.loop": {
+   "calls": 0.04913098799988802,
+   "helpers": 0.043113117999837414
+  }
+ }
+}

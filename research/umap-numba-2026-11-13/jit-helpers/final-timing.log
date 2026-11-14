@@ -1,0 +1,339 @@
+== tiny
+tiny.py                      wall                     calls    0.031  helpers    0.033  paired 1.050
+tiny.py                      peak_rss_mib             calls   59.770  helpers   59.742  paired 1.000
+tiny.py                      program.frontend         calls    0.000  helpers    0.000  paired 1.180
+tiny.py                      program.jit_optimize     calls    0.012  helpers    0.012  paired 1.023
+tiny.py                      program.jit_codegen      calls    0.004  helpers    0.004  paired 1.013
+== padded
+padded.py                    wall                     calls    0.064  helpers    0.067  paired 1.022
+padded.py                    peak_rss_mib             calls   61.812  helpers   61.816  paired 1.001
+padded.py                    program.frontend         calls    0.025  helpers    0.025  paired 0.992
+padded.py                    program.jit_optimize     calls    0.019  helpers    0.020  paired 1.006
+padded.py                    program.jit_codegen      calls    0.004  helpers    0.004  paired 1.020
+== imports
+imports.py                   wall                     calls    1.650  helpers    1.515  paired 0.918
+imports.py                   peak_rss_mib             calls   82.879  helpers   82.988  paired 1.002
+imports.py                   program.frontend         calls    0.215  helpers    0.198  paired 0.987
+imports.py                   program.jit_optimize     calls    0.244  helpers    0.250  paired 0.920
+imports.py                   program.jit_codegen      calls    1.092  helpers    0.965  paired 0.876
+== router
+route.py                     wall                     calls    1.366  helpers    1.322  paired 0.955
+route.py                     peak_rss_mib             calls   80.688  helpers   80.590  paired 0.999
+route.py                     program.frontend         calls    0.175  helpers    0.173  paired 0.991
+route.py                     program.jit_optimize     calls    0.241  helpers    0.202  paired 0.816
+route.py                     program.jit_codegen      calls    0.861  helpers    0.877  paired 0.989
+== umap
+umap_core.py                 wall                     calls   10.113  helpers    7.954  paired 0.811
+umap_core.py                 peak_rss_mib             calls  118.285  helpers  122.816  paired 1.038
+umap_core.py                 program.frontend         calls    0.039  helpers    0.037  paired 1.006
+umap_core.py                 program.jit_optimize     calls    0.057  helpers    0.078  paired 1.574
+umap_core.py                 program.jit_codegen      calls    0.120  helpers    0.160  paired 1.677
+umap_core.py                 timer.data               calls    0.039  helpers    0.034  paired 0.872
+umap_core.py                 timer.knn                calls    4.882  helpers    3.492  paired 0.784
+umap_core.py                 timer.graph              calls    0.085  helpers    0.094  paired 1.106
+umap_core.py                 timer.layout             calls    4.922  helpers    4.036  paired 0.813
+== nbody
+nbody.py                     wall                     calls    0.115  helpers    0.106  paired 0.942
+nbody.py                     peak_rss_mib             calls   62.070  helpers   62.270  paired 1.003
+nbody.py                     program.frontend         calls    0.004  helpers    0.003  paired 0.955
+nbody.py                     program.jit_optimize     calls    0.026  helpers    0.020  paired 0.885
+nbody.py                     program.jit_codegen      calls    0.020  helpers    0.017  paired 1.213
+== spectral
+spectral.py                  wall                     calls    0.075  helpers    0.075  paired 0.991
+spectral.py                  peak_rss_mib             calls   61.535  helpers   62.445  paired 1.015
+spectral.py                  program.frontend         calls    0.002  helpers    0.002  paired 1.058
+spectral.py                  program.jit_optimize     calls    0.016  helpers    0.021  paired 1.297
+spectral.py                  program.jit_codegen      calls    0.011  helpers    0.017  paired 1.351
+== mandel
+mandel.py                    wall                     calls    0.087  helpers    0.084  paired 0.947
+mandel.py                    peak_rss_mib             calls   61.887  helpers   62.137  paired 1.004
+mandel.py                    program.frontend         calls    0.001  helpers    0.001  paired 0.874
+mandel.py                    program.jit_optimize     calls    0.018  helpers    0.016  paired 0.980
+mandel.py                    program.jit_codegen      calls    0.009  helpers    0.008  paired 1.023
+== sieve
+sieve.py                     wall                     calls    0.213  helpers    0.219  paired 0.913
+sieve.py                     peak_rss_mib             calls  122.324  helpers  123.043  paired 1.006
+sieve.py                     program.frontend         calls    0.001  helpers    0.001  paired 1.049
+sieve.py                     program.jit_optimize     calls    0.016  helpers    0.021  paired 1.168
+sieve.py                     program.jit_codegen      calls    0.007  helpers    0.012  paired 1.579
+== fib
+fib.py                       wall                     calls    0.080  helpers    0.089  paired 1.011
+fib.py                       peak_rss_mib             calls   61.012  helpers   61.078  paired 1.001
+fib.py                       program.frontend         calls    0.001  helpers    0.001  paired 0.863
+fib.py                       program.jit_optimize     calls    0.017  helpers    0.018  paired 0.982
+fib.py                       program.jit_codegen      calls    0.007  helpers    0.007  paired 1.019
+== dictcount
+dictcount.py                 wall                     calls    0.203  helpers    0.217  paired 1.069
+dictcount.py                 peak_rss_mib             calls   95.320  helpers   95.887  paired 1.006
+dictcount.py                 program.frontend         calls    0.002  helpers    0.002  paired 1.095
+dictcount.py                 program.jit_optimize     calls    0.016  helpers    0.020  paired 1.243
+dictcount.py                 program.jit_codegen      calls    0.010  helpers    0.011  paired 1.088
+== words
+words.py                     wall                     calls    0.140  helpers    0.137  paired 0.969
+words.py                     peak_rss_mib             calls  113.516  helpers  114.160  paired 1.006
+words.py                     program.frontend         calls    0.002  helpers    0.002  paired 1.060
+words.py                     program.jit_optimize     calls    0.018  helpers    0.023  paired 1.260
+words.py                     program.jit_codegen      calls    0.012  helpers    0.013  paired 1.207
+== pp_chaos
+chaos.py                     wall                     calls    0.188  helpers    0.215  paired 1.123
+chaos.py                     peak_rss_mib             calls   98.469  helpers  100.062  paired 1.015
+chaos.py                     program.frontend         calls    0.011  helpers    0.009  paired 0.840
+chaos.py                     program.jit_optimize     calls    0.052  helpers    0.050  paired 0.975
+chaos.py                     program.jit_codegen      calls    0.063  helpers    0.087  paired 1.400
+chaos.py                     timer.loop               calls    0.040  helpers    0.036  paired 0.893
+== pp_float
+float.py                     wall                     calls    0.099  helpers    0.099  paired 1.006
+float.py                     peak_rss_mib             calls   93.738  helpers   95.188  paired 1.017
+float.py                     program.frontend         calls    0.002  helpers    0.002  paired 0.976
+float.py                     program.jit_optimize     calls    0.018  helpers    0.020  paired 1.131
+float.py                     program.jit_codegen      calls    0.012  helpers    0.018  paired 1.464
+float.py                     timer.loop               calls    0.044  helpers    0.040  paired 0.902
+== pp_nbody
+nbody.py                     wall                     calls    0.153  helpers    0.155  paired 1.015
+nbody.py                     peak_rss_mib             calls   62.605  helpers   64.527  paired 1.032
+nbody.py                     program.frontend         calls    0.004  helpers    0.004  paired 0.974
+nbody.py                     program.jit_optimize     calls    0.023  helpers    0.031  paired 1.390
+nbody.py                     program.jit_codegen      calls    0.021  helpers    0.035  paired 1.857
+nbody.py                     timer.loop               calls    0.086  helpers    0.064  paired 0.749
+== pp_raytrace
+raytrace.py                  wall                     calls    0.205  helpers    0.221  paired 1.073
+raytrace.py                  peak_rss_mib             calls   98.727  helpers   99.672  paired 1.010
+raytrace.py                  program.frontend         calls    0.017  helpers    0.014  paired 0.810
+raytrace.py                  program.jit_optimize     calls    0.048  helpers    0.045  paired 1.147
+raytrace.py                  program.jit_codegen      calls    0.077  helpers    0.093  paired 1.148
+raytrace.py                  timer.loop               calls    0.035  helpers    0.041  paired 1.022
+== pp_scimark
+scimark.py                   wall                     calls    0.157  helpers    0.217  paired 1.379
+scimark.py                   peak_rss_mib             calls   66.336  helpers   69.168  paired 1.042
+scimark.py                   program.frontend         calls    0.012  helpers    0.012  paired 0.946
+scimark.py                   program.jit_optimize     calls    0.040  helpers    0.063  paired 1.556
+scimark.py                   program.jit_codegen      calls    0.052  helpers    0.099  paired 1.916
+scimark.py                   timer.loop               calls    0.029  helpers    0.016  paired 0.561
+== pp_spectral_norm
+spectral_norm.py             wall                     calls    0.076  helpers    0.073  paired 0.930
+spectral_norm.py             peak_rss_mib             calls   64.973  helpers   65.500  paired 1.007
+spectral_norm.py             program.frontend         calls    0.002  helpers    0.002  paired 0.960
+spectral_norm.py             program.jit_optimize     calls    0.018  helpers    0.021  paired 1.106
+spectral_norm.py             program.jit_codegen      calls    0.014  helpers    0.018  paired 1.225
+spectral_norm.py             timer.loop               calls    0.023  helpers    0.012  paired 0.527
+== pp_fannkuch
+fannkuch.py                  wall                     calls    0.238  helpers    0.251  paired 1.055
+fannkuch.py                  peak_rss_mib             calls   94.195  helpers   95.145  paired 1.011
+fannkuch.py                  program.frontend         calls    0.002  helpers    0.002  paired 1.013
+fannkuch.py                  program.jit_optimize     calls    0.017  helpers    0.021  paired 1.198
+fannkuch.py                  program.jit_codegen      calls    0.012  helpers    0.019  paired 1.560
+fannkuch.py                  timer.loop               calls    0.186  helpers    0.187  paired 1.005
+== pp_nqueens
+nqueens.py                   wall                     calls    0.313  helpers    0.264  paired 0.871
+nqueens.py                   peak_rss_mib             calls   99.082  helpers  100.332  paired 1.013
+nqueens.py                   program.frontend         calls    0.003  helpers    0.003  paired 1.104
+nqueens.py                   program.jit_optimize     calls    0.022  helpers    0.027  paired 1.271
+nqueens.py                   program.jit_codegen      calls    0.016  helpers    0.022  paired 1.339
+nqueens.py                   timer.loop               calls    0.251  helpers    0.190  paired 0.843
+== pp_regex_dna
+regex_dna.py                 wall                     calls    1.617  helpers    1.618  paired 0.995
+regex_dna.py                 peak_rss_mib             calls   99.895  helpers   99.730  paired 0.998
+regex_dna.py                 program.frontend         calls    0.176  helpers    0.167  paired 0.951
+regex_dna.py                 program.jit_optimize     calls    0.237  helpers    0.235  paired 1.091
+regex_dna.py                 program.jit_codegen      calls    0.962  helpers    0.993  paired 1.011
+regex_dna.py                 timer.loop               calls    0.139  helpers    0.135  paired 0.967
+== pp_regex_effbot
+regex_effbot.py              wall                     calls    1.668  helpers    1.424  paired 0.854
+regex_effbot.py              peak_rss_mib             calls  109.848  helpers  110.008  paired 1.001
+regex_effbot.py              program.frontend         calls    0.165  helpers    0.136  paired 0.827
+regex_effbot.py              program.jit_optimize     calls    0.230  helpers    0.182  paired 0.808
+regex_effbot.py              program.jit_codegen      calls    0.931  helpers    0.760  paired 0.798
+regex_effbot.py              timer.loop               calls    0.263  helpers    0.232  paired 0.883
+== pp_regex_v8
+regex_v8.py                  wall                     calls    3.480  helpers    3.776  paired 1.070
+regex_v8.py                  peak_rss_mib             calls  131.785  helpers  128.625  paired 0.976
+regex_v8.py                  program.frontend         calls    0.204  helpers    0.217  paired 1.054
+regex_v8.py                  program.jit_optimize     calls    0.288  helpers    0.323  paired 1.074
+regex_v8.py                  program.jit_codegen      calls    1.636  helpers    1.669  paired 1.024
+regex_v8.py                  timer.loop               calls    0.298  helpers    0.353  paired 1.182
+== pp_richards
+richards.py                  wall                     calls    0.236  helpers    0.223  paired 1.012
+richards.py                  peak_rss_mib             calls   66.477  helpers   66.652  paired 1.003
+richards.py                  program.frontend         calls    0.018  helpers    0.014  paired 0.874
+richards.py                  program.jit_optimize     calls    0.066  helpers    0.055  paired 0.862
+richards.py                  program.jit_codegen      calls    0.112  helpers    0.112  paired 1.106
+richards.py                  timer.loop               calls    0.014  helpers    0.015  paired 1.042
+== pp_go
+go.py                        wall                     calls    0.155  helpers    0.214  paired 1.205
+go.py                        peak_rss_mib             calls   79.918  helpers   80.891  paired 1.012
+go.py                        program.frontend         calls    0.011  helpers    0.014  paired 1.237
+go.py                        program.jit_optimize     calls    0.036  helpers    0.052  paired 1.458
+go.py                        program.jit_codegen      calls    0.053  helpers    0.080  paired 1.200
+go.py                        timer.loop               calls    0.034  helpers    0.042  paired 0.985
+== pp_hexiom
+hexiom.py                    wall                     calls    0.304  helpers    0.341  paired 1.128
+hexiom.py                    peak_rss_mib             calls   97.953  helpers   98.641  paired 1.007
+hexiom.py                    program.frontend         calls    0.033  helpers    0.035  paired 1.055
+hexiom.py                    program.jit_optimize     calls    0.072  helpers    0.082  paired 1.108
+hexiom.py                    program.jit_codegen      calls    0.113  helpers    0.140  paired 1.182
+hexiom.py                    timer.loop               calls    0.057  helpers    0.052  paired 0.922
+== pp_json_loads
+json_loads.py                wall                     calls    1.038  helpers    1.124  paired 1.098
+json_loads.py                peak_rss_mib             calls  101.234  helpers  102.016  paired 1.007
+json_loads.py                program.frontend         calls    0.044  helpers    0.054  paired 1.104
+json_loads.py                program.jit_optimize     calls    0.073  helpers    0.101  paired 1.120
+json_loads.py                program.jit_codegen      calls    0.207  helpers    0.186  paired 1.063
+json_loads.py                timer.loop               calls    0.686  helpers    0.727  paired 1.102
+== pp_json_dumps
+json_dumps.py                wall                     calls    0.315  helpers    0.295  paired 0.875
+json_dumps.py                peak_rss_mib             calls   99.676  helpers  100.574  paired 1.008
+json_dumps.py                program.frontend         calls    0.030  helpers    0.032  paired 1.043
+json_dumps.py                program.jit_optimize     calls    0.038  helpers    0.041  paired 1.164
+json_dumps.py                program.jit_codegen      calls    0.068  helpers    0.069  paired 0.960
+json_dumps.py                timer.loop               calls    0.156  helpers    0.120  paired 0.770
+== pp_generators
+generators.py                wall                     calls    0.327  helpers    0.329  paired 0.962
+generators.py                peak_rss_mib             calls  114.340  helpers  115.207  paired 1.008
+generators.py                program.frontend         calls    0.008  helpers    0.008  paired 0.989
+generators.py                program.jit_optimize     calls    0.034  helpers    0.036  paired 1.074
+generators.py                program.jit_codegen      calls    0.038  helpers    0.039  paired 1.000
+generators.py                timer.loop               calls    0.187  helpers    0.186  paired 1.031
+== long_richards
+richards.py                  wall                     calls    0.389  helpers    0.398  paired 1.006
+richards.py                  peak_rss_mib             calls   66.945  helpers   67.098  paired 1.004
+richards.py                  program.frontend         calls    0.016  helpers    0.015  paired 0.985
+richards.py                  program.jit_optimize     calls    0.066  helpers    0.067  paired 1.009
+richards.py                  program.jit_codegen      calls    0.118  helpers    0.129  paired 1.169
+richards.py                  timer.loop               calls    0.167  helpers    0.157  paired 1.032
+== long_regex_effbot
+regex_effbot.py              wall                     calls    3.790  helpers    3.743  paired 0.976
+regex_effbot.py              peak_rss_mib             calls  116.055  helpers  116.086  paired 1.000
+regex_effbot.py              program.frontend         calls    0.149  helpers    0.160  paired 1.076
+regex_effbot.py              program.jit_optimize     calls    0.251  helpers    0.249  paired 0.993
+regex_effbot.py              program.jit_codegen      calls    0.819  helpers    0.925  paired 1.098
+regex_effbot.py              timer.loop               calls    2.493  helpers    2.308  paired 1.038
+== long_regex_v8
+regex_v8.py                  wall                     calls    4.974  helpers    4.966  paired 0.969
+regex_v8.py                  peak_rss_mib             calls  128.484  helpers  129.996  paired 1.002
+regex_v8.py                  program.frontend         calls    0.254  helpers    0.243  paired 1.017
+regex_v8.py                  program.jit_optimize     calls    0.325  helpers    0.320  paired 1.099
+regex_v8.py                  program.jit_codegen      calls    1.648  helpers    1.615  paired 0.963
+regex_v8.py                  timer.loop               calls    1.629  helpers    1.539  paired 0.930
+== long_go
+go.py                        wall                     calls    0.496  helpers    0.498  paired 1.004
+go.py                        peak_rss_mib             calls   98.312  helpers   99.281  paired 1.010
+go.py                        program.frontend         calls    0.011  helpers    0.013  paired 0.997
+go.py                        program.jit_optimize     calls    0.037  helpers    0.045  paired 1.171
+go.py                        program.jit_codegen      calls    0.068  helpers    0.066  paired 1.080
+go.py                        timer.loop               calls    0.328  helpers    0.337  paired 0.965
+== long_json_loads
+json_loads.py                wall                     calls    3.826  helpers    4.142  paired 1.016
+json_loads.py                peak_rss_mib             calls  101.211  helpers  101.770  paired 1.006
+json_loads.py                program.frontend         calls    0.057  helpers    0.053  paired 0.997
+json_loads.py                program.jit_optimize     calls    0.091  helpers    0.098  paired 1.159
+json_loads.py                program.jit_codegen      calls    0.256  helpers    0.228  paired 0.966
+json_loads.py                timer.loop               calls    3.433  helpers    3.743  paired 1.033
+== long_chaos
+chaos.py                     wall                     calls    0.445  helpers    0.472  paired 1.092
+chaos.py                     peak_rss_mib             calls   99.559  helpers  101.090  paired 1.015
+chaos.py                     program.frontend         calls    0.011  helpers    0.011  paired 1.167
+chaos.py                     program.jit_optimize     calls    0.043  helpers    0.059  paired 1.555
+chaos.py                     program.jit_codegen      calls    0.061  helpers    0.103  paired 1.614
+chaos.py                     timer.loop               calls    0.298  helpers    0.261  paired 0.886
+== long_raytrace
+raytrace.py                  wall                     calls    0.384  helpers    0.387  paired 1.042
+raytrace.py                  peak_rss_mib             calls   99.609  helpers  100.535  paired 1.009
+raytrace.py                  program.frontend         calls    0.015  helpers    0.014  paired 0.918
+raytrace.py                  program.jit_optimize     calls    0.041  helpers    0.046  paired 1.104
+raytrace.py                  program.jit_codegen      calls    0.074  helpers    0.081  paired 1.092
+raytrace.py                  timer.loop               calls    0.223  helpers    0.209  paired 0.979
+== long_scimark
+scimark.py                   wall                     calls    0.432  helpers    0.365  paired 0.838
+scimark.py                   peak_rss_mib             calls   69.676  helpers   72.582  paired 1.040
+scimark.py                   program.frontend         calls    0.012  helpers    0.012  paired 1.003
+scimark.py                   program.jit_optimize     calls    0.040  helpers    0.064  paired 1.611
+scimark.py                   program.jit_codegen      calls    0.052  helpers    0.101  paired 1.906
+scimark.py                   timer.loop               calls    0.301  helpers    0.158  paired 0.526
+== long_nbody
+nbody.py                     wall                     calls    0.880  helpers    0.635  paired 0.717
+nbody.py                     peak_rss_mib             calls   62.535  helpers   64.469  paired 1.031
+nbody.py                     program.frontend         calls    0.004  helpers    0.003  paired 0.836
+nbody.py                     program.jit_optimize     calls    0.019  helpers    0.027  paired 1.381
+nbody.py                     program.jit_codegen      calls    0.021  helpers    0.038  paired 1.503
+nbody.py                     timer.loop               calls    0.818  helpers    0.546  paired 0.666
+== long_generators
+generators.py                wall                     calls    1.634  helpers    1.562  paired 0.956
+generators.py                peak_rss_mib             calls  114.844  helpers  115.617  paired 1.007
+generators.py                program.frontend         calls    0.007  helpers    0.008  paired 1.054
+generators.py                program.jit_optimize     calls    0.029  helpers    0.037  paired 1.258
+generators.py                program.jit_codegen      calls    0.028  helpers    0.041  paired 1.429
+generators.py                timer.loop               calls    1.524  helpers    1.425  paired 0.935
+== long_fannkuch
+fannkuch.py                  wall                     calls    0.846  helpers    0.889  paired 1.041
+fannkuch.py                  peak_rss_mib             calls   94.219  helpers   95.090  paired 1.010
+fannkuch.py                  program.frontend         calls    0.002  helpers    0.002  paired 1.009
+fannkuch.py                  program.jit_optimize     calls    0.017  helpers    0.021  paired 1.176
+fannkuch.py                  program.jit_codegen      calls    0.011  helpers    0.016  paired 1.428
+fannkuch.py                  timer.loop               calls    0.794  helpers    0.832  paired 1.032
+== long_json_dumps
+json_dumps.py                wall                     calls    1.449  helpers    1.422  paired 0.978
+json_dumps.py                peak_rss_mib             calls   99.691  helpers  100.520  paired 1.008
+json_dumps.py                program.frontend         calls    0.027  helpers    0.023  paired 0.976
+json_dumps.py                program.jit_optimize     calls    0.031  helpers    0.038  paired 1.247
+json_dumps.py                program.jit_codegen      calls    0.062  helpers    0.074  paired 1.122
+json_dumps.py                timer.loop               calls    1.293  helpers    1.254  paired 0.970
+== long_spectral_norm
+spectral_norm.py             wall                     calls    0.279  helpers    0.169  paired 0.648
+spectral_norm.py             peak_rss_mib             calls   94.336  helpers   94.719  paired 1.005
+spectral_norm.py             program.frontend         calls    0.002  helpers    0.002  paired 0.987
+spectral_norm.py             program.jit_optimize     calls    0.020  helpers    0.022  paired 1.096
+spectral_norm.py             program.jit_codegen      calls    0.012  helpers    0.017  paired 1.240
+spectral_norm.py             timer.loop               calls    0.222  helpers    0.098  paired 0.504
+== long_float
+float.py                     wall                     calls    0.417  helpers    0.368  paired 0.957
+float.py                     peak_rss_mib             calls   98.590  helpers   99.988  paired 1.014
+float.py                     program.frontend         calls    0.002  helpers    0.002  paired 0.977
+float.py                     program.jit_optimize     calls    0.018  helpers    0.023  paired 1.138
+float.py                     program.jit_codegen      calls    0.012  helpers    0.020  paired 1.560
+float.py                     timer.loop               calls    0.360  helpers    0.303  paired 0.917
+== long_hexiom
+hexiom.py                    wall                     calls    0.728  helpers    0.705  paired 0.971
+hexiom.py                    peak_rss_mib             calls   99.094  helpers   99.727  paired 1.006
+hexiom.py                    program.frontend         calls    0.032  helpers    0.035  paired 1.097
+hexiom.py                    program.jit_optimize     calls    0.067  helpers    0.086  paired 1.277
+hexiom.py                    program.jit_codegen      calls    0.114  helpers    0.134  paired 1.162
+hexiom.py                    timer.loop               calls    0.490  helpers    0.422  paired 0.870
+matrix done in 673s
+== hits umap
+umap_core.py     hit wall           calls   10.056  helpers    7.759  paired 0.776
+umap_core.py     hit timer.data     calls    0.037  helpers    0.034  paired 0.906
+umap_core.py     hit timer.knn      calls    4.796  helpers    3.593  paired 0.743
+umap_core.py     hit timer.graph    calls    0.100  helpers    0.095  paired 0.951
+umap_core.py     hit timer.layout   calls    5.100  helpers    4.078  paired 0.792
+umap_core.py     miss calls    wall 21.968
+umap_core.py     miss helpers  wall 18.680
+== hits nbody
+nbody.py         hit wall           calls    0.771  helpers    0.574  paired 0.748
+nbody.py         hit timer.loop     calls    0.715  helpers    0.529  paired 0.744
+nbody.py         miss calls    wall 12.208
+nbody.py         miss helpers  wall 12.097
+== hits scimark
+scimark.py       hit wall           calls    0.333  helpers    0.202  paired 0.633
+scimark.py       hit timer.loop     calls    0.290  helpers    0.154  paired 0.568
+scimark.py       miss calls    wall 11.359
+scimark.py       miss helpers  wall 12.567
+== hits spectral_norm
+spectral_norm.py hit wall           calls    0.253  helpers    0.158  paired 0.611
+spectral_norm.py hit timer.loop     calls    0.202  helpers    0.117  paired 0.526
+spectral_norm.py miss calls    wall 12.803
+spectral_norm.py miss helpers  wall 12.263
+== hits json_loads
+json_loads.py    hit wall           calls    3.772  helpers    3.360  paired 0.924
+json_loads.py    hit timer.loop     calls    3.726  helpers    3.314  paired 0.924
+json_loads.py    miss calls    wall 15.562
+json_loads.py    miss helpers  wall 15.528
+== hits richards
+richards.py      hit wall           calls    0.212  helpers    0.207  paired 0.931
+richards.py      hit timer.loop     calls    0.164  helpers    0.150  paired 0.913
+richards.py      miss calls    wall 11.165
+richards.py      miss helpers  wall 11.856
+hits done
+corpus calls exit 0 in 122s: 4643 passed, 0 failed
+corpus helpers exit 0 in 129s: 4643 passed, 0 failed
+corpus helpers (2) exit 0 in 129s: 4643 passed, 0 failed
+corpus calls (2) exit 0 in 126s: 4643 passed, 0 failed

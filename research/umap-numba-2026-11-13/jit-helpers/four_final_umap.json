@@ -1,0 +1,94 @@
+{
+ "program": [
+  "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/jitopt-meas/work/umap_core.py",
+  "10000",
+  "16",
+  "10",
+  "15",
+  "200",
+  "7"
+ ],
+ "rounds": 3,
+ "runs": {
+  "cleanup": [
+   {
+    "data": 0.034,
+    "knn": 2.153,
+    "graph": 0.124,
+    "layout": 5.019
+   },
+   {
+    "data": 0.061,
+    "knn": 2.098,
+    "graph": 0.091,
+    "layout": 4.789
+   },
+   {
+    "data": 0.038,
+    "knn": 2.233,
+    "graph": 0.097,
+    "layout": 5.273
+   }
+  ],
+  "cleanup+helpers": [
+   {
+    "data": 0.034,
+    "knn": 1.529,
+    "graph": 0.093,
+    "layout": 4.015
+   },
+   {
+    "data": 0.029,
+    "knn": 1.336,
+    "graph": 0.096,
+    "layout": 4.26
+   },
+   {
+    "data": 0.035,
+    "knn": 1.323,
+    "graph": 0.087,
+    "layout": 4.349
+   }
+  ],
+  "O2": [
+   {
+    "data": 0.038,
+    "knn": 1.981,
+    "graph": 0.1,
+    "layout": 4.972
+   },
+   {
+    "data": 0.039,
+    "knn": 1.649,
+    "graph": 0.083,
+    "layout": 4.542
+   },
+   {
+    "data": 0.035,
+    "knn": 1.601,
+    "graph": 0.081,
+    "layout": 5.168
+   }
+  ],
+  "O2+helpers": [
+   {
+    "data": 0.029,
+    "knn": 0.922,
+    "graph": 0.083,
+    "layout": 3.524
+   },
+   {
+    "data": 0.035,
+    "knn": 0.943,
+    "graph": 0.076,
+    "layout": 3.839
+   },
+   {
+    "data": 0.033,
+    "knn": 1.055,
+    "graph": 0.091,
+    "layout": 3.956
+   }
+  ]
+ }
+}

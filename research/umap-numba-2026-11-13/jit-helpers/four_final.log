@@ -1,0 +1,9 @@
+knn     cleanup          median 2.153  range 2.098-2.233  paired/cleanup 1.000
+knn     cleanup+helpers  median 1.336  range 1.323-1.529  paired/cleanup 0.637
+knn     O2               median 1.649  range 1.601-1.981  paired/cleanup 0.786
+knn     O2+helpers       median 0.943  range 0.922-1.055  paired/cleanup 0.449
+layout  cleanup          median 5.019  range 4.789-5.273  paired/cleanup 1.000
+layout  cleanup+helpers  median 4.260  range 4.015-4.349  paired/cleanup 0.825
+layout  O2               median 4.972  range 4.542-5.168  paired/cleanup 0.980
+layout  O2+helpers       median 3.839  range 3.524-3.956  paired/cleanup 0.750
+exit 0

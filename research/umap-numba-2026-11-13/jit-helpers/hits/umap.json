@@ -1,0 +1,131 @@
+{
+ "program": [
+  "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/jitopt-meas/work/umap_core.py",
+  "10000",
+  "16",
+  "10",
+  "15",
+  "200",
+  "7"
+ ],
+ "rounds": 5,
+ "misses": {
+  "calls": {
+   "wall": 21.968444372000704,
+   "timer.data": 0.038,
+   "timer.knn": 4.54,
+   "timer.graph": 0.087,
+   "timer.layout": 4.922
+  },
+  "helpers": {
+   "wall": 18.67998535100014,
+   "timer.data": 0.032,
+   "timer.knn": 3.38,
+   "timer.graph": 0.079,
+   "timer.layout": 3.856
+  }
+ },
+ "hits": {
+  "calls": [
+   {
+    "wall": 10.055804910000006,
+    "timer.data": 0.035,
+    "timer.knn": 4.796,
+    "timer.graph": 0.096,
+    "timer.layout": 5.077
+   },
+   {
+    "wall": 9.995139554999696,
+    "timer.data": 0.037,
+    "timer.knn": 4.706,
+    "timer.graph": 0.1,
+    "timer.layout": 5.1
+   },
+   {
+    "wall": 9.670895300000666,
+    "timer.data": 0.032,
+    "timer.knn": 4.909,
+    "timer.graph": 0.099,
+    "timer.layout": 4.576
+   },
+   {
+    "wall": 10.372946467000475,
+    "timer.data": 0.038,
+    "timer.knn": 4.835,
+    "timer.graph": 0.103,
+    "timer.layout": 5.341
+   },
+   {
+    "wall": 10.261701355000696,
+    "timer.data": 0.038,
+    "timer.knn": 4.779,
+    "timer.graph": 0.107,
+    "timer.layout": 5.271
+   }
+  ],
+  "helpers": [
+   {
+    "wall": 7.982427646999895,
+    "timer.data": 0.034,
+    "timer.knn": 3.649,
+    "timer.graph": 0.095,
+    "timer.layout": 4.151
+   },
+   {
+    "wall": 7.759273556999688,
+    "timer.data": 0.038,
+    "timer.knn": 3.716,
+    "timer.graph": 0.093,
+    "timer.layout": 3.848
+   },
+   {
+    "wall": 7.666843405000691,
+    "timer.data": 0.029,
+    "timer.knn": 3.417,
+    "timer.graph": 0.096,
+    "timer.layout": 4.078
+   },
+   {
+    "wall": 7.99435881699992,
+    "timer.data": 0.028,
+    "timer.knn": 3.593,
+    "timer.graph": 0.098,
+    "timer.layout": 4.229
+   },
+   {
+    "wall": 7.738278150999577,
+    "timer.data": 0.034,
+    "timer.knn": 3.51,
+    "timer.graph": 0.077,
+    "timer.layout": 4.064
+   }
+  ]
+ },
+ "summary": {
+  "wall": {
+   "calls": 10.055804910000006,
+   "helpers": 7.759273556999688,
+   "paired": 0.7763046743172686
+  },
+  "timer.data": {
+   "calls": 0.037,
+   "helpers": 0.034,
+   "paired": 0.90625
+  },
+  "timer.knn": {
+   "calls": 4.796,
+   "helpers": 3.593,
+   "paired": 0.7431230610134436
+  },
+  "timer.graph": {
+   "calls": 0.1,
+   "helpers": 0.095,
+   "paired": 0.9514563106796118
+  },
+  "timer.layout": {
+   "calls": 5.1,
+   "helpers": 4.078,
+   "paired": 0.7917992885227485
+  }
+ }
+}
