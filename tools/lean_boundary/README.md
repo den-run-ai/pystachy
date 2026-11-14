@@ -42,7 +42,11 @@ unchanged, including helpers outside `tests/`. Ignored Python sources, such as
 `build/ref` copies, need an experimental `--output` or a separate clean worktree;
 ordinary `__pycache__` bytecode files are harmless. External `.path` directories
 and source/package symlinks leaving the checkout cannot certify clean evidence.
-Tracked internal symlinks remain supported because their source targets are inputs too.
+Tracked internal symlinks require indexed intermediate links and inventoried `.py` or
+`.path` targets. Nested Git checkouts, submodules and existing import directories outside
+the indexed tree cannot certify clean evidence; use a separate worktree or experimental
+output. The audit compares actual input bytes with Git blobs, so change-suppression flags
+and clean filters cannot conceal changed working source.
 Import lookups also account for namespace directories, including an empty directory
 that activates an optional import; untracked namespace candidates cannot certify clean
 evidence. The compiler identity includes `sys.platform`, which it folds before typed

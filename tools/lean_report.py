@@ -131,23 +131,48 @@ def namespace_inputs(sources, tracked, programs):
     return sorted(untrusted), sorted(str(path.relative_to(ROOT)) for path in namespaces)
 
 
+def indexed_links(path, links):
+    """Every link followed, including non-source intermediate names, is indexed.
+
+    Resolve one link at a time so an ignored hop cannot retarget a tracked source
+    between two indexed files. Check parents before normalizing `..` components.
+    """
+    seen = set()
+    for _ in range(40):
+        for part in [*reversed(path.parents), path]:
+            if not part.is_symlink():
+                continue
+            name = Path(os.path.normpath(part)).relative_to(ROOT).as_posix()
+            if name not in links or name in seen:
+                return False
+            seen.add(name)
+            path = part.parent / os.readlink(part) / path.relative_to(part)
+            break
+        else:
+            return True
+    return False
+
+
 def source_checkout(programs=()):
     """Whether repository source and import paths have index-backed identities.
 
     Git status omits ignored sources. Reject those, external search paths and source
     symlinks escaping the checkout; index hashes cannot identify their contents.
-    Internal tracked links are safe because all repository Python sources are inputs.
+    Internal tracked links need inventoried source targets and indexed intermediate hops.
     Bytecode caches and other generated non-source files do not affect this audit.
     """
     entries = [entry.split("\t", 1) for entry in git("ls-files", "--stage", "-z").split("\0") if entry]
     tracked = {name for _, name in entries}
     links = {name for stage, name in entries if stage.startswith("120000 ")}
+    gitlinks = {name for stage, name in entries if stage.startswith("160000 ")}
     # No exclude-standard: this includes ignored files, including files in ignored
     # directories. NUL separation also handles locally created unusual names.
     others = {name for name in git("ls-files", "--others", "-z").split("\0") if name}
     sources = {name for name in tracked | others if name.endswith((".py", ".path"))}
     problems = [f"untracked or ignored source: {name}" for name in sorted(sources & others)]
+    problems += [f"opaque nested repository: {name}" for name in sorted(gitlinks | {p for p in others if p.endswith("/")})]
     root = ROOT.resolve()
+    indexed_dirs = {parent for name in tracked for parent in (ROOT / name).parents if parent.is_relative_to(ROOT)}
     for name in sources | links | others:
         path = ROOT / name
         if path.is_symlink() and (name in sources or path.is_dir()):
@@ -155,6 +180,10 @@ def source_checkout(programs=()):
                 target = path.resolve().relative_to(root).as_posix()
                 if name not in tracked or not (target in tracked or any(p.startswith(target + "/") for p in tracked)):
                     problems.append(f"untracked source link or target: {name}")
+                elif name in sources and target not in sources:
+                    problems.append(f"source link target outside source inventory: {name}")
+                elif not indexed_links(path, links):
+                    problems.append(f"untracked intermediate source link: {name}")
             except (OSError, RuntimeError, ValueError):
                 problems.append(f"source link outside checkout or unresolved: {name}")
     for name in sources:
@@ -162,7 +191,12 @@ def source_checkout(programs=()):
             try:
                 for directory in (ROOT / name).read_text().strip().split(":"):
                     if directory:
-                        (ROOT / directory).resolve().relative_to(root)
+                        selected = (ROOT / directory).resolve()
+                        selected.relative_to(root)
+                        if not indexed_links(ROOT / directory, links):
+                            problems.append(f"untracked intermediate import path: {name}: {directory}")
+                        elif selected.is_dir() and selected not in indexed_dirs:
+                            problems.append(f"import directory outside indexed tree: {name}: {directory}")
             except (OSError, RuntimeError, ValueError):
                 problems.append(f"external or unreadable import path: {name}")
     for program in programs:
@@ -178,6 +212,31 @@ def source_checkout(programs=()):
     return sorted(links), namespaces, problems[:8]
 
 
+def working_matches_index(listed):
+    """Git status may trust assume-unchanged, skip-worktree or fsmonitor metadata.
+    Compare actual bytes, without Git clean filters, with each indexed blob instead.
+    """
+    for entry in listed.split("\0"):
+        if not entry:
+            continue
+        stage, name = entry.split("\t", 1)
+        mode, expected, number = stage.split()
+        path = ROOT / name
+        try:
+            if number != "0" or mode not in ("100644", "100755", "120000"):
+                return False
+            if (mode == "120000") != path.is_symlink():
+                return False
+            data = os.fsencode(os.readlink(path)) if mode == "120000" else path.read_bytes()
+        except OSError:
+            return False
+        actual = hashlib.new("sha256" if len(expected) == 64 else "sha1",
+                             b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest()
+        if actual != expected:
+            return False
+    return True
+
+
 def inputs(programs=()):
     """Tracked modes/blob ids and namespace lookups, plus whether untracked working
     contents make those identities insufficient for proof reuse."""
@@ -186,14 +245,15 @@ def inputs(programs=()):
     for group, specs in INPUTS.items():
         if group == "corpus":
             specs = (*specs, *links)
-        listed = git("ls-files", "--stage", "--", *specs)
+        listed = git("ls-files", "--stage", "-z", "--", *specs)
         changed = git("status", "--porcelain", "--untracked-files=all", "--", *specs)
+        clean = changed == "" and working_matches_index(listed)
         if group == "compiler":
             # Loader.platform_test folds sys.platform before typed IR exists.
             listed += "\nhost-platform-v1\n" + sys.platform
         if group == "corpus":
             listed += "\nnamespace-inputs-v1\n" + json.dumps(namespaces)
-        found[group] = {"digest": hashlib.sha256(listed.encode()).hexdigest()[:16], "clean": changed == ""}
+        found[group] = {"digest": hashlib.sha256(listed.encode()).hexdigest()[:16], "clean": clean}
     found["corpus"]["clean"] &= not problems
     found["corpus"]["programs"] = sorted(set(programs))
     found["corpus"]["untrusted"] = problems
@@ -610,12 +670,25 @@ def recorded(path=REPORT):
     raise ValueError(f"{path} records no inputs")
 
 
+def canonical_output(path):
+    """Aliases of the committed report have the same full-corpus requirements."""
+    if path.resolve() == REPORT.resolve():
+        return True
+    try:
+        return path.samefile(REPORT)
+    except FileNotFoundError:
+        return False
+
+
 def status(path=REPORT):
     """Print which input groups differ from the report's; 0 when none does."""
     before = recorded(path)
     programs = before.get("corpus", {}).get("programs", [])
     if not isinstance(programs, list) or not all(isinstance(program, str) for program in programs):
         print("corpus: invalid recorded program paths")
+        return 1
+    if programs and canonical_output(path):
+        print("corpus: the committed report records only selected programs")
         return 1
     now = inputs(programs)
     stale = [group for group in INPUTS if before.get(group, {}).get("digest") != now[group]["digest"]
@@ -651,7 +724,7 @@ def main(argv=None):
     if args.status:
         return status(args.output)
     if args.render:
-        if args.output.resolve() == REPORT:
+        if canonical_output(args.output):
             parser.error("--render needs --output for another file; generate the committed report "
                          "with a full run or a validated --resume")
         header, records = load(args.records)
@@ -661,7 +734,7 @@ def main(argv=None):
     if args.jobs < 1 or args.timeout <= 0:
         parser.error("use at least one worker and a positive timeout")
     found = inputs(args.programs)
-    if args.output.resolve() == REPORT and (args.programs or not clean_inputs(found)):
+    if canonical_output(args.output) and (args.programs or not clean_inputs(found)):
         parser.error("the committed report needs the whole corpus and a checkout without changes to its inputs: "
                      "pass --output for another file" +
                      ("; " + "; ".join(found["corpus"].get("untrusted", [])) if found["corpus"].get("untrusted") else ""))

@@ -331,6 +331,146 @@ class ImportInputTests(unittest.TestCase):
         subprocess.run(["git", "-c", "user.name=Test", "-c", "user.email=test@example.com",
                         "commit", "-qm", "test inputs"], cwd=self.root, check=True)
 
+    def snapshot(self):
+        # Compile the fixture's real source/search paths with the real compiler
+        # and library. Sidecars are relative to the fixture, not this checkout.
+        compiled = report.compiled
+
+        def with_search_path(path, output, env, timeout):
+            env = dict(env, PYSTACHY_PATH=":".join(str(self.root / part)
+                       for part in env.get("PYSTACHY_PATH", "").split(":") if part))
+            return compiled(path, output, env, timeout)
+
+        with mock.patch.object(report, "compiled", side_effect=with_search_path):
+            return report.inspect(str(self.root / "tests/probe.py"), 120)[1]
+
+    def assert_changed_source_cannot_resume(self, change):
+        before_snapshot = self.snapshot()
+        checker = self.write("checker", "checker")
+        records, output = self.root / "records.jsonl", self.root / "report.md"
+        argv = ["--jobs", "1", "--checker", str(checker), "--access-checker", str(checker),
+                "--records", str(records), "--output", str(output)]
+        with mock.patch.object(report.corpus, "corpus", return_value=["tests/probe.py"]), \
+                mock.patch.object(report.storage_corpus, "select", return_value=[]), \
+                mock.patch.object(report, "check_program", return_value=record("tests/probe.py")) as checked, \
+                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            with mock.patch.object(report, "ROOT", self.root):
+                self.assertEqual(report.main(argv), 0)
+                original = records.read_bytes()
+                before = report.inputs()
+            change()
+            self.assertNotEqual(before_snapshot, self.snapshot())
+            with mock.patch.object(report, "ROOT", self.root):
+                after = report.inputs()
+                self.assertEqual({key: item["digest"] for key, item in before.items()},
+                                 {key: item["digest"] for key, item in after.items()})
+                with self.subTest(action="resume"), self.assertRaises(SystemExit):
+                    report.main([*argv, "--resume"])
+                with self.subTest(action="status"):
+                    self.assertEqual(report.status(output), 1)
+                self.assertEqual(records.read_bytes(), original)
+                self.assertEqual(checked.call_count, 1)
+
+    def test_source_link_to_non_source_target_cannot_resume(self):
+        target = self.write("fixtures/helper.txt", "def value() -> int:\n    return 11\n")
+        (self.root / "tests/helper.py").symlink_to("../fixtures/helper.txt")
+        subprocess.run(["git", "add", "-f", "tests/helper.py"], cwd=self.root, check=True)
+        self.commit()
+        self.assert_changed_source_cannot_resume(lambda: target.write_text("def value() -> int:\n    return 29\n"))
+
+    def test_ignored_intermediate_source_link_cannot_resume(self):
+        self.write("fixtures/first.py", "def value() -> int:\n    return 11\n")
+        self.write("fixtures/second.py", "def value() -> int:\n    return 29\n")
+        (self.root / ".gitignore").write_text((self.root / ".gitignore").read_text() + "bridge\n")
+        bridge = self.root / "tests/bridge"
+        bridge.symlink_to("../fixtures/first.py")
+        (self.root / "tests/helper.py").symlink_to("bridge")
+        subprocess.run(["git", "add", "-f", "tests/helper.py"], cwd=self.root, check=True)
+        self.commit()
+
+        def retarget():
+            bridge.unlink()
+            bridge.symlink_to("../fixtures/second.py")
+
+        self.assert_changed_source_cannot_resume(retarget)
+
+    def nested_source(self, *, git_file=False, gitlink=False):
+        target = self.write("nested/helper.py", "def value() -> int:\n    return 11\n")
+        nested = target.parent
+        args = ["--separate-git-dir", str(self.root / ".git/nested-metadata")] if git_file else []
+        subprocess.run(["git", "init", "-q", *args, str(nested)], check=True)
+        subprocess.run(["git", "add", "."], cwd=nested, check=True)
+        subprocess.run(["git", "-c", "user.name=Test", "-c", "user.email=test@example.com",
+                        "commit", "-qm", "nested source"], cwd=nested, check=True)
+        (self.root / ".gitignore").write_text((self.root / ".gitignore").read_text() + "nested/\n")
+        self.write("tests/probe.path", "nested\n")
+        if gitlink:
+            head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=nested, check=True,
+                                  capture_output=True, text=True).stdout.strip()
+            subprocess.run(["git", "update-index", "--add", "--cacheinfo", f"160000,{head},nested"],
+                           cwd=self.root, check=True)
+        self.commit()
+        return target
+
+    def test_ignored_nested_repository_cannot_resume(self):
+        target = self.nested_source()
+        self.assert_changed_source_cannot_resume(lambda: target.write_text("def value() -> int:\n    return 29\n"))
+
+    def test_nested_repository_git_file_cannot_resume(self):
+        target = self.nested_source(git_file=True)
+        self.assert_changed_source_cannot_resume(lambda: target.write_text("def value() -> int:\n    return 29\n"))
+
+    def test_gitlink_source_cannot_resume(self):
+        target = self.nested_source(gitlink=True)
+        self.assert_changed_source_cannot_resume(lambda: target.write_text("def value() -> int:\n    return 29\n"))
+
+    def test_git_metadata_import_path_cannot_resume(self):
+        target = self.write(".git/fixture/helper.py", "def value() -> int:\n    return 11\n")
+        self.write("tests/probe.path", ".git/fixture\n")
+        self.commit()
+        self.assert_changed_source_cannot_resume(lambda: target.write_text("def value() -> int:\n    return 29\n"))
+
+    def test_hidden_import_directory_link_cannot_resume(self):
+        self.write("fixtures/first/helper.py", "def value() -> int:\n    return 11\n")
+        self.write("fixtures/second/helper.py", "def value() -> int:\n    return 29\n")
+        subprocess.run(["git", "add", "-f", "fixtures"], cwd=self.root, check=True)
+        bridge = self.root / ".git/imports"
+        bridge.symlink_to("../fixtures/first", target_is_directory=True)
+        self.write("tests/probe.path", ".git/imports\n")
+        self.commit()
+
+        def retarget():
+            bridge.unlink()
+            bridge.symlink_to("../fixtures/second", target_is_directory=True)
+
+        self.assert_changed_source_cannot_resume(retarget)
+
+    def test_status_suppression_cannot_hide_changed_working_source(self):
+        target = self.write("tests/helper.py", "def value() -> int:\n    return 11\n")
+        subprocess.run(["git", "add", "-f", "tests/helper.py"], cwd=self.root, check=True)
+        self.commit()
+        for flag in ("assume-unchanged", "skip-worktree"):
+            with self.subTest(flag=flag):
+                subprocess.run(["git", "update-index", "--" + flag, "tests/helper.py"], cwd=self.root, check=True)
+                self.assert_changed_source_cannot_resume(lambda: target.write_text("def value() -> int:\n    return 29\n"))
+                target.write_text("def value() -> int:\n    return 11\n")
+                subprocess.run(["git", "update-index", "--no-" + flag, "tests/helper.py"], cwd=self.root, check=True)
+
+    def test_indexed_link_chains_and_byte_identical_flagged_inputs_remain_clean(self):
+        self.write("fixtures/real/value.py", "def value() -> int:\n    return 11\n")
+        (self.root / "fixtures/alias").symlink_to("real", target_is_directory=True)
+        (self.root / "tests/bridge").symlink_to("../fixtures/alias/value.py")
+        (self.root / "tests/helper.py").symlink_to("bridge")
+        subprocess.run(["git", "add", "-f", "tests/helper.py"], cwd=self.root, check=True)
+        self.commit()
+        with mock.patch.object(report, "ROOT", self.root):
+            before = report.inputs()
+            self.assertTrue(report.clean_inputs(before))
+            for flag in ("assume-unchanged", "skip-worktree"):
+                subprocess.run(["git", "update-index", "--" + flag, "fixtures/real/value.py"], cwd=self.root, check=True)
+                self.assertEqual(report.inputs(), before)
+                subprocess.run(["git", "update-index", "--no-" + flag, "fixtures/real/value.py"], cwd=self.root, check=True)
+
     def test_ignored_helper_changes_actual_snapshot_and_cannot_resume(self):
         program = self.root / "tests/probe.py"
         helper = self.write("tests/helper.py", "def value() -> int:\n    return 11\n")
@@ -466,6 +606,76 @@ class StatusTests(unittest.TestCase):
         found = report.inputs()
         self.assertEqual(set(found), set(report.INPUTS))
         self.assertTrue(all(len(item["digest"]) == 16 and type(item["clean"]) is bool for item in found.values()))
+
+
+class CanonicalOutputTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.root = Path(self.directory.name)
+        self.programs = ["tests/programs/core/first.py", "tests/programs/core/second.py"]
+        for name in self.programs:
+            self.write(name, "print(1)\n")
+        self.write("tools/lean_boundary/lean-toolchain", "leanprover/lean4:v4.35.0\n")
+        self.canonical = self.write("tools/lean_boundary/REPORT.md", "old full report\n")
+        checker = self.write("checker", "checker bytes\n")
+        subprocess.run(["git", "init", "-q", str(self.root)], check=True)
+        subprocess.run(["git", "add", "."], cwd=self.root, check=True)
+        subprocess.run(["git", "-c", "user.name=Test", "-c", "user.email=test@example.com",
+                        "commit", "-qm", "canonical report fixture"], cwd=self.root, check=True)
+        self.args = ["--jobs", "1", "--checker", str(checker), "--access-checker", str(checker),
+                     "--records", str(self.root / "records.jsonl")]
+        self.patches = contextlib.ExitStack()
+        self.addCleanup(self.patches.close)
+        self.patches.enter_context(mock.patch.object(report, "ROOT", self.root))
+        self.patches.enter_context(mock.patch.object(report, "REPORT", self.canonical))
+        self.patches.enter_context(mock.patch.object(report.corpus, "corpus", return_value=self.programs))
+        self.patches.enter_context(mock.patch.object(report.storage_corpus, "select", return_value=[]))
+        self.checked = self.patches.enter_context(mock.patch.object(
+            report, "check_program", side_effect=lambda program, *_: record(program)))
+        self.patches.enter_context(contextlib.redirect_stdout(io.StringIO()))
+        self.patches.enter_context(contextlib.redirect_stderr(io.StringIO()))
+
+    def write(self, name, text):
+        path = self.root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+        return path
+
+    def alias(self):
+        path = self.root / "alias.md"
+        path.hardlink_to(self.canonical)
+        return path
+
+    def test_hard_link_cannot_write_partial_but_can_write_full_report(self):
+        alias = self.alias()
+        before = self.canonical.read_bytes()
+        with self.assertRaises(SystemExit):
+            report.main([self.programs[0], *self.args, "--output", str(alias)])
+        self.assertEqual(self.canonical.read_bytes(), before)
+        self.checked.assert_not_called()
+        self.assertEqual(report.main([*self.args, "--output", str(alias)]), 0)
+        self.assertEqual(self.checked.call_count, 2)
+        self.assertEqual(report.recorded(self.canonical)["corpus"]["programs"], [])
+        self.assertEqual(report.status(self.canonical), 0)
+
+    def test_hard_link_cannot_render_partial_records_over_full_report(self):
+        output = self.root / "partial.md"
+        self.assertEqual(report.main([self.programs[0], *self.args, "--output", str(output)]), 0)
+        alias = self.alias()
+        before = self.canonical.read_bytes()
+        with self.assertRaises(SystemExit):
+            report.main([*self.args, "--render", "--output", str(alias)])
+        self.assertEqual(self.canonical.read_bytes(), before)
+        self.assertEqual(self.checked.call_count, 1)
+
+    def test_canonical_status_rejects_copied_partial_selection(self):
+        output = self.root / "partial.md"
+        self.assertEqual(report.main([self.programs[0], *self.args, "--output", str(output)]), 0)
+        self.assertEqual(report.status(output), 0)
+        self.canonical.write_bytes(output.read_bytes())
+        self.assertEqual(report.status(self.canonical), 1)
+        self.assertEqual(report.status(self.alias()), 1)
 
 
 class WorkerTests(unittest.TestCase):
