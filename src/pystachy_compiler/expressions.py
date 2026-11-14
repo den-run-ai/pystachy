@@ -796,7 +796,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     self.line = n.line
     want = self.rec_type(want)
     k = n.kind
-    if k in ["matchbind", "matchconst", "matchvalue", "matchseq", "matchclass", "matchfield", "matchunsupported"]:
+    if k in ["matchbind", "matchconst", "matchvalue", "matchseq", "matchstar", "matchclass", "matchfield", "matchunsupported"]:
         return pattern_expr(self, n)
     resultsoft = resultsoft or n is self.soft
     if returnctx and k in ["binop", "boolop", "ifexp"]:

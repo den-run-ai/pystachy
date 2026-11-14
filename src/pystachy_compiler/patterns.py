@@ -1,8 +1,9 @@
 """Bounded structural patterns lowered to ordinary typed branches."""
 from __future__ import annotations
 from src.pystachy_compiler.ir import Val
+from src.pystachy_compiler.specs import RANGEC
 from src.pystachy_compiler.syntax import Node, made_var, mk
-from src.pystachy_compiler.utils import clone, is_tuple, is_union, targs, typestr, unopt
+from src.pystachy_compiler.utils import clone, elem, is_dict, is_list, is_set, is_tuple, is_union, is_vtuple, targs, typestr, unopt
 
 
 # subject types that are never sequences to a sequence pattern (CPython excludes str and bytes)
@@ -31,8 +32,8 @@ def conjunction(parts: list[Node], line: int) -> Node:
 
 def unsupported_pattern(node: Node) -> Node | None:
     # the first pattern in node, in source order, that this lowering does not support: a
-    # mapping, a starred name in a sequence, or a complex literal
-    if node.kind in ["pmap", "pstar"] or (node.kind == "pnum" and "j" in node.s):
+    # mapping or a complex literal
+    if node.kind == "pmap" or (node.kind == "pnum" and "j" in node.s):
         return node
     for child in node.kids:
         bad = unsupported_pattern(child)
@@ -54,8 +55,6 @@ def unsupported_reason(node: Node) -> str:
     # the diagnostic for unsupported_pattern's node
     if node.kind == "pmap":
         return "mapping patterns are not supported"
-    if node.kind == "pstar":
-        return "starred sequence patterns are not supported; use a fixed tuple pattern"
     return "complex literal patterns are not supported"
 
 
@@ -77,7 +76,7 @@ def pattern_captures(pattern: Node, out: list[str]) -> None:
     # bind the same names, but may encounter them in different orders.
     for child in pattern.kids:
         pattern_captures(child, out)
-    if pattern.kind == "pas" and pattern.s != "" and pattern.s not in out:
+    if (pattern.kind == "pas" or pattern.kind == "pstar") and pattern.s != "" and pattern.s not in out:
         out.append(pattern.s)
 
 
@@ -111,14 +110,28 @@ def pattern_test(pattern: Node, subject: Node, counter: list[int], captures: dic
             out = mk("boolop", "or", line, [out, pattern_test(alt, clone(subject), counter, captures)])
         return out
     if k == "pseq":
-        stars = [p for p in pattern.kids if p.kind == "pstar"]
-        if len(stars) > 0:
-            return mk("matchunsupported", unsupported_reason(stars[0]), line, [])
-        parts = [mk("matchseq", str(len(pattern.kids)), line, [clone(subject)])]
+        n = len(pattern.kids)
+        stars = [i for i in range(n) if pattern.kids[i].kind == "pstar"]
+        star = stars[0] if len(stars) > 0 else -1  # (the parser allows one)
+        # A star wildcard (*_) reads each other item just before its subpattern, as CPython's
+        # BINARY_SUBSCR does; otherwise CPython unpacks every item first (UNPACK_SEQUENCE, or
+        # UNPACK_EX making the star's list), and so do the staged reads below
+        lazy = star >= 0 and pattern.kids[star].s == ""
+        # matchseq's s: how many items besides the star, "+" if a star takes the rest, and "!"
+        # where a nested sequence or class pattern reads its item after earlier subpatterns ran,
+        # which only an immutable subject (a tuple) keeps as CPython unpacked it (pattern_seq)
+        late = not lazy and len([p for p in pattern.kids if p.kind != "pstar" and not leaf_pattern(p) and not wildcard(p)]) > 0
+        fixed = n - (1 if star >= 0 else 0)
+        parts = [mk("matchseq", str(fixed) + ("+" if star >= 0 else "") + ("!" if late else ""), line, [clone(subject)])]
         items: list[Node] = []
-        for i in range(len(pattern.kids)):
-            item = mk("index", "", line, [clone(subject), mk("int", str(i), line, [])])
-            if leaf_pattern(pattern.kids[i]) and not wildcard(pattern.kids[i]):
+        for i in range(n):
+            if i == star:
+                items.append(clone(subject))  # (unused: the star's own test is its capture, below)
+                continue
+            # an item after the star counts from the subject's end
+            at = mk("int", str(i), line, []) if star < 0 or i < star else mk("unary", "-", line, [mk("int", str(n - i), line, [])])
+            item = mk("index", "", line, [clone(subject), at])
+            if not lazy and leaf_pattern(pattern.kids[i]) and not wildcard(pattern.kids[i]):
                 # CPython unpacks every item (UNPACK_SEQUENCE) before it matches the first
                 # subpattern; reading a fixed tuple's items first runs no code. Staged reads
                 # leave the comparisons free of loads, which branch-free code can then join.
@@ -129,8 +142,14 @@ def pattern_test(pattern: Node, subject: Node, counter: list[int], captures: dic
                 parts.append(mk("matchbind", "", line, [mk("walrus", name, line, [item])]))
                 item = made_var(name, line)
             items.append(item)
-        for i in range(len(pattern.kids)):
-            parts.append(pattern_test(pattern.kids[i], items[i], counter, captures))
+        if star >= 0 and pattern.kids[star].s != "":
+            # *rest: a new list of the items between those before and after it, made with the
+            # other unpacked items (UNPACK_EX), before any subpattern runs
+            rest = mk("matchstar", f"{star} {n - star - 1}", line, [clone(subject)])
+            parts.append(mk("matchbind", "", line, [mk("walrus", captures[pattern.kids[star].s], line, [rest])]))
+        for i in range(n):
+            if i != star:
+                parts.append(pattern_test(pattern.kids[i], items[i], counter, captures))
         return conjunction(parts, line)
     if k == "pclass":
         cls = pattern.kids[0]
@@ -234,6 +253,28 @@ def pattern_class_subject(self, t: str) -> None:
         self.err("class patterns require a concrete subject type; dynamic Any and union subjects are not supported")
 
 
+def pattern_seq(node: Node) -> tuple[int, bool, bool]:
+    # a matchseq's items besides a star, whether a star takes the rest, and whether a nested
+    # pattern reads its item after earlier subpatterns ran (pattern_test)
+    s = node.s
+    late = s.endswith("!")
+    s = s[:-1] if late else s
+    star = s.endswith("+")
+    return (int(s[:-1] if star else s), star, late)
+
+
+def never_sequence(t: str) -> bool:
+    # a subject type that no sequence pattern matches: CPython excludes str, bytes and the
+    # scalars, and a dict or set is no collections.abc.Sequence
+    return t in SEQ_SCALARS or is_dict(t) or is_set(t)
+
+
+def seq_fits(t: str, node: Node) -> bool:
+    # does fixed tuple type t have as many items as matchseq node wants
+    n, star, _ = pattern_seq(node)
+    return len(targs(t)) >= n if star else len(targs(t)) == n
+
+
 def pattern_static(self, node: Node) -> int:
     t = pattern_type(self, node.kids[0])
     if node.kind == "matchclass":
@@ -243,19 +284,31 @@ def pattern_static(self, node: Node) -> int:
     if t == "":
         return -1
     if is_tuple(t):
-        return 1 if len(targs(t)) == int(node.s) else 0
-    if t in SEQ_SCALARS:
+        return 1 if seq_fits(t, node) else 0
+    if never_sequence(t):
         return 0
-    self.err(f"sequence patterns require a fixed tuple subject, got {typestr(t)}")
+    if is_list(t) or is_vtuple(t) or t == RANGEC:
+        return -1  # (a length test where it runs: pattern_expr)
+    self.err(f"sequence patterns require a tuple or list subject, got {typestr(t)}")
     return -1
 
 
 def pattern_type(self, node: Node) -> str:
-    if node.kind == "index" and node.kids[1].kind == "int":
+    # the type of a subject: of a sequence pattern's item, the item type of the subject's type at
+    # its index (from the end after a star: -k)
+    at = node.kids[1] if node.kind == "index" else node
+    if node.kind == "index" and (at.kind == "int" or (at.kind == "unary" and at.s == "-" and at.kids[0].kind == "int")):
         parent = pattern_type(self, node.kids[0])
-        i = int(node.kids[1].s)
-        if is_tuple(parent) and i < len(targs(parent)):
-            return targs(parent)[i]
+        i = int(at.s) if at.kind == "int" else -int(at.kids[0].s)
+        if is_tuple(parent):
+            size = len(targs(parent))
+            return targs(parent)[i if i >= 0 else size + i] if -size <= i < size else ""
+        if is_list(parent):
+            return elem(parent)
+        if is_vtuple(parent):
+            return targs(parent)[0]
+        if parent == RANGEC:
+            return "int"
         return ""
     return self.static_type(node)
 
@@ -285,11 +338,44 @@ def pattern_expr(self, node: Node) -> Val:
         return self.expr(mk("cmp", "==", node.line, [self.vnode(left), self.vnode(right)]), "bool")
     if k == "matchseq":
         value = self.expr(node.kids[0], "")
-        if value.t in SEQ_SCALARS:
+        if never_sequence(value.t):
             return Val("false", "bool")  # (as pattern_static decides where it knows the type)
-        if not is_tuple(value.t):
-            self.err(f"sequence patterns require a fixed tuple subject, got {typestr(value.t)}")
-        return Val("true" if len(targs(value.t)) == int(node.s) else "false", "bool")
+        if is_tuple(value.t):
+            return Val("true" if seq_fits(value.t, node) else "false", "bool")
+        if not is_list(value.t) and not is_vtuple(value.t) and value.t != RANGEC:
+            self.err(f"sequence patterns require a tuple or list subject, got {typestr(value.t)}")
+        n, star, late = pattern_seq(node)
+        if late and is_list(value.t):
+            # (CPython unpacks a list's items before it matches any: a nested pattern reading its
+            # item after an earlier subpattern's __eq__ ran could see the list changed since)
+            self.err("a nested sequence or class pattern in a pattern of a list subject is not supported: "
+                     "CPython takes the items before matching any; capture the item and match it in a nested match, or use *_")
+        # (a range, immutable as a tuple is, has its length from its class's __len__)
+        length = Val(self.list_len(value), "int") if is_list(value.t) else self.objlen(value) if value.t == RANGEC else Val(self.mload("int", value.v), "int")
+        return self.expr(mk("cmp", ">=" if star else "==", node.line, [self.vnode(length), mk("int", str(n), node.line, [])]), "bool")
+    if k == "matchstar":
+        # *rest's new list: the subject's items between the before items before it and the after
+        # items after it, as UNPACK_EX makes it (pattern_test)
+        value = self.expr(node.kids[0], "")
+        before, after = [int(x) for x in node.s.split()]
+        line = node.line
+        if is_tuple(value.t):
+            items = [mk("index", "", line, [self.vnode(value), mk("int", str(i), line, [])]) for i in range(before, len(targs(value.t)) - after)]
+            if len(items) > 0:
+                return self.expr(mk("list", "", line, items), "")
+            # an empty list, of the type the tuple's items have in common: no item of it is read,
+            # and a later store of another type is rejected, as for any list of that type
+            common = ""
+            for t in targs(value.t):
+                common = t if common == "" else self.join(common, t)
+                if common == "":
+                    break
+            if common == "" or "?" in common:
+                self.err("a starred capture of no items of a fixed tuple whose items have no common type has no item type; use *_ there")
+            return self.expr(mk("list", "", line, []), self.ctype("list", [common]))
+        hi = mk("omit", "", line, []) if after == 0 else mk("unary", "-", line, [mk("int", str(after), line, [])])
+        rest = self.expr(mk("slice", "", line, [self.vnode(value), mk("int", str(before), line, []), hi]), "")
+        return rest if is_list(rest.t) else self.as_list(rest, "unpack")
     cls = pattern_class(self, node)
     value = self.expr(node.kids[0], "")
     pattern_class_subject(self, value.t)
