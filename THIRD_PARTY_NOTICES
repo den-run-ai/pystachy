@@ -245,6 +245,16 @@ the Python fallbacks in Lib/functools.py, and its update_wrapper(), wraps() and 
 constants are that file's, unchanged. It is derived from Python and is used under the same
 license and copyright notice.
 
+lib/importlib/metadata.py is Pystachy's own code for a subset of CPython 3.13.16's
+Lib/importlib/metadata/__init__.py and _adapters.py: it keeps their names, docstrings and
+messages, the name normalization and search of Prepared, FastPath and Lookup, the requirement
+sections of Distribution, the header rules of Lib/email/feedparser.py and
+Lib/email/_policybase.py, and the algorithm of Lib/textwrap.py's dedent() (lib/provenance.md).
+It is derived from Python and is used under the same license and copyright notice. tests/programs/upstream/upstream_importlib_metadata.py adapts
+methods of that release's Lib/test/test_importlib/metadata/test_api.py, and the distributions in
+tests/metadata_packages/site that its header names hold the texts of that directory's
+fixtures.py; the SHA-256 of both sources is recorded in the test's header.
+
 lib/textwrap.py is CPython 3.13.16's Lib/textwrap.py with the edits lib/README.md lists, each
 marked in the source; it is derived from Python and is used under the same license and
 copyright notice.

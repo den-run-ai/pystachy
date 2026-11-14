@@ -1598,6 +1598,58 @@ reading or assigning a field is a compile-time error, where CPython raises `Attr
   ([error test](../tests/errors/reflection/types_unsupported_name.py)): Pystachy has no such objects, or
   none that behave exactly as CPython's.
 
+### `importlib.metadata`
+
+`importlib.metadata` is Pystachy's own subset (`lib/importlib/metadata.py`) of CPython 3.13.16's
+package. It reads the metadata of installed distributions as CPython does:
+
+- `version()`, `metadata()`, `requires()` and `distribution()` take a distribution's name and
+  find its `*.dist-info` or `*.egg-info` directory, or its `*.egg-info` file, with CPython's
+  rules: the name a directory gives is its own name up to the first `-`, and names compare
+  without regard to case or to how runs of `-`, `_` and `.` are written
+  ([test](../tests/programs/library/lib_importlib_metadata_search.py)). A name that nothing
+  matches raises `PackageNotFoundError`, a `ModuleNotFoundError` whose `name` is the name
+  asked for, and an empty name `ValueError`
+  ([test](../tests/programs/library/lib_importlib_metadata_errors.py)).
+- A metadata message holds the headers of `METADATA`, or of `PKG-INFO` where that is missing
+  or empty, parsed as CPython's `email` parser reads them: folded lines, the body as the
+  header `Description`, lines that are no headers and `From ` lines
+  ([test](../tests/programs/library/lib_importlib_metadata_parse.py)). It answers `[]`, `in`,
+  `len()`, iteration, `keys()`, `values()`, `items()`, `get()` and `get_all()`, by header
+  names in any case ([test](../tests/programs/library/lib_importlib_metadata.py)).
+- A `Distribution` has `name`, `version`, `metadata`, `requires` and `read_text()`, and
+  `Distribution.from_name()`. `requires` gives the `Requires-Dist` headers, or the lines of an
+  egg-info `requires.txt` with their sections' extras and markers.
+- `distributions()` gives a list of every distribution found.
+
+Sixteen methods of CPython's `test_api.py` run on its own fixture distributions
+([upstream test](../tests/programs/upstream/upstream_importlib_metadata.py)).
+
+Differences from CPython:
+
+- CPython searches `sys.path` as the program runs. Pystachy resolves imports while it compiles
+  a program, so the directories searched are the [module path](../docs/language/modules.md#finding-and-running-modules):
+  the main program's directory, `PYSTACHY_PATH` and `lib/`, in that order. A distribution
+  installed elsewhere, such as in a CPython environment's `site-packages`, is found only when
+  that directory is on `PYSTACHY_PATH`. The directories are read as the program runs, by
+  their absolute paths at compilation: an executable that `pystachy build` makes keeps them,
+  as it keeps `sys.prefix`.
+- A message's `[]` raises `KeyError` for a header it does not have, and `version()` does for
+  metadata without `Version`. CPython 3.13 returns `None` with a `DeprecationWarning` that
+  announces the `KeyError`
+  ([deviation](../tests/deviations/lib_importlib_metadata_missing_key.py)).
+- `PackageNotFoundError` takes the name alone, and has no `args`.
+- A message is not an `email.message.Message`: it has the methods above and no `json`. A
+  `Content-Type` header does not change how the body is read.
+- Zip files and `.egg` directories on the path are not searched.
+- `entry_points()`, `files()`, `packages_distributions()`, `Distribution.discover()`, `at()`,
+  `files`, `entry_points`, `origin` and `locate_file()`, and `DistributionFinder`, are not
+  provided: using one is a compile-time error
+  ([error tests](../tests/errors/library/lib_importlib_metadata_entry_points.py)).
+  `distributions()` takes no arguments.
+- The rest of `importlib` is not provided. Nothing imports a module at run time:
+  `import_module()`, `reload()` and `__import__()` are compile-time errors.
+
 ### `warnings`
 
 CPython's `warnings.py`, with marked edits, which decide as CPython's C module `_warnings` does

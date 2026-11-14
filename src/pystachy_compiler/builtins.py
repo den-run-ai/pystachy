@@ -192,6 +192,15 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         path = self.coerce(self.expr(args[0], "str"), "str")
         limit = self.as_int(self.expr(args[1], "int"))
         return Val(self.rt("pys_cache_file_hash", "ptr", [f"ptr {path.v}", f"i64 {limit.v}"]), "str")
+    if name == "__pys_module_path":
+        # importlib.metadata's search path (lib/importlib/metadata.py): the directories in which
+        # the compiler finds the program's modules, in order, as CPython's sys.path is searched
+        # for the metadata of installed distributions. The paths are those of the compilation,
+        # absolute: a built executable keeps them (as sys.prefix).
+        if (self.curfn.mod != "importlib.metadata" or not lib_source(self.curfn.node.line, self.libdir, "importlib/metadata.py") or
+                len(args) != 0):
+            self.err(f"name '{name}' is not defined")
+        return self.expr(mk("list", "", self.line, [mk("str", d, self.line, []) for d in self.moddirs]), "list[str]")
     if (name == "min" or name == "max") and len([a for a in args if a.kind == "kw" and a.s == "default"]) > 0:
         return self.minmax_default(name, args)
     if name == "__pys_ctypes_value":

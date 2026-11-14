@@ -1,0 +1,20 @@
+1.0 0.5 0.5 0.5
+7.0 multi-part
+1.0 1.0
+pkg.dot pkg.dot 1.0.0
+pkg_dot pkg.dot 1.0.0
+pkg-dot pkg.dot 1.0.0
+pkg..dot pkg.dot 1.0.0
+Pkg.Dot pkg.dot 1.0.0
+pkg.-_dot pkg.dot 1.0.0
+PKG___DOT pkg.dot 1.0.0
+No package metadata was found for pkg dot
+No package metadata was found for pkgdot
+No package metadata was found for pkg.dot-1.0.0
+No package metadata was found for dot
+No package metadata was found for .pkg.dot
+No package metadata was found for pkg.dot.
+['Demo.Pkg 1.2.3', 'UPPER-PKG 1.0', 'complex-deps 2.0', 'cr-pkg 1.0', 'crlf-pkg 1.0', 'distinfo-pkg 1.0.0', 'dup 1.0', 'dup 2.0', 'egg_with_no_modules-pkg ?', 'egginfo-pkg 1.0.0', 'egginfo_file 0.1', 'emptyreq 3', 'fallback-pkg 4.5', 'fold-pkg 1.0', 'from-pkg 1.0', 'multi-part 7.0', 'nosep-pkg 1.0', 'noversion ?', 'odd-pkg 1.0', 'only-later 0.5', 'pkg.dot 1.0.0', 'pkg.lot 1.0.0', 'sep-pkg 1.0']
+True
+['dup 1.0', 'dup 2.0']
+[exit 0]

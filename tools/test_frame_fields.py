@@ -63,7 +63,7 @@ PROGRAM = """
     xobj impg wide nokey nonereads noneglobalpending attrvals attrown hints newhints final xnot newx retseen
     template_instances template_retained retainers unsupported cnodes hooks chooks flagged unraised
     noneglobals intglobals rangeused objectused intat strglobals strtuples abstracts abcmeta
-    constflags late ext libdir prefix csyms csymline cdirect extvars unicode_audit rtmode rtdefs
+    constflags late ext libdir prefix moddirs csyms csymline cdirect extvars unicode_audit rtmode rtdefs
     rtcache externs deps comp flowctx closures clokeys adapters adrets ncv cacheforms decorated
     decoexprs cvos ngenexp vowned gendrops gproto excread causeread coros tbaa tbaacls vrets vconst vcalls
     gkk holes twin_of twin_set origin inits mfile compiled pending qret qholes qused qforward qroot
