@@ -236,6 +236,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_widen as dynamic_dyn_widen,
     gen_dyn_widened as dynamic_dyn_widened,
     gen_dyn_xbody as dynamic_dyn_xbody,
+    gen_xdecline as dynamic_xdecline,
     gen_dyn_xhelper as dynamic_dyn_xhelper,
     gen_dyn_xmethod as dynamic_dyn_xmethod,
     gen_empty_ctor as dynamic_empty_ctor,
@@ -795,6 +796,12 @@ from src.pystachy_compiler.expressions import (
     gen_exc_kinds as expressions_exc_kinds,
     gen_cmp_kinds as expressions_cmp_kinds,
     gen_cmp_pick as expressions_cmp_pick,
+    gen_may_decline as expressions_may_decline,
+    gen_decl_flag as expressions_decl_flag,
+    gen_cmp_cands as expressions_cmp_cands,
+    gen_declining_call as expressions_declining_call,
+    gen_cmp_stage as expressions_cmp_stage,
+    gen_cmp_declining as expressions_cmp_declining,
     gen_enum_intlike as expressions_enum_intlike,
     gen_inherit_cmp as expressions_inherit_cmp,
     gen_cmp_alts as expressions_cmp_alts,
@@ -1130,6 +1137,7 @@ from src.pystachy_compiler.statements import (
     gen_iterarg as statements_iterarg,
     gen_ival as statements_ival,
     gen_leave as statements_leave,
+    gen_decline as statements_decline,
     gen_with_cm as statements_with_cm,
     gen_cm_exits as statements_cm_exits,
     gen_suppress_item as statements_suppress_item,
@@ -1477,6 +1485,7 @@ class Gen:
         self.intglobals: dict[str, str] = {}  # single-binding module int literals, after normal read checks
         self.rangeused = False  # code addresses an object of lib's range class (declared then: lower_module)
         self.objectused = False  # and of lib's object class, which object() makes
+        self.declflag = False  # a comparison method returns NotImplemented: its hidden variable is declared (decl_flag)
         self.intat: dict[str, int] = {}  # the line of each constant's own binding (including from-imports)
         self.strglobals: dict[str, str] = {}  # single-binding module str literals: formats for str.format()
         self.strtuples: dict[str, list[str]] = {}  # and tuples of them: functools.wraps()'s assigned
@@ -1973,6 +1982,9 @@ class Gen:
 
     def dyn_xhelper(self, c: str) -> None:
         return dynamic_dyn_xhelper(self, c)
+
+    def xdecline(self, method: FnInfo, after: bool) -> None:
+        return dynamic_xdecline(self, method, after)
 
     def dyn_xbody(self, c: str) -> None:
         return dynamic_dyn_xbody(self, c)
@@ -3898,6 +3910,9 @@ class Gen:
     def loop(self, body: list[Node], lp: Loop) -> list[dict[str, str]]:
         return statements_loop(self, body, lp)
 
+    def decline(self, n: Node) -> Node:
+        return statements_decline(self, n)
+
     def leave(self, depth: int) -> bool:
         return statements_leave(self, depth)
 
@@ -4555,20 +4570,38 @@ class Gen:
     def cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
         return expressions_cmp_pick(self, op, at, bt)
 
-    def inherit_cmp(self, op: str, a: Val, b: Val) -> Val:
-        return expressions_inherit_cmp(self, op, a, b)
+    def may_decline(self, f: FnInfo) -> bool:
+        return expressions_may_decline(self, f)
+
+    def decl_flag(self) -> str:
+        return expressions_decl_flag(self)
+
+    def declining_call(self, f: FnInfo, me: Val, arg: Val, direct: bool, decl: list[bool]) -> Val:
+        return expressions_declining_call(self, f, me, arg, direct, decl)
+
+    def cmp_cands(self, op: str, at: str, bt: str) -> list[list[str]]:
+        return expressions_cmp_cands(self, op, at, bt)
+
+    def cmp_declining(self, op: str, at: str, bt: str) -> bool:
+        return expressions_cmp_declining(self, op, at, bt)
+
+    def cmp_stage(self, op: str, at: str, bt: str, stage: int) -> list[str]:
+        return expressions_cmp_stage(self, op, at, bt, stage)
+
+    def inherit_cmp(self, op: str, a: Val, b: Val, stage: int = 0) -> Val:
+        return expressions_inherit_cmp(self, op, a, b, stage)
 
     def cmp_alts(self, v: Val) -> list[Val]:
         return expressions_cmp_alts(self, v)
 
-    def cmp_widen(self, op: str, x: Val, y: Val, at: str, bt: str) -> list[Val]:
-        return expressions_cmp_widen(self, op, x, y, at, bt)
+    def cmp_widen(self, op: str, x: Val, y: Val, at: str, bt: str, stage: int = 0) -> list[Val]:
+        return expressions_cmp_widen(self, op, x, y, at, bt, stage)
 
-    def cmp_key(self, op: str, a: Val, b: Val) -> str:
-        return expressions_cmp_key(self, op, a, b)
+    def cmp_key(self, op: str, a: Val, b: Val, stage: int = 0) -> str:
+        return expressions_cmp_key(self, op, a, b, stage)
 
-    def cmp_arm(self, op: str, a: Val, b: Val, k: str, p: list[Val], l: str, ph: Ins, end: str) -> None:
-        return expressions_cmp_arm(self, op, a, b, k, p, l, ph, end)
+    def cmp_arm(self, op: str, a: Val, b: Val, k: str, p: list[Val], l: str, ph: Ins, end: str, stage: int, nxt: list[str]) -> None:
+        return expressions_cmp_arm(self, op, a, b, k, p, l, ph, end, stage, nxt)
 
     def cmp_rest(self, v: Val, alts: list[Val], to: list[str]) -> str:
         return expressions_cmp_rest(self, v, alts, to)
@@ -4588,8 +4621,8 @@ class Gen:
     def iter_in(self, op: str, a: Val, it: Val) -> Val:
         return expressions_iter_in(self, op, a, it)
 
-    def concrete_cmp(self, op: str, a: Val, b: Val) -> Val:
-        return expressions_concrete_cmp(self, op, a, b)
+    def concrete_cmp(self, op: str, a: Val, b: Val, stage: int = 0, decl: list[bool] | None = None) -> Val:
+        return expressions_concrete_cmp(self, op, a, b, stage, decl)
 
     def isnull(self, v: Val) -> str:
         return expressions_isnull(self, v)
@@ -4783,11 +4816,11 @@ class Gen:
     def scalar_call_types(self, f: FnInfo, args: list[Node]) -> list[str]:
         return calls_scalar_call_types(self, f, args)
 
-    def call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str='', none: str='', cache: Val | None=None, direct: bool=False, resultsoft: bool = False, typeargs: str = "") -> Val:
-        return calls_call_fn(self, f, pre, args, want, none, cache, direct, resultsoft, typeargs)
+    def call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str='', none: str='', cache: Val | None=None, direct: bool=False, resultsoft: bool = False, typeargs: str = "", got: list[FnInfo] | None = None) -> Val:
+        return calls_call_fn(self, f, pre, args, want, none, cache, direct, resultsoft, typeargs, got)
 
-    def virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: str, none: str, resultsoft: bool = False) -> Val:
-        return calls_virtual_call(self, f, pre, args, want, none, resultsoft)
+    def virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: str, none: str, resultsoft: bool = False, got: list[FnInfo] | None = None) -> Val:
+        return calls_virtual_call(self, f, pre, args, want, none, resultsoft, got)
 
     def fname(self, f: FnInfo) -> str:
         return calls_fname(self, f)

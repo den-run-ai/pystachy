@@ -183,6 +183,12 @@ class FnInfo:
         # a template's function: the parameters whose arguments are objects known not to be None
         # (a new object, self), which its isinstance(), hasattr() and "is None" tests read as such
         self.nnp: dict[str, bool] = {}
+        # a comparison method (__eq__, __lt__, ...) that returns NotImplemented (Gen.decline): mayd
+        # is whether its body may (-1 not read yet, see may_decline), declines whether compiled
+        # code of it does, and plain where a call that takes its result as it is was compiled
+        self.mayd = -1
+        self.declines = False
+        self.plain = ""
         # the parameters annotated Callable[[A, B], C] with C a class template: an argument that is
         # a function is that Callable of the specialization it returns (see pat_arg)
         self.pats: dict[int, Node] = {}

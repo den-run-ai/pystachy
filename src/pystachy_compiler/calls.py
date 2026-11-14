@@ -1243,13 +1243,13 @@ def gen_pcoerce(self, v: Val, t: str, f: FnInfo, j: int) -> Val:
         return result
     return value
 
-def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: str, none: str, resultsoft: bool = False) -> Val:
+def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: str, none: str, resultsoft: bool = False, got: list[FnInfo] | None = None) -> Val:
     # Closed-world dispatch, before argument binding: an override owns its defaults. Each
     # selected body is a normal method-template instance, specialized for the concrete self.
     o = pre[0]
     cs = [c for c in self.classes.values() if c.tag > 0 and self.derives(c.name, o.t)]
     if len(cs) == 1:
-        return self.call_fn(cs[0].methods[f.name], pre, args, want, none, direct=True, resultsoft=resultsoft)
+        return self.call_fn(cs[0].methods[f.name], pre, args, want, none, direct=True, resultsoft=resultsoft, got=got)
     # Evaluate explicit arguments once, before reading the receiver tag (also for a None
     # callable). Defaults remain inside the selected branch. Overrides have the same typed
     # parameter interface; an unannotated argument is specialized from its value.
@@ -1281,7 +1281,7 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
             self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(c.tag), "int")).v, arm, nxt)
             self.place(arm)
         self.narrowed = dict(narrow)
-        v = self.call_fn(c.methods[f.name], [Val(o.v, c.name)] + pre[1:], bound, want, direct=True, resultsoft=resultsoft)
+        v = self.call_fn(c.methods[f.name], [Val(o.v, c.name)] + pre[1:], bound, want, direct=True, resultsoft=resultsoft, got=got)
         if not self.term:
             if self.idhere() and numeric_identity(v.t):
                 v.idfrom = self.dyn_id_box(v).v
@@ -1349,8 +1349,11 @@ def gen_scalar_call_types(self, f: FnInfo, args: list[Node]) -> list[str]:
     return ts if all(numeric_statement(n, names, blocked, {}, True, True) for n in body) else []
 
 
-def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "", none: str = "", cache: Val | None = None, direct: bool = False, resultsoft: bool = False, typeargs: str = "") -> Val:
-    # f(pre + args); none: the error where pre[0], an object called (o(args)), is None
+def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "", none: str = "", cache: Val | None = None, direct: bool = False, resultsoft: bool = False, typeargs: str = "", got: list[FnInfo] | None = None) -> Val:
+    # f(pre + args); none: the error where pre[0], an object called (o(args)), is None; got: of
+    # a comparison, which reads whether its method returned NotImplemented (concrete_cmp), and
+    # takes the functions called. Any other call takes the result as it is, so that a method
+    # which may return NotImplemented to it is rejected (here, or by decline where compiled later)
     if f.pyexport:
         self.err(f"{f.name}() is @export, so Pystachy code may not call it (under CPython each call goes through the export's checks and conversions): call a private function that both use")
     if f.bad != "":
@@ -1361,7 +1364,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         if pre[0].t not in self.classes or not self.derives(pre[0].t, f.cls):
             self.err(f"{short(f.cls)}.{f.name}() needs an instance of {short(f.cls)}")
         if not direct:
-            return self.virtual_call(f, pre, args, want, none, resultsoft)
+            return self.virtual_call(f, pre, args, want, none, resultsoft, got)
     if f.ll not in self.called and f.ll in self.lazyat:
         hpush(self.wake, self.lazyat[f.ll])
     self.called[f.ll] = True
@@ -1537,6 +1540,13 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         # A direct return-call keeps the open-result marker for an empty callee,
         # while forwarding the caller's separate fresh-display context.
         f = self.instance(f, [v.t for v in vals], nnp, self.curfn.rctx if want == "?" else want, self.curfn.rsoft if want == "?" else resultsoft)
+    if got is not None or self.curfn.ll.startswith("@o.x."):
+        if got is not None:
+            got.append(f)  # (and a class's helper for Any operands reads it too: xdecline)
+    elif f.declines:
+        self.err(f"{short(f.cls)}.{f.name}() returns NotImplemented for these operands, which only a comparison of objects (==, <, ...) reads: calling it directly is not supported")
+    elif f.cls in self.classes and self.may_decline(f):
+        f.plain = where(self.line)
     c = Ins("call", f.ret, f.ll)
     c.a = [v for v in vals if v.t != "None"]  # (an argument that is None is not passed)
     idresult = ""
