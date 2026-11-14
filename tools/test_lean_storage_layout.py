@@ -116,6 +116,8 @@ class StorageLayoutTests(unittest.TestCase):
             cls.snapshots[name] = compile_snapshot(
                 ROOT / "tests/programs/numbers" / filename, directory / (name + "-snapshot"),
                 [ROOT / "tests/python_int_modules"])
+        cls.snapshots["kwargs"] = compile_snapshot(
+            ROOT / "tests/programs/classes/contextmanager_python_int_args.py", directory / "kwargs-snapshot")
 
     def assert_accepted(self, snapshot):
         report, code = check_all(snapshot)
@@ -232,6 +234,62 @@ class StorageLayoutTests(unittest.TestCase):
         mutated = copy.deepcopy(original)
         mutated["functions"][0]["blocks"][bi]["operations"][oi]["operands"][0]["value"] = "false"
         self.assert_rejected(mutated, "promoting-view")
+
+    def kwargs_functions(self):
+        snapshot = self.snapshots["kwargs"]
+        functions = []
+        for fn in snapshot["functions"]:
+            decoded = {op["operands"][0]["value"] for block in fn["blocks"] for op in block["operations"]
+                       if op["op"] == "tuple.load"}
+            loads = [op for block in fn["blocks"] for op in block["operations"]
+                     if op["op"] == "mem.load" and op["type"] == "kw[extra:int+]" and
+                     f"%t{op['results'][-1]}" in decoded]
+            if loads:
+                self.assertEqual(len(loads), 1)
+                functions.append((selected(snapshot, fn["symbol"]), loads[0]["results"][-1]))
+        self.assertEqual(len(functions), 2)
+        return functions
+
+    def test_kwargs_load_contract_is_not_inferred_from_consuming_view(self):
+        for original, result in self.kwargs_functions():
+            self.assert_accepted(original)
+            for typ, status, code in (("%ptr", "unsupported", 2), ("kw[extra:int]", "rejected", 1)):
+                with self.subTest(function=original["functions"][0]["symbol"], producer=typ):
+                    mutated = copy.deepcopy(original)
+                    fn = mutated["functions"][0]
+                    load = next(op for block in fn["blocks"] for op in block["operations"]
+                                if op["results"] == [result])
+                    load["type"] = typ
+                    load["operands"][0]["type"] = "*" + typ
+                    report, actual = check_all(mutated)
+                    self.assertEqual((report["status"], actual), (status, code), report)
+                    if status == "rejected":
+                        self.assert_rejected(mutated, "promoting-view")
+
+    def test_each_kwargs_tail_read_still_requires_its_marker_guard(self):
+        for original, result in self.kwargs_functions():
+            fn = original["functions"][0]
+            definitions = {f"%t{r}": op for block in fn["blocks"]
+                           for op in block["operations"] for r in op["results"]}
+            sites = []
+            for bi, block in enumerate(fn["blocks"]):
+                for oi, op in enumerate(block["operations"]):
+                    if op["op"] != "cbr":
+                        continue
+                    condition = definitions.get(op["operands"][0]["value"], {})
+                    if condition.get("op") != "scalar.cmp" or condition["text"] != "eq":
+                        continue
+                    if not any(a["value"] == MIN for a in condition["operands"]):
+                        continue
+                    words = [definitions.get(a["value"], {}) for a in condition["operands"]]
+                    if any(word.get("op") == "tuple.load" and word["immediate"] == 0 and word["operands"] ==
+                           [{"value": f"%t{result}", "type": "tuple[int+]"}] for word in words):
+                        sites.append((bi, oi))
+            self.assertEqual(len(sites), 1, fn["symbol"])
+            for bi, oi in sites:
+                mutated = copy.deepcopy(original)
+                mutated["functions"][0]["blocks"][bi]["operations"][oi]["operands"][0]["value"] = "true"
+                self.assert_rejected(mutated, "tail-marker")
 
 
 if __name__ == "__main__":

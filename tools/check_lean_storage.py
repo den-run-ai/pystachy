@@ -16,7 +16,7 @@ import sys
 
 import check_lean_boundary as bridge
 import check_lean_int as arithmetic
-from src.pystachy_compiler.utils import is_tuple, targs, tslots, unopt
+from src.pystachy_compiler.utils import is_kw, is_tuple, kw_types, targs, tslots, unopt
 
 DEFAULT_CHECKER = bridge.DEFAULT_CHECKER
 Unsupported = bridge.Unsupported
@@ -26,6 +26,8 @@ LIMITATIONS = [
     "Snapshot fidelity, normalization, canonical integer encoding, immutable tuple views, "
     "runtime paired-word contracts and declared parameter layouts remain trusted.",
     "Arithmetic fit claims are checked by the separate Lean integer checker.",
+    "Keyword-record tuple views use declared parameter or typed memory-read contracts; "
+    "general keyword-record joins and transport are not modeled.",
     "Stack tuple copies trust the call ABI: an on-stack tuple has all slots of "
     "its exact specialization layout; only complete same-index copies are supported.",
 ]
@@ -112,6 +114,7 @@ class Normalize:
                        fn.get("representation_metadata", {}).get("sources", [])}
         self.slots = set()
         self.slot_layout = {}
+        self.parameter_layout = {f"%a{j}": p["representation"] for j, p in enumerate(fn["parameters"])}
         for slot in fn.get("slots", []):
             n = slot["results"][0]
             if slot["immediate"] == 2:
@@ -376,6 +379,12 @@ class Normalize:
             parent = self.layout_type(args(op)[0], depth + 1)
             if parent and is_tuple(parent) and op["immediate"] < len(targs(parent)):
                 return targs(parent)[op["immediate"]]
+        # gen_kw_record/kw_tuple store keyword values in their ordered tuple
+        # layout. Recover it only from a parameter or typed read, never a use's
+        # tuple view or an unchecked kw-valued phi/select/call result.
+        representation = op["type"] if op and op["op"] == "mem.load" else self.parameter_layout.get(value)
+        if representation and is_kw(representation):
+            return "tuple[" + ",".join(kw_types(representation)) + "]"
         return self.layout.get(value)
 
     def tuple_word(self, value):
