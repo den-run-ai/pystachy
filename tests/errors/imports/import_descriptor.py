@@ -1,2 +1,2 @@
-# error: CPython runs this statement of the body of class Record when module 'emods.descriptor' is imported, and 'field' may be an object of one of the program's classes
+# error: a class attribute whose class defines __set_name__ is not supported (CPython calls it when it creates the class)
 import emods.descriptor

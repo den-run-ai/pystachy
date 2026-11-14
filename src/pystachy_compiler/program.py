@@ -4,7 +4,7 @@ import os
 import sys
 from src.pystachy_compiler.callbacks import specialize_callbacks
 from src.pystachy_compiler.reflection import refl_needs_eh, refl_props
-from src.pystachy_compiler.analysis import all_imports, collect, defines, module_ints, module_reads, module_strs, needs_eh, none_assigns, reads_builtin
+from src.pystachy_compiler.analysis import all_imports, collect, defines, module_ints, module_reads, module_strs, module_values, needs_eh, none_assigns, reads_builtin
 from src.pystachy_compiler.diagnostics import Rejoin, dynamic_program, fail, shown
 from src.pystachy_compiler.dynamic import comparison_properties, comparison_storage
 from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_protocol
@@ -874,6 +874,7 @@ def gen_program(self, mods: list[Mod]) -> str:
                 m.body.kids[i] = mk("pass", "", st.line, [])  # (a type alias, which only annotations name)
             elif st.kind == "assign" and st.kids[0].kind == "name" and st.kids[0].s in self.taliases and self.taliases[st.kids[0].s] is st and not self.alias_kept(st.kids[0].s):
                 m.body.kids[i] = mk("pass", "", st.line, [])
+    module_values(own, self.globvalues, self.globowners)  # (after typing_forms: x: Final = v is x = v)
     for q in self.taliases:
         # (CPython evaluates an assigned alias's value where it assigns it, a type statement's
         # only where its __value__ is read)

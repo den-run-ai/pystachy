@@ -963,6 +963,13 @@ specialization and does not execute the helper or its defaults during inference.
 unpacked arguments, local call targets, and helpers whose return is needed before class
 specialization still require an explicit field annotation.
 
+A field can also be stored from a module constant: a global that one module-level assignment
+binds (`WIDTH = 8`, `HAVE_IMMORTAL: Final = sys.version_info >= (3, 12)`, or a from-import of
+such a name), whose value types it as that value types it in its own module
+([test](../../tests/programs/inference/field_module_constants.py)). A global that another
+statement binds too, or a constant of a module whose ints promote or that opts in to dynamic
+`Any`, still needs the field annotated.
+
 Construction requires `__init__` to return `None`. A different result raises a catchable
 `TypeError` after the initializer runs, including for inherited initializers, exception
 classes and `dataclasses.replace()`. Explicit method calls such as `obj.__init__()` or

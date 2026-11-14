@@ -2246,8 +2246,9 @@ def gen_guess_varargs(self, init: FnInfo, args: list[Node], f: FnInfo) -> list[s
 
 def guess_scope(f: FnInfo) -> list[Node]:
     # the statements whose bindings hide a function from gen_guess: those of the function f, or
-    # of the class body whose attribute declare_fields types (f.node is then the class's node)
-    return f.node.kids[0].kids if f.node.kind == "class" else f.node.kids[2].kids
+    # of the class body whose attribute declare_fields types (f.node is then the class's node),
+    # or of a module's code (the block, for a global's value: see gen_guess)
+    return f.node.kids[0].kids if f.node.kind == "class" else f.node.kids if f.node.kind == "block" else f.node.kids[2].kids
 
 
 def gen_guess(self, e: Node, f: FnInfo) -> str:
@@ -2300,6 +2301,38 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         local_names(guess_scope(f), asg)
         if root.s not in asg:
             return f"fn[b:{p}]"
+    if k == "name" and e.s in self.globvalues and e.s not in f.params and e.s not in self.guessing:
+        # a module global that one assignment binds (a constant: analysis.module_values), unless a
+        # local of the function has its name: the type of its value, typed in its own module's
+        # code. Not where that module's ints promote or its values may be Any's, whose types the
+        # value's spelling does not give
+        asg = {}
+        if f.name != "<module>":
+            local_names(guess_scope(f), asg)  # (a module's own names are its globals)
+        v = self.globvalues[e.s]
+        if e.s not in asg and not self.int_policy(v.line) and not self.dyn_policy(v.line):
+            if len(self.guessing) == 0:
+                self.globguess = {}  # (each guess of a constant's value starts afresh: see below)
+            if e.s in self.globguess:
+                return self.globguess[e.s]
+            home = self.globowners[e.s]
+            init = FnInfo("<module>", "", home.body, "")
+            init.mod = home.name
+            self.guessing[e.s] = True  # (a value that reads the global itself: not again)
+            cuts = self.guesscuts
+            t = ""
+            try:
+                t = self.guess(v, init)
+            finally:
+                del self.guessing[e.s]  # (also where an error unwinds to the next pass: Rejoin)
+            if self.guesscuts == cuts:
+                # (its type wherever the same guess reads it again, as A1 = A0 + A0 reads A0: once
+                # per constant, not once per path to it; but not where a recursion was cut, whose
+                # type depends on what was being guessed)
+                self.globguess[e.s] = t
+            return t
+    if k == "name" and e.s in self.guessing:
+        self.guesscuts += 1  # (a constant whose value reads itself: typed as any other name below)
     # self.k, self.m(...) and self(...) before the names below: self shadows a function, class,
     # import or builtin of its name
     me = f.params[0] if takes_self(f) else ""

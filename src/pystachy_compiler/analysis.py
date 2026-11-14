@@ -862,6 +862,34 @@ def constant_writes(n: Node, count: dict[str, int]) -> None:
         constant_writes(k, count)
 
 
+def module_values(mods: list[Mod], values: dict[str, Node], owners: dict[str, Mod]) -> None:
+    # The module globals that one direct module-level assignment binds (x = v, also x: Final = v,
+    # which typing_forms makes that), or a from-import of another such name: the value v and the
+    # module whose code binds it, which field inference reads the global's type from (Gen.guess).
+    # Like module_strs's, a name that any other binding writes is not one.
+    count: dict[str, int] = {}
+    for m in mods:
+        constant_writes(m.body, count)
+    copies: list[Node] = []
+    for m in mods:
+        for st in m.body.kids:
+            if st.kind != "assign" or len(st.kids) != 2 or st.kids[0].kind != "name" or count.get(st.kids[0].s, 0) != 1:
+                continue
+            if st.s == "from" and st.kids[1].kind == "name":
+                copies.append(st)
+            elif st.s != "from":
+                values[st.kids[0].s] = st.kids[1]
+                owners[st.kids[0].s] = m
+    more = True
+    while more:
+        more = False
+        for st in copies:
+            if st.kids[0].s not in values and st.kids[1].s in values:
+                values[st.kids[0].s] = values[st.kids[1].s]
+                owners[st.kids[0].s] = owners[st.kids[1].s]
+                more = True
+
+
 def module_ints(mods: list[Mod], at: dict[str, int]) -> dict[str, str]:
     # Only a single, direct module-level assignment of an int literal, or a from-import of
     # another such name, qualifies. Keep the stores and all flow checks: the literal replaces
