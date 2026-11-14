@@ -299,7 +299,9 @@ def test_value(same): pass
         for row, message in (
             ("pytest.param(1, id=object())", "literal"),
             ("pytest.param(1, id=1)", "literal string"),
-            ("pytest.param(1, marks=pytest.mark.slow)", "unsupported marker"),
+            ("pytest.param(1, marks=pytest.mark.usefixtures('first'))", "unsupported marker: usefixtures"),
+            ("pytest.param(1, marks=pytest.mark.filterwarnings('error'))", "unsupported marker: filterwarnings"),
+            ("pytest.param(1, marks=pytest.mark.slow(object()))", "literal"),
             ("pytest.param(1, marks=[])" + ", pytest.param(2, other=True)", "static marks"),
             ("pytest.param(1, marks=None)", "unsupported marker"),
             ("pytest.param(1, 2)", "row width"),
@@ -314,6 +316,48 @@ VALUES = [pytest.param(1)]
 def test_value(value): pass
 """, "literal")
         self.rejected("import pytest\ndef test_value():\n    pytest.param(1)\n", "unsupported pytest use")
+
+
+    def test_new_dialect_keeps_its_rejection_boundaries(self):
+        for source, message in (
+            ("import pytest\n@pytest.mark.skipif(\"sys.platform == 'win32'\", reason='x')\ndef test_a(): pass\n",
+             "string conditions are unsupported"),
+            ("import pytest\n@pytest.mark.skipif(pytest.__version__ > '1', reason='x')\ndef test_a(): pass\n",
+             "cannot use pytest"),
+            ("import sys\nimport pytest\n@pytest.mark.skipif(sys.platform == 'x')\ndef test_a(): pass\n",
+             "explicit reason"),
+            ("import pytest\nNAMES = ['first']\n@pytest.mark.usefixtures(*NAMES)\ndef test_a(): pass\n",
+             "literal"),
+            ("import pytest\n@pytest.mark.usefixtures('first', other=1)\ndef test_a(): pass\n",
+             "literal fixture names"),
+            ("import pytest\n@pytest.mark.filterwarnings('error')\ndef test_a(): pass\n",
+             "unsupported marker: filterwarnings"),
+            ("import pytest\ndef make(): return 1\n@pytest.mark.slow(make())\ndef test_a(): pass\n",
+             "literal"),
+            ("import pytest\n@pytest.mark.usefixtures('missing')\ndef test_a(): pass\n",
+             "unknown or unsupported fixture: missing"),
+            ("def test_a(): pass\nif __name__ == '__main__':\n    pass\nelse:\n    pass\n",
+             "module metadata"),
+            ("def test_a(): pass\nprint(__name__)\n", "module metadata"),
+        ):
+            with self.subTest(source=source):
+                self.rejected(source, message)
+
+    def test_selection_and_operand_shapes(self):
+        source = ("import pytest\n"
+                  "def helper(values: list[int]):\n    assert len(values) == 2\n"
+                  "class Holder:\n    assert 1 + 1 == 2\n"
+                  "def test_a(): pass\n"
+                  "@pytest.mark.parametrize('x', [1, 2])\ndef test_p(x):\n    assert x in (1, 2)\n")
+        generated = generate(source, "test_input.py", selected=["test_p[2]", "test_a", "test_p"])
+        self.assertEqual(generated.cases, ["test_input.py::test_p[2]", "test_input.py::test_a",
+                                           "test_input.py::test_p[1]"])
+        # Only function bodies take operand temporaries; a class body keeps a plain message.
+        self.assertRegex(generated.source, r"\(_pyn_operand_\d+ := len\(values\)\) == 2")
+        self.assertIn("assert 1 + 1 == 2, 'test_input.py:5: assert 1 + 1 == 2'", generated.source)
+        self.assertNotIn("_pyn_operand", generate(source, "test_input.py", operands=False).source)
+        with self.assertRaisesRegex(CollectionError, "not found: test_input.py::test_missing"):
+            generate(source, "test_input.py", selected=["test_missing"])
 
 
 if __name__ == "__main__":

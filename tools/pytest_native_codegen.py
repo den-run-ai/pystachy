@@ -46,6 +46,32 @@ def _bound_names(node):
             if isinstance(item, ast.Name) and isinstance(item.ctx, ast.Store)]
 
 
+def _main_guard(node):
+    """`if __name__ == "__main__":` without else: dead code in a module pytest imports."""
+    if not isinstance(node, ast.If) or node.orelse:
+        return False
+    test = node.test
+    if not (isinstance(test, ast.Compare) and len(test.ops) == 1 and isinstance(test.ops[0], ast.Eq)):
+        return False
+    sides = [test.left, test.comparators[0]]
+    return (any(isinstance(side, ast.Name) and side.id == "__name__" for side in sides)
+            and any(isinstance(side, ast.Constant) and side.value == "__main__" for side in sides))
+
+
+# pytest's built-in marks with collection or execution behavior; other marks only label tests.
+SEMANTIC_MARKS = {"skip", "skipif", "xfail", "parametrize", "usefixtures", "filterwarnings"}
+OPERATORS = {ast.Eq: "==", ast.NotEq: "!=", ast.Lt: "<", ast.LtE: "<=", ast.Gt: ">", ast.GtE: ">=",
+             ast.In: "in", ast.NotIn: "not in"}
+
+
+def _literal(node):
+    try:
+        ast.literal_eval(node)
+    except (ValueError, TypeError, SyntaxError, MemoryError, RecursionError):
+        return False
+    return True
+
+
 def _local_bindings(function):
     """Names bound in this function, excluding nested lexical scopes."""
     names = set()
@@ -92,19 +118,24 @@ def _local_bindings(function):
 
 
 class Generator:
-    def __init__(self, source: str, filename: str):
+    def __init__(self, source: str, filename: str, operands: bool = True, selected=None):
         self.source = source
         self.filename = filename
+        self.operands = operands
+        self.selected = selected
         try:
             self.tree = ast.parse(source, filename)
         except SyntaxError as error:
             raise CollectionError(f"{filename}:{error.lineno}: {error.msg}") from None
+        # pytest imports a test module under its own name, so a script guard never runs there.
+        self.tree.body = [node for node in self.tree.body if not _main_guard(node)]
         self.aliases = {}
         self.constants = {}
         self.fixtures = {}
         self.tests = []
         self.parameters = {}
         self.marks = {}
+        self.usefixtures = {}
         self.preludes = {}
         self.counter = 0
         self.metadata_constants = set()
@@ -212,7 +243,7 @@ class Generator:
                             self.error(kw, "pytest.param id must be a literal string or None")
                     else:
                         declarations = kw.value.elts if isinstance(kw.value, (ast.List, ast.Tuple)) else [kw.value]
-                        marks = [self.marker(mark) for mark in declarations]
+                        marks = [mark for mark in (self.marker(item) for item in declarations) if mark is not None]
             else:
                 value = self.constant(row, True) if inline else row
                 single_value = string_names and len(names) == 1
@@ -282,16 +313,48 @@ class Generator:
             return str(value)
         return name + str(index)
 
-    def marker(self, decorator):
+    def fixture_names(self, decorator):
+        """The literal fixture names of @pytest.mark.usefixtures(...)."""
+        if not isinstance(decorator, ast.Call) or decorator.keywords:
+            self.error(decorator, "usefixtures requires literal fixture names")
+        names = [self.constant(argument) for argument in decorator.args]
+        if any(not isinstance(name, str) or not name.isidentifier() for name in names):
+            self.error(decorator, "usefixtures requires literal fixture names")
+        return names
+
+    def marker(self, decorator, prelude=None):
+        """Return a skip/xfail mark, or None for a mark that only labels its test.
+
+        A decorator's skipif condition may be an expression: it is evaluated once at
+        import, in decorator order (appended to prelude), as pytest's decorator is.
+        """
         call = decorator if isinstance(decorator, ast.Call) else None
         name = self.name(call.func if call else decorator)
         kind = name.removeprefix("pytest.mark.")
-        args = [self.constant(arg, True) for arg in call.args] if call else []
+        if name.startswith("pytest.mark.") and kind and kind not in SEMANTIC_MARKS:
+            # Labels such as slow/network change nothing without plugins or -m selection.
+            # Their arguments still run where the decorator does, so they must be literals.
+            for value in (call.args + [kw.value for kw in call.keywords]) if call else []:
+                self.constant(value)
+            return None
+        runtime = (kind == "skipif" and prelude is not None and call is not None and len(call.args) == 1
+                   and not _literal(call.args[0])
+                   and not (isinstance(call.args[0], ast.Name) and call.args[0].id in self.constants))
+        args = [self.constant(arg, True) for arg in call.args] if call and not runtime else []
         allowed = {"reason"} if kind in ("skip", "skipif") else {"reason", "strict", "run"}
         kws = self.keywords(call, allowed) if call else {}
         reason = kws.get("reason", "")
         condition = True
-        if kind == "skip":
+        if runtime:
+            expression = call.args[0]
+            if any(self.name(part) for part in ast.walk(expression)):
+                self.error(decorator, "skipif conditions cannot use pytest")
+            if "reason" not in kws:
+                self.error(decorator, "skipif with a boolean condition requires an explicit reason")
+            condition = f"_pyn_condition_{self.counter}"
+            self.counter += 1
+            prelude.append(f"{condition} = {ast.unparse(expression)}")
+        elif kind == "skip":
             if len(args) > 1 or (args and "reason" in kws):
                 self.error(decorator, "skip accepts one reason")
             reason = args[0] if args else reason
@@ -300,7 +363,8 @@ class Generator:
                 self.error(decorator, kind + " requires at most one literal condition")
             if args:
                 if not isinstance(args[0], bool):
-                    self.error(decorator, "marker conditions must be literal booleans")
+                    self.error(decorator, "marker conditions must be literal booleans"
+                               + (" (string conditions are unsupported)" if isinstance(args[0], str) else ""))
                 condition = args[0]
             if (kind == "skipif" or args) and "reason" not in kws:
                 self.error(decorator, kind + " with a boolean condition requires an explicit reason")
@@ -419,6 +483,7 @@ class Generator:
                     parameters = []
                     prelude = []
                     marks = []
+                    usefixtures = []
                     for decorator in node.decorator_list:
                         name = self.name(decorator.func if isinstance(decorator, ast.Call) else decorator)
                         if name == "pytest.mark.parametrize":
@@ -426,9 +491,15 @@ class Generator:
                             parameters.append(parameter)
                             prelude.extend(setup)
                         elif name in {"pytest.mark.skip", "pytest.mark.skipif", "pytest.mark.xfail"}:
-                            marks.append(self.marker(decorator))
+                            marks.append(self.marker(decorator, prelude))
+                        elif name == "pytest.mark.usefixtures":
+                            usefixtures.append(self.fixture_names(decorator))
+                        elif name.startswith("pytest.mark.") and self.marker(decorator) is None:
+                            continue  # (a label: see marker)
                         else:
                             self.error(decorator, "unsupported test decorator")
+                    # pytest reads marks nearest the function first, as it applies them.
+                    self.usefixtures[node.name] = [name for names in reversed(usefixtures) for name in names]
                     all_names = [name for parameter in parameters for name in parameter.names]
                     if len(all_names) != len(set(all_names)):
                         self.error(node, "duplicate parametrized argument")
@@ -534,7 +605,8 @@ class Generator:
             fixture = self.fixtures[name]
             if fixture.autouse:
                 visit(name)
-        for name in self.arguments(function):
+        # pytest requests autouse, then usefixtures, then argument fixtures.
+        for name in self.usefixtures.get(function.name, []) + self.arguments(function):
             visit(name)
         return order
 
@@ -583,11 +655,48 @@ class Generator:
             elif len(parent.args) > 1 or any(kw.arg != "reason" for kw in parent.keywords):
                 self.error(parent, "outcome helpers accept one reason only")
 
+    def captured(self, node, location):
+        """A comparison assertion's message showing its operands' reprs, or None.
+
+        Literal operands show their source and names are read again; other operands are
+        bound once, in order, by reserved walrus temporaries. The message runs only on
+        failure. Names keep any narrowing the assertion gives them.
+        """
+        test = node.test
+        if not (isinstance(test, ast.Compare) and len(test.ops) == 1 and type(test.ops[0]) in OPERATORS):
+            return None
+        sides = [test.left, test.comparators[0]]
+        if all(_literal(side) for side in sides):
+            return None
+        parts = [ast.Constant(location + "\nassert ")]
+        for index, side in enumerate(sides):
+            if index:
+                parts.append(ast.Constant(f" {OPERATORS[type(test.ops[0])]} "))
+            if _literal(side):
+                parts.append(ast.Constant(ast.unparse(side)))
+                continue
+            if isinstance(side, ast.Name):
+                value = ast.Name(side.id, ast.Load())
+            else:
+                temporary = f"_pyn_operand_{self.counter}"
+                self.counter += 1
+                bound = ast.NamedExpr(ast.Name(temporary, ast.Store()), side)
+                if index:
+                    test.comparators[0] = bound
+                else:
+                    test.left = bound
+                value = ast.Name(temporary, ast.Load())
+            parts.append(ast.FormattedValue(value, ord("r"), None))
+        return ast.JoinedStr(parts)
+
     def transform_source(self):
         declarations = set(self.tests) | {fixture.function for fixture in self.fixtures.values()}
         filename = self.filename
+        generator = self
 
         class Rewrite(ast.NodeTransformer):
+            def __init__(self):
+                self.scopes = []
             def visit_Import(self, node):
                 for alias in node.names:
                     if alias.name == "pytest":
@@ -602,14 +711,31 @@ class Generator:
                     return node if node.names else None
                 return node
 
+            def scoped(self, node, scope):
+                self.scopes.append(scope)
+                try:
+                    return self.generic_visit(node)
+                finally:
+                    self.scopes.pop()
+
             def visit_FunctionDef(self, node):
                 if node in declarations:
                     node.decorator_list = []
-                return self.generic_visit(node)
+                return self.scoped(node, "function")
+
+            def visit_AsyncFunctionDef(self, node):
+                return self.scoped(node, "other")
+
+            def visit_ClassDef(self, node):
+                return self.scoped(node, "other")
 
             def visit_Assert(self, node):
                 if node.msg is None:
-                    node.msg = ast.Constant(f"{filename}:{node.lineno}: assert {ast.unparse(node.test)}")
+                    location = f"{filename}:{node.lineno}: assert {ast.unparse(node.test)}"
+                    detail = None
+                    if generator.operands and self.scopes and self.scopes[-1] == "function":
+                        detail = generator.captured(node, location)
+                    node.msg = detail or ast.Constant(location)
                 return node
 
         # Validate before removing syntax; otherwise an unsupported use could disappear.
@@ -626,10 +752,18 @@ class Generator:
     def wrapper(self, function, case_number, nodeid, parameters, parameter_marks):
         order = self.fixture_order(function, parameters)
         marks = self.marks[function.name] + parameter_marks
-        skip = next((mark for mark in marks if mark[0] in {"skip", "skipif"} and mark[1]), None)
+        skip = next((mark for mark in marks if mark[0] in {"skip", "skipif"} and mark[1] is True), None)
+        # Conditions that decorators evaluated at import (marker), tested in pytest's order.
+        conditions = [mark for mark in marks if mark[0] == "skipif" and isinstance(mark[1], str)]
         xfail = next((mark for mark in marks if mark[0] == "xfail" and mark[1]), None)
         lines = [f"def _pyn_case_{case_number}(_pyn_report: _pyn_support.Report) -> None:",
                  f"    _pyn_id = {nodeid!r}"]
+        if not skip:
+            for mark in conditions:
+                lines += [f"    if _pyn_support.condition({mark[1]}):",
+                          f"        _pyn_report.record(_pyn_id, 'setup', 'skipped', {mark[2]!r})",
+                          "        _pyn_report.record(_pyn_id, 'teardown', 'passed', '')",
+                          "        return"]
         if skip or (xfail and not xfail[4]):
             marker = skip or xfail
             outcome = "skipped" if skip else "xfailed"
@@ -667,7 +801,7 @@ class Generator:
                   p + "    _pyn_report.record(_pyn_id, 'call', 'xfailed', str(_pyn_error))",
                   p + "except KeyboardInterrupt:", p + "    raise",
                   p + "except BaseException as _pyn_error:",
-                  p + f"    _pyn_report.record(_pyn_id, 'call', {'xfailed' if xfail else 'failed'!r}, str(_pyn_error))",
+                  p + f"    _pyn_report.record(_pyn_id, 'call', {'xfailed' if xfail else 'failed'!r}, _pyn_support.describe(_pyn_error))",
                   p + "else:"]
         success = "failed" if xfail and xfail[3] else "xpassed" if xfail else "passed"
         detail = "[XPASS(strict)] " + xfail[2] if xfail and xfail[3] else xfail[2] if xfail else ""
@@ -686,14 +820,14 @@ class Generator:
                       p + "        _pyn_teardown_xfail_count += 1",
                       p + "    except KeyboardInterrupt:", p + "        raise",
                       p + "    except BaseException as _pyn_error:",
-                      p + "        _pyn_teardown_errors += str(_pyn_error) + '\\n'"]
+                      p + "        _pyn_teardown_errors += _pyn_support.describe(_pyn_error) + '\\n'"]
         lines += ["    except _pyn_support.Skipped as _pyn_error:",
                   "        _pyn_report.record(_pyn_id, 'setup', 'skipped', str(_pyn_error))",
                   "    except _pyn_support.XFailed as _pyn_error:",
                   "        _pyn_report.record(_pyn_id, 'setup', 'xfailed', str(_pyn_error))",
                   "    except KeyboardInterrupt:", "        raise",
                   "    except BaseException as _pyn_error:",
-                  f"        _pyn_report.record(_pyn_id, 'setup', {'xfailed' if xfail else 'error'!r}, str(_pyn_error))",
+                  f"        _pyn_report.record(_pyn_id, 'setup', {'xfailed' if xfail else 'error'!r}, _pyn_support.describe(_pyn_error))",
                   "    if (_pyn_teardown_errors or _pyn_teardown_xfail_count > 1",
                   "            or (_pyn_teardown_xfail_count and _pyn_teardown_skip)):",
                   f"        _pyn_report.record(_pyn_id, 'teardown', {'xfailed' if xfail else 'error'!r}, _pyn_teardown_errors + _pyn_teardown_skip + _pyn_teardown_xfail)",
@@ -724,6 +858,18 @@ class Generator:
                     self.error(function, "more than 10000 generated cases in one module")
                 wrappers.append(self.wrapper(function, len(cases), nodeid, values, marks))
                 cases.append(nodeid)
+        run = list(range(len(cases)))
+        if self.selected is not None:
+            # Node IDs select cases in their order, as pytest's arguments do; repeats are
+            # collected once. Every case's declarations still run at import.
+            run = []
+            for selector in self.selected:
+                wanted = f"{self.filename}::{selector}"
+                matches = [index for index, case in enumerate(cases)
+                           if case == wanted or case.split("[", 1)[0] == wanted]
+                if not matches:
+                    raise CollectionError("not found: " + wanted)
+                run += [index for index in matches if index not in run]
         original = self.transform_source()
         # Pragmas are comments and therefore absent from the AST. Preserve their
         # original opt-ins; the runner never opts the input into Any itself.
@@ -732,12 +878,17 @@ class Generator:
         tail = ["import pytest_native_support as _pyn_support", "import sys as _pyn_sys", *wrappers,
                 "def _pyn_run(_pyn_path: str) -> int:",
                 "    _pyn_report = _pyn_support.Report(_pyn_path)"]
-        tail += [f"    _pyn_case_{i}(_pyn_report)" for i in range(len(cases))]
+        tail += [f"    _pyn_case_{i}(_pyn_report)" for i in run]
         tail += ["    return _pyn_report.finish()", "if __name__ == '__main__':",
                  "    _pyn_sys.exit(_pyn_run(_pyn_sys.argv[1]))"]
-        return GeneratedModule(pragmas + "\n" + original + "\n\n" + "\n\n".join(tail) + "\n", cases)
+        return GeneratedModule(pragmas + "\n" + original + "\n\n" + "\n\n".join(tail) + "\n",
+                               [cases[index] for index in run])
 
 
-def generate(source: str, filename: str) -> GeneratedModule:
-    """Collect and adapt one module, or reject unsupported collection explicitly."""
-    return Generator(source, filename).generate()
+def generate(source: str, filename: str, operands: bool = True, selected=None) -> GeneratedModule:
+    """Collect and adapt one module, or reject unsupported collection explicitly.
+
+    operands keeps comparison operands for assertion failures (Generator.captured);
+    selected lists node-ID selectors (`name` or `name[id]`) to run, in order.
+    """
+    return Generator(source, filename, operands, selected).generate()
