@@ -1,0 +1,61 @@
+{
+  "kind": "Small read-only PR disposition evidence archive file list",
+  "files": [
+    {
+      "path": "pr-disposition-inventory.json",
+      "bytes": 348322,
+      "sha256": "97e6fdf7be1edc6d654b73e2c5a8670567c3c5d7424c4e10c2fff3004dde96e5"
+    },
+    {
+      "path": "pr-disposition-inventory.md",
+      "bytes": 89381,
+      "sha256": "bd75c80a8bab567d37e20538cfd12195738cca212488ac1499077e4a29781de5"
+    },
+    {
+      "path": "pr-disposition-inventory-receipt.json",
+      "bytes": 730,
+      "sha256": "1c8f808ebff955e98b32241419bd3b2dc22e9ed1bd8a25c6ae028bb40d0eb9c9"
+    },
+    {
+      "path": "build_pr_disposition_inventory.py",
+      "bytes": 26079,
+      "sha256": "82184e066ce25e66d145e26cca94b17f4995f6b34c8cdf8a80063ed1fe4ef9bd"
+    },
+    {
+      "path": "open-prs-metadata-snapshot.json",
+      "bytes": 355607,
+      "sha256": "8cab7a9e9b302b20a7d236beff1a40e22d7b681848c0a34c8853b79b124a3ada"
+    },
+    {
+      "path": "selected-closed-prs-metadata-snapshot.json",
+      "bytes": 27214,
+      "sha256": "2a2d49941ef7ae093b03286954690655edad547b1cbe3eaef2db2e96ad0eeb05"
+    },
+    {
+      "path": "open-prs-final-metadata-snapshot.json",
+      "bytes": 353782,
+      "sha256": "6d0021e1388f940eeaee19af65731ed3a5e2ef94045a8f89c3a27544e6f4f4e6"
+    },
+    {
+      "path": "selected-closed-prs-final-metadata-snapshot.json",
+      "bytes": 39886,
+      "sha256": "22fc78ef82a41534a526e832402cca669f17ab78f9dfe9d27cb5f1b7703bd1e8"
+    },
+    {
+      "path": "alpha1-closed-included-prs.json",
+      "bytes": 1400,
+      "sha256": "ac1c807224784d94c154ebef12627fb8a42d09cd365d394931940a59a168066b"
+    },
+    {
+      "path": "later-alpha-roadmap-independent.json",
+      "bytes": 30733,
+      "sha256": "97179fe8bd099535e13b0b4748121781a55622821f3d31ec344c8906f8ddca67"
+    },
+    {
+      "path": "native-mypy-issue-1322-snapshot.json",
+      "bytes": 2474,
+      "sha256": "38c7133578a380404bd291bc8766c28f88c2c5db8aa365c133cf464ca5b9277f"
+    }
+  ],
+  "total_bytes": 1275608
+}

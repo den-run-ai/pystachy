@@ -1,0 +1,22 @@
+{
+  "created_utc": "2026-11-14T18:10:36.167003+00:00",
+  "inventory_rows": 180,
+  "open_rows": 162,
+  "selected_feature_prs": 19,
+  "counts": {
+    "included": 21,
+    "conditional": 65,
+    "deferred": 94,
+    "superseded": 0
+  },
+  "valid_full_head_and_base_shas": true,
+  "selected_heads_in_expected_ancestry": true,
+  "candidate_main_tree_identity": true,
+  "unselected_whole_heads_in_release_ancestry": [],
+  "current_open_snapshot_complete": true,
+  "scope_only_no_fresh_per_pr_code_review": true,
+  "files": {
+    "pr-disposition-inventory.json": "97e6fdf7be1edc6d654b73e2c5a8670567c3c5d7424c4e10c2fff3004dde96e5",
+    "pr-disposition-inventory.md": "bd75c80a8bab567d37e20538cfd12195738cca212488ac1499077e4a29781de5"
+  }
+}
