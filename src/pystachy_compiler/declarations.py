@@ -57,6 +57,7 @@ from src.pystachy_compiler.utils import (
     is_callable,
     is_const,
     is_dict,
+    is_fn,
     is_fset,
     is_gen,
     is_list,
@@ -1032,6 +1033,15 @@ def gen_join(self, a: str, b: str) -> str:
         return BIG  # (a promoting int holds both: bigints.py)
     if (a == "dyn" and self.boxes(b, a)) or (b == "dyn" and self.boxes(a, b)):
         return "dyn"
+    if (is_fn(a) or is_callable(a)) and (is_fn(b) or is_callable(b)) and not self.fnapart:
+        # two functions (each a type of its own), or one and a Callable: the Callable that the
+        # annotations of one give, which the other becomes too (a table of functions: [add, sub],
+        # {"+": add, "-": sub}); coerce makes each one's, and rejects one that does not fit. (A
+        # display in a module that compiles Any dynamically holds them as the function objects
+        # they are, whose identity a Callable does not have: dyn_mixed sets fnapart)
+        ca = a if is_callable(a) else self.fn_callable(a)
+        cb = b if is_callable(b) else self.fn_callable(b)
+        return ca if ca != "" and (cb == "" or cb == ca) else cb if ca == "" else ""
     if self.widens(a, b):
         return b
     if a in self.classes and b in self.classes:
@@ -1049,6 +1059,20 @@ def gen_join(self, a: str, b: str) -> str:
         js = [self.join(targs(a)[i], targs(b)[i]) for i in range(len(targs(a)))]  # (item by item)
         return self.ctype("tuple", js) if "" not in js else ""
     return ""
+
+def gen_fn_callable(self, ft: str) -> str:
+    # the Callable type that the annotations of function value type ft give, callable[R,A,B]
+    # (fn_sig): of a def or a lambda whose parameters and return are all annotated; else ""
+    if ft.startswith("fn[f:") and ft[5:-1] in self.funcs:
+        f = self.funcs[ft[5:-1]]
+    elif ft.startswith("fn[c:"):
+        f = self.closures[int(ft[5 : ft.find(":", 5)])].f
+    else:
+        return ""
+    if f.node.kind != "def" or f.node.kids[1].kind == "noann":
+        return ""  # (a return type that no annotation gives is not known before its body compiles)
+    sig = self.fn_sig(ft)
+    return "" if sig[0].startswith("!") else self.ctype("callable", sig)
 
 def gen_wider(self, a: str, b: str) -> str:
     # the type of values of types a and b as they are, where they differ only in what may be

@@ -4465,9 +4465,15 @@ def gen_dyn_mixed(self, es: list[Node]) -> bool:
         return DYN in ts
     if self.dyn_callables(ts):
         return False
+    if len([t for t in ts if t.startswith("fn[b:")]) > 0 and len([t for t in ts if not is_fn(t) and not is_callable(unopt(t))]) == 0:
+        return False  # (a builtin function among functions: no Any value is one yet, so the Callable they join into)
+    # (functions, each a type of its own, are dynamic values here, as before they joined into a
+    # Callable in other places: the function objects, with their identity and type)
+    self.fnapart = True
     j = ts[0]
     for t in ts[1:]:
         j = self.join(j, t) if j != "" else ""
+    self.fnapart = False
     return j == "" or j == DYN
 
 

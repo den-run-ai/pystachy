@@ -1,0 +1,7 @@
+6 True False True function True
+-3 False True False function True
+-4 True True
+8 False True
+10 True function
+[('d', 12, True, 'function'), ('n', -6, False, 'function')]
+[exit 0]
