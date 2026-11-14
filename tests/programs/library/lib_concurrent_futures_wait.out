@@ -1,0 +1,16 @@
+DoneAndNotDoneFutures 2 6 0 True
+6 0 True True
+[0, 10, 20, 40, 50]
+['3']
+6 6 0
+6 0
+6 2
+[0, 10, 20, 40, 50]
+6
+6
+0
+StopIteration
+6
+['10: 100', '8: 80', '9: 90']
+FIRST_COMPLETED FIRST_EXCEPTION ALL_COMPLETED
+[exit 0]

@@ -22,7 +22,7 @@ the [module guide](README.md#module-guide) summarizes what each module supports.
 | [Numbers and randomness](#numbers-and-randomness) | [`random`](#random), [`statistics`](#statistics), [`mpz`](#mpz) |
 | [Dates and times](#dates-and-times) | [`datetime`](#datetime) |
 | [Files, OS and command line](#files-os-and-command-line) | [`io`](#io), [Binary files](#binary-files), [Path modules](#path-modules), [`pathlib`](#pathlib), [`glob`](#glob), [`shutil`](#shutil), [`argparse`](#argparse), [`getopt`](#getopt) |
-| [Processes and threads](#processes-and-threads) | [`_thread`](#_thread), [`threading`](#threading), [`atexit`](#atexit) |
+| [Processes and threads](#processes-and-threads) | [`_thread`](#_thread), [`threading`](#threading), [`concurrent.futures`](#concurrentfutures), [`atexit`](#atexit) |
 | [Runtime services](#runtime-services) | [`abc`](#abc), [`types`](#types), [`warnings`](#warnings), [`logging`](#logging), [`traceback`](#traceback), [`weakref` and `_weakref` (prototype)](#weakref-and-_weakref-prototype) |
 | [Native interoperability](#native-interoperability) | [`ctypes`](#ctypes) |
 | [Removed modules](#removed-modules) | `_imp`, `_ast`, `opcode` |
@@ -1518,6 +1518,81 @@ thread's `Thread` object (`MainThread`) work as in CPython where no other thread
   an exception); `_dangling` is a set, which keeps its threads (no weak containers), and
   `current_thread()` never makes a `_DummyThread`. There is no `register_at_fork()` (no
   `os.fork()`), and the module does not `del _thread` (#612).
+
+### `concurrent.futures`
+
+CPython's `concurrent/futures/__init__.py`, `_base.py` and `thread.py` with marked edits, for the
+one thread a Pystachy program runs. `ThreadPoolExecutor.submit()` runs the call on the calling
+thread, before it returns, and gives back a finished `Future` that holds what the call returned
+or the exception it raised, also `SystemExit`: `result()` raises that exception and
+`exception()` returns it, as in CPython
+([tests](../tests/programs/library/lib_concurrent_futures_submit.py),
+[exceptions](../tests/programs/library/lib_concurrent_futures_exceptions.py)). For calls that do
+not wait for each other, that is one of the schedules CPython's pool may take; `max_workers` is
+checked as CPython checks it and bounds nothing. `Executor.map()`
+([test](../tests/programs/library/lib_concurrent_futures_map.py)), `shutdown()` and the context
+manager ([test](../tests/programs/library/lib_concurrent_futures_shutdown.py)), `wait()` with
+`return_when` and its named tuple `DoneAndNotDoneFutures`, `as_completed()`
+([test](../tests/programs/library/lib_concurrent_futures_wait.py)), the methods of `Future`
+(`result()`, `exception()`, `done()`, `running()`, `cancelled()`, `cancel()`,
+`add_done_callback()`, `set_running_or_notify_cancel()`, `set_result()`, `set_exception()`),
+`CancelledError`, `TimeoutError`, `InvalidStateError`, `BrokenExecutor` and
+`concurrent.futures.thread.BrokenThreadPool` work as CPython's do where no other thread runs.
+`Executor` types a parameter that takes any executor and is the base class of a program's own
+([test](../tests/programs/library/lib_concurrent_futures_executor.py)). mypy's
+`BuildManager.parse_all()` compiles as it is written: a bound method submitted for each state,
+the futures in a list, `wait(futures).done` and `result()`
+([test](../tests/programs/library/lib_concurrent_futures_mypy.py)).
+
+- **A call runs inside `submit()`.** Calls run in the order submitted, and `done()` is true as
+  soon as `submit()` returns, so `cancel()` returns `False` and `shutdown(wait=False)`,
+  `cancel_futures=True` and a timeout find nothing to act on. A call that waits for the thread
+  that submitted it cannot finish: a wait for a lock that thread holds raises `_thread`'s
+  `RuntimeError`, which the future keeps
+  ([deviation](../tests/deviations/lib_concurrent_futures_inline.py)), and a loop that polls
+  for what that thread does next does not end.
+- **`Future` is generic in its result's type.** `submit()` of a call that returns an `int` gives a
+  `Future[int]`, and of one that returns `None` a `Future[None]`; annotations name these types
+  ([test](../tests/programs/library/lib_concurrent_futures_names.py)). A list, set or dict holds
+  futures of one type ([error test](../tests/errors/library/lib_concurrent_futures_two_types.py)),
+  and a field that holds a future needs its annotation
+  ([error test](../tests/errors/library/lib_concurrent_futures_field.py)). A program that makes a
+  future itself names its type, `Future[int]()` or `f: Future[int] = Future()`
+  ([test](../tests/programs/library/lib_concurrent_futures_future.py)); a bare `Future()` is
+  rejected ([error test](../tests/errors/library/lib_concurrent_futures_bare.py)), and so is
+  `set_result()` of another type
+  ([error test](../tests/errors/library/lib_concurrent_futures_set_result.py)).
+- **A wait that only another thread could end raises `RuntimeError`.** A future is pending only
+  where the program made it and has not finished it. `result()`, `exception()`, `wait()` and
+  `as_completed()` of such a future raise `RuntimeError: deadlock: ...` without a timeout, where
+  CPython waits for another thread to finish it
+  ([deviation](../tests/deviations/lib_concurrent_futures_deadlock.py)); with a timeout they
+  sleep for it and then raise `TimeoutError` or return, as CPython's do
+  ([test](../tests/programs/library/lib_concurrent_futures_pending.py)).
+- `as_completed()` yields the futures that were done when it started in the order given, where
+  CPython's order is that of a set. Those that the program finishes between two yields come in
+  the order they finished in, as in CPython.
+- There is no `ProcessPoolExecutor` and no `concurrent.futures.process`
+  ([error test](../tests/errors/library/lib_concurrent_futures_process.py)), and `__all__` does
+  not name it ([deviation](../tests/deviations/lib_concurrent_futures_all.py)).
+  `ThreadPoolExecutor` takes no `initializer` and `initargs`
+  ([error test](../tests/errors/library/lib_concurrent_futures_initializer.py)), and `map()` at
+  most four iterables ([error test](../tests/errors/library/lib_concurrent_futures_map_five.py)).
+- The module does not import `logging`. An exception that a done callback raises is reported on
+  stderr, as CPython's logging reports it where a program configures none: the message, then the
+  exception's last line without a traceback
+  ([test](../tests/programs/library/lib_concurrent_futures_callbacks.py)). A program's own
+  logging configuration does not change that report.
+- `submit()` from an `atexit` callback runs the call; CPython's raises `RuntimeError`, its
+  worker threads having stopped ([deviation](../tests/deviations/lib_concurrent_futures_atexit.py)).
+  Without `max_workers`, the private `_max_workers` is 5, CPython's value where the CPU count is
+  unknown.
+- A future's repr shows its identity hash where CPython's shows `id()`, and names the class of
+  its result as far as the subset names classes (#486): an object whose class defines
+  `__call__` is shown as a `function`
+  ([deviation](../tests/deviations/lib_concurrent_futures_repr_callable.py)), and a call that
+  returns a generator or a file is rejected
+  ([error test](../tests/errors/library/lib_concurrent_futures_generator.py)).
 
 ### `atexit`
 

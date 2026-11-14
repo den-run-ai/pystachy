@@ -42,6 +42,9 @@ observable contract.
 | `warnings` | `Lib/warnings.py` | `e040f52be0199c69fa8c0d35428ba64e6f9b6412691a689ccbd7c23e07c6ed3f` |
 | `threading` | `Lib/threading.py` | `a979d5ab97993d7fbfd7601e928476c8dc90e1807df7c8c7d9f324e620331caa` |
 | `logging` | `Lib/logging/__init__.py` | `4106cc3aa4e722116bbf0a3ffae3a8c7bc4981468ca7998ca35ed201a5605519` |
+| `concurrent.futures` | `Lib/concurrent/futures/__init__.py` | `9b597f6de7da771109ca7bf96a1af5ea4d5fda69b27b39312d34966d987f73cd` |
+| `concurrent.futures._base` | `Lib/concurrent/futures/_base.py` | `6ca5d2bb59aa23af56d95dcdd31728fda687f7727e79f4465236d1f65c06b053` |
+| `concurrent.futures.thread` | `Lib/concurrent/futures/thread.py` | `62e194f69dcd39919d8c06d0abee8b92c6c3d3c71229d7b55e151005e2960a76` |
 | `tomllib._parser` | `Lib/tomllib/_parser.py` | `82591be9349687b88926a7b1a28b0f892a132e4043cb249bd1bd1594bdd721e3` |
 | `tomllib._re` | `Lib/tomllib/_re.py` | `0bd8a54280babaa755456e0e4ceabd5f072558f19373698e29d2491e0fb7e4b4` |
 | `tomllib._types` | `Lib/tomllib/_types.py` | `f864c6d9552a929c7032ace654ee05ef26ca75d21b027b801d77e65907138b74` |
@@ -63,6 +66,11 @@ test data of `tests/programs/upstream/upstream_tomllib_data.py` were taken from 
 `threading` and `logging` were committed unchanged from the `Python-3.13.16` release first, so the
 diff of the next commit to each is its port's edits; both opt in to dynamic `Any` and carry the
 edits lib/compatibility.md lists.
+`concurrent.futures`' three modules were committed unchanged from that release first too, with
+the package file `Lib/concurrent/__init__.py`, which stays unchanged (lib/README.md); the
+later commits to them are the port's edits. The edits take out the worker threads, their queue,
+the waiters and the locks, run a submitted call in `submit()` and make `Future` a generic class
+of its result's type; `Lib/concurrent/futures/process.py` is not taken.
 `datetime` is `_pydatetime`, which CPython's `Lib/datetime.py` re-exports when its C
 accelerator is missing. Where CPython's accelerator behaves differently, the edits follow
 `Modules/_datetimemodule.c` (SHA-256

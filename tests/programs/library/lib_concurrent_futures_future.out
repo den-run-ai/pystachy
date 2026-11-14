@@ -1,0 +1,21 @@
+new False False False <Future at   state=pending>
+[]
+True False
+running False True False <Future at   state=running>
+finished True False False <Future at   state=finished returned int>
+['first', 'second:5', 'lambda'] 5 None False
+['first', 'second:5', 'lambda', 'first']
+InvalidStateError: FINISHED: <Future at   state=finished returned int>
+InvalidStateError
+True True cancelled
+cancelled True False True <Future at   state=cancelled>
+CancelledError
+CancelledError True True
+False
+notified True False True <Future at   state=cancelled>
+InvalidStateError: CANCELLED_AND_NOTIFIED:
+raised True False False <Future at   state=finished raised KeyError>
+KeyError: 'k' True
+None returned NoneType>
+None returned NoneType> [1, 2] returned list>
+[exit 0]
