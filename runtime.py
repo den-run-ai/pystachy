@@ -2268,12 +2268,19 @@ def pys_bytes_fromhex(s: str) -> str:
 
 
 def pys_bytes_from_list(xs: list[int]) -> str:
-    # bytes(xs) of a list of ints
-    r = _rt.str_new(len(xs))
-    for i in range(len(xs)):
-        if xs[i] < 0 or xs[i] > 255:
-            raise ValueError("bytes must be in range(0, 256)")
-        _rt.str_put(r, i, xs[i])
+    # bytes(xs) of a list of ints. Each item's low byte is stored and the items' bits are
+    # gathered, so the range is tested once, after a loop that has no exit: an int below 0 or
+    # above 255 leaves a bit outside the low eight. The error is CPython's whichever item is
+    # the first out of range, and nothing sees the bytes of a list that has one
+    n = len(xs)
+    r = _rt.str_new(n)
+    bits = 0
+    for i in range(n):
+        x = xs[i]
+        bits |= x
+        _rt.str_put(r, i, x & 255)
+    if bits < 0 or bits > 255:
+        raise ValueError("bytes must be in range(0, 256)")
     return _rt.str_done(r)
 
 
