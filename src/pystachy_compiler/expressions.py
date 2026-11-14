@@ -4665,7 +4665,8 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str, 
         return self.titem_union(item, a, hit, ph, value)
     u = unopt(item.t)
     if lenient and (item.t == "file" or a.t == "file"):
-        # (a file compares by identity alone, as CPython's do)
+        # (a file compares by identity, as CPython's do; where the other is an object of a class,
+        # its __eq__ then runs, as CPython calls it once the file's declines)
         if not self.isref(item.t) or not self.isref(a.t):
             return False
         nf = self.label()
@@ -4673,6 +4674,13 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str, 
             self.incoming(ph, value, self.cur)
         self.cbr(self.ptr_cmp('==', item, a).v, hit, nf)
         self.place(nf)
+        if item.t in self.classes or a.t in self.classes:
+            c = self.inherit_cmp("==", item, a, True)
+            nx = self.label()
+            if ph is not None:
+                self.incoming(ph, value, self.cur)
+            self.cbr(c.v, hit, nx)
+            self.place(nx)
         return True
     identity = (item.t in self.classes or is_list(u) or is_dict(u) or is_set(u) or is_tuple(u) or is_vtuple(u)) and self.isref(a.t)
     if (item.t == "dyn" or a.t == "dyn") and self.comparable(item.t, a.t):
