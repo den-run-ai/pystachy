@@ -3,6 +3,7 @@ import Lean
 import PystachyBoundary
 import PystachyLayout
 import PystachyAlias
+import PystachyCompanion
 import PystachyAccess
 import PystachyInt
 import PystachyInline
@@ -18,6 +19,9 @@ run_cmd do
       ``PystachyLayout.checked_projection, ``PystachyLayout.accepted_layout_projection,
       ``PystachyAlias.accepted_reference_roundtrip, ``PystachyAlias.accepted_alias_write,
       ``PystachyAlias.accepted_traces_reference, ``PystachyAlias.accepted_root_chain,
+      ``PystachyCompanion.accepted_identity_roundtrip,
+      ``PystachyCompanion.accepted_traces_identity,
+      ``PystachyCompanion.accepted_root_chain, ``PystachyCompanion.accepted_boxed_root_chain,
       ``PystachyBoundary.reachable_facts, ``PystachyBoundary.accepted_payload_safe,
       ``PystachyAccess.reachable_invariant, ``PystachyAccess.accepted_access_safe,
       ``PystachyAccess.writeField_step, ``PystachyAccess.accepted_write_progress,

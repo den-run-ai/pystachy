@@ -284,14 +284,42 @@ retain the list. This negative control checks the need for the actual trace edge
 the list/companion chain is runtime-tested, not formally established by the
 reference-transfer theorem.
 
-The formal scope is one non-null reference-transfer primitive, including the
-pointer used by native `list[int]` wrappers. The null branch is structurally
-checked but excluded from the theorem. Native-list preparation may mutate items
-without rebinding its input pointer; its correctness remains unproved. The C-AST
-normalizer, declaration/layout extraction, pointer-to-word ABI, LLVM lowering,
-the allocator's one-byte slack and size-class rules, concrete tracing and
-downstream object edges remain trusted or tested. These results do not justify
-removing roots, companions or runtime guards.
+### Initialized numeric-list companions
+
+`PystachyCompanion.accepted_identity_roundtrip` proves that an identity store and
+load recover the exact box address for arbitrary other memory cells.
+`accepted_traces_identity` proves the stored box occupies a traced array word
+for **every** valid index below capacity. `accepted_root_chain` establishes the
+list-header → companion-array → identity-box chain, and
+`accepted_boxed_root_chain` composes it with the preceding reference-box theorem.
+These theorems replace the assumed downstream edge for this bounded list case;
+they retain the assumption that the concrete collector follows scanned words.
+
+`tools/check_lean_companion.py` obtains the real `List` field offsets and widths
+by compiling constants in the runtime's translation unit. Clang AST comparisons
+check the complete bounded constructor, companion allocation/materialization,
+identity setter and identity getter bodies. Both header allocation paths and the
+companion allocation must use scanned storage. The pointer attachment, successful
+setter and getter must use the same original addresses and `i + 1` word; the
+allocation must include its kind-header word. Unknown statements, narrowing
+casts, missing/overwritten stores, mismatched offsets and shortened allocations
+fail closed. The reference contract spells out the raw-data store independently
+of `AT`, so a changed macro cannot redirect it into the identity array. The
+native JSON parser rejects missing/extra fields, schema downgrades and oversized
+indices. Run `python3.13 tools/check_lean_companion.py`; its tests and theorem axiom
+audit are also included by `make check-lean-boundary`.
+
+The companion theorem starts with a stable, initialized companion and a valid
+live index. It establishes the identity-address and tracing contracts after a
+successful direct store. It does **not** prove materialization's numeric value,
+capacity/length invariants, promotion, resizing, copying, iteration, all list
+mutations, tuple/generator companions, or a whole program's roots. Kind masks do
+not affect these address/extent obligations; their numeric semantics remain
+outside the model. The C-to-model adapter and layout extraction, pointer/word
+ABI, called helper semantics, allocator slack/size classes and collector
+implementation remain trusted. The null reference-box branch is structurally
+checked but excluded from its theorem. These results do not justify removing
+roots, companions or runtime guards.
 
 ## How actual IR reaches the model
 
