@@ -144,8 +144,39 @@ class StorageGuardTests(unittest.TestCase):
             ins("tuple.store", operands=[("%t10", typ), ("0", "int")], text="int", immediate=0))
         self.assertFalse(self.accepted(fn))
 
+    def test_kwargs_parameter_views_preserve_integer_widths(self):
+        for source, target in (("kw[x:int]", "tuple[int+]"), ("kw[x:int+]", "tuple[int]"),
+                               ("kw[x:tuple[int,int+]]", "tuple[tuple[int+,int]]")):
+            with self.subTest(source=source, target=target):
+                fn = function([block("entry", ins("ret", operands=[("%a0", target)]))], (source,))
+                self.assertFalse(self.accepted(fn))
+
 
 class StorageSchemaTests(unittest.TestCase):
+    def test_kwargs_read_layout_preserves_order_and_nested_types(self):
+        typ = "kw[plain:int,nested:tuple[int+,int],large:int+]"
+        fn = function([block("entry", ins("mem.load", typ, [("%a1", "*" + typ)], 1),
+                             ins("slot.pack", "%slot", [("%t1", typ)], 2),
+                             ins("slot.unpack", "tuple[int+,int+,int+]", [("%t2", "%slot")], 3),
+                             ins("ret.none"))], (typ, "*" + typ))
+        normalized = storage.Normalize(fn)
+        for value in ("%a0", "%t1", "%t2", "%t3"):
+            self.assertEqual(normalized.layout_type(value), "tuple[int,tuple[int+,int],int+]")
+
+    def test_kwargs_join_and_call_results_remain_unsupported(self):
+        typ = "kw[x:int+]"
+        for producer in (
+            ins("phi", typ, [("%a0", typ)], 1, targets=["entry"]),
+            ins("select", typ, [("true", "bool"), ("%a0", typ), ("%a0", typ)], 1),
+            ins("call", typ, [("@callee", "fn")], 1),
+        ):
+            with self.subTest(producer=producer["op"]):
+                fn = function([block("entry", ins("br", targets=["join"])),
+                               block("join", producer, ins("ret", operands=[("%t1", "tuple[int+]")]))],
+                              (typ,))
+                with self.assertRaisesRegex(storage.Unsupported, "unknown source representation"):
+                    storage.Normalize(fn).build()
+
     def test_tuple_store_through_parameter_is_outside_fresh_construction(self):
         fn = function([block("entry",
             ins("tuple.store", operands=[("%a0", "tuple[int+]"), ("0", "int")], immediate=0),
