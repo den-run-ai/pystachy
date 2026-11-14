@@ -3311,6 +3311,12 @@ def gen_dyn_fn_arms(self, f: FnInfo, key: str, o: Val, args: list[Val]) -> None:
         nxt = self.label()
         self.cbr(self.ptr_cmp("==", t, Val(self.dynfnt[ft], "dyntype")).v, hit, nxt)
         self.place(hit)
+        if ft == f"fn[m:{COMPLEXC}.__init__]":
+            # (object.__init__ of a complex number, bound, m = x.__init__: it takes any arguments,
+            # which the caller evaluated, and returns None, as the call.__init__ arm does)
+            self.dyn_return(f, Val("null", "None"))
+            self.place(nxt)
+            continue
         an = self.dyn_call_args(key, args)
         bad = self.dyn_fn_takes(ft, key, an)
         if bad != "":
