@@ -1,0 +1,66 @@
+{
+  "status": "uploaded_and_ref_verified",
+  "repository": "den-run-ai/pystachy",
+  "branch": "research/v0.5.0-alpha-qualification-20261114",
+  "parent": "7e37d27bbda6d257e1b2984d679eba885e2db7ca",
+  "commit": "b4617f31ff75c7611ba9d3f73bc79d047ca4bdd6",
+  "tree": "52328e0580273eaac562fd0a714ceeaed88332d1",
+  "files": [
+    {
+      "name": "README.md",
+      "repo_path": "research/v0.5.0-alpha-qualification/post-storage/alpha2-publication/README.md",
+      "bytes": 8924,
+      "sha256": "a15718bf5de053c7620e4e962c580b96be3047a403caa4390fad0815a55d5152",
+      "git_sha": "31e7d5d75e9efa305e768b44e20a6015f3a2f996"
+    },
+    {
+      "name": "alpha2-publication.tar.gz",
+      "repo_path": "research/v0.5.0-alpha-qualification/post-storage/alpha2-publication/alpha2-publication.tar.gz",
+      "bytes": 854589,
+      "sha256": "5221161cf095609197ef21d353478bc99baa08dc834a1929481041d38ff570fa",
+      "git_sha": "b24bc54c4eb4c90801968a409089869773b41103"
+    },
+    {
+      "name": "manifest.json",
+      "repo_path": "research/v0.5.0-alpha-qualification/post-storage/alpha2-publication/manifest.json",
+      "bytes": 34694,
+      "sha256": "a5458cad7e055b0f7088aa698008f60f24e85ba61760c4bb21c9ee3c96e442b2",
+      "git_sha": "3b7fa170229525c3e1ef8b3cfe78113ec57b856d"
+    },
+    {
+      "name": "acceptance.json",
+      "repo_path": "research/v0.5.0-alpha-qualification/post-storage/alpha2-publication/acceptance.json",
+      "bytes": 13862,
+      "sha256": "7ac9e86a7d4d48482d7d2a55ae77015d04daf21381529008ea6eb50e9ebbbec3",
+      "git_sha": "1e9ef3cfed098015617bc31e520d1a13a4aba588"
+    },
+    {
+      "name": "acceptance.md",
+      "repo_path": "research/v0.5.0-alpha-qualification/post-storage/alpha2-publication/acceptance.md",
+      "bytes": 4371,
+      "sha256": "9028eabad5bfb30cc89aceee5972d215bcabbbe55c9777a0c512c2742c3c7461",
+      "git_sha": "74cbf0c929ca241a65cdc061376ed98f8275968a"
+    },
+    {
+      "name": "publication-closure-addendum.md",
+      "repo_path": "research/v0.5.0-alpha-qualification/post-storage/alpha2-publication/publication-closure-addendum.md",
+      "bytes": 3577,
+      "sha256": "0c71eaba43b6761d4e18eeb2849f72dc08003d8ce55ebe37ffe43271d8e98a68",
+      "git_sha": "ac74badc25b729b5b3cbb10e29f66e2ced49eaed"
+    },
+    {
+      "name": "publication-closure-addendum.json",
+      "repo_path": "research/v0.5.0-alpha-qualification/post-storage/alpha2-publication/publication-closure-addendum.json",
+      "bytes": 6835,
+      "sha256": "70b7c0eb6eead1b885ed5e3dde70b10a25bb0e3609586d98d4b313e4e6b1adc8",
+      "git_sha": "966d2edfebd0a22a568160df452ad970c4615a25"
+    },
+    {
+      "name": "bookkeeping-acceptance.json",
+      "repo_path": "research/v0.5.0-alpha-qualification/post-storage/alpha2-publication/bookkeeping-acceptance.json",
+      "bytes": 8667,
+      "sha256": "174a4fe53102700d7429029f4e4430fa54b9ba0e69e764d484408085b5f5acfc",
+      "git_sha": "0af4ba0b7099055f0c530cc542061748d90978f4"
+    }
+  ]
+}
