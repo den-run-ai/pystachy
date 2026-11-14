@@ -510,7 +510,7 @@ See [object protocols](semantics.md#object-protocols) and
 See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
 [single inheritance](typing.md#single-inheritance).
 
-- **Inheritance:** multiple bases outside the [method-only secondary base](typing.md#a-method-only-secondary-base) subset; ordinary hierarchies involving templates, `Generic`,
+- **Inheritance:** multiple bases outside the [method-only secondary bases](typing.md#method-only-secondary-bases) subset; ordinary hierarchies involving templates, `Generic`,
   NamedTuple or builtins; mixed dataclass/ordinary hierarchies; decorated subclasses except
   dataclass-from-dataclass; changing method kind; incompatible virtual call signatures or
   results; overridden static/class methods called through base-typed objects.

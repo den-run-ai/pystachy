@@ -411,9 +411,12 @@ def gen_dyn_class_type(self, c: str) -> str:
     # Hooks are attached once an operation needs them (dyn_dispatchers), so
     # merely boxing an object does not compile its unused protocol bodies.
     dt.refs = [self.sconst(d), self.sconst(short(c)), base, "null", "null", "null"]
-    if ci.role != "":
+    if len(ci.roles) > 1:
+        # (pys_dyn_role_isa tests one secondary base: an Any box's isinstance() would miss the others)
+        self.err(f"an object of class {short(c)}, with several secondary bases, as an Any value is not supported")
+    if len(ci.roles) == 1:
         flags |= DF_ROLE
-        dt.refs.append(self.dyn_class_type(ci.role))
+        dt.refs.append(self.dyn_class_type(ci.roles[0]))
     dt.items = [Val(str(DK_OBJ), "int"), Val(str(self.ocls[c]), "int"), Val(str(flags), "int")]
     self.consts.append(dt)
     self.dynclasses.append(c)
@@ -3954,7 +3957,7 @@ def dyn_factory_candidate(self, c: str) -> bool:
     ci = self.classes[c]
     if c in self.tmpl or ci.origin != "" or ci.bad != "" or ci.hook != "" or ci.exc != "" or ci.mod in GLUE or ci.node.line in ENUMCLASSES or c in self.nts or self.is_dc(c):
         return False
-    if ci.base != "" or ci.role != "" or ci.isrole or ci.tag != 0 or any(m != "__init__" for m in ci.methods):
+    if ci.base != "" or len(ci.roles) > 0 or ci.isrole or ci.tag != 0 or any(m != "__init__" for m in ci.methods):
         return False
     if any(a.startswith("__") and a.endswith("__") and a != "__slots__" for a in ci.ftypes):
         return False

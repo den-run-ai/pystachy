@@ -1442,14 +1442,32 @@ def gen_tv_plan(self, f: FnInfo, ps: list[Node], ret: Node, tvs: list[str]) -> N
 def gen_tv_bound(self, f: FnInfo, ts: list[str]) -> str:
     # what an instance of template f (tv_plan) returns for arguments of types ts: X, where the
     # class of an argument for a parameter annotated G[..., T, ...] derives from G[..., X, ...]
-    # (class V(G[X]): generic_subclass), else "" (its returns decide, as for any template)
+    # (class V(G[X]): generic_subclass; also through generic bases that pass their type variables
+    # on, tv_through), else "" (its returns decide, as for any template)
     for i in range(len(f.tvbparams)):
         j = f.tvbparams[i]
         c = unopt(ts[j]) if j < len(ts) else ""
         while c in self.classes:
-            if self.genbase.get(c, "") == f.tvbclass[i] and f.tvbpos[i] < len(self.genargs[c]):
-                return self.genargs[c][f.tvbpos[i]]
+            x = self.tv_through(c, f.tvbclass[i], f.tvbpos[i])
+            if x != "" and not x.startswith("~"):
+                return x
             c = self.classes[c].base
+    return ""
+
+def gen_tv_through(self, c: str, g: str, k: int) -> str:
+    # what class c's subscripted generic bases (generic_subclass) bind type variable k of generic
+    # class g to, also through theirs: a type, "~T" where they pass c's own type variable T on
+    # (class N(Generic[T], G[T])), or "" where they do not bind it
+    bases = self.genargs.get(c, {})
+    if g in bases:
+        return bases[g][k] if k < len(bases[g]) else ""
+    for b in bases:
+        x = self.tv_through(b, g, k)
+        if x.startswith("~"):
+            ps = self.tparams.get(b, [])
+            return bases[b][ps.index(x[1:])] if x[1:] in ps and ps.index(x[1:]) < len(bases[b]) else ""
+        if x != "":
+            return x
     return ""
 
 def gen_iter_ann(self, n: Node) -> str:
@@ -1645,7 +1663,7 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
                 if ci.mod == "":
                     self.err(why)
                 ci.bad = ci.bad if ci.bad != "" else f"class {shown(ci.name)} is not supported: {why}"
-    if ci.role != "" and "__slots__" in ci.fdefault:
+    if len(ci.roles) > 0 and "__slots__" in ci.fdefault:
         self.line = ci.node.line
         self.bad_class(ci, "__slots__ in a hierarchy with a secondary base is not supported")
     if ci.base in self.classes:

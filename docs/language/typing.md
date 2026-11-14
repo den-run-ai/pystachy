@@ -890,7 +890,8 @@ The inferred union uses the existing tagged boxes; per-argument unboxed generic
 fields are separate work, and operations outside the supported union surface
 still require narrowing.
 
-`Generic[...]` must be the class's only base, and a PEP 695 class has no base; its type
+`Generic[...]` must be the class's only base, apart from generic bases that it passes its type
+variables on to (below), and a PEP 695 class has no base; its type
 parameters cannot be a `ParamSpec` (`**P`) or more than one `TypeVarTuple`. Use the bare
 class name or `Self` inside its methods and fields, or an explicit specialization such as
 `"Pair[V, K]"`. A method's separate type variables (a module-level `TypeVar`, or its own,
@@ -908,7 +909,18 @@ compiles, so a visitor's methods may call `accept()` again, and a field stored f
 the base holds any visitor, whose methods then dispatch to every visitor class and need one
 return type ([error test](../../tests/errors/classes/generic_visitor_base_variable.py)). A class
 cannot yet derive from a generic class whose `__init__` binds its type variables
-(`class IntBox(Box[int])`), nor pass on one of its own (`class Sub(RTypeVisitor[T])`).
+(`class IntBox(Box[int])`).
+
+A generic class may pass its own type variables on to generic bases, as mypy's visitors do:
+`class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T])` derives from
+`ExpressionVisitor` and takes `StatementVisitor` as a
+[method-only secondary base](#method-only-secondary-bases). For
+`class Printer(NodeVisitor[str])`, `def accept(self, visitor: StatementVisitor[T]) -> T` returns
+`str`: `T` is bound through each generic base in turn
+([test](../../tests/programs/classes/generic_traits.py),
+[chain](../../tests/programs/classes/generic_traits_chain.py)). Each type argument of such a base
+is a type or one of the class's own type variables, not a type that contains one
+(`Visitor[list[T]]`, [error test](../../tests/errors/generics/generic_traits_nested_arg.py)).
 
 Function and class specializations share a limit of 4,096 per compilation. Additional
 nesting and size limits are listed in [compatibility](compatibility.md#templates-and-empty-containers).
@@ -1101,23 +1113,30 @@ collisions, and overriding a method with another kind of method are unsupported.
 class methods using `cls` retain restrictions on default values, imports and calls through a
 base-typed object. Exception classes follow the [exception rules](semantics.md#user-exception-classes).
 
-### A method-only secondary base
+### Method-only secondary bases
 
-An ordinary class can also name one independent, fieldless base second, as in
-`class IRVisitor(ExpressionVisitor, StatementVisitor)`. Instance fields use the first
-base's layout. A call through either base uses the concrete receiver's implementation.
-Both views refer to the same object, including when boxed as `Any`. An `isinstance`
+An ordinary class can also name independent, fieldless bases after the first, as in
+`class IRVisitor(ExpressionVisitor, StatementVisitor)` or
+`class Square(Shape, Describable, Comparable)`, and a subclass of such a class can add more
+([test](../../tests/programs/classes/inheritance_secondary_several.py)). Instance fields use the
+first base's layout. A call through any base uses the concrete receiver's implementation.
+All views refer to the same object. Boxed as `Any`, an object of a class with one secondary
+base keeps them; one with several is rejected
+([error test](../../tests/errors/classes/dynany_secondary_several.py)). An `isinstance`
 test between the base types checks the receiver's class tag.
 
-The secondary base must be a plain root class with ordinary instance methods. Its
+A secondary base must be a plain root class with ordinary instance methods, which may be
+marked `@abstractmethod` (without `abc.ABCMeta`) and may name the type variables of a generic
+base that binds nothing ([generic classes](#explicit-generic-classes)). Its
 methods may call another method declared on the same base, for example
 `self.write(data)`. These calls use the concrete receiver's override. Other uses
 of the receiver, including reading a field or capturing a bound method, are unsupported.
-The two bases must declare distinct method names. Overrides of secondary methods
-must keep their parameter and return types and may widen positional-only parameters
-to accept keywords. The primary hierarchy
-and the class that combines the bases cannot use `super()`. Generic and abstract
-base classes, `__slots__` in the combined hierarchy, a second secondary base along
-the same primary chain, and secondary bases with fields, properties, constructors
-or other special methods are outside
-this subset. Single inheritance from the combined class works.
+A secondary base and the primary hierarchy must declare distinct method names; two secondary
+bases may declare one only where the class overrides it
+([error test](../../tests/errors/classes/inheritance_secondary_conflict.py)). Overrides of secondary
+methods must keep their parameter and return types (but those that name a generic base's type
+variables) and may widen positional-only parameters to accept keywords. The primary hierarchy
+and the class that combines the bases cannot use `super()`. Abstract base classes
+(`abc.ABC`), `__slots__` in the combined hierarchy, and secondary bases with fields,
+properties, constructors or other special methods are outside
+this subset. Single inheritance from the combined class works, `super()` included.

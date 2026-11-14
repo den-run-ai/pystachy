@@ -85,44 +85,50 @@ def gen_subclass_problem(self, st: Node) -> str:
     if st.kids[1].kind == "index" and self.imported_ref(st.kids[1].kids[0]) == "typing.Generic":
         return "a generic class's one base is Generic[...] of its TypeVars, and at most one TypeVarTuple, unpacked (Generic[T, *Ts]), each once" if len(st.kids) == 2 else "a generic class with another base than Generic[...] is not supported"
     if len(st.kids) > 2:
-        why = "multiple inheritance requires an ordinary primary base and an independent method-only secondary base"
-        if len(st.kids) != 3:
-            return why
-        first = self.exc_base(st.kids[1])
-        second = self.exc_base(st.kids[2])
-        if first in EXCBASES and first not in self.classes and second in EXCBASES and second not in self.classes:
-            if first not in PLAIN_EXC_BASES or second not in PLAIN_EXC_BASES or exc_derives(first, second) or exc_derives(second, first):
-                return "two builtin exception bases must be independent and have ordinary Exception behavior"
-            if len(st.kids[0].kids) > 1:
-                return "an exception class with a decorator is not supported"
-            return ""
-        if st.kids[1].kind != "name" or st.kids[2].kind != "name":
+        why = "multiple inheritance requires an ordinary primary base and an independent method-only secondary base, or several"
+        if len(st.kids) == 3:
+            first = self.exc_base(st.kids[1])
+            second = self.exc_base(st.kids[2])
+            if first in EXCBASES and first not in self.classes and second in EXCBASES and second not in self.classes:
+                if first not in PLAIN_EXC_BASES or second not in PLAIN_EXC_BASES or exc_derives(first, second) or exc_derives(second, first):
+                    return "two builtin exception bases must be independent and have ordinary Exception behavior"
+                if len(st.kids[0].kids) > 1:
+                    return "an exception class with a decorator is not supported"
+                return ""
+        if any(b.kind != "name" for b in st.kids[1:]):
             return why
         primary = st.kids[1].s
-        secondary = st.kids[2].s
-        if primary not in self.classes or secondary not in self.classes or self.derives(primary, secondary):
+        secondaries = [b.s for b in st.kids[2:]]
+        if primary not in self.classes or self.abc_class(primary) or self.classes[primary].exc != "" or self.is_dc(primary) or len(st.kids[0].kids) != 1:
             return why
-        role = self.classes[secondary]
-        if role.base != "" or len(role.node.kids) != 1 or secondary in self.tparams or secondary in self.nts:
-            return why
-        if self.abc_class(primary) or self.abc_class(secondary) or self.classes[primary].exc != "" or self.is_dc(primary) or len(st.kids[0].kids) != 1:
-            return why
+        for secondary in secondaries:
+            if secondary not in self.classes or secondaries.count(secondary) > 1 or self.derives(primary, secondary):
+                return why
+            # (a root class of methods alone; a generic one binds nothing: it has no __init__)
+            role = self.classes[secondary]
+            if role.base != "" or len(role.node.kids) != 1 or secondary in self.nts or self.abc_class(secondary):
+                return why
         ancestor = primary
         while ancestor in self.classes:
             info = self.classes[ancestor]
-            if info.role != "" or mentions(info.node, ["super"]):
-                return "a primary hierarchy with another secondary base or super() is not supported"
+            if mentions(info.node, ["super"]):
+                return "super() in a primary hierarchy with a secondary base is not supported"
             ancestor = info.base
         if mentions(st.kids[0], ["super"]):
             return "super() in a class with a secondary base is not supported"
-        methods = [d.s for d in role.node.kids[0].kids if d.kind == "def"]
-        for d in role.node.kids[0].kids:
-            if d.kind == "pass" or (d.kind == "expr" and d.kids[0].kind == "str"):
-                continue
-            if d.kind != "def" or d.s.startswith("__") or len(d.kids) != 3 or len(d.kids[0].kids) == 0:
-                return why
-            if role_body_uses_storage(d.kids[2], d.kids[0].kids[0].s, methods):
-                return "secondary base methods may not use super() or read or write the instance"
+        for secondary in secondaries:
+            role = self.classes[secondary]
+            methods = [d.s for d in role.node.kids[0].kids if d.kind == "def"]
+            for d in role.node.kids[0].kids:
+                if d.kind == "pass" or (d.kind == "expr" and d.kids[0].kind == "str"):
+                    continue
+                # (abc's @abstractmethod, without abc.ABCMeta, marks a method only: CPython makes
+                # its objects as any other's)
+                abstract = len(d.kids) == 4 and len(d.kids[3].kids) == 0 and self.imported(d.kids[3].s) == "abc.abstractmethod"
+                if d.kind != "def" or d.s.startswith("__") or (len(d.kids) != 3 and not abstract) or len(d.kids[0].kids) == 0:
+                    return why
+                if role_body_uses_storage(d.kids[2], d.kids[0].kids[0].s, methods):
+                    return "secondary base methods may not use super() or read or write the instance"
 
     if st.kids[1].kind == "name" and st.kids[1].s in self.classes and self.classes[st.kids[1].s].exc == "":
         base_ci = self.classes[st.kids[1].s]
@@ -154,20 +160,64 @@ def gen_generic_subclass(self, st: Node) -> str:
     # own, which binds nothing (Visitor[str] is Visitor, see generic_ann), is that class, whose
     # methods' parameters that name its type variables take each call's types. Its type
     # arguments are checked as the annotation Visitor[str] checks them, and the statement then
-    # names the class itself, as the rest of declaration reads its base (#962). "" or why not
-    b = st.kids[1] if len(st.kids) == 2 else st
-    if b.kind != "index" or b.kids[0].kind != "name" or b.kids[0].s not in self.tparams or b.kids[0].s not in self.classes:
-        return ""
-    g = b.kids[0].s
-    if self.init_template(self.classes[g].node):
-        return f"a subclass of {shown(g)}[...] is not supported: the __init__ of {shown(g)} binds its type variables, as its calls' arguments do"
-    t = self.generic_ann(g, b.kids[1])
-    if t.startswith("!"):
-        return t[1:]
-    self.genbase[st.s] = g  # (the types that bind its TypeVars for the methods of st's objects)
-    self.genargs[st.s] = [self.ann(x) for x in (b.kids[1].kids if b.kids[1].kind == "tuple" else [b.kids[1]])]
-    st.kids[1] = b.kids[0]
+    # names the class itself, as the rest of declaration reads its base (#962). Each base of
+    # several so (secondary bases: subclass_problem); a generic class's own type variables may
+    # be such a base's arguments (class N(Generic[T], A[T], B[T]), generic_traits), which N's
+    # subclasses bind (tv_bound). "" or why not
+    own = self.tparams.get(st.s, [])
+    for j in range(1, len(st.kids)):
+        b = st.kids[j]
+        if b.kind != "index" or b.kids[0].kind != "name" or b.kids[0].s not in self.tparams or b.kids[0].s not in self.classes:
+            continue
+        g = b.kids[0].s
+        if self.init_template(self.classes[g].node):
+            return f"a subclass of {shown(g)}[...] is not supported: the __init__ of {shown(g)} binds its type variables, as its calls' arguments do"
+        if "__class_getitem__" in self.body_names(self.classes[g].node):
+            # (as generic_ann: g[T] calls it, which may run code or name another class; also
+            # where the arguments are the class's own type variables, passed on)
+            return f"{short(g)}[...] with a custom __class_getitem__ is not supported"
+        xs = b.kids[1].kids if b.kids[1].kind == "tuple" else [b.kids[1]]
+        args: list[str] = []
+        if self.typevar_in(xs, []) == "" or len(own) == 0:
+            t = self.generic_ann(g, b.kids[1])
+            if t.startswith("!"):
+                return t[1:]
+            args = [self.ann(x) for x in xs]
+        else:
+            tvs = self.tparams[g]
+            if len(xs) != len(tvs) or len([x for x in tvs if x in self.tvtuples]) > 0:
+                return f"{shown(g)}[...] as a base takes one type for each of its type variables ({', '.join([short(x) for x in tvs])}), not a TypeVarTuple's"
+            for x in xs:
+                if x.kind == "name" and x.s in own and x.s not in self.tvtuples:
+                    args.append("~" + x.s)  # (its own type variable, passed on)
+                elif self.typevar_in([x], []) != "":
+                    return f"the type arguments of base {shown(g)}[...] must be types or type variables of {shown(st.s)}"
+                else:
+                    t = self.ann(x)
+                    if t.startswith("!"):
+                        return t[1:]
+                    args.append(t)
+        if st.s not in self.genargs:
+            self.genargs[st.s] = {}
+        self.genargs[st.s][g] = args
+        st.kids[j] = b.kids[0]
     return ""
+
+def gen_generic_traits(self, st: Node) -> int:
+    # class N(Generic[T], A[T], B[T], C): a generic class whose first other base is a generic
+    # class, subscripted (generic_subclass), and whose others are classes too (secondary bases,
+    # subclass_problem): the position of its Generic[...] base, else 0
+    k = 0
+    first = True
+    for j in range(1, len(st.kids)):
+        b = st.kids[j]
+        if len(self.generic_base(b)) > 0 and k == 0:
+            k = j
+        elif b.kind == "index" and b.kids[0].kind == "name" and b.kids[0].s in self.tparams:
+            first = False
+        elif first or b.kind != "name":
+            return 0
+    return k
 
 def gen_exc_base(self, b: Node) -> str:
     # the exception class that b, the base of a class statement, names: a class of the program
@@ -237,19 +287,34 @@ def gen_inherit(self, ci: ClassInfo) -> None:
         elif ci.exc != "" and m != "__init__" and m != "__str__" and m != "__repr__":
             self.line = ci.methods[m].node.line
             self.err(f"method '{m}' of '{short(ci.name)}' overrides that of '{short(b.methods[m].cls)}': only __init__, __str__ and __repr__ may be overridden")
-    if ci.role != "":
-        role = self.classes[ci.role]
+    seen: dict[str, str] = {}  # (the secondary base whose method of each name comes first)
+    for r in ci.roles:
+        role = self.classes[r]
+        # (a generic secondary base's methods leave out the annotations that name its type
+        # variables, declare_fn: an override's own types them, as a generic primary base's does)
+        generic = r in self.tparams
         for method in role.methods:
             original = role.methods[method]
-            if ci.role != b.role:
-                if method in b.methods:
+            if r not in b.roles:
+                if method not in b.methods and method in seen and seen[method] != r and method in ci.methods and ci.methods[method].cls == ci.name:
+                    # (also where the class's own overrides both: a Callable of its bound method
+                    # would differ by the base it is read through, adapter's method families)
+                    self.line = ci.node.line
+                    self.bad_class(ci, f"secondary bases {short(seen[method])} and {short(r)} both declare method '{method}' (not supported, also where {short(ci.name)} overrides it)")
+                seen[method] = seen.get(method, r)
+                if method in b.methods or (method in ci.methods and ci.methods[method].cls != ci.name):
+                    # (also another secondary base's: CPython's method resolution order picks one)
                     self.line = ci.node.line
                     self.bad_class(ci, f"both bases declare method '{method}'")
                 elif method not in ci.methods:
                     ci.methods[method] = original
             fn = ci.methods[method]
+            same = len(fn.ptypes) == len(original.ptypes)
+            for j in range(1, len(fn.ptypes) if same else 0):
+                if fn.ptypes[j] != original.ptypes[j] and not (generic and original.ptypes[j] == ""):
+                    same = False
             if fn.cls == ci.name and (
-                fn.deco != "" or fn.prop or fn.ptypes[1:] != original.ptypes[1:] or fn.ret != original.ret
+                fn.deco != "" or fn.prop or not same or (fn.ret != original.ret and not (generic and original.ret == ""))
                 or fn.posonly > original.posonly or fn.npos != original.npos
                 or fn.kwarg != original.kwarg or fn.vararg != original.vararg
             ):
@@ -317,7 +382,7 @@ def gen_derives(self, c: str, base: str) -> bool:
         if c == base:
             return True
         info = self.classes[c]
-        if info.role != "" and info.role == base:
+        if base in info.roles:
             return True
         if info.excsecond != "" and exc_derives(info.excsecond, base):
             return True
@@ -889,6 +954,11 @@ def gen_program(self, mods: list[Mod]) -> str:
             elif st.kind == "subclass" and len(st.kids) == 2 and len(self.generic_base(st.kids[1])) > 0:
                 m.body.kids[i] = st.kids[0]  # class C(Generic[T]): a class whose objects bind T (see bind)
                 self.tparams[st.s] = self.generic_base(st.kids[1])
+            elif st.kind == "subclass" and len(st.kids) > 2 and self.generic_traits(st) > 0:
+                # class N(Generic[T], A[T], B[T]): generic class N's other bases (generic_subclass)
+                gk = self.generic_traits(st)
+                self.tparams[st.s] = self.generic_base(st.kids[gk])
+                st.kids = [st.kids[j] for j in range(len(st.kids)) if j != gk]
             elif st.kind == "subclass" and st.kids[1].kind == "typeparams" and self.class_params(st) == "":
                 m.body.kids[i] = st.kids[0]  # class C[T]: as class C(Generic[T]) (see class_params)
                 self.tparams[st.s] = st.kids[1].s.split()
@@ -951,7 +1021,11 @@ def gen_program(self, mods: list[Mod]) -> str:
                 ci.base = st.kids[1].s if st.kids[1].kind == "name" and st.kids[1].s in self.classes else self.exc_base(st.kids[1])
                 ci.exc = self.classes[ci.base].exc if ci.base in self.classes else ci.base
                 if ci.exc == "":
-                    ci.role = st.kids[2].s if len(st.kids) == 3 else self.classes[ci.base].role
+                    # (its base's secondary bases, then its own: subclass_problem)
+                    ci.roles = list(self.classes[ci.base].roles)
+                    for b in st.kids[2:]:
+                        if b.s not in ci.roles:
+                            ci.roles.append(b.s)
                 elif len(st.kids) == 3:
                     ci.excsecond = self.exc_base(st.kids[2])
                 self.classes[st.s] = ci
@@ -976,16 +1050,22 @@ def gen_program(self, mods: list[Mod]) -> str:
         if ci.exc == "" and ci.base in self.classes:
             ci.tag = 1
             self.classes[ci.base].tag = 1
-            if ci.role != "" and ci.role != self.classes[ci.base].role:
-                self.classes[ci.role].tag = 1
-                self.classes[ci.role].isrole = True
-                # These unrelated static types can now denote the same instance.
+            for role in ci.roles:
+                if role in self.classes[ci.base].roles:
+                    continue
+                self.classes[role].tag = 1
+                self.classes[role].isrole = True
+                # These unrelated static types can now denote the same instance: the
+                # primary ancestors, and the other secondary bases.
+                others: list[str] = [r for r in ci.roles if r != role]
                 ancestor = ci.base
                 while ancestor in self.classes:
-                    if ci.role not in self.classes[ancestor].overlaps:
-                        self.classes[ancestor].overlaps.append(ci.role)
-                        self.classes[ci.role].overlaps.append(ancestor)
+                    others.append(ancestor)
                     ancestor = self.classes[ancestor].base
+                for other in others:
+                    if role not in self.classes[other].overlaps:
+                        self.classes[other].overlaps.append(role)
+                        self.classes[role].overlaps.append(other)
     tag = 0
     for ci in self.classes.values():
         if ci.tag != 0:

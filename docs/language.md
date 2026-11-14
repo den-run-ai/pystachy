@@ -336,7 +336,7 @@ separately in [FFI](ffi.md).
 A program that needs an unsupported feature gets a compile-time error. Supported templates
 can avoid compiling unused branches that contain one. The main gaps:
 
-- **Object model:** multiple inheritance beyond [one method-only secondary base](language/typing.md#a-method-only-secondary-base), subclasses of builtin types, general metaclasses and
+- **Object model:** multiple inheritance beyond [method-only secondary bases](language/typing.md#method-only-secondary-bases), subclasses of builtin types, general metaclasses and
   class decorators, dynamic attribute hooks, and attribute values looked up by names only the
   run time knows (their text and `hasattr()` are supported).
 - **Values:** `complex` numbers, `bytearray`, `memoryview`, slice objects and
