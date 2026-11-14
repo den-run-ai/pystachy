@@ -312,12 +312,13 @@ second item. Conversion in the other direction checks and unboxes dynamic items
 
 ### Generator channels
 
-Scalar `int` and `float` yields preserve the original numeric object through
+Scalar and optional `int` and `float` yields preserve the original numeric object through
 `next()` (including its default), iteration, unpacking, `send()`, `throw()` and
-`yield from`. In identity-tracking code, the promise retains the raw number and
+`yield from`. In identity-tracking code, the promise retains the numeric representation and
 one scanned nullable box companion. Existing source aliases keep their canonical
 box; fresh computed yields pass a null companion and box only when an observer
-requires their identity. A typed loop can transfer that fresh value to its lone
+requires their identity. Optional channels retain their existing nullable representation
+box independently; a fresh optional yield needs no additional dynamic box. A typed loop can transfer that fresh value to its lone
 local target without boxing. Named-source yields, defaults and multi-target
 unpacking remain conservative and may materialize boxes.
 
@@ -327,12 +328,15 @@ identity. Promoting integers retain their existing raw high pointer alongside th
 companion. Isolated nontracking modules retain their old raw slots and frame size.
 A generator crossing into tracking code triggers the existing recompilation
 fallback before representations can mix, including erasure to `Any` and nested
-generators. Generator return and optional/union numeric yield channels retain
-their existing identity limits.
+generators. `yield from` can widen a scalar numeric channel to its optional type,
+preserving the delegated object's identity. Optional integer channels retain their
+checked 64-bit boundary, including in promoting-int modules. Generator returns
+and general numeric union yield channels retain their existing identity limits.
 
 Coverage: `dynany_identity_generator.py`, `dynany_identity_generator_fresh.py`,
 `dynany_identity_generator_protocol.py`, `dynany_identity_generator_scope.py` and
-`python_int_generator_identity.py`. The [scoring workload](../bench/generator_identity/README.md)
+`python_int_generator_identity.py`, the `dynany_identity_generator_optional*`
+cases and `python_int_generator_optional_identity.py`. The [scoring workload](../bench/generator_identity/README.md)
 separates typed consumption, actual dynamic observation and repeated aliases.
 
 `yield from` boxes compatible typed yields into an `Any` yield channel, and checks
@@ -902,8 +906,8 @@ An int or float of typed code that no variable's box slot holds is a new object 
 it becomes an `Any` value, where CPython's names, containers and classes hold one
 object. This affects numeric items of fixed typed tuples, dicts and sets, including
 variadic argument tuples represented as fixed shapes; typed lists and runtime-length
-tuples with numeric union item types (`list[int | float]`); and optional/union numeric generator
-yields. Scalar `int` and `float` generator yields retain their source objects.
+tuples with numeric union item types (`list[int | float]`); and general numeric union generator
+yields. Scalar and optional `int` and `float` generator yields retain their source objects.
 
 Yielding into dynamic item storage (`Iterator[Any]`) also retains the source box.
 Numeric and optional-numeric runtime-length tuple items retain their source boxes

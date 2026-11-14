@@ -626,7 +626,8 @@ def gen_yield_from(self, x: Node) -> Val:
         y = t
         f.ret = self.gen_type(y, f.gsend)
     dynamic = (y == "dyn" and self.dyn_boxable(t) == "") or (t == "dyn" and self.dyn_unboxable(y))
-    if t != y and not self.widens(t, y) and not dynamic:
+    numeric_optional = t in ["int", "float"] and y == "opt[" + t + "]"
+    if t != y and not self.widens(t, y) and not dynamic and not numeric_optional:
         self.err(f"{short(f.name)}() yields {typestr(y)}, but yield from delegates to a generator that yields {typestr(t)}")
     if self.gproto:
         return self.yield_from_proto(v, t, y, callee)
@@ -717,7 +718,14 @@ def gen_gen_slots(self, v: Val, y: str) -> list[str]:
     # Raw value, optional wide pointer, and nullable numeric object companion.
     # Existing aliases retain their box; a fresh computed value can pass null,
     # just as in the scalar argument/return ABI. No coroutine-local slot escapes.
-    identity = self.dyn_id_arg(v).v if generator_identity(y, self.idhere()) else ""
+    identity = ""
+    if generator_identity(y, self.idhere()):
+        # Coercing a fresh number to its optional channel makes only a nullable
+        # representation box. It has no alias to materialize yet, just as a raw
+        # fresh yield does. Literals and existing optional values carry their
+        # original provenance through that coercion.
+        fresh_optional = y in ["opt[int]", "opt[float]"] and v.idfrom == "" and v.idslot == ""
+        identity = "null" if fresh_optional else self.dyn_id_arg(v).v
     if y != "int" or not int_program():
         return [self.to_slot(v), "", identity]
     if v.t == BIG:

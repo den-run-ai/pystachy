@@ -33,8 +33,9 @@ from src.pystachy_compiler.syntax import Node
 
 
 def generator_identity(t: str, tracking: bool) -> bool:
-    # The scalar yield channels with a nullable object-identity companion.
-    return tracking and t in ["int", "float"]
+    # Numeric yield channels with a nullable object-identity companion. Optional
+    # numbers keep their nullable representation box separately from identity.
+    return tracking and t in ["int", "float", "opt[int]", "opt[float]"]
 
 
 def generator_slots(protocol: bool, promoting: bool, identity: bool) -> int:

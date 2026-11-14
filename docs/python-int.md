@@ -233,6 +233,7 @@ Some of these boundaries reject values CPython accepts. The
 | Optional NamedTuple operations | Hashing and argument unpacking of a NamedTuple that may be `None`, such as a parameter's, use the 64-bit tuple-or-None representation. Comparison, tuple search and `%` formatting test it for `None` first and keep its promoting ints. |
 | `dataclasses.astuple()` | Has the same optional-tuple boundary. |
 | Generator input | Values passed to `send()` stay 64-bit; yielded and returned ints can promote. |
+| Optional generator yields | `Iterator[int \| None]` keeps a nullable 64-bit value; both direct yields and `yield from` check this boundary. [Regression](../tests/deviations/python_int_optional_generator_width.py). |
 
 `dataclasses.asdict()` preserves promoting scalar and fixed-tuple fields when
 they share a supported dictionary value type. Heterogeneous fields needing a

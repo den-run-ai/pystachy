@@ -1,0 +1,12 @@
+next True
+sent again
+send True
+throw True
+closed
+sent None
+typed send True
+closed
+typed retained True True True
+none True True
+closed
+[exit 0]

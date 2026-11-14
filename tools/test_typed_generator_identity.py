@@ -15,16 +15,17 @@ from src.pystachy_compiler.ir import Val
 from src.pystachy_compiler.loader import Loader
 
 
-def program(kind="float", protocol=False, promoting=False, tracking=True):
+def program(kind="float", protocol=False, promoting=False, tracking=True, optional=False):
     comments = "# pystachy: dynamic-any\n" if tracking else ""
     if promoting:
         comments += "# pystachy: python-int\n"
     delta = "1.0" if kind == "float" else "1"
     text = "1.25" if kind == "float" else "18446744073709551617" if promoting else "1000"
     resume = "values.send(None)" if protocol else "next(values)"
+    channel = f"{kind} | None" if optional else kind
     return comments + f'''from typing import Iterator
 
-def numbers(value: {kind}) -> Iterator[{kind}]:
+def numbers(value: {kind}) -> Iterator[{channel}]:
     yield value + {delta}
     yield value
 
@@ -114,6 +115,53 @@ class GeneratorIdentityLayoutTests(unittest.TestCase):
             regressed = compile_generator(source)
         self.assertRegex(regressed["llvm"], r"@pys_dyn_float\(")
 
+    def test_optional_channels_retain_representation_and_identity_separately(self):
+        for kind in ("int", "float"):
+            for protocol, promoting, slots in ((False, False, 6), (True, False, 8),
+                                               (False, True, 10), (True, True, 10)):
+                with self.subTest(kind=kind, protocol=protocol, promoting=promoting):
+                    source = program(kind, protocol, promoting, optional=True)
+                    # Optional integer channels retain their checked slot boundary.
+                    source = source.replace("18446744073709551617", "1000")
+                    result = compile_generator(source)
+                    self.assertIn(f"%coro.promise = alloca [{slots} x i64]", result["llvm"])
+                    self.assertNotRegex(result["llvm"], r"\.hi = getelementptr i64, ptr %coro.promise")
+                    fresh, alias = result["yields"]
+                    self.assertEqual([v.t for v in fresh.a], ["%slot", "%ptr", "dyn"])
+                    self.assertEqual([v.v for v in fresh.a[1:]], ["null", "null"])
+                    self.assertEqual(alias.a[1].v, "null")
+                    self.assertNotEqual(alias.a[2].v, "null")
+
+    def test_fresh_optional_yields_do_not_materialize_dynamic_boxes(self):
+        source = program(optional=True).replace("    yield value\n", "    yield value + 2.0\n    yield None\n")
+        result = compile_generator(source)
+        self.assertNotRegex(result["llvm"], r"@pys_dyn_(?:float|int)(?:_box)?\(")
+        self.assertEqual(result["llvm"].count("@pys_box("), 2)
+        self.assertTrue(all(item.a[2].v == "null" for item in result["yields"]))
+
+        original = gen_module.generators_gen_slots
+
+        def eager(generator, value, channel):
+            slots = original(generator, value, channel)
+            if slots[2] != "":
+                slots[2] = generator.dyn_id_box(value).v
+            return slots
+
+        with patch.object(gen_module, "generators_gen_slots", eager):
+            regressed = compile_generator(source)
+        self.assertRegex(regressed["llvm"], r"@pys_dyn_float\(")
+
+    def test_nontracking_optional_channels_keep_their_existing_layout(self):
+        for protocol, promoting, slots in ((False, False, 5), (True, False, 7),
+                                           (False, True, 9)):
+            with self.subTest(protocol=protocol, promoting=promoting):
+                source = program("int", protocol, promoting, tracking=False, optional=True)
+                source = source.replace("18446744073709551617", "1000")
+                result = compile_generator(source)
+                self.assertIn(f"%coro.promise = alloca [{slots} x i64]", result["llvm"])
+                self.assertNotIn(".identity =", result["llvm"])
+                self.assertTrue(all(len(item.a) == 1 for item in result["yields"]))
+
     def test_nontracking_frames_keep_their_existing_layout(self):
         for protocol, promoting, slots in [(False, False, 5), (True, False, 7),
                                             (False, True, 9)]:
@@ -173,6 +221,13 @@ class GeneratorIdentityVerifierTests(unittest.TestCase):
             item.a.extend([Val("null", "%ptr"), Val("null", "dyn")])
 
         self.reject_mutation(add_companion, source=program(tracking=False))
+
+    def test_optional_companion_and_null_high_are_checked(self):
+        source = program(optional=True)
+        self.reject_mutation(lambda item: item.a.pop(), source=source)
+        self.reject_mutation(lambda item: setattr(item.a[2], "t", "%ptr"), source=source)
+        self.reject_mutation(lambda item: setattr(item.a[1], "v", "%not_null"),
+                             source=source, message="needs a null high placeholder")
 
 
 if __name__ == "__main__":

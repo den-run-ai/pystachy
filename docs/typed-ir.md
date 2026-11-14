@@ -391,7 +391,7 @@ and with a generator operand that generator's. `gen.resume` runs a generator to 
 suspend and has every effect (user code); the exception passes make it an `invoke` like a
 call. `gen.drop` closes and destroys a generator a loop owns and never raises. The verifier
 checks their places, operands and metadata; lowering alone emits the `llvm.coro.*` calls.
-In identity-tracking code, scalar numeric `gen.yield` has three operands: its raw
+In identity-tracking code, scalar and optional numeric `gen.yield` has three operands: its raw
 `%slot`, a `%ptr` high word (null unless the channel holds promoting ints), and a
 nullable `dyn` identity companion. The verifier requires that shape for those
 channels and rejects a nonnull placeholder when no high word exists. Lowering
