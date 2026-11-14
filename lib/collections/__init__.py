@@ -8,8 +8,8 @@ follow that C code's behaviour and messages; OrderedDict and Counter follow the 
 with the C OrderedDict's messages. Their items have one type each, T (or K and V), bound by the
 constructor's arguments, an annotation such as deque[int] or Counter[str], or an explicit
 constructor such as deque[int](). CPython's mappings derive from dict; these hold dicts
-instead, so isinstance(x, dict) is false for them, and keys(), values() and items() return
-lists, as a dict's do here.
+instead: isinstance(x, dict) is true for them, though not in lib/'s own code (this module's
+too), and keys(), values() and items() return lists, as a dict's do here.
 
 namedtuple() makes its class at compile time: the compiler compiles NAME = namedtuple(...) in a
 module's top-level code, given literal arguments, as a class statement, a NamedTuple whose fields

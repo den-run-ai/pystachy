@@ -850,6 +850,8 @@ from src.pystachy_compiler.expressions import (
     gen_obj_isinst as expressions_obj_isinst,
     gen_isinst_reads as expressions_isinst_reads,
     gen_isnone as expressions_isnone,
+    gen_dict_class as expressions_dict_class,
+    gen_dict_object as expressions_dict_object,
     gen_isnull as expressions_isnull,
     gen_iter_ret as expressions_iter_ret,
     gen_keep_stack as expressions_keep_stack,
@@ -4257,6 +4259,12 @@ class Gen:
 
     def isnone(self, t: str) -> int:
         return expressions_isnone(self, t)
+
+    def dict_class(self, t: str) -> bool:
+        return expressions_dict_class(self, t)
+
+    def dict_object(self, t: str) -> bool:
+        return expressions_dict_object(self, t)
 
     def isinst_reads(self, c: Node) -> None:
         return expressions_isinst_reads(self, c)

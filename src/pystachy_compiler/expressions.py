@@ -70,6 +70,7 @@ from src.pystachy_compiler.utils import (
     is_vtuple,
     kw_names,
     kw_types,
+    lib_file,
     lib_source,
     lt,
     nones,
@@ -437,7 +438,7 @@ def gen_isinst(self, t: str, c: Node) -> int:
     if abc == "Sequence" or abc == "MutableSequence" or abc == "Mapping" or abc == "MutableMapping":
         # (collections.abc's: str, bytes and tuple, also a NamedTuple, are Sequences, list is a mutable one)
         if abc.endswith("Mapping"):
-            return 1 if is_dict(t) else 0
+            return 1 if is_dict(t) else -2 if self.dict_object(t) else 0
         if is_list(t) or (abc == "Sequence" and (t == "str" or t == "bytes" or is_tuple(t) or is_vtuple(t))):
             return 1
         return -2 if abc == "Sequence" and (t in self.nts or t == RANGEC) else 0  # (a range is a Sequence too)
@@ -485,6 +486,8 @@ def gen_isinst(self, t: str, c: Node) -> int:
         return -2  # (a tuple, unless it is None)
     if c.s == "tuple" and is_vtuple(t):
         return 1
+    if c.s == "dict" and self.dict_object(t):
+        return -2  # (unless it is None)
     if c.s == "list" or c.s == "dict" or c.s == "tuple" or c.s == "set" or c.s == "frozenset":
         return 1 if t.startswith(c.s + "[") else 0
     if c.s == "type" and t == "exctype":
@@ -499,6 +502,23 @@ def gen_isinst(self, t: str, c: Node) -> int:
     if c.s in "bytearray memoryview complex range slice type".split():
         return 0
     return -1
+
+def gen_dict_class(self, t: str) -> bool:
+    # is t one of lib/collections' mappings, defaultdict, OrderedDict and Counter, or a
+    # specialization of one: classes that derive from dict in CPython, and hold a dict here
+    if t not in self.classes:
+        return False
+    o = self.classes[t].origin if self.classes[t].origin != "" else t
+    if o != "collections$defaultdict" and o != "collections$OrderedDict" and o != "collections$Counter":
+        return False
+    return lib_source(self.classes[o].node.line, self.libdir, "collections/__init__.py")
+
+def gen_dict_object(self, t: str) -> bool:
+    # does isinstance(x, dict) (and a Mapping) hold for x of static type t, which is no dict: an
+    # object of lib/collections' mappings (dict_class), as CPython's derive from dict. Not in
+    # lib/'s own code, which tests what they are here, objects that hold a dict (copy's and
+    # csv's tests stand for CPython's of exact types, collections' for its own classes)
+    return self.dict_class(t) and not lib_file(self.line, self.libdir)
 
 def gen_isnone(self, t: str) -> int:
     # isinstance(x, type(None)) for x of static type t, not an optional one (see isinst)
