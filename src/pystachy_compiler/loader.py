@@ -48,6 +48,7 @@ from src.pystachy_compiler.analysis import (
     special_import,
     specials,
     surely_binds,
+    targets,
     top_bindings,
     walrus_names,
 )
@@ -1983,7 +1984,7 @@ class Loader:
                 self.docsetm.append(m)
                 continue
             run: list[Node] = []
-            if self.static_if(m, st, scope, run) or self.optional(m, st, run, False) or (blk is m.body and self.unbound_try(m, st, out, blk.kids[i + 1 :], run)):
+            if self.static_if(m, st, scope, run) or self.flag_switch(st, out, run) or self.optional(m, st, run, False) or (blk is m.body and self.unbound_try(m, st, out, blk.kids[i + 1 :], run)):
                 b = mk("block", "", st.line, run)
                 self.simplify(m, b, scope)
                 out.extend(b.kids)
@@ -2112,6 +2113,47 @@ class Loader:
             return False
         out.extend(pre)
         out.extend(st.kids[1].kids if r == 1 else st.kids[2].kids)
+        return True
+
+    def flag_switch(self, st: Node, before: list[Node], out: list[Node]) -> bool:
+        # if NAME: or if not NAME: right after NAME = True or NAME = False, in module code outside
+        # class bodies (before: what runs before st in its block), as mypy's MYPYC = False then
+        # if MYPYC: Bogus = ... else: Bogus = ...: nothing runs between the assignment and the
+        # test, so CPython decides the test as the literal says. Only where the branch that does
+        # not run assigns names, and only names that the branch that runs binds too, at its own
+        # level: dropping it leaves each name a binding (an unbound global is an error: see Gen's
+        # read of a name) and changes no other declaration. Appends what runs to out; False if st
+        # is no such if
+        if st.kind != "if" or self.pos < 0 or self.incls or len(before) == 0:
+            return False
+        t = st.kids[0]
+        neg = t.kind == "unary" and t.s == "not"
+        t = t.kids[0] if neg else t
+        p = before[-1]
+        if t.kind != "name" or p.kind != "assign" or len(p.kids) != 2 or p.kids[0].kind != "name" or p.kids[0].s != t.s or (p.kids[1].kind != "True" and p.kids[1].kind != "False"):
+            return False
+        r = 1 if (p.kids[1].kind == "True") != neg else 0
+        run = st.kids[1].kids if r == 1 else st.kids[2].kids
+        kept: dict[str, bool] = {}
+        for x in run:
+            # (only what it binds at its own level, which simplify() keeps: a binding in a block of
+            # its own may be in code that simplify() drops too, as in if False: x = 1; and not
+            # what a := in a value binds, which fold_tests() may drop: (x := 1) if False else 0)
+            if x.kind == "assign" or (x.kind == "annassign" and len(x.kids) == 3):
+                targets(x, kept, False)
+            elif x.kind == "def" or x.kind == "class" or x.kind == "subclass":
+                kept[x.s] = True
+            elif x.kind == "import":
+                binds([x], kept, True)
+        for x in st.kids[2].kids if r == 1 else st.kids[1].kids:
+            names: dict[str, bool] = {}
+            binds([x], names, True)
+            for tg in x.kids[:-1] if x.kind == "assign" else []:
+                if tg.kind != "name":
+                    return False
+            if (x.kind != "assign" and x.kind != "pass") or len([nm for nm in names if nm not in kept]) > 0:
+                return False
+        out.extend(run)
         return True
 
     def optional(self, m: Mod, st: Node, out: list[Node], scan: bool) -> bool:
