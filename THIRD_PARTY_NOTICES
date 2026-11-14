@@ -154,6 +154,13 @@ lib/getopt.py is CPython 3.13.16's Lib/getopt.py with the edits lib/README.md li
 marked in the source; it is derived from Python and is used under the same license and copyright
 notice.
 
+lib/importlib/util.py's resolve_name() and _resolve_name() are the functions of CPython 3.13.16's
+Lib/importlib/util.py and Lib/importlib/_bootstrap.py, annotated, and lib/importlib/resources.py
+keeps the code of the functions of Lib/importlib/resources/_functional.py that it has; they are
+derived from Python and are used under the same license and copyright notice.
+tests/programs/upstream/upstream_importlib_util.py adapts the ResolveNameTests methods of that
+release's Lib/test/test_importlib/test_util.py, whose source SHA-256 is recorded in its header.
+
 lib/tomllib/ is CPython 3.13.16's Lib/tomllib with the edits lib/compatibility.md lists, each
 marked "Pystachy port:" in the source; it is derived from Python and is used under the same license
 and copyright notice. Its files are Taneli Hukkinen's code ("SPDX-FileCopyrightText: 2021 Taneli

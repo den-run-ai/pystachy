@@ -1,0 +1,13 @@
+bacon bacon a.b
+spam.eggs.bacon spam.bacon
+spam.eggs spam x.a.b
+os.path
+mypy.types
+mypyc.common
+mypy.server
+ImportError no package specified for '.bacon' (required for relative module names)
+ImportError no package specified for '.bacon' (required for relative module names)
+ImportError attempted relative import beyond top-level package
+ImportError attempted relative import beyond top-level package
+ImportError attempted relative import beyond top-level package
+[exit 0]

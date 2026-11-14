@@ -1,0 +1,3 @@
+a note
+UnsupportedOperation importlib.resources.open_text() and read_text() with errors other than 'strict' are not supported
+[exit 0]

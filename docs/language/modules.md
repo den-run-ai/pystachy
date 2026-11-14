@@ -53,7 +53,8 @@ or `class`, a read before the module binds `__doc__` raises `NameError`. Deletin
 `__doc__`, assigning another module's, and reading `__doc__` in a class body (but in its
 lambdas and comprehensions) are not supported. Some `lib/` modules' docstrings differ from
 CPython's (see the [library reference](../../lib/compatibility.md)).
-`__file__`, `__spec__` and CPython's other module metadata are unsupported.
+`__file__`, `__spec__` and CPython's other module metadata are unsupported;
+[`importlib.resources.files()`](../../lib/compatibility.md#importlib) gives the directory of a module's file.
 An imported module cannot bind `__name__`.
 
 ## Module scope
