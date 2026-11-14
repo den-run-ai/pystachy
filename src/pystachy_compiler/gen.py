@@ -767,6 +767,7 @@ from src.pystachy_compiler.exceptions import (
     gen_raise_ as exceptions_raise_,
     gen_raise_stmt as exceptions_raise_stmt,
     gen_super_call as exceptions_super_call,
+    gen_super_own_init as exceptions_super_own_init,
     gen_throw as exceptions_throw,
     gen_try_ as exceptions_try_,
     gen_unbind as exceptions_unbind,
@@ -4082,8 +4083,11 @@ class Gen:
     def exc_brepr(self, o: Val) -> Val:
         return exceptions_exc_brepr(self, o)
 
-    def super_call(self, sc: Node, m: str, args: list[Node], based: bool=False, read: bool=False, own_bound: bool=False) -> Val:
-        return exceptions_super_call(self, sc, m, args, based, read, own_bound)
+    def super_call(self, sc: Node, m: str, args: list[Node], based: bool=False, read: bool=False, own_bound: bool=False, captured: Val | None=None) -> Val:
+        return exceptions_super_call(self, sc, m, args, based, read, own_bound, captured)
+
+    def super_own_init(self, args: list[Node]) -> Val:
+        return exceptions_super_own_init(self, args)
 
     def exc_helpers(self, c: str) -> None:
         return exceptions_exc_helpers(self, c)
