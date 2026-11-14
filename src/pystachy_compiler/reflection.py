@@ -13,7 +13,7 @@ from src.pystachy_compiler.diagnostics import dynamic_program, int_program, show
 from src.pystachy_compiler.analysis import clean_doc, local_names
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Loop, Val, tmpname
 from src.pystachy_compiler.names import ENUMCLASSES, short
-from src.pystachy_compiler.specs import BIG, BIGOPT, GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, RANGEC, TYPEMODS, is_excname
+from src.pystachy_compiler.specs import BIG, BIGOPT, BYTEARRAYC, GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, RANGEC, TYPEMODS, is_excname
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
     lib_file,
@@ -185,7 +185,7 @@ def gen_refl_type_name(self, c: str, what: str) -> str:
     if c in self.classes and self.classes[c].exc == "":
         ci = self.classes[c]
         q = shown(ci.origin if ci.origin != "" else c)
-        if c.startswith("_pystachy_iterators$") or c == RANGEC or c == OBJECTC:
+        if c.startswith("_pystachy_iterators$") or c == RANGEC or c == OBJECTC or c == BYTEARRAYC:
             return "builtins" if what == "__module__" else short(c)
         own = self.classes[ci.origin] if ci.origin != "" else ci
         if dynamic_program() and what in ["__module__", "__qualname__"] and what in own.fdefault and self.default_home(own, what) is own and own.fdefault[what].kind == "str":
@@ -207,7 +207,7 @@ def gen_refl_record(self, c: str) -> str:
     # the field table (names in __dict__ order, descriptors, offsets: null until needed)
     if c in self.classes and self.classes[c].origin != "":
         c = self.classes[c].origin
-    builtin = c not in self.classes or (dynamic_program() and (c == OBJECTC or c == RANGEC or c.startswith(ITERS + "$")))
+    builtin = c not in self.classes or (dynamic_program() and (c == OBJECTC or c == RANGEC or c == BYTEARRAYC or c.startswith(ITERS + "$")))
     key = ("b." + self.refl_type_name(c, "__name__")) if builtin else ("c." + c)
     name = "@pys.refl." + key
     if name in self.reflrecs:

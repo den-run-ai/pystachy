@@ -7,7 +7,7 @@ from src.pystachy_compiler.generators import fresh_yield_context
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Val, tmpname
 from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.reflection import VARS_USES, refl_attr_fields, refl_formatter
-from src.pystachy_compiler.specs import BFILE, BIG, EXCEPTIONS, GLUE, HASATTR, MODATTRS, PYBUILTINS, RANGEC
+from src.pystachy_compiler.specs import BFILE, BIG, BYTEARRAYC, BYTEARRAYS, EXCEPTIONS, GLUE, HASATTR, MODATTRS, PYBUILTINS, RANGEC
 from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import (
@@ -161,6 +161,10 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
                 made = [Val("", f.s)]
                 self.init_result(self.call_fn(self.classes[f.s].methods["__init__"], made, args, want, resultsoft=resultsoft, typeargs=typeargs))
                 return made[0]
+            if f.s == BYTEARRAYC and len(args) > 0 and BYTEARRAYS + "$_new" in self.funcs:
+                # bytearray(source, ...): lib/_pystachy_bytearray.py's _new, a function of its
+                # arguments' types (the class's own __init__ takes none: its objects are of one class)
+                return self.call_fn(self.funcs[BYTEARRAYS + "$_new"], [], args, want, resultsoft=resultsoft)
             o = self.new_obj(f.s)
             self.init_result(self.call_fn(self.classes[f.s].methods["__init__"], [o], args, direct=True))
             return o

@@ -26,7 +26,7 @@ from src.pystachy_compiler.diagnostics import FILES, LINES, MODDUNDERS, Rejoin, 
 from src.pystachy_compiler.dynamic import XCMP, boxed_list_items, comparison_record_write, comparison_storage_key
 from src.pystachy_compiler.ir import Blk, Closure, FnInfo, Frame, Ins, IterArg, Val, tmpname, one_num
 from src.pystachy_compiler.names import ENUMCLASSES, owner, short
-from src.pystachy_compiler.specs import BIG, BIGOPT, INERT_DECOS, NONE_ITEM, NONEVAR, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
+from src.pystachy_compiler.specs import BIG, BIGOPT, BYTEARRAYC, INERT_DECOS, NONE_ITEM, NONEVAR, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
 from src.pystachy_compiler.syntax import NOKIDS, Node, comp_names, made_var, mk, name_targets, starred_target
 from src.pystachy_compiler.utils import (
     elem,
@@ -2031,8 +2031,12 @@ def gen_assign(self, t: Node, v: Val) -> None:
             self.err(f"'{o.t}' does not support item assignment")
     elif k == "slice":
         bnd: list[str] = []
-        o = self.slice_target(t, bnd, "TypeError: 'NoneType' object does not support item assignment")
-        self.slice_store(o, bnd, v)
+        written: list[Val] = []
+        o = self.slice_target(t, bnd, "TypeError: 'NoneType' object does not support item assignment", None, None, written)
+        if len(written) > 0:
+            self.protocol(o, "_setslice", written + [v])
+        else:
+            self.slice_store(o, bnd, v)
     elif (k == "tuple" or k == "list") and v.t == "dyn" and not starred_target(t):
         # a, b = x: x's items, all taken (as CPython does) before the first is stored
         u = Val(self.rt("pys_dyn_unpack", "ptr", [f"ptr {v.v}", f"i64 {len(t.kids)}"]), "vtuple[dyn]")
@@ -2094,7 +2098,7 @@ def gen_assign(self, t: Node, v: Val) -> None:
     else:
         self.err("cannot assign to this expression")
 
-def gen_slice_target(self, t: Node, bnd: list[str], nosub: str, raw: list[str] | None = None, values: list[Val] | None = None) -> Val:
+def gen_slice_target(self, t: Node, bnd: list[str], nosub: str, raw: list[str] | None = None, values: list[Val] | None = None, written: list[Val] | None = None) -> Val:
     # the list that slice t (xs[lo:hi:st]) assigns to or deletes from: xs, then the bounds (into
     # bnd: start, stop and step, see Gen.slice_bound), are evaluated, and xs being None raises
     # nosub. A dynamic augmented assignment also keeps the evaluated bounds in raw/values:
@@ -2115,6 +2119,11 @@ def gen_slice_target(self, t: Node, bnd: list[str], nosub: str, raw: list[str] |
         self.rt("pys_dyn_list_check", "void", [f"ptr {o.v}", f"i64 {operation}"])
         self.slice_dyn(bnd, dvs)
         return o
+    if written is not None and unopt(o.t) == BYTEARRAYC:
+        # a bytearray's slice: its bounds as written (into written), for lib/_pystachy_bytearray.py's
+        # _setslice or _delslice, which the caller calls
+        written.extend(self.slice_written(t.kids[1:]))
+        return self.unwrap(o, nosub)
     bnd.append(self.slice_bound(t.kids[1], dvs))
     bnd.append(self.slice_bound(t.kids[2], dvs))
     bnd.append(self.slice_step(t.kids[3], dvs) if len(t.kids) == 4 else "1")

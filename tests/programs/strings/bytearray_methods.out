@@ -1,0 +1,25 @@
+4 12 -1 4 -1 0 -1 9
+19 5 19 -1 2 16 5 5 2 24
+18 4 6 20
+ValueError: subsection not found
+ValueError: subsection not found
+ValueError: byte must be in range(0, 256)
+True True False True True True False
+True True False True False False True
+bytearray(b'Hello, World! hello') bytearray(b'Hello, World! hello  ') bytearray(b'  Hello, World! hello') bytearray(b'ello, World! hello') bytearray(b'Hello, World! hell') bytearray
+[bytearray(b'Hello,'), bytearray(b'World!'), bytearray(b'hello')] [bytearray(b'  Hello'), bytearray(b' World! hello  ')] [bytearray(b'  He'), bytearray(b''), bytearray(b'o, World! hello  ')] [bytearray(b'  Hello, World! he'), bytearray(b''), bytearray(b'o  ')] [bytearray(b'Hello,'), bytearray(b'World! hello  ')] [bytearray(b'  Hello, World!'), bytearray(b'hello')] [bytearray(b'a'), bytearray(b'b'), bytearray(b'c')] [bytearray(b'a\n'), bytearray(b'b\r\n'), bytearray(b'c')]
+(bytearray(b'  Hello'), bytearray(b','), bytearray(b' World! hello  ')) (bytearray(b'  Hello, World! hel'), bytearray(b'l'), bytearray(b'o  ')) (bytearray(b'  Hello, World! hello  '), bytearray(b''), bytearray(b'')) (bytearray(b''), bytearray(b''), bytearray(b'  Hello, World! hello  '))
+bytearray(b'  HeLLo, WorLd! heLLo  ') bytearray(b'  Heo, World! hello  ') bytearray(b'  Bye, World! hello  ') bytearray(b'- - -Hello, World! hello  ')
+bytearray(b'  HELLO, WORLD! HELLO  ') bytearray(b'  hello, world! hello  ') bytearray(b'  hELLO, wORLD! HELLO  ') bytearray(b'Hello world')
+bytearray(b'   ab  ') bytearray(b'***ab**') bytearray(b'ab...') bytearray(b'   ab') bytearray(b'-00042')
+bytearray(b'Hello, World! hello  ') bytearray(b'  Hello, World! hello') bytearray(b'  Hello, World! hello  ') bytearray(b'  Hello, World! hell')
+True True False True True True True False
+  Hello, World! hello   hé hé h� 00ff10 
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0xff in position 1: invalid start byte
+bytearray(b'a-b-c') bytearray(b'x, y') bytearray(b'q') bytearray(b'') b'u/v'
+bytearray(b'Hello') bytearray(b'') bytearray
+ValueError: non-hexadecimal number found in fromhex() arg at position 1
+bytearray(b'xxyyzz d') bytearray(b'yyzzd') bytearray(b'heo') bytes
+bytearray(b'  HELLO, WORLD! HELLO  !') bytearray(b'  Hello, World! hello  ')
+[bytearray(b'Hello,?'), bytearray(b'World!'), bytearray(b'hello')] bytearray(b'  Hello, World! hello  ')
+[exit 0]

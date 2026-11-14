@@ -38,6 +38,7 @@ from src.pystachy_compiler.specs import (
     OSCONST,
     PYBUILTINS,
     OBJECTC,
+    BYTEARRAYS,
     RANGEC,
     RANGES,
     TYPESMOD,
@@ -290,6 +291,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.err(f"name '{name}' is not defined")
     if name.startswith("__pys_range_"):
         return self.range_prim(name, args)
+    if name.startswith("__pys_ba_"):
+        return self.ba_prim(name, args)
     if name.startswith("__pys_bfile_"):
         # lib/_pystachy_bfile.py's binary files, in that module only: a file of a binary mode
         # (runtime.c's pys_bopen), its reads and writes of bytes, and io.UnsupportedOperation
@@ -2178,6 +2181,12 @@ def gen_bytes_(self, args: list[Node]) -> Val:
         return Val(self.rt("pys_bytes_zeros", "ptr", [f"i64 {self.as_int(v).v}"]), "bytes")
     if v.t == "None" or is_opt(v.t):
         v = self.unwrap(v, "TypeError: cannot convert 'NoneType' object to bytes")
+    if v.t in self.classes and "__bytes__" in self.classes[v.t].methods:
+        # an object's __bytes__(), which CPython calls before it would iterate over the object
+        r = self.protocol(v, "__bytes__", [])
+        if r.t != "bytes":
+            self.err(f"__bytes__ returned non-bytes (type {tname(r.t)})")
+        return r
     if is_tuple(v.t) or is_vtuple(v.t) or v.t in self.classes or is_set(v.t) or is_dict(v.t) or is_gen(v.t):
         v = self.as_list(v, "bytes")
     if not is_list(v.t) or (elem(v.t) != "int" and elem(v.t) != "bool"):
@@ -2476,6 +2485,27 @@ def gen_range_prim(self, name: str, args: list[Node]) -> Val:
         return Val(self.scalar('add', [Val(ns[0], 'int'), Val(k, 'int')]), "int")
     self.err(f"name '{name}' is not defined")
     return Val("", "")
+
+def gen_ba_prim(self, name: str, args: list[Node]) -> Val:
+    # the compiler primitives lib/_pystachy_bytearray.py calls, in that module only: runtime.py's
+    # own of a str's bytes (Gen.primitive, each with its checks), of the bytes that is a
+    # bytearray's buffer, which the module alone holds: __pys_ba_new(n), n zero bytes;
+    # __pys_ba_get(b, i), the byte at i; __pys_ba_put(b, i, x), which stores x there, or raises
+    # ValueError where x is no byte; __pys_ba_copy(dst, at, src, lo, n), dst[at:at + n] =
+    # src[lo:lo + n], which may overlap; __pys_ba_same(a, i, b, j, n), whether a[i:i + n] is
+    # b[j:j + n]; __pys_ba_find_byte(b, x, lo, hi) and __pys_ba_find(b, sub, lo, hi), the first
+    # index of byte x or of sub's bytes in b[lo:hi], or -1. An index outside the bytes raises
+    # IndexError
+    ops = {"__pys_ba_new": "str_new", "__pys_ba_get": "byte", "__pys_ba_put": "str_put", "__pys_ba_copy": "copy",
+           "__pys_ba_same": "same", "__pys_ba_find_byte": "find_byte", "__pys_ba_find": "find_sub"}
+    if self.curfn.mod != BYTEARRAYS or name not in ops or len([a for a in args if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar"]) > 0:
+        self.err(f"name '{name}' is not defined")
+    vals: list[Val] = []
+    for a in args:
+        v = self.expr(a, "")
+        vals.append(Val(v.v, "str") if v.t == "bytes" else self.as_int(v) if v.t == "bool" else v)
+    r = self.primitive(ops[name], vals)
+    return Val(r.v, "bytes") if r.t == "str" else r
 
 def gen_range_fields(self, v: Val) -> list[str]:
     # start, stop and step of range object v, which is not None (lib/_pystachy_range.py's fields,

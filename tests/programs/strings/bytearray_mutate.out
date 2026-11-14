@@ -1,0 +1,53 @@
+set bytearray(b'HellO') 5
+del bytearray(b'Hll') 3
+extend bytearray(b'Hll! world..012\x01\x02\t') 18
+self bytearray(b'Hll! world..012\x01\x02\tHll! world..012\x01\x02\t') 36
+insert bytearray(b'\x01>Hll! world..012\x01\x02\tHll! world..012\x01\x02\t-<\x02') 41
+2 1 45 108
+pop bytearray(b'>Hl! world..012\x01\x02\tHll! world..012\x01\x02\t<') 37
+remove bytearray(b'>H! world.012\x01\x02\tHll! world..012\x01\x02\t<') 35
+reverse bytearray(b'<\t\x02\x01210..dlrow !llH\t\x02\x01210.dlrow !H>') 35
+BufferError: Existing exports of data: object cannot be re-sized
+iadd bytearray(b'<\t\x02\x01210..dlrow !llH\t\x02\x01210.dlrow !H>+=ba') 39
+True
+imul bytearray(b'<\t\x02\x01210..dlrow !llH\t\x02\x01210.dlrow !H>+=ba<\t\x02\x01210..dlrow !llH\t\x02\x01210.dlrow !H>+=ba') 78
+True 78
+imul0 bytearray(b'') 0
+bytearray(b'abcd') bytearray(b'abef') bytearray(b'abab') bytearray(b'ababab') bytearray(b'') bytearray(b'') False bytearray(b'ab')
+one bytearray(b'x') 1
+append 256 ValueError: byte must be in range(0, 256) bytearray(b'abc')
+setitem 256 ValueError: byte must be in range(0, 256) bytearray(b'abc')
+insert 256 ValueError: byte must be in range(0, 256) bytearray(b'abc')
+remove 256 ValueError: byte must be in range(0, 256) bytearray(b'abc')
+extend 256 ValueError: byte must be in range(0, 256) bytearray(b'abc')
+append -1 ValueError: byte must be in range(0, 256) bytearray(b'abc')
+setitem -1 ValueError: byte must be in range(0, 256) bytearray(b'abc')
+insert -1 ValueError: byte must be in range(0, 256) bytearray(b'abc')
+remove -1 ValueError: byte must be in range(0, 256) bytearray(b'abc')
+extend -1 ValueError: byte must be in range(0, 256) bytearray(b'abc')
+append 1000 ValueError: byte must be in range(0, 256) bytearray(b'abc')
+setitem 1000 ValueError: byte must be in range(0, 256) bytearray(b'abc')
+insert 1000 ValueError: byte must be in range(0, 256) bytearray(b'abc')
+remove 1000 ValueError: byte must be in range(0, 256) bytearray(b'abc')
+extend 1000 ValueError: byte must be in range(0, 256) bytearray(b'abc')
+set IndexError: bytearray index out of range
+del IndexError: bytearray index out of range
+get IndexError: bytearray index out of range
+pop IndexError: pop index out of range
+set IndexError: bytearray index out of range
+del IndexError: bytearray index out of range
+get IndexError: bytearray index out of range
+pop IndexError: pop index out of range
+set IndexError: bytearray index out of range
+del IndexError: bytearray index out of range
+get IndexError: bytearray index out of range
+pop IndexError: pop index out of range
+IndexError: pop from empty bytearray
+ValueError: value not found in bytearray
+TypeError: can't concat list to bytearray
+TypeError: can't concat str to bytearray
+TypeError: can't concat int to bytearray
+after bytearray(b'abc') 3
+6780 57441 800651 b'\x00xy\x01\x02\x03\x04\x05\x06\x07xy' b'yz\x80\x81\x83\x84\x85\x86xyz\x87'
+0 200 6780 6781 False
+[exit 0]

@@ -78,6 +78,7 @@ from src.pystachy_compiler.specs import (
     PLATFORM,
     PYBUILTINS,
     OBJECTS,
+    BYTEARRAYS,
     RANGES,
     STANDINS,
     TYPESMOD,
@@ -649,6 +650,21 @@ def binary_opens(n: Node) -> None:
     n.kids = n.kids[:at] + [Parser(Lexer(src, first).file()).module().kids[0]] + n.kids[at:]
 
 
+def bytearray_import(n: Node) -> None:
+    # module body n whose code may read the builtin name bytearray (analysis.module_reads: nothing
+    # at the module's top level binds it): the class is lib/_pystachy_bytearray.py's, which the
+    # module imports after its docstring and __future__ imports, as if it had written the import.
+    # A function's own bytearray hides it there, as it hides the builtin
+    if not module_reads(n, "bytearray"):
+        return
+    at = 1 if len(n.kids) > 0 and n.kids[0].kind == "expr" and n.kids[0].kids[0].kind == "str" else 0
+    while at < len(n.kids) and n.kids[at].kind == "import" and n.kids[at].s == "from" and all([a.kind == "alias" and len(a.kids) == 2 and a.kids[0].s.startswith("__future__.") for a in n.kids[at].kids]):
+        at += 1
+    line = n.kids[at].line if at < len(n.kids) else n.line
+    src = "from " + BYTEARRAYS + " import bytearray\n"
+    n.kids = n.kids[:at] + [Parser(Lexer(src, line).file()).module().kids[0]] + n.kids[at:]
+
+
 def ascii_ident(s: str) -> bool:
     # is ASCII string s an identifier, as str.isidentifier() tells
     for i in range(len(s)):
@@ -783,6 +799,8 @@ class Loader:
         m.body = self.parse_source(src, 1)
         tb_import(m.body)
         binary_opens(m.body)
+        if not self.rtmode and len(self.dirs) > 0:
+            bytearray_import(m.body)
         cm_methods(m.body, cm_names(m.body))
         enum_classes(m.body, enum_names(m.body))
         self.argparse(m.body)
@@ -1148,6 +1166,8 @@ class Loader:
         self.parsed[path] = self.parse_source(src, k * LINES + 1, self.in_lib(path))
         tb_import(self.parsed[path])
         binary_opens(self.parsed[path])
+        if not self.rtmode and len(self.dirs) > 0:
+            bytearray_import(self.parsed[path])
         cm_methods(self.parsed[path], cm_names(self.parsed[path]))
         enum_classes(self.parsed[path], enum_names(self.parsed[path]))
         self.argparse(self.parsed[path])
