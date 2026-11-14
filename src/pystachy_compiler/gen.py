@@ -1090,6 +1090,10 @@ from src.pystachy_compiler.program import (
     gen_class_ref as program_class_ref,
     gen_dc_options as program_dc_options,
     gen_init_template as program_init_template,
+    gen_init_generic as program_init_generic,
+    gen_fixed_ann as program_fixed_ann,
+    gen_fixed_stores as program_fixed_stores,
+    gen_fixed_init as program_fixed_init,
     gen_template_fix as program_template_fix,
     gen_left_out as program_left_out,
     gen_makes_tmpl as program_makes_tmpl,
@@ -3723,6 +3727,18 @@ class Gen:
 
     def init_template(self, st: Node) -> bool:
         return program_init_template(self, st)
+
+    def init_generic(self, st: Node) -> bool:
+        return program_init_generic(self, st)
+
+    def fixed_ann(self, a: Node) -> bool:
+        return program_fixed_ann(self, a)
+
+    def fixed_stores(self, n: Node, receiver: str, fields: dict[str, str]) -> bool:
+        return program_fixed_stores(self, n, receiver, fields)
+
+    def fixed_init(self, st: Node) -> bool:
+        return program_fixed_init(self, st)
 
     def template_fix(self, cs: list[Node]) -> str:
         return program_template_fix(self, cs)

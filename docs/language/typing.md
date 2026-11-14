@@ -759,6 +759,25 @@ the same types share a specialization: `Box(1)` and `Box(2)` share one, while `B
 uses another. Methods compile when needed; non-template special methods compile when the
 specialization is created.
 
+When every initialized instance field has a concrete class-body annotation or an inline
+annotation before its first unannotated store in source order,
+constructor code can specialize without changing the class's layout. For example,
+`__init__(self, groups: Iterable[list[str]])` can fill `self.seen: dict[str, int]`
+from lists, tuples or generators. All such objects have the same static class and can
+share a variable or container. This gives consumer classes concrete parameter types,
+so those consumers can use ordinary inheritance without becoming class templates. Its constructor
+and instance methods remain compiled on demand, including in an unused class in the
+main module. This path excludes classes appearing as a base or subclass in the import
+graph, explicit `Generic` classes, inferred fields, stored
+`Iterable`/`Iterator` fields, property stores, initialization delegated through `self`
+(including aliases and helpers), callable-controlled constructor layouts,
+deferred string field annotations and fields annotated with a specialization of another
+class template.
+
+Direct generic constructors in inheritance hierarchies retain the existing template
+restriction. This preserves lazy exclusion of unsupported imported subclasses: merely
+declaring an unused subclass must not make a working base-class call compile its overrides.
+
 If `Box.__init__(self, value: Any) -> None` assigns `self.value = value`, it behaves like
 the unannotated constructor: `Box(1).value` is an `int`, and `Box("s").value` is a `str`.
 Existing field types cannot change later. `Any` does not provide a shared boxed layout for
@@ -1033,7 +1052,7 @@ class variables.
 ## Single inheritance
 
 An ordinary class may derive from one previously declared ordinary class, including an
-imported class. Annotate its `__init__` parameters; constructor-inferred class templates and
+imported class. Annotate its `__init__` parameters with concrete types; constructor-inferred class templates and
 `Generic` classes cannot participate in a hierarchy. Fields retain their declared or inferred
 types, and the existing field-inference rules still apply.
 
