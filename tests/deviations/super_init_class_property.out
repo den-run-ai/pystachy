@@ -1,0 +1,6 @@
+initializing an unbound super object with a receiver overriding __class__ is not supported
+absent initialized
+base initialized
+base initialized
+proxy initialized
+[exit 0]

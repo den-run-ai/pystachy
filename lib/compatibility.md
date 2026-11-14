@@ -1005,13 +1005,24 @@ arguments. `closing(thing)`, `nullcontext()`, `nullcontext(value)`, `suppress(A,
 
 - `@contextmanager` (or `@contextlib.contextmanager`, as the module imports it) on a method, its
   only decorator, makes the generator method `_pys_cm_NAME` and a method `NAME(self, /, *args,
-  **kwds)` that returns what `contextmanager(self._pys_cm_NAME)(*args, **kwds)` returns (the
-  subset has no other decorated methods): `dir()` and `vars()` of the class show the first, and
+  **kwds)` that captures the receiver for the defining class's generator (the subset has no
+  other decorated methods): `dir()` and `vars()` of the class show the first, and
   those of the module `_pys_cm_GCM`, the name it imports `_GeneratorContextManager` as. Subclasses
-  inherit and override such a method, and `super().NAME()` runs the base class's generator, but a
-  manager that `super().NAME()` makes and that decorates a function makes its generator for each
-  call with the method of the object's class; an override of a method of a class of another module is
+  inherit and override such a method, also in another module, and `super().NAME()` runs the base
+  class's generator. Explicit class calls and decorator recreation keep that defining generator,
+  including when a class-typed receiver is `None`; the generator's own dereferences then raise
+  when its body runs. Where an override is in
+  another module than the method it overrides, a call through a value of the base class is
   rejected as the program compiles (the managers' types differ).
+- A method manager's `func` retains the port's bound-generator representation, and `args` omits
+  that bound receiver. Recreation observes same-type replacements of `args` and `kwds`.
+  Assigning `func`, even to itself, restores the port's ordinary bound-method dispatch: it
+  requires a non-null bound receiver and may select its override instead of an explicitly
+  named base implementation. Untouched managers retain the defining generator.
+  Inspecting `func.__name__` or `func.__qualname__` is safe with a `None` receiver, but uses
+  the hierarchy's canonical root method's static metadata: an explicit derived-class call
+  can therefore report the root's qualified name. CPython exposes the defining unbound
+  generator instead ([test](../tests/deviations/contextmanager_derived_none_metadata.py)).
 - `suppress()` as a `with` statement's item, with exception classes named, is compiled as an
   `except` clause that catches them; one kept as a value, or given exception classes held as
   values, is CPython's (its `__exit__` tests them with `issubclass()`). `with suppress(...) as x`

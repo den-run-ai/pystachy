@@ -118,8 +118,11 @@ inductive Node where
   /-- `dst :=` field `index` of class `cls` of the object `object` points to. -/
   | readField (dst object : Name) (cls : String) (index : Nat) (next : Nat)
   /-- Field `index` of class `cls` of the object `object` points to gets `v`. Another field of
-  the class, of any object, keeps its value; any other field may change. -/
-  | writeField (object : Name) (cls : String) (index : Nat) (v : Name) (next : Nat)
+  the class, of any object, keeps its value, and so does every field of each class `unrelated`
+  lists (classes that no object of `cls` also is, which typed memory keeps apart); any other
+  field may change. The checker refuses a write that lists its own class. -/
+  | writeField (object : Name) (cls : String) (index : Nat) (v : Name) (unrelated : List String)
+      (next : Nat)
   /-- Any object's fields may change. -/
   | heap (next : Nat)
   /-- An unchecked read of a list item: the index must be within the length. -/
@@ -188,8 +191,8 @@ def survives : Node → Fact → Bool
   | .entry dst _ _, f | .readField dst _ _ _ _, f => !f.mentions dst
   | .lists _, f => !f.onLists
   | .dicts _, f => !f.onDicts
-  | .writeField _ cls index _ _, f => match f with
-      | .cell _ c i _ => c == cls && i != index
+  | .writeField _ cls index _ unrelated _, f => match f with
+      | .cell _ c i _ => (c == cls && i != index) || unrelated.contains c
       | _ => true
   | .heap _, f => !f.onFields
   | _, _ => true
@@ -259,7 +262,7 @@ def generated (facts : Facts) : Node → Nat → Facts
   | .find dst d _, _ => if dst = d then [] else [.found dst d]
   | .entry dst d _, _ => if dst = d then [] else [.entry dst d]
   | .readField dst o c i _, _ => if dst = o then [] else [.cell o c i dst]
-  | .writeField o c i v _, _ => [.cell o c i v]
+  | .writeField o c i v _ _, _ => [.cell o c i v]
   | .test c _ _, edge => condFacts c (edge == 0) ++ boundFacts facts c (edge == 0)
   | _, _ => []
 
@@ -381,13 +384,19 @@ def safeFacts (facts : Facts) (node : Node) : Bool :=
 def edges : Node → List (Nat × Nat)
   | .havoc _ n | .copy _ _ n | .lit _ _ n | .add _ _ _ n | .length _ _ n | .lists n
   | .dicts n | .find _ _ n | .entry _ _ n | .jump n | .load _ _ n | .value _ _ n
-  | .deref _ n | .readField _ _ _ _ n | .writeField _ _ _ _ n | .heap n => [(n, 0)]
+  | .deref _ n | .readField _ _ _ _ n | .writeField _ _ _ _ _ n | .heap n => [(n, 0)]
   | .addChecked _ _ _ n o => [(n, 0), (o, 1)]
   | .test _ y n | .choice y n => [(y, 0), (n, 1)]
   | .stop => []
 
+/-- A node the semantics can always take: a write never lists its own class as unrelated
+(`writeField_step`). -/
+def wellFormed : Node → Bool
+  | .writeField _ cls _ _ unrelated _ => !unrelated.contains cls
+  | _ => true
+
 def nodeOK (program : Program) (certificate : Certificate) (pc : Nat) (node : Node) : Bool :=
-  safeFacts (factsAt certificate pc) node &&
+  wellFormed node && safeFacts (factsAt certificate pc) node &&
   (edges node).all fun (target, edge) =>
     decide (target < program.nodes.length) &&
     justified (immediates node edge (factsAt certificate pc)) (factsAt certificate target)
@@ -475,10 +484,12 @@ inductive Move : Node → Mem → Nat → Mem → Prop where
       m.live (m.val d) e → Move (.entry dst d next) m next (m.set dst e)
   | readField {dst o : Name} {c : String} {i next : Nat} {m : Mem} :
       Move (.readField dst o c i next) m next (m.set dst (m.cell (m.val o) c i))
-  | writeField {o v : Name} {c : String} {i next : Nat} {m : Mem} {cell : Int → String → Nat → Int} :
+  | writeField {o v : Name} {c : String} {i next : Nat} {unrelated : List String} {m : Mem}
+      {cell : Int → String → Nat → Int} :
       (∀ a d j, I64 (cell a d j)) → cell (m.val o) c i = m.val v →
       (∀ a j, j ≠ i → cell a c j = m.cell a c j) →
-      Move (.writeField o c i v next) m next { m with cell := cell }
+      (∀ a d j, d ∈ unrelated → cell a d j = m.cell a d j) →
+      Move (.writeField o c i v unrelated next) m next { m with cell := cell }
   | heap {next : Nat} {m : Mem} {cell : Int → String → Nat → Int} :
       (∀ a d j, I64 (cell a d j)) → Move (.heap next) m next { m with cell := cell }
   | testYes {c : Cond} {yes no : Nat} {m : Mem} : c.Holds m → Move (.test c yes no) m yes m
@@ -1159,7 +1170,7 @@ theorem move_sound {node : Node} {m : Mem} {target : Nat} {after : Mem} {facts :
             subst h
             simp only [Fact.Holds, Mem.set]
             simp [Ne.symm differ]
-  | @writeField o v c i next _ cell bounded stored others =>
+  | @writeField o v c i next unrelated _ cell bounded stored others apart =>
       refine ⟨⟨wf.1, wf.2.1, wf.2.2.1, bounded⟩, 0, by simp [edges], ?_⟩
       intro fact member
       simp only [immediates, List.mem_append] at member
@@ -1168,11 +1179,14 @@ theorem move_sound {node : Node} {m : Mem} {target : Nat} {after : Mem} {facts :
         have holds := known fact inFacts
         cases fact with
         | cell a d j w =>
-            simp only [survives, Bool.and_eq_true, beq_iff_eq, bne_iff_ne, ne_eq] at keeps
-            obtain ⟨rfl, differ⟩ := keeps
+            simp only [survives, Bool.or_eq_true, Bool.and_eq_true, beq_iff_eq, bne_iff_ne, ne_eq,
+              List.contains_iff_mem] at keeps
             simp only [Fact.Holds] at holds ⊢
-            rw [others _ _ differ]
-            exact holds
+            rcases keeps with ⟨rfl, differ⟩ | listed
+            · rw [others _ _ differ]
+              exact holds
+            · rw [apart _ _ _ listed]
+              exact holds
         | _ => exact (holds_fields (by simp [Fact.onFields])).mpr holds
       · simp only [generated] at h
         simp at h
@@ -1331,7 +1345,41 @@ theorem accepted_access_safe {program : Program} {certificate : Certificate}
   obtain ⟨_, known⟩ := reachable_invariant checked wf reachable
   have ok := accepted_node checked found
   simp only [nodeOK, Bool.and_eq_true] at ok
-  exact safeFacts_sound known ok.1
+  exact safeFacts_sound known ok.1.2
+
+/-- The cells after field `i` of class `c` of the object at `a₀` gets `x`, and nothing else. -/
+def Mem.written (m : Mem) (a₀ : Int) (c : String) (i : Nat) (x : Int) : Int → String → Nat → Int :=
+  fun a d j => if a = a₀ ∧ d = c ∧ j = i then x else m.cell a d j
+
+/-- A write whose class `unrelated` does not list can always happen, from any well-formed
+state: the cells its premises keep are other cells than the one it writes. The premises that
+model typed memory therefore never make an execution stop at a write. -/
+theorem writeField_step {o v : Name} {c : String} {i next : Nat} {unrelated : List String}
+    {m : Mem} (wf : WF m) (own : c ∉ unrelated) :
+    ∃ m', Move (.writeField o c i v unrelated next) m next m' := by
+  refine ⟨{ m with cell := m.written (m.val o) c i (m.val v) }, Move.writeField ?_ ?_ ?_ ?_⟩
+  · intro a d j
+    unfold Mem.written
+    split
+    · exact wf.1 v
+    · exact wf.2.2.2 a d j
+  · simp [Mem.written]
+  · intro a j differ
+    simp [Mem.written, differ]
+  · intro a d j listed
+    have other : d ≠ c := fun same => own (same ▸ listed)
+    simp [Mem.written, other]
+
+/-- Every write of an accepted program can happen (`writeField_step`): the checker refuses one
+that lists its own class as unrelated. -/
+theorem accepted_write_progress {program : Program} {certificate : Certificate}
+    (checked : check program certificate = true) {pc : Nat} {o v : Name} {c : String}
+    {i next : Nat} {unrelated : List String}
+    (found : program.nodes[pc]? = some (.writeField o c i v unrelated next)) {m : Mem}
+    (wf : WF m) : ∃ m', Move (.writeField o c i v unrelated next) m next m' := by
+  have ok := accepted_node checked found
+  simp [nodeOK, wellFormed] at ok
+  exact writeField_step wf ok.1.1
 
 /-! ## Kernel-checked examples
 
@@ -1577,7 +1625,7 @@ def fieldReloadCertificate : Certificate := [
 example : check fieldReload fieldReloadCertificate = true := by decide
 /- A write to any field between the two reads, or a call that may write fields. -/
 example : check ⟨[.readField "d" "self" "State" 1 1, .find "e" "d" 2,
-    .test (.eq (.reg "e") (.lit (-1))) 6 3, .writeField "self" "Other" 2 "x" 4,
+    .test (.eq (.reg "e") (.lit (-1))) 6 3, .writeField "self" "Other" 2 "x" [] 4,
     .readField "d2" "self" "State" 1 5, .value "d2" "e" 6, .stop], 0⟩
     (fieldReloadCertificate.take 4 ++ [[.cell "self" "State" 1 "d", .entry "e" "d"]] ++
      [fieldReloadCertificate[4]!, []]) = false := by decide
@@ -1588,9 +1636,9 @@ example : check ⟨[.readField "d" "self" "State" 1 1, .find "e" "d" 2,
      [fieldReloadCertificate[4]!, []]) = false := by decide
 /- `self.hits += 1` between them writes another field of the same class: the dict's field keeps
 its value. The same field of any object, or a field of another class, may be the dict's. -/
-def fieldWriteBetween (o : Name) (c : String) (i : Nat) : Program := ⟨[
+def fieldWriteBetween (o : Name) (c : String) (i : Nat) (unrelated : List String := []) : Program := ⟨[
   .readField "d" "self" "State" 1 1, .find "e" "d" 2,
-  .test (.eq (.reg "e") (.lit (-1))) 6 3, .writeField o c i "x" 4,
+  .test (.eq (.reg "e") (.lit (-1))) 6 3, .writeField o c i "x" unrelated 4,
   .readField "d2" "self" "State" 1 5, .value "d2" "e" 6, .stop], 0⟩
 
 def fieldWriteCertificate : Certificate :=
@@ -1600,6 +1648,13 @@ def fieldWriteCertificate : Certificate :=
 example : check (fieldWriteBetween "self" "State" 5) fieldWriteCertificate = true := by decide
 example : check (fieldWriteBetween "other" "State" 1) fieldWriteCertificate = false := by decide
 example : check (fieldWriteBetween "self" "Base" 5) fieldWriteCertificate = false := by decide
+/- A field of a class that no `State` object also is (`re.parse`'s `p.state.flags = ...` before
+`p.state` is read again) keeps the dict's field, where the write lists `State` as unrelated. A
+write that lists another class, or its own, keeps nothing more. -/
+example : check (fieldWriteBetween "other" "Pattern" 0 ["State"]) fieldWriteCertificate = true := by decide
+example : check (fieldWriteBetween "other" "Pattern" 0 ["Tokenizer"]) fieldWriteCertificate = false := by
+  decide
+example : check (fieldWriteBetween "other" "State" 1 ["State"]) fieldWriteCertificate = false := by decide
 
 /- Another field of the same object is another value. -/
 example : check ⟨[.readField "d" "self" "State" 1 1, .find "e" "d" 2,

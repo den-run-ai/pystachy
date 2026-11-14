@@ -1,0 +1,15 @@
+template created
+template enter True
+template value 3
+template exit
+template reader created
+template read enter
+template error 'NoneType' object has no attribute 'value'
+template created
+template enter False
+template value 3
+template exit
+template reader created
+template read enter
+template read 17
+[exit 0]

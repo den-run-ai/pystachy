@@ -1,0 +1,31 @@
+receiver False
+argument 9
+safe body True
+safe 9
+argument 7
+value body
+value error 'NoneType' object has no attribute 'x'
+argument 7
+value body
+chain error 'NoneType' object has no attribute 'x'
+argument 11
+write body
+write error 'NoneType' object has no attribute 'x' and no __dict__ for setting new attributes
+argument 2
+recursive error 'NoneType' object has no attribute 'x'
+receiver True
+argument 9
+safe body False
+safe 9
+argument 7
+value body
+value 49
+argument 7
+value body
+chain 49
+argument 11
+write body
+write done
+argument 2
+recursive 11
+[exit 0]

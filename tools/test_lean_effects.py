@@ -79,9 +79,112 @@ class EffectSummaryTests(unittest.TestCase):
         self.assertEqual(found["@raw"] & effects.WRITES, effects.WRITES)
         self.assertEqual(found["@field"] & effects.WRITES, {"wO"})
         self.assertEqual(found["@global"] & effects.WRITES, {"wG"})
+        # An escaped slot is still the function's own stack memory: others may read or write it
+        # through its address, but a store to it changes no global, object, list or dict.
         private["blocks"][0]["operations"].insert(0, op("slot.pack", [("%local.1", "*int")], [2], typ="%slot"))
-        self.assertEqual(effects.summaries({"functions": [private]})["@private"] & effects.WRITES,
-                         effects.WRITES)
+        self.assertFalse(effects.summaries({"functions": [private]})["@private"] & effects.WRITES)
+        # Its address passed on lets a callee write anything through that parameter, though.
+        writer = function("@writer", [op("mach.store", [("%a0", "%ptr"), ("1", "int")])])
+        private["blocks"][0]["operations"].insert(1, op("call", [("%local.1", "*int")], text="@writer", typ="None"))
+        found = effects.summaries({"functions": [private, writer]})
+        self.assertEqual(found["@private"] & effects.WRITES, effects.WRITES)
+
+    def test_stores_into_memory_the_body_allocates_change_no_prior_state(self):
+        # (a closure's cell and environment, as _first in examples/ndarray builds them, and a
+        # fixed object's field: new memory on each execution)
+        cell = [op("rt", [("8", "int")], [1], text="alloc", typ="%ptr"),
+                op("mem.store", [("%t1", "*int"), ("%a0", "int")])]
+        environment = [op("rt", [("16", "int")], [2], text="alloc", typ="%ptr"),
+                       op("mach.addr", [("%t2", "%ptr"), ("1", "int")], [3], text="%ptr", typ="%ptr"),
+                       op("mach.store", [("%t3", "%ptr"), ("null", "%ptr")])]
+        obj = [op("alloc.fixed", [], [4], typ="Thing"),
+               op("field.addr", [("%t4", "Thing")], [5], typ="*int", immediate=1),
+               op("mem.store", [("%t5", "*int"), ("1", "int")])]
+        # (a promoting program's closure cell: 23 bytes requested for a 24-byte slot, its identity
+        # box in the third word, functions.py)
+        identity_cell = [op("rt", [("23", "int")], [8], text="alloc", typ="%ptr"),
+                         op("mach.addr", [("%t8", "%ptr"), ("2", "int")], [9], text="%ptr", typ="%ptr"),
+                         op("mem.store", [("%t9", "*dyn"), ("null", "dyn")])]
+        # (a fixed tuple's last word: lru_cache's _call copies its key into a new tuple)
+        pair = [op("alloc.fixed", [], [6], typ="tuple[str,int,int]"),
+                op("mach.addr", [("%t6", "%ptr"), ("2", "int")], [7], text="int", typ="%ptr"),
+                op("mach.store", [("%t7", "%ptr"), ("1", "int")])]
+        for operations in (cell, environment, obj, pair, identity_cell, cell + environment + obj + pair):
+            with self.subTest(operations=[o["op"] for o in operations]):
+                found = effects.summaries({"functions": [function("@fresh", copy.deepcopy(operations))]})
+                self.assertFalse(found["@fresh"] & effects.WRITES)
+                self.assert_verdict(self.guarded("list", copy.deepcopy(operations)), True)
+
+    def test_other_derivations_of_fresh_memory_still_write_anything(self):
+        alloc = op("rt", [("8", "int")], [1], text="alloc", typ="%ptr")
+        bodies = {
+            "computed index": [alloc, op("mach.addr", [("%t1", "%ptr"), ("%a0", "int")], [2], text="int", typ="%ptr"),
+                               op("mach.store", [("%t2", "%ptr"), ("1", "int")])],
+            "index past the end": [alloc, op("mach.addr", [("%t1", "%ptr"), ("1", "int")], [2], text="int", typ="%ptr"),
+                                   op("mach.store", [("%t2", "%ptr"), ("1", "int")])],
+            # (an allocation of n bytes holds n + 1: a word at byte 2 of 8 ends past them)
+            "word at a late byte": [alloc, op("mach.addr", [("%t1", "%ptr"), ("2", "int")], [2], text="%byte",
+                                              typ="%ptr"), op("mach.store", [("%t2", "%ptr"), ("1", "int")])],
+            "unknown size": [op("rt", [("%a0", "int")], [1], text="alloc", typ="%ptr"),
+                             op("mach.store", [("%t1", "%ptr"), ("1", "int")])],
+            "join with a parameter": [alloc, op("select", [("%a1", "bool"), ("%t1", "%ptr"), ("%a2", "%ptr")], [2],
+                                                typ="%ptr"), op("mach.store", [("%t2", "%ptr"), ("1", "int")])],
+            "pointer read from it": [alloc, op("mach.load", [("%t1", "%ptr")], [2], typ="%ptr"),
+                                     op("mach.store", [("%t2", "%ptr"), ("1", "int")])],
+            "other allocator": [op("rt", [("8", "int")], [1], text="list.new", typ="%ptr"),
+                                op("mach.store", [("%t1", "%ptr"), ("1", "int")])],
+            "word past a tuple": [op("alloc.fixed", [], [1], typ="tuple[str,int]"),
+                                  op("mach.addr", [("%t1", "%ptr"), ("2", "int")], [2], text="int", typ="%ptr"),
+                                  op("mach.store", [("%t2", "%ptr"), ("1", "int")])],
+            "variadic tuple": [op("alloc.fixed", [], [1], typ="tuple[int,...]"),
+                               op("mach.addr", [("%t1", "%ptr"), ("0", "int")], [2], text="int", typ="%ptr"),
+                               op("mach.store", [("%t2", "%ptr"), ("1", "int")])],
+        }
+        for name, operations in bodies.items():
+            with self.subTest(name=name):
+                found = effects.summaries({"functions": [function("@stale", copy.deepcopy(operations))]})
+                self.assertIn("wL", found["@stale"])
+                self.assert_verdict(self.guarded("list", copy.deepcopy(operations)), False)
+        # (a promoting int's two words need 16 bytes from the address: 15 requested holds them, 8
+        # does not, nor does the last word of a 23-byte cell)
+        for size, index, fits in (("15", "0", True), ("8", "0", False), ("23", "2", False), ("23", "1", True)):
+            with self.subTest(size=size, index=index):
+                body = [op("rt", [(size, "int")], [1], text="alloc", typ="%ptr"),
+                        op("mach.addr", [("%t1", "%ptr"), (index, "int")], [2], text="%ptr", typ="%ptr"),
+                        op("mem.store", [("%t2", "*int+"), ("%a0", "int+")])]
+                found = effects.summaries({"functions": [function("@wide", body)]})["@wide"]
+                self.assertEqual(found & effects.WRITES, set() if fits else effects.WRITES)
+        # (an object's first word is its class tag only for a tagged class)
+        header = [op("alloc.fixed", [], [1], typ="Thing"), op("mach.store", [("%t1", "%ptr"), ("2", "int")])]
+        for tagged in (True, False):
+            with self.subTest(tagged=tagged):
+                snapshot = {"functions": [function("@header", copy.deepcopy(header))],
+                            "classes": {"Thing": {"base": "", "role": "", "overlaps": [], "tagged": tagged}}}
+                found = effects.summaries(snapshot)["@header"]
+                self.assertEqual(found & effects.WRITES, set() if tagged else effects.WRITES)
+        # (a field of memory that is not a fixed object's stays an object write)
+        untyped = [alloc, op("field.addr", [("%t1", "Thing")], [2], typ="*int"),
+                   op("mem.store", [("%t2", "*int"), ("1", "int")])]
+        self.assertEqual(effects.summaries({"functions": [function("@stale", untyped)]})["@stale"]
+                         & effects.WRITES, {"wO"})
+
+    def test_identity_return_stores_are_the_caller_slot_only_where_every_call_passes_one(self):
+        returner = function("@returner", [op("mem.store", [("%idret", "*dyn"), ("null", "dyn")])])
+        slot = op("slot", results=[1], typ="dyn", text="h")
+        for argument, writes in (("%h.1", set()), ("%idret", set()), ("null", set()),
+                                 ("%a0", effects.WRITES), ("@g.saved", effects.WRITES)):
+            with self.subTest(argument=argument):
+                caller = function("@caller", [op("mem.store", [("%h.1", "*dyn"), ("null", "dyn")]),
+                                              op("call", [("1", "int"), (argument, "*dyn")], [2],
+                                                 text="@returner", typ="int")], slots=[slot])
+                found = effects.summaries({"functions": [copy.deepcopy(returner), caller]})
+                self.assertEqual(found["@returner"] & effects.WRITES, writes)
+                self.assertEqual(found["@caller"] & effects.WRITES, writes)
+        # (an argument of another type is no identity-return buffer)
+        caller = function("@caller", [op("call", [("1", "int"), ("%h.1", "*int")], [2], text="@returner",
+                                         typ="int")], slots=[slot])
+        self.assertEqual(effects.summaries({"functions": [copy.deepcopy(returner), caller]})["@returner"]
+                         & effects.WRITES, effects.WRITES)
 
     def test_unknown_store_may_rebind_a_global_before_later_length_test(self):
         snapshot = NegatedComparisonTests.snapshot("list", 0)

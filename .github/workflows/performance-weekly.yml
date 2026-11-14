@@ -1,0 +1,73 @@
+# Advisory weekly AOT timing (docs/testing.md#weekly-aot-performance, #1302): every adapted
+# pyperformance port and bench/*.py microbenchmark, built by the head's compiler and a base's, against
+# the Performance smoke's fixed reference and against main's first-parent commit of a week before.
+# Outputs must equal CPython's; confirmed slowdowns of 10% and 2 ms warn, and nothing gates merging.
+# Not on PRs or pushes: those run the Performance smoke workflow's eleven workloads.
+name: Weekly performance
+
+on:
+  schedule:
+    - cron: '41 8 * * 1'   # Mondays, 08:41 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: perf-weekly-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  aot:
+    name: AOT suite against the ${{ matrix.against }} baseline
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        against: [reference, previous-week]
+    env:
+      PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+      # The Performance smoke's fixed reference (performance.yml): the same cumulative series start.
+      PERF_REFERENCE: 80840d264b2d4e76c21a8deec6db90ce6e3c5b22
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          path: head
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Select baseline
+        working-directory: head
+        env:
+          AGAINST: ${{ matrix.against }}
+        run: |
+          if [ "$AGAINST" = reference ]; then
+            BASE=$PERF_REFERENCE
+          else
+            # the first-parent commit of seven days before the head's commit time
+            WEEK=$(date -u -d "@$(( $(git show -s --format=%ct HEAD) - 7 * 86400 ))" +%Y-%m-%dT%H:%M:%SZ)
+            BASE=$(git rev-list -1 --first-parent --before="$WEEK" HEAD)
+          fi
+          test -n "$BASE"
+          echo "PERF_BASE=$BASE" >> "$GITHUB_ENV"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ env.PERF_BASE }}
+          path: base
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version-file: head/.python-version
+      - run: tools/setup.sh --minimal
+        working-directory: head
+      - name: Weekly AOT comparison
+        working-directory: head
+        # Every command shares an 11-minute deadline, leaving job time for setup, reports and upload.
+        run: python3 tools/perf_smoke.py --suite weekly --budget 660 --base ../base --json ../perf-weekly.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        if: always()
+        with:
+          name: perf-weekly-${{ matrix.against }}
+          path: perf-weekly.json
+          if-no-files-found: error
+          retention-days: 90

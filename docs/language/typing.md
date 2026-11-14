@@ -569,8 +569,11 @@ expected type. Field and property reads and stores dispatch on the member. A rea
 an attribute a member lacks raises CPython's `AttributeError`; a store that would add
 an attribute to a member's object is rejected, since a native layout has no instance
 dictionary. `None`, frozen dataclasses and classes with only `__slots__` raise CPython's
-errors. `is` and `is not` compare the objects themselves, `None` included. Narrow a local
-to a member before equality comparison, truth testing or formatting. Containers remain
+errors. `is` and `is not` compare the objects themselves, `None` included. A tuple's `in`,
+`count()` and `index()` find the same object first, then compare a member's object as an object
+of its class compares, but for methods that cannot take the other object
+([compatibility](compatibility.md#functions-and-object-identity)). Narrow a local to a member
+before equality comparison, truth testing or formatting. Containers remain
 invariant, and no reference union is [inferred](#inferred-unions). This adds deterministic
 native execution, without profiles, an interpreter, runtime compilation or speculative
 assumptions; boxing and dispatch have costs, so no performance improvement is claimed.
@@ -1058,6 +1061,11 @@ joins discard refinements that no longer hold. Globals, fields and locals assign
 `nonlocal` closure are not refined; copy a reference to a stable local and test that local.
 Only a single named derived class refines a base type; tuple/union tests and exception-class
 narrowing retain their existing restrictions.
+
+An explicit `C.method(obj, ...)` call evaluates all arguments before entering the method,
+including when the class-typed `obj` is `None`. A body that does not dereference it can
+complete; a field or method lookup on it raises at that lookup. In `obj.method(...)`, the
+receiver's attribute lookup still happens before argument evaluation.
 
 A class that derives from `abc.ABC`, or whose statement passes `metaclass=abc.ABCMeta`, has
 abstract methods: those decorated with `@abstractmethod` (also under `@property`,

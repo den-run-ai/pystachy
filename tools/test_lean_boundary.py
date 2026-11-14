@@ -7,8 +7,11 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
+from unittest import mock
 
+import check_lean_boundary
 from check_lean_boundary import Unsupported, check_all, normalize_snapshot
 
 
@@ -356,6 +359,62 @@ class AdapterTests(SnapshotFixture):
         self.assertEqual(json.loads(completed.stdout)["status"], "error")
 
 
+class CheckerServerTests(unittest.TestCase):
+    """check_lean_boundary.checker_result replaces a long-lived checker process after any
+    failure, so a later candidate never reads an earlier one's late or extra output."""
+
+    def fake(self, body):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        path = Path(directory.name) / "checker"
+        path.write_text("#!/bin/sh\n" + body + "\n")
+        path.chmod(0o755)
+        return path
+
+    def test_failed_checker_is_stopped_and_replaced(self):
+        for body, error in (("read line; exec sleep 30", subprocess.TimeoutExpired),
+                            ("read line; exit 0", ValueError),
+                            ("read line; printf '{}\\n{}\\n'; exec sleep 30", ValueError)):
+            fake = self.fake(body)
+            for attempt in range(2):
+                with self.assertRaises(error, msg=body):
+                    check_lean_boundary.checker_result(fake, "{}\n", 0.5)
+                process = check_lean_boundary._started[-1].process
+                self.assertEqual(process.args, [str(fake.resolve()), "--batch"])
+                self.assertIsNotNone(process.poll(), body)
+            self.assertNotIn(str(fake.resolve()), check_lean_boundary._servers.by_path)
+
+    def test_candidate_must_be_one_line(self):
+        for encoded in ("{}", "{}\n{}\n"):
+            with self.assertRaisesRegex(ValueError, "one line"):
+                check_lean_boundary.checker_result(self.fake("exit 1"), encoded, 1)
+
+    def test_timeout_includes_writing_a_candidate_larger_than_the_pipe(self):
+        fake = self.fake("exec sleep 30")  # never reads stdin
+        server = check_lean_boundary.Server(str(fake.resolve()))
+        # Independent cleanup also bounds the broken implementation: its blocking write
+        # otherwise ignores the requested timeout and waits for the sleeper to exit.
+        watchdog = threading.Timer(3, server.process.kill)
+        watchdog.start()
+        try:
+            with mock.patch.object(check_lean_boundary, "Server", return_value=server), \
+                    self.assertRaises(subprocess.TimeoutExpired):
+                check_lean_boundary.checker_result(fake, json.dumps("x" * 1048576) + "\n", 0.1)
+            self.assertIsNotNone(server.process.poll())
+            self.assertNotIn(str(fake.resolve()), check_lean_boundary._servers.by_path)
+        finally:
+            watchdog.cancel()
+            server.process.kill()
+            server.close()
+
+    def test_large_candidate_is_written_completely(self):
+        fake = self.fake("while IFS= read -r line; do printf '%s\\n' \"$line\"; done")
+        expected = {"value": "x" * 1048576}
+        encoded = json.dumps(expected) + "\n"
+        # The fake writes its answer only after reading the full candidate, just as Lean does.
+        self.assertEqual(check_lean_boundary.checker_result(fake, encoded, 10), expected)
+
+
 @unittest.skipUnless(CHECKER.is_file(), "build tools/lean_boundary to run the proved checker")
 class ProvedCheckerTests(SnapshotFixture):
     def check(self, candidate):
@@ -566,6 +625,24 @@ class ProvedCheckerTests(SnapshotFixture):
                                        capture_output=True, text=True, timeout=10)
             self.assertEqual(completed.returncode, 2, completed.stdout + completed.stderr)
             self.assertFalse(json.loads(completed.stdout)["accepted"])
+
+    def test_batch_mode_answers_each_line_as_a_single_run_does(self):
+        # (one --batch process checks a corpus's candidates: each line's result is the result
+        # of a run on that line alone, whatever came before it)
+        accepted = self.normalized()
+        rejected = copy.deepcopy(accepted)
+        rejected["certificate"][rejected["program"]["entry"]] = [["%a0", ["@pys_dyntype_float"]]]
+        lines = [json.dumps(candidate, sort_keys=True, separators=(",", ":")) + "\n"
+                 for candidate in (accepted, rejected, {}, accepted)]
+        batch = subprocess.run([str(CHECKER), "--batch"], input="".join(lines),
+                               capture_output=True, text=True, timeout=10)
+        self.assertEqual(batch.returncode, 0, batch.stdout + batch.stderr)
+        single = [subprocess.run([str(CHECKER)], input=line, capture_output=True, text=True, timeout=10)
+                  for line in lines]
+        self.assertEqual([run.returncode for run in single], [0, 1, 2, 0])
+        self.assertEqual(batch.stdout, "".join(run.stdout for run in single))
+        self.assertEqual([check_lean_boundary.checker_result(CHECKER, line, 10)["accepted"] for line in lines],
+                         [True, False, False, True])
 
     def test_full_cli_reports_actual_checker_result_and_input_hash(self):
         completed = subprocess.run(

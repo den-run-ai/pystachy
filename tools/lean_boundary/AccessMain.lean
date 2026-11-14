@@ -106,9 +106,11 @@ private def parseNode (json : Json) : Except String Node := do
       return .readField (← nameField json "dst") (← nameField json "object") (← nameField json "class")
         (← indexField json "index") (← indexField json "next")
   | "write_field" =>
-      fields json ["op", "object", "class", "index", "value", "next"]
+      fields json ["op", "object", "class", "index", "value", "unrelated", "next"]
+      let unrelated ← (← json.getObjVal? "unrelated").getArr?
+      if unrelated.size > 4096 then throw "more than 4096 unrelated classes"
       return .writeField (← nameField json "object") (← nameField json "class") (← indexField json "index")
-        (← nameField json "value") (← indexField json "next")
+        (← nameField json "value") (← unrelated.toList.mapM nameText) (← indexField json "next")
   | "heap" =>
       fields json ["op", "next"]
       return .heap (← indexField json "next")
@@ -180,22 +182,44 @@ private def readInput : IO String := do
   | some text => return text
   | none => throw (IO.userError "input must be UTF-8")
 
-def main : IO UInt32 := do
+/-- One candidate's result and the exit status a run on that candidate alone returns. -/
+private def respond (input : String) : Json × UInt32 :=
+  match Json.parse input >>= parseInput with
+  | .error message => (Json.mkObj [("accepted", toJson false), ("error", toJson message)], 2)
+  | .ok (program, certificate) =>
+      let accepted := check program certificate
+      let accesses := program.nodes.foldl (fun count node =>
+        match node with
+        | .load .. | .value .. | .deref .. => count + 1
+        | _ => count) (0 : Nat)
+      (Json.mkObj [("accepted", toJson accepted),
+        ("nodes", toJson program.nodes.length), ("accesses", toJson accesses)],
+        if accepted then 0 else 1)
+
+/-- `--batch`: each input line is one candidate, answered by one result line, in order, until
+the input ends. Each line is checked as a separate run checks its whole input; the only
+difference is that the runtime starts once per process instead of once per candidate. -/
+private def serve (input output : IO.FS.Stream) : IO Unit := do
+  repeat
+    let line ← input.getLine
+    if line.isEmpty then break
+    let response := if line.utf8ByteSize > 67108864 then
+        Json.mkObj [("accepted", toJson false), ("error", toJson "input exceeds 64 MiB")]
+      else (respond line).1
+    output.putStrLn response.compress
+    output.flush
+
+def main (args : List String) : IO UInt32 := do
   try
-    let input ← readInput
-    match Json.parse input >>= parseInput with
-    | .error message =>
-        IO.println (Json.mkObj [("accepted", toJson false), ("error", toJson message)]).compress
-        return 2
-    | .ok (program, certificate) =>
-        let accepted := check program certificate
-        let accesses := program.nodes.foldl (fun count node =>
-          match node with
-          | .load .. | .value .. | .deref .. => count + 1
-          | _ => count) (0 : Nat)
-        IO.println (Json.mkObj [("accepted", toJson accepted),
-          ("nodes", toJson program.nodes.length), ("accesses", toJson accesses)]).compress
-        return if accepted then 0 else 1
+    match args with
+    | [] =>
+        let (response, status) := respond (← readInput)
+        IO.println response.compress
+        return status
+    | ["--batch"] =>
+        serve (← IO.getStdin) (← IO.getStdout)
+        return 0
+    | _ => throw (IO.userError "usage: pystachy-access [--batch]")
   catch error =>
     IO.println (Json.mkObj [("accepted", toJson false), ("error", toJson error.toString)]).compress
     return 2

@@ -210,7 +210,7 @@ jobs:
           case "$VERIFY_GROUP" in
             contracts)
               PATH="$lean_bin:$PATH" \
-                make check-lean-guards LEAN_GUARD_FLAGS='--jobs 2 --report build/verify/lean-guards.json tools/lean_boundary/examples/null_guards.py tools/lean_boundary/examples/union_guards.py' ;;
+                make check-lean-guards LEAN_GUARD_FLAGS='--jobs 2 --report build/verify/lean-guards.json tools/lean_boundary/examples/null_guards.py tools/lean_boundary/examples/null_reloads.py tools/lean_boundary/examples/union_effects.py tools/lean_boundary/examples/union_guards.py tools/lean_boundary/examples/union_split.py tools/lean_boundary/examples/union_memory.py tools/lean_boundary/examples/union_defaults.py tools/lean_boundary/examples/gc_arrays.py tools/lean_boundary/examples/field_init.py' ;;
           esac
           case "$VERIFY_GROUP" in
             scaling)

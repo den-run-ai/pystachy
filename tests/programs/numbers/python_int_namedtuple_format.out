@@ -1,0 +1,15 @@
+1 2 1|2 1, 2
+1 2
+TypeError: not all arguments converted during string formatting
+9223372036854775808 2 8000000000000000|2 9223372036854775808, 2
+9223372036854775808 2
+TypeError: not all arguments converted during string formatting
+1180591620717411303424 2 400000000000000000|2 1180591620717411303424, 2
+1180591620717411303424 2
+TypeError: not all arguments converted during string formatting
+-1180591620717411303424 2 -400000000000000000|2 -1180591620717411303424, 2
+-1180591620717411303424 2
+TypeError: not all arguments converted during string formatting
+TypeError: not enough arguments for format string
+[None]
+[exit 0]

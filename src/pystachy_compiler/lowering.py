@@ -11,8 +11,8 @@ def gen_lower(self, fn: IFn) -> None:
     o = self.out
     chunk_start = len(o)
     f = fn.f
-    # a method's receiver is never None (callers check it)
-    ps = [f"{lt(f.ptypes[j])}{' nonnull' if j == 0 and takes_self(f) else ''} %a{j}" for j in fn.ps]
+    # Attribute calls check receivers; explicit class calls may pass None as self.
+    ps = [f"{lt(f.ptypes[j])}{' nonnull' if j == 0 and takes_self(f) and not f.nullable_self else ''} %a{j}" for j in fn.ps]
     if identity_abi(f):
         ps.extend([f"ptr %aid{j}" for j in fn.ps if numeric_identity(f.ptypes[j])])
         if numeric_identity(f.ret):

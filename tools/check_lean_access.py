@@ -27,9 +27,9 @@ import subprocess
 import sys
 
 from check_lean_boundary import (INVOKES, MAX_PROGRAM_BYTES, OP_KEYS, OUTCOMES, SEVERITY,
-                                 TERMINATORS, Unsupported, check_header, name, read_snapshot,
-                                 require, unique_object)
-from check_lean_effects import summaries
+                                 TERMINATORS, Unsupported, check_header, checker_result, name,
+                                 read_snapshot, require)
+from check_lean_effects import WORD, fresh_addresses, fresh_store, summaries, tagged_classes
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -71,13 +71,26 @@ LIMITATIONS = [
     "Python normalization, snapshot fidelity, runtime effects (RUNTIME and the U? descriptor rule), "
     "the independent body-effect scan, the runtime's lookup, length, slicing and unpacking contracts, the List "
     "header layout and LLVM lowering are not proved.",
-    "Fields of one class at different indices are assumed to be distinct memory.",
+    "Fields of one class at different indices are assumed to be distinct memory, as are fields of "
+    "classes neither of which derives from the other and that overlap through no common subclass, "
+    "by the snapshot's trusted classes table.",
     "Closure environments hold pointers to cells; recognized native-container cell loads use the "
     "same heap model and are invalidated by writes or callbacks, not assumed immutable.",
     "A suspended generator's caller may change any list, dict, field or global; phi and select "
     "results and other memory loads get unknown values.",
     "The native Lean executable adds the Lean compiler and runtime to the trusted base.",
 ]
+# Value types that are not one 64-bit word in memory (utils.lt): a promoting int's two words, and
+# narrower scalars. A closure cell holding one is not read as a model value.
+PARTIAL_WORDS = frozenset({"int+", "bool", "%byte", "%i32", "None"})
+# Reads of a dynamic or union box's payload, word 1 of the box (lowering.py), and the cell label
+# of that word: no class of the program names it.
+PAYLOAD_READS = frozenset({"union.payload", "union.raw", "dyn.payload", "dyn.raw"})
+BOX = "<box>"
+CELL = "<closure-cell>"  # (a closure cell's value word: no class of the program names it)
+# The model's obligation nodes (PystachyAccess.Safe): an unchecked list read, a reused dict
+# entry and a read through a pointer whose null check the nullcheck pass removed.
+OBLIGATIONS = ("load", "value", "deref")
 LITERAL = re.compile(r"-?[0-9]+")
 MAX_TYPE = 1 << 20
 
@@ -167,20 +180,27 @@ def rename(fact, x, y):
                  else part for index, part in enumerate(fact))  # (a cell's class is no value)
 
 
-def survives(node, fact):
+def surviving(node, facts):
+    """The facts node leaves true, in order."""
     op = node["op"]
     if "dst" in node:
-        return node["dst"] not in mentions(fact)
+        return [fact for fact in facts if node["dst"] not in mentions(fact)]
     if op == "lists":
-        return fact[0] != "len"
+        return [fact for fact in facts if fact[0] != "len"]
     if op == "dicts":
-        return fact[0] not in ("found", "entry")
+        return [fact for fact in facts if fact[0] not in ("found", "entry")]
     if op == "write_field":
-        # (another field of the same class, of any object, is other memory)
-        return fact[0] != "cell" or (fact[2] == node["class"] and fact[3] != node["index"])
+        # (another field of the same class, of any object, is other memory, as is any field of
+        # a class the write lists as unrelated)
+        return [fact for fact in facts if fact[0] != "cell" or (
+            fact[2] == node["class"] and fact[3] != node["index"]) or fact[2] in node["unrelated"]]
     if op == "heap":
-        return fact[0] != "cell"
-    return True
+        return [fact for fact in facts if fact[0] != "cell"]
+    return list(facts)
+
+
+def survives(node, fact):
+    return bool(surviving(node, (fact,)))
 
 
 def no_wrap(facts, src, k):
@@ -295,8 +315,10 @@ def generated_unbounded(facts, node, edge):
     return []
 
 
-def immediates(node, edge, facts):
-    kept = [fact for fact in facts if survives(node, fact)]
+def immediates(node, edge, facts, kept=None):
+    """The facts after node's edge: those it leaves (kept: surviving's, if known), then those it
+    makes."""
+    kept = surviving(node, facts) if kept is None else kept
     return kept + [fact for fact in generated(facts, node, edge) if fact not in kept]
 
 
@@ -458,7 +480,7 @@ def conclusions(fact, by_name, index, relevant, lower_bounds=()):
     return out
 
 
-def closure(start, new, relevant, lower_bounds=()):
+def closure(start, new, relevant, lower_bounds=(), kinds=None):
     """start and what the rules derive from it, in an order Lean can check (each fact from
     start or from facts before it), with each derived fact's premises. Facts in start other
     than new were closed where they were derived; only facts about relevant values are
@@ -469,7 +491,7 @@ def closure(start, new, relevant, lower_bounds=()):
     index = set(facts)
     by_name = {}
     for fact in facts:
-        for part in set(mentions(fact)):
+        for part in mention_set(fact):
             by_name.setdefault(part, []).append(fact)
     premises = {}
     pending = deque(fact for fact in new if fact in index)
@@ -482,12 +504,12 @@ def closure(start, new, relevant, lower_bounds=()):
             if not encodable_fact(derived):
                 continue
             if derived in index or (derived[0] == "eq" and derived[1] == derived[2]) or any(
-                    part not in relevant for part in mentions(derived)):
+                    part not in relevant for part in mentions(derived)) or (kinds is not None and derived[0] not in kinds):
                 continue
             facts.append(derived)
             index.add(derived)
             premises[derived] = needs
-            for part in set(mentions(derived)):
+            for part in mention_set(derived):
                 by_name.setdefault(part, []).append(derived)
             pending.append(derived)
             if len(facts) > MAX_FACTS_AT:
@@ -495,9 +517,24 @@ def closure(start, new, relevant, lower_bounds=()):
     return facts, premises
 
 
-def prune(facts, live):
+def prune(facts, live, chain=0):
     """The facts worth carrying forward: those about a value read later, and facts about
-    values that only those facts mention (a length a bound refers to)."""
+    values that only those facts mention (a length a bound refers to). With chain, also the
+    values that up to chain field cells lead to from those, and the facts about them only: a
+    field of a field of a global, reloaded later (`pi.pong.ping`); and then a field's cell is
+    kept only where its value is read later, is known not to be a constant, or is the object of
+    another such cell: a reload can learn nothing else from it."""
+    if chain:
+        useful = set(live) | {fact[1] for fact in facts if fact[0] == "ne"}
+        cells = [fact for fact in facts if fact[0] == "cell"]
+        worth = set()
+        for _ in range(chain + 1):
+            more = {fact for fact in cells if fact[4] in useful} - worth
+            if not more:
+                break
+            worth |= more
+            useful |= {fact[1] for fact in more}
+        facts = [fact for fact in facts if fact[0] != "cell" or fact in worth]
     kept = set()
     names = set()
     for fact in facts:
@@ -505,6 +542,11 @@ def prune(facts, live):
         if not parts or not parts.isdisjoint(live):
             kept.add(fact)
             names |= parts
+    for _ in range(chain):
+        reached = {fact[4] for fact in facts if fact[0] == "cell" and fact[1] in names} - names
+        if not reached:
+            break
+        names |= reached
     return [fact for fact in facts if fact in kept or mention_set(fact) <= names]
 
 
@@ -522,6 +564,8 @@ def safe(facts, node):
                                                          for g in facts) for f in facts)
     if op == "value":
         return ("entry", node["entry"], node["dict"]) in facts
+    if op == "deref":
+        return ("ne", node["pointer"], 0) in facts
     return True
 
 
@@ -616,7 +660,7 @@ def explain(candidate):
         return "facts at entry"
     for index, node in enumerate(nodes):
         facts = facts_at[index]
-        if node["op"] in ("load", "value") and not safe(facts, node):
+        if node["op"] in OBLIGATIONS and not safe(facts, node):
             return f"node {index}: {node} is not proved by {facts}"
         for edge, target in enumerate(successors(node)):
             known = immediates(node, edge, facts)
@@ -654,6 +698,8 @@ def reads(node):
         return {node["list"]} | ({node["index"]} if isinstance(node["index"], str) else set())
     if op == "value":
         return {node["dict"], node["entry"]}
+    if op == "deref":
+        return {node["pointer"]}
     if op == "read_field":
         return {node["object"]}
     if op == "write_field":
@@ -663,10 +709,13 @@ def reads(node):
 
 def liveness(nodes, predecessors):
     live = [set() for _ in nodes]
-    pending = deque(range(len(nodes) - 1, -1, -1))
+    # (the least fixed point, which any order of visits reaches: later nodes first, as each
+    # depends on its successors)
+    pending = [-index for index in range(len(nodes))]
+    heapq.heapify(pending)
     queued = [True] * len(nodes)
     while pending:
-        index = pending.popleft()
+        index = -heapq.heappop(pending)
         queued[index] = False
         node = nodes[index]
         later = set().union(*(live[target] for target in successors(node)))
@@ -677,7 +726,7 @@ def liveness(nodes, predecessors):
             for predecessor in predecessors[index]:
                 if not queued[predecessor]:
                     queued[predecessor] = True
-                    pending.append(predecessor)
+                    heapq.heappush(pending, -predecessor)
     return live
 
 
@@ -705,7 +754,7 @@ def generation_premises(facts, node, fact):
     return []
 
 
-def infer_certificate(nodes, entry=0):
+def infer_certificate(nodes, entry=0, chain=0, kinds=None):
     """Facts at each node: forward must-facts closed under the model's rules, then only those
     that an access needs, directly or through the facts that justify them. A node with several
     predecessors is reached through a jump of its own from each (normalize adds them), whose
@@ -748,14 +797,19 @@ def infer_certificate(nodes, entry=0):
         if visits > 400000:
             raise Unsupported("certificate inference exceeds the prototype's resource bound")
         node = nodes[index]
+        kept = surviving(node, known[index])
         for edge, target in enumerate(successors(node)):
             if target == entry:
                 continue
-            start = immediates(node, edge, known[index])
+            start = immediates(node, edge, known[index], kept)
             new = generated(known[index], node, edge)
+            if kinds is not None:
+                # (only the kinds of fact the obligations can use: deref's needs no bounds)
+                start = [fact for fact in start if fact[0] in kinds]
+                new = [fact for fact in new if fact[0] in kinds]
             if len(predecessors[target]) > 1:
                 # (a join of jumps: what every visited one knows)
-                incoming = prune(start, live[target])
+                incoming = prune(start, live[target], chain)
                 if known[target] is None:
                     merged = incoming
                 else:
@@ -763,9 +817,9 @@ def infer_certificate(nodes, entry=0):
                     merged = [f for f in known[target] if f in arriving]
                 justification = ([], {})
             else:
-                relevant = (live[target] | set().union(*(set(mentions(fact)) for fact in start))) if new else live[target]
-                facts, premises = closure(start, new, relevant, lower_bounds)
-                merged = prune(facts, live[target])
+                relevant = (live[target] | set().union(*map(mentions, start))) if new else live[target]
+                facts, premises = closure(start, new, relevant, lower_bounds, kinds)
+                merged = prune(facts, live[target], chain)
                 justification = (facts, premises)
             if merged != known[target] or derived[target] is None:
                 known[target] = merged
@@ -788,7 +842,7 @@ def infer_certificate(nodes, entry=0):
             continue
         facts = set(known[index])
         op = node["op"]
-        if op in ("load", "value") and ("absurd",) in facts:
+        if op in OBLIGATIONS and ("absurd",) in facts:
             want(index, ("absurd",))
         elif op == "load":
             ix, l = node["index"], node["list"]
@@ -808,6 +862,8 @@ def infer_certificate(nodes, entry=0):
                             break
         elif op == "value" and ("entry", node["entry"], node["dict"]) in facts:
             want(index, ("entry", node["entry"], node["dict"]))
+        elif op == "deref" and ("ne", node["pointer"], 0) in facts:
+            want(index, ("ne", node["pointer"], 0))
     while work:
         index, fact = work.popleft()
         incoming = predecessors[index]
@@ -933,24 +989,73 @@ def check_dominance(blocks, block_edges, sites):
                             f"definition does not dominate use: {value}")
 
 
+def class_relation(snapshot):
+    """related(c, d): whether an object of class c may also be one of class d, so that their
+    fields may share memory: one is the other or derives from it, by the snapshot's classes
+    table (each class's base and fieldless secondary base, as Gen.derives follows them), or the
+    table lists them as overlapping (a common subclass of a primary chain and a secondary base).
+    A class the table lacks, such as the closure-cell label, is related to every class. And
+    known(c): whether the table lists c, so that its objects are no dynamic or union boxes."""
+    table = snapshot.get("classes")
+    if table is None:
+        return (lambda c, d: True), (lambda c: False)
+    require(isinstance(table, dict) and len(table) <= 65536 and all(
+        isinstance(name_, str) and isinstance(entry, dict) and set(entry) == {"base", "role", "overlaps", "tagged"}
+        and all(isinstance(entry[key], str) for key in ("base", "role")) and type(entry["tagged"]) is bool
+        and isinstance(entry["overlaps"], list) and all(isinstance(other, str) for other in entry["overlaps"])
+        for name_, entry in table.items()), "invalid classes table")
+
+    @functools.lru_cache(maxsize=None)
+    def ancestors(c):
+        found, seen = set(), set()
+        while c in table and c not in seen:
+            seen.add(c)
+            found.add(c)
+            if table[c]["role"]:
+                found.add(table[c]["role"])
+            c = table[c]["base"]
+        found.add(c)  # (a builtin exception base ends the chain)
+        return frozenset(found)
+
+    def related(c, d):
+        return (c == d or c not in table or d not in table or d in ancestors(c) or c in ancestors(d)
+                or d in table[c]["overlaps"] or c in table[d]["overlaps"])
+
+    return related, (lambda c: c in table)
+
+
 def normalize_snapshot(snapshot, function, effects_of=None):
     """The access-model program of one function, with an inferred certificate, and its counts."""
     return certify(*normalize_program(snapshot, function, effects_of))
 
 
-def certify(nodes, metadata):
+def certify(nodes, metadata, chain=0, kinds=None):
     """The candidate of normalized nodes: the program and an inferred certificate."""
-    certificate, _ = infer_certificate(nodes)
+    certificate, _ = infer_certificate(nodes, chain=chain, kinds=kinds)
     unproved = [index for index, node in enumerate(nodes)
-                if node["op"] in ("load", "value") and not safe([tuple(f) for f in certificate[index]], node)]
+                if node["op"] in OBLIGATIONS and not safe([tuple(f) for f in certificate[index]], node)]
     return ({"schema_version": 1, "program": {"entry": 0, "nodes": nodes}, "certificate": certificate},
             dict(metadata, unproved=len(unproved)))
 
 
-def normalize_program(snapshot, function, effects_of=None):
-    """The access-model nodes of one function, entry first, and its counts."""
+def normalize_program(snapshot, function, effects_of=None, derefs=None, record=None):
+    """The access-model nodes of one function, entry first, and its counts.
+
+    With derefs, a set of (block label, position) of checks, the obligations are instead that
+    the pointer each of those checks compares with null is not null where the check runs
+    (removed null checks, tools/check_lean_guards.py): each becomes a deref node before its
+    test, and list reads and dict entries are no obligations, though their effects remain.
+    record is then the function to normalize (a pass's input, which the snapshot does not
+    list), while effects_of still comes from the snapshot's functions."""
     check_header(snapshot)
-    fn = function_record(snapshot, function)
+    null_mode = derefs is not None
+    if null_mode:
+        require(isinstance(record, dict), "removed null checks need their function record")
+        fn = record
+        derefs = set(derefs)
+    else:
+        require(record is None, "a function record is only given with removed null checks")
+        fn = function_record(snapshot, function)
     symbol = name(fn.get("symbol"), "function symbol")
     if effects_of is None:
         effects_of = summaries(snapshot)
@@ -1035,11 +1140,34 @@ def normalize_program(snapshot, function, effects_of=None):
                         position == 0 and op["op"] in ("mem.load", "mem.store", "mach.load", "mach.store", "landing")):
                     escaped.add(operand["value"])
     private = set(slots) - escaped
+    # Addresses inside memory this function allocates (check_lean_effects.fresh_addresses): a
+    # store there may change that new object's fields, but no list, dict or global, nor any
+    # object that existed before it.
+    fresh = fresh_addresses([op for block in live_blocks for op in block["operations"]], tagged_classes(snapshot))
+    # The cells of the variables this function's closures take (functions.py allocates one per
+    # variable as the function begins): a runtime allocation of at least a word whose first word
+    # a typed load or store reads or writes, like a closure's own reads through its environment.
+    own_cells = {f"%t{op['results'][0]}" for op in definitions.values() if op["op"] == "rt"
+                 and op["text"] in ("alloc", "alloc_atomic", "new") and len(op["results"]) == 1
+                 and (fresh.get(f"%t{op['results'][0]}") or 0) >= WORD}
     # Each field address: the object register and the field's label (its class and index). A
     # field.addr's operands are SSA values, unchanged wherever its result is used.
     field_of = {f"%t{op['results'][0]}": (op["operands"][0]["value"], op["operands"][0]["type"], op["immediate"])
                 for op in definitions.values() if op["op"] == "field.addr" and op["results"]
                 and len(op["operands"]) == 1 and op["operands"][0]["value"].startswith("%")}
+    # A write of one class's field keeps every field of a class unrelated to it (no object is
+    # both): the function's field classes that the classes table relates to neither.
+    related, known_class = class_relation(snapshot)
+    field_classes = sorted({cls for _, cls, _ in field_of.values()})
+    reads_boxes = any(op["op"] in PAYLOAD_READS for op in definitions.values())
+
+    def unrelated_to(cls):
+        # (an object of a class of the program is no box, which pys_ubox and the dyn boxers make,
+        # and no closure cell, which pys_alloc makes)
+        raw_cells = [label for label, used in ((BOX, reads_boxes), (CELL, bool(closure_cells or own_cells)))
+                     if used]
+        return [other for other in field_classes if not related(cls, other)] + (
+            raw_cells if known_class(cls) else [])
     # An env is an array of pointers to closure cells. Recognize only constant
     # pointer-slot loads from a value whose definition/parameter has env type.
     # The captured cell itself is mutable: reuse read_field's heap invalidation,
@@ -1113,6 +1241,22 @@ def normalize_program(snapshot, function, effects_of=None):
         kind, x, y, polarity = table[text]
         return {"cmp": kind, "a": x, "b": y}, polarity
 
+    def null_tested(flag):
+        # The register a removed check's flag compares with null: `ptr.cmp ==` of exactly one
+        # null operand (the nullcheck pass removes only those). SSA: it holds that value wherever
+        # the flag is used.
+        test = definitions.get(flag)
+        require(test is not None and test["op"] == "ptr.cmp" and test["text"] == "=="
+                and len(test["operands"]) == 2, "removed check is not a null equality test")
+        operands = [operand["value"] for operand in test["operands"]]
+        require(operands.count("null") == 1, "removed check has no unique null operand")
+        pointer = operands[1] if operands[0] == "null" else operands[0]
+        if not isinstance(operand_of(pointer), str):
+            raise Unsupported(f"a removed null check of a constant: {pointer}")
+        return pointer
+
+    matched = set()
+
     # An overflow flag that only its block's terminator tests splits the path at its ovf.
     flag_uses = {}
     for block in live_blocks:
@@ -1165,21 +1309,58 @@ def normalize_program(snapshot, function, effects_of=None):
             obj, cls, index = field_of[values[0]]
             return [], [{"op": "read_field", "dst": f"%t{op['results'][0]}", "object": obj, "class": cls,
                          "index": index}]
+        if (kind in PAYLOAD_READS and len(values) == 1 and isinstance(operand_of(values[0]), str)
+                and len(op["results"]) == 2):
+            # (lowering.py: the address of word 1 of the box, then that word: a cell of the box,
+            # which any write that may reach it kills, as it does an object's field)
+            return [], [{"op": "havoc", "dst": f"%t{op['results'][0]}"},
+                        {"op": "read_field", "dst": f"%t{op['results'][1]}", "object": values[0],
+                         "class": BOX, "index": 1}]
+        if (kind == "slot.unpack" and len(values) == 1 and op["type"] not in ("bool", "int+")
+                and isinstance(operand_of(values[0]), str) and len(op["results"]) == 1):
+            # (lowering.py: inttoptr, or a bitcast, of the slot's word: the same 64 bits; a bool
+            # is truncated)
+            return [], [{"op": "copy", "dst": f"%t{op['results'][0]}", "src": values[0]}]
         if (kind == "mem.load" and len(values) == 1 and values[0] in closure_cells and op["results"]
-                and op["type"].startswith(("list[", "dict[", "set["))):
+                and op["type"] not in PARTIAL_WORDS):
             return [], [{"op": "read_field", "dst": f"%t{op['results'][0]}", "object": values[0],
-                         "class": "<closure-cell>", "index": 0}]
+                         "class": CELL, "index": 0}]
+        if (kind == "mem.load" and len(values) == 1 and values[0] in own_cells and op["results"]
+                and op["type"] not in PARTIAL_WORDS):
+            return [], [{"op": "read_field", "dst": f"%t{op['results'][0]}", "object": values[0],
+                         "class": CELL, "index": 0}]
+        if (kind == "mem.store" and len(values) == 2 and values[0] in own_cells
+                and operands[1]["type"] not in PARTIAL_WORDS):
+            # (a variable's cell gets its new value: a register's, else a literal or unknown one,
+            # held by a name of the store's own, as for a field)
+            source = operand_of(values[1])
+            if isinstance(source, str) and source.startswith("%"):
+                return [], [{"op": "write_field", "object": values[0], "class": CELL, "index": 0, "value": source,
+                             "unrelated": []}]
+            stored = values[0] + "="
+            held = ({"op": "lit", "dst": stored, "value": source} if isinstance(source, int)
+                    else {"op": "havoc", "dst": stored})
+            return [], [held, {"op": "write_field", "object": values[0], "class": CELL, "index": 0,
+                               "value": stored, "unrelated": []}]
         if kind == "mem.store" and len(values) == 2 and values[0] in field_of:
             # (a field's new value: a register's, else a literal or an unknown value held by a
             # name of the store's own, its address and "=", which no register's name contains)
             obj, cls, index = field_of[values[0]]
             source = operand_of(values[1])
             if isinstance(source, str) and source.startswith("%"):
-                return [], [{"op": "write_field", "object": obj, "class": cls, "index": index, "value": source}]
+                return [], [{"op": "write_field", "object": obj, "class": cls, "index": index, "value": source,
+                             "unrelated": unrelated_to(cls)}]
             stored = values[0] + "="
             held = ({"op": "lit", "dst": stored, "value": source} if isinstance(source, int)
                     else {"op": "havoc", "dst": stored})
-            return [], [held, {"op": "write_field", "object": obj, "class": cls, "index": index, "value": stored}]
+            return [], [held, {"op": "write_field", "object": obj, "class": cls, "index": index, "value": stored,
+                               "unrelated": unrelated_to(cls)}]
+        if fresh_store(op, fresh):
+            return kill_nodes(False, False, False, True), []
+        if kind in ("mem.store", "mach.store") and values and values[0] in slots:
+            # (an escaped slot of this function: its own stack memory, which no global, object,
+            # list or dict shares; the model keeps no fact about it, whose loads are unknown)
+            return [], []
         if kind == "mem.store":
             # A named global is distinct from the other named globals; an
             # unknown address may alias a tracked global as well as the heap.
@@ -1193,6 +1374,10 @@ def normalize_program(snapshot, function, effects_of=None):
             return [], [{"op": "length", "dst": f"%t{op['results'][0]}", "list": values[0]}]
         if kind == "list.len" and len(values) == 1 and isinstance(operand_of(values[0]), str):
             return [], [{"op": "length", "dst": f"%t{op['results'][0]}", "list": values[0]}]
+        if kind == "list.load" and null_mode:
+            return [], havocs(op)
+        if kind == "list.store" and null_mode:
+            return [], []
         if kind == "list.load":
             accesses["list.load"] += 1
             index = operand_of(values[1])
@@ -1219,6 +1404,16 @@ def normalize_program(snapshot, function, effects_of=None):
         if kind == "rt":
             key = op["text"]
             access_before = []
+            if key in ACCESS_RT and null_mode:
+                # (no entry obligation here; the operation's effects remain: deleting an entry
+                # is a dict write, and a comparison's lookups may run a key's __eq__)
+                lists, dicts, globals_, fields_ = kills(runtime_effects(key, op["descriptor"]))
+                if key in ("dict.entry_del", "set.slot_del"):
+                    dicts = True
+                before = kill_nodes(lists, dicts, globals_, fields_)
+                if key in FINDS and op["results"] and isinstance(operand_of(values[0]), str):
+                    return before, [{"op": "find", "dst": f"%t{op['results'][0]}", "dict": values[0]}]
+                return before, havocs(op)
             if key in ACCESS_RT:
                 accesses[key] = accesses.get(key, 0) + 1
                 if key in SOURCE_ENTRY_RT:
@@ -1251,6 +1446,11 @@ def normalize_program(snapshot, function, effects_of=None):
                 return before, [{"op": "entry", "dst": f"%t{op['results'][0]}", "dict": values[0]}]
             return before, havocs(op)
         if kind == "call":
+            # (a callee whose summary leaves out its stores through %idret writes anything where
+            # this call passes it no buffer of this function's own: check_lean_effects.Summaries)
+            checked = getattr(effects_of, "identity_argument", None)
+            if checked is not None and not checked(op, symbol, set(slots)):
+                return kill_nodes(True, True, True, True), havocs(op)
             return kill_nodes(*kills(effects_of.get(op["text"]))), havocs(op)
         if kind in ("icall", "init", "gen.resume", "gen.drop"):
             return kill_nodes(True, True, True, True), havocs(op)
@@ -1417,6 +1617,12 @@ def normalize_program(snapshot, function, effects_of=None):
                     # (a check raises where its flag is true)
                     yes, no = targets_of_checks[op["descriptor"] or op["text"]], targets[0]
                 flag = values[0]
+                if null_mode and (block["label"], position) in derefs:
+                    # (a removed null check: its pointer must not be null here, before its own
+                    # test, which the pass replaced with a jump to its normal successor)
+                    require(kind == "check", "a removed null check must be a check")
+                    put({"op": "deref", "pointer": null_tested(flag), "next": None})
+                    matched.add((block["label"], position))
                 if flag in known or flag in ("true", "false"):
                     outcome = known[flag] if flag in known else flag == "true"
                     put({"op": "jump", "next": ref(yes if outcome else no)}, ())
@@ -1479,8 +1685,15 @@ def normalize_program(snapshot, function, effects_of=None):
                 nodes[index][field] = emit({"op": "jump", "next": target})
     entry = starts[entry_label]
     candidate_nodes = relocate(nodes, entry)
+    if null_mode:
+        # Every inventoried removal must have become an obligation; one in a block that nothing
+        # reaches cannot run (relocate drops it with the block) and is counted as such.
+        live_labels = {block["label"] for block in live_blocks}
+        require(matched == {site for site in derefs if site[0] in live_labels},
+                "a removed null check was not found in its function")
     metadata = {"function": symbol, "nodes": len(candidate_nodes),
-                "accesses": sum(node["op"] in ("load", "value") for node in candidate_nodes),
+                "accesses": sum(node["op"] in OBLIGATIONS for node in candidate_nodes),
+                "derefs": sum(node["op"] == "deref" for node in candidate_nodes),
                 "list_loads": accesses["list.load"], "list_stores": accesses.get("list.store", 0),
                 "dict_entries": sum(count for key, count in accesses.items()
                                     if key not in ("list.load", "list.store"))}
@@ -1516,16 +1729,13 @@ def encode(candidate):
 
 def run_checker(checker, encoded, metadata, timeout=60):
     """Whether the Lean checker accepts every obligation of one encoded candidate."""
-    completed = subprocess.run([str(Path(checker).resolve())], input=encoded, capture_output=True,
-                               text=True, timeout=timeout)
-    result = json.loads(completed.stdout, object_pairs_hook=unique_object)
+    result = checker_result(checker, encoded, timeout)
     require(isinstance(result, dict) and type(result.get("accepted")) is bool,
             "checker did not return an acceptance result")
-    require(result.get("nodes") == metadata["nodes"] and result.get("accesses") == metadata["accesses"],
+    require(set(result) == {"accepted", "nodes", "accesses"}, f"checker error: {result.get('error')}")
+    require(result["nodes"] == metadata["nodes"] and result["accesses"] == metadata["accesses"],
             "checker counts disagree with normalized input")
-    accepted = result["accepted"]
-    require(completed.returncode == (0 if accepted else 1), "checker result/exit status mismatch")
-    return accepted
+    return result["accepted"]
 
 
 def access_functions(snapshot):
@@ -1546,13 +1756,14 @@ def access_functions(snapshot):
     return found
 
 
-def check_all(snapshot, checker=DEFAULT_CHECKER, verdicts=None):
+def check_all(snapshot, checker=DEFAULT_CHECKER, verdicts=None, effects_of=None):
     """Check every function of the snapshot with an unchecked access. The report's fields and
     the exit code of the worst result. verdicts, a dict, keeps each checked result by its
     normalized nodes and checker, so that another snapshot's identical function (a library's,
-    in a corpus) reuses it: inference and Lean see only those nodes."""
+    in a corpus) reuses it: inference and Lean see only those nodes. effects_of: the snapshot's
+    summaries, if a caller has them."""
     check_header(snapshot)
-    effects_of = summaries(snapshot)
+    effects_of = summaries(snapshot) if effects_of is None else effects_of
     records = []
     for symbol, count in access_functions(snapshot):
         record = {"function": symbol, "accesses": count}
