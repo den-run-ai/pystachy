@@ -2,8 +2,8 @@
 
 Pystachy implements a bounded native `select.select` API for integer file
 descriptors in JIT and AOT. It uses POSIX readiness calls directly. This experimental
-subset does not establish `selectors`, `subprocess`, unittest, pytest or pyperf
-compatibility.
+subset does not establish `selectors`, unittest, pytest or pyperf compatibility;
+[`subprocess`](../lib/compatibility.md#subprocess) waits for its pipes itself.
 
 ## Contract
 

@@ -274,6 +274,12 @@ lib/statistics.py is CPython 3.13.16's Lib/statistics.py with the edits lib/READ
 marked in the source; it is derived from Python and is used under the same license and copyright
 notice.
 
+lib/subprocess.py is Pystachy's subset of CPython 3.13.16's Lib/subprocess.py (lib/provenance.md),
+whose copyright notice of Peter Astrand it keeps, with the functions, docstrings and comments it
+copies; each change is marked in the source. The part of runtime.c that starts its child processes
+follows child_exec() of that release's Modules/_posixsubprocess.c. They are derived from Python and
+are used under the same license and copyright notice.
+
 lib/random.py is CPython 3.13.16's Lib/random.py with the edits lib/README.md lists, each
 marked in the source. lib/_pyrandom.py
 is Pystachy's own _random.Random for it, written after Modules/_randommodule.c and the float hash

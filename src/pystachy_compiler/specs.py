@@ -1051,6 +1051,12 @@ RUNTIME: dict[str, str] = {
     # errors and the process
     "raise": "None:str,str|R N|", "exit": "None:int|R N I|", "exit_msg": "None:str|R N I|", "argv": "list[str]:|I|", "warnoptions": "list[str]:|A I|",
     "platform": "str:|A|", "errno": "int:str|R A|", "system": "int:str|R I|", "execv": "None:str,list[str]|R N A I rL|", "getpid": "int:|I|", "getcwd": "str:|R A I|", "exists": "bool:str|I|",
+    # lib/subprocess.py's child processes (__pys_proc_*): fork and exec, wait, kill, and its pipes' ends
+    "proc.pipe": "list[int]:|R A I|", "proc.devnull": "int:|R I|",
+    "proc.fork_exec": "int:list[str],list[str],list[str],str,int,int,int,int|R A I rL|",
+    "proc.wait": "int:int,int|R I|", "proc.kill": "None:int,int|R I|", "proc.read": "bytes:int,int|R A I|",
+    "proc.write": "int:int,bytes,int,int|R I|", "proc.close": "None:int|R I|", "proc.ready": "int:int,int,int,float|R I|",
+    "proc.signame": "str:int|A I|",
     "path_join": "str:str,str|A|", "path_basename": "str:str|A|", "path_dirname": "str:str|A|", "path_split": "tuple[str,str]:str|A|",
     "path_splitext": "tuple[str,str]:str|A|", "path_isabs": "bool:str||", "path_normpath": "str:str|R A|",
     "path_abspath": "str:str|R A I|", "path_relpath": "str:str,str|R A I|", "path_expanduser": "str:str|R A I|",

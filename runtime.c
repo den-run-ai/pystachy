@@ -12,6 +12,7 @@
 #include <langinfo.h>
 #include <limits.h>
 #include <locale.h>
+#include <poll.h>
 #include <pthread.h>
 #include <pwd.h>
 #ifdef __APPLE__
@@ -42,7 +43,9 @@
 #ifdef __linux__
 #include <sys/auxv.h>
 #include <sys/file.h>
+#include <sys/syscall.h>
 #endif
+#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 #include <unwind.h>
@@ -7338,6 +7341,243 @@ I pys_ignored_signals(void) {
     if (!sigaction(s, 0, &sa) && sa.sa_handler == SIG_IGN) m |= (I)1 << (s - 1);
   }
   return m;
+}
+/* ---------- child processes (lib/subprocess.py) ----------
+   What CPython's subprocess.py asks of _posixsubprocess.fork_exec(), os and select, as that module's
+   private primitives (__pys_proc_*). Between fork() and the program it becomes, a child calls only
+   async-signal-safe functions: it allocates nothing and touches no FILE, so the parent's heap,
+   collector and buffered output are as they were, whatever other threads the parent has. */
+#define PROC_RUNNING 256                /* pys_proc_wait's result for a child that has not ended: no status is */
+double pys_monotonic(void);
+static int proc_pipe(int fd[2]) {       /* a pipe that no exec inherits, both ends past the standard three, so that no
+                                           dup2() of the child lands on one; 0, or the errno */
+  if (pipe(fd)) return errno;
+  for (int k = 0; k < 2; k++) {
+    int n = fd[k] < 3 ? fcntl(fd[k], F_DUPFD_CLOEXEC, 3) : fcntl(fd[k], F_SETFD, FD_CLOEXEC) < 0 ? -1 : fd[k];
+    if (n < 0) { int e = errno; close(fd[0]); close(fd[1]); return e; }
+    if (n != fd[k]) { close(fd[k]); fd[k] = n; }
+  }
+  return 0;
+}
+List *pys_proc_pipe(void) {             /* os.pipe(): [the read end, the write end] */
+  int fd[2], e = proc_pipe(fd);
+  if (e) ioerr(e);
+  List *l = pys_list_new_atomic(2);
+  pys_list_append(l, fd[0]); pys_list_append(l, fd[1]);
+  return l;
+}
+I pys_proc_devnull(void) {              /* subprocess.DEVNULL's descriptor: /dev/null, for reading and writing */
+  int fd;
+  do fd = open("/dev/null", O_RDWR | O_CLOEXEC); while (fd < 0 && errno == EINTR);
+  if (fd < 0) oserr("/dev/null");
+  return fd;
+}
+static int proc_cloexec(int fd, int on) {   /* set or clear close-on-exec: -1 with errno where it fails */
+  int f = fcntl(fd, F_GETFD);
+  return f < 0 ? -1 : fcntl(fd, F_SETFD, on ? f | FD_CLOEXEC : f & ~FD_CLOEXEC);
+}
+/* close_fds: the child closes every descriptor past the standard three but keep, the pipe of its
+   errors. Linux has close_range() for it (5.9). Where that is missing (macOS too), the parent lists
+   the open ones before it forks, as the child could not read /dev/fd with async-signal-safe calls
+   alone; with neither, the child closes every number up to the limit of open files. */
+static int *proc_open_fds(I *n) {       /* the open descriptors past the standard three, or NULL without /dev/fd */
+  DIR *d = opendir("/dev/fd");
+  if (!d) return 0;
+  I cap = 64, len = 0;
+  int *v = pys_alloc_atomic((size_t)cap * sizeof *v);
+  for (struct dirent *e; (e = readdir(d));) {
+    char *end; long fd = strtol(e->d_name, &end, 10);
+    if (*end || end == e->d_name || fd < 3 || fd > INT_MAX) continue;
+    if (len == cap) {
+      int *w = pys_alloc_atomic((size_t)(cap *= 2) * sizeof *w);
+      memcpy(w, v, (size_t)len * sizeof *v); v = w;
+    }
+    v[len++] = (int)fd;
+  }
+  closedir(d);
+  *n = len;
+  return v;
+}
+static void proc_close_from3(int keep, const int *fds, I n, long maxfd) {   /* n < 0: with close_range() */
+#if defined(__linux__) && defined(SYS_close_range)
+  if (n < 0 && (keep <= 3 || !syscall(SYS_close_range, 3U, (unsigned)keep - 1, 0U)) &&
+      !syscall(SYS_close_range, (unsigned)keep + 1, ~0U, 0U)) return;
+#endif
+  if (fds) { for (I i = 0; i < n; i++) if (fds[i] != keep) close(fds[i]); return; }
+  for (long fd = 3; fd < maxfd; fd++) if (fd != keep) close((int)fd);
+}
+/* The child's part, in the order of CPython's child_exec: the standard streams, the directory, the
+   signals CPython ignores (here SIGPIPE and SIGXFSZ) back to their defaults, the session, the
+   other descriptors, then the first of execs that the system runs. A failure goes to the parent
+   through errpipe, which a successful exec closes: its errno, and 0 for an exec's, 1 for chdir()'s,
+   2 for another's (CPython's "", "noexec:chdir" and "noexec"). */
+static _Noreturn void proc_child(char **argv, char **execs, char **envp, const char *cwd, int p2cread, int c2pwrite,
+                                 int errwrite, int errpipe, I flags, const int *fds, I nfds, long maxfd) {
+  int msg[2] = {0, 2};
+  /* a descriptor to put on 1 or 2 that is 0 or 1 itself would be overwritten first: a copy of it */
+  if (c2pwrite == 0 && ((c2pwrite = dup(c2pwrite)) < 0 || proc_cloexec(c2pwrite, 1) < 0)) goto fail;
+  while (errwrite == 0 || errwrite == 1)
+    if ((errwrite = dup(errwrite)) < 0 || proc_cloexec(errwrite, 1) < 0) goto fail;
+  /* dup2() makes a descriptor that an exec keeps; one already in its place is only marked so */
+  if (p2cread == 0 ? proc_cloexec(0, 0) < 0 : p2cread != -1 && dup2(p2cread, 0) < 0) goto fail;
+  if (c2pwrite == 1 ? proc_cloexec(1, 0) < 0 : c2pwrite != -1 && dup2(c2pwrite, 1) < 0) goto fail;
+  if (errwrite == 2 ? proc_cloexec(2, 0) < 0 : errwrite != -1 && dup2(errwrite, 2) < 0) goto fail;
+  if (cwd && chdir(cwd) < 0) { msg[1] = 1; goto fail; }
+  if (flags & 2) { signal(SIGPIPE, SIG_DFL); signal(SIGXFSZ, SIG_DFL); }
+  if ((flags & 4) && setsid() < 0) goto fail;
+  msg[1] = 0;
+  if (flags & 1) proc_close_from3(errpipe, fds, nfds, maxfd);
+  int first = 0;                        /* (the PATH search of os._execvpe(), which reports the first error */
+  for (I i = 0; execs[i]; i++) {        /* that is not a missing file's, else the last) */
+    if (envp) execve(execs[i], argv, envp); else execv(execs[i], argv);
+    if (errno != ENOENT && errno != ENOTDIR && !first) first = errno;
+  }
+  if (first) errno = first;
+fail:
+  msg[0] = errno;
+  while (write(errpipe, msg, sizeof msg) < 0 && errno == EINTR) {}
+  _exit(255);
+}
+static char **proc_strs(List *l) {      /* l's strs as a NULL-terminated array of C strings; none holds a NUL */
+  char **v = pys_alloc((l->len + 1) * sizeof *v);
+  for (I i = 0; i < l->len; i++) {
+    if (nul((Str *)l->a[i])) pys_fail("ValueError: embedded null byte");
+    v[i] = ((Str *)l->a[i])->s;
+  }
+  return v;
+}
+/* _posixsubprocess.fork_exec(): start args as a child process, trying each of execs as its
+   program, and return its process ID once it runs. fds are the child's standard input, output
+   and error (-1: the parent's); flags 1 is close_fds, 2 restore_signals, 4 start_new_session,
+   8 that env is its environment (else the parent's) and 16 that cwd is its directory. An exec
+   that fails raises the OSError of its errno with args[0], and chdir()'s with cwd, as CPython's. */
+I pys_proc_fork_exec(List *args, List *execs, List *env, Str *cwd, I p2cread, I c2pwrite, I errwrite, I flags) {
+  if (!args->len) pys_fail("ValueError: args must not be empty");   /* (subprocess.py reads args[0] first) */
+  if (p2cread < INT_MIN || c2pwrite < INT_MIN || errwrite < INT_MIN || p2cread > INT_MAX || c2pwrite > INT_MAX ||
+      errwrite > INT_MAX)
+    pys_fail("OverflowError: Python int too large to convert to C int");   /* (another that is no descriptor */
+                                                                            /* fails in the child: EBADF) */
+  char **argv = proc_strs(args), **paths = proc_strs(execs), **envp = flags & 8 ? proc_strs(env) : 0;
+  if ((flags & 16) && nul(cwd)) pys_fail("ValueError: embedded null byte");
+  long maxfd = sysconf(_SC_OPEN_MAX);
+  if (maxfd < 0) maxfd = 256;
+  int ep[2], e = proc_pipe(ep);
+  if (e) ioerr(e);
+  int *open_fds = 0; I nopen = 0;
+  if (flags & 1) {
+#if defined(__linux__) && defined(SYS_close_range)
+    static int ranged = -1;             /* does this kernel have close_range()? It refuses a first past the last */
+    if (ranged < 0) ranged = !(syscall(SYS_close_range, ~0U, 0U, 0U) < 0 && errno == ENOSYS);
+    if (ranged) nopen = -1; else
+#endif
+    open_fds = proc_open_fds(&nopen);
+  }
+  /* A Ctrl-C between fork() and the exec would run this runtime's handler in the child, which
+     writes the output that the parent has buffered: it waits for the program, or for the parent. */
+  sigset_t block, old;
+  sigemptyset(&block); sigaddset(&block, SIGINT);
+  pthread_sigmask(SIG_BLOCK, &block, &old);
+  pid_t pid = fork();
+  if (!pid) {
+    if (sigint_on) signal(SIGINT, SIG_DFL);
+    pthread_sigmask(SIG_SETMASK, &old, 0);
+    proc_child(argv, paths, envp, flags & 16 ? cwd->s : 0, (int)p2cread, (int)c2pwrite, (int)errwrite, ep[1], flags,
+               open_fds, nopen, maxfd);
+  }
+  e = errno;
+  pthread_sigmask(SIG_SETMASK, &old, 0);
+  close(ep[1]);
+  if (pid < 0) { close(ep[0]); ioerr(e); }
+  int msg[2]; size_t got = 0;
+  for (;;) {                            /* what the child reports: nothing, where its exec closed the pipe */
+    ssize_t n = read(ep[0], (char *)msg + got, sizeof msg - got);
+    if (n > 0) got += (size_t)n;
+    if (!n || got == sizeof msg || (n < 0 && errno != EINTR)) break;
+  }
+  close(ep[0]);
+  if (got != sizeof msg) return pid;
+  int st;
+  while (waitpid(pid, &st, 0) < 0 && errno == EINTR) {}
+  errno = msg[0];
+  if (msg[1] == 0) oserr(argv[0]);
+  if (msg[1] == 1) oserr(cwd->s);
+  ioerr(msg[0]);
+}
+I pys_proc_wait(I pid, I nohang) {      /* os.waitpid(pid, WNOHANG or 0), as the returncode Popen makes of it: the exit
+                                           status, or minus the signal that killed the child; PROC_RUNNING for one that
+                                           has not ended (nohang), and 0 for one that is not this process's to wait for
+                                           (ECHILD: SIGCHLD is ignored, or something else waited) */
+  int st; pid_t r;
+  do r = waitpid((pid_t)pid, &st, nohang ? WNOHANG : 0); while (r < 0 && errno == EINTR);
+  if (r < 0) { if (errno == ECHILD) return 0; ioerr(errno); }
+  if (!r) return PROC_RUNNING;
+  return WIFSIGNALED(st) ? -WTERMSIG(st) : WEXITSTATUS(st);
+}
+void pys_proc_kill(I pid, I sig) {      /* os.kill(pid, sig) */
+  if (sig > INT_MAX) pys_fail("OverflowError: signed integer is greater than maximum");
+  if (sig < INT_MIN) pys_fail("OverflowError: signed integer is less than minimum");
+  if (kill((pid_t)pid, (int)sig) < 0) ioerr(errno);
+}
+Str *pys_proc_read(I fd, I n) {         /* os.read(fd, n), of at most 32768 bytes: b"" at the end */
+  char b[32768]; ssize_t r;
+  do r = read((int)fd, b, n < (I)sizeof b ? (size_t)n : sizeof b); while (r < 0 && errno == EINTR);
+  if (r < 0) ioerr(errno);
+  return pys_str(b, r);
+}
+I pys_proc_write(I fd, Str *data, I at, I n) {   /* os.write(fd, data[at:at + n]): how many bytes it took */
+  if (at < 0 || at > data->len) at = data->len;
+  if (n > data->len - at) n = data->len - at;
+  ssize_t r;
+  do r = write((int)fd, data->s + at, (size_t)n); while (r < 0 && errno == EINTR);
+  if (r < 0) ioerr(errno);              /* (EPIPE where the reader is gone: the runtime ignores SIGPIPE) */
+  return r;
+}
+void pys_proc_close(I fd) { if (close((int)fd) < 0) ioerr(errno); }   /* os.close(fd) */
+/* The selector of Popen.communicate(): which of two descriptors to read (1 and 2) and one to write
+   (4) are ready, an end of file or an error among them, within timeout seconds (negative: wait
+   for one). A descriptor of -1 is not waited for. It is poll(), which has no limit of select(). */
+I pys_proc_ready(I rd1, I rd2, I wr, double timeout) {
+  struct pollfd p[3] = {{(int)rd1, POLLIN, 0}, {(int)rd2, POLLIN, 0}, {(int)wr, POLLOUT, 0}};
+  double end = timeout < 0 ? 0 : pys_monotonic() + timeout;
+  for (;;) {
+    double ms = timeout < 0 ? -1 : ceil(timeout * 1e3);
+    int n = poll(p, 3, ms > INT_MAX ? INT_MAX : (int)ms);
+    if (n >= 0) break;
+    if (errno != EINTR) ioerr(errno);
+    if (timeout >= 0 && (timeout = end - pys_monotonic()) < 0) timeout = 0;
+  }
+  return (p[0].revents ? 1 : 0) | (p[1].revents ? 2 : 0) | (p[2].revents ? 4 : 0);
+}
+Str *pys_proc_signame(I sig) {          /* signal.Signals(sig).name, or "" for a number that names no signal: of two
+                                           names of one signal, the enum's is the first in alphabetical order */
+  /* GC_NO_ROOT(pys_proc_signame.names): signal names are C string literals. */
+  static const struct { int n; const char *s; } names[] = {
+    {SIGABRT, "SIGABRT"}, {SIGALRM, "SIGALRM"}, {SIGBUS, "SIGBUS"}, {SIGCHLD, "SIGCHLD"}, {SIGCONT, "SIGCONT"},
+#ifdef SIGEMT
+    {SIGEMT, "SIGEMT"},
+#endif
+    {SIGFPE, "SIGFPE"}, {SIGHUP, "SIGHUP"}, {SIGILL, "SIGILL"},
+#ifdef SIGINFO
+    {SIGINFO, "SIGINFO"},
+#endif
+    {SIGINT, "SIGINT"}, {SIGIO, "SIGIO"}, {SIGKILL, "SIGKILL"}, {SIGPIPE, "SIGPIPE"}, {SIGPROF, "SIGPROF"},
+#ifdef SIGPWR
+    {SIGPWR, "SIGPWR"},
+#endif
+    {SIGQUIT, "SIGQUIT"}, {SIGSEGV, "SIGSEGV"},
+#ifdef SIGSTKFLT
+    {SIGSTKFLT, "SIGSTKFLT"},
+#endif
+    {SIGSTOP, "SIGSTOP"}, {SIGSYS, "SIGSYS"}, {SIGTERM, "SIGTERM"}, {SIGTRAP, "SIGTRAP"}, {SIGTSTP, "SIGTSTP"},
+    {SIGTTIN, "SIGTTIN"}, {SIGTTOU, "SIGTTOU"}, {SIGURG, "SIGURG"}, {SIGUSR1, "SIGUSR1"}, {SIGUSR2, "SIGUSR2"},
+    {SIGVTALRM, "SIGVTALRM"}, {SIGWINCH, "SIGWINCH"}, {SIGXCPU, "SIGXCPU"}, {SIGXFSZ, "SIGXFSZ"},
+  };
+  for (size_t i = 0; i < sizeof names / sizeof *names; i++) if (names[i].n == sig) return cstr(names[i].s);
+#ifdef SIGRTMIN
+  if (sig == SIGRTMIN) return cstr("SIGRTMIN");
+  if (sig == SIGRTMAX) return cstr("SIGRTMAX");
+#endif
+  return cstr("");
 }
 /* Private native-program cache primitives: no wait and no diagnostics. Retain
    only descriptors we allocated; inherited descriptors belong to the caller.

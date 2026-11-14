@@ -22,7 +22,7 @@ the [module guide](README.md#module-guide) summarizes what each module supports.
 | [Numbers and randomness](#numbers-and-randomness) | [`random`](#random), [`statistics`](#statistics), [`mpz`](#mpz) |
 | [Dates and times](#dates-and-times) | [`datetime`](#datetime) |
 | [Files, OS and command line](#files-os-and-command-line) | [`io`](#io), [Binary files](#binary-files), [Path modules](#path-modules), [`pathlib`](#pathlib), [`glob`](#glob), [`shutil`](#shutil), [`argparse`](#argparse), [`getopt`](#getopt) |
-| [Processes and threads](#processes-and-threads) | [`_thread`](#_thread), [`threading`](#threading), [`atexit`](#atexit) |
+| [Processes and threads](#processes-and-threads) | [`subprocess`](#subprocess), [`_thread`](#_thread), [`threading`](#threading), [`atexit`](#atexit) |
 | [Runtime services](#runtime-services) | [`abc`](#abc), [`types`](#types), [`warnings`](#warnings), [`logging`](#logging), [`traceback`](#traceback), [`weakref` and `_weakref` (prototype)](#weakref-and-_weakref-prototype) |
 | [Native interoperability](#native-interoperability) | [`ctypes`](#ctypes) |
 | [Removed modules](#removed-modules) | `_imp`, `_ast`, `opcode` |
@@ -1460,6 +1460,56 @@ untranslated. Error messages and parsing otherwise follow the upstream code.
 ## Processes and threads
 
 <a id="thread"></a>
+
+### `subprocess`
+
+A subset implementation of CPython's `subprocess` for POSIX, written over private runtime
+primitives that do what CPython's asks of `_posixsubprocess.fork_exec()`, `os` and `select`
+([tests](../tests/programs/library/lib_subprocess_run.py)): `run()`, `call()`, `check_call()`,
+`check_output()`, `getoutput()`, `getstatusoutput()`, `Popen`, `CompletedProcess`,
+`CalledProcessError`, `TimeoutExpired`, `SubprocessError`, `PIPE`, `STDOUT` and `DEVNULL`.
+A child starts as CPython starts it: found in `PATH` (that of `env`, if it has one), in `cwd`,
+with `env`, in a new session for `start_new_session`, with only its three standard descriptors
+(`close_fds`), and with the default actions of the signals that the runtime ignores. A program
+that cannot start raises the `OSError` of its `errno`, with its name
+([test](../tests/programs/library/lib_subprocess_errors.py)).
+
+- **Text mode is decided when a call is compiled.** `run()` and `check_output()` return `str`
+  where the call passes `text`, `universal_newlines`, `encoding` or `errors`, and `bytes`
+  where it passes none of them; a `CompletedProcess` is generic in that type
+  (`CompletedProcess[str]`), and one variable holds results of one of the two
+  ([test](../tests/programs/library/lib_subprocess_text.py),
+  [error test](../tests/errors/library/lib_subprocess_two_modes.py)). CPython decides from the
+  values as it runs. A call that passes `text=False`, or another of the four as a false value
+  alone, is compiled to return `str` and raises `ValueError`
+  ([deviation](../tests/deviations/lib_subprocess_text_false.py)); an `encoding` or `errors`
+  that may be `None` is rejected
+  ([error test](../tests/errors/library/lib_subprocess_optional_encoding.py)). `input` is `bytes`,
+  and a `str` in text mode ([error test](../tests/errors/library/lib_subprocess_input_str.py)).
+- **`CalledProcessError` holds bytes.** Its `output` and `stderr` are `bytes` or `None`, also
+  for a call in text mode, whose are the bytes before they are decoded; CPython's are then the
+  `str` ([deviation](../tests/deviations/lib_subprocess_text_error.py)). CPython's
+  `TimeoutExpired` holds bytes in text mode too, as here.
+- **`Popen` is of one type**, so that an annotation names it (`Popen`, `Popen[bytes]`) and a
+  field holds it ([test](../tests/programs/library/lib_subprocess_mypy.py)). Its pipes carry
+  bytes, through `communicate()`: it has no `stdin`, `stdout` and `stderr` files and no text
+  mode ([error tests](../tests/errors/library/lib_subprocess_popen_stdout.py)). Its streams are
+  `None` or an `int`; `run()`, `call()` and `check_output()` also take an open file, whose
+  `fileno()` they pass. `poll()`, `wait()`, `communicate()`, `send_signal()`, `terminate()`,
+  `kill()`, `pid`, `returncode`, `args` and the context manager are CPython's
+  ([test](../tests/programs/library/lib_subprocess_popen.py)).
+- `args` is a `str` or a `list[str]`. The parameters past `bufsize` are keyword-only, and
+  `executable`, `preexec_fn`, `pass_fds`, `user`, `group`, `extra_groups`, `umask`, `pipesize`,
+  `process_group`, `startupinfo` and `creationflags` are not parameters
+  ([error test](../tests/errors/library/lib_subprocess_executable.py)); `check_output()` has
+  no `stdout` and `check`, which CPython refuses with `ValueError`.
+- A timeout kills the child, as CPython's does, not what the child started: a program ends
+  those through the child's session (`start_new_session`) itself. Ctrl-C ends a Pystachy
+  program at once, so `run()` does not kill a child that the terminal's signal did not reach.
+  A `Popen` that the program never waits for leaves its child unreaped until the program
+  ends; CPython reaps it when a later `Popen` is made.
+- There is no `signal` module: `send_signal()` takes the signal's number, and a
+  `CalledProcessError`'s message names the signal that ended a child from the system's table.
 
 ### `_thread`
 

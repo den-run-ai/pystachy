@@ -1,0 +1,32 @@
+3 None None ['sh', '-c', 'exit 3']
+CompletedProcess(args=['sh', '-c', 'exit 3'], returncode=3)
+7
+-9
+1 b'out\n' b'err\n'
+CompletedProcess(args=['sh', '-c', 'echo out; echo err >&2; exit 1'], returncode=1, stdout=b'out\n', stderr=b'err\n')
+OUT
+ 4
+b'out\nerr\n' None
+None b'err\n'
+None None
+b'got\n'
+b'a\x00b\xff\n' b''
+b'' b''
+True 1048576
+b'done\n' True
+0 b''
+b'/\n' True
+b'1-two words-\n'
+b'inherited\n'
+b'[]\n'
+FileNotFoundError [Errno 2] No such file or directory: 'sh'
+b'found\n'
+b'/bin/sh\n'
+b'zero one\n'
+FileNotFoundError [Errno 2] No such file or directory: 'sh -c true'
+to stdout
+to stdout too
+4 5
+0
+0 b'y\n' b''
+[exit 0]
