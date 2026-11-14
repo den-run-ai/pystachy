@@ -1184,7 +1184,7 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
                 p.kids[0] = mk("noann", "", d.line, [])
         if self.typevar_in([d.kids[1]], tvs) != "":
             d.kids[1] = mk("noann", "", d.line, [])
-    init = d.s == "__init__" and self.tmpl_of(cls) != ""  # (a class template's: see specialize)
+    init = d.s == "__init__" and (self.tmpl_of(cls) != "" or (cls in self.classes and self.classes[cls].init_only))
     for i in range(len(ps)):
         # x: object, as in __eq__(self, other: object): a template's parameter, which each call
         # types (any argument: isinstance() narrows it), where a template may be

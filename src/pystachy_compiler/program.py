@@ -298,7 +298,7 @@ def gen_derives(self, c: str, base: str) -> bool:
         c = info.base
     return c in EXCBASES and exc_derives(c, base)
 
-def gen_init_template(self, st: Node) -> bool:
+def gen_init_generic(self, st: Node) -> bool:
     # is class statement st a class template: no decorator (a dataclass's fields are annotated)
     # and an __init__ of its own with a parameter but self that has no annotation, mentions Any,
     # is object, or names a class template; each object belongs to a specialization, whose fields
@@ -319,6 +319,96 @@ def gen_init_template(self, st: Node) -> bool:
             if self.makes_tmpl(d.kids[2]):
                 return True  # (a field may hold an object of a class template: typed where the object is made)
     return False
+
+def fixed_ann_shape(a: Node, classes: dict[str, ClassInfo]) -> bool:
+    if a.kind == "str" or a.kind == "noann":
+        return False
+    if a.kind == "index" and a.kids[0].kind == "name" and a.kids[0].s in classes:
+        return False
+    return all([fixed_ann_shape(k, classes) for k in a.kids])
+
+def gen_fixed_ann(self, a: Node) -> bool:
+    # A layout annotation that can be checked without making a class specialization or
+    # parsing a deferred string. Those paths retain their existing lazy template handling.
+    if not fixed_ann_shape(a, self.classes) or self.any_in([a]) or self.tmpl_ann(a):
+        return False
+    return self.ann_problem(a, False) == ""
+
+def gen_fixed_stores(self, n: Node, receiver: str, fields: dict[str, str]) -> bool:
+    # Every attribute initialized on self must have one independent storage annotation.
+    # Scan declarations first so an annotated field can be assigned on another branch too.
+    if n.kind == "annassign" and n.kids[0].kind == "attr" and n.kids[0].kids[0].kind == "name" and n.kids[0].kids[0].s == receiver:
+        if not self.fixed_ann(n.kids[1]):
+            return False
+        name = n.kids[0].s
+        t = self.ann(n.kids[1])
+        if name in fields and fields[name] != t:
+            return False
+        fields[name] = t
+    for k in n.kids:
+        if not self.fixed_stores(k, receiver, fields):
+            return False
+    return True
+
+def fixed_targets(n: Node, receiver: str, fields: dict[str, str]) -> bool:
+    if n.kind == "attr" and n.kids[0].kind == "name" and n.kids[0].s == receiver:
+        return n.s in fields
+    return all([fixed_targets(k, receiver, fields) for k in n.kids])
+
+def fixed_assignments(n: Node, receiver: str, fields: dict[str, str]) -> bool:
+    if n.kind in ["assign", "annassign", "augassign"]:
+        targets = n.kids[:-1] if n.kind == "assign" else n.kids[:1]
+        for target in targets:
+            if not fixed_targets(target, receiver, fields):
+                return False
+    return all([fixed_assignments(k, receiver, fields) for k in n.kids])
+
+def fixed_properties(st: Node, fields: dict[str, str]) -> bool:
+    # The annotation of a property assignment says nothing about the storage its
+    # setter writes. Leave that layout to the existing specialization analysis.
+    for d in st.kids[0].kids:
+        if d.kind == "def" and d.s in fields and len(d.kids) == 4:
+            deco = d.kids[3].s
+            if deco == "property" or deco.endswith(".setter") or deco.endswith(".deleter"):
+                return False
+    return True
+
+def gen_fixed_init(self, st: Node) -> bool:
+    # Constructor arguments may specialize code without specializing storage. Keep the
+    # source class itself when all its instance fields have concrete annotations; an
+    # Iterable field, inferred field, explicit generic class or deferred annotation still
+    # needs the existing class-template path.
+    if len(st.kids) != 1 or st.s in self.tparams or st.s in self.nts:
+        return False
+    fields: dict[str, str] = {}
+    init = st
+    for d in st.kids[0].kids:
+        if d.kind == "annassign" and d.kids[0].kind == "name":
+            if not self.fixed_ann(d.kids[1]):
+                return False
+            fields[d.kids[0].s] = self.ann(d.kids[1])
+        elif d.kind == "def" and d.s == "__init__" and len(d.kids) == 3:
+            init = d
+    if init is st or len(init.kids[0].kids) == 0 or has_kind(init.kids[2], "def") or has_kind(init.kids[2], "class"):
+        return False
+    if reads_builtin(init.kids[2], "callable", False, {}):
+        # scan_fields can choose different fields and field order after callable type
+        # guards. Retain those layouts, including their observable vars() order.
+        return False
+    receiver = init.kids[0].kids[0].s
+    if not self.fixed_stores(init.kids[2], receiver, fields):
+        return False
+    if not fixed_properties(st, fields):
+        return False
+    base = self.classes[st.s].base if st.s in self.classes else ""
+    while base in self.classes:
+        if not fixed_properties(self.classes[base].node, fields):
+            return False
+        base = self.classes[base].base
+    return fixed_assignments(init.kids[2], receiver, fields)
+
+def gen_init_template(self, st: Node) -> bool:
+    return self.init_generic(st) and not self.fixed_init(st)
 
 def gen_template_fix(self, cs: list[Node]) -> str:
     # what to change so that classes cs are no class templates: their __init__'s parameters,
@@ -373,7 +463,7 @@ def gen_tmpl_of(self, c: str) -> str:
         return c
     return self.classes[c].origin if c in self.classes else ""
 
-def gen_class_problem(self, m: Mod, st: Node, exc: bool) -> str:
+def gen_class_problem(self, m: Mod, st: Node, exc: bool, ordinary: bool = False) -> str:
     # why a class of an imported module cannot be declared, or "": its __init__ (and the special
     # methods template_ok leaves out) needs annotated parameters, where another method's
     # unannotated ones make it a template, and its body may hold only fields, methods and a
@@ -398,7 +488,7 @@ def gen_class_problem(self, m: Mod, st: Node, exc: bool) -> str:
                 return f"method {b.s}() has a decorator"  # (an @overload stub's calls are the error: see declare_fn)
             if len(ps) == 0 and not static:
                 return f"method {b.s}() has no {'cls' if deco != '' else 'self'} parameter"
-            for i in range(len(ps) if not template_ok(b.s) and not (b.s == "__init__" and not exc and self.init_template(st)) else 0):
+            for i in range(len(ps) if not template_ok(b.s) and not (b.s == "__init__" and (not exc or ordinary and self.fixed_init(st)) and self.init_generic(st)) else 0):
                 if ps[i].kind != "param":
                     return f"method {b.s}() takes *args or **kwargs"
                 if (i > 0 or static) and ps[i].kids[0].kind == "noann":
@@ -905,7 +995,7 @@ def gen_program(self, mods: list[Mod]) -> str:
             elif st.kind == "subclass":
                 why = self.subclass_problem(st)
                 if why == "" and m.name != "":
-                    why = self.class_problem(m, st.kids[0], True)
+                    why = self.class_problem(m, st.kids[0], True, self.exc_base(st.kids[1]) == "")
             elif st.kind == "class" and m.name != "":
                 why = self.class_problem(m, st, False)
             if why != "" and m.name == "":
@@ -974,6 +1064,7 @@ def gen_program(self, mods: list[Mod]) -> str:
                 self.tmpl[ci.name] = True
                 grow = True
     for ci in self.classes.values():
+        ci.init_only = ci.exc == "" and ci.name not in self.tmpl and self.init_generic(ci.node)
         if ci.tag != 0 and ci.name in self.tmpl:
             self.line = ci.node.line
             self.err("inheritance with generic class templates is not supported: " + self.template_fix([ci.node]))
@@ -1169,7 +1260,7 @@ def gen_program(self, mods: list[Mod]) -> str:
         for f in ci.methods.values():
             if f.cls != ci.name or (ci.name in self.tmpl and f.deco == ""):
                 continue  # (an exception class's base's; a class template's, but its static and class methods: its specializations')
-            if ci.mod != "" and f.ll not in self.lazy:
+            if (ci.mod != "" or ci.init_only) and f.ll not in self.lazy:
                 self.lazy[f.ll] = f
             elif f.ll not in self.lazy and f.ll not in self.compiled and not f.generic:
                 self.function(f, f.node.kids[2].kids)

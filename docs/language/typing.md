@@ -759,11 +759,22 @@ the same types share a specialization: `Box(1)` and `Box(2)` share one, while `B
 uses another. Methods compile when needed; non-template special methods compile when the
 specialization is created.
 
+When every initialized instance field has a concrete class-body or inline annotation,
+constructor code can specialize without changing the class's layout. For example,
+`__init__(self, groups: Iterable[list[str]])` can fill `self.seen: dict[str, int]`
+from lists, tuples or generators. All such objects have the same static class and can
+share a variable or container; the class can participate in inheritance. Its constructor
+and instance methods remain compiled on demand, including in an unused class in the
+main module. This path excludes explicit `Generic` classes, inferred fields, stored
+`Iterable`/`Iterator` fields, property stores, callable-controlled constructor layouts,
+deferred string field annotations and fields annotated with a specialization of another
+class template.
+
 If `Box.__init__(self, value: Any) -> None` assigns `self.value = value`, it behaves like
 the unannotated constructor: `Box(1).value` is an `int`, and `Box("s").value` is a `str`.
 Existing field types cannot change later. `Any` does not provide a shared boxed layout for
 these objects. Inheritance with class templates remains unsupported; use concrete constructor
-annotations there. Dataclass fields annotated `Any` still require a concrete type.
+or field annotations there. Dataclass fields annotated `Any` still require a concrete type.
 
 Each specialization is a distinct static type. One variable or container cannot hold both
 `Box[int]` and `Box[str]`, although both satisfy `isinstance(value, Box)` and use the name
@@ -1033,7 +1044,8 @@ class variables.
 ## Single inheritance
 
 An ordinary class may derive from one previously declared ordinary class, including an
-imported class. Annotate its `__init__` parameters; constructor-inferred class templates and
+imported class. Annotate its `__init__` parameters or give all its fields concrete storage
+annotations as described above; constructor-inferred class templates and
 `Generic` classes cannot participate in a hierarchy. Fields retain their declared or inferred
 types, and the existing field-inference rules still apply.
 
