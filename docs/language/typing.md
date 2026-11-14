@@ -759,7 +759,8 @@ the same types share a specialization: `Box(1)` and `Box(2)` share one, while `B
 uses another. Methods compile when needed; non-template special methods compile when the
 specialization is created.
 
-When every initialized instance field has a concrete class-body or inline annotation,
+When every initialized instance field has a concrete class-body annotation or an inline
+annotation before its first unannotated store in source order,
 constructor code can specialize without changing the class's layout. For example,
 `__init__(self, groups: Iterable[list[str]])` can fill `self.seen: dict[str, int]`
 from lists, tuples or generators. All such objects have the same static class and can

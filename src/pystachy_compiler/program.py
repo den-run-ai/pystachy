@@ -336,7 +336,10 @@ def gen_fixed_ann(self, a: Node) -> bool:
 
 def gen_fixed_stores(self, n: Node, receiver: str, fields: dict[str, str]) -> bool:
     # Every attribute initialized on self must have one independent storage annotation.
-    # Scan declarations first so an annotated field can be assigned on another branch too.
+    # scan_fields sees stores in source order. An annotation must establish storage before
+    # an unannotated store; a later annotation cannot prevent argument-dependent inference.
+    if n.kind in ["assign", "augassign"] and not fixed_assignments(n, receiver, fields):
+        return False
     if n.kind == "annassign" and n.kids[0].kind == "attr" and n.kids[0].kids[0].kind == "name" and n.kids[0].kids[0].s == receiver:
         if not self.fixed_ann(n.kids[1]):
             return False
