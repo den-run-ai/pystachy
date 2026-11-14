@@ -421,6 +421,18 @@ def gen_path_union(self, ms: list[Node]) -> str:
             none = none or t != "str"
     return ("opt[str]" if none else "str") if s else "!" + PATHLIKE
 
+def bad_attr(n: Node) -> Node | None:
+    # the first read in expression n, as CPython evaluates it, of a module attribute that does
+    # not exist (Loader.qexpr's badattr: CPython's AttributeError), or that a module Pystachy
+    # provides does not offer; else None. A module as a value, or its __dict__, is no such read
+    if n.kind == "badattr" and (" has no attribute " in n.s or " is not offered by " in n.s):
+        return n
+    for k in n.kids:
+        r = bad_attr(k)
+        if r is not None:
+            return r
+    return None
+
 def gen_typevar_def(self, st: Node) -> bool:
     # is st T = TypeVar("T") or Ts = TypeVarTuple("Ts") (typing's or typing_extensions'): T is
     # then a name only annotations use
@@ -434,11 +446,29 @@ def gen_typevar_def(self, st: Node) -> bool:
     self.line = st.line
     if len(c.kids) < 2 or c.kids[1].kind != "str":
         self.err(f"{kind}() needs the type variable's name, a string, as its first argument")
+    constraints = 0
+    bound = False
     for a in c.kids[2:]:
-        if a.kind != "kw" or not is_const(a.kids[0]):
-            self.err("a TypeVar's constraints, and a bound other than a string, are not supported")
-        if a.s == "default":
+        # (constraints and a bound only restrict what binds the variable, which the arguments'
+        # types do; Loader.deftime has read them as annotations, which run no code)
+        if a.kind != "kw" and kind == "TypeVar":
+            constraints += 1
+        elif a.kind == "kw" and a.s == "bound" and kind == "TypeVar":
+            bound = True
+        elif a.kind != "kw" or not is_const(a.kids[0]):
+            self.err(f"a {kind}'s arguments other than its name{', constraints and bound' if kind == 'TypeVar' else ''} must be constants")
+        b = bad_attr(a.kids[0] if a.kind == "kw" else a) if kind == "TypeVar" and (a.kind != "kw" or a.s == "bound") else None
+        if b is not None:
+            # (an attribute that its module does not bind, which Loader.qexpr leaves as badattr:
+            # CPython raises AttributeError there, though it checks no bound or constraint)
+            self.line = b.line
+            self.err(f"{b.s} (CPython evaluates a TypeVar's constraints and bound when the assignment runs)")
+        if a.kind == "kw" and a.s == "default":
             self.tvdefaults[st.kids[0].s] = True
+    if constraints == 1:
+        self.err("A single constraint is not allowed (CPython raises this TypeError when the assignment runs)")
+    if constraints > 0 and bound:
+        self.err("Constraints cannot be combined with bound=... (CPython raises this TypeError when the assignment runs)")
     if kind == "TypeVarTuple":
         self.tvtuples[st.kids[0].s] = True
     return True

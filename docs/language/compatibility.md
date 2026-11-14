@@ -589,8 +589,8 @@ See [annotations](typing.md#annotations), [aliases](typing.md#type-aliases) and
 [generic classes](typing.md#explicit-generic-classes).
 
 - **Type variables:** `ClassVar`; `PathLike` outside a union with `str`; `TypeVar` outside template parameters
-  and returns, except bound class type variables; constraints or nonstring bounds;
-  `TypeVarTuple` outside unpacking in tuple, Callable or `*args`; unbound class type variables.
+  and returns, except bound class type variables; `TypeVarTuple` outside unpacking in tuple,
+  Callable or `*args`; unbound class type variables.
 - **Generic classes:** `Generic[...]` alongside another base; PEP 695 classes with bases,
   `ParamSpec` or multiple `TypeVarTuple`s; explicit `C[X]` with a `TypeVarTuple` or unannotated /
   variadic constructor parameters.

@@ -1749,6 +1749,13 @@ class Loader:
                     self.reads(st.kids[-1], env, "CPython evaluates this type alias's value when the assignment runs", 3)
                 if k == "annassign":
                     self.ann(st.kids[1], env, "the class body" if cls != "" else "the annotated assignment")
+            elif top and cls == "" and k == "assign" and len(st.kids) == 2 and st.kids[0].kind == "name" and st.kids[1].kind == "call" and self.bpath(st.kids[1].kids[0]) == "typing.TypeVar":
+                # T = TypeVar("T", A, B) or TypeVar("T", bound=B): CPython evaluates its constraints
+                # and bound as the assignment runs, which Gen.typevar_def drops (finding it by the
+                # call): they are read as an annotation is, which must be bound and run no code
+                for x in st.kids[1].kids[2:]:
+                    if x.kind != "kw" or x.s == "bound":
+                        self.reads(x.kids[0] if x.kind == "kw" else x, env, "CPython evaluates a TypeVar's constraints and bound when the assignment runs", 3)
             first: dict[str, bool] = {}
             for i in range(len(st.kids) if k != "def" and k != "class" and k != "subclass" and k != "typealias" else 0):
                 x = st.kids[i]

@@ -1077,6 +1077,10 @@ from src.pystachy_compiler.optimizations import (
     gen_usplits as optimizations_usplits,
 )
 from src.pystachy_compiler.program import (
+    gen_bound_problem as program_bound_problem,
+    gen_tv_items as program_tv_items,
+    gen_tv_names as program_tv_names,
+    gen_tv_problem as program_tv_problem,
     gen_body_effect as program_body_effect,
     gen_body_names as program_body_names,
     gen_class_effect as program_class_effect,
@@ -2857,6 +2861,18 @@ class Gen:
 
     def typevar_def(self, st: Node) -> bool:
         return declarations_typevar_def(self, st)
+
+    def bound_problem(self, x: Node) -> str:
+        return program_bound_problem(self, x)
+
+    def tv_names(self, e: Node) -> str:
+        return program_tv_names(self, e)
+
+    def tv_problem(self, e: Node, ctx: int) -> str:
+        return program_tv_problem(self, e, ctx)
+
+    def tv_items(self, xs: list[Node], ctx: int, tup: bool) -> str:
+        return program_tv_items(self, xs, ctx, tup)
 
     def typevar_in(self, anns: list[Node], skip: list[str]) -> str:
         return declarations_typevar_in(self, anns, skip)
