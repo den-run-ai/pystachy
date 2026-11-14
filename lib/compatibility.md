@@ -17,7 +17,7 @@ the [module guide](README.md#module-guide) summarizes what each module supports.
 | [Text](#text) | [`textwrap`](#textwrap), [`unicodedata`](#unicodedata), [`shlex`](#shlex), [`keyword`](#keyword), [`curses.ascii`](#cursesascii), [`string`](#string), [`difflib`](#difflib), [`gettext`](#gettext) |
 | [Regular expressions](#regular-expressions) | [`re`](#re), [`fnmatch`](#fnmatch) |
 | [Data formats and markup](#data-formats-and-markup) | [`json`](#json), [`tomllib`](#tomllib), [`csv`](#csv), [`html` and `html.parser`](#html-and-htmlparser), [`urllib.parse`](#urllibparse) |
-| [Binary data and encodings](#binary-data-and-encodings) | [`struct`](#struct), [`binascii`](#binascii), [`codecs`](#codecs) |
+| [Binary data and encodings](#binary-data-and-encodings) | [`struct`](#struct), [`binascii`](#binascii), [`hashlib`](#hashlib), [`codecs`](#codecs) |
 | [Collections and functional tools](#collections-and-functional-tools) | [`collections`](#collections), [`copy`](#copy), [`enum`](#enum), [`heapq`](#heapq), [`itertools`](#itertools), [`functools`](#functools), [`operator`](#operator), [`contextlib`](#contextlib) |
 | [Numbers and randomness](#numbers-and-randomness) | [`random`](#random), [`statistics`](#statistics), [`mpz`](#mpz) |
 | [Dates and times](#dates-and-times) | [`datetime`](#datetime) |
@@ -502,6 +502,25 @@ messages): `hexlify` and `b2a_hex` with `sep` and `bytes_per_sep`, `unhexlify` a
   `<built-in function hexlify>`. `a2b_base64.__doc__` is CPython's docstring without the
   indentation of its option's description, which CPython 3.13 removes from a Python function's
   docstring.
+
+### `hashlib`
+
+`hashlib` is a subset implementation of CPython's module, whose hash objects are OpenSSL's there.
+MD5, SHA-1, SHA-224 and SHA-256 are written in the subset from their specifications (RFC 1321 and
+FIPS 180-4) and give CPython's digests. `md5()`, `sha1()`, `sha224()`, `sha256()` and `new(name)`
+return a hash object with `update()`, `digest()`, `hexdigest()`, `copy()`, `name`, `digest_size`
+and `block_size`; they take `usedforsecurity`, which changes nothing here.
+
+- Data is `bytes`. A `str` is a compile-time error, where CPython raises `TypeError`.
+- SHA-384 and SHA-512 (their words are 64-bit, and Pystachy's `int` arithmetic is checked), SHA-3,
+  SHAKE and BLAKE2 are not there, nor are `file_digest()`, `pbkdf2_hmac()` and `scrypt()`: a use
+  of one is a compile-time error. `new()` raises CPython's `ValueError` (`unsupported hash type`)
+  for their names, and `algorithms_guaranteed` and `algorithms_available` hold the four names
+  only ([deviation](../tests/deviations/lib_hashlib_algorithms.py)).
+- `new()` takes a name in any letter case. OpenSSL's other spellings of a name, such as
+  `"sha-1"`, are unsupported hash types.
+- The hash objects are of one class, `hashlib.HASH`, which CPython has as `_hashlib.HASH`; their
+  repr is an object's. The constructors are Python functions, not builtins.
 
 ### `codecs`
 
