@@ -276,6 +276,9 @@ results, repair behavior, Unicode, scanning bounds and the fast path. Run:
 make test FILES='tests/programs/apps/port_json_repair*.py tests/programs/library/json_raw_decode.py tests/programs/inference/dynany_json_raw_decode.py'
 ```
 
-See the replay README for the complete corpus commands and original input provenance, and the
-[benchmark guide](../../bench/json_repair/README.md) for measurements against the port that
-this one replaces.
+See the replay README for complete corpus commands and original input provenance. The
+[14 November refresh](../../bench/json_repair/results/refresh-2026-11-14.md) compares
+upstream 0.64.9, adapted CPython, AOT, JIT and the CPython companion, with source hashes,
+all timing samples and current qualification gaps. The
+[benchmark guide](../../bench/json_repair/README.md) also retains the historical comparison
+against the port this one replaces.
