@@ -1,0 +1,79 @@
+{
+  "archive": "/workspace/scratch/7dd0519bc14a/evidence-upload/gate-review-evidence.tar.gz",
+  "bytes": 31866,
+  "sha256": "03b2c6eb931c6067bcba66befff1bc1251ac682278076bd65a5cb8d7c392d69c",
+  "git_blob_sha": "abb59294212b5ea329edc364215a104211e0c6b6",
+  "files": 15,
+  "contents": {
+    "status": "Completed main gates, performance smoke and independent reviews; full Lean censuses and publication remain pending",
+    "alpha1_source": "a73c56c92f3aad4b490307a5d1b882e487a57f55",
+    "alpha2_source": "950c0440ad793dc6c34664f591383a5e6bba14dd",
+    "files": [
+      {
+        "path": "alpha-smoke-continuity-audit.json",
+        "bytes": 2689,
+        "sha256": "0ed53eb8f028c311b31f397f14c3fec3250d9038f472898b323c4c396f3478ed"
+      },
+      {
+        "path": "alpha1-exact-main-gates.json",
+        "bytes": 25888,
+        "sha256": "33310a7b87cad47c1d7084caaa2bd7841c6060697932146eff2c0cbce6dd0818"
+      },
+      {
+        "path": "alpha1-exact-main-log-excerpts.json",
+        "bytes": 567,
+        "sha256": "1150987c6366bfce9c07f42066e2505cce99ac9b453580f13c48e75d2df1db6e"
+      },
+      {
+        "path": "alpha1-exact-main-performance/analysis.json",
+        "bytes": 1467,
+        "sha256": "5f4437c39ef0b031f21624e78598b53c5f574cfa8c36640950306f1c24f60cc4"
+      },
+      {
+        "path": "alpha1-exact-main-performance/artifact-perf-smoke-retrieval.json",
+        "bytes": 1011,
+        "sha256": "e5baf6e7cfcc0a1283a778ca34f1087f16b9ebe1cdcc95092c198f2c853cc5a9"
+      },
+      {
+        "path": "alpha1-exact-main-performance/tested/perf-smoke/ARTIFACT_PROVENANCE.json",
+        "bytes": 708,
+        "sha256": "78e3c2511ae40d8cb483e2b1ae3c440a1c9b6cbf4e991584530179b1b4d73b63"
+      },
+      {
+        "path": "alpha1-exact-main-performance/tested/perf-smoke/perf-smoke.json",
+        "bytes": 50857,
+        "sha256": "c41fbed0f99dd369018767cd7637c810150012bfb6285881e0b3b5179512bccb"
+      },
+      {
+        "path": "alpha1-exact-main-performance/workflow-zips/perf-smoke.zip",
+        "bytes": 7542,
+        "sha256": "61cf27745cdba9321038ae1513d52a4b0a590f4225b4507c914311f65a978643"
+      },
+      {
+        "path": "alpha2-independent-review/compiler-review.json",
+        "bytes": 9758,
+        "sha256": "51cbf82ee63441fbca9bdf9ce31bfd8116468a5680b91040e5415abbab8c66b3"
+      },
+      {
+        "path": "alpha2-independent-review/compiler-review.md",
+        "bytes": 3870,
+        "sha256": "3e8caf257cbf080ac98285987d2d836ae51fa7a177e0a9e6cf19be6696c02f2a"
+      },
+      {
+        "path": "alpha2-independent-runtime-review/review.json",
+        "bytes": 6790,
+        "sha256": "409206ec0674636b199e9c02542e160a2e195c857572754edf103342f5994a4e"
+      },
+      {
+        "path": "alpha2-independent-runtime-review/review.md",
+        "bytes": 5463,
+        "sha256": "c61537ddac4d3090676f5b2c8e98d0626afe536a072964aabcad45c6854beaeb"
+      },
+      {
+        "path": "smoke-continuity-report.json",
+        "bytes": 9565,
+        "sha256": "59d7f7a712ebfd290c0cf47e0394bb21f08ff301a4fffdf075fd3dfb9bb7eed6"
+      }
+    ]
+  }
+}
