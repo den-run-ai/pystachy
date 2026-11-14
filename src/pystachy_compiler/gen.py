@@ -912,6 +912,7 @@ from src.pystachy_compiler.expressions import (
     gen_tuple_ as expressions_tuple_,
     gen_list_const as expressions_list_const,
     gen_vtuple_make as expressions_vtuple_make,
+    gen_vtuple_item as expressions_vtuple_item,
     gen_tuple_const as expressions_tuple_const,
     gen_dict_merge as expressions_dict_merge,
     gen_unroll as expressions_unroll,
@@ -1100,11 +1101,22 @@ from src.pystachy_compiler.program import (
     gen_class_ref as program_class_ref,
     gen_dc_options as program_dc_options,
     gen_init_template as program_init_template,
+    gen_init_generic as program_init_generic,
+    gen_fixed_ann as program_fixed_ann,
+    gen_fixed_stores as program_fixed_stores,
+    gen_fixed_init as program_fixed_init,
+    gen_fixed_layout as program_fixed_layout,
+    gen_fixed_layout_body as program_fixed_layout_body,
+    gen_fixed_base_properties as program_fixed_base_properties,
+    gen_fixed_hierarchy as program_fixed_hierarchy,
+    gen_hierarchy_chain as program_hierarchy_chain,
+    gen_request_hierarchy as program_request_hierarchy,
+    gen_retry_hierarchy as program_retry_hierarchy,
     gen_template_fix as program_template_fix,
     gen_left_out as program_left_out,
     gen_makes_tmpl as program_makes_tmpl,
     gen_ann_classes as program_ann_classes,
-    gen_fixed_ann as program_fixed_ann,
+    gen_fixed_template_field_ann as program_fixed_template_field_ann,
     gen_init_param_classes as program_init_param_classes,
     gen_init_makes_tmpl as program_init_makes_tmpl,
     gen_objects as program_objects,
@@ -1483,6 +1495,9 @@ class Gen:
         self.template_retained = 0  # and the bytes of their signatures
         self.retainers: dict[str, int] = {}  # and those of each template, by the name messages give it
         self.unsupported: dict[str, str] = {}  # classes of imported modules that cannot be compiled: why
+        # Program-wide names only: retained by fresh-Gen retries, never speculative layouts.
+        self.hierarchies: dict[str, bool] = {}
+        self.deferred_hierarchies: dict[str, bool] = {}
         self.cnodes: dict[int, Node] = {}  # every module-level class or subclass statement, by line
         self.hooks: dict[str, str] = {}  # see hook()
         self.chooks: dict[int, str] = {}
@@ -3516,8 +3531,8 @@ class Gen:
     def gen_stream(self, name: str, v: Val, args: list[Node], want: str, resultsoft: bool) -> Val:
         return generators_gen_stream(self, name, v, args, want, resultsoft)
 
-    def gen_suspend(self, slot: str, k: int, sub: Val, thrown: str = "", hi: str = "") -> None:
-        return generators_gen_suspend(self, slot, k, sub, thrown, hi)
+    def gen_suspend(self, slot: str, k: int, sub: Val, thrown: str = "", hi: str = "", identity: str = "") -> None:
+        return generators_gen_suspend(self, slot, k, sub, thrown, hi, identity)
 
     def yield_from_iter(self, what: str) -> None:
         return generators_yield_from_iter(self, what)
@@ -3531,8 +3546,8 @@ class Gen:
     def yield_from_proto(self, v: Val, t: str, y: str, callee: FnInfo | None) -> Val:
         return generators_yield_from_proto(self, v, t, y, callee)
 
-    def gen_keep(self, w: list[str], ys: str, yh: str) -> None:
-        return generators_gen_keep(self, w, ys, yh)
+    def gen_keep(self, w: list[str], ys: str, yh: str, yi: str) -> None:
+        return generators_gen_keep(self, w, ys, yh, yi)
 
     def gen_slots(self, v: Val, y: str) -> list[str]:
         return generators_gen_slots(self, v, y)
@@ -3753,14 +3768,47 @@ class Gen:
     def init_template(self, st: Node, hier: bool = False) -> bool:
         return program_init_template(self, st, hier)
 
+    def init_generic(self, st: Node, hier: bool = False) -> bool:
+        return program_init_generic(self, st, hier)
+
+    def fixed_ann(self, a: Node) -> bool:
+        return program_fixed_ann(self, a)
+
+    def fixed_stores(self, n: Node, receiver: str, fields: dict[str, str]) -> bool:
+        return program_fixed_stores(self, n, receiver, fields)
+
+    def fixed_init(self, st: Node) -> bool:
+        return program_fixed_init(self, st)
+
+    def fixed_layout(self, st: Node) -> bool:
+        return program_fixed_layout(self, st)
+
+    def fixed_layout_body(self, st: Node) -> bool:
+        return program_fixed_layout_body(self, st)
+
+    def fixed_base_properties(self, name: str, fields: dict[str, str], seen: list[str]) -> bool:
+        return program_fixed_base_properties(self, name, fields, seen)
+
+    def fixed_hierarchy(self, name: str) -> bool:
+        return program_fixed_hierarchy(self, name)
+
+    def hierarchy_chain(self, name: str, chain: list[str], seen: list[str]) -> bool:
+        return program_hierarchy_chain(self, name, chain, seen)
+
+    def request_hierarchy(self, name: str) -> None:
+        return program_request_hierarchy(self, name)
+
+    def retry_hierarchy(self, msg: str) -> None:
+        return program_retry_hierarchy(self, msg)
+
     def template_fix(self, cs: list[Node]) -> str:
         return program_template_fix(self, cs)
 
     def makes_tmpl(self, n: Node) -> bool:
         return program_makes_tmpl(self, n)
 
-    def fixed_ann(self, a: Node) -> bool:
-        return program_fixed_ann(self, a)
+    def fixed_template_field_ann(self, a: Node) -> bool:
+        return program_fixed_template_field_ann(self, a)
 
     def init_param_classes(self, st: Node, out: dict[str, bool]) -> None:
         program_init_param_classes(self, st, out)
@@ -4442,6 +4490,9 @@ class Gen:
 
     def tuple_(self, vals: list[Val]) -> Val:
         return expressions_tuple_(self, vals)
+
+    def vtuple_item(self, o: Val, index: Val) -> Val:
+        return expressions_vtuple_item(self, o, index)
 
     def vtuple_make(self, vals: list[Val], t: str) -> Val:
         return expressions_vtuple_make(self, vals, t)

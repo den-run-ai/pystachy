@@ -544,6 +544,8 @@ def gen_isinst_reads(self, c: Node) -> None:
     elif c.kind == "name" and c.s in self.taliases:
         self.expr(c, "")  # (a type alias's variable, Pos = int, unbound before its assignment)
     elif c.kind == "name":
+        if c.s in self.deferred_hierarchies:
+            self.request_hierarchy(c.s)
         self.class_ahead(c.s)
         self.modchk(c)
         if (c.chk or self.foreign(c.s)) and c.s in self.gflag and c.s in self.classes:
@@ -713,7 +715,7 @@ def gen_scalar_read_value(self, n: Node) -> bool:
     if k == "index":
         # Reading a known numeric list or bytes runs no user protocol. Keep the receiver
         # a plain name or plain field: other attributes and calls can run user code first.
-        return len(n.kids) == 2 and self.scalar_receiver(n.kids[0]) in ["list[int]", "list[float]", "bytes"] and self.scalar_read_index(n.kids[1])
+        return len(n.kids) == 2 and self.scalar_receiver(n.kids[0]) in ["list[int]", "list[float]", "vtuple[int]", "vtuple[float]", "bytes"] and self.scalar_read_index(n.kids[1])
     if k == "cmp":
         return all(op in ["==", "!=", "<", "<=", ">", ">="] for op in n.s.split(",")) and all(self.scalar_read_value(x) for x in n.kids)
     if k == "call":
@@ -735,7 +737,7 @@ def gen_scalar_read_index(self, n: Node) -> bool:
     if k == "attr":
         return self.plain_field(n) in ["int", "bool"]
     if k == "index":
-        return len(n.kids) == 2 and self.scalar_receiver(n.kids[0]) in ["list[int]", "bytes"] and self.scalar_read_index(n.kids[1])
+        return len(n.kids) == 2 and self.scalar_receiver(n.kids[0]) in ["list[int]", "vtuple[int]", "bytes"] and self.scalar_read_index(n.kids[1])
     if k == "cmp" or (k == "unary" and n.s == "not"):
         return self.scalar_read_value(n)
     if k == "call":
@@ -1329,6 +1331,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 v = self.coerce(v, ws[i])  # (an int as an int | None: its box; a tuple of promoting ints stays one, as its int items do: bigints.held)
             elif i < len(ws) and is_fn(v.t) and is_callable(unopt(ws[i])):
                 v = self.coerce(v, ws[i])  # (a function where a Callable is expected: made one)
+            if is_vtuple(unopt(want)) and self.list_id_kind(self.ctype("list", [targs(unopt(want))[0]])) != 0 and v.idslot != "":
+                v.idfrom = self.dyn_id_box(v).v
             vals.append(v)
         tconst = self.tuple_const(n, vals)
         if tconst.v != "":
@@ -1338,7 +1342,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             # an operand hint: concatenation may widen it (int plus int | None).
             # Comparisons preserve each side's own element representation.
             et = targs(want)[0]
-            if all(self.widens(v.t, et) or self.boxes(v.t, et) or (v.t == BIG and et == "int") for v in vals):
+            if all(self.widens(v.t, et) or self.boxes(v.t, et) or (v.t == BIG and et in ["int", "opt[int]"]) or (v.t == BIGOPT and et == "opt[int]") for v in vals):
                 return self.vtuple_make([self.coerce(v, et) for v in vals], want)
         return self.stack_tuple(vals) if n is self.stkkey else self.tuple_(vals)
     if k == "listcomp":
@@ -2540,11 +2544,28 @@ def gen_vtuple_make(self, vals: list[Val], t: str) -> Val:
     # or reinterprets the source tuple's storage.
     if self.rtmode and self.curfn.ll == "@pys_alloc":
         self.err("pys_alloc() implements an operation that it uses: write it without that operation")
+    kind = self.list_id_kind(self.ctype("list", [targs(t)[0]]))
+    boxes = [self.dyn_id_arg(v) for v in vals] if kind != 0 else []
     self.runtime("pys_alloc")
     i = Ins("vtuple.make", t, "")
     i.a = vals
     self.put(i, 1)
-    return Val(tmpname(i.r[0]), t)
+    result = Val(tmpname(i.r[0]), t)
+    for j in range(len(boxes)):
+        self.rt("pys_vtuple_set_identity", "void", [f"ptr {result.v}", f"i64 {j}", f"ptr {boxes[j].v}", f"i64 {kind}"])
+    return result
+
+def gen_vtuple_item(self, o: Val, index: Val) -> Val:
+    et = targs(o.t)[0]
+    kind = self.list_id_kind(self.ctype("list", [et]))
+    if kind != 0 and not self.fn.scalar_reads:
+        box = self.rt("pys_vtuple_get_identity", "ptr", [f"ptr {o.v}", f"i64 {index.v}", f"i64 {kind}"])
+        if is_opt(et):
+            value = self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {o.v}", f"i64 {index.v}"]), et)
+            value.idfrom = box
+            return value
+        return self.dyn_unbox(Val(box, "dyn"), et)
+    return self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {o.v}", f"i64 {index.v}"]), et)
 
 def gen_tuple_const(self, n: Node, vals: list[Val]) -> Val:
     # a tuple display of literals that the source writes (n.src), whose items are vals: the
@@ -2588,6 +2609,13 @@ def gen_tuple_const(self, n: Node, vals: list[Val]) -> Val:
         d = Data("tuple", f"@tc.{len(self.tconsts)}")
         d.text = self.ctype("tuple", [v.t for v in items])  # (its type: union_proof reads it where a machine address reads the tuple)
         d.items = items
+        # Constant item boxes belong to the defining module, even when a
+        # later imported read converts this tuple in another module.
+        if self.idhere():
+            for original in items:
+                constant = Val(original.v, original.t)
+                constant.lit = True
+                d.refs.append(self.dyn_id_box(constant).v if constant.t == "float" or (constant.t == "int" and (int(constant.v) < -5 or int(constant.v) > 256)) else "")
         self.consts.append(d)
         self.tconsts[key] = d.name
         self.tconstdata[d.name] = d
@@ -2817,9 +2845,16 @@ def gen_tget(self, v: Val, i: int) -> Val:
     item.k = i
     item.a = [v]
     self.put(item, 2)
-    if item.s == BIG:
-        return self.big_item(v, self.from_slot(tmpname(item.r[1]), "int"), hislot(v.t, i), "")  # (a promoting int item: bigints.py)
-    return self.from_slot(tmpname(item.r[1]), item.s)
+    value = self.big_item(v, self.from_slot(tmpname(item.r[1]), "int"), hislot(v.t, i), "") if item.s == BIG else self.from_slot(tmpname(item.r[1]), item.s)
+    if self.idhere() and v.v in self.tconstdata and item.s in ["int", "float", BIG]:
+        # A literal fixed tuple still names the module's scalar constants. Its
+        # conversion into runtime-length storage must not manufacture new items.
+        original = self.tconstdata[v.v].items[i]
+        literal = Val(original.v, original.t)
+        literal.lit = True
+        boxes = self.tconstdata[v.v].refs
+        value.idfrom = boxes[i] if i < len(boxes) and boxes[i] != "" else self.dyn_id_box(literal).v
+    return value
 
 def gen_tslot(self, v: Val, k: int) -> Val:
     # slot k of tuple v, past its items: a promoting int item's Mpz word, as an int (tslots)
@@ -2924,7 +2959,7 @@ def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
     if is_vtuple(t):
         i = self.seq_index(n.kids[1], "TypeError: tuple indices must be integers or slices, not NoneType")
         o = self.unwrap(o, sub)
-        return self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]), targs(t)[0])
+        return self.vtuple_item(o, i)
     if t == "bytes":
         i = self.seq_index(n.kids[1], "TypeError: byte indices must be integers or slices, not NoneType")
         o = self.unwrap(o, sub)
@@ -4791,6 +4826,16 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str, 
         self.cbr(self.cmp2("is", item, a).v, hit, nx)
         self.place(nx)
         identity = True
+    elif self.idhere() and numeric_identity(item.t) and numeric_identity(a.t) and (item.idfrom != "" or item.idslot != ""):
+        # Numeric runtime tuple items carry their original box, including NaNs.
+        # Equality alone cannot implement Python's identity-first item search.
+        nx = self.label()
+        same = self.ptr_cmp("==", self.dyn_id_box(item), self.dyn_id_box(a)).v
+        if ph is not None:
+            self.incoming(ph, value, self.cur)
+        self.cbr(same, hit, nx)
+        self.place(nx)
+        identity = True
     elif self.reference_union(item.t) or self.reference_union(a.t):
         identity = self.union_same(item, a, hit, ph, value)
     elif identity:
@@ -5230,7 +5275,7 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         elif b.t == "bytes":
             self.err(f"a bytes-like object is required, not '{tname(a.t)}'")
         elif is_list(b.t):
-            if self.list_id_kind(b.t) != 0 and a.t in ["int", "float", "bool", "dyn"]:
+            if self.list_id_kind(b.t) != 0 and (numeric_identity(a.t) or a.t in ["bool", "None", "dyn"]):
                 found = self.list_find(b, a, "find")
                 return self.num_cmp(">=" if op == "in" else "<", found, Val("0", "int"))
             if a.t != elem(b.t) and (is_list(a.t) or is_dict(a.t) or is_tuple(a.t)) and self.numeric_comparable(a.t, elem(b.t)):
@@ -5481,8 +5526,8 @@ def gen_tuple_pair_eq(self, op: str, a: Val, b: Val) -> Val:
                 item = self.label()
                 self.cbr(self.num_cmp("<", Val(str(i), "int"), alen if is_vtuple(a.t) else blen).v, item, finish)
                 self.place(item)
-            x = self.tget(a, i) if is_tuple(a.t) else self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {a.v}", f"i64 {i}"]), ax[0])
-            y = self.tget(b, i) if is_tuple(b.t) else self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {b.v}", f"i64 {i}"]), bx[0])
+            x = self.tget(a, i) if is_tuple(a.t) else self.vtuple_item(a, Val(str(i), "int"))
+            y = self.tget(b, i) if is_tuple(b.t) else self.vtuple_item(b, Val(str(i), "int"))
             step = self.label()
             self.pair_item_eq(x, y, step)
             self.incoming(result, "false", self.cur)
@@ -5500,8 +5545,8 @@ def gen_tuple_pair_eq(self, op: str, a: Val, b: Val) -> Val:
         position = Val(self.mload("int", index), "int")
         self.cbr(self.scalar("and", [self.num_cmp("<", position, alen), self.num_cmp("<", position, blen)]), item, finish)
         self.place(item)
-        x = self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {a.v}", f"i64 {position.v}"]), ax[0])
-        y = self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {b.v}", f"i64 {position.v}"]), bx[0])
+        x = self.vtuple_item(a, position)
+        y = self.vtuple_item(b, position)
         self.pair_item_eq(x, y, step)
         self.incoming(result, "false", self.cur)
         self.br(end)

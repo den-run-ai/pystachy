@@ -73,6 +73,13 @@ general heap aliasing. Arithmetic fit claims use the separate
 of Python equivalence or memory safety for the entire compiler.
 Index bounds for tuple iteration are also a separate obligation; the storage
 check concerns the marker and layout of its trailing digit read.
+Generator yields transport a canonical low/digits pair only in the exact
+`[%slot, %ptr]` or `[%slot, %ptr, dyn]` operand shape, with both words derived
+from the same promoting integer. The optional third identity operand is checked
+independently; a paired value does not excuse a raw low-word use in that operand.
+Generator returns retain their separate two-word contract. This recognition
+relies on the typed IR and lowering contracts and proves neither generator
+identity preservation nor the lifetime of its frame or companion.
 Stack tuple escape copies are a separate transport case. The adapter accepts
 only a contiguous, complete copy of every word at the same index into a fresh
 allocation, with identical source-slot and destination representations and no

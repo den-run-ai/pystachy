@@ -591,6 +591,40 @@ class CellIdentityAllocationTests(unittest.TestCase):
 
 
 class JoinedIdentityCostTests(unittest.TestCase):
+    def test_optional_container_reads_reuse_representation_boxes(self):
+        source = '''def list_first(xs: list[float | None]) -> float | None:
+    return xs[0]
+
+def tuple_first(xs: tuple[float | None, ...]) -> float | None:
+    return xs[0]
+
+def tuple_total(xs: tuple[float | None, ...]) -> float:
+    total = 0.0
+    for x in xs:
+        if x is not None:
+            total += x
+    return total
+
+values: list[float | None] = [1.25, None]
+items: tuple[float | None, ...] = (1.25, None)
+print(list_first(values), tuple_first(items), tuple_total(items))
+'''
+        for tracked in (False, True):
+            text = ("# pystachy: dynamic-any\n" if tracked else "") + source
+            ir = driver.compile_program("optional_read_cost.py", text, [str(ROOT / "lib")], "")
+            for name in ("list_first", "tuple_first", "tuple_total"):
+                with self.subTest(tracked=tracked, name=name):
+                    body = re.search(r"define[^\n]*@f\." + name + r"\([^\n]*\n(.*?)\n}", ir, re.S)
+                    self.assertIsNotNone(body)
+                    # Optional item slots already point to representation boxes;
+                    # retaining provenance must not allocate another one per read.
+                    self.assertNotRegex(body[1], r"@pys_(?:box|alloc|dyn_int|dyn_float)\(")
+                    self.assertEqual("_get_identity(" in body[1], tracked)
+                    if not tracked and name == "tuple_total":
+                        self.assertNotIn("@pys_", body[1])
+            if not tracked:
+                self.assertNotIn("_identity(", ir)
+
     def test_union_arithmetic_stays_raw_and_dynamic_typed_stars_keep_objects(self):
         source = '''# pystachy: dynamic-any
 def arithmetic(n: int) -> int | float:

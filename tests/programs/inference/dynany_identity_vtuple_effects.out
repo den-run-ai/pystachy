@@ -1,0 +1,9 @@
+churn 500
+display True False True
+argument order 0 False
+churn 500
+churn 500
+generator True True
+failed item
+stop
+[exit 0]

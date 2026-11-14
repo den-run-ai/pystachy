@@ -5,7 +5,7 @@ from src.pystachy_compiler.dynamic_proof import DynamicProof, DynTypes
 from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, tmpname
 from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
 from src.pystachy_compiler.specs import BIG, FX, FXALL, FXBIT, ICMP, IROPS, LIST_READS, LIST_WRITES, NONEVAR, RAWR, RAWW, RUNTIME
-from src.pystachy_compiler.utils import elem, is_dict, is_gen, is_opt, is_set, is_tuple, is_union, is_vtuple, list_read_error, list_receiver_error, list_write_error, lt, same_kind, targs, tslots, umembers
+from src.pystachy_compiler.utils import elem, gelem, generator_identity, is_dict, is_gen, is_opt, is_set, is_tuple, is_union, is_vtuple, list_read_error, list_receiver_error, list_write_error, lt, same_kind, targs, tslots, umembers
 
 # Fixed SSA result counts printed by each lowering (gen_nums handles calls).
 RESULT_NUMBERS: dict[str, int] = {
@@ -473,7 +473,11 @@ def gen_verify_gen(self, fn: IFn, b: Blk, i: Ins, j: int) -> None:
     if i.op == "gen.start" and (b is not fn.blocks[0] or len(i.a) != 1 or i.a[0].t != "str" or len(i.b) != 1 or i.t != ""):
         self.bad_ir(fn, b, "gen.start must end the entry block, with the generator's name and its first block")
     hi = len(i.a) == 2 and i.a[1].t == "%ptr" and int_program()
-    if i.op == "gen.yield" and ((len(i.a) != 1 and not hi) or i.a[0].t != "%slot" or len(i.b) != 1 or i.t != ""):
+    companion = fn.coro and is_gen(fn.f.ret) and generator_identity(gelem(fn.f.ret), self.fn_identity(fn.f))
+    pair = len(i.a) == 3 and i.a[1].t == "%ptr" and i.a[2].t == "dyn" and companion
+    if pair and (not int_program() or gelem(fn.f.ret) != "int") and i.a[1].v != "null":
+        self.bad_ir(fn, b, "gen.yield without a wide integer needs a null high placeholder")
+    if i.op == "gen.yield" and ((not pair if companion else len(i.a) != 1 and not hi) or i.a[0].t != "%slot" or len(i.b) != 1 or i.t != ""):
         self.bad_ir(fn, b, "gen.yield needs the value's slot and the block where it resumes")
     if i.op == "gen.ret" and ((len(i.a) > 1 and not hi) or (len(i.a) > 0 and i.a[0].t != "%slot") or len(i.b) != 0 or i.t != ""):
         self.bad_ir(fn, b, "gen.ret needs the slot of its value, if any")

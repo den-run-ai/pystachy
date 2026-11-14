@@ -39,10 +39,10 @@ from src.pystachy_compiler.utils import (
 
 def gen_list_id_kind(self, t: str) -> int:
     # A program graph opting into dynamic values preserves typed numeric item objects.
-    # The raw payload stays in its existing atomic array; identity lives in scanned storage.
+    # The payload keeps its existing scalar or nullable layout; identity lives in scanned storage.
     # Code that does not track identity (Gen.identity_modules) uses the plain operations, which
     # keep a list's companion consistent (runtime.c): such a list never reaches tracking code.
-    if t in ["list[int]", "list[float]"] and self.fn_home(self.curfn) in self.idhint:
+    if list_identity_kind(t) != 0 and self.fn_home(self.curfn) in self.idhint:
         # Internal searches/equality can observe shared NaNs even when no numeric
         # value leaves the module. A hint cannot suppress these companions.
         self.identity_event("numeric list in an identity-inert module")
@@ -63,6 +63,12 @@ def gen_list_item(self, o: Val, i: Val, keep: bool = False) -> Val:
     k = self.list_id_kind(o.t)
     if k != 0:
         b = self.list_get("list.get_identity", [o, i, Val(str(k), "int")])
+        if is_opt(elem(o.t)):
+            # The typed optional's existing representation box is already valid.
+            # Reading its identity must not allocate another representation box.
+            value = self.list_value(o, i.v, self.list_get("list.get", [o, i]), keep)
+            value.idfrom = b
+            return value
         t = BIG if keep and elem(o.t) == "int" and int_lists() else self.item_type(o.t)
         return self.dyn_unbox(Val(b, "dyn"), t)
     return self.list_value(o, i.v, self.list_get("list.get", [o, i]), keep)
