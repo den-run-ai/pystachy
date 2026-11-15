@@ -1,0 +1,186 @@
+{
+  "schema_version": 1,
+  "observed_at_utc": "2026-11-15 10:04:16 UTC",
+  "head": "d266e919eb0c11dbbb41918b8d212bce7872910a",
+  "parents": [
+    "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+    "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93"
+  ],
+  "mainCommit": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+  "mainTree": "107460d5f89bdcf37f2741b233eac0568d82604a",
+  "tree": "c242877c659b89a9131d5a17b2c4b170de095f76",
+  "changes": [
+    {
+      "path": "Makefile",
+      "before": "d416ec607785961c4ec69f4c5a6c8b99a0bd032e",
+      "after": "8267b0ee997c3524458915efa803b06fe9a48f1b",
+      "mode": "100644"
+    },
+    {
+      "path": "docs/compiler-inspection.md",
+      "before": "91ad801894b4bdfe7a178b69b766f3b62d6cca9c",
+      "after": "f5cfc5eb7ed74db3b6cd10baa881d38b210e02a5",
+      "mode": "100644"
+    },
+    {
+      "path": "docs/typed-ir.md",
+      "before": "4a503199b767143da5617b717777c32f334b2878",
+      "after": "32ebf5caae90610b968392941e619bc52ac1f1da",
+      "mode": "100644"
+    },
+    {
+      "path": "src/README.md",
+      "before": "140a7b5c28e1d34dd54ef1cb4e6564ca2e79ff66",
+      "after": "c6c03abc82acce91fb7df5997558caa8783efd6b",
+      "mode": "100644"
+    },
+    {
+      "path": "tools/compiler_state_globals.py",
+      "before": "1cecd9525402e90b77d2582eae9f9ae4464f2e9b",
+      "after": "a65bfa1b50a38153a76ffbbf0096d651d17f48df",
+      "mode": "100644"
+    },
+    {
+      "path": "tools/inspect_compiler.py",
+      "before": "1ecd5607bff2d801c603da4d52a29150737e853d",
+      "after": "74c280305e7766f3ad0f912056590bb73ae5cf68",
+      "mode": "100644"
+    },
+    {
+      "path": "tools/lean_report.py",
+      "before": "9e602ae43dff7c3ab726ef7ade2e05d93bedc58b",
+      "after": "d2c10f566d9a0f7931abfe00c9820f6f0a430e22",
+      "mode": "100644"
+    },
+    {
+      "path": "tools/test_frame_fields.py",
+      "before": "112dceece3588a607e200b86f20533f31e50c0e0",
+      "after": "d95f10d922f491f7cb5d460be38feeab134461f2",
+      "mode": "100644"
+    },
+    {
+      "path": "tools/test_inspect_compiler.py",
+      "before": "2e141fd1ff3fa77a64bbb013d1540da4f990778e",
+      "after": "db6346dbdfd739b95dfb4a7b89a580abf29e4f98",
+      "mode": "100644"
+    },
+    {
+      "path": "tools/test_lean_report.py",
+      "before": "a00bf8ba999455daaf35eaba5066ef426f6e2bae",
+      "after": "cc91c542e8d6194bea4c7e331bd07475c3e02a86",
+      "mode": "100644"
+    },
+    {
+      "path": "tools/test_lljit.py",
+      "before": "ae27ccbe45a6b5dfe5a4662a0ea1eaf687b5a323",
+      "after": "4b60b080b91016a2bc96d9227864be63b5c6c7cc",
+      "mode": "100644"
+    },
+    {
+      "path": "tools/check_lean_pipeline.py",
+      "before": null,
+      "after": "3b6f1ab127efc9ee9c8dc406e742359cf1b76ab0",
+      "mode": "100644"
+    },
+    {
+      "path": "tools/test_compiler_abi_stages.py",
+      "before": null,
+      "after": "b7144f9443e49d45c3d201df04ffa5e3d1424d69",
+      "mode": "100644"
+    },
+    {
+      "path": "tools/test_compiler_pipeline.py",
+      "before": null,
+      "after": "ec6a8552ebd6e4975d0ba636bc6f29509e5bb238",
+      "mode": "100644"
+    },
+    {
+      "path": "tools/test_compiler_stage_admission.py",
+      "before": null,
+      "after": "d9a3c6d6b186028f39a769e3a60eeab41f05180d",
+      "mode": "100644"
+    },
+    {
+      "path": "tools/test_lean_pipeline.py",
+      "before": null,
+      "after": "3d560cc2077b976dfd636d5533b8d805c9b34be1",
+      "mode": "100644"
+    },
+    {
+      "path": "src/pystachy_compiler/driver.py",
+      "before": "37c56297c77e7b92130ffea166a5c41ae130d94b",
+      "after": "595678ec64f73dcad7c52201d3644239f612a1a5",
+      "mode": "100644"
+    },
+    {
+      "path": "src/pystachy_compiler/gen.py",
+      "before": "4b3416e9ad978968613489c68c17d4638ec44e58",
+      "after": "4fb8f96ba106b32c2855275df99c2456ffe8cfd1",
+      "mode": "100644"
+    },
+    {
+      "path": "src/pystachy_compiler/lower_module.py",
+      "before": "1b944ad9c87f513c3faf46a0bad197ee567ee8d2",
+      "after": "5482549fc2e61a4de589f6de574fd1c117a00626",
+      "mode": "100644"
+    },
+    {
+      "path": "src/pystachy_compiler/program.py",
+      "before": "bdc5bf7d623114381dab927e574a43b2af9b3210",
+      "after": "5352ca51388131f3fbb7e12d5daefb208f08810f",
+      "mode": "100644"
+    },
+    {
+      "path": "src/pystachy_compiler/pipeline.py",
+      "before": null,
+      "after": "9ea65774a622b3ba842149574a59f3922881d1b7",
+      "mode": "100644"
+    },
+    {
+      "path": "tools/lean_boundary/Audit.lean",
+      "before": "fef54048ab5913cf60400c5527786260535979ee",
+      "after": "2459a7210186ea14706d5d40cde895ca6005e1f5",
+      "mode": "100644"
+    },
+    {
+      "path": "tools/lean_boundary/README.md",
+      "before": "a0e3523d6291dc0ed45fd277420addcb2e03aee8",
+      "after": "74b3f285b00a4905be1c669a5d1913db4d08e51c",
+      "mode": "100644"
+    },
+    {
+      "path": "tools/lean_boundary/lakefile.toml",
+      "before": "780347839d5950cc22623ce36f5c2357bd4a4373",
+      "after": "49fa6f14028c354cff8e486ab57e4bd3528fa5cb",
+      "mode": "100644"
+    },
+    {
+      "path": "tools/lean_boundary/PIPELINE.md",
+      "before": null,
+      "after": "ea7d84fdad9db9c1bf90796e34d037ffe20a167b",
+      "mode": "100644"
+    },
+    {
+      "path": "tools/lean_boundary/PipelineMain.lean",
+      "before": null,
+      "after": "a654a714bf1aa03747ed9af4c2ffd4c0b3437c30",
+      "mode": "100644"
+    },
+    {
+      "path": "tools/lean_boundary/PystachyPipeline.lean",
+      "before": null,
+      "after": "7c8c14194d76dd668c9ba3c3587a51db886470a0",
+      "mode": "100644"
+    }
+  ],
+  "onlyExpectedFilesChanged": true,
+  "test_merge": {
+    "sha": "106dfa1cfa5d8ebdb457ebb1d3011e10fd7f972f",
+    "tree": "c242877c659b89a9131d5a17b2c4b170de095f76",
+    "parents": [
+      "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "d266e919eb0c11dbbb41918b8d212bce7872910a"
+    ]
+  },
+  "validation_scope": "Git tree preservation and exact blob readback only; no local execution after environment loss"
+}

@@ -1,6 +1,8 @@
 # Corrected compiler-stage status and recovered evidence
 
-**Implementation is published; full local qualification is incomplete.** [PR #1499](https://github.com/den-run-ai/pystachy/pull/1499) is open, draft and unmerged at `5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8`, tree `b8c3b7b1a6d6517f716934b1600e31caf434bd7a`.
+> **Historical qualification checkpoint:** This report describes `5ccd1841` against the earlier base `8049014`. See [the alpha.3 integration status](STATUS_ALPHA3.md) for the newer published revision and its separate verification status.
+
+**At this checkpoint, implementation was published and full local qualification was incomplete.** [PR #1499](https://github.com/den-run-ai/pystachy/pull/1499) is open, draft and unmerged at `5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8`, tree `b8c3b7b1a6d6517f716934b1600e31caf434bd7a`.
 
 The execution environment became unavailable during the fresh 58-stage local verification. At its last confirmed observation, 09:24:31 UTC on November 15, 2026, bootstrap was still active and no stage had completed. The run began at 09:19:11 UTC. Its later process state and exit status cannot be established. This report does not count it as a pass.
 
