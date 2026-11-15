@@ -535,6 +535,20 @@ def kind(reason):
     return reason or "(no reason)"
 
 
+def failures(record):
+    """Incomplete checks, including adapter errors returned as function records.
+
+    Rejected obligations and explicitly unsupported models are completed results.
+    An error is neither: its missing obligations cannot certify census completion.
+    """
+    reasons = [record["error"]] if "error" in record else []
+    reasons += [f"{name}: {why}" for name, why in record.get("failed", {}).items()]
+    reasons += [f"{name}: {item['function']}: {item['reason']}"
+                for name, check in record.get("checks", {}).items() for item in check.get("unproved", [])
+                if item["status"] == "error"]
+    return [{"program": record["program"], "reason": reason} for reason in reasons]
+
+
 def summarize(records):
     """Totals per check; its rejected functions, each with the specializations and programs that
     have it rejected (a module's function once for every program); and its unsupported or failed
@@ -571,9 +585,7 @@ def summarize(records):
             "other": sorted(({"status": item["status"], "reason": item["reason"], "programs": len(item["programs"]),
                               "functions": len(item["functions"])} for item in other.values()),
                             key=lambda item: (item["status"], -item["functions"], item["reason"]))}
-    failed = sorted([{"program": r["program"], "reason": r["error"]} for r in records if "error" in r]
-                    + [{"program": r["program"], "reason": f"{name}: {why}"}
-                       for r in records for name, why in r.get("failed", {}).items()],
+    failed = sorted([item for record in records for item in failures(record)],
                     key=lambda item: item["program"].encode())
     return {"programs": len(records), "checks": checks, "failed": failed}
 
@@ -732,7 +744,7 @@ def meta(header, records):
                 completion={"version": 1, "expected": header.get("inventory"),
                             "evaluated": inventory(record["program"] for record in records),
                             "promoting": inventory(promoting) if known else None,
-                            "failed": sum("error" in record or bool(record.get("failed"))
+                            "failed": sum(bool(failures(record))
                                           or not (required | (conditional if record["program"] in selected else set()))
                                           .issubset(record.get("checks", {})) for record in records)})
 

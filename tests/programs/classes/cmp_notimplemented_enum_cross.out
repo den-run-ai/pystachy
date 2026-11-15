@@ -1,0 +1,27 @@
+pair 1
+decl eq
+== True True
+decl ne
+!= False False
+decl lt
+< False False
+decl le
+<= True True
+decl gt
+> False False
+decl ge
+>= True True
+pair 2
+decl eq
+== False False
+decl ne
+!= True True
+decl lt
+< True False
+decl le
+<= True False
+decl gt
+> False True
+decl ge
+>= False True
+[exit 0]

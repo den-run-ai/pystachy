@@ -38,6 +38,7 @@ from src.pystachy_compiler.analysis import (
     module_reads,
     names_name,
     own_specials,
+    complex_values,
     object_values,
     range_values,
     read_names,
@@ -77,6 +78,7 @@ from src.pystachy_compiler.specs import (
     OSCONST,
     PLATFORM,
     PYBUILTINS,
+    COMPLEXS,
     OBJECTS,
     RANGES,
     STANDINS,
@@ -861,6 +863,14 @@ class Loader:
             self.order = [self.order[-1]] + self.order[:-1]
             for x in users:
                 x.deps[OBJECTS] = True
+        users = [x for x in self.order if complex_values(x.body, False)] if not self.rtmode and len(self.dirs) > 0 and COMPLEXS not in self.mods else []
+        if len(users) > 0:
+            # an imaginary literal, complex() and the arithmetic of complex numbers make objects of
+            # lib's class, whose module nothing imports (as range's)
+            self.load(COMPLEXS, self.dirs[-1] + "/" + COMPLEXS + ".py", "")
+            self.order = [self.order[-1]] + self.order[:-1]
+            for x in users:
+                x.deps[COMPLEXS] = True
         users = [x for x in self.order if module_reads(x.body, "iter")] if not self.rtmode and len(self.dirs) > 0 and ITERS not in self.mods else []
         if len(users) > 0:
             # iter() makes iterator objects of builtin containers: of lib's classes, whose module
@@ -1046,8 +1056,8 @@ class Loader:
             return self.dirs[-1] + "/" + STANDINS[name] + ".py"  # (lib's stand-in for a C module)
         if name in CBUILTIN:
             return ""  # a module built into CPython: no file on the path replaces it (find())
-        if name == ITERS or name == RANGES or name == OBJECTS or name == JSONANY:
-            return ""  # (iter()'s classes, range's, object's and json's of Any values, which no program imports: see program)
+        if name == ITERS or name == RANGES or name == OBJECTS or name == COMPLEXS or name == JSONANY:
+            return ""  # (iter()'s classes, range's, object's, complex's and json's of Any values, which no program imports: see program)
         return self.filepath(name)
 
     def filepath(self, name: str) -> str:

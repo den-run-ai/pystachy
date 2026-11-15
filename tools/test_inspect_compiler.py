@@ -170,6 +170,76 @@ class InspectionTests(unittest.TestCase):
                 if label == "retry":
                     self.assertGreater(len(report["attempts"]), 1)
 
+    def test_finalized_inspection_preserves_real_hierarchy_retry(self):
+        # The unannotated Base constructor has a fixed annotated field. Child's
+        # declaration activates that hierarchy through NeedHierarchy in prepare.
+        program = ROOT / "tests" / "programs" / "classes" / "constructor_fixed_hierarchy_base.py"
+        options = ("--typed-after-only", "--guard-evidence")
+        full, reference = self.inspect(program, "hierarchy-full", options)
+        self.assertEqual(full.returncode, 0, full.stderr)
+        output = self.directory / "hierarchy-finalized"
+        output.mkdir()
+        script = '''
+import argparse
+import json
+from pathlib import Path
+import sys
+from unittest.mock import patch
+from src.pystachy_compiler.diagnostics import NeedHierarchy
+from src.pystachy_compiler.gen import Gen
+from tools.inspect_compiler import worker
+prepare = Gen.prepare_program
+attempts, retries = [], []
+def observe_prepare(gen, *args, **kwargs):
+    attempts.append(gen)  # Retain each object so identity cannot be recycled.
+    try:
+        return prepare(gen, *args, **kwargs)
+    except NeedHierarchy:
+        retries.append({"index": len(attempts), "stage": gen.pipeline.stage,
+                        "active_stage": gen.pipeline.active,
+                        "completed_stages": list(gen.pipeline.history)})
+        raise
+def forbidden(*args, **kwargs):
+    raise AssertionError("backend executed during finalized hierarchy inspection")
+args = argparse.Namespace(source=sys.argv[1], output=sys.argv[2], function="",
+                          typed_after_only=True, guard_evidence=True, stop_after="finalize")
+with (patch.object(Gen, "prepare_program", observe_prepare),
+      patch.object(Gen, "lower_program", forbidden), patch.object(Gen, "lower_module", forbidden)):
+    result = worker(args)
+observed = {"attempts": len(attempts), "hierarchy_retries": retries,
+            "fresh_attempts": len({id(gen) for gen in attempts}) == len(attempts)}
+Path(sys.argv[2], "hierarchy-retries.json").write_text(json.dumps(observed), encoding="utf-8")
+raise SystemExit(result)
+'''
+        typed = subprocess.run([sys.executable, "-c", script, str(program), str(output)],
+                               cwd=ROOT, env=self.env, capture_output=True, text=True, timeout=40)
+        self.assertEqual(typed.returncode, 0, typed.stdout + typed.stderr)
+        observed = json.loads((output / "hierarchy-retries.json").read_text(encoding="utf-8"))
+        self.assertTrue(observed["hierarchy_retries"], "the fixture did not exercise NeedHierarchy")
+        self.assertTrue(observed["fresh_attempts"])
+        report = self.report(output)
+        self.assertEqual(report["status"], "ok")
+        self.assertEqual(report["diagnostics"], [])
+        self.assertEqual(len(report["attempts"]), observed["attempts"])
+        for retry in observed["hierarchy_retries"]:
+            self.assertEqual((retry["stage"], retry["active_stage"], retry["completed_stages"]),
+                             ("new", "prepare", []))
+            attempt = report["attempts"][retry["index"] - 1]
+            self.assertEqual(attempt["status"], "retry")
+            self.assertEqual((attempt["pipeline"]["stage"], attempt["pipeline"]["active_stage"],
+                              attempt["pipeline"]["completed_stages"]), ("new", "prepare", []))
+            self.assertLess(retry["index"], report["attempts"][-1]["index"])
+        successful = report["attempts"][-1]
+        self.assertEqual(successful["status"], "completed")
+        self.assertEqual(successful["pipeline"]["completed_stages"], PIPELINE_STAGES[:-1])
+        self.assertEqual(self.snapshot(output, "typed-after")["attempt"], successful["index"])
+        self.assertEqual(report["attempts"][:-1], self.report(reference)["attempts"][:-1])
+        self.assertEqual((output / "typed-after.json").read_bytes(), (reference / "typed-after.json").read_bytes())
+        self.assertNotIn("llvm", report["artifacts"])
+        self.assertEqual(report["stages"][-1], {"name": "llvm", "status": "skipped", "artifact": None})
+        self.assertFalse((output / "llvm.ll").exists())
+        self.assertEqual((output / "compiler.stdout").read_bytes(), b"")
+
     def test_finalized_inspection_never_calls_backend(self):
         marker = self.directory / "executed.txt"
         program = self.source(LOOP + f"with open({str(marker)!r}, 'w') as stream:\n    stream.write('ran')\n")
@@ -342,8 +412,10 @@ raise SystemExit(inspect_compiler.worker(argparse.Namespace(
         self.assertEqual((snapshot["status"], snapshot["functions"]), ("partial", []))
 
     def test_finalized_snapshot_precedes_backend_mutation(self):
-        program = self.source("class Box:\n    def __init__(self, value: int):\n        self.value = value\n"
-                              + LOOP + "print(Box(5).value)\n")
+        program = self.source("# pystachy: dynamic-any\nfrom typing import Any\n"
+                              "class Box:\n    def __init__(self, value: int):\n        self.value = value\n"
+                              "def name(value: Any) -> str:\n    return type(value).__name__\n"
+                              + LOOP + "print(Box(5).value, name(Box(5)))\n")
         completed, reference = self.inspect(program, "reference", ("--guard-evidence",))
         self.assertEqual(completed.returncode, 0, completed.stderr)
         destination = self.directory / "mutated"
@@ -375,6 +447,7 @@ raise SystemExit(inspect_compiler.worker(argparse.Namespace(
         self.assertEqual(snapshot, expected)
         self.assertGreater(len(snapshot["functions"]), 1)
         self.assertTrue(snapshot["class_layouts"])
+        self.assertTrue(snapshot["dynamic_layouts"])
 
     def test_same_operation_count_rewrite_has_immutable_snapshots_and_real_diff(self):
         program = self.source(LOOP)

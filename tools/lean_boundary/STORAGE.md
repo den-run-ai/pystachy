@@ -25,8 +25,12 @@ A container decode's obligation is a plain tuple view's `ordinary` payload
 runtime helper that reads the container's digits on the marker path is trusted.
 
 For optional tuples, a fit fact means either the tuple is absent or its item
-fits. A null branch may establish the absent case, while every present branch
-must justify the item checks. This does not prove null-dereference safety.
+fits; a non-marker fact similarly means absent or an ordinary item word. These
+facts extend through nested tuple children that preserve their shape and
+optionality, or add optionality to a nonnull child. A null branch or an explicit
+null child stored during tuple construction may establish the absent case;
+replacing that child invalidates those facts. Every present branch must justify
+the item checks. This does not prove null-dereference safety.
 
 The distinction between a storage representation and a declared type matters.
 A promoting view can refer to a shorter plain tuple when its words exclude the
@@ -73,6 +77,13 @@ general heap aliasing. Arithmetic fit claims use the separate
 of Python equivalence or memory safety for the entire compiler.
 Index bounds for tuple iteration are also a separate obligation; the storage
 check concerns the marker and layout of its trailing digit read.
+Generator yields transport a canonical low/digits pair only in the exact
+`[%slot, %ptr]` or `[%slot, %ptr, dyn]` operand shape, with both words derived
+from the same promoting integer. The optional third identity operand is checked
+independently; a paired value does not excuse a raw low-word use in that operand.
+Generator returns retain their separate two-word contract. This recognition
+relies on the typed IR and lowering contracts and proves neither generator
+identity preservation nor the lifetime of its frame or companion.
 Stack tuple escape copies are a separate transport case. The adapter accepts
 only a contiguous, complete copy of every word at the same index into a fresh
 allocation, with identical source-slot and destination representations and no

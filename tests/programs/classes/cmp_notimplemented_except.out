@@ -1,0 +1,6 @@
+False True False True False
+False True False True
+True
+TypeError '<' not supported between instances of 'Chain' and 'NoneType'
+2 2
+[exit 0]

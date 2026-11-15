@@ -1,0 +1,7 @@
+list True True True True
+tuple True True True True
+converted True True
+copies True True True
+mutations True True True
+widened True True
+[exit 0]

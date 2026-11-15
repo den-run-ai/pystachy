@@ -375,7 +375,8 @@ class Observer:
         # Finalization is the whole-program boundary: capture every function and its
         # representation tables before LLVM lowering can consume or mutate them.
         self.after = [self.snapshot(fn) for fn in gen.fns if self.selected(fn)]
-        self.after_metadata = {"dynamic_types": self.dynamic_types(gen), "classes": self.classes(gen)}
+        self.after_metadata = {"dynamic_types": self.dynamic_types(gen),
+                               "dynamic_layouts": self.dynamic_layouts(gen), "classes": self.classes(gen)}
         if self.guard_evidence:
             self.after_metadata.update(
                 class_layouts=self.class_layouts(gen), union_tags=dict(gen.utags), holes=list(gen.holes),
@@ -407,6 +408,22 @@ class Observer:
                               "payload": held.get(d.name, "")})
         return sorted(types, key=lambda t: t["symbol"])
 
+    @staticmethod
+    def dynamic_layouts(gen) -> list[dict]:
+        # Independent class metadata ties DynType numbers and ancestry to the
+        # same ordered members emitted as %C.<name>. Hidden assignment flags
+        # and numeric identity companions are part of that physical prefix.
+        from src.pystachy_compiler.lower_module import struct_types
+        result = []
+        for name, ci in gen.classes.items():
+            if name not in gen.dyntypes:
+                continue
+            members = [ci.ftypes[field] for field in ci.fields] + ["bool"] * ci.nflag + ["dyn"] * ci.nbox
+            result.append({"name": name, "descriptor": gen.dyntypes[name],
+                           "base": gen.dyntypes.get(ci.base, "") if ci.base in gen.classes and gen.classes[ci.base].exc == "" else "",
+                           "role": gen.dyntypes.get(ci.role, ""), "number": gen.ocls[name],
+                           "members": members, "llvm": struct_types(ci)})
+        return sorted(result, key=lambda entry: entry["name"])
     @staticmethod
     def classes(gen) -> dict:
         # Each class of the program: its single base (a class of the program, a builtin

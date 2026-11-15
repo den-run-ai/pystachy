@@ -16,7 +16,7 @@ import sys
 
 import check_lean_boundary as bridge
 import check_lean_int as arithmetic
-from src.pystachy_compiler.utils import is_kw, is_tuple, kw_types, targs, tslots, unopt
+from src.pystachy_compiler.utils import is_kw, is_opt, is_tuple, kw_types, targs, tslots, unopt
 
 DEFAULT_CHECKER = bridge.DEFAULT_CHECKER
 Unsupported = bridge.Unsupported
@@ -288,7 +288,7 @@ class Normalize:
         op = self.defs.get(value)
         if op and op["op"] in {"slot.unpack", "slot.pack"}:
             return self.tuple_path(args(op)[0], depth + 1)
-        if op and op["op"] == "tuple.load" and is_tuple(op["text"]):
+        if op and op["op"] == "tuple.load" and is_tuple(unopt(op["text"])):
             return self.tuple_path(args(op)[0], depth + 1) + "/" + str(op["immediate"])
         return value
 
@@ -373,10 +373,11 @@ class Normalize:
                 return slot
         if op and op["op"] in {"slot.unpack", "slot.pack"}:
             inherited = self.layout_type(args(op)[0], depth + 1)
-            if inherited and is_tuple(inherited):
+            if inherited and is_tuple(unopt(inherited)):
                 return inherited
         if op and op["op"] == "tuple.load":
             parent = self.layout_type(args(op)[0], depth + 1)
+            parent = unopt(parent) if parent else parent
             if parent and is_tuple(parent) and op["immediate"] < len(targs(parent)):
                 return targs(parent)[op["immediate"]]
         # gen_kw_record/kw_tuple store keyword values in their ordered tuple
@@ -446,8 +447,12 @@ class Normalize:
                 elif aa[index] == "int" and bb[index] == "int+":
                     self.counts["boundaries"] += 1
                     following = self.payload("marker:" + cell, "ordinary", following, "promoting-view", value)
-                elif is_tuple(aa[index]) and is_tuple(bb[index]):
-                    following = compare(aa[index], bb[index], key + "/" + str(index), following)
+                elif (is_tuple(unopt(aa[index])) and is_tuple(unopt(bb[index])) and
+                      (not is_opt(aa[index]) or is_opt(bb[index]))):
+                    # Optional children retain their nullable pointer layout;
+                    # a nonnull child may also gain optionality. Never remove
+                    # optionality or skip the present integer width checks.
+                    following = compare(unopt(aa[index]), unopt(bb[index]), key + "/" + str(index), following)
                 else:
                     raise Unsupported("tuple boundary changes a non-integer representation")
             return following
@@ -503,6 +508,19 @@ class Normalize:
             return f"marker:{self.tuple_path(base)}:{index}"
         return "marker:" + value
 
+    def absent_tuple(self, typ, path, following):
+        # Optional cell facts mean absent OR the item has this encoding:
+        # fit for narrowing, non-marker for a promoting view. They describe
+        # actual item words only on nonnull paths that decode the tuple.
+        for index, item in enumerate(targs(unopt(typ))):
+            if item == "int+":
+                following = self.fact(f"fit-cell:{path}:{index}", ["fit"], following)
+            elif item == "int":
+                following = self.fact(f"marker:{path}:{index}", ["ordinary"], following)
+            elif is_tuple(unopt(item)):
+                following = self.absent_tuple(item, path + "/" + str(index), following)
+        return following
+
     def zero(self, value, yes, no, depth=0):
         if depth > 64:
             raise Unsupported("integer guard expression exceeds depth limit")
@@ -531,16 +549,7 @@ class Normalize:
                                  "tags": ["null"], "yes": yes, "no": no})
         layout = self.layout_type(value)
         if layout and layout.startswith("opt[") and is_tuple(unopt(layout)):
-            def absent(typ, path, following):
-                for index, item in enumerate(targs(typ)):
-                    if item == "int+":
-                        following = self.fact(f"fit-cell:{path}:{index}", ["fit"], following)
-                    elif is_tuple(item):
-                        following = absent(item, path + "/" + str(index), following)
-                return following
-            # Optional fit-cell means absent OR item fits; it is an actual
-            # numeric fit fact only on the nonnull paths that decode an item.
-            yes = absent(unopt(layout), self.tuple_path(value), yes)
+            yes = self.absent_tuple(layout, self.tuple_path(value), yes)
         return self.add({"op": "guard", "value": "zero:" + value, "tags": ["null"],
                          "yes": yes, "no": no})
 
@@ -784,8 +793,13 @@ class Normalize:
                 k, a = op["op"], args(op)
                 if k in {"br", "landing", "gen.start", "gen.yield"}:
                     nxt = self.edge(op["targets"][0], label)
-                    if k == "gen.yield" and not (len(a) == 2 and self.pair(*a)):
-                        for v in reversed(a):
+                    if k == "gen.yield":
+                        # Yield transports a canonical low/digits pair. A tracked
+                        # identity is an independent operand, not part of that pair.
+                        shape = [operand["type"] for operand in op["operands"]]
+                        paired = (shape in (["%slot", "%ptr"], ["%slot", "%ptr", "dyn"])
+                                  and self.pair(a[0], a[1]))
+                        for v in reversed(a[2:] if paired else a):
                             nxt = self.needed(v, nxt)
                 elif k == "cbr":
                     nxt = self.condition(a[0], self.edge(op["targets"][0], label),
@@ -859,6 +873,16 @@ class Normalize:
                         if index < len(targs(typ)) and is_tuple(unopt(targs(typ)[index])):
                             packed = self.defs.get(a[1])
                             if packed and packed["op"] == "slot.pack":
+                                child = targs(typ)[index]
+                                path = self.tuple_path(tuple_value) + "/" + str(index)
+                                if args(packed)[0] == "null" and is_opt(child):
+                                    nxt = self.absent_tuple(child, path, nxt)
+                                # A new child invalidates every fact about the
+                                # previous child, including literal absence.
+                                reset = len(self.nodes)
+                                self.nodes.append({"op": "jump", "next": nxt})
+                                self.tuple_resets.append((reset, path))
+                                nxt = reset
                                 nxt = self.boundary(args(packed)[0], targs(typ)[index], nxt)
                             else:
                                 raise Unsupported("nested tuple store lacks typed slot.pack source")
