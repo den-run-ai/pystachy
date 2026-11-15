@@ -1,0 +1,1533 @@
+{
+  "schema_version": 1,
+  "checked_utc": "2026-11-15T09:07:00.583688+00:00",
+  "candidate_commit": "0a2fe77a580106c197face4d2904be80e3f85dbc",
+  "candidate_tree": "107460d5f89bdcf37f2741b233eac0568d82604a",
+  "baseline_commit": "950c0440ad793dc6c34664f591383a5e6bba14dd",
+  "status": "bound_to_complete_final_source_census",
+  "checks": {
+    "all_final_acceptance_checks_passed": true,
+    "final_records_match_acceptance_hash": true,
+    "final_report_matches_acceptance_hash": true,
+    "unique_inventory_program_rows": true,
+    "unique_inventory_selected_pairs": true,
+    "unique_inventory_observed_pairs": true,
+    "complete_fresh_census": true,
+    "strict_storage_gate_passed": true,
+    "frozen_source_commit_matches": true,
+    "frozen_source_tree_matches": true,
+    "frozen_source_clean": true,
+    "configuration_unchanged": true,
+    "attribution_script_unchanged": true,
+    "reference_files_unchanged": true,
+    "baseline_records_unchanged": true,
+    "all_early_extractions_completed": true,
+    "baseline_bindings_passed": true,
+    "extraction_sources_clean_after": true,
+    "exact_final_supported_decrease_set": true,
+    "other_final_decreases_equal_previously_reviewed_reference": true,
+    "all_per_side_snapshot_source_and_count_bindings": true
+  },
+  "rows": [
+    {
+      "program": "tests/deviations/dynany_identity_boundary.py",
+      "side": "baseline",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true,
+        "storage_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 1,
+          "obligations": 8
+        },
+        "storage": {
+          "functions": 1,
+          "obligations": 2
+        }
+      },
+      "census_snapshot_sha256": "ddf67c2c002fc4339a3e51c7882ca650853eced660430aa28d6715ca8f887998"
+    },
+    {
+      "program": "tests/deviations/dynany_identity_boundary.py",
+      "side": "candidate",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true,
+        "storage_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 1,
+          "obligations": 4
+        },
+        "storage": {
+          "functions": 1,
+          "obligations": 1
+        }
+      },
+      "census_snapshot_sha256": "55e62728151906a0305fa1b523c69805b65c99ffbc903e8cf399aeb552bd5d9e"
+    },
+    {
+      "program": "tests/deviations/lib_types_mappingproxy_eq_other.py",
+      "side": "baseline",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 5,
+          "obligations": 9
+        }
+      },
+      "census_snapshot_sha256": "331b843ef6bd55e9e4a5bba18714be1976aa796b2979a591692fcac1ffc759ef"
+    },
+    {
+      "program": "tests/deviations/lib_types_mappingproxy_eq_other.py",
+      "side": "candidate",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 4,
+          "obligations": 6
+        }
+      },
+      "census_snapshot_sha256": "527aa148c2c40fa3a3c01002f59a511d8c0a32d34b54fa509f571c78a4121e05"
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_ini2toml.py",
+      "side": "baseline",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 18,
+          "obligations": 168
+        }
+      },
+      "census_snapshot_sha256": "3826d3f2a1064ba42456275bfbb4b646240d9ece183aa0a4d42a08d05a5341f2"
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_ini2toml.py",
+      "side": "candidate",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 17,
+          "obligations": 162
+        }
+      },
+      "census_snapshot_sha256": "6565cc993ddfdded890b1ff1e7480c8c4a8be313c7052fb0898c3eff612acb38"
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_tables.py",
+      "side": "baseline",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 95,
+          "obligations": 1372
+        }
+      },
+      "census_snapshot_sha256": "5b20e02a442912c1557ac0830022df9a554189b24ff446702c5a9f76c7c7da97"
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_tables.py",
+      "side": "candidate",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 94,
+          "obligations": 1366
+        }
+      },
+      "census_snapshot_sha256": "402d9857a42184003a451d4f6976d05a7559f2e460f55dd7e14c65764884c258"
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_values.py",
+      "side": "baseline",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 52,
+          "obligations": 564
+        }
+      },
+      "census_snapshot_sha256": "a98daf586ea36343620b393bd9bd2dd4ed1efa71f68efa464a70740550f3d847"
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_values.py",
+      "side": "candidate",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 51,
+          "obligations": 558
+        }
+      },
+      "census_snapshot_sha256": "175d6eac4494ee10d457af15b7307d2636c4ff6633162656c35abbe70d12c9aa"
+    },
+    {
+      "program": "tests/programs/exceptions/exit_enum_member_caught.py",
+      "side": "baseline",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "null": {
+          "functions": 5,
+          "obligations": 5
+        }
+      },
+      "census_snapshot_sha256": "2a96dd523e4902623f05e25413ca50a7a16850d1a3cccbcf84371d67aec3b1a4"
+    },
+    {
+      "program": "tests/programs/exceptions/exit_enum_member_caught.py",
+      "side": "candidate",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "null": {
+          "functions": 3,
+          "obligations": 3
+        }
+      },
+      "census_snapshot_sha256": "41562f0d7d7178d7d3bfe3529d125882cefd15365e15226bcff14267960d6fad"
+    },
+    {
+      "program": "tests/programs/exceptions/exit_enum_stored_reflection.py",
+      "side": "baseline",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "null": {
+          "functions": 5,
+          "obligations": 32
+        }
+      },
+      "census_snapshot_sha256": "d1a31947a432b41306415b3aa20ca4709ecb85a11b313ad8197338b876136e6e"
+    },
+    {
+      "program": "tests/programs/exceptions/exit_enum_stored_reflection.py",
+      "side": "candidate",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "null": {
+          "functions": 3,
+          "obligations": 30
+        }
+      },
+      "census_snapshot_sha256": "853a176ec31a5d8512f686e9447c602f61aa8893713793864a08edcae93b7000"
+    },
+    {
+      "program": "tests/programs/exceptions/exit_intflag_stored_mutated.py",
+      "side": "baseline",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "null": {
+          "functions": 6,
+          "obligations": 6
+        }
+      },
+      "census_snapshot_sha256": "226b539efeaa668a414daafc7c3ca40de0ca40678ec9611bd4a37ef464a473e3"
+    },
+    {
+      "program": "tests/programs/exceptions/exit_intflag_stored_mutated.py",
+      "side": "candidate",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "null": {
+          "functions": 4,
+          "obligations": 4
+        }
+      },
+      "census_snapshot_sha256": "95a3181143b62bae425975bac0aa5e607f8f78febc9ca3711123f03b607a97ce"
+    },
+    {
+      "program": "tests/programs/exceptions/exit_intflag_stored_zero.py",
+      "side": "baseline",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "null": {
+          "functions": 4,
+          "obligations": 4
+        }
+      },
+      "census_snapshot_sha256": "689cee0ed231ca096661322d4a20425d546dca3e4da98e166f043205e7e9e072"
+    },
+    {
+      "program": "tests/programs/exceptions/exit_intflag_stored_zero.py",
+      "side": "candidate",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "null": {
+          "functions": 2,
+          "obligations": 2
+        }
+      },
+      "census_snapshot_sha256": "0c89fd8eacc0f9c60313965deb0733a490187611e6c5bea82688f8207ceddcd6"
+    },
+    {
+      "program": "tests/programs/library/lib_enum.py",
+      "side": "baseline",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 56,
+          "obligations": 292
+        }
+      },
+      "census_snapshot_sha256": "db65ff62d37239b35b2bf04c38e54f86dfd8ecdcb876ef34b2368fe735b4c01c"
+    },
+    {
+      "program": "tests/programs/library/lib_enum.py",
+      "side": "candidate",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 54,
+          "obligations": 280
+        }
+      },
+      "census_snapshot_sha256": "991cb3fcaae549080a1cc180d1c7f4701a005952ed7a11186e3ec4a241ea9d58"
+    },
+    {
+      "program": "tests/programs/library/lib_enum_any.py",
+      "side": "baseline",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "null": {
+          "functions": 14,
+          "obligations": 14
+        }
+      },
+      "census_snapshot_sha256": "308ce9ea95d176aa21d92e76bd6b1a8d02532b5b01e81d7d403681c8059079c5"
+    },
+    {
+      "program": "tests/programs/library/lib_enum_any.py",
+      "side": "candidate",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "null": {
+          "functions": 0,
+          "obligations": 0
+        }
+      },
+      "census_snapshot_sha256": "cdaac687858fc3c9a530d62db54beb10aa7c9f825d2ced7f70bb278ba1d8f276"
+    },
+    {
+      "program": "tests/programs/library/lib_enum_flag_bits.py",
+      "side": "baseline",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "null": {
+          "functions": 10,
+          "obligations": 17
+        }
+      },
+      "census_snapshot_sha256": "3e953b894392a1ba36194dbbb23e8447dda6e29b0bb4b3a3719a665591f4f933"
+    },
+    {
+      "program": "tests/programs/library/lib_enum_flag_bits.py",
+      "side": "candidate",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "null": {
+          "functions": 8,
+          "obligations": 15
+        }
+      },
+      "census_snapshot_sha256": "6135f58dfc09b26aec281a90666ddf277bbe2cda08b6d2e555dbfb5eeb71fd10"
+    },
+    {
+      "program": "tests/programs/library/lib_enum_flag_numeric_lookup.py",
+      "side": "baseline",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "null": {
+          "functions": 7,
+          "obligations": 7
+        }
+      },
+      "census_snapshot_sha256": "ccc4cefc6a4f30cb77301a4af1697f0c17509263c9e33f74e907bf18ff15b41c"
+    },
+    {
+      "program": "tests/programs/library/lib_enum_flag_numeric_lookup.py",
+      "side": "candidate",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "null": {
+          "functions": 5,
+          "obligations": 5
+        }
+      },
+      "census_snapshot_sha256": "ff609402238c44b54e454020bc6699ae1eb4ee38138a5eba24d3aaa7c303fde2"
+    },
+    {
+      "program": "tests/programs/library/lib_enum_flag_width.py",
+      "side": "baseline",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "null": {
+          "functions": 11,
+          "obligations": 12
+        }
+      },
+      "census_snapshot_sha256": "efebdd44bef3f19bf562286cfde9b1545bc065834c07f6e8a37eacf4c5bb552f"
+    },
+    {
+      "program": "tests/programs/library/lib_enum_flag_width.py",
+      "side": "candidate",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "null": {
+          "functions": 5,
+          "obligations": 6
+        }
+      },
+      "census_snapshot_sha256": "4794002d7a1d1a6b4f86fbf4b831df3e9a51b2e8fa234b6f382323eca4748119"
+    },
+    {
+      "program": "tests/programs/library/lib_enum_format_str.py",
+      "side": "baseline",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "null": {
+          "functions": 4,
+          "obligations": 4
+        }
+      },
+      "census_snapshot_sha256": "6f8c9f28e28876e0cd84348836b4ad972fe4bb111c1e3983efef6b077e33c922"
+    },
+    {
+      "program": "tests/programs/library/lib_enum_format_str.py",
+      "side": "candidate",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "null": {
+          "functions": 2,
+          "obligations": 2
+        }
+      },
+      "census_snapshot_sha256": "a8208c37db006357338957b6c709c1edb7e3c5396437801f5fa0fd1a4829f69e"
+    },
+    {
+      "program": "tests/programs/library/lib_enum_intflag.py",
+      "side": "baseline",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "null": {
+          "functions": 10,
+          "obligations": 13
+        }
+      },
+      "census_snapshot_sha256": "5d222825b682713803d73857e976119310874b90e6fa93689630de0bb27ed570"
+    },
+    {
+      "program": "tests/programs/library/lib_enum_intflag.py",
+      "side": "candidate",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "null": {
+          "functions": 7,
+          "obligations": 10
+        }
+      },
+      "census_snapshot_sha256": "4a2ff553289cd5e0f5e45c4b32c4f4c89a25989089a6942ac716e188d985aada"
+    },
+    {
+      "program": "tests/programs/library/lib_enum_mixin.py",
+      "side": "baseline",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 18,
+          "obligations": 83
+        }
+      },
+      "census_snapshot_sha256": "7fc35fb80f8a1764c6caeafb053f4a7c8f2e1651bc04648b99471451f5bb47ca"
+    },
+    {
+      "program": "tests/programs/library/lib_enum_mixin.py",
+      "side": "candidate",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 17,
+          "obligations": 77
+        }
+      },
+      "census_snapshot_sha256": "151e141a4500d57e24c627e8c9f95eca9cd82c9611fe241e325c1dc208a72457"
+    },
+    {
+      "program": "tests/programs/library/lib_enum_plain_isinstance.py",
+      "side": "baseline",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "null": {
+          "functions": 14,
+          "obligations": 24
+        }
+      },
+      "census_snapshot_sha256": "b77ecc2fea0943df1f2e16c50684dd3126b898605544bbf0946ec2eacfb1e7bb"
+    },
+    {
+      "program": "tests/programs/library/lib_enum_plain_isinstance.py",
+      "side": "candidate",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "null": {
+          "functions": 2,
+          "obligations": 12
+        }
+      },
+      "census_snapshot_sha256": "fe04d27bb681e8d740babc708daa921a72c25fd5270ae372ffa4f6ffafc2aa6a"
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib.py",
+      "side": "baseline",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 109,
+          "obligations": 705
+        },
+        "null": {
+          "functions": 85,
+          "obligations": 759
+        }
+      },
+      "census_snapshot_sha256": "a576eb40ca544e03868414f9104897f428800576937aa510ed0183d10268e4a4"
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib.py",
+      "side": "candidate",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 108,
+          "obligations": 699
+        },
+        "null": {
+          "functions": 85,
+          "obligations": 756
+        }
+      },
+      "census_snapshot_sha256": "b6a55b9977833ca70994abe574340bedf0540b2ef47a77a747462296f8754587"
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_boundary.py",
+      "side": "baseline",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 110,
+          "obligations": 689
+        },
+        "null": {
+          "functions": 79,
+          "obligations": 736
+        }
+      },
+      "census_snapshot_sha256": "e87c1d1b56315263d0d521dcaba0f2e2e9c49b8329d3abfdf46c0695789f0dc0"
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_boundary.py",
+      "side": "candidate",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 109,
+          "obligations": 683
+        },
+        "null": {
+          "functions": 79,
+          "obligations": 733
+        }
+      },
+      "census_snapshot_sha256": "6b846b45f1c82ab5b232c5068b2156839b9fd3dd29a2d5bf561af148e8267444"
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_dynamic.py",
+      "side": "baseline",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 107,
+          "obligations": 677
+        },
+        "null": {
+          "functions": 83,
+          "obligations": 751
+        }
+      },
+      "census_snapshot_sha256": "52ac7ccef66e21579ea817cc37bb1a381935aaccbc7753c9aee6cafd38232149"
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_dynamic.py",
+      "side": "candidate",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 106,
+          "obligations": 671
+        },
+        "null": {
+          "functions": 83,
+          "obligations": 748
+        }
+      },
+      "census_snapshot_sha256": "8e79209129cd43abaffa9166979885e58e8576f4afb1d281fe161ea71c7ba387"
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_flags.py",
+      "side": "baseline",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 108,
+          "obligations": 679
+        },
+        "null": {
+          "functions": 77,
+          "obligations": 731
+        }
+      },
+      "census_snapshot_sha256": "21d33b6cf7d1688052f0b43919ff7f516287e095a41b8c369a7a9391565d5c11"
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_flags.py",
+      "side": "candidate",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 107,
+          "obligations": 673
+        },
+        "null": {
+          "functions": 77,
+          "obligations": 728
+        }
+      },
+      "census_snapshot_sha256": "db1c0913ffe8fa3a70afbc7ba39f5e004c80d24198d21c406f3eda0897af208d"
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_typed_callback.py",
+      "side": "baseline",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 73,
+          "obligations": 555
+        }
+      },
+      "census_snapshot_sha256": "7e5f1305f2e1051b018efc698890caa516ea56966369e86ae6c8bbea1587461c"
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_typed_callback.py",
+      "side": "candidate",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 72,
+          "obligations": 549
+        }
+      },
+      "census_snapshot_sha256": "89f4b18a97d61f8cf4da15c5d9d29906b180971837737ab13814111bc1e0f661"
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_uncaught.py",
+      "side": "baseline",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 108,
+          "obligations": 679
+        },
+        "null": {
+          "functions": 77,
+          "obligations": 731
+        }
+      },
+      "census_snapshot_sha256": "744ef1110599076fe2e9fed03919d55d12a1c50b57db5bc874bb3c58d8e41a80"
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_uncaught.py",
+      "side": "candidate",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 107,
+          "obligations": 673
+        },
+        "null": {
+          "functions": 77,
+          "obligations": 728
+        }
+      },
+      "census_snapshot_sha256": "8a8edad26e395ce0f56a7b672e38fe6741e3df080975128c5b0523d25453671f"
+    },
+    {
+      "program": "tests/programs/library/lib_types_mappingproxy.py",
+      "side": "baseline",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 26,
+          "obligations": 131
+        }
+      },
+      "census_snapshot_sha256": "05ca373f3ee04c54e0a405fa90ba975992cc3184dce52742a44810880be9a1f1"
+    },
+    {
+      "program": "tests/programs/library/lib_types_mappingproxy.py",
+      "side": "candidate",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 24,
+          "obligations": 119
+        }
+      },
+      "census_snapshot_sha256": "3e2ba32ed811102d09c99a875e8b9b7de5bee986e7dcd6d9e43182db09ce8f7a"
+    },
+    {
+      "program": "tests/programs/library/lib_types_mappingproxy_opaque.py",
+      "side": "baseline",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 5,
+          "obligations": 14
+        }
+      },
+      "census_snapshot_sha256": "32781b6f7703df4735a4a952d7e0805f20c4e81af8a407986da078bf43e0a6e7"
+    },
+    {
+      "program": "tests/programs/library/lib_types_mappingproxy_opaque.py",
+      "side": "candidate",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 4,
+          "obligations": 11
+        }
+      },
+      "census_snapshot_sha256": "80a64b0a19c3faacb61471657d7ea33aa0693673bd2c687638e2788749e7fda4"
+    },
+    {
+      "program": "tests/programs/numbers/python_int_vtuple_materialization.py",
+      "side": "baseline",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "storage_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "storage": {
+          "functions": 5,
+          "obligations": 46
+        }
+      },
+      "census_snapshot_sha256": "ebc2efa8b9ffab7c69f95d4ab542e138a9478ae94af8266307f6733fb69a074e"
+    },
+    {
+      "program": "tests/programs/numbers/python_int_vtuple_materialization.py",
+      "side": "candidate",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "storage_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "storage": {
+          "functions": 5,
+          "obligations": 37
+        }
+      },
+      "census_snapshot_sha256": "5db24ceccdcf9836350a5e3d1ce295111caadcdac9acc80a2f64e20dcaa31dac"
+    },
+    {
+      "program": "tests/programs/upstream/upstream_tomllib_data.py",
+      "side": "baseline",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 108,
+          "obligations": 747
+        },
+        "null": {
+          "functions": 77,
+          "obligations": 731
+        }
+      },
+      "census_snapshot_sha256": "4080c224cb39df85c3d98dc73ff268887bf6a535697785deabd32033ec00fa6d"
+    },
+    {
+      "program": "tests/programs/upstream/upstream_tomllib_data.py",
+      "side": "candidate",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 107,
+          "obligations": 741
+        },
+        "null": {
+          "functions": 77,
+          "obligations": 728
+        }
+      },
+      "census_snapshot_sha256": "937d0288955e198ce10e3ea07b9006761a55f81d6386578de0536f5983b0a7ae"
+    },
+    {
+      "program": "tests/programs/upstream/upstream_tomllib_misc.py",
+      "side": "baseline",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 109,
+          "obligations": 695
+        },
+        "null": {
+          "functions": 79,
+          "obligations": 736
+        }
+      },
+      "census_snapshot_sha256": "01eae00b672bd6c1da243c12a38a4ab241535567cd6a796d16f29d0c2f1fe729"
+    },
+    {
+      "program": "tests/programs/upstream/upstream_tomllib_misc.py",
+      "side": "candidate",
+      "checks": {
+        "compact_site_excerpts_unchanged": true,
+        "snapshot_bytes_unchanged": true,
+        "snapshot_matches_final_census": true,
+        "extraction_bytes_unchanged": true,
+        "fixture_source_unchanged": true,
+        "adapter_sources_unchanged": true,
+        "compiler_support_sources_unchanged": true,
+        "gc_counts_match_final_census": true,
+        "null_counts_match_final_census": true
+      },
+      "extracted_totals": {
+        "gc": {
+          "functions": 108,
+          "obligations": 689
+        },
+        "null": {
+          "functions": 79,
+          "obligations": 733
+        }
+      },
+      "census_snapshot_sha256": "0fe47b0912469dd38db40da5ed2b5d6d40a3ba05bac28aa3a72f4211c6740ad9"
+    }
+  ],
+  "supported_decrease_pairs": [
+    {
+      "program": "tests/deviations/dynany_identity_boundary.py",
+      "check": "gc"
+    },
+    {
+      "program": "tests/deviations/dynany_identity_boundary.py",
+      "check": "storage"
+    },
+    {
+      "program": "tests/deviations/lib_types_mappingproxy_eq_other.py",
+      "check": "gc"
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_ini2toml.py",
+      "check": "gc"
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_tables.py",
+      "check": "gc"
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_values.py",
+      "check": "gc"
+    },
+    {
+      "program": "tests/programs/exceptions/exit_enum_member_caught.py",
+      "check": "null"
+    },
+    {
+      "program": "tests/programs/exceptions/exit_enum_stored_reflection.py",
+      "check": "null"
+    },
+    {
+      "program": "tests/programs/exceptions/exit_intflag_stored_mutated.py",
+      "check": "null"
+    },
+    {
+      "program": "tests/programs/exceptions/exit_intflag_stored_zero.py",
+      "check": "null"
+    },
+    {
+      "program": "tests/programs/library/lib_enum.py",
+      "check": "gc"
+    },
+    {
+      "program": "tests/programs/library/lib_enum_any.py",
+      "check": "null"
+    },
+    {
+      "program": "tests/programs/library/lib_enum_flag_bits.py",
+      "check": "null"
+    },
+    {
+      "program": "tests/programs/library/lib_enum_flag_numeric_lookup.py",
+      "check": "null"
+    },
+    {
+      "program": "tests/programs/library/lib_enum_flag_width.py",
+      "check": "null"
+    },
+    {
+      "program": "tests/programs/library/lib_enum_format_str.py",
+      "check": "null"
+    },
+    {
+      "program": "tests/programs/library/lib_enum_intflag.py",
+      "check": "null"
+    },
+    {
+      "program": "tests/programs/library/lib_enum_mixin.py",
+      "check": "gc"
+    },
+    {
+      "program": "tests/programs/library/lib_enum_plain_isinstance.py",
+      "check": "null"
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib.py",
+      "check": "gc"
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib.py",
+      "check": "null"
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_boundary.py",
+      "check": "gc"
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_boundary.py",
+      "check": "null"
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_dynamic.py",
+      "check": "gc"
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_dynamic.py",
+      "check": "null"
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_flags.py",
+      "check": "gc"
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_flags.py",
+      "check": "null"
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_typed_callback.py",
+      "check": "gc"
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_uncaught.py",
+      "check": "gc"
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_uncaught.py",
+      "check": "null"
+    },
+    {
+      "program": "tests/programs/library/lib_types_mappingproxy.py",
+      "check": "gc"
+    },
+    {
+      "program": "tests/programs/library/lib_types_mappingproxy_opaque.py",
+      "check": "gc"
+    },
+    {
+      "program": "tests/programs/numbers/python_int_vtuple_materialization.py",
+      "check": "storage"
+    },
+    {
+      "program": "tests/programs/upstream/upstream_tomllib_data.py",
+      "check": "gc"
+    },
+    {
+      "program": "tests/programs/upstream/upstream_tomllib_data.py",
+      "check": "null"
+    },
+    {
+      "program": "tests/programs/upstream/upstream_tomllib_misc.py",
+      "check": "gc"
+    },
+    {
+      "program": "tests/programs/upstream/upstream_tomllib_misc.py",
+      "check": "null"
+    }
+  ],
+  "other_decreases_requiring_existing_semantic_review": [
+    {
+      "program": "tests/programs/inference/dynany_iter_errors.py",
+      "check": "access",
+      "before": 2,
+      "after": 1
+    }
+  ],
+  "existing_access_review": {
+    "path": "/workspace/scratch/980402bc01c4/evidence/lean/access-count-decrease-1158/review.json",
+    "bytes": 3977,
+    "sha256": "1324010dd1540b6a803064753a59d74b66a315dbd8d61f11766d1a243bb757e1"
+  },
+  "semantic_approval_granted": false,
+  "limitation": "Exact provenance and count coverage are prerequisites; the final semantic disposition and independent review must separately explain every decreased denominator.",
+  "evidence": {
+    "inventory": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/inventory.json",
+      "bytes": 12922419,
+      "sha256": "7200136d2f198e297688a66aeceb60eb1e7ade0423e8f2dd27a286fb098ccb00"
+    },
+    "candidate_records": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/records.jsonl",
+      "bytes": 2361345,
+      "sha256": "1184061f32713f1a8de978b8ceb87acea02bfe02ec411f366085276ed3baf33c"
+    },
+    "baseline_records": {
+      "path": "/workspace/scratch/7dd0519bc14a/lean-reports/alpha2-storage-lean-records.jsonl",
+      "bytes": 2226522,
+      "sha256": "98d2cd703064e39dbb14e41f3d13bb1b5df7bbcf4d30903966db4b427ecd09a6"
+    },
+    "acceptance": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/acceptance.json",
+      "bytes": 62494,
+      "sha256": "58e66fb54071eeb3334a1a947a7e00cbdf4225de10036d21d3414ba947851fd0"
+    },
+    "delta": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/delta-alpha2.json",
+      "bytes": 47606,
+      "sha256": "c7c6a50aa77a70954c3676ec7cc3a34f7d7c4b07dd87105c35ad7dd7a117e244"
+    },
+    "configuration": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/attribution-config.json",
+      "bytes": 542,
+      "sha256": "4028c9d732db3336a5551df8da1bb05d7d9770b818a0592d3d002ae20a9f96d1"
+    },
+    "binding_script": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/bind-attribution-to-final-census.py",
+      "bytes": 7849,
+      "sha256": "be285174a2a3954bceb6e81aba6e0232e002d10f614cb6a98dd5ef79b91d5e5a"
+    }
+  }
+}

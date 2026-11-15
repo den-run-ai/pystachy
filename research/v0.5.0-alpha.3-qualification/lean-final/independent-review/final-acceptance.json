@@ -1,0 +1,363 @@
+{
+  "schema_version": 1,
+  "status": "accepted_with_explicit_model_limits",
+  "reviewed_utc": "2026-11-15T09:08:23.159812+00:00",
+  "candidate_commit": "0a2fe77a580106c197face4d2904be80e3f85dbc",
+  "candidate_tree": "107460d5f89bdcf37f2741b233eac0568d82604a",
+  "observed_integrated_release_commit": "328b945f02788b296d9981d1b44706a2a0092255",
+  "baseline_proof_commit": "950c0440ad793dc6c34664f591383a5e6bba14dd",
+  "baseline_published_commit": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+  "baseline_tree": "717a8c9386ae9f5f6545cc3686a9e22282fc560c",
+  "checks": {
+    "complete_fresh_single_attempt_and_all_2699_records": true,
+    "all_2550_baseline_programs_and_175_storage_selections_retained": true,
+    "exact_196_storage_selections_fully_proved_without_unknowns": true,
+    "source_and_integrated_complete_trees_independently_equal": true,
+    "published_alpha2_and_baseline_complete_trees_independently_equal": true,
+    "clean_frozen_source_and_prepared_checker_identities_verified": true,
+    "all_final_record_and_artifact_hashes_bound": true,
+    "all_37_early_attribution_pairs_bound_to_final_snapshots_and_counts": true,
+    "all_38_denominator_and_proved_decreases_independently_disposed": true,
+    "enum_signature_reuse_and_renaming_accounted": true,
+    "tomllib_exact_flags_receiver_guards_retained_at_runtime": true,
+    "storage_net_decrease_includes_offsetting_added_low_word_sites": true,
+    "shared_raw_residuals_unchanged_without_normalization": true,
+    "all_added_counted_gaps_and_unknown_counts_explicit": true,
+    "all_542_union_and_409_payload_residuals_remain_unproved": true,
+    "native_execution_evidence_is_distinct_from_lean_proof": true,
+    "handwritten_typeerror_deviation_is_not_cpython_parity": true,
+    "historical_failed_censuses_preserved_without_reuse": true,
+    "completed_semantic_json_and_markdown_independently_reviewed": true
+  },
+  "coverage": {
+    "baseline_programs": 2550,
+    "candidate_programs": 2699,
+    "added_programs": 149,
+    "baseline_storage_selections": 175,
+    "candidate_storage_selections": 196
+  },
+  "execution": {
+    "fresh_attempts": 1,
+    "same_source_resumes": 0,
+    "prior_source_records_reused": false,
+    "mode": "one worker, spawn, 300-second inspection timeout"
+  },
+  "proof_counts": {
+    "payload": {
+      "baseline": {
+        "programs": 282,
+        "functions": 1156,
+        "obligations": 2583,
+        "proved": 2583
+      },
+      "candidate": {
+        "programs": 302,
+        "functions": 1249,
+        "obligations": 2760,
+        "proved": 2760
+      },
+      "baseline_counted_gap": 0,
+      "candidate_counted_gap": 0,
+      "baseline_unknown_count_function_entries": 0,
+      "candidate_unknown_count_function_entries": 0
+    },
+    "access": {
+      "baseline": {
+        "programs": 1223,
+        "functions": 16186,
+        "obligations": 86150,
+        "proved": 86150
+      },
+      "candidate": {
+        "programs": 1270,
+        "functions": 16261,
+        "obligations": 86345,
+        "proved": 86345
+      },
+      "baseline_counted_gap": 0,
+      "candidate_counted_gap": 0,
+      "baseline_unknown_count_function_entries": 0,
+      "candidate_unknown_count_function_entries": 0
+    },
+    "null": {
+      "baseline": {
+        "programs": 926,
+        "functions": 13211,
+        "obligations": 136413,
+        "proved": 136394
+      },
+      "candidate": {
+        "programs": 981,
+        "functions": 13369,
+        "obligations": 137304,
+        "proved": 137285
+      },
+      "baseline_counted_gap": 19,
+      "candidate_counted_gap": 19,
+      "baseline_unknown_count_function_entries": 0,
+      "candidate_unknown_count_function_entries": 0
+    },
+    "union": {
+      "baseline": {
+        "programs": 276,
+        "functions": 2214,
+        "obligations": 6948,
+        "proved": 6633
+      },
+      "candidate": {
+        "programs": 308,
+        "functions": 2373,
+        "obligations": 8146,
+        "proved": 7289
+      },
+      "baseline_counted_gap": 315,
+      "candidate_counted_gap": 857,
+      "baseline_unknown_count_function_entries": 8,
+      "candidate_unknown_count_function_entries": 8
+    },
+    "union_payload": {
+      "baseline": {
+        "programs": 335,
+        "functions": 1717,
+        "obligations": 13533,
+        "proved": 13284
+      },
+      "candidate": {
+        "programs": 370,
+        "functions": 1869,
+        "obligations": 15016,
+        "proved": 14358
+      },
+      "baseline_counted_gap": 249,
+      "candidate_counted_gap": 658,
+      "baseline_unknown_count_function_entries": 0,
+      "candidate_unknown_count_function_entries": 0
+    },
+    "fields": {
+      "baseline": {
+        "programs": 1401,
+        "functions": 17209,
+        "obligations": 161987,
+        "proved": 161750
+      },
+      "candidate": {
+        "programs": 1526,
+        "functions": 17941,
+        "obligations": 166521,
+        "proved": 166284
+      },
+      "baseline_counted_gap": 237,
+      "candidate_counted_gap": 237,
+      "baseline_unknown_count_function_entries": 426,
+      "candidate_unknown_count_function_entries": 427
+    },
+    "gc": {
+      "baseline": {
+        "programs": 1659,
+        "functions": 26289,
+        "obligations": 191244,
+        "proved": 190869
+      },
+      "candidate": {
+        "programs": 1760,
+        "functions": 26609,
+        "obligations": 194685,
+        "proved": 194307
+      },
+      "baseline_counted_gap": 375,
+      "candidate_counted_gap": 378,
+      "baseline_unknown_count_function_entries": 9,
+      "candidate_unknown_count_function_entries": 9
+    },
+    "int": {
+      "baseline": {
+        "programs": 29,
+        "functions": 36,
+        "obligations": 187,
+        "proved": 187
+      },
+      "candidate": {
+        "programs": 39,
+        "functions": 122,
+        "obligations": 344,
+        "proved": 344
+      },
+      "baseline_counted_gap": 0,
+      "candidate_counted_gap": 0,
+      "baseline_unknown_count_function_entries": 0,
+      "candidate_unknown_count_function_entries": 0
+    },
+    "int_inline": {
+      "baseline": {
+        "programs": 131,
+        "functions": 351,
+        "obligations": 1692,
+        "proved": 1692
+      },
+      "candidate": {
+        "programs": 145,
+        "functions": 559,
+        "obligations": 2784,
+        "proved": 2784
+      },
+      "baseline_counted_gap": 0,
+      "candidate_counted_gap": 0,
+      "baseline_unknown_count_function_entries": 0,
+      "candidate_unknown_count_function_entries": 0
+    },
+    "storage": {
+      "baseline": {
+        "programs": 162,
+        "functions": 1710,
+        "obligations": 18582,
+        "proved": 18582
+      },
+      "candidate": {
+        "programs": 180,
+        "functions": 2172,
+        "obligations": 25816,
+        "proved": 25816
+      },
+      "baseline_counted_gap": 0,
+      "candidate_counted_gap": 0,
+      "baseline_unknown_count_function_entries": 0,
+      "candidate_unknown_count_function_entries": 0
+    }
+  },
+  "strict_storage": {
+    "obligations": 25816,
+    "proved": 25816,
+    "unproved_function_entries": 0,
+    "unknown_count_functions": 0,
+    "repaired_target": {
+      "obligations": 142,
+      "proved": 142
+    }
+  },
+  "denominator_decrease_rows": 38,
+  "net_decreases_by_category": {
+    "gc": 106,
+    "storage": 10,
+    "null": 70,
+    "access": 1
+  },
+  "new_residuals": {
+    "union_functions": 21,
+    "union_fixtures": 9,
+    "union_obligations_rejected": 542,
+    "union_payload_obligations_unproved": 409,
+    "gc_obligations_rejected": 3,
+    "fields_unknown_count_functions": 1
+  },
+  "unknown_count_function_entries": {
+    "baseline": 443,
+    "candidate": 444,
+    "unit": "program/check/function entries; unknown obligation counts are excluded from numerical denominators"
+  },
+  "evidence": {
+    "records": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/records.jsonl",
+      "bytes": 2361345,
+      "sha256": "1184061f32713f1a8de978b8ceb87acea02bfe02ec411f366085276ed3baf33c"
+    },
+    "report": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/report.md",
+      "bytes": 15137,
+      "sha256": "bf88351eff1b847e6a4e5729667ed5f802462d842659025f20051cbd6795a89b"
+    },
+    "acceptance": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/acceptance.json",
+      "bytes": 62494,
+      "sha256": "58e66fb54071eeb3334a1a947a7e00cbdf4225de10036d21d3414ba947851fd0"
+    },
+    "delta": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/delta-alpha2.json",
+      "bytes": 47606,
+      "sha256": "c7c6a50aa77a70954c3676ec7cc3a34f7d7c4b07dd87105c35ad7dd7a117e244"
+    },
+    "census_receipt": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/final-census-receipt.json",
+      "bytes": 8287,
+      "sha256": "ff4de56e45b1a742d86117cc93363d6d9442b7cde2a637cd13281a739ad0506e"
+    },
+    "count_binding": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/final-census-binding.json",
+      "bytes": 51171,
+      "sha256": "f7df686c51c38d444d3ab0fe1ef1e8a3ae88acd34417355b86cdecb359179cfb"
+    },
+    "semantic_disposition": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/semantic-disposition.json",
+      "bytes": 101443,
+      "sha256": "9fa6a540b479668a4b3cb6167ec13438eb8a4f2655d7e99c2d33d06085413e7b"
+    },
+    "semantic_markdown": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/semantic-disposition.md",
+      "bytes": 14477,
+      "sha256": "f52992748e6aba58f45c5b4fa8cff841bbc90162bfa5b896342c1c4656a8f102"
+    },
+    "structural_review": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/structural-audit.json",
+      "bytes": 276722,
+      "sha256": "7431d4389bf62a9aa461225c41c3f7b6bbe081b859d8044b015762589f0169a0"
+    },
+    "prepared": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/prepared.json",
+      "bytes": 174505,
+      "sha256": "5ad25a8ad008882ae65c84f3a77ecf18dcfabdc76d26fc2aa39cb17e7f20ff69"
+    },
+    "equivalence": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/qualification-source-equivalence.json",
+      "bytes": 1151,
+      "sha256": "a990b294bac3fa4832ee75378703241194a832f8494074a071573b0755bdb8f8"
+    },
+    "inventory": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/inventory.json",
+      "bytes": 12922419,
+      "sha256": "7200136d2f198e297688a66aeceb60eb1e7ade0423e8f2dd27a286fb098ccb00"
+    },
+    "provenance_review": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/provenance-preflight-review.json",
+      "bytes": 6334,
+      "sha256": "477bed231d576adee0899bc4fe9302fe0970878c7e0f9ea0f1c3f996aaa9aab7"
+    },
+    "enum_review": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/enum-count-attribution-review.json",
+      "bytes": 174950,
+      "sha256": "8421eee32a1e51e14df13b44e8dbcc93c95f9f323c1abca0d992934663a2dba4"
+    },
+    "gc_helper_review": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/gc-helper-count-attribution-review.json",
+      "bytes": 187100,
+      "sha256": "9e8b0033d58ae422178c1527b8d86235354452eee9d7e871195ce4f02e1c7eff"
+    },
+    "tomllib_review": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/tomllib-count-attribution-review.json",
+      "bytes": 53042,
+      "sha256": "aa4c3005e14b93855e7f1fc17dbfab228a06313c8e984f819654a815392eba9e"
+    },
+    "storage_review": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/storage-count-attribution-review.json",
+      "bytes": 146862,
+      "sha256": "6221476e41bb4663106c9b6437ab08dcb55d8501959e7727294392ba6c00e7b0"
+    },
+    "structural_verifier": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/verify-final-records.py",
+      "bytes": 14115,
+      "sha256": "acac1f8a2b84c94ed830c4f66fc3cf20f76ce3624b832b52e27eec790fe5aaf1"
+    },
+    "final_reviewer": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/finalize-independent-review.py",
+      "bytes": 15769,
+      "sha256": "e02876b5be605690fed1ecede66d4f6392e01e1cdd2e43ab00d4f45dc8b747fe"
+    }
+  },
+  "limits": [
+    "Acceptance is a source-bound release qualification with explicit model limits, not a claim that all obligations or compiler/runtime behavior are proved.",
+    "All shared rejected/unsupported dictionaries remain exactly unchanged. Every added rejected or unsupported entry is retained; no blanket normalization or unknown-count waiver is used.",
+    "The complex first-failure review does not prove later obligations in those functions. The payload model shares the union-function verdict and its additional 409 unproved obligations remain explicit.",
+    "The Decimal field case has an unknown count. Native execution evidence and source/IR contracts do not create Lean theorems or a complete coverage percentage.",
+    "Retained b0 native executions are bridged by exact production-source equivalence to the final proof-only repairs, not represented as new runs. complex_union_none uses a handwritten TypeError deviation oracle.",
+    "Historical b0 and 94f4 failures remain failed/incomplete as recorded. Their process-kill causes are unproven; none of their records enters this fresh census.",
+    "This receipt makes no current-branch or publication claim. The parent owns fresh GitHub checks, reviews, release-head/base validation, merge and publication."
+  ]
+}

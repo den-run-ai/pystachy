@@ -1,0 +1,4470 @@
+{
+  "schema_version": 1,
+  "status": "independently_reviewed_storage_denominators_pending_final_census_binding",
+  "observed_utc": "2026-11-15T08:09:41.753377+00:00",
+  "source_commits": {
+    "baseline": "950c0440ad793dc6c34664f591383a5e6bba14dd",
+    "candidate": "0a2fe77a580106c197face4d2904be80e3f85dbc"
+  },
+  "inventory": {
+    "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/inventory.json",
+    "sha256": "7200136d2f198e297688a66aeceb60eb1e7ade0423e8f2dd27a286fb098ccb00",
+    "bytes": 12922419
+  },
+  "qualification_review": {
+    "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/storage-denominator-review/review.json",
+    "sha256": "80452912146b9f9421d01888694ce47de54fa07dc4ebc6a6308460a7e0a41012",
+    "bytes": 110304
+  },
+  "publication_support": {
+    "path": "/workspace/scratch/980402bc01c4/evidence/lean/vtuple-count-attribution-support/review.json",
+    "sha256": "0893113a963b8e32b7073598e449ef0931a4b6c8c2f13e2bfeb0ba50c5590dea",
+    "bytes": 28945
+  },
+  "script": {
+    "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/review-storage-counts.py",
+    "sha256": "20bc14c6c93dfbe0d2b10c2166eb4475ff99012152a9e0aa85aca109fe9eb206",
+    "bytes": 12755
+  },
+  "raw_json_helper": {
+    "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/raw_json_review.py",
+    "sha256": "9cdd76c785b265d4b07d0c84850602ccf36663271c8fba84e566e886e0bd4edf",
+    "bytes": 1583
+  },
+  "storage_decrease": 10,
+  "identity_boundary_gc_decrease": 4,
+  "checks": {
+    "both_raw_snapshot_pairs_hashed": true,
+    "all_selected_typed_functions_match_raw": true,
+    "all_site_and_low_word_context_matches": true,
+    "materialization_source_unchanged": true,
+    "materialization_counts_reconciled_with_increase": true,
+    "final_overflow_checks_remain": true,
+    "item_evaluation_calls_remain": true,
+    "original_changed_input_review_retained": true
+  },
+  "programs": {
+    "identity_boundary": {
+      "program": "tests/deviations/dynany_identity_boundary.py",
+      "sides": {
+        "baseline": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/01-dynany_identity_boundary/baseline/typed-after.json",
+            "sha256": "ddf67c2c002fc4339a3e51c7882ca650853eced660430aa28d6715ca8f887998",
+            "bytes": 477548
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/01-dynany_identity_boundary/baseline/extracted-inventory.json",
+            "sha256": "fe4592fb3f8b2244e0005d0eb52aa092c2180ce075ea7c1a9cd16ebe70359c49",
+            "bytes": 6517
+          },
+          "source": {
+            "path": "/workspace/scratch/7dd0519bc14a/lean-reports/alpha2-source/tests/deviations/dynany_identity_boundary.py",
+            "sha256": "0682192adb45d85ba1af8fdfbd227d64906f1aa31808026f6ffcf4fb7d598538",
+            "bytes": 875
+          },
+          "totals": {
+            "functions": 1,
+            "obligations": 2
+          },
+          "functions": [
+            {
+              "function": "@main.init",
+              "function_sha256": "bcc1cae28ebcc3485ea50b2abeb623388bb463bd37155a5cdab9d79a8e676fc7",
+              "inventory": {
+                "function": "@main.init",
+                "obligations": 2,
+                "sites": [
+                  {
+                    "node": 9,
+                    "kind": "low-word",
+                    "source": "%t9"
+                  },
+                  {
+                    "node": 57,
+                    "kind": "low-word",
+                    "source": "%t252"
+                  }
+                ],
+                "graph_sha256": "50c6c1bfb48bca1fade2d257bb9a34cedc211c1efaaa4a009fc7c666ed3a2921",
+                "proof_executed": false
+              },
+              "site_kinds": {
+                "low-word": 2
+              },
+              "low_word_context": [
+                {
+                  "site": {
+                    "node": 9,
+                    "kind": "low-word",
+                    "source": "%t9"
+                  },
+                  "definition": {
+                    "block": "L8",
+                    "offset": 0,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        9
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t2",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "entry",
+                    "offset": 1,
+                    "operation": {
+                      "op": "rt",
+                      "type": "int+",
+                      "text": "big.from_str",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        2
+                      ],
+                      "operands": [
+                        {
+                          "value": "@s.0",
+                          "type": "str"
+                        },
+                        {
+                          "value": "10",
+                          "type": "int"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L8",
+                      "offset": 1,
+                      "operation": {
+                        "op": "vtuple.make",
+                        "type": "vtuple[int]",
+                        "text": "",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          10
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t9",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "site": {
+                    "node": 57,
+                    "kind": "low-word",
+                    "source": "%t252"
+                  },
+                  "definition": {
+                    "block": "L246",
+                    "offset": 0,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        252
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t245",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "L177",
+                    "offset": 56,
+                    "operation": {
+                      "op": "rt",
+                      "type": "int+",
+                      "text": "big.op",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        245
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t241",
+                          "type": "int"
+                        },
+                        {
+                          "value": "%t242",
+                          "type": "%ptr"
+                        },
+                        {
+                          "value": "%t243",
+                          "type": "int"
+                        },
+                        {
+                          "value": "%t244",
+                          "type": "%ptr"
+                        },
+                        {
+                          "value": "10",
+                          "type": "int"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L246",
+                      "offset": 1,
+                      "operation": {
+                        "op": "rt",
+                        "type": "%ptr",
+                        "text": "dyn.int",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          253
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t252",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                }
+              ],
+              "overflow_guards": [
+                {
+                  "block": "entry",
+                  "offset": 6,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "OverflowError: Python int too large to convert to C long",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t6",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L8"
+                    ]
+                  }
+                }
+              ],
+              "item_calls_in_export_order": [],
+              "tuple_operations": [],
+              "vtuple_operations": [
+                {
+                  "block": "L8",
+                  "offset": 1,
+                  "operation": {
+                    "op": "vtuple.make",
+                    "type": "vtuple[int]",
+                    "text": "",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [
+                      10
+                    ],
+                    "operands": [
+                      {
+                        "value": "%t9",
+                        "type": "int"
+                      }
+                    ],
+                    "targets": []
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "candidate": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/01-dynany_identity_boundary/candidate/typed-after.json",
+            "sha256": "55e62728151906a0305fa1b523c69805b65c99ffbc903e8cf399aeb552bd5d9e",
+            "bytes": 268502
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/01-dynany_identity_boundary/candidate/extracted-inventory.json",
+            "sha256": "a392104ff4eabec692dcf5268dc6ac2f7e4cd9b3d5baea97ecba540850a48e84",
+            "bytes": 6003
+          },
+          "source": {
+            "path": "/workspace/scratch/980402bc01c4/alpha3-lean-storage-corrected/tests/deviations/dynany_identity_boundary.py",
+            "sha256": "a894b004a2287649fa346fa21303c4a686246baa2bd1c6dcfb88466128b4ffbc",
+            "bytes": 623
+          },
+          "totals": {
+            "functions": 1,
+            "obligations": 1
+          },
+          "functions": [
+            {
+              "function": "@main.init",
+              "function_sha256": "c636d2b73f63bd0112f600db51f565c81b7c2cf5b2b032b01a62550da1a794ba",
+              "inventory": {
+                "function": "@main.init",
+                "obligations": 1,
+                "sites": [
+                  {
+                    "node": 39,
+                    "kind": "low-word",
+                    "source": "%t130"
+                  }
+                ],
+                "graph_sha256": "90934bda61236e890d978d2e714fb4e62fca02b2cb6f9b120d34cc94a6f9f2df",
+                "proof_executed": false
+              },
+              "site_kinds": {
+                "low-word": 1
+              },
+              "low_word_context": [
+                {
+                  "site": {
+                    "node": 39,
+                    "kind": "low-word",
+                    "source": "%t130"
+                  },
+                  "definition": {
+                    "block": "L124",
+                    "offset": 0,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        130
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t123",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "L55",
+                    "offset": 56,
+                    "operation": {
+                      "op": "rt",
+                      "type": "int+",
+                      "text": "big.op",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        123
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t119",
+                          "type": "int"
+                        },
+                        {
+                          "value": "%t120",
+                          "type": "%ptr"
+                        },
+                        {
+                          "value": "%t121",
+                          "type": "int"
+                        },
+                        {
+                          "value": "%t122",
+                          "type": "%ptr"
+                        },
+                        {
+                          "value": "10",
+                          "type": "int"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L124",
+                      "offset": 1,
+                      "operation": {
+                        "op": "rt",
+                        "type": "%ptr",
+                        "text": "dyn.int",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          131
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t130",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                }
+              ],
+              "overflow_guards": [],
+              "item_calls_in_export_order": [],
+              "tuple_operations": [],
+              "vtuple_operations": []
+            }
+          ]
+        }
+      },
+      "gc": {
+        "baseline": {
+          "obligations": 8,
+          "sites": [
+            {
+              "normalized_node": "67",
+              "origin": [
+                "L49",
+                3,
+                "rt",
+                0
+              ],
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "list.append",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t58",
+                    "type": "list[opt[float]]"
+                  },
+                  {
+                    "value": "%t59",
+                    "type": "*opt[float]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "normalized_node": "69",
+              "origin": [
+                "L49",
+                4,
+                "mem.store",
+                1
+              ],
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "@g.optional",
+                    "type": "*list[opt[float]]"
+                  },
+                  {
+                    "value": "%t58",
+                    "type": "list[opt[float]]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "normalized_node": "73",
+              "origin": [
+                "L49",
+                6,
+                "rt",
+                0
+              ],
+              "operation": {
+                "op": "rt",
+                "type": "*opt[float]",
+                "text": "list.get",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [
+                  61
+                ],
+                "operands": [
+                  {
+                    "value": "%t60",
+                    "type": "list[opt[float]]"
+                  },
+                  {
+                    "value": "0",
+                    "type": "int"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "normalized_node": "86",
+              "origin": [
+                "L63",
+                3,
+                "rt",
+                0
+              ],
+              "operation": {
+                "op": "rt",
+                "type": "*opt[float]",
+                "text": "list.get",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [
+                  71
+                ],
+                "operands": [
+                  {
+                    "value": "%t70",
+                    "type": "list[opt[float]]"
+                  },
+                  {
+                    "value": "0",
+                    "type": "int"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "normalized_node": "175",
+              "origin": [
+                "L136",
+                3,
+                "rt",
+                0
+              ],
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "list.append",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t155",
+                    "type": "list[union[float,int]]"
+                  },
+                  {
+                    "value": "%t156",
+                    "type": "*union[float,int]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "normalized_node": "177",
+              "origin": [
+                "L136",
+                4,
+                "mem.store",
+                1
+              ],
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "@g.joined",
+                    "type": "*list[union[float,int]]"
+                  },
+                  {
+                    "value": "%t155",
+                    "type": "list[union[float,int]]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "normalized_node": "181",
+              "origin": [
+                "L136",
+                6,
+                "rt",
+                0
+              ],
+              "operation": {
+                "op": "rt",
+                "type": "*union[float,int]",
+                "text": "list.get",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [
+                  158
+                ],
+                "operands": [
+                  {
+                    "value": "%t157",
+                    "type": "list[union[float,int]]"
+                  },
+                  {
+                    "value": "0",
+                    "type": "int"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "normalized_node": "199",
+              "origin": [
+                "L160",
+                3,
+                "rt",
+                0
+              ],
+              "operation": {
+                "op": "rt",
+                "type": "*union[float,int]",
+                "text": "list.get",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [
+                  175
+                ],
+                "operands": [
+                  {
+                    "value": "%t174",
+                    "type": "list[union[float,int]]"
+                  },
+                  {
+                    "value": "0",
+                    "type": "int"
+                  }
+                ],
+                "targets": []
+              }
+            }
+          ]
+        },
+        "candidate": {
+          "obligations": 4,
+          "sites": [
+            {
+              "normalized_node": "34",
+              "origin": [
+                "L14",
+                3,
+                "rt",
+                0
+              ],
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "list.append",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t33",
+                    "type": "list[union[float,int]]"
+                  },
+                  {
+                    "value": "%t34",
+                    "type": "*union[float,int]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "normalized_node": "36",
+              "origin": [
+                "L14",
+                4,
+                "mem.store",
+                1
+              ],
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "@g.joined",
+                    "type": "*list[union[float,int]]"
+                  },
+                  {
+                    "value": "%t33",
+                    "type": "list[union[float,int]]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "normalized_node": "40",
+              "origin": [
+                "L14",
+                6,
+                "rt",
+                0
+              ],
+              "operation": {
+                "op": "rt",
+                "type": "*union[float,int]",
+                "text": "list.get",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [
+                  36
+                ],
+                "operands": [
+                  {
+                    "value": "%t35",
+                    "type": "list[union[float,int]]"
+                  },
+                  {
+                    "value": "0",
+                    "type": "int"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "normalized_node": "58",
+              "origin": [
+                "L38",
+                3,
+                "rt",
+                0
+              ],
+              "operation": {
+                "op": "rt",
+                "type": "*union[float,int]",
+                "text": "list.get",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [
+                  53
+                ],
+                "operands": [
+                  {
+                    "value": "%t52",
+                    "type": "list[union[float,int]]"
+                  },
+                  {
+                    "value": "0",
+                    "type": "int"
+                  }
+                ],
+                "targets": []
+              }
+            }
+          ]
+        }
+      },
+      "disposition": [
+        "The source deliberately removes the formerly documented failing typed-VTuple and optional-float-list identity observations after those cases become supported. The remaining union-list and wide-integer observations stay in this deviation fixture.",
+        "The removed storage site is baseline node 9, source t9: big.lo of t2, the big.from_str result for int('1000') used in the removed typed tuple. The remaining wide-integer big.op low-word extraction is baseline t252 and candidate t130.",
+        "The four removed GC sites are list.append, the global optional-list store, and two list.get operations for list[opt[float]]. The four retained sites belong to the separate list[union[float,int]] observation.",
+        "Positive coverage is explicit: python_int_vtuple_identity.py has both dynamic-any/python-int directives and int('1000'), repeated VTuple entries, list conversion and checked helper boundaries. python_int_optional_container_identity.py is also promoting-int selected; dynany_identity_optional_lists.py supplies the ordinary dynamic optional-list case. Generic dynany_identity_vtuples.py is not claimed as storage proof coverage.",
+        "The original changed fixture was separately recompiled/audited against the release candidate in original-input-disposition.json; changing the source corpus denominator is not presented as unchanged input coverage."
+      ]
+    },
+    "vtuple_materialization": {
+      "program": "tests/programs/numbers/python_int_vtuple_materialization.py",
+      "sides": {
+        "baseline": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/27-python_int_vtuple_materialization/baseline/typed-after.json",
+            "sha256": "ebc2efa8b9ffab7c69f95d4ab542e138a9478ae94af8266307f6733fb69a074e",
+            "bytes": 1024654
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/27-python_int_vtuple_materialization/baseline/extracted-inventory.json",
+            "sha256": "e2e41058076969a2f5d2db210b1011048b77fb6f4b7c50592955172e49ed55b0",
+            "bytes": 11775
+          },
+          "source": {
+            "path": "/workspace/scratch/7dd0519bc14a/lean-reports/alpha2-source/tests/programs/numbers/python_int_vtuple_materialization.py",
+            "sha256": "14df6480678b848f21cfd8e089d6d21cdc62855795c09f1160b0b0799c1776f5",
+            "bytes": 805
+          },
+          "totals": {
+            "functions": 5,
+            "obligations": 46
+          },
+          "functions": [
+            {
+              "function": "@f.small",
+              "function_sha256": "828c4e73984c800a3646c94b8384fef2ad3da6a6941cce95de52817666f07c08",
+              "inventory": {
+                "function": "@f.small",
+                "obligations": 6,
+                "sites": [
+                  {
+                    "node": 15,
+                    "kind": "low-word",
+                    "source": "%t12"
+                  },
+                  {
+                    "node": 24,
+                    "kind": "low-word",
+                    "source": "%t12"
+                  },
+                  {
+                    "node": 54,
+                    "kind": "low-word",
+                    "source": "%t72"
+                  },
+                  {
+                    "node": 55,
+                    "kind": "low-word",
+                    "source": "%t71"
+                  },
+                  {
+                    "node": 71,
+                    "kind": "low-word",
+                    "source": "%t101"
+                  },
+                  {
+                    "node": 72,
+                    "kind": "low-word",
+                    "source": "%t95"
+                  }
+                ],
+                "graph_sha256": "8d8716a38ce09fe9ab115aa153cdf02eb6aba17e9712a1e51c86ae1c50938b93",
+                "proof_executed": false
+              },
+              "site_kinds": {
+                "low-word": 6
+              },
+              "low_word_context": [
+                {
+                  "site": {
+                    "node": 15,
+                    "kind": "low-word",
+                    "source": "%t12"
+                  },
+                  "definition": {
+                    "block": "L6",
+                    "offset": 0,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        12
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t3",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "entry",
+                    "offset": 2,
+                    "operation": {
+                      "op": "mem.load",
+                      "type": "int+",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        3
+                      ],
+                      "operands": [
+                        {
+                          "value": "%n.2",
+                          "type": "*int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L16",
+                      "offset": 3,
+                      "operation": {
+                        "op": "num.cmp",
+                        "type": "bool",
+                        "text": "==",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          25
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t24",
+                            "type": "int"
+                          },
+                          {
+                            "value": "%t12",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    },
+                    {
+                      "block": "L18",
+                      "offset": 0,
+                      "operation": {
+                        "op": "rt",
+                        "type": "%ptr",
+                        "text": "dyn.int",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          27
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t12",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "site": {
+                    "node": 24,
+                    "kind": "low-word",
+                    "source": "%t12"
+                  },
+                  "definition": {
+                    "block": "L6",
+                    "offset": 0,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        12
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t3",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "entry",
+                    "offset": 2,
+                    "operation": {
+                      "op": "mem.load",
+                      "type": "int+",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        3
+                      ],
+                      "operands": [
+                        {
+                          "value": "%n.2",
+                          "type": "*int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L16",
+                      "offset": 3,
+                      "operation": {
+                        "op": "num.cmp",
+                        "type": "bool",
+                        "text": "==",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          25
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t24",
+                            "type": "int"
+                          },
+                          {
+                            "value": "%t12",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    },
+                    {
+                      "block": "L18",
+                      "offset": 0,
+                      "operation": {
+                        "op": "rt",
+                        "type": "%ptr",
+                        "text": "dyn.int",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          27
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t12",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "site": {
+                    "node": 54,
+                    "kind": "low-word",
+                    "source": "%t72"
+                  },
+                  "definition": {
+                    "block": "L62",
+                    "offset": 1,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        72
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t57",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "L8",
+                    "offset": 4,
+                    "operation": {
+                      "op": "mem.load",
+                      "type": "int+",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        57
+                      ],
+                      "operands": [
+                        {
+                          "value": "%n.2",
+                          "type": "*int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L62",
+                      "offset": 2,
+                      "operation": {
+                        "op": "ovf",
+                        "type": "int",
+                        "text": "-",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          73,
+                          74,
+                          75
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t71",
+                            "type": "int"
+                          },
+                          {
+                            "value": "%t72",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "site": {
+                    "node": 55,
+                    "kind": "low-word",
+                    "source": "%t71"
+                  },
+                  "definition": {
+                    "block": "L62",
+                    "offset": 0,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        71
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t61",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "L8",
+                    "offset": 7,
+                    "operation": {
+                      "op": "big.make",
+                      "type": "int+",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        60,
+                        61
+                      ],
+                      "operands": [
+                        {
+                          "value": "0",
+                          "type": "int"
+                        },
+                        {
+                          "value": "null",
+                          "type": "%ptr"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L62",
+                      "offset": 2,
+                      "operation": {
+                        "op": "ovf",
+                        "type": "int",
+                        "text": "-",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          73,
+                          74,
+                          75
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t71",
+                            "type": "int"
+                          },
+                          {
+                            "value": "%t72",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "site": {
+                    "node": 71,
+                    "kind": "low-word",
+                    "source": "%t101"
+                  },
+                  "definition": {
+                    "block": "L100",
+                    "offset": 0,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        101
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t86",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "L64",
+                    "offset": 2,
+                    "operation": {
+                      "op": "call",
+                      "type": "int+",
+                      "text": "@f.item",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        86
+                      ],
+                      "operands": [
+                        {
+                          "value": "@s.8",
+                          "type": "str"
+                        },
+                        {
+                          "value": "%t84",
+                          "type": "int+"
+                        },
+                        {
+                          "value": "null",
+                          "type": "dyn"
+                        },
+                        {
+                          "value": "%h.85",
+                          "type": "*dyn"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L100",
+                      "offset": 1,
+                      "operation": {
+                        "op": "vtuple.make",
+                        "type": "vtuple[int]",
+                        "text": "",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          102
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t95",
+                            "type": "int"
+                          },
+                          {
+                            "value": "%t101",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "site": {
+                    "node": 72,
+                    "kind": "low-word",
+                    "source": "%t95"
+                  },
+                  "definition": {
+                    "block": "L94",
+                    "offset": 0,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        95
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t54",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "L8",
+                    "offset": 2,
+                    "operation": {
+                      "op": "call",
+                      "type": "int+",
+                      "text": "@f.item",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        54
+                      ],
+                      "operands": [
+                        {
+                          "value": "@s.7",
+                          "type": "str"
+                        },
+                        {
+                          "value": "%t3",
+                          "type": "int+"
+                        },
+                        {
+                          "value": "%t52",
+                          "type": "dyn"
+                        },
+                        {
+                          "value": "%h.53",
+                          "type": "*dyn"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L100",
+                      "offset": 1,
+                      "operation": {
+                        "op": "vtuple.make",
+                        "type": "vtuple[int]",
+                        "text": "",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          102
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t95",
+                            "type": "int"
+                          },
+                          {
+                            "value": "%t101",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                }
+              ],
+              "overflow_guards": [
+                {
+                  "block": "L64",
+                  "offset": 8,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "OverflowError: Python int too large to convert to C long",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t92",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L94"
+                    ]
+                  }
+                },
+                {
+                  "block": "L94",
+                  "offset": 5,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "OverflowError: Python int too large to convert to C long",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t99",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L100"
+                    ]
+                  }
+                }
+              ],
+              "item_calls_in_export_order": [
+                {
+                  "block": "L8",
+                  "offset": 2,
+                  "operation": {
+                    "op": "call",
+                    "type": "int+",
+                    "text": "@f.item",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [
+                      54
+                    ],
+                    "operands": [
+                      {
+                        "value": "@s.7",
+                        "type": "str"
+                      },
+                      {
+                        "value": "%t3",
+                        "type": "int+"
+                      },
+                      {
+                        "value": "%t52",
+                        "type": "dyn"
+                      },
+                      {
+                        "value": "%h.53",
+                        "type": "*dyn"
+                      }
+                    ],
+                    "targets": []
+                  }
+                },
+                {
+                  "block": "L64",
+                  "offset": 2,
+                  "operation": {
+                    "op": "call",
+                    "type": "int+",
+                    "text": "@f.item",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [
+                      86
+                    ],
+                    "operands": [
+                      {
+                        "value": "@s.8",
+                        "type": "str"
+                      },
+                      {
+                        "value": "%t84",
+                        "type": "int+"
+                      },
+                      {
+                        "value": "null",
+                        "type": "dyn"
+                      },
+                      {
+                        "value": "%h.85",
+                        "type": "*dyn"
+                      }
+                    ],
+                    "targets": []
+                  }
+                }
+              ],
+              "tuple_operations": [],
+              "vtuple_operations": [
+                {
+                  "block": "L100",
+                  "offset": 1,
+                  "operation": {
+                    "op": "vtuple.make",
+                    "type": "vtuple[int]",
+                    "text": "",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [
+                      102
+                    ],
+                    "operands": [
+                      {
+                        "value": "%t95",
+                        "type": "int"
+                      },
+                      {
+                        "value": "%t101",
+                        "type": "int"
+                      }
+                    ],
+                    "targets": []
+                  }
+                }
+              ]
+            },
+            {
+              "function": "@f.optional",
+              "function_sha256": "0196e0f1375d917180d559293fac26647bac5578353c0052b842b8477d16a272",
+              "inventory": {
+                "function": "@f.optional",
+                "obligations": 18,
+                "sites": [
+                  {
+                    "node": 15,
+                    "kind": "low-word",
+                    "source": "%t12"
+                  },
+                  {
+                    "node": 24,
+                    "kind": "low-word",
+                    "source": "%t12"
+                  },
+                  {
+                    "node": 54,
+                    "kind": "low-word",
+                    "source": "%t72"
+                  },
+                  {
+                    "node": 55,
+                    "kind": "low-word",
+                    "source": "%t71"
+                  },
+                  {
+                    "node": 78,
+                    "kind": "low-word",
+                    "source": "%t98"
+                  },
+                  {
+                    "node": 92,
+                    "kind": "low-word",
+                    "source": "%t89"
+                  },
+                  {
+                    "node": 101,
+                    "kind": "tail-marker",
+                    "source": "%t85"
+                  },
+                  {
+                    "node": 118,
+                    "kind": "tail-marker",
+                    "source": "%t85"
+                  },
+                  {
+                    "node": 122,
+                    "kind": "narrowing",
+                    "source": "%t85"
+                  },
+                  {
+                    "node": 123,
+                    "kind": "narrowing",
+                    "source": "%t85"
+                  },
+                  {
+                    "node": 124,
+                    "kind": "narrowing",
+                    "source": "%t85"
+                  },
+                  {
+                    "node": 125,
+                    "kind": "narrowing",
+                    "source": "%t85"
+                  },
+                  {
+                    "node": 126,
+                    "kind": "narrowing",
+                    "source": "%t85"
+                  },
+                  {
+                    "node": 127,
+                    "kind": "narrowing",
+                    "source": "%t85"
+                  },
+                  {
+                    "node": 144,
+                    "kind": "tuple-decode",
+                    "source": "marker:%t85:0"
+                  },
+                  {
+                    "node": 147,
+                    "kind": "tuple-decode",
+                    "source": "marker:%t85:0"
+                  },
+                  {
+                    "node": 150,
+                    "kind": "tuple-decode",
+                    "source": "marker:%t85:2"
+                  },
+                  {
+                    "node": 153,
+                    "kind": "tuple-decode",
+                    "source": "marker:%t85:2"
+                  }
+                ],
+                "graph_sha256": "d4e04304c862977923d215482c4855cc7d12fee5c2030e5c39c62d156c9afd66",
+                "proof_executed": false
+              },
+              "site_kinds": {
+                "low-word": 6,
+                "tail-marker": 2,
+                "narrowing": 6,
+                "tuple-decode": 4
+              },
+              "low_word_context": [
+                {
+                  "site": {
+                    "node": 15,
+                    "kind": "low-word",
+                    "source": "%t12"
+                  },
+                  "definition": {
+                    "block": "L6",
+                    "offset": 0,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        12
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t3",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "entry",
+                    "offset": 2,
+                    "operation": {
+                      "op": "mem.load",
+                      "type": "int+",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        3
+                      ],
+                      "operands": [
+                        {
+                          "value": "%n.2",
+                          "type": "*int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L16",
+                      "offset": 3,
+                      "operation": {
+                        "op": "num.cmp",
+                        "type": "bool",
+                        "text": "==",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          25
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t24",
+                            "type": "int"
+                          },
+                          {
+                            "value": "%t12",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    },
+                    {
+                      "block": "L18",
+                      "offset": 0,
+                      "operation": {
+                        "op": "rt",
+                        "type": "%ptr",
+                        "text": "dyn.int",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          27
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t12",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "site": {
+                    "node": 24,
+                    "kind": "low-word",
+                    "source": "%t12"
+                  },
+                  "definition": {
+                    "block": "L6",
+                    "offset": 0,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        12
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t3",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "entry",
+                    "offset": 2,
+                    "operation": {
+                      "op": "mem.load",
+                      "type": "int+",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        3
+                      ],
+                      "operands": [
+                        {
+                          "value": "%n.2",
+                          "type": "*int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L16",
+                      "offset": 3,
+                      "operation": {
+                        "op": "num.cmp",
+                        "type": "bool",
+                        "text": "==",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          25
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t24",
+                            "type": "int"
+                          },
+                          {
+                            "value": "%t12",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    },
+                    {
+                      "block": "L18",
+                      "offset": 0,
+                      "operation": {
+                        "op": "rt",
+                        "type": "%ptr",
+                        "text": "dyn.int",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          27
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t12",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "site": {
+                    "node": 54,
+                    "kind": "low-word",
+                    "source": "%t72"
+                  },
+                  "definition": {
+                    "block": "L62",
+                    "offset": 1,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        72
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t57",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "L8",
+                    "offset": 4,
+                    "operation": {
+                      "op": "mem.load",
+                      "type": "int+",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        57
+                      ],
+                      "operands": [
+                        {
+                          "value": "%n.2",
+                          "type": "*int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L62",
+                      "offset": 2,
+                      "operation": {
+                        "op": "ovf",
+                        "type": "int",
+                        "text": "-",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          73,
+                          74,
+                          75
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t71",
+                            "type": "int"
+                          },
+                          {
+                            "value": "%t72",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "site": {
+                    "node": 55,
+                    "kind": "low-word",
+                    "source": "%t71"
+                  },
+                  "definition": {
+                    "block": "L62",
+                    "offset": 0,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        71
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t61",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "L8",
+                    "offset": 7,
+                    "operation": {
+                      "op": "big.make",
+                      "type": "int+",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        60,
+                        61
+                      ],
+                      "operands": [
+                        {
+                          "value": "0",
+                          "type": "int"
+                        },
+                        {
+                          "value": "null",
+                          "type": "%ptr"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L62",
+                      "offset": 2,
+                      "operation": {
+                        "op": "ovf",
+                        "type": "int",
+                        "text": "-",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          73,
+                          74,
+                          75
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t71",
+                            "type": "int"
+                          },
+                          {
+                            "value": "%t72",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "site": {
+                    "node": 78,
+                    "kind": "low-word",
+                    "source": "%t98"
+                  },
+                  "definition": {
+                    "block": "L64",
+                    "offset": 14,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        98
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t84",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "L64",
+                    "offset": 0,
+                    "operation": {
+                      "op": "phi",
+                      "type": "int+",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        84
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t78",
+                          "type": "int+"
+                        },
+                        {
+                          "value": "%t83",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": [
+                        "L76",
+                        "L63"
+                      ]
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L64",
+                      "offset": 15,
+                      "operation": {
+                        "op": "select",
+                        "type": "int",
+                        "text": "",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          99
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t97",
+                            "type": "bool"
+                          },
+                          {
+                            "value": "-9223372036854775808",
+                            "type": "int"
+                          },
+                          {
+                            "value": "%t98",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "site": {
+                    "node": 92,
+                    "kind": "low-word",
+                    "source": "%t89"
+                  },
+                  "definition": {
+                    "block": "L64",
+                    "offset": 5,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        89
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t54",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "L8",
+                    "offset": 2,
+                    "operation": {
+                      "op": "call",
+                      "type": "int+",
+                      "text": "@f.item",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        54
+                      ],
+                      "operands": [
+                        {
+                          "value": "@s.11",
+                          "type": "str"
+                        },
+                        {
+                          "value": "%t3",
+                          "type": "int+"
+                        },
+                        {
+                          "value": "%t52",
+                          "type": "dyn"
+                        },
+                        {
+                          "value": "%h.53",
+                          "type": "*dyn"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L64",
+                      "offset": 6,
+                      "operation": {
+                        "op": "select",
+                        "type": "int",
+                        "text": "",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          90
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t88",
+                            "type": "bool"
+                          },
+                          {
+                            "value": "-9223372036854775808",
+                            "type": "int"
+                          },
+                          {
+                            "value": "%t89",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                }
+              ],
+              "overflow_guards": [
+                {
+                  "block": "L105",
+                  "offset": 5,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "OverflowError: Python int too large to convert to C long",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t120",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L122"
+                    ]
+                  }
+                },
+                {
+                  "block": "L127",
+                  "offset": 5,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "OverflowError: Python int too large to convert to C long",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t142",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L143"
+                    ]
+                  }
+                }
+              ],
+              "item_calls_in_export_order": [
+                {
+                  "block": "L8",
+                  "offset": 2,
+                  "operation": {
+                    "op": "call",
+                    "type": "int+",
+                    "text": "@f.item",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [
+                      54
+                    ],
+                    "operands": [
+                      {
+                        "value": "@s.11",
+                        "type": "str"
+                      },
+                      {
+                        "value": "%t3",
+                        "type": "int+"
+                      },
+                      {
+                        "value": "%t52",
+                        "type": "dyn"
+                      },
+                      {
+                        "value": "%h.53",
+                        "type": "*dyn"
+                      }
+                    ],
+                    "targets": []
+                  }
+                }
+              ],
+              "tuple_operations": [
+                {
+                  "block": "L64",
+                  "offset": 7,
+                  "operation": {
+                    "op": "tuple.store",
+                    "type": "",
+                    "text": "int+",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [
+                      91
+                    ],
+                    "operands": [
+                      {
+                        "value": "%t85",
+                        "type": "tuple[int+,None,int+]"
+                      },
+                      {
+                        "value": "%t90",
+                        "type": "%slot"
+                      }
+                    ],
+                    "targets": []
+                  }
+                },
+                {
+                  "block": "L64",
+                  "offset": 8,
+                  "operation": {
+                    "op": "tuple.store",
+                    "type": "",
+                    "text": "int+",
+                    "immediate": 3,
+                    "descriptor": "",
+                    "results": [
+                      92
+                    ],
+                    "operands": [
+                      {
+                        "value": "%t85",
+                        "type": "tuple[int+,None,int+]"
+                      },
+                      {
+                        "value": "%t87",
+                        "type": "%slot"
+                      }
+                    ],
+                    "targets": []
+                  }
+                },
+                {
+                  "block": "L64",
+                  "offset": 10,
+                  "operation": {
+                    "op": "tuple.store",
+                    "type": "",
+                    "text": "None",
+                    "immediate": 1,
+                    "descriptor": "",
+                    "results": [
+                      94
+                    ],
+                    "operands": [
+                      {
+                        "value": "%t85",
+                        "type": "tuple[int+,None,int+]"
+                      },
+                      {
+                        "value": "%t93",
+                        "type": "%slot"
+                      }
+                    ],
+                    "targets": []
+                  }
+                },
+                {
+                  "block": "L64",
+                  "offset": 16,
+                  "operation": {
+                    "op": "tuple.store",
+                    "type": "",
+                    "text": "int+",
+                    "immediate": 2,
+                    "descriptor": "",
+                    "results": [
+                      100
+                    ],
+                    "operands": [
+                      {
+                        "value": "%t85",
+                        "type": "tuple[int+,None,int+]"
+                      },
+                      {
+                        "value": "%t99",
+                        "type": "%slot"
+                      }
+                    ],
+                    "targets": []
+                  }
+                },
+                {
+                  "block": "L64",
+                  "offset": 17,
+                  "operation": {
+                    "op": "tuple.store",
+                    "type": "",
+                    "text": "int+",
+                    "immediate": 5,
+                    "descriptor": "",
+                    "results": [
+                      101
+                    ],
+                    "operands": [
+                      {
+                        "value": "%t85",
+                        "type": "tuple[int+,None,int+]"
+                      },
+                      {
+                        "value": "%t96",
+                        "type": "%slot"
+                      }
+                    ],
+                    "targets": []
+                  }
+                },
+                {
+                  "block": "L64",
+                  "offset": 18,
+                  "operation": {
+                    "op": "tuple.load",
+                    "type": "%slot",
+                    "text": "int+",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [
+                      102,
+                      103
+                    ],
+                    "operands": [
+                      {
+                        "value": "%t85",
+                        "type": "tuple[int+,None,int+]"
+                      }
+                    ],
+                    "targets": []
+                  }
+                },
+                {
+                  "block": "L104",
+                  "offset": 0,
+                  "operation": {
+                    "op": "tuple.load",
+                    "type": "%slot",
+                    "text": "int+",
+                    "immediate": 3,
+                    "descriptor": "",
+                    "results": [
+                      109,
+                      110
+                    ],
+                    "operands": [
+                      {
+                        "value": "%t85",
+                        "type": "tuple[int+,None,int+]"
+                      }
+                    ],
+                    "targets": []
+                  }
+                },
+                {
+                  "block": "L122",
+                  "offset": 1,
+                  "operation": {
+                    "op": "tuple.load",
+                    "type": "%slot",
+                    "text": "int+",
+                    "immediate": 2,
+                    "descriptor": "",
+                    "results": [
+                      124,
+                      125
+                    ],
+                    "operands": [
+                      {
+                        "value": "%t85",
+                        "type": "tuple[int+,None,int+]"
+                      }
+                    ],
+                    "targets": []
+                  }
+                },
+                {
+                  "block": "L126",
+                  "offset": 0,
+                  "operation": {
+                    "op": "tuple.load",
+                    "type": "%slot",
+                    "text": "int+",
+                    "immediate": 5,
+                    "descriptor": "",
+                    "results": [
+                      131,
+                      132
+                    ],
+                    "operands": [
+                      {
+                        "value": "%t85",
+                        "type": "tuple[int+,None,int+]"
+                      }
+                    ],
+                    "targets": []
+                  }
+                },
+                {
+                  "block": "L143",
+                  "offset": 1,
+                  "operation": {
+                    "op": "tuple.load",
+                    "type": "%slot",
+                    "text": "int",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [
+                      145,
+                      146
+                    ],
+                    "operands": [
+                      {
+                        "value": "%t85",
+                        "type": "tuple[int,None,int]"
+                      }
+                    ],
+                    "targets": []
+                  }
+                },
+                {
+                  "block": "L143",
+                  "offset": 3,
+                  "operation": {
+                    "op": "tuple.load",
+                    "type": "%slot",
+                    "text": "None",
+                    "immediate": 1,
+                    "descriptor": "",
+                    "results": [
+                      148,
+                      149
+                    ],
+                    "operands": [
+                      {
+                        "value": "%t85",
+                        "type": "tuple[int,None,int]"
+                      }
+                    ],
+                    "targets": []
+                  }
+                },
+                {
+                  "block": "L143",
+                  "offset": 5,
+                  "operation": {
+                    "op": "tuple.load",
+                    "type": "%slot",
+                    "text": "int",
+                    "immediate": 2,
+                    "descriptor": "",
+                    "results": [
+                      151,
+                      152
+                    ],
+                    "operands": [
+                      {
+                        "value": "%t85",
+                        "type": "tuple[int,None,int]"
+                      }
+                    ],
+                    "targets": []
+                  }
+                }
+              ],
+              "vtuple_operations": [
+                {
+                  "block": "L143",
+                  "offset": 7,
+                  "operation": {
+                    "op": "vtuple.make",
+                    "type": "vtuple[opt[int]]",
+                    "text": "",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [
+                      154
+                    ],
+                    "operands": [
+                      {
+                        "value": "%t147",
+                        "type": "opt[int]"
+                      },
+                      {
+                        "value": "%t150",
+                        "type": "opt[int]"
+                      },
+                      {
+                        "value": "%t153",
+                        "type": "opt[int]"
+                      }
+                    ],
+                    "targets": []
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "candidate": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/27-python_int_vtuple_materialization/candidate/typed-after.json",
+            "sha256": "5db24ceccdcf9836350a5e3d1ce295111caadcdac9acc80a2f64e20dcaa31dac",
+            "bytes": 1120381
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/27-python_int_vtuple_materialization/candidate/extracted-inventory.json",
+            "sha256": "b3cc6270199f687963a88c334c4997fd13c031205a55706ee0c87a9c5271f5dd",
+            "bytes": 10683
+          },
+          "source": {
+            "path": "/workspace/scratch/980402bc01c4/alpha3-lean-storage-corrected/tests/programs/numbers/python_int_vtuple_materialization.py",
+            "sha256": "14df6480678b848f21cfd8e089d6d21cdc62855795c09f1160b0b0799c1776f5",
+            "bytes": 805
+          },
+          "totals": {
+            "functions": 5,
+            "obligations": 37
+          },
+          "functions": [
+            {
+              "function": "@f.small",
+              "function_sha256": "407f702e7a97139200410a33ec3cb70190084a92fa55e09ae0beffa9f76ec04c",
+              "inventory": {
+                "function": "@f.small",
+                "obligations": 8,
+                "sites": [
+                  {
+                    "node": 15,
+                    "kind": "low-word",
+                    "source": "%t12"
+                  },
+                  {
+                    "node": 24,
+                    "kind": "low-word",
+                    "source": "%t12"
+                  },
+                  {
+                    "node": 47,
+                    "kind": "low-word",
+                    "source": "%t63"
+                  },
+                  {
+                    "node": 73,
+                    "kind": "low-word",
+                    "source": "%t102"
+                  },
+                  {
+                    "node": 74,
+                    "kind": "low-word",
+                    "source": "%t101"
+                  },
+                  {
+                    "node": 88,
+                    "kind": "low-word",
+                    "source": "%t125"
+                  },
+                  {
+                    "node": 109,
+                    "kind": "low-word",
+                    "source": "%t161"
+                  },
+                  {
+                    "node": 110,
+                    "kind": "low-word",
+                    "source": "%t155"
+                  }
+                ],
+                "graph_sha256": "3cc55ffd4ecf47b4f9fc215422fd1fb925672a926ef415cc8243478a822d2890",
+                "proof_executed": false
+              },
+              "site_kinds": {
+                "low-word": 8
+              },
+              "low_word_context": [
+                {
+                  "site": {
+                    "node": 15,
+                    "kind": "low-word",
+                    "source": "%t12"
+                  },
+                  "definition": {
+                    "block": "L6",
+                    "offset": 0,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        12
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t3",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "entry",
+                    "offset": 2,
+                    "operation": {
+                      "op": "mem.load",
+                      "type": "int+",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        3
+                      ],
+                      "operands": [
+                        {
+                          "value": "%n.2",
+                          "type": "*int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L16",
+                      "offset": 3,
+                      "operation": {
+                        "op": "num.cmp",
+                        "type": "bool",
+                        "text": "==",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          25
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t24",
+                            "type": "int"
+                          },
+                          {
+                            "value": "%t12",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    },
+                    {
+                      "block": "L18",
+                      "offset": 0,
+                      "operation": {
+                        "op": "rt",
+                        "type": "%ptr",
+                        "text": "dyn.int",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          27
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t12",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "site": {
+                    "node": 24,
+                    "kind": "low-word",
+                    "source": "%t12"
+                  },
+                  "definition": {
+                    "block": "L6",
+                    "offset": 0,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        12
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t3",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "entry",
+                    "offset": 2,
+                    "operation": {
+                      "op": "mem.load",
+                      "type": "int+",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        3
+                      ],
+                      "operands": [
+                        {
+                          "value": "%n.2",
+                          "type": "*int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L16",
+                      "offset": 3,
+                      "operation": {
+                        "op": "num.cmp",
+                        "type": "bool",
+                        "text": "==",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          25
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t24",
+                            "type": "int"
+                          },
+                          {
+                            "value": "%t12",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    },
+                    {
+                      "block": "L18",
+                      "offset": 0,
+                      "operation": {
+                        "op": "rt",
+                        "type": "%ptr",
+                        "text": "dyn.int",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          27
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t12",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "site": {
+                    "node": 47,
+                    "kind": "low-word",
+                    "source": "%t63"
+                  },
+                  "definition": {
+                    "block": "L57",
+                    "offset": 0,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        63
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t54",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "L8",
+                    "offset": 2,
+                    "operation": {
+                      "op": "call",
+                      "type": "int+",
+                      "text": "@f.item",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        54
+                      ],
+                      "operands": [
+                        {
+                          "value": "@s.7",
+                          "type": "str"
+                        },
+                        {
+                          "value": "%t3",
+                          "type": "int+"
+                        },
+                        {
+                          "value": "%t52",
+                          "type": "dyn"
+                        },
+                        {
+                          "value": "%h.53",
+                          "type": "*dyn"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L57",
+                      "offset": 2,
+                      "operation": {
+                        "op": "rt",
+                        "type": "%ptr",
+                        "text": "dyn.int_box",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          65
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t63",
+                            "type": "int"
+                          },
+                          {
+                            "value": "%t64",
+                            "type": "%ptr"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "site": {
+                    "node": 73,
+                    "kind": "low-word",
+                    "source": "%t102"
+                  },
+                  "definition": {
+                    "block": "L92",
+                    "offset": 1,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        102
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t87",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "L59",
+                    "offset": 1,
+                    "operation": {
+                      "op": "mem.load",
+                      "type": "int+",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        87
+                      ],
+                      "operands": [
+                        {
+                          "value": "%n.2",
+                          "type": "*int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L92",
+                      "offset": 2,
+                      "operation": {
+                        "op": "ovf",
+                        "type": "int",
+                        "text": "-",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          103,
+                          104,
+                          105
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t101",
+                            "type": "int"
+                          },
+                          {
+                            "value": "%t102",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "site": {
+                    "node": 74,
+                    "kind": "low-word",
+                    "source": "%t101"
+                  },
+                  "definition": {
+                    "block": "L92",
+                    "offset": 0,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        101
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t91",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "L59",
+                    "offset": 4,
+                    "operation": {
+                      "op": "big.make",
+                      "type": "int+",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        90,
+                        91
+                      ],
+                      "operands": [
+                        {
+                          "value": "0",
+                          "type": "int"
+                        },
+                        {
+                          "value": "null",
+                          "type": "%ptr"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L92",
+                      "offset": 2,
+                      "operation": {
+                        "op": "ovf",
+                        "type": "int",
+                        "text": "-",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          103,
+                          104,
+                          105
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t101",
+                            "type": "int"
+                          },
+                          {
+                            "value": "%t102",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "site": {
+                    "node": 88,
+                    "kind": "low-word",
+                    "source": "%t125"
+                  },
+                  "definition": {
+                    "block": "L119",
+                    "offset": 0,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        125
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t116",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "L94",
+                    "offset": 2,
+                    "operation": {
+                      "op": "call",
+                      "type": "int+",
+                      "text": "@f.item",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        116
+                      ],
+                      "operands": [
+                        {
+                          "value": "@s.8",
+                          "type": "str"
+                        },
+                        {
+                          "value": "%t114",
+                          "type": "int+"
+                        },
+                        {
+                          "value": "null",
+                          "type": "dyn"
+                        },
+                        {
+                          "value": "%h.115",
+                          "type": "*dyn"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L119",
+                      "offset": 2,
+                      "operation": {
+                        "op": "rt",
+                        "type": "%ptr",
+                        "text": "dyn.int_box",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          127
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t125",
+                            "type": "int"
+                          },
+                          {
+                            "value": "%t126",
+                            "type": "%ptr"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "site": {
+                    "node": 109,
+                    "kind": "low-word",
+                    "source": "%t161"
+                  },
+                  "definition": {
+                    "block": "L160",
+                    "offset": 0,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        161
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t116",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "L94",
+                    "offset": 2,
+                    "operation": {
+                      "op": "call",
+                      "type": "int+",
+                      "text": "@f.item",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        116
+                      ],
+                      "operands": [
+                        {
+                          "value": "@s.8",
+                          "type": "str"
+                        },
+                        {
+                          "value": "%t114",
+                          "type": "int+"
+                        },
+                        {
+                          "value": "null",
+                          "type": "dyn"
+                        },
+                        {
+                          "value": "%h.115",
+                          "type": "*dyn"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L160",
+                      "offset": 1,
+                      "operation": {
+                        "op": "vtuple.make",
+                        "type": "vtuple[int]",
+                        "text": "",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          162
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t155",
+                            "type": "int"
+                          },
+                          {
+                            "value": "%t161",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "site": {
+                    "node": 110,
+                    "kind": "low-word",
+                    "source": "%t155"
+                  },
+                  "definition": {
+                    "block": "L154",
+                    "offset": 0,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        155
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t54",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "L8",
+                    "offset": 2,
+                    "operation": {
+                      "op": "call",
+                      "type": "int+",
+                      "text": "@f.item",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        54
+                      ],
+                      "operands": [
+                        {
+                          "value": "@s.7",
+                          "type": "str"
+                        },
+                        {
+                          "value": "%t3",
+                          "type": "int+"
+                        },
+                        {
+                          "value": "%t52",
+                          "type": "dyn"
+                        },
+                        {
+                          "value": "%h.53",
+                          "type": "*dyn"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L160",
+                      "offset": 1,
+                      "operation": {
+                        "op": "vtuple.make",
+                        "type": "vtuple[int]",
+                        "text": "",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          162
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t155",
+                            "type": "int"
+                          },
+                          {
+                            "value": "%t161",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                }
+              ],
+              "overflow_guards": [
+                {
+                  "block": "L121",
+                  "offset": 5,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "OverflowError: Python int too large to convert to C long",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t152",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L154"
+                    ]
+                  }
+                },
+                {
+                  "block": "L154",
+                  "offset": 5,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "OverflowError: Python int too large to convert to C long",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t159",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L160"
+                    ]
+                  }
+                }
+              ],
+              "item_calls_in_export_order": [
+                {
+                  "block": "L8",
+                  "offset": 2,
+                  "operation": {
+                    "op": "call",
+                    "type": "int+",
+                    "text": "@f.item",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [
+                      54
+                    ],
+                    "operands": [
+                      {
+                        "value": "@s.7",
+                        "type": "str"
+                      },
+                      {
+                        "value": "%t3",
+                        "type": "int+"
+                      },
+                      {
+                        "value": "%t52",
+                        "type": "dyn"
+                      },
+                      {
+                        "value": "%h.53",
+                        "type": "*dyn"
+                      }
+                    ],
+                    "targets": []
+                  }
+                },
+                {
+                  "block": "L94",
+                  "offset": 2,
+                  "operation": {
+                    "op": "call",
+                    "type": "int+",
+                    "text": "@f.item",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [
+                      116
+                    ],
+                    "operands": [
+                      {
+                        "value": "@s.8",
+                        "type": "str"
+                      },
+                      {
+                        "value": "%t114",
+                        "type": "int+"
+                      },
+                      {
+                        "value": "null",
+                        "type": "dyn"
+                      },
+                      {
+                        "value": "%h.115",
+                        "type": "*dyn"
+                      }
+                    ],
+                    "targets": []
+                  }
+                }
+              ],
+              "tuple_operations": [],
+              "vtuple_operations": [
+                {
+                  "block": "L160",
+                  "offset": 1,
+                  "operation": {
+                    "op": "vtuple.make",
+                    "type": "vtuple[int]",
+                    "text": "",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [
+                      162
+                    ],
+                    "operands": [
+                      {
+                        "value": "%t155",
+                        "type": "int"
+                      },
+                      {
+                        "value": "%t161",
+                        "type": "int"
+                      }
+                    ],
+                    "targets": []
+                  }
+                }
+              ]
+            },
+            {
+              "function": "@f.optional",
+              "function_sha256": "e4b7ea931cacff39c355178964ea61498ec1ce8732d39efaa523b623a1e56a1f",
+              "inventory": {
+                "function": "@f.optional",
+                "obligations": 7,
+                "sites": [
+                  {
+                    "node": 15,
+                    "kind": "low-word",
+                    "source": "%t12"
+                  },
+                  {
+                    "node": 24,
+                    "kind": "low-word",
+                    "source": "%t12"
+                  },
+                  {
+                    "node": 47,
+                    "kind": "low-word",
+                    "source": "%t63"
+                  },
+                  {
+                    "node": 73,
+                    "kind": "low-word",
+                    "source": "%t102"
+                  },
+                  {
+                    "node": 74,
+                    "kind": "low-word",
+                    "source": "%t101"
+                  },
+                  {
+                    "node": 88,
+                    "kind": "low-word",
+                    "source": "%t121"
+                  },
+                  {
+                    "node": 92,
+                    "kind": "low-word",
+                    "source": "%t128"
+                  }
+                ],
+                "graph_sha256": "ae6b30721314ca6da18659bfbc452a57dfbb7295d0b052044330986f55d223ad",
+                "proof_executed": false
+              },
+              "site_kinds": {
+                "low-word": 7
+              },
+              "low_word_context": [
+                {
+                  "site": {
+                    "node": 15,
+                    "kind": "low-word",
+                    "source": "%t12"
+                  },
+                  "definition": {
+                    "block": "L6",
+                    "offset": 0,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        12
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t3",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "entry",
+                    "offset": 2,
+                    "operation": {
+                      "op": "mem.load",
+                      "type": "int+",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        3
+                      ],
+                      "operands": [
+                        {
+                          "value": "%n.2",
+                          "type": "*int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L16",
+                      "offset": 3,
+                      "operation": {
+                        "op": "num.cmp",
+                        "type": "bool",
+                        "text": "==",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          25
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t24",
+                            "type": "int"
+                          },
+                          {
+                            "value": "%t12",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    },
+                    {
+                      "block": "L18",
+                      "offset": 0,
+                      "operation": {
+                        "op": "rt",
+                        "type": "%ptr",
+                        "text": "dyn.int",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          27
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t12",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "site": {
+                    "node": 24,
+                    "kind": "low-word",
+                    "source": "%t12"
+                  },
+                  "definition": {
+                    "block": "L6",
+                    "offset": 0,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        12
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t3",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "entry",
+                    "offset": 2,
+                    "operation": {
+                      "op": "mem.load",
+                      "type": "int+",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        3
+                      ],
+                      "operands": [
+                        {
+                          "value": "%n.2",
+                          "type": "*int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L16",
+                      "offset": 3,
+                      "operation": {
+                        "op": "num.cmp",
+                        "type": "bool",
+                        "text": "==",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          25
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t24",
+                            "type": "int"
+                          },
+                          {
+                            "value": "%t12",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    },
+                    {
+                      "block": "L18",
+                      "offset": 0,
+                      "operation": {
+                        "op": "rt",
+                        "type": "%ptr",
+                        "text": "dyn.int",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          27
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t12",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "site": {
+                    "node": 47,
+                    "kind": "low-word",
+                    "source": "%t63"
+                  },
+                  "definition": {
+                    "block": "L57",
+                    "offset": 0,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        63
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t54",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "L8",
+                    "offset": 2,
+                    "operation": {
+                      "op": "call",
+                      "type": "int+",
+                      "text": "@f.item",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        54
+                      ],
+                      "operands": [
+                        {
+                          "value": "@s.11",
+                          "type": "str"
+                        },
+                        {
+                          "value": "%t3",
+                          "type": "int+"
+                        },
+                        {
+                          "value": "%t52",
+                          "type": "dyn"
+                        },
+                        {
+                          "value": "%h.53",
+                          "type": "*dyn"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L57",
+                      "offset": 2,
+                      "operation": {
+                        "op": "rt",
+                        "type": "%ptr",
+                        "text": "dyn.int_box",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          65
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t63",
+                            "type": "int"
+                          },
+                          {
+                            "value": "%t64",
+                            "type": "%ptr"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "site": {
+                    "node": 73,
+                    "kind": "low-word",
+                    "source": "%t102"
+                  },
+                  "definition": {
+                    "block": "L92",
+                    "offset": 1,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        102
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t87",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "L59",
+                    "offset": 1,
+                    "operation": {
+                      "op": "mem.load",
+                      "type": "int+",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        87
+                      ],
+                      "operands": [
+                        {
+                          "value": "%n.2",
+                          "type": "*int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L92",
+                      "offset": 2,
+                      "operation": {
+                        "op": "ovf",
+                        "type": "int",
+                        "text": "-",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          103,
+                          104,
+                          105
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t101",
+                            "type": "int"
+                          },
+                          {
+                            "value": "%t102",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "site": {
+                    "node": 74,
+                    "kind": "low-word",
+                    "source": "%t101"
+                  },
+                  "definition": {
+                    "block": "L92",
+                    "offset": 0,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        101
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t91",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "L59",
+                    "offset": 4,
+                    "operation": {
+                      "op": "big.make",
+                      "type": "int+",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        90,
+                        91
+                      ],
+                      "operands": [
+                        {
+                          "value": "0",
+                          "type": "int"
+                        },
+                        {
+                          "value": "null",
+                          "type": "%ptr"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L92",
+                      "offset": 2,
+                      "operation": {
+                        "op": "ovf",
+                        "type": "int",
+                        "text": "-",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          103,
+                          104,
+                          105
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t101",
+                            "type": "int"
+                          },
+                          {
+                            "value": "%t102",
+                            "type": "int"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "site": {
+                    "node": 88,
+                    "kind": "low-word",
+                    "source": "%t121"
+                  },
+                  "definition": {
+                    "block": "L120",
+                    "offset": 0,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        121
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t54",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "L8",
+                    "offset": 2,
+                    "operation": {
+                      "op": "call",
+                      "type": "int+",
+                      "text": "@f.item",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        54
+                      ],
+                      "operands": [
+                        {
+                          "value": "@s.11",
+                          "type": "str"
+                        },
+                        {
+                          "value": "%t3",
+                          "type": "int+"
+                        },
+                        {
+                          "value": "%t52",
+                          "type": "dyn"
+                        },
+                        {
+                          "value": "%h.53",
+                          "type": "*dyn"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L120",
+                      "offset": 1,
+                      "operation": {
+                        "op": "rt",
+                        "type": "%ptr",
+                        "text": "box",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          122
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t121",
+                            "type": "*T"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "site": {
+                    "node": 92,
+                    "kind": "low-word",
+                    "source": "%t128"
+                  },
+                  "definition": {
+                    "block": "L127",
+                    "offset": 0,
+                    "operation": {
+                      "op": "big.lo",
+                      "type": "int",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        128
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t114",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": []
+                    }
+                  },
+                  "parent": {
+                    "block": "L94",
+                    "offset": 0,
+                    "operation": {
+                      "op": "phi",
+                      "type": "int+",
+                      "text": "",
+                      "immediate": 0,
+                      "descriptor": "",
+                      "results": [
+                        114
+                      ],
+                      "operands": [
+                        {
+                          "value": "%t108",
+                          "type": "int+"
+                        },
+                        {
+                          "value": "%t113",
+                          "type": "int+"
+                        }
+                      ],
+                      "targets": [
+                        "L106",
+                        "L93"
+                      ]
+                    }
+                  },
+                  "uses": [
+                    {
+                      "block": "L127",
+                      "offset": 1,
+                      "operation": {
+                        "op": "rt",
+                        "type": "%ptr",
+                        "text": "box",
+                        "immediate": 0,
+                        "descriptor": "",
+                        "results": [
+                          129
+                        ],
+                        "operands": [
+                          {
+                            "value": "%t128",
+                            "type": "*T"
+                          }
+                        ],
+                        "targets": []
+                      }
+                    }
+                  ]
+                }
+              ],
+              "overflow_guards": [
+                {
+                  "block": "L94",
+                  "offset": 5,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "OverflowError: Python int too large to convert to C long",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t118",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L120"
+                    ]
+                  }
+                },
+                {
+                  "block": "L120",
+                  "offset": 6,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "OverflowError: Python int too large to convert to C long",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t126",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L127"
+                    ]
+                  }
+                }
+              ],
+              "item_calls_in_export_order": [
+                {
+                  "block": "L8",
+                  "offset": 2,
+                  "operation": {
+                    "op": "call",
+                    "type": "int+",
+                    "text": "@f.item",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [
+                      54
+                    ],
+                    "operands": [
+                      {
+                        "value": "@s.11",
+                        "type": "str"
+                      },
+                      {
+                        "value": "%t3",
+                        "type": "int+"
+                      },
+                      {
+                        "value": "%t52",
+                        "type": "dyn"
+                      },
+                      {
+                        "value": "%h.53",
+                        "type": "*dyn"
+                      }
+                    ],
+                    "targets": []
+                  }
+                }
+              ],
+              "tuple_operations": [],
+              "vtuple_operations": [
+                {
+                  "block": "L130",
+                  "offset": 1,
+                  "operation": {
+                    "op": "vtuple.make",
+                    "type": "vtuple[opt[int]]",
+                    "text": "",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [
+                      136
+                    ],
+                    "operands": [
+                      {
+                        "value": "%t122",
+                        "type": "opt[int]"
+                      },
+                      {
+                        "value": "null",
+                        "type": "opt[int]"
+                      },
+                      {
+                        "value": "%t129",
+                        "type": "opt[int]"
+                      }
+                    ],
+                    "targets": []
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "unchanged_function_inventories": {
+        "@main.init": {
+          "function": "@main.init",
+          "obligations": 8,
+          "sites": [
+            {
+              "node": 25,
+              "kind": "low-word",
+              "source": "%t34"
+            },
+            {
+              "node": 26,
+              "kind": "low-word",
+              "source": "%t33"
+            },
+            {
+              "node": 50,
+              "kind": "low-word",
+              "source": "%t75"
+            },
+            {
+              "node": 51,
+              "kind": "low-word",
+              "source": "%t74"
+            },
+            {
+              "node": 70,
+              "kind": "low-word",
+              "source": "%t99"
+            },
+            {
+              "node": 80,
+              "kind": "low-word",
+              "source": "%t92"
+            },
+            {
+              "node": 98,
+              "kind": "low-word",
+              "source": "%t140"
+            },
+            {
+              "node": 99,
+              "kind": "low-word",
+              "source": "%t139"
+            }
+          ],
+          "graph_sha256": "f37017c12437ae00718faaf037aa811550c2b4b842f989891ddb1c8fa042cd92",
+          "proof_executed": false
+        },
+        "@f.dynamic": {
+          "function": "@f.dynamic",
+          "obligations": 6,
+          "sites": [
+            {
+              "node": 15,
+              "kind": "low-word",
+              "source": "%t12"
+            },
+            {
+              "node": 24,
+              "kind": "low-word",
+              "source": "%t12"
+            },
+            {
+              "node": 47,
+              "kind": "low-word",
+              "source": "%t63"
+            },
+            {
+              "node": 71,
+              "kind": "low-word",
+              "source": "%t103"
+            },
+            {
+              "node": 72,
+              "kind": "low-word",
+              "source": "%t102"
+            },
+            {
+              "node": 86,
+              "kind": "low-word",
+              "source": "%t126"
+            }
+          ],
+          "graph_sha256": "66adf64b2e47c005c9ec7e96fa905edb2fd0ad7d3a8c786f7e64e9a192409d44",
+          "proof_executed": false
+        },
+        "@f.converted": {
+          "function": "@f.converted",
+          "obligations": 8,
+          "sites": [
+            {
+              "node": 15,
+              "kind": "tail-marker",
+              "source": "%t3"
+            },
+            {
+              "node": 20,
+              "kind": "low-word",
+              "source": "%t25"
+            },
+            {
+              "node": 35,
+              "kind": "tail-marker",
+              "source": "%t3"
+            },
+            {
+              "node": 40,
+              "kind": "low-word",
+              "source": "%t51"
+            },
+            {
+              "node": 50,
+              "kind": "tuple-decode",
+              "source": "marker:%t3:0"
+            },
+            {
+              "node": 53,
+              "kind": "tuple-decode",
+              "source": "marker:%t3:0"
+            },
+            {
+              "node": 56,
+              "kind": "tuple-decode",
+              "source": "marker:%t3:1"
+            },
+            {
+              "node": 59,
+              "kind": "tuple-decode",
+              "source": "marker:%t3:1"
+            }
+          ],
+          "graph_sha256": "52a4ffef05b6084e6da9cbdeb5eb77e497dfe051a207626c26ecf58de8350fcf",
+          "proof_executed": false
+        }
+      },
+      "retained_ir": {
+        "baseline": {
+          "full_ir": {
+            "path": "/workspace/scratch/980402bc01c4/ir-audit/cases/1994/old.ll",
+            "bytes": 34801,
+            "sha256": "d0296e38f403046cd4dfef0cd78a2dedc22cae3c4a8e3da23f2caf815746b7c3"
+          },
+          "function_excerpts": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/storage-denominator-review/materialization-old.ll",
+            "bytes": 11527,
+            "sha256": "19d6019b7ab469d1f9f5d8b747101bf03aa9e8d541ec5b7d157adc5897d4484d"
+          }
+        },
+        "candidate": {
+          "full_ir": {
+            "path": "/workspace/scratch/980402bc01c4/ir-audit/cases/1994/new.ll",
+            "bytes": 36663,
+            "sha256": "0a7b5e9dfdd940dd2cfff4881fe0890259b992653b8b8726c37345fd44a11ef6"
+          },
+          "function_excerpts": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/storage-denominator-review/materialization-new.ll",
+            "bytes": 13331,
+            "sha256": "fea90b355cae3160dde085d70fe6caf8f7ef42f6b815a4bb3e729777bb93f8d8"
+          }
+        }
+      },
+      "disposition": [
+        "The source is unchanged. The net nine-obligation drop is not nine simply deleted sites: optional falls from 18 to 7 (-11), small rises from 6 to 8 (+2), and main.init/dynamic/converted remain at 8/6/8.",
+        "Optional no longer allocates an intermediate fixed tuple t85, packs marker/tail words, decodes it, then converts it to the final optional-item VTuple. Its 12 tuple-specific sites disappear: 2 tail-marker, 6 narrowing and 4 tuple-decode. Its low-word sites rise from 6 to 7 because the direct path also captures an item identity; the final integer fit checks remain before boxing/materialization.",
+        "Small adds two low-word obligations when capturing the identities of its two item-call results, before the final VTuple allocation. The final materialization low-word checks remain. This accounts for the offsetting increase of two.",
+        "The emitted old/new optional and small bodies retain item evaluation order, checked numeric conversion and the raising overflow path. Current VTuple storage additionally writes identity companions. The independent IR review already classifies case 1994 as the intended numeric-container identity change."
+      ]
+    }
+  },
+  "limits": [
+    "Candidate snapshot/count binding to the fresh final census is still mandatory.",
+    "Existing or future Lean proof verdicts are not inferred from the extracted inventory; proof_executed remains false.",
+    "Native/original-input and promoting replacement coverage has its own bounded scope, retained by the linked source evidence.",
+    "No compiler, normalizer, theorem checker or runtime was executed by this review. No broad IR normalization was used."
+  ]
+}

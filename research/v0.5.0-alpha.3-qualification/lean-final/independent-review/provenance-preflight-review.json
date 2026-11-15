@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "status": "preparation_and_attribution_provenance_reviewed_final_census_pending",
+  "observed_utc": "2026-11-15T08:12:40.662002+00:00",
+  "candidate_commit": "0a2fe77a580106c197face4d2904be80e3f85dbc",
+  "candidate_tree": "107460d5f89bdcf37f2741b233eac0568d82604a",
+  "artifacts": {
+    "prepare.py": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/prepare.py",
+      "sha256": "6f1375681e9a6b4f28c56a839d2e3dc60dc6c2ba383369f800950d3b48cdf265",
+      "bytes": 6437
+    },
+    "prepared.json": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/prepared.json",
+      "sha256": "5ad25a8ad008882ae65c84f3a77ecf18dcfabdc76d26fc2aa39cb17e7f20ff69",
+      "bytes": 174505
+    },
+    "run.py": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/run.py",
+      "sha256": "6357e04bd8521aef63b417e4fe57d6fb5d860526c594f60abc57e6b6e25090f1",
+      "bytes": 5867
+    },
+    "audit.py": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/audit.py",
+      "sha256": "bd99f81b1d4dbdc7e11470c808a0bf27286a39ab011cc0a568d1a64e1e76333f",
+      "bytes": 10135
+    },
+    "attribute-count-decreases.py": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/attribute-count-decreases.py",
+      "sha256": "c09b465f40ca49504aed0b58c82d80fa2bbd490f426cd58befd8cb49c093bf5b",
+      "bytes": 16566
+    },
+    "attribution-config.json": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/attribution-config.json",
+      "sha256": "4028c9d732db3336a5551df8da1bb05d7d9770b818a0592d3d002ae20a9f96d1",
+      "bytes": 542
+    },
+    "bind-attribution-to-final-census.py": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/bind-attribution-to-final-census.py",
+      "sha256": "be285174a2a3954bceb6e81aba6e0232e002d10f614cb6a98dd5ef79b91d5e5a",
+      "bytes": 7849
+    },
+    "count-attribution/inventory.json": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/inventory.json",
+      "sha256": "7200136d2f198e297688a66aeceb60eb1e7ade0423e8f2dd27a286fb098ccb00",
+      "bytes": 12922419
+    },
+    "qualification-source-equivalence.json": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/qualification-source-equivalence.json",
+      "sha256": "a990b294bac3fa4832ee75378703241194a832f8494074a071573b0755bdb8f8",
+      "bytes": 1151
+    }
+  },
+  "checker_binaries": [
+    {
+      "path": "/workspace/scratch/980402bc01c4/alpha3-lean-storage-corrected/tools/lean_boundary/.lake/build/bin/pystachy-boundary",
+      "sha256": "8222c75f7e7780efd48b1d12175139a3f0ea378e2882f4c4f3e0011235674c76",
+      "bytes": 118502032
+    },
+    {
+      "path": "/workspace/scratch/980402bc01c4/alpha3-lean-storage-corrected/tools/lean_boundary/.lake/build/bin/pystachy-access",
+      "sha256": "614d42998c1b49867ce8d3505140a2e1fb2ee91b00d969577e09aba1970ae9c0",
+      "bytes": 118683288
+    },
+    {
+      "path": "/workspace/scratch/980402bc01c4/alpha3-lean-storage-corrected/tools/lean_boundary/.lake/build/bin/pystachy-int",
+      "sha256": "0720d6d555ec4e93f6336d3150c599367e1982c1769b1152ac1f5bc846232003",
+      "bytes": 118472920
+    },
+    {
+      "path": "/workspace/scratch/980402bc01c4/alpha3-lean-storage-corrected/tools/lean_boundary/.lake/build/bin/pystachy-alias",
+      "sha256": "59487b8ce1c4663d1574a0ed107f27204c7587afdcf6109d0f5a370fcc5e834f",
+      "bytes": 118446976
+    },
+    {
+      "path": "/workspace/scratch/980402bc01c4/alpha3-lean-storage-corrected/tools/lean_boundary/.lake/build/bin/pystachy-companion",
+      "sha256": "ae9381941d31bd2b07aff41831839d34710148524792753ac73043019a8f5079",
+      "bytes": 118446496
+    }
+  ],
+  "changed_python_inputs": [
+    "tools/check_lean_guards.py",
+    "tools/check_lean_storage.py",
+    "tools/lean_report.py"
+  ],
+  "unchanged_lean_source_inputs": 19,
+  "expected_programs": 2699,
+  "expected_storage_programs": 196,
+  "attribution_programs": 29,
+  "attribution_decrease_pairs": 37,
+  "checks": {
+    "source_clean_and_exact": true,
+    "preparation_run_and_audit_identities_bound": true,
+    "all_five_copied_binaries_hashed": true,
+    "all_current_checker_sources_hashed": true,
+    "only_reviewed_python_checker_changes": true,
+    "alpha2_and_alpha3_complete_tree_equivalences_rechecked": true,
+    "early_historical_bindings_and_candidate_reference_counts_pass": true,
+    "fresh_header_matches_preparation": true,
+    "final_binding_script_reviewed_fail_closed": true
+  },
+  "manual_script_review": [
+    "Preparation refuses existing records, verifies both repair trees and the exact eight-file union of changes from b0, keeps all 19 Lean package/build inputs byte-identical to binary origin, and copies identified binaries physically.",
+    "Run pins Python 3.13.16, Linux, Lean 4.35.0 and one worker, clears ambient PYSTACHY/PYTHONPATH controls, preserves primary exit status and source identities, and requires report/status/audit success.",
+    "Audit demands the exact 2,699/196 inventories and all 2,550/175 baseline names; rejects failed/nested-error records; strict storage requires no rejected or unsupported functions even if counted totals match.",
+    "Attribution uses each historical compiler and adapter in a separate process. Repeated null passes are grouped without overwriting duplicate symbols. Old full census is a selection/reference only.",
+    "Final binder requires complete accepted fresh source, exact supported decrease sets, all per-side snapshot/source/module/excerpt hashes, and functions/obligation counts matching final records; it does not grant semantic approval."
+  ],
+  "limits": [
+    "This is not completed-census acceptance. The current fresh run and its eventual final receipt must still be reviewed.",
+    "The maintained report header directly identifies boundary/access executables; the separate preparation and qualification audit identify all five copied binaries, including storage dependencies.",
+    "Any future resume needs an explicit frozen-prefix review plus all-five-binary revalidation; no additional attempt is preapproved by this receipt.",
+    "No compiler, normalizer or checker execution was performed by this review."
+  ]
+}

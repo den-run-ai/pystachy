@@ -1,0 +1,5520 @@
+{
+  "status": "reviewed_gc_helper_denominators_pending_final_census_binding",
+  "observed_utc": "2026-11-15T08:03:39.632234+00:00",
+  "source_commits": {
+    "baseline": "950c0440ad793dc6c34664f591383a5e6bba14dd",
+    "candidate": "0a2fe77a580106c197face4d2904be80e3f85dbc"
+  },
+  "inventory": {
+    "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/inventory.json",
+    "sha256": "7200136d2f198e297688a66aeceb60eb1e7ade0423e8f2dd27a286fb098ccb00",
+    "bytes": 12922419
+  },
+  "review_script": {
+    "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/review-gc-helper-counts.py",
+    "sha256": "c896a23f14399b921f87dc3a61bb021e01f302ddcaea4186ec5fc3d9ad50ad43",
+    "bytes": 8243
+  },
+  "raw_json_helper": {
+    "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/raw_json_review.py",
+    "sha256": "9cdd76c785b265d4b07d0c84850602ccf36663271c8fba84e566e886e0bd4edf",
+    "bytes": 1583
+  },
+  "unchanged_library_source": {
+    "path": "lib/_pystachy_mappingproxy.py",
+    "unchanged_complete_bytes": true,
+    "sha256": "e1d04e45f0b12e0e29fba497adf16f77864154c9e175a40065d2fd73654be70c",
+    "bytes": 3283
+  },
+  "programs": 16,
+  "removed_internal_functions": 18,
+  "gc_denominator_decrease": 102,
+  "rows": [
+    {
+      "program": "tests/deviations/lib_types_mappingproxy_eq_other.py",
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/02-lib_types_mappingproxy_eq_other/site-excerpts.json",
+        "sha256": "16d9aa23bd30c8f271732ba50cb2faf8f3382a40d0791fd375cfc7e93ec4d698",
+        "bytes": 8537
+      },
+      "sides": {
+        "baseline": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/02-lib_types_mappingproxy_eq_other/baseline/typed-after.json",
+            "sha256": "331b843ef6bd55e9e4a5bba18714be1976aa796b2979a591692fcac1ffc759ef",
+            "bytes": 643666
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/02-lib_types_mappingproxy_eq_other/baseline/extracted-inventory.json",
+            "sha256": "2276e7b9302f509d1662c2934fbf0422da51deaa62629d2b06e7f104ec4127d3",
+            "bytes": 7153
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/02-lib_types_mappingproxy_eq_other/baseline/llvm.ll",
+            "sha256": "a3627d09cf43851ddb2c8c409e9a2b2b5f84d5b830ae0240dd85bfd5d79ecb5a",
+            "bytes": 30254
+          }
+        },
+        "candidate": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/02-lib_types_mappingproxy_eq_other/candidate/typed-after.json",
+            "sha256": "527aa148c2c40fa3a3c01002f59a511d8c0a32d34b54fa509f571c78a4121e05",
+            "bytes": 623976
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/02-lib_types_mappingproxy_eq_other/candidate/extracted-inventory.json",
+            "sha256": "7172b49a719875543791b87ce493f8d8d6851c2f74611f0684318d9bf550f2d1",
+            "bytes": 6439
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/02-lib_types_mappingproxy_eq_other/candidate/llvm.ll",
+            "sha256": "62b007136077bcea3ecd58bb107af429608cbb2a6d1bdf35efd5b6425fc304f3",
+            "bytes": 29604
+          }
+        }
+      },
+      "decrease": 3,
+      "helpers": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "parameters": [
+            {
+              "name": "self",
+              "type": "mappingproxy[str, int]",
+              "representation": "_pystachy_mappingproxy$mappingproxy-1"
+            },
+            {
+              "name": "other",
+              "type": "dict[str,int]",
+              "representation": "dict[str,int]"
+            }
+          ],
+          "return_type": "dict[str,int]",
+          "before_obligations": 3,
+          "after_obligations": 0,
+          "typed_function_sha256": "e02b403cce0cfd6439a8e084c22a758c3fd5e0de0c6d7b20ae0ee0c8dfb3c4ed",
+          "exact_origin_operations": [
+            {
+              "node": "4",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,int]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,int]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "15",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "16",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "18",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,int]"
+                  }
+                ],
+                "targets": []
+              }
+            }
+          ],
+          "raw_extraction_records": [
+            {
+              "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+              "obligations": 3,
+              "candidate_sha256": "69003508eecb9b00092f8893dff0358ac5a8e11d7395b837d87101ecdd03d1ac",
+              "sites": {
+                "4": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "15": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "16": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "18": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ]
+              }
+            }
+          ],
+          "old_llvm_symbol_occurrences": [
+            "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {"
+          ],
+          "new_llvm_symbol_occurrences": [],
+          "old_complete_llvm_function": "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {\nentry:\n  %self.2 = alloca ptr\n  store ptr zeroinitializer, ptr %self.2\n  %other.3 = alloca ptr\n  store ptr zeroinitializer, ptr %other.3\n  store ptr %a0, ptr %self.2\n  store ptr %a1, ptr %other.3\n  %t4 = load ptr, ptr %other.3\n  %t5 = load ptr, ptr %self.2\n  %t6 = getelementptr %C._pystachy_mappingproxy$mappingproxy-1, ptr %t5, i32 0, i32 0\n  %t7 = load ptr, ptr %t6, !tbaa !16\n  %t8 = call ptr @pys_dict_copy(ptr %t4)\n  call void @pys_dict_update(ptr %t8, ptr %t7)\n  ret ptr %t8\n}",
+          "disposition": "Previously emitted internal function has no call, address-taken or other symbol reference in the full retained LLVM module; it is absent in the candidate typed and LLVM modules. Its obligations leave the input denominator, not the proof-failure set."
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_ini2toml.py",
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/03-port_tomli_w_ini2toml/site-excerpts.json",
+        "sha256": "783e865d8108ac8313793683e4afa07896cb8cefe65a9150fa7e2711b7b61bbc",
+        "bytes": 8512
+      },
+      "sides": {
+        "baseline": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/03-port_tomli_w_ini2toml/baseline/typed-after.json",
+            "sha256": "3826d3f2a1064ba42456275bfbb4b646240d9ece183aa0a4d42a08d05a5341f2",
+            "bytes": 3659629
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/03-port_tomli_w_ini2toml/baseline/extracted-inventory.json",
+            "sha256": "058236bf6b6eca03cb2854feb6fa71611001d9433cf5cdfaab2c2bfd549a91fa",
+            "bytes": 30482
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/03-port_tomli_w_ini2toml/baseline/llvm.ll",
+            "sha256": "2da6ba770481e75ce76928dc3a2773408164af1a9722d49bbc32550dde253024",
+            "bytes": 143176
+          }
+        },
+        "candidate": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/03-port_tomli_w_ini2toml/candidate/typed-after.json",
+            "sha256": "6565cc993ddfdded890b1ff1e7480c8c4a8be313c7052fb0898c3eff612acb38",
+            "bytes": 3640011
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/03-port_tomli_w_ini2toml/candidate/extracted-inventory.json",
+            "sha256": "be7c6d4727195d4a72eb0aae80f5d9c4cc037b3ce7a86fb485d1ff49f119d9ae",
+            "bytes": 29317
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/03-port_tomli_w_ini2toml/candidate/llvm.ll",
+            "sha256": "eb84f1f192ff53716d9796b1597fe437305961045d09b8c48d725c66c5e82bbe",
+            "bytes": 142529
+          }
+        }
+      },
+      "decrease": 6,
+      "helpers": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "parameters": [
+            {
+              "name": "self",
+              "type": "mappingproxy[str, str]",
+              "representation": "_pystachy_mappingproxy$mappingproxy-1"
+            },
+            {
+              "name": "other",
+              "type": "dict[str,str]",
+              "representation": "dict[str,str]"
+            }
+          ],
+          "return_type": "dict[str,str]",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "typed_function_sha256": "4926602cec887eaad9d6f0539f015b8a966325c6f38e653b13e145ffe8acba14",
+          "exact_origin_operations": [
+            {
+              "node": "4",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,str]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "5",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,str]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "16",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "17",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "18",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "19",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "21",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "22",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            }
+          ],
+          "raw_extraction_records": [
+            {
+              "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+              "obligations": 6,
+              "candidate_sha256": "0db5df3588ad5805c4a58960adbb1d78ad410b6504237f85d3daa1d3be2d523b",
+              "sites": {
+                "4": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "5": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "16": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "17": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "18": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "19": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "21": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ],
+                "22": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ]
+              }
+            }
+          ],
+          "old_llvm_symbol_occurrences": [
+            "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {"
+          ],
+          "new_llvm_symbol_occurrences": [],
+          "old_complete_llvm_function": "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {\nentry:\n  %self.2 = alloca ptr\n  store ptr zeroinitializer, ptr %self.2\n  %other.3 = alloca ptr\n  store ptr zeroinitializer, ptr %other.3\n  store ptr %a0, ptr %self.2\n  store ptr %a1, ptr %other.3\n  %t4 = load ptr, ptr %other.3\n  %t5 = load ptr, ptr %self.2\n  %t6 = getelementptr %C._pystachy_mappingproxy$mappingproxy-1, ptr %t5, i32 0, i32 0\n  %t7 = load ptr, ptr %t6, !tbaa !16\n  %t8 = call ptr @pys_dict_copy(ptr %t4)\n  call void @pys_dict_update(ptr %t8, ptr %t7)\n  ret ptr %t8\n}",
+          "disposition": "Previously emitted internal function has no call, address-taken or other symbol reference in the full retained LLVM module; it is absent in the candidate typed and LLVM modules. Its obligations leave the input denominator, not the proof-failure set."
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_tables.py",
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/04-port_tomli_w_tables/site-excerpts.json",
+        "sha256": "f095282c5accd4b52f295025fa2e4a39ac93b05442000b767f2505679e3f0854",
+        "bytes": 8508
+      },
+      "sides": {
+        "baseline": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/04-port_tomli_w_tables/baseline/typed-after.json",
+            "sha256": "5b20e02a442912c1557ac0830022df9a554189b24ff446702c5a9f76c7c7da97",
+            "bytes": 14044747
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/04-port_tomli_w_tables/baseline/extracted-inventory.json",
+            "sha256": "046e2fba94844666b1a9e8c9d985ac9dba7866efe723349778322298f3025c5b",
+            "bytes": 191613
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/04-port_tomli_w_tables/baseline/llvm.ll",
+            "sha256": "30c360648f6f73301c57f95771396700cd7f3cf136df26e529834c532de10fcd",
+            "bytes": 423960
+          }
+        },
+        "candidate": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/04-port_tomli_w_tables/candidate/typed-after.json",
+            "sha256": "402d9857a42184003a451d4f6976d05a7559f2e460f55dd7e14c65764884c258",
+            "bytes": 14025084
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/04-port_tomli_w_tables/candidate/extracted-inventory.json",
+            "sha256": "36106658778b6a02a0ec2f013537914fc7763ae053a11a89b3a0ff3ec021f753",
+            "bytes": 190448
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/04-port_tomli_w_tables/candidate/llvm.ll",
+            "sha256": "3adf642b0c8c42f0227608004c71af5cca58e30a160abad1e2ff205e1000eacf",
+            "bytes": 423310
+          }
+        }
+      },
+      "decrease": 6,
+      "helpers": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "parameters": [
+            {
+              "name": "self",
+              "type": "mappingproxy[str, str]",
+              "representation": "_pystachy_mappingproxy$mappingproxy-1"
+            },
+            {
+              "name": "other",
+              "type": "dict[str,str]",
+              "representation": "dict[str,str]"
+            }
+          ],
+          "return_type": "dict[str,str]",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "typed_function_sha256": "4926602cec887eaad9d6f0539f015b8a966325c6f38e653b13e145ffe8acba14",
+          "exact_origin_operations": [
+            {
+              "node": "4",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,str]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "5",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,str]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "16",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "17",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "18",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "19",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "21",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "22",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            }
+          ],
+          "raw_extraction_records": [
+            {
+              "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+              "obligations": 6,
+              "candidate_sha256": "0db5df3588ad5805c4a58960adbb1d78ad410b6504237f85d3daa1d3be2d523b",
+              "sites": {
+                "4": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "5": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "16": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "17": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "18": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "19": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "21": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ],
+                "22": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ]
+              }
+            }
+          ],
+          "old_llvm_symbol_occurrences": [
+            "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {"
+          ],
+          "new_llvm_symbol_occurrences": [],
+          "old_complete_llvm_function": "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {\nentry:\n  %self.2 = alloca ptr\n  store ptr zeroinitializer, ptr %self.2\n  %other.3 = alloca ptr\n  store ptr zeroinitializer, ptr %other.3\n  store ptr %a0, ptr %self.2\n  store ptr %a1, ptr %other.3\n  %t4 = load ptr, ptr %other.3\n  %t5 = load ptr, ptr %self.2\n  %t6 = getelementptr %C._pystachy_mappingproxy$mappingproxy-1, ptr %t5, i32 0, i32 0\n  %t7 = load ptr, ptr %t6, !tbaa !16\n  %t8 = call ptr @pys_dict_copy(ptr %t4)\n  call void @pys_dict_update(ptr %t8, ptr %t7)\n  ret ptr %t8\n}",
+          "disposition": "Previously emitted internal function has no call, address-taken or other symbol reference in the full retained LLVM module; it is absent in the candidate typed and LLVM modules. Its obligations leave the input denominator, not the proof-failure set."
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_values.py",
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/05-port_tomli_w_values/site-excerpts.json",
+        "sha256": "bcafddc9606943851f15ec8ee32bafab3a84ebca02ea4f8e5a6b4d7e37ab4d6e",
+        "bytes": 8506
+      },
+      "sides": {
+        "baseline": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/05-port_tomli_w_values/baseline/typed-after.json",
+            "sha256": "a98daf586ea36343620b393bd9bd2dd4ed1efa71f68efa464a70740550f3d847",
+            "bytes": 8732218
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/05-port_tomli_w_values/baseline/extracted-inventory.json",
+            "sha256": "229868a7970386e321306e4bce4d4eb87b112536e431121279ba2b9ba56d53f6",
+            "bytes": 85154
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/05-port_tomli_w_values/baseline/llvm.ll",
+            "sha256": "74d3622991e3c893b21267cc35e62691877051588fcad66708c17a8720a739ff",
+            "bytes": 279118
+          }
+        },
+        "candidate": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/05-port_tomli_w_values/candidate/typed-after.json",
+            "sha256": "175d6eac4494ee10d457af15b7307d2636c4ff6633162656c35abbe70d12c9aa",
+            "bytes": 8712537
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/05-port_tomli_w_values/candidate/extracted-inventory.json",
+            "sha256": "23b28b89fa58db0aec40e65d3e82c86d56333d3e6d82438527fbf16172bc43d4",
+            "bytes": 83989
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/05-port_tomli_w_values/candidate/llvm.ll",
+            "sha256": "64011a88ac509e2d1cf97ec6352ac21b2a615e3b96a7ee3c31382fa7b9f6f829",
+            "bytes": 278468
+          }
+        }
+      },
+      "decrease": 6,
+      "helpers": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "parameters": [
+            {
+              "name": "self",
+              "type": "mappingproxy[str, str]",
+              "representation": "_pystachy_mappingproxy$mappingproxy-1"
+            },
+            {
+              "name": "other",
+              "type": "dict[str,str]",
+              "representation": "dict[str,str]"
+            }
+          ],
+          "return_type": "dict[str,str]",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "typed_function_sha256": "4926602cec887eaad9d6f0539f015b8a966325c6f38e653b13e145ffe8acba14",
+          "exact_origin_operations": [
+            {
+              "node": "4",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,str]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "5",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,str]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "16",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "17",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "18",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "19",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "21",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "22",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            }
+          ],
+          "raw_extraction_records": [
+            {
+              "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+              "obligations": 6,
+              "candidate_sha256": "0db5df3588ad5805c4a58960adbb1d78ad410b6504237f85d3daa1d3be2d523b",
+              "sites": {
+                "4": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "5": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "16": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "17": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "18": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "19": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "21": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ],
+                "22": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ]
+              }
+            }
+          ],
+          "old_llvm_symbol_occurrences": [
+            "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {"
+          ],
+          "new_llvm_symbol_occurrences": [],
+          "old_complete_llvm_function": "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {\nentry:\n  %self.2 = alloca ptr\n  store ptr zeroinitializer, ptr %self.2\n  %other.3 = alloca ptr\n  store ptr zeroinitializer, ptr %other.3\n  store ptr %a0, ptr %self.2\n  store ptr %a1, ptr %other.3\n  %t4 = load ptr, ptr %other.3\n  %t5 = load ptr, ptr %self.2\n  %t6 = getelementptr %C._pystachy_mappingproxy$mappingproxy-1, ptr %t5, i32 0, i32 0\n  %t7 = load ptr, ptr %t6, !tbaa !16\n  %t8 = call ptr @pys_dict_copy(ptr %t4)\n  call void @pys_dict_update(ptr %t8, ptr %t7)\n  ret ptr %t8\n}",
+          "disposition": "Previously emitted internal function has no call, address-taken or other symbol reference in the full retained LLVM module; it is absent in the candidate typed and LLVM modules. Its obligations leave the input denominator, not the proof-failure set."
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_enum.py",
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/10-lib_enum/site-excerpts.json",
+        "sha256": "f439bc404d22ac53b54b537bba5b088ebcd7803979be5a613f22996b5014ce99",
+        "bytes": 15829
+      },
+      "sides": {
+        "baseline": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/10-lib_enum/baseline/typed-after.json",
+            "sha256": "db65ff62d37239b35b2bf04c38e54f86dfd8ecdcb876ef34b2368fe735b4c01c",
+            "bytes": 7768705
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/10-lib_enum/baseline/extracted-inventory.json",
+            "sha256": "57a354950c7eac13d1ed79f9ae5170e6259e01cbaf26b8db7e25ceee630764e9",
+            "bytes": 56995
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/10-lib_enum/baseline/llvm.ll",
+            "sha256": "a992abce8b1f083dcb782e7f1d2575b99843f8c142e676e5ee98a90cd99bbccd",
+            "bytes": 273144
+          }
+        },
+        "candidate": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/10-lib_enum/candidate/typed-after.json",
+            "sha256": "991cb3fcaae549080a1cc180d1c7f4701a005952ed7a11186e3ec4a241ea9d58",
+            "bytes": 7489741
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/10-lib_enum/candidate/extracted-inventory.json",
+            "sha256": "7072386ddb717ca326680a7bfe47e6dda470b1889b21ca2ac79c9704fb57d754",
+            "bytes": 54299
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/10-lib_enum/candidate/llvm.ll",
+            "sha256": "b5fbf7a284a720bbd7cab894cf9431183f74e5b8af6826535c2d2b30c3f8876f",
+            "bytes": 265541
+          }
+        }
+      },
+      "decrease": 12,
+      "helpers": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "parameters": [
+            {
+              "name": "self",
+              "type": "mappingproxy[str, Color]",
+              "representation": "_pystachy_mappingproxy$mappingproxy-1"
+            },
+            {
+              "name": "other",
+              "type": "dict[str,Color]",
+              "representation": "dict[str,Color]"
+            }
+          ],
+          "return_type": "dict[str,Color]",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "typed_function_sha256": "198a71405c0087d55efe795119ee9bfc32d3a19a83ee530423cccc752c193e97",
+          "exact_origin_operations": [
+            {
+              "node": "4",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,Color]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,Color]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "5",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,Color]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,Color]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "16",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "17",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "18",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "19",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "21",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,Color]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "22",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,Color]"
+                  }
+                ],
+                "targets": []
+              }
+            }
+          ],
+          "raw_extraction_records": [
+            {
+              "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+              "obligations": 6,
+              "candidate_sha256": "0db5df3588ad5805c4a58960adbb1d78ad410b6504237f85d3daa1d3be2d523b",
+              "sites": {
+                "4": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "5": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "16": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "17": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "18": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "19": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "21": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ],
+                "22": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ]
+              }
+            }
+          ],
+          "old_llvm_symbol_occurrences": [
+            "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {"
+          ],
+          "new_llvm_symbol_occurrences": [],
+          "old_complete_llvm_function": "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {\nentry:\n  %self.2 = alloca ptr\n  store ptr zeroinitializer, ptr %self.2\n  %other.3 = alloca ptr\n  store ptr zeroinitializer, ptr %other.3\n  store ptr %a0, ptr %self.2\n  store ptr %a1, ptr %other.3\n  %t4 = load ptr, ptr %other.3\n  %t5 = load ptr, ptr %self.2\n  %t6 = getelementptr %C._pystachy_mappingproxy$mappingproxy-1, ptr %t5, i32 0, i32 0\n  %t7 = load ptr, ptr %t6, !tbaa !27\n  %t8 = call ptr @pys_dict_copy(ptr %t4)\n  call void @pys_dict_update(ptr %t8, ptr %t7)\n  ret ptr %t8\n}",
+          "disposition": "Previously emitted internal function has no call, address-taken or other symbol reference in the full retained LLVM module; it is absent in the candidate typed and LLVM modules. Its obligations leave the input denominator, not the proof-failure set."
+        },
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-2.__ror__",
+          "parameters": [
+            {
+              "name": "self",
+              "type": "mappingproxy[str, Order]",
+              "representation": "_pystachy_mappingproxy$mappingproxy-2"
+            },
+            {
+              "name": "other",
+              "type": "dict[str,Order]",
+              "representation": "dict[str,Order]"
+            }
+          ],
+          "return_type": "dict[str,Order]",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "typed_function_sha256": "92bb54e535e96ffc26e15321ab3ba152f7d6fad3c836d59c1ef14eaae2125171",
+          "exact_origin_operations": [
+            {
+              "node": "4",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,Order]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,Order]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "5",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,Order]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,Order]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "16",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "17",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "18",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "19",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "21",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,Order]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "22",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,Order]"
+                  }
+                ],
+                "targets": []
+              }
+            }
+          ],
+          "raw_extraction_records": [
+            {
+              "function": "@m._pystachy_mappingproxy$mappingproxy-2.__ror__",
+              "obligations": 6,
+              "candidate_sha256": "0db5df3588ad5805c4a58960adbb1d78ad410b6504237f85d3daa1d3be2d523b",
+              "sites": {
+                "4": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "5": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "16": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "17": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "18": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "19": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "21": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ],
+                "22": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ]
+              }
+            }
+          ],
+          "old_llvm_symbol_occurrences": [
+            "define internal ptr @m._pystachy_mappingproxy$mappingproxy-2.__ror__(ptr nonnull %a0, ptr %a1) {"
+          ],
+          "new_llvm_symbol_occurrences": [],
+          "old_complete_llvm_function": "define internal ptr @m._pystachy_mappingproxy$mappingproxy-2.__ror__(ptr nonnull %a0, ptr %a1) {\nentry:\n  %self.2 = alloca ptr\n  store ptr zeroinitializer, ptr %self.2\n  %other.3 = alloca ptr\n  store ptr zeroinitializer, ptr %other.3\n  store ptr %a0, ptr %self.2\n  store ptr %a1, ptr %other.3\n  %t4 = load ptr, ptr %other.3\n  %t5 = load ptr, ptr %self.2\n  %t6 = getelementptr %C._pystachy_mappingproxy$mappingproxy-2, ptr %t5, i32 0, i32 0\n  %t7 = load ptr, ptr %t6, !tbaa !37\n  %t8 = call ptr @pys_dict_copy(ptr %t4)\n  call void @pys_dict_update(ptr %t8, ptr %t7)\n  ret ptr %t8\n}",
+          "disposition": "Previously emitted internal function has no call, address-taken or other symbol reference in the full retained LLVM module; it is absent in the candidate typed and LLVM modules. Its obligations leave the input denominator, not the proof-failure set."
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_enum_mixin.py",
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/17-lib_enum_mixin/site-excerpts.json",
+        "sha256": "76944c4d15a64505d22d17f41f3ba7920080b202932697620bb87477a8b6e131",
+        "bytes": 8466
+      },
+      "sides": {
+        "baseline": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/17-lib_enum_mixin/baseline/typed-after.json",
+            "sha256": "7fc35fb80f8a1764c6caeafb053f4a7c8f2e1651bc04648b99471451f5bb47ca",
+            "bytes": 3035861
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/17-lib_enum_mixin/baseline/extracted-inventory.json",
+            "sha256": "6edcfbda374734e0f7470ed42eec2a5ec38e90565e137c270d9f9eac9892b6b5",
+            "bytes": 20258
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/17-lib_enum_mixin/baseline/llvm.ll",
+            "sha256": "d42d069871444c1a3c9c21a35ea58b58a0dde1f08aca42be453e4de459f50852",
+            "bytes": 113317
+          }
+        },
+        "candidate": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/17-lib_enum_mixin/candidate/typed-after.json",
+            "sha256": "151e141a4500d57e24c627e8c9f95eca9cd82c9611fe241e325c1dc208a72457",
+            "bytes": 2748636
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/17-lib_enum_mixin/candidate/extracted-inventory.json",
+            "sha256": "9a9169f91a307e9e6e561007ce251fc27531e7befa66703e544c0ae841c1de64",
+            "bytes": 18844
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/17-lib_enum_mixin/candidate/llvm.ll",
+            "sha256": "942a8ff29c593e5ee25d7022a4367bb3750a7bc5ef4e32412e41b337daf8261f",
+            "bytes": 103942
+          }
+        }
+      },
+      "decrease": 6,
+      "helpers": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "parameters": [
+            {
+              "name": "self",
+              "type": "mappingproxy[str, C]",
+              "representation": "_pystachy_mappingproxy$mappingproxy-1"
+            },
+            {
+              "name": "other",
+              "type": "dict[str,C]",
+              "representation": "dict[str,C]"
+            }
+          ],
+          "return_type": "dict[str,C]",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "typed_function_sha256": "929ebf4e275f3eae2f36d9380dad26dcdab4bd6ee935c09977ad9f6eb8549a89",
+          "exact_origin_operations": [
+            {
+              "node": "4",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,C]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,C]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "5",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,C]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,C]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "16",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "17",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "18",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "19",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "21",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,C]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "22",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,C]"
+                  }
+                ],
+                "targets": []
+              }
+            }
+          ],
+          "raw_extraction_records": [
+            {
+              "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+              "obligations": 6,
+              "candidate_sha256": "0db5df3588ad5805c4a58960adbb1d78ad410b6504237f85d3daa1d3be2d523b",
+              "sites": {
+                "4": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "5": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "16": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "17": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "18": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "19": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "21": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ],
+                "22": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ]
+              }
+            }
+          ],
+          "old_llvm_symbol_occurrences": [
+            "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {"
+          ],
+          "new_llvm_symbol_occurrences": [],
+          "old_complete_llvm_function": "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {\nentry:\n  %self.2 = alloca ptr\n  store ptr zeroinitializer, ptr %self.2\n  %other.3 = alloca ptr\n  store ptr zeroinitializer, ptr %other.3\n  store ptr %a0, ptr %self.2\n  store ptr %a1, ptr %other.3\n  %t4 = load ptr, ptr %other.3\n  %t5 = load ptr, ptr %self.2\n  %t6 = getelementptr %C._pystachy_mappingproxy$mappingproxy-1, ptr %t5, i32 0, i32 0\n  %t7 = load ptr, ptr %t6, !tbaa !32\n  %t8 = call ptr @pys_dict_copy(ptr %t4)\n  call void @pys_dict_update(ptr %t8, ptr %t7)\n  ret ptr %t8\n}",
+          "disposition": "Previously emitted internal function has no call, address-taken or other symbol reference in the full retained LLVM module; it is absent in the candidate typed and LLVM modules. Its obligations leave the input denominator, not the proof-failure set."
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib.py",
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/19-lib_tomllib/site-excerpts.json",
+        "sha256": "e31ac6c32fad6d7ae8707387ea71966f6058d99281cf06e50dc232e2929c61bc",
+        "bytes": 2797815
+      },
+      "sides": {
+        "baseline": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/19-lib_tomllib/baseline/typed-after.json",
+            "sha256": "a576eb40ca544e03868414f9104897f428800576937aa510ed0183d10268e4a4",
+            "bytes": 109603358
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/19-lib_tomllib/baseline/extracted-inventory.json",
+            "sha256": "1a2c5fbe772aabee5954ced5f7ab0485820afc5e18ff78341a19ffb320ad8680",
+            "bytes": 609902
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/19-lib_tomllib/baseline/llvm.ll",
+            "sha256": "9f46386ee73ba584064d99c77ddf2d9e981f1d770bc5a47c546886fc4ce26f18",
+            "bytes": 3497211
+          }
+        },
+        "candidate": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/19-lib_tomllib/candidate/typed-after.json",
+            "sha256": "b6a55b9977833ca70994abe574340bedf0540b2ef47a77a747462296f8754587",
+            "bytes": 109621577
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/19-lib_tomllib/candidate/extracted-inventory.json",
+            "sha256": "2ff73e811a7f02488eda9234c53d2b4c059ade7897545590a2cd9d27fdd2c274",
+            "bytes": 606908
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/19-lib_tomllib/candidate/llvm.ll",
+            "sha256": "847e9873198c781603ae40906c49abb6b3427c2e09c53e0b8896a64d97545f05",
+            "bytes": 3497442
+          }
+        }
+      },
+      "decrease": 6,
+      "helpers": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "parameters": [
+            {
+              "name": "self",
+              "type": "mappingproxy[str, str]",
+              "representation": "_pystachy_mappingproxy$mappingproxy-1"
+            },
+            {
+              "name": "other",
+              "type": "dict[str,str]",
+              "representation": "dict[str,str]"
+            }
+          ],
+          "return_type": "dict[str,str]",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "typed_function_sha256": "4926602cec887eaad9d6f0539f015b8a966325c6f38e653b13e145ffe8acba14",
+          "exact_origin_operations": [
+            {
+              "node": "4",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,str]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "5",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,str]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "16",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "17",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "18",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "19",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "21",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "22",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            }
+          ],
+          "raw_extraction_records": [
+            {
+              "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+              "obligations": 6,
+              "candidate_sha256": "0db5df3588ad5805c4a58960adbb1d78ad410b6504237f85d3daa1d3be2d523b",
+              "sites": {
+                "4": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "5": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "16": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "17": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "18": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "19": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "21": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ],
+                "22": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ]
+              }
+            }
+          ],
+          "old_llvm_symbol_occurrences": [
+            "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {"
+          ],
+          "new_llvm_symbol_occurrences": [],
+          "old_complete_llvm_function": "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {\nentry:\n  %self.2 = alloca ptr\n  store ptr zeroinitializer, ptr %self.2\n  %other.3 = alloca ptr\n  store ptr zeroinitializer, ptr %other.3\n  store ptr %a0, ptr %self.2\n  store ptr %a1, ptr %other.3\n  %t4 = load ptr, ptr %other.3\n  %t5 = load ptr, ptr %self.2\n  %t6 = getelementptr %C._pystachy_mappingproxy$mappingproxy-1, ptr %t5, i32 0, i32 0\n  %t7 = load ptr, ptr %t6, !tbaa !76\n  %t8 = call ptr @pys_dict_copy(ptr %t4)\n  call void @pys_dict_update(ptr %t8, ptr %t7)\n  ret ptr %t8\n}",
+          "disposition": "Previously emitted internal function has no call, address-taken or other symbol reference in the full retained LLVM module; it is absent in the candidate typed and LLVM modules. Its obligations leave the input denominator, not the proof-failure set."
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_boundary.py",
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/20-lib_tomllib_boundary/site-excerpts.json",
+        "sha256": "1e18d14eaee85aadae403186f2daddec88fcfd83be02250220d0dfe17ed654f5",
+        "bytes": 2797836
+      },
+      "sides": {
+        "baseline": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/20-lib_tomllib_boundary/baseline/typed-after.json",
+            "sha256": "e87c1d1b56315263d0d521dcaba0f2e2e9c49b8329d3abfdf46c0695789f0dc0",
+            "bytes": 106251116
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/20-lib_tomllib_boundary/baseline/extracted-inventory.json",
+            "sha256": "f260f9ec259d3e22ad0a9bbf42c8912bf8d57bb4e5823d42ae03727f21748557",
+            "bytes": 592700
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/20-lib_tomllib_boundary/baseline/llvm.ll",
+            "sha256": "68a91c269842f8138e7cec0ab9de0504a115650fe75606985b89547d2a00182e",
+            "bytes": 3389317
+          }
+        },
+        "candidate": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/20-lib_tomllib_boundary/candidate/typed-after.json",
+            "sha256": "6b846b45f1c82ab5b232c5068b2156839b9fd3dd29a2d5bf561af148e8267444",
+            "bytes": 106269422
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/20-lib_tomllib_boundary/candidate/extracted-inventory.json",
+            "sha256": "f920fdd887033fe582dc939e54d331761e16eaa94dbe055345333d75d09e289b",
+            "bytes": 589705
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/20-lib_tomllib_boundary/candidate/llvm.ll",
+            "sha256": "cb297f470526240d852ca0d778abcabec4ae19e41d95f40b54b3161dca10e9d0",
+            "bytes": 3389548
+          }
+        }
+      },
+      "decrease": 6,
+      "helpers": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "parameters": [
+            {
+              "name": "self",
+              "type": "mappingproxy[str, str]",
+              "representation": "_pystachy_mappingproxy$mappingproxy-1"
+            },
+            {
+              "name": "other",
+              "type": "dict[str,str]",
+              "representation": "dict[str,str]"
+            }
+          ],
+          "return_type": "dict[str,str]",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "typed_function_sha256": "4926602cec887eaad9d6f0539f015b8a966325c6f38e653b13e145ffe8acba14",
+          "exact_origin_operations": [
+            {
+              "node": "4",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,str]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "5",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,str]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "16",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "17",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "18",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "19",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "21",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "22",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            }
+          ],
+          "raw_extraction_records": [
+            {
+              "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+              "obligations": 6,
+              "candidate_sha256": "0db5df3588ad5805c4a58960adbb1d78ad410b6504237f85d3daa1d3be2d523b",
+              "sites": {
+                "4": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "5": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "16": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "17": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "18": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "19": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "21": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ],
+                "22": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ]
+              }
+            }
+          ],
+          "old_llvm_symbol_occurrences": [
+            "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {"
+          ],
+          "new_llvm_symbol_occurrences": [],
+          "old_complete_llvm_function": "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {\nentry:\n  %self.2 = alloca ptr\n  store ptr zeroinitializer, ptr %self.2\n  %other.3 = alloca ptr\n  store ptr zeroinitializer, ptr %other.3\n  store ptr %a0, ptr %self.2\n  store ptr %a1, ptr %other.3\n  %t4 = load ptr, ptr %other.3\n  %t5 = load ptr, ptr %self.2\n  %t6 = getelementptr %C._pystachy_mappingproxy$mappingproxy-1, ptr %t5, i32 0, i32 0\n  %t7 = load ptr, ptr %t6, !tbaa !76\n  %t8 = call ptr @pys_dict_copy(ptr %t4)\n  call void @pys_dict_update(ptr %t8, ptr %t7)\n  ret ptr %t8\n}",
+          "disposition": "Previously emitted internal function has no call, address-taken or other symbol reference in the full retained LLVM module; it is absent in the candidate typed and LLVM modules. Its obligations leave the input denominator, not the proof-failure set."
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_dynamic.py",
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/21-lib_tomllib_dynamic/site-excerpts.json",
+        "sha256": "ddd1126f45bd491f22ec2b1200065706f4e2b9da7cc23cb58f625f511480fd41",
+        "bytes": 2797833
+      },
+      "sides": {
+        "baseline": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/21-lib_tomllib_dynamic/baseline/typed-after.json",
+            "sha256": "52ac7ccef66e21579ea817cc37bb1a381935aaccbc7753c9aee6cafd38232149",
+            "bytes": 108048587
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/21-lib_tomllib_dynamic/baseline/extracted-inventory.json",
+            "sha256": "30cbb9d6c547076c416351f9005f67367cfa22bcea4f90850b5aa9328512f96b",
+            "bytes": 600915
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/21-lib_tomllib_dynamic/baseline/llvm.ll",
+            "sha256": "c537660c4ba7812a2bb2d7080c48584a8c6ac31476745e0b76f8d3d916897e82",
+            "bytes": 3444416
+          }
+        },
+        "candidate": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/21-lib_tomllib_dynamic/candidate/typed-after.json",
+            "sha256": "8e79209129cd43abaffa9166979885e58e8576f4afb1d281fe161ea71c7ba387",
+            "bytes": 108066797
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/21-lib_tomllib_dynamic/candidate/extracted-inventory.json",
+            "sha256": "fc808e619f90fa43f3789e7b30dbd4f5d47d4c2d5f14ad223a21f1530632ea2d",
+            "bytes": 597920
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/21-lib_tomllib_dynamic/candidate/llvm.ll",
+            "sha256": "a61546432eaf0b41e9ff78ef6238b651234ce0c03718df3d73d9771298d5f2d3",
+            "bytes": 3444647
+          }
+        }
+      },
+      "decrease": 6,
+      "helpers": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "parameters": [
+            {
+              "name": "self",
+              "type": "mappingproxy[str, str]",
+              "representation": "_pystachy_mappingproxy$mappingproxy-1"
+            },
+            {
+              "name": "other",
+              "type": "dict[str,str]",
+              "representation": "dict[str,str]"
+            }
+          ],
+          "return_type": "dict[str,str]",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "typed_function_sha256": "4926602cec887eaad9d6f0539f015b8a966325c6f38e653b13e145ffe8acba14",
+          "exact_origin_operations": [
+            {
+              "node": "4",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,str]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "5",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,str]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "16",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "17",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "18",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "19",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "21",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "22",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            }
+          ],
+          "raw_extraction_records": [
+            {
+              "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+              "obligations": 6,
+              "candidate_sha256": "0db5df3588ad5805c4a58960adbb1d78ad410b6504237f85d3daa1d3be2d523b",
+              "sites": {
+                "4": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "5": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "16": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "17": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "18": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "19": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "21": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ],
+                "22": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ]
+              }
+            }
+          ],
+          "old_llvm_symbol_occurrences": [
+            "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {"
+          ],
+          "new_llvm_symbol_occurrences": [],
+          "old_complete_llvm_function": "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {\nentry:\n  %self.2 = alloca ptr\n  store ptr zeroinitializer, ptr %self.2\n  %other.3 = alloca ptr\n  store ptr zeroinitializer, ptr %other.3\n  store ptr %a0, ptr %self.2\n  store ptr %a1, ptr %other.3\n  %t4 = load ptr, ptr %other.3\n  %t5 = load ptr, ptr %self.2\n  %t6 = getelementptr %C._pystachy_mappingproxy$mappingproxy-1, ptr %t5, i32 0, i32 0\n  %t7 = load ptr, ptr %t6, !tbaa !76\n  %t8 = call ptr @pys_dict_copy(ptr %t4)\n  call void @pys_dict_update(ptr %t8, ptr %t7)\n  ret ptr %t8\n}",
+          "disposition": "Previously emitted internal function has no call, address-taken or other symbol reference in the full retained LLVM module; it is absent in the candidate typed and LLVM modules. Its obligations leave the input denominator, not the proof-failure set."
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_flags.py",
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/22-lib_tomllib_flags/site-excerpts.json",
+        "sha256": "693770089e05017d2c7054553a53613bdf8ec2488ce4520588aec61d07a8ba81",
+        "bytes": 2797827
+      },
+      "sides": {
+        "baseline": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/22-lib_tomllib_flags/baseline/typed-after.json",
+            "sha256": "21d33b6cf7d1688052f0b43919ff7f516287e095a41b8c369a7a9391565d5c11",
+            "bytes": 103946511
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/22-lib_tomllib_flags/baseline/extracted-inventory.json",
+            "sha256": "0069b9f9befb0f256816ad568c01234eec08e2b4564d5b494305489bf0137f8d",
+            "bytes": 587046
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/22-lib_tomllib_flags/baseline/llvm.ll",
+            "sha256": "ede911dc9dfe0caf991c6414f385f6b1951c8c5598ce0bb7e883ebf98bc8b889",
+            "bytes": 3319261
+          }
+        },
+        "candidate": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/22-lib_tomllib_flags/candidate/typed-after.json",
+            "sha256": "db1c0913ffe8fa3a70afbc7ba39f5e004c80d24198d21c406f3eda0897af208d",
+            "bytes": 103964406
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/22-lib_tomllib_flags/candidate/extracted-inventory.json",
+            "sha256": "97d57cb8cdf22519036f00eda77f3d4059dca03866d25de6d62b2e15fd1afb23",
+            "bytes": 584052
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/22-lib_tomllib_flags/candidate/llvm.ll",
+            "sha256": "54a6d0e83da468a6d6a61b74e68b644823f114546bfef72acd6d663660a44da4",
+            "bytes": 3319492
+          }
+        }
+      },
+      "decrease": 6,
+      "helpers": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "parameters": [
+            {
+              "name": "self",
+              "type": "mappingproxy[str, str]",
+              "representation": "_pystachy_mappingproxy$mappingproxy-1"
+            },
+            {
+              "name": "other",
+              "type": "dict[str,str]",
+              "representation": "dict[str,str]"
+            }
+          ],
+          "return_type": "dict[str,str]",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "typed_function_sha256": "4926602cec887eaad9d6f0539f015b8a966325c6f38e653b13e145ffe8acba14",
+          "exact_origin_operations": [
+            {
+              "node": "4",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,str]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "5",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,str]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "16",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "17",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "18",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "19",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "21",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "22",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            }
+          ],
+          "raw_extraction_records": [
+            {
+              "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+              "obligations": 6,
+              "candidate_sha256": "0db5df3588ad5805c4a58960adbb1d78ad410b6504237f85d3daa1d3be2d523b",
+              "sites": {
+                "4": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "5": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "16": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "17": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "18": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "19": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "21": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ],
+                "22": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ]
+              }
+            }
+          ],
+          "old_llvm_symbol_occurrences": [
+            "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {"
+          ],
+          "new_llvm_symbol_occurrences": [],
+          "old_complete_llvm_function": "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {\nentry:\n  %self.2 = alloca ptr\n  store ptr zeroinitializer, ptr %self.2\n  %other.3 = alloca ptr\n  store ptr zeroinitializer, ptr %other.3\n  store ptr %a0, ptr %self.2\n  store ptr %a1, ptr %other.3\n  %t4 = load ptr, ptr %other.3\n  %t5 = load ptr, ptr %self.2\n  %t6 = getelementptr %C._pystachy_mappingproxy$mappingproxy-1, ptr %t5, i32 0, i32 0\n  %t7 = load ptr, ptr %t6, !tbaa !76\n  %t8 = call ptr @pys_dict_copy(ptr %t4)\n  call void @pys_dict_update(ptr %t8, ptr %t7)\n  ret ptr %t8\n}",
+          "disposition": "Previously emitted internal function has no call, address-taken or other symbol reference in the full retained LLVM module; it is absent in the candidate typed and LLVM modules. Its obligations leave the input denominator, not the proof-failure set."
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_typed_callback.py",
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/23-lib_tomllib_typed_callback/site-excerpts.json",
+        "sha256": "5af8678ecb1848c973f3504dacc9f9462d55367340309593321e8b62669913ef",
+        "bytes": 8532
+      },
+      "sides": {
+        "baseline": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/23-lib_tomllib_typed_callback/baseline/typed-after.json",
+            "sha256": "7e5f1305f2e1051b018efc698890caa516ea56966369e86ae6c8bbea1587461c",
+            "bytes": 80268349
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/23-lib_tomllib_typed_callback/baseline/extracted-inventory.json",
+            "sha256": "4302cae8a0140479ad4816261dd947b53d993e5a061c292fabbd3b58b8f42726",
+            "bytes": 91792
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/23-lib_tomllib_typed_callback/baseline/llvm.ll",
+            "sha256": "3f1130f3c2dd4210e271796143a75cc991e526ca4e882919cb716384d99ea840",
+            "bytes": 2574569
+          }
+        },
+        "candidate": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/23-lib_tomllib_typed_callback/candidate/typed-after.json",
+            "sha256": "89f4b18a97d61f8cf4da15c5d9d29906b180971837737ab13814111bc1e0f661",
+            "bytes": 80269961
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/23-lib_tomllib_typed_callback/candidate/extracted-inventory.json",
+            "sha256": "f690f0fbe1dd902fec27563bdb25ae95030acee23e34021a77fa7aae08513c6d",
+            "bytes": 90627
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/23-lib_tomllib_typed_callback/candidate/llvm.ll",
+            "sha256": "d1b10a597b9a7eb97e884bd42cc1a377442d77b25eec5577afaa607154195083",
+            "bytes": 2574431
+          }
+        }
+      },
+      "decrease": 6,
+      "helpers": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "parameters": [
+            {
+              "name": "self",
+              "type": "mappingproxy[str, str]",
+              "representation": "_pystachy_mappingproxy$mappingproxy-1"
+            },
+            {
+              "name": "other",
+              "type": "dict[str,str]",
+              "representation": "dict[str,str]"
+            }
+          ],
+          "return_type": "dict[str,str]",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "typed_function_sha256": "4926602cec887eaad9d6f0539f015b8a966325c6f38e653b13e145ffe8acba14",
+          "exact_origin_operations": [
+            {
+              "node": "4",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,str]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "5",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,str]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "16",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "17",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "18",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "19",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "21",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "22",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            }
+          ],
+          "raw_extraction_records": [
+            {
+              "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+              "obligations": 6,
+              "candidate_sha256": "0db5df3588ad5805c4a58960adbb1d78ad410b6504237f85d3daa1d3be2d523b",
+              "sites": {
+                "4": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "5": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "16": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "17": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "18": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "19": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "21": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ],
+                "22": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ]
+              }
+            }
+          ],
+          "old_llvm_symbol_occurrences": [
+            "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {"
+          ],
+          "new_llvm_symbol_occurrences": [],
+          "old_complete_llvm_function": "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {\nentry:\n  %self.2 = alloca ptr\n  store ptr zeroinitializer, ptr %self.2\n  %other.3 = alloca ptr\n  store ptr zeroinitializer, ptr %other.3\n  store ptr %a0, ptr %self.2\n  store ptr %a1, ptr %other.3\n  %t4 = load ptr, ptr %other.3\n  %t5 = load ptr, ptr %self.2\n  %t6 = getelementptr %C._pystachy_mappingproxy$mappingproxy-1, ptr %t5, i32 0, i32 0\n  %t7 = load ptr, ptr %t6, !tbaa !76\n  %t8 = call ptr @pys_dict_copy(ptr %t4)\n  call void @pys_dict_update(ptr %t8, ptr %t7)\n  ret ptr %t8\n}",
+          "disposition": "Previously emitted internal function has no call, address-taken or other symbol reference in the full retained LLVM module; it is absent in the candidate typed and LLVM modules. Its obligations leave the input denominator, not the proof-failure set."
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_uncaught.py",
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/24-lib_tomllib_uncaught/site-excerpts.json",
+        "sha256": "9f60e33caeeb3fe4985fbbe9ffd57f3589a490e331b2dec20bef1053fbefbd31",
+        "bytes": 2797836
+      },
+      "sides": {
+        "baseline": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/24-lib_tomllib_uncaught/baseline/typed-after.json",
+            "sha256": "744ef1110599076fe2e9fed03919d55d12a1c50b57db5bc874bb3c58d8e41a80",
+            "bytes": 103883295
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/24-lib_tomllib_uncaught/baseline/extracted-inventory.json",
+            "sha256": "efcf205680d0b6bea0e1efe457169438babf88aa6a1691fc997650dbb2ff46f6",
+            "bytes": 587034
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/24-lib_tomllib_uncaught/baseline/llvm.ll",
+            "sha256": "ae0759e61f376e4daa6c9acb08842672b39e9db255b65c0c4af3944b89735b24",
+            "bytes": 3313981
+          }
+        },
+        "candidate": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/24-lib_tomllib_uncaught/candidate/typed-after.json",
+            "sha256": "8a8edad26e395ce0f56a7b672e38fe6741e3df080975128c5b0523d25453671f",
+            "bytes": 103901181
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/24-lib_tomllib_uncaught/candidate/extracted-inventory.json",
+            "sha256": "2b1db17fe9fc53129d41fb2f292be57772a5e6251d7866e7165000b9dbcbad04",
+            "bytes": 584039
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/24-lib_tomllib_uncaught/candidate/llvm.ll",
+            "sha256": "3d5866cec118b2cda61fc688a8f35910cb05017b5a4a6de871832f3b25db71ca",
+            "bytes": 3314212
+          }
+        }
+      },
+      "decrease": 6,
+      "helpers": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "parameters": [
+            {
+              "name": "self",
+              "type": "mappingproxy[str, str]",
+              "representation": "_pystachy_mappingproxy$mappingproxy-1"
+            },
+            {
+              "name": "other",
+              "type": "dict[str,str]",
+              "representation": "dict[str,str]"
+            }
+          ],
+          "return_type": "dict[str,str]",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "typed_function_sha256": "4926602cec887eaad9d6f0539f015b8a966325c6f38e653b13e145ffe8acba14",
+          "exact_origin_operations": [
+            {
+              "node": "4",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,str]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "5",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,str]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "16",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "17",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "18",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "19",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "21",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "22",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            }
+          ],
+          "raw_extraction_records": [
+            {
+              "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+              "obligations": 6,
+              "candidate_sha256": "0db5df3588ad5805c4a58960adbb1d78ad410b6504237f85d3daa1d3be2d523b",
+              "sites": {
+                "4": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "5": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "16": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "17": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "18": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "19": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "21": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ],
+                "22": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ]
+              }
+            }
+          ],
+          "old_llvm_symbol_occurrences": [
+            "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {"
+          ],
+          "new_llvm_symbol_occurrences": [],
+          "old_complete_llvm_function": "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {\nentry:\n  %self.2 = alloca ptr\n  store ptr zeroinitializer, ptr %self.2\n  %other.3 = alloca ptr\n  store ptr zeroinitializer, ptr %other.3\n  store ptr %a0, ptr %self.2\n  store ptr %a1, ptr %other.3\n  %t4 = load ptr, ptr %other.3\n  %t5 = load ptr, ptr %self.2\n  %t6 = getelementptr %C._pystachy_mappingproxy$mappingproxy-1, ptr %t5, i32 0, i32 0\n  %t7 = load ptr, ptr %t6, !tbaa !76\n  %t8 = call ptr @pys_dict_copy(ptr %t4)\n  call void @pys_dict_update(ptr %t8, ptr %t7)\n  ret ptr %t8\n}",
+          "disposition": "Previously emitted internal function has no call, address-taken or other symbol reference in the full retained LLVM module; it is absent in the candidate typed and LLVM modules. Its obligations leave the input denominator, not the proof-failure set."
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_types_mappingproxy.py",
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/25-lib_types_mappingproxy/site-excerpts.json",
+        "sha256": "28d2a4c6ca331ca4e2bb11da0c4b86d5e23267eafd3e5f32c5f3ce98b404d60c",
+        "bytes": 15843
+      },
+      "sides": {
+        "baseline": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/25-lib_types_mappingproxy/baseline/typed-after.json",
+            "sha256": "05ca373f3ee04c54e0a405fa90ba975992cc3184dce52742a44810880be9a1f1",
+            "bytes": 3674929
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/25-lib_types_mappingproxy/baseline/extracted-inventory.json",
+            "sha256": "c598a5fe520fece9e50e49258bc858d237862d878d4d8c9756d6b971d1fe99e5",
+            "bytes": 29064
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/25-lib_types_mappingproxy/baseline/llvm.ll",
+            "sha256": "d62df3174173331ab8fa67a2c022edd4b990ee7dd29a35533ff17d1374067118",
+            "bytes": 139591
+          }
+        },
+        "candidate": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/25-lib_types_mappingproxy/candidate/typed-after.json",
+            "sha256": "3e2ba32ed811102d09c99a875e8b9b7de5bee986e7dcd6d9e43182db09ce8f7a",
+            "bytes": 3635647
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/25-lib_types_mappingproxy/candidate/extracted-inventory.json",
+            "sha256": "e0611e8f93ec21e47612ee810d236a80f36a5a7c98e53f29b35809cfdac2327a",
+            "bytes": 26688
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/25-lib_types_mappingproxy/candidate/llvm.ll",
+            "sha256": "a2aa8e302a3f294a9423ece16b9f4c8fd8afa86e191d0c81b6844d375d5b229b",
+            "bytes": 138432
+          }
+        }
+      },
+      "decrease": 12,
+      "helpers": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-3.__ror__",
+          "parameters": [
+            {
+              "name": "self",
+              "type": "mappingproxy[str, str]",
+              "representation": "_pystachy_mappingproxy$mappingproxy-3"
+            },
+            {
+              "name": "other",
+              "type": "dict[str,str]",
+              "representation": "dict[str,str]"
+            }
+          ],
+          "return_type": "dict[str,str]",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "typed_function_sha256": "dcfc0daf532ecd1a789d2edd4b5acce9dfc3360584e879d4659a4c95690a6534",
+          "exact_origin_operations": [
+            {
+              "node": "4",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,str]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "5",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,str]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "16",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "17",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "18",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "19",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "21",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "22",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            }
+          ],
+          "raw_extraction_records": [
+            {
+              "function": "@m._pystachy_mappingproxy$mappingproxy-3.__ror__",
+              "obligations": 6,
+              "candidate_sha256": "0db5df3588ad5805c4a58960adbb1d78ad410b6504237f85d3daa1d3be2d523b",
+              "sites": {
+                "4": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "5": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "16": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "17": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "18": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "19": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "21": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ],
+                "22": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ]
+              }
+            }
+          ],
+          "old_llvm_symbol_occurrences": [
+            "define internal ptr @m._pystachy_mappingproxy$mappingproxy-3.__ror__(ptr nonnull %a0, ptr %a1) {"
+          ],
+          "new_llvm_symbol_occurrences": [],
+          "old_complete_llvm_function": "define internal ptr @m._pystachy_mappingproxy$mappingproxy-3.__ror__(ptr nonnull %a0, ptr %a1) {\nentry:\n  %self.2 = alloca ptr\n  store ptr zeroinitializer, ptr %self.2\n  %other.3 = alloca ptr\n  store ptr zeroinitializer, ptr %other.3\n  store ptr %a0, ptr %self.2\n  store ptr %a1, ptr %other.3\n  %t4 = load ptr, ptr %other.3\n  %t5 = load ptr, ptr %self.2\n  %t6 = getelementptr %C._pystachy_mappingproxy$mappingproxy-3, ptr %t5, i32 0, i32 0\n  %t7 = load ptr, ptr %t6, !tbaa !16\n  %t8 = call ptr @pys_dict_copy(ptr %t4)\n  call void @pys_dict_update(ptr %t8, ptr %t7)\n  ret ptr %t8\n}",
+          "disposition": "Previously emitted internal function has no call, address-taken or other symbol reference in the full retained LLVM module; it is absent in the candidate typed and LLVM modules. Its obligations leave the input denominator, not the proof-failure set."
+        },
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-7.__ror__",
+          "parameters": [
+            {
+              "name": "self",
+              "type": "mappingproxy[str, Point]",
+              "representation": "_pystachy_mappingproxy$mappingproxy-7"
+            },
+            {
+              "name": "other",
+              "type": "dict[str,Point]",
+              "representation": "dict[str,Point]"
+            }
+          ],
+          "return_type": "dict[str,Point]",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "typed_function_sha256": "1a3a0bd1fb8aa911201ba0698b5a486ddfdf51c297452a1839fedb50e0f56832",
+          "exact_origin_operations": [
+            {
+              "node": "4",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,Point]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,Point]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "5",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,Point]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,Point]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "16",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "17",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "18",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "19",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "21",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,Point]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "22",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,Point]"
+                  }
+                ],
+                "targets": []
+              }
+            }
+          ],
+          "raw_extraction_records": [
+            {
+              "function": "@m._pystachy_mappingproxy$mappingproxy-7.__ror__",
+              "obligations": 6,
+              "candidate_sha256": "0db5df3588ad5805c4a58960adbb1d78ad410b6504237f85d3daa1d3be2d523b",
+              "sites": {
+                "4": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "5": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "16": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "17": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "18": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "19": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "21": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ],
+                "22": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ]
+              }
+            }
+          ],
+          "old_llvm_symbol_occurrences": [
+            "define internal ptr @m._pystachy_mappingproxy$mappingproxy-7.__ror__(ptr nonnull %a0, ptr %a1) {"
+          ],
+          "new_llvm_symbol_occurrences": [],
+          "old_complete_llvm_function": "define internal ptr @m._pystachy_mappingproxy$mappingproxy-7.__ror__(ptr nonnull %a0, ptr %a1) {\nentry:\n  %self.2 = alloca ptr\n  store ptr zeroinitializer, ptr %self.2\n  %other.3 = alloca ptr\n  store ptr zeroinitializer, ptr %other.3\n  store ptr %a0, ptr %self.2\n  store ptr %a1, ptr %other.3\n  %t4 = load ptr, ptr %other.3\n  %t5 = load ptr, ptr %self.2\n  %t6 = getelementptr %C._pystachy_mappingproxy$mappingproxy-7, ptr %t5, i32 0, i32 0\n  %t7 = load ptr, ptr %t6, !tbaa !19\n  %t8 = call ptr @pys_dict_copy(ptr %t4)\n  call void @pys_dict_update(ptr %t8, ptr %t7)\n  ret ptr %t8\n}",
+          "disposition": "Previously emitted internal function has no call, address-taken or other symbol reference in the full retained LLVM module; it is absent in the candidate typed and LLVM modules. Its obligations leave the input denominator, not the proof-failure set."
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_types_mappingproxy_opaque.py",
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/26-lib_types_mappingproxy_opaque/site-excerpts.json",
+        "sha256": "cd12751b8b2ebabc75f9b60ee870adcba7e3bb7d1bb6b69b57f1aa8e656defa8",
+        "bytes": 8537
+      },
+      "sides": {
+        "baseline": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/26-lib_types_mappingproxy_opaque/baseline/typed-after.json",
+            "sha256": "32781b6f7703df4735a4a952d7e0805f20c4e81af8a407986da078bf43e0a6e7",
+            "bytes": 688894
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/26-lib_types_mappingproxy_opaque/baseline/extracted-inventory.json",
+            "sha256": "a4a8f0da0cf787b9ec6fac0f5a5de2b44cb9f057ca6668c9b06b97c31a01a3c1",
+            "bytes": 7610
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/26-lib_types_mappingproxy_opaque/baseline/llvm.ll",
+            "sha256": "98722e2b7478bd7532fa2cf82250092d482cb9f2d2b129bb2e210ac6beaa1ada",
+            "bytes": 33065
+          }
+        },
+        "candidate": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/26-lib_types_mappingproxy_opaque/candidate/typed-after.json",
+            "sha256": "80a64b0a19c3faacb61471657d7ea33aa0693673bd2c687638e2788749e7fda4",
+            "bytes": 669177
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/26-lib_types_mappingproxy_opaque/candidate/extracted-inventory.json",
+            "sha256": "d3692e7642b7a23fb727220f320f941fddb76ef3e4d5b617ab088bcd5103e998",
+            "bytes": 6896
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/26-lib_types_mappingproxy_opaque/candidate/llvm.ll",
+            "sha256": "ecba2d2d00190066e70be1ee478c11a5a19a2c82c422b8280f4374e40cf72a72",
+            "bytes": 32415
+          }
+        }
+      },
+      "decrease": 3,
+      "helpers": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "parameters": [
+            {
+              "name": "self",
+              "type": "mappingproxy[str, int]",
+              "representation": "_pystachy_mappingproxy$mappingproxy-1"
+            },
+            {
+              "name": "other",
+              "type": "dict[str,int]",
+              "representation": "dict[str,int]"
+            }
+          ],
+          "return_type": "dict[str,int]",
+          "before_obligations": 3,
+          "after_obligations": 0,
+          "typed_function_sha256": "e02b403cce0cfd6439a8e084c22a758c3fd5e0de0c6d7b20ae0ee0c8dfb3c4ed",
+          "exact_origin_operations": [
+            {
+              "node": "4",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,int]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,int]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "15",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "16",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "18",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,int]"
+                  }
+                ],
+                "targets": []
+              }
+            }
+          ],
+          "raw_extraction_records": [
+            {
+              "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+              "obligations": 3,
+              "candidate_sha256": "69003508eecb9b00092f8893dff0358ac5a8e11d7395b837d87101ecdd03d1ac",
+              "sites": {
+                "4": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "15": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "16": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "18": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ]
+              }
+            }
+          ],
+          "old_llvm_symbol_occurrences": [
+            "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {"
+          ],
+          "new_llvm_symbol_occurrences": [],
+          "old_complete_llvm_function": "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {\nentry:\n  %self.2 = alloca ptr\n  store ptr zeroinitializer, ptr %self.2\n  %other.3 = alloca ptr\n  store ptr zeroinitializer, ptr %other.3\n  store ptr %a0, ptr %self.2\n  store ptr %a1, ptr %other.3\n  %t4 = load ptr, ptr %other.3\n  %t5 = load ptr, ptr %self.2\n  %t6 = getelementptr %C._pystachy_mappingproxy$mappingproxy-1, ptr %t5, i32 0, i32 0\n  %t7 = load ptr, ptr %t6, !tbaa !16\n  %t8 = call ptr @pys_dict_copy(ptr %t4)\n  call void @pys_dict_update(ptr %t8, ptr %t7)\n  ret ptr %t8\n}",
+          "disposition": "Previously emitted internal function has no call, address-taken or other symbol reference in the full retained LLVM module; it is absent in the candidate typed and LLVM modules. Its obligations leave the input denominator, not the proof-failure set."
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/upstream/upstream_tomllib_data.py",
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/28-upstream_tomllib_data/site-excerpts.json",
+        "sha256": "797b96f7b96710dd197fb3d4f867e96511a1df4a7fec18e06d2cbb2bc39e05ef",
+        "bytes": 2797840
+      },
+      "sides": {
+        "baseline": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/28-upstream_tomllib_data/baseline/typed-after.json",
+            "sha256": "4080c224cb39df85c3d98dc73ff268887bf6a535697785deabd32033ec00fa6d",
+            "bytes": 104254404
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/28-upstream_tomllib_data/baseline/extracted-inventory.json",
+            "sha256": "2c4ca7bf1b992d6a8692d89d0966434d1bb620ffb887ad9f16a40c2efb119562",
+            "bytes": 594732
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/28-upstream_tomllib_data/baseline/llvm.ll",
+            "sha256": "a43347da12b3e78531bc2021a1d7a37b51b6c4b2cad6311717bdc3fe0f48f94d",
+            "bytes": 3348713
+          }
+        },
+        "candidate": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/28-upstream_tomllib_data/candidate/typed-after.json",
+            "sha256": "937d0288955e198ce10e3ea07b9006761a55f81d6386578de0536f5983b0a7ae",
+            "bytes": 104272290
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/28-upstream_tomllib_data/candidate/extracted-inventory.json",
+            "sha256": "329f06145571688f686b540dd2f58a05bbe0da176392a2c8fcc66ba1e4d315a3",
+            "bytes": 591737
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/28-upstream_tomllib_data/candidate/llvm.ll",
+            "sha256": "d8ee78117f9d695524e532e64eda903e1fe2ea480b3b6d44c868f89bb8e73e42",
+            "bytes": 3348944
+          }
+        }
+      },
+      "decrease": 6,
+      "helpers": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "parameters": [
+            {
+              "name": "self",
+              "type": "mappingproxy[str, str]",
+              "representation": "_pystachy_mappingproxy$mappingproxy-1"
+            },
+            {
+              "name": "other",
+              "type": "dict[str,str]",
+              "representation": "dict[str,str]"
+            }
+          ],
+          "return_type": "dict[str,str]",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "typed_function_sha256": "4926602cec887eaad9d6f0539f015b8a966325c6f38e653b13e145ffe8acba14",
+          "exact_origin_operations": [
+            {
+              "node": "4",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,str]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "5",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,str]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "16",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "17",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "18",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "19",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "21",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "22",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            }
+          ],
+          "raw_extraction_records": [
+            {
+              "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+              "obligations": 6,
+              "candidate_sha256": "0db5df3588ad5805c4a58960adbb1d78ad410b6504237f85d3daa1d3be2d523b",
+              "sites": {
+                "4": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "5": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "16": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "17": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "18": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "19": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "21": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ],
+                "22": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ]
+              }
+            }
+          ],
+          "old_llvm_symbol_occurrences": [
+            "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {"
+          ],
+          "new_llvm_symbol_occurrences": [],
+          "old_complete_llvm_function": "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {\nentry:\n  %self.2 = alloca ptr\n  store ptr zeroinitializer, ptr %self.2\n  %other.3 = alloca ptr\n  store ptr zeroinitializer, ptr %other.3\n  store ptr %a0, ptr %self.2\n  store ptr %a1, ptr %other.3\n  %t4 = load ptr, ptr %other.3\n  %t5 = load ptr, ptr %self.2\n  %t6 = getelementptr %C._pystachy_mappingproxy$mappingproxy-1, ptr %t5, i32 0, i32 0\n  %t7 = load ptr, ptr %t6, !tbaa !76\n  %t8 = call ptr @pys_dict_copy(ptr %t4)\n  call void @pys_dict_update(ptr %t8, ptr %t7)\n  ret ptr %t8\n}",
+          "disposition": "Previously emitted internal function has no call, address-taken or other symbol reference in the full retained LLVM module; it is absent in the candidate typed and LLVM modules. Its obligations leave the input denominator, not the proof-failure set."
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/upstream/upstream_tomllib_misc.py",
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/29-upstream_tomllib_misc/site-excerpts.json",
+        "sha256": "7817cbe954bdf15196eeda216a8eaf77e050a3b23df1287f20f0486d775cbac6",
+        "bytes": 2797786
+      },
+      "sides": {
+        "baseline": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/29-upstream_tomllib_misc/baseline/typed-after.json",
+            "sha256": "01eae00b672bd6c1da243c12a38a4ab241535567cd6a796d16f29d0c2f1fe729",
+            "bytes": 106369815
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/29-upstream_tomllib_misc/baseline/extracted-inventory.json",
+            "sha256": "711281eeace791bcb99a3746168d73880cb89675cbb33e06b5fa30ca46fdf1b6",
+            "bytes": 593176
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/29-upstream_tomllib_misc/baseline/llvm.ll",
+            "sha256": "29fbc978c4c5502802ea694583c0af09dbe8b73a0b6e8ba60e9f2a3625ac2893",
+            "bytes": 3395870
+          }
+        },
+        "candidate": {
+          "snapshot": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/29-upstream_tomllib_misc/candidate/typed-after.json",
+            "sha256": "0fe47b0912469dd38db40da5ed2b5d6d40a3ba05bac28aa3a72f4211c6740ad9",
+            "bytes": 106387881
+          },
+          "extraction": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/29-upstream_tomllib_misc/candidate/extracted-inventory.json",
+            "sha256": "1d24f0948970bf5c755cf75dadb5ad5f52fd8f5bcdfce22775d67c741697099e",
+            "bytes": 590182
+          },
+          "llvm": {
+            "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/29-upstream_tomllib_misc/candidate/llvm.ll",
+            "sha256": "8b84618a1f51d0349c2491fe01af10450e3bb3e6f758754a25045ce8ba062565",
+            "bytes": 3396101
+          }
+        }
+      },
+      "decrease": 6,
+      "helpers": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "parameters": [
+            {
+              "name": "self",
+              "type": "mappingproxy[str, str]",
+              "representation": "_pystachy_mappingproxy$mappingproxy-1"
+            },
+            {
+              "name": "other",
+              "type": "dict[str,str]",
+              "representation": "dict[str,str]"
+            }
+          ],
+          "return_type": "dict[str,str]",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "typed_function_sha256": "4926602cec887eaad9d6f0539f015b8a966325c6f38e653b13e145ffe8acba14",
+          "exact_origin_operations": [
+            {
+              "node": "4",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,str]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "5",
+              "block": "entry",
+              "offset": 1,
+              "operand": 1,
+              "operation": {
+                "op": "mem.store",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%other.3",
+                    "type": "*dict[str,str]"
+                  },
+                  {
+                    "value": "%a1",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "16",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "17",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "18",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "19",
+              "block": "entry",
+              "offset": 7,
+              "operand": 0,
+              "operation": {
+                "op": "rt",
+                "type": "None",
+                "text": "dict.update",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "S"
+                  },
+                  {
+                    "value": "%t7",
+                    "type": "S"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "21",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            },
+            {
+              "node": "22",
+              "block": "entry",
+              "offset": 8,
+              "operand": 0,
+              "operation": {
+                "op": "ret",
+                "type": "",
+                "text": "",
+                "immediate": 0,
+                "descriptor": "",
+                "results": [],
+                "operands": [
+                  {
+                    "value": "%t8",
+                    "type": "dict[str,str]"
+                  }
+                ],
+                "targets": []
+              }
+            }
+          ],
+          "raw_extraction_records": [
+            {
+              "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+              "obligations": 6,
+              "candidate_sha256": "0db5df3588ad5805c4a58960adbb1d78ad410b6504237f85d3daa1d3be2d523b",
+              "sites": {
+                "4": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "5": [
+                  "entry",
+                  1,
+                  "mem.store",
+                  1
+                ],
+                "16": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "17": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "18": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "19": [
+                  "entry",
+                  7,
+                  "rt",
+                  0
+                ],
+                "21": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ],
+                "22": [
+                  "entry",
+                  8,
+                  "ret",
+                  0
+                ]
+              }
+            }
+          ],
+          "old_llvm_symbol_occurrences": [
+            "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {"
+          ],
+          "new_llvm_symbol_occurrences": [],
+          "old_complete_llvm_function": "define internal ptr @m._pystachy_mappingproxy$mappingproxy-1.__ror__(ptr nonnull %a0, ptr %a1) {\nentry:\n  %self.2 = alloca ptr\n  store ptr zeroinitializer, ptr %self.2\n  %other.3 = alloca ptr\n  store ptr zeroinitializer, ptr %other.3\n  store ptr %a0, ptr %self.2\n  store ptr %a1, ptr %other.3\n  %t4 = load ptr, ptr %other.3\n  %t5 = load ptr, ptr %self.2\n  %t6 = getelementptr %C._pystachy_mappingproxy$mappingproxy-1, ptr %t5, i32 0, i32 0\n  %t7 = load ptr, ptr %t6, !tbaa !76\n  %t8 = call ptr @pys_dict_copy(ptr %t4)\n  call void @pys_dict_update(ptr %t8, ptr %t7)\n  ret ptr %t8\n}",
+          "disposition": "Previously emitted internal function has no call, address-taken or other symbol reference in the full retained LLVM module; it is absent in the candidate typed and LLVM modules. Its obligations leave the input denominator, not the proof-failure set."
+        }
+      ]
+    }
+  ],
+  "limits": [
+    "The separate dynany_identity_boundary GC decrease of four is reviewed with its source/storage move.",
+    "Origin records can describe several graph nodes at one typed operation; their cardinality is not substituted for the adapter's obligation count.",
+    "Early candidate snapshots/counts still need exact final-source census binding.",
+    "No compiler, normalizer, theorem checker or runtime was executed. No IR normalization was used."
+  ]
+}

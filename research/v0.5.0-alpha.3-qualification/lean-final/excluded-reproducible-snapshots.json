@@ -1,0 +1,710 @@
+[
+  {
+    "path": "evidence/lean-storage-corrected/storage-denominator-review/materialization-new.ll",
+    "bytes": 13331,
+    "sha256": "fea90b355cae3160dde085d70fe6caf8f7ef42f6b815a4bb3e729777bb93f8d8",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/storage-denominator-review/materialization-old.ll",
+    "bytes": 11527,
+    "sha256": "19d6019b7ab469d1f9f5d8b747101bf03aa9e8d541ec5b7d157adc5897d4484d",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/22-lib_tomllib_flags/candidate/typed-after.json",
+    "bytes": 103964406,
+    "sha256": "db1c0913ffe8fa3a70afbc7ba39f5e004c80d24198d21c406f3eda0897af208d",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/22-lib_tomllib_flags/candidate/llvm.ll",
+    "bytes": 3319492,
+    "sha256": "54a6d0e83da468a6d6a61b74e68b644823f114546bfef72acd6d663660a44da4",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/22-lib_tomllib_flags/baseline/typed-after.json",
+    "bytes": 103946511,
+    "sha256": "21d33b6cf7d1688052f0b43919ff7f516287e095a41b8c369a7a9391565d5c11",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/22-lib_tomllib_flags/baseline/llvm.ll",
+    "bytes": 3319261,
+    "sha256": "ede911dc9dfe0caf991c6414f385f6b1951c8c5598ce0bb7e883ebf98bc8b889",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/18-lib_enum_plain_isinstance/candidate/typed-after.json",
+    "bytes": 10858438,
+    "sha256": "fe04d27bb681e8d740babc708daa921a72c25fd5270ae372ffa4f6ffafc2aa6a",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/18-lib_enum_plain_isinstance/candidate/llvm.ll",
+    "bytes": 393323,
+    "sha256": "2c26e5b8b0d947de3ff03364673845cc63d68f058f7fd1a82bb6085664645e56",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/18-lib_enum_plain_isinstance/baseline/typed-after.json",
+    "bytes": 13705890,
+    "sha256": "b77ecc2fea0943df1f2e16c50684dd3126b898605544bbf0946ec2eacfb1e7bb",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/18-lib_enum_plain_isinstance/baseline/llvm.ll",
+    "bytes": 462426,
+    "sha256": "f617f45c1322756ca207343cff32a5e90e210fd311648c8b5f5248377b2ad0ca",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/19-lib_tomllib/candidate/typed-after.json",
+    "bytes": 109621577,
+    "sha256": "b6a55b9977833ca70994abe574340bedf0540b2ef47a77a747462296f8754587",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/19-lib_tomllib/candidate/llvm.ll",
+    "bytes": 3497442,
+    "sha256": "847e9873198c781603ae40906c49abb6b3427c2e09c53e0b8896a64d97545f05",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/19-lib_tomllib/baseline/typed-after.json",
+    "bytes": 109603358,
+    "sha256": "a576eb40ca544e03868414f9104897f428800576937aa510ed0183d10268e4a4",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/19-lib_tomllib/baseline/llvm.ll",
+    "bytes": 3497211,
+    "sha256": "9f46386ee73ba584064d99c77ddf2d9e981f1d770bc5a47c546886fc4ce26f18",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/15-lib_enum_format_str/candidate/typed-after.json",
+    "bytes": 3976188,
+    "sha256": "a8208c37db006357338957b6c709c1edb7e3c5396437801f5fa0fd1a4829f69e",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/15-lib_enum_format_str/candidate/llvm.ll",
+    "bytes": 137963,
+    "sha256": "796d10583fe1d2def4a64911a66d8604c6ba500f082f14bbc5b191231a50eaad",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/15-lib_enum_format_str/baseline/typed-after.json",
+    "bytes": 4198683,
+    "sha256": "6f8c9f28e28876e0cd84348836b4ad972fe4bb111c1e3983efef6b077e33c922",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/15-lib_enum_format_str/baseline/llvm.ll",
+    "bytes": 144151,
+    "sha256": "b24ea1fc9cbe64cd89c7d2847469c1667719614e65489c4d4a0e408060e985b7",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/09-exit_intflag_stored_zero/candidate/typed-after.json",
+    "bytes": 1879347,
+    "sha256": "0c89fd8eacc0f9c60313965deb0733a490187611e6c5bea82688f8207ceddcd6",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/09-exit_intflag_stored_zero/candidate/llvm.ll",
+    "bytes": 71813,
+    "sha256": "e313784c219a9009361b164abad13c2778f5ba16755953716509ff538bba43f6",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/09-exit_intflag_stored_zero/baseline/typed-after.json",
+    "bytes": 2108031,
+    "sha256": "689cee0ed231ca096661322d4a20425d546dca3e4da98e166f043205e7e9e072",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/09-exit_intflag_stored_zero/baseline/llvm.ll",
+    "bytes": 79537,
+    "sha256": "d37c4957331cd6fbff6680715e6012950efa1d741db7fc99dad3ac2af7b84c30",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/21-lib_tomllib_dynamic/candidate/typed-after.json",
+    "bytes": 108066797,
+    "sha256": "8e79209129cd43abaffa9166979885e58e8576f4afb1d281fe161ea71c7ba387",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/21-lib_tomllib_dynamic/candidate/llvm.ll",
+    "bytes": 3444647,
+    "sha256": "a61546432eaf0b41e9ff78ef6238b651234ce0c03718df3d73d9771298d5f2d3",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/21-lib_tomllib_dynamic/baseline/typed-after.json",
+    "bytes": 108048587,
+    "sha256": "52ac7ccef66e21579ea817cc37bb1a381935aaccbc7753c9aee6cafd38232149",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/21-lib_tomllib_dynamic/baseline/llvm.ll",
+    "bytes": 3444416,
+    "sha256": "c537660c4ba7812a2bb2d7080c48584a8c6ac31476745e0b76f8d3d916897e82",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/14-lib_enum_flag_width/candidate/typed-after.json",
+    "bytes": 6046639,
+    "sha256": "4794002d7a1d1a6b4f86fbf4b831df3e9a51b2e8fa234b6f382323eca4748119",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/14-lib_enum_flag_width/candidate/llvm.ll",
+    "bytes": 201303,
+    "sha256": "fac91e06bd286aa1c94e867ccf5d6fda71475d1c154fb40c64e96cfe30b5bb98",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/14-lib_enum_flag_width/baseline/typed-after.json",
+    "bytes": 6734655,
+    "sha256": "efebdd44bef3f19bf562286cfde9b1545bc065834c07f6e8a37eacf4c5bb552f",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/14-lib_enum_flag_width/baseline/llvm.ll",
+    "bytes": 221479,
+    "sha256": "d3fe99d0e9fa572fcbb3ccf90a89da7aed5d80bd78fa51d434c9fc6e2ffe0947",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/11-lib_enum_any/candidate/typed-after.json",
+    "bytes": 5197926,
+    "sha256": "cdaac687858fc3c9a530d62db54beb10aa7c9f825d2ced7f70bb278ba1d8f276",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/11-lib_enum_any/candidate/llvm.ll",
+    "bytes": 248110,
+    "sha256": "a6c71f8d185976f5322a376ba92059a1c7bbf0c83a54fa2d0e0bd862e5c5c058",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/11-lib_enum_any/baseline/typed-after.json",
+    "bytes": 11085236,
+    "sha256": "308ce9ea95d176aa21d92e76bd6b1a8d02532b5b01e81d7d403681c8059079c5",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/11-lib_enum_any/baseline/llvm.ll",
+    "bytes": 405303,
+    "sha256": "1e7c24a380c56ac6836faa4de65ccca93fc8c156caa639c51f8ec6f9510c3d90",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/12-lib_enum_flag_bits/candidate/typed-after.json",
+    "bytes": 6723020,
+    "sha256": "6135f58dfc09b26aec281a90666ddf277bbe2cda08b6d2e555dbfb5eeb71fd10",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/12-lib_enum_flag_bits/candidate/llvm.ll",
+    "bytes": 229261,
+    "sha256": "f9c771369a7f16ca35957a725f2ddd54c4d59ae5ff4b63d2ed8a8403668459c8",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/12-lib_enum_flag_bits/baseline/typed-after.json",
+    "bytes": 6951326,
+    "sha256": "3e953b894392a1ba36194dbbb23e8447dda6e29b0bb4b3a3719a665591f4f933",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/12-lib_enum_flag_bits/baseline/llvm.ll",
+    "bytes": 237011,
+    "sha256": "81994068a49ba2aaffef09a822d82dffdc739fe1f7a889b83c43db3a24d52063",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/01-dynany_identity_boundary/candidate/typed-after.json",
+    "bytes": 268502,
+    "sha256": "55e62728151906a0305fa1b523c69805b65c99ffbc903e8cf399aeb552bd5d9e",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/01-dynany_identity_boundary/candidate/llvm.ll",
+    "bytes": 10356,
+    "sha256": "5a7313acb39be325cea9259ce668cf82abd8e56a91a4b1f46123dea057e2cbf0",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/01-dynany_identity_boundary/baseline/typed-after.json",
+    "bytes": 477548,
+    "sha256": "ddf67c2c002fc4339a3e51c7882ca650853eced660430aa28d6715ca8f887998",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/01-dynany_identity_boundary/baseline/llvm.ll",
+    "bytes": 16804,
+    "sha256": "1df1e458cb3dbf216cc3d6582fe1f75a8c6862793614beae1739311a649138b7",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/26-lib_types_mappingproxy_opaque/candidate/typed-after.json",
+    "bytes": 669177,
+    "sha256": "80a64b0a19c3faacb61471657d7ea33aa0693673bd2c687638e2788749e7fda4",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/26-lib_types_mappingproxy_opaque/candidate/llvm.ll",
+    "bytes": 32415,
+    "sha256": "ecba2d2d00190066e70be1ee478c11a5a19a2c82c422b8280f4374e40cf72a72",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/26-lib_types_mappingproxy_opaque/baseline/typed-after.json",
+    "bytes": 688894,
+    "sha256": "32781b6f7703df4735a4a952d7e0805f20c4e81af8a407986da078bf43e0a6e7",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/26-lib_types_mappingproxy_opaque/baseline/llvm.ll",
+    "bytes": 33065,
+    "sha256": "98722e2b7478bd7532fa2cf82250092d482cb9f2d2b129bb2e210ac6beaa1ada",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/28-upstream_tomllib_data/candidate/typed-after.json",
+    "bytes": 104272290,
+    "sha256": "937d0288955e198ce10e3ea07b9006761a55f81d6386578de0536f5983b0a7ae",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/28-upstream_tomllib_data/candidate/llvm.ll",
+    "bytes": 3348944,
+    "sha256": "d8ee78117f9d695524e532e64eda903e1fe2ea480b3b6d44c868f89bb8e73e42",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/28-upstream_tomllib_data/baseline/typed-after.json",
+    "bytes": 104254404,
+    "sha256": "4080c224cb39df85c3d98dc73ff268887bf6a535697785deabd32033ec00fa6d",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/28-upstream_tomllib_data/baseline/llvm.ll",
+    "bytes": 3348713,
+    "sha256": "a43347da12b3e78531bc2021a1d7a37b51b6c4b2cad6311717bdc3fe0f48f94d",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/06-exit_enum_member_caught/candidate/typed-after.json",
+    "bytes": 5390400,
+    "sha256": "41562f0d7d7178d7d3bfe3529d125882cefd15365e15226bcff14267960d6fad",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/06-exit_enum_member_caught/candidate/llvm.ll",
+    "bytes": 182267,
+    "sha256": "4358fa07e68756029c009c7683faf0b339dd494971888fe7e7361ccb84b4cf79",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/06-exit_enum_member_caught/baseline/typed-after.json",
+    "bytes": 5618646,
+    "sha256": "2a96dd523e4902623f05e25413ca50a7a16850d1a3cccbcf84371d67aec3b1a4",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/06-exit_enum_member_caught/baseline/llvm.ll",
+    "bytes": 188689,
+    "sha256": "d88f8fbfdb35eb1336f6e8bfc013b62b6eabfb9e42754f33764ecde7fe7f2762",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/07-exit_enum_stored_reflection/candidate/typed-after.json",
+    "bytes": 3874981,
+    "sha256": "853a176ec31a5d8512f686e9447c602f61aa8893713793864a08edcae93b7000",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/07-exit_enum_stored_reflection/candidate/llvm.ll",
+    "bytes": 164982,
+    "sha256": "90a83b964ab1ff96b8fd2cc555f45b8abcdb279af4bef1f691287d14346e2163",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/07-exit_enum_stored_reflection/baseline/typed-after.json",
+    "bytes": 4103425,
+    "sha256": "d1a31947a432b41306415b3aa20ca4709ecb85a11b313ad8197338b876136e6e",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/07-exit_enum_stored_reflection/baseline/llvm.ll",
+    "bytes": 168305,
+    "sha256": "61af4899343fe9f3d4071b691d79836e47ae4dbd11cf57eaaa901b1ee9935c9e",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/03-port_tomli_w_ini2toml/candidate/typed-after.json",
+    "bytes": 3640011,
+    "sha256": "6565cc993ddfdded890b1ff1e7480c8c4a8be313c7052fb0898c3eff612acb38",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/03-port_tomli_w_ini2toml/candidate/llvm.ll",
+    "bytes": 142529,
+    "sha256": "eb84f1f192ff53716d9796b1597fe437305961045d09b8c48d725c66c5e82bbe",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/03-port_tomli_w_ini2toml/baseline/typed-after.json",
+    "bytes": 3659629,
+    "sha256": "3826d3f2a1064ba42456275bfbb4b646240d9ece183aa0a4d42a08d05a5341f2",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/03-port_tomli_w_ini2toml/baseline/llvm.ll",
+    "bytes": 143176,
+    "sha256": "2da6ba770481e75ce76928dc3a2773408164af1a9722d49bbc32550dde253024",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/23-lib_tomllib_typed_callback/candidate/typed-after.json",
+    "bytes": 80269961,
+    "sha256": "89f4b18a97d61f8cf4da15c5d9d29906b180971837737ab13814111bc1e0f661",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/23-lib_tomllib_typed_callback/candidate/llvm.ll",
+    "bytes": 2574431,
+    "sha256": "d1b10a597b9a7eb97e884bd42cc1a377442d77b25eec5577afaa607154195083",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/23-lib_tomllib_typed_callback/baseline/typed-after.json",
+    "bytes": 80268349,
+    "sha256": "7e5f1305f2e1051b018efc698890caa516ea56966369e86ae6c8bbea1587461c",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/23-lib_tomllib_typed_callback/baseline/llvm.ll",
+    "bytes": 2574569,
+    "sha256": "3f1130f3c2dd4210e271796143a75cc991e526ca4e882919cb716384d99ea840",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/17-lib_enum_mixin/candidate/typed-after.json",
+    "bytes": 2748636,
+    "sha256": "151e141a4500d57e24c627e8c9f95eca9cd82c9611fe241e325c1dc208a72457",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/17-lib_enum_mixin/candidate/llvm.ll",
+    "bytes": 103942,
+    "sha256": "942a8ff29c593e5ee25d7022a4367bb3750a7bc5ef4e32412e41b337daf8261f",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/17-lib_enum_mixin/baseline/typed-after.json",
+    "bytes": 3035861,
+    "sha256": "7fc35fb80f8a1764c6caeafb053f4a7c8f2e1651bc04648b99471451f5bb47ca",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/17-lib_enum_mixin/baseline/llvm.ll",
+    "bytes": 113317,
+    "sha256": "d42d069871444c1a3c9c21a35ea58b58a0dde1f08aca42be453e4de459f50852",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/29-upstream_tomllib_misc/candidate/typed-after.json",
+    "bytes": 106387881,
+    "sha256": "0fe47b0912469dd38db40da5ed2b5d6d40a3ba05bac28aa3a72f4211c6740ad9",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/29-upstream_tomllib_misc/candidate/llvm.ll",
+    "bytes": 3396101,
+    "sha256": "8b84618a1f51d0349c2491fe01af10450e3bb3e6f758754a25045ce8ba062565",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/29-upstream_tomllib_misc/baseline/typed-after.json",
+    "bytes": 106369815,
+    "sha256": "01eae00b672bd6c1da243c12a38a4ab241535567cd6a796d16f29d0c2f1fe729",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/29-upstream_tomllib_misc/baseline/llvm.ll",
+    "bytes": 3395870,
+    "sha256": "29fbc978c4c5502802ea694583c0af09dbe8b73a0b6e8ba60e9f2a3625ac2893",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/08-exit_intflag_stored_mutated/candidate/typed-after.json",
+    "bytes": 3578256,
+    "sha256": "95a3181143b62bae425975bac0aa5e607f8f78febc9ca3711123f03b607a97ce",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/08-exit_intflag_stored_mutated/candidate/llvm.ll",
+    "bytes": 123642,
+    "sha256": "13b1f6f29667a6f2bfaa070bd2a7e1b40f87db88971d71aaeda50d8a861dc7e7",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/08-exit_intflag_stored_mutated/baseline/typed-after.json",
+    "bytes": 3806694,
+    "sha256": "226b539efeaa668a414daafc7c3ca40de0ca40678ec9611bd4a37ef464a473e3",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/08-exit_intflag_stored_mutated/baseline/llvm.ll",
+    "bytes": 130065,
+    "sha256": "b0ed830a578fc86d149f5f346a74c18ff2d4551fdf847d8c62ec463354ffff83",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/10-lib_enum/candidate/typed-after.json",
+    "bytes": 7489741,
+    "sha256": "991cb3fcaae549080a1cc180d1c7f4701a005952ed7a11186e3ec4a241ea9d58",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/10-lib_enum/candidate/llvm.ll",
+    "bytes": 265541,
+    "sha256": "b5fbf7a284a720bbd7cab894cf9431183f74e5b8af6826535c2d2b30c3f8876f",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/10-lib_enum/baseline/typed-after.json",
+    "bytes": 7768705,
+    "sha256": "db65ff62d37239b35b2bf04c38e54f86dfd8ecdcb876ef34b2368fe735b4c01c",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/10-lib_enum/baseline/llvm.ll",
+    "bytes": 273144,
+    "sha256": "a992abce8b1f083dcb782e7f1d2575b99843f8c142e676e5ee98a90cd99bbccd",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/27-python_int_vtuple_materialization/candidate/typed-after.json",
+    "bytes": 1120381,
+    "sha256": "5db24ceccdcf9836350a5e3d1ce295111caadcdac9acc80a2f64e20dcaa31dac",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/27-python_int_vtuple_materialization/candidate/llvm.ll",
+    "bytes": 36663,
+    "sha256": "0a7b5e9dfdd940dd2cfff4881fe0890259b992653b8b8726c37345fd44a11ef6",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/27-python_int_vtuple_materialization/baseline/typed-after.json",
+    "bytes": 1024654,
+    "sha256": "ebc2efa8b9ffab7c69f95d4ab542e138a9478ae94af8266307f6733fb69a074e",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/27-python_int_vtuple_materialization/baseline/llvm.ll",
+    "bytes": 34801,
+    "sha256": "d0296e38f403046cd4dfef0cd78a2dedc22cae3c4a8e3da23f2caf815746b7c3",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/16-lib_enum_intflag/candidate/typed-after.json",
+    "bytes": 7071387,
+    "sha256": "4a2ff553289cd5e0f5e45c4b32c4f4c89a25989089a6942ac716e188d985aada",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/16-lib_enum_intflag/candidate/llvm.ll",
+    "bytes": 236730,
+    "sha256": "23dffb21dacdb6837b4a92c583f12a648399231affb8d7bd50b5d39a7fc5ba19",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/16-lib_enum_intflag/baseline/typed-after.json",
+    "bytes": 7433983,
+    "sha256": "5d222825b682713803d73857e976119310874b90e6fa93689630de0bb27ed570",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/16-lib_enum_intflag/baseline/llvm.ll",
+    "bytes": 246246,
+    "sha256": "6dad7875d775f266567480ede5310e58020230d77f271845c98fef0fc1873458",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/13-lib_enum_flag_numeric_lookup/candidate/typed-after.json",
+    "bytes": 4417384,
+    "sha256": "ff609402238c44b54e454020bc6699ae1eb4ee38138a5eba24d3aaa7c303fde2",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/13-lib_enum_flag_numeric_lookup/candidate/llvm.ll",
+    "bytes": 148886,
+    "sha256": "1e1fe23c860eaab1cc0b92445359dccd4ef088fdadf8d5b2d6c37396bf0ef951",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/13-lib_enum_flag_numeric_lookup/baseline/typed-after.json",
+    "bytes": 4644580,
+    "sha256": "ccc4cefc6a4f30cb77301a4af1697f0c17509263c9e33f74e907bf18ff15b41c",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/13-lib_enum_flag_numeric_lookup/baseline/llvm.ll",
+    "bytes": 156597,
+    "sha256": "cb10a04cf467aa655bcfb092251f42e3864755e0ea41348076f59e835bf86d21",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/20-lib_tomllib_boundary/candidate/typed-after.json",
+    "bytes": 106269422,
+    "sha256": "6b846b45f1c82ab5b232c5068b2156839b9fd3dd29a2d5bf561af148e8267444",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/20-lib_tomllib_boundary/candidate/llvm.ll",
+    "bytes": 3389548,
+    "sha256": "cb297f470526240d852ca0d778abcabec4ae19e41d95f40b54b3161dca10e9d0",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/20-lib_tomllib_boundary/baseline/typed-after.json",
+    "bytes": 106251116,
+    "sha256": "e87c1d1b56315263d0d521dcaba0f2e2e9c49b8329d3abfdf46c0695789f0dc0",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/20-lib_tomllib_boundary/baseline/llvm.ll",
+    "bytes": 3389317,
+    "sha256": "68a91c269842f8138e7cec0ab9de0504a115650fe75606985b89547d2a00182e",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/24-lib_tomllib_uncaught/candidate/typed-after.json",
+    "bytes": 103901181,
+    "sha256": "8a8edad26e395ce0f56a7b672e38fe6741e3df080975128c5b0523d25453671f",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/24-lib_tomllib_uncaught/candidate/llvm.ll",
+    "bytes": 3314212,
+    "sha256": "3d5866cec118b2cda61fc688a8f35910cb05017b5a4a6de871832f3b25db71ca",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/24-lib_tomllib_uncaught/baseline/typed-after.json",
+    "bytes": 103883295,
+    "sha256": "744ef1110599076fe2e9fed03919d55d12a1c50b57db5bc874bb3c58d8e41a80",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/24-lib_tomllib_uncaught/baseline/llvm.ll",
+    "bytes": 3313981,
+    "sha256": "ae0759e61f376e4daa6c9acb08842672b39e9db255b65c0c4af3944b89735b24",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/02-lib_types_mappingproxy_eq_other/candidate/typed-after.json",
+    "bytes": 623976,
+    "sha256": "527aa148c2c40fa3a3c01002f59a511d8c0a32d34b54fa509f571c78a4121e05",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/02-lib_types_mappingproxy_eq_other/candidate/llvm.ll",
+    "bytes": 29604,
+    "sha256": "62b007136077bcea3ecd58bb107af429608cbb2a6d1bdf35efd5b6425fc304f3",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/02-lib_types_mappingproxy_eq_other/baseline/typed-after.json",
+    "bytes": 643666,
+    "sha256": "331b843ef6bd55e9e4a5bba18714be1976aa796b2979a591692fcac1ffc759ef",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/02-lib_types_mappingproxy_eq_other/baseline/llvm.ll",
+    "bytes": 30254,
+    "sha256": "a3627d09cf43851ddb2c8c409e9a2b2b5f84d5b830ae0240dd85bfd5d79ecb5a",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/04-port_tomli_w_tables/candidate/typed-after.json",
+    "bytes": 14025084,
+    "sha256": "402d9857a42184003a451d4f6976d05a7559f2e460f55dd7e14c65764884c258",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/04-port_tomli_w_tables/candidate/llvm.ll",
+    "bytes": 423310,
+    "sha256": "3adf642b0c8c42f0227608004c71af5cca58e30a160abad1e2ff205e1000eacf",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/04-port_tomli_w_tables/baseline/typed-after.json",
+    "bytes": 14044747,
+    "sha256": "5b20e02a442912c1557ac0830022df9a554189b24ff446702c5a9f76c7c7da97",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/04-port_tomli_w_tables/baseline/llvm.ll",
+    "bytes": 423960,
+    "sha256": "30c360648f6f73301c57f95771396700cd7f3cf136df26e529834c532de10fcd",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/05-port_tomli_w_values/candidate/typed-after.json",
+    "bytes": 8712537,
+    "sha256": "175d6eac4494ee10d457af15b7307d2636c4ff6633162656c35abbe70d12c9aa",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/05-port_tomli_w_values/candidate/llvm.ll",
+    "bytes": 278468,
+    "sha256": "64011a88ac509e2d1cf97ec6352ac21b2a615e3b96a7ee3c31382fa7b9f6f829",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/05-port_tomli_w_values/baseline/typed-after.json",
+    "bytes": 8732218,
+    "sha256": "a98daf586ea36343620b393bd9bd2dd4ed1efa71f68efa464a70740550f3d847",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/05-port_tomli_w_values/baseline/llvm.ll",
+    "bytes": 279118,
+    "sha256": "74d3622991e3c893b21267cc35e62691877051588fcad66708c17a8720a739ff",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/25-lib_types_mappingproxy/candidate/typed-after.json",
+    "bytes": 3635647,
+    "sha256": "3e2ba32ed811102d09c99a875e8b9b7de5bee986e7dcd6d9e43182db09ce8f7a",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/25-lib_types_mappingproxy/candidate/llvm.ll",
+    "bytes": 138432,
+    "sha256": "a2aa8e302a3f294a9423ece16b9f4c8fd8afa86e191d0c81b6844d375d5b229b",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/25-lib_types_mappingproxy/baseline/typed-after.json",
+    "bytes": 3674929,
+    "sha256": "05ca373f3ee04c54e0a405fa90ba975992cc3184dce52742a44810880be9a1f1",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  },
+  {
+    "path": "evidence/lean-storage-corrected/count-attribution/25-lib_types_mappingproxy/baseline/llvm.ll",
+    "bytes": 139591,
+    "sha256": "d62df3174173331ab8fa67a2c022edd4b990ee7dd29a35533ff17d1374067118",
+    "reason": "Reproducible full compiler snapshot; exact extracted sites, commands, module identities and hashes are retained."
+  }
+]

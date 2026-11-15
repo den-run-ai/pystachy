@@ -1,0 +1,2372 @@
+{
+  "schema_version": 1,
+  "created_utc": "2026-11-15T09:07:06.626653+00:00",
+  "status": "reviewed_with_explicit_model_limits",
+  "candidate_commit": "0a2fe77a580106c197face4d2904be80e3f85dbc",
+  "candidate_tree": "107460d5f89bdcf37f2741b233eac0568d82604a",
+  "baseline_proof_commit": "950c0440ad793dc6c34664f591383a5e6bba14dd",
+  "baseline_published_commit": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+  "observed_integrated_release_commit": "328b945f02788b296d9981d1b44706a2a0092255",
+  "checks": {
+    "all_census_acceptance_checks_passed": true,
+    "final_census_receipt_passed": true,
+    "exact_final_census_binding_passed": true,
+    "common_frozen_source": true,
+    "proof_and_integrated_release_trees_identical": true,
+    "published_alpha2_and_proof_trees_identical": true,
+    "baseline_corpus_and_storage_selection_retained": true,
+    "all_38_decreases_reviewed": true,
+    "all_decreases_preserve_counted_gap": true,
+    "exact_raw_shared_residuals_unchanged": true,
+    "no_shared_counted_or_unknown_gap_increases": true,
+    "all_new_model_residuals_match_reviewed_inventory": true,
+    "complex_union_and_payload_counts_match_reviews": true,
+    "all_denominator_reviews_bind_exact_inventory": true,
+    "independent_review_statuses_match_completed_reviews": true,
+    "independent_storage_site_checks_passed": true,
+    "storage_blocker_resolved_in_fresh_census": true,
+    "no_unknown_count_storage_functions": true,
+    "guard_and_report_models_unchanged_since_complex_review": true
+  },
+  "coverage": {
+    "baseline_programs": 2550,
+    "candidate_programs": 2699,
+    "added_programs": 149,
+    "removed_programs": 0,
+    "storage_selection": {
+      "baseline": 175,
+      "candidate": 196,
+      "retained": 175,
+      "added": [
+        "tests/programs/apps/port_tomli_w_ini2toml.py",
+        "tests/programs/apps/port_tomli_w_tables.py",
+        "tests/programs/apps/port_tomli_w_values.py",
+        "tests/programs/classes/cmp_notimplemented_enum_big.py",
+        "tests/programs/inference/dynany_complex_wide.py",
+        "tests/programs/inference/dynany_decimal_complex.py",
+        "tests/programs/library/lib_decimal.py",
+        "tests/programs/library/lib_decimal_complex_compare.py",
+        "tests/programs/library/lib_decimal_default_context.py",
+        "tests/programs/library/lib_decimal_extreme_exponents.py",
+        "tests/programs/library/lib_decimal_grid.py",
+        "tests/programs/library/lib_decimal_python_int.py",
+        "tests/programs/library/lib_decimal_quotient_limits.py",
+        "tests/programs/library/lib_decimal_records.py",
+        "tests/programs/library/lib_decimal_reflected_compare.py",
+        "tests/programs/numbers/complex_python_int.py",
+        "tests/programs/numbers/python_int_generator_identity.py",
+        "tests/programs/numbers/python_int_optional_container_identity.py",
+        "tests/programs/numbers/python_int_optional_tuple_keys.py",
+        "tests/programs/numbers/python_int_vtuple_identity.py",
+        "tests/programs/numbers/python_int_vtuple_keys.py"
+      ],
+      "removed": []
+    },
+    "proof_counts": {
+      "payload": {
+        "baseline": {
+          "programs": 282,
+          "functions": 1156,
+          "obligations": 2583,
+          "proved": 2583
+        },
+        "candidate": {
+          "programs": 302,
+          "functions": 1249,
+          "obligations": 2760,
+          "proved": 2760
+        },
+        "baseline_counted_gap": 0,
+        "candidate_counted_gap": 0,
+        "baseline_unknown_count_function_entries": 0,
+        "candidate_unknown_count_function_entries": 0
+      },
+      "access": {
+        "baseline": {
+          "programs": 1223,
+          "functions": 16186,
+          "obligations": 86150,
+          "proved": 86150
+        },
+        "candidate": {
+          "programs": 1270,
+          "functions": 16261,
+          "obligations": 86345,
+          "proved": 86345
+        },
+        "baseline_counted_gap": 0,
+        "candidate_counted_gap": 0,
+        "baseline_unknown_count_function_entries": 0,
+        "candidate_unknown_count_function_entries": 0
+      },
+      "null": {
+        "baseline": {
+          "programs": 926,
+          "functions": 13211,
+          "obligations": 136413,
+          "proved": 136394
+        },
+        "candidate": {
+          "programs": 981,
+          "functions": 13369,
+          "obligations": 137304,
+          "proved": 137285
+        },
+        "baseline_counted_gap": 19,
+        "candidate_counted_gap": 19,
+        "baseline_unknown_count_function_entries": 0,
+        "candidate_unknown_count_function_entries": 0
+      },
+      "union": {
+        "baseline": {
+          "programs": 276,
+          "functions": 2214,
+          "obligations": 6948,
+          "proved": 6633
+        },
+        "candidate": {
+          "programs": 308,
+          "functions": 2373,
+          "obligations": 8146,
+          "proved": 7289
+        },
+        "baseline_counted_gap": 315,
+        "candidate_counted_gap": 857,
+        "baseline_unknown_count_function_entries": 8,
+        "candidate_unknown_count_function_entries": 8
+      },
+      "union_payload": {
+        "baseline": {
+          "programs": 335,
+          "functions": 1717,
+          "obligations": 13533,
+          "proved": 13284
+        },
+        "candidate": {
+          "programs": 370,
+          "functions": 1869,
+          "obligations": 15016,
+          "proved": 14358
+        },
+        "baseline_counted_gap": 249,
+        "candidate_counted_gap": 658,
+        "baseline_unknown_count_function_entries": 0,
+        "candidate_unknown_count_function_entries": 0
+      },
+      "fields": {
+        "baseline": {
+          "programs": 1401,
+          "functions": 17209,
+          "obligations": 161987,
+          "proved": 161750
+        },
+        "candidate": {
+          "programs": 1526,
+          "functions": 17941,
+          "obligations": 166521,
+          "proved": 166284
+        },
+        "baseline_counted_gap": 237,
+        "candidate_counted_gap": 237,
+        "baseline_unknown_count_function_entries": 426,
+        "candidate_unknown_count_function_entries": 427
+      },
+      "gc": {
+        "baseline": {
+          "programs": 1659,
+          "functions": 26289,
+          "obligations": 191244,
+          "proved": 190869
+        },
+        "candidate": {
+          "programs": 1760,
+          "functions": 26609,
+          "obligations": 194685,
+          "proved": 194307
+        },
+        "baseline_counted_gap": 375,
+        "candidate_counted_gap": 378,
+        "baseline_unknown_count_function_entries": 9,
+        "candidate_unknown_count_function_entries": 9
+      },
+      "int": {
+        "baseline": {
+          "programs": 29,
+          "functions": 36,
+          "obligations": 187,
+          "proved": 187
+        },
+        "candidate": {
+          "programs": 39,
+          "functions": 122,
+          "obligations": 344,
+          "proved": 344
+        },
+        "baseline_counted_gap": 0,
+        "candidate_counted_gap": 0,
+        "baseline_unknown_count_function_entries": 0,
+        "candidate_unknown_count_function_entries": 0
+      },
+      "int_inline": {
+        "baseline": {
+          "programs": 131,
+          "functions": 351,
+          "obligations": 1692,
+          "proved": 1692
+        },
+        "candidate": {
+          "programs": 145,
+          "functions": 559,
+          "obligations": 2784,
+          "proved": 2784
+        },
+        "baseline_counted_gap": 0,
+        "candidate_counted_gap": 0,
+        "baseline_unknown_count_function_entries": 0,
+        "candidate_unknown_count_function_entries": 0
+      },
+      "storage": {
+        "baseline": {
+          "programs": 162,
+          "functions": 1710,
+          "obligations": 18582,
+          "proved": 18582
+        },
+        "candidate": {
+          "programs": 180,
+          "functions": 2172,
+          "obligations": 25816,
+          "proved": 25816
+        },
+        "baseline_counted_gap": 0,
+        "candidate_counted_gap": 0,
+        "baseline_unknown_count_function_entries": 0,
+        "candidate_unknown_count_function_entries": 0
+      }
+    }
+  },
+  "denominator_dispositions": [
+    {
+      "program": "tests/deviations/dynany_identity_boundary.py",
+      "check": "gc",
+      "before": 8,
+      "after": 4,
+      "before_proved": 8,
+      "after_proved": 4,
+      "baseline_snapshot_sha256": "ddf67c2c002fc4339a3e51c7882ca650853eced660430aa28d6715ca8f887998",
+      "candidate_snapshot_sha256": "55e62728151906a0305fa1b523c69805b65c99ffbc903e8cf399aeb552bd5d9e",
+      "semantic_review": "storage",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/storage-count-attribution-review.json",
+        "bytes": 146862,
+        "sha256": "6221476e41bb4663106c9b6437ab08dcb55d8501959e7727294392ba6c00e7b0"
+      },
+      "disposition": "The deviation source removes the formerly failing VTuple/optional-list observations after support is added; exact removed sites and named positive coverage are retained. The surviving union-list and wide-integer sites remain.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/01-dynany_identity_boundary/site-excerpts.json",
+        "sha256": "7becc443e2cfcfeecf480e3638b0777b0a2fbfb1672e20faab424ec8cfba9e15",
+        "bytes": 274760
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@main.init",
+          "before_obligations": 8,
+          "after_obligations": 4,
+          "function_absent_in_candidate": false
+        }
+      ]
+    },
+    {
+      "program": "tests/deviations/dynany_identity_boundary.py",
+      "check": "storage",
+      "before": 2,
+      "after": 1,
+      "before_proved": 2,
+      "after_proved": 1,
+      "baseline_snapshot_sha256": "ddf67c2c002fc4339a3e51c7882ca650853eced660430aa28d6715ca8f887998",
+      "candidate_snapshot_sha256": "55e62728151906a0305fa1b523c69805b65c99ffbc903e8cf399aeb552bd5d9e",
+      "semantic_review": "storage",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/storage-count-attribution-review.json",
+        "bytes": 146862,
+        "sha256": "6221476e41bb4663106c9b6437ab08dcb55d8501959e7727294392ba6c00e7b0"
+      },
+      "disposition": "The deviation source removes the formerly failing VTuple/optional-list observations after support is added; exact removed sites and named positive coverage are retained. The surviving union-list and wide-integer sites remain.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/01-dynany_identity_boundary/site-excerpts.json",
+        "sha256": "7becc443e2cfcfeecf480e3638b0777b0a2fbfb1672e20faab424ec8cfba9e15",
+        "bytes": 274760
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@main.init",
+          "before_obligations": 2,
+          "after_obligations": 1,
+          "function_absent_in_candidate": false
+        }
+      ]
+    },
+    {
+      "program": "tests/deviations/lib_types_mappingproxy_eq_other.py",
+      "check": "gc",
+      "before": 9,
+      "after": 6,
+      "before_proved": 9,
+      "after_proved": 6,
+      "baseline_snapshot_sha256": "331b843ef6bd55e9e4a5bba18714be1976aa796b2979a591692fcac1ffc759ef",
+      "candidate_snapshot_sha256": "527aa148c2c40fa3a3c01002f59a511d8c0a32d34b54fa509f571c78a4121e05",
+      "semantic_review": "gc_helpers",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/gc-helper-count-attribution-review.json",
+        "bytes": 187100,
+        "sha256": "9e8b0033d58ae422178c1527b8d86235354452eee9d7e871195ce4f02e1c7eff"
+      },
+      "disposition": "Only unreferenced internal mappingproxy.__ror__ specializations disappear. Each old symbol occurs solely in its definition, and the source library is unchanged. Their complete GC origins are retained.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/02-lib_types_mappingproxy_eq_other/site-excerpts.json",
+        "sha256": "16d9aa23bd30c8f271732ba50cb2faf8f3382a40d0791fd375cfc7e93ec4d698",
+        "bytes": 8537
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "before_obligations": 3,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_ini2toml.py",
+      "check": "gc",
+      "before": 168,
+      "after": 162,
+      "before_proved": 168,
+      "after_proved": 162,
+      "baseline_snapshot_sha256": "3826d3f2a1064ba42456275bfbb4b646240d9ece183aa0a4d42a08d05a5341f2",
+      "candidate_snapshot_sha256": "6565cc993ddfdded890b1ff1e7480c8c4a8be313c7052fb0898c3eff612acb38",
+      "semantic_review": "gc_helpers",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/gc-helper-count-attribution-review.json",
+        "bytes": 187100,
+        "sha256": "9e8b0033d58ae422178c1527b8d86235354452eee9d7e871195ce4f02e1c7eff"
+      },
+      "disposition": "Only unreferenced internal mappingproxy.__ror__ specializations disappear. Each old symbol occurs solely in its definition, and the source library is unchanged. Their complete GC origins are retained.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/03-port_tomli_w_ini2toml/site-excerpts.json",
+        "sha256": "783e865d8108ac8313793683e4afa07896cb8cefe65a9150fa7e2711b7b61bbc",
+        "bytes": 8512
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_tables.py",
+      "check": "gc",
+      "before": 1372,
+      "after": 1366,
+      "before_proved": 1372,
+      "after_proved": 1366,
+      "baseline_snapshot_sha256": "5b20e02a442912c1557ac0830022df9a554189b24ff446702c5a9f76c7c7da97",
+      "candidate_snapshot_sha256": "402d9857a42184003a451d4f6976d05a7559f2e460f55dd7e14c65764884c258",
+      "semantic_review": "gc_helpers",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/gc-helper-count-attribution-review.json",
+        "bytes": 187100,
+        "sha256": "9e8b0033d58ae422178c1527b8d86235354452eee9d7e871195ce4f02e1c7eff"
+      },
+      "disposition": "Only unreferenced internal mappingproxy.__ror__ specializations disappear. Each old symbol occurs solely in its definition, and the source library is unchanged. Their complete GC origins are retained.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/04-port_tomli_w_tables/site-excerpts.json",
+        "sha256": "f095282c5accd4b52f295025fa2e4a39ac93b05442000b767f2505679e3f0854",
+        "bytes": 8508
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_values.py",
+      "check": "gc",
+      "before": 564,
+      "after": 558,
+      "before_proved": 564,
+      "after_proved": 558,
+      "baseline_snapshot_sha256": "a98daf586ea36343620b393bd9bd2dd4ed1efa71f68efa464a70740550f3d847",
+      "candidate_snapshot_sha256": "175d6eac4494ee10d457af15b7307d2636c4ff6633162656c35abbe70d12c9aa",
+      "semantic_review": "gc_helpers",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/gc-helper-count-attribution-review.json",
+        "bytes": 187100,
+        "sha256": "9e8b0033d58ae422178c1527b8d86235354452eee9d7e871195ce4f02e1c7eff"
+      },
+      "disposition": "Only unreferenced internal mappingproxy.__ror__ specializations disappear. Each old symbol occurs solely in its definition, and the source library is unchanged. Their complete GC origins are retained.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/05-port_tomli_w_values/site-excerpts.json",
+        "sha256": "bcafddc9606943851f15ec8ee32bafab3a84ebca02ea4f8e5a6b4d7e37ab4d6e",
+        "bytes": 8506
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/exceptions/exit_enum_member_caught.py",
+      "check": "null",
+      "before": 5,
+      "after": 3,
+      "before_proved": 5,
+      "after_proved": 3,
+      "baseline_snapshot_sha256": "2a96dd523e4902623f05e25413ca50a7a16850d1a3cccbcf84371d67aec3b1a4",
+      "candidate_snapshot_sha256": "41562f0d7d7178d7d3bfe3529d125882cefd15365e15226bcff14267960d6fad",
+      "semantic_review": "enum",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/enum-count-attribution-review.json",
+        "bytes": 174950,
+        "sha256": "8421eee32a1e51e14df13b44e8dbcc93c95f9f323c1abca0d992934663a2dba4"
+      },
+      "disposition": "Typed enum comparison specializations and their _value_ null-removal sites change under native comparison dispatch. Matching uses full parameter/return signatures, including reused names and the retained _int_of.3\u2192.2 specialization, not suffix identity alone.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/06-exit_enum_member_caught/site-excerpts.json",
+        "sha256": "4cd5e1dc026ba32276307e1d5ef7617c4c07aaf83f68ecde07da52edaad77abf",
+        "bytes": 168919
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@f.enum$_int_of.1",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntFlag.__eq__.1",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/exceptions/exit_enum_stored_reflection.py",
+      "check": "null",
+      "before": 32,
+      "after": 30,
+      "before_proved": 32,
+      "after_proved": 30,
+      "baseline_snapshot_sha256": "d1a31947a432b41306415b3aa20ca4709ecb85a11b313ad8197338b876136e6e",
+      "candidate_snapshot_sha256": "853a176ec31a5d8512f686e9447c602f61aa8893713793864a08edcae93b7000",
+      "semantic_review": "enum",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/enum-count-attribution-review.json",
+        "bytes": 174950,
+        "sha256": "8421eee32a1e51e14df13b44e8dbcc93c95f9f323c1abca0d992934663a2dba4"
+      },
+      "disposition": "Typed enum comparison specializations and their _value_ null-removal sites change under native comparison dispatch. Matching uses full parameter/return signatures, including reused names and the retained _int_of.3\u2192.2 specialization, not suffix identity alone.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/07-exit_enum_stored_reflection/site-excerpts.json",
+        "sha256": "b4b5ed520c8f1244e362536469a8f949094ac16fb7cd6614332c1647052865c0",
+        "bytes": 168931
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@f.enum$_int_of.1",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntFlag.__eq__.1",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/exceptions/exit_intflag_stored_mutated.py",
+      "check": "null",
+      "before": 6,
+      "after": 4,
+      "before_proved": 6,
+      "after_proved": 4,
+      "baseline_snapshot_sha256": "226b539efeaa668a414daafc7c3ca40de0ca40678ec9611bd4a37ef464a473e3",
+      "candidate_snapshot_sha256": "95a3181143b62bae425975bac0aa5e607f8f78febc9ca3711123f03b607a97ce",
+      "semantic_review": "enum",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/enum-count-attribution-review.json",
+        "bytes": 174950,
+        "sha256": "8421eee32a1e51e14df13b44e8dbcc93c95f9f323c1abca0d992934663a2dba4"
+      },
+      "disposition": "Typed enum comparison specializations and their _value_ null-removal sites change under native comparison dispatch. Matching uses full parameter/return signatures, including reused names and the retained _int_of.3\u2192.2 specialization, not suffix identity alone.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/08-exit_intflag_stored_mutated/site-excerpts.json",
+        "sha256": "4b6dd37043d5a4b75e43603efb315c5a7f9c3984864f0f923ee66642bf2a4fa3",
+        "bytes": 168925
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@f.enum$_int_of.1",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntFlag.__eq__.1",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/exceptions/exit_intflag_stored_zero.py",
+      "check": "null",
+      "before": 4,
+      "after": 2,
+      "before_proved": 4,
+      "after_proved": 2,
+      "baseline_snapshot_sha256": "689cee0ed231ca096661322d4a20425d546dca3e4da98e166f043205e7e9e072",
+      "candidate_snapshot_sha256": "0c89fd8eacc0f9c60313965deb0733a490187611e6c5bea82688f8207ceddcd6",
+      "semantic_review": "enum",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/enum-count-attribution-review.json",
+        "bytes": 174950,
+        "sha256": "8421eee32a1e51e14df13b44e8dbcc93c95f9f323c1abca0d992934663a2dba4"
+      },
+      "disposition": "Typed enum comparison specializations and their _value_ null-removal sites change under native comparison dispatch. Matching uses full parameter/return signatures, including reused names and the retained _int_of.3\u2192.2 specialization, not suffix identity alone.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/09-exit_intflag_stored_zero/site-excerpts.json",
+        "sha256": "dd7a67414ccea03acc2fd3be073e4548eacbcf9891f381a4093b6755bd2f5442",
+        "bytes": 168916
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@f.enum$_int_of.1",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntFlag.__eq__.1",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/inference/dynany_iter_errors.py",
+      "check": "access",
+      "before": 2,
+      "after": 1,
+      "before_proved": 2,
+      "after_proved": 1,
+      "baseline_snapshot_sha256": "d3b8593780d2b33f94980e8e4d2b1e325cfa71e4fbd43ddc6cd34c560fa3e3ea",
+      "candidate_snapshot_sha256": "50a94ced27db691429630e973f91f7eb30920ffc27495f82f3544241cb73e65a",
+      "semantic_review": "access",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean/access-count-decrease-1158/review.json",
+        "bytes": 3977,
+        "sha256": "1324010dd1540b6a803064753a59d74b66a315dbd8d61f11766d1a243bb757e1"
+      },
+      "disposition": "The final [1,None] loop changes from an unchecked backing-array read to pys_list_get_identity plus pys_list_get, both of which call runtime idx() bounds validation. The earlier action-loop unchecked read remains proved; no C-helper Lean proof is claimed.",
+      "counted_gap_unchanged": true
+    },
+    {
+      "program": "tests/programs/library/lib_enum.py",
+      "check": "gc",
+      "before": 292,
+      "after": 280,
+      "before_proved": 289,
+      "after_proved": 277,
+      "baseline_snapshot_sha256": "db65ff62d37239b35b2bf04c38e54f86dfd8ecdcb876ef34b2368fe735b4c01c",
+      "candidate_snapshot_sha256": "991cb3fcaae549080a1cc180d1c7f4701a005952ed7a11186e3ec4a241ea9d58",
+      "semantic_review": "gc_helpers",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/gc-helper-count-attribution-review.json",
+        "bytes": 187100,
+        "sha256": "9e8b0033d58ae422178c1527b8d86235354452eee9d7e871195ce4f02e1c7eff"
+      },
+      "disposition": "Only unreferenced internal mappingproxy.__ror__ specializations disappear. Each old symbol occurs solely in its definition, and the source library is unchanged. Their complete GC origins are retained.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/10-lib_enum/site-excerpts.json",
+        "sha256": "f439bc404d22ac53b54b537bba5b088ebcd7803979be5a613f22996b5014ce99",
+        "bytes": 15829
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-2.__ror__",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_enum_any.py",
+      "check": "null",
+      "before": 14,
+      "after": 0,
+      "before_proved": 14,
+      "after_proved": 0,
+      "baseline_snapshot_sha256": "308ce9ea95d176aa21d92e76bd6b1a8d02532b5b01e81d7d403681c8059079c5",
+      "candidate_snapshot_sha256": "cdaac687858fc3c9a530d62db54beb10aa7c9f825d2ced7f70bb278ba1d8f276",
+      "semantic_review": "enum",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/enum-count-attribution-review.json",
+        "bytes": 174950,
+        "sha256": "8421eee32a1e51e14df13b44e8dbcc93c95f9f323c1abca0d992934663a2dba4"
+      },
+      "disposition": "Typed enum comparison specializations and their _value_ null-removal sites change under native comparison dispatch. Matching uses full parameter/return signatures, including reused names and the retained _int_of.3\u2192.2 specialization, not suffix identity alone.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/11-lib_enum_any/site-excerpts.json",
+        "sha256": "fd701eb047bb7ae75a639dde4d6badc1bb142f0926ca168c4236870edbebd7ad",
+        "bytes": 1546080
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@f.enum$_int_of.10",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@f.enum$_int_of.13",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@f.enum$_int_of.3",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@f.enum$_int_of.6",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@f.enum$_str_of.1",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@f.enum$_str_of.2",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@f.enum$_str_of.3",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntEnum.__eq__.3",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntEnum.__eq__.6",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntEnum.__eq__.9",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntFlag.__eq__.3",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$StrEnum.__eq__.1",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$StrEnum.__eq__.2",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$StrEnum.__eq__.3",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_enum_flag_bits.py",
+      "check": "null",
+      "before": 17,
+      "after": 15,
+      "before_proved": 17,
+      "after_proved": 15,
+      "baseline_snapshot_sha256": "3e953b894392a1ba36194dbbb23e8447dda6e29b0bb4b3a3719a665591f4f933",
+      "candidate_snapshot_sha256": "6135f58dfc09b26aec281a90666ddf277bbe2cda08b6d2e555dbfb5eeb71fd10",
+      "semantic_review": "enum",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/enum-count-attribution-review.json",
+        "bytes": 174950,
+        "sha256": "8421eee32a1e51e14df13b44e8dbcc93c95f9f323c1abca0d992934663a2dba4"
+      },
+      "disposition": "Typed enum comparison specializations and their _value_ null-removal sites change under native comparison dispatch. Matching uses full parameter/return signatures, including reused names and the retained _int_of.3\u2192.2 specialization, not suffix identity alone.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/12-lib_enum_flag_bits/site-excerpts.json",
+        "sha256": "d11041b7ec40b6380156f5159136fa857ed2ff21c8c04324f5ec8ce40fcc8ed1",
+        "bytes": 168916
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@f.enum$_int_of.1",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntFlag.__eq__.1",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_enum_flag_numeric_lookup.py",
+      "check": "null",
+      "before": 7,
+      "after": 5,
+      "before_proved": 7,
+      "after_proved": 5,
+      "baseline_snapshot_sha256": "ccc4cefc6a4f30cb77301a4af1697f0c17509263c9e33f74e907bf18ff15b41c",
+      "candidate_snapshot_sha256": "ff609402238c44b54e454020bc6699ae1eb4ee38138a5eba24d3aaa7c303fde2",
+      "semantic_review": "enum",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/enum-count-attribution-review.json",
+        "bytes": 174950,
+        "sha256": "8421eee32a1e51e14df13b44e8dbcc93c95f9f323c1abca0d992934663a2dba4"
+      },
+      "disposition": "Typed enum comparison specializations and their _value_ null-removal sites change under native comparison dispatch. Matching uses full parameter/return signatures, including reused names and the retained _int_of.3\u2192.2 specialization, not suffix identity alone.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/13-lib_enum_flag_numeric_lookup/site-excerpts.json",
+        "sha256": "94fd01f43fb2330ef20bf118ebce182812e1f42dad6a465acfdbd624f27f0c6f",
+        "bytes": 168424
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@f.enum$_int_of.1",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntFlag.__eq__.1",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_enum_flag_width.py",
+      "check": "null",
+      "before": 12,
+      "after": 6,
+      "before_proved": 12,
+      "after_proved": 6,
+      "baseline_snapshot_sha256": "efebdd44bef3f19bf562286cfde9b1545bc065834c07f6e8a37eacf4c5bb552f",
+      "candidate_snapshot_sha256": "4794002d7a1d1a6b4f86fbf4b831df3e9a51b2e8fa234b6f382323eca4748119",
+      "semantic_review": "enum",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/enum-count-attribution-review.json",
+        "bytes": 174950,
+        "sha256": "8421eee32a1e51e14df13b44e8dbcc93c95f9f323c1abca0d992934663a2dba4"
+      },
+      "disposition": "Typed enum comparison specializations and their _value_ null-removal sites change under native comparison dispatch. Matching uses full parameter/return signatures, including reused names and the retained _int_of.3\u2192.2 specialization, not suffix identity alone.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/14-lib_enum_flag_width/site-excerpts.json",
+        "sha256": "589fc2121859f6e0f6e5374d9172c462d92b7b17d8a8c51b3a173e4e36b06020",
+        "bytes": 504935
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@f.enum$_int_of.1",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@f.enum$_int_of.2",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@f.enum$_int_of.3",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntFlag.__eq__.1",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntFlag.__eq__.2",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntFlag.__eq__.3",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_enum_format_str.py",
+      "check": "null",
+      "before": 4,
+      "after": 2,
+      "before_proved": 4,
+      "after_proved": 2,
+      "baseline_snapshot_sha256": "6f8c9f28e28876e0cd84348836b4ad972fe4bb111c1e3983efef6b077e33c922",
+      "candidate_snapshot_sha256": "a8208c37db006357338957b6c709c1edb7e3c5396437801f5fa0fd1a4829f69e",
+      "semantic_review": "enum",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/enum-count-attribution-review.json",
+        "bytes": 174950,
+        "sha256": "8421eee32a1e51e14df13b44e8dbcc93c95f9f323c1abca0d992934663a2dba4"
+      },
+      "disposition": "Typed enum comparison specializations and their _value_ null-removal sites change under native comparison dispatch. Matching uses full parameter/return signatures, including reused names and the retained _int_of.3\u2192.2 specialization, not suffix identity alone.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/15-lib_enum_format_str/site-excerpts.json",
+        "sha256": "c7d9f4d846f2e4ec6e950d7ae63be438c81a52c86a0cc1f35cf28647c46cea75",
+        "bytes": 168904
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@f.enum$_int_of.1",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntFlag.__eq__.1",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_enum_intflag.py",
+      "check": "null",
+      "before": 13,
+      "after": 10,
+      "before_proved": 13,
+      "after_proved": 10,
+      "baseline_snapshot_sha256": "5d222825b682713803d73857e976119310874b90e6fa93689630de0bb27ed570",
+      "candidate_snapshot_sha256": "4a2ff553289cd5e0f5e45c4b32c4f4c89a25989089a6942ac716e188d985aada",
+      "semantic_review": "enum",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/enum-count-attribution-review.json",
+        "bytes": 174950,
+        "sha256": "8421eee32a1e51e14df13b44e8dbcc93c95f9f323c1abca0d992934663a2dba4"
+      },
+      "disposition": "Typed enum comparison specializations and their _value_ null-removal sites change under native comparison dispatch. Matching uses full parameter/return signatures, including reused names and the retained _int_of.3\u2192.2 specialization, not suffix identity alone.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/16-lib_enum_intflag/site-excerpts.json",
+        "sha256": "4c042739e589a5983165268cb888c9d2cd38fb9e09066bf66791a4e602179f7d",
+        "bytes": 224252
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@f.enum$_int_of.3",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntEnum.__eq__.1",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntFlag.__eq__.3",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_enum_mixin.py",
+      "check": "gc",
+      "before": 83,
+      "after": 77,
+      "before_proved": 83,
+      "after_proved": 77,
+      "baseline_snapshot_sha256": "7fc35fb80f8a1764c6caeafb053f4a7c8f2e1651bc04648b99471451f5bb47ca",
+      "candidate_snapshot_sha256": "151e141a4500d57e24c627e8c9f95eca9cd82c9611fe241e325c1dc208a72457",
+      "semantic_review": "gc_helpers",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/gc-helper-count-attribution-review.json",
+        "bytes": 187100,
+        "sha256": "9e8b0033d58ae422178c1527b8d86235354452eee9d7e871195ce4f02e1c7eff"
+      },
+      "disposition": "Only unreferenced internal mappingproxy.__ror__ specializations disappear. Each old symbol occurs solely in its definition, and the source library is unchanged. Their complete GC origins are retained.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/17-lib_enum_mixin/site-excerpts.json",
+        "sha256": "76944c4d15a64505d22d17f41f3ba7920080b202932697620bb87477a8b6e131",
+        "bytes": 8466
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_enum_plain_isinstance.py",
+      "check": "null",
+      "before": 24,
+      "after": 12,
+      "before_proved": 24,
+      "after_proved": 12,
+      "baseline_snapshot_sha256": "b77ecc2fea0943df1f2e16c50684dd3126b898605544bbf0946ec2eacfb1e7bb",
+      "candidate_snapshot_sha256": "fe04d27bb681e8d740babc708daa921a72c25fd5270ae372ffa4f6ffafc2aa6a",
+      "semantic_review": "enum",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/enum-count-attribution-review.json",
+        "bytes": 174950,
+        "sha256": "8421eee32a1e51e14df13b44e8dbcc93c95f9f323c1abca0d992934663a2dba4"
+      },
+      "disposition": "Typed enum comparison specializations and their _value_ null-removal sites change under native comparison dispatch. Matching uses full parameter/return signatures, including reused names and the retained _int_of.3\u2192.2 specialization, not suffix identity alone.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/18-lib_enum_plain_isinstance/site-excerpts.json",
+        "sha256": "f510a4a70f66f0519b2373230fba2988739a94bcfc4109e2250e6a6c7784b5a7",
+        "bytes": 2119815
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@f.enum$_int_of.3",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": false
+        },
+        {
+          "function": "@f.enum$_int_of.5",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@f.enum$_int_of.8",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@f.enum$_str_of.1",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": false
+        },
+        {
+          "function": "@f.enum$_str_of.2",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": false
+        },
+        {
+          "function": "@f.enum$_str_of.3",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntEnum.__eq__.3",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntEnum.__eq__.5",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntFlag.__eq__.3",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$StrEnum.__eq__.1",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": false
+        },
+        {
+          "function": "@m.enum$StrEnum.__eq__.2",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": false
+        },
+        {
+          "function": "@m.enum$StrEnum.__eq__.3",
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib.py",
+      "check": "gc",
+      "before": 705,
+      "after": 699,
+      "before_proved": 705,
+      "after_proved": 699,
+      "baseline_snapshot_sha256": "a576eb40ca544e03868414f9104897f428800576937aa510ed0183d10268e4a4",
+      "candidate_snapshot_sha256": "b6a55b9977833ca70994abe574340bedf0540b2ef47a77a747462296f8754587",
+      "semantic_review": "gc_helpers",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/gc-helper-count-attribution-review.json",
+        "bytes": 187100,
+        "sha256": "9e8b0033d58ae422178c1527b8d86235354452eee9d7e871195ce4f02e1c7eff"
+      },
+      "disposition": "Only unreferenced internal mappingproxy.__ror__ specializations disappear. Each old symbol occurs solely in its definition, and the source library is unchanged. Their complete GC origins are retained.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/19-lib_tomllib/site-excerpts.json",
+        "sha256": "e31ac6c32fad6d7ae8707387ea71966f6058d99281cf06e50dc232e2929c61bc",
+        "bytes": 2797815
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib.py",
+      "check": "null",
+      "before": 759,
+      "after": 756,
+      "before_proved": 753,
+      "after_proved": 750,
+      "baseline_snapshot_sha256": "a576eb40ca544e03868414f9104897f428800576937aa510ed0183d10268e4a4",
+      "candidate_snapshot_sha256": "b6a55b9977833ca70994abe574340bedf0540b2ef47a77a747462296f8754587",
+      "semantic_review": "tomllib",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/tomllib-count-attribution-review.json",
+        "bytes": 53042,
+        "sha256": "aa4c3005e14b93855e7f1fc17dbfab228a06313c8e984f819654a815392eba9e"
+      },
+      "disposition": "Three Flags receiver checks previously removed by the null pass now remain at runtime: add_pending, the second is_, and unset_all. The receiver is Output.flags (field 1); failure raises AttributeError. Exact before/after pass records preserve each check.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/19-lib_tomllib/site-excerpts.json",
+        "sha256": "e31ac6c32fad6d7ae8707387ea71966f6058d99281cf06e50dc232e2929c61bc",
+        "bytes": 2797815
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@f.tomllib$_parser$create_dict_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "function_absent_in_candidate": false
+        },
+        {
+          "function": "@f.tomllib$_parser$create_list_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "function_absent_in_candidate": false
+        },
+        {
+          "function": "@f.tomllib$_parser$key_value_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "function_absent_in_candidate": false
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_boundary.py",
+      "check": "gc",
+      "before": 689,
+      "after": 683,
+      "before_proved": 689,
+      "after_proved": 683,
+      "baseline_snapshot_sha256": "e87c1d1b56315263d0d521dcaba0f2e2e9c49b8329d3abfdf46c0695789f0dc0",
+      "candidate_snapshot_sha256": "6b846b45f1c82ab5b232c5068b2156839b9fd3dd29a2d5bf561af148e8267444",
+      "semantic_review": "gc_helpers",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/gc-helper-count-attribution-review.json",
+        "bytes": 187100,
+        "sha256": "9e8b0033d58ae422178c1527b8d86235354452eee9d7e871195ce4f02e1c7eff"
+      },
+      "disposition": "Only unreferenced internal mappingproxy.__ror__ specializations disappear. Each old symbol occurs solely in its definition, and the source library is unchanged. Their complete GC origins are retained.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/20-lib_tomllib_boundary/site-excerpts.json",
+        "sha256": "1e18d14eaee85aadae403186f2daddec88fcfd83be02250220d0dfe17ed654f5",
+        "bytes": 2797836
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_boundary.py",
+      "check": "null",
+      "before": 736,
+      "after": 733,
+      "before_proved": 736,
+      "after_proved": 733,
+      "baseline_snapshot_sha256": "e87c1d1b56315263d0d521dcaba0f2e2e9c49b8329d3abfdf46c0695789f0dc0",
+      "candidate_snapshot_sha256": "6b846b45f1c82ab5b232c5068b2156839b9fd3dd29a2d5bf561af148e8267444",
+      "semantic_review": "tomllib",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/tomllib-count-attribution-review.json",
+        "bytes": 53042,
+        "sha256": "aa4c3005e14b93855e7f1fc17dbfab228a06313c8e984f819654a815392eba9e"
+      },
+      "disposition": "Three Flags receiver checks previously removed by the null pass now remain at runtime: add_pending, the second is_, and unset_all. The receiver is Output.flags (field 1); failure raises AttributeError. Exact before/after pass records preserve each check.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/20-lib_tomllib_boundary/site-excerpts.json",
+        "sha256": "1e18d14eaee85aadae403186f2daddec88fcfd83be02250220d0dfe17ed654f5",
+        "bytes": 2797836
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@f.tomllib$_parser$create_dict_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "function_absent_in_candidate": false
+        },
+        {
+          "function": "@f.tomllib$_parser$create_list_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "function_absent_in_candidate": false
+        },
+        {
+          "function": "@f.tomllib$_parser$key_value_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "function_absent_in_candidate": false
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_dynamic.py",
+      "check": "gc",
+      "before": 677,
+      "after": 671,
+      "before_proved": 677,
+      "after_proved": 671,
+      "baseline_snapshot_sha256": "52ac7ccef66e21579ea817cc37bb1a381935aaccbc7753c9aee6cafd38232149",
+      "candidate_snapshot_sha256": "8e79209129cd43abaffa9166979885e58e8576f4afb1d281fe161ea71c7ba387",
+      "semantic_review": "gc_helpers",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/gc-helper-count-attribution-review.json",
+        "bytes": 187100,
+        "sha256": "9e8b0033d58ae422178c1527b8d86235354452eee9d7e871195ce4f02e1c7eff"
+      },
+      "disposition": "Only unreferenced internal mappingproxy.__ror__ specializations disappear. Each old symbol occurs solely in its definition, and the source library is unchanged. Their complete GC origins are retained.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/21-lib_tomllib_dynamic/site-excerpts.json",
+        "sha256": "ddd1126f45bd491f22ec2b1200065706f4e2b9da7cc23cb58f625f511480fd41",
+        "bytes": 2797833
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_dynamic.py",
+      "check": "null",
+      "before": 751,
+      "after": 748,
+      "before_proved": 751,
+      "after_proved": 748,
+      "baseline_snapshot_sha256": "52ac7ccef66e21579ea817cc37bb1a381935aaccbc7753c9aee6cafd38232149",
+      "candidate_snapshot_sha256": "8e79209129cd43abaffa9166979885e58e8576f4afb1d281fe161ea71c7ba387",
+      "semantic_review": "tomllib",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/tomllib-count-attribution-review.json",
+        "bytes": 53042,
+        "sha256": "aa4c3005e14b93855e7f1fc17dbfab228a06313c8e984f819654a815392eba9e"
+      },
+      "disposition": "Three Flags receiver checks previously removed by the null pass now remain at runtime: add_pending, the second is_, and unset_all. The receiver is Output.flags (field 1); failure raises AttributeError. Exact before/after pass records preserve each check.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/21-lib_tomllib_dynamic/site-excerpts.json",
+        "sha256": "ddd1126f45bd491f22ec2b1200065706f4e2b9da7cc23cb58f625f511480fd41",
+        "bytes": 2797833
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@f.tomllib$_parser$create_dict_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "function_absent_in_candidate": false
+        },
+        {
+          "function": "@f.tomllib$_parser$create_list_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "function_absent_in_candidate": false
+        },
+        {
+          "function": "@f.tomllib$_parser$key_value_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "function_absent_in_candidate": false
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_flags.py",
+      "check": "gc",
+      "before": 679,
+      "after": 673,
+      "before_proved": 679,
+      "after_proved": 673,
+      "baseline_snapshot_sha256": "21d33b6cf7d1688052f0b43919ff7f516287e095a41b8c369a7a9391565d5c11",
+      "candidate_snapshot_sha256": "db1c0913ffe8fa3a70afbc7ba39f5e004c80d24198d21c406f3eda0897af208d",
+      "semantic_review": "gc_helpers",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/gc-helper-count-attribution-review.json",
+        "bytes": 187100,
+        "sha256": "9e8b0033d58ae422178c1527b8d86235354452eee9d7e871195ce4f02e1c7eff"
+      },
+      "disposition": "Only unreferenced internal mappingproxy.__ror__ specializations disappear. Each old symbol occurs solely in its definition, and the source library is unchanged. Their complete GC origins are retained.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/22-lib_tomllib_flags/site-excerpts.json",
+        "sha256": "693770089e05017d2c7054553a53613bdf8ec2488ce4520588aec61d07a8ba81",
+        "bytes": 2797827
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_flags.py",
+      "check": "null",
+      "before": 731,
+      "after": 728,
+      "before_proved": 731,
+      "after_proved": 728,
+      "baseline_snapshot_sha256": "21d33b6cf7d1688052f0b43919ff7f516287e095a41b8c369a7a9391565d5c11",
+      "candidate_snapshot_sha256": "db1c0913ffe8fa3a70afbc7ba39f5e004c80d24198d21c406f3eda0897af208d",
+      "semantic_review": "tomllib",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/tomllib-count-attribution-review.json",
+        "bytes": 53042,
+        "sha256": "aa4c3005e14b93855e7f1fc17dbfab228a06313c8e984f819654a815392eba9e"
+      },
+      "disposition": "Three Flags receiver checks previously removed by the null pass now remain at runtime: add_pending, the second is_, and unset_all. The receiver is Output.flags (field 1); failure raises AttributeError. Exact before/after pass records preserve each check.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/22-lib_tomllib_flags/site-excerpts.json",
+        "sha256": "693770089e05017d2c7054553a53613bdf8ec2488ce4520588aec61d07a8ba81",
+        "bytes": 2797827
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@f.tomllib$_parser$create_dict_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "function_absent_in_candidate": false
+        },
+        {
+          "function": "@f.tomllib$_parser$create_list_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "function_absent_in_candidate": false
+        },
+        {
+          "function": "@f.tomllib$_parser$key_value_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "function_absent_in_candidate": false
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_typed_callback.py",
+      "check": "gc",
+      "before": 555,
+      "after": 549,
+      "before_proved": 555,
+      "after_proved": 549,
+      "baseline_snapshot_sha256": "7e5f1305f2e1051b018efc698890caa516ea56966369e86ae6c8bbea1587461c",
+      "candidate_snapshot_sha256": "89f4b18a97d61f8cf4da15c5d9d29906b180971837737ab13814111bc1e0f661",
+      "semantic_review": "gc_helpers",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/gc-helper-count-attribution-review.json",
+        "bytes": 187100,
+        "sha256": "9e8b0033d58ae422178c1527b8d86235354452eee9d7e871195ce4f02e1c7eff"
+      },
+      "disposition": "Only unreferenced internal mappingproxy.__ror__ specializations disappear. Each old symbol occurs solely in its definition, and the source library is unchanged. Their complete GC origins are retained.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/23-lib_tomllib_typed_callback/site-excerpts.json",
+        "sha256": "5af8678ecb1848c973f3504dacc9f9462d55367340309593321e8b62669913ef",
+        "bytes": 8532
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_uncaught.py",
+      "check": "gc",
+      "before": 679,
+      "after": 673,
+      "before_proved": 679,
+      "after_proved": 673,
+      "baseline_snapshot_sha256": "744ef1110599076fe2e9fed03919d55d12a1c50b57db5bc874bb3c58d8e41a80",
+      "candidate_snapshot_sha256": "8a8edad26e395ce0f56a7b672e38fe6741e3df080975128c5b0523d25453671f",
+      "semantic_review": "gc_helpers",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/gc-helper-count-attribution-review.json",
+        "bytes": 187100,
+        "sha256": "9e8b0033d58ae422178c1527b8d86235354452eee9d7e871195ce4f02e1c7eff"
+      },
+      "disposition": "Only unreferenced internal mappingproxy.__ror__ specializations disappear. Each old symbol occurs solely in its definition, and the source library is unchanged. Their complete GC origins are retained.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/24-lib_tomllib_uncaught/site-excerpts.json",
+        "sha256": "9f60e33caeeb3fe4985fbbe9ffd57f3589a490e331b2dec20bef1053fbefbd31",
+        "bytes": 2797836
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_uncaught.py",
+      "check": "null",
+      "before": 731,
+      "after": 728,
+      "before_proved": 731,
+      "after_proved": 728,
+      "baseline_snapshot_sha256": "744ef1110599076fe2e9fed03919d55d12a1c50b57db5bc874bb3c58d8e41a80",
+      "candidate_snapshot_sha256": "8a8edad26e395ce0f56a7b672e38fe6741e3df080975128c5b0523d25453671f",
+      "semantic_review": "tomllib",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/tomllib-count-attribution-review.json",
+        "bytes": 53042,
+        "sha256": "aa4c3005e14b93855e7f1fc17dbfab228a06313c8e984f819654a815392eba9e"
+      },
+      "disposition": "Three Flags receiver checks previously removed by the null pass now remain at runtime: add_pending, the second is_, and unset_all. The receiver is Output.flags (field 1); failure raises AttributeError. Exact before/after pass records preserve each check.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/24-lib_tomllib_uncaught/site-excerpts.json",
+        "sha256": "9f60e33caeeb3fe4985fbbe9ffd57f3589a490e331b2dec20bef1053fbefbd31",
+        "bytes": 2797836
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@f.tomllib$_parser$create_dict_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "function_absent_in_candidate": false
+        },
+        {
+          "function": "@f.tomllib$_parser$create_list_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "function_absent_in_candidate": false
+        },
+        {
+          "function": "@f.tomllib$_parser$key_value_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "function_absent_in_candidate": false
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_types_mappingproxy.py",
+      "check": "gc",
+      "before": 131,
+      "after": 119,
+      "before_proved": 131,
+      "after_proved": 119,
+      "baseline_snapshot_sha256": "05ca373f3ee04c54e0a405fa90ba975992cc3184dce52742a44810880be9a1f1",
+      "candidate_snapshot_sha256": "3e2ba32ed811102d09c99a875e8b9b7de5bee986e7dcd6d9e43182db09ce8f7a",
+      "semantic_review": "gc_helpers",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/gc-helper-count-attribution-review.json",
+        "bytes": 187100,
+        "sha256": "9e8b0033d58ae422178c1527b8d86235354452eee9d7e871195ce4f02e1c7eff"
+      },
+      "disposition": "Only unreferenced internal mappingproxy.__ror__ specializations disappear. Each old symbol occurs solely in its definition, and the source library is unchanged. Their complete GC origins are retained.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/25-lib_types_mappingproxy/site-excerpts.json",
+        "sha256": "28d2a4c6ca331ca4e2bb11da0c4b86d5e23267eafd3e5f32c5f3ce98b404d60c",
+        "bytes": 15843
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-3.__ror__",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-7.__ror__",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_types_mappingproxy_opaque.py",
+      "check": "gc",
+      "before": 14,
+      "after": 11,
+      "before_proved": 14,
+      "after_proved": 11,
+      "baseline_snapshot_sha256": "32781b6f7703df4735a4a952d7e0805f20c4e81af8a407986da078bf43e0a6e7",
+      "candidate_snapshot_sha256": "80a64b0a19c3faacb61471657d7ea33aa0693673bd2c687638e2788749e7fda4",
+      "semantic_review": "gc_helpers",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/gc-helper-count-attribution-review.json",
+        "bytes": 187100,
+        "sha256": "9e8b0033d58ae422178c1527b8d86235354452eee9d7e871195ce4f02e1c7eff"
+      },
+      "disposition": "Only unreferenced internal mappingproxy.__ror__ specializations disappear. Each old symbol occurs solely in its definition, and the source library is unchanged. Their complete GC origins are retained.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/26-lib_types_mappingproxy_opaque/site-excerpts.json",
+        "sha256": "cd12751b8b2ebabc75f9b60ee870adcba7e3bb7d1bb6b69b57f1aa8e656defa8",
+        "bytes": 8537
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "before_obligations": 3,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/numbers/python_int_vtuple_materialization.py",
+      "check": "storage",
+      "before": 46,
+      "after": 37,
+      "before_proved": 46,
+      "after_proved": 37,
+      "baseline_snapshot_sha256": "ebc2efa8b9ffab7c69f95d4ab542e138a9478ae94af8266307f6733fb69a074e",
+      "candidate_snapshot_sha256": "5db24ceccdcf9836350a5e3d1ce295111caadcdac9acc80a2f64e20dcaa31dac",
+      "semantic_review": "storage",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/storage-count-attribution-review.json",
+        "bytes": 146862,
+        "sha256": "6221476e41bb4663106c9b6437ab08dcb55d8501959e7727294392ba6c00e7b0"
+      },
+      "disposition": "The unchanged source has a net -9 storage count: optional 18\u21927 (-11), small 6\u21928 (+2). Twelve intermediate-tuple marker/narrow/decode obligations disappear; three identity-capture low-word obligations are added. Final overflow guards and evaluation order remain.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/27-python_int_vtuple_materialization/site-excerpts.json",
+        "sha256": "6e8d7a08cf8a8837721b1b7ef1f760639f2d0f4c0001c78355e9448a70ea34b3",
+        "bytes": 320756
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@f.optional",
+          "before_obligations": 18,
+          "after_obligations": 7,
+          "function_absent_in_candidate": false
+        },
+        {
+          "function": "@f.small",
+          "before_obligations": 6,
+          "after_obligations": 8,
+          "function_absent_in_candidate": false
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/upstream/upstream_tomllib_data.py",
+      "check": "gc",
+      "before": 747,
+      "after": 741,
+      "before_proved": 747,
+      "after_proved": 741,
+      "baseline_snapshot_sha256": "4080c224cb39df85c3d98dc73ff268887bf6a535697785deabd32033ec00fa6d",
+      "candidate_snapshot_sha256": "937d0288955e198ce10e3ea07b9006761a55f81d6386578de0536f5983b0a7ae",
+      "semantic_review": "gc_helpers",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/gc-helper-count-attribution-review.json",
+        "bytes": 187100,
+        "sha256": "9e8b0033d58ae422178c1527b8d86235354452eee9d7e871195ce4f02e1c7eff"
+      },
+      "disposition": "Only unreferenced internal mappingproxy.__ror__ specializations disappear. Each old symbol occurs solely in its definition, and the source library is unchanged. Their complete GC origins are retained.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/28-upstream_tomllib_data/site-excerpts.json",
+        "sha256": "797b96f7b96710dd197fb3d4f867e96511a1df4a7fec18e06d2cbb2bc39e05ef",
+        "bytes": 2797840
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/upstream/upstream_tomllib_data.py",
+      "check": "null",
+      "before": 731,
+      "after": 728,
+      "before_proved": 731,
+      "after_proved": 728,
+      "baseline_snapshot_sha256": "4080c224cb39df85c3d98dc73ff268887bf6a535697785deabd32033ec00fa6d",
+      "candidate_snapshot_sha256": "937d0288955e198ce10e3ea07b9006761a55f81d6386578de0536f5983b0a7ae",
+      "semantic_review": "tomllib",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/tomllib-count-attribution-review.json",
+        "bytes": 53042,
+        "sha256": "aa4c3005e14b93855e7f1fc17dbfab228a06313c8e984f819654a815392eba9e"
+      },
+      "disposition": "Three Flags receiver checks previously removed by the null pass now remain at runtime: add_pending, the second is_, and unset_all. The receiver is Output.flags (field 1); failure raises AttributeError. Exact before/after pass records preserve each check.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/28-upstream_tomllib_data/site-excerpts.json",
+        "sha256": "797b96f7b96710dd197fb3d4f867e96511a1df4a7fec18e06d2cbb2bc39e05ef",
+        "bytes": 2797840
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@f.tomllib$_parser$create_dict_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "function_absent_in_candidate": false
+        },
+        {
+          "function": "@f.tomllib$_parser$create_list_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "function_absent_in_candidate": false
+        },
+        {
+          "function": "@f.tomllib$_parser$key_value_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "function_absent_in_candidate": false
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/upstream/upstream_tomllib_misc.py",
+      "check": "gc",
+      "before": 695,
+      "after": 689,
+      "before_proved": 695,
+      "after_proved": 689,
+      "baseline_snapshot_sha256": "01eae00b672bd6c1da243c12a38a4ab241535567cd6a796d16f29d0c2f1fe729",
+      "candidate_snapshot_sha256": "0fe47b0912469dd38db40da5ed2b5d6d40a3ba05bac28aa3a72f4211c6740ad9",
+      "semantic_review": "gc_helpers",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/gc-helper-count-attribution-review.json",
+        "bytes": 187100,
+        "sha256": "9e8b0033d58ae422178c1527b8d86235354452eee9d7e871195ce4f02e1c7eff"
+      },
+      "disposition": "Only unreferenced internal mappingproxy.__ror__ specializations disappear. Each old symbol occurs solely in its definition, and the source library is unchanged. Their complete GC origins are retained.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/29-upstream_tomllib_misc/site-excerpts.json",
+        "sha256": "7817cbe954bdf15196eeda216a8eaf77e050a3b23df1287f20f0486d775cbac6",
+        "bytes": 2797786
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@m._pystachy_mappingproxy$mappingproxy-1.__ror__",
+          "before_obligations": 6,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/upstream/upstream_tomllib_misc.py",
+      "check": "null",
+      "before": 736,
+      "after": 733,
+      "before_proved": 736,
+      "after_proved": 733,
+      "baseline_snapshot_sha256": "01eae00b672bd6c1da243c12a38a4ab241535567cd6a796d16f29d0c2f1fe729",
+      "candidate_snapshot_sha256": "0fe47b0912469dd38db40da5ed2b5d6d40a3ba05bac28aa3a72f4211c6740ad9",
+      "semantic_review": "tomllib",
+      "review": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/tomllib-count-attribution-review.json",
+        "bytes": 53042,
+        "sha256": "aa4c3005e14b93855e7f1fc17dbfab228a06313c8e984f819654a815392eba9e"
+      },
+      "disposition": "Three Flags receiver checks previously removed by the null pass now remain at runtime: add_pending, the second is_, and unset_all. The receiver is Output.flags (field 1); failure raises AttributeError. Exact before/after pass records preserve each check.",
+      "counted_gap_unchanged": true,
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/29-upstream_tomllib_misc/site-excerpts.json",
+        "sha256": "7817cbe954bdf15196eeda216a8eaf77e050a3b23df1287f20f0486d775cbac6",
+        "bytes": 2797786
+      },
+      "literal_symbol_count_changes": [
+        {
+          "function": "@f.tomllib$_parser$create_dict_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "function_absent_in_candidate": false
+        },
+        {
+          "function": "@f.tomllib$_parser$create_list_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "function_absent_in_candidate": false
+        },
+        {
+          "function": "@f.tomllib$_parser$key_value_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "function_absent_in_candidate": false
+        }
+      ]
+    }
+  ],
+  "net_decreases_by_category": {
+    "gc": 106,
+    "storage": 10,
+    "null": 70,
+    "access": 1
+  },
+  "raw_shared_residual_changes_without_normalization": [],
+  "added_residual_functions": [
+    {
+      "program": "tests/deviations/complex_union_none.py",
+      "check": "union",
+      "function": "@main.init",
+      "obligations": 12,
+      "reason": "mach.load at entry:9 needs %t3 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/inference/dynany_complex_union_identity.py",
+      "check": "union",
+      "function": "@m._pystachy_complex$complex.__eq__.1",
+      "obligations": 4,
+      "reason": "union.tag at entry:3 needs %a1 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/inference/dynany_complex_union_identity.py",
+      "check": "union",
+      "function": "@f.check",
+      "obligations": 26,
+      "reason": "union.tag at L84:19 needs %t119 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/library/lib_decimal.py",
+      "check": "fields",
+      "function": "@main.init",
+      "obligations": null,
+      "reason": "candidate inference exceeds the prototype's resource bound",
+      "status": "unsupported"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_container_eq.py",
+      "check": "union",
+      "function": "@f.lists",
+      "obligations": 8,
+      "reason": "union.tag at entry:6 needs %a0 in ['member:_pystachy_complex$complex', 'member:list[int]']; known: ['member:_pystachy_complex$complex', 'member:list[int]', 'nul",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_container_eq.py",
+      "check": "union",
+      "function": "@f.dicts",
+      "obligations": 6,
+      "reason": "union.tag at entry:6 needs %a0 in ['member:_pystachy_complex$complex', 'member:dict[str,int]']; known: ['member:_pystachy_complex$complex', 'member:dict[str,int",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_container_eq.py",
+      "check": "union",
+      "function": "@m._pystachy_complex$complex.__eq__.1",
+      "obligations": 3,
+      "reason": "union.tag at entry:3 needs %a1 in ['member:_pystachy_complex$complex', 'member:list[int]']; known: ['member:_pystachy_complex$complex', 'member:list[int]', 'nul",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_container_eq.py",
+      "check": "union",
+      "function": "@f.search",
+      "obligations": 72,
+      "reason": "union.tag at entry:4 needs %a0 in ['member:_pystachy_complex$complex', 'member:list[int]']; known: ['member:_pystachy_complex$complex', 'member:list[int]', 'nul",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_enum_eq.py",
+      "check": "union",
+      "function": "@f.numbers",
+      "obligations": 33,
+      "reason": "union.tag at entry:3 needs %a0 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_identity.py",
+      "check": "union",
+      "function": "@m._pystachy_complex$complex.__eq__.1",
+      "obligations": 4,
+      "reason": "union.tag at entry:3 needs %a1 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_identity.py",
+      "check": "union",
+      "function": "@f.search",
+      "obligations": 70,
+      "reason": "union.tag at entry:9 needs %t12 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_nested.py",
+      "check": "union",
+      "function": "@f.show",
+      "obligations": 6,
+      "reason": "mach.load at entry:12 needs %a0 in ['member:_pystachy_complex$complex', 'member:list[_pystachy_complex$complex]']; known: ['member:_pystachy_complex$complex', '",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_object_eq.py",
+      "check": "union",
+      "function": "@f.numbers",
+      "obligations": 6,
+      "reason": "union.tag at entry:6 needs %a0 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_tuple_search.py",
+      "check": "union",
+      "function": "@m._pystachy_complex$complex.__eq__.1",
+      "obligations": 4,
+      "reason": "union.tag at entry:3 needs %a1 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_tuple_search.py",
+      "check": "union",
+      "function": "@m._pystachy_complex$complex.__eq__.2",
+      "obligations": 4,
+      "reason": "union.tag at entry:3 needs %a1 in ['member:_pystachy_complex$complex', 'member:float']; known: ['member:_pystachy_complex$complex', 'member:float', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_tuple_search.py",
+      "check": "union",
+      "function": "@main.init",
+      "obligations": 30,
+      "reason": "union.tag at L4:13 needs %t20 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_unions.py",
+      "check": "union",
+      "function": "@main.init",
+      "obligations": 75,
+      "reason": "mach.load at L37:10 needs %t46 in ['member:_pystachy_complex$complex', 'member:bool', 'member:float', 'member:int', 'member:str']; known: ['member:_pystachy_com",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_unions.py",
+      "check": "union",
+      "function": "@f.describe",
+      "obligations": 9,
+      "reason": "union.tag at entry:2 needs %a0 in ['member:_pystachy_complex$complex', 'member:bool', 'member:float', 'member:int', 'member:str']; known: ['member:_pystachy_com",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_unions.py",
+      "check": "union",
+      "function": "@f.fold",
+      "obligations": 52,
+      "reason": "union.tag at entry:4 needs %a1 in ['member:_pystachy_complex$complex', 'member:bool', 'member:float', 'member:int', 'member:str']; known: ['member:_pystachy_com",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_unions.py",
+      "check": "union",
+      "function": "@m._pystachy_complex$complex.__eq__.2",
+      "obligations": 3,
+      "reason": "union.tag at entry:3 needs %a1 in ['member:_pystachy_complex$complex', 'member:float', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:float'",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_unions.py",
+      "check": "union",
+      "function": "@m._pystachy_complex$complex.__eq__.3",
+      "obligations": 5,
+      "reason": "union.tag at entry:3 needs %a1 in ['member:_pystachy_complex$complex', 'member:int', 'member:str']; known: ['member:_pystachy_complex$complex', 'member:int', 'm",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_unions.py",
+      "check": "union",
+      "function": "@f.numeric",
+      "obligations": 110,
+      "reason": "union.tag at entry:5 needs %a0 in ['member:_pystachy_complex$complex', 'member:float', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:float'",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_values.py",
+      "check": "gc",
+      "function": "@f._pystachy_copy$_memo_get.1",
+      "obligations": 3,
+      "reason": "ret at L20:7 (operand 0) needs %t29 in ['none', 'scanned']; known: nothing",
+      "status": "rejected"
+    }
+  ],
+  "complex_joint_verdict_counts": [
+    {
+      "program": "tests/deviations/complex_union_none.py",
+      "union_gap": 12,
+      "payload_gap": 8,
+      "matches_review": true
+    },
+    {
+      "program": "tests/programs/inference/dynany_complex_union_identity.py",
+      "union_gap": 30,
+      "payload_gap": 21,
+      "matches_review": true
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_container_eq.py",
+      "union_gap": 89,
+      "payload_gap": 48,
+      "matches_review": true
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_enum_eq.py",
+      "union_gap": 33,
+      "payload_gap": 22,
+      "matches_review": true
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_identity.py",
+      "union_gap": 74,
+      "payload_gap": 52,
+      "matches_review": true
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_nested.py",
+      "union_gap": 6,
+      "payload_gap": 4,
+      "matches_review": true
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_object_eq.py",
+      "union_gap": 6,
+      "payload_gap": 4,
+      "matches_review": true
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_tuple_search.py",
+      "union_gap": 38,
+      "payload_gap": 25,
+      "matches_review": true
+    },
+    {
+      "program": "tests/programs/numbers/complex_unions.py",
+      "union_gap": 254,
+      "payload_gap": 225,
+      "matches_review": true
+    }
+  ],
+  "unknown_count_entries": {
+    "baseline": {
+      "access": 0,
+      "fields": 426,
+      "gc": 9,
+      "null": 0,
+      "payload": 0,
+      "union": 8,
+      "union_payload": 0,
+      "int": 0,
+      "int_inline": 0,
+      "storage": 0
+    },
+    "candidate": {
+      "access": 0,
+      "fields": 427,
+      "gc": 9,
+      "null": 0,
+      "payload": 0,
+      "union": 8,
+      "union_payload": 0,
+      "int": 0,
+      "int_inline": 0,
+      "storage": 0
+    },
+    "unit": "program/check/function record whose obligation count is null; not a count of missing obligations"
+  },
+  "storage_blocker_resolution": {
+    "program": "tests/programs/numbers/python_int_optional_tuple_keys.py",
+    "previous_complete_failed_record": {
+      "checks": {
+        "access": {
+          "functions": 2,
+          "obligations": 9,
+          "proved": 9,
+          "unproved": []
+        },
+        "fields": {
+          "functions": 0,
+          "obligations": 0,
+          "proved": 0,
+          "unproved": []
+        },
+        "gc": {
+          "functions": 7,
+          "obligations": 129,
+          "proved": 129,
+          "unproved": []
+        },
+        "int": {
+          "functions": 0,
+          "obligations": 0,
+          "proved": 0,
+          "unproved": []
+        },
+        "int_inline": {
+          "functions": 2,
+          "obligations": 18,
+          "proved": 18,
+          "unproved": []
+        },
+        "null": {
+          "functions": 0,
+          "obligations": 0,
+          "proved": 0,
+          "unproved": []
+        },
+        "payload": {
+          "functions": 0,
+          "obligations": 0,
+          "proved": 0,
+          "unproved": []
+        },
+        "storage": {
+          "functions": 7,
+          "obligations": 8,
+          "proved": 8,
+          "unproved": [
+            {
+              "function": "@main.init",
+              "obligations": null,
+              "reason": "tuple boundary changes a non-integer representation",
+              "status": "unsupported"
+            },
+            {
+              "function": "@f.exercise",
+              "obligations": null,
+              "reason": "tuple boundary changes a non-integer representation",
+              "status": "unsupported"
+            },
+            {
+              "function": "@f.fixed_optional_tuple_keys$read_nested",
+              "obligations": null,
+              "reason": "tuple boundary changes a non-integer representation",
+              "status": "unsupported"
+            }
+          ]
+        },
+        "union": {
+          "functions": 0,
+          "obligations": 0,
+          "proved": 0,
+          "unproved": []
+        },
+        "union_payload": {
+          "functions": 0,
+          "obligations": 0,
+          "proved": 0,
+          "unproved": []
+        }
+      },
+      "program": "tests/programs/numbers/python_int_optional_tuple_keys.py",
+      "seconds": 0.9,
+      "snapshot_sha256": "9638ff0347f8a12f23fdd7a7be72bd35343080ec966bcfe432f74c3819c7d76b",
+      "timing": {
+        "access_check": 0.19,
+        "gc_check": 0.17,
+        "guard_checks": 0.04,
+        "inspect": 0.33,
+        "payload_check": 0.0,
+        "storage_checks": 0.13
+      }
+    },
+    "final_fresh_record": {
+      "checks": {
+        "access": {
+          "functions": 2,
+          "obligations": 9,
+          "proved": 9,
+          "unproved": []
+        },
+        "fields": {
+          "functions": 0,
+          "obligations": 0,
+          "proved": 0,
+          "unproved": []
+        },
+        "gc": {
+          "functions": 7,
+          "obligations": 129,
+          "proved": 129,
+          "unproved": []
+        },
+        "int": {
+          "functions": 0,
+          "obligations": 0,
+          "proved": 0,
+          "unproved": []
+        },
+        "int_inline": {
+          "functions": 2,
+          "obligations": 18,
+          "proved": 18,
+          "unproved": []
+        },
+        "null": {
+          "functions": 0,
+          "obligations": 0,
+          "proved": 0,
+          "unproved": []
+        },
+        "payload": {
+          "functions": 0,
+          "obligations": 0,
+          "proved": 0,
+          "unproved": []
+        },
+        "storage": {
+          "functions": 7,
+          "obligations": 142,
+          "proved": 142,
+          "unproved": []
+        },
+        "union": {
+          "functions": 0,
+          "obligations": 0,
+          "proved": 0,
+          "unproved": []
+        },
+        "union_payload": {
+          "functions": 0,
+          "obligations": 0,
+          "proved": 0,
+          "unproved": []
+        }
+      },
+      "program": "tests/programs/numbers/python_int_optional_tuple_keys.py",
+      "seconds": 0.8,
+      "snapshot_sha256": "2aa724e7dd365d71ed54c989f773f51a35dfe11dbb514e4056a2d99d6508fa09",
+      "timing": {
+        "access_check": 0.16,
+        "gc_check": 0.14,
+        "guard_checks": 0.04,
+        "inspect": 0.25,
+        "payload_check": 0.0,
+        "storage_checks": 0.16
+      }
+    },
+    "repair_manifest": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean/optional-storage-repair/frozen-repair.json",
+      "bytes": 3673,
+      "sha256": "68a30fc5cc90ec5e14a6e289d8aa7ac75574deb1c1201ccca10670d505f06604"
+    }
+  },
+  "focused_enum_gc_statement": {
+    "program": "tests/programs/library/lib_enum.py",
+    "before": {
+      "functions": 56,
+      "obligations": 292,
+      "proved": 289,
+      "unproved": [
+        {
+          "function": "@f._pystachy_copy$_memo_get.1",
+          "obligations": 3,
+          "reason": "ret at L20:7 (operand 0) needs %t29 in ['none', 'scanned']; known: nothing",
+          "status": "rejected"
+        }
+      ]
+    },
+    "after": {
+      "functions": 54,
+      "obligations": 280,
+      "proved": 277,
+      "unproved": [
+        {
+          "function": "@f._pystachy_copy$_memo_get.1",
+          "obligations": 3,
+          "reason": "ret at L20:7 (operand 0) needs %t29 in ['none', 'scanned']; known: nothing",
+          "status": "rejected"
+        }
+      ]
+    },
+    "meaning": "The same three memo-get GC obligations remain rejected in this focused fixture. This is not the whole-corpus GC gap count."
+  },
+  "model_limit_dispositions": [
+    "All 542 added union reads and 409 added payload-bit obligations remain unproved in 21 functions across nine new complex fixtures. The exact first failures reflect the conservative null domain for the internal complex member; native/IR review is not a proof of later obligations.",
+    "The three added GC obligations in complex_values remain rejected. The memo-get body/protocol matches the already exposed alpha2 helper after explicit verified metadata/string bindings; runtime oracle coverage is separate.",
+    "Decimal main.init remains an unsupported field-initialization case with unknown obligation count because candidate inference exceeds the prototype resource bound. It does not enter the counted denominator and is not counted as a successful proof.",
+    "The former three unsupported storage functions are resolved by the separately reviewed optional-tuple adapter repair and the fresh complete census. No known-count 8/8 waiver is used."
+  ],
+  "limits": [
+    "This is bounded model qualification, not a claim of complete formal correctness of the compiler or runtime. Python adapters, typed inspection, runtime contracts and model limits remain explicit trust boundaries.",
+    "Known counted denominators exclude unknown-count unsupported functions; no total coverage percentage is inferred from the numerical ratios.",
+    "The reviewed runtime idx() checks and nonnull box-allocation contracts are source/IR evidence, not new Lean proofs of the C runtime.",
+    "Native JIT/AOT coverage was executed on the retained b0-equivalent production source and is bridged by explicit compiler/runtime/corpus equivalence to 0a2f; it is not represented as a new execution.",
+    "The complex-null fixture has a handwritten TypeError deviation oracle, not a CPython-parity assertion.",
+    "Publication additionally requires the parent's live head/base/integrated-CI checks and independent final acceptance; this file does not itself publish or merge a release."
+  ],
+  "review_evidence": {
+    "enum": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/enum-count-attribution-review.json",
+      "bytes": 174950,
+      "sha256": "8421eee32a1e51e14df13b44e8dbcc93c95f9f323c1abca0d992934663a2dba4"
+    },
+    "gc_helpers": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/gc-helper-count-attribution-review.json",
+      "bytes": 187100,
+      "sha256": "9e8b0033d58ae422178c1527b8d86235354452eee9d7e871195ce4f02e1c7eff"
+    },
+    "tomllib": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/tomllib-count-attribution-review.json",
+      "bytes": 53042,
+      "sha256": "aa4c3005e14b93855e7f1fc17dbfab228a06313c8e984f819654a815392eba9e"
+    },
+    "storage": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/storage-count-attribution-review.json",
+      "bytes": 146862,
+      "sha256": "6221476e41bb4663106c9b6437ab08dcb55d8501959e7727294392ba6c00e7b0"
+    },
+    "access": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean/access-count-decrease-1158/review.json",
+      "bytes": 3977,
+      "sha256": "1324010dd1540b6a803064753a59d74b66a315dbd8d61f11766d1a243bb757e1"
+    },
+    "complex": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-corrected/added-complex-residual-review/review.json",
+      "bytes": 45020,
+      "sha256": "2e768b2d53dbc5e6cf6ba4347630673124b3b8c962128683c4d0cd944f95eb66"
+    },
+    "complex_independent": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-corrected/independent-review/added-complex-independent-review.json",
+      "bytes": 26598,
+      "sha256": "8eca4237d87f25af0fd9a312b9607555762d5dd8fa1fda8f27be342f18504aea"
+    },
+    "new_gc": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean/complex-copy-gc-independent-review/review.json",
+      "bytes": 8977,
+      "sha256": "932e2f680c6db9eb1e43e822a070293c34ae5ef46883ad906e6738ac1b9c0d27"
+    },
+    "native": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/ci/b0-native-coverage/all-residual-coverage.json",
+      "bytes": 198594,
+      "sha256": "a79c7d7fa6057c565a8b275dbfb0dcce220b33a031e063c8468405372fe72776"
+    }
+  },
+  "review_statuses": {
+    "enum": "reviewed_denominator_attribution_pending_final_census_binding",
+    "gc_helpers": "reviewed_gc_helper_denominators_pending_final_census_binding",
+    "tomllib": "independently_verified_exact_tomllib_sites_pending_final_census_binding",
+    "storage": "independently_reviewed_storage_denominators_pending_final_census_binding",
+    "access": "explained: unchecked load replaced by runtime-checked access",
+    "complex": "reviewed_first_failures_as_conservative_model_limits_all_verdicts_unchanged",
+    "complex_independent": "reviewed_first_failure_dispositions_no_proof_waiver",
+    "new_gc": "reviewed_existing_model_limitation_encountered_by_added_fixture",
+    "native": "twelve_residual_fixtures_passed_retained_native_jit_and_aot"
+  },
+  "evidence": {
+    "records": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/records.jsonl",
+      "bytes": 2361345,
+      "sha256": "1184061f32713f1a8de978b8ceb87acea02bfe02ec411f366085276ed3baf33c"
+    },
+    "report": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/report.md",
+      "bytes": 15137,
+      "sha256": "bf88351eff1b847e6a4e5729667ed5f802462d842659025f20051cbd6795a89b"
+    },
+    "acceptance": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/acceptance.json",
+      "bytes": 62494,
+      "sha256": "58e66fb54071eeb3334a1a947a7e00cbdf4225de10036d21d3414ba947851fd0"
+    },
+    "delta": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/delta-alpha2.json",
+      "bytes": 47606,
+      "sha256": "c7c6a50aa77a70954c3676ec7cc3a34f7d7c4b07dd87105c35ad7dd7a117e244"
+    },
+    "census_receipt": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/final-census-receipt.json",
+      "bytes": 8287,
+      "sha256": "ff4de56e45b1a742d86117cc93363d6d9442b7cde2a637cd13281a739ad0506e"
+    },
+    "attribution_inventory": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/inventory.json",
+      "bytes": 12922419,
+      "sha256": "7200136d2f198e297688a66aeceb60eb1e7ade0423e8f2dd27a286fb098ccb00"
+    },
+    "final_binding": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/final-census-binding.json",
+      "bytes": 51171,
+      "sha256": "f7df686c51c38d444d3ab0fe1ef1e8a3ae88acd34417355b86cdecb359179cfb"
+    },
+    "tree_equivalence": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/qualification-source-equivalence.json",
+      "bytes": 1151,
+      "sha256": "a990b294bac3fa4832ee75378703241194a832f8494074a071573b0755bdb8f8"
+    },
+    "production_equivalence": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean/optional-storage-repair/final-source-equivalence-b0-to-0a2f.json",
+      "bytes": 17658,
+      "sha256": "25c6d93bc2f9f9756e4f10fe6872402394b64bcdf441b48b5172fbf08b23e7d1"
+    },
+    "storage_explanation": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/storage-denominator-review/review.json",
+      "bytes": 110304,
+      "sha256": "80452912146b9f9421d01888694ce47de54fa07dc4ebc6a6308460a7e0a41012"
+    },
+    "tomllib_prose_correction": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/ir-review/tomllib-guard-attribution-correction.json",
+      "bytes": 40012,
+      "sha256": "30416c8ec555ab6ef94a2e3df57d5fc3009245019f7dc1cd8004d89c4d24076c"
+    },
+    "tomllib_exact_sites": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean/tomllib-count-attribution-support/exact-null-site-confirmation.json",
+      "bytes": 252125,
+      "sha256": "119fc49a3e35d50a05d37764e99c11004ce9a8a1880535640f554372dfb5159f"
+    },
+    "enum_signature_correction": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/enum-renamed-specialization-evidence.json",
+      "bytes": 199120,
+      "sha256": "c7a1e2424f0d9ce55fe9f2ab09b1111a3a4d1c069f51648f96ab4319574573d2"
+    },
+    "builder": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/build-semantic-disposition.py",
+      "bytes": 31973,
+      "sha256": "50487306e00a1ef35a48bf5dfcfb94339941948a0c504b3c1c8da36c33446f12"
+    }
+  }
+}

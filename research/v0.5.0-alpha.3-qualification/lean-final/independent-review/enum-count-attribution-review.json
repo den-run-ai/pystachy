@@ -1,0 +1,5649 @@
+{
+  "status": "reviewed_denominator_attribution_pending_final_census_binding",
+  "observed_utc": "2026-11-15T07:58:12.665463+00:00",
+  "baseline_commit": "950c0440ad793dc6c34664f591383a5e6bba14dd",
+  "candidate_commit": "0a2fe77a580106c197face4d2904be80e3f85dbc",
+  "inventory": {
+    "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/inventory.json",
+    "sha256": "7200136d2f198e297688a66aeceb60eb1e7ade0423e8f2dd27a286fb098ccb00",
+    "bytes": 12922419
+  },
+  "review_script": {
+    "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/review-enum-counts.py",
+    "sha256": "5904748a19342539039127eb43b30c57914df54efeed373c70749d482a1d860e",
+    "bytes": 11909
+  },
+  "programs": 11,
+  "net_null_obligations_decrease": 49,
+  "exact_old_removal_message": "AttributeError: 'NoneType' object has no attribute '_value_'",
+  "renamed_specialization_evidence": {
+    "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/enum-renamed-specialization-evidence.json",
+    "sha256": "c7a1e2424f0d9ce55fe9f2ab09b1111a3a4d1c069f51648f96ab4319574573d2",
+    "bytes": 199120
+  },
+  "matching_scope": "Five explicit enum function families, exact parameter names/types/representations and return type/representation; raw symbols and records retained. No IR/global/constant normalization.",
+  "limitations": [
+    "The early candidate snapshots require exact matching to the fresh final-source census.",
+    "Removed denominator sites are not new proofs; this review attributes why their old typed functions are no longer selected.",
+    "Same symbol names do not establish same specialization; old _int_of.3 in lib_enum_intflag survives as new _int_of.2.",
+    "No compiler, runtime, Lean checker or normalizer was executed."
+  ],
+  "rows": [
+    {
+      "program": "tests/programs/exceptions/exit_enum_member_caught.py",
+      "decrease": 2,
+      "snapshots": {
+        "baseline": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/06-exit_enum_member_caught/baseline/typed-after.json",
+          "sha256": "2a96dd523e4902623f05e25413ca50a7a16850d1a3cccbcf84371d67aec3b1a4",
+          "bytes": 5618646
+        },
+        "candidate": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/06-exit_enum_member_caught/candidate/typed-after.json",
+          "sha256": "41562f0d7d7178d7d3bfe3529d125882cefd15365e15226bcff14267960d6fad",
+          "bytes": 5390400
+        }
+      },
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/06-exit_enum_member_caught/site-excerpts.json",
+        "sha256": "4cd5e1dc026ba32276307e1d5ef7617c4c07aaf83f68ecde07da52edaad77abf",
+        "bytes": 168919
+      },
+      "exact_symbol_delta": [
+        {
+          "function": "@f.enum$_int_of.1",
+          "before_records": [
+            {
+              "function": "@f.enum$_int_of.1",
+              "pass_index": 67,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntFlag.__eq__.1",
+          "before_records": [
+            {
+              "function": "@m.enum$IntFlag.__eq__.1",
+              "pass_index": 65,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ],
+      "duplicate_exported_signature_groups_retained_separately": {
+        "baseline": [],
+        "candidate": []
+      },
+      "lost_typed_specializations": [
+        {
+          "old": {
+            "symbol": "@m.enum$IntFlag.__eq__.1",
+            "parameters": [
+              {
+                "name": "self",
+                "type": "Perm",
+                "representation": "Perm"
+              },
+              {
+                "name": "other",
+                "type": "Perm",
+                "representation": "Perm"
+              }
+            ],
+            "return_type": "bool",
+            "return_representation": "bool"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@m.enum$IntFlag.__eq__.1",
+              "pass_index": 65,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@f.enum$_int_of.1",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "Perm",
+                "representation": "Perm"
+              },
+              {
+                "name": "a",
+                "type": "Perm",
+                "representation": "Perm"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "int",
+            "return_representation": "int"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@f.enum$_int_of.1",
+              "pass_index": 67,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "retained_typed_specializations_with_renamed_symbol": [],
+      "same_symbol_reused_with_different_signature": []
+    },
+    {
+      "program": "tests/programs/exceptions/exit_enum_stored_reflection.py",
+      "decrease": 2,
+      "snapshots": {
+        "baseline": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/07-exit_enum_stored_reflection/baseline/typed-after.json",
+          "sha256": "d1a31947a432b41306415b3aa20ca4709ecb85a11b313ad8197338b876136e6e",
+          "bytes": 4103425
+        },
+        "candidate": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/07-exit_enum_stored_reflection/candidate/typed-after.json",
+          "sha256": "853a176ec31a5d8512f686e9447c602f61aa8893713793864a08edcae93b7000",
+          "bytes": 3874981
+        }
+      },
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/07-exit_enum_stored_reflection/site-excerpts.json",
+        "sha256": "b4b5ed520c8f1244e362536469a8f949094ac16fb7cd6614332c1647052865c0",
+        "bytes": 168931
+      },
+      "exact_symbol_delta": [
+        {
+          "function": "@f.enum$_int_of.1",
+          "before_records": [
+            {
+              "function": "@f.enum$_int_of.1",
+              "pass_index": 43,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntFlag.__eq__.1",
+          "before_records": [
+            {
+              "function": "@m.enum$IntFlag.__eq__.1",
+              "pass_index": 41,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ],
+      "duplicate_exported_signature_groups_retained_separately": {
+        "baseline": [],
+        "candidate": []
+      },
+      "lost_typed_specializations": [
+        {
+          "old": {
+            "symbol": "@m.enum$IntFlag.__eq__.1",
+            "parameters": [
+              {
+                "name": "self",
+                "type": "Perm",
+                "representation": "Perm"
+              },
+              {
+                "name": "other",
+                "type": "Perm",
+                "representation": "Perm"
+              }
+            ],
+            "return_type": "bool",
+            "return_representation": "bool"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@m.enum$IntFlag.__eq__.1",
+              "pass_index": 41,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@f.enum$_int_of.1",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "Perm",
+                "representation": "Perm"
+              },
+              {
+                "name": "a",
+                "type": "Perm",
+                "representation": "Perm"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "int",
+            "return_representation": "int"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@f.enum$_int_of.1",
+              "pass_index": 43,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "retained_typed_specializations_with_renamed_symbol": [],
+      "same_symbol_reused_with_different_signature": []
+    },
+    {
+      "program": "tests/programs/exceptions/exit_intflag_stored_mutated.py",
+      "decrease": 2,
+      "snapshots": {
+        "baseline": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/08-exit_intflag_stored_mutated/baseline/typed-after.json",
+          "sha256": "226b539efeaa668a414daafc7c3ca40de0ca40678ec9611bd4a37ef464a473e3",
+          "bytes": 3806694
+        },
+        "candidate": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/08-exit_intflag_stored_mutated/candidate/typed-after.json",
+          "sha256": "95a3181143b62bae425975bac0aa5e607f8f78febc9ca3711123f03b607a97ce",
+          "bytes": 3578256
+        }
+      },
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/08-exit_intflag_stored_mutated/site-excerpts.json",
+        "sha256": "4b6dd37043d5a4b75e43603efb315c5a7f9c3984864f0f923ee66642bf2a4fa3",
+        "bytes": 168925
+      },
+      "exact_symbol_delta": [
+        {
+          "function": "@f.enum$_int_of.1",
+          "before_records": [
+            {
+              "function": "@f.enum$_int_of.1",
+              "pass_index": 46,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntFlag.__eq__.1",
+          "before_records": [
+            {
+              "function": "@m.enum$IntFlag.__eq__.1",
+              "pass_index": 44,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ],
+      "duplicate_exported_signature_groups_retained_separately": {
+        "baseline": [],
+        "candidate": []
+      },
+      "lost_typed_specializations": [
+        {
+          "old": {
+            "symbol": "@m.enum$IntFlag.__eq__.1",
+            "parameters": [
+              {
+                "name": "self",
+                "type": "Perm",
+                "representation": "Perm"
+              },
+              {
+                "name": "other",
+                "type": "Perm",
+                "representation": "Perm"
+              }
+            ],
+            "return_type": "bool",
+            "return_representation": "bool"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@m.enum$IntFlag.__eq__.1",
+              "pass_index": 44,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@f.enum$_int_of.1",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "Perm",
+                "representation": "Perm"
+              },
+              {
+                "name": "a",
+                "type": "Perm",
+                "representation": "Perm"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "int",
+            "return_representation": "int"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@f.enum$_int_of.1",
+              "pass_index": 46,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "retained_typed_specializations_with_renamed_symbol": [],
+      "same_symbol_reused_with_different_signature": []
+    },
+    {
+      "program": "tests/programs/exceptions/exit_intflag_stored_zero.py",
+      "decrease": 2,
+      "snapshots": {
+        "baseline": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/09-exit_intflag_stored_zero/baseline/typed-after.json",
+          "sha256": "689cee0ed231ca096661322d4a20425d546dca3e4da98e166f043205e7e9e072",
+          "bytes": 2108031
+        },
+        "candidate": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/09-exit_intflag_stored_zero/candidate/typed-after.json",
+          "sha256": "0c89fd8eacc0f9c60313965deb0733a490187611e6c5bea82688f8207ceddcd6",
+          "bytes": 1879347
+        }
+      },
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/09-exit_intflag_stored_zero/site-excerpts.json",
+        "sha256": "dd7a67414ccea03acc2fd3be073e4548eacbcf9891f381a4093b6755bd2f5442",
+        "bytes": 168916
+      },
+      "exact_symbol_delta": [
+        {
+          "function": "@f.enum$_int_of.1",
+          "before_records": [
+            {
+              "function": "@f.enum$_int_of.1",
+              "pass_index": 17,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntFlag.__eq__.1",
+          "before_records": [
+            {
+              "function": "@m.enum$IntFlag.__eq__.1",
+              "pass_index": 15,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ],
+      "duplicate_exported_signature_groups_retained_separately": {
+        "baseline": [],
+        "candidate": []
+      },
+      "lost_typed_specializations": [
+        {
+          "old": {
+            "symbol": "@m.enum$IntFlag.__eq__.1",
+            "parameters": [
+              {
+                "name": "self",
+                "type": "Perm",
+                "representation": "Perm"
+              },
+              {
+                "name": "other",
+                "type": "Perm",
+                "representation": "Perm"
+              }
+            ],
+            "return_type": "bool",
+            "return_representation": "bool"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@m.enum$IntFlag.__eq__.1",
+              "pass_index": 15,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@f.enum$_int_of.1",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "Perm",
+                "representation": "Perm"
+              },
+              {
+                "name": "a",
+                "type": "Perm",
+                "representation": "Perm"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "int",
+            "return_representation": "int"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@f.enum$_int_of.1",
+              "pass_index": 17,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "retained_typed_specializations_with_renamed_symbol": [],
+      "same_symbol_reused_with_different_signature": []
+    },
+    {
+      "program": "tests/programs/library/lib_enum_any.py",
+      "decrease": 14,
+      "snapshots": {
+        "baseline": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/11-lib_enum_any/baseline/typed-after.json",
+          "sha256": "308ce9ea95d176aa21d92e76bd6b1a8d02532b5b01e81d7d403681c8059079c5",
+          "bytes": 11085236
+        },
+        "candidate": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/11-lib_enum_any/candidate/typed-after.json",
+          "sha256": "cdaac687858fc3c9a530d62db54beb10aa7c9f825d2ced7f70bb278ba1d8f276",
+          "bytes": 5197926
+        }
+      },
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/11-lib_enum_any/site-excerpts.json",
+        "sha256": "fd701eb047bb7ae75a639dde4d6badc1bb142f0926ca168c4236870edbebd7ad",
+        "bytes": 1546080
+      },
+      "exact_symbol_delta": [
+        {
+          "function": "@f.enum$_int_of.10",
+          "before_records": [
+            {
+              "function": "@f.enum$_int_of.10",
+              "pass_index": 62,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@f.enum$_int_of.13",
+          "before_records": [
+            {
+              "function": "@f.enum$_int_of.13",
+              "pass_index": 69,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@f.enum$_int_of.3",
+          "before_records": [
+            {
+              "function": "@f.enum$_int_of.3",
+              "pass_index": 40,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@f.enum$_int_of.6",
+          "before_records": [
+            {
+              "function": "@f.enum$_int_of.6",
+              "pass_index": 51,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@f.enum$_str_of.1",
+          "before_records": [
+            {
+              "function": "@f.enum$_str_of.1",
+              "pass_index": 44,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@f.enum$_str_of.2",
+          "before_records": [
+            {
+              "function": "@f.enum$_str_of.2",
+              "pass_index": 46,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@f.enum$_str_of.3",
+          "before_records": [
+            {
+              "function": "@f.enum$_str_of.3",
+              "pass_index": 56,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntEnum.__eq__.3",
+          "before_records": [
+            {
+              "function": "@m.enum$IntEnum.__eq__.3",
+              "pass_index": 20,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L16",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t25",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L27"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntEnum.__eq__.6",
+          "before_records": [
+            {
+              "function": "@m.enum$IntEnum.__eq__.6",
+              "pass_index": 25,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L16",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t19",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L21"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntEnum.__eq__.9",
+          "before_records": [
+            {
+              "function": "@m.enum$IntEnum.__eq__.9",
+              "pass_index": 33,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L16",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t19",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L21"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntFlag.__eq__.3",
+          "before_records": [
+            {
+              "function": "@m.enum$IntFlag.__eq__.3",
+              "pass_index": 30,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L16",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t19",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L21"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$StrEnum.__eq__.1",
+          "before_records": [
+            {
+              "function": "@m.enum$StrEnum.__eq__.1",
+              "pass_index": 22,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t24",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L26"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$StrEnum.__eq__.2",
+          "before_records": [
+            {
+              "function": "@m.enum$StrEnum.__eq__.2",
+              "pass_index": 23,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$StrEnum.__eq__.3",
+          "before_records": [
+            {
+              "function": "@m.enum$StrEnum.__eq__.3",
+              "pass_index": 27,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ],
+      "duplicate_exported_signature_groups_retained_separately": {
+        "baseline": [
+          {
+            "functions": [
+              {
+                "symbol": "@m.enum$IntEnum.__eq__.2",
+                "parameters": [
+                  {
+                    "name": "self",
+                    "type": "_IntMixin",
+                    "representation": "enum$_IntMixin"
+                  },
+                  {
+                    "name": "other",
+                    "type": "IntEnum",
+                    "representation": "enum$IntEnum"
+                  }
+                ],
+                "return_type": "bool",
+                "return_representation": "bool"
+              },
+              {
+                "symbol": "@m.enum$IntEnum.__eq__.11",
+                "parameters": [
+                  {
+                    "name": "self",
+                    "type": "_IntMixin",
+                    "representation": "enum$_IntMixin"
+                  },
+                  {
+                    "name": "other",
+                    "type": "IntEnum",
+                    "representation": "enum$IntEnum"
+                  }
+                ],
+                "return_type": "bool",
+                "return_representation": "bool"
+              }
+            ],
+            "null_obligations": [
+              0,
+              0
+            ]
+          },
+          {
+            "functions": [
+              {
+                "symbol": "@m.enum$IntEnum.__eq__.4",
+                "parameters": [
+                  {
+                    "name": "self",
+                    "type": "Num",
+                    "representation": "Num"
+                  },
+                  {
+                    "name": "other",
+                    "type": "IntEnum",
+                    "representation": "enum$IntEnum"
+                  }
+                ],
+                "return_type": "bool",
+                "return_representation": "bool"
+              },
+              {
+                "symbol": "@m.enum$IntEnum.__eq__.12",
+                "parameters": [
+                  {
+                    "name": "self",
+                    "type": "Num",
+                    "representation": "Num"
+                  },
+                  {
+                    "name": "other",
+                    "type": "IntEnum",
+                    "representation": "enum$IntEnum"
+                  }
+                ],
+                "return_type": "bool",
+                "return_representation": "bool"
+              }
+            ],
+            "null_obligations": [
+              0,
+              0
+            ]
+          },
+          {
+            "functions": [
+              {
+                "symbol": "@m.enum$StrEnum.__eq__.2",
+                "parameters": [
+                  {
+                    "name": "self",
+                    "type": "_StrMixin",
+                    "representation": "enum$_StrMixin"
+                  },
+                  {
+                    "name": "other",
+                    "type": "StrEnum",
+                    "representation": "enum$StrEnum"
+                  }
+                ],
+                "return_type": "bool",
+                "return_representation": "bool"
+              },
+              {
+                "symbol": "@m.enum$StrEnum.__eq__.4",
+                "parameters": [
+                  {
+                    "name": "self",
+                    "type": "_StrMixin",
+                    "representation": "enum$_StrMixin"
+                  },
+                  {
+                    "name": "other",
+                    "type": "StrEnum",
+                    "representation": "enum$StrEnum"
+                  }
+                ],
+                "return_type": "bool",
+                "return_representation": "bool"
+              }
+            ],
+            "null_obligations": [
+              1,
+              0
+            ]
+          }
+        ],
+        "candidate": []
+      },
+      "lost_typed_specializations": [
+        {
+          "old": {
+            "symbol": "@m.enum$IntEnum.__eq__.3",
+            "parameters": [
+              {
+                "name": "self",
+                "type": "IntEnum",
+                "representation": "enum$IntEnum"
+              },
+              {
+                "name": "other",
+                "type": "IntFlag",
+                "representation": "enum$IntFlag"
+              }
+            ],
+            "return_type": "bool",
+            "return_representation": "bool"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@m.enum$IntEnum.__eq__.3",
+              "pass_index": 20,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L16",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t25",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L27"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@m.enum$StrEnum.__eq__.1",
+            "parameters": [
+              {
+                "name": "self",
+                "type": "StrEnum",
+                "representation": "enum$StrEnum"
+              },
+              {
+                "name": "other",
+                "type": "StrEnum",
+                "representation": "enum$StrEnum"
+              }
+            ],
+            "return_type": "bool",
+            "return_representation": "bool"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@m.enum$StrEnum.__eq__.1",
+              "pass_index": 22,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t24",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L26"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@m.enum$StrEnum.__eq__.2",
+            "parameters": [
+              {
+                "name": "self",
+                "type": "_StrMixin",
+                "representation": "enum$_StrMixin"
+              },
+              {
+                "name": "other",
+                "type": "StrEnum",
+                "representation": "enum$StrEnum"
+              }
+            ],
+            "return_type": "bool",
+            "return_representation": "bool"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@m.enum$StrEnum.__eq__.2",
+              "pass_index": 23,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@m.enum$IntEnum.__eq__.6",
+            "parameters": [
+              {
+                "name": "self",
+                "type": "_IntMixin",
+                "representation": "enum$_IntMixin"
+              },
+              {
+                "name": "other",
+                "type": "IntFlag",
+                "representation": "enum$IntFlag"
+              }
+            ],
+            "return_type": "bool",
+            "return_representation": "bool"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@m.enum$IntEnum.__eq__.6",
+              "pass_index": 25,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L16",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t19",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L21"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@m.enum$StrEnum.__eq__.3",
+            "parameters": [
+              {
+                "name": "self",
+                "type": "_StrMixin",
+                "representation": "enum$_StrMixin"
+              },
+              {
+                "name": "other",
+                "type": "_StrMixin",
+                "representation": "enum$_StrMixin"
+              }
+            ],
+            "return_type": "bool",
+            "return_representation": "bool"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@m.enum$StrEnum.__eq__.3",
+              "pass_index": 27,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@m.enum$IntFlag.__eq__.3",
+            "parameters": [
+              {
+                "name": "self",
+                "type": "IntFlag",
+                "representation": "enum$IntFlag"
+              },
+              {
+                "name": "other",
+                "type": "IntFlag",
+                "representation": "enum$IntFlag"
+              }
+            ],
+            "return_type": "bool",
+            "return_representation": "bool"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@m.enum$IntFlag.__eq__.3",
+              "pass_index": 30,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L16",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t19",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L21"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@m.enum$IntEnum.__eq__.9",
+            "parameters": [
+              {
+                "name": "self",
+                "type": "Num",
+                "representation": "Num"
+              },
+              {
+                "name": "other",
+                "type": "IntFlag",
+                "representation": "enum$IntFlag"
+              }
+            ],
+            "return_type": "bool",
+            "return_representation": "bool"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@m.enum$IntEnum.__eq__.9",
+              "pass_index": 33,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L16",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t19",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L21"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@f.enum$_int_of.3",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "IntFlag",
+                "representation": "enum$IntFlag"
+              },
+              {
+                "name": "a",
+                "type": "IntEnum",
+                "representation": "enum$IntEnum"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "int",
+            "return_representation": "int"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@f.enum$_int_of.3",
+              "pass_index": 40,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@f.enum$_str_of.1",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "StrEnum",
+                "representation": "enum$StrEnum"
+              },
+              {
+                "name": "a",
+                "type": "StrEnum",
+                "representation": "enum$StrEnum"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "str",
+            "return_representation": "str"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@f.enum$_str_of.1",
+              "pass_index": 44,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@f.enum$_str_of.2",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "StrEnum",
+                "representation": "enum$StrEnum"
+              },
+              {
+                "name": "a",
+                "type": "_StrMixin",
+                "representation": "enum$_StrMixin"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "str",
+            "return_representation": "str"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@f.enum$_str_of.2",
+              "pass_index": 46,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@f.enum$_int_of.6",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "IntFlag",
+                "representation": "enum$IntFlag"
+              },
+              {
+                "name": "a",
+                "type": "_IntMixin",
+                "representation": "enum$_IntMixin"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "int",
+            "return_representation": "int"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@f.enum$_int_of.6",
+              "pass_index": 51,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@f.enum$_str_of.3",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "_StrMixin",
+                "representation": "enum$_StrMixin"
+              },
+              {
+                "name": "a",
+                "type": "_StrMixin",
+                "representation": "enum$_StrMixin"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "str",
+            "return_representation": "str"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@f.enum$_str_of.3",
+              "pass_index": 56,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@f.enum$_int_of.10",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "IntFlag",
+                "representation": "enum$IntFlag"
+              },
+              {
+                "name": "a",
+                "type": "IntFlag",
+                "representation": "enum$IntFlag"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "int",
+            "return_representation": "int"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@f.enum$_int_of.10",
+              "pass_index": 62,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@f.enum$_int_of.13",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "IntFlag",
+                "representation": "enum$IntFlag"
+              },
+              {
+                "name": "a",
+                "type": "Num",
+                "representation": "Num"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "int",
+            "return_representation": "int"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@f.enum$_int_of.13",
+              "pass_index": 69,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "retained_typed_specializations_with_renamed_symbol": [],
+      "same_symbol_reused_with_different_signature": []
+    },
+    {
+      "program": "tests/programs/library/lib_enum_flag_bits.py",
+      "decrease": 2,
+      "snapshots": {
+        "baseline": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/12-lib_enum_flag_bits/baseline/typed-after.json",
+          "sha256": "3e953b894392a1ba36194dbbb23e8447dda6e29b0bb4b3a3719a665591f4f933",
+          "bytes": 6951326
+        },
+        "candidate": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/12-lib_enum_flag_bits/candidate/typed-after.json",
+          "sha256": "6135f58dfc09b26aec281a90666ddf277bbe2cda08b6d2e555dbfb5eeb71fd10",
+          "bytes": 6723020
+        }
+      },
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/12-lib_enum_flag_bits/site-excerpts.json",
+        "sha256": "d11041b7ec40b6380156f5159136fa857ed2ff21c8c04324f5ec8ce40fcc8ed1",
+        "bytes": 168916
+      },
+      "exact_symbol_delta": [
+        {
+          "function": "@f.enum$_int_of.1",
+          "before_records": [
+            {
+              "function": "@f.enum$_int_of.1",
+              "pass_index": 56,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntFlag.__eq__.1",
+          "before_records": [
+            {
+              "function": "@m.enum$IntFlag.__eq__.1",
+              "pass_index": 54,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ],
+      "duplicate_exported_signature_groups_retained_separately": {
+        "baseline": [],
+        "candidate": []
+      },
+      "lost_typed_specializations": [
+        {
+          "old": {
+            "symbol": "@m.enum$IntFlag.__eq__.1",
+            "parameters": [
+              {
+                "name": "self",
+                "type": "Keep",
+                "representation": "Keep"
+              },
+              {
+                "name": "other",
+                "type": "Keep",
+                "representation": "Keep"
+              }
+            ],
+            "return_type": "bool",
+            "return_representation": "bool"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@m.enum$IntFlag.__eq__.1",
+              "pass_index": 54,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@f.enum$_int_of.1",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "Keep",
+                "representation": "Keep"
+              },
+              {
+                "name": "a",
+                "type": "Keep",
+                "representation": "Keep"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "int",
+            "return_representation": "int"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@f.enum$_int_of.1",
+              "pass_index": 56,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "retained_typed_specializations_with_renamed_symbol": [],
+      "same_symbol_reused_with_different_signature": []
+    },
+    {
+      "program": "tests/programs/library/lib_enum_flag_numeric_lookup.py",
+      "decrease": 2,
+      "snapshots": {
+        "baseline": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/13-lib_enum_flag_numeric_lookup/baseline/typed-after.json",
+          "sha256": "ccc4cefc6a4f30cb77301a4af1697f0c17509263c9e33f74e907bf18ff15b41c",
+          "bytes": 4644580
+        },
+        "candidate": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/13-lib_enum_flag_numeric_lookup/candidate/typed-after.json",
+          "sha256": "ff609402238c44b54e454020bc6699ae1eb4ee38138a5eba24d3aaa7c303fde2",
+          "bytes": 4417384
+        }
+      },
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/13-lib_enum_flag_numeric_lookup/site-excerpts.json",
+        "sha256": "94fd01f43fb2330ef20bf118ebce182812e1f42dad6a465acfdbd624f27f0c6f",
+        "bytes": 168424
+      },
+      "exact_symbol_delta": [
+        {
+          "function": "@f.enum$_int_of.1",
+          "before_records": [
+            {
+              "function": "@f.enum$_int_of.1",
+              "pass_index": 41,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntFlag.__eq__.1",
+          "before_records": [
+            {
+              "function": "@m.enum$IntFlag.__eq__.1",
+              "pass_index": 39,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ],
+      "duplicate_exported_signature_groups_retained_separately": {
+        "baseline": [],
+        "candidate": []
+      },
+      "lost_typed_specializations": [
+        {
+          "old": {
+            "symbol": "@m.enum$IntFlag.__eq__.1",
+            "parameters": [
+              {
+                "name": "self",
+                "type": "I",
+                "representation": "I"
+              },
+              {
+                "name": "other",
+                "type": "I",
+                "representation": "I"
+              }
+            ],
+            "return_type": "bool",
+            "return_representation": "bool"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@m.enum$IntFlag.__eq__.1",
+              "pass_index": 39,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@f.enum$_int_of.1",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "I",
+                "representation": "I"
+              },
+              {
+                "name": "a",
+                "type": "I",
+                "representation": "I"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "int",
+            "return_representation": "int"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@f.enum$_int_of.1",
+              "pass_index": 41,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "retained_typed_specializations_with_renamed_symbol": [],
+      "same_symbol_reused_with_different_signature": []
+    },
+    {
+      "program": "tests/programs/library/lib_enum_flag_width.py",
+      "decrease": 6,
+      "snapshots": {
+        "baseline": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/14-lib_enum_flag_width/baseline/typed-after.json",
+          "sha256": "efebdd44bef3f19bf562286cfde9b1545bc065834c07f6e8a37eacf4c5bb552f",
+          "bytes": 6734655
+        },
+        "candidate": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/14-lib_enum_flag_width/candidate/typed-after.json",
+          "sha256": "4794002d7a1d1a6b4f86fbf4b831df3e9a51b2e8fa234b6f382323eca4748119",
+          "bytes": 6046639
+        }
+      },
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/14-lib_enum_flag_width/site-excerpts.json",
+        "sha256": "589fc2121859f6e0f6e5374d9172c462d92b7b17d8a8c51b3a173e4e36b06020",
+        "bytes": 504935
+      },
+      "exact_symbol_delta": [
+        {
+          "function": "@f.enum$_int_of.1",
+          "before_records": [
+            {
+              "function": "@f.enum$_int_of.1",
+              "pass_index": 40,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@f.enum$_int_of.2",
+          "before_records": [
+            {
+              "function": "@f.enum$_int_of.2",
+              "pass_index": 51,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@f.enum$_int_of.3",
+          "before_records": [
+            {
+              "function": "@f.enum$_int_of.3",
+              "pass_index": 62,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntFlag.__eq__.1",
+          "before_records": [
+            {
+              "function": "@m.enum$IntFlag.__eq__.1",
+              "pass_index": 38,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntFlag.__eq__.2",
+          "before_records": [
+            {
+              "function": "@m.enum$IntFlag.__eq__.2",
+              "pass_index": 49,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntFlag.__eq__.3",
+          "before_records": [
+            {
+              "function": "@m.enum$IntFlag.__eq__.3",
+              "pass_index": 60,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ],
+      "duplicate_exported_signature_groups_retained_separately": {
+        "baseline": [],
+        "candidate": []
+      },
+      "lost_typed_specializations": [
+        {
+          "old": {
+            "symbol": "@m.enum$IntFlag.__eq__.1",
+            "parameters": [
+              {
+                "name": "self",
+                "type": "Dense",
+                "representation": "Dense"
+              },
+              {
+                "name": "other",
+                "type": "Dense",
+                "representation": "Dense"
+              }
+            ],
+            "return_type": "bool",
+            "return_representation": "bool"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@m.enum$IntFlag.__eq__.1",
+              "pass_index": 38,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@f.enum$_int_of.1",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "Dense",
+                "representation": "Dense"
+              },
+              {
+                "name": "a",
+                "type": "Dense",
+                "representation": "Dense"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "int",
+            "return_representation": "int"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@f.enum$_int_of.1",
+              "pass_index": 40,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@m.enum$IntFlag.__eq__.2",
+            "parameters": [
+              {
+                "name": "self",
+                "type": "Sparse",
+                "representation": "Sparse"
+              },
+              {
+                "name": "other",
+                "type": "Sparse",
+                "representation": "Sparse"
+              }
+            ],
+            "return_type": "bool",
+            "return_representation": "bool"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@m.enum$IntFlag.__eq__.2",
+              "pass_index": 49,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@f.enum$_int_of.2",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "Sparse",
+                "representation": "Sparse"
+              },
+              {
+                "name": "a",
+                "type": "Sparse",
+                "representation": "Sparse"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "int",
+            "return_representation": "int"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@f.enum$_int_of.2",
+              "pass_index": 51,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@m.enum$IntFlag.__eq__.3",
+            "parameters": [
+              {
+                "name": "self",
+                "type": "Small",
+                "representation": "Small"
+              },
+              {
+                "name": "other",
+                "type": "Small",
+                "representation": "Small"
+              }
+            ],
+            "return_type": "bool",
+            "return_representation": "bool"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@m.enum$IntFlag.__eq__.3",
+              "pass_index": 60,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@f.enum$_int_of.3",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "Small",
+                "representation": "Small"
+              },
+              {
+                "name": "a",
+                "type": "Small",
+                "representation": "Small"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "int",
+            "return_representation": "int"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@f.enum$_int_of.3",
+              "pass_index": 62,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "retained_typed_specializations_with_renamed_symbol": [],
+      "same_symbol_reused_with_different_signature": []
+    },
+    {
+      "program": "tests/programs/library/lib_enum_format_str.py",
+      "decrease": 2,
+      "snapshots": {
+        "baseline": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/15-lib_enum_format_str/baseline/typed-after.json",
+          "sha256": "6f8c9f28e28876e0cd84348836b4ad972fe4bb111c1e3983efef6b077e33c922",
+          "bytes": 4198683
+        },
+        "candidate": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/15-lib_enum_format_str/candidate/typed-after.json",
+          "sha256": "a8208c37db006357338957b6c709c1edb7e3c5396437801f5fa0fd1a4829f69e",
+          "bytes": 3976188
+        }
+      },
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/15-lib_enum_format_str/site-excerpts.json",
+        "sha256": "c7d9f4d846f2e4ec6e950d7ae63be438c81a52c86a0cc1f35cf28647c46cea75",
+        "bytes": 168904
+      },
+      "exact_symbol_delta": [
+        {
+          "function": "@f.enum$_int_of.1",
+          "before_records": [
+            {
+              "function": "@f.enum$_int_of.1",
+              "pass_index": 60,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntFlag.__eq__.1",
+          "before_records": [
+            {
+              "function": "@m.enum$IntFlag.__eq__.1",
+              "pass_index": 58,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ],
+      "duplicate_exported_signature_groups_retained_separately": {
+        "baseline": [],
+        "candidate": []
+      },
+      "lost_typed_specializations": [
+        {
+          "old": {
+            "symbol": "@m.enum$IntFlag.__eq__.1",
+            "parameters": [
+              {
+                "name": "self",
+                "type": "Perm",
+                "representation": "Perm"
+              },
+              {
+                "name": "other",
+                "type": "Perm",
+                "representation": "Perm"
+              }
+            ],
+            "return_type": "bool",
+            "return_representation": "bool"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@m.enum$IntFlag.__eq__.1",
+              "pass_index": 58,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@f.enum$_int_of.1",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "Perm",
+                "representation": "Perm"
+              },
+              {
+                "name": "a",
+                "type": "Perm",
+                "representation": "Perm"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "int",
+            "return_representation": "int"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@f.enum$_int_of.1",
+              "pass_index": 60,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "retained_typed_specializations_with_renamed_symbol": [],
+      "same_symbol_reused_with_different_signature": []
+    },
+    {
+      "program": "tests/programs/library/lib_enum_intflag.py",
+      "decrease": 3,
+      "snapshots": {
+        "baseline": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/16-lib_enum_intflag/baseline/typed-after.json",
+          "sha256": "5d222825b682713803d73857e976119310874b90e6fa93689630de0bb27ed570",
+          "bytes": 7433983
+        },
+        "candidate": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/16-lib_enum_intflag/candidate/typed-after.json",
+          "sha256": "4a2ff553289cd5e0f5e45c4b32c4f4c89a25989089a6942ac716e188d985aada",
+          "bytes": 7071387
+        }
+      },
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/16-lib_enum_intflag/site-excerpts.json",
+        "sha256": "4c042739e589a5983165268cb888c9d2cd38fb9e09066bf66791a4e602179f7d",
+        "bytes": 224252
+      },
+      "exact_symbol_delta": [
+        {
+          "function": "@f.enum$_int_of.3",
+          "before_records": [
+            {
+              "function": "@f.enum$_int_of.3",
+              "pass_index": 62,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntEnum.__eq__.1",
+          "before_records": [
+            {
+              "function": "@m.enum$IntEnum.__eq__.1",
+              "pass_index": 60,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntFlag.__eq__.3",
+          "before_records": [
+            {
+              "function": "@m.enum$IntFlag.__eq__.3",
+              "pass_index": 83,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ],
+      "duplicate_exported_signature_groups_retained_separately": {
+        "baseline": [],
+        "candidate": []
+      },
+      "lost_typed_specializations": [
+        {
+          "old": {
+            "symbol": "@f.enum$_int_of.2",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "I",
+                "representation": "I"
+              },
+              {
+                "name": "a",
+                "type": "I",
+                "representation": "I"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "int",
+            "return_representation": "int"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@f.enum$_int_of.2",
+              "pass_index": 49,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@m.enum$IntEnum.__eq__.1",
+            "parameters": [
+              {
+                "name": "self",
+                "type": "Number",
+                "representation": "Number"
+              },
+              {
+                "name": "other",
+                "type": "I",
+                "representation": "I"
+              }
+            ],
+            "return_type": "bool",
+            "return_representation": "bool"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@m.enum$IntEnum.__eq__.1",
+              "pass_index": 60,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@m.enum$IntFlag.__eq__.3",
+            "parameters": [
+              {
+                "name": "self",
+                "type": "I",
+                "representation": "I"
+              },
+              {
+                "name": "other",
+                "type": "I",
+                "representation": "I"
+              }
+            ],
+            "return_type": "bool",
+            "return_representation": "bool"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@m.enum$IntFlag.__eq__.3",
+              "pass_index": 83,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "retained_typed_specializations_with_renamed_symbol": [
+        {
+          "old": {
+            "symbol": "@f.enum$_int_of.3",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "I",
+                "representation": "I"
+              },
+              {
+                "name": "a",
+                "type": "Number",
+                "representation": "Number"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "int",
+            "return_representation": "int"
+          },
+          "new": {
+            "symbol": "@f.enum$_int_of.2",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "I",
+                "representation": "I"
+              },
+              {
+                "name": "a",
+                "type": "Number",
+                "representation": "Number"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "int",
+            "return_representation": "int"
+          },
+          "before_obligations": 1,
+          "after_obligations": 1,
+          "old_removed_sites": [
+            {
+              "function": "@f.enum$_int_of.3",
+              "pass_index": 62,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "new_removed_sites": [
+            {
+              "function": "@f.enum$_int_of.2",
+              "pass_index": 56,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "same_symbol_reused_with_different_signature": [
+        {
+          "old": {
+            "symbol": "@f.enum$_int_of.2",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "I",
+                "representation": "I"
+              },
+              {
+                "name": "a",
+                "type": "I",
+                "representation": "I"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "int",
+            "return_representation": "int"
+          },
+          "new": {
+            "symbol": "@f.enum$_int_of.2",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "I",
+                "representation": "I"
+              },
+              {
+                "name": "a",
+                "type": "Number",
+                "representation": "Number"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "int",
+            "return_representation": "int"
+          },
+          "old_removed_sites": [
+            {
+              "function": "@f.enum$_int_of.2",
+              "pass_index": 49,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "new_removed_sites": [
+            {
+              "function": "@f.enum$_int_of.2",
+              "pass_index": 56,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "program": "tests/programs/library/lib_enum_plain_isinstance.py",
+      "decrease": 12,
+      "snapshots": {
+        "baseline": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/18-lib_enum_plain_isinstance/baseline/typed-after.json",
+          "sha256": "b77ecc2fea0943df1f2e16c50684dd3126b898605544bbf0946ec2eacfb1e7bb",
+          "bytes": 13705890
+        },
+        "candidate": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/18-lib_enum_plain_isinstance/candidate/typed-after.json",
+          "sha256": "fe04d27bb681e8d740babc708daa921a72c25fd5270ae372ffa4f6ffafc2aa6a",
+          "bytes": 10858438
+        }
+      },
+      "site_excerpts": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/18-lib_enum_plain_isinstance/site-excerpts.json",
+        "sha256": "f510a4a70f66f0519b2373230fba2988739a94bcfc4109e2250e6a6c7784b5a7",
+        "bytes": 2119815
+      },
+      "exact_symbol_delta": [
+        {
+          "function": "@f.enum$_int_of.3",
+          "before_records": [
+            {
+              "function": "@f.enum$_int_of.3",
+              "pass_index": 26,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": false
+        },
+        {
+          "function": "@f.enum$_int_of.5",
+          "before_records": [
+            {
+              "function": "@f.enum$_int_of.5",
+              "pass_index": 35,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@f.enum$_int_of.8",
+          "before_records": [
+            {
+              "function": "@f.enum$_int_of.8",
+              "pass_index": 44,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@f.enum$_str_of.1",
+          "before_records": [
+            {
+              "function": "@f.enum$_str_of.1",
+              "pass_index": 28,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": false
+        },
+        {
+          "function": "@f.enum$_str_of.2",
+          "before_records": [
+            {
+              "function": "@f.enum$_str_of.2",
+              "pass_index": 30,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": false
+        },
+        {
+          "function": "@f.enum$_str_of.3",
+          "before_records": [
+            {
+              "function": "@f.enum$_str_of.3",
+              "pass_index": 38,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntEnum.__eq__.3",
+          "before_records": [
+            {
+              "function": "@m.enum$IntEnum.__eq__.3",
+              "pass_index": 12,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L16",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t25",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L27"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntEnum.__eq__.5",
+          "before_records": [
+            {
+              "function": "@m.enum$IntEnum.__eq__.5",
+              "pass_index": 16,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L16",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t19",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L21"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$IntFlag.__eq__.3",
+          "before_records": [
+            {
+              "function": "@m.enum$IntFlag.__eq__.3",
+              "pass_index": 20,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L16",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t19",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L21"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        },
+        {
+          "function": "@m.enum$StrEnum.__eq__.1",
+          "before_records": [
+            {
+              "function": "@m.enum$StrEnum.__eq__.1",
+              "pass_index": 13,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t24",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L26"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": false
+        },
+        {
+          "function": "@m.enum$StrEnum.__eq__.2",
+          "before_records": [
+            {
+              "function": "@m.enum$StrEnum.__eq__.2",
+              "pass_index": 14,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": false
+        },
+        {
+          "function": "@m.enum$StrEnum.__eq__.3",
+          "before_records": [
+            {
+              "function": "@m.enum$StrEnum.__eq__.3",
+              "pass_index": 17,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "after_records": [],
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "function_absent_in_candidate": true
+        }
+      ],
+      "duplicate_exported_signature_groups_retained_separately": {
+        "baseline": [
+          {
+            "functions": [
+              {
+                "symbol": "@m.enum$IntEnum.__eq__.2",
+                "parameters": [
+                  {
+                    "name": "self",
+                    "type": "_IntMixin",
+                    "representation": "enum$_IntMixin"
+                  },
+                  {
+                    "name": "other",
+                    "type": "IntEnum",
+                    "representation": "enum$IntEnum"
+                  }
+                ],
+                "return_type": "bool",
+                "return_representation": "bool"
+              },
+              {
+                "symbol": "@m.enum$IntEnum.__eq__.6",
+                "parameters": [
+                  {
+                    "name": "self",
+                    "type": "_IntMixin",
+                    "representation": "enum$_IntMixin"
+                  },
+                  {
+                    "name": "other",
+                    "type": "IntEnum",
+                    "representation": "enum$IntEnum"
+                  }
+                ],
+                "return_type": "bool",
+                "return_representation": "bool"
+              }
+            ],
+            "null_obligations": [
+              0,
+              0
+            ]
+          },
+          {
+            "functions": [
+              {
+                "symbol": "@m.enum$StrEnum.__eq__.2",
+                "parameters": [
+                  {
+                    "name": "self",
+                    "type": "_StrMixin",
+                    "representation": "enum$_StrMixin"
+                  },
+                  {
+                    "name": "other",
+                    "type": "StrEnum",
+                    "representation": "enum$StrEnum"
+                  }
+                ],
+                "return_type": "bool",
+                "return_representation": "bool"
+              },
+              {
+                "symbol": "@m.enum$StrEnum.__eq__.4",
+                "parameters": [
+                  {
+                    "name": "self",
+                    "type": "_StrMixin",
+                    "representation": "enum$_StrMixin"
+                  },
+                  {
+                    "name": "other",
+                    "type": "StrEnum",
+                    "representation": "enum$StrEnum"
+                  }
+                ],
+                "return_type": "bool",
+                "return_representation": "bool"
+              }
+            ],
+            "null_obligations": [
+              1,
+              0
+            ]
+          }
+        ],
+        "candidate": []
+      },
+      "lost_typed_specializations": [
+        {
+          "old": {
+            "symbol": "@m.enum$IntEnum.__eq__.3",
+            "parameters": [
+              {
+                "name": "self",
+                "type": "IntEnum",
+                "representation": "enum$IntEnum"
+              },
+              {
+                "name": "other",
+                "type": "IntFlag",
+                "representation": "enum$IntFlag"
+              }
+            ],
+            "return_type": "bool",
+            "return_representation": "bool"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@m.enum$IntEnum.__eq__.3",
+              "pass_index": 12,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L16",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t25",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L27"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@m.enum$StrEnum.__eq__.1",
+            "parameters": [
+              {
+                "name": "self",
+                "type": "StrEnum",
+                "representation": "enum$StrEnum"
+              },
+              {
+                "name": "other",
+                "type": "StrEnum",
+                "representation": "enum$StrEnum"
+              }
+            ],
+            "return_type": "bool",
+            "return_representation": "bool"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@m.enum$StrEnum.__eq__.1",
+              "pass_index": 13,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t24",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L26"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@m.enum$StrEnum.__eq__.2",
+            "parameters": [
+              {
+                "name": "self",
+                "type": "_StrMixin",
+                "representation": "enum$_StrMixin"
+              },
+              {
+                "name": "other",
+                "type": "StrEnum",
+                "representation": "enum$StrEnum"
+              }
+            ],
+            "return_type": "bool",
+            "return_representation": "bool"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@m.enum$StrEnum.__eq__.2",
+              "pass_index": 14,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@m.enum$IntEnum.__eq__.5",
+            "parameters": [
+              {
+                "name": "self",
+                "type": "_IntMixin",
+                "representation": "enum$_IntMixin"
+              },
+              {
+                "name": "other",
+                "type": "IntFlag",
+                "representation": "enum$IntFlag"
+              }
+            ],
+            "return_type": "bool",
+            "return_representation": "bool"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@m.enum$IntEnum.__eq__.5",
+              "pass_index": 16,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L16",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t19",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L21"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@m.enum$StrEnum.__eq__.3",
+            "parameters": [
+              {
+                "name": "self",
+                "type": "_StrMixin",
+                "representation": "enum$_StrMixin"
+              },
+              {
+                "name": "other",
+                "type": "_StrMixin",
+                "representation": "enum$_StrMixin"
+              }
+            ],
+            "return_type": "bool",
+            "return_representation": "bool"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@m.enum$StrEnum.__eq__.3",
+              "pass_index": 17,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@m.enum$IntFlag.__eq__.3",
+            "parameters": [
+              {
+                "name": "self",
+                "type": "IntFlag",
+                "representation": "enum$IntFlag"
+              },
+              {
+                "name": "other",
+                "type": "IntFlag",
+                "representation": "enum$IntFlag"
+              }
+            ],
+            "return_type": "bool",
+            "return_representation": "bool"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@m.enum$IntFlag.__eq__.3",
+              "pass_index": 20,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L16",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t19",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L21"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@f.enum$_int_of.3",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "IntFlag",
+                "representation": "enum$IntFlag"
+              },
+              {
+                "name": "a",
+                "type": "IntEnum",
+                "representation": "enum$IntEnum"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "int",
+            "return_representation": "int"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@f.enum$_int_of.3",
+              "pass_index": 26,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@f.enum$_str_of.1",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "StrEnum",
+                "representation": "enum$StrEnum"
+              },
+              {
+                "name": "a",
+                "type": "StrEnum",
+                "representation": "enum$StrEnum"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "str",
+            "return_representation": "str"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@f.enum$_str_of.1",
+              "pass_index": 28,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@f.enum$_str_of.2",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "StrEnum",
+                "representation": "enum$StrEnum"
+              },
+              {
+                "name": "a",
+                "type": "_StrMixin",
+                "representation": "enum$_StrMixin"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "str",
+            "return_representation": "str"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@f.enum$_str_of.2",
+              "pass_index": 30,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@f.enum$_int_of.5",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "IntFlag",
+                "representation": "enum$IntFlag"
+              },
+              {
+                "name": "a",
+                "type": "_IntMixin",
+                "representation": "enum$_IntMixin"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "int",
+            "return_representation": "int"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@f.enum$_int_of.5",
+              "pass_index": 35,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@f.enum$_str_of.3",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "_StrMixin",
+                "representation": "enum$_StrMixin"
+              },
+              {
+                "name": "a",
+                "type": "_StrMixin",
+                "representation": "enum$_StrMixin"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "str",
+            "return_representation": "str"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@f.enum$_str_of.3",
+              "pass_index": 38,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "old": {
+            "symbol": "@f.enum$_int_of.8",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "IntFlag",
+                "representation": "enum$IntFlag"
+              },
+              {
+                "name": "a",
+                "type": "IntFlag",
+                "representation": "enum$IntFlag"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "int",
+            "return_representation": "int"
+          },
+          "new_same_typed_signature": null,
+          "before_obligations": 1,
+          "after_obligations": 0,
+          "exact_old_removed_sites": [
+            {
+              "function": "@f.enum$_int_of.8",
+              "pass_index": 44,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "retained_typed_specializations_with_renamed_symbol": [],
+      "same_symbol_reused_with_different_signature": [
+        {
+          "old": {
+            "symbol": "@m.enum$StrEnum.__eq__.1",
+            "parameters": [
+              {
+                "name": "self",
+                "type": "StrEnum",
+                "representation": "enum$StrEnum"
+              },
+              {
+                "name": "other",
+                "type": "StrEnum",
+                "representation": "enum$StrEnum"
+              }
+            ],
+            "return_type": "bool",
+            "return_representation": "bool"
+          },
+          "new": {
+            "symbol": "@m.enum$StrEnum.__eq__.1",
+            "parameters": [
+              {
+                "name": "self",
+                "type": "StrEnum",
+                "representation": "enum$StrEnum"
+              },
+              {
+                "name": "other",
+                "type": "Any",
+                "representation": "dyn"
+              }
+            ],
+            "return_type": "bool",
+            "return_representation": "bool"
+          },
+          "old_removed_sites": [
+            {
+              "function": "@m.enum$StrEnum.__eq__.1",
+              "pass_index": 13,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t24",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L26"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "new_removed_sites": []
+        },
+        {
+          "old": {
+            "symbol": "@m.enum$StrEnum.__eq__.2",
+            "parameters": [
+              {
+                "name": "self",
+                "type": "_StrMixin",
+                "representation": "enum$_StrMixin"
+              },
+              {
+                "name": "other",
+                "type": "StrEnum",
+                "representation": "enum$StrEnum"
+              }
+            ],
+            "return_type": "bool",
+            "return_representation": "bool"
+          },
+          "new": {
+            "symbol": "@m.enum$StrEnum.__eq__.2",
+            "parameters": [
+              {
+                "name": "self",
+                "type": "_StrMixin",
+                "representation": "enum$_StrMixin"
+              },
+              {
+                "name": "other",
+                "type": "Any",
+                "representation": "dyn"
+              }
+            ],
+            "return_type": "bool",
+            "return_representation": "bool"
+          },
+          "old_removed_sites": [
+            {
+              "function": "@m.enum$StrEnum.__eq__.2",
+              "pass_index": 14,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L15",
+                  "offset": 3,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t18",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L20"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "new_removed_sites": []
+        },
+        {
+          "old": {
+            "symbol": "@f.enum$_int_of.3",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "IntFlag",
+                "representation": "enum$IntFlag"
+              },
+              {
+                "name": "a",
+                "type": "IntEnum",
+                "representation": "enum$IntEnum"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "int",
+            "return_representation": "int"
+          },
+          "new": {
+            "symbol": "@f.enum$_int_of.3",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "Any",
+                "representation": "dyn"
+              },
+              {
+                "name": "a",
+                "type": "IntFlag",
+                "representation": "enum$IntFlag"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "Any",
+            "return_representation": "dyn"
+          },
+          "old_removed_sites": [
+            {
+              "function": "@f.enum$_int_of.3",
+              "pass_index": 26,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "new_removed_sites": []
+        },
+        {
+          "old": {
+            "symbol": "@f.enum$_str_of.1",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "StrEnum",
+                "representation": "enum$StrEnum"
+              },
+              {
+                "name": "a",
+                "type": "StrEnum",
+                "representation": "enum$StrEnum"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "str",
+            "return_representation": "str"
+          },
+          "new": {
+            "symbol": "@f.enum$_str_of.1",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "Any",
+                "representation": "dyn"
+              },
+              {
+                "name": "a",
+                "type": "StrEnum",
+                "representation": "enum$StrEnum"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "str",
+            "return_representation": "str"
+          },
+          "old_removed_sites": [
+            {
+              "function": "@f.enum$_str_of.1",
+              "pass_index": 28,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "new_removed_sites": []
+        },
+        {
+          "old": {
+            "symbol": "@f.enum$_str_of.2",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "StrEnum",
+                "representation": "enum$StrEnum"
+              },
+              {
+                "name": "a",
+                "type": "_StrMixin",
+                "representation": "enum$_StrMixin"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "str",
+            "return_representation": "str"
+          },
+          "new": {
+            "symbol": "@f.enum$_str_of.2",
+            "parameters": [
+              {
+                "name": "x",
+                "type": "Any",
+                "representation": "dyn"
+              },
+              {
+                "name": "a",
+                "type": "_StrMixin",
+                "representation": "enum$_StrMixin"
+              },
+              {
+                "name": "op",
+                "type": "str",
+                "representation": "str"
+              }
+            ],
+            "return_type": "str",
+            "return_representation": "str"
+          },
+          "old_removed_sites": [
+            {
+              "function": "@f.enum$_str_of.2",
+              "pass_index": 30,
+              "obligations": 1,
+              "removed_sites": [
+                {
+                  "block": "L7",
+                  "offset": 2,
+                  "operation": {
+                    "op": "check",
+                    "type": "",
+                    "text": "AttributeError: 'NoneType' object has no attribute '_value_'",
+                    "immediate": 0,
+                    "descriptor": "",
+                    "results": [],
+                    "operands": [
+                      {
+                        "value": "%t11",
+                        "type": "bool"
+                      }
+                    ],
+                    "targets": [
+                      "L13"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "new_removed_sites": []
+        }
+      ]
+    }
+  ]
+}

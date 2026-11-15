@@ -1,0 +1,22 @@
+{
+  "observed_utc": "2026-11-15T09:22:17.931081+00:00",
+  "reason": "Add byte-exact method documents beside the two preserved census reports, with pinned-source indexes explaining original repository-relative navigation. No report or qualification evidence changed.",
+  "prior_package": "research-publish/qualified-before-method-documents",
+  "preserved_files": [
+    {
+      "name": "premerge-qualified-README.md",
+      "sha256": "75cdaa4681eabfc2b484f2fdb52d163654c5328cf6b0a33a2b107b87c13879f0",
+      "bytes": 11611
+    },
+    {
+      "name": "pack-qualified-evidence.py",
+      "sha256": "a65c79247bcffec3fcb1c89eb8da4e356ebb39f0fb6ebc8441f9ab3218c5985a",
+      "bytes": 12366
+    },
+    {
+      "name": "premerge-qualified-README.template.md",
+      "sha256": "9d269fbd6bdef62902b3d237de2d05ccdcca96e0f4c55358d8293326e277ac2b",
+      "bytes": 8907
+    }
+  ]
+}

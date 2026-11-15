@@ -1,0 +1,22 @@
+{
+  "kind": "retained_successful_audit_stdout_summary",
+  "raw_receipt_bytes_included": false,
+  "reason": "Workspace execution became unavailable after the completed audit and after all package blobs were uploaded. This record preserves the independently reported successful audit summary; it is not the original receipt file.",
+  "reviewer": "independent alpha3_publication agent",
+  "reviewed_readme_sha256": "128b2529671040cbfbfc7265776bcff53e14b15536a546b81ea2136f5c158c02",
+  "receipt": "evidence/qualified-package-review.json",
+  "status": "final_evidence_package_audit_complete",
+  "receipt_sha256": "a2f8b8ab268fce7a0a2a052c2246884ccb3b50eb1cbc685e97aeb8017497d0fe",
+  "files": 141,
+  "archives": 12,
+  "members": 32482,
+  "member_bytes": 266256531,
+  "secret_candidates": [],
+  "report_method_links_resolved": 20,
+  "root_readme_links_resolved": 28,
+  "scanned_files_or_members": 519,
+  "scanned_bytes": 39593298,
+  "upload_manifest_sha256": "f828c8e5b5979d53291e9c09a8390d41207bf3abd18ff20a4072846cb0bd4a9c",
+  "checksum_file_sha256": "a06857504448bc631ade899beb3181c3ac0f7d2b3cc79325db09a4cd64210f06",
+  "scope": "All141 frozen payload sizes, SHA256, Git blob IDs, checksum entries; all archive members; current README/report links; method-source bytes; source roles, claims and limits. Original-context method/history/template nested links are explicitly scoped."
+}

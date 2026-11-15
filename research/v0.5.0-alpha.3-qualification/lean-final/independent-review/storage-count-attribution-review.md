@@ -1,0 +1,9 @@
+# Independent storage denominator review
+
+Both storage decreases and the associated identity-boundary GC decrease are accounted for in exact retained source and IR. All four raw snapshots were rehashed; complete selected typed functions match the compact excerpts, and every recorded low-word definition, producer and use matches the raw function.
+
+The edited identity-boundary deviation loses one storage obligation for `int("1000")` in the removed typed-VTuple observation. Its surviving low word comes from the wide `big.op` expression. The four removed GC sites are the optional-float-list append, global store and two reads. The remaining four sites all belong to the union-list observation. The original input audit and precise promoting-int replacements remain separate evidence; generic VTuple coverage is not relabeled as a storage proof.
+
+The unchanged VTuple-materialization fixture changes **46 → 37**, with `optional` **18 → 7** and `small` **6 → 8**; the other three complete inventory records and graph hashes are unchanged. The intermediate fixed tuple disappears, removing two tail-marker, six narrowing and four tuple-decode obligations. Low-word uses rise by one in `optional` and two in `small`, yielding **−12 + 1 + 2 = −9**. Each function retains both explicit overflow checks. `item` is called once in `optional` and twice in `small`, in source order, before final VTuple materialization. The optional tuple retains its explicit null middle element and directly coerced endpoint values; identity companions account for the new low-word uses.
+
+The full old/new LLVM bodies and qualification/publication support are hash-bound in JSON. This attributes the denominator and keeps the runtime checks distinct from theorem-checker verdicts. No compiler, normalizer, Lean checker or runtime was run. Final fresh-census snapshot/count binding and strict-storage acceptance remain mandatory.

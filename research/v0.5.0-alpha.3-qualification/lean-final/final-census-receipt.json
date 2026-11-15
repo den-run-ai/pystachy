@@ -1,0 +1,190 @@
+{
+  "schema_version": 1,
+  "created_utc": "2026-11-15T09:06:41.279356+00:00",
+  "status": "complete_and_strict_storage_accepted",
+  "candidate_commit": "0a2fe77a580106c197face4d2904be80e3f85dbc",
+  "candidate_tree": "107460d5f89bdcf37f2741b233eac0568d82604a",
+  "checks": {
+    "all_final_acceptance_checks_passed": true,
+    "records_match_acceptance_hash": true,
+    "report_matches_acceptance_hash": true,
+    "exact_unique_complete_records": true,
+    "exact_full_corpus_names": true,
+    "complete_record_lines": true,
+    "exact_storage_selection": true,
+    "source_commit_matches": true,
+    "source_tree_matches": true,
+    "source_clean": true,
+    "first_attempt_fresh": true,
+    "later_attempts_maintained_resume_only": true,
+    "all_attempts_same_frozen_clean_source": true,
+    "maintained_one_worker_commands": true,
+    "all_same_source_prefixes_preserved": true,
+    "last_report_status_and_audit_succeeded": true,
+    "baseline_names_and_storage_selection_retained": true
+  },
+  "programs": 2699,
+  "strict_storage_selections": 196,
+  "known_storage_counts": {
+    "programs": 180,
+    "functions": 2172,
+    "obligations": 25816,
+    "proved": 25816
+  },
+  "storage_gaps": [],
+  "attempts": [
+    {
+      "result": {
+        "started_utc": "2026-11-15T07:55:04.186528+00:00",
+        "commit": "0a2fe77a580106c197face4d2904be80e3f85dbc",
+        "tree": "107460d5f89bdcf37f2741b233eac0568d82604a",
+        "command": [
+          "/workspace/scratch/c2b093657c17/dev-venv/bin/python",
+          "tools/lean_report.py",
+          "--jobs",
+          "1",
+          "--start-method",
+          "spawn",
+          "--timeout",
+          "300",
+          "--progress",
+          "--output",
+          "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/report.md",
+          "--records",
+          "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/records.jsonl"
+        ],
+        "resume": false,
+        "cwd": "/workspace/scratch/980402bc01c4/alpha3-lean-storage-corrected",
+        "source_before": "",
+        "jobs": 1,
+        "runner": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/run.py",
+          "bytes": 5867,
+          "sha256": "6357e04bd8521aef63b417e4fe57d6fb5d860526c594f60abc57e6b6e25090f1"
+        },
+        "preparation": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/prepared.json",
+          "bytes": 174505,
+          "sha256": "5ad25a8ad008882ae65c84f3a77ecf18dcfabdc76d26fc2aa39cb17e7f20ff69"
+        },
+        "audit_script": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/audit.py",
+          "bytes": 10135,
+          "sha256": "bd99f81b1d4dbdc7e11470c808a0bf27286a39ab011cc0a568d1a64e1e76333f"
+        },
+        "log": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/run-20261115T075504Z.log",
+        "resource_samples": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/run-20261115T075504Z-resources.jsonl",
+        "report_pid": 49,
+        "report_exit": 0,
+        "status_exit": 0,
+        "audit_exit": 0,
+        "seconds": 4271.354,
+        "child_peak_rss_kib": 1296324,
+        "commit_after": "0a2fe77a580106c197face4d2904be80e3f85dbc",
+        "tree_after": "107460d5f89bdcf37f2741b233eac0568d82604a",
+        "source_after": "",
+        "resources": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/run-20261115T075504Z-resources.jsonl",
+          "bytes": 25999,
+          "sha256": "24fa29e4799a96b81ddfa66dbd4b40278a6292c0cbdc3f1896cdf3504e905fbe"
+        },
+        "resource_diagnosis_limit": "Read-only RSS samples do not attribute a signal or prove an OOM event."
+      },
+      "artifacts": {
+        "receipt": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/run-20261115T075504Z.json",
+          "bytes": 2191,
+          "sha256": "e2a6fdc75fc009464fc1985cc81be0ef0eb9614bcc305d4d98e22cf2a213628e"
+        },
+        "log": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/run-20261115T075504Z.log",
+          "bytes": 170930,
+          "sha256": "93fe339d1fe59a6e095d04228dbb0767393bed746a59ccc65e4d076af2177f2d"
+        },
+        "resources": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/run-20261115T075504Z-resources.jsonl",
+          "bytes": 25999,
+          "sha256": "24fa29e4799a96b81ddfa66dbd4b40278a6292c0cbdc3f1896cdf3504e905fbe"
+        }
+      }
+    }
+  ],
+  "same_source_prefixes": [],
+  "prior_checker_records_reused": false,
+  "semantic_approval_granted": false,
+  "limits": [
+    "This receipt attests complete source-bound execution and strict storage. It does not declare all other proof categories fully accepted.",
+    "Any rejected or unsupported function remains in the report and separate semantic disposition.",
+    "Read-only resource samples do not establish an OOM event or explain any process kill without direct evidence.",
+    "Final exact denominator binding and independent semantic review remain separate artifacts/gates."
+  ],
+  "evidence": {
+    "records.jsonl": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/records.jsonl",
+      "bytes": 2361345,
+      "sha256": "1184061f32713f1a8de978b8ceb87acea02bfe02ec411f366085276ed3baf33c"
+    },
+    "report.md": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/report.md",
+      "bytes": 15137,
+      "sha256": "bf88351eff1b847e6a4e5729667ed5f802462d842659025f20051cbd6795a89b"
+    },
+    "acceptance.json": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/acceptance.json",
+      "bytes": 62494,
+      "sha256": "58e66fb54071eeb3334a1a947a7e00cbdf4225de10036d21d3414ba947851fd0"
+    },
+    "delta-alpha2.json": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/delta-alpha2.json",
+      "bytes": 47606,
+      "sha256": "c7c6a50aa77a70954c3676ec7cc3a34f7d7c4b07dd87105c35ad7dd7a117e244"
+    },
+    "prepared.json": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/prepared.json",
+      "bytes": 174505,
+      "sha256": "5ad25a8ad008882ae65c84f3a77ecf18dcfabdc76d26fc2aa39cb17e7f20ff69"
+    },
+    "attribution-config.json": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/attribution-config.json",
+      "bytes": 542,
+      "sha256": "4028c9d732db3336a5551df8da1bb05d7d9770b818a0592d3d002ae20a9f96d1"
+    },
+    "prepare.py": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/prepare.py",
+      "bytes": 6437,
+      "sha256": "6f1375681e9a6b4f28c56a839d2e3dc60dc6c2ba383369f800950d3b48cdf265"
+    },
+    "run.py": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/run.py",
+      "bytes": 5867,
+      "sha256": "6357e04bd8521aef63b417e4fe57d6fb5d860526c594f60abc57e6b6e25090f1"
+    },
+    "audit.py": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/audit.py",
+      "bytes": 10135,
+      "sha256": "bd99f81b1d4dbdc7e11470c808a0bf27286a39ab011cc0a568d1a64e1e76333f"
+    },
+    "finalize-census.py": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/finalize-census.py",
+      "bytes": 6706,
+      "sha256": "21075e38f288d03892695443c21fccae32e929dc65f96d9d34797842651da7d3"
+    }
+  },
+  "historical_failed_censuses": {
+    "original_b0_partial": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean/interrupted-partial-census.json",
+      "bytes": 109258,
+      "sha256": "34a90409368d2e213a6bb279424569dc1ec8f747da47a7ee94be954dc07c5154"
+    },
+    "complete_94f4_strict_storage_failure": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-corrected/complete-blocked-census.json",
+      "bytes": 17758,
+      "sha256": "f7ff6e2aaf02f79fbc19e200dffbac0c3a6e3d3f5b9637d6e947bec454ed24e8"
+    },
+    "94f4_historical_failure_comparison": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-corrected/historical-attempt-comparison.json",
+      "bytes": 31496,
+      "sha256": "1a4ee05452fb08f54da8da22b50294301c728f98552ac3a62ef4ffdaf44e8d26"
+    }
+  }
+}

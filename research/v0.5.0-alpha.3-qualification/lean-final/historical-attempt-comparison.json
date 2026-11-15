@@ -1,0 +1,634 @@
+{
+  "schema_version": 1,
+  "created_utc": "2026-11-15T09:12:49.134956+00:00",
+  "status": "historical_failures_preserved_and_final_source_qualified",
+  "candidate_commit": "0a2fe77a580106c197face4d2904be80e3f85dbc",
+  "candidate_tree": "107460d5f89bdcf37f2741b233eac0568d82604a",
+  "checks": {
+    "historical_raw_record_hashes_match_preserved_receipts": true,
+    "final_raw_record_hash_matches_completed_receipt_and_acceptance": true,
+    "each_actual_header_matches_its_own_source_commit": true,
+    "original_partial_status_and_count_preserved": true,
+    "completed94_status_and_strict_failure_preserved": true,
+    "all_original_partial_programs_retained_in_final": true,
+    "complete94_and_final_program_sets_equal": true,
+    "original_eighteen_adapter_errors_four_programs_preserved": true,
+    "only_original_comparable_changes_are_repaired_union_and_payload_checks": true,
+    "all_original_adapter_error_programs_complete_and_selected_checks_proved": true,
+    "two_original_inspection_kills_complete_without_error_on_final_source": true,
+    "exactly_one94_to_final_check_dictionary_changes": true,
+    "old_storage_known_subtotal_and_three_unknowns_remain_visible": true,
+    "new_storage_target_is_fresh142_without_unknowns": true,
+    "final_single_fresh_attempt_and_strict_storage_passed": true,
+    "final_semantic_and_independent_reviews_passed_with_limits": true,
+    "comparison_source_inputs_unchanged": true
+  },
+  "sources": {
+    "b0_partial": {
+      "commit": "b0bda81ec2b9954c3c5e0f658c051439126a5c22",
+      "tree": "e027b37c888326e3d8a3e8b89522a6b397dcb86d",
+      "records": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean/records.jsonl",
+        "bytes": 1618782,
+        "sha256": "662de211e3bb3eadcbbd50c98daa3c0e03dc870e5448e6ae2b04b4824521ee0d"
+      },
+      "record_count": 1865,
+      "actual_original_header_summary": {
+        "commit": "b0bda81ec2b9",
+        "inputs": {
+          "checkers": {
+            "clean": true,
+            "digest": "d5be15be0798e8f6"
+          },
+          "compiler": {
+            "clean": true,
+            "digest": "076cd2c16988de28"
+          },
+          "corpus": {
+            "clean": true,
+            "digest": "b209fb8d96070409",
+            "programs": [],
+            "untrusted": []
+          }
+        },
+        "lean": "Lean 4.35.0",
+        "platform": "linux",
+        "python": "3.13.16"
+      },
+      "raw_header_line_sha256": "8a43ad3dc181ffbda6dbb4dcc214b711999234871cfe266a6727ee1c3e80fcc5",
+      "header_was_rewritten_or_reused": false
+    },
+    "94_complete_blocked": {
+      "commit": "94f472d6de5350fc9481ecf3b9ec019d2ecdb4f2",
+      "tree": "51f6c150748b2d17945e4d1c6779d8080b6edd6a",
+      "records": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-corrected/records.jsonl",
+        "bytes": 2361743,
+        "sha256": "396f4b02ede94afda93ecc796f1da3aa1d3cb022a78939c51c4fc34a22101bbe"
+      },
+      "record_count": 2699,
+      "actual_original_header_summary": {
+        "commit": "94f472d6de53",
+        "inputs": {
+          "checkers": {
+            "clean": true,
+            "digest": "0005a7aea672ccef"
+          },
+          "compiler": {
+            "clean": true,
+            "digest": "076cd2c16988de28"
+          },
+          "corpus": {
+            "clean": true,
+            "digest": "be8b7a4c439fb4e5",
+            "programs": [],
+            "untrusted": []
+          }
+        },
+        "lean": "Lean 4.35.0",
+        "platform": "linux",
+        "python": "3.13.16"
+      },
+      "raw_header_line_sha256": "b997a4f704d28d9e09935cb6af0c4e6b5625be60eabab90954f86c60d9e17a90",
+      "header_was_rewritten_or_reused": false
+    },
+    "0a2_final": {
+      "commit": "0a2fe77a580106c197face4d2904be80e3f85dbc",
+      "tree": "107460d5f89bdcf37f2741b233eac0568d82604a",
+      "records": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/records.jsonl",
+        "bytes": 2361345,
+        "sha256": "1184061f32713f1a8de978b8ceb87acea02bfe02ec411f366085276ed3baf33c"
+      },
+      "record_count": 2699,
+      "actual_original_header_summary": {
+        "commit": "0a2fe77a5801",
+        "inputs": {
+          "checkers": {
+            "clean": true,
+            "digest": "b738d646942a1fc1"
+          },
+          "compiler": {
+            "clean": true,
+            "digest": "076cd2c16988de28"
+          },
+          "corpus": {
+            "clean": true,
+            "digest": "36ebdcfde588ee7f",
+            "programs": [],
+            "untrusted": []
+          }
+        },
+        "lean": "Lean 4.35.0",
+        "platform": "linux",
+        "python": "3.13.16"
+      },
+      "raw_header_line_sha256": "bf0efa77331c9a636fffbf006e558ebeba84e1c6efbaa950e383b742c5b5f456",
+      "header_was_rewritten_or_reused": false
+    }
+  },
+  "historical_outcomes": {
+    "b0_partial": {
+      "status": "interrupted_incomplete_failed_historical_attempt",
+      "qualifies_release": false,
+      "interrupted_exit": 130,
+      "records": 1865,
+      "expected_records": 2699,
+      "inspection_error_count": 2,
+      "nested_adapter_error_count": 18
+    },
+    "94_complete_blocked": {
+      "status": "complete_but_strict_storage_blocked",
+      "qualifies_release": false,
+      "attempts": [
+        {
+          "receipt": "run-20261115T061318Z.json",
+          "report_exit": -9,
+          "completed_records": 2562,
+          "kill_cause": "unknown",
+          "secondary_failures": "status and audit lacked the not-yet-written final report"
+        },
+        {
+          "receipt": "run-20261115T072150Z.json",
+          "maintained_same_source_resume": true,
+          "report_exit": 0,
+          "status_exit": 0,
+          "independent_audit_exit": 1,
+          "appended_records": 137
+        }
+      ],
+      "prefix_preserved_byte_for_byte": true,
+      "known_storage_counts": {
+        "functions": 2172,
+        "obligations": 25682,
+        "proved": 25682
+      },
+      "storage_gaps": [
+        {
+          "program": "tests/programs/numbers/python_int_optional_tuple_keys.py",
+          "storage": {
+            "functions": 7,
+            "obligations": 8,
+            "proved": 8,
+            "unproved": [
+              {
+                "function": "@main.init",
+                "obligations": null,
+                "reason": "tuple boundary changes a non-integer representation",
+                "status": "unsupported"
+              },
+              {
+                "function": "@f.exercise",
+                "obligations": null,
+                "reason": "tuple boundary changes a non-integer representation",
+                "status": "unsupported"
+              },
+              {
+                "function": "@f.fixed_optional_tuple_keys$read_nested",
+                "obligations": null,
+                "reason": "tuple boundary changes a non-integer representation",
+                "status": "unsupported"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "0a2_final": {
+      "status": "complete_and_strict_storage_accepted",
+      "independent_status": "accepted_with_explicit_model_limits",
+      "fresh_uninterrupted_attempts": 1,
+      "record_count": 2699,
+      "strict_storage_selections": 196,
+      "known_storage_counts": {
+        "programs": 180,
+        "functions": 2172,
+        "obligations": 25816,
+        "proved": 25816
+      },
+      "storage_gaps": []
+    }
+  },
+  "original_adapter_failure_comparison": {
+    "programs": [
+      {
+        "program": "tests/programs/inference/dynany_complex.py",
+        "original_nested_errors": [
+          {
+            "check": "union",
+            "function": "@m._pystachy_complex$complex.__radd__",
+            "obligations": null,
+            "reason": "split union member without a union tag",
+            "status": "error"
+          },
+          {
+            "check": "union",
+            "function": "@m._pystachy_complex$complex.__rsub__",
+            "obligations": null,
+            "reason": "split union member without a union tag",
+            "status": "error"
+          },
+          {
+            "check": "union",
+            "function": "@m._pystachy_complex$complex.__rmul__",
+            "obligations": null,
+            "reason": "split union member without a union tag",
+            "status": "error"
+          },
+          {
+            "check": "union",
+            "function": "@m._pystachy_complex$complex.__rtruediv__",
+            "obligations": null,
+            "reason": "split union member without a union tag",
+            "status": "error"
+          },
+          {
+            "check": "union",
+            "function": "@m._pystachy_complex$complex.__rpow__",
+            "obligations": null,
+            "reason": "split union member without a union tag",
+            "status": "error"
+          }
+        ],
+        "original_snapshot_sha256": "9d9664dbc69e3d23342bee0f1bbb262e456225b1d4afdead954c22f46cad4d41",
+        "final_snapshot_sha256": "604f563fb644c3e65a1668a619f360604632c2f93c378a25248d59c9b4dc1ca7",
+        "final_counts": {
+          "union": {
+            "functions": 10,
+            "obligations": 35,
+            "proved": 35,
+            "unproved": []
+          },
+          "union_payload": {
+            "functions": 10,
+            "obligations": 35,
+            "proved": 35,
+            "unproved": []
+          },
+          "null": {
+            "functions": 7,
+            "obligations": 8,
+            "proved": 8,
+            "unproved": []
+          }
+        },
+        "final_nested_errors": []
+      },
+      {
+        "program": "tests/programs/inference/dynany_complex_decline.py",
+        "original_nested_errors": [
+          {
+            "check": "union",
+            "function": "@m._pystachy_complex$complex.__radd__",
+            "obligations": null,
+            "reason": "split union member without a union tag",
+            "status": "error"
+          },
+          {
+            "check": "union",
+            "function": "@m._pystachy_complex$complex.__rsub__",
+            "obligations": null,
+            "reason": "split union member without a union tag",
+            "status": "error"
+          },
+          {
+            "check": "union",
+            "function": "@m._pystachy_complex$complex.__rmul__",
+            "obligations": null,
+            "reason": "split union member without a union tag",
+            "status": "error"
+          }
+        ],
+        "original_snapshot_sha256": "3ffddc7876fde8421111d12236f0bc939d71b89c7285a23206b5724986fd2718",
+        "final_snapshot_sha256": "4b4d51f849d4f97477102a476c4bb480f8bf31872125d4f97beda62a32881225",
+        "final_counts": {
+          "union": {
+            "functions": 6,
+            "obligations": 21,
+            "proved": 21,
+            "unproved": []
+          },
+          "union_payload": {
+            "functions": 6,
+            "obligations": 21,
+            "proved": 21,
+            "unproved": []
+          },
+          "null": {
+            "functions": 4,
+            "obligations": 4,
+            "proved": 4,
+            "unproved": []
+          }
+        },
+        "final_nested_errors": []
+      },
+      {
+        "program": "tests/programs/inference/dynany_complex_left.py",
+        "original_nested_errors": [
+          {
+            "check": "union",
+            "function": "@m._pystachy_complex$complex.__radd__",
+            "obligations": null,
+            "reason": "split union member without a union tag",
+            "status": "error"
+          },
+          {
+            "check": "union",
+            "function": "@m._pystachy_complex$complex.__rsub__",
+            "obligations": null,
+            "reason": "split union member without a union tag",
+            "status": "error"
+          },
+          {
+            "check": "union",
+            "function": "@m._pystachy_complex$complex.__rmul__",
+            "obligations": null,
+            "reason": "split union member without a union tag",
+            "status": "error"
+          },
+          {
+            "check": "union",
+            "function": "@m._pystachy_complex$complex.__rtruediv__",
+            "obligations": null,
+            "reason": "split union member without a union tag",
+            "status": "error"
+          },
+          {
+            "check": "union",
+            "function": "@m._pystachy_complex$complex.__rpow__",
+            "obligations": null,
+            "reason": "split union member without a union tag",
+            "status": "error"
+          }
+        ],
+        "original_snapshot_sha256": "bcaded99106bae66d065daf0240d9912ff5b36f298e71975a47708f87c0219cb",
+        "final_snapshot_sha256": "52c1410c876339d5d14a3d4537320afd54b8b223466bb6d6f87b5eaa3ce62273",
+        "final_counts": {
+          "union": {
+            "functions": 10,
+            "obligations": 35,
+            "proved": 35,
+            "unproved": []
+          },
+          "union_payload": {
+            "functions": 10,
+            "obligations": 35,
+            "proved": 35,
+            "unproved": []
+          },
+          "null": {
+            "functions": 6,
+            "obligations": 6,
+            "proved": 6,
+            "unproved": []
+          }
+        },
+        "final_nested_errors": []
+      },
+      {
+        "program": "tests/programs/inference/dynany_complex_wide.py",
+        "original_nested_errors": [
+          {
+            "check": "union",
+            "function": "@m._pystachy_complex$complex.__radd__",
+            "obligations": null,
+            "reason": "split union member without a union tag",
+            "status": "error"
+          },
+          {
+            "check": "union",
+            "function": "@m._pystachy_complex$complex.__rsub__",
+            "obligations": null,
+            "reason": "split union member without a union tag",
+            "status": "error"
+          },
+          {
+            "check": "union",
+            "function": "@m._pystachy_complex$complex.__rmul__",
+            "obligations": null,
+            "reason": "split union member without a union tag",
+            "status": "error"
+          },
+          {
+            "check": "union",
+            "function": "@m._pystachy_complex$complex.__rtruediv__",
+            "obligations": null,
+            "reason": "split union member without a union tag",
+            "status": "error"
+          },
+          {
+            "check": "union",
+            "function": "@m._pystachy_complex$complex.__rpow__",
+            "obligations": null,
+            "reason": "split union member without a union tag",
+            "status": "error"
+          }
+        ],
+        "original_snapshot_sha256": "18be9e59e6707a479890969b5e3d7f5091249602b0cbd26aecd9982fb49bb211",
+        "final_snapshot_sha256": "9d86d1638ae60019fd8f92d802298a8b6bb9dc203faa8b8c779e3bf61f4c2319",
+        "final_counts": {
+          "union": {
+            "functions": 10,
+            "obligations": 35,
+            "proved": 35,
+            "unproved": []
+          },
+          "union_payload": {
+            "functions": 10,
+            "obligations": 35,
+            "proved": 35,
+            "unproved": []
+          },
+          "null": {
+            "functions": 6,
+            "obligations": 6,
+            "proved": 6,
+            "unproved": []
+          }
+        },
+        "final_nested_errors": []
+      }
+    ],
+    "final_selected_proof_totals": {
+      "union": {
+        "obligations": 126,
+        "proved": 126
+      },
+      "union_payload": {
+        "obligations": 126,
+        "proved": 126
+      },
+      "null": {
+        "obligations": 24,
+        "proved": 24
+      }
+    },
+    "exact_changed_check_pairs": [
+      {
+        "program": "tests/programs/inference/dynany_complex.py",
+        "check": "union"
+      },
+      {
+        "program": "tests/programs/inference/dynany_complex.py",
+        "check": "union_payload"
+      },
+      {
+        "program": "tests/programs/inference/dynany_complex_decline.py",
+        "check": "union"
+      },
+      {
+        "program": "tests/programs/inference/dynany_complex_decline.py",
+        "check": "union_payload"
+      },
+      {
+        "program": "tests/programs/inference/dynany_complex_left.py",
+        "check": "union"
+      },
+      {
+        "program": "tests/programs/inference/dynany_complex_left.py",
+        "check": "union_payload"
+      },
+      {
+        "program": "tests/programs/inference/dynany_complex_wide.py",
+        "check": "union"
+      },
+      {
+        "program": "tests/programs/inference/dynany_complex_wide.py",
+        "check": "union_payload"
+      }
+    ]
+  },
+  "original_inspection_failure_comparison": [
+    {
+      "program": "tests/programs/library/lib_argparse_required.py",
+      "original_error": "inspection error: the compilation exited -9 without a report",
+      "final_snapshot_sha256": "0d6db5617506080325bd9a104622d8ed322f9c1abaa68d66b713867bce000039",
+      "final_inspection_completed": true,
+      "final_nested_error_count": 0,
+      "final_model_residual_entries_by_status": {
+        "unsupported": 3
+      },
+      "limit": "Completed inspection does not imply every model obligation is proved or explain the prior -9 exit."
+    },
+    {
+      "program": "tests/programs/library/lib_logging_config.py",
+      "original_error": "inspection error: the compilation exited -9 without a report",
+      "final_snapshot_sha256": "efb60dd183f3ef9bf5e0e92b30e327b7479b66cb9fb5b53d3f7811b76e5d0f19",
+      "final_inspection_completed": true,
+      "final_nested_error_count": 0,
+      "final_model_residual_entries_by_status": {
+        "unsupported": 3,
+        "rejected": 5
+      },
+      "limit": "Completed inspection does not imply every model obligation is proved or explain the prior -9 exit."
+    }
+  ],
+  "complete94_to_final_exact_check_dictionary_changes": [
+    {
+      "program": "tests/programs/numbers/python_int_optional_tuple_keys.py",
+      "check": "storage",
+      "before": {
+        "functions": 7,
+        "obligations": 8,
+        "proved": 8,
+        "unproved": [
+          {
+            "function": "@main.init",
+            "obligations": null,
+            "reason": "tuple boundary changes a non-integer representation",
+            "status": "unsupported"
+          },
+          {
+            "function": "@f.exercise",
+            "obligations": null,
+            "reason": "tuple boundary changes a non-integer representation",
+            "status": "unsupported"
+          },
+          {
+            "function": "@f.fixed_optional_tuple_keys$read_nested",
+            "obligations": null,
+            "reason": "tuple boundary changes a non-integer representation",
+            "status": "unsupported"
+          }
+        ]
+      },
+      "after": {
+        "functions": 7,
+        "obligations": 142,
+        "proved": 142,
+        "unproved": []
+      },
+      "before_snapshot_sha256": "9638ff0347f8a12f23fdd7a7be72bd35343080ec966bcfe432f74c3819c7d76b",
+      "after_snapshot_sha256": "2aa724e7dd365d71ed54c989f773f51a35dfe11dbb514e4056a2d99d6508fa09"
+    }
+  ],
+  "compiler_or_checker_executions_performed": false,
+  "records_or_headers_modified": false,
+  "limits": [
+    "The b0 attempt remains an incomplete failed census; its partial counts are not a full-corpus denominator.",
+    "The complete 94f4 census remains blocked despite its known 25,682/25,682 subtotal; three unknown-count storage functions were not waived.",
+    "Historical -9 exits retain unknown causes. Later successful inspections and RSS samples do not establish OOM or another cause.",
+    "Exact dictionaries are compared without temporary-name or specialization normalization. Timing and source-specific snapshot hashes are not proof-result equality criteria.",
+    "Each source keeps its own original header and raw record hash. The final census is a fresh execution, not a rewritten historical header or reused checker records.",
+    "All other 94f4 proof dictionaries are unchanged, including the explicit complex union/payload, GC and Decimal model limits documented in the final semantic disposition.",
+    "This comparison records existing accepted evidence; it does not independently grant proofs or authorize publication."
+  ],
+  "evidence": {
+    "original_partial_receipt": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean/interrupted-partial-census.json",
+      "bytes": 109258,
+      "sha256": "34a90409368d2e213a6bb279424569dc1ec8f747da47a7ee94be954dc07c5154"
+    },
+    "completed_blocked_receipt": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-corrected/complete-blocked-census.json",
+      "bytes": 17758,
+      "sha256": "f7ff6e2aaf02f79fbc19e200dffbac0c3a6e3d3f5b9637d6e947bec454ed24e8"
+    },
+    "prior_b0_to_94_comparison": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-corrected/historical-attempt-comparison.json",
+      "bytes": 31496,
+      "sha256": "1a4ee05452fb08f54da8da22b50294301c728f98552ac3a62ef4ffdaf44e8d26"
+    },
+    "final_census_receipt": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/final-census-receipt.json",
+      "bytes": 8287,
+      "sha256": "ff4de56e45b1a742d86117cc93363d6d9442b7cde2a637cd13281a739ad0506e"
+    },
+    "final_acceptance": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/acceptance.json",
+      "bytes": 62494,
+      "sha256": "58e66fb54071eeb3334a1a947a7e00cbdf4225de10036d21d3414ba947851fd0"
+    },
+    "final_semantic_disposition": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/semantic-disposition.json",
+      "bytes": 101443,
+      "sha256": "9fa6a540b479668a4b3cb6167ec13438eb8a4f2655d7e99c2d33d06085413e7b"
+    },
+    "independent_final_acceptance": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/final-acceptance.json",
+      "bytes": 13846,
+      "sha256": "0d807b8815ee760c096aab5242fd4746d71199cda53a36c98b4404554de52411"
+    },
+    "production_source_equivalence": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean/optional-storage-repair/final-source-equivalence-b0-to-0a2f.json",
+      "bytes": 17658,
+      "sha256": "25c6d93bc2f9f9756e4f10fe6872402394b64bcdf441b48b5172fbf08b23e7d1"
+    },
+    "sparse_tag_repair": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean/adapter-repair/frozen-repair.json",
+      "bytes": 2921,
+      "sha256": "dce1099ae0d07032d30d28a158d78d0847bd46c5c846e99bfda0bcc1c866720a"
+    },
+    "optional_storage_repair": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean/optional-storage-repair/frozen-repair.json",
+      "bytes": 3673,
+      "sha256": "68a30fc5cc90ec5e14a6e289d8aa7ac75574deb1c1201ccca10670d505f06604"
+    },
+    "builder": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/compare-historical-attempts.py",
+      "bytes": 17435,
+      "sha256": "a1b6e73d23485ca08c744878227a679d5a1fed5431eb6b03d275ae1b93630a70"
+    }
+  }
+}

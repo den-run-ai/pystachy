@@ -1,0 +1,22 @@
+{
+  "observed_utc": "2026-11-15T09:17:42.340280+00:00",
+  "reason": "Remove outer inline-code delimiters around substituted Markdown table cells and update stale template header. No claim, count, source identity or qualification receipt changed.",
+  "prior_package": "research-publish/qualified-formatting-first-pass",
+  "preserved_files": [
+    {
+      "name": "premerge-qualified-README.md",
+      "sha256": "445eae726fdee115511f48c2452c3db7feda7d54528fb6ddd481dc992100ee8e",
+      "bytes": 11632
+    },
+    {
+      "name": "finalize-qualified-readme.py",
+      "sha256": "c95209a61e4597d652da7ffd900c90cfece4b1df10d83eb8453b60e289c634e9",
+      "bytes": 9962
+    },
+    {
+      "name": "premerge-qualified-README.template.md",
+      "sha256": "dfa3fbc33b40975ea29d1da5b85380607e1bcf386e970637f7302ac4382126c2",
+      "bytes": 8928
+    }
+  ]
+}

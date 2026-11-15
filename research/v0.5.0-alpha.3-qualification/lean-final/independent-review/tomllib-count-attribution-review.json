@@ -1,0 +1,1502 @@
+{
+  "status": "independently_verified_exact_tomllib_sites_pending_final_census_binding",
+  "observed_utc": "2026-11-15T08:05:02.475095+00:00",
+  "source_commits": {
+    "baseline": "950c0440ad793dc6c34664f591383a5e6bba14dd",
+    "candidate": "0a2fe77a580106c197face4d2904be80e3f85dbc"
+  },
+  "inventory": {
+    "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/inventory.json",
+    "sha256": "7200136d2f198e297688a66aeceb60eb1e7ade0423e8f2dd27a286fb098ccb00",
+    "bytes": 12922419
+  },
+  "publication_review": {
+    "path": "/workspace/scratch/980402bc01c4/evidence/lean/tomllib-count-attribution-support/exact-null-site-confirmation.json",
+    "sha256": "119fc49a3e35d50a05d37764e99c11004ce9a8a1880535640f554372dfb5159f",
+    "bytes": 252125
+  },
+  "review_script": {
+    "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/review-tomllib-counts.py",
+    "sha256": "c6733595b3d305eabf01b3870f3f8a779f66797985b13c3b3982d1b7eda506d0",
+    "bytes": 9270
+  },
+  "raw_json_helper": {
+    "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/independent-review/raw_json_review.py",
+    "sha256": "9cdd76c785b265d4b07d0c84850602ccf36663271c8fba84e566e886e0bd4edf",
+    "bytes": 1583
+  },
+  "programs": 7,
+  "old_removed_new_retained_guards": 21,
+  "rows": [
+    {
+      "program": "tests/programs/library/lib_tomllib.py",
+      "snapshots": {
+        "baseline": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/19-lib_tomllib/baseline/typed-after.json",
+          "sha256": "a576eb40ca544e03868414f9104897f428800576937aa510ed0183d10268e4a4",
+          "bytes": 109603358
+        },
+        "candidate": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/19-lib_tomllib/candidate/typed-after.json",
+          "sha256": "b6a55b9977833ca70994abe574340bedf0540b2ef47a77a747462296f8754587",
+          "bytes": 109621577
+        }
+      },
+      "excerpt": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/19-lib_tomllib/site-excerpts.json",
+        "sha256": "e31ac6c32fad6d7ae8707387ea71966f6058d99281cf06e50dc232e2929c61bc",
+        "bytes": 2797815
+      },
+      "sites": [
+        {
+          "function": "@f.tomllib$_parser$create_dict_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "old_removed_new_retained_operation": {
+            "op": "check",
+            "type": "",
+            "text": "AttributeError: 'NoneType' object has no attribute 'is_'",
+            "immediate": 0,
+            "descriptor": "",
+            "results": [],
+            "operands": [
+              {
+                "value": "%t86",
+                "type": "bool"
+              }
+            ],
+            "targets": [
+              "L87"
+            ]
+          },
+          "phases": {
+            "baseline": {
+              "before": {
+                "function_sha256": "e2702e54ef6bbb0426bdbac8174b81180b4c68438c110fbae88eacf4d15e435b",
+                "guard_location": {
+                  "block": "L83",
+                  "offset": 3
+                },
+                "receiver": "%t85",
+                "receiver_field_index": 1,
+                "method": "is_"
+              },
+              "after": {
+                "function_sha256": "fdcaa38aaf81363f6bb982cb2d352232493949bc3a15e5e7c66c535f92f2a7b8",
+                "guard_absent": true
+              }
+            },
+            "candidate": {
+              "before": {
+                "function_sha256": "2da588b2cc2b3835a49ac513165cbba0d854a3dd835672828432927921097379",
+                "guard_location": {
+                  "block": "L83",
+                  "offset": 3
+                },
+                "receiver": "%t85",
+                "receiver_field_index": 1,
+                "method": "is_"
+              },
+              "after": {
+                "function_sha256": "6ce62474a97e0220e707baa274e46f356327911735cb9322a6c23a48b20b7e41",
+                "guard_location": {
+                  "block": "L79",
+                  "offset": 4
+                },
+                "receiver": "%t85",
+                "receiver_field_index": 1,
+                "method": "is_"
+              }
+            }
+          }
+        },
+        {
+          "function": "@f.tomllib$_parser$create_list_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "old_removed_new_retained_operation": {
+            "op": "check",
+            "type": "",
+            "text": "AttributeError: 'NoneType' object has no attribute 'unset_all'",
+            "immediate": 0,
+            "descriptor": "",
+            "results": [],
+            "operands": [
+              {
+                "value": "%t106",
+                "type": "bool"
+              }
+            ],
+            "targets": [
+              "L108"
+            ]
+          },
+          "phases": {
+            "baseline": {
+              "before": {
+                "function_sha256": "c2286b0a883fc1a2b90f465d96f7e42ec61eb1d4349a5cdb752ba08eb09859ce",
+                "guard_location": {
+                  "block": "L103",
+                  "offset": 3
+                },
+                "receiver": "%t105",
+                "receiver_field_index": 1,
+                "method": "unset_all"
+              },
+              "after": {
+                "function_sha256": "156998d68523bf238a561599f14e500c749cffdd36121514f61fa4b82c2301db",
+                "guard_absent": true
+              }
+            },
+            "candidate": {
+              "before": {
+                "function_sha256": "2b6383829e5ef131609d09a89ecb2a03f02adaf35588a2dc730842f08a90610a",
+                "guard_location": {
+                  "block": "L103",
+                  "offset": 3
+                },
+                "receiver": "%t105",
+                "receiver_field_index": 1,
+                "method": "unset_all"
+              },
+              "after": {
+                "function_sha256": "c702019f8a383d0cd933007cd4c685edeeb4365cf4797a47ad158efb154efd04",
+                "guard_location": {
+                  "block": "L81",
+                  "offset": 4
+                },
+                "receiver": "%t105",
+                "receiver_field_index": 1,
+                "method": "unset_all"
+              }
+            }
+          }
+        },
+        {
+          "function": "@f.tomllib$_parser$key_value_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "old_removed_new_retained_operation": {
+            "op": "check",
+            "type": "",
+            "text": "AttributeError: 'NoneType' object has no attribute 'add_pending'",
+            "immediate": 0,
+            "descriptor": "",
+            "results": [],
+            "operands": [
+              {
+                "value": "%t117",
+                "type": "bool"
+              }
+            ],
+            "targets": [
+              "L119"
+            ]
+          },
+          "phases": {
+            "baseline": {
+              "before": {
+                "function_sha256": "2151e2cbe743e3964699a9682264bcbf91a6001f5cc5199e939949c28c07ba54",
+                "guard_location": {
+                  "block": "L114",
+                  "offset": 3
+                },
+                "receiver": "%t116",
+                "receiver_field_index": 1,
+                "method": "add_pending"
+              },
+              "after": {
+                "function_sha256": "6daaf13bb6a4e0177f764a01f605c2b54b5d475f02051f104b8b59c773987cad",
+                "guard_absent": true
+              }
+            },
+            "candidate": {
+              "before": {
+                "function_sha256": "1576a351176f94b6326c0fc03951841f7391db5ae24f3e928c46ae531c25d6cf",
+                "guard_location": {
+                  "block": "L114",
+                  "offset": 3
+                },
+                "receiver": "%t116",
+                "receiver_field_index": 1,
+                "method": "add_pending"
+              },
+              "after": {
+                "function_sha256": "af67ecd36fb4ebf330986318e2a727055f8e7e6ae88be8285460d629cd4bb2a5",
+                "guard_location": {
+                  "block": "L92",
+                  "offset": 4
+                },
+                "receiver": "%t116",
+                "receiver_field_index": 1,
+                "method": "add_pending"
+              }
+            }
+          }
+        }
+      ],
+      "other_null_function_denominators_unchanged": true
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_boundary.py",
+      "snapshots": {
+        "baseline": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/20-lib_tomllib_boundary/baseline/typed-after.json",
+          "sha256": "e87c1d1b56315263d0d521dcaba0f2e2e9c49b8329d3abfdf46c0695789f0dc0",
+          "bytes": 106251116
+        },
+        "candidate": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/20-lib_tomllib_boundary/candidate/typed-after.json",
+          "sha256": "6b846b45f1c82ab5b232c5068b2156839b9fd3dd29a2d5bf561af148e8267444",
+          "bytes": 106269422
+        }
+      },
+      "excerpt": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/20-lib_tomllib_boundary/site-excerpts.json",
+        "sha256": "1e18d14eaee85aadae403186f2daddec88fcfd83be02250220d0dfe17ed654f5",
+        "bytes": 2797836
+      },
+      "sites": [
+        {
+          "function": "@f.tomllib$_parser$create_dict_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "old_removed_new_retained_operation": {
+            "op": "check",
+            "type": "",
+            "text": "AttributeError: 'NoneType' object has no attribute 'is_'",
+            "immediate": 0,
+            "descriptor": "",
+            "results": [],
+            "operands": [
+              {
+                "value": "%t86",
+                "type": "bool"
+              }
+            ],
+            "targets": [
+              "L87"
+            ]
+          },
+          "phases": {
+            "baseline": {
+              "before": {
+                "function_sha256": "c80e00ef197793ed3b0cf3d0790075f9088796728c287f96203cffdbcb96cfa7",
+                "guard_location": {
+                  "block": "L83",
+                  "offset": 3
+                },
+                "receiver": "%t85",
+                "receiver_field_index": 1,
+                "method": "is_"
+              },
+              "after": {
+                "function_sha256": "eb216c643ae52fe94f804a013daf197a8bd385e36ce354aa78990572d966d7cf",
+                "guard_absent": true
+              }
+            },
+            "candidate": {
+              "before": {
+                "function_sha256": "e1943ef98a348d5deaf0ea6e3b2794a3aa0f5f3df966a48e6fd607d07c0acf50",
+                "guard_location": {
+                  "block": "L83",
+                  "offset": 3
+                },
+                "receiver": "%t85",
+                "receiver_field_index": 1,
+                "method": "is_"
+              },
+              "after": {
+                "function_sha256": "0dc2f9a8803c6c6208f6916b92eed54b8ecb76439c40bb5a9d9fb8fefdedbaad",
+                "guard_location": {
+                  "block": "L79",
+                  "offset": 4
+                },
+                "receiver": "%t85",
+                "receiver_field_index": 1,
+                "method": "is_"
+              }
+            }
+          }
+        },
+        {
+          "function": "@f.tomllib$_parser$create_list_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "old_removed_new_retained_operation": {
+            "op": "check",
+            "type": "",
+            "text": "AttributeError: 'NoneType' object has no attribute 'unset_all'",
+            "immediate": 0,
+            "descriptor": "",
+            "results": [],
+            "operands": [
+              {
+                "value": "%t106",
+                "type": "bool"
+              }
+            ],
+            "targets": [
+              "L108"
+            ]
+          },
+          "phases": {
+            "baseline": {
+              "before": {
+                "function_sha256": "beae67b764d3032e1dfa2beb122eb7f0e29e1cdd2034763bf5be00e37cd88037",
+                "guard_location": {
+                  "block": "L103",
+                  "offset": 3
+                },
+                "receiver": "%t105",
+                "receiver_field_index": 1,
+                "method": "unset_all"
+              },
+              "after": {
+                "function_sha256": "5480df8e2420264a082d79a5b30deb6a8955724b200d466f41f227c25fd60347",
+                "guard_absent": true
+              }
+            },
+            "candidate": {
+              "before": {
+                "function_sha256": "4cfe46ca34ddc992157a3ec2f647e1ed8a6ce24f076783fe0517eca52cc3eea6",
+                "guard_location": {
+                  "block": "L103",
+                  "offset": 3
+                },
+                "receiver": "%t105",
+                "receiver_field_index": 1,
+                "method": "unset_all"
+              },
+              "after": {
+                "function_sha256": "39dea56abcc0ed78e1c46a62e981235092939945beb246c26e5d8999280ca0cd",
+                "guard_location": {
+                  "block": "L81",
+                  "offset": 4
+                },
+                "receiver": "%t105",
+                "receiver_field_index": 1,
+                "method": "unset_all"
+              }
+            }
+          }
+        },
+        {
+          "function": "@f.tomllib$_parser$key_value_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "old_removed_new_retained_operation": {
+            "op": "check",
+            "type": "",
+            "text": "AttributeError: 'NoneType' object has no attribute 'add_pending'",
+            "immediate": 0,
+            "descriptor": "",
+            "results": [],
+            "operands": [
+              {
+                "value": "%t117",
+                "type": "bool"
+              }
+            ],
+            "targets": [
+              "L119"
+            ]
+          },
+          "phases": {
+            "baseline": {
+              "before": {
+                "function_sha256": "8d9128d31e662ff77db399271a8b21e1c04702495469d0704a41bd2b06e01025",
+                "guard_location": {
+                  "block": "L114",
+                  "offset": 3
+                },
+                "receiver": "%t116",
+                "receiver_field_index": 1,
+                "method": "add_pending"
+              },
+              "after": {
+                "function_sha256": "ab151e9cfa5710887bb8806c30e3faf2038be2d5160c22c8ea4f0c8b631f2377",
+                "guard_absent": true
+              }
+            },
+            "candidate": {
+              "before": {
+                "function_sha256": "b57db33f06b31919983f845e5dec18f68c0d447c9da31c98f7fc8ee41dc70e7c",
+                "guard_location": {
+                  "block": "L114",
+                  "offset": 3
+                },
+                "receiver": "%t116",
+                "receiver_field_index": 1,
+                "method": "add_pending"
+              },
+              "after": {
+                "function_sha256": "60c210c001a1f6dab68012d9597dd363c2a534eaa6ec9f2c8a3d10bf118c56c1",
+                "guard_location": {
+                  "block": "L92",
+                  "offset": 4
+                },
+                "receiver": "%t116",
+                "receiver_field_index": 1,
+                "method": "add_pending"
+              }
+            }
+          }
+        }
+      ],
+      "other_null_function_denominators_unchanged": true
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_dynamic.py",
+      "snapshots": {
+        "baseline": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/21-lib_tomllib_dynamic/baseline/typed-after.json",
+          "sha256": "52ac7ccef66e21579ea817cc37bb1a381935aaccbc7753c9aee6cafd38232149",
+          "bytes": 108048587
+        },
+        "candidate": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/21-lib_tomllib_dynamic/candidate/typed-after.json",
+          "sha256": "8e79209129cd43abaffa9166979885e58e8576f4afb1d281fe161ea71c7ba387",
+          "bytes": 108066797
+        }
+      },
+      "excerpt": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/21-lib_tomllib_dynamic/site-excerpts.json",
+        "sha256": "ddd1126f45bd491f22ec2b1200065706f4e2b9da7cc23cb58f625f511480fd41",
+        "bytes": 2797833
+      },
+      "sites": [
+        {
+          "function": "@f.tomllib$_parser$create_dict_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "old_removed_new_retained_operation": {
+            "op": "check",
+            "type": "",
+            "text": "AttributeError: 'NoneType' object has no attribute 'is_'",
+            "immediate": 0,
+            "descriptor": "",
+            "results": [],
+            "operands": [
+              {
+                "value": "%t86",
+                "type": "bool"
+              }
+            ],
+            "targets": [
+              "L87"
+            ]
+          },
+          "phases": {
+            "baseline": {
+              "before": {
+                "function_sha256": "7d174bdf405000db745fe926bb07105d3ce0b2bbba5e9e15ad57d523b8e261a9",
+                "guard_location": {
+                  "block": "L83",
+                  "offset": 3
+                },
+                "receiver": "%t85",
+                "receiver_field_index": 1,
+                "method": "is_"
+              },
+              "after": {
+                "function_sha256": "cae855ac7e3d1bbe0a4a3ddf39dbfccff2854417b1713b5f38381c3e3a993a98",
+                "guard_absent": true
+              }
+            },
+            "candidate": {
+              "before": {
+                "function_sha256": "b7e72ebcf721601374a5a5f72febebc6e3cd874182fb6f9434b1815fa1b6955f",
+                "guard_location": {
+                  "block": "L83",
+                  "offset": 3
+                },
+                "receiver": "%t85",
+                "receiver_field_index": 1,
+                "method": "is_"
+              },
+              "after": {
+                "function_sha256": "f5577f07fff38a8a494d72a2234d3172def02fb999b4930ac87348a4c826135e",
+                "guard_location": {
+                  "block": "L79",
+                  "offset": 4
+                },
+                "receiver": "%t85",
+                "receiver_field_index": 1,
+                "method": "is_"
+              }
+            }
+          }
+        },
+        {
+          "function": "@f.tomllib$_parser$create_list_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "old_removed_new_retained_operation": {
+            "op": "check",
+            "type": "",
+            "text": "AttributeError: 'NoneType' object has no attribute 'unset_all'",
+            "immediate": 0,
+            "descriptor": "",
+            "results": [],
+            "operands": [
+              {
+                "value": "%t106",
+                "type": "bool"
+              }
+            ],
+            "targets": [
+              "L108"
+            ]
+          },
+          "phases": {
+            "baseline": {
+              "before": {
+                "function_sha256": "73acf6e025bcea68bd7693b3a7de38dbb1855e15c5f9931a5fba3cb9443faac6",
+                "guard_location": {
+                  "block": "L103",
+                  "offset": 3
+                },
+                "receiver": "%t105",
+                "receiver_field_index": 1,
+                "method": "unset_all"
+              },
+              "after": {
+                "function_sha256": "3d8b9d885bd572f229c57112fd7dde21ca2da3a19d995030c0b23e96b438cf65",
+                "guard_absent": true
+              }
+            },
+            "candidate": {
+              "before": {
+                "function_sha256": "28ce0a46586dc6173d58743cbc7d723366d6b8e997f4f61f2330d96b4fcae330",
+                "guard_location": {
+                  "block": "L103",
+                  "offset": 3
+                },
+                "receiver": "%t105",
+                "receiver_field_index": 1,
+                "method": "unset_all"
+              },
+              "after": {
+                "function_sha256": "b5a393d79699dbc748b29e5b88ce144e7ac5998e72fad33b31231075b63873d0",
+                "guard_location": {
+                  "block": "L81",
+                  "offset": 4
+                },
+                "receiver": "%t105",
+                "receiver_field_index": 1,
+                "method": "unset_all"
+              }
+            }
+          }
+        },
+        {
+          "function": "@f.tomllib$_parser$key_value_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "old_removed_new_retained_operation": {
+            "op": "check",
+            "type": "",
+            "text": "AttributeError: 'NoneType' object has no attribute 'add_pending'",
+            "immediate": 0,
+            "descriptor": "",
+            "results": [],
+            "operands": [
+              {
+                "value": "%t117",
+                "type": "bool"
+              }
+            ],
+            "targets": [
+              "L119"
+            ]
+          },
+          "phases": {
+            "baseline": {
+              "before": {
+                "function_sha256": "720fa26af6b98ce77770a1b8649e8ca6c782c48e39f984a60dcac9fcfae51ec9",
+                "guard_location": {
+                  "block": "L114",
+                  "offset": 3
+                },
+                "receiver": "%t116",
+                "receiver_field_index": 1,
+                "method": "add_pending"
+              },
+              "after": {
+                "function_sha256": "51b93741996d89f7f0593037090ca63a32ff2429e17012145467e5e2c53bef1a",
+                "guard_absent": true
+              }
+            },
+            "candidate": {
+              "before": {
+                "function_sha256": "aa8eef8a3c0d5f8750cbd70d9c5db6526fb0398aa374f2d8f94b201d8b9faf9f",
+                "guard_location": {
+                  "block": "L114",
+                  "offset": 3
+                },
+                "receiver": "%t116",
+                "receiver_field_index": 1,
+                "method": "add_pending"
+              },
+              "after": {
+                "function_sha256": "8843ea04e3718d5b319e95e45e9ae208ac8ab885f46cf36ac860e73ba339ac38",
+                "guard_location": {
+                  "block": "L92",
+                  "offset": 4
+                },
+                "receiver": "%t116",
+                "receiver_field_index": 1,
+                "method": "add_pending"
+              }
+            }
+          }
+        }
+      ],
+      "other_null_function_denominators_unchanged": true
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_flags.py",
+      "snapshots": {
+        "baseline": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/22-lib_tomllib_flags/baseline/typed-after.json",
+          "sha256": "21d33b6cf7d1688052f0b43919ff7f516287e095a41b8c369a7a9391565d5c11",
+          "bytes": 103946511
+        },
+        "candidate": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/22-lib_tomllib_flags/candidate/typed-after.json",
+          "sha256": "db1c0913ffe8fa3a70afbc7ba39f5e004c80d24198d21c406f3eda0897af208d",
+          "bytes": 103964406
+        }
+      },
+      "excerpt": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/22-lib_tomllib_flags/site-excerpts.json",
+        "sha256": "693770089e05017d2c7054553a53613bdf8ec2488ce4520588aec61d07a8ba81",
+        "bytes": 2797827
+      },
+      "sites": [
+        {
+          "function": "@f.tomllib$_parser$create_dict_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "old_removed_new_retained_operation": {
+            "op": "check",
+            "type": "",
+            "text": "AttributeError: 'NoneType' object has no attribute 'is_'",
+            "immediate": 0,
+            "descriptor": "",
+            "results": [],
+            "operands": [
+              {
+                "value": "%t86",
+                "type": "bool"
+              }
+            ],
+            "targets": [
+              "L87"
+            ]
+          },
+          "phases": {
+            "baseline": {
+              "before": {
+                "function_sha256": "1fe7d0b4a23ca07d89d7742ebd2d66fe5d129cf0aacb780176be13382a175f37",
+                "guard_location": {
+                  "block": "L83",
+                  "offset": 3
+                },
+                "receiver": "%t85",
+                "receiver_field_index": 1,
+                "method": "is_"
+              },
+              "after": {
+                "function_sha256": "328196bf0682ae67c6dbcfbdd3a682e90502054a364c5fd7b0f0aef1e62dcb5f",
+                "guard_absent": true
+              }
+            },
+            "candidate": {
+              "before": {
+                "function_sha256": "8ff6e15b5063a59536380b9314ddee95971bdadb6eec28a131b99272acc380bd",
+                "guard_location": {
+                  "block": "L83",
+                  "offset": 3
+                },
+                "receiver": "%t85",
+                "receiver_field_index": 1,
+                "method": "is_"
+              },
+              "after": {
+                "function_sha256": "5078b632ccc043802e671c2f555b16d23a0cfb17a1f8520d6551cde373154c6a",
+                "guard_location": {
+                  "block": "L79",
+                  "offset": 4
+                },
+                "receiver": "%t85",
+                "receiver_field_index": 1,
+                "method": "is_"
+              }
+            }
+          }
+        },
+        {
+          "function": "@f.tomllib$_parser$create_list_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "old_removed_new_retained_operation": {
+            "op": "check",
+            "type": "",
+            "text": "AttributeError: 'NoneType' object has no attribute 'unset_all'",
+            "immediate": 0,
+            "descriptor": "",
+            "results": [],
+            "operands": [
+              {
+                "value": "%t106",
+                "type": "bool"
+              }
+            ],
+            "targets": [
+              "L108"
+            ]
+          },
+          "phases": {
+            "baseline": {
+              "before": {
+                "function_sha256": "2a9dc10ebe1a52d39581fe625b7f0f066362fda56b717e3c1087823c9c713e4c",
+                "guard_location": {
+                  "block": "L103",
+                  "offset": 3
+                },
+                "receiver": "%t105",
+                "receiver_field_index": 1,
+                "method": "unset_all"
+              },
+              "after": {
+                "function_sha256": "47fa93f85870c56aab64c3fbb8ee720d03d20b195b8c5d7bfffe9ad20a575b6b",
+                "guard_absent": true
+              }
+            },
+            "candidate": {
+              "before": {
+                "function_sha256": "fde066855e2365787ad924b195ef1b7e4d7edf71381aa29c9865bd3c9c918efa",
+                "guard_location": {
+                  "block": "L103",
+                  "offset": 3
+                },
+                "receiver": "%t105",
+                "receiver_field_index": 1,
+                "method": "unset_all"
+              },
+              "after": {
+                "function_sha256": "e305c860a55ac7e9aabcc89441bf4e3af6a9fa610af16b08fb3521749386cb30",
+                "guard_location": {
+                  "block": "L81",
+                  "offset": 4
+                },
+                "receiver": "%t105",
+                "receiver_field_index": 1,
+                "method": "unset_all"
+              }
+            }
+          }
+        },
+        {
+          "function": "@f.tomllib$_parser$key_value_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "old_removed_new_retained_operation": {
+            "op": "check",
+            "type": "",
+            "text": "AttributeError: 'NoneType' object has no attribute 'add_pending'",
+            "immediate": 0,
+            "descriptor": "",
+            "results": [],
+            "operands": [
+              {
+                "value": "%t117",
+                "type": "bool"
+              }
+            ],
+            "targets": [
+              "L119"
+            ]
+          },
+          "phases": {
+            "baseline": {
+              "before": {
+                "function_sha256": "6d7ed92af9f8efcde7f5ecd3ebcc6f4fa2b75c152910b558462d2b4c20cfa007",
+                "guard_location": {
+                  "block": "L114",
+                  "offset": 3
+                },
+                "receiver": "%t116",
+                "receiver_field_index": 1,
+                "method": "add_pending"
+              },
+              "after": {
+                "function_sha256": "6f4389c408cab26f9ce8c7ff13942661993a48193163397e73d13b327b95e23a",
+                "guard_absent": true
+              }
+            },
+            "candidate": {
+              "before": {
+                "function_sha256": "6fde7ffb816a3bb92b696a7e44617ee3369b5db5c7eefb26f868f3ceebc7e98a",
+                "guard_location": {
+                  "block": "L114",
+                  "offset": 3
+                },
+                "receiver": "%t116",
+                "receiver_field_index": 1,
+                "method": "add_pending"
+              },
+              "after": {
+                "function_sha256": "ebe59e49aeda745687f89d500007db6e830d8a397032dabaf275c9faf03091ad",
+                "guard_location": {
+                  "block": "L92",
+                  "offset": 4
+                },
+                "receiver": "%t116",
+                "receiver_field_index": 1,
+                "method": "add_pending"
+              }
+            }
+          }
+        }
+      ],
+      "other_null_function_denominators_unchanged": true
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_uncaught.py",
+      "snapshots": {
+        "baseline": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/24-lib_tomllib_uncaught/baseline/typed-after.json",
+          "sha256": "744ef1110599076fe2e9fed03919d55d12a1c50b57db5bc874bb3c58d8e41a80",
+          "bytes": 103883295
+        },
+        "candidate": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/24-lib_tomllib_uncaught/candidate/typed-after.json",
+          "sha256": "8a8edad26e395ce0f56a7b672e38fe6741e3df080975128c5b0523d25453671f",
+          "bytes": 103901181
+        }
+      },
+      "excerpt": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/24-lib_tomllib_uncaught/site-excerpts.json",
+        "sha256": "9f60e33caeeb3fe4985fbbe9ffd57f3589a490e331b2dec20bef1053fbefbd31",
+        "bytes": 2797836
+      },
+      "sites": [
+        {
+          "function": "@f.tomllib$_parser$create_dict_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "old_removed_new_retained_operation": {
+            "op": "check",
+            "type": "",
+            "text": "AttributeError: 'NoneType' object has no attribute 'is_'",
+            "immediate": 0,
+            "descriptor": "",
+            "results": [],
+            "operands": [
+              {
+                "value": "%t86",
+                "type": "bool"
+              }
+            ],
+            "targets": [
+              "L87"
+            ]
+          },
+          "phases": {
+            "baseline": {
+              "before": {
+                "function_sha256": "d8a8124d994b788b74b3920107a8ad39cf8af8fb646b1edf4472bda218149149",
+                "guard_location": {
+                  "block": "L83",
+                  "offset": 3
+                },
+                "receiver": "%t85",
+                "receiver_field_index": 1,
+                "method": "is_"
+              },
+              "after": {
+                "function_sha256": "32b16429c0142b5c0d137b08bc1bcf5dd7111c8c50cf503de9b56c9d0b6ce508",
+                "guard_absent": true
+              }
+            },
+            "candidate": {
+              "before": {
+                "function_sha256": "71f0c13b977f837887d8e9e774e59dda0282260753574e39511f3827f322502a",
+                "guard_location": {
+                  "block": "L83",
+                  "offset": 3
+                },
+                "receiver": "%t85",
+                "receiver_field_index": 1,
+                "method": "is_"
+              },
+              "after": {
+                "function_sha256": "dfd01522110e8926fc5687e1e1b4f55582f8a3111ce570dbe756d85617efbfff",
+                "guard_location": {
+                  "block": "L79",
+                  "offset": 4
+                },
+                "receiver": "%t85",
+                "receiver_field_index": 1,
+                "method": "is_"
+              }
+            }
+          }
+        },
+        {
+          "function": "@f.tomllib$_parser$create_list_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "old_removed_new_retained_operation": {
+            "op": "check",
+            "type": "",
+            "text": "AttributeError: 'NoneType' object has no attribute 'unset_all'",
+            "immediate": 0,
+            "descriptor": "",
+            "results": [],
+            "operands": [
+              {
+                "value": "%t106",
+                "type": "bool"
+              }
+            ],
+            "targets": [
+              "L108"
+            ]
+          },
+          "phases": {
+            "baseline": {
+              "before": {
+                "function_sha256": "4862b5c87e44ba39c66d258e2fd3f857925bc7c797a744c1284d1b3da36a8ce4",
+                "guard_location": {
+                  "block": "L103",
+                  "offset": 3
+                },
+                "receiver": "%t105",
+                "receiver_field_index": 1,
+                "method": "unset_all"
+              },
+              "after": {
+                "function_sha256": "96aded0c42f617018f92d908d2465c2ee1f0d48d7aaa71a9c0aaa1b17fc88235",
+                "guard_absent": true
+              }
+            },
+            "candidate": {
+              "before": {
+                "function_sha256": "bb127a39f47388a89822438995c3d7beff8d05950c63dad1b890f3007dfe7a24",
+                "guard_location": {
+                  "block": "L103",
+                  "offset": 3
+                },
+                "receiver": "%t105",
+                "receiver_field_index": 1,
+                "method": "unset_all"
+              },
+              "after": {
+                "function_sha256": "8ed78ae7c30abceb709172356ce6db4071e2338aac090d93bf9e1f84771c1dd8",
+                "guard_location": {
+                  "block": "L81",
+                  "offset": 4
+                },
+                "receiver": "%t105",
+                "receiver_field_index": 1,
+                "method": "unset_all"
+              }
+            }
+          }
+        },
+        {
+          "function": "@f.tomllib$_parser$key_value_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "old_removed_new_retained_operation": {
+            "op": "check",
+            "type": "",
+            "text": "AttributeError: 'NoneType' object has no attribute 'add_pending'",
+            "immediate": 0,
+            "descriptor": "",
+            "results": [],
+            "operands": [
+              {
+                "value": "%t117",
+                "type": "bool"
+              }
+            ],
+            "targets": [
+              "L119"
+            ]
+          },
+          "phases": {
+            "baseline": {
+              "before": {
+                "function_sha256": "a57e74bb1efc55aca6ba755c733428069fe698e84a82721a5e77e63a7c654899",
+                "guard_location": {
+                  "block": "L114",
+                  "offset": 3
+                },
+                "receiver": "%t116",
+                "receiver_field_index": 1,
+                "method": "add_pending"
+              },
+              "after": {
+                "function_sha256": "783775ad7ec0cff5ba7fb18374148248884b47f3dcc53a25a0c44b9817021b01",
+                "guard_absent": true
+              }
+            },
+            "candidate": {
+              "before": {
+                "function_sha256": "92d6b3d7848918a6a6a92f1578aed08d0f148085287801a6ba452e10e99a6a75",
+                "guard_location": {
+                  "block": "L114",
+                  "offset": 3
+                },
+                "receiver": "%t116",
+                "receiver_field_index": 1,
+                "method": "add_pending"
+              },
+              "after": {
+                "function_sha256": "16f37caa78330e96928b2689b9e62bb6bfa914399e01c9a9dca22b165cc89839",
+                "guard_location": {
+                  "block": "L92",
+                  "offset": 4
+                },
+                "receiver": "%t116",
+                "receiver_field_index": 1,
+                "method": "add_pending"
+              }
+            }
+          }
+        }
+      ],
+      "other_null_function_denominators_unchanged": true
+    },
+    {
+      "program": "tests/programs/upstream/upstream_tomllib_data.py",
+      "snapshots": {
+        "baseline": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/28-upstream_tomllib_data/baseline/typed-after.json",
+          "sha256": "4080c224cb39df85c3d98dc73ff268887bf6a535697785deabd32033ec00fa6d",
+          "bytes": 104254404
+        },
+        "candidate": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/28-upstream_tomllib_data/candidate/typed-after.json",
+          "sha256": "937d0288955e198ce10e3ea07b9006761a55f81d6386578de0536f5983b0a7ae",
+          "bytes": 104272290
+        }
+      },
+      "excerpt": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/28-upstream_tomllib_data/site-excerpts.json",
+        "sha256": "797b96f7b96710dd197fb3d4f867e96511a1df4a7fec18e06d2cbb2bc39e05ef",
+        "bytes": 2797840
+      },
+      "sites": [
+        {
+          "function": "@f.tomllib$_parser$create_dict_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "old_removed_new_retained_operation": {
+            "op": "check",
+            "type": "",
+            "text": "AttributeError: 'NoneType' object has no attribute 'is_'",
+            "immediate": 0,
+            "descriptor": "",
+            "results": [],
+            "operands": [
+              {
+                "value": "%t86",
+                "type": "bool"
+              }
+            ],
+            "targets": [
+              "L87"
+            ]
+          },
+          "phases": {
+            "baseline": {
+              "before": {
+                "function_sha256": "12c6ab569fe60f6d5ab4a498181326e84f0204ff8d6129927f4524703cff28d4",
+                "guard_location": {
+                  "block": "L83",
+                  "offset": 3
+                },
+                "receiver": "%t85",
+                "receiver_field_index": 1,
+                "method": "is_"
+              },
+              "after": {
+                "function_sha256": "30f0b6d5d71dcfca01b304f6070e0cfc801f9a5e773e530abb1daba7b202ddda",
+                "guard_absent": true
+              }
+            },
+            "candidate": {
+              "before": {
+                "function_sha256": "70949a928b3089c701899d2599f945c7e2dbd88410e5baa63e9374778ca9e2ee",
+                "guard_location": {
+                  "block": "L83",
+                  "offset": 3
+                },
+                "receiver": "%t85",
+                "receiver_field_index": 1,
+                "method": "is_"
+              },
+              "after": {
+                "function_sha256": "bb7357f12518fb4ef5ac725dbc7dc4f650d85e769115fe931b6e1229719107fb",
+                "guard_location": {
+                  "block": "L79",
+                  "offset": 4
+                },
+                "receiver": "%t85",
+                "receiver_field_index": 1,
+                "method": "is_"
+              }
+            }
+          }
+        },
+        {
+          "function": "@f.tomllib$_parser$create_list_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "old_removed_new_retained_operation": {
+            "op": "check",
+            "type": "",
+            "text": "AttributeError: 'NoneType' object has no attribute 'unset_all'",
+            "immediate": 0,
+            "descriptor": "",
+            "results": [],
+            "operands": [
+              {
+                "value": "%t106",
+                "type": "bool"
+              }
+            ],
+            "targets": [
+              "L108"
+            ]
+          },
+          "phases": {
+            "baseline": {
+              "before": {
+                "function_sha256": "8a85d56be6bde21712fd39c7048c5d567b6ba5788d76a047a47524d4825bc5c6",
+                "guard_location": {
+                  "block": "L103",
+                  "offset": 3
+                },
+                "receiver": "%t105",
+                "receiver_field_index": 1,
+                "method": "unset_all"
+              },
+              "after": {
+                "function_sha256": "cbeac72494bdbad41a7403a2521acb118aa738bb6fa2b16508082319ba2e5760",
+                "guard_absent": true
+              }
+            },
+            "candidate": {
+              "before": {
+                "function_sha256": "d56ff0559cd97f1c9205dcff158cdc943bc43d4b3f85eb4b21223d2584417db4",
+                "guard_location": {
+                  "block": "L103",
+                  "offset": 3
+                },
+                "receiver": "%t105",
+                "receiver_field_index": 1,
+                "method": "unset_all"
+              },
+              "after": {
+                "function_sha256": "2a7bf15f1cb6caafc96f2102a1407c89aee5acd8c3a5119c250c315c7d7de505",
+                "guard_location": {
+                  "block": "L81",
+                  "offset": 4
+                },
+                "receiver": "%t105",
+                "receiver_field_index": 1,
+                "method": "unset_all"
+              }
+            }
+          }
+        },
+        {
+          "function": "@f.tomllib$_parser$key_value_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "old_removed_new_retained_operation": {
+            "op": "check",
+            "type": "",
+            "text": "AttributeError: 'NoneType' object has no attribute 'add_pending'",
+            "immediate": 0,
+            "descriptor": "",
+            "results": [],
+            "operands": [
+              {
+                "value": "%t117",
+                "type": "bool"
+              }
+            ],
+            "targets": [
+              "L119"
+            ]
+          },
+          "phases": {
+            "baseline": {
+              "before": {
+                "function_sha256": "e8577449e98744ef1dfb9dd1f9936f64ee4d47e4fc0de1f329091e709546fb3c",
+                "guard_location": {
+                  "block": "L114",
+                  "offset": 3
+                },
+                "receiver": "%t116",
+                "receiver_field_index": 1,
+                "method": "add_pending"
+              },
+              "after": {
+                "function_sha256": "e504ddb8d32570a9176c7aed84acbcea28290ba39fc4f0dec6fd00f0cb0c473b",
+                "guard_absent": true
+              }
+            },
+            "candidate": {
+              "before": {
+                "function_sha256": "5a05b93e56088161ab6dd6aa00303e7df09f69f428a02f376471f3b9835e0261",
+                "guard_location": {
+                  "block": "L114",
+                  "offset": 3
+                },
+                "receiver": "%t116",
+                "receiver_field_index": 1,
+                "method": "add_pending"
+              },
+              "after": {
+                "function_sha256": "73882db8801e8044103a15216451e2927dcad1866d0f1e6ec3ac1d44a1a0a46c",
+                "guard_location": {
+                  "block": "L92",
+                  "offset": 4
+                },
+                "receiver": "%t116",
+                "receiver_field_index": 1,
+                "method": "add_pending"
+              }
+            }
+          }
+        }
+      ],
+      "other_null_function_denominators_unchanged": true
+    },
+    {
+      "program": "tests/programs/upstream/upstream_tomllib_misc.py",
+      "snapshots": {
+        "baseline": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/29-upstream_tomllib_misc/baseline/typed-after.json",
+          "sha256": "01eae00b672bd6c1da243c12a38a4ab241535567cd6a796d16f29d0c2f1fe729",
+          "bytes": 106369815
+        },
+        "candidate": {
+          "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/29-upstream_tomllib_misc/candidate/typed-after.json",
+          "sha256": "0fe47b0912469dd38db40da5ed2b5d6d40a3ba05bac28aa3a72f4211c6740ad9",
+          "bytes": 106387881
+        }
+      },
+      "excerpt": {
+        "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/count-attribution/29-upstream_tomllib_misc/site-excerpts.json",
+        "sha256": "7817cbe954bdf15196eeda216a8eaf77e050a3b23df1287f20f0486d775cbac6",
+        "bytes": 2797786
+      },
+      "sites": [
+        {
+          "function": "@f.tomllib$_parser$create_dict_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "old_removed_new_retained_operation": {
+            "op": "check",
+            "type": "",
+            "text": "AttributeError: 'NoneType' object has no attribute 'is_'",
+            "immediate": 0,
+            "descriptor": "",
+            "results": [],
+            "operands": [
+              {
+                "value": "%t86",
+                "type": "bool"
+              }
+            ],
+            "targets": [
+              "L87"
+            ]
+          },
+          "phases": {
+            "baseline": {
+              "before": {
+                "function_sha256": "db52195de9c25ce6264989235dd6d341162d78c4595799ddf17ea5391820ce12",
+                "guard_location": {
+                  "block": "L83",
+                  "offset": 3
+                },
+                "receiver": "%t85",
+                "receiver_field_index": 1,
+                "method": "is_"
+              },
+              "after": {
+                "function_sha256": "bb7d1de0235b62aaa0f5d58b4196e7c45678413a270cdf936f09e977ae60eadc",
+                "guard_absent": true
+              }
+            },
+            "candidate": {
+              "before": {
+                "function_sha256": "9ed111c629a7905f6178c51e5033589bf7340a80701cbb4280bf1decc40c3464",
+                "guard_location": {
+                  "block": "L83",
+                  "offset": 3
+                },
+                "receiver": "%t85",
+                "receiver_field_index": 1,
+                "method": "is_"
+              },
+              "after": {
+                "function_sha256": "a343ba9af27161137a5cbc5571950b8ee979b42f153ac0f03841b2ca0303a917",
+                "guard_location": {
+                  "block": "L79",
+                  "offset": 4
+                },
+                "receiver": "%t85",
+                "receiver_field_index": 1,
+                "method": "is_"
+              }
+            }
+          }
+        },
+        {
+          "function": "@f.tomllib$_parser$create_list_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "old_removed_new_retained_operation": {
+            "op": "check",
+            "type": "",
+            "text": "AttributeError: 'NoneType' object has no attribute 'unset_all'",
+            "immediate": 0,
+            "descriptor": "",
+            "results": [],
+            "operands": [
+              {
+                "value": "%t106",
+                "type": "bool"
+              }
+            ],
+            "targets": [
+              "L108"
+            ]
+          },
+          "phases": {
+            "baseline": {
+              "before": {
+                "function_sha256": "2724a53427edcc841090e39d047debabb645f0d1e82084b6877859b509ddad9d",
+                "guard_location": {
+                  "block": "L103",
+                  "offset": 3
+                },
+                "receiver": "%t105",
+                "receiver_field_index": 1,
+                "method": "unset_all"
+              },
+              "after": {
+                "function_sha256": "6e6eaa50488fd412031238aedaca07e5fec242cb8172ebd2fc53986f53965e44",
+                "guard_absent": true
+              }
+            },
+            "candidate": {
+              "before": {
+                "function_sha256": "457d58183f63152750a75b066196825825e6d55205284edc9388248460b697e9",
+                "guard_location": {
+                  "block": "L103",
+                  "offset": 3
+                },
+                "receiver": "%t105",
+                "receiver_field_index": 1,
+                "method": "unset_all"
+              },
+              "after": {
+                "function_sha256": "1f029bd0396184cb30b4752f09cd599df679d31143a404ce0c351e7477a0356f",
+                "guard_location": {
+                  "block": "L81",
+                  "offset": 4
+                },
+                "receiver": "%t105",
+                "receiver_field_index": 1,
+                "method": "unset_all"
+              }
+            }
+          }
+        },
+        {
+          "function": "@f.tomllib$_parser$key_value_rule",
+          "before_obligations": 4,
+          "after_obligations": 3,
+          "old_removed_new_retained_operation": {
+            "op": "check",
+            "type": "",
+            "text": "AttributeError: 'NoneType' object has no attribute 'add_pending'",
+            "immediate": 0,
+            "descriptor": "",
+            "results": [],
+            "operands": [
+              {
+                "value": "%t117",
+                "type": "bool"
+              }
+            ],
+            "targets": [
+              "L119"
+            ]
+          },
+          "phases": {
+            "baseline": {
+              "before": {
+                "function_sha256": "834cb3cc7d895967d542df999a455ddf5fe8c2b51ad8b065325d06db68d384ee",
+                "guard_location": {
+                  "block": "L114",
+                  "offset": 3
+                },
+                "receiver": "%t116",
+                "receiver_field_index": 1,
+                "method": "add_pending"
+              },
+              "after": {
+                "function_sha256": "78c824c806ec998cc2e659d1d2302ab5a3d4c8141ee8e3749ebb35b0bd24d01d",
+                "guard_absent": true
+              }
+            },
+            "candidate": {
+              "before": {
+                "function_sha256": "77f76f1e250528e4cb2d69bb7d2696defed159d0cd61a03af34aa132b1f20d87",
+                "guard_location": {
+                  "block": "L114",
+                  "offset": 3
+                },
+                "receiver": "%t116",
+                "receiver_field_index": 1,
+                "method": "add_pending"
+              },
+              "after": {
+                "function_sha256": "a120f075af3735f46e77aefb20c8326d3592111b7a29e03fd1b9a55b25b38890",
+                "guard_location": {
+                  "block": "L92",
+                  "offset": 4
+                },
+                "receiver": "%t116",
+                "receiver_field_index": 1,
+                "method": "add_pending"
+              }
+            }
+          }
+        }
+      ],
+      "other_null_function_denominators_unchanged": true
+    }
+  ],
+  "conclusion": "All 21 denominator losses are exact Output.flags receiver guards retained in the candidate. The unchanged before-pass check is absent after the old pass and present after the new pass; no tuple-pointer or TypeError interpretation applies.",
+  "limits": [
+    "Final-source census binding remains mandatory.",
+    "Per-function hashes include full location metadata; no path or IR normalization was used.",
+    "The earlier vtuple.slice effect/reaching-load mechanism is separately supported by source and LLVM review.",
+    "No compiler, normalizer, Lean checker or runtime was executed; no proof residual is reclassified."
+  ]
+}
