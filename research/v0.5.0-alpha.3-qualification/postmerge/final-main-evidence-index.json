@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "status": "blocked_main_ci_failure",
+  "repository": "den-run-ai/pystachy",
+  "main_commit": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+  "main_tree": "107460d5f89bdcf37f2741b233eac0568d82604a",
+  "observed_utc": "2026-11-15 10:03:24 UTC",
+  "blocking_issue": 1502,
+  "files": [
+    {
+      "path": "postmerge/main-ci-x86_64-logs.json",
+      "bytes": 1575005,
+      "git_blob_sha": "b53481bff2c84897c20ef96512a3acbf682d5ef3",
+      "readback_equal": true
+    },
+    {
+      "path": "postmerge/main-ci-aarch64-logs.json",
+      "bytes": 1496101,
+      "git_blob_sha": "fd0b05f1d50cace244219107771ddc6c492d6707",
+      "readback_equal": true
+    },
+    {
+      "path": "postmerge/main-ci-qualification-aggregates-logs.json",
+      "bytes": 160785,
+      "git_blob_sha": "d2e5c35771ab419b53fb4eda41bdd6ad5533d5af",
+      "readback_equal": true
+    },
+    {
+      "path": "postmerge/main-workflows-final-raw.json",
+      "bytes": 2997725,
+      "git_blob_sha": "bbf4a235e4cd6eaef599af7eadafcfa5873d12b9",
+      "readback_equal": true
+    },
+    {
+      "path": "postmerge/main-codeql-lint-logs.json",
+      "bytes": 1856360,
+      "git_blob_sha": "2e8852740bf558c282e9b1e2f4d1123a95a80a0d",
+      "readback_equal": true
+    },
+    {
+      "path": "postmerge/main-ci-source-contracts.json",
+      "bytes": 184099,
+      "git_blob_sha": "473ad08d23d862528d87eb94feef5eece7d4ccee",
+      "readback_equal": true
+    },
+    {
+      "path": "postmerge/main-ci-consumer-provenance.json",
+      "bytes": 378988,
+      "git_blob_sha": "a93de4cef717a2d36684d94b9e08fa748a4d85e5",
+      "readback_equal": true
+    },
+    {
+      "path": "postmerge/main-workflows-final-summary.json",
+      "bytes": 177269,
+      "git_blob_sha": "637aad78c405e5b96c0212d1b3848a347b6fd0ff",
+      "readback_equal": true
+    },
+    {
+      "path": "postmerge/optional-sort-static-diagnosis.json",
+      "bytes": 18611,
+      "git_blob_sha": "f032df0a28284d078bcc5df1aee0d06b54d2a565",
+      "sha256": "ebfd9007c11c55b498b8c7145d8c202233b84ce4148d21350a1a0f1c1b68d149",
+      "readback_equal": true
+    },
+    {
+      "path": "postmerge/optional-sort-activation-history.json",
+      "bytes": 24643,
+      "git_blob_sha": "28b1b8a6a6451a40a7362164f866a8f90f62d67a",
+      "readback_equal": true
+    }
+  ],
+  "scope": "Append-only postmerge evidence, separate from the immutable premerge package and its SHA256SUMS. Each listed blob was scanned and verified by exact decoded readback.",
+  "runtime_source_modified": false,
+  "repair_tested": false,
+  "release_published": false
+}

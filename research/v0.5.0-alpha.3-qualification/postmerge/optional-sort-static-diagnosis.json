@@ -1,0 +1,193 @@
+{
+  "schema_version": 1,
+  "status": "bounded_static_diagnosis_no_execution",
+  "head": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+  "reviewer": "alpha3_publication",
+  "blocking_issue": 1502,
+  "finding": {
+    "summary": "Identity-preserving sort truncates multi-character optional numeric descriptors.",
+    "static_certainty": "The source demonstrably turns ?i or ?f into K? when the l->ids branch runs. K then ? dispatch consume that descriptor; unbox sees NUL, leaves the nullable representation-box pointer unchanged, and opv's fallback compares pointer bits as integers.",
+    "failure_attribution": "High confidence, not an executed reproduction or generated-IR proof. Both observed stdout patterns are consistent with allocation-address order; monotonically increasing allocation order is not assumed as a general guarantee.",
+    "why_minmax_differs": "Identity min/max passes the full descriptor to opv, so it retains the scalar unboxing that the sort wrapper loses.",
+    "enum_relation": "This traced path is the runtime list descriptor walk, not the compiler enum comparison candidate/NotImplemented dispatcher."
+  },
+  "failure_evidence": {
+    "git_blob_sha": "5b6cf923b1891a6ad53f332c2aab2c7cdf9df7a2",
+    "fixtures": [
+      "tests/programs/optimizations/opt_scalar_none_sort.py",
+      "tests/programs/optimizations/opt_scalars_flow.py"
+    ]
+  },
+  "proposed_repair_boundary": "Preserve the complete element descriptor when adding K in the identity-preserving sort branch, rather than a single leading character. No implementation or tested-fix claim is made.",
+  "relevant_validation_for_future_repair": [
+    "Both observed fixtures under injected dynamic-any, JIT and AOT on both architectures",
+    "Optional int and float ascending/reverse sorting, list.sort and sorted/slices/copies",
+    "Identity companions move with their values, including repeated objects and NaN/stability cases",
+    "None-containing lists still raise the correct TypeError; key=None and exception restoration remain correct"
+  ],
+  "sources": [
+    {
+      "path": "src/pystachy_compiler/utils.py",
+      "head": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "bytes": 48820,
+      "sha256": "3bc81820c00f130c1b9cb82032fa34b781f2df69fc4f8389b2f775ca2971e952",
+      "git_blob_sha": "f873f6e98ccd02c886dc32032464f0af376d833f"
+    },
+    {
+      "path": "src/pystachy_compiler/containers.py",
+      "head": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "bytes": 74534,
+      "sha256": "7d842eec7e7a63b9458bcfefc413b536e748767de29eb88c34d53b956d9e77b9",
+      "git_blob_sha": "4c65f70bdfd79214fa3ef6132da8eed4c802dff1"
+    },
+    {
+      "path": "src/pystachy_compiler/conversions.py",
+      "head": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "bytes": 21233,
+      "sha256": "285ae0b67dd5bd3f4fb96f7218922ff84b70e95ae963697ebd74c618557f9a9f",
+      "git_blob_sha": "82f838a4db94c2543ba875dcb19e19c545f6cbb0"
+    },
+    {
+      "path": "src/pystachy_compiler/builtins.py",
+      "head": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "bytes": 199459,
+      "sha256": "86e94e3a3f7b157ef25ec9b816a368dd2875d33a93b23e147a0e132264a89efe",
+      "git_blob_sha": "4128341dcd12117517e79a2d10a5ca89e309997c"
+    },
+    {
+      "path": "runtime.c",
+      "head": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "bytes": 540565,
+      "sha256": "f361a5a8c3ef5b8a3d0c591c238d097900bf32aa6d4638a1a74fe02c3f052a0c",
+      "git_blob_sha": "1d2d22a38c111cf90b3615b7f431fb0dbc413722"
+    }
+  ],
+  "snippets": [
+    {
+      "path": "src/pystachy_compiler/utils.py",
+      "from": 868,
+      "to": 872,
+      "role": "Optional numeric identity capability",
+      "url": "https://github.com/den-run-ai/pystachy/blob/6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93/src/pystachy_compiler/utils.py#L868-L872",
+      "text": "def list_identity_kind(t: str) -> int:\n    # Capability only: whether the current function tracks identity is Gen's policy.\n    # Bit 3 marks nullable numeric slots: null for None, otherwise a representation\n    # box of the scalar. Its Python identity still belongs to the separate Dyn box.\n    return 1 if t == \"list[int]\" else 2 if t == \"list[float]\" else 9 if t == \"list[opt[int]]\" else 10 if t == \"list[opt[float]]\" else 0\n",
+      "bytes": 428,
+      "sha256": "2376075f8c4e609e20c8a25dcbf45f96ea20116d04b44be9e72ec0c9130ecd5b",
+      "git_blob_sha": "e4bae5151319f6226f014b0b9258e2f5a0bbf41f"
+    },
+    {
+      "path": "src/pystachy_compiler/containers.py",
+      "from": 42,
+      "to": 59,
+      "role": "Dynamic-identity policy and materialization",
+      "url": "https://github.com/den-run-ai/pystachy/blob/6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93/src/pystachy_compiler/containers.py#L42-L59",
+      "text": "def gen_list_id_kind(self, t: str) -> int:\n    # A program graph opting into dynamic values preserves typed numeric item objects.\n    # The payload keeps its existing scalar or nullable layout; identity lives in scanned storage.\n    # Code that does not track identity (Gen.identity_modules) uses the plain operations, which\n    # keep a list's companion consistent (runtime.c): such a list never reaches tracking code.\n    if list_identity_kind(t) != 0 and self.fn_home(self.curfn) in self.idhint:\n        # Internal searches/equality can observe shared NaNs even when no numeric\n        # value leaves the module. A hint cannot suppress these companions.\n        self.identity_event(\"numeric list in an identity-inert module\")\n    if self.rtmode or not self.idhere():\n        return 0\n    return list_identity_kind(t)\n\n\ndef gen_list_identity(self, v: Val) -> Val:\n    k = self.list_id_kind(v.t)\n    if k != 0:\n        self.rt(\"pys_list_identity\", \"void\", [f\"ptr {v.v}\", f\"i64 {k}\"])\n",
+      "bytes": 985,
+      "sha256": "e7ac8ab1d6dfd8b2912a32ae1cbad5734657c1a909d5837f205fa8dbf8e945dc",
+      "git_blob_sha": "c69f323d308bc89bf63574a2b7866d4ba2e25996"
+    },
+    {
+      "path": "src/pystachy_compiler/containers.py",
+      "from": 82,
+      "to": 101,
+      "role": "Identity-tracked stores retain nullable scalar slot and separate identity box",
+      "url": "https://github.com/den-run-ai/pystachy/blob/6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93/src/pystachy_compiler/containers.py#L82-L101",
+      "text": "    if elem(o.t) == \"int\" and int_lists():\n        return self.big_list_value(o, i, raw, keep)\n    return self.held_value(self.from_slot(raw, elem(o.t)), keep)  # (a tuple of ints: held, bigints.py)\n\n\ndef gen_list_store(self, o: Val, v: Val, method: str, index: str = \"\") -> None:\n    # v has already been coerced to the list's item type (list_coerce: a promoting int stays one\n    # where the list may hold it, big_list_store). Its source box must survive\n    # the store: equal payloads can name different objects, including distinct NaNs.\n    k = self.list_id_kind(o.t)\n    if v.t == BIG and elem(o.t) == \"int\" and int_lists() and k == 0:\n        self.big_list_store(o, v, method, index)\n        return\n    layout = ListLayout(o.t, int_lists())\n    args = [o]\n    if index != \"\":\n        args.append(Val(index, \"int\"))\n    raw = self.select(self.big_fits([v]), self.big_lo(v), Val(\"-9223372036854775808\", \"int\")) if v.t == BIG else self.to_slot(v)\n    args.append(Val(raw, layout.slot))\n    if k != 0:\n",
+      "bytes": 1005,
+      "sha256": "4d8086a1852df6a33b2d36a37c3020eafc341bfcec48b55c82f0a22efe647763",
+      "git_blob_sha": "eb6ebc6bd1f6c11ecc356705e9c30ea78f9b4538"
+    },
+    {
+      "path": "src/pystachy_compiler/conversions.py",
+      "from": 274,
+      "to": 289,
+      "role": "Scalar and optional descriptor construction",
+      "url": "https://github.com/den-run-ai/pystachy/blob/6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93/src/pystachy_compiler/conversions.py#L274-L289",
+      "text": "    if t == \"dyn\":\n        return \"A\"  # (a dynamic value's box, walked by its own DynType's descriptor)\n    if t == \"int\" or t == BIG:\n        return \"i\"  # (a promoting int as a container holds it: 64-bit, bigints.py)\n    if t == BIGOPT:\n        return \"?J\"  # (an int | None of a module that opts in: a box of a promoting int's two words, runtime.c's jbig)\n    if t == \"float\":\n        return \"f\"\n    if t == \"bool\":\n        return \"b\"\n    if t == \"str\":\n        return \"s\"\n    if t == \"bytes\":\n        return \"y\" if use == \"repr\" else \"s\"  # (a bytes compares, orders and hashes as a str of its bytes)\n    if is_opt(t) and t != NONEVAR:\n        return \"?\" + self.desc(unopt(t), use)  # None or the value\n",
+      "bytes": 708,
+      "sha256": "f953b95355cfd5ba3901e8ee20c2e7fd7c9a3ba141b08e9bd890f0d979fad1bb",
+      "git_blob_sha": "661aab237172a1d6e4febca4ab1bbdea8e8d57c5"
+    },
+    {
+      "path": "src/pystachy_compiler/builtins.py",
+      "from": 1189,
+      "to": 1195,
+      "role": "sorted routes full element descriptor to runtime sort",
+      "url": "https://github.com/den-run-ai/pystachy/blob/6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93/src/pystachy_compiler/builtins.py#L1189-L1195",
+      "text": "    elif (name == \"sorted\" or name == \"list\") and is_list(t):\n        c = v.v if fresh else self.rt(\"pys_list_copy\", \"ptr\", [f\"ptr {v.v}\"])\n        if name == \"sorted\" and keyv.t != \"\":\n            self.key_sort(Val(c, t), keyv, rev, False)\n        elif name == \"sorted\":\n            self.rt(\"pys_list_sort_r\", \"void\", [f\"ptr {c}\", f\"ptr {self.sconst(self.desc(held(elem(t)), '<'))}\", f\"i64 {rev}\"])\n        return self.typed_list(Val(c, t), \"\" if resultsoft else want)\n",
+      "bytes": 470,
+      "sha256": "a6ce6a4e18a769d92531cfad50ea72a5f2f3c052fc0b3fe74e728deeb641b224",
+      "git_blob_sha": "f1cb862742c77007f4913115a5d8d75e8a73ebcc"
+    },
+    {
+      "path": "src/pystachy_compiler/builtins.py",
+      "from": 2708,
+      "to": 2731,
+      "role": "list.sort routes full element descriptor to runtime sort",
+      "url": "https://github.com/den-run-ai/pystachy/blob/6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93/src/pystachy_compiler/builtins.py#L2708-L2731",
+      "text": "    if is_list(o.t) and m == \"sort\":\n        rev = \"0\"\n        keyv = Val(\"\", \"\")\n        for a in args:\n            if a.kind != \"kw\":\n                self.err(\"list.sort() takes no positional arguments\")\n            elif a.s == \"reverse\":\n                rev = self.reverse_arg(a.kids[0], \"sort\")\n            elif a.s == \"key\":\n                keyv = self.expr(a.kids[0], \"\")\n                if keyv.t != \"None\":\n                    self.key_check(keyv, \"sort()\")\n            else:\n                self.err(f\"sort() got an unexpected keyword argument '{a.s}'\")\n        if keyv.t != \"\" and keyv.t != \"None\":\n            # the list gives its items up while the keys are computed (pys_list_take)\n            taken = Val(self.rt(\"pys_list_take\", \"ptr\", [f\"ptr {o.v}\"]), o.t)\n            self.key_sort(taken, keyv, rev, True)\n            self.rt(\"pys_list_give\", \"void\", [f\"ptr {taken.v}\"])\n            return Val(\"null\", \"None\")\n        self.rt(\"pys_list_sort_r\", \"void\", [f\"ptr {o.v}\", f\"ptr {self.sconst(self.desc(held(elem(o.t)), '<'))}\", f\"i64 {rev}\"])\n        return Val(\"null\", \"None\")\n    if is_dict(o.t) and m == \"update\":\n        return self.update(o, args)\n",
+      "bytes": 1165,
+      "sha256": "401a9ae6254b61f6a798204a6b76f4d1d281371e25f159011e67a0380eab6182",
+      "git_blob_sha": "4a6cb0c265322fc9c6ca8c5041b4231a449a7735"
+    },
+    {
+      "path": "runtime.c",
+      "from": 2578,
+      "to": 2578,
+      "role": "Optional scalar unbox only recognizes i/f/b",
+      "url": "https://github.com/den-run-ai/pystachy/blob/6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93/runtime.c#L2578-L2578",
+      "text": "static I unbox(I v, const char *d) { return *d == 'i' || *d == 'f' || *d == 'b' ? *(I *)v : v; }   /* the value of a ?d */\n",
+      "bytes": 123,
+      "sha256": "96a9870af7bc88b7a52c0ddf26f9a8c6a4fc89d60c9039f8d15000a0a13e1545",
+      "git_blob_sha": "27da95c5c1fa091b2f4c4026624dfd4f740dd5f6"
+    },
+    {
+      "path": "runtime.c",
+      "from": 3085,
+      "to": 3107,
+      "role": "K and ? dispatch, followed by raw integer fallback",
+      "url": "https://github.com/den-run-ai/pystachy/blob/6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93/runtime.c#L3085-L3107",
+      "text": "  case 'A': return pys_dyn_cmp((Dyn *)a, (Dyn *)b, op);\n  case 'K': return opv(((I *)a)[0], ((I *)b)[0], d + 1, op);   /* key='s records {key, value}: their keys */\n  case 'U': {   /* numbers of a union (the compiler orders no other): an int and a float exactly, as CPython */\n    EqValue x = eqresolve(a, d), y = eqresolve(b, d);\n    int nx = *x.desc != 'f', ny = *y.desc != 'f';\n    if (nx && ny) return cmpop((x.value > y.value) - (x.value < y.value), op);\n    if (!nx && !ny) return opv(x.value, y.value, \"f\", op);\n    I c = nx ? pys_cmp_if(x.value, dbl(y.value)) : pys_cmp_if(y.value, dbl(x.value));\n    return c != 2 && cmpop(nx ? c : -c, op);   /* (2: a NaN, for which no ordering holds) */\n  }\n  case 'D': failf(\"TypeError: '%s' not supported between instances of 'dict' and 'dict'\", op == 0 ? \"<\" : op == 1 ? \"<=\" : op == 2 ? \">\" : \">=\");\n  case '?':\n    if (a && b) return opv(unbox(a, d + 1), unbox(b, d + 1), d + 1, op);\n    failf(\"TypeError: '%s' not supported between instances of '%s' and '%s'\", op == 0 ? \"<\" : op == 1 ? \"<=\" : op == 2 ? \">\" : \">=\",\n          a ? vtyname(a, d + 1) : \"NoneType\", b ? vtyname(b, d + 1) : \"NoneType\");\n  case 'C': case 'Y': failf(\"TypeError: '%s' not supported between instances of 'type' and 'type'\", op == 0 ? \"<\" : op == 1 ? \"<=\" : op == 2 ? \">\" : \">=\");\n  case 'E': {\n    int m, n; const char *x = exc_name((Exc *)a, &m), *y = exc_name((Exc *)b, &n);\n    failf(\"TypeError: '%s' not supported between instances of '%.*s' and '%.*s'\", op == 0 ? \"<\" : op == 1 ? \"<=\" : op == 2 ? \">\" : \">=\", m, x, n, y);\n  }\n  }\n  return cmpop((a > b) - (a < b), op);\n}\n",
+      "bytes": 1601,
+      "sha256": "46bb7bd1cdffdd35d342f82e720e02dd30625a4f28a8cc878ed9058f391bfedb",
+      "git_blob_sha": "3edaac15de495f40173dc4d862b61c6606a5d1e9"
+    },
+    {
+      "path": "runtime.c",
+      "from": 4028,
+      "to": 4045,
+      "role": "Identity sort truncates input descriptor to its first character",
+      "url": "https://github.com/den-run-ai/pystachy/blob/6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93/runtime.c#L4028-L4045",
+      "text": "void pys_list_sort_r(List *l, Str *d, I reverse) {\n  if (big_list(l) && !list_has_big(l)) {   /* (promoting ints that fit: no companion entry to move) */\n    I *ids = l->ids; l->ids = NULL; pys_list_sort_r(l, d, reverse); l->ids = ids; return;\n  }\n  if (big_list(l)) { big_sort(l, d, reverse); return; }\n  if (l->ids && opt_in()) {\n    /* Numeric comparisons cannot call user code. Move a record containing the number\n       and its box through the same stable timsort, preserving NaN comparison order. */\n    List *p = pys_list_keyed(l, l, 0);\n    struct { I len; uint64_t hash; I chars1; char text[3]; } kd = {2, 0, 3, {'K', *d->s, 0}};\n    pys_list_sort_r(p, (Str *)&kd, reverse); pys_list_unkey(l, p); return;\n  }\n  I n = l->len, cap = l->cap, *a = l->a, m = n, r = 0, c = *d->s;\n  MS ms = {.d = d->s, .kind = c == 'i' || c == 'b' ? INT : c == 'f' ? FLOAT : c == 's' ? STR : c == 'O' ? OBJ : 0,\n           .cls = c == 'O' ? ocls(d->s + 1) : 0, .a = a, .n = n, .min_gallop = MIN_GALLOP};\n  Undo *u = 0, *outer = keep_u;\n  if (eh && n > 1 && (ms.kind == OBJ || !ms.kind)) {   /* a comparison may raise into a try */\n    u = pys_alloc(sizeof(Undo));\n",
+      "bytes": 1151,
+      "sha256": "6da92a9852efabce30ea3e742b04534acee7413cb431d0a2f61640475948fe99",
+      "git_blob_sha": "367f4c65b56fd2d10f055394b4e459aa58f11f79"
+    },
+    {
+      "path": "runtime.c",
+      "from": 4098,
+      "to": 4119,
+      "role": "Keyed records preserve raw value slot and identity companion",
+      "url": "https://github.com/den-run-ai/pystachy/blob/6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93/runtime.c#L4098-L4119",
+      "text": "List *pys_list_keyed(List *l, List *keys, I taken) {   /* the records of l's items and their keys */\n  if (l->ids && opt_in()) pys_list_identity(l, l->ids[0]);\n  if (list_has_big(keys)) keys = big_ranks(keys);   /* (ints past 64 bits: sorted by their ranks) */\n  I n = l->len, width = l->ids && opt_in() ? 3 : 2;\n  if (l->ids && opt_in() && n > (INT64_MAX - 8) / (width * 8)) oom();\n  I *r = pys_alloc(n * width * 8 + 8);\n  List *p = pys_list_new(n);\n  for (I i = 0; i < n; i++) {\n    r[width * i] = keys->a[i]; r[width * i + 1] = l->a[i];\n    if (l->ids && opt_in()) r[width * i + 2] = l->ids[i + 1];\n    p->a[i] = (I)(r + width * i);\n  }\n  p->len = n;\n  if (taken) ((Taken *)l)->p = p;                    /* (l is what pys_list_take returned) */\n  return p;\n}\nvoid pys_list_unkey(List *l, List *p) {\n  for (I i = 0; i < p->len; i++) {\n    l->a[i] = ((I *)p->a[i])[1];\n    if (l->ids && opt_in()) l->ids[i + 1] = ((I *)p->a[i])[2];\n  }\n}\n",
+      "bytes": 939,
+      "sha256": "012ea3530c607e6cb6f1324e01e2f1768d4b1e5db5de35dda406cdc3f8c73e6a",
+      "git_blob_sha": "a7568dadbd3ad0e71421b2e177de9bd3a55b5fc0"
+    },
+    {
+      "path": "runtime.c",
+      "from": 4144,
+      "to": 4154,
+      "role": "Identity min/max compares with complete original descriptor",
+      "url": "https://github.com/den-run-ai/pystachy/blob/6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93/runtime.c#L4144-L4154",
+      "text": "Dyn *pys_list_minmax_identity(List *l, Str *d, I max, I kind) {\n  if (!l->len) pys_fail(max ? \"ValueError: max() iterable argument is empty\" : \"ValueError: min() iterable argument is empty\");\n  pys_list_identity(l, kind); I at = 0;\n  for (I i = 1; i < l->len; i++) {\n    Mpz *m = lbig(l, i), *n = lbig(l, at);\n    if (m || n) {\n      I c = pys_big_cmp(m ? 0 : l->a[i], m, n ? 0 : l->a[at], n);\n      if (max ? c > 0 : c < 0) at = i;\n    } else if (opv(l->a[i], l->a[at], d->s, max ? 2 : 0)) at = i;\n  }\n  return (Dyn *)l->ids[at + 1];\n",
+      "bytes": 535,
+      "sha256": "bdbddbfd02e73da1e6533821007c63b67b12bbcc11107773242a246d2f17684e",
+      "git_blob_sha": "497be18cc075ab77dc485fba7cc5fb37586b5d9b"
+    }
+  ],
+  "limits": [
+    "Workspace unavailable; source reads used GitHub connector only.",
+    "No source edits, PRs, CI reruns, local tests, generated IR or artifact extraction.",
+    "Baseline/history tracing is independently owned by alpha3_qualification and is not duplicated here."
+  ]
+}

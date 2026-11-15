@@ -1,0 +1,4275 @@
+{
+  "schema_version": 1,
+  "status": "blocked_main_ci_failure",
+  "repository": "den-run-ai/pystachy",
+  "head": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+  "tree": "107460d5f89bdcf37f2741b233eac0568d82604a",
+  "parents": [
+    "80490143498d149d407343ba1cb7aedb1db2d2c5",
+    "328b945f02788b296d9981d1b44706a2a0092255"
+  ],
+  "observed_start": "2026-11-15 10:03:21 UTC",
+  "observed_end": "2026-11-15 10:03:24 UTC",
+  "main_ref_verified_equal": true,
+  "scope": "Final read-only post-merge workflow evidence for v0.5.0-alpha.3. The prior qualified proof/source package remains historical evidence; this full-main CI failure blocks release.",
+  "gates": {
+    "ci": "failure",
+    "lint": "success",
+    "installation": "success",
+    "packages": "success",
+    "performance_smoke": "success",
+    "variants": "success",
+    "managed_codeql": "success",
+    "issue_submission": "success",
+    "coverage": "not_dispatched_environment_unavailable",
+    "release_and_public_artifact_audit": "not_performed_environment_unavailable",
+    "release_accepted": false
+  },
+  "pagination": {
+    "runs": {
+      "page_count": 1,
+      "rows": 8,
+      "total_count": 8,
+      "complete": true
+    },
+    "checks": {
+      "page_count": 2,
+      "rows": 113,
+      "total_count": 113,
+      "complete": true
+    },
+    "suites": {
+      "page_count": 1,
+      "rows": 12,
+      "total_count": 12,
+      "complete": true
+    },
+    "statuses": {
+      "page_count": 1,
+      "rows": 0,
+      "total_count": null,
+      "complete": true
+    },
+    "ci_artifacts": {
+      "page_count": 1,
+      "rows": 75,
+      "total_count": 75,
+      "complete": true
+    },
+    "all_run_job_pages": {
+      "43701656482": {
+        "page_count": 1,
+        "rows": 1,
+        "total_count": 1,
+        "complete": true
+      },
+      "43699643821": {
+        "page_count": 1,
+        "rows": 74,
+        "total_count": 74,
+        "complete": true
+      },
+      "43699643867": {
+        "page_count": 1,
+        "rows": 1,
+        "total_count": 1,
+        "complete": true
+      },
+      "43699643753": {
+        "page_count": 1,
+        "rows": 1,
+        "total_count": 1,
+        "complete": true
+      },
+      "43699643750": {
+        "page_count": 1,
+        "rows": 25,
+        "total_count": 25,
+        "complete": true
+      },
+      "43699643829": {
+        "page_count": 1,
+        "rows": 7,
+        "total_count": 7,
+        "complete": true
+      },
+      "43699643812": {
+        "page_count": 1,
+        "rows": 1,
+        "total_count": 1,
+        "complete": true
+      },
+      "43699640898": {
+        "page_count": 1,
+        "rows": 3,
+        "total_count": 3,
+        "complete": true
+      }
+    }
+  },
+  "checks": {
+    "total": 113,
+    "conclusions": {
+      "success": 106,
+      "failure": 6,
+      "skipped": 1
+    },
+    "classic_statuses": [],
+    "third_party_suites": [
+      {
+        "id": 118314005802,
+        "app": "vercel",
+        "status": "queued",
+        "conclusion": null,
+        "actual_checks_on_complete_current_head_pages": 0
+      },
+      {
+        "id": 118314006106,
+        "app": "codecov",
+        "status": "queued",
+        "conclusion": null,
+        "actual_checks_on_complete_current_head_pages": 0
+      },
+      {
+        "id": 118314006439,
+        "app": "claude",
+        "status": "queued",
+        "conclusion": null,
+        "actual_checks_on_complete_current_head_pages": 0
+      },
+      {
+        "id": 118314006922,
+        "app": "cursor",
+        "status": "queued",
+        "conclusion": null,
+        "actual_checks_on_complete_current_head_pages": 0
+      }
+    ],
+    "all_observed_github_workflow_runs_terminal": true,
+    "main_codeql_aggregate_check_observed": false
+  },
+  "workflows": [
+    {
+      "id": 43701656482,
+      "name": "Submission format",
+      "event": "issues",
+      "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43701656482",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "created_at": "2026-11-15T09:56:39Z",
+      "started_at": "2026-11-15T09:56:39Z",
+      "metadata_updated_at": "2026-11-15T09:56:50Z",
+      "job_count": 1,
+      "job_conclusions": {
+        "success": 1
+      },
+      "jobs": [
+        {
+          "id": 132773902154,
+          "name": "Check title and description",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:56:42Z",
+          "completed_at": "2026-11-15T09:56:49Z",
+          "duration_seconds": 7,
+          "step_count": 5,
+          "step_conclusions": {
+            "success": 5
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        }
+      ]
+    },
+    {
+      "id": 43699643821,
+      "name": "CI",
+      "event": "push",
+      "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43699643821",
+      "status": "completed",
+      "conclusion": "failure",
+      "run_attempt": 1,
+      "created_at": "2026-11-15T09:31:21Z",
+      "started_at": "2026-11-15T09:31:21Z",
+      "metadata_updated_at": "2026-11-15T09:56:12Z",
+      "job_count": 74,
+      "job_conclusions": {
+        "success": 67,
+        "failure": 6,
+        "skipped": 1
+      },
+      "jobs": [
+        {
+          "id": 132767743096,
+          "name": "verify (bootstrap, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:31:24Z",
+          "completed_at": "2026-11-15T09:36:42Z",
+          "duration_seconds": 318,
+          "step_count": 13,
+          "step_conclusions": {
+            "success": 13
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132767743431,
+          "name": "verify (bootstrap, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:31:27Z",
+          "completed_at": "2026-11-15T09:37:52Z",
+          "duration_seconds": 385,
+          "step_count": 13,
+          "step_conclusions": {
+            "success": 13
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132769355912,
+          "name": "Bootstrap tier and native archive qualification",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:37:54Z",
+          "completed_at": "2026-11-15T09:41:56Z",
+          "duration_seconds": 242,
+          "step_count": 12,
+          "step_conclusions": {
+            "success": 12
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356341,
+          "name": "verify (ubsan-4, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:37:55Z",
+          "completed_at": "2026-11-15T09:44:46Z",
+          "duration_seconds": 411,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356351,
+          "name": "verify (python-free-3, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:40:01Z",
+          "completed_at": "2026-11-15T09:45:38Z",
+          "duration_seconds": 337,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356354,
+          "name": "verify (gc-jit-1, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:37:54Z",
+          "completed_at": "2026-11-15T09:45:54Z",
+          "duration_seconds": 480,
+          "step_count": 28,
+          "step_conclusions": {
+            "success": 14,
+            "skipped": 14
+          },
+          "skipped_steps": [
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356362,
+          "name": "verify (native-2, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:40:50Z",
+          "completed_at": "2026-11-15T09:44:50Z",
+          "duration_seconds": 240,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356364,
+          "name": "verify (opt-off-0, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:37:55Z",
+          "completed_at": "2026-11-15T09:44:07Z",
+          "duration_seconds": 372,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356371,
+          "name": "verify (ubsan-2, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:40:29Z",
+          "completed_at": "2026-11-15T09:44:59Z",
+          "duration_seconds": 270,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356372,
+          "name": "verify (opt-off-1, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:37:55Z",
+          "completed_at": "2026-11-15T09:43:41Z",
+          "duration_seconds": 346,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356375,
+          "name": "verify (native-0, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:39:04Z",
+          "completed_at": "2026-11-15T09:43:44Z",
+          "duration_seconds": 280,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356377,
+          "name": "verify (gc-jit-0, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:37:55Z",
+          "completed_at": "2026-11-15T09:44:31Z",
+          "duration_seconds": 396,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 12,
+            "skipped": 15
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356378,
+          "name": "verify (python-free-1, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:40:18Z",
+          "completed_at": "2026-11-15T09:45:08Z",
+          "duration_seconds": 290,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356380,
+          "name": "verify (dynany-optin-0, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:37:55Z",
+          "completed_at": "2026-11-15T09:42:34Z",
+          "duration_seconds": 279,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 11,
+            "skipped": 16
+          },
+          "skipped_steps": [
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356382,
+          "name": "verify (native-1, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:37:55Z",
+          "completed_at": "2026-11-15T09:41:59Z",
+          "duration_seconds": 244,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356384,
+          "name": "verify (ubsan-1, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:40:12Z",
+          "completed_at": "2026-11-15T09:47:26Z",
+          "duration_seconds": 434,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356387,
+          "name": "verify (opt-off-2, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:40:11Z",
+          "completed_at": "2026-11-15T09:44:23Z",
+          "duration_seconds": 252,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356391,
+          "name": "verify (gc-aot-2, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:39:59Z",
+          "completed_at": "2026-11-15T09:43:37Z",
+          "duration_seconds": 218,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356402,
+          "name": "verify (python-free-2, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:40:27Z",
+          "completed_at": "2026-11-15T09:47:57Z",
+          "duration_seconds": 450,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356406,
+          "name": "verify (gc-aot-0, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:40:02Z",
+          "completed_at": "2026-11-15T09:46:50Z",
+          "duration_seconds": 408,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356408,
+          "name": "verify (gc-ir-0, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:41:01Z",
+          "completed_at": "2026-11-15T09:48:28Z",
+          "duration_seconds": 447,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356414,
+          "name": "verify (python-free-0, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:40:28Z",
+          "completed_at": "2026-11-15T09:46:14Z",
+          "duration_seconds": 346,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356417,
+          "name": "verify (ubsan-3, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:40:17Z",
+          "completed_at": "2026-11-15T09:46:47Z",
+          "duration_seconds": 390,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356418,
+          "name": "verify (hosted, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:37:55Z",
+          "completed_at": "2026-11-15T09:46:55Z",
+          "duration_seconds": 540,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 13,
+            "skipped": 14
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356421,
+          "name": "verify (gc-self, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:40:23Z",
+          "completed_at": "2026-11-15T09:45:38Z",
+          "duration_seconds": 315,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356426,
+          "name": "verify (ubsan-0, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:40:38Z",
+          "completed_at": "2026-11-15T09:47:02Z",
+          "duration_seconds": 384,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 11,
+            "skipped": 16
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356441,
+          "name": "verify (gc-ir-1, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:43:05Z",
+          "completed_at": "2026-11-15T09:49:48Z",
+          "duration_seconds": 403,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356465,
+          "name": "verify (gc-aot-1, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:41:27Z",
+          "completed_at": "2026-11-15T09:47:15Z",
+          "duration_seconds": 348,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356481,
+          "name": "verify (dynany-optin-1, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "failure",
+          "started_at": "2026-11-15T09:46:10Z",
+          "completed_at": "2026-11-15T09:50:38Z",
+          "duration_seconds": 268,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 9,
+            "skipped": 17,
+            "failure": 1
+          },
+          "skipped_steps": [
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)",
+            "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0"
+          ],
+          "failed_steps": [
+            "Verify group"
+          ]
+        },
+        {
+          "id": 132769356490,
+          "name": "verify (python-int-optin-2, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:40:58Z",
+          "completed_at": "2026-11-15T09:46:09Z",
+          "duration_seconds": 311,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 11,
+            "skipped": 16
+          },
+          "skipped_steps": [
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356510,
+          "name": "verify (python-int-optin-1, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:41:54Z",
+          "completed_at": "2026-11-15T09:47:27Z",
+          "duration_seconds": 333,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 11,
+            "skipped": 16
+          },
+          "skipped_steps": [
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356511,
+          "name": "verify (dynany-optin-2, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "failure",
+          "started_at": "2026-11-15T09:41:34Z",
+          "completed_at": "2026-11-15T09:48:55Z",
+          "duration_seconds": 441,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 9,
+            "skipped": 17,
+            "failure": 1
+          },
+          "skipped_steps": [
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)",
+            "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0"
+          ],
+          "failed_steps": [
+            "Verify group"
+          ]
+        },
+        {
+          "id": 132769356526,
+          "name": "verify (native-2, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:46:13Z",
+          "completed_at": "2026-11-15T09:48:47Z",
+          "duration_seconds": 154,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356532,
+          "name": "verify (opt-off-2, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:40:20Z",
+          "completed_at": "2026-11-15T09:44:15Z",
+          "duration_seconds": 235,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356534,
+          "name": "verify (python-free-0, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:41:43Z",
+          "completed_at": "2026-11-15T09:46:41Z",
+          "duration_seconds": 298,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356541,
+          "name": "verify (runtime-cache, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:44:49Z",
+          "completed_at": "2026-11-15T09:55:42Z",
+          "duration_seconds": 653,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 12,
+            "skipped": 15
+          },
+          "skipped_steps": [
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356542,
+          "name": "verify (python-free-2, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:42:39Z",
+          "completed_at": "2026-11-15T09:47:50Z",
+          "duration_seconds": 311,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356546,
+          "name": "verify (native-1, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:43:17Z",
+          "completed_at": "2026-11-15T09:46:59Z",
+          "duration_seconds": 222,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356551,
+          "name": "verify (python-int-optin-0, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:41:42Z",
+          "completed_at": "2026-11-15T09:46:39Z",
+          "duration_seconds": 297,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 11,
+            "skipped": 16
+          },
+          "skipped_steps": [
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356557,
+          "name": "verify (benchmarks, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:40:18Z",
+          "completed_at": "2026-11-15T09:46:42Z",
+          "duration_seconds": 384,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 16,
+            "skipped": 11
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356558,
+          "name": "verify (native-0, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:42:25Z",
+          "completed_at": "2026-11-15T09:46:08Z",
+          "duration_seconds": 223,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356563,
+          "name": "verify (hosted, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:41:25Z",
+          "completed_at": "2026-11-15T09:47:43Z",
+          "duration_seconds": 378,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 12,
+            "skipped": 15
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356569,
+          "name": "verify (opt-off-1, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:41:24Z",
+          "completed_at": "2026-11-15T09:45:26Z",
+          "duration_seconds": 242,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356576,
+          "name": "verify (contracts, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:43:39Z",
+          "completed_at": "2026-11-15T09:51:09Z",
+          "duration_seconds": 450,
+          "step_count": 28,
+          "step_conclusions": {
+            "success": 15,
+            "skipped": 13
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356598,
+          "name": "verify (python-free-1, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:44:28Z",
+          "completed_at": "2026-11-15T09:49:44Z",
+          "duration_seconds": 316,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356619,
+          "name": "verify (gc-self, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:42:04Z",
+          "completed_at": "2026-11-15T09:47:19Z",
+          "duration_seconds": 315,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356622,
+          "name": "verify (gc-jit-1, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:41:41Z",
+          "completed_at": "2026-11-15T09:44:35Z",
+          "duration_seconds": 174,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356624,
+          "name": "verify (dynany-optin-1, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "failure",
+          "started_at": "2026-11-15T09:44:35Z",
+          "completed_at": "2026-11-15T09:49:05Z",
+          "duration_seconds": 270,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 9,
+            "skipped": 17,
+            "failure": 1
+          },
+          "skipped_steps": [
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)",
+            "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0"
+          ],
+          "failed_steps": [
+            "Verify group"
+          ]
+        },
+        {
+          "id": 132769356625,
+          "name": "verify (gc-aot-1, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:41:31Z",
+          "completed_at": "2026-11-15T09:45:12Z",
+          "duration_seconds": 221,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356627,
+          "name": "verify (opt-off-0, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:44:55Z",
+          "completed_at": "2026-11-15T09:48:54Z",
+          "duration_seconds": 239,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356653,
+          "name": "verify (gc-ir-0, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:42:01Z",
+          "completed_at": "2026-11-15T09:48:05Z",
+          "duration_seconds": 364,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356660,
+          "name": "verify (dynany-optin-2, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "failure",
+          "started_at": "2026-11-15T09:44:20Z",
+          "completed_at": "2026-11-15T09:48:48Z",
+          "duration_seconds": 268,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 9,
+            "skipped": 17,
+            "failure": 1
+          },
+          "skipped_steps": [
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)",
+            "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0"
+          ],
+          "failed_steps": [
+            "Verify group"
+          ]
+        },
+        {
+          "id": 132769356671,
+          "name": "verify (gc-ir-1, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:45:04Z",
+          "completed_at": "2026-11-15T09:50:34Z",
+          "duration_seconds": 330,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356678,
+          "name": "verify (python-free-3, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:46:45Z",
+          "completed_at": "2026-11-15T09:51:51Z",
+          "duration_seconds": 306,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356682,
+          "name": "verify (ubsan-1, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:44:25Z",
+          "completed_at": "2026-11-15T09:49:50Z",
+          "duration_seconds": 325,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356693,
+          "name": "verify (ubsan-3, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:45:42Z",
+          "completed_at": "2026-11-15T09:50:45Z",
+          "duration_seconds": 303,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356694,
+          "name": "verify (python-int-optin-1, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:46:44Z",
+          "completed_at": "2026-11-15T09:51:04Z",
+          "duration_seconds": 260,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 11,
+            "skipped": 16
+          },
+          "skipped_steps": [
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356696,
+          "name": "verify (python-int-optin-0, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:44:40Z",
+          "completed_at": "2026-11-15T09:49:02Z",
+          "duration_seconds": 262,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 11,
+            "skipped": 16
+          },
+          "skipped_steps": [
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356698,
+          "name": "verify (gc-aot-0, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:45:42Z",
+          "completed_at": "2026-11-15T09:49:50Z",
+          "duration_seconds": 248,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356708,
+          "name": "verify (ubsan-2, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:43:46Z",
+          "completed_at": "2026-11-15T09:48:50Z",
+          "duration_seconds": 304,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356711,
+          "name": "verify (dynany-optin-0, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:45:59Z",
+          "completed_at": "2026-11-15T09:50:12Z",
+          "duration_seconds": 253,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 11,
+            "skipped": 16
+          },
+          "skipped_steps": [
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356712,
+          "name": "verify (scaling, x86_64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:45:11Z",
+          "completed_at": "2026-11-15T09:49:29Z",
+          "duration_seconds": 258,
+          "step_count": 28,
+          "step_conclusions": {
+            "success": 13,
+            "skipped": 15
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356713,
+          "name": "verify (gc-jit-0, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:46:47Z",
+          "completed_at": "2026-11-15T09:50:09Z",
+          "duration_seconds": 202,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356725,
+          "name": "verify (ubsan-0, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:43:49Z",
+          "completed_at": "2026-11-15T09:49:09Z",
+          "duration_seconds": 320,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 11,
+            "skipped": 16
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356736,
+          "name": "verify (runtime-cache, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:46:19Z",
+          "completed_at": "2026-11-15T09:55:19Z",
+          "duration_seconds": 540,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 12,
+            "skipped": 15
+          },
+          "skipped_steps": [
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356760,
+          "name": "verify (gc-aot-2, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:45:17Z",
+          "completed_at": "2026-11-15T09:48:42Z",
+          "duration_seconds": 205,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769356766,
+          "name": "verify (ubsan-4, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:45:30Z",
+          "completed_at": "2026-11-15T09:50:28Z",
+          "duration_seconds": 298,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769357187,
+          "name": "native JIT and variants (worker ${{ matrix.worker }})",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "skipped",
+          "started_at": "2026-11-15T09:37:52Z",
+          "completed_at": "2026-11-15T09:37:52Z",
+          "duration_seconds": 0,
+          "step_count": 0,
+          "step_conclusions": {},
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132769358498,
+          "name": "verify (python-int-optin-2, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:46:52Z",
+          "completed_at": "2026-11-15T09:51:38Z",
+          "duration_seconds": 286,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 11,
+            "skipped": 16
+          },
+          "skipped_steps": [
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769358547,
+          "name": "verify (scaling, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:46:54Z",
+          "completed_at": "2026-11-15T09:48:45Z",
+          "duration_seconds": 111,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 17
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769358567,
+          "name": "verify (benchmarks, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:47:04Z",
+          "completed_at": "2026-11-15T09:54:33Z",
+          "duration_seconds": 449,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 16,
+            "skipped": 11
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Require C, embedding and extension FFI coverage",
+            "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132769358578,
+          "name": "verify (contracts, aarch64)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:47:00Z",
+          "completed_at": "2026-11-15T09:54:14Z",
+          "duration_seconds": 434,
+          "step_count": 27,
+          "step_conclusions": {
+            "success": 12,
+            "skipped": 15
+          },
+          "skipped_steps": [
+            "Opt-in, widening and Lean corpus CPython dependency",
+            "Workload pytest oracle dependency",
+            "Runtime ABI and GC root checker controls",
+            "Cache the pinned Lean release archive",
+            "Lean proofs of compiler guard obligations",
+            "Generated user and runtime ASan controls",
+            "Sanitized shared and object JIT linkage controls",
+            "Native program cache invalidation and execution",
+            "Extended subset benchmark correctness",
+            "Adapted pyperformance benchmark correctness",
+            "Bounded match dispatch correctness",
+            "Shared pytest example assertions",
+            "Generated native pytest runner parity",
+            "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "Upstream large regex (JIT and AOT, normal GC)"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132773677596,
+          "name": "make verify (Linux x86-64, LLVM 18, Python 3.13)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "failure",
+          "started_at": "2026-11-15T09:55:45Z",
+          "completed_at": "2026-11-15T09:56:08Z",
+          "duration_seconds": 23,
+          "step_count": 10,
+          "step_conclusions": {
+            "success": 7,
+            "failure": 2,
+            "skipped": 1
+          },
+          "skipped_steps": [
+            "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0"
+          ],
+          "failed_steps": [
+            "Require complete verification reports",
+            "Require every verification group"
+          ]
+        },
+        {
+          "id": 132773677624,
+          "name": "make verify (Linux ARM64, LLVM 18, Python 3.13)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "failure",
+          "started_at": "2026-11-15T09:55:45Z",
+          "completed_at": "2026-11-15T09:56:12Z",
+          "duration_seconds": 27,
+          "step_count": 10,
+          "step_conclusions": {
+            "success": 7,
+            "failure": 2,
+            "skipped": 1
+          },
+          "skipped_steps": [
+            "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0"
+          ],
+          "failed_steps": [
+            "Require complete verification reports",
+            "Require every verification group"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 43699643867,
+      "name": "Packages",
+      "event": "push",
+      "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43699643867",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "created_at": "2026-11-15T09:31:21Z",
+      "started_at": "2026-11-15T09:31:21Z",
+      "metadata_updated_at": "2026-11-15T09:36:53Z",
+      "job_count": 1,
+      "job_conclusions": {
+        "success": 1
+      },
+      "jobs": [
+        {
+          "id": 132767743159,
+          "name": "source wheels (CPython, JIT and AOT)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:31:24Z",
+          "completed_at": "2026-11-15T09:36:53Z",
+          "duration_seconds": 329,
+          "step_count": 11,
+          "step_conclusions": {
+            "success": 11
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        }
+      ]
+    },
+    {
+      "id": 43699643753,
+      "name": "Performance smoke",
+      "event": "push",
+      "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43699643753",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "created_at": "2026-11-15T09:31:21Z",
+      "started_at": "2026-11-15T09:31:21Z",
+      "metadata_updated_at": "2026-11-15T09:39:02Z",
+      "job_count": 1,
+      "job_conclusions": {
+        "success": 1
+      },
+      "jobs": [
+        {
+          "id": 132767742752,
+          "name": "smoke",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:31:23Z",
+          "completed_at": "2026-11-15T09:39:02Z",
+          "duration_seconds": 459,
+          "step_count": 12,
+          "step_conclusions": {
+            "success": 12
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        }
+      ]
+    },
+    {
+      "id": 43699643750,
+      "name": "Variants",
+      "event": "push",
+      "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43699643750",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "created_at": "2026-11-15T09:31:21Z",
+      "started_at": "2026-11-15T09:31:21Z",
+      "metadata_updated_at": "2026-11-15T09:41:52Z",
+      "job_count": 25,
+      "job_conclusions": {
+        "success": 25
+      },
+      "jobs": [
+        {
+          "id": 132767742705,
+          "name": "verified compiler producer",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:31:24Z",
+          "completed_at": "2026-11-15T09:36:56Z",
+          "duration_seconds": 332,
+          "step_count": 10,
+          "step_conclusions": {
+            "success": 10
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132769136020,
+          "name": "variant opt-1 cflags-O0 (shard 1/4, JIT and AOT)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:36:58Z",
+          "completed_at": "2026-11-15T09:40:55Z",
+          "duration_seconds": 237,
+          "step_count": 12,
+          "step_conclusions": {
+            "success": 12
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132769136049,
+          "name": "variant opt-1 cflags-O0 (shard 3/4, JIT and AOT)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:36:58Z",
+          "completed_at": "2026-11-15T09:41:24Z",
+          "duration_seconds": 266,
+          "step_count": 12,
+          "step_conclusions": {
+            "success": 12
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132769136052,
+          "name": "variant opt-1 cflags-O0 (shard 0/4, JIT and AOT)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:36:58Z",
+          "completed_at": "2026-11-15T09:41:20Z",
+          "duration_seconds": 262,
+          "step_count": 12,
+          "step_conclusions": {
+            "success": 12
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132769136062,
+          "name": "variant opt-4 (shard 0/4, JIT and AOT)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:36:58Z",
+          "completed_at": "2026-11-15T09:40:15Z",
+          "duration_seconds": 197,
+          "step_count": 12,
+          "step_conclusions": {
+            "success": 12
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132769136066,
+          "name": "variant opt-2 (shard 3/4, JIT and AOT)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:36:58Z",
+          "completed_at": "2026-11-15T09:40:20Z",
+          "duration_seconds": 202,
+          "step_count": 12,
+          "step_conclusions": {
+            "success": 12
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132769136067,
+          "name": "variant opt-3 (shard 1/4, JIT and AOT)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:36:58Z",
+          "completed_at": "2026-11-15T09:41:26Z",
+          "duration_seconds": 268,
+          "step_count": 12,
+          "step_conclusions": {
+            "success": 12
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132769136068,
+          "name": "variant opt-2 (shard 0/4, JIT and AOT)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:36:59Z",
+          "completed_at": "2026-11-15T09:41:40Z",
+          "duration_seconds": 281,
+          "step_count": 12,
+          "step_conclusions": {
+            "success": 12
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132769136071,
+          "name": "variant opt-3 (shard 3/4, JIT and AOT)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:36:59Z",
+          "completed_at": "2026-11-15T09:40:47Z",
+          "duration_seconds": 228,
+          "step_count": 12,
+          "step_conclusions": {
+            "success": 12
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132769136075,
+          "name": "variant opt-4 (shard 2/4, JIT and AOT)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:36:58Z",
+          "completed_at": "2026-11-15T09:39:57Z",
+          "duration_seconds": 179,
+          "step_count": 12,
+          "step_conclusions": {
+            "success": 12
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132769136089,
+          "name": "variant opt-2 (shard 2/4, JIT and AOT)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:36:59Z",
+          "completed_at": "2026-11-15T09:41:31Z",
+          "duration_seconds": 272,
+          "step_count": 12,
+          "step_conclusions": {
+            "success": 12
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132769136101,
+          "name": "variant opt-1 cflags-O0 (shard 2/4, JIT and AOT)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:36:58Z",
+          "completed_at": "2026-11-15T09:41:20Z",
+          "duration_seconds": 262,
+          "step_count": 12,
+          "step_conclusions": {
+            "success": 12
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132769136103,
+          "name": "variant opt-4 (shard 1/4, JIT and AOT)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:36:59Z",
+          "completed_at": "2026-11-15T09:40:24Z",
+          "duration_seconds": 205,
+          "step_count": 12,
+          "step_conclusions": {
+            "success": 12
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132769136110,
+          "name": "variant opt-4 (shard 3/4, JIT and AOT)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:36:59Z",
+          "completed_at": "2026-11-15T09:39:58Z",
+          "duration_seconds": 179,
+          "step_count": 12,
+          "step_conclusions": {
+            "success": 12
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132769136112,
+          "name": "variant opt-3 (shard 2/4, JIT and AOT)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:36:59Z",
+          "completed_at": "2026-11-15T09:40:14Z",
+          "duration_seconds": 195,
+          "step_count": 12,
+          "step_conclusions": {
+            "success": 12
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132769136116,
+          "name": "variant opt-3 (shard 0/4, JIT and AOT)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:36:58Z",
+          "completed_at": "2026-11-15T09:40:16Z",
+          "duration_seconds": 198,
+          "step_count": 12,
+          "step_conclusions": {
+            "success": 12
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132769136134,
+          "name": "variant opt-2 (shard 1/4, JIT and AOT)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:36:59Z",
+          "completed_at": "2026-11-15T09:40:08Z",
+          "duration_seconds": 189,
+          "step_count": 12,
+          "step_conclusions": {
+            "success": 12
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132769136149,
+          "name": "variant opt-5 (shard 1/4, JIT and AOT)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:36:58Z",
+          "completed_at": "2026-11-15T09:40:26Z",
+          "duration_seconds": 208,
+          "step_count": 12,
+          "step_conclusions": {
+            "success": 12
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132769136155,
+          "name": "variant opt-6 (shard 2/4, JIT and AOT)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:36:59Z",
+          "completed_at": "2026-11-15T09:40:35Z",
+          "duration_seconds": 216,
+          "step_count": 12,
+          "step_conclusions": {
+            "success": 12
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132769136167,
+          "name": "variant opt-5 (shard 3/4, JIT and AOT)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:36:59Z",
+          "completed_at": "2026-11-15T09:39:59Z",
+          "duration_seconds": 180,
+          "step_count": 12,
+          "step_conclusions": {
+            "success": 12
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132769136168,
+          "name": "variant opt-6 (shard 0/4, JIT and AOT)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:36:59Z",
+          "completed_at": "2026-11-15T09:41:38Z",
+          "duration_seconds": 279,
+          "step_count": 12,
+          "step_conclusions": {
+            "success": 12
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132769136200,
+          "name": "variant opt-6 (shard 3/4, JIT and AOT)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:36:59Z",
+          "completed_at": "2026-11-15T09:40:27Z",
+          "duration_seconds": 208,
+          "step_count": 12,
+          "step_conclusions": {
+            "success": 12
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132769136211,
+          "name": "variant opt-5 (shard 2/4, JIT and AOT)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:36:59Z",
+          "completed_at": "2026-11-15T09:40:59Z",
+          "duration_seconds": 240,
+          "step_count": 12,
+          "step_conclusions": {
+            "success": 12
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132769136268,
+          "name": "variant opt-6 (shard 1/4, JIT and AOT)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:36:59Z",
+          "completed_at": "2026-11-15T09:41:52Z",
+          "duration_seconds": 293,
+          "step_count": 12,
+          "step_conclusions": {
+            "success": 12
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132769136335,
+          "name": "variant opt-5 (shard 0/4, JIT and AOT)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:36:59Z",
+          "completed_at": "2026-11-15T09:41:36Z",
+          "duration_seconds": 277,
+          "step_count": 12,
+          "step_conclusions": {
+            "success": 12
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        }
+      ]
+    },
+    {
+      "id": 43699643829,
+      "name": "Installation",
+      "event": "push",
+      "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43699643829",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "created_at": "2026-11-15T09:31:21Z",
+      "started_at": "2026-11-15T09:31:21Z",
+      "metadata_updated_at": "2026-11-15T09:43:13Z",
+      "job_count": 7,
+      "job_conclusions": {
+        "success": 7
+      },
+      "jobs": [
+        {
+          "id": 132767742935,
+          "name": "Install (ubuntu-24.04-arm)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:31:27Z",
+          "completed_at": "2026-11-15T09:40:09Z",
+          "duration_seconds": 522,
+          "step_count": 15,
+          "step_conclusions": {
+            "success": 13,
+            "skipped": 2
+          },
+          "skipped_steps": [
+            "Native kqueue and pipe parity",
+            "Retain native kqueue reports"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132767743122,
+          "name": "Source install with pinned LLVM (ubuntu-24.04-arm)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:31:27Z",
+          "completed_at": "2026-11-15T09:34:44Z",
+          "duration_seconds": 197,
+          "step_count": 7,
+          "step_conclusions": {
+            "success": 7
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132767743125,
+          "name": "Source install with pinned LLVM (macos-15)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:31:25Z",
+          "completed_at": "2026-11-15T09:37:42Z",
+          "duration_seconds": 377,
+          "step_count": 7,
+          "step_conclusions": {
+            "success": 7
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132767743140,
+          "name": "Install (macos-15-intel)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:31:26Z",
+          "completed_at": "2026-11-15T09:42:21Z",
+          "duration_seconds": 655,
+          "step_count": 15,
+          "step_conclusions": {
+            "success": 10,
+            "skipped": 5
+          },
+          "skipped_steps": [
+            "Install sanitizer runtime for netio ownership",
+            "Hosted and native epoll, pipes and ownership",
+            "Retain Linux netio reports",
+            "Native kqueue and pipe parity",
+            "Retain native kqueue reports"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132767743163,
+          "name": "Install (ubuntu-24.04)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:31:24Z",
+          "completed_at": "2026-11-15T09:40:16Z",
+          "duration_seconds": 532,
+          "step_count": 15,
+          "step_conclusions": {
+            "success": 13,
+            "skipped": 2
+          },
+          "skipped_steps": [
+            "Native kqueue and pipe parity",
+            "Retain native kqueue reports"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132767743170,
+          "name": "Install (macos-15)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:31:26Z",
+          "completed_at": "2026-11-15T09:43:12Z",
+          "duration_seconds": 706,
+          "step_count": 15,
+          "step_conclusions": {
+            "success": 12,
+            "skipped": 3
+          },
+          "skipped_steps": [
+            "Install sanitizer runtime for netio ownership",
+            "Hosted and native epoll, pipes and ownership",
+            "Retain Linux netio reports"
+          ],
+          "failed_steps": []
+        },
+        {
+          "id": 132767743172,
+          "name": "Source install with pinned LLVM (ubuntu-24.04)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:31:24Z",
+          "completed_at": "2026-11-15T09:34:29Z",
+          "duration_seconds": 185,
+          "step_count": 7,
+          "step_conclusions": {
+            "success": 7
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        }
+      ]
+    },
+    {
+      "id": 43699643812,
+      "name": "Lint",
+      "event": "push",
+      "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43699643812",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "created_at": "2026-11-15T09:31:21Z",
+      "started_at": "2026-11-15T09:31:21Z",
+      "metadata_updated_at": "2026-11-15T09:43:04Z",
+      "job_count": 1,
+      "job_conclusions": {
+        "success": 1
+      },
+      "jobs": [
+        {
+          "id": 132767742902,
+          "name": "make lint (ruff, shellcheck, clang -Wall -Wextra)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:31:24Z",
+          "completed_at": "2026-11-15T09:43:03Z",
+          "duration_seconds": 699,
+          "step_count": 47,
+          "step_conclusions": {
+            "success": 47
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        }
+      ]
+    },
+    {
+      "id": 43699640898,
+      "name": "Push on main",
+      "event": "dynamic",
+      "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43699640898",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "created_at": "2026-11-15T09:31:19Z",
+      "started_at": "2026-11-15T09:31:19Z",
+      "metadata_updated_at": "2026-11-15T10:03:19Z",
+      "job_count": 3,
+      "job_conclusions": {
+        "success": 3
+      },
+      "jobs": [
+        {
+          "id": 132767737640,
+          "name": "Analyze (c-cpp)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:31:22Z",
+          "completed_at": "2026-11-15T09:32:33Z",
+          "duration_seconds": 71,
+          "step_count": 11,
+          "step_conclusions": {
+            "success": 11
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132767737856,
+          "name": "Analyze (actions)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:31:23Z",
+          "completed_at": "2026-11-15T09:32:07Z",
+          "duration_seconds": 44,
+          "step_count": 11,
+          "step_conclusions": {
+            "success": 11
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        },
+        {
+          "id": 132767737917,
+          "name": "Analyze (python)",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:31:23Z",
+          "completed_at": "2026-11-15T10:03:18Z",
+          "duration_seconds": 1915,
+          "step_count": 11,
+          "step_conclusions": {
+            "success": 11
+          },
+          "skipped_steps": [],
+          "failed_steps": []
+        }
+      ]
+    }
+  ],
+  "ci": {
+    "run_id": 43699643821,
+    "job_count": 74,
+    "job_conclusions": {
+      "success": 67,
+      "failure": 6,
+      "skipped": 1
+    },
+    "expected_groups_per_architecture": 34,
+    "consumer_count": 68,
+    "consumer_conclusions": {
+      "success": 64,
+      "failure": 4
+    },
+    "by_architecture": [
+      {
+        "architecture": "x86_64",
+        "consumers": {
+          "success": 32,
+          "failure": 2
+        }
+      },
+      {
+        "architecture": "aarch64",
+        "consumers": {
+          "success": 32,
+          "failure": 2
+        }
+      }
+    ],
+    "successful_consumer_logs_reviewed": 64,
+    "all_68_consumer_same_run_source_digest_provenance": true,
+    "all_68_consumer_step_and_condition_accounting": true,
+    "executed_job_full_logs_preserved": 73,
+    "artifact_count": 75,
+    "all_expected_artifact_names_present": true,
+    "unexplained_ci_warning_annotations": 0,
+    "expected_skipped_job": {
+      "id": 132769357187,
+      "name": "native JIT and variants (worker ${{ matrix.worker }})",
+      "source_condition": "github.event_name == 'pull_request' && needs.bootstrap.outputs.plan_x86_64 == 'code'",
+      "reason": "This is a push run, so the PR-only variants placeholder is skipped. The separate main Variants workflow completed successfully."
+    },
+    "failures": {
+      "consumer_job_ids": [
+        132769356481,
+        132769356511,
+        132769356624,
+        132769356660
+      ],
+      "derived_aggregate_job_ids": [
+        132773677596,
+        132773677624
+      ],
+      "aggregate_disposition": "Both report mergers rejected dynany-optin-1 as not passing; both required-group gates then rejected verification=failure. These are derived failures, not extra fixture failures.",
+      "direct_aot_fixtures": [
+        {
+          "source": "tests/programs/optimizations/opt_scalar_none_sort.py",
+          "group": "dynany-optin-2",
+          "architectures": [
+            "x86_64",
+            "aarch64"
+          ],
+          "expected_stdout": "using [None, 3, 1] [1, 3] 3 1",
+          "actual_stdout": "using [None, 3, 1] [3, 1] 3 1",
+          "later_stderr": "TypeError: '>' not supported between instances of 'int' and 'NoneType'",
+          "later_stderr_changed": false
+        },
+        {
+          "source": "tests/programs/optimizations/opt_scalars_flow.py",
+          "group": "dynany-optin-1",
+          "architectures": [
+            "x86_64",
+            "aarch64"
+          ],
+          "expected_stdout_line_11": "[1, 2] [3, 2, 1] 3 1 1 3 [1, 2]",
+          "actual_stdout_line_11": "[3, 1] [2, 1, 3] 3 1 2 2 [3, 1]",
+          "later_stderr": "KeyError: None",
+          "later_stderr_changed": false
+        }
+      ],
+      "reported_failure_counts": "Each failed shard reports two failed checks; four shard jobs report eight failed checks in total. Full inner logs are truncated by tests/verify.sh's last-15-lines display, so preceding JIT/mode headers are not reconstructed.",
+      "failure_evidence": {
+        "path": "postmerge/main-ci-failures.json",
+        "bytes": 201371,
+        "sha": "5b6cf923b1891a6ad53f332c2aab2c7cdf9df7a2",
+        "readback_equal": true,
+        "sensitive_scan_candidate_counts": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "artifact_archives_locally_extracted": false,
+      "blocker_issue": "https://github.com/den-run-ai/pystachy/issues/1502"
+    }
+  },
+  "bootstrap_and_archive": {
+    "schema_version": 1,
+    "status": "fresh_bootstrap_and_archive_smoke_passed_ci_consumer_gate_failed",
+    "head": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+    "run_id": 43699643821,
+    "bootstrap": {
+      "x86_64": {
+        "job_id": 132767743096,
+        "bundle_id": "2a3767c5e33169cc8fac3715576527df3d2f0c02bbda5df239322688599bf25a",
+        "fresh_seconds": 284.103,
+        "artifact_id": 14155539666,
+        "artifact_metadata": {
+          "id": 14155539666,
+          "name": "verified-bootstrap-x86_64",
+          "size_in_bytes": 9423690,
+          "digest": "sha256:b9a18503e1b22499aea7228d44fa19b278dca362a14b9ea67a98a5b14a7f7506",
+          "expired": false,
+          "workflow_run": {
+            "id": 43699643821,
+            "repository_id": 1409192014,
+            "head_repository_id": 1409192014,
+            "head_branch": "main",
+            "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93"
+          }
+        }
+      },
+      "aarch64": {
+        "job_id": 132767743431,
+        "bundle_id": "0a9b3c4631bf472d1886859cde8770c51d49a8daa596b451cb70582c35869e02",
+        "fresh_seconds": 357.767,
+        "artifact_id": 14155454038,
+        "artifact_metadata": {
+          "id": 14155454038,
+          "name": "verified-bootstrap-aarch64",
+          "size_in_bytes": 9083307,
+          "digest": "sha256:a8b5552c3f6d73af7a67879ae37f8cb1d3959d631073deadda2293b03977008e",
+          "expired": false,
+          "workflow_run": {
+            "id": 43699643821,
+            "repository_id": 1409192014,
+            "head_repository_id": 1409192014,
+            "head_branch": "main",
+            "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93"
+          }
+        }
+      }
+    },
+    "restored_x86_fields": {
+      "bootstrap_bundle_id": "2a3767c5e33169cc8fac3715576527df3d2f0c02bbda5df239322688599bf25a",
+      "bootstrap_reused": true,
+      "cpython_self_compile_seconds": 25.563,
+      "ir_identical": true,
+      "ir_lines": 959093,
+      "ir_sha256": "5b6aa94337c0d5fdef4c5c0fe123653d75d795f28f1cf977ee1ecf703f7322f7",
+      "native_compiler_bytes": 7077536,
+      "native_self_compile_seconds": 3.853,
+      "producer_seconds": 284.103,
+      "runtime_ir_identical": true,
+      "runtime_ir_sha256": "cd645bebc4fea57b4824b5393843fea99bb31880a31a79dd825e1f34c388f830"
+    },
+    "tier": {
+      "final_aot_opt": "2",
+      "final_compiler_bytes_identical": true,
+      "final_compiler_sha256": "633453e52a078be8a8a220f64f773d79c835beb0a034607bc10e8ed714cc93dc",
+      "identity": {
+        "commit": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+        "github_run_id": "43699643821",
+        "libc": "glibc 2.39",
+        "machine": "x86_64",
+        "os": {
+          "ID": "ubuntu",
+          "VERSION_ID": "24.04"
+        },
+        "python": "3.13.16 (main, Oct  1 2026, 02:37:54) [GCC 13.3.0]",
+        "python_implementation": "cpython",
+        "python_version": "3.13.16",
+        "system": "Linux",
+        "tools": {
+          "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+          "lli": "Ubuntu LLVM version 18.1.3",
+          "llvm-as": "Ubuntu LLVM version 18.1.3",
+          "llvm-link": "Ubuntu LLVM version 18.1.3",
+          "opt": "Ubuntu LLVM version 18.1.3"
+        },
+        "tracked_sources_sha256": "29aee55097cc15ee8ba3ad5c09acf79653a9b23663da208ee4fec06f3f65075c"
+      },
+      "make_seconds": 185.517,
+      "performance_conclusion": "inconclusive",
+      "result": "pass",
+      "schema": 1,
+      "standard_bootstrap_bundle_id": "2a3767c5e33169cc8fac3715576527df3d2f0c02bbda5df239322688599bf25a",
+      "standard_bootstrap_seconds": 284.103,
+      "standard_final_compiler_sha256": "633453e52a078be8a8a220f64f773d79c835beb0a034607bc10e8ed714cc93dc",
+      "temporary_aot_opt": "1",
+      "witnesses": {
+        "rt1.ll": "cd645bebc4fea57b4824b5393843fea99bb31880a31a79dd825e1f34c388f830",
+        "rt2.ll": "cd645bebc4fea57b4824b5393843fea99bb31880a31a79dd825e1f34c388f830",
+        "rt3.ll": "cd645bebc4fea57b4824b5393843fea99bb31880a31a79dd825e1f34c388f830",
+        "stage1.ll": "5b6aa94337c0d5fdef4c5c0fe123653d75d795f28f1cf977ee1ecf703f7322f7",
+        "stage2.ll": "5b6aa94337c0d5fdef4c5c0fe123653d75d795f28f1cf977ee1ecf703f7322f7",
+        "stage3.ll": "5b6aa94337c0d5fdef4c5c0fe123653d75d795f28f1cf977ee1ecf703f7322f7"
+      }
+    },
+    "archive": {
+      "job_id": 132769355912,
+      "unit_tests": 73,
+      "version": "v0.5.0-alpha.3",
+      "target": "linux-x86_64",
+      "artifact_id": 14155968586,
+      "native_and_installed_version_without_llvm_or_python": true
+    },
+    "source_contracts": {
+      "fresh_export": "verification_bootstrap.py export rechecks all three compiler/runtime stages and refuses a reused producer",
+      "consumer_restore": "load_bundle matches source/toolchain/ABI/Python/run identity and payload digests before writing compiler",
+      "same_run_download": "download-artifact has no run-id or token override",
+      "aggregate": "merge_verification requires the exact per-architecture group set and same producer bundle identity. Both observed aggregates rejected dynany-optin-1 as not passing, then the required-group result gate rejected verification=failure; no combined verification acceptance is claimed."
+    },
+    "limits": [
+      "Both fresh bootstrap producers and the main-only archive smoke passed; the complete CI workflow failed because four consumer jobs failed.",
+      "This is completed CI job/log evidence, not a local download, archive extraction, or public-release binary artifact audit.",
+      "O1/O2 final compiler bytes matched, but the reported performance conclusion remains inconclusive."
+    ],
+    "observed_final": "2026-11-15 10:03:24 UTC"
+  },
+  "codeql": {
+    "run_id": 43699640898,
+    "status": "completed",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "job_id": 132767737640,
+        "name": "Analyze (c-cpp)",
+        "conclusion": "success",
+        "started_at": "2026-11-15T09:31:22Z",
+        "completed_at": "2026-11-15T09:32:33Z",
+        "duration_seconds": 71,
+        "full_log_characters": 137504,
+        "checks": {
+          "exact_head_checkout": true,
+          "all_job_steps_success": true,
+          "sarif_upload_succeeded": true
+        },
+        "warning_annotations": [],
+        "error_annotations": [],
+        "upload_evidence": [
+          "2026-11-15T09:31:27.8348654Z     \"databaseInterpretResultsSupportsSarifRunProperty\": true,",
+          "2026-11-15T09:31:27.8350732Z     \"sarifMergeRunsFromEqualCategory\": true,",
+          "2026-11-15T09:31:28.6716934Z Setting overlay database mode to overlay-base with caching because we are analyzing the default branch.",
+          "2026-11-15T09:31:28.6718873Z Using overlay database mode: overlay-base with caching.",
+          "2026-11-15T09:31:34.0470971Z   CODEQL_ACTION_FEATURE_SARIF_COMBINE: true",
+          "2026-11-15T09:31:34.8356417Z   CODEQL_ACTION_FEATURE_SARIF_COMBINE: true",
+          "2026-11-15T09:31:34.8358349Z   CODEQL_ACTION_AUTOBUILD_DID_COMPLETE_SUCCESSFULLY: true",
+          "2026-11-15T09:32:15.2813963Z Exporting results to SARIF...",
+          "2026-11-15T09:32:15.5239043Z Exported results to SARIF (242ms).",
+          "2026-11-15T09:32:15.5644834Z CodeQL scanned 32 out of 33 C files in this invocation. Check the status page for overall coverage information: https://github.com/den-run-ai/pystachy/security/code-scanning/tools/CodeQL/status/",
+          "2026-11-15T09:32:15.5652784Z Post-processing sarif files: [\"/home/runner/work/pystachy/results/cpp.sarif\"]",
+          "2026-11-15T09:32:15.5797147Z Adding fingerprints to SARIF file. See https://docs.github.com/en/code-security/reference/code-scanning/sarif-support-for-code-scanning#data-for-preventing-duplicated-alerts for more information.",
+          "2026-11-15T09:32:16.6680841Z Successfully uploaded results",
+          "2026-11-15T09:32:19.0254140Z Successfully uploaded overlay-base database from /home/runner/work/_temp/codeql_databases",
+          "2026-11-15T09:32:30.9331529Z Analysis upload status is complete.",
+          "2026-11-15T09:32:31.8798307Z CodeQL job status was success."
+        ]
+      },
+      {
+        "job_id": 132767737856,
+        "name": "Analyze (actions)",
+        "conclusion": "success",
+        "started_at": "2026-11-15T09:31:23Z",
+        "completed_at": "2026-11-15T09:32:07Z",
+        "duration_seconds": 44,
+        "full_log_characters": 124404,
+        "checks": {
+          "exact_head_checkout": true,
+          "all_job_steps_success": true,
+          "sarif_upload_succeeded": true
+        },
+        "warning_annotations": [],
+        "error_annotations": [],
+        "upload_evidence": [
+          "2026-11-15T09:31:30.1639481Z     \"databaseInterpretResultsSupportsSarifRunProperty\": true,",
+          "2026-11-15T09:31:30.1643158Z     \"sarifMergeRunsFromEqualCategory\": true,",
+          "2026-11-15T09:31:31.2620753Z Using overlay database mode: none without caching.",
+          "2026-11-15T09:31:35.3279468Z   CODEQL_ACTION_FEATURE_SARIF_COMBINE: true",
+          "2026-11-15T09:31:36.4082983Z   CODEQL_ACTION_FEATURE_SARIF_COMBINE: true",
+          "2026-11-15T09:31:36.4085706Z   CODEQL_ACTION_AUTOBUILD_DID_COMPLETE_SUCCESSFULLY: true",
+          "2026-11-15T09:31:37.1312429Z [command]/opt/hostedtoolcache/CodeQL/2.27.4/x64/codeql/codeql database trace-command --use-build-mode --working-dir /home/runner/work/pystachy/pystachy -O=actions.trap.cache.dir=/home/runner/work/_temp/trapCaches/actions -O=actions.trap.cache.bound=1024 -O=actions.trap.cache.write=true /home/runner/work/_temp/codeql_databases/actions",
+          "2026-11-15T09:31:47.3495944Z [15/18] Loaded /opt/hostedtoolcache/CodeQL/2.27.4/x64/codeql/qlpacks/codeql/actions-queries/0.6.39/Diagnostics/SuccessfullyExtractedFiles.qlx.",
+          "2026-11-15T09:31:47.6360295Z Starting evaluation of codeql/actions-queries/Diagnostics/SuccessfullyExtractedFiles.ql.",
+          "2026-11-15T09:31:47.9196085Z [1/18 eval 267ms] Evaluation done; writing results to codeql/actions-queries/Diagnostics/SuccessfullyExtractedFiles.bqrs.",
+          "2026-11-15T09:31:52.5066052Z Interpreting /opt/hostedtoolcache/CodeQL/2.27.4/x64/codeql/qlpacks/codeql/actions-queries/0.6.39/Diagnostics/SuccessfullyExtractedFiles.ql...",
+          "2026-11-15T09:31:52.5125651Z  ... found results file at /home/runner/work/_temp/codeql_databases/actions/results/codeql/actions-queries/Diagnostics/SuccessfullyExtractedFiles.bqrs.",
+          "2026-11-15T09:31:52.6094907Z Interpreted diagnostic query \"Extracted files\" (actions/diagnostics/successfully-extracted-files) at path /home/runner/work/_temp/codeql_databases/actions/results/codeql/actions-queries/Diagnostics/SuccessfullyExtractedFiles.bqrs.",
+          "2026-11-15T09:31:52.9181425Z Exporting results to SARIF...",
+          "2026-11-15T09:31:53.3585438Z Exported results to SARIF (438ms).",
+          "2026-11-15T09:31:53.3874990Z CodeQL scanned 11 out of 11 GitHub Actions files in this invocation. Check the status page for overall coverage information: https://github.com/den-run-ai/pystachy/security/code-scanning/tools/CodeQL/status/",
+          "2026-11-15T09:31:53.3896449Z Post-processing sarif files: [\"/home/runner/work/pystachy/results/actions.sarif\"]",
+          "2026-11-15T09:31:53.4111929Z Adding fingerprints to SARIF file. See https://docs.github.com/en/code-security/reference/code-scanning/sarif-support-for-code-scanning#data-for-preventing-duplicated-alerts for more information.",
+          "2026-11-15T09:31:55.3167102Z Successfully uploaded results",
+          "2026-11-15T09:32:03.3946136Z Analysis upload status is complete.",
+          "2026-11-15T09:32:04.5725134Z CodeQL job status was success."
+        ]
+      },
+      {
+        "job_id": 132767737917,
+        "name": "Analyze (python)",
+        "conclusion": "success",
+        "started_at": "2026-11-15T09:31:23Z",
+        "completed_at": "2026-11-15T10:03:18Z",
+        "duration_seconds": 1915,
+        "full_log_characters": 1389336,
+        "checks": {
+          "exact_head_checkout": true,
+          "all_job_steps_success": true,
+          "sarif_upload_succeeded": true
+        },
+        "warning_annotations": [],
+        "error_annotations": [],
+        "upload_evidence": [
+          "2026-11-15T09:31:29.4164035Z     \"databaseInterpretResultsSupportsSarifRunProperty\": true,",
+          "2026-11-15T09:31:29.4170661Z     \"sarifMergeRunsFromEqualCategory\": true,",
+          "2026-11-15T09:31:30.5949327Z Setting overlay database mode to overlay-base with caching because we are analyzing the default branch.",
+          "2026-11-15T09:31:30.5951775Z Using overlay database mode: overlay-base with caching.",
+          "2026-11-15T09:31:35.7413728Z   CODEQL_ACTION_FEATURE_SARIF_COMBINE: true",
+          "2026-11-15T09:31:36.6721225Z   CODEQL_ACTION_FEATURE_SARIF_COMBINE: true",
+          "2026-11-15T09:31:36.6724230Z   CODEQL_ACTION_AUTOBUILD_DID_COMPLETE_SUCCESSFULLY: true",
+          "2026-11-15T09:32:12.2689770Z [2026-11-15 09:32:12] [build-stdout] [WARN] [1] Exception Command '['/opt/hostedtoolcache/CodeQL/2.27.4/x64/codeql/python/tools/linux64/tsg-python', '/home/runner/work/pystachy/pystachy/tests/errors/language/two_star_args.py']' returned non-zero exit status 1. in tsg-python while parsing /home/runner/work/pystachy/pystachy/tests/errors/language/two_star_args.py in /home/runner/work/pystachy/pystachy/tests/errors/language/two_star_args.py",
+          "2026-11-15T09:32:32.3890320Z [2026-11-15 09:32:32] [build-stdout] [WARN] [3] Exception Command '['/opt/hostedtoolcache/CodeQL/2.27.4/x64/codeql/python/tools/linux64/tsg-python', '/home/runner/work/pystachy/pystachy/tests/errors/upstream/upstream_exceptions_syntax_non_utf8_string.py']' returned non-zero exit status 1. in tsg-python while parsing /home/runner/work/pystachy/pystachy/tests/errors/upstream/upstream_exceptions_syntax_non_utf8_string.py in /home/runner/work/pystachy/pystachy/tests/errors/upstream/upstream_exceptions_syntax_non_utf8_string.py",
+          "2026-11-15T09:34:33.6290217Z [2026-11-15 09:34:33] [build-stdout] [WARN] [1] Exception Command '['/opt/hostedtoolcache/CodeQL/2.27.4/x64/codeql/python/tools/linux64/tsg-python', '/home/runner/work/pystachy/pystachy/tests/errors/upstream/upstream_exceptions_syntax_non_utf8.py']' returned non-zero exit status 1. in tsg-python while parsing /home/runner/work/pystachy/pystachy/tests/errors/upstream/upstream_exceptions_syntax_non_utf8.py in /home/runner/work/pystachy/pystachy/tests/errors/upstream/upstream_exceptions_syntax_non_utf8.py",
+          "2026-11-15T10:02:13.7602353Z Exporting results to SARIF...",
+          "2026-11-15T10:02:14.3330628Z Exported results to SARIF (573ms).",
+          "2026-11-15T10:02:14.3844663Z CodeQL scanned 6241 out of 6245 Python files and 11 out of 11 GitHub Actions files in this invocation. Check the status page for overall coverage information: https://github.com/den-run-ai/pystachy/security/code-scanning/tools/CodeQL/status/",
+          "2026-11-15T10:02:14.3956522Z Post-processing sarif files: [\"/home/runner/work/pystachy/results/python.sarif\"]",
+          "2026-11-15T10:02:14.4458736Z Adding fingerprints to SARIF file. See https://docs.github.com/en/code-security/reference/code-scanning/sarif-support-for-code-scanning#data-for-preventing-duplicated-alerts for more information.",
+          "2026-11-15T10:02:15.9268156Z Successfully uploaded results",
+          "2026-11-15T10:02:22.8315796Z Successfully uploaded overlay-base database from /home/runner/work/_temp/codeql_databases",
+          "2026-11-15T10:03:14.7081519Z Analysis upload status is complete.",
+          "2026-11-15T10:03:15.9491946Z CodeQL job status was success."
+        ]
+      }
+    ],
+    "python_extractor": {
+      "warning_count": 154,
+      "error_line_count": 18,
+      "warning_categories": {
+        "syntax_error": 123,
+        "dynload_path": 5,
+        "encoding": 6,
+        "tsg_exception": 3,
+        "missing_test_module": 1,
+        "unable_parse_string": 7,
+        "other": 9
+      },
+      "strict_errors": [
+        "2026-11-15T09:32:02.8568728Z [2026-11-15 09:32:02] [build-stdout] [ERROR] [2] Failed to extract file /home/runner/work/pystachy/pystachy/tests/errors/language/nest_line.py: maximum recursion depth exceeded",
+        "2026-11-15T09:32:17.8418588Z [2026-11-15 09:32:17] [build-stdout] [ERROR] [4] Failed to extract file /home/runner/work/pystachy/pystachy/tests/errors/language/nest_chain.py: maximum recursion depth exceeded",
+        "2026-11-15T09:32:31.1139370Z [2026-11-15 09:32:31] [build-stdout] [ERROR] [1] Exception extracting module /home/runner/work/pystachy/pystachy/tests/programs/syntax/syntax_match_big_keys.py: Exceeds the limit (4300 digits) for integer string conversion; use sys.set_int_max_str_digits() to increase the limit",
+        "2026-11-15T09:32:36.7889190Z [2026-11-15 09:32:36] [build-stdout] [ERROR] [1] Exception extracting module /home/runner/work/pystachy/pystachy/tests/errors/syntax/syntax_match_duplicate_key_over_limit.py: Exceeds the limit (4300 digits) for integer string conversion; use sys.set_int_max_str_digits() to increase the limit",
+        "2026-11-15T09:32:38.6978720Z [2026-11-15 09:32:38] [build-stdout] [ERROR] [4] Failed to extract file /home/runner/work/pystachy/pystachy/tests/programs/language/deep_lambdas_main.py: maximum recursion depth exceeded",
+        "2026-11-15T09:32:43.5688946Z [2026-11-15 09:32:43] [build-stdout] [ERROR] [3] Exception extracting module /home/runner/work/pystachy/pystachy/tests/errors/syntax/syntax_match_complex_overflow_key.py: Exceeds the limit (4300 digits) for integer string conversion; use sys.set_int_max_str_digits() to increase the limit",
+        "2026-11-15T09:32:57.6948536Z [2026-11-15 09:32:57] [build-stdout] [ERROR] [3] Exception extracting module /home/runner/work/pystachy/pystachy/tests/errors/syntax/syntax_walrus_attribute.py: 'Attribute' object has no attribute 'variable'",
+        "2026-11-15T09:33:55.3258706Z [2026-11-15 09:33:55] [build-stdout] [ERROR] [2] Failed to extract file /home/runner/work/pystachy/pystachy/tests/programs/inference/dynany_deep_displays.py: maximum recursion depth exceeded",
+        "2026-11-15T09:34:17.6209917Z [2026-11-15 09:34:17] [build-stdout] [ERROR] [3] Failed to extract file /home/runner/work/pystachy/pystachy/tests/errors/language/nest_power.py: maximum recursion depth exceeded",
+        "2026-11-15T09:34:27.9268932Z [2026-11-15 09:34:27] [build-stdout] [ERROR] [1] No context for node 14 in file /home/runner/work/pystachy/pystachy/tests/errors/syntax/syntax_fstring_nested_deeply.py with attributes {'_kind': 'Name', '_location': [3, 17, 3, 18], 'variable': 'z'}",
+        "2026-11-15T09:34:27.9278447Z [2026-11-15 09:34:27] [build-stdout] [ERROR] [1] No context for node 17 in file /home/runner/work/pystachy/pystachy/tests/errors/syntax/syntax_fstring_nested_deeply.py with attributes {'_kind': 'Name', '_location': [4, 20, 4, 21], 'variable': 'z'}",
+        "2026-11-15T09:34:27.9308383Z [2026-11-15 09:34:27] [build-stdout] [ERROR] [1] No context for node 18 in file /home/runner/work/pystachy/pystachy/tests/errors/syntax/syntax_fstring_nested_deeply.py with attributes {'_kind': 'Name', '_location': [4, 23, 4, 24], 'variable': 'w'}",
+        "2026-11-15T09:34:28.5839512Z [2026-11-15 09:34:28] [build-stdout] [ERROR] [2] Exception extracting module /home/runner/work/pystachy/pystachy/tests/programs/language/match_large_hex.py: Exceeds the limit (4300 digits) for integer string conversion; use sys.set_int_max_str_digits() to increase the limit",
+        "2026-11-15T09:34:47.7808495Z [2026-11-15 09:34:47] [build-stdout] [ERROR] [2] Failed to extract file /home/runner/work/pystachy/pystachy/tests/errors/language/nest_unary.py: maximum recursion depth exceeded",
+        "2026-11-15T09:34:53.1648406Z [2026-11-15 09:34:53] [build-stdout] [ERROR] [2] Exception extracting module /home/runner/work/pystachy/pystachy/tests/errors/syntax/syntax_augassign_call.py: FlowPass._walk_expr() takes 3 positional arguments but 4 were given",
+        "2026-11-15T09:35:01.9208649Z [2026-11-15 09:35:01] [build-stdout] [ERROR] [1] Failed to extract file /home/runner/work/pystachy/pystachy/tests/emods/deep_tuples.py: maximum recursion depth exceeded",
+        "2026-11-15T09:35:08.2518344Z [2026-11-15 09:35:08] [build-stdout] [ERROR] [1] Exception extracting module /home/runner/work/pystachy/pystachy/tests/errors/syntax/syntax_walrus_argument.py: 'Attribute' object has no attribute 'variable'",
+        "2026-11-15T09:35:24.9288169Z [2026-11-15 09:35:24] [build-stdout] [ERROR] [1] Failed to extract file /home/runner/work/pystachy/pystachy/tests/emods/deep_lambdas.py: maximum recursion depth exceeded"
+      ],
+      "reported_coverage": "2026-11-15T10:02:14.3844663Z CodeQL scanned 6241 out of 6245 Python files and 11 out of 11 GitHub Actions files in this invocation. Check the status page for overall coverage information: https://github.com/den-run-ai/pystachy/security/code-scanning/tools/CodeQL/status/",
+      "limits": "Extractor warnings/errors coexist with successful job/SARIF upload. Coverage counts are CodeQL's own statement, not an independently reconstructed exclusion census. No security-alert inventory or no-new-alert claim is made. Full warnings and logs are retained."
+    },
+    "reported_cpp_coverage": "32 out of 33 C files",
+    "reported_actions_coverage": "11 out of 11 GitHub Actions files",
+    "main_aggregate_alert_check_observed": false
+  },
+  "delegated_reviews": {
+    "installation_packages": {
+      "raw": {
+        "path": "postmerge/main-installation-packages-raw.json",
+        "sha": "f933cba08551bf2fa29c25a6f49e172e93a85306",
+        "bytes": 439739
+      },
+      "commit_raw": {
+        "path": "postmerge/main-installation-packages-commit-raw.json",
+        "sha": "4ca27c7c3c596789853664b1bf9cb495d60904e7",
+        "bytes": 812296
+      },
+      "summary": {
+        "path": "postmerge/main-installation-packages-summary.json",
+        "sha": "70570c06c9ee4e99b95eeff2e2ad9a138a7c0f1e",
+        "bytes": 73878
+      },
+      "scope": "Eight exact-main successful jobs, 80 successful steps and 12 source-justified platform skips. Hosted/native/installed JIT/AOT, GC/cache, pip/uv source installs, offline package checks. This is not public-release artifact download/byte audit."
+    },
+    "performance_variants": {
+      "status": "Independently reviewed by alpha3_qualification and published by root in research19c1f673d0f5c62fe7eb89515a990deb507f1a3f; exact-main successful workflow/job metadata is also preserved here.",
+      "runtime_speedup_claim": false
+    }
+  },
+  "evidence_blob_receipts": [
+    {
+      "path": "postmerge/main-ci-x86_64-logs.json",
+      "bytes": 1575005,
+      "sha": "b53481bff2c84897c20ef96512a3acbf682d5ef3",
+      "readback_equal": true,
+      "sensitive_scan_candidate_counts": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "path": "postmerge/main-ci-aarch64-logs.json",
+      "bytes": 1496101,
+      "sha": "fd0b05f1d50cace244219107771ddc6c492d6707",
+      "readback_equal": true,
+      "sensitive_scan_candidate_counts": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "path": "postmerge/main-ci-qualification-aggregates-logs.json",
+      "bytes": 160785,
+      "sha": "d2e5c35771ab419b53fb4eda41bdd6ad5533d5af",
+      "readback_equal": true,
+      "sensitive_scan_candidate_counts": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "path": "postmerge/main-workflows-final-raw.json",
+      "bytes": 2997725,
+      "sha": "bbf4a235e4cd6eaef599af7eadafcfa5873d12b9",
+      "readback_equal": true,
+      "sensitive_scan_candidate_counts": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "path": "postmerge/main-codeql-lint-logs.json",
+      "bytes": 1856360,
+      "sha": "2e8852740bf558c282e9b1e2f4d1123a95a80a0d",
+      "readback_equal": true,
+      "sensitive_scan_candidate_counts": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "path": "postmerge/main-ci-source-contracts.json",
+      "bytes": 184099,
+      "sha": "473ad08d23d862528d87eb94feef5eece7d4ccee",
+      "readback_equal": true,
+      "sensitive_scan_candidate_counts": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "path": "postmerge/main-ci-consumer-provenance.json",
+      "bytes": 378988,
+      "sha": "a93de4cef717a2d36684d94b9e08fa748a4d85e5",
+      "readback_equal": true,
+      "sensitive_scan_candidate_counts": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "observation_history": [
+    {
+      "key": "main_alpha3_observed_001",
+      "observed_start": "2026-11-15 09:32:14 UTC",
+      "observed_end": "2026-11-15 09:32:15 UTC",
+      "main": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "check_count": 16,
+      "ci": {
+        "status": "in_progress",
+        "conclusion": null,
+        "jobs": {
+          "in_progress": 2
+        }
+      },
+      "codeql": {
+        "status": "in_progress",
+        "conclusion": null
+      }
+    },
+    {
+      "key": "main_alpha3_observed_002",
+      "observed_start": "2026-11-15 09:34:01 UTC",
+      "observed_end": "2026-11-15 09:34:03 UTC",
+      "main": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "check_count": 16,
+      "ci": {
+        "status": "in_progress",
+        "conclusion": null,
+        "jobs": {
+          "in_progress": 2
+        }
+      },
+      "codeql": {
+        "status": "in_progress",
+        "conclusion": null
+      }
+    },
+    {
+      "key": "main_alpha3_observed_003",
+      "observed_start": "2026-11-15 09:35:54 UTC",
+      "observed_end": "2026-11-15 09:35:55 UTC",
+      "main": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "check_count": 16,
+      "ci": {
+        "status": "in_progress",
+        "conclusion": null,
+        "jobs": {
+          "in_progress": 2
+        }
+      },
+      "codeql": {
+        "status": "in_progress",
+        "conclusion": null
+      }
+    },
+    {
+      "key": "main_alpha3_observed_004",
+      "observed_start": "2026-11-15 09:37:11 UTC",
+      "observed_end": "2026-11-15 09:37:13 UTC",
+      "main": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "check_count": 40,
+      "ci": {
+        "status": "in_progress",
+        "conclusion": null,
+        "jobs": {
+          "success": 1,
+          "in_progress": 1
+        }
+      },
+      "codeql": {
+        "status": "in_progress",
+        "conclusion": null
+      }
+    },
+    {
+      "key": "main_alpha3_observed_005",
+      "observed_start": "2026-11-15 09:38:51 UTC",
+      "observed_end": "2026-11-15 09:38:53 UTC",
+      "main": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "check_count": 110,
+      "ci": {
+        "status": "queued",
+        "conclusion": null,
+        "jobs": {
+          "success": 2,
+          "in_progress": 9,
+          "queued": 60,
+          "skipped": 1
+        }
+      },
+      "codeql": {
+        "status": "in_progress",
+        "conclusion": null
+      }
+    },
+    {
+      "key": "main_alpha3_observed_006",
+      "observed_start": "2026-11-15 09:41:02 UTC",
+      "observed_end": "2026-11-15 09:41:04 UTC",
+      "main": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "check_count": 110,
+      "ci": {
+        "status": "queued",
+        "conclusion": null,
+        "jobs": {
+          "success": 2,
+          "in_progress": 27,
+          "queued": 42,
+          "skipped": 1
+        }
+      },
+      "codeql": {
+        "status": "in_progress",
+        "conclusion": null
+      }
+    },
+    {
+      "key": "main_alpha3_observed_007",
+      "observed_start": "2026-11-15 09:42:01 UTC",
+      "observed_end": "2026-11-15 09:42:03 UTC",
+      "main": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "check_count": 110,
+      "ci": {
+        "status": "queued",
+        "conclusion": null,
+        "jobs": {
+          "success": 4,
+          "in_progress": 35,
+          "queued": 32,
+          "skipped": 1
+        }
+      },
+      "codeql": {
+        "status": "in_progress",
+        "conclusion": null
+      }
+    },
+    {
+      "key": "main_alpha3_observed_008",
+      "observed_start": "2026-11-15 09:44:16 UTC",
+      "observed_end": "2026-11-15 09:44:19 UTC",
+      "main": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "check_count": 110,
+      "ci": {
+        "status": "queued",
+        "conclusion": null,
+        "jobs": {
+          "success": 10,
+          "in_progress": 37,
+          "queued": 24,
+          "skipped": 1
+        }
+      },
+      "codeql": {
+        "status": "in_progress",
+        "conclusion": null
+      }
+    },
+    {
+      "key": "main_alpha3_observed_009",
+      "observed_start": "2026-11-15 09:45:58 UTC",
+      "observed_end": "2026-11-15 09:46:01 UTC",
+      "main": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "check_count": 110,
+      "ci": {
+        "status": "queued",
+        "conclusion": null,
+        "jobs": {
+          "success": 22,
+          "in_progress": 38,
+          "queued": 11,
+          "skipped": 1
+        }
+      },
+      "codeql": {
+        "status": "in_progress",
+        "conclusion": null
+      }
+    },
+    {
+      "key": "main_alpha3_observed_010",
+      "observed_start": "2026-11-15 09:47:01 UTC",
+      "observed_end": "2026-11-15 09:47:04 UTC",
+      "main": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "check_count": 110,
+      "ci": {
+        "status": "queued",
+        "conclusion": null,
+        "jobs": {
+          "success": 32,
+          "in_progress": 38,
+          "skipped": 1,
+          "queued": 1
+        }
+      },
+      "codeql": {
+        "status": "in_progress",
+        "conclusion": null
+      }
+    },
+    {
+      "key": "main_alpha3_observed_011",
+      "observed_start": "2026-11-15 09:48:49 UTC",
+      "observed_end": "2026-11-15 09:48:53 UTC",
+      "main": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "check_count": 110,
+      "ci": {
+        "status": "in_progress",
+        "conclusion": null,
+        "jobs": {
+          "success": 46,
+          "in_progress": 24,
+          "failure": 1,
+          "skipped": 1
+        }
+      },
+      "codeql": {
+        "status": "in_progress",
+        "conclusion": null
+      }
+    },
+    {
+      "key": "main_alpha3_observed_012",
+      "observed_start": "2026-11-15 09:51:21 UTC",
+      "observed_end": "2026-11-15 09:51:26 UTC",
+      "main": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "check_count": 110,
+      "ci": {
+        "status": "in_progress",
+        "conclusion": null,
+        "jobs": {
+          "success": 61,
+          "failure": 4,
+          "in_progress": 6,
+          "skipped": 1
+        }
+      },
+      "codeql": {
+        "status": "in_progress",
+        "conclusion": null
+      }
+    },
+    {
+      "key": "main_alpha3_observed_013",
+      "observed_start": "2026-11-15 09:54:08 UTC",
+      "observed_end": "2026-11-15 09:54:11 UTC",
+      "main": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "check_count": 110,
+      "ci": {
+        "status": "in_progress",
+        "conclusion": null,
+        "jobs": {
+          "success": 63,
+          "failure": 4,
+          "in_progress": 4,
+          "skipped": 1
+        }
+      },
+      "codeql": {
+        "status": "in_progress",
+        "conclusion": null
+      }
+    },
+    {
+      "key": "main_alpha3_observed_014",
+      "observed_start": "2026-11-15 09:55:44 UTC",
+      "observed_end": "2026-11-15 09:55:47 UTC",
+      "main": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "check_count": 112,
+      "ci": {
+        "status": "queued",
+        "conclusion": null,
+        "jobs": {
+          "success": 67,
+          "failure": 4,
+          "skipped": 1,
+          "queued": 2
+        }
+      },
+      "codeql": {
+        "status": "in_progress",
+        "conclusion": null
+      }
+    },
+    {
+      "key": "main_alpha3_observed_015",
+      "observed_start": "2026-11-15 09:56:43 UTC",
+      "observed_end": "2026-11-15 09:56:46 UTC",
+      "main": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "check_count": 113,
+      "ci": {
+        "status": "completed",
+        "conclusion": "failure",
+        "jobs": {
+          "success": 67,
+          "failure": 6,
+          "skipped": 1
+        }
+      },
+      "codeql": {
+        "status": "in_progress",
+        "conclusion": null
+      }
+    },
+    {
+      "key": "main_alpha3_observed_016",
+      "observed_start": "2026-11-15 10:00:18 UTC",
+      "observed_end": "2026-11-15 10:00:22 UTC",
+      "main": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "check_count": 113,
+      "ci": {
+        "status": "completed",
+        "conclusion": "failure",
+        "jobs": {
+          "success": 67,
+          "failure": 6,
+          "skipped": 1
+        }
+      },
+      "codeql": {
+        "status": "in_progress",
+        "conclusion": null
+      }
+    },
+    {
+      "key": "main_alpha3_observed_017",
+      "observed_start": "2026-11-15 10:01:23 UTC",
+      "observed_end": "2026-11-15 10:01:27 UTC",
+      "main": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "check_count": 113,
+      "ci": {
+        "status": "completed",
+        "conclusion": "failure",
+        "jobs": {
+          "success": 67,
+          "failure": 6,
+          "skipped": 1
+        }
+      },
+      "codeql": {
+        "status": "in_progress",
+        "conclusion": null
+      }
+    },
+    {
+      "key": "main_alpha3_observed_018",
+      "observed_start": "2026-11-15 10:03:21 UTC",
+      "observed_end": "2026-11-15 10:03:24 UTC",
+      "main": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "check_count": 113,
+      "ci": {
+        "status": "completed",
+        "conclusion": "failure",
+        "jobs": {
+          "success": 67,
+          "failure": 6,
+          "skipped": 1
+        }
+      },
+      "codeql": {
+        "status": "completed",
+        "conclusion": "success"
+      }
+    }
+  ],
+  "limits": [
+    "No reruns, cancellations, source edits, or Git tree/commit/ref updates were performed by this observer.",
+    "Manual Coverage dispatch and release/public-artifact audits were not performed because the execution environment became unavailable; no gate waiver is granted.",
+    "All 75 CI artifact metadata entries and digests are retained. Artifact archive contents were not downloaded or independently extracted.",
+    "AOT fixture diffs are directly observed. The proposed descriptor-truncation root cause is a separate static investigation; no fix or local reproduction is claimed in this CI receipt.",
+    "The successful proof census does not supersede this observed full-main runtime failure.",
+    "The four queued third-party check-suite shells have zero actual checks on the complete head pages; they are retained as queued, not counted as passing checks."
+  ]
+}

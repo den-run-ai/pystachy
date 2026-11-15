@@ -1,0 +1,205 @@
+{
+  "schema_version": 1,
+  "prepared_at": "2026-11-15T10:08:21.721Z",
+  "status": "source_activation_attribution_only_release_blocked",
+  "issue": "https://github.com/den-run-ai/pystachy/issues/1502",
+  "candidate_commit": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+  "baseline_commit": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+  "checks": {
+    "exact_intro_commit": true,
+    "exact_parent": true,
+    "relevant_parent_patches_complete": true,
+    "nullable_kinds_added": true,
+    "sort_function_exactly_unchanged": true,
+    "all_fixture_and_oracle_bytes_unchanged": true,
+    "intro_is_ancestor_of_main": true,
+    "nonlinear_branch_history_retained": true
+  },
+  "conclusion": "Commit f1cb384443531556a3eb61f17a93e34a4399626b enables nullable numeric list identity companions, making an unchanged identity-sort descriptor assumption reachable for optional numeric lists. The sort branch keeps only the first descriptor character. This identifies the source activation change; no executed first-failing-commit bisect is claimed.",
+  "introducing_commit": {
+    "sha": "f1cb384443531556a3eb61f17a93e34a4399626b",
+    "url": "https://github.com/den-run-ai/pystachy/commit/f1cb384443531556a3eb61f17a93e34a4399626b",
+    "message": "Preserve optional numeric container item identities",
+    "author_date": "2026-11-14T16:11:10Z",
+    "committer_date": "2026-11-14T16:11:10Z",
+    "tree": {
+      "sha": "d125e93f08c8b5c426a2176fb442e1373bc9fe68",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/git/trees/d125e93f08c8b5c426a2176fb442e1373bc9fe68"
+    },
+    "parents": [
+      {
+        "sha": "c112b46122d1aeefb39fa20a2e50cfc3db565b83",
+        "url": "https://api.github.com/repos/den-run-ai/pystachy/commits/c112b46122d1aeefb39fa20a2e50cfc3db565b83",
+        "html_url": "https://github.com/den-run-ai/pystachy/commit/c112b46122d1aeefb39fa20a2e50cfc3db565b83"
+      }
+    ],
+    "changed_file_count": 25
+  },
+  "exact_parent_patches": [
+    {
+      "path": "runtime.c",
+      "resulting_git_blob": "f8999f6036f8ec60b0bd4236eb0f604daa23aa40",
+      "additions": 21,
+      "deletions": 5,
+      "patch": "@@ -2438,6 +2438,7 @@ I pys_dyn_hash(Dyn *x);\n Dyn *pys_dyn_int(I v);\n Dyn *pys_dyn_big(I lo, void *hi);\n Dyn *pys_dyn_float(double x);\n+extern const Dyn pys_dyn_none_box;\n static int dyn_eqitem(Dyn *a, Dyn *b);\n static int dyn_keyeq(Dyn *a, Dyn *b);\n static uint64_t hdyn(Dyn *x);\n@@ -3078,6 +3079,11 @@ VTuple *pys_vtuple_box(VTuple *src) {\n   if (!src) pys_fail(\"TypeError: 'NoneType' object is not iterable\");\n   VTuple *t = pys_vtuple_from(src->a, src->len);\n   for (I i = 0; i < src->len; i++) t->a[i] = (I)pys_box(src->a[i]);\n+  if (src->ids && opt_in()) {\n+    vtuple_identity(src);\n+    vtuple_ids(t, src->ids[0] | 8);\n+    memcpy(t->ids + 1, src->ids + 1, src->len * sizeof(I));\n+  }\n   return t;\n }\n I pys_vtuple_get(VTuple *t, I index) {\n@@ -3140,7 +3146,11 @@ I pys_vtuple_count(VTuple *t, I v, Str *d) { I c = 0; for (I i = 0; i < t->len;\n #define INLINE_CAP 4                   /* the inline items' capacity, the least that any list has */\n static I empty_list[1];                /* valid even for zero-byte copies; distinct from sort's sentinel */\n static I empty_identity_int[1] = {1}, empty_identity_float[1] = {2}, empty_identity_big[1] = {3};\n-static I *empty_identity(I kind) { return (kind & 3) == 1 ? empty_identity_int : (kind & 3) == 2 ? empty_identity_float : empty_identity_big; }\n+static I empty_identity_optint[1] = {9}, empty_identity_optfloat[1] = {10};\n+static I *empty_identity(I kind) {\n+  if (kind & 8) return (kind & 3) == 1 ? empty_identity_optint : empty_identity_optfloat;\n+  return (kind & 3) == 1 ? empty_identity_int : (kind & 3) == 2 ? empty_identity_float : empty_identity_big;\n+}\n static I empty_atomic[1];              /* the same, for a list whose array was atomic */\n static I empty_inline[1];              /* and for one whose items were inline (scanned) */\n static I *inline_items(List *l) { return (I *)(l + 1); }\n@@ -3185,6 +3195,8 @@ List *pys_list_from_const(const I *values, I n) {\n    atomic, preserving its C ABI. A raw in-place store clears its companion without allocating;\n    a later observation or sharing operation materializes that new object. Pure moves carry\n    the null marker with the value. Bit 2 of the companion header marks pending entries.\n+   Bit 3 marks an optional numeric slot: null for None, otherwise the address of\n+   its representation box. That box is separate from the item's Python identity.\n    Copies must materialize before sharing, so separate reads\n    of copied items cannot create unrelated boxes.\n    A list of ints with no identity observer keeps the Mpz of an item past 64 bits in a\n@@ -3203,6 +3215,10 @@ List *pys_list_from_const(const I *values, I n) {\n void pys_list_narrow(List *l) { list_narrow(l); }\n static I list_box(I value, I kind) {\n   opt_in();\n+  if (kind & 8) {\n+    if (!value) return (I)&pys_dyn_none_box;\n+    value = *(I *)value;\n+  }\n   return (kind & 3) == BIGIDS ? 0 : (I)((kind & 3) == 1 ? pys_dyn_int(value) : pys_dyn_float(dbl(value)));\n }\n static __attribute__((noinline)) void list_identity_slow(List *l, I kind) {\n@@ -3220,11 +3236,11 @@ static __attribute__((noinline)) void list_identity_slow(List *l, I kind) {\n     /* Companion allocation limits use the allocator's fatal MemoryError convention. */\n     if (l->cap > INT64_MAX / (I)sizeof(I) - 1) oom();\n     I *ids = pys_alloc((l->cap + 1) * sizeof(I));\n-    ids[0] = kind & 3; l->ids = ids;\n+    ids[0] = kind & 11; l->ids = ids;\n   }\n   for (I i = 0; i < l->len; i++)\n     if (!l->ids[i + 1]) l->ids[i + 1] = list_box(l->a[i], l->ids[0]);\n-  l->ids[0] &= 3;\n+  l->ids[0] &= 11;\n }\n void pys_list_identity(List *l, I kind) {\n   /* Keep the clean check small enough to inline into getters/stores in the\n@@ -3234,7 +3250,7 @@ void pys_list_identity(List *l, I kind) {\n static void identity_pair(List *a, List *b) {   /* before list a takes list b's items */\n   if ((a->ids || b->ids) && opt_in()) {\n     I kind = a->ids ? a->ids[0] : b->ids[0];\n-    if ((a->ids && (a->ids[0] & 3) == 1) || (b->ids && (b->ids[0] & 3) == 1)) kind = 1;\n+    if ((a->ids && (a->ids[0] & 11) == 1) || (b->ids && (b->ids[0] & 11) == 1)) kind = 1;\n     if ((kind & 3) == BIGIDS) {   /* (promoting ints: a needs a companion where b has one) */\n       if (b->ids) pys_list_identity(a, kind);\n       return;\n@@ -3247,7 +3263,7 @@ void pys_list_forget_identity(List *l) {\n      unchanged numeric payload becomes a fresh Python value there. */\n   if (l->ids && !big_list(l)) {\n     for (I i = 0; i < l->len; i++) l->ids[i + 1] = list_box(l->a[i], l->ids[0]);\n-    l->ids[0] &= 3;\n+    l->ids[0] &= 11;\n   }\n }\n ",
+      "patch_complete": true
+    },
+    {
+      "path": "src/pystachy_compiler/containers.py",
+      "resulting_git_blob": "a33dcaa4c7b88146555f28f70638569269d4d53c",
+      "additions": 8,
+      "deletions": 2,
+      "patch": "@@ -39,10 +39,10 @@\n \n def gen_list_id_kind(self, t: str) -> int:\n     # A program graph opting into dynamic values preserves typed numeric item objects.\n-    # The raw payload stays in its existing atomic array; identity lives in scanned storage.\n+    # The payload keeps its existing scalar or nullable layout; identity lives in scanned storage.\n     # Code that does not track identity (Gen.identity_modules) uses the plain operations, which\n     # keep a list's companion consistent (runtime.c): such a list never reaches tracking code.\n-    if t in [\"list[int]\", \"list[float]\"] and self.fn_home(self.curfn) in self.idhint:\n+    if list_identity_kind(t) != 0 and self.fn_home(self.curfn) in self.idhint:\n         # Internal searches/equality can observe shared NaNs even when no numeric\n         # value leaves the module. A hint cannot suppress these companions.\n         self.identity_event(\"numeric list in an identity-inert module\")\n@@ -63,6 +63,12 @@ def gen_list_item(self, o: Val, i: Val, keep: bool = False) -> Val:\n     k = self.list_id_kind(o.t)\n     if k != 0:\n         b = self.list_get(\"list.get_identity\", [o, i, Val(str(k), \"int\")])\n+        if is_opt(elem(o.t)):\n+            # The typed optional's existing representation box is already valid.\n+            # Reading its identity must not allocate another representation box.\n+            value = self.list_value(o, i.v, self.list_get(\"list.get\", [o, i]), keep)\n+            value.idfrom = b\n+            return value\n         t = BIG if keep and elem(o.t) == \"int\" and int_lists() else self.item_type(o.t)\n         return self.dyn_unbox(Val(b, \"dyn\"), t)\n     return self.list_value(o, i.v, self.list_get(\"list.get\", [o, i]), keep)",
+      "patch_complete": true
+    },
+    {
+      "path": "src/pystachy_compiler/utils.py",
+      "resulting_git_blob": "d88aee351033ea0fde83a5867bb9625c88e9d830",
+      "additions": 3,
+      "deletions": 1,
+      "patch": "@@ -853,7 +853,9 @@ def atomic_list(t: str) -> bool:\n \n def list_identity_kind(t: str) -> int:\n     # Capability only: whether the current function tracks identity is Gen's policy.\n-    return 1 if t == \"list[int]\" else 2 if t == \"list[float]\" else 0\n+    # Bit 3 marks nullable numeric slots: null for None, otherwise a representation\n+    # box of the scalar. Its Python identity still belongs to the separate Dyn box.\n+    return 1 if t == \"list[int]\" else 2 if t == \"list[float]\" else 9 if t == \"list[opt[int]]\" else 10 if t == \"list[opt[float]]\" else 0\n \n \n class ListLayout:",
+      "patch_complete": true
+    }
+  ],
+  "identity_kind_functions": {
+    "baseline": {
+      "path": "src/pystachy_compiler/utils.py",
+      "commit": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+      "git_blob": "18a67fce14a0c36836c02ab0ecd12c3ce034a781",
+      "url": "https://github.com/den-run-ai/pystachy/blob/80490143498d149d407343ba1cb7aedb1db2d2c5/src/pystachy_compiler/utils.py",
+      "start_line": 839,
+      "excerpt": "def list_identity_kind(t: str) -> int:\n    # Capability only: whether the current function tracks identity is Gen's policy.\n    return 1 if t == \"list[int]\" else 2 if t == \"list[float]\" else 0"
+    },
+    "main": {
+      "path": "src/pystachy_compiler/utils.py",
+      "commit": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "git_blob": "f873f6e98ccd02c886dc32032464f0af376d833f",
+      "url": "https://github.com/den-run-ai/pystachy/blob/6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93/src/pystachy_compiler/utils.py",
+      "start_line": 868,
+      "excerpt": "def list_identity_kind(t: str) -> int:\n    # Capability only: whether the current function tracks identity is Gen's policy.\n    # Bit 3 marks nullable numeric slots: null for None, otherwise a representation\n    # box of the scalar. Its Python identity still belongs to the separate Dyn box.\n    return 1 if t == \"list[int]\" else 2 if t == \"list[float]\" else 9 if t == \"list[opt[int]]\" else 10 if t == \"list[opt[float]]\" else 0"
+    }
+  },
+  "sort_function": {
+    "baseline_source_blob": "557baa33621ed7fc6548aca08d6342f100aaad8d",
+    "main_source_blob": "1d2d22a38c111cf90b3615b7f431fb0dbc413722",
+    "exact_equal": true,
+    "characters": 2350,
+    "baseline": "void pys_list_sort_r(List *l, Str *d, I reverse) {\n  if (big_list(l) && !list_has_big(l)) {   /* (promoting ints that fit: no companion entry to move) */\n    I *ids = l->ids; l->ids = NULL; pys_list_sort_r(l, d, reverse); l->ids = ids; return;\n  }\n  if (big_list(l)) { big_sort(l, d, reverse); return; }\n  if (l->ids && opt_in()) {\n    /* Numeric comparisons cannot call user code. Move a record containing the number\n       and its box through the same stable timsort, preserving NaN comparison order. */\n    List *p = pys_list_keyed(l, l, 0);\n    struct { I len; uint64_t hash; I chars1; char text[3]; } kd = {2, 0, 3, {'K', *d->s, 0}};\n    pys_list_sort_r(p, (Str *)&kd, reverse); pys_list_unkey(l, p); return;\n  }\n  I n = l->len, cap = l->cap, *a = l->a, m = n, r = 0, c = *d->s;\n  MS ms = {.d = d->s, .kind = c == 'i' || c == 'b' ? INT : c == 'f' ? FLOAT : c == 's' ? STR : c == 'O' ? OBJ : 0,\n           .cls = c == 'O' ? ocls(d->s + 1) : 0, .a = a, .n = n, .min_gallop = MIN_GALLOP};\n  Undo *u = 0, *outer = keep_u;\n  if (eh && n > 1 && (ms.kind == OBJ || !ms.kind)) {   /* a comparison may raise into a try */\n    u = pys_alloc(sizeof(Undo));\n    u->l = l; u->a = a; u->n = n; u->cap = cap; u->rev = reverse != 0; u->outer = outer;\n    unwind_push(sort_undo, u);\n  }\n  if (eh) keep_u = u;\n  l->len = l->cap = 0; l->a = sorting;\n  if (n > 1) {\n    if (reverse) rev(a, n);                         /* reverse=True: reverse, sort stably, reverse back */\n    while (m >= 64) { r |= m & 1; m >>= 1; }        /* merge_compute_minrun */\n    m += r;\n    for (I lo = 0, k; lo < n; lo += k) {\n      k = count_run(&ms, a + lo, n - lo);\n      if (k < m) { I f = n - lo < m ? n - lo : m; binarysort(&ms, a + lo, f, k); k = f; }   /* extend to minrun */\n      found_new_run(&ms, k);\n      ms.p[ms.np++] = (Run){lo, k, 0};\n    }\n    while (ms.np > 1) {                             /* merge_force_collapse */\n      int i = ms.np - 2;\n      if (i > 0 && ms.p[i - 1].n < ms.p[i + 1].n) i--;\n      merge_at(&ms, i);\n    }\n    if (reverse) rev(a, n);\n  }\n  if (eh) { keep_u = outer; if (u) unwind_pop(); }\n  if (l->a != sorting) {                            /* items added meanwhile are dropped, as in CPython */\n    if (eh) { l->len = n; l->cap = cap; l->a = a; }\n    pys_fail(\"ValueError: list modified during sort\");\n  }\n  l->len = n; l->cap = cap; l->a = a;\n}",
+    "main": "void pys_list_sort_r(List *l, Str *d, I reverse) {\n  if (big_list(l) && !list_has_big(l)) {   /* (promoting ints that fit: no companion entry to move) */\n    I *ids = l->ids; l->ids = NULL; pys_list_sort_r(l, d, reverse); l->ids = ids; return;\n  }\n  if (big_list(l)) { big_sort(l, d, reverse); return; }\n  if (l->ids && opt_in()) {\n    /* Numeric comparisons cannot call user code. Move a record containing the number\n       and its box through the same stable timsort, preserving NaN comparison order. */\n    List *p = pys_list_keyed(l, l, 0);\n    struct { I len; uint64_t hash; I chars1; char text[3]; } kd = {2, 0, 3, {'K', *d->s, 0}};\n    pys_list_sort_r(p, (Str *)&kd, reverse); pys_list_unkey(l, p); return;\n  }\n  I n = l->len, cap = l->cap, *a = l->a, m = n, r = 0, c = *d->s;\n  MS ms = {.d = d->s, .kind = c == 'i' || c == 'b' ? INT : c == 'f' ? FLOAT : c == 's' ? STR : c == 'O' ? OBJ : 0,\n           .cls = c == 'O' ? ocls(d->s + 1) : 0, .a = a, .n = n, .min_gallop = MIN_GALLOP};\n  Undo *u = 0, *outer = keep_u;\n  if (eh && n > 1 && (ms.kind == OBJ || !ms.kind)) {   /* a comparison may raise into a try */\n    u = pys_alloc(sizeof(Undo));\n    u->l = l; u->a = a; u->n = n; u->cap = cap; u->rev = reverse != 0; u->outer = outer;\n    unwind_push(sort_undo, u);\n  }\n  if (eh) keep_u = u;\n  l->len = l->cap = 0; l->a = sorting;\n  if (n > 1) {\n    if (reverse) rev(a, n);                         /* reverse=True: reverse, sort stably, reverse back */\n    while (m >= 64) { r |= m & 1; m >>= 1; }        /* merge_compute_minrun */\n    m += r;\n    for (I lo = 0, k; lo < n; lo += k) {\n      k = count_run(&ms, a + lo, n - lo);\n      if (k < m) { I f = n - lo < m ? n - lo : m; binarysort(&ms, a + lo, f, k); k = f; }   /* extend to minrun */\n      found_new_run(&ms, k);\n      ms.p[ms.np++] = (Run){lo, k, 0};\n    }\n    while (ms.np > 1) {                             /* merge_force_collapse */\n      int i = ms.np - 2;\n      if (i > 0 && ms.p[i - 1].n < ms.p[i + 1].n) i--;\n      merge_at(&ms, i);\n    }\n    if (reverse) rev(a, n);\n  }\n  if (eh) { keep_u = outer; if (u) unwind_pop(); }\n  if (l->a != sorting) {                            /* items added meanwhile are dropped, as in CPython */\n    if (eh) { l->len = n; l->cap = cap; l->a = a; }\n    pys_fail(\"ValueError: list modified during sort\");\n  }\n  l->len = n; l->cap = cap; l->a = a;\n}",
+    "baseline_commit": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+    "main_commit": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+    "baseline_path": "runtime.c",
+    "baseline_start_line": 3855,
+    "main_path": "runtime.c",
+    "main_start_line": 4028,
+    "comparison_method": "Exact UTF-8-decoded source string equality of the complete pys_list_sort_r definition, from its opening signature through the closing brace before pys_list_sort."
+  },
+  "fixtures": [
+    {
+      "path": "tests/programs/optimizations/opt_scalar_none_sort.py",
+      "baseline": {
+        "path": "tests/programs/optimizations/opt_scalar_none_sort.py",
+        "commit": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+        "git_blob": "4866e8d1f76e1a9f7ab9fcd474eef82b2c5633d6",
+        "url": "https://github.com/den-run-ai/pystachy/blob/80490143498d149d407343ba1cb7aedb1db2d2c5/tests/programs/optimizations/opt_scalar_none_sort.py",
+        "content": "# An int, float or bool | None that is None, used where only a value works, raises CPython's\n# error (sorted, max of a list)\n\n\ndef use(xs: list[int | None]) -> None:\n    print(\"using\", xs, sorted(xs[1:]), max(xs[1:]), min(xs[1:]))\n    print(max(xs))\n\n\nuse([None, 3, 1])\n"
+      },
+      "main": {
+        "path": "tests/programs/optimizations/opt_scalar_none_sort.py",
+        "commit": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+        "git_blob": "4866e8d1f76e1a9f7ab9fcd474eef82b2c5633d6",
+        "url": "https://github.com/den-run-ai/pystachy/blob/6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93/tests/programs/optimizations/opt_scalar_none_sort.py",
+        "content": "# An int, float or bool | None that is None, used where only a value works, raises CPython's\n# error (sorted, max of a list)\n\n\ndef use(xs: list[int | None]) -> None:\n    print(\"using\", xs, sorted(xs[1:]), max(xs[1:]), min(xs[1:]))\n    print(max(xs))\n\n\nuse([None, 3, 1])\n"
+      },
+      "identical": true
+    },
+    {
+      "path": "tests/programs/optimizations/opt_scalar_none_sort.out",
+      "baseline": {
+        "path": "tests/programs/optimizations/opt_scalar_none_sort.out",
+        "commit": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+        "git_blob": "6a8ed9a08d0e2e9cd5f3b5bbdc7e76f6a2a73bb6",
+        "url": "https://github.com/den-run-ai/pystachy/blob/80490143498d149d407343ba1cb7aedb1db2d2c5/tests/programs/optimizations/opt_scalar_none_sort.out",
+        "content": "using [None, 3, 1] [1, 3] 3 1\n[exit 1]\n"
+      },
+      "main": {
+        "path": "tests/programs/optimizations/opt_scalar_none_sort.out",
+        "commit": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+        "git_blob": "6a8ed9a08d0e2e9cd5f3b5bbdc7e76f6a2a73bb6",
+        "url": "https://github.com/den-run-ai/pystachy/blob/6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93/tests/programs/optimizations/opt_scalar_none_sort.out",
+        "content": "using [None, 3, 1] [1, 3] 3 1\n[exit 1]\n"
+      },
+      "identical": true
+    },
+    {
+      "path": "tests/programs/optimizations/opt_scalar_none_sort.err",
+      "baseline": {
+        "path": "tests/programs/optimizations/opt_scalar_none_sort.err",
+        "commit": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+        "git_blob": "744de66826a09edbe7a93aa2f81578a12e42f2da",
+        "url": "https://github.com/den-run-ai/pystachy/blob/80490143498d149d407343ba1cb7aedb1db2d2c5/tests/programs/optimizations/opt_scalar_none_sort.err",
+        "content": "TypeError: '>' not supported between instances of 'int' and 'NoneType'\n"
+      },
+      "main": {
+        "path": "tests/programs/optimizations/opt_scalar_none_sort.err",
+        "commit": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+        "git_blob": "744de66826a09edbe7a93aa2f81578a12e42f2da",
+        "url": "https://github.com/den-run-ai/pystachy/blob/6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93/tests/programs/optimizations/opt_scalar_none_sort.err",
+        "content": "TypeError: '>' not supported between instances of 'int' and 'NoneType'\n"
+      },
+      "identical": true
+    }
+  ],
+  "ancestry": {
+    "baseline_to_intro": {
+      "base": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+      "head": "f1cb384443531556a3eb61f17a93e34a4399626b",
+      "status": "diverged",
+      "ahead_by": 22,
+      "behind_by": 1,
+      "merge_base_commit": {
+        "sha": "950c0440ad793dc6c34664f591383a5e6bba14dd",
+        "url": "https://api.github.com/repos/den-run-ai/pystachy/commits/950c0440ad793dc6c34664f591383a5e6bba14dd",
+        "html_url": "https://github.com/den-run-ai/pystachy/commit/950c0440ad793dc6c34664f591383a5e6bba14dd"
+      }
+    },
+    "intro_to_main": {
+      "base": "f1cb384443531556a3eb61f17a93e34a4399626b",
+      "head": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "status": "ahead",
+      "ahead_by": 109,
+      "behind_by": 0,
+      "merge_base_commit": {
+        "sha": "f1cb384443531556a3eb61f17a93e34a4399626b",
+        "url": "https://api.github.com/repos/den-run-ai/pystachy/commits/f1cb384443531556a3eb61f17a93e34a4399626b",
+        "html_url": "https://github.com/den-run-ai/pystachy/commit/f1cb384443531556a3eb61f17a93e34a4399626b"
+      }
+    },
+    "qualification": "The feature branch diverged from the baseline merge commit at 950c0440; it is not a linear child of 8049014. The activation commit is an ancestor of main6bf."
+  },
+  "dynamic_opt_in_overlay": {
+    "path": "tools/dynany_optin.py",
+    "commit": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+    "git_blob": "c67b595f29b181c63721e8a2ed1478bf89e5d4a5",
+    "pragma": "# pystachy: dynamic-any",
+    "excerpt_start_line": 113,
+    "excerpt": "def opt_in(source, pragma=PRAGMA):\n    \"\"\"Preserve a BOM and either of Python's first-two-line encoding-cookie positions.\"\"\"\n    bom = b\"\\xef\\xbb\\xbf\" if source.startswith(b\"\\xef\\xbb\\xbf\") else b\"\"\n    body = source[len(bom):]\n    lines = body.splitlines(keepends=True)\n    for line in body.split(b\"\\n\"):\n        stripped = line.strip()\n        if stripped == pragma.strip():\n            return source\n        if stripped and not stripped.startswith(b\"#\"):\n            break\n    at = 0\n    for index, line in enumerate(lines[:2]):\n        if re.match(br\"^[ \\t\\f]*#.*?coding[:=][ \\t]*[-\\w.]+\", line):\n            at = index + 1\n    before = b\"\".join(lines[:at])\n    if before and not before.endswith(b\"\\n\"):\n        before += b\"\\n\"\n    return bom + before + pragma + b\"\".join(lines[at:])\n\n\ndef prepare_tree(root, target, cases, pragma=PRAGMA):\n    target.mkdir(parents=True)\n    # Cases read examples and import ports through repository-relative paths. Keep those\n    # paths, while giving every writable test/recording an independent copy.\n    for entry in root.iterdir():\n        if entry.name not in (\"tests\", \".git\", \"build\"):\n            (target / entry.name).symlink_to(entry.resolve(), target_is_directory=entry.is_dir())\n    shutil.copytree(root / \"tests\", target / \"tests\", symlinks=True, ignore=shutil.ignore_patterns(\"__pycache__\"))\n    for case in cases:\n        path = target / case\n        if not path.resolve().is_relative_to((target / \"tests\").resolve()):\n            raise ValueError(f\"selected source symlink leaves the temporary tests tree: {case}\")\n        path.write_bytes(opt_in(path.read_bytes(), pragma))\n",
+    "meaning": "Selected entry modules are copied and receive the pragma. The checked-in fixture and recorded oracles remain unchanged."
+  },
+  "limits": {
+    "workspace_available": false,
+    "local_reproduction_performed": false,
+    "typed_ir_inspection_performed": false,
+    "executed_bisect_performed": false,
+    "repair_implemented": false,
+    "repair_validated": false,
+    "new_test_or_proof_pass_claimed": false,
+    "release_gate_waived": false,
+    "method": "Read-only GitHub source, commit patches and ancestry APIs. This report is assembled solely from retained V8 data; only this unreferenced evidence blob is written. Runtime consequence is separately reviewed in the current-source diagnostic; existing CI failure remains authoritative."
+  },
+  "next_focused_checks_when_execution_available": [
+    "Run the exact fixture with and without the dynamic-any pragma on804, parentc112, introducingf1cb and main6bf, preserving JIT/AOT stdout, stderr and status.",
+    "Inspect the optional descriptor and list identity header at sorting, then the descriptor passed to the companion-record comparator.",
+    "Validate optional-float and plain int/float controls, ordering, item identity and the existing None-comparison errors; preserve all required release gates."
+  ]
+}
