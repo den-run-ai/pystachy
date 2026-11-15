@@ -27,7 +27,7 @@ This is still an incremental separation. Typing, representation choice and speci
 
 ## Qualification status
 
-**Qualification in progress.** This section will be replaced with the final exact-revision results before the evidence commit is published and the PR is marked ready.
+**Full local qualification in progress.** The 58-stage local verification is still running. The completed exact-tree checks below are preserved in this evidence checkpoint; the PR remains draft pending the final local results.
 
 Completed checks on the final source tree:
 

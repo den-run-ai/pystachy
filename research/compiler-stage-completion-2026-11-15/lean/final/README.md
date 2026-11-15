@@ -2,9 +2,22 @@
 
 Final qualification passed on the published source: **409 tests, zero skips,
 and 535/535 obligations or uses across the original ten programs**. See
-[RESULTS.md](RESULTS.md) and [the machine-readable summary](run-clean/summary.json).
+[RESULTS.md](RESULTS.md), [the linked report](linked-report.md) and
+[the machine-readable summary](summary.json).
 The initial attempt correctly stopped on verification-generated ignored source;
 the successful run used a clean equal-tree checkout and the same checker binaries.
+Full local 58-stage compiler verification remains pending at this evidence checkpoint.
+
+## Published evidence layout
+
+The successful run's files were copied from the historical `run-clean/` directory
+into this directory. Its initial `run/summary.json` is published as
+[generated-input-preflight.json](generated-input-preflight.json).
+The raw records retain their original paths, commands and recorded hashes.
+[report.md](report.md) is the unmodified generated report whose hash appears in
+[summary.json](summary.json); [linked-report.md](linked-report.md) is a labeled
+navigation copy with model-document links pinned to the published compiler commit.
+The command below records the actual successful invocation and original paths.
 
 The successful invocation was:
 

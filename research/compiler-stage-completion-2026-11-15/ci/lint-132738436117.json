@@ -1,0 +1,297 @@
+{
+  "observed_at_utc": "2026-11-15 07:37:48 UTC",
+  "head": "eabfe7b3d8f1be3e4615442423c7d3fbab10285b",
+  "workflow_id": 43689994113,
+  "job_id": 132738436117,
+  "job_url": "https://github.com/den-run-ai/pystachy/actions/runs/43689994113/job/132738436117",
+  "log_source": "https://api.github.com/repos/den-run-ai/pystachy/actions/jobs/132738436117/logs",
+  "status": "completed",
+  "conclusion": "success",
+  "log_characters": 112472,
+  "log_lines": 1417,
+  "excerpt_note": "Selected source log lines with original line numbers; includes stage/inspection tests and pipeline Lean build/audit.",
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1
+    },
+    {
+      "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2
+    },
+    {
+      "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3
+    },
+    {
+      "name": "Run python3 -m pip install -r tools/requirements-dev.txt",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4
+    },
+    {
+      "name": "Select Lean boundary validation",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 5
+    },
+    {
+      "name": "Cache the pinned Lean release archive",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6
+    },
+    {
+      "name": "Build and audit the Lean boundary prototype",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7
+    },
+    {
+      "name": "Validate GitHub Actions workflows (actionlint)",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8
+    },
+    {
+      "name": "Fast hosted checks and full lint",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 9
+    },
+    {
+      "name": "Retained IR and failed native build controls",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 10
+    },
+    {
+      "name": "Verification harness and compiler state controls",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 11
+    },
+    {
+      "name": "Compact CI sampling and variant controls",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 12
+    },
+    {
+      "name": "Upstream port preservation (CPython)",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 13
+    },
+    {
+      "name": "Router benchmark validation tests",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 14
+    },
+    {
+      "name": "Example benchmark validation tests",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 15
+    },
+    {
+      "name": "Example CLI smoke contract tests",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 16
+    },
+    {
+      "name": "Native text reads on open pipes",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 17
+    },
+    {
+      "name": "Owned communication buffer and completion checks",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 18
+    },
+    {
+      "name": "pyperformance runner and port record tests",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 19
+    },
+    {
+      "name": "Performance smoke comparison tests",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 20
+    },
+    {
+      "name": "nanoGPT parity checker contract tests",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 21
+    },
+    {
+      "name": "Import sweep and PyPI probe tests",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 22
+    },
+    {
+      "name": "CPython test-method extraction tests",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 23
+    },
+    {
+      "name": "Dynamic Any fuzzer generator and comparison tests",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 24
+    },
+    {
+      "name": "Dynamic Any builtin call binding tests",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 25
+    },
+    {
+      "name": "Dynamic Any corpus sweep controls",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 26
+    },
+    {
+      "name": "Promoting int tooling and retry controls",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 27
+    },
+    {
+      "name": "Function-local join retry controls",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 28
+    },
+    {
+      "name": "microGPT graph parity and benchmark contract tests",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 29
+    },
+    {
+      "name": "Integer benchmark checksum agreement tests",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 30
+    },
+    {
+      "name": "Compiler function-state lists (Gen, Frame, gen_save, gen_restore, gen_enter)",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 31
+    },
+    {
+      "name": "JSON benchmark evidence tests",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 32
+    },
+    {
+      "name": "LLVM IR diagnostic inventory tests",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 33
+    },
+    {
+      "name": "Issue and PR reading budgets and metadata checks",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 34
+    },
+    {
+      "name": "Release notes rendering and the current version's notes",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 35
+    },
+    {
+      "name": "Coverage report checks tests",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 36
+    },
+    {
+      "name": "PR job budget (20 jobs, two workers per group, 15 minutes each)",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 37
+    },
+    {
+      "name": "Linux ELF compatibility audit controls",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 38
+    },
+    {
+      "name": "Installed JSON repair wheel validation controls",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 39
+    },
+    {
+      "name": "Generated regex matcher tests",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 40
+    },
+    {
+      "name": "Concurrency contract and local process ownership controls",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 41
+    },
+    {
+      "name": "Native program cache manifests and tool inputs",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 42
+    },
+    {
+      "name": "Run make check-recordings",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 43
+    },
+    {
+      "name": "Post Cache the pinned Lean release archive",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 84
+    },
+    {
+      "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 85
+    },
+    {
+      "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 86
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 87
+    }
+  ]
+}

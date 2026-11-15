@@ -4,13 +4,15 @@ The final stage model, axiom audit and focused bridge tests pass for local commi
 `527dc89a02e8e8866fc4d83997847663a6e7c0aa`, tree
 `4deb05cd2f645d516dd37480d5510d0920747b6f`. The parent published the same tree as
 [`eabfe7b3d8f1be3e4615442423c7d3fbab10285b`](https://github.com/den-run-ai/pystachy/commit/eabfe7b3d8f1be3e4615442423c7d3fbab10285b).
-This note records completed checks; the parent owns subsequent full Lean-suite and
-corpus-report qualification. No tests or builds were rerun while preparing this note.
+This note records completed stage-model checks. The full Lean-suite and
+corpus-report qualification also completed subsequently, as linked below.
+No tests or builds were rerun while preparing this note.
 
 The subsequent clean-tree qualification is now recorded in
-[lean-final/RESULTS.md](lean-final/RESULTS.md): 409 tests with zero skips, and
+[final/RESULTS.md](final/RESULTS.md): 409 tests with zero skips, and
 535/535 obligations or uses across the original ten programs at the published
 commit. It reused the four built checkers without rebuilding or editing source.
+Full local 58-stage compiler verification remains pending at this evidence checkpoint.
 
 ## Model and correspondence
 
@@ -83,19 +85,20 @@ LEAN_BOUNDARY_REQUIRED=1 /workspace/scratch/c2b093657c17/dev-venv/bin/python \
 git diff --check
 ```
 
-All succeeded. Logs are under `/workspace/scratch/9f30aa4fd4fd/`:
+All succeeded. The logs were recorded under `/workspace/scratch/9f30aa4fd4fd/`.
+The table links their published copies while retaining the historical filenames:
 
 | Log | Recorded result |
 |---|---|
-| `lean-pipeline-build-final.log` | Final model, all 11 audited guarantees and pipeline executable pass. Audit: 136.949 s wall / 42.855 s child CPU; executable target: 154.000 s wall / 56.826 s child CPU. These shared-host build times are not performance claims. |
-| `lean-pipeline-tests-final.log` | 21 tests pass in 3.496 s, including the 208 transition comparisons. |
-| `lean-boundary-build.log` | Existing payload checker builds successfully. |
-| `lean-access-build.log` | Existing unchecked-access checker builds successfully. |
-| `lean-int-build.log` | Existing integer checker builds successfully. |
+| [lean-pipeline-build-final.log](pipeline-build.log) | Final model, all 11 audited guarantees and pipeline executable pass. Audit: 136.949 s wall / 42.855 s child CPU; executable target: 154.000 s wall / 56.826 s child CPU. These shared-host build times are not performance claims. |
+| [lean-pipeline-tests-final.log](pipeline-tests.log) | 21 tests pass in 3.496 s, including the 208 transition comparisons. |
+| [lean-boundary-build.log](boundary-build.log) | Existing payload checker builds successfully. |
+| [lean-access-build.log](access-build.log) | Existing unchecked-access checker builds successfully. |
+| [lean-int-build.log](int-build.log) | Existing integer checker builds successfully. |
 
 Ruff reported `All checks passed!`; `git diff --check` was silent. Their output is
 in the tool transcript, not a separate retained log. All four native checker
-executables are available for the parent's broader suite.
+executables were subsequently reused by the [completed Lean qualification](final/RESULTS.md).
 
 ## Review fixes and preliminary failures
 
@@ -115,4 +118,4 @@ failed because `/proc` did not expose its own subprocess PID. That wrapper had
 successfully rebuilt the final model before failing during Audit supervision.
 The final log retains its setup/retry marker. Subsequent sequential builds
 completed successfully and supersede both incomplete runs; neither preliminary
-failure was a Lean rejection. No owned verification jobs remained running at handoff.
+failure was a Lean rejection. No stage-model validation jobs remained running at handoff.

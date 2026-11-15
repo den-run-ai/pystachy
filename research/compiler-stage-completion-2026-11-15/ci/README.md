@@ -22,7 +22,7 @@ file digests in the contracts report's source manifest matched the frozen local
 checkout. The final checkout was clean.
 
 The initial local commit had not been published when monitoring began; the
-observation is retained in `unpublished-527dc89.json`. Qualification below applies
+observation is retained in [unpublished-527dc89.json](unpublished-527dc89.json). Qualification below applies
 to the subsequently published head with the identical tested tree.
 
 ## Complete inventories
@@ -45,7 +45,7 @@ first attempts.
 The two whole-job skips are intentional:
 
 - `Bootstrap tier and native archive qualification` runs only when the event is
-  not `pull_request`, according to `.github/workflows/ci.yml`.
+  not `pull_request`, according to the [tested CI workflow](https://github.com/den-run-ai/pystachy/blob/eabfe7b3d8f1be3e4615442423c7d3fbab10285b/.github/workflows/ci.yml).
 - `DCO certified (fork pull requests)` retains a legacy check name and is always
   skipped for its workflow's `pull_request_target` event.
 
@@ -53,7 +53,7 @@ Matrix-specific skipped steps are preserved separately in the complete job
 inventories. The CodeQL aggregate was briefly neutral while Python analysis was
 unfinished; its final aggregate and Python, C/C++ and Actions analyses all passed.
 
-`final-eabfe7b3.json` contains the reviewed PR metadata, source association, all
+[final-eabfe7b3.json](final-eabfe7b3.json) contains the reviewed PR metadata, source association, all
 workflow/job/step/check inventories, commit statuses, artifact metadata, source
 API URLs and saved-file hashes. First-page completeness was checked against each
 API's total count with a page size of 100.
@@ -61,10 +61,13 @@ API's total count with a page size of 100.
 ## Verification evidence
 
 The CI aggregate reports **43/43 checks passed across 14 groups** under the
-**PR profile**. This is distinct from the full local 58-stage verification, which
-was still running when this review finished. The aggregate report is retained as
-`aggregate-verification.json` and its original 87,327-byte ZIP as
-`verification-14152477307.zip`. The ZIP's SHA-256 matches GitHub's recorded digest:
+**PR profile**. Full local 58-stage verification remains pending at this evidence
+checkpoint. The aggregate report is retained as
+[aggregate-verification.json.gz](aggregate-verification.json.gz), which decompresses
+to the original JSON bytes. The [compression manifest](../compressed-artifacts.json)
+records both digests; historical filenames and hashes in the raw CI manifest are
+unchanged. The original 87,327-byte GitHub ZIP is also retained as
+[verification-14152477307.zip](verification-14152477307.zip). Its SHA-256 matches GitHub's recorded digest:
 `044c7b3fd9e1be416147ea0b610cd3081efa5f11a52e2945c79598ec2571c3eb`.
 
 Lint's 47 steps all succeeded. Its logs explicitly record:
@@ -74,14 +77,16 @@ Lint's 47 steps all succeeded. Its logs explicitly record:
 - **11 pipeline guarantees passed the Lean axiom audit**.
 
 The original source log line numbers are preserved in
-`lint-stage-proof-excerpt.log`. `lint-132738436117.json` retains its full step
-inventory; `verification-summary-excerpt.log` records the aggregate command,
+[lint-stage-proof-excerpt.log](lint-stage-proof-excerpt.log).
+[lint-132738436117.json](lint-132738436117.json) retains its full step
+inventory; [verification-summary-excerpt.log](verification-summary-excerpt.log) records the aggregate command,
 head/base variables, PR profile and successful gating.
 
 ## Full FFI coverage
 
-The contracts job invoked `tests/ffi/run.sh` without a corpus selector. The
-downloaded original `verify/ffi.log` contains:
+The contracts job invoked [tests/ffi/run.sh](https://github.com/den-run-ai/pystachy/blob/eabfe7b3d8f1be3e4615442423c7d3fbab10285b/tests/ffi/run.sh)
+without a corpus selector. The downloaded original `verify/ffi.log`, preserved
+here as [contracts-ffi.log](contracts-ffi.log), contains:
 
 ```text
 Checking /tmp/pystachy-ffi.25526/repair/pystachy_json_repair/_native.abi3.so
@@ -95,9 +100,12 @@ log exists and rejects any `; skipped:` suffix. The contracts JSON independently
 records FFI as pass, 196 passed, 0 failed, 65.886 seconds. The group reports
 22/22 verification steps passed.
 
-Preserved evidence includes `contracts-ffi.log`, `contracts-verification.json`,
-`ffi-qualification.json` and the source-numbered `contracts-job-excerpt.log`.
-The original 42,899-byte contracts archive is `contracts-14152039125.zip`; its
+Preserved evidence includes [contracts-ffi.log](contracts-ffi.log),
+[contracts-verification.json](contracts-verification.json),
+[ffi-qualification.json](ffi-qualification.json) and the source-numbered
+[contracts-job-excerpt.log](contracts-job-excerpt.log).
+The original 42,899-byte contracts archive is
+[contracts-14152039125.zip](contracts-14152039125.zip); its
 SHA-256 matches the GitHub artifact digest:
 `45517b4bf606f5046feac86028f46c06ab87f2c7ebfe9fe212bae336e5203601`.
 

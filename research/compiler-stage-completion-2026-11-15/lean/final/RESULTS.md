@@ -30,14 +30,14 @@ The actual report counts are:
 These obligations overlap across bounded models. The total is not a
 whole-compiler proof or a verified-code percentage. The separate stage model's
 11 audited guarantees and its 208 transition comparisons are documented in the
-stage review; the 21 stage-checker tests are included in the 409-test suite.
+[stage review](../review.md); the 21 stage-checker tests are included in the 409-test suite.
 
 ## Clean-source control
 
 The first attempt used the active verification worktree and stopped before any
 validation phase. Its ignored `build/verify/home/lib/*.py` copies made corpus
 provenance unclean even though tracked compiler/checker files were unchanged.
-[The failed preflight](run/summary.json) is preserved; it was not treated as a
+[The failed preflight](generated-input-preflight.json) is preserved; it was not treated as a
 successful or partially completed proof run.
 
 A new detached checkout at the exact published commit was created at
@@ -50,11 +50,12 @@ native execution worktree was left intact.
 
 ## Evidence
 
-- [summary.json](run-clean/summary.json): pinned tools, exact commands and selected environment, source/checker identities, structured test results, proof totals and artifact hashes.
-- [unit-results.json](run-clean/unit-results.json) and [unit-tests.log](run-clean/unit-tests.log): full discovery/execution counts and individual results.
-- [report.md](run-clean/report.md), [records.jsonl](run-clean/records.jsonl) and [report.log](run-clean/report.log): fresh per-program checks, complete clean provenance and actual obligation counts.
+- [summary.json](summary.json): pinned tools, exact commands and selected environment, source/checker identities, structured test results, proof totals and artifact hashes.
+- [unit-results.json](unit-results.json) and [unit-tests.log](unit-tests.log): full discovery/execution counts and individual results.
+- [Linked report](linked-report.md), [original generated report](report.md), [records.jsonl](records.jsonl) and [report.log](report.log): fresh per-program checks, complete clean provenance and actual obligation counts. The linked copy resolves model-document links against the published compiler commit; the original report remains byte-for-byte unchanged for hash verification.
 - [run.py](run.py) and [cases.json](cases.json): the runner and byte-identical original case manifest. The runner and manifest hashes were unchanged through validation.
 
 The commands were sequential and used the existing four native Lean checkers.
-No validation jobs remain running. These results do not replace the parent's
-native execution, bootstrap, ABI, IR-comparison, CI or performance evidence.
+No jobs from this Lean qualification remain running. Full local 58-stage compiler
+verification remains pending at this evidence checkpoint. These Lean results are
+separate from native execution, bootstrap, ABI, IR-comparison, CI and performance evidence.

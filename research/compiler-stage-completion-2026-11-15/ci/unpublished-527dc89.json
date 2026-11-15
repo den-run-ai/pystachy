@@ -1,0 +1,23 @@
+{
+  "observed_at_utc": "2026-11-15 07:25:31 UTC",
+  "expected_local_commit": "527dc89a02e8e8866fc4d83997847663a6e7c0aa",
+  "observation": "Expected local commit is not published as PR head; CI polling paused pending publication.",
+  "pr": {
+    "url": "https://github.com/den-run-ai/pystachy/pull/1499",
+    "number": 1499,
+    "state": "open",
+    "draft": true,
+    "merged": false,
+    "head": "prototype/compiler-stage-boundaries",
+    "head_sha": "800752d8a582bff77d4c375039af786b82a96f73",
+    "base_sha": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+    "updated_at": "2026-11-15T07:22:33Z"
+  },
+  "workflow_runs_for_expected_commit": {
+    "workflow_runs": []
+  },
+  "combined_status_for_expected_commit": {
+    "statuses": []
+  },
+  "git_remote_ref_evidence": "800752d8a582bff77d4c375039af786b82a96f73\trefs/heads/prototype/compiler-stage-boundaries\n800752d8a582bff77d4c375039af786b82a96f73\trefs/pull/1499/head\n.github/workflows/install.yml\n.github/workflows/lint.yml\n.github/workflows/performance.yml\n.github/workflows/dco.yml\n.github/workflows/variants.yml\n.github/workflows/packages.yml\n.github/workflows/release.yml\n.github/workflows/coverage.yml\n.github/workflows/submissions.yml\n.github/workflows/performance-weekly.yml\n.github/workflows/ci.yml\n"
+}
