@@ -1,18 +1,35 @@
 ## Hosted compiler coverage
 
-Commit `6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93`: statements **95.7%** (49996 of 52225) and branches **92.3%** (26078 of 28252); 94.5% together, coverage.py's total. 5 suites, 7961 processes measured.
+Commit `49a149adba833bf2ed249053f6d4f3f13bccc33b`: statements **95.7%** (49996 of 52225) and branches **92.3%** (26078 of 28252); 94.5% together, coverage.py's total. 5 suites, 7963 processes measured.
 The statements and branches of `src/pystachy_compiler/`, run by CPython; not `runtime.c`, `runtime.py`, `lib/` or the compiled programs, which run as native code ([native runtime coverage](https://github.com/den-run-ai/pystachy/blob/badges/runtime-coverage.md)).
 
 | Suite | Runs | Checks | Processes | Time | Statements | Branches |
 |---|---|---|---:|---:|---:|---:|
-| corpus | `tests/run.sh`, JIT and AOT (10 shards) | 7613 passed, 0 failed | 7623 | 4844 s | 92.6% | 88.8% |
-| ffi | `tests/ffi/run.sh`, JIT and AOT | 194 passed, 0 failed; skipped: py_coerce (the CPython-hosted compiler's own locale coercion reaches the program) | 175 | 193 s | 48.6% | 41.3% |
-| cache | `tests/cache.sh` | 97 passed, 0 failed | 51 | 308 s | 27.2% | 18.1% |
-| unit | `tools/test_typed*.py`, `tools/test_function_summaries.py`, the native program cache's, `--emit-ir`'s, the C runtime cache's, `ctypes_schema.py`'s and `source_lines.py`'s | 547 tests, OK | 9 | 73 s | 51.9% | 45.1% |
-| ir | `tools/check_ir.sh`: `pystachy.py`, `runtime.py`, `bench/`, the `tests/ir/` contracts | the IR check and llvm-as accept the IR of 103 programs | 103 | 172 s | 59.4% | 53.1% |
-| **all** | | | **7961** | | **95.7%** | **92.3%** |
+| corpus | `tests/run.sh`, JIT and AOT (10 shards) | 7615 passed, 0 failed | 7625 | 4101 s | 92.6% | 88.8% |
+| ffi | `tests/ffi/run.sh`, JIT and AOT | 194 passed, 0 failed; skipped: py_coerce (the CPython-hosted compiler's own locale coercion reaches the program) | 175 | 241 s | 48.6% | 41.3% |
+| cache | `tests/cache.sh` | 97 passed, 0 failed | 51 | 403 s | 27.2% | 18.1% |
+| unit | `tools/test_typed*.py`, `tools/test_function_summaries.py`, the native program cache's, `--emit-ir`'s, the C runtime cache's, `ctypes_schema.py`'s and `source_lines.py`'s | 547 tests, OK | 9 | 96 s | 51.9% | 45.1% |
+| ir | `tools/check_ir.sh`: `pystachy.py`, `runtime.py`, `bench/`, the `tests/ir/` contracts | the IR check and llvm-as accept the IR of 103 programs | 103 | 225 s | 59.4% | 53.1% |
+| **all** | | | **7963** | | **95.7%** | **92.3%** |
 
 The other suites run 1628 statements and 994 branches that the corpus does not.
+
+### Changed since 80490143498d149d407343ba1cb7aedb1db2d2c5 (merge base `80490143498d`)
+
+Changed statements: 1374 of 1423 run (96.6%); their branches: 696 of 748 taken (93.0%).
+
+| File | Statements not run | Branches not taken |
+|---|---|---|
+| `src/pystachy_compiler/builtins.py` | 335, 340, 1097, 1099, 2557, 2560, 2562, 2564, 2580, 2582 | 334->335, 339->340, 1096->1097, 1098->1099, 1100->1089, 2556->2557, 2559->2560, 2561->2562, 2563->2564, 2579->2580, 2581->2582 |
+| `src/pystachy_compiler/containers.py` | 400-402, 441, 448-449, 974 | 440->441, 446->448, 448->449, 448->450, 467->468, 973->974 |
+| `src/pystachy_compiler/declarations.py` | 2370, 2390, 2526, 2582 | 2369->2370, 2389->2390, 2525->2526, 2581->2582 |
+| `src/pystachy_compiler/expressions.py` | 4004, 4014, 4041, 4978, 5065, 5470, 6067-6068 | 3952->3955, 3958->3961, 4003->4004, 4013->4014, 4040->4041, 4186->4189, 4977->4978, 5064->5065, 5469->5470 |
+| `src/pystachy_compiler/gen.py` | 5263 | - |
+| `src/pystachy_compiler/loader.py` | 1060 | 1059->1060 |
+| `src/pystachy_compiler/program.py` | 362, 386, 426, 464, 471, 496, 498, 501, 584, 590 | 361->362, 385->386, 412->409, 425->426, 463->464, 470->471, 495->496, 497->498, 500->501, 583->584, 589->590 |
+| `src/pystachy_compiler/reflection.py` | 491, 1080, 3276 | 450->446, 490->491, 1079->1080, 3275->3276 |
+| `src/pystachy_compiler/statements.py` | 484, 838, 1505 | 483->484, 836->838, 1504->1505 |
+| `src/pystachy_compiler/templates.py` | 551, 556 | 550->551, 555->556, 741->747 |
 
 | Module | Statements | Missed | Statements % | Branches | Missed | Branches % | Total | Corpus alone |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
