@@ -1,0 +1,511 @@
+{
+  "schema_version": 1,
+  "status": "ready_trigger_outcome_observed_applicable_checks_clear",
+  "observed_utc": "2026-11-15 09:30:26 UTC",
+  "repository": "den-run-ai/pystachy",
+  "pr_number": 1494,
+  "head": "328b945f02788b296d9981d1b44706a2a0092255",
+  "base": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+  "draft": false,
+  "mergeable": true,
+  "mergeable_state": "clean",
+  "pagination": {
+    "runs": {
+      "page_count": 1,
+      "rows": 8,
+      "total_count": 8,
+      "complete": true
+    },
+    "checks": {
+      "page_count": 1,
+      "rows": 26,
+      "total_count": 26,
+      "complete": true
+    },
+    "suites": {
+      "page_count": 1,
+      "rows": 13,
+      "total_count": 13,
+      "complete": true
+    },
+    "statuses": {
+      "page_count": 1,
+      "rows": 3,
+      "total_count": null,
+      "complete": true
+    },
+    "reviews": {
+      "page_count": 1,
+      "rows": 0,
+      "total_count": null,
+      "complete": true
+    },
+    "comments": {
+      "page_count": 1,
+      "rows": 2,
+      "total_count": null,
+      "complete": true
+    },
+    "inline_comments": {
+      "page_count": 1,
+      "rows": 0,
+      "total_count": null,
+      "complete": true
+    }
+  },
+  "runs": [
+    {
+      "id": 43699443820,
+      "name": "Submission format",
+      "event": "pull_request_target",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "created_at": "2026-11-15T09:28:52Z",
+      "updated_at": "2026-11-15T09:29:08Z",
+      "jobs": {
+        "page_count": 1,
+        "rows": 1,
+        "total_count": 1,
+        "complete": true
+      }
+    },
+    {
+      "id": 43699438314,
+      "name": "Submission format",
+      "event": "pull_request_target",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "run_attempt": 1,
+      "created_at": "2026-11-15T09:28:48Z",
+      "updated_at": "2026-11-15T09:28:56Z",
+      "jobs": {
+        "page_count": 1,
+        "rows": 1,
+        "total_count": 1,
+        "complete": true
+      }
+    },
+    {
+      "id": 43692995147,
+      "name": "Lint",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "created_at": "2026-11-15T08:07:03Z",
+      "updated_at": "2026-11-15T08:16:10Z",
+      "jobs": {
+        "page_count": 1,
+        "rows": 1,
+        "total_count": 1,
+        "complete": true
+      }
+    },
+    {
+      "id": 43692995189,
+      "name": "CI",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "created_at": "2026-11-15T08:07:03Z",
+      "updated_at": "2026-11-15T08:24:36Z",
+      "jobs": {
+        "page_count": 1,
+        "rows": 16,
+        "total_count": 16,
+        "complete": true
+      }
+    },
+    {
+      "id": 43692956681,
+      "name": "Submission format",
+      "event": "pull_request_target",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "created_at": "2026-11-15T08:06:33Z",
+      "updated_at": "2026-11-15T08:06:43Z",
+      "jobs": {
+        "page_count": 1,
+        "rows": 1,
+        "total_count": 1,
+        "complete": true
+      }
+    },
+    {
+      "id": 43692898557,
+      "name": "Submission format",
+      "event": "pull_request_target",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "created_at": "2026-11-15T08:05:48Z",
+      "updated_at": "2026-11-15T08:05:58Z",
+      "jobs": {
+        "page_count": 1,
+        "rows": 1,
+        "total_count": 1,
+        "complete": true
+      }
+    },
+    {
+      "id": 43692898607,
+      "name": "DCO (legacy)",
+      "event": "pull_request_target",
+      "status": "completed",
+      "conclusion": "skipped",
+      "run_attempt": 1,
+      "created_at": "2026-11-15T08:05:48Z",
+      "updated_at": "2026-11-15T08:05:49Z",
+      "jobs": {
+        "page_count": 1,
+        "rows": 1,
+        "total_count": 1,
+        "complete": true
+      }
+    },
+    {
+      "id": 43692897923,
+      "name": "PR #1494",
+      "event": "dynamic",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "created_at": "2026-11-15T08:05:47Z",
+      "updated_at": "2026-11-15T08:26:25Z",
+      "jobs": {
+        "page_count": 1,
+        "rows": 3,
+        "total_count": 3,
+        "complete": true
+      }
+    }
+  ],
+  "checks": [
+    {
+      "id": 132767141952,
+      "name": "Check title and description",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:28:59Z",
+      "completed_at": "2026-11-15T09:29:07Z"
+    },
+    {
+      "id": 132767114527,
+      "name": "Check title and description",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "started_at": "2026-11-15T09:28:52Z",
+      "completed_at": "2026-11-15T09:28:56Z"
+    },
+    {
+      "id": 132751423526,
+      "name": "Verification",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T08:24:12Z",
+      "completed_at": "2026-11-15T08:24:36Z"
+    },
+    {
+      "id": 132748692563,
+      "name": "Bootstrap tier and native archive qualification",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-11-15T08:12:44Z",
+      "completed_at": "2026-11-15T08:12:43Z"
+    },
+    {
+      "id": 132748691608,
+      "name": "verify (safety-1, x86_64)",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T08:12:46Z",
+      "completed_at": "2026-11-15T08:21:10Z"
+    },
+    {
+      "id": 132748691509,
+      "name": "verify (opt-in, x86_64)",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T08:12:46Z",
+      "completed_at": "2026-11-15T08:20:18Z"
+    },
+    {
+      "id": 132748691505,
+      "name": "verify (benchmarks, x86_64)",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T08:12:46Z",
+      "completed_at": "2026-11-15T08:19:49Z"
+    },
+    {
+      "id": 132748691492,
+      "name": "verify (contracts, x86_64)",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T08:12:46Z",
+      "completed_at": "2026-11-15T08:23:30Z"
+    },
+    {
+      "id": 132748691486,
+      "name": "verify (cache-gc, x86_64)",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T08:12:46Z",
+      "completed_at": "2026-11-15T08:24:09Z"
+    },
+    {
+      "id": 132748691444,
+      "name": "verify (native-aot-0, x86_64)",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T08:12:46Z",
+      "completed_at": "2026-11-15T08:16:49Z"
+    },
+    {
+      "id": 132748691437,
+      "name": "verify (native-aot-1, x86_64)",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T08:12:46Z",
+      "completed_at": "2026-11-15T08:16:59Z"
+    },
+    {
+      "id": 132748691421,
+      "name": "verify (native-aot-2, x86_64)",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T08:12:46Z",
+      "completed_at": "2026-11-15T08:15:36Z"
+    },
+    {
+      "id": 132748691415,
+      "name": "verify (safety-0, x86_64)",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T08:12:46Z",
+      "completed_at": "2026-11-15T08:18:13Z"
+    },
+    {
+      "id": 132748691412,
+      "name": "verify (hosted, x86_64)",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T08:12:47Z",
+      "completed_at": "2026-11-15T08:21:55Z"
+    },
+    {
+      "id": 132748691389,
+      "name": "verify (native-aot-3, x86_64)",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T08:12:46Z",
+      "completed_at": "2026-11-15T08:17:40Z"
+    },
+    {
+      "id": 132748691312,
+      "name": "native JIT and variants (worker 0)",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T08:12:46Z",
+      "completed_at": "2026-11-15T08:21:18Z"
+    },
+    {
+      "id": 132748691257,
+      "name": "native JIT and variants (worker 1)",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T08:12:46Z",
+      "completed_at": "2026-11-15T08:22:00Z"
+    },
+    {
+      "id": 132747356180,
+      "name": "verify (bootstrap, x86_64)",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T08:07:06Z",
+      "completed_at": "2026-11-15T08:12:43Z"
+    },
+    {
+      "id": 132747355706,
+      "name": "make lint (ruff, shellcheck, clang -Wall -Wextra)",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T08:07:06Z",
+      "completed_at": "2026-11-15T08:16:09Z"
+    },
+    {
+      "id": 132747240376,
+      "name": "Check title and description",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T08:06:36Z",
+      "completed_at": "2026-11-15T08:06:42Z"
+    },
+    {
+      "id": 132747224526,
+      "name": "CodeQL",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T08:06:29Z",
+      "completed_at": "2026-11-15T08:06:32Z"
+    },
+    {
+      "id": 132747067838,
+      "name": "DCO certified (fork pull requests)",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-11-15T08:05:49Z",
+      "completed_at": "2026-11-15T08:05:49Z"
+    },
+    {
+      "id": 132747067300,
+      "name": "Check title and description",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T08:05:51Z",
+      "completed_at": "2026-11-15T08:05:58Z"
+    },
+    {
+      "id": 132747066072,
+      "name": "Analyze (python)",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T08:05:51Z",
+      "completed_at": "2026-11-15T08:26:24Z"
+    },
+    {
+      "id": 132747066006,
+      "name": "Analyze (actions)",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T08:05:51Z",
+      "completed_at": "2026-11-15T08:06:38Z"
+    },
+    {
+      "id": 132747065881,
+      "name": "Analyze (c-cpp)",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T08:05:51Z",
+      "completed_at": "2026-11-15T08:07:17Z"
+    }
+  ],
+  "statuses": [
+    {
+      "id": 58955196031,
+      "context": "Submission format",
+      "state": "success",
+      "created_at": "2026-11-15T09:29:03Z",
+      "description": "Title and three-section body meet the reading budget."
+    },
+    {
+      "id": 58952930317,
+      "context": "Submission format",
+      "state": "success",
+      "created_at": "2026-11-15T08:06:40Z",
+      "description": "Title and three-section body meet the reading budget."
+    },
+    {
+      "id": 58952910964,
+      "context": "Submission format",
+      "state": "success",
+      "created_at": "2026-11-15T08:05:55Z",
+      "description": "Title and three-section body meet the reading budget."
+    }
+  ],
+  "current_combined_status": {
+    "state": "success",
+    "total_count": 1,
+    "statuses": [
+      {
+        "id": 58955196031,
+        "context": "Submission format",
+        "state": "success",
+        "created_at": "2026-11-15T09:29:03Z",
+        "description": "Title and three-section body meet the reading budget."
+      }
+    ]
+  },
+  "submission_supersession": {
+    "cancelled_run": 43699438314,
+    "cancelled_check": 132767114527,
+    "latest_success_run": 43699443820,
+    "latest_success_check": 132767141952,
+    "current_success_status": 58955196031,
+    "workflow_base_and_head_identical": true,
+    "concurrency_group": "submission-1494",
+    "cancel_in_progress": true,
+    "cancelled_log": "Only setup ran; operation canceled at09:28:54.0551414Z.",
+    "success_log": "Trusted base804901 checkout; Validate current metadata ran successfully; latest job completed09:29:07Z.",
+    "conclusion": "Older cancelled metadata run superseded by later successful current-metadata validation; workflow/timing support automatic concurrency cancellation, without claiming a separate cancellation-actor audit."
+  },
+  "codex": {
+    "summary_comment_id": 6892343492,
+    "quota_comment_id": 6892343888,
+    "commit": "328b945f02788b296d9981d1b44706a2a0092255",
+    "trigger": "Draft marked ready",
+    "status": "failed",
+    "reason": "Account code review usage limits",
+    "review_completed": false,
+    "actual_new_findings": [],
+    "failed_metadata_flags": {
+      "has_any_findings": true,
+      "has_unresolved_findings": true
+    },
+    "interpretation": "Failed summary flags are retained but are not evidence of a completed review or actual finding."
+  },
+  "reviews": [],
+  "inline_comments": [],
+  "threads": [],
+  "comments": [
+    {
+      "id": 6892343492,
+      "user": "chatgpt-codex-connector[bot]",
+      "created_at": "2026-11-15T09:28:57Z",
+      "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"328b945f02788b296d9981d1b44706a2a0092255\",\"has_any_findings\":true,\"has_unresolved_findings\":true,\"status\":\"failed\"},\"security_review\":{\"commit_sha\":null,\"has_any_findings\":null,\"has_unresolved_findings\":null,\"status\":null}} -->\n\n<details>\n<summary><strong>Codex Review Summary</strong>: ❌ Failed</summary>\n\nThis comment shows the latest Codex review activity on this pull request.\n\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n| 📝 **Code Review** | ❌ **Failed** <relative-time datetime=\"2026-11-15T09:28:53.807743Z\">2026-11-15T09:28:53.807743Z</relative-time><br/>We couldn’t complete this review. Comment `@codex review` to try again. | `328b945` | Draft marked ready |\n\n\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\" or \"@codex security review\".\n\nCodex reacts with 👀 while any review is running, comments if it has suggestions, and reacts with 👍 once all reviews finish with no findings.\n\n</details>\n\n</details>",
+      "url": "https://github.com/den-run-ai/pystachy/pull/1494#issuecomment-6892343492"
+    },
+    {
+      "id": 6892343888,
+      "user": "chatgpt-codex-connector[bot]",
+      "created_at": "2026-11-15T09:28:59Z",
+      "body": "You have reached your Codex usage limits for code reviews. You can see your limits in the [Codex usage dashboard](https://chatgpt.com/codex/cloud/settings/usage).\nTo continue using code reviews, add credits to your account and enable them for code reviews in your [settings](https://chatgpt.com/settings/code-review).",
+      "url": "https://github.com/den-run-ai/pystachy/pull/1494#issuecomment-6892343888"
+    }
+  ],
+  "queued_app_suites_with_no_actual_checks": [
+    {
+      "suite_id": 118296518693,
+      "app": "vercel",
+      "status": "queued",
+      "actual_check_runs": 0
+    },
+    {
+      "suite_id": 118296518963,
+      "app": "codecov",
+      "status": "queued",
+      "actual_check_runs": 0
+    },
+    {
+      "suite_id": 118296519173,
+      "app": "claude",
+      "status": "queued",
+      "actual_check_runs": 0
+    },
+    {
+      "suite_id": 118296519416,
+      "app": "cursor",
+      "status": "queued",
+      "actual_check_runs": 0
+    }
+  ],
+  "full_raw_store_key": "pr1494_ready_final_raw",
+  "limits": [
+    "Remote GET-only evidence; no filesystem access or GitHub mutation.",
+    "Parent owns immediate live head/base/check review and normal expected-head merge.",
+    "No waiver of postmerge workflows, Coverage dispatch or artifact audits blocked by the unavailable workspace."
+  ]
+}

@@ -1,0 +1,132 @@
+{
+  "goal": "Publish qualified v0.5.0-alpha.3",
+  "repository": "den-run-ai/pystachy",
+  "qualified_evidence": {
+    "commit": "231e903a8b353ecb1595bed3002cecbc006f0d34",
+    "tree": "d3197c5f83bdddfb2b1180462904256c4a95dcf9",
+    "parent": "a53ef9436e56de3fad990f05139132b9ea16c23d",
+    "url": "https://github.com/den-run-ai/pystachy/blob/231e903a8b353ecb1595bed3002cecbc006f0d34/research/v0.5.0-alpha.3-qualification/README.md",
+    "readme_byte_exact": true,
+    "readme_git_blob": "e4a95f479496cdd7d28f6502f654fc229dcf1e17",
+    "readme_sha256": "128b2529671040cbfbfc7265776bcff53e14b15536a546b81ea2136f5c158c02",
+    "checksum_sha256": "a06857504448bc631ade899beb3181c3ac0f7d2b3cc79325db09a4cd64210f06",
+    "independent_package_audit_completed": true,
+    "observed_audit_summary_blob": "9ccabea5cb22d494ef2c2b2b9c72181cc97ec781",
+    "published_payloads": 141
+  },
+  "pr": 1494,
+  "ready": true,
+  "release_head": "328b945f02788b296d9981d1b44706a2a0092255",
+  "qualified_tree": "107460d5f89bdcf37f2741b233eac0568d82604a",
+  "baseline": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+  "workspace": "unavailable per environment update; exec transport disconnected",
+  "browser": "tool namespace withdrawn; no workflow dispatch was made",
+  "coverage": {
+    "required": true,
+    "ref": "main",
+    "base": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+    "dispatch": "blocked until supported control is available"
+  },
+  "native": {
+    "workflow": "release.yml",
+    "ref": "main",
+    "version": "v0.5.0-alpha.3",
+    "pypi": "off",
+    "dispatch": "not started"
+  },
+  "pypi": {
+    "workflow": "release.yml",
+    "ref": "release/pypi-v0.2.0",
+    "workflow_head": "6e5544cfa3eecb8329e4f4cb19d2e0ac3e99b1bf",
+    "version": "v0.5.0-alpha.3",
+    "pypi": "publish",
+    "dispatch": "not started"
+  },
+  "required_exact_main_workflows": [
+    "CI",
+    "Installation",
+    "Lint",
+    "Packages",
+    "Performance smoke",
+    "Variants",
+    "Coverage"
+  ],
+  "local_public_artifact_audit": "blocked by unavailable workspace; no verification claim",
+  "no_gates_waived": true,
+  "main_merge": {
+    "main_commit": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+    "tree": "107460d5f89bdcf37f2741b233eac0568d82604a",
+    "parents": [
+      "80490143498d149d407343ba1cb7aedb1db2d2c5",
+      "328b945f02788b296d9981d1b44706a2a0092255"
+    ],
+    "pr": 1494,
+    "url": "https://github.com/den-run-ai/pystachy/pull/1494",
+    "merged_at": "2026-11-15T09:31:16Z",
+    "merged": true,
+    "normal_expected_head_merge": true,
+    "identical_to_qualified_tree": true
+  },
+  "actual_main": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+  "merged": true,
+  "exact_main_workflows": "awaiting complete exact-main run verification",
+  "recorded_utc": "2026-11-15 09:35:07 UTC",
+  "initial_main_runs": [
+    {
+      "id": 43699643829,
+      "name": "Installation",
+      "event": "push",
+      "head": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "status": "queued",
+      "conclusion": null
+    },
+    {
+      "id": 43699643753,
+      "name": "Performance smoke",
+      "event": "push",
+      "head": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "status": "in_progress",
+      "conclusion": null
+    },
+    {
+      "id": 43699643867,
+      "name": "Packages",
+      "event": "push",
+      "head": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "status": "queued",
+      "conclusion": null
+    },
+    {
+      "id": 43699643812,
+      "name": "Lint",
+      "event": "push",
+      "head": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "status": "queued",
+      "conclusion": null
+    },
+    {
+      "id": 43699643821,
+      "name": "CI",
+      "event": "push",
+      "head": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "status": "queued",
+      "conclusion": null
+    },
+    {
+      "id": 43699643750,
+      "name": "Variants",
+      "event": "push",
+      "head": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "status": "in_progress",
+      "conclusion": null
+    },
+    {
+      "id": 43699640898,
+      "name": "Push on main",
+      "event": "dynamic",
+      "head": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "status": "in_progress",
+      "conclusion": null
+    }
+  ]
+}
