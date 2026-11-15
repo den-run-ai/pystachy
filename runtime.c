@@ -3967,6 +3967,8 @@ static void sort_undo(void *p) {
 }
 List *pys_list_keyed(List *l, List *keys, I taken);
 void pys_list_unkey(List *l, List *p);
+List *pys_list_take(List *l);
+void pys_list_give(List *t);
 static I big_cmp_items(const Big *x, const Big *y) { return pys_big_cmp(x->lo, x->hi, y->lo, y->hi); }
 static void big_sift(Big *v, I i, I n) {   /* heapsort's sift of v[i] down the max-heap v[0, n) */
   for (I c; (c = 2 * i + 1) < n; i = c) {
@@ -4032,10 +4034,15 @@ void pys_list_sort_r(List *l, Str *d, I reverse) {
   if (big_list(l)) { big_sort(l, d, reverse); return; }
   if (l->ids && opt_in()) {
     /* Numeric comparisons cannot call user code. Move a record containing the number
-       and its box through the same stable timsort, preserving NaN comparison order. */
-    List *p = pys_list_keyed(l, l, 0);
-    struct { I len; uint64_t hash; I chars1; char text[3]; } kd = {2, 0, 3, {'K', *d->s, 0}};
-    pys_list_sort_r(p, (Str *)&kd, reverse); pys_list_unkey(l, p); return;
+       and its box through the same stable timsort, preserving NaN comparison order. The
+       records sort by K and the items' whole descriptor (K?i for int | None: K? alone
+       would compare the boxes), and the list gives its items up meanwhile, as for key=,
+       so a comparison with None that raises leaves them in the order the sort reached. */
+    I dn = d->len;
+    Str *kd = pys_alloc_atomic(sizeof(Str) + dn + 2);
+    kd->len = dn + 1; kd->chars1 = dn + 2; kd->s[0] = 'K'; memcpy(kd->s + 1, d->s, dn + 1);
+    List *t = pys_list_take(l);
+    pys_list_sort_r(pys_list_keyed(t, t, 1), kd, reverse); pys_list_give(t); return;
   }
   I n = l->len, cap = l->cap, *a = l->a, m = n, r = 0, c = *d->s;
   MS ms = {.d = d->s, .kind = c == 'i' || c == 'b' ? INT : c == 'f' ? FLOAT : c == 's' ? STR : c == 'O' ? OBJ : 0,
