@@ -215,6 +215,73 @@ class StateProbeTests(unittest.TestCase):
         self.assertNotIn(prefix + "UnusedChild", generator.classes)
         self.assertNotIn(prefix + "NestedChild", generator.classes)
 
+    def test_standalone_constructor_retry_keeps_only_needed_dependencies(self):
+        prefix = "mods$constructor_dependency$"
+        program, specialize = Gen.program, Gen.specialize
+        for calls in (1, 32):
+            attempts, scopes = [], []
+            source = "from mods.constructor_dependency import NestedErrors, Options\n"
+            source += "errors = NestedErrors(Options(True))\n" * calls
+            source += "print(errors.options.strict, errors.count())\n"
+
+            def counted(gen, mods, attempts=attempts):
+                attempts.append(gen)
+                return program(gen, mods)
+
+            def checked(gen, *args, scopes=scopes):
+                before = (gen.selfcls, gen.line, gen.lib,
+                          list(gen.making), dict(gen.specing))
+                try:
+                    return specialize(gen, *args)
+                finally:
+                    after = (gen.selfcls, gen.line, gen.lib,
+                             list(gen.making), dict(gen.specing))
+                    scopes.append((before, after))
+                    self.assertEqual(after, before)
+
+            with self.subTest(calls=calls), patch.object(Gen, "program", counted), \
+                    patch.object(Gen, "specialize", checked):
+                ir = driver.compile_program("constructor_preuse.py", source,
+                                            [str(ROOT / "tests"), str(ROOT / "lib")], "")
+                self.assertIn("@main", ir)
+                self.assertEqual(len(attempts), 2)
+                self.assertIsNot(attempts[0].classes, attempts[1].classes)
+                self.assertIsNot(attempts[0].specdone, attempts[1].specdone)
+                self.assertTrue(scopes)
+                self.assertTrue(all(gen.specing == {} for gen in attempts))
+                generator = attempts[-1]
+                self.assertEqual(set(generator.hierarchies), {prefix + "Options"})
+                self.assertEqual(generator.classes[prefix + "Options"].tag, 0)
+                self.assertNotIn(prefix + "Options", generator.tmpl)
+                self.assertIn(prefix + "UnusedErrors", generator.tmpl)
+                self.assertNotIn(prefix + "UnusedChild", generator.classes)
+                self.assertNotIn(prefix + "NestedChild", generator.classes)
+
+    def test_speculative_constructor_does_not_admit_dependencies(self):
+        path = ROOT / "tests/programs/classes/constructor_dependency_preuse_speculative.py"
+        program, request = Gen.program, Gen.request_hierarchy
+        attempts, requests = [], []
+
+        def counted(gen, mods):
+            attempts.append(gen)
+            return program(gen, mods)
+
+        def requested(gen, name):
+            requests.append((name, gen.xtry))
+            return request(gen, name)
+
+        with patch.object(Gen, "program", counted), \
+                patch.object(Gen, "request_hierarchy", requested):
+            ir = driver.compile_program(str(path), path.read_text(),
+                                        [str(ROOT / "tests"), str(ROOT / "lib")], "")
+        self.assertIn("@main", ir)
+        self.assertEqual(len(attempts), 2)
+        self.assertTrue(all(gen.hierarchies == {} for gen in attempts))
+        self.assertTrue(all(gen.specing == {} for gen in attempts))
+        self.assertIn(("mods$constructor_dependency$NestedErrors", "protocol:constructor:Dormant"),
+                      requests)
+        self.assertIn("protocol:constructor:Dormant", attempts[-1].xnot)
+
     def test_restart_rewinds_known_globals_and_uses_fresh_gen(self):
         self.restart_contract(driver.compile_program)
 

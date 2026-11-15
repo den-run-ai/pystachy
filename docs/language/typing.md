@@ -818,6 +818,12 @@ explicit `Generic` classes, inferred fields, stored
 deferred string field annotations and fields annotated with a specialization of another
 class template.
 
+A standalone template construction can discover its required fixed-layout constructor
+dependencies before a subclass is used. For example, `errors = Errors(Options(...))`
+can precede `Checker(errors)` when `Options` has independently annotated storage.
+This retry also supports imported, aliased, qualified and quoted parameter annotations;
+it does not activate unrelated imported subclasses or make variable-layout fields nominal.
+
 An imported subclass becomes available when compiled code needs it, including class
 tests and annotations of a called helper. Its activation recompiles earlier dispatch sites
 with the complete set of used classes. Unused imported siblings and their overrides stay

@@ -1,0 +1,161 @@
+{
+  "description": "One instrumented AOT process per mode and source, synthetic sparse optional reward streams. No timing measurements.",
+  "baseline_pr": 1493,
+  "baseline_published_commit": "adac7f4c88fd86ddaecbb889042b778c701b29ed",
+  "baseline_native_source_commit": "d68c9837ccad11e46b29a8955cc125c1a33cb77b",
+  "baseline_native_sha256": "5dc9973d3a0ff8b79b8ae9ba2ca7d81347b460c8de0a015d6b2acd898c2ebf6e",
+  "baseline_provenance": "Published PR1493 evidence identifies byte-identical compiler/runtime/library sources; final head adds only storage adapter/tests/docs.",
+  "candidate_compiler": "CPython-hosted compiler from candidate commit, LLVM18.1.3 AOT-O2",
+  "python_version": "Python 3.13.16",
+  "llvm_version": "18.1.3",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "flags": {
+    "PYSTACHY_CFLAGS": "-DPYSTACHY_PROFILE_DATA",
+    "PYSTACHY_AOT_OPT": "2 (default)"
+  },
+  "input_sha256": "2582b60cef767a7eb048d014a9148fea4da710fedcea42efed9d99cc86fd4119",
+  "allocation_counter_scope": "C managed allocation requests and requested bytes; GC heap peak. Excludes foreign allocations; not RSS or live retention.",
+  "semantic_note": "Checksums match CPython for all modes; baseline repeated aliases still lose identity, so its observed-alias row is a negative correctness control, not equivalent semantics.",
+  "rows": [
+    {
+      "mode": "typed",
+      "variant": "before",
+      "count": 20000,
+      "stdout": "2436.2187135273493 1250\n",
+      "counters": {
+        "schema": 1,
+        "c_gc_alloc_calls": 18758,
+        "c_gc_requested_bytes": 281620,
+        "c_memcpy_calls": 20,
+        "c_memcpy_requested_bytes": 151,
+        "c_memmove_calls": 0,
+        "c_memmove_requested_bytes": 0,
+        "gc_collections": 0,
+        "gc_peak_heap_bytes": 655360
+      }
+    },
+    {
+      "mode": "typed",
+      "variant": "after",
+      "count": 20000,
+      "stdout": "2436.2187135273493 1250\n",
+      "counters": {
+        "schema": 1,
+        "c_gc_alloc_calls": 18758,
+        "c_gc_requested_bytes": 281627,
+        "c_memcpy_calls": 20,
+        "c_memcpy_requested_bytes": 150,
+        "c_memmove_calls": 0,
+        "c_memmove_requested_bytes": 0,
+        "gc_collections": 0,
+        "gc_peak_heap_bytes": 655360
+      }
+    },
+    {
+      "mode": "observed",
+      "variant": "before",
+      "count": 20000,
+      "stdout": "2436.2187135273493 1250\n",
+      "counters": {
+        "schema": 1,
+        "c_gc_alloc_calls": 37510,
+        "c_gc_requested_bytes": 562952,
+        "c_memcpy_calls": 18770,
+        "c_memcpy_requested_bytes": 150154,
+        "c_memmove_calls": 0,
+        "c_memmove_requested_bytes": 0,
+        "gc_collections": 0,
+        "gc_peak_heap_bytes": 1114112
+      }
+    },
+    {
+      "mode": "observed",
+      "variant": "after",
+      "count": 20000,
+      "stdout": "2436.2187135273493 1250\n",
+      "counters": {
+        "schema": 1,
+        "c_gc_alloc_calls": 37510,
+        "c_gc_requested_bytes": 562959,
+        "c_memcpy_calls": 18770,
+        "c_memcpy_requested_bytes": 150153,
+        "c_memmove_calls": 0,
+        "c_memmove_requested_bytes": 0,
+        "gc_collections": 0,
+        "gc_peak_heap_bytes": 1114112
+      }
+    },
+    {
+      "mode": "typed-alias",
+      "variant": "before",
+      "count": 20000,
+      "stdout": "4687.5 1250\n",
+      "counters": {
+        "schema": 1,
+        "c_gc_alloc_calls": 18758,
+        "c_gc_requested_bytes": 281622,
+        "c_memcpy_calls": 14,
+        "c_memcpy_requested_bytes": 109,
+        "c_memmove_calls": 0,
+        "c_memmove_requested_bytes": 0,
+        "gc_collections": 0,
+        "gc_peak_heap_bytes": 655360
+      }
+    },
+    {
+      "mode": "typed-alias",
+      "variant": "after",
+      "count": 20000,
+      "stdout": "4687.5 1250\n",
+      "counters": {
+        "schema": 1,
+        "c_gc_alloc_calls": 18759,
+        "c_gc_requested_bytes": 281660,
+        "c_memcpy_calls": 15,
+        "c_memcpy_requested_bytes": 116,
+        "c_memmove_calls": 0,
+        "c_memmove_requested_bytes": 0,
+        "gc_collections": 0,
+        "gc_peak_heap_bytes": 655360
+      }
+    },
+    {
+      "mode": "observed-alias",
+      "variant": "before",
+      "count": 20000,
+      "stdout": "4687.5 1250\n",
+      "counters": {
+        "schema": 1,
+        "c_gc_alloc_calls": 37510,
+        "c_gc_requested_bytes": 562954,
+        "c_memcpy_calls": 18764,
+        "c_memcpy_requested_bytes": 150112,
+        "c_memmove_calls": 0,
+        "c_memmove_requested_bytes": 0,
+        "gc_collections": 0,
+        "gc_peak_heap_bytes": 1048576
+      }
+    },
+    {
+      "mode": "observed-alias",
+      "variant": "after",
+      "count": 20000,
+      "stdout": "4687.5 1250\n",
+      "counters": {
+        "schema": 1,
+        "c_gc_alloc_calls": 18761,
+        "c_gc_requested_bytes": 281742,
+        "c_memcpy_calls": 15,
+        "c_memcpy_requested_bytes": 119,
+        "c_memmove_calls": 0,
+        "c_memmove_requested_bytes": 0,
+        "gc_collections": 0,
+        "gc_peak_heap_bytes": 720896
+      }
+    }
+  ],
+  "candidate_local_commit": "8cc65f440b94e1b13a3f4015eda51bfef3f805bc",
+  "candidate_published_commit": "b77d496547b733f4c121400ad1334f54aa33e1f8",
+  "candidate_source_tree": "7f6dfe900836cf9dd70cbd214e51a32b5bc04c58",
+  "candidate_provenance": "Git Data publication preserves the complete measured source tree byte-for-byte; only commit metadata differs from the local candidate commit."
+}

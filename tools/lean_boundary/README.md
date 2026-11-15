@@ -8,6 +8,7 @@ the model does not establish that the exporter or runtime implements that model.
 |---|---|---|
 | Dynamic `Any` | Payload reads have matching type guards and compatible class layout prefixes | Exported layouts, runtime tag/boxing contracts and LLVM offsets |
 | Reference boxing | A non-null reference round trip preserves its address, mutable aliases and abstract tracing edge | Bounded C-AST adapter, physical layout correspondence and allocator/collector semantics |
+| Numeric-list identity | Initialized companions preserve identity readback and tracing after stores, reserve growth and contiguous slice/copy | Bounded C-AST adapter, valid nonoverflowing lengths, allocation-time liveness and collector semantics |
 | Lists, dictionaries and sets | Unchecked accesses have bounds/live-entry facts | Runtime effects and container contracts |
 | Closure cells and calls | Captured-container facts survive only valid reads; visible callee writes invalidate facts | Independent Python body-effect scan and cell ABI |
 | Promoting integers | Selected result-fit claims and actual checked `+`, `-`, `*` reconstruction paths | Other inline arithmetic, LLVM and integer runtime |
@@ -284,7 +285,7 @@ retain the list. This negative control checks the need for the actual trace edge
 the list/companion chain is runtime-tested, not formally established by the
 reference-transfer theorem.
 
-### Initialized numeric-list companions
+### Numeric-list companion stores and copies
 
 `PystachyCompanion.accepted_identity_roundtrip` proves that an identity store and
 load recover the exact box address for arbitrary other memory cells.
@@ -295,31 +296,49 @@ list-header → companion-array → identity-box chain, and
 These theorems replace the assumed downstream edge for this bounded list case;
 they retain the assumption that the concrete collector follows scanned words.
 
+`accepted_copy_identity` proves that reserve growth and contiguous slice/copy
+retain each original item address, for arbitrary source/destination contents and
+every live index. Reserve copies the kind header and all live identity words;
+slicing copies the selected identities after the destination's own kind header.
+`accepted_copy_traces_identity` puts every copied identity inside the new scanned
+extent, and `accepted_copied_root_chain` establishes its header/array trace chain.
+Reserve keeps the original list header, so its existing aliases see the attached
+replacement array. A slice gets a fresh header and array while sharing item identities.
+
 `tools/check_lean_companion.py` obtains the real `List` field offsets and widths
-by compiling constants in the runtime's translation unit. Clang AST comparisons
+by compiling constants in the runtime's translation unit. Length, capacity,
+raw-data and companion fields must occupy distinct full words inside the header;
+an anonymous union is rejected even if the runtime's own assertions allow it.
+The raw `Slot` must contain exactly one full word at offset zero, so padding cannot
+change the setter's stride or address. Member-name macros are undefined before
+independent layout extraction. Clang AST comparisons
 check the complete bounded constructor, companion allocation/materialization,
-identity setter and identity getter bodies. Both header allocation paths and the
-companion allocation must use scanned storage. The pointer attachment, successful
-setter and getter must use the same original addresses and `i + 1` word; the
-allocation must include its kind-header word. Unknown statements, narrowing
-casts, missing/overwritten stores, mismatched offsets and shortened allocations
-fail closed. The reference contract spells out the raw-data store independently
-of `AT`, so a changed macro cannot redirect it into the identity array. The
-native JSON parser rejects missing/extra fields, schema downgrades and oversized
-indices. Run `python3.13 tools/check_lean_companion.py`; its tests and theorem axiom
-audit are also included by `make check-lean-boundary`.
+clean-companion fast path, identity setter/getter, reserve and contiguous
+slice/copy bodies. Header and companion allocations must use scanned storage.
+The adapter derives the copy's source/destination offsets, extra header words
+and scanned extent; Lean checks their relationships. The pointer attachment,
+setter and getter must retain the same addresses and `i + 1` word. Unknown
+statements, narrowing length/capacity fields, changed copy sources, truncated
+extents and missing/overwritten attachments fail closed. The reference spells
+out the raw-data store independently of `AT` and undefines callable macros before
+parsing, so those macros cannot rewrite both the code and its reference. Schema 2
+requires both copy contracts; the native parser rejects omissions, schema
+downgrades, extra fields and oversized offsets. Run
+`python3.13 tools/check_lean_companion.py`; its tests and theorem axiom audit are
+also included by `make check-lean-boundary`.
 
 The companion theorem starts with a stable, initialized companion and a valid
-live index. It establishes the identity-address and tracing contracts after a
-successful direct store. It does **not** prove materialization's numeric value,
-capacity/length invariants, promotion, resizing, copying, iteration, all list
-mutations, tuple/generator companions, or a whole program's roots. Kind masks do
-not affect these address/extent obligations; their numeric semantics remain
-outside the model. The C-to-model adapter and layout extraction, pointer/word
-ABI, called helper semantics, allocator slack/size classes and collector
-implementation remain trusted. The null reference-box branch is structurally
-checked but excluded from its theorem. These results do not justify removing
-roots, companions or runtime guards.
+live index. Store and copy results assume successful operations, valid
+length/capacity relationships and nonoverflowing C extents. The copy model assumes
+fresh destination storage and standard `memcpy` behavior. It does **not** prove
+materialization's numeric value, those invariants, promotion, iteration, stepped
+copies, other list mutations, tuple/generator companions or a whole program's
+roots. In particular, a final trace chain is not a proof of source liveness
+while allocations or collections execute. Kind masks' numeric semantics remain
+outside the model. The C-to-model adapter, layout extraction, pointer/word ABI,
+called helper semantics, allocator slack/size classes and collector implementation
+remain trusted. The null reference-box branch is structurally checked but excluded
+from its theorem. These results do not justify removing roots, companions or guards.
 
 ## How actual IR reaches the model
 
