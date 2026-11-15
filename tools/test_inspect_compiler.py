@@ -540,8 +540,6 @@ print(consume(adapt(Left(4))), consume(adapt(Right([8]))), consume(adapt(Left(10
         advances = [fn for fn in snapshot["functions"] if fn["name"].endswith("typed_iterator.<locals>.advance")]
         self.assertTrue(advances)
         self.assertTrue({"int", "str", "float", "Payload"} <= {fn["return_representation"] for fn in advances})
-        for fn in advances:
-            self.assertIn(fn["return_representation"], fn["specialization"]["type_bindings"].values())
         adapters = attempt["callable_boundary"]["adapters"]
         readers = [adapter for adapter in adapters if adapter["signature"] == "callable[str,int]"]
         self.assertEqual(len(readers), 2)
@@ -551,6 +549,27 @@ print(consume(adapt(Left(4))), consume(adapt(Right([8]))), consume(adapt(Left(10
             self.assertEqual(footprint["status"], "completed")
             self.assertEqual(footprint["totals"]["dynamic_operations"], {})
             self.assertEqual(footprint["totals"]["dynamic_runtime_calls"], {})
+
+        # An explicit result context can supply the fixed signature without
+        # demanding lexical bindings. An unconstrained factory must still record T.
+        probe = self.source("from adapter import TypedIterator, typed_iterator\n"
+                            "def consume(source: TypedIterator[float]) -> float:\n"
+                            "    return next(source)\n"
+                            "contextual: TypedIterator[float] = typed_iterator((1.5,))\n"
+                            "inferred = typed_iterator(['bound'])\n"
+                            "print(consume(contextual), next(inferred))\n")
+        completed, destination = self.inspect(probe, output="binding-demand", args=("--typed-after-only",), env=env)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        snapshot = self.snapshot(destination, "typed-after")
+        advances = {fn["return_representation"]: fn for fn in snapshot["functions"]
+                    if fn["name"].endswith("typed_iterator.<locals>.advance")}
+        self.assertEqual(set(advances), {"float", "str"})
+        self.assertIn("str", advances["str"]["specialization"]["type_bindings"].values())
+        consume = self.named_function(snapshot, "consume")
+        self.assertEqual(consume["return_representation"], "float")
+        self.assertEqual(consume["parameters"][0]["type"], "TypedIterator[float]")
+        fields = self.report(destination)["attempts"][-1]["callable_boundary"]["fields"]
+        self.assertEqual(fields[consume["parameters"][0]["representation"]], {"_advance": "callable[float]"})
 
     def test_rejected_class_is_explained_without_publishing_its_tentative_key(self):
         program = self.source("class Kept:\n    def __init__(self, value):\n        self.value = value\n"

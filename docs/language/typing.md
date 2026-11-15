@@ -650,6 +650,16 @@ outer parameter or return annotations; an explicit local or stored-callable
 annotation establishes its own contract. Conflicting or unavailable bindings do
 not supply a type for such a contract. Bindings belong to each specialization and
 are captured where a nested function is defined, independently of its later caller.
+
+An explicit destination can also guide a fresh generic result. If a factory
+declares `-> Wrapper[T]` and its caller requests `Wrapper[int]`, that result
+context can reach a returned constructor or forwarding call, including a simple
+local chain that retains a fresh result. The context is part of the function's
+specialization key. Argument bindings keep their concrete types, and returning
+an existing object keeps its established representation. This matters when a
+stored callback's interface has a different integer representation from its
+source; see [promoting integer callable boundaries](../python-int.md#callable-boundaries).
+
 A PEP 695 function's `**P` and `*Ts` are such type parameters too, also in its nested defs:
 `def logged[**P, R](fn: Callable[P, R]) -> Callable[P, R]` may return a nested
 `def wrapper(*args: P.args, **kwargs: P.kwargs) -> R` that forwards them (also with

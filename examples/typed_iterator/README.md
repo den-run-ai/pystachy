@@ -70,6 +70,14 @@ their existing inference rules; the fixed contract is established by the nested
 callback and the wrapper's explicitly annotated fields. The original concrete
 `int_iterator(source)` remains available when the boundary must require integers.
 
+An explicit destination annotation can choose the representation of a freshly
+constructed interface. The generic `-> TypedIterator[T]` return annotation carries
+that context through the factory; an inferred result keeps its source's inferred
+view. With promoting integers, fixed tuples still cross the stored callable's
+checked boundary. A requested promoting tuple view can copy a tuple containing
+`-2**63`, including nested tuples; see the
+[integer boundary rules](../../docs/python-int.md#callable-boundaries).
+
 ## 3. Keep the consumer shared
 
 ```python

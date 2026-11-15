@@ -738,6 +738,13 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     yield_context = not resultsoft and fresh_yield_context(f, want)
     context = f.ret == "" and "?" not in want and ("list[" in want or "dict[" in want or "set[" in want or "tuple[" in want)
     context = context or (f.ret == "" and f.node.s == "<lambda>" and unopt(want) in self.classes and self.classes[unopt(want)].origin in self.tparams)
+    if f.ret == "" and not resultsoft and unopt(want) in self.classes:
+        # An explicit generic result contract can select the representation of a
+        # fresh interface returned by a factory. Preserve the lexical argument
+        # bindings: without this context an inferred result keeps its own view.
+        result = self.parse_expr(f.tvresult.s) if f.tvresult.kind == "str" else f.tvresult
+        origin = self.classes[unopt(want)].origin
+        context = context or (origin in self.tparams and result.kind == "index" and result.kids[0].kind == "name" and result.kids[0].s == origin)
     locals = local_result(body.kids, f.params) if context and not resultsoft else []
     want = want if yield_context or (context and (contextual_result(body) or len(locals) > 0)) else ""
     cmpops = cmpfields != "" or self.curfn.cmpops

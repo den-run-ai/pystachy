@@ -10,7 +10,7 @@ from compiler_state_probe import ROOT
 from src.pystachy_compiler import declarations, diagnostics, driver, loader, templates
 from src.pystachy_compiler.diagnostics import Rejoin
 from src.pystachy_compiler.gen import Gen
-from src.pystachy_compiler.specs import BIG, GLUE, SPECSHOW
+from src.pystachy_compiler.specs import BIG, BIGOPT, GLUE, SPECSHOW
 from src.pystachy_compiler.syntax import LAMBDAS
 
 
@@ -60,7 +60,7 @@ class GenericStateTests(unittest.TestCase):
                 root.update(saved)
         diagnostics.SRC, diagnostics.CAPTURE, diagnostics.PHASE = self.observer
 
-    def compile(self, source):
+    def compile(self, source, paths=()):
         generations = []
         original = Gen.program
         messages = io.StringIO()
@@ -72,7 +72,7 @@ class GenericStateTests(unittest.TestCase):
         with patch.object(Gen, "program", observed), redirect_stderr(messages):
             try:
                 ir = driver.compile_program("generics.py", textwrap.dedent(source),
-                                            [str(ROOT / "lib")], "")
+                                            [str(path) for path in paths] + [str(ROOT / "lib")], "")
                 status = 0
             except SystemExit as error:
                 ir, status = "", error.code
@@ -119,6 +119,28 @@ class GenericStateTests(unittest.TestCase):
             for f in g.funcs[name].insts.values():
                 self.assertEqual(f.tvars, {})
         self.assertFalse(any(fn.f.name == "__iter__" for fn in g.fns))
+
+    def test_lexical_callback_views_keep_function_and_field_storage_bindings(self):
+        source = (ROOT / "tests/programs/generics/generic_lexical_value_views.py").read_text()
+        status, _, messages, generations = self.compile(
+            "# pystachy: python-int\n" + source,
+            [ROOT / "examples/typed_iterator", ROOT / "tests/python_int_modules"])
+        self.assertEqual(status, 0, messages)
+        g = generations[-1]
+        wrappers = [cls for cls in g.classes.values() if cls.origin == "adapter$TypedIterator"]
+        by_binding = {}
+        for cls in wrappers:
+            by_binding.setdefault(cls.tvars["adapter$T"], []).append(cls)
+        self.assertTrue(all(len(classes) == 1 for classes in by_binding.values()))
+        pair = f"tuple[{BIG},{BIG}]"
+        self.assertEqual(by_binding[pair][0].ftypes["_advance"], "callable[tuple[int,int]]")
+        self.assertEqual(by_binding[BIGOPT][0].ftypes["_advance"], f"callable[{BIGOPT}]")
+        self.assertIn("tuple[opt[int],str]", by_binding)
+        functions = g.funcs["adapter$typed_iterator"].insts.values()
+        self.assertTrue(any(f.tvars.get("adapter$T") == "tuple[int,int]" for f in functions))
+        boxes = [cls for cls in g.classes.values() if cls.origin == "Box"]
+        self.assertTrue(any(cls.tvars["T"] == "tuple[int,int]" and
+                            cls.ftypes["value"] == "tuple[int,int]" for cls in boxes))
 
     def test_conflicting_function_bindings_do_not_publish_the_first_argument(self):
         source = '''\
