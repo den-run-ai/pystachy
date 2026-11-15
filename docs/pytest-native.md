@@ -9,12 +9,21 @@ are unchanged.
 ## Run a suite
 
 Use the development environment from [installation](install.md), including the
-pinned pytest in `tools/requirements-dev.txt`, and a working LLVM toolchain:
+pinned pytest in `tools/requirements-dev.txt`, and a working LLVM toolchain. Build
+the native compiler with `make` first: it reuses the native program cache, so an
+unchanged JIT rerun skips compilation, while the default hosted compiler compiles
+every run again.
 
 ```sh
-python3 tools/pytest_native.py path/to/tests --mode jit --compare
-python3 tools/pytest_native.py path/to/tests --mode aot --compare --json build/test-results.json
+python3 tools/pytest_native.py path/to/tests --compiler ./pystachy
+python3 tools/pytest_native.py path/to/tests/test_api.py::test_parse --compiler ./pystachy
+python3 tools/pytest_native.py path/to/tests --mode aot --compiler ./pystachy --json build/test-results.json
 ```
+
+Node IDs (`path::test` or `path::test[id]`) select cases as pytest's arguments do:
+in the order given, a repeated ID once, and an unknown ID is an error. Give node IDs
+for every argument, with one module's IDs together. The module is still imported
+whole. The real pytest oracle runs the same selection.
 
 Oracle comparison is enabled by default; `--compare` also selects it explicitly.
 It runs the **original** files in real CPython pytest, independently of
@@ -34,8 +43,20 @@ qualification, without repeating comparison inside every timed execution.
 `--mode python` runs generated code under CPython and is useful for distinguishing
 collector/helper mistakes from native compiler behavior. `--compiler './pystachy'`
 selects a bootstrapped compiler; the default is the hosted compiler in this
-checkout. `--python` selects the oracle interpreter. `--timeout` bounds each
-build/run/oracle subprocess.
+checkout. `--python` selects the oracle interpreter; a missing pytest is reported
+as such. `--timeout` bounds each build/run/oracle subprocess.
+
+Each failure shows the native exception's class and message (`KeyError: 'missing'`),
+as pytest's summary does. A comparison assertion with no message (`==`, `!=`, `<`,
+`<=`, `>`, `>=`, `in`, `not in`) also shows its operands' `repr()`s, such as
+`assert 4 == 5`. Names are read again for this; other operands are kept in reserved
+temporaries as they are evaluated, once and in order. When the original pytest also
+fails, its own report follows. A case or phase whose outcome differs from pytest's
+is listed as `MISMATCH`, and a summary line counts the outcomes. If the native
+compiler rejects the operand code (for example, `repr()` of a function), the program
+was never started, and the suite is built again with plain assertion messages; the
+JSON keeps that build's error, and later runs of the unchanged code skip it.
+Compile errors name the generated module, whose lines can differ from the source.
 
 `--root` defaults to the current directory. Selected files must be inside it and
 must share one source directory. The latter restriction preserves sibling-import
@@ -43,6 +64,9 @@ resolution; combining arbitrary directories requires additional import support.
 All selected modules are collected before execution, imported before tests run,
 and executed in one process, preserving shared imported-module state. Empty test
 modules are imported too: an import failure cannot disappear from the result.
+Generated modules keep their test modules' names, as pytest imports them, so
+`__module__` and `repr()` of their classes and functions match. A module that
+cannot be collected is reported without running the pytest oracle.
 
 Generated sources, executables and phase reports live in `--work-dir` (default
 `build/pytest-native`). The CLI locks that directory against concurrent runs;
@@ -76,6 +100,17 @@ This hosted tool currently targets Linux and macOS.
 - `pytest.fail`, `pytest.skip`, `pytest.xfail`, and static skip/skipif/xfail marks,
   including strict XPASS and `run=False`. Boolean conditional markers require
   an explicit reason, as in pinned pytest.
+- A test decorator's `skipif` condition may be an expression, such as
+  `sys.platform == "win32"`: it is evaluated once at import, in decorator order, as
+  pytest's decorator is. String conditions, which pytest evaluates as code, and
+  conditions inside `pytest.param` remain literal-only.
+- `@pytest.mark.usefixtures("name", ...)` with literal names, set up after autouse
+  fixtures and before argument fixtures, nearest decorator first, as pytest does.
+- Marks that only label tests, such as `@pytest.mark.slow`, with literal arguments.
+  The isolated oracle loads no plugin that gives them meaning; `-m` selection is
+  not supported. `filterwarnings` and other marks with behavior are rejected.
+- `if __name__ == "__main__":` blocks without `else`, which never run in a module
+  that pytest imports, are left out.
 - Explicit per-source dynamic `Any` opt-in for supported open payloads. The runner
   itself stores metadata, statuses and exceptions in concrete types.
 
