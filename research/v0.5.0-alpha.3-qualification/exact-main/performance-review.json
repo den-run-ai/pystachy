@@ -1,0 +1,709 @@
+{
+  "schema_version": 1,
+  "reviewed_at": "2026-11-15T09:44:58.457Z",
+  "status": "accepted_for_advisory_performance_smoke_scope",
+  "candidate_commit": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+  "candidate_tree": "107460d5f89bdcf37f2741b233eac0568d82604a",
+  "baseline_commit": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+  "checks": {
+    "exact_main_push": true,
+    "exact_tree": true,
+    "attempt_one": true,
+    "completed_success": true,
+    "one_job_success": true,
+    "actual_base_804": true,
+    "actual_head_6bf": true,
+    "all_49_metric_rows_ok": true,
+    "unique_49_metric_pairs": true,
+    "all_11_workloads": true,
+    "one_exact_source_artifact": true,
+    "upload_digest_and_size_match_api": true
+  },
+  "run": {
+    "id": 43699643753,
+    "name": "Performance smoke",
+    "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43699643753",
+    "path": ".github/workflows/performance.yml",
+    "head_branch": "main",
+    "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "run_attempt": 1,
+    "created_at": "2026-11-15T09:31:21Z",
+    "updated_at": "2026-11-15T09:39:02Z",
+    "run_started_at": "2026-11-15T09:31:21Z",
+    "head_commit": {
+      "id": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "tree_id": "107460d5f89bdcf37f2741b233eac0568d82604a",
+      "message": "Merge qualified v0.5.0-alpha.3 (#1494)\n\nPrepare v0.5.0-alpha.3 values and numeric protocols",
+      "timestamp": "2026-11-15T09:31:15Z",
+      "author": {
+        "name": "Denis Akhiyarov",
+        "email": "denis.akhiyarov@gmail.com"
+      },
+      "committer": {
+        "name": "GitHub",
+        "email": "noreply@github.com"
+      }
+    }
+  },
+  "jobs": {
+    "total_count": 1,
+    "jobs": [
+      {
+        "id": 132767742752,
+        "run_id": 43699643753,
+        "workflow_name": "Performance smoke",
+        "head_branch": "main",
+        "run_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/43699643753",
+        "run_attempt": 1,
+        "node_id": "CR_kwDOU_6QTs8AAAAe6ZL7IA",
+        "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+        "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/jobs/132767742752",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43699643753/job/132767742752",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-11-15T09:31:21Z",
+        "started_at": "2026-11-15T09:31:23Z",
+        "completed_at": "2026-11-15T09:39:02Z",
+        "name": "smoke",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1,
+            "started_at": "2026-11-15T09:31:24Z",
+            "completed_at": "2026-11-15T09:31:25Z"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2,
+            "started_at": "2026-11-15T09:31:25Z",
+            "completed_at": "2026-11-15T09:31:27Z"
+          },
+          {
+            "name": "Select baseline",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3,
+            "started_at": "2026-11-15T09:31:27Z",
+            "completed_at": "2026-11-15T09:31:27Z"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4,
+            "started_at": "2026-11-15T09:31:27Z",
+            "completed_at": "2026-11-15T09:31:28Z"
+          },
+          {
+            "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5,
+            "started_at": "2026-11-15T09:31:28Z",
+            "completed_at": "2026-11-15T09:31:34Z"
+          },
+          {
+            "name": "Run tools/setup.sh --minimal",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6,
+            "started_at": "2026-11-15T09:31:34Z",
+            "completed_at": "2026-11-15T09:31:39Z"
+          },
+          {
+            "name": "Paired performance smoke",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 7,
+            "started_at": "2026-11-15T09:31:39Z",
+            "completed_at": "2026-11-15T09:38:57Z"
+          },
+          {
+            "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 8,
+            "started_at": "2026-11-15T09:38:57Z",
+            "completed_at": "2026-11-15T09:38:58Z"
+          },
+          {
+            "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 14,
+            "started_at": "2026-11-15T09:38:58Z",
+            "completed_at": "2026-11-15T09:38:59Z"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 15,
+            "started_at": "2026-11-15T09:38:59Z",
+            "completed_at": "2026-11-15T09:38:59Z"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 16,
+            "started_at": "2026-11-15T09:38:59Z",
+            "completed_at": "2026-11-15T09:38:59Z"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17,
+            "started_at": "2026-11-15T09:38:59Z",
+            "completed_at": "2026-11-15T09:38:59Z"
+          }
+        ],
+        "check_run_url": "https://api.github.com/repos/den-run-ai/pystachy/check-runs/132767742752",
+        "labels": [
+          "ubuntu-24.04"
+        ],
+        "runner_id": 1000090838,
+        "runner_name": "GitHub Actions 1000090838",
+        "runner_group_id": 0,
+        "runner_group_name": "GitHub Actions"
+      }
+    ]
+  },
+  "artifact_metadata": {
+    "total_count": 1,
+    "artifacts": [
+      {
+        "id": 14155933238,
+        "node_id": "MDg6QXJ0aWZhY3QxNDE1NTkzMzIzOA==",
+        "name": "perf-smoke",
+        "size_in_bytes": 7645,
+        "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14155933238",
+        "archive_download_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14155933238/zip",
+        "expired": false,
+        "digest": "sha256:cc2e12ef198913e7528ff14c9fc497f39137b8ce404f62ecc4c0b4128195aa9e",
+        "created_at": "2026-11-15T09:38:58Z",
+        "updated_at": "2026-11-15T09:38:58Z",
+        "expires_at": "2026-12-15T09:38:57Z",
+        "workflow_run": {
+          "id": 43699643753,
+          "repository_id": 1409192014,
+          "head_repository_id": 1409192014,
+          "head_branch": "main",
+          "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93"
+        }
+      }
+    ]
+  },
+  "measurements": [
+    {
+      "workload": "autograd",
+      "metric": "build_s",
+      "base_s": 0.2486,
+      "head_s": 0.2449,
+      "reported_change_percent": -1.5,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8740162Z | autograd | build_s | 0.2486s | 0.2449s | -1.5% | ok |"
+    },
+    {
+      "workload": "autograd",
+      "metric": "jit_process_s",
+      "base_s": 0.0861,
+      "head_s": 0.0869,
+      "reported_change_percent": 0.8,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8740563Z | autograd | jit_process_s | 0.0861s | 0.0869s | +0.8% | ok |"
+    },
+    {
+      "workload": "autograd",
+      "metric": "jit_loop_s",
+      "base_s": 0.0236,
+      "head_s": 0.024,
+      "reported_change_percent": 1.6,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8740971Z | autograd | jit_loop_s | 0.0236s | 0.0240s | +1.6% | ok |"
+    },
+    {
+      "workload": "autograd",
+      "metric": "aot_process_s",
+      "base_s": 0.0242,
+      "head_s": 0.0259,
+      "reported_change_percent": 7.1,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8741404Z | autograd | aot_process_s | 0.0242s | 0.0259s | +7.1% | ok |"
+    },
+    {
+      "workload": "autograd",
+      "metric": "aot_loop_s",
+      "base_s": 0.021,
+      "head_s": 0.0227,
+      "reported_change_percent": 8,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8741808Z | autograd | aot_loop_s | 0.0210s | 0.0227s | +8.0% | ok |"
+    },
+    {
+      "workload": "numeric",
+      "metric": "jit_process_s",
+      "base_s": 0.1036,
+      "head_s": 0.1017,
+      "reported_change_percent": -1.9,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8742207Z | numeric | jit_process_s | 0.1036s | 0.1017s | -1.9% | ok |"
+    },
+    {
+      "workload": "numeric",
+      "metric": "jit_loop_s",
+      "base_s": 0.0409,
+      "head_s": 0.0412,
+      "reported_change_percent": 0.8,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8742599Z | numeric | jit_loop_s | 0.0409s | 0.0412s | +0.8% | ok |"
+    },
+    {
+      "workload": "numeric",
+      "metric": "aot_process_s",
+      "base_s": 0.0302,
+      "head_s": 0.0299,
+      "reported_change_percent": -1.1,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8742985Z | numeric | aot_process_s | 0.0302s | 0.0299s | -1.1% | ok |"
+    },
+    {
+      "workload": "numeric",
+      "metric": "aot_loop_s",
+      "base_s": 0.0273,
+      "head_s": 0.027,
+      "reported_change_percent": -1,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8743366Z | numeric | aot_loop_s | 0.0273s | 0.0270s | -1.0% | ok |"
+    },
+    {
+      "workload": "fnmatch",
+      "metric": "build_s",
+      "base_s": 5.1721,
+      "head_s": 5.1653,
+      "reported_change_percent": -0.1,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8743751Z | fnmatch | build_s | 5.1721s | 5.1653s | -0.1% | ok |"
+    },
+    {
+      "workload": "fnmatch",
+      "metric": "jit_process_s",
+      "base_s": 1.7279,
+      "head_s": 1.7069,
+      "reported_change_percent": -1.2,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8744155Z | fnmatch | jit_process_s | 1.7279s | 1.7069s | -1.2% | ok |"
+    },
+    {
+      "workload": "fnmatch",
+      "metric": "jit_loop_s",
+      "base_s": 0.0246,
+      "head_s": 0.0249,
+      "reported_change_percent": 0.9,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8744558Z | fnmatch | jit_loop_s | 0.0246s | 0.0249s | +0.9% | ok |"
+    },
+    {
+      "workload": "fnmatch",
+      "metric": "aot_process_s",
+      "base_s": 0.0235,
+      "head_s": 0.024,
+      "reported_change_percent": 2.3,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8744953Z | fnmatch | aot_process_s | 0.0235s | 0.0240s | +2.3% | ok |"
+    },
+    {
+      "workload": "fnmatch",
+      "metric": "aot_loop_s",
+      "base_s": 0.0199,
+      "head_s": 0.0203,
+      "reported_change_percent": 2.3,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8745675Z | fnmatch | aot_loop_s | 0.0199s | 0.0203s | +2.3% | ok |"
+    },
+    {
+      "workload": "json",
+      "metric": "jit_process_s",
+      "base_s": 1.6582,
+      "head_s": 1.667,
+      "reported_change_percent": 0.5,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8746040Z | json | jit_process_s | 1.6582s | 1.6670s | +0.5% | ok |"
+    },
+    {
+      "workload": "json",
+      "metric": "jit_loop_s",
+      "base_s": 0.0251,
+      "head_s": 0.0252,
+      "reported_change_percent": 0.5,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8746641Z | json | jit_loop_s | 0.0251s | 0.0252s | +0.5% | ok |"
+    },
+    {
+      "workload": "json",
+      "metric": "aot_process_s",
+      "base_s": 0.0251,
+      "head_s": 0.0253,
+      "reported_change_percent": 0.6,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8746988Z | json | aot_process_s | 0.0251s | 0.0253s | +0.6% | ok |"
+    },
+    {
+      "workload": "json",
+      "metric": "aot_loop_s",
+      "base_s": 0.0217,
+      "head_s": 0.0218,
+      "reported_change_percent": 0.2,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8747356Z | json | aot_loop_s | 0.0217s | 0.0218s | +0.2% | ok |"
+    },
+    {
+      "workload": "repair_scan",
+      "metric": "jit_process_s",
+      "base_s": 1.7218,
+      "head_s": 1.6939,
+      "reported_change_percent": -1.6,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8747733Z | repair_scan | jit_process_s | 1.7218s | 1.6939s | -1.6% | ok |"
+    },
+    {
+      "workload": "repair_scan",
+      "metric": "jit_loop_s",
+      "base_s": 0.0579,
+      "head_s": 0.0505,
+      "reported_change_percent": -12.8,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8748184Z | repair_scan | jit_loop_s | 0.0579s | 0.0505s | -12.8% | ok |"
+    },
+    {
+      "workload": "repair_scan",
+      "metric": "aot_process_s",
+      "base_s": 0.0509,
+      "head_s": 0.0462,
+      "reported_change_percent": -9.3,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8748629Z | repair_scan | aot_process_s | 0.0509s | 0.0462s | -9.3% | ok |"
+    },
+    {
+      "workload": "repair_scan",
+      "metric": "aot_loop_s",
+      "base_s": 0.0469,
+      "head_s": 0.0425,
+      "reported_change_percent": -9.5,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8749028Z | repair_scan | aot_loop_s | 0.0469s | 0.0425s | -9.5% | ok |"
+    },
+    {
+      "workload": "copy_int",
+      "metric": "build_s",
+      "base_s": 0.1343,
+      "head_s": 0.134,
+      "reported_change_percent": -0.2,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8749415Z | copy_int | build_s | 0.1343s | 0.1340s | -0.2% | ok |"
+    },
+    {
+      "workload": "copy_int",
+      "metric": "jit_process_s",
+      "base_s": 0.0799,
+      "head_s": 0.0797,
+      "reported_change_percent": -0.3,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8749866Z | copy_int | jit_process_s | 0.0799s | 0.0797s | -0.3% | ok |"
+    },
+    {
+      "workload": "copy_int",
+      "metric": "jit_loop_s",
+      "base_s": 0.0373,
+      "head_s": 0.0374,
+      "reported_change_percent": 0.1,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8750316Z | copy_int | jit_loop_s | 0.0373s | 0.0374s | +0.1% | ok |"
+    },
+    {
+      "workload": "copy_int",
+      "metric": "aot_process_s",
+      "base_s": 0.0306,
+      "head_s": 0.0306,
+      "reported_change_percent": 0,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8750746Z | copy_int | aot_process_s | 0.0306s | 0.0306s | +0.0% | ok |"
+    },
+    {
+      "workload": "copy_int",
+      "metric": "aot_loop_s",
+      "base_s": 0.0286,
+      "head_s": 0.0287,
+      "reported_change_percent": 0.3,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8751128Z | copy_int | aot_loop_s | 0.0286s | 0.0287s | +0.3% | ok |"
+    },
+    {
+      "workload": "copy_float",
+      "metric": "jit_process_s",
+      "base_s": 0.075,
+      "head_s": 0.0749,
+      "reported_change_percent": -0.1,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8751565Z | copy_float | jit_process_s | 0.0750s | 0.0749s | -0.1% | ok |"
+    },
+    {
+      "workload": "copy_float",
+      "metric": "jit_loop_s",
+      "base_s": 0.0302,
+      "head_s": 0.0286,
+      "reported_change_percent": -5.3,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8751983Z | copy_float | jit_loop_s | 0.0302s | 0.0286s | -5.3% | ok |"
+    },
+    {
+      "workload": "copy_float",
+      "metric": "aot_process_s",
+      "base_s": 0.0375,
+      "head_s": 0.0345,
+      "reported_change_percent": -7.8,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8752445Z | copy_float | aot_process_s | 0.0375s | 0.0345s | -7.8% | ok |"
+    },
+    {
+      "workload": "copy_float",
+      "metric": "aot_loop_s",
+      "base_s": 0.0355,
+      "head_s": 0.0326,
+      "reported_change_percent": -8,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8752928Z | copy_float | aot_loop_s | 0.0355s | 0.0326s | -8.0% | ok |"
+    },
+    {
+      "workload": "global_int",
+      "metric": "jit_process_s",
+      "base_s": 0.088,
+      "head_s": 0.0863,
+      "reported_change_percent": -1.9,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8753353Z | global_int | jit_process_s | 0.0880s | 0.0863s | -1.9% | ok |"
+    },
+    {
+      "workload": "global_int",
+      "metric": "jit_loop_s",
+      "base_s": 0.0426,
+      "head_s": 0.0426,
+      "reported_change_percent": 0,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8754362Z | global_int | jit_loop_s | 0.0426s | 0.0426s | -0.0% | ok |"
+    },
+    {
+      "workload": "global_int",
+      "metric": "aot_process_s",
+      "base_s": 0.0307,
+      "head_s": 0.0307,
+      "reported_change_percent": 0,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8754864Z | global_int | aot_process_s | 0.0307s | 0.0307s | -0.0% | ok |"
+    },
+    {
+      "workload": "global_int",
+      "metric": "aot_loop_s",
+      "base_s": 0.0288,
+      "head_s": 0.0288,
+      "reported_change_percent": 0,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8755586Z | global_int | aot_loop_s | 0.0288s | 0.0288s | -0.0% | ok |"
+    },
+    {
+      "workload": "global_float",
+      "metric": "jit_process_s",
+      "base_s": 0.0744,
+      "head_s": 0.0767,
+      "reported_change_percent": 3.1,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8756063Z | global_float | jit_process_s | 0.0744s | 0.0767s | +3.1% | ok |"
+    },
+    {
+      "workload": "global_float",
+      "metric": "jit_loop_s",
+      "base_s": 0.0282,
+      "head_s": 0.0301,
+      "reported_change_percent": 6.7,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8756700Z | global_float | jit_loop_s | 0.0282s | 0.0301s | +6.7% | ok |"
+    },
+    {
+      "workload": "global_float",
+      "metric": "aot_process_s",
+      "base_s": 0.0339,
+      "head_s": 0.0338,
+      "reported_change_percent": -0.3,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8757119Z | global_float | aot_process_s | 0.0339s | 0.0338s | -0.3% | ok |"
+    },
+    {
+      "workload": "global_float",
+      "metric": "aot_loop_s",
+      "base_s": 0.0319,
+      "head_s": 0.0319,
+      "reported_change_percent": 0.1,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8757629Z | global_float | aot_loop_s | 0.0319s | 0.0319s | +0.1% | ok |"
+    },
+    {
+      "workload": "graph_copy",
+      "metric": "build_s",
+      "base_s": 0.4641,
+      "head_s": 0.4963,
+      "reported_change_percent": 6.9,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8758096Z | graph_copy | build_s | 0.4641s | 0.4963s | +6.9% | ok |"
+    },
+    {
+      "workload": "graph_copy",
+      "metric": "jit_process_s",
+      "base_s": 0.1556,
+      "head_s": 0.1567,
+      "reported_change_percent": 0.7,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8758704Z | graph_copy | jit_process_s | 0.1556s | 0.1567s | +0.7% | ok |"
+    },
+    {
+      "workload": "graph_copy",
+      "metric": "jit_loop_s",
+      "base_s": 0.0451,
+      "head_s": 0.045,
+      "reported_change_percent": -0.1,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8759326Z | graph_copy | jit_loop_s | 0.0451s | 0.0450s | -0.1% | ok |"
+    },
+    {
+      "workload": "graph_copy",
+      "metric": "aot_process_s",
+      "base_s": 0.0519,
+      "head_s": 0.0517,
+      "reported_change_percent": -0.4,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8759933Z | graph_copy | aot_process_s | 0.0519s | 0.0517s | -0.4% | ok |"
+    },
+    {
+      "workload": "graph_copy",
+      "metric": "aot_loop_s",
+      "base_s": 0.0406,
+      "head_s": 0.0404,
+      "reported_change_percent": -0.4,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8760579Z | graph_copy | aot_loop_s | 0.0406s | 0.0404s | -0.4% | ok |"
+    },
+    {
+      "workload": "regex_effbot",
+      "metric": "build_s",
+      "base_s": 3.0896,
+      "head_s": 3.0098,
+      "reported_change_percent": -2.6,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8761118Z | regex_effbot | build_s | 3.0896s | 3.0098s | -2.6% | ok |"
+    },
+    {
+      "workload": "regex_effbot",
+      "metric": "jit_process_s",
+      "base_s": 1.2019,
+      "head_s": 1.1923,
+      "reported_change_percent": -0.8,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8761707Z | regex_effbot | jit_process_s | 1.2019s | 1.1923s | -0.8% | ok |"
+    },
+    {
+      "workload": "regex_effbot",
+      "metric": "jit_loop_s",
+      "base_s": 0.2032,
+      "head_s": 0.2031,
+      "reported_change_percent": 0,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8762450Z | regex_effbot | jit_loop_s | 0.2032s | 0.2031s | -0.0% | ok |"
+    },
+    {
+      "workload": "regex_effbot",
+      "metric": "aot_process_s",
+      "base_s": 0.1475,
+      "head_s": 0.1475,
+      "reported_change_percent": 0,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8763066Z | regex_effbot | aot_process_s | 0.1475s | 0.1475s | -0.0% | ok |"
+    },
+    {
+      "workload": "regex_effbot",
+      "metric": "aot_loop_s",
+      "base_s": 0.1425,
+      "head_s": 0.1425,
+      "reported_change_percent": -0.1,
+      "status": "ok",
+      "log_line": "2026-11-15T09:38:57.8763603Z | regex_effbot | aot_loop_s | 0.1425s | 0.1425s | -0.1% | ok |"
+    }
+  ],
+  "observations": {
+    "reported_metrics": 49,
+    "workloads": 11,
+    "warning_rows": 0,
+    "unconfirmed_rows": 0,
+    "largest_reported_slowdown_percent": 8
+  },
+  "method": {
+    "sample_count_per_revision": 3,
+    "slowdown_candidate": {
+      "relative_minimum": 0.2,
+      "absolute_seconds_minimum": 0.005,
+      "both_required": true
+    },
+    "confirmation": "A candidate triggers three further paired samples. Warning requires both batches to be candidates and each batch's base/head sample ranges not to overlap; otherwise unconfirmed.",
+    "ordering": "CPython, base and head interleaved with rotating order; warm compiled caches; correctness comparisons precede sampling and occur during sampling.",
+    "program_cache": "disabled",
+    "process_measurements": "Include frontend and LLVM work.",
+    "graph_copy_loop_clock": "CPU process time; other loop measurements use wall time.",
+    "build_metrics": "One metric per source, shown on its first workload."
+  },
+  "evidence_scope": {
+    "review_method": "GitHub connector read-only metadata, decoded completed job log, and exact-commit runner/workflow source.",
+    "artifact_zip_independently_downloaded": false,
+    "raw_samples_independently_read": false,
+    "limitations": [
+      "Only the printed rounded medians/statuses and the successful execution were reviewed; raw sample arrays, recorded CPU/load values and ranges remain in the artifact.",
+      "This is the maintained advisory smoke workload set, not a universal no-regression or overall speedup claim.",
+      "The performance compiler builds do not substitute for bootstrap fixed-point qualification or any other release gate."
+    ]
+  },
+  "source_files": [
+    {
+      "path": ".github/workflows/performance.yml",
+      "ref": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "git_blob": "c862900ed9722f36c90702bb87cc750f0705b998",
+      "url": "https://github.com/den-run-ai/pystachy/blob/6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93/.github/workflows/performance.yml",
+      "content": "name: Performance smoke\n\non:\n  push:\n    branches: [main]\n  schedule:\n    - cron: '23 8 * * 1'\n  workflow_dispatch:\n    inputs:\n      base:\n        description: Baseline commit or ref (default is the pinned performance reference)\n        required: false\n\nconcurrency:\n  group: perf-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}\n  cancel-in-progress: ${{ github.event_name == 'pull_request' }}\n\npermissions:\n  contents: read\n\njobs:\n  smoke:\n    runs-on: ubuntu-24.04\n    timeout-minutes: 15\n    env:\n      PYSTACHY_LLVM: /usr/lib/llvm-18/bin\n      # Deliberately fixed: changing this starts a new cumulative comparison series.\n      PERF_REFERENCE: 80840d264b2d4e76c21a8deec6db90ce6e3c5b22\n    steps:\n      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1\n        with:\n          path: head\n          fetch-depth: 2\n          persist-credentials: false\n      - name: Select baseline\n        working-directory: head\n        env:\n          BASE: ${{ github.event.pull_request.base.sha || github.event.before || inputs.base }}\n        run: |\n          if [ -z \"$BASE\" ]; then BASE=$PERF_REFERENCE; fi\n          git check-ref-format --allow-onelevel \"$BASE\"\n          echo \"PERF_BASE=$BASE\" >> \"$GITHUB_ENV\"\n      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1\n        with:\n          ref: ${{ env.PERF_BASE }}\n          path: base\n          persist-credentials: false\n      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0\n        with:\n          python-version-file: head/.python-version\n      - run: tools/setup.sh --minimal\n        working-directory: head\n      - name: Paired performance smoke\n        working-directory: head\n        run: python3 tools/perf_smoke.py --base ../base --json ../perf-smoke.json\n      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2\n        if: always()\n        with:\n          name: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'perf-reference' || 'perf-smoke' }}\n          path: perf-smoke.json\n          if-no-files-found: error\n          retention-days: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 90 || 30 }}\n"
+    },
+    {
+      "path": "tools/perf_smoke.py",
+      "ref": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "git_blob": "5453c5d50af0a9ddbc3adf5b1f6c3bf615c900a5",
+      "url": "https://github.com/den-run-ai/pystachy/blob/6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93/tools/perf_smoke.py",
+      "content": "\"\"\"Small advisory base/head comparison; no dependencies or historical timing gate.\n\nThe default suite times eleven small workloads in JIT and AOT on every push and PR. The weekly\nsuite (scheduled and manual runs only) times every adapted pyperformance port and bench/*.py\nmicrobenchmark in AOT, which the eleven missed when words and float slowed down (#1302).\n\"\"\"\nimport argparse\nimport hashlib\nimport json\nimport math\nimport os\nfrom pathlib import Path\nimport platform\nimport statistics\nimport sys\nimport tempfile\nimport time\n\nfrom bench_extended import execute\nfrom bench_pyperformance import BENCHMARKS, port_path, run\n\nROOT = Path(__file__).resolve().parents[1]\nCASES = {\n    \"autograd\": (\"bench/smoke/ml.py\", [\"autograd\", \"40000\"]),\n    \"numeric\": (\"bench/smoke/ml.py\", [\"numeric\", \"20000\"]),\n    \"fnmatch\": (\"bench/smoke/text.py\", [\"fnmatch\", \"1000\"]),\n    \"json\": (\"bench/smoke/text.py\", [\"json\", \"6000\"]),\n    \"repair_scan\": (\"bench/smoke/text.py\", [\"repair_scan\", \"400\"]),\n    \"copy_int\": (\"bench/smoke/identity.py\", [\"int\", \"6000000\", \"123\"]),\n    \"copy_float\": (\"bench/smoke/identity.py\", [\"float\", \"6000000\", \"123\"]),\n    \"global_int\": (\"bench/smoke/identity.py\", [\"global_int\", \"6000000\", \"123\"]),\n    \"global_float\": (\"bench/smoke/identity.py\", [\"global_float\", \"6000000\", \"123\"]),\n    \"graph_copy\": (\"tools/dynany_bench.py\", [\"graph-smoke\", \"4000\"]),\n    \"regex_effbot\": (\"bench/pyperformance/regex_effbot.py\", BENCHMARKS[\"regex_effbot\"][0]),\n}\nMETRICS = (\"build_s\", \"jit_process_s\", \"jit_loop_s\", \"aot_process_s\", \"aot_loop_s\")\n# The weekly suite flags a confirmed slowdown of 10% and 2 ms: a smaller one than the default suite's\n# 20% and 5 ms, which its many more, longer AOT workloads and one metric each can resolve.\nWEEKLY_RATIO = 1.10\nWEEKLY_FLOOR = 0.002\nWEEKLY_TIMEOUT = 300  # (seconds for one build or run: regex ports import lib/re)\n\n\nclass BudgetExhausted(Exception):\n    \"\"\"The suite's deadline, rather than a revision's command limit, stopped work.\"\"\"\n\n\ndef budgeted(function, command, env, timeout, *args, deadline=None):\n    \"\"\"Bound every command, including bootstraps, by the suite's remaining time.\"\"\"\n    if deadline is not None:\n        remaining = deadline - time.monotonic()\n        if remaining <= 0:\n            raise BudgetExhausted(\"out of the time budget\")\n        limit = min(timeout, remaining)\n    else:\n        limit = timeout\n    try:\n        return function(command, env, limit, *args)\n    except RuntimeError as error:\n        if limit < timeout and str(error).startswith(\"timeout after \"):\n            raise BudgetExhausted(\"out of the time budget\") from error\n        raise\n\n\ndef compare(base, head, ratio=1.20, floor=0.005):\n    if len(base) != 3 or len(head) != 3 or any(\n        not math.isfinite(x) or x <= 0 for x in base + head\n    ):\n        raise ValueError(\"expected three finite, positive samples per revision\")\n    b, h = statistics.median(base), statistics.median(head)\n    return {\"base_s\": b, \"head_s\": h, \"ratio\": h / b,\n            \"candidate\": (h / b >= ratio or math.isclose(h / b, ratio))\n            and (h - b >= floor or math.isclose(h - b, floor)),\n            \"separated\": min(head) > max(base)}\n\n\ndef classify(first, confirmation):\n    if not first[\"candidate\"]:\n        return \"ok\"\n    if confirmation and confirmation[\"candidate\"] and first[\"separated\"] and confirmation[\"separated\"]:\n        return \"warning\"\n    return \"unconfirmed\"\n\n\ndef batch(source, arguments, compilers, envs, directory, expected, offset=0, measure_build=True):\n    metrics = METRICS if measure_build else METRICS[1:]\n    samples = {side: {metric: [] for metric in metrics} for side in compilers}\n    samples[\"cpython\"] = []\n    for repeat in range(3):\n        # Interleave both revisions and CPython; rotate which revision runs first.\n        samples[\"cpython\"].append(run([sys.executable, str(source), *arguments],\n                                      envs[\"head\"], 60, expected))\n        for side in ((\"base\", \"head\") if (repeat + offset) % 2 == 0 else (\"head\", \"base\")):\n            compiler, env = compilers[side], envs[side]\n            exe = str(directory / side / source.stem)\n            if measure_build:\n                build = execute([compiler, \"build\", str(source), \"-o\", exe], env, 60)\n                samples[side][\"build_s\"].append(build[\"wall_s\"])\n            jit = run([compiler, \"run\", str(source), *arguments], env, 60, expected)\n            aot = run([exe, *arguments], env, 60, expected)\n            values = (jit[\"wall_s\"], jit[\"loop_s\"], aot[\"wall_s\"], aot[\"loop_s\"])\n            for metric, value in zip(METRICS[1:], values):\n                samples[side][metric].append(value)\n    return samples\n\n\ndef measure(name, compilers, envs, directory, built):\n    path, arguments = CASES[name]\n    source = ROOT / path\n    measure_build = path not in built\n    oracle = run([sys.executable, str(source), *arguments], envs[\"head\"], 60)\n    # Warm compilation caches and check both modes before collecting any samples.\n    for side, compiler in compilers.items():\n        exe = str(directory / side / source.stem)\n        if measure_build:\n            execute([compiler, \"build\", str(source), \"-o\", exe], envs[side], 60)\n        run([compiler, \"run\", str(source), *arguments], envs[side], 60, oracle[\"stdout\"])\n        run([exe, *arguments], envs[side], 60, oracle[\"stdout\"])\n    first = batch(source, arguments, compilers, envs, directory, oracle[\"stdout\"], measure_build=measure_build)\n    comparisons = {metric: compare(first[\"base\"][metric], first[\"head\"][metric]) for metric in first[\"base\"]}\n    confirmation = (batch(source, arguments, compilers, envs, directory, oracle[\"stdout\"], 3, measure_build)\n                    if any(c[\"candidate\"] for c in comparisons.values()) else None)\n    for metric, result in comparisons.items():\n        second = compare(confirmation[\"base\"][metric], confirmation[\"head\"][metric]) if confirmation else None\n        result.update(status=classify(result, second), confirmation=second)\n    built.add(path)\n    return {\"name\": name, \"source\": path, \"arguments\": arguments, \"source_sha256\": hashlib.sha256(source.read_bytes()).hexdigest(),\n            \"loop_clock\": \"process_time_ns\" if name == \"graph_copy\" else \"perf_counter\",\n            \"output\": oracle[\"stdout\"], \"samples\": first, \"confirmation\": confirmation, \"comparison\": comparisons}\n\n\ndef weekly_cases(head):\n    \"\"\"The weekly suite's workloads in head: (source, arguments, metric) by name. Each pyperformance\n    port runs its measured arguments, timed by its 'seconds' line (aot_loop_s); each bench/*.py\n    microbenchmark runs as bench/run.sh runs it, timed as a process (aot_process_s).\"\"\"\n    cases = {}\n    for name, (arguments, _) in BENCHMARKS.items():\n        cases[\"pyperformance/\" + name] = (str(port_path(name).relative_to(ROOT)), list(arguments), \"aot_loop_s\")\n    for source in sorted((head / \"bench\").glob(\"*.py\")):\n        cases[\"bench/\" + source.stem] = (f\"bench/{source.name}\", [], \"aot_process_s\")\n    return cases\n\n\ndef first_line(error):\n    text = str(error).strip()\n    return text.splitlines()[0][:300] if text else type(error).__name__\n\n\ndef aot_sample(exe, arguments, env, expected, metric, deadline=None):\n    \"\"\"One AOT run's seconds of metric; its stdout must be CPython's.\"\"\"\n    if metric == \"aot_loop_s\":\n        seconds = budgeted(run, [exe, *arguments], env, WEEKLY_TIMEOUT, expected, deadline=deadline)[\"loop_s\"]\n    else:\n        record = budgeted(execute, [exe, *arguments], env, WEEKLY_TIMEOUT, deadline=deadline)\n        if record[\"stdout\"] != expected:\n            raise ValueError(f\"output differs from CPython's: {exe}\\nexpected: {expected[-500:]!r}\\n\"\n                             f\"got: {record['stdout'][-500:]!r}\")\n        seconds = record[\"wall_s\"]\n    if not math.isfinite(seconds) or seconds <= 0:\n        raise ValueError(f\"invalid elapsed time: {exe}: {seconds}\")\n    return seconds\n\n\ndef weekly_batch(exes, arguments, envs, expected, metric, samples, failures, offset=0, deadline=None):\n    \"\"\"Retain partial pairs and check the other revision even when one fails.\"\"\"\n    for repeat in range(3):\n        for side in ((\"base\", \"head\") if (repeat + offset) % 2 == 0 else (\"head\", \"base\")):\n            if side in failures:\n                continue\n            try:\n                samples[side].append(aot_sample(exes[side], arguments, envs[side], expected, metric, deadline))\n            except (OSError, RuntimeError, ValueError) as error:\n                phase = \"confirmation\" if offset else \"sample\"\n                failures[side] = {\"phase\": f\"{phase}:{repeat + 1}\", \"error\": str(error)[-2000:]}\n\n\ndef measure_weekly(name, case, compilers, envs, directory, head, deadline=None):\n    \"\"\"A weekly workload's AOT comparison. A base that cannot build it or print CPython's output\n    skips it, as a compiler older than the workload may; the head's failure is an error.\"\"\"\n    path, arguments, metric = case\n    source = head / path\n    result = {\"name\": name, \"source\": path, \"arguments\": arguments, \"metric\": metric}\n    if not source.is_file():\n        return dict(result, status=\"skipped\", reason=\"not in the head revision\")\n    result[\"source_sha256\"] = hashlib.sha256(source.read_bytes()).hexdigest()\n    failures = result[\"failures\"] = {}\n    first = result[\"samples\"] = {\"base\": [], \"head\": []}\n    result[\"confirmation\"] = None\n    try:\n        oracle = budgeted(execute, [sys.executable, str(source), *arguments], envs[\"head\"],\n                          WEEKLY_TIMEOUT, deadline=deadline)\n        result[\"output_sha256\"] = hashlib.sha256(oracle[\"stdout\"].encode()).hexdigest()\n        exes = {}\n        # Both builds, then warmups: building between warmups biased the first timed sample.\n        for step in (\"build\", \"warmup\"):\n            for side in (\"base\", \"head\"):\n                if side in failures:\n                    continue\n                exe = directory / side / (\"weekly-\" + name.replace(\"/\", \"-\"))\n                try:\n                    if step == \"build\":\n                        build = budgeted(execute, [compilers[side], \"build\", str(source), \"-o\", str(exe)],\n                                         envs[side], WEEKLY_TIMEOUT, deadline=deadline)\n                        result[side + \"_build_s\"] = build[\"wall_s\"]\n                        exes[side] = str(exe)\n                    else:\n                        aot_sample(str(exe), arguments, envs[side], oracle[\"stdout\"], metric, deadline)\n                except (OSError, RuntimeError, ValueError) as error:\n                    failures[side] = {\"phase\": step, \"error\": str(error)[-2000:]}\n        weekly_batch(exes, arguments, envs, oracle[\"stdout\"], metric, first, failures, deadline=deadline)\n        if not failures and compare(first[\"base\"], first[\"head\"], WEEKLY_RATIO, WEEKLY_FLOOR)[\"candidate\"]:\n            result[\"confirmation\"] = {\"base\": [], \"head\": []}\n            weekly_batch(exes, arguments, envs, oracle[\"stdout\"], metric, result[\"confirmation\"], failures,\n                         3, deadline=deadline)\n    except BudgetExhausted:\n        result[\"budget_exhausted\"] = True\n    if \"head\" in failures:\n        return dict(result, status=\"error\", error=failures[\"head\"][\"error\"])\n    if \"base\" in failures:\n        return dict(result, status=\"skipped\", reason=f\"the base fails it: {first_line(failures['base']['error'])}\")\n    if result.get(\"budget_exhausted\"):\n        return dict(result, status=\"skipped\", reason=\"out of the time budget\")\n    comparison = compare(first[\"base\"], first[\"head\"], WEEKLY_RATIO, WEEKLY_FLOOR)\n    confirmation = result[\"confirmation\"]\n    second = (compare(confirmation[\"base\"], confirmation[\"head\"], WEEKLY_RATIO, WEEKLY_FLOOR)\n              if confirmation else None)\n    comparison.update(status=classify(comparison, second), confirmation=second)\n    return dict(result, status=comparison[\"status\"], comparison={metric: comparison})\n\n\ndef weekly_summary(report):\n    lines = [\"## Weekly AOT performance (advisory)\", \"\",\n             f\"Base `{report['revisions']['base']}` → head `{report['revisions']['head']}`.\", \"\",\n             \"Every adapted pyperformance port (its timed part) and bench/*.py microbenchmark (the process),\",\n             \"in AOT, with CPython's output: three alternating pairs; ≥10% and ≥2 ms slower triggers three\",\n             \"confirmation pairs. Warnings require both batches to meet the threshold with non-overlapping\",\n             \"base/head ranges.\", \"\",\n             \"| Workload | Metric | Base | Head | Change | Result |\",\n             \"|---|---|---:|---:|---:|---|\"]\n    notes = []\n    for result in report[\"results\"]:\n        if \"comparison\" not in result:\n            notes.append(f\"- {result['name']}: {result['status']}, {result.get('reason') or first_line(result.get('error', ''))}\")\n            continue\n        for metric, c in result[\"comparison\"].items():\n            lines.append(f\"| {result['name']} | {metric} | {c['base_s'] * 1000:.2f} ms | {c['head_s'] * 1000:.2f} ms | \"\n                         f\"{(c['ratio'] - 1) * 100:+.1f}% | {c['status']} |\")\n            if c[\"status\"] == \"warning\":\n                print(f\"::warning::{result['name']} {metric}: confirmed >=10% slowdown; see performance artifact\")\n    return \"\\n\".join(lines + ([\"\"] + notes if notes else [])) + \"\\n\"\n\n\ndef summary(report):\n    lines = [\"## Performance smoke (advisory)\", \"\",\n             f\"Base `{report['revisions']['base']}` → head `{report['revisions']['head']}`.\", \"\",\n             \"Three pairs; ≥20% and ≥5 ms slower triggers three confirmation pairs. Warnings require\",\n             \"both batches to meet the threshold with non-overlapping base/head ranges.\", \"\",\n             \"Build time is measured once per source file, shown on its first workload.\", \"\",\n             \"JIT process measurements include frontend and LLVM work; program caching is disabled.\", \"\",\n             \"graph_copy loop time measures processing CPU seconds; other loop times measure wall seconds.\", \"\",\n             \"| Workload | Metric | Base | Head | Change | Result |\",\n             \"|---|---|---:|---:|---:|---|\"]\n    for result in report[\"results\"]:\n        for metric, c in result[\"comparison\"].items():\n            lines.append(f\"| {result['name']} | {metric} | {c['base_s']:.4f}s | {c['head_s']:.4f}s | \"\n                         f\"{(c['ratio'] - 1) * 100:+.1f}% | {c['status']} |\")\n            if c[\"status\"] == \"warning\":\n                print(f\"::warning::{result['name']} {metric}: confirmed >=20% slowdown; see performance artifact\")\n    return \"\\n\".join(lines) + \"\\n\"\n\n\ndef write_report(path, report):\n    \"\"\"Publish a valid checkpoint; cancellation must not truncate the previous one.\"\"\"\n    path.parent.mkdir(parents=True, exist_ok=True)\n    with tempfile.NamedTemporaryFile(mode=\"w\", encoding=\"utf-8\", dir=path.parent, delete=False) as output:\n        temporary = Path(output.name)\n        try:\n            json.dump(report, output, indent=2)\n            output.write(\"\\n\")\n            output.flush()\n            os.replace(temporary, path)\n        finally:\n            temporary.unlink(missing_ok=True)\n\n\ndef main():\n    parser = argparse.ArgumentParser(description=__doc__)\n    parser.add_argument(\"--base\", type=Path, required=True, help=\"baseline checkout\")\n    parser.add_argument(\"--json\", type=Path, default=Path(\"build/perf-smoke.json\"))\n    parser.add_argument(\"--suite\", choices=(\"smoke\", \"weekly\"), default=\"smoke\",\n                        help=\"smoke: eleven workloads in JIT and AOT; weekly: every pyperformance port and \"\n                             \"bench/*.py microbenchmark in AOT\")\n    parser.add_argument(\"--head\", type=Path, default=ROOT,\n                        help=\"head checkout, whose compiler and workloads --suite weekly measures (default: this one)\")\n    parser.add_argument(\"--only\", default=\"\", help=\"comma-separated workloads of the suite (default: all of them)\")\n    parser.add_argument(\"--budget\", type=float, default=0,\n                        help=\"--suite weekly: maximum seconds for builds and runs, including commands in flight (default: none)\")\n    args = parser.parse_args()\n    started = time.monotonic()\n    head = args.head.resolve()\n    if args.suite == \"smoke\" and (head != ROOT or args.budget):\n        parser.error(\"--head and --budget need --suite weekly\")\n    if not math.isfinite(args.budget) or args.budget < 0:\n        parser.error(\"--budget must be finite and nonnegative\")\n    deadline = started + args.budget if args.budget else None\n    cases = CASES if args.suite == \"smoke\" else weekly_cases(head)\n    names = [name for name in args.only.split(\",\") if name] or list(cases)\n    unknown = [name for name in names if name not in cases]\n    if unknown:\n        parser.error(f\"not a workload of the {args.suite} suite: {', '.join(unknown)}\")\n    # Preserve toolchain discovery, but prevent inherited GC/optimization/import settings.\n    env = {k: v for k, v in os.environ.items() if not k.startswith(\"PYSTACHY_\") and k != \"PYTHONPATH\"}\n    if \"PYSTACHY_LLVM\" in os.environ:\n        env[\"PYSTACHY_LLVM\"] = os.environ[\"PYSTACHY_LLVM\"]\n    env[\"PYSTACHY_PROGRAM_CACHE\"] = \"0\"\n    env[\"PYTHONHASHSEED\"] = \"0\"\n    affinity = None\n    report = {\"schema\": 2, \"suite\": args.suite, \"status\": \"incomplete\", \"phase\": \"setup\",\n              \"revisions\": {}, \"bootstrap\": {}, \"results\": [],\n              \"environment\": {\"PYSTACHY_PROGRAM_CACHE\": env[\"PYSTACHY_PROGRAM_CACHE\"]}}\n    if args.suite == \"weekly\":\n        report[\"thresholds\"] = {\"ratio\": WEEKLY_RATIO, \"floor_s\": WEEKLY_FLOOR}\n    try:\n        write_report(args.json, report)\n        affinity = sorted(os.sched_getaffinity(0))\n        os.sched_setaffinity(0, {affinity[0]})\n        roots = {\"base\": args.base.resolve(), \"head\": head}\n        report.update(python=sys.version, platform=platform.platform(),\n                      runner_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),\n                      cpu=Path(\"/proc/cpuinfo\").read_text().split(\"model name\", 1)[-1].splitlines()[0],\n                      affinity=[affinity[0]], load_average=os.getloadavg())\n        write_report(args.json, report)\n        with tempfile.TemporaryDirectory(prefix=\"pystachy-perf-\") as tmp:\n            directory = Path(tmp)\n            compilers, envs = {}, {}\n            for side, root in roots.items():\n                report[\"phase\"] = f\"bootstrap:{side}\"\n                write_report(args.json, report)\n                report[\"revisions\"][side] = budgeted(execute, [\"git\", \"-C\", str(root), \"rev-parse\", \"HEAD\"],\n                                                      env, 10, deadline=deadline)[\"stdout\"].strip()\n                (directory / side).mkdir()\n                envs[side] = dict(env, PYSTACHY_HOME=str(root), PYSTACHY_CACHE=str(directory / side / \"cache\"))\n                compiler = str(directory / side / \"compiler\")\n                print(f\"Building {side} compiler at {report['revisions'][side]}\", flush=True)\n                write_report(args.json, report)\n                report[\"bootstrap\"][side] = budgeted(execute, [sys.executable, str(root / \"pystachy.py\"), \"build\",\n                                                              str(root / \"pystachy.py\"), \"-o\", compiler],\n                                                     envs[side], 180, deadline=deadline)\n                compilers[side] = compiler\n                write_report(args.json, report)\n            report[\"phase\"] = \"toolchain\"\n            write_report(args.json, report)\n            llvm = Path(env.get(\"PYSTACHY_LLVM\", \"/usr/lib/llvm-18/bin\"))\n            report[\"clang\"] = budgeted(execute, [str(llvm / \"clang\"), \"--version\"], env, 10,\n                                       deadline=deadline)[\"stdout\"]\n            built = set()\n            for name in names:\n                if deadline is not None and time.monotonic() >= deadline:\n                    report[\"results\"].append({\"name\": name, \"status\": \"skipped\", \"reason\": \"out of the time budget\",\n                                              \"budget_exhausted\": True})\n                    continue\n                report[\"phase\"] = f\"measure:{name}\"\n                write_report(args.json, report)\n                print(f\"Measuring {name}\", flush=True)\n                report[\"results\"].append(measure(name, compilers, envs, directory, built) if args.suite == \"smoke\"\n                                         else measure_weekly(name, cases[name], compilers, envs, directory, head, deadline))\n                write_report(args.json, report)\n        report[\"phase\"] = \"summary\"\n        write_report(args.json, report)\n        text = summary(report) if args.suite == \"smoke\" else weekly_summary(report)\n        print(text)\n        if os.environ.get(\"GITHUB_STEP_SUMMARY\"):\n            with open(os.environ[\"GITHUB_STEP_SUMMARY\"], \"a\") as output:\n                output.write(text)\n        failed = [result[\"name\"] for result in report[\"results\"] if result.get(\"status\") == \"error\"]\n        if failed:\n            raise RuntimeError(f\"the head revision fails {len(failed)} workloads: {', '.join(failed)}\")\n        exhausted = any(result.get(\"budget_exhausted\") for result in report[\"results\"])\n        report.update(status=\"incomplete\" if exhausted else \"complete\", phase=\"complete\")\n    except BudgetExhausted as exc:\n        report.update(status=\"incomplete\", budget_exhausted=True, reason=str(exc))\n        measured = {result[\"name\"] for result in report[\"results\"]}\n        report[\"results\"].extend({\"name\": name, \"status\": \"skipped\", \"reason\": str(exc), \"budget_exhausted\": True}\n                                 for name in names if name not in measured)\n        print(f\"Weekly performance stopped during {report['phase']}: {exc}; see the partial report.\")\n    except BaseException as exc:\n        report[\"status\"] = \"error\"\n        report[\"error\"] = str(exc)\n        report[\"error_type\"] = type(exc).__name__\n        raise\n    finally:\n        try:\n            write_report(args.json, report)\n        finally:\n            if affinity is not None:\n                os.sched_setaffinity(0, affinity)\n\n\nif __name__ == \"__main__\":\n    main()\n"
+    }
+  ],
+  "actual_log_excerpt": "2026-11-15T09:38:57.8732739Z ## Performance smoke (advisory)\n2026-11-15T09:38:57.8733207Z \n2026-11-15T09:38:57.8734453Z Base `80490143498d149d407343ba1cb7aedb1db2d2c5` → head `6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93`.\n2026-11-15T09:38:57.8735294Z \n2026-11-15T09:38:57.8735868Z Three pairs; ≥20% and ≥5 ms slower triggers three confirmation pairs. Warnings require\n2026-11-15T09:38:57.8736996Z both batches to meet the threshold with non-overlapping base/head ranges.\n2026-11-15T09:38:57.8737469Z \n2026-11-15T09:38:57.8737667Z Build time is measured once per source file, shown on its first workload.\n2026-11-15T09:38:57.8737983Z \n2026-11-15T09:38:57.8738242Z JIT process measurements include frontend and LLVM work; program caching is disabled.\n2026-11-15T09:38:57.8738622Z \n2026-11-15T09:38:57.8738927Z graph_copy loop time measures processing CPU seconds; other loop times measure wall seconds.\n2026-11-15T09:38:57.8739235Z \n2026-11-15T09:38:57.8739415Z | Workload | Metric | Base | Head | Change | Result |\n2026-11-15T09:38:57.8739821Z |---|---|---:|---:|---:|---|\n2026-11-15T09:38:57.8740162Z | autograd | build_s | 0.2486s | 0.2449s | -1.5% | ok |\n2026-11-15T09:38:57.8740563Z | autograd | jit_process_s | 0.0861s | 0.0869s | +0.8% | ok |\n2026-11-15T09:38:57.8740971Z | autograd | jit_loop_s | 0.0236s | 0.0240s | +1.6% | ok |\n2026-11-15T09:38:57.8741404Z | autograd | aot_process_s | 0.0242s | 0.0259s | +7.1% | ok |\n2026-11-15T09:38:57.8741808Z | autograd | aot_loop_s | 0.0210s | 0.0227s | +8.0% | ok |\n2026-11-15T09:38:57.8742207Z | numeric | jit_process_s | 0.1036s | 0.1017s | -1.9% | ok |\n2026-11-15T09:38:57.8742599Z | numeric | jit_loop_s | 0.0409s | 0.0412s | +0.8% | ok |\n2026-11-15T09:38:57.8742985Z | numeric | aot_process_s | 0.0302s | 0.0299s | -1.1% | ok |\n2026-11-15T09:38:57.8743366Z | numeric | aot_loop_s | 0.0273s | 0.0270s | -1.0% | ok |\n2026-11-15T09:38:57.8743751Z | fnmatch | build_s | 5.1721s | 5.1653s | -0.1% | ok |\n2026-11-15T09:38:57.8744155Z | fnmatch | jit_process_s | 1.7279s | 1.7069s | -1.2% | ok |\n2026-11-15T09:38:57.8744558Z | fnmatch | jit_loop_s | 0.0246s | 0.0249s | +0.9% | ok |\n2026-11-15T09:38:57.8744953Z | fnmatch | aot_process_s | 0.0235s | 0.0240s | +2.3% | ok |\n2026-11-15T09:38:57.8745675Z | fnmatch | aot_loop_s | 0.0199s | 0.0203s | +2.3% | ok |\n2026-11-15T09:38:57.8746040Z | json | jit_process_s | 1.6582s | 1.6670s | +0.5% | ok |\n2026-11-15T09:38:57.8746641Z | json | jit_loop_s | 0.0251s | 0.0252s | +0.5% | ok |\n2026-11-15T09:38:57.8746988Z | json | aot_process_s | 0.0251s | 0.0253s | +0.6% | ok |\n2026-11-15T09:38:57.8747356Z | json | aot_loop_s | 0.0217s | 0.0218s | +0.2% | ok |\n2026-11-15T09:38:57.8747733Z | repair_scan | jit_process_s | 1.7218s | 1.6939s | -1.6% | ok |\n2026-11-15T09:38:57.8748184Z | repair_scan | jit_loop_s | 0.0579s | 0.0505s | -12.8% | ok |\n2026-11-15T09:38:57.8748629Z | repair_scan | aot_process_s | 0.0509s | 0.0462s | -9.3% | ok |\n2026-11-15T09:38:57.8749028Z | repair_scan | aot_loop_s | 0.0469s | 0.0425s | -9.5% | ok |\n2026-11-15T09:38:57.8749415Z | copy_int | build_s | 0.1343s | 0.1340s | -0.2% | ok |\n2026-11-15T09:38:57.8749866Z | copy_int | jit_process_s | 0.0799s | 0.0797s | -0.3% | ok |\n2026-11-15T09:38:57.8750316Z | copy_int | jit_loop_s | 0.0373s | 0.0374s | +0.1% | ok |\n2026-11-15T09:38:57.8750746Z | copy_int | aot_process_s | 0.0306s | 0.0306s | +0.0% | ok |\n2026-11-15T09:38:57.8751128Z | copy_int | aot_loop_s | 0.0286s | 0.0287s | +0.3% | ok |\n2026-11-15T09:38:57.8751565Z | copy_float | jit_process_s | 0.0750s | 0.0749s | -0.1% | ok |\n2026-11-15T09:38:57.8751983Z | copy_float | jit_loop_s | 0.0302s | 0.0286s | -5.3% | ok |\n2026-11-15T09:38:57.8752445Z | copy_float | aot_process_s | 0.0375s | 0.0345s | -7.8% | ok |\n2026-11-15T09:38:57.8752928Z | copy_float | aot_loop_s | 0.0355s | 0.0326s | -8.0% | ok |\n2026-11-15T09:38:57.8753353Z | global_int | jit_process_s | 0.0880s | 0.0863s | -1.9% | ok |\n2026-11-15T09:38:57.8754362Z | global_int | jit_loop_s | 0.0426s | 0.0426s | -0.0% | ok |\n2026-11-15T09:38:57.8754864Z | global_int | aot_process_s | 0.0307s | 0.0307s | -0.0% | ok |\n2026-11-15T09:38:57.8755586Z | global_int | aot_loop_s | 0.0288s | 0.0288s | -0.0% | ok |\n2026-11-15T09:38:57.8756063Z | global_float | jit_process_s | 0.0744s | 0.0767s | +3.1% | ok |\n2026-11-15T09:38:57.8756700Z | global_float | jit_loop_s | 0.0282s | 0.0301s | +6.7% | ok |\n2026-11-15T09:38:57.8757119Z | global_float | aot_process_s | 0.0339s | 0.0338s | -0.3% | ok |\n2026-11-15T09:38:57.8757629Z | global_float | aot_loop_s | 0.0319s | 0.0319s | +0.1% | ok |\n2026-11-15T09:38:57.8758096Z | graph_copy | build_s | 0.4641s | 0.4963s | +6.9% | ok |\n2026-11-15T09:38:57.8758704Z | graph_copy | jit_process_s | 0.1556s | 0.1567s | +0.7% | ok |\n2026-11-15T09:38:57.8759326Z | graph_copy | jit_loop_s | 0.0451s | 0.0450s | -0.1% | ok |\n2026-11-15T09:38:57.8759933Z | graph_copy | aot_process_s | 0.0519s | 0.0517s | -0.4% | ok |\n2026-11-15T09:38:57.8760579Z | graph_copy | aot_loop_s | 0.0406s | 0.0404s | -0.4% | ok |\n2026-11-15T09:38:57.8761118Z | regex_effbot | build_s | 3.0896s | 3.0098s | -2.6% | ok |\n2026-11-15T09:38:57.8761707Z | regex_effbot | jit_process_s | 1.2019s | 1.1923s | -0.8% | ok |\n2026-11-15T09:38:57.8762450Z | regex_effbot | jit_loop_s | 0.2032s | 0.2031s | -0.0% | ok |\n2026-11-15T09:38:57.8763066Z | regex_effbot | aot_process_s | 0.1475s | 0.1475s | -0.0% | ok |\n2026-11-15T09:38:57.8763603Z | regex_effbot | aot_loop_s | 0.1425s | 0.1425s | -0.1% | ok |\n2026-11-15T09:38:57.8763881Z \n2026-11-15T09:38:57.8904189Z ",
+  "identity_and_upload_log_lines": [
+    "2026-11-15T09:31:27.3263652Z   BASE: 80490143498d149d407343ba1cb7aedb1db2d2c5",
+    "2026-11-15T09:31:27.3467491Z   PERF_BASE: 80490143498d149d407343ba1cb7aedb1db2d2c5",
+    "2026-11-15T09:31:28.9460981Z   PERF_BASE: 80490143498d149d407343ba1cb7aedb1db2d2c5",
+    "2026-11-15T09:31:34.7930778Z   PERF_BASE: 80490143498d149d407343ba1cb7aedb1db2d2c5",
+    "2026-11-15T09:31:39.5683385Z   PERF_BASE: 80490143498d149d407343ba1cb7aedb1db2d2c5",
+    "2026-11-15T09:31:39.6285397Z Building base compiler at 80490143498d149d407343ba1cb7aedb1db2d2c5",
+    "2026-11-15T09:33:42.8505716Z Building head compiler at 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+    "2026-11-15T09:38:57.8907757Z   PERF_BASE: 80490143498d149d407343ba1cb7aedb1db2d2c5",
+    "2026-11-15T09:38:58.5289876Z SHA256 digest of uploaded artifact is cc2e12ef198913e7528ff14c9fc497f39137b8ce404f62ecc4c0b4128195aa9e",
+    "2026-11-15T09:38:58.9522306Z Artifact perf-smoke successfully finalized. Artifact ID 14155933238",
+    "2026-11-15T09:38:58.9522977Z Artifact perf-smoke has been successfully uploaded! Final size is 7645 bytes. Artifact ID is 14155933238"
+  ]
+}

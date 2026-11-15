@@ -1,0 +1,1992 @@
+{
+  "schema_version": 1,
+  "status": "accepted_remote_workflow_review",
+  "reviewer": "alpha3_publication",
+  "completed_utc": "2026-11-15T09:48:06.578Z",
+  "repository": "den-run-ai/pystachy",
+  "source": {
+    "main": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+    "tree": "107460d5f89bdcf37f2741b233eac0568d82604a",
+    "tree_verified_from_commit_api": true
+  },
+  "scope": [
+    "Installation run 43699643829",
+    "Packages run 43699643867"
+  ],
+  "workflow_runs": [
+    {
+      "id": 43699643829,
+      "name": "Installation",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43699643829",
+      "event": "push",
+      "branch": "main",
+      "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "created_at": "2026-11-15T09:31:21Z",
+      "updated_at": "2026-11-15T09:43:13Z"
+    },
+    {
+      "id": 43699643867,
+      "name": "Packages",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43699643867",
+      "event": "push",
+      "branch": "main",
+      "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "created_at": "2026-11-15T09:31:21Z",
+      "updated_at": "2026-11-15T09:36:53Z"
+    }
+  ],
+  "pagination": [
+    {
+      "run_id": 43699643829,
+      "requested_jobs": "filter=all&per_page=100&page=1",
+      "job_total": 7,
+      "jobs_returned": 7,
+      "requested_artifacts": "per_page=100&page=1",
+      "artifact_total": 3,
+      "artifacts_returned": 3,
+      "complete": true
+    },
+    {
+      "run_id": 43699643867,
+      "requested_jobs": "filter=all&per_page=100&page=1",
+      "job_total": 1,
+      "jobs_returned": 1,
+      "requested_artifacts": "per_page=100&page=1",
+      "artifact_total": 0,
+      "artifacts_returned": 0,
+      "complete": true
+    }
+  ],
+  "jobs": [
+    {
+      "job_id": 132767742935,
+      "name": "Install (ubuntu-24.04-arm)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43699643829/job/132767742935",
+      "run_id": 43699643829,
+      "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:31:27Z",
+      "completed_at": "2026-11-15T09:40:09Z",
+      "labels": [
+        "ubuntu-24.04-arm"
+      ],
+      "scope": "bootstrap and hosted/installed native compiler smoke",
+      "step_counts": {
+        "all": 15,
+        "success": 13,
+        "skipped": 2,
+        "other": 0
+      },
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-15T09:31:28Z",
+          "completed_at": "2026-11-15T09:31:28Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-15T09:31:28Z",
+          "completed_at": "2026-11-15T09:31:30Z"
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-15T09:31:30Z",
+          "completed_at": "2026-11-15T09:31:37Z"
+        },
+        {
+          "name": "LLVM toolchain (install only when missing)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-15T09:31:37Z",
+          "completed_at": "2026-11-15T09:31:39Z"
+        },
+        {
+          "name": "Check dependencies and installer",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-15T09:31:39Z",
+          "completed_at": "2026-11-15T09:31:40Z"
+        },
+        {
+          "name": "Bootstrap fixed point",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-15T09:31:40Z",
+          "completed_at": "2026-11-15T09:37:17Z"
+        },
+        {
+          "name": "Hosted and native JIT/AOT smoke",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-15T09:37:17Z",
+          "completed_at": "2026-11-15T09:38:05Z"
+        },
+        {
+          "name": "Install sanitizer runtime for netio ownership",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-15T09:38:05Z",
+          "completed_at": "2026-11-15T09:38:13Z"
+        },
+        {
+          "name": "Hosted and native epoll, pipes and ownership",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-11-15T09:38:13Z",
+          "completed_at": "2026-11-15T09:40:05Z"
+        },
+        {
+          "name": "Retain Linux netio reports",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-11-15T09:40:05Z",
+          "completed_at": "2026-11-15T09:40:06Z"
+        },
+        {
+          "name": "Native kqueue and pipe parity",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-11-15T09:40:06Z",
+          "completed_at": "2026-11-15T09:40:06Z"
+        },
+        {
+          "name": "Retain native kqueue reports",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 12,
+          "started_at": "2026-11-15T09:40:06Z",
+          "completed_at": "2026-11-15T09:40:06Z"
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-11-15T09:40:06Z",
+          "completed_at": "2026-11-15T09:40:06Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-11-15T09:40:06Z",
+          "completed_at": "2026-11-15T09:40:07Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-11-15T09:40:07Z",
+          "completed_at": "2026-11-15T09:40:07Z"
+        }
+      ],
+      "skips_explained": {
+        "numbers": [
+          11,
+          12
+        ],
+        "reason": "macos-15-only kqueue/report steps do not run on Linux."
+      },
+      "log_identity": {
+        "bytes": 38421,
+        "sha256": "c3441050c9fdc0bcf6380a891ccf4fe9522231f20440918b06ceb3febc050923",
+        "git_blob_sha": "2e214ba70f486f0aeeba574ce3c079edea4eb456"
+      },
+      "evidence": {
+        "checkout": [
+          {
+            "line": 108,
+            "text": "2026-11-15T09:31:30.3638458Z 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93"
+          },
+          {
+            "line": 120,
+            "text": "2026-11-15T09:31:30.7011663Z 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93"
+          }
+        ],
+        "bootstrap_and_install": [
+          {
+            "line": 259,
+            "text": "2026-11-15T09:37:17.2937767Z fixed point: stage1 == stage2 == stage3 (959093 lines of IR)"
+          },
+          {
+            "line": 264,
+            "text": "2026-11-15T09:37:17.9238732Z fixed point: runtime.py's IR, rt1 == rt2 == rt3 (21214 lines)"
+          },
+          {
+            "line": 277,
+            "text": "2026-11-15T09:38:05.7852134Z hosted JIT: CPython output matches"
+          },
+          {
+            "line": 278,
+            "text": "2026-11-15T09:38:05.7854126Z hosted AOT: CPython output matches"
+          },
+          {
+            "line": 279,
+            "text": "2026-11-15T09:38:05.7855001Z pystachy v0.5.0-alpha.3 (commit 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93): installed and native --version, without LLVM or Python"
+          },
+          {
+            "line": 280,
+            "text": "2026-11-15T09:38:05.7855719Z installed JIT/AOT: CPython output matches"
+          },
+          {
+            "line": 281,
+            "text": "2026-11-15T09:38:05.7856196Z installed JIT/AOT with GC stress: CPython output matches"
+          },
+          {
+            "line": 282,
+            "text": "2026-11-15T09:38:05.7856891Z installed runtime cache: outside installation"
+          }
+        ],
+        "netio": [
+          {
+            "line": 348,
+            "text": "2026-11-15T09:38:15.4920683Z Ran 53 tests in 1.411s"
+          },
+          {
+            "line": 359,
+            "text": "2026-11-15T09:38:16.5737034Z cpython_oracle: 12 scenarios passed"
+          },
+          {
+            "line": 360,
+            "text": "2026-11-15T09:38:32.3237536Z cpython_bridge: 12 scenarios match the stdlib oracle"
+          },
+          {
+            "line": 361,
+            "text": "2026-11-15T09:38:46.9290232Z jit: 12 scenarios match the stdlib oracle"
+          },
+          {
+            "line": 362,
+            "text": "2026-11-15T09:38:46.9606741Z aot: 12 scenarios match the stdlib oracle"
+          },
+          {
+            "line": 363,
+            "text": "2026-11-15T09:38:56.0854180Z jit_gc: 12 scenarios match the stdlib oracle"
+          },
+          {
+            "line": 364,
+            "text": "2026-11-15T09:38:56.1189600Z aot_gc: 12 scenarios match the stdlib oracle"
+          },
+          {
+            "line": 365,
+            "text": "2026-11-15T09:38:56.1237381Z Socket/readiness parity passed for the documented optional prototype surface."
+          },
+          {
+            "line": 366,
+            "text": "2026-11-15T09:39:10.6706851Z cpython_oracle: fragment batches verified; later pipe completed first; binary output matches"
+          },
+          {
+            "line": 367,
+            "text": "2026-11-15T09:39:10.7247641Z cpython_bridge: fragment batches verified; later pipe completed first; binary output matches"
+          },
+          {
+            "line": 368,
+            "text": "2026-11-15T09:39:16.8556067Z jit: fragment batches verified; later pipe completed first; binary output matches"
+          },
+          {
+            "line": 369,
+            "text": "2026-11-15T09:39:16.8571702Z aot: fragment batches verified; later pipe completed first; binary output matches"
+          },
+          {
+            "line": 370,
+            "text": "2026-11-15T09:39:17.3092581Z jit_gc: fragment batches verified; later pipe completed first; binary output matches"
+          },
+          {
+            "line": 371,
+            "text": "2026-11-15T09:39:17.3127038Z aot_gc: fragment batches verified; later pipe completed first; binary output matches"
+          },
+          {
+            "line": 372,
+            "text": "2026-11-15T09:39:18.2577280Z netio ownership: 300 cycles, SIGPIPE, pipe readiness and bounds pass"
+          },
+          {
+            "line": 373,
+            "text": "2026-11-15T09:39:18.7260289Z cpython_oracle: 12 scenarios passed"
+          },
+          {
+            "line": 374,
+            "text": "2026-11-15T09:39:32.1889289Z cpython_bridge: 12 scenarios match the stdlib oracle"
+          },
+          {
+            "line": 375,
+            "text": "2026-11-15T09:39:42.4327961Z jit: 12 scenarios match the stdlib oracle"
+          },
+          {
+            "line": 376,
+            "text": "2026-11-15T09:39:42.4660661Z aot: 12 scenarios match the stdlib oracle"
+          },
+          {
+            "line": 377,
+            "text": "2026-11-15T09:39:47.0417612Z jit_gc: 12 scenarios match the stdlib oracle"
+          },
+          {
+            "line": 378,
+            "text": "2026-11-15T09:39:47.0741354Z aot_gc: 12 scenarios match the stdlib oracle"
+          },
+          {
+            "line": 379,
+            "text": "2026-11-15T09:39:47.0766251Z Socket/readiness parity passed for the documented optional prototype surface."
+          },
+          {
+            "line": 380,
+            "text": "2026-11-15T09:39:59.4634393Z cpython_oracle: fragment batches verified; later pipe completed first; binary output matches"
+          },
+          {
+            "line": 381,
+            "text": "2026-11-15T09:39:59.5127209Z cpython_bridge: fragment batches verified; later pipe completed first; binary output matches"
+          },
+          {
+            "line": 382,
+            "text": "2026-11-15T09:40:05.2802074Z jit: fragment batches verified; later pipe completed first; binary output matches"
+          },
+          {
+            "line": 383,
+            "text": "2026-11-15T09:40:05.2818054Z aot: fragment batches verified; later pipe completed first; binary output matches"
+          },
+          {
+            "line": 384,
+            "text": "2026-11-15T09:40:05.4529889Z jit_gc: fragment batches verified; later pipe completed first; binary output matches"
+          },
+          {
+            "line": 385,
+            "text": "2026-11-15T09:40:05.4565929Z aot_gc: fragment batches verified; later pipe completed first; binary output matches"
+          }
+        ]
+      }
+    },
+    {
+      "job_id": 132767743122,
+      "name": "Source install with pinned LLVM (ubuntu-24.04-arm)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43699643829/job/132767743122",
+      "run_id": 43699643829,
+      "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:31:27Z",
+      "completed_at": "2026-11-15T09:34:44Z",
+      "labels": [
+        "ubuntu-24.04-arm"
+      ],
+      "scope": "fresh pip and uv Git source installations with automatic pinned LLVM provisioning",
+      "step_counts": {
+        "all": 7,
+        "success": 7,
+        "skipped": 0,
+        "other": 0
+      },
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-15T09:31:28Z",
+          "completed_at": "2026-11-15T09:31:28Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-15T09:31:28Z",
+          "completed_at": "2026-11-15T09:31:30Z"
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-15T09:31:30Z",
+          "completed_at": "2026-11-15T09:31:37Z"
+        },
+        {
+          "name": "Install from the exact Git commit and exercise the provisioned toolchain",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-15T09:31:37Z",
+          "completed_at": "2026-11-15T09:34:42Z"
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-15T09:34:42Z",
+          "completed_at": "2026-11-15T09:34:42Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-15T09:34:42Z",
+          "completed_at": "2026-11-15T09:34:42Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-11-15T09:34:42Z",
+          "completed_at": "2026-11-15T09:34:42Z"
+        }
+      ],
+      "skips_explained": null,
+      "log_identity": {
+        "bytes": 25227,
+        "sha256": "f1827d5e062ca6e1049d24a6d90d74bd1010bc0c7a84eb4ed553861b2394f860",
+        "git_blob_sha": "f7503747c8818f379420a6e6d63d2bcad56338f6"
+      },
+      "evidence": {
+        "checkout": [
+          {
+            "line": 107,
+            "text": "2026-11-15T09:31:30.1577651Z 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93"
+          },
+          {
+            "line": 119,
+            "text": "2026-11-15T09:31:30.4935838Z 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93"
+          }
+        ],
+        "installation": [
+          {
+            "line": 220,
+            "text": "2026-11-15T09:31:45.0046600Z   Resolved https://github.com/den-run-ai/pystachy.git to commit 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93"
+          },
+          {
+            "line": 234,
+            "text": "2026-11-15T09:31:47.5624147Z Successfully installed pystachy-0.5.0a3"
+          },
+          {
+            "line": 235,
+            "text": "2026-11-15T09:33:34.3534885Z /tmp/pystachy-compiler-install-b5lmb4kc/outside checkout/pip env/bin/pystachy: Ubuntu clang version 18.1.3 (1ubuntu1)"
+          },
+          {
+            "line": 236,
+            "text": "2026-11-15T09:33:48.0226186Z /tmp/pystachy-compiler-install-b5lmb4kc/outside checkout/pip env/bin/pystachy: GC-stressed JIT and exact JIT/AOT float output passed"
+          },
+          {
+            "line": 237,
+            "text": "2026-11-15T09:33:48.0230420Z /tmp/pystachy-compiler-install-b5lmb4kc/outside checkout/pip env/bin/pystachy: version, JIT, standalone AOT and external cache passed"
+          },
+          {
+            "line": 240,
+            "text": "2026-11-15T09:33:48.2798326Z   Successfully uninstalled pystachy-0.5.0a3"
+          },
+          {
+            "line": 248,
+            "text": "2026-11-15T09:33:54.9490818Z  + pystachy==0.5.0a3 (from git+https://github.com/den-run-ai/pystachy.git@6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93)"
+          },
+          {
+            "line": 251,
+            "text": "2026-11-15T09:34:23.5802031Z /tmp/pystachy-compiler-install-b5lmb4kc/outside checkout/uv-bin/pystachy: Ubuntu clang version 18.1.3 (1ubuntu1)"
+          },
+          {
+            "line": 252,
+            "text": "2026-11-15T09:34:39.5129015Z /tmp/pystachy-compiler-install-b5lmb4kc/outside checkout/uv-bin/pystachy: GC-stressed JIT and exact JIT/AOT float output passed"
+          },
+          {
+            "line": 253,
+            "text": "2026-11-15T09:34:39.5130307Z /tmp/pystachy-compiler-install-b5lmb4kc/outside checkout/uv-bin/pystachy: version, JIT, standalone AOT and external cache passed"
+          },
+          {
+            "line": 254,
+            "text": "2026-11-15T09:34:39.5240358Z Uninstalled 1 executable: pystachy"
+          }
+        ]
+      }
+    },
+    {
+      "job_id": 132767743125,
+      "name": "Source install with pinned LLVM (macos-15)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43699643829/job/132767743125",
+      "run_id": 43699643829,
+      "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:31:25Z",
+      "completed_at": "2026-11-15T09:37:42Z",
+      "labels": [
+        "macos-15"
+      ],
+      "scope": "fresh pip and uv Git source installations with automatic pinned LLVM provisioning",
+      "step_counts": {
+        "all": 7,
+        "success": 7,
+        "skipped": 0,
+        "other": 0
+      },
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-15T09:31:25Z",
+          "completed_at": "2026-11-15T09:31:27Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-15T09:31:27Z",
+          "completed_at": "2026-11-15T09:31:31Z"
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-15T09:31:31Z",
+          "completed_at": "2026-11-15T09:32:03Z"
+        },
+        {
+          "name": "Install from the exact Git commit and exercise the provisioned toolchain",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-15T09:32:03Z",
+          "completed_at": "2026-11-15T09:37:35Z"
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-15T09:37:35Z",
+          "completed_at": "2026-11-15T09:37:35Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-15T09:37:35Z",
+          "completed_at": "2026-11-15T09:37:36Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-11-15T09:37:36Z",
+          "completed_at": "2026-11-15T09:37:39Z"
+        }
+      ],
+      "skips_explained": null,
+      "log_identity": {
+        "bytes": 29001,
+        "sha256": "b65ce1e8d4be01f3f7ded29797bb87bd569826c6a35190cb23542cc6b895449a",
+        "git_blob_sha": "c3f8859cfbd53e706dbc7c87eaf497cf5c5b00d7"
+      },
+      "evidence": {
+        "checkout": [
+          {
+            "line": 108,
+            "text": "2026-11-15T09:31:29.7423250Z 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93"
+          },
+          {
+            "line": 147,
+            "text": "2026-11-15T09:31:31.3267510Z 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93"
+          }
+        ],
+        "installation": [
+          {
+            "line": 259,
+            "text": "2026-11-15T09:32:14.0957620Z   Resolved https://github.com/den-run-ai/pystachy.git to commit 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93"
+          },
+          {
+            "line": 273,
+            "text": "2026-11-15T09:32:17.9635310Z Successfully installed pystachy-0.5.0a3"
+          },
+          {
+            "line": 274,
+            "text": "2026-11-15T09:36:34.7276100Z /var/folders/2s/vty41l455yv698g4xkgfv7z00000gn/T/pystachy-compiler-install-1rzwi_kz/outside checkout/pip env/bin/pystachy: clang version 20.1.8 (https://github.com/llvm/llvm-project 87f0227cb60147a26a1eeb4fb06e3b505e9c7261)"
+          },
+          {
+            "line": 275,
+            "text": "2026-11-15T09:36:45.9762080Z /var/folders/2s/vty41l455yv698g4xkgfv7z00000gn/T/pystachy-compiler-install-1rzwi_kz/outside checkout/pip env/bin/pystachy: GC-stressed JIT and exact JIT/AOT float output passed"
+          },
+          {
+            "line": 276,
+            "text": "2026-11-15T09:36:45.9771590Z /var/folders/2s/vty41l455yv698g4xkgfv7z00000gn/T/pystachy-compiler-install-1rzwi_kz/outside checkout/pip env/bin/pystachy: version, JIT, standalone AOT and external cache passed"
+          },
+          {
+            "line": 279,
+            "text": "2026-11-15T09:36:46.7208170Z   Successfully uninstalled pystachy-0.5.0a3"
+          },
+          {
+            "line": 287,
+            "text": "2026-11-15T09:36:56.4127110Z  + pystachy==0.5.0a3 (from git+https://github.com/den-run-ai/pystachy.git@6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93)"
+          },
+          {
+            "line": 290,
+            "text": "2026-11-15T09:37:19.5099920Z /var/folders/2s/vty41l455yv698g4xkgfv7z00000gn/T/pystachy-compiler-install-1rzwi_kz/outside checkout/uv-bin/pystachy: clang version 20.1.8 (https://github.com/llvm/llvm-project 87f0227cb60147a26a1eeb4fb06e3b505e9c7261)"
+          },
+          {
+            "line": 291,
+            "text": "2026-11-15T09:37:34.0498300Z /var/folders/2s/vty41l455yv698g4xkgfv7z00000gn/T/pystachy-compiler-install-1rzwi_kz/outside checkout/uv-bin/pystachy: GC-stressed JIT and exact JIT/AOT float output passed"
+          },
+          {
+            "line": 292,
+            "text": "2026-11-15T09:37:34.0500730Z /var/folders/2s/vty41l455yv698g4xkgfv7z00000gn/T/pystachy-compiler-install-1rzwi_kz/outside checkout/uv-bin/pystachy: version, JIT, standalone AOT and external cache passed"
+          },
+          {
+            "line": 293,
+            "text": "2026-11-15T09:37:34.0796160Z Uninstalled 1 executable: pystachy"
+          }
+        ]
+      }
+    },
+    {
+      "job_id": 132767743140,
+      "name": "Install (macos-15-intel)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43699643829/job/132767743140",
+      "run_id": 43699643829,
+      "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:31:26Z",
+      "completed_at": "2026-11-15T09:42:21Z",
+      "labels": [
+        "macos-15-intel"
+      ],
+      "scope": "bootstrap and hosted/installed native compiler smoke",
+      "step_counts": {
+        "all": 15,
+        "success": 10,
+        "skipped": 5,
+        "other": 0
+      },
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-15T09:31:27Z",
+          "completed_at": "2026-11-15T09:31:30Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-15T09:31:30Z",
+          "completed_at": "2026-11-15T09:31:41Z"
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-15T09:31:41Z",
+          "completed_at": "2026-11-15T09:32:24Z"
+        },
+        {
+          "name": "LLVM toolchain (install only when missing)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-15T09:32:24Z",
+          "completed_at": "2026-11-15T09:33:25Z"
+        },
+        {
+          "name": "Check dependencies and installer",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-15T09:33:25Z",
+          "completed_at": "2026-11-15T09:33:32Z"
+        },
+        {
+          "name": "Bootstrap fixed point",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-15T09:33:32Z",
+          "completed_at": "2026-11-15T09:41:07Z"
+        },
+        {
+          "name": "Hosted and native JIT/AOT smoke",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-15T09:41:07Z",
+          "completed_at": "2026-11-15T09:42:16Z"
+        },
+        {
+          "name": "Install sanitizer runtime for netio ownership",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8,
+          "started_at": "2026-11-15T09:42:16Z",
+          "completed_at": "2026-11-15T09:42:16Z"
+        },
+        {
+          "name": "Hosted and native epoll, pipes and ownership",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-11-15T09:42:16Z",
+          "completed_at": "2026-11-15T09:42:16Z"
+        },
+        {
+          "name": "Retain Linux netio reports",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-11-15T09:42:16Z",
+          "completed_at": "2026-11-15T09:42:16Z"
+        },
+        {
+          "name": "Native kqueue and pipe parity",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-11-15T09:42:16Z",
+          "completed_at": "2026-11-15T09:42:16Z"
+        },
+        {
+          "name": "Retain native kqueue reports",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 12,
+          "started_at": "2026-11-15T09:42:16Z",
+          "completed_at": "2026-11-15T09:42:16Z"
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-11-15T09:42:16Z",
+          "completed_at": "2026-11-15T09:42:17Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-11-15T09:42:17Z",
+          "completed_at": "2026-11-15T09:42:17Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-11-15T09:42:17Z",
+          "completed_at": "2026-11-15T09:42:18Z"
+        }
+      ],
+      "skips_explained": {
+        "numbers": [
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        "reason": "Linux-only sanitizer/epoll/report steps and macos-15-only kqueue/report steps do not run on macos-15-intel."
+      },
+      "log_identity": {
+        "bytes": 38627,
+        "sha256": "5a898f0238c4ded5bca6731cefc42cc5e5760a6cc6009d811778d1ba1000ef69",
+        "git_blob_sha": "44f61dee16238f7e4900823285d2ca70f1a40925"
+      },
+      "evidence": {
+        "checkout": [
+          {
+            "line": 108,
+            "text": "2026-11-15T09:31:33.1444200Z 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93"
+          },
+          {
+            "line": 222,
+            "text": "2026-11-15T09:31:40.5622540Z 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93"
+          }
+        ],
+        "bootstrap_and_install": [
+          {
+            "line": 424,
+            "text": "2026-11-15T09:41:05.9506250Z fixed point: stage1 == stage2 == stage3 (  959093 lines of IR)"
+          },
+          {
+            "line": 429,
+            "text": "2026-11-15T09:41:07.3536370Z fixed point: runtime.py's IR, rt1 == rt2 == rt3 (   21214 lines)"
+          },
+          {
+            "line": 441,
+            "text": "2026-11-15T09:42:16.2284590Z hosted JIT: CPython output matches"
+          },
+          {
+            "line": 442,
+            "text": "2026-11-15T09:42:16.2285800Z hosted AOT: CPython output matches"
+          },
+          {
+            "line": 443,
+            "text": "2026-11-15T09:42:16.2287280Z pystachy v0.5.0-alpha.3 (commit 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93): installed and native --version, without LLVM or Python"
+          },
+          {
+            "line": 444,
+            "text": "2026-11-15T09:42:16.2288620Z installed JIT/AOT: CPython output matches"
+          },
+          {
+            "line": 445,
+            "text": "2026-11-15T09:42:16.2289340Z installed JIT/AOT with GC stress: CPython output matches"
+          },
+          {
+            "line": 446,
+            "text": "2026-11-15T09:42:16.2290100Z installed runtime cache: outside installation"
+          }
+        ]
+      }
+    },
+    {
+      "job_id": 132767743163,
+      "name": "Install (ubuntu-24.04)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43699643829/job/132767743163",
+      "run_id": 43699643829,
+      "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:31:24Z",
+      "completed_at": "2026-11-15T09:40:16Z",
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "scope": "bootstrap and hosted/installed native compiler smoke",
+      "step_counts": {
+        "all": 15,
+        "success": 13,
+        "skipped": 2,
+        "other": 0
+      },
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-15T09:31:25Z",
+          "completed_at": "2026-11-15T09:31:26Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-15T09:31:26Z",
+          "completed_at": "2026-11-15T09:31:28Z"
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-15T09:31:28Z",
+          "completed_at": "2026-11-15T09:31:35Z"
+        },
+        {
+          "name": "LLVM toolchain (install only when missing)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-15T09:31:35Z",
+          "completed_at": "2026-11-15T09:31:38Z"
+        },
+        {
+          "name": "Check dependencies and installer",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-15T09:31:38Z",
+          "completed_at": "2026-11-15T09:31:38Z"
+        },
+        {
+          "name": "Bootstrap fixed point",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-15T09:31:38Z",
+          "completed_at": "2026-11-15T09:37:07Z"
+        },
+        {
+          "name": "Hosted and native JIT/AOT smoke",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-15T09:37:07Z",
+          "completed_at": "2026-11-15T09:37:59Z"
+        },
+        {
+          "name": "Install sanitizer runtime for netio ownership",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-15T09:37:59Z",
+          "completed_at": "2026-11-15T09:38:05Z"
+        },
+        {
+          "name": "Hosted and native epoll, pipes and ownership",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-11-15T09:38:05Z",
+          "completed_at": "2026-11-15T09:40:13Z"
+        },
+        {
+          "name": "Retain Linux netio reports",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-11-15T09:40:13Z",
+          "completed_at": "2026-11-15T09:40:14Z"
+        },
+        {
+          "name": "Native kqueue and pipe parity",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-11-15T09:40:14Z",
+          "completed_at": "2026-11-15T09:40:14Z"
+        },
+        {
+          "name": "Retain native kqueue reports",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 12,
+          "started_at": "2026-11-15T09:40:14Z",
+          "completed_at": "2026-11-15T09:40:14Z"
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-11-15T09:40:14Z",
+          "completed_at": "2026-11-15T09:40:14Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-11-15T09:40:14Z",
+          "completed_at": "2026-11-15T09:40:15Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-11-15T09:40:15Z",
+          "completed_at": "2026-11-15T09:40:15Z"
+        }
+      ],
+      "skips_explained": {
+        "numbers": [
+          11,
+          12
+        ],
+        "reason": "macos-15-only kqueue/report steps do not run on Linux."
+      },
+      "log_identity": {
+        "bytes": 38285,
+        "sha256": "dda6e85e0e1ff94d3917cae81f193203012b3e0edb8736433302098cdf5a0ad6",
+        "git_blob_sha": "16a431ea1977322e656ddedb93fdc5b0dc5ef2a7"
+      },
+      "evidence": {
+        "checkout": [
+          {
+            "line": 108,
+            "text": "2026-11-15T09:31:27.8326411Z 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93"
+          },
+          {
+            "line": 120,
+            "text": "2026-11-15T09:31:28.4070067Z 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93"
+          }
+        ],
+        "bootstrap_and_install": [
+          {
+            "line": 259,
+            "text": "2026-11-15T09:37:06.4436944Z fixed point: stage1 == stage2 == stage3 (959093 lines of IR)"
+          },
+          {
+            "line": 264,
+            "text": "2026-11-15T09:37:07.1743367Z fixed point: runtime.py's IR, rt1 == rt2 == rt3 (21214 lines)"
+          },
+          {
+            "line": 277,
+            "text": "2026-11-15T09:37:59.7303848Z hosted JIT: CPython output matches"
+          },
+          {
+            "line": 278,
+            "text": "2026-11-15T09:37:59.7305361Z hosted AOT: CPython output matches"
+          },
+          {
+            "line": 279,
+            "text": "2026-11-15T09:37:59.7306930Z pystachy v0.5.0-alpha.3 (commit 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93): installed and native --version, without LLVM or Python"
+          },
+          {
+            "line": 280,
+            "text": "2026-11-15T09:37:59.7308154Z installed JIT/AOT: CPython output matches"
+          },
+          {
+            "line": 281,
+            "text": "2026-11-15T09:37:59.7308784Z installed JIT/AOT with GC stress: CPython output matches"
+          },
+          {
+            "line": 282,
+            "text": "2026-11-15T09:37:59.7309457Z installed runtime cache: outside installation"
+          }
+        ],
+        "netio": [
+          {
+            "line": 348,
+            "text": "2026-11-15T09:38:07.2582172Z Ran 53 tests in 1.537s"
+          },
+          {
+            "line": 359,
+            "text": "2026-11-15T09:38:08.4581160Z cpython_oracle: 12 scenarios passed"
+          },
+          {
+            "line": 360,
+            "text": "2026-11-15T09:38:26.4169165Z cpython_bridge: 12 scenarios match the stdlib oracle"
+          },
+          {
+            "line": 361,
+            "text": "2026-11-15T09:38:43.4258374Z jit: 12 scenarios match the stdlib oracle"
+          },
+          {
+            "line": 362,
+            "text": "2026-11-15T09:38:43.4574636Z aot: 12 scenarios match the stdlib oracle"
+          },
+          {
+            "line": 363,
+            "text": "2026-11-15T09:38:53.8222221Z jit_gc: 12 scenarios match the stdlib oracle"
+          },
+          {
+            "line": 364,
+            "text": "2026-11-15T09:38:53.8561155Z aot_gc: 12 scenarios match the stdlib oracle"
+          },
+          {
+            "line": 365,
+            "text": "2026-11-15T09:38:53.8584916Z Socket/readiness parity passed for the documented optional prototype surface."
+          },
+          {
+            "line": 366,
+            "text": "2026-11-15T09:39:10.5247681Z cpython_oracle: fragment batches verified; later pipe completed first; binary output matches"
+          },
+          {
+            "line": 367,
+            "text": "2026-11-15T09:39:10.5772709Z cpython_bridge: fragment batches verified; later pipe completed first; binary output matches"
+          },
+          {
+            "line": 368,
+            "text": "2026-11-15T09:39:17.7513794Z jit: fragment batches verified; later pipe completed first; binary output matches"
+          },
+          {
+            "line": 369,
+            "text": "2026-11-15T09:39:17.7533203Z aot: fragment batches verified; later pipe completed first; binary output matches"
+          },
+          {
+            "line": 370,
+            "text": "2026-11-15T09:39:18.2771833Z jit_gc: fragment batches verified; later pipe completed first; binary output matches"
+          },
+          {
+            "line": 371,
+            "text": "2026-11-15T09:39:18.2809628Z aot_gc: fragment batches verified; later pipe completed first; binary output matches"
+          },
+          {
+            "line": 372,
+            "text": "2026-11-15T09:39:19.0867082Z netio ownership: 300 cycles, SIGPIPE, pipe readiness and bounds pass"
+          },
+          {
+            "line": 373,
+            "text": "2026-11-15T09:39:19.5997859Z cpython_oracle: 12 scenarios passed"
+          },
+          {
+            "line": 374,
+            "text": "2026-11-15T09:39:35.0805487Z cpython_bridge: 12 scenarios match the stdlib oracle"
+          },
+          {
+            "line": 375,
+            "text": "2026-11-15T09:39:46.9259890Z jit: 12 scenarios match the stdlib oracle"
+          },
+          {
+            "line": 376,
+            "text": "2026-11-15T09:39:46.9572740Z aot: 12 scenarios match the stdlib oracle"
+          },
+          {
+            "line": 377,
+            "text": "2026-11-15T09:39:52.2252108Z jit_gc: 12 scenarios match the stdlib oracle"
+          },
+          {
+            "line": 378,
+            "text": "2026-11-15T09:39:52.2589318Z aot_gc: 12 scenarios match the stdlib oracle"
+          },
+          {
+            "line": 379,
+            "text": "2026-11-15T09:39:52.2612600Z Socket/readiness parity passed for the documented optional prototype surface."
+          },
+          {
+            "line": 380,
+            "text": "2026-11-15T09:40:06.4010070Z cpython_oracle: fragment batches verified; later pipe completed first; binary output matches"
+          },
+          {
+            "line": 381,
+            "text": "2026-11-15T09:40:06.4546707Z cpython_bridge: fragment batches verified; later pipe completed first; binary output matches"
+          },
+          {
+            "line": 382,
+            "text": "2026-11-15T09:40:13.3715850Z jit: fragment batches verified; later pipe completed first; binary output matches"
+          },
+          {
+            "line": 383,
+            "text": "2026-11-15T09:40:13.3734521Z aot: fragment batches verified; later pipe completed first; binary output matches"
+          },
+          {
+            "line": 384,
+            "text": "2026-11-15T09:40:13.5762291Z jit_gc: fragment batches verified; later pipe completed first; binary output matches"
+          },
+          {
+            "line": 385,
+            "text": "2026-11-15T09:40:13.5799416Z aot_gc: fragment batches verified; later pipe completed first; binary output matches"
+          }
+        ]
+      }
+    },
+    {
+      "job_id": 132767743170,
+      "name": "Install (macos-15)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43699643829/job/132767743170",
+      "run_id": 43699643829,
+      "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:31:26Z",
+      "completed_at": "2026-11-15T09:43:12Z",
+      "labels": [
+        "macos-15"
+      ],
+      "scope": "bootstrap and hosted/installed native compiler smoke",
+      "step_counts": {
+        "all": 15,
+        "success": 12,
+        "skipped": 3,
+        "other": 0
+      },
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-15T09:31:28Z",
+          "completed_at": "2026-11-15T09:31:30Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-15T09:31:30Z",
+          "completed_at": "2026-11-15T09:31:37Z"
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-15T09:31:37Z",
+          "completed_at": "2026-11-15T09:32:16Z"
+        },
+        {
+          "name": "LLVM toolchain (install only when missing)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-15T09:32:16Z",
+          "completed_at": "2026-11-15T09:33:06Z"
+        },
+        {
+          "name": "Check dependencies and installer",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-15T09:33:06Z",
+          "completed_at": "2026-11-15T09:33:11Z"
+        },
+        {
+          "name": "Bootstrap fixed point",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-15T09:33:11Z",
+          "completed_at": "2026-11-15T09:40:47Z"
+        },
+        {
+          "name": "Hosted and native JIT/AOT smoke",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-15T09:40:47Z",
+          "completed_at": "2026-11-15T09:41:51Z"
+        },
+        {
+          "name": "Install sanitizer runtime for netio ownership",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8,
+          "started_at": "2026-11-15T09:41:51Z",
+          "completed_at": "2026-11-15T09:41:51Z"
+        },
+        {
+          "name": "Hosted and native epoll, pipes and ownership",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-11-15T09:41:51Z",
+          "completed_at": "2026-11-15T09:41:51Z"
+        },
+        {
+          "name": "Retain Linux netio reports",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-11-15T09:41:51Z",
+          "completed_at": "2026-11-15T09:41:51Z"
+        },
+        {
+          "name": "Native kqueue and pipe parity",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-11-15T09:41:51Z",
+          "completed_at": "2026-11-15T09:43:05Z"
+        },
+        {
+          "name": "Retain native kqueue reports",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-11-15T09:43:05Z",
+          "completed_at": "2026-11-15T09:43:07Z"
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-11-15T09:43:07Z",
+          "completed_at": "2026-11-15T09:43:07Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-11-15T09:43:07Z",
+          "completed_at": "2026-11-15T09:43:08Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-11-15T09:43:08Z",
+          "completed_at": "2026-11-15T09:43:10Z"
+        }
+      ],
+      "skips_explained": {
+        "numbers": [
+          8,
+          9,
+          10
+        ],
+        "reason": "Linux-only sanitizer/epoll/report steps do not run on macos-15."
+      },
+      "log_identity": {
+        "bytes": 40524,
+        "sha256": "706a43fc68e61b1072ba2eac1c3973870c6eff3d38a5a85e4e9a386ee2d0327c",
+        "git_blob_sha": "0dea54933e791c9bed5f8bb11dbfa12ca862f16a"
+      },
+      "evidence": {
+        "checkout": [
+          {
+            "line": 109,
+            "text": "2026-11-15T09:31:33.5646590Z 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93"
+          },
+          {
+            "line": 184,
+            "text": "2026-11-15T09:31:36.3842550Z 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93"
+          }
+        ],
+        "bootstrap_and_install": [
+          {
+            "line": 373,
+            "text": "2026-11-15T09:40:46.1360510Z fixed point: stage1 == stage2 == stage3 (  959093 lines of IR)"
+          },
+          {
+            "line": 378,
+            "text": "2026-11-15T09:40:47.1832220Z fixed point: runtime.py's IR, rt1 == rt2 == rt3 (   21214 lines)"
+          },
+          {
+            "line": 390,
+            "text": "2026-11-15T09:41:51.7103650Z hosted JIT: CPython output matches"
+          },
+          {
+            "line": 391,
+            "text": "2026-11-15T09:41:51.7184860Z hosted AOT: CPython output matches"
+          },
+          {
+            "line": 392,
+            "text": "2026-11-15T09:41:51.7294170Z pystachy v0.5.0-alpha.3 (commit 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93): installed and native --version, without LLVM or Python"
+          },
+          {
+            "line": 393,
+            "text": "2026-11-15T09:41:51.7322810Z installed JIT/AOT: CPython output matches"
+          },
+          {
+            "line": 394,
+            "text": "2026-11-15T09:41:51.7326270Z installed JIT/AOT with GC stress: CPython output matches"
+          },
+          {
+            "line": 395,
+            "text": "2026-11-15T09:41:51.7360420Z installed runtime cache: outside installation"
+          }
+        ],
+        "netio": [
+          {
+            "line": 411,
+            "text": "2026-11-15T09:41:53.2274680Z cpython_oracle: 12 scenarios passed"
+          },
+          {
+            "line": 412,
+            "text": "2026-11-15T09:42:14.4881510Z cpython_bridge: 12 scenarios match the stdlib oracle"
+          },
+          {
+            "line": 413,
+            "text": "2026-11-15T09:42:30.3151310Z jit: 12 scenarios match the stdlib oracle"
+          },
+          {
+            "line": 414,
+            "text": "2026-11-15T09:42:30.5584100Z aot: 12 scenarios match the stdlib oracle"
+          },
+          {
+            "line": 415,
+            "text": "2026-11-15T09:42:39.5319720Z jit_gc: 12 scenarios match the stdlib oracle"
+          },
+          {
+            "line": 416,
+            "text": "2026-11-15T09:42:39.7225780Z aot_gc: 12 scenarios match the stdlib oracle"
+          },
+          {
+            "line": 417,
+            "text": "2026-11-15T09:42:39.7330110Z Socket/readiness parity passed for the documented optional prototype surface."
+          },
+          {
+            "line": 418,
+            "text": "2026-11-15T09:42:57.7057450Z cpython_oracle: fragment batches verified; later pipe completed first; binary output matches"
+          },
+          {
+            "line": 419,
+            "text": "2026-11-15T09:42:57.7623250Z cpython_bridge: fragment batches verified; later pipe completed first; binary output matches"
+          },
+          {
+            "line": 420,
+            "text": "2026-11-15T09:43:04.9814190Z jit: fragment batches verified; later pipe completed first; binary output matches"
+          },
+          {
+            "line": 421,
+            "text": "2026-11-15T09:43:04.9920470Z aot: fragment batches verified; later pipe completed first; binary output matches"
+          },
+          {
+            "line": 422,
+            "text": "2026-11-15T09:43:05.3494620Z jit_gc: fragment batches verified; later pipe completed first; binary output matches"
+          },
+          {
+            "line": 423,
+            "text": "2026-11-15T09:43:05.3658230Z aot_gc: fragment batches verified; later pipe completed first; binary output matches"
+          }
+        ]
+      }
+    },
+    {
+      "job_id": 132767743172,
+      "name": "Source install with pinned LLVM (ubuntu-24.04)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43699643829/job/132767743172",
+      "run_id": 43699643829,
+      "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:31:24Z",
+      "completed_at": "2026-11-15T09:34:29Z",
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "scope": "fresh pip and uv Git source installations with automatic pinned LLVM provisioning",
+      "step_counts": {
+        "all": 7,
+        "success": 7,
+        "skipped": 0,
+        "other": 0
+      },
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-15T09:31:25Z",
+          "completed_at": "2026-11-15T09:31:26Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-15T09:31:26Z",
+          "completed_at": "2026-11-15T09:31:28Z"
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-15T09:31:28Z",
+          "completed_at": "2026-11-15T09:31:35Z"
+        },
+        {
+          "name": "Install from the exact Git commit and exercise the provisioned toolchain",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-15T09:31:35Z",
+          "completed_at": "2026-11-15T09:34:27Z"
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-15T09:34:27Z",
+          "completed_at": "2026-11-15T09:34:27Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-15T09:34:27Z",
+          "completed_at": "2026-11-15T09:34:27Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-11-15T09:34:27Z",
+          "completed_at": "2026-11-15T09:34:27Z"
+        }
+      ],
+      "skips_explained": null,
+      "log_identity": {
+        "bytes": 25254,
+        "sha256": "c7abee122963cec7c9630133ca737adf6062af50b49f20b328a25f7371022997",
+        "git_blob_sha": "649173dda9819b0d796433c63d9fd4b840cef496"
+      },
+      "evidence": {
+        "checkout": [
+          {
+            "line": 107,
+            "text": "2026-11-15T09:31:28.1118013Z 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93"
+          },
+          {
+            "line": 119,
+            "text": "2026-11-15T09:31:28.5626824Z 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93"
+          }
+        ],
+        "installation": [
+          {
+            "line": 221,
+            "text": "2026-11-15T09:31:42.8110179Z   Resolved https://github.com/den-run-ai/pystachy.git to commit 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93"
+          },
+          {
+            "line": 235,
+            "text": "2026-11-15T09:31:45.7995302Z Successfully installed pystachy-0.5.0a3"
+          },
+          {
+            "line": 236,
+            "text": "2026-11-15T09:33:25.3347438Z /tmp/pystachy-compiler-install-qbbot1ah/outside checkout/pip env/bin/pystachy: Ubuntu clang version 18.1.3 (1ubuntu1)"
+          },
+          {
+            "line": 237,
+            "text": "2026-11-15T09:33:37.5763249Z /tmp/pystachy-compiler-install-qbbot1ah/outside checkout/pip env/bin/pystachy: GC-stressed JIT and exact JIT/AOT float output passed"
+          },
+          {
+            "line": 238,
+            "text": "2026-11-15T09:33:37.5767206Z /tmp/pystachy-compiler-install-qbbot1ah/outside checkout/pip env/bin/pystachy: version, JIT, standalone AOT and external cache passed"
+          },
+          {
+            "line": 241,
+            "text": "2026-11-15T09:33:37.8160121Z   Successfully uninstalled pystachy-0.5.0a3"
+          },
+          {
+            "line": 249,
+            "text": "2026-11-15T09:33:44.1266415Z  + pystachy==0.5.0a3 (from git+https://github.com/den-run-ai/pystachy.git@6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93)"
+          },
+          {
+            "line": 252,
+            "text": "2026-11-15T09:34:10.8584828Z /tmp/pystachy-compiler-install-qbbot1ah/outside checkout/uv-bin/pystachy: Ubuntu clang version 18.1.3 (1ubuntu1)"
+          },
+          {
+            "line": 253,
+            "text": "2026-11-15T09:34:25.7705387Z /tmp/pystachy-compiler-install-qbbot1ah/outside checkout/uv-bin/pystachy: GC-stressed JIT and exact JIT/AOT float output passed"
+          },
+          {
+            "line": 254,
+            "text": "2026-11-15T09:34:25.7706409Z /tmp/pystachy-compiler-install-qbbot1ah/outside checkout/uv-bin/pystachy: version, JIT, standalone AOT and external cache passed"
+          },
+          {
+            "line": 255,
+            "text": "2026-11-15T09:34:25.7809440Z Uninstalled 1 executable: pystachy"
+          }
+        ]
+      }
+    },
+    {
+      "job_id": 132767743159,
+      "name": "source wheels (CPython, JIT and AOT)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43699643867/job/132767743159",
+      "run_id": 43699643867,
+      "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:31:24Z",
+      "completed_at": "2026-11-15T09:36:53Z",
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "scope": "example application and port sdists/wheels, native and hosted compiler",
+      "step_counts": {
+        "all": 11,
+        "success": 11,
+        "skipped": 0,
+        "other": 0
+      },
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-15T09:31:25Z",
+          "completed_at": "2026-11-15T09:31:27Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-15T09:31:27Z",
+          "completed_at": "2026-11-15T09:31:33Z"
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-15T09:31:33Z",
+          "completed_at": "2026-11-15T09:31:39Z"
+        },
+        {
+          "name": "Run tools/setup.sh --minimal",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-15T09:31:39Z",
+          "completed_at": "2026-11-15T09:31:46Z"
+        },
+        {
+          "name": "Run python3 -m pip install -r tools/requirements-packaging.txt",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-15T09:31:46Z",
+          "completed_at": "2026-11-15T09:31:48Z"
+        },
+        {
+          "name": "Run make",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-15T09:31:48Z",
+          "completed_at": "2026-11-15T09:35:58Z"
+        },
+        {
+          "name": "Run python3 tools/package_smoke.py --no-build-isolation",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-15T09:35:58Z",
+          "completed_at": "2026-11-15T09:36:26Z"
+        },
+        {
+          "name": "Run python3 tools/package_smoke.py --no-build-isolation --compiler 'python3 pystachy.py'",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-15T09:36:26Z",
+          "completed_at": "2026-11-15T09:36:51Z"
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-15T09:36:51Z",
+          "completed_at": "2026-11-15T09:36:51Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-11-15T09:36:51Z",
+          "completed_at": "2026-11-15T09:36:51Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-11-15T09:36:51Z",
+          "completed_at": "2026-11-15T09:36:51Z"
+        }
+      ],
+      "skips_explained": null,
+      "log_identity": {
+        "bytes": 26506,
+        "sha256": "33e5d78a34e8d4dfadad4387d59714122c37a2a863f1cefc640eb84430fa3b4f",
+        "git_blob_sha": "0b602436bf90c30a4e2eb7aa35ffc74a74cabb5f"
+      },
+      "evidence": {
+        "checkout": [
+          {
+            "line": 109,
+            "text": "2026-11-15T09:31:33.1599840Z 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93"
+          },
+          {
+            "line": 121,
+            "text": "2026-11-15T09:31:33.5283620Z 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93"
+          }
+        ],
+        "package": [
+          {
+            "line": 254,
+            "text": "2026-11-15T09:35:58.4654556Z fixed point: stage1 == stage2 == stage3 (959093 lines of IR)"
+          },
+          {
+            "line": 259,
+            "text": "2026-11-15T09:35:58.9866285Z fixed point: runtime.py's IR, rt1 == rt2 == rt3 (21214 lines)"
+          },
+          {
+            "line": 273,
+            "text": "2026-11-15T09:36:26.8621445Z sdist/wheel: all port sources, licenses and provenance included"
+          },
+          {
+            "line": 274,
+            "text": "2026-11-15T09:36:26.8621972Z offline hashed dependency sync: CPython library/module/CLI, JIT and standalone AOT match"
+          },
+          {
+            "line": 275,
+            "text": "2026-11-15T09:36:26.8622461Z negative checks: incompatible dependency and altered wheel rejected"
+          },
+          {
+            "line": 288,
+            "text": "2026-11-15T09:36:51.3828712Z sdist/wheel: all port sources, licenses and provenance included"
+          },
+          {
+            "line": 289,
+            "text": "2026-11-15T09:36:51.3829494Z offline hashed dependency sync: CPython library/module/CLI, JIT and standalone AOT match"
+          },
+          {
+            "line": 290,
+            "text": "2026-11-15T09:36:51.3829976Z negative checks: incompatible dependency and altered wheel rejected"
+          }
+        ]
+      }
+    }
+  ],
+  "artifacts": [
+    {
+      "run_id": 43699643829,
+      "scope": "GitHub artifact API metadata and matching successful upload logs only; archive bytes not downloaded",
+      "total_count": 3,
+      "artifacts": [
+        {
+          "id": 14156485698,
+          "node_id": "MDg6QXJ0aWZhY3QxNDE1NjQ4NTY5OA==",
+          "name": "netio-kqueue-install-macos-15",
+          "size_in_bytes": 1759,
+          "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14156485698",
+          "archive_download_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14156485698/zip",
+          "expired": false,
+          "digest": "sha256:33e6c36debecfc87b7f05a7f14adeb5d0d8a380406af70908cd021a8b5895a58",
+          "created_at": "2026-11-15T09:43:07Z",
+          "updated_at": "2026-11-15T09:43:07Z",
+          "expires_at": "2026-11-22T09:43:06Z",
+          "workflow_run": {
+            "id": 43699643829,
+            "repository_id": 1409192014,
+            "head_repository_id": 1409192014,
+            "head_branch": "main",
+            "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93"
+          }
+        },
+        {
+          "id": 14156305947,
+          "node_id": "MDg6QXJ0aWZhY3QxNDE1NjMwNTk0Nw==",
+          "name": "netio-linux-install-ubuntu-24.04-arm",
+          "size_in_bytes": 13343,
+          "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14156305947",
+          "archive_download_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14156305947/zip",
+          "expired": false,
+          "digest": "sha256:e5a1a66b3ad1543d49daec06d693727331121c2e2a32631be0074451bc69f935",
+          "created_at": "2026-11-15T09:40:06Z",
+          "updated_at": "2026-11-15T09:40:06Z",
+          "expires_at": "2026-11-22T09:40:05Z",
+          "workflow_run": {
+            "id": 43699643829,
+            "repository_id": 1409192014,
+            "head_repository_id": 1409192014,
+            "head_branch": "main",
+            "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93"
+          }
+        },
+        {
+          "id": 14155888590,
+          "node_id": "MDg6QXJ0aWZhY3QxNDE1NTg4ODU5MA==",
+          "name": "netio-linux-install-ubuntu-24.04",
+          "size_in_bytes": 13352,
+          "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14155888590",
+          "archive_download_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14155888590/zip",
+          "expired": false,
+          "digest": "sha256:7cd8954a2dcbe4ad4b615c8f81928705b8a8a33ba3dae2b4b7a61b8a4720f1cb",
+          "created_at": "2026-11-15T09:40:14Z",
+          "updated_at": "2026-11-15T09:40:14Z",
+          "expires_at": "2026-11-22T09:40:13Z",
+          "workflow_run": {
+            "id": 43699643829,
+            "repository_id": 1409192014,
+            "head_repository_id": 1409192014,
+            "head_branch": "main",
+            "head_sha": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93"
+          }
+        }
+      ]
+    },
+    {
+      "run_id": 43699643867,
+      "scope": "GitHub artifact API metadata and matching successful upload logs only; archive bytes not downloaded",
+      "total_count": 0,
+      "artifacts": []
+    }
+  ],
+  "source_helpers": [
+    {
+      "path": ".github/workflows/install.yml",
+      "commit": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "bytes": 5187,
+      "sha256": "9c43c3d492c53e854d62829073b7beb8a951788f9caa3c28a3b047eb57191a9a",
+      "git_blob_sha": "38c0725ec0c6aeb10866f8b7eef2e3feb7b0445f"
+    },
+    {
+      "path": ".github/workflows/packages.yml",
+      "commit": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "bytes": 1289,
+      "sha256": "f81419c1768cbfa1dc1320e3c53b0bf6d218914f42bde93b68b4db51b17068cf",
+      "git_blob_sha": "1a21d592885a14f9cf4b648cb0465ca940a2a62f"
+    },
+    {
+      "path": "tools/install_smoke.py",
+      "commit": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "bytes": 6737,
+      "sha256": "520f6c26ae62bfe15fa195ce13b93ace7266c16875ff314dcbf5b6879d12f672",
+      "git_blob_sha": "9db02f2f895caae3fe8d970c3d1b5a17e0b31059"
+    },
+    {
+      "path": "tools/compiler_install_smoke.py",
+      "commit": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "bytes": 6839,
+      "sha256": "b6379200a7b86bad7713918e20751b39724e656bd750358e3dcccd5aed35a2a7",
+      "git_blob_sha": "7efc3e0f5e2f84e19643195c177f0242d852106a"
+    },
+    {
+      "path": "tools/package_smoke.py",
+      "commit": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "bytes": 9584,
+      "sha256": "b462f93275b3af204dfb3b671a8be4d6450801632f64055fb885b92ad1d98b85",
+      "git_blob_sha": "dbc052e9e430abbb696fe0f7aaff75172f012528"
+    },
+    {
+      "path": "tools/requirements-packaging.txt",
+      "commit": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "bytes": 113,
+      "sha256": "3be370ccb4c9d26090a6cc4bbe579cb9b2c155303287fea37e7fd1103b4a419c",
+      "git_blob_sha": "12c7e6363b9910395c8f16dc313efe2fa8de586b"
+    },
+    {
+      "path": "Makefile",
+      "commit": "6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93",
+      "bytes": 36230,
+      "sha256": "e2cee5eb1acf0351c31773674ad9f595b1c1c1bb4ce23677060bc5f502eb5bbe",
+      "git_blob_sha": "d416ec607785961c4ec69f4c5a6c8b99a0bd032e"
+    }
+  ],
+  "substantive_findings": [
+    "All four Installation smoke platforms (Linux x86-64/ARM64 and macOS Intel/ARM64) reached compiler stage1 == stage2 == stage3 and runtime rt1 == rt2 == rt3, then passed hosted and installed native JIT/AOT output, GC stress, version/commit and external cache checks.",
+    "Both Linux Installation jobs passed 53 netio unit tests, hosted and native CPython-oracle parity and pipe-drain checks, plus 300-cycle ASAN/UBSAN ownership checks. macOS ARM native kqueue/pipe parity passed. macOS Intel's netio skips are exactly the workflow's OS conditions.",
+    "All three source-provisioning platforms installed from the exact main commit using both pip and uv into isolated directories, checked installed direct_url revision in the helper, exercised provisioned LLVM and JIT/AOT/GC/cache behavior, and uninstalled the command.",
+    "Packages ran the native and hosted package smoke. Each built example/port sdists and wheels, verified port source/license/provenance inclusion, used offline hash-locked dependency installation, matched CPython library/module/CLI against JIT and standalone AOT, and rejected an incompatible dependency and altered wheel hash.",
+    "The three Installation artifact identities and successful uploads match expected workflow paths; Packages defines no artifact upload and reports zero artifacts."
+  ],
+  "scope_limits": [
+    "This is a remote exact-main workflow/log/source review, not a rerun of local qualification.",
+    "The Packages workflow checks locally built example/port package distributions. It does not establish publication or public PyPI byte identity for pystachy 0.5.0a3.",
+    "Artifact IDs/digests are metadata observations, not independently downloaded/rehashed archives.",
+    "Workspace unavailable: no public native/Docker/PyPI byte audit or local Coverage execution performed here.",
+    "CI, CodeQL, Lint, Performance smoke, Variants, Coverage and overall release gating are owned by the other reviewers/root.",
+    "Successful smoke tests are scoped behavioral evidence, not an exhaustive correctness or performance claim."
+  ],
+  "blockers": [],
+  "evidence_files": [
+    {
+      "path": "postmerge/main-installation-packages-raw.json",
+      "bytes": 439739,
+      "sha256": "51b0745ebfcdc5c543f46ad710cf7347f3ee69abb29941a2a23bcb5ed5b01a02",
+      "git_blob_sha": "f933cba08551bf2fa29c25a6f49e172e93a85306"
+    },
+    {
+      "path": "postmerge/main-installation-packages-commit-raw.json",
+      "bytes": 812296,
+      "sha256": "cf08fb3f13d7e90a49602a4533c58723beceae869761dfa490ad6a3a1df339c7",
+      "git_blob_sha": "4ca27c7c3c596789853664b1bf9cb495d60904e7"
+    }
+  ],
+  "publication_scan": {
+    "full_original_response_bundle": {
+      "payload_identity": {
+        "bytes": 2312904,
+        "sha256": "e5c34e3e7e86d69a26c8a08e2a2ddf87b695b14a4585b220d16cc20e091281ac",
+        "git_blob_sha": "e9a03aee71dfa26a0f1967d48ae6fd5326791af0"
+      },
+      "patterns": [
+        {
+          "kind": "github_token",
+          "count": 0
+        },
+        {
+          "kind": "private_key",
+          "count": 0
+        },
+        {
+          "kind": "aws_access_id",
+          "count": 0
+        },
+        {
+          "kind": "jwt",
+          "count": 0
+        },
+        {
+          "kind": "signed_url",
+          "count": 0
+        },
+        {
+          "kind": "unmasked_authorization",
+          "count": 0
+        },
+        {
+          "kind": "credential_assignment",
+          "count": 0
+        }
+      ],
+      "all_clear": true,
+      "redactions": 0
+    },
+    "payload_policy": "Actual payload strings scanned before create_blob; no candidate credential/signed download URL was found and no redaction was applied."
+  },
+  "hash_helper_self_tests": [
+    {
+      "name": "sha1_empty",
+      "actual": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+      "expected": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+      "pass": true
+    },
+    {
+      "name": "sha1_abc",
+      "actual": "a9993e364706816aba3e25717850c26c9cd0d89d",
+      "expected": "a9993e364706816aba3e25717850c26c9cd0d89d",
+      "pass": true
+    },
+    {
+      "name": "sha256_empty",
+      "actual": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "pass": true
+    },
+    {
+      "name": "sha256_abc",
+      "actual": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "expected": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "pass": true
+    },
+    {
+      "name": "sha256_multiblock",
+      "actual": "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1",
+      "expected": "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1",
+      "pass": true
+    },
+    {
+      "name": "git_empty",
+      "actual": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "expected": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "pass": true
+    },
+    {
+      "name": "b64_roundtrip",
+      "actual": "aGVsbG8K",
+      "expected": "aGVsbG8K",
+      "pass": true
+    }
+  ]
+}
