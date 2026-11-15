@@ -77,6 +77,13 @@ class SummaryTests(unittest.TestCase):
         self.assertEqual(summary["failed"], [{"program": "a.py", "reason": "inspection failed"},
                                              {"program": "b.py", "reason": "guard_checks: a malformed snapshot"}])
 
+    def test_function_adapter_errors_are_incomplete_checks(self):
+        records = [record("a.py", union=row(2, 1, 2, [
+            item("@f.broken", "error", None, "missing tag"), item("@f.limited", "unsupported", None)]))]
+        summary = report.summarize(records)
+        self.assertEqual(summary["failed"], [{"program": "a.py", "reason": "union: @f.broken: missing tag"}])
+        self.assertEqual(summary["checks"]["union"]["other"][0]["status"], "error")
+
     def test_order_does_not_depend_on_completion(self):
         first = [record("a.py", gc=row(3, 1, 2, [item("@m.x$f"), item("@m.x$g", obligations=1)])),
                  record("b.py", gc=row(2, 0, 1, [item("@m.x$g", obligations=1)]))]
@@ -801,6 +808,7 @@ class CanonicalOutputTests(unittest.TestCase):
         self.assertEqual(report.main(self.args), 0)
         self.assertEqual(report.status(self.canonical), 0)
         incomplete = (dict(record(self.programs[1]), failed={"gc_check": "interrupted"}),
+                      record(self.programs[1], union=row(0, 0, unproved=[item("@f.broken", "error", None)])),
                       {"program": self.programs[1], "seconds": 1})
         for last in incomplete:
             with self.subTest(record=last):
