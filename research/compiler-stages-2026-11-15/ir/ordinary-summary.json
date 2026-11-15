@@ -1,0 +1,26 @@
+{
+  "status": "passed",
+  "programs": 4579,
+  "completed_reports": 4579,
+  "exit_counts": {
+    "0->0": 2653,
+    "1->1": 1926
+  },
+  "raw_diagnostic_differences": 0,
+  "ir_or_report_differences": 0,
+  "new_rejections": 0,
+  "baseline_commit": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+  "start_commit": "5557064d54b78efa4cdbcfe9e055394ab5158a50",
+  "end_commit": "c153493a7c5a11196fd42a8591bcf7e062f5ac34",
+  "changes_during_run": [
+    "tools/test_frame_fields.py"
+  ],
+  "library_runtime_identity_unchanged": true,
+  "compiler_binaries_unchanged": true,
+  "shared_home": "/workspace/scratch/78a63a74ecb5/pystachy",
+  "ircheck": "unset",
+  "options": "default",
+  "workers": 2,
+  "case_directory": "/workspace/scratch/78a63a74ecb5/pipeline-irsame-details/shared-home.Eu23yT",
+  "problems": []
+}

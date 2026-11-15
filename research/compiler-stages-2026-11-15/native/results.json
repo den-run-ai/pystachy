@@ -1,0 +1,20 @@
+[
+  {
+    "name": "native",
+    "exit_code": 0,
+    "expected_runs": 20,
+    "output": "tests/run.sh ./pystachy \"jit aot\" tests/programs/generics/generic_distinct_layouts.py tests/programs/numbers/python_int_storage.py tests/programs/numbers/python_int_vtuple_materialization.py tests/programs/language/recursion_guard.py tests/programs/generators/iterator_class_exceptions.py tests/programs/generators/gen_throw.py tests/programs/inference/dynany_generator_exceptions.py tests/programs/inference/dynany_native_int_list_callbacks.py tests/programs/inference/dynany_identity_list_mutations.py tests/programs/optimizations/opt_dictfuse_callback_alias.py\nselected 10 cases\n20 passed, 0 failed\n"
+  },
+  {
+    "name": "hosted",
+    "exit_code": 0,
+    "expected_runs": 20,
+    "output": "/workspace/scratch/c2b093657c17/dev-venv/bin/python -c 'import glob, py_compile as c; [c.compile(p, doraise=True, invalidation_mode=c.PycInvalidationMode.CHECKED_HASH) for p in [\"pystachy.py\"] + sorted(glob.glob(\"src/**/*.py\", recursive=True))]'\ntests/run.sh \"/workspace/scratch/c2b093657c17/dev-venv/bin/python -m pystachy\" \"jit aot\" tests/programs/generics/generic_distinct_layouts.py tests/programs/numbers/python_int_storage.py tests/programs/numbers/python_int_vtuple_materialization.py tests/programs/language/recursion_guard.py tests/programs/generators/iterator_class_exceptions.py tests/programs/generators/gen_throw.py tests/programs/inference/dynany_generator_exceptions.py tests/programs/inference/dynany_native_int_list_callbacks.py tests/programs/inference/dynany_identity_list_mutations.py tests/programs/optimizations/opt_dictfuse_callback_alias.py\nselected 10 cases\n20 passed, 0 failed\n"
+  },
+  {
+    "name": "gc-native",
+    "exit_code": 0,
+    "expected_runs": 8,
+    "output": "tests/run.sh ./pystachy \"jit aot\" tests/programs/numbers/python_int_vtuple_materialization.py tests/programs/generators/gen_throw.py tests/programs/inference/dynany_native_int_list_callbacks.py tests/programs/inference/dynany_identity_list_mutations.py\nselected 4 cases\n8 passed, 0 failed\n"
+  }
+]

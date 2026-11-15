@@ -1,0 +1,12 @@
+pystachy-timing	program.cache_lookup	0.000032802
+pystachy-timing	program.load	3.108065211
+pystachy-timing	program.prepare	1.421283034
+pystachy-timing	program.discover	2.612957699
+pystachy-timing	program.analysis	0.295545401
+pystachy-timing	program.optimize	1.580748499
+pystachy-timing	program.finalize	0.418842119
+pystachy-timing	program.lower	1.314098968
+pystachy-timing	program.attempt	10.752881038
+pystachy-timing	program.frontend	10.752940215
+pystachy-timing	driver.total	10.885846644
+gc: 14 collections, 1465.8 ms; heap peak 912.8 MiB; live 191.5 MiB at the last

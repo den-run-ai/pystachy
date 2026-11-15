@@ -1,0 +1,23 @@
+{
+  "commit": "6f8b2998a93e1e8770f98f78e51d26505ccd06be",
+  "compiler_sha256": "33c0fb45f19776c5f1f9c96252f4c82af89e267ffbfc82f376eff165823dd757",
+  "cases": [
+    "tests/programs/generics/generic_distinct_layouts.py",
+    "tests/programs/numbers/python_int_storage.py",
+    "tests/programs/numbers/python_int_vtuple_materialization.py",
+    "tests/programs/language/recursion_guard.py",
+    "tests/programs/generators/iterator_class_exceptions.py",
+    "tests/programs/generators/gen_throw.py",
+    "tests/programs/inference/dynany_generator_exceptions.py",
+    "tests/programs/inference/dynany_native_int_list_callbacks.py",
+    "tests/programs/inference/dynany_identity_list_mutations.py",
+    "tests/programs/optimizations/opt_dictfuse_callback_alias.py"
+  ],
+  "gc_cases": [
+    "tests/programs/numbers/python_int_vtuple_materialization.py",
+    "tests/programs/generators/gen_throw.py",
+    "tests/programs/inference/dynany_native_int_list_callbacks.py",
+    "tests/programs/inference/dynany_identity_list_mutations.py"
+  ],
+  "workers": 2
+}

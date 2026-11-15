@@ -1,0 +1,54 @@
+{
+  "cwd": "/workspace/scratch/78a63a74ecb5/pystachy-lean-final",
+  "commit": "800752d8a582bff77d4c375039af786b82a96f73",
+  "git_status": "",
+  "argv": [
+    "/workspace/scratch/c2b093657c17/dev-venv/bin/python3.13",
+    "tools/lean_report.py",
+    "--jobs",
+    "2",
+    "--start-method",
+    "spawn",
+    "--output",
+    "/workspace/scratch/78a63a74ecb5/lean-final-isolated-probes/report.md",
+    "--records",
+    "/workspace/scratch/78a63a74ecb5/lean-final-isolated-probes/records.jsonl",
+    "--progress",
+    "tools/lean_boundary/examples/narrowed_float.py",
+    "tools/lean_boundary/examples/guarded_state.py",
+    "tools/lean_boundary/examples/classes_and_ints.py",
+    "tools/lean_boundary/examples/unchecked_accesses.py",
+    "tools/lean_boundary/examples/union_memory.py",
+    "tools/lean_boundary/examples/field_init.py",
+    "tools/lean_boundary/examples/generators.py",
+    "tests/programs/generics/generic_distinct_layouts.py",
+    "tests/programs/numbers/python_int_storage.py",
+    "tests/programs/numbers/python_int_vtuple_materialization.py"
+  ],
+  "environment": {
+    "PATH": "/workspace/scratch/c2b093657c17/dev-venv/bin:/workspace/scratch/c2b093657c17/toolchains/llvm18/payload/usr/lib/llvm-18/bin:/workspace/scratch/c2b093657c17/toolchains/lean-4.35.0-linux/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/override:/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin:/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/fallback",
+    "LEAN_BOUNDARY_REQUIRED": "1",
+    "LEAN_NUM_THREADS": "2"
+  },
+  "inherited_pystachy_environment_removed": true,
+  "checkers": [
+    {
+      "name": "pystachy-boundary",
+      "sha256": "2d491bc79c80b390f503d0c223108f70abd31e70a81d144125128a4a1f98546c",
+      "source": "/workspace/scratch/78a63a74ecb5/pystachy-base/tools/lean_boundary/.lake/build/bin/pystachy-boundary",
+      "path": "/workspace/scratch/78a63a74ecb5/pystachy-lean-final/tools/lean_boundary/.lake/build/bin/pystachy-boundary"
+    },
+    {
+      "name": "pystachy-access",
+      "sha256": "614d42998c1b49867ce8d3505140a2e1fb2ee91b00d969577e09aba1970ae9c0",
+      "source": "/workspace/scratch/78a63a74ecb5/pystachy-base/tools/lean_boundary/.lake/build/bin/pystachy-access",
+      "path": "/workspace/scratch/78a63a74ecb5/pystachy-lean-final/tools/lean_boundary/.lake/build/bin/pystachy-access"
+    },
+    {
+      "name": "pystachy-int",
+      "sha256": "0720d6d555ec4e93f6336d3150c599367e1982c1769b1152ac1f5bc846232003",
+      "source": "/workspace/scratch/78a63a74ecb5/pystachy-base/tools/lean_boundary/.lake/build/bin/pystachy-int",
+      "path": "/workspace/scratch/78a63a74ecb5/pystachy-lean-final/tools/lean_boundary/.lake/build/bin/pystachy-int"
+    }
+  ]
+}

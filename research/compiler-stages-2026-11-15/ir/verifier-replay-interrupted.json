@@ -1,0 +1,12 @@
+{
+  "status": "interrupted",
+  "exit_code": 130,
+  "reason": "PYSTACHY_IRCHECK=1 did not match original ordinary-comparison configuration",
+  "directory": "/workspace/scratch/78a63a74ecb5/pipeline-irsame-details/shared-home.kbbGyj",
+  "completed_counts_after_interrupt": [
+    1449,
+    1449,
+    1449
+  ],
+  "differences": 0
+}

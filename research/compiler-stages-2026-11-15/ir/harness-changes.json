@@ -1,0 +1,12 @@
+{
+  "original_sha256": "7baa4d09a86103485f6b6c87a739162347b97542051d80b6cfb57c8a108587d5",
+  "scratch_sha256": "77d8885734710d1cf937e300381a28d439585b9e993918e7bd6c695f37c6b52e",
+  "changes": {
+    "cd \"$(dirname \"$0\")/..\" || exit 1": "cd \"/workspace/scratch/78a63a74ecb5/pystachy\" || exit 1",
+    "SHOW=3": "SHOW=100000",
+    "T=$(mktemp -d \"${TMPDIR:-/tmp}/pystachy-irsame.XXXXXX\") || exit 1": "T=$(mktemp -d \"/workspace/scratch/78a63a74ecb5/pipeline-irsame-details/shared-home.XXXXXX\") || exit 1\nprintf \"%s\\n\" \"$T\" > \"/workspace/scratch/78a63a74ecb5/pipeline-irsame-details/active-shared-home-dir\"\nprintf \"%s\\n\" \"$@\" > \"$T/corpus\"",
+    "trap 'rm -rf \"$T\"' EXIT": ": # Preserve audit reports and changed IR in this scratch run.",
+    "  messages=0": "  printf \"%s %s\\n\" \"$a\" \"$b\" > \"$2/status\"\n  messages=0",
+    "  rm -f \"$2/old.ll\" \"$2/new.ll\"": "  if [ ! -s \"$2/report\" ]; then rm -f \"$2/old.ll\" \"$2/new.ll\"; fi"
+  }
+}

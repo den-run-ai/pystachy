@@ -1,0 +1,379 @@
+.........................................F............FFF..F.......F.............F..F..FFF.......F......F..............................
+======================================================================
+FAIL: test_annotation_only_full_source (test_compiler_state_globals.GlobalOwnershipTests.test_annotation_only_full_source)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/78a63a74ecb5/pystachy/tools/test_compiler_state_globals.py", line 236, in test_annotation_only_full_source
+    self.assertEqual(validate_sources(sources), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['unclassified module container: pipeline.[280 chars]MED'] != []
+
+First list contains 4 additional elements.
+First extra element 0:
+'unclassified module container: pipeline.STAGE_PREDECESSORS'
+
++ []
+- ['unclassified module container: pipeline.STAGE_PREDECESSORS',
+-  'unreviewed container writer: pipeline.gen_lower_program writes names.RENAMED '
+-  'via RENAMED',
+-  'unreviewed container writer: program.gen_prepare_program writes '
+-  'names.RENAMED via RENAMED',
+-  'stale container writer: program.gen_program writes names.RENAMED via RENAMED']
+
+======================================================================
+FAIL: test_ctypes_schema_tables_reject_post_import_writers (test_compiler_state_globals.GlobalOwnershipTests.test_ctypes_schema_tables_reject_post_import_writers) (table='SCALARS')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/78a63a74ecb5/pystachy/tools/test_compiler_state_globals.py", line 719, in test_ctypes_schema_tables_reject_post_import_writers
+    self.assertEqual(validate_sources(sources), [
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        f"unreviewed container writer: ctypes_schema.bad_writer writes ctypes_schema.{name} via {name}",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ])
+    ^^
+AssertionError: Lists differ: ['unclassified module container: pipeline.STA[375 chars]MED'] != ['unreviewed container writer: ctypes_schema.[48 chars]ARS']
+
+First differing element 0:
+'unclassified module container: pipeline.STAGE_PREDECESSORS'
+'unreviewed container writer: ctypes_schema.[47 chars]LARS'
+
+First list contains 4 additional elements.
+First extra element 1:
+'unreviewed container writer: ctypes_schema.bad_writer writes ctypes_schema.SCALARS via SCALARS'
+
+Diff is 657 characters long. Set self.maxDiff to None to see it.
+
+======================================================================
+FAIL: test_ctypes_schema_tables_reject_post_import_writers (test_compiler_state_globals.GlobalOwnershipTests.test_ctypes_schema_tables_reject_post_import_writers) (table='MARKERS')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/78a63a74ecb5/pystachy/tools/test_compiler_state_globals.py", line 719, in test_ctypes_schema_tables_reject_post_import_writers
+    self.assertEqual(validate_sources(sources), [
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        f"unreviewed container writer: ctypes_schema.bad_writer writes ctypes_schema.{name} via {name}",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ])
+    ^^
+AssertionError: Lists differ: ['unclassified module container: pipeline.STA[375 chars]MED'] != ['unreviewed container writer: ctypes_schema.[48 chars]ERS']
+
+First differing element 0:
+'unclassified module container: pipeline.STAGE_PREDECESSORS'
+'unreviewed container writer: ctypes_schema.[47 chars]KERS'
+
+First list contains 4 additional elements.
+First extra element 1:
+'unreviewed container writer: ctypes_schema.bad_writer writes ctypes_schema.MARKERS via MARKERS'
+
+Diff is 657 characters long. Set self.maxDiff to None to see it.
+
+======================================================================
+FAIL: test_current_tree_and_disjoint_ownership (test_compiler_state_globals.GlobalOwnershipTests.test_current_tree_and_disjoint_ownership)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/78a63a74ecb5/pystachy/tools/test_compiler_state_globals.py", line 16, in test_current_tree_and_disjoint_ownership
+    self.assertEqual(validate_sources(sources), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['unclassified module container: pipeline.[280 chars]MED'] != []
+
+First list contains 4 additional elements.
+First extra element 0:
+'unclassified module container: pipeline.STAGE_PREDECESSORS'
+
++ []
+- ['unclassified module container: pipeline.STAGE_PREDECESSORS',
+-  'unreviewed container writer: pipeline.gen_lower_program writes names.RENAMED '
+-  'via RENAMED',
+-  'unreviewed container writer: program.gen_prepare_program writes '
+-  'names.RENAMED via RENAMED',
+-  'stale container writer: program.gen_program writes names.RENAMED via RENAMED']
+
+======================================================================
+FAIL: test_diagnostic_observation_does_not_allow_additional_writers (test_compiler_state_globals.GlobalOwnershipTests.test_diagnostic_observation_does_not_allow_additional_writers)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/78a63a74ecb5/pystachy/tools/test_compiler_state_globals.py", line 726, in test_diagnostic_observation_does_not_allow_additional_writers
+    self.assertEqual(validate_sources(sources), [
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        "unreviewed container writer: diagnostics.added_capture_reset writes diagnostics.CAPTURED via CAPTURED",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ])
+    ^^
+AssertionError: Lists differ: ['unclassified module container: pipeline.STA[382 chars]MED'] != ['unreviewed container writer: diagnostics.ad[55 chars]RED']
+
+First differing element 0:
+'unclassified module container: pipeline.STAGE_PREDECESSORS'
+'unreviewed container writer: diagnostics.ad[54 chars]URED'
+
+First list contains 4 additional elements.
+First extra element 1:
+'unreviewed container writer: diagnostics.added_capture_reset writes diagnostics.CAPTURED via CAPTURED'
+
+Diff is 671 characters long. Set self.maxDiff to None to see it.
+
+======================================================================
+FAIL: test_inventory_constructor_shadow_full_source (test_compiler_state_globals.GlobalOwnershipTests.test_inventory_constructor_shadow_full_source)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/78a63a74ecb5/pystachy/tools/test_compiler_state_globals.py", line 314, in test_inventory_constructor_shadow_full_source
+    self.assertEqual(validate_sources(sources), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['unclassified module container: pipeline.[280 chars]MED'] != []
+
+First list contains 4 additional elements.
+First extra element 0:
+'unclassified module container: pipeline.STAGE_PREDECESSORS'
+
++ []
+- ['unclassified module container: pipeline.STAGE_PREDECESSORS',
+-  'unreviewed container writer: pipeline.gen_lower_program writes names.RENAMED '
+-  'via RENAMED',
+-  'unreviewed container writer: program.gen_prepare_program writes '
+-  'names.RENAMED via RENAMED',
+-  'stale container writer: program.gen_program writes names.RENAMED via RENAMED']
+
+======================================================================
+FAIL: test_module_subscript_and_reexport_full_source_controls (test_compiler_state_globals.GlobalOwnershipTests.test_module_subscript_and_reexport_full_source_controls)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/78a63a74ecb5/pystachy/tools/test_compiler_state_globals.py", line 601, in test_module_subscript_and_reexport_full_source_controls
+    self.assertEqual(validate_sources(sources), [
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        "unreviewed container writer: lexer.added_writer writes lexer.KEYWORDS via NEW_CACHE",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ])
+    ^^
+AssertionError: Lists differ: ['unclassified module container: pipeline.STA[364 chars]MED'] != ['unreviewed container writer: lexer.added_wr[37 chars]CHE']
+
+First differing element 0:
+'unclassified module container: pipeline.STAGE_PREDECESSORS'
+'unreviewed container writer: lexer.added_wr[36 chars]ACHE'
+
+First list contains 4 additional elements.
+First extra element 1:
+'unreviewed container writer: lexer.added_writer writes lexer.KEYWORDS via NEW_CACHE'
+
+- ['unclassified module container: pipeline.STAGE_PREDECESSORS',
+-  'unreviewed container writer: lexer.added_writer writes lexer.KEYWORDS via '
+? ^
+
++ ['unreviewed container writer: lexer.added_writer writes lexer.KEYWORDS via '
+? ^
+
+-  'NEW_CACHE',
+?             ^
+
++  'NEW_CACHE']
+?             ^
+
+-  'unreviewed container writer: pipeline.gen_lower_program writes names.RENAMED '
+-  'via RENAMED',
+-  'unreviewed container writer: program.gen_prepare_program writes '
+-  'names.RENAMED via RENAMED',
+-  'stale container writer: program.gen_program writes names.RENAMED via RENAMED']
+
+======================================================================
+FAIL: test_new_conditional_alias_and_starred_writer_controls (test_compiler_state_globals.GlobalOwnershipTests.test_new_conditional_alias_and_starred_writer_controls)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/78a63a74ecb5/pystachy/tools/test_compiler_state_globals.py", line 518, in test_new_conditional_alias_and_starred_writer_controls
+    self.assertEqual(validate_sources(sources), [
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        "unreviewed container writer: lexer.added_writer writes lexer.KEYWORDS via alias",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        "unreviewed container writer: lexer.added_writer writes lexer.OPS via alias",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ])
+    ^^
+AssertionError: Lists differ: ['unclassified module container: pipeline.STA[438 chars]MED'] != ['unreviewed container writer: lexer.added_wr[111 chars]ias']
+
+First differing element 0:
+'unclassified module container: pipeline.STAGE_PREDECESSORS'
+'unreviewed container writer: lexer.added_wr[32 chars]lias'
+
+First list contains 4 additional elements.
+First extra element 2:
+'unreviewed container writer: lexer.added_writer writes lexer.OPS via alias'
+
+Diff is 859 characters long. Set self.maxDiff to None to see it.
+
+======================================================================
+FAIL: test_new_initializer_forms_report_container_and_writer (test_compiler_state_globals.GlobalOwnershipTests.test_new_initializer_forms_report_container_and_writer) (expression='dict[str, bool]()')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/78a63a74ecb5/pystachy/tools/test_compiler_state_globals.py", line 73, in test_new_initializer_forms_report_container_and_writer
+    self.assertEqual(validate_sources(sources), [
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        "unclassified module container: lexer.NEW_CACHE",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        "unreviewed container writer: lexer.added_writer writes lexer.NEW_CACHE via NEW_CACHE",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ])
+    ^^
+AssertionError: Lists differ: ['unc[44 chars], 'unclassified module container: pipeline.STA[365 chars]MED'] != ['unc[44 chars], 'unreviewed container writer: lexer.added_wr[38 chars]CHE']
+
+First differing element 1:
+'unclassified module container: pipeline.STAGE_PREDECESSORS'
+'unreviewed container writer: lexer.added_wr[37 chars]ACHE'
+
+First list contains 4 additional elements.
+First extra element 2:
+'unreviewed container writer: lexer.added_writer writes lexer.NEW_CACHE via NEW_CACHE'
+
+  ['unclassified module container: lexer.NEW_CACHE',
+-  'unclassified module container: pipeline.STAGE_PREDECESSORS',
+   'unreviewed container writer: lexer.added_writer writes lexer.NEW_CACHE via '
+-  'NEW_CACHE',
+?             ^
+
++  'NEW_CACHE']
+?             ^
+
+-  'unreviewed container writer: pipeline.gen_lower_program writes names.RENAMED '
+-  'via RENAMED',
+-  'unreviewed container writer: program.gen_prepare_program writes '
+-  'names.RENAMED via RENAMED',
+-  'stale container writer: program.gen_program writes names.RENAMED via RENAMED']
+
+======================================================================
+FAIL: test_new_initializer_forms_report_container_and_writer (test_compiler_state_globals.GlobalOwnershipTests.test_new_initializer_forms_report_container_and_writer) (expression='{} if enabled else {}')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/78a63a74ecb5/pystachy/tools/test_compiler_state_globals.py", line 73, in test_new_initializer_forms_report_container_and_writer
+    self.assertEqual(validate_sources(sources), [
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        "unclassified module container: lexer.NEW_CACHE",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        "unreviewed container writer: lexer.added_writer writes lexer.NEW_CACHE via NEW_CACHE",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ])
+    ^^
+AssertionError: Lists differ: ['unc[44 chars], 'unclassified module container: pipeline.STA[365 chars]MED'] != ['unc[44 chars], 'unreviewed container writer: lexer.added_wr[38 chars]CHE']
+
+First differing element 1:
+'unclassified module container: pipeline.STAGE_PREDECESSORS'
+'unreviewed container writer: lexer.added_wr[37 chars]ACHE'
+
+First list contains 4 additional elements.
+First extra element 2:
+'unreviewed container writer: lexer.added_writer writes lexer.NEW_CACHE via NEW_CACHE'
+
+  ['unclassified module container: lexer.NEW_CACHE',
+-  'unclassified module container: pipeline.STAGE_PREDECESSORS',
+   'unreviewed container writer: lexer.added_writer writes lexer.NEW_CACHE via '
+-  'NEW_CACHE',
+?             ^
+
++  'NEW_CACHE']
+?             ^
+
+-  'unreviewed container writer: pipeline.gen_lower_program writes names.RENAMED '
+-  'via RENAMED',
+-  'unreviewed container writer: program.gen_prepare_program writes '
+-  'names.RENAMED via RENAMED',
+-  'stale container writer: program.gen_program writes names.RENAMED via RENAMED']
+
+======================================================================
+FAIL: test_new_initializer_forms_report_container_and_writer (test_compiler_state_globals.GlobalOwnershipTests.test_new_initializer_forms_report_container_and_writer) (expression='[] or []')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/78a63a74ecb5/pystachy/tools/test_compiler_state_globals.py", line 73, in test_new_initializer_forms_report_container_and_writer
+    self.assertEqual(validate_sources(sources), [
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        "unclassified module container: lexer.NEW_CACHE",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        "unreviewed container writer: lexer.added_writer writes lexer.NEW_CACHE via NEW_CACHE",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ])
+    ^^
+AssertionError: Lists differ: ['unc[44 chars], 'unclassified module container: pipeline.STA[365 chars]MED'] != ['unc[44 chars], 'unreviewed container writer: lexer.added_wr[38 chars]CHE']
+
+First differing element 1:
+'unclassified module container: pipeline.STAGE_PREDECESSORS'
+'unreviewed container writer: lexer.added_wr[37 chars]ACHE'
+
+First list contains 4 additional elements.
+First extra element 2:
+'unreviewed container writer: lexer.added_writer writes lexer.NEW_CACHE via NEW_CACHE'
+
+  ['unclassified module container: lexer.NEW_CACHE',
+-  'unclassified module container: pipeline.STAGE_PREDECESSORS',
+   'unreviewed container writer: lexer.added_writer writes lexer.NEW_CACHE via '
+-  'NEW_CACHE',
+?             ^
+
++  'NEW_CACHE']
+?             ^
+
+-  'unreviewed container writer: pipeline.gen_lower_program writes names.RENAMED '
+-  'via RENAMED',
+-  'unreviewed container writer: program.gen_prepare_program writes '
+-  'names.RENAMED via RENAMED',
+-  'stale container writer: program.gen_program writes names.RENAMED via RENAMED']
+
+======================================================================
+FAIL: test_separate_annotation_full_source (test_compiler_state_globals.GlobalOwnershipTests.test_separate_annotation_full_source)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/78a63a74ecb5/pystachy/tools/test_compiler_state_globals.py", line 266, in test_separate_annotation_full_source
+    self.assertEqual(validate_sources(sources), [
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        "unclassified module container: lexer.CACHE",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        "unreviewed container writer: lexer.added_writer writes lexer.CACHE via CACHE",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ])
+    ^^
+AssertionError: Lists differ: ['unc[40 chars], 'unclassified module container: pipeline.STA[357 chars]MED'] != ['unc[40 chars], 'unreviewed container writer: lexer.added_wr[30 chars]CHE']
+
+First differing element 1:
+'unclassified module container: pipeline.STAGE_PREDECESSORS'
+'unreviewed container writer: lexer.added_writer writes lexer.CACHE via CACHE'
+
+First list contains 4 additional elements.
+First extra element 2:
+'unreviewed container writer: lexer.added_writer writes lexer.CACHE via CACHE'
+
+Diff is 734 characters long. Set self.maxDiff to None to see it.
+
+======================================================================
+FAIL: test_union_declaration_and_unbound_writer_full_source (test_compiler_state_globals.GlobalOwnershipTests.test_union_declaration_and_unbound_writer_full_source)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/78a63a74ecb5/pystachy/tools/test_compiler_state_globals.py", line 186, in test_union_declaration_and_unbound_writer_full_source
+    self.assertEqual(validate_sources(sources), [
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        "unclassified module container: lexer.NEW_CACHE",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        "unreviewed container writer: lexer.added_writer writes lexer.NEW_CACHE via NEW_CACHE",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ])
+    ^^
+AssertionError: Lists differ: ['unc[44 chars], 'unclassified module container: pipeline.STA[365 chars]MED'] != ['unc[44 chars], 'unreviewed container writer: lexer.added_wr[38 chars]CHE']
+
+First differing element 1:
+'unclassified module container: pipeline.STAGE_PREDECESSORS'
+'unreviewed container writer: lexer.added_wr[37 chars]ACHE'
+
+First list contains 4 additional elements.
+First extra element 2:
+'unreviewed container writer: lexer.added_writer writes lexer.NEW_CACHE via NEW_CACHE'
+
+  ['unclassified module container: lexer.NEW_CACHE',
+-  'unclassified module container: pipeline.STAGE_PREDECESSORS',
+   'unreviewed container writer: lexer.added_writer writes lexer.NEW_CACHE via '
+-  'NEW_CACHE',
+?             ^
+
++  'NEW_CACHE']
+?             ^
+
+-  'unreviewed container writer: pipeline.gen_lower_program writes names.RENAMED '
+-  'via RENAMED',
+-  'unreviewed container writer: program.gen_prepare_program writes '
+-  'names.RENAMED via RENAMED',
+-  'stale container writer: program.gen_program writes names.RENAMED via RENAMED']
+
+----------------------------------------------------------------------
+Ran 132 tests in 114.393s
+
+FAILED (failures=13)

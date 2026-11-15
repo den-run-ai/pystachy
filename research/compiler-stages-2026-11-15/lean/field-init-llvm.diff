@@ -1,0 +1,14 @@
+--- baseline
++++ pipeline
+@@ -152,9 +152,9 @@
+ @g.e = internal global ptr zeroinitializer
+ @pys.roots = private constant [8 x ptr] [ptr @g.itertools$_STOP, ptr @g.itertools$_INDICES, ptr @g.itertools$_STEP, ptr @g._weakrefset$__all__, ptr @g.itertools$chain, ptr @g.weakref$__all__, ptr @d.c.Labeled.msg, ptr @g.e]
+ @s.0 = private unnamed_addr global {i64, i64, i64, [8 x i8]} {i64 7, i64 0, i64 8, [8 x i8] c"WeakSet\00"}, align 8
+-@s.1 = private unnamed_addr global {i64, i64, i64, [114 x i8]} {i64 113, i64 0, i64 114, [114 x i8] c"cannot import name 'ref' from '_weakref' (<checkout>/lib/_pystachy_weakref.py)\00"}, align 8
++@s.1 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'ref' from '_weakref' (<checkout>/lib/_pystachy_weakref.py)\00"}, align 8
+ @s.2 = private unnamed_addr global {i64, i64, i64, [12 x i8]} {i64 11, i64 0, i64 12, [12 x i8] c"ImportError\00"}, align 8
+-@s.3 = private unnamed_addr global {i64, i64, i64, [108 x i8]} {i64 107, i64 0, i64 108, [108 x i8] c"cannot import name 'GenericAlias' from 'types' (<checkout>/lib/types.py)\00"}, align 8
++@s.3 = private unnamed_addr global {i64, i64, i64, [103 x i8]} {i64 102, i64 0, i64 103, [103 x i8] c"cannot import name 'GenericAlias' from 'types' (<checkout>/lib/types.py)\00"}, align 8
+ @s.4 = private unnamed_addr global {i64, i64, i64, [78 x i8]} {i64 77, i64 0, i64 78, [78 x i8] c"Stop argument for islice() must be None or an integer: 0 <= x <= sys.maxsize.\00"}, align 8
+ @s.5 = private unnamed_addr global {i64, i64, i64, [72 x i8]} {i64 71, i64 0, i64 72, [72 x i8] c"Indices for islice() must be None or an integer: 0 <= x <= sys.maxsize.\00"}, align 8
+ @s.6 = private unnamed_addr global {i64, i64, i64, [54 x i8]} {i64 53, i64 0, i64 54, [54 x i8] c"Step for islice() must be a positive integer or None.\00"}, align 8

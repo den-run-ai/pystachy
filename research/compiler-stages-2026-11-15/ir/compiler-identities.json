@@ -1,0 +1,13 @@
+{
+  "commit": "5557064d54b78efa4cdbcfe9e055394ab5158a50",
+  "status": "",
+  "old": {
+    "path": "/workspace/scratch/78a63a74ecb5/pystachy/build/ref/pystachy",
+    "sha256": "ab6eab3cd16a215ae483a4bd8ca6a5219cecbcff62f89e58e6b01d9f08a9233a",
+    "source_commit": "80490143498d149d407343ba1cb7aedb1db2d2c5"
+  },
+  "new": {
+    "path": "/workspace/scratch/78a63a74ecb5/pystachy/pystachy",
+    "sha256": "33c0fb45f19776c5f1f9c96252f4c82af89e267ffbfc82f376eff165823dd757"
+  }
+}

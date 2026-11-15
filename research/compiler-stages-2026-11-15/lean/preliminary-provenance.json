@@ -1,0 +1,190 @@
+[
+  {
+    "name": "development",
+    "reason_not_clean_evidence": "Uncommitted compiler/inspection changes and untracked pipeline/test sources.",
+    "original_directory": "/workspace/scratch/78a63a74ecb5/lean-pipeline-probes",
+    "header": {
+      "checker_executables": {
+        "access": {
+          "path": "/workspace/scratch/78a63a74ecb5/pystachy/tools/lean_boundary/.lake/build/bin/pystachy-access",
+          "sha256": "614d42998c1b49867ce8d3505140a2e1fb2ee91b00d969577e09aba1970ae9c0"
+        },
+        "boundary": {
+          "path": "/workspace/scratch/78a63a74ecb5/pystachy/tools/lean_boundary/.lake/build/bin/pystachy-boundary",
+          "sha256": "2d491bc79c80b390f503d0c223108f70abd31e70a81d144125128a4a1f98546c"
+        }
+      },
+      "commit": "80490143498d",
+      "inputs": {
+        "checkers": {
+          "clean": false,
+          "digest": "c95e3cee818dfe04"
+        },
+        "compiler": {
+          "clean": false,
+          "digest": "5dbc963340e21ee1"
+        },
+        "corpus": {
+          "clean": false,
+          "digest": "5cd50e7a74d3f4f7",
+          "programs": [
+            "tests/programs/generics/generic_distinct_layouts.py",
+            "tests/programs/numbers/python_int_storage.py",
+            "tests/programs/numbers/python_int_vtuple_materialization.py",
+            "tools/lean_boundary/examples/classes_and_ints.py",
+            "tools/lean_boundary/examples/field_init.py",
+            "tools/lean_boundary/examples/generators.py",
+            "tools/lean_boundary/examples/guarded_state.py",
+            "tools/lean_boundary/examples/narrowed_float.py",
+            "tools/lean_boundary/examples/unchecked_accesses.py",
+            "tools/lean_boundary/examples/union_memory.py"
+          ],
+          "untrusted": [
+            "untracked or ignored source: src/pystachy_compiler/pipeline.py",
+            "untracked or ignored source: tools/test_compiler_pipeline.py"
+          ]
+        }
+      },
+      "inventory": {
+        "count": 10,
+        "sha256": "0013be8576c81789b5c05ec44bb3dc6fae0adfbe88a623794d1619a641f2669e"
+      },
+      "lean": "Lean 4.35.0",
+      "platform": "linux",
+      "promoting": [
+        "tests/programs/numbers/python_int_storage.py",
+        "tests/programs/numbers/python_int_vtuple_materialization.py"
+      ],
+      "python": "3.13.16"
+    },
+    "all_ten_programs_completed": true,
+    "proved_obligations_or_uses": 535
+  },
+  {
+    "name": "final_head_with_reference_build",
+    "reason_not_clean_evidence": "Ignored build/ref/lib Python sources affect the corpus namespace-import provenance.",
+    "original_directory": "/workspace/scratch/78a63a74ecb5/lean-final-head-probes",
+    "header": {
+      "checker_executables": {
+        "access": {
+          "path": "/workspace/scratch/78a63a74ecb5/pystachy/tools/lean_boundary/.lake/build/bin/pystachy-access",
+          "sha256": "614d42998c1b49867ce8d3505140a2e1fb2ee91b00d969577e09aba1970ae9c0"
+        },
+        "boundary": {
+          "path": "/workspace/scratch/78a63a74ecb5/pystachy/tools/lean_boundary/.lake/build/bin/pystachy-boundary",
+          "sha256": "2d491bc79c80b390f503d0c223108f70abd31e70a81d144125128a4a1f98546c"
+        }
+      },
+      "commit": "800752d8a582",
+      "inputs": {
+        "checkers": {
+          "clean": true,
+          "digest": "423a8c66f1c30988"
+        },
+        "compiler": {
+          "clean": true,
+          "digest": "3d93ec3d7929693c"
+        },
+        "corpus": {
+          "clean": false,
+          "digest": "1e0df21a441eeebb",
+          "programs": [
+            "tests/programs/generics/generic_distinct_layouts.py",
+            "tests/programs/numbers/python_int_storage.py",
+            "tests/programs/numbers/python_int_vtuple_materialization.py",
+            "tools/lean_boundary/examples/classes_and_ints.py",
+            "tools/lean_boundary/examples/field_init.py",
+            "tools/lean_boundary/examples/generators.py",
+            "tools/lean_boundary/examples/guarded_state.py",
+            "tools/lean_boundary/examples/narrowed_float.py",
+            "tools/lean_boundary/examples/unchecked_accesses.py",
+            "tools/lean_boundary/examples/union_memory.py"
+          ],
+          "untrusted": [
+            "untracked or ignored source: build/ref/lib/_argparse_help.py",
+            "untracked or ignored source: build/ref/lib/_markupbase.py",
+            "untracked or ignored source: build/ref/lib/_pyrandom.py",
+            "untracked or ignored source: build/ref/lib/_pystachy__io.py",
+            "untracked or ignored source: build/ref/lib/_pystachy_abc.py",
+            "untracked or ignored source: build/ref/lib/_pystachy_atexit.py",
+            "untracked or ignored source: build/ref/lib/_pystachy_bfile.py",
+            "untracked or ignored source: build/ref/lib/_pystachy_binascii.py"
+          ]
+        }
+      },
+      "inventory": {
+        "count": 10,
+        "sha256": "0013be8576c81789b5c05ec44bb3dc6fae0adfbe88a623794d1619a641f2669e"
+      },
+      "lean": "Lean 4.35.0",
+      "platform": "linux",
+      "promoting": [
+        "tests/programs/numbers/python_int_storage.py",
+        "tests/programs/numbers/python_int_vtuple_materialization.py"
+      ],
+      "python": "3.13.16"
+    },
+    "all_ten_programs_completed": true,
+    "proved_obligations_or_uses": 535
+  },
+  {
+    "name": "evidence_worktree_with_cost_runner",
+    "reason_not_clean_evidence": "Ignored research cost-runner Python source affects the corpus namespace-import provenance.",
+    "original_directory": "/workspace/scratch/78a63a74ecb5/lean-final-clean-probes",
+    "header": {
+      "checker_executables": {
+        "access": {
+          "path": "/workspace/scratch/78a63a74ecb5/pystachy-stage-evidence/tools/lean_boundary/.lake/build/bin/pystachy-access",
+          "sha256": "614d42998c1b49867ce8d3505140a2e1fb2ee91b00d969577e09aba1970ae9c0"
+        },
+        "boundary": {
+          "path": "/workspace/scratch/78a63a74ecb5/pystachy-stage-evidence/tools/lean_boundary/.lake/build/bin/pystachy-boundary",
+          "sha256": "2d491bc79c80b390f503d0c223108f70abd31e70a81d144125128a4a1f98546c"
+        }
+      },
+      "commit": "800752d8a582",
+      "inputs": {
+        "checkers": {
+          "clean": true,
+          "digest": "423a8c66f1c30988"
+        },
+        "compiler": {
+          "clean": true,
+          "digest": "3d93ec3d7929693c"
+        },
+        "corpus": {
+          "clean": false,
+          "digest": "1e0df21a441eeebb",
+          "programs": [
+            "tests/programs/generics/generic_distinct_layouts.py",
+            "tests/programs/numbers/python_int_storage.py",
+            "tests/programs/numbers/python_int_vtuple_materialization.py",
+            "tools/lean_boundary/examples/classes_and_ints.py",
+            "tools/lean_boundary/examples/field_init.py",
+            "tools/lean_boundary/examples/generators.py",
+            "tools/lean_boundary/examples/guarded_state.py",
+            "tools/lean_boundary/examples/narrowed_float.py",
+            "tools/lean_boundary/examples/unchecked_accesses.py",
+            "tools/lean_boundary/examples/union_memory.py"
+          ],
+          "untrusted": [
+            "untracked or ignored source: research/compiler-stages-2026-11-15/cost/measure_stage_overhead.py"
+          ]
+        }
+      },
+      "inventory": {
+        "count": 10,
+        "sha256": "0013be8576c81789b5c05ec44bb3dc6fae0adfbe88a623794d1619a641f2669e"
+      },
+      "lean": "Lean 4.35.0",
+      "platform": "linux",
+      "promoting": [
+        "tests/programs/numbers/python_int_storage.py",
+        "tests/programs/numbers/python_int_vtuple_materialization.py"
+      ],
+      "python": "3.13.16"
+    },
+    "all_ten_programs_completed": true,
+    "proved_obligations_or_uses": 535
+  }
+]

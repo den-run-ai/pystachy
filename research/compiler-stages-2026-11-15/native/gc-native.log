@@ -1,0 +1,3 @@
+tests/run.sh ./pystachy "jit aot" tests/programs/numbers/python_int_vtuple_materialization.py tests/programs/generators/gen_throw.py tests/programs/inference/dynany_native_int_list_callbacks.py tests/programs/inference/dynany_identity_list_mutations.py
+selected 4 cases
+8 passed, 0 failed

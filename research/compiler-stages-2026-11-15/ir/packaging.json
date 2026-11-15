@@ -1,0 +1,14 @@
+{
+  "format": "gzip",
+  "compression_level": 9,
+  "mtime": 0,
+  "original_filename_header": "",
+  "source_file": "ordinary-case-results.json",
+  "source_bytes": 1434512,
+  "source_sha256": "f0df74a214ab6e160c22aa12e344d1493b400c384bd10c3f7e7f0a42d34a6cc1",
+  "archive_file": "ordinary-case-results.json.gz",
+  "archive_bytes": 134430,
+  "archive_sha256": "b5f75d693d3227c51c7941154c0625e59042b5b46fdca7f06273288c0402722e",
+  "ordered_cases": 4579,
+  "roundtrip_byte_equality_verified": true
+}

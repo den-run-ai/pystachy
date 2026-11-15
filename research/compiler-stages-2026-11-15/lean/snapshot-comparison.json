@@ -1,0 +1,82 @@
+[
+  {
+    "program": "tools/lean_boundary/examples/narrowed_float.py",
+    "exit_code": 0,
+    "stdout": "ok: /workspace/scratch/78a63a74ecb5/lean-pipeline-probes/narrowed_float/report.json (0 changed function-pass records, 0 changed program-pass records)\n",
+    "stderr": "",
+    "normalized_equal": true,
+    "normalized_sha256": "6f9276c61f1610c046fb4d83456986b27458d71ff67cee13b413e53cb545254a"
+  },
+  {
+    "program": "tools/lean_boundary/examples/guarded_state.py",
+    "exit_code": 0,
+    "stdout": "ok: /workspace/scratch/78a63a74ecb5/lean-pipeline-probes/guarded_state/report.json (0 changed function-pass records, 0 changed program-pass records)\n",
+    "stderr": "",
+    "normalized_equal": true,
+    "normalized_sha256": "f092362e4c1c45a25a03b2fc5f9c526d833342836b659b91ba78f6f4e9b83792"
+  },
+  {
+    "program": "tools/lean_boundary/examples/classes_and_ints.py",
+    "exit_code": 0,
+    "stdout": "ok: /workspace/scratch/78a63a74ecb5/lean-pipeline-probes/classes_and_ints/report.json (0 changed function-pass records, 0 changed program-pass records)\n",
+    "stderr": "",
+    "normalized_equal": true,
+    "normalized_sha256": "472041720dc24e8cb3dc056c645b079250e62f33ff268007154caba312aef3b0"
+  },
+  {
+    "program": "tools/lean_boundary/examples/unchecked_accesses.py",
+    "exit_code": 0,
+    "stdout": "ok: /workspace/scratch/78a63a74ecb5/lean-pipeline-probes/unchecked_accesses/report.json (0 changed function-pass records, 0 changed program-pass records)\n",
+    "stderr": "",
+    "normalized_equal": true,
+    "normalized_sha256": "561212438d653a20e5255760ad4a6c03543f3aea15c8bb5a46b01f71417b2d3c"
+  },
+  {
+    "program": "tools/lean_boundary/examples/union_memory.py",
+    "exit_code": 0,
+    "stdout": "ok: /workspace/scratch/78a63a74ecb5/lean-pipeline-probes/union_memory/report.json (0 changed function-pass records, 0 changed program-pass records)\n",
+    "stderr": "",
+    "normalized_equal": true,
+    "normalized_sha256": "06894523395da8c3a476275e1439394b5cd041c34e5fedc221fafa83a363df4a"
+  },
+  {
+    "program": "tools/lean_boundary/examples/field_init.py",
+    "exit_code": 0,
+    "stdout": "ok: /workspace/scratch/78a63a74ecb5/lean-pipeline-probes/field_init/report.json (0 changed function-pass records, 0 changed program-pass records)\n",
+    "stderr": "",
+    "normalized_equal": true,
+    "normalized_sha256": "7e0846fed3ee08d86d65b9cd5c2bd259a915958cdfbbf0ee45c4f50ccc6ca024"
+  },
+  {
+    "program": "tools/lean_boundary/examples/generators.py",
+    "exit_code": 0,
+    "stdout": "ok: /workspace/scratch/78a63a74ecb5/lean-pipeline-probes/generators/report.json (0 changed function-pass records, 0 changed program-pass records)\n",
+    "stderr": "",
+    "normalized_equal": true,
+    "normalized_sha256": "f321f8e6957cd911ae51f7d5fada09055374d4d61e35b49a3dc3c1e9cd97aacd"
+  },
+  {
+    "program": "tests/programs/generics/generic_distinct_layouts.py",
+    "exit_code": 0,
+    "stdout": "ok: /workspace/scratch/78a63a74ecb5/lean-pipeline-probes/generic_distinct_layouts/report.json (0 changed function-pass records, 0 changed program-pass records)\n",
+    "stderr": "",
+    "normalized_equal": true,
+    "normalized_sha256": "b936ba2c1ad984b79ba545701c033351501c9700c133939699a196c181652f3d"
+  },
+  {
+    "program": "tests/programs/numbers/python_int_storage.py",
+    "exit_code": 0,
+    "stdout": "ok: /workspace/scratch/78a63a74ecb5/lean-pipeline-probes/python_int_storage/report.json (0 changed function-pass records, 0 changed program-pass records)\n",
+    "stderr": "",
+    "normalized_equal": true,
+    "normalized_sha256": "fa76864c58279bd5126c5e091cc8c21222404a8808ea497561e9e2b7c5a15f63"
+  },
+  {
+    "program": "tests/programs/numbers/python_int_vtuple_materialization.py",
+    "exit_code": 0,
+    "stdout": "ok: /workspace/scratch/78a63a74ecb5/lean-pipeline-probes/python_int_vtuple_materialization/report.json (0 changed function-pass records, 0 changed program-pass records)\n",
+    "stderr": "",
+    "normalized_equal": true,
+    "normalized_sha256": "65cdfcc6dbbdb5d04d8caa258592e14eacd5c982c53a0ebdd9dd9c6e8b957429"
+  }
+]

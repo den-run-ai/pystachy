@@ -1,0 +1,116 @@
+[
+  {
+    "name": "c_libc-cpython",
+    "passed": true,
+    "exit_code": 0,
+    "command": [
+      "/workspace/scratch/c2b093657c17/dev-venv/bin/python",
+      "tests/ffi/c_libc.py",
+      "a1",
+      "a2"
+    ]
+  },
+  {
+    "name": "c_libc-native-jit",
+    "passed": true,
+    "exit_code": 0,
+    "command": [
+      "/workspace/scratch/78a63a74ecb5/pystachy/pystachy",
+      "run",
+      "tests/ffi/c_libc.py",
+      "a1",
+      "a2"
+    ]
+  },
+  {
+    "name": "c_libc-native-aot",
+    "passed": true,
+    "exit_code": 0,
+    "command": [
+      "/workspace/scratch/78a63a74ecb5/pipeline-native-smoke/c_libc-native",
+      "a1",
+      "a2"
+    ]
+  },
+  {
+    "name": "c_libc-hosted-jit",
+    "passed": true,
+    "exit_code": 0,
+    "command": [
+      "/workspace/scratch/c2b093657c17/dev-venv/bin/python",
+      "-m",
+      "pystachy",
+      "run",
+      "tests/ffi/c_libc.py",
+      "a1",
+      "a2"
+    ]
+  },
+  {
+    "name": "c_libc-hosted-aot",
+    "passed": true,
+    "exit_code": 0,
+    "command": [
+      "/workspace/scratch/78a63a74ecb5/pipeline-native-smoke/c_libc-hosted",
+      "a1",
+      "a2"
+    ]
+  },
+  {
+    "name": "c_libm-cpython",
+    "passed": true,
+    "exit_code": 0,
+    "command": [
+      "/workspace/scratch/c2b093657c17/dev-venv/bin/python",
+      "tests/ffi/c_libm.py",
+      "a1",
+      "a2"
+    ]
+  },
+  {
+    "name": "c_libm-native-jit",
+    "passed": true,
+    "exit_code": 0,
+    "command": [
+      "/workspace/scratch/78a63a74ecb5/pystachy/pystachy",
+      "run",
+      "tests/ffi/c_libm.py",
+      "a1",
+      "a2"
+    ]
+  },
+  {
+    "name": "c_libm-native-aot",
+    "passed": true,
+    "exit_code": 0,
+    "command": [
+      "/workspace/scratch/78a63a74ecb5/pipeline-native-smoke/c_libm-native",
+      "a1",
+      "a2"
+    ]
+  },
+  {
+    "name": "c_libm-hosted-jit",
+    "passed": true,
+    "exit_code": 0,
+    "command": [
+      "/workspace/scratch/c2b093657c17/dev-venv/bin/python",
+      "-m",
+      "pystachy",
+      "run",
+      "tests/ffi/c_libm.py",
+      "a1",
+      "a2"
+    ]
+  },
+  {
+    "name": "c_libm-hosted-aot",
+    "passed": true,
+    "exit_code": 0,
+    "command": [
+      "/workspace/scratch/78a63a74ecb5/pipeline-native-smoke/c_libm-hosted",
+      "a1",
+      "a2"
+    ]
+  }
+]

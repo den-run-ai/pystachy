@@ -1,0 +1,12 @@
+{
+  "command": [
+    "/workspace/scratch/78a63a74ecb5/pipeline-irsame-details/irsame-retain.sh",
+    "build/ref/pystachy",
+    "./pystachy"
+  ],
+  "environment": {
+    "PYSTACHY_HOME": "/workspace/scratch/78a63a74ecb5/pystachy",
+    "PYSTACHY_JOBS": "2"
+  },
+  "cwd": "/workspace/scratch/78a63a74ecb5/pystachy"
+}

@@ -1,0 +1,11 @@
+{
+  "head": "800752d8a582bff77d4c375039af786b82a96f73",
+  "run_id": 43686263943,
+  "job_id": 132727270451,
+  "url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263943/job/132727270451",
+  "original_bytes": 109728,
+  "original_sha256": "bdafc174a0e56235010fe823ec3e4c89b7ca61cb041fed35dd5f78197943f6d2",
+  "compressed_bytes": 19112,
+  "compressed_sha256": "df88e035189ade2fe8df70e085aa1b028157bf38dcccf4505fb1f4d12574d90f",
+  "stage_inspection_excerpt": "Selected test commands and result lines; trailing whitespace removed. Complete original byte stream retained in lint.log.gz."
+}

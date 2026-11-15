@@ -1,0 +1,11 @@
+1/10 tools/lean_boundary/examples/narrowed_float.py 1.2s
+2/10 tools/lean_boundary/examples/guarded_state.py 1.3s
+3/10 tools/lean_boundary/examples/classes_and_ints.py 0.2s
+4/10 tools/lean_boundary/examples/union_memory.py 0.2s
+5/10 tools/lean_boundary/examples/unchecked_accesses.py 0.4s
+6/10 tools/lean_boundary/examples/generators.py 0.2s
+7/10 tests/programs/generics/generic_distinct_layouts.py 0.1s
+8/10 tools/lean_boundary/examples/field_init.py 0.7s
+9/10 tests/programs/numbers/python_int_storage.py 0.5s
+10/10 tests/programs/numbers/python_int_vtuple_materialization.py 0.2s
+{"access": {"functions": 19, "obligations": 38, "other": 0, "programs": 4, "proved": 38, "rejected": 0}, "fields": {"functions": 44, "obligations": 168, "other": 0, "programs": 7, "proved": 168, "rejected": 0}, "gc": {"functions": 26, "obligations": 75, "other": 0, "programs": 4, "proved": 75, "rejected": 0}, "int": {"functions": 0, "obligations": 0, "other": 0, "programs": 0, "proved": 0, "rejected": 0}, "int_inline": {"functions": 7, "obligations": 32, "other": 0, "programs": 2, "proved": 32, "rejected": 0}, "null": {"functions": 9, "obligations": 17, "other": 0, "programs": 6, "proved": 17, "rejected": 0}, "payload": {"functions": 9, "obligations": 12, "other": 0, "programs": 3, "proved": 12, "rejected": 0}, "storage": {"functions": 10, "obligations": 116, "other": 0, "programs": 2, "proved": 116, "rejected": 0}, "union": {"functions": 16, "obligations": 31, "other": 0, "programs": 3, "proved": 31, "rejected": 0}, "union_payload": {"functions": 14, "obligations": 46, "other": 0, "programs": 3, "proved": 46, "rejected": 0}}

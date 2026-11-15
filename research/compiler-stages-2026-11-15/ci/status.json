@@ -1,0 +1,2548 @@
+{
+  "head": "800752d8a582bff77d4c375039af786b82a96f73",
+  "base": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+  "pr": "https://github.com/den-run-ai/pystachy/pull/1499",
+  "workflow_runs": [
+    {
+      "id": 43686263943,
+      "name": "Lint",
+      "status": "completed",
+      "conclusion": "success",
+      "run_number": 3162,
+      "jobs_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/43686263943/jobs",
+      "logs_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/43686263943/logs",
+      "workflow_id": 380178546
+    },
+    {
+      "id": 43686263857,
+      "name": "CI",
+      "status": "completed",
+      "conclusion": "success",
+      "run_number": 3234,
+      "jobs_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/43686263857/jobs",
+      "logs_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/43686263857/logs",
+      "workflow_id": 377796772
+    }
+  ],
+  "pages": {
+    "jobs_returned": 16,
+    "jobs_total": 16,
+    "checks_returned": 23,
+    "checks_total": 23
+  },
+  "checks": [
+    {
+      "id": 132730905897,
+      "name": "Verification",
+      "head_sha": "800752d8a582bff77d4c375039af786b82a96f73",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132730905897",
+      "started_at": "2026-11-15T06:53:46Z",
+      "completed_at": "2026-11-15T06:54:11Z"
+    },
+    {
+      "id": 132728442246,
+      "name": "Bootstrap tier and native archive qualification",
+      "head_sha": "800752d8a582bff77d4c375039af786b82a96f73",
+      "status": "completed",
+      "conclusion": "skipped",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132728442246",
+      "started_at": "2026-11-15T06:42:23Z",
+      "completed_at": "2026-11-15T06:42:22Z"
+    },
+    {
+      "id": 132728441564,
+      "name": "native JIT and variants (worker 0)",
+      "head_sha": "800752d8a582bff77d4c375039af786b82a96f73",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132728441564",
+      "started_at": "2026-11-15T06:42:25Z",
+      "completed_at": "2026-11-15T06:48:50Z"
+    },
+    {
+      "id": 132728441554,
+      "name": "verify (cache-gc, x86_64)",
+      "head_sha": "800752d8a582bff77d4c375039af786b82a96f73",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132728441554",
+      "started_at": "2026-11-15T06:42:25Z",
+      "completed_at": "2026-11-15T06:53:43Z"
+    },
+    {
+      "id": 132728441549,
+      "name": "verify (contracts, x86_64)",
+      "head_sha": "800752d8a582bff77d4c375039af786b82a96f73",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132728441549",
+      "started_at": "2026-11-15T06:42:25Z",
+      "completed_at": "2026-11-15T06:52:58Z"
+    },
+    {
+      "id": 132728441546,
+      "name": "verify (benchmarks, x86_64)",
+      "head_sha": "800752d8a582bff77d4c375039af786b82a96f73",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132728441546",
+      "started_at": "2026-11-15T06:42:25Z",
+      "completed_at": "2026-11-15T06:48:56Z"
+    },
+    {
+      "id": 132728441508,
+      "name": "verify (native-aot-2, x86_64)",
+      "head_sha": "800752d8a582bff77d4c375039af786b82a96f73",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132728441508",
+      "started_at": "2026-11-15T06:42:25Z",
+      "completed_at": "2026-11-15T06:45:14Z"
+    },
+    {
+      "id": 132728441496,
+      "name": "verify (safety-1, x86_64)",
+      "head_sha": "800752d8a582bff77d4c375039af786b82a96f73",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132728441496",
+      "started_at": "2026-11-15T06:42:25Z",
+      "completed_at": "2026-11-15T06:46:42Z"
+    },
+    {
+      "id": 132728441494,
+      "name": "verify (hosted, x86_64)",
+      "head_sha": "800752d8a582bff77d4c375039af786b82a96f73",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132728441494",
+      "started_at": "2026-11-15T06:42:25Z",
+      "completed_at": "2026-11-15T06:48:09Z"
+    },
+    {
+      "id": 132728441483,
+      "name": "verify (native-aot-3, x86_64)",
+      "head_sha": "800752d8a582bff77d4c375039af786b82a96f73",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132728441483",
+      "started_at": "2026-11-15T06:42:25Z",
+      "completed_at": "2026-11-15T06:47:13Z"
+    },
+    {
+      "id": 132728441477,
+      "name": "verify (native-aot-1, x86_64)",
+      "head_sha": "800752d8a582bff77d4c375039af786b82a96f73",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132728441477",
+      "started_at": "2026-11-15T06:42:25Z",
+      "completed_at": "2026-11-15T06:45:05Z"
+    },
+    {
+      "id": 132728441476,
+      "name": "verify (opt-in, x86_64)",
+      "head_sha": "800752d8a582bff77d4c375039af786b82a96f73",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132728441476",
+      "started_at": "2026-11-15T06:42:25Z",
+      "completed_at": "2026-11-15T06:46:30Z"
+    },
+    {
+      "id": 132728441465,
+      "name": "verify (safety-0, x86_64)",
+      "head_sha": "800752d8a582bff77d4c375039af786b82a96f73",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132728441465",
+      "started_at": "2026-11-15T06:42:25Z",
+      "completed_at": "2026-11-15T06:46:57Z"
+    },
+    {
+      "id": 132728441450,
+      "name": "verify (native-aot-0, x86_64)",
+      "head_sha": "800752d8a582bff77d4c375039af786b82a96f73",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132728441450",
+      "started_at": "2026-11-15T06:42:25Z",
+      "completed_at": "2026-11-15T06:44:57Z"
+    },
+    {
+      "id": 132728441397,
+      "name": "native JIT and variants (worker 1)",
+      "head_sha": "800752d8a582bff77d4c375039af786b82a96f73",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132728441397",
+      "started_at": "2026-11-15T06:42:25Z",
+      "completed_at": "2026-11-15T06:49:40Z"
+    },
+    {
+      "id": 132727401784,
+      "name": "CodeQL",
+      "head_sha": "800752d8a582bff77d4c375039af786b82a96f73",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/runs/132727401784",
+      "started_at": "2026-11-15T06:37:43Z",
+      "completed_at": "2026-11-15T06:37:46Z"
+    },
+    {
+      "id": 132727270451,
+      "name": "make lint (ruff, shellcheck, clang -Wall -Wextra)",
+      "head_sha": "800752d8a582bff77d4c375039af786b82a96f73",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263943/job/132727270451",
+      "started_at": "2026-11-15T06:37:11Z",
+      "completed_at": "2026-11-15T06:47:31Z"
+    },
+    {
+      "id": 132727270233,
+      "name": "verify (bootstrap, x86_64)",
+      "head_sha": "800752d8a582bff77d4c375039af786b82a96f73",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132727270233",
+      "started_at": "2026-11-15T06:37:11Z",
+      "completed_at": "2026-11-15T06:42:22Z"
+    },
+    {
+      "id": 132727269483,
+      "name": "DCO certified (fork pull requests)",
+      "head_sha": "800752d8a582bff77d4c375039af786b82a96f73",
+      "status": "completed",
+      "conclusion": "skipped",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686262276/job/132727269483",
+      "started_at": "2026-11-15T06:37:08Z",
+      "completed_at": "2026-11-15T06:37:08Z"
+    },
+    {
+      "id": 132727268352,
+      "name": "Check title and description",
+      "head_sha": "800752d8a582bff77d4c375039af786b82a96f73",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686262296/job/132727268352",
+      "started_at": "2026-11-15T06:37:10Z",
+      "completed_at": "2026-11-15T06:37:17Z"
+    },
+    {
+      "id": 132727264246,
+      "name": "Analyze (actions)",
+      "head_sha": "800752d8a582bff77d4c375039af786b82a96f73",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686260958/job/132727264246",
+      "started_at": "2026-11-15T06:37:10Z",
+      "completed_at": "2026-11-15T06:37:53Z"
+    },
+    {
+      "id": 132727264184,
+      "name": "Analyze (python)",
+      "head_sha": "800752d8a582bff77d4c375039af786b82a96f73",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686260958/job/132727264184",
+      "started_at": "2026-11-15T06:37:09Z",
+      "completed_at": "2026-11-15T06:39:19Z"
+    },
+    {
+      "id": 132727264116,
+      "name": "Analyze (c-cpp)",
+      "head_sha": "800752d8a582bff77d4c375039af786b82a96f73",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686260958/job/132727264116",
+      "started_at": "2026-11-15T06:37:09Z",
+      "completed_at": "2026-11-15T06:38:14Z"
+    }
+  ],
+  "jobs": [
+    {
+      "id": 132727270233,
+      "name": "verify (bootstrap, x86_64)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132727270233",
+      "started_at": "2026-11-15T06:37:11Z",
+      "completed_at": "2026-11-15T06:42:22Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 3,
+          "name": "Select documentation or code verification",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 4,
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 5,
+          "name": "LLVM toolchain",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 6,
+          "name": "Record native Linux ABI",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 7,
+          "name": "Verify compiler and runtime fixed points",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 8,
+          "name": "Package verified bootstrap",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 9,
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 10,
+          "name": "Upload bootstrap report",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 19,
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 20,
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 21,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 132728441397,
+      "name": "native JIT and variants (worker 1)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132728441397",
+      "started_at": "2026-11-15T06:42:25Z",
+      "completed_at": "2026-11-15T06:49:40Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 3,
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 4,
+          "name": "Run tools/setup.sh --minimal",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 5,
+          "name": "Run actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 6,
+          "name": "Complete native JIT corpus half",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 7,
+          "name": "Upload native JIT report",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 8,
+          "name": "Sampled configurations on representative and changed cases",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 9,
+          "name": "Native program cache invalidation and execution",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 10,
+          "name": "Runtime ABI and GC root checker controls",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 11,
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 21,
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 22,
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 23,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 132728441450,
+      "name": "verify (native-aot-0, x86_64)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132728441450",
+      "started_at": "2026-11-15T06:42:25Z",
+      "completed_at": "2026-11-15T06:44:57Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 3,
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 4,
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 5,
+          "name": "Opt-in, widening and Lean corpus CPython dependency",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 6,
+          "name": "Workload pytest oracle dependency",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 7,
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 8,
+          "name": "Verify group",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 9,
+          "name": "Runtime ABI and GC root checker controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 10,
+          "name": "Cache the pinned Lean release archive",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 11,
+          "name": "Lean proofs of compiler guard obligations",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 12,
+          "name": "Require C, embedding and extension FFI coverage",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 13,
+          "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 14,
+          "name": "Generated user and runtime ASan controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 15,
+          "name": "Sanitized shared and object JIT linkage controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 16,
+          "name": "Native program cache invalidation and execution",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 17,
+          "name": "Extended subset benchmark correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 18,
+          "name": "Adapted pyperformance benchmark correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 19,
+          "name": "Bounded match dispatch correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 20,
+          "name": "Shared pytest example assertions",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 21,
+          "name": "Generated native pytest runner parity",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 22,
+          "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 23,
+          "name": "Upstream large regex (JIT and AOT, normal GC)",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 24,
+          "name": "Upload group report",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 47,
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 48,
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 49,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 132728441465,
+      "name": "verify (safety-0, x86_64)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132728441465",
+      "started_at": "2026-11-15T06:42:25Z",
+      "completed_at": "2026-11-15T06:46:57Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 3,
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 4,
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 5,
+          "name": "Opt-in, widening and Lean corpus CPython dependency",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 6,
+          "name": "Workload pytest oracle dependency",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 7,
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 8,
+          "name": "Verify group",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 9,
+          "name": "Runtime ABI and GC root checker controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 10,
+          "name": "Cache the pinned Lean release archive",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 11,
+          "name": "Lean proofs of compiler guard obligations",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 12,
+          "name": "Require C, embedding and extension FFI coverage",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 13,
+          "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 14,
+          "name": "Generated user and runtime ASan controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 15,
+          "name": "Sanitized shared and object JIT linkage controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 16,
+          "name": "Native program cache invalidation and execution",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 17,
+          "name": "Extended subset benchmark correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 18,
+          "name": "Adapted pyperformance benchmark correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 19,
+          "name": "Bounded match dispatch correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 20,
+          "name": "Shared pytest example assertions",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 21,
+          "name": "Generated native pytest runner parity",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 22,
+          "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 23,
+          "name": "Upstream large regex (JIT and AOT, normal GC)",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 24,
+          "name": "Upload group report",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 47,
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 48,
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 49,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 132728441476,
+      "name": "verify (opt-in, x86_64)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132728441476",
+      "started_at": "2026-11-15T06:42:25Z",
+      "completed_at": "2026-11-15T06:46:30Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 3,
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 4,
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 5,
+          "name": "Opt-in, widening and Lean corpus CPython dependency",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 6,
+          "name": "Workload pytest oracle dependency",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 7,
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 8,
+          "name": "Verify group",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 9,
+          "name": "Runtime ABI and GC root checker controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 10,
+          "name": "Cache the pinned Lean release archive",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 11,
+          "name": "Lean proofs of compiler guard obligations",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 12,
+          "name": "Require C, embedding and extension FFI coverage",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 13,
+          "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 14,
+          "name": "Generated user and runtime ASan controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 15,
+          "name": "Sanitized shared and object JIT linkage controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 16,
+          "name": "Native program cache invalidation and execution",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 17,
+          "name": "Extended subset benchmark correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 18,
+          "name": "Adapted pyperformance benchmark correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 19,
+          "name": "Bounded match dispatch correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 20,
+          "name": "Shared pytest example assertions",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 21,
+          "name": "Generated native pytest runner parity",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 22,
+          "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 23,
+          "name": "Upstream large regex (JIT and AOT, normal GC)",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 24,
+          "name": "Upload group report",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 47,
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 48,
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 49,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 132728441477,
+      "name": "verify (native-aot-1, x86_64)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132728441477",
+      "started_at": "2026-11-15T06:42:25Z",
+      "completed_at": "2026-11-15T06:45:05Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 3,
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 4,
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 5,
+          "name": "Opt-in, widening and Lean corpus CPython dependency",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 6,
+          "name": "Workload pytest oracle dependency",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 7,
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 8,
+          "name": "Verify group",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 9,
+          "name": "Runtime ABI and GC root checker controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 10,
+          "name": "Cache the pinned Lean release archive",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 11,
+          "name": "Lean proofs of compiler guard obligations",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 12,
+          "name": "Require C, embedding and extension FFI coverage",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 13,
+          "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 14,
+          "name": "Generated user and runtime ASan controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 15,
+          "name": "Sanitized shared and object JIT linkage controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 16,
+          "name": "Native program cache invalidation and execution",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 17,
+          "name": "Extended subset benchmark correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 18,
+          "name": "Adapted pyperformance benchmark correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 19,
+          "name": "Bounded match dispatch correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 20,
+          "name": "Shared pytest example assertions",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 21,
+          "name": "Generated native pytest runner parity",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 22,
+          "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 23,
+          "name": "Upstream large regex (JIT and AOT, normal GC)",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 24,
+          "name": "Upload group report",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 47,
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 48,
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 49,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 132728441483,
+      "name": "verify (native-aot-3, x86_64)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132728441483",
+      "started_at": "2026-11-15T06:42:25Z",
+      "completed_at": "2026-11-15T06:47:13Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 3,
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 4,
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 5,
+          "name": "Opt-in, widening and Lean corpus CPython dependency",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 6,
+          "name": "Workload pytest oracle dependency",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 7,
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 8,
+          "name": "Verify group",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 9,
+          "name": "Runtime ABI and GC root checker controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 10,
+          "name": "Cache the pinned Lean release archive",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 11,
+          "name": "Lean proofs of compiler guard obligations",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 12,
+          "name": "Require C, embedding and extension FFI coverage",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 13,
+          "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 14,
+          "name": "Generated user and runtime ASan controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 15,
+          "name": "Sanitized shared and object JIT linkage controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 16,
+          "name": "Native program cache invalidation and execution",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 17,
+          "name": "Extended subset benchmark correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 18,
+          "name": "Adapted pyperformance benchmark correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 19,
+          "name": "Bounded match dispatch correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 20,
+          "name": "Shared pytest example assertions",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 21,
+          "name": "Generated native pytest runner parity",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 22,
+          "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 23,
+          "name": "Upstream large regex (JIT and AOT, normal GC)",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 24,
+          "name": "Upload group report",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 47,
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 48,
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 49,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 132728441494,
+      "name": "verify (hosted, x86_64)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132728441494",
+      "started_at": "2026-11-15T06:42:25Z",
+      "completed_at": "2026-11-15T06:48:09Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 3,
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 4,
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 5,
+          "name": "Opt-in, widening and Lean corpus CPython dependency",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 6,
+          "name": "Workload pytest oracle dependency",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 7,
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 8,
+          "name": "Verify group",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 9,
+          "name": "Runtime ABI and GC root checker controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 10,
+          "name": "Cache the pinned Lean release archive",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 11,
+          "name": "Lean proofs of compiler guard obligations",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 12,
+          "name": "Require C, embedding and extension FFI coverage",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 13,
+          "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 14,
+          "name": "Generated user and runtime ASan controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 15,
+          "name": "Sanitized shared and object JIT linkage controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 16,
+          "name": "Native program cache invalidation and execution",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 17,
+          "name": "Extended subset benchmark correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 18,
+          "name": "Adapted pyperformance benchmark correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 19,
+          "name": "Bounded match dispatch correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 20,
+          "name": "Shared pytest example assertions",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 21,
+          "name": "Generated native pytest runner parity",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 22,
+          "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 23,
+          "name": "Upstream large regex (JIT and AOT, normal GC)",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 24,
+          "name": "Upload group report",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 47,
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 48,
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 49,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 132728441496,
+      "name": "verify (safety-1, x86_64)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132728441496",
+      "started_at": "2026-11-15T06:42:25Z",
+      "completed_at": "2026-11-15T06:46:42Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 3,
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 4,
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 5,
+          "name": "Opt-in, widening and Lean corpus CPython dependency",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 6,
+          "name": "Workload pytest oracle dependency",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 7,
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 8,
+          "name": "Verify group",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 9,
+          "name": "Runtime ABI and GC root checker controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 10,
+          "name": "Cache the pinned Lean release archive",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 11,
+          "name": "Lean proofs of compiler guard obligations",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 12,
+          "name": "Require C, embedding and extension FFI coverage",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 13,
+          "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 14,
+          "name": "Generated user and runtime ASan controls",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 15,
+          "name": "Sanitized shared and object JIT linkage controls",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 16,
+          "name": "Native program cache invalidation and execution",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 17,
+          "name": "Extended subset benchmark correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 18,
+          "name": "Adapted pyperformance benchmark correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 19,
+          "name": "Bounded match dispatch correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 20,
+          "name": "Shared pytest example assertions",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 21,
+          "name": "Generated native pytest runner parity",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 22,
+          "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 23,
+          "name": "Upstream large regex (JIT and AOT, normal GC)",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 24,
+          "name": "Upload group report",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 47,
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 48,
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 49,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 132728441508,
+      "name": "verify (native-aot-2, x86_64)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132728441508",
+      "started_at": "2026-11-15T06:42:25Z",
+      "completed_at": "2026-11-15T06:45:14Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 3,
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 4,
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 5,
+          "name": "Opt-in, widening and Lean corpus CPython dependency",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 6,
+          "name": "Workload pytest oracle dependency",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 7,
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 8,
+          "name": "Verify group",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 9,
+          "name": "Runtime ABI and GC root checker controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 10,
+          "name": "Cache the pinned Lean release archive",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 11,
+          "name": "Lean proofs of compiler guard obligations",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 12,
+          "name": "Require C, embedding and extension FFI coverage",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 13,
+          "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 14,
+          "name": "Generated user and runtime ASan controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 15,
+          "name": "Sanitized shared and object JIT linkage controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 16,
+          "name": "Native program cache invalidation and execution",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 17,
+          "name": "Extended subset benchmark correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 18,
+          "name": "Adapted pyperformance benchmark correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 19,
+          "name": "Bounded match dispatch correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 20,
+          "name": "Shared pytest example assertions",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 21,
+          "name": "Generated native pytest runner parity",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 22,
+          "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 23,
+          "name": "Upstream large regex (JIT and AOT, normal GC)",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 24,
+          "name": "Upload group report",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 47,
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 48,
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 49,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 132728441546,
+      "name": "verify (benchmarks, x86_64)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132728441546",
+      "started_at": "2026-11-15T06:42:25Z",
+      "completed_at": "2026-11-15T06:48:56Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 3,
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 4,
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 5,
+          "name": "Opt-in, widening and Lean corpus CPython dependency",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 6,
+          "name": "Workload pytest oracle dependency",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 7,
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 8,
+          "name": "Verify group",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 9,
+          "name": "Runtime ABI and GC root checker controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 10,
+          "name": "Cache the pinned Lean release archive",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 11,
+          "name": "Lean proofs of compiler guard obligations",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 12,
+          "name": "Require C, embedding and extension FFI coverage",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 13,
+          "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 14,
+          "name": "Generated user and runtime ASan controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 15,
+          "name": "Sanitized shared and object JIT linkage controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 16,
+          "name": "Native program cache invalidation and execution",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 17,
+          "name": "Extended subset benchmark correctness",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 18,
+          "name": "Adapted pyperformance benchmark correctness",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 19,
+          "name": "Bounded match dispatch correctness",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 20,
+          "name": "Shared pytest example assertions",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 21,
+          "name": "Generated native pytest runner parity",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 22,
+          "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 23,
+          "name": "Upstream large regex (JIT and AOT, normal GC)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 24,
+          "name": "Upload group report",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 47,
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 48,
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 49,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 132728441549,
+      "name": "verify (contracts, x86_64)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132728441549",
+      "started_at": "2026-11-15T06:42:25Z",
+      "completed_at": "2026-11-15T06:52:58Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 3,
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 4,
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 5,
+          "name": "Opt-in, widening and Lean corpus CPython dependency",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 6,
+          "name": "Workload pytest oracle dependency",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 7,
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 8,
+          "name": "Verify group",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 9,
+          "name": "Runtime ABI and GC root checker controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 10,
+          "name": "Cache the pinned Lean release archive",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 11,
+          "name": "Lean proofs of compiler guard obligations",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 12,
+          "name": "Require C, embedding and extension FFI coverage",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 13,
+          "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 14,
+          "name": "Generated user and runtime ASan controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 15,
+          "name": "Sanitized shared and object JIT linkage controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 16,
+          "name": "Native program cache invalidation and execution",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 17,
+          "name": "Extended subset benchmark correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 18,
+          "name": "Adapted pyperformance benchmark correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 19,
+          "name": "Bounded match dispatch correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 20,
+          "name": "Shared pytest example assertions",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 21,
+          "name": "Generated native pytest runner parity",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 22,
+          "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 23,
+          "name": "Upstream large regex (JIT and AOT, normal GC)",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 24,
+          "name": "Upload group report",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 46,
+          "name": "Post Cache the pinned Lean release archive",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 47,
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 48,
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 49,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 132728441554,
+      "name": "verify (cache-gc, x86_64)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132728441554",
+      "started_at": "2026-11-15T06:42:25Z",
+      "completed_at": "2026-11-15T06:53:43Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 3,
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 4,
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 5,
+          "name": "Opt-in, widening and Lean corpus CPython dependency",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 6,
+          "name": "Workload pytest oracle dependency",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 7,
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 8,
+          "name": "Verify group",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 9,
+          "name": "Runtime ABI and GC root checker controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 10,
+          "name": "Cache the pinned Lean release archive",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 11,
+          "name": "Lean proofs of compiler guard obligations",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 12,
+          "name": "Require C, embedding and extension FFI coverage",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 13,
+          "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 14,
+          "name": "Generated user and runtime ASan controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 15,
+          "name": "Sanitized shared and object JIT linkage controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 16,
+          "name": "Native program cache invalidation and execution",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 17,
+          "name": "Extended subset benchmark correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 18,
+          "name": "Adapted pyperformance benchmark correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 19,
+          "name": "Bounded match dispatch correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 20,
+          "name": "Shared pytest example assertions",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 21,
+          "name": "Generated native pytest runner parity",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 22,
+          "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 23,
+          "name": "Upstream large regex (JIT and AOT, normal GC)",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 24,
+          "name": "Upload group report",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 47,
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 48,
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 49,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 132728441564,
+      "name": "native JIT and variants (worker 0)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132728441564",
+      "started_at": "2026-11-15T06:42:25Z",
+      "completed_at": "2026-11-15T06:48:50Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 3,
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 4,
+          "name": "Run tools/setup.sh --minimal",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 5,
+          "name": "Run actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 6,
+          "name": "Complete native JIT corpus half",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 7,
+          "name": "Upload native JIT report",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 8,
+          "name": "Sampled configurations on representative and changed cases",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 9,
+          "name": "Native program cache invalidation and execution",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 10,
+          "name": "Runtime ABI and GC root checker controls",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 11,
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 21,
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 22,
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 23,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 132728442246,
+      "name": "Bootstrap tier and native archive qualification",
+      "status": "completed",
+      "conclusion": "skipped",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132728442246",
+      "started_at": "2026-11-15T06:42:23Z",
+      "completed_at": "2026-11-15T06:42:22Z",
+      "steps": []
+    },
+    {
+      "id": 132730905897,
+      "name": "Verification",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43686263857/job/132730905897",
+      "started_at": "2026-11-15T06:53:46Z",
+      "completed_at": "2026-11-15T06:54:11Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 3,
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 4,
+          "name": "Run actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 5,
+          "name": "Require complete verification reports",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 6,
+          "name": "Require every verification group",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 7,
+          "name": "Upload combined verification report",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 13,
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 14,
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 15,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    }
+  ],
+  "statuses": [
+    {
+      "context": "Submission format",
+      "state": "success",
+      "target_url": "https://github.com/den-run-ai/pystachy/blob/main/CONTRIBUTING.md#issues-and-pull-requests"
+    }
+  ],
+  "expected_skips": [
+    "Bootstrap tier and native archive qualification",
+    "DCO certified (fork pull requests)"
+  ],
+  "limits": "Required pull-request profile; full local make verify and exhaustive main/manual matrix were not run."
+}

@@ -1,0 +1,14 @@
+2026-11-15T06:38:35.0174224Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_inspect_compiler.py
+2026-11-15T06:38:49.3287317Z ..............................
+2026-11-15T06:38:49.3287668Z ----------------------------------------------------------------------
+2026-11-15T06:38:49.3287989Z Ran 30 tests in 14.255s
+2026-11-15T06:38:49.3288118Z
+2026-11-15T06:38:49.3288198Z OK
+2026-11-15T06:38:49.3380284Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_compiler_pipeline.py
+2026-11-15T06:38:49.3380284Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_compiler_pipeline.py
+2026-11-15T06:38:51.1810949Z ..........
+2026-11-15T06:38:51.1811304Z ----------------------------------------------------------------------
+2026-11-15T06:38:51.1811629Z Ran 10 tests in 1.797s
+2026-11-15T06:38:51.1811762Z
+2026-11-15T06:38:51.1811839Z OK
+2026-11-15T06:38:51.1896466Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p 'test_lean_boundary*.py'

@@ -1,0 +1,16 @@
+{
+  "ci/verification.log": {
+    "path": "ci/verification.log.gz",
+    "original_bytes": 39083,
+    "original_sha256": "571be6f7610a026a31f122ce9a9bc07d856bf47b50cf8cac86b037045975556b",
+    "compressed_bytes": 9184,
+    "compressed_sha256": "3a13ad3746cf38aad616d5a6816149df02185932b8a18738a71e826e281ee5d2"
+  },
+  "irsame-original.log": {
+    "path": "irsame-original.log.gz",
+    "original_bytes": 4073,
+    "original_sha256": "8406d53a59c5b9abd65ecdaaf6ff4f5dbd36d9c54d0b97076f443ea68b8eec9a",
+    "compressed_bytes": 775,
+    "compressed_sha256": "e831d6caad1358098dc35f024d706bb216e9b9e4ca5feb4b40569ed456cb54f8"
+  }
+}

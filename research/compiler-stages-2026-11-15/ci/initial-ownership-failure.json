@@ -1,0 +1,15 @@
+{
+  "head": "5557064d54b78efa4cdbcfe9e055394ab5158a50",
+  "lint_run": 43684977772,
+  "lint_job": 132723447730,
+  "conclusion": "failure",
+  "url": "https://github.com/den-run-ai/pystachy/actions/runs/43684977772/job/132723447730",
+  "cause": "Gen.pipeline was missing from the PROGRAM ownership inventory in tools/test_frame_fields.py.",
+  "fix_commit": "800752d8a582bff77d4c375039af786b82a96f73",
+  "fix_scope": "Add attempt-owned pipeline state to the audit inventory and explain why nested Frame save/restore does not own it. Compiler and runtime sources are unchanged by this follow-up.",
+  "local_followup_tests": {
+    "tests": 18,
+    "result": "passed",
+    "log": "../frame-fields-final.log"
+  }
+}

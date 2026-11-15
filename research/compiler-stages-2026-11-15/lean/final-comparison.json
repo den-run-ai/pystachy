@@ -1,0 +1,109 @@
+{
+  "status": "passed",
+  "commit": "800752d8a582",
+  "inputs": {
+    "checkers": {
+      "clean": true,
+      "digest": "423a8c66f1c30988"
+    },
+    "compiler": {
+      "clean": true,
+      "digest": "3d93ec3d7929693c"
+    },
+    "corpus": {
+      "clean": true,
+      "digest": "8103729726ff0d3d",
+      "programs": [
+        "tests/programs/generics/generic_distinct_layouts.py",
+        "tests/programs/numbers/python_int_storage.py",
+        "tests/programs/numbers/python_int_vtuple_materialization.py",
+        "tools/lean_boundary/examples/classes_and_ints.py",
+        "tools/lean_boundary/examples/field_init.py",
+        "tools/lean_boundary/examples/generators.py",
+        "tools/lean_boundary/examples/guarded_state.py",
+        "tools/lean_boundary/examples/narrowed_float.py",
+        "tools/lean_boundary/examples/unchecked_accesses.py",
+        "tools/lean_boundary/examples/union_memory.py"
+      ],
+      "untrusted": []
+    }
+  },
+  "programs": 10,
+  "proved_by_check": {
+    "access": 38,
+    "fields": 168,
+    "gc": 75,
+    "int": 0,
+    "int_inline": 32,
+    "null": 17,
+    "payload": 12,
+    "storage": 116,
+    "union": 31,
+    "union_payload": 46
+  },
+  "proved_total": 535,
+  "baseline_check_results_identical": true,
+  "preliminary_check_results_identical": true,
+  "cases": [
+    {
+      "program": "tests/programs/generics/generic_distinct_layouts.py",
+      "baseline_checks_equal": true,
+      "preliminary_checks_equal": true,
+      "final_snapshot_sha256": "a936ef21888aa555827b77946835d322d843be4e4a3ed3b6eaa19fc71ead1e5d"
+    },
+    {
+      "program": "tests/programs/numbers/python_int_storage.py",
+      "baseline_checks_equal": true,
+      "preliminary_checks_equal": true,
+      "final_snapshot_sha256": "eecac2da09b1b424f7860e94b4a8ac89b03856a2c234a0a589ba71a26a821f73"
+    },
+    {
+      "program": "tests/programs/numbers/python_int_vtuple_materialization.py",
+      "baseline_checks_equal": true,
+      "preliminary_checks_equal": true,
+      "final_snapshot_sha256": "80438a595f0858476b5b07a43198ad748555fe31451d6d41d77c806003a1874d"
+    },
+    {
+      "program": "tools/lean_boundary/examples/classes_and_ints.py",
+      "baseline_checks_equal": true,
+      "preliminary_checks_equal": true,
+      "final_snapshot_sha256": "8660ae451d17576e788ecc97f62540d1966c2dcc19fcaaa4ec369ef55a9e096e"
+    },
+    {
+      "program": "tools/lean_boundary/examples/field_init.py",
+      "baseline_checks_equal": true,
+      "preliminary_checks_equal": true,
+      "final_snapshot_sha256": "02239b30a0165ee663c19bf07204ad86a03da9aa2ede2b3cdc0d2df1ac14f832"
+    },
+    {
+      "program": "tools/lean_boundary/examples/generators.py",
+      "baseline_checks_equal": true,
+      "preliminary_checks_equal": true,
+      "final_snapshot_sha256": "414ef377421daf4e68672e6615c8c52f6e9d429fc81b4e9d9421bbba21ecfb80"
+    },
+    {
+      "program": "tools/lean_boundary/examples/guarded_state.py",
+      "baseline_checks_equal": true,
+      "preliminary_checks_equal": true,
+      "final_snapshot_sha256": "227d3082843d8a106d35ad6fb77e1e20d9622fca9bccadacdca74577d4521331"
+    },
+    {
+      "program": "tools/lean_boundary/examples/narrowed_float.py",
+      "baseline_checks_equal": true,
+      "preliminary_checks_equal": true,
+      "final_snapshot_sha256": "b945e762df36eea4473e5422cdcf3e878db6da2520c6ba93177c25446e0fd5e7"
+    },
+    {
+      "program": "tools/lean_boundary/examples/unchecked_accesses.py",
+      "baseline_checks_equal": true,
+      "preliminary_checks_equal": true,
+      "final_snapshot_sha256": "29f1ec57491b130e88d0575022484e134f773f4c1bf4642f960674e15bef6e16"
+    },
+    {
+      "program": "tools/lean_boundary/examples/union_memory.py",
+      "baseline_checks_equal": true,
+      "preliminary_checks_equal": true,
+      "final_snapshot_sha256": "88a8dd6285069b7e0b5b82e74d4d871da6e07df2c5268cac2d443c957ab99620"
+    }
+  ]
+}
