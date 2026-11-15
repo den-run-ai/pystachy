@@ -4,7 +4,7 @@ from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.ir import Ins, Val, tmpname
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import BIG, BIGOPT, DUNDER, NONEVAR, ORDOP, REFL
+from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, DUNDER, NONEVAR, ORDOP, REFL
 from src.pystachy_compiler.bigints import big_viewable, held
 from src.pystachy_compiler.utils import (
     elem,
@@ -170,7 +170,7 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         v = self.big_narrow(v)  # (into 64-bit storage, or as an int: bigints.py)
         if v.t == t:
             return v
-    if is_tuple(v.t) and BIG in v.t and t != "" and BIG not in t:
+    if is_tuple(unopt(v.t)) and BIG in v.t and t != "" and BIG not in t:
         if is_tuple(t) and self.join_hint(t, v.t):
             return Val("undef", t)  # (as an int location becomes a promoting int)
         v = self.big_tuple_narrow(v)  # (a tuple of promoting ints into 64-bit storage: the same tuple, bigints.py)
@@ -227,6 +227,8 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
             self.err(f"{what} may be None ({typestr(v.t)}), and a test does not narrow a global or a field (a call may change it): copy it to a local variable, and test that")
         self.err(f"{what} may be None ({typestr(v.t)}); test it with 'is not None' first")
     hint = " (write a float literal like 1.0, or use float())" if t == "float" and v.t == "int" else ""
+    if t == COMPLEXC and v.t in ["int", "float", "bool", BIG]:
+        hint = " (write a complex literal like 2+0j, or use complex())"
     if is_fn(t) and is_fn(v.t):
         hint = " (each function is a type of its own: a variable, a list's items or a dict's values hold one function)"
     if hint == "" and self.curfn.ll in self.guessed:
@@ -285,8 +287,8 @@ def gen_plain_desc(self, t: str, use: str) -> str:
         return "y" if use == "repr" else "s"  # (a bytes compares, orders and hashes as a str of its bytes)
     if is_opt(t) and t != NONEVAR:
         return "?" + self.desc(unopt(t), use)  # None or the value
-    if t == "None":
-        return "?s"  # (always None: a tuple's item)
+    if t == "None" or t == NONEVAR:
+        return "?s"  # (always None: a tuple's item, a set's element; a local that holds only None so far)
     sub = use if use == "repr" or use == "==" else "== " + use
     if is_list(t):
         return "L" + self.desc(held(elem(t)), sub)  # (a tuple of ints as a list holds it: bigints.held)

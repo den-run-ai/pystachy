@@ -23,7 +23,7 @@ cache_toolchain.SYSTEM_INPUTS
 driver.COMPILER_SOURCES driver.CPUID driver.LLJIT_LLVM driver.RTPARTS
 dynamic.XCMP dynamic.XOPS dynamic.BINOPS dynamic.UNOPS dynamic.CMPOPS
 dynamic.BINDUNDERS dynamic.BUILTIN dynamic_proof.BUILTIN_KINDS dynamic_proof.BUILTIN_PAYLOADS
-dynamic_proof.BOX_TAGS expressions.ORDERS
+dynamic_proof.BOX_TAGS expressions.ORDERS expressions.CMPDUNDERS
 ir.NONUMS ir.NOVALS ir.NOLABELS ircheck.RESULT_NUMBERS
 lexer.KEYWORDS lexer.OPS lexer.ESCAPES lexer.PREFIXES lexer.NONPRINT lexer.NOTID
 loader.ENUM_NAMES loader.ENUM_BASES loader.ENUM_HOOKS
@@ -39,7 +39,7 @@ specs.CALLS specs.RTL specs.TBAA_SIZES specs.TBAA_NAMES specs.ERRNO specs.MODFUN
 specs.CTYPES specs.MODATTRS specs.OSCONST specs.FLOATINFO specs.VERSIONINFO
 specs.TYPING specs.TYPEARGS specs.ABCS specs.ABCSMORE specs.RANGE_TAKERS specs.RANGE_METHODS
 specs.FUTURE specs.DEFAULTS specs.EXCEPTIONS specs.EXCBASES specs.PLAIN_EXC_BASES specs.EXCATTRS specs.EXCINIT
-specs.EXCKW specs.HASATTR specs.NONEARG specs.OPTARG specs.NONERET specs.OPTCALLS
+specs.EXCKW specs.HASATTR specs.NONEARG specs.OPTARG specs.NONERET specs.OPTCALLS specs.PROTOCOL_MATH
 specs.NOREF specs.UNSUPPORTED specs.INERT_DECOS specs.INERT specs.PURE specs.RAISERS
 specs.CODECS specs.ARITY specs.METHODS specs.TEXT_OPS specs.UNICODE_AUDIT
 specs.FSETMETHODS specs.SETMETHODS specs.IROPS specs.OPTS specs.VALUE_AT specs.FX specs.LIST_READS specs.LIST_WRITES

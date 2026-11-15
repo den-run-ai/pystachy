@@ -22,6 +22,7 @@ from src.pystachy_compiler.specs import (
     OPTTYPES,
     ORDOP,
     PYBUILTINS,
+    COMPLEXC,
     RANGEC,
     SPECIAL,
     TYPESMOD,
@@ -49,6 +50,7 @@ from src.pystachy_compiler.utils import (
     is_sopt,
     is_tuple,
     is_vtuple,
+    none_key,
     lib_source,
     meet,
     numeric_identity,
@@ -288,6 +290,15 @@ def gen_hoist(self, f: FnInfo) -> None:
                 f.dglob[j] = "!" + bad
                 continue
             v = self.expr(d, t)
+            if t == COMPLEXC and (f.mod != "" or is_const(d)) and not early and v.t in ["int", "float", "bool", BIG]:
+                # a function of an imported module whose complex parameter defaults to a real
+                # number, which CPython keeps as it is: the default ran, and is an error only
+                # where a call needs it, as it was while complex annotations were unsupported;
+                # also the program's own constant default (z: complex = 0), which a program that
+                # tracks numeric identity (dynamic Any) evaluates here only for its identity
+                # (after claude/blissful-hawking-ve4fwg-complex, 8e338e03)
+                f.dglob[j] = f"!expected complex, got {typestr(v.t)} as the default value of parameter '{f.params[j]}' of {short(f.name)}() (write a complex literal like 2+0j, or use complex())"
+                continue
             if early:
                 # a call compiled before this statement declared its global (early_default)
                 del self.pending[f"{f.ll}.{j}"]
@@ -317,7 +328,7 @@ def gen_default_problem(self, e: Node, t: str) -> str:
         return f"cannot infer the type of an empty {e.kind} as a default value; annotate the parameter"
     if e.kind == "badattr":
         return e.s
-    if e.kind in UNSUPPORTED:
+    if e.kind in UNSUPPORTED and not (e.kind == "complex" and COMPLEXC in self.classes):
         return UNSUPPORTED[e.kind]
     for k in e.kids:
         if e.kind == "call" and k is e.kids[0] and k.kind == "name":
@@ -457,6 +468,23 @@ def gen_loop(self, body: list[Node], lp: Loop) -> list[dict[str, str]]:
     if body is self.elsekids:
         self.elsebrks = r
     return r
+
+def gen_decline(self, n: Node) -> Node:
+    # return NotImplemented of a comparison method (may_decline): the method declines its
+    # operand, and CPython then asks the other operand's method, or compares identities, or
+    # raises TypeError. It sets decl_flag's variable, which the comparison that called the
+    # method reads as it returns (concrete_cmp), and returns False: the statement this gives
+    # back, compiled in place of n. No code may run between the two, so a finally block that the
+    # return would run is rejected; and so is a call that takes the method's result as it is
+    # (call_fn), which would read False
+    for x in self.exits:
+        if x.kind == "finally":
+            self.err("return NotImplemented inside a try statement with a finally block, or a with statement, is not supported")
+    if self.curfn.plain != "":
+        self.err(f"{short(self.curfn.cls)}.{self.curfn.name}() returns NotImplemented, which only a comparison of objects (==, <, ...) reads: the call at {self.curfn.plain}, which takes its result as it is, is not supported")
+    self.curfn.declines = True
+    self.mstore('bool', 'true', self.decl_flag())
+    return mk("return", "", n.line, [mk("False", "", n.kids[0].line, [])])
 
 def gen_leave(self, depth: int) -> bool:
     # leaving the code inside exits[depth:] (break, continue, return, the end of a with block):
@@ -791,6 +819,8 @@ def gen_stmt_main(self, n: Node) -> None:
     elif k == "return":
         if self.modlevel:
             self.err("'return' outside function")
+        if len(n.kids) == 1 and n.kids[0].kind == "name" and n.kids[0].s == "NotImplemented" and not self.bound("NotImplemented") and self.may_decline(self.curfn):
+            n = self.decline(n)
         if "?" in self.ret and self.qforward.get(self.curfn.ll, False) and len(n.kids) == 0:
             # Forwarding used to choose a concrete empty-result default at the
             # call. Preserve it when None needs a complete optional layout.
@@ -803,6 +833,9 @@ def gen_stmt_main(self, n: Node) -> None:
                 # Compiling the expression may have recursively called this
                 # instance and fixed its old void ABI, including via another function.
                 self.err(f"cannot infer what {short(self.curfn.name)}() returns: recursion already used None; annotate its return type")
+            if self.curfn.ret == "bool" and v.t != "bool" and v.t != "None":
+                # (a comparison method that calls itself before its first return: instance)
+                self.err(f"cannot infer what {short(self.curfn.name)}() returns: recursion already used bool; annotate its return type")
             if "?" in v.t and self.qforward.get(self.curfn.ll, False) and self.returned_none():
                 self.adopt(empty_result_type(v.t, self.curfn.rctx))
                 v = Val(v.v, self.ret)
@@ -969,7 +1002,7 @@ def gen_stmt_main(self, n: Node) -> None:
                     self.bool_find(o.v, kval, key)
                 fx = self.key_fx(kt)
                 fn = "pys_dict_del" if "H" in fx or "A" in fx or self.dict_int(o.t) else "pys_dict_pop"
-                self.nonekey(kx, "", fn, [f"ptr {o.v}", "i64 " + key], fx)
+                self.nonekey(kx, "", fn, [f"ptr {o.v}", "i64 " + key], fx, kt)
             elif o.t in self.classes:
                 # del o[k]: o.__delitem__(k)
                 ik = self.expr(dt.kids[1], self.argtype(o.t, "__delitem__", 1, f"'{tname(o.t)}' object doesn't support item deletion"))
@@ -1345,7 +1378,8 @@ def gen_augassign(self, n: Node) -> None:
                 self.dict_put(o, kb, "", self.list_hold(self.inplace(op, cur, n.kids[1]), kv[1]), kv)
                 return
             kx = self.dkey(kval, kv[0])
-            key = "" if is_sopt(kx.t) else self.to_slot(kx)
+            nk = none_key(kv[0])  # (keys that may be None: None is looked up as any key)
+            key = "" if is_sopt(kx.t) and not nk else self.to_slot(kx)
             o = self.unwrap(o, sub)
             if bool_for_int(kval.t, kv[0]):
                 e = self.bool_find(o.v, kval, key)
@@ -1358,7 +1392,7 @@ def gen_augassign(self, n: Node) -> None:
                     self.store_key(kval, kv[0])  # (rejected)
                 self.dict_store(o.v, "", r, kv, e)
                 return
-            if is_opt(kx.t):
+            if is_opt(kx.t) and not nk:
                 self.guard(self.ptr_cmp('==', kx, Val('null', 'None')).v, "KeyError: None")
                 if is_sopt(kx.t):
                     key = self.to_slot(self.deref(kx))  # (an int key is the int its box holds)
@@ -1462,8 +1496,17 @@ def gen_inplace(self, op: str, cur: Val, rhs: Node) -> Val:
             b = Val(b.v, unopt(b.t))
         if not is_set(b.t):
             self.err(f"unsupported operand type(s) for {op}=: '{tname(cur.t)}' and '{tname(b.t)}'")
-        if self.wider(selem(b.t), selem(cur.t)) != selem(cur.t):
-            self.err(f"unsupported operand types for {op}=: {typestr(cur.t)} and {typestr(b.t)} (a set holds elements of one type)")
+        et = selem(cur.t)
+        it = selem(b.t)
+        if self.wider(it, et) != et:
+            # s &= t and s -= t only look t's elements up in s, or discard them from it: t's may
+            # also be None where those of s are not, and are then taken without it (set_some)
+            if (op == "&" or op == "-") and none_key(it) and not none_key(et) and et not in self.classes and (it == "None" or (self.wider(it, et) == it and unopt(it) == et)):
+                b = self.set_some(b)
+            else:
+                self.err(f"unsupported operand types for {op}=: {typestr(cur.t)} and {typestr(b.t)} (a set holds elements of one type)")
+        elif it != et and (none_key(it) or none_key(et)):
+            b = self.set_rekind(b, et)  # (a set[str] for a set[str | None]: a table of its kind)
         kx = self.key_fx(selem(cur.t)) + self.key_fx(selem(b.t))
         if op == "&":
             self.rt("pys_set_assign", "void", [f"ptr {cur.v}", f"ptr {self.rt('pys_set_and', 'ptr', [f'ptr {cur.v}', f'ptr {b.v}'], kx)}"])
@@ -1988,7 +2031,14 @@ def gen_for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], s
     for k in range(len(seqs) if not now else 0):
         vals.extend(self.seq_item(seqs[k], at[k], mode))
     if len(vals) == 1 and mode != "zip":
-        self.assign(tgt, vals[0])
+        moving = self.fn.idmove
+        # A single generator result owns this private nullable companion.
+        # Transfer it to one loop local as an ordinary lone assignment does.
+        self.fn.idmove = len(seqs) == 1 and is_gen(seqs[0].t) and vals[0].idexact and tgt.kind == "name"
+        try:
+            self.assign(tgt, vals[0])
+        finally:
+            self.fn.idmove = moving
     elif (tgt.kind == "tuple" or tgt.kind == "list") and len(tgt.kids) == len(vals) and not starred_target(tgt):
         for k2 in range(len(vals)):
             self.assign(tgt.kids[k2], vals[k2])
@@ -2010,8 +2060,13 @@ def gen_seq_item(self, s: Val, j: str, mode: str) -> list[Val]:
     if is_list(s.t):
         return [self.list_item(s, Val(j, "int"))]
     if is_vtuple(s.t):
-        off = self.scalar('add', [Val(j, 'int'), Val('1', 'int')])
-        return [self.from_slot(self.mload('int', self.maddr('int', f'{s.v}', f'{off}')), targs(s.t)[0])]
+        et = targs(s.t)[0]
+        if self.list_id_kind(self.ctype("list", [et])) != 0 and not self.fn.scalar_reads:
+            return [self.vtuple_item(s, Val(j, "int"))]
+        # for_seq has checked the immutable length. Keep its unboxed/reference
+        # fast path: the raw slots follow the length and companion pointer.
+        off = self.scalar("add", [Val(j, "int"), Val("2", "int")])
+        return [self.from_slot(self.mload("int", self.maddr("int", s.v, off)), et)]
     if is_tuple(s.t) and targs(s.t)[0] == BIG:
         # (promoting ints: one's slot at j, and where it says so its Mpz word, past the items: bigints.py)
         return [self.big_item(s, Val(self.mload('int', self.maddr('int', f'{s.v}', f'{j}')), "int"), 0, j)]

@@ -42,6 +42,12 @@ class UnionSplitTests(unittest.TestCase):
             raise unittest.SkipTest("build the Lean boundary checker")
         with tempfile.TemporaryDirectory() as temporary:
             cls.snapshot = inspect(EXAMPLE, Path(temporary) / "split")
+            # The declared int member is handled by float()'s default arm. No call
+            # boxes an int, so the compiler never assigns that member a tag literal.
+            source = Path(temporary) / "sparse.py"
+            source.write_text("def convert(value: bool | int | float) -> float:\n"
+                              "    return float(value)\n\nprint(convert(1.5))\n")
+            cls.sparse = inspect(source, Path(temporary) / "sparse")
         cls.tags = {member: str(tag) for member, tag in cls.snapshot["union_tags"].items()}
 
     def sample(self):
@@ -91,6 +97,61 @@ class UnionSplitTests(unittest.TestCase):
         self.assertEqual(report["proved_union_reads"], report["union_reads"])
         # (accumulate returns a box made again of its pair's tag and bits)
         self.assertEqual((report["union_returns"], report["proved_union_returns"]), (2, 2))
+
+    def test_split_domain_keeps_members_without_emitted_tags(self):
+        snapshot = copy.deepcopy(self.sparse)
+        self.assertEqual(set(snapshot["union_tags"]), {"bool", "float"})
+        function = self.function(snapshot, "convert")
+        self.assertEqual([entry["type"] for entry in function["split_unions"]], ["union[bool,float,int]"])
+        candidate, metadata = guards.normalize(snapshot, function, immutable_boxes=True)
+        self.assertIn({"member:bool", "member:float", "member:int"},
+                      [set(node["tags"]) for node in candidate["program"]["nodes"]
+                       if node["op"] == "guard" and node["value"] == "%a0"])
+        metadata.pop("origins")
+        self.assertTrue(boundary.run_checker(CHECKER, boundary.encode(candidate), metadata))
+        report, code = guards.check_all(snapshot, CHECKER)
+        self.assertEqual(code, 0, report)
+        self.assertGreater(report["payload_obligations"], 0)
+        self.assertEqual(report["payload_obligations"], report["proved_payload_obligations"])
+        self.assertEqual(report["union_reads"], report["proved_union_reads"])
+
+    def test_sparse_tag_tests_do_not_invent_member_facts(self):
+        for change in ("missing-used-tag", "unknown-test", "unguarded-default"):
+            with self.subTest(change=change):
+                snapshot = copy.deepcopy(self.sparse)
+                function = self.function(snapshot, "convert")
+                test, _ = self.tag_test(function)
+                if change == "missing-used-tag":
+                    member = next(member for member, tag in snapshot["union_tags"].items()
+                                  if str(tag) == test["operands"][1]["value"])
+                    del snapshot["union_tags"][member]
+                elif change == "unknown-test":
+                    test["operands"][1]["value"] = "999"
+                else:
+                    for _, _, op in self.operations(function):
+                        if op["op"] == "cbr":
+                            op["operands"][0]["value"] = "false"
+                self.assertFalse(self.lean(snapshot, "convert"))
+
+    def test_sparse_tags_refuse_unknown_literal_construction(self):
+        snapshot = copy.deepcopy(self.sparse)
+        function = self.function(snapshot, "convert")
+        _, _, tag, _ = self.pair_stores(function)[0]
+        tag["operands"][1]["value"] = "999"
+        with self.assertRaisesRegex(boundary.Unsupported, "parts of no one box"):
+            self.lean(snapshot, "convert")
+        for change in ("unknown-literal", "missing-used-tag"):
+            with self.subTest(change=change):
+                snapshot = copy.deepcopy(self.sparse)
+                function = next(fn for fn in snapshot["functions"] if fn["symbol"] == "@main.init")
+                box = next(op for _, _, op in self.operations(function)
+                           if op["op"] == "rt" and op["text"] == "ubox")
+                if change == "unknown-literal":
+                    box["operands"][0]["value"] = "999"
+                else:
+                    del snapshot["union_tags"]["float"]
+                with self.assertRaisesRegex(boundary.Unsupported, "dynamic union reconstruction"):
+                    guards.normalize(snapshot, function, immutable_boxes=True)
 
     def test_split_corruptions_are_rejected(self):
         def literal_tag(snapshot):  # float bits stored with int's tag

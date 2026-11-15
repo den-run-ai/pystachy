@@ -35,7 +35,7 @@ from src.pystachy_compiler.specs import (
     exc_derives,
 )
 from src.pystachy_compiler.syntax import Node, comp_names, has_kind, made_var, mk, names_in
-from src.pystachy_compiler.utils import gelem, gsend, is_gen, is_list, typestr
+from src.pystachy_compiler.utils import gelem, generator_identity, generator_slots, gsend, is_gen, is_list, numeric_identity, typestr
 
 
 def with_yield(body: list[Node]) -> bool:
@@ -477,9 +477,10 @@ def gen_gen_cleanup(self) -> int:
     return 0
 
 
-def gen_gen_suspend(self, slot: str, k: int, sub: Val, thrown: str = "", hi: str = "") -> None:
+def gen_gen_suspend(self, slot: str, k: int, sub: Val, thrown: str = "", hi: str = "", identity: str = "") -> None:
     # the generator being compiled yields the value in slot (with hi, the pointer of an int in a
-    # program where a module opts in to promoting ints: gen_slots), then goes on where it is resumed.
+    # program where a module opts in to promoting ints: gen_slots), plus an identity
+    # companion when tracked, then goes on where it is resumed.
     # k: closing it here runs code of its (gen_cleanup), so a close raises GeneratorExit here,
     # having closed sub first, the generator a yield from delegates to (or none: Val("", "")):
     # what closing sub raises is raised here (PEP 380). In a program that uses throw()
@@ -492,7 +493,9 @@ def gen_gen_suspend(self, slot: str, k: int, sub: Val, thrown: str = "", hi: str
     self.gen_unhandle()
     res = self.label()
     i = Ins("gen.yield", "", "")
-    i.a = [Val(slot, "%slot")] + ([Val(hi, "%ptr")] if hi != "" else [])
+    i.a = [Val(slot, "%slot")] + ([Val(hi if hi != "" else "null", "%ptr")] if hi != "" or identity != "" else [])
+    if identity != "":
+        i.a.append(Val(identity, "dyn"))
     i.k = k
     i.b = [res]
     self.put(i, 2)
@@ -578,8 +581,8 @@ def gen_yield_stmt(self, n: Node) -> None:
         # so the code after it is not reached either: not an end without a value, gen_end)
         self.unreachable()
         return
-    w = ["0", ""] if y == "None" else self.gen_slots(v, gelem(f.ret))
-    self.gen_suspend(w[0], self.gen_cleanup(), Val("", ""), "", w[1])
+    w = ["0", "", ""] if y == "None" else self.gen_slots(v, gelem(f.ret))
+    self.gen_suspend(w[0], self.gen_cleanup(), Val("", ""), "", w[1], w[2])
 
 
 def gen_yield_from(self, x: Node) -> Val:
@@ -633,7 +636,7 @@ def gen_yield_from(self, x: Node) -> Val:
     self.place(head)
     p = self.gen_next(v, done)
     w = self.gen_words(p, t, y, v if callee is not None else None)
-    self.gen_suspend(w[0], 1 if self.eh else 0, v if self.eh else Val("", ""), "", w[1])
+    self.gen_suspend(w[0], 1 if self.eh else 0, v if self.eh else Val("", ""), "", w[1], w[2])
     self.br(head)
     self.place(done)
     r = callee.gret if callee is not None else ""
@@ -657,6 +660,7 @@ def gen_yield_from_proto(self, v: Val, t: str, y: str, callee: FnInfo | None) ->
         self.err(f"{short(f.name)}() takes {typestr(fs)} from send(), which yield from sends on to a generator that takes {typestr(gsend(v.t))}: annotate them with the same send type")
     ys = self.alloca("int", "")
     yh = self.alloca("%ptr", "") if y == "int" and int_program() else ""  # (the pointer: gen_slots)
+    yi = self.alloca("dyn", "") if generator_identity(y, self.idhere()) else ""
     head = self.label()
     done = self.label()
     susp = self.label()
@@ -666,10 +670,10 @@ def gen_yield_from_proto(self, v: Val, t: str, y: str, callee: FnInfo | None) ->
     p = self.gen_next(v, done)
     if fs != "None":
         self.mstore("int", "0", self.maddr("int", p, str(GENSEND)))  # (taken where v resumed)
-    self.gen_keep(self.gen_words(p, t, y, v if callee is not None else None), ys, yh)
+    self.gen_keep(self.gen_words(p, t, y, v if callee is not None else None), ys, yh, yi)
     self.br(susp)
     self.place(susp)
-    self.gen_suspend(self.mload("int", ys), 1 if self.eh else 0, v if self.eh else Val("", ""), thrown, self.mload("%ptr", yh) if yh != "" else "")
+    self.gen_suspend(self.mload("int", ys), 1 if self.eh else 0, v if self.eh else Val("", ""), thrown, self.mload("%ptr", yh) if yh != "" else "", self.mload("dyn", yi) if yi != "" else "")
     if fs != "None":
         own = self.gen_promise(Val("", ""))
         x = self.mload("int", self.maddr("int", own, str(GENSEND)))
@@ -688,7 +692,7 @@ def gen_yield_from_proto(self, v: Val, t: str, y: str, callee: FnInfo | None) ->
         self.throw(e)
         self.place(lt)
         p2 = self.gen_throw_into(v, e, done)
-        self.gen_keep(self.gen_words(p2, t, y, v if callee is not None else None), ys, yh)
+        self.gen_keep(self.gen_words(p2, t, y, v if callee is not None else None), ys, yh, yi)
         self.br(susp)
     self.place(done)
     r = callee.gret if callee is not None else ""
@@ -700,22 +704,38 @@ def gen_yield_from_proto(self, v: Val, t: str, y: str, callee: FnInfo | None) ->
     return res
 
 
-def gen_gen_keep(self, w: list[str], ys: str, yh: str) -> None:
-    # the slot and pointer w of the value a yield from yields (gen_words) in ys and yh (if any)
+def gen_gen_keep(self, w: list[str], ys: str, yh: str, yi: str) -> None:
+    # Forward raw value, optional wide pointer and optional identity companion.
     self.mstore("int", w[0], ys)
     if yh != "":
         self.mstore("%ptr", w[1], yh)
+    if yi != "":
+        self.mstore("dyn", w[2], yi)
 
 
 def gen_gen_slots(self, v: Val, y: str) -> list[str]:
-    # v as the promise of a generator that yields y holds it: its slot, and where y is an int in
-    # a program where a module opts in to promoting ints (int_program), its pointer (GENVALP; null
-    # where it fits, as every yield of an int writes it), else ""
+    # Raw value, optional wide pointer, and nullable numeric object companion.
+    # Existing aliases retain their box; a fresh computed value can pass null,
+    # just as in the scalar argument/return ABI. No coroutine-local slot escapes.
+    identity = self.dyn_id_arg(v).v if generator_identity(y, self.idhere()) else ""
     if y != "int" or not int_program():
-        return [self.to_slot(v), ""]
+        return [self.to_slot(v), "", identity]
     if v.t == BIG:
-        return [self.big_lo(v).v, self.big_hi(v).v]
-    return [self.to_slot(v), "null"]
+        return [self.big_lo(v).v, self.big_hi(v).v, identity]
+    return [self.to_slot(v), "null", identity]
+
+
+def yield_snapshot(self, value: Val, identity: str) -> Val:
+    # The promise is overwritten on the next resume. Own a private companion
+    # slot now; its nullable box names exactly this result, as a scalar call's.
+    if identity != "":
+        value.idslot = self.alloca("dyn", "")
+        self.mem_store(Val(value.idslot, "*dyn"), Val(identity, "dyn"))
+        value.idheld = identity
+        value.idexact = True
+        value.idcounter = self.alloca("int", "")
+        value.idversion = "0"
+    return value
 
 
 def gen_gen_words(self, p: str, t: str, y: str, owned: Val | None = None) -> list[str]:
@@ -723,8 +743,9 @@ def gen_gen_words(self, p: str, t: str, y: str, owned: Val | None = None) -> lis
     # y holds it (yield from: gen_slots): an int's pointer goes on with its slot
     s = self.mload("int", p)
     hi = self.mload("%ptr", self.maddr("int", p, str(GENVALP))) if t == "int" and int_program() else ""
+    identity = self.mload("dyn", self.maddr("int", p, str(generator_slots(self.gproto, int_program(), False)))) if generator_identity(t, self.idhere()) else ""
     if t == y:
-        return [s, hi]
+        return [s, hi, identity]
     # A dynamic conversion can raise before gen_suspend installs the delegate's
     # close path. Drop a freshly owned delegate on that exceptional edge; an
     # existing generator belongs to its caller and must remain resumable.
@@ -743,7 +764,8 @@ def gen_gen_words(self, p: str, t: str, y: str, owned: Val | None = None) -> lis
         self.fn.tries.append(tr)
         self.handler = failed
         self.place(tr.body)
-    result = self.gen_slots(self.coerce(self.big(Val(s, "int"), hi) if hi != "" else self.from_slot(s, t), y), y)
+    value = yield_snapshot(self, self.big(Val(s, "int"), hi) if hi != "" else self.from_slot(s, t), identity)
+    result = self.gen_slots(self.coerce(value, y), y)
     if failed != "" and owned is not None:
         self.handler = outer
         done = self.label()
@@ -760,10 +782,13 @@ def gen_gen_value(self, p: str, t: str) -> Val:
     # where a module opts in, the promoting int of its slot and pointer (GENVALP), narrowed in a
     # module that does not opt in but for lib's READ_HELPERS (bigints.read_policy, gen_value_type)
     s = self.mload("int", p)
-    if t != "int" or not int_program():
-        return self.from_slot(s, t)
-    v = self.big(Val(s, "int"), self.mload("%ptr", self.maddr("int", p, str(GENVALP))))
-    return v if self.read_policy() else self.big_narrow(v)
+    if t == "int" and int_program():
+        v = self.big(Val(s, "int"), self.mload("%ptr", self.maddr("int", p, str(GENVALP))))
+        v = v if self.read_policy() else self.big_narrow(v)
+    else:
+        v = self.from_slot(s, t)
+    identity = self.mload("dyn", self.maddr("int", p, str(generator_slots(self.gproto, int_program(), False)))) if generator_identity(t, self.idhere()) else ""
+    return yield_snapshot(self, v, identity)
 
 
 def gen_gen_value_type(self, t: str) -> str:
@@ -988,15 +1013,22 @@ def gen_gen_unpack(self, t: Node, g: Val) -> None:
             items.append(Val("null", "None"))
         else:
             sl = self.alloca(self.gen_value_type(y), "")
-            self.mstore(self.gen_value_type(y), self.gen_value(p, y).v, sl)
-            items.append(Val(sl, self.gen_value_type(y)))
+            value = self.gen_value(p, y)
+            self.mstore(self.gen_value_type(y), value.v, sl)
+            saved = Val(sl, self.gen_value_type(y))
+            # The next resume may replace the promise; retain this item's box
+            # until every item has been read and target assignment begins.
+            saved.identity(value)
+            items.append(saved)
     self.place(few)
     k = self.to_str(Val(self.mload("int", got), "int"))
     msg = self.cat(self.cat(Val(self.sconst(f"not enough values to unpack (expected {n}, got "), "str"), k), Val(self.sconst(")"), "str"))
     self.raise_("ValueError", msg.v)
     self.place(ok)
     for i in range(n):
-        self.assign(t.kids[i], items[i] if y == "None" else Val(self.mload(items[i].t, items[i].v), items[i].t))
+        value = items[i] if y == "None" else Val(self.mload(items[i].t, items[i].v), items[i].t)
+        value.identity(items[i])
+        self.assign(t.kids[i], value)
 
 
 def gen_gen_contains(self, x: Val, g: Val) -> Val:
@@ -1045,6 +1077,9 @@ def gen_gen_next_value(self, g: Val, dflt: Val) -> Val:
         self.err(f"next() of a generator of {typestr(y)} with a default of {typestr(dflt.t)}: they need one type")
     if dflt.v != "":
         v = self.coerce(v, t)
+    # Payload phis alone lose the object selected by next(g, default).
+    keep = dflt.v != "" and self.idhere() and numeric_identity(t)
+    vb = self.dyn_box(v).v if keep else ""
     got = self.cur
     end = self.label()
     self.br(end)
@@ -1054,6 +1089,7 @@ def gen_gen_next_value(self, g: Val, dflt: Val) -> Val:
         self.place(end)
         return v
     d = self.coerce(dflt, t)
+    db = self.dyn_box(d).v if keep else ""
     dl = self.cur
     self.br(end)
     self.place(end)
@@ -1062,7 +1098,13 @@ def gen_gen_next_value(self, g: Val, dflt: Val) -> Val:
     ph = Ins("phi", t, "")
     self.incoming(ph, v.v, got)
     self.incoming(ph, d.v, dl)
-    return Val(self.phi(ph), t)
+    result = Val(self.phi(ph), t)
+    if keep:
+        boxes = Ins("phi", "dyn", "")
+        self.incoming(boxes, vb, got)
+        self.incoming(boxes, db, dl)
+        result.idfrom = self.phi(boxes)
+    return result
 
 
 def gen_gen_stop(self) -> None:

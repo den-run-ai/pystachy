@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: MIT
 import Lean
 import PystachyBoundary
+import PystachyLayout
 
 /-! JSON/IO front end for the proved checker. Parsing and native execution are
 part of the prototype's trusted bridge; the theorem is in PystachyBoundary. -/
@@ -37,7 +38,7 @@ private def tagSet (json : Json) (nonempty : Bool := true) : Except String TagSe
   if tags.eraseDups.length != tags.length then throw "a tag set repeats a tag"
   return tags
 
-private def parseNode (json : Json) : Except String Node := do
+private def parsePlainNode (json : Json) : Except String Node := do
   match ← textField json "op" with
   | "copy" =>
       fields json ["op", "dst", "src", "next"]
@@ -64,15 +65,48 @@ private def parseNode (json : Json) : Except String Node := do
       return .stop
   | other => throw s!"unsupported node: {other}"
 
-private def parseInput (json : Json) : Except String (Program × Certificate) := do
-  fields json ["schema_version", "program", "certificate"]
-  if (← (← json.getObjVal? "schema_version").getNat?) != 2 then
-    throw "unsupported boundary schema version"
+/-- Every class-payload node constructs one layout obligation for each admitted
+runtime tag. Removing the table or a tag cannot erase its obligations. -/
+private def parseNode (layouts : List (Tag × PystachyLayout.Layout)) (json : Json) :
+    Except String (Node × List PystachyLayout.Obligation) := do
+  if (← textField json "op") != "class_payload" then
+    return (← parsePlainNode json, [])
+  fields json ["op", "value", "tags", "next", "layout"]
+  let expectedTag ← textField json "layout"
+  let some (_, expected) := layouts.find? (fun entry => entry.1 == expectedTag)
+    | throw "class payload has no expected layout"
+  let tags ← tagSet (← json.getObjVal? "tags")
+  let mut obligations := []
+  for tag in tags do
+    let some (_, actual) := layouts.find? (fun entry => entry.1 == tag)
+      | throw "class payload tag has no actual layout"
+    obligations := ⟨actual, expected⟩ :: obligations
+  return (.payload (← textField json "value") tags (← indexField json "next"), obligations.reverse)
+
+private def parseInput (json : Json) : Except String (Program × Certificate × List PystachyLayout.Obligation) := do
+  let version ← (← json.getObjVal? "schema_version").getNat?
+  if version != 2 && version != 3 then throw "unsupported boundary schema version"
+  fields json (if version == 3 then ["schema_version", "program", "certificate", "layouts"]
+               else ["schema_version", "program", "certificate"])
+  let mut layouts : List (Tag × PystachyLayout.Layout) := []
+  if version == 3 then
+    let raw ← (← json.getObjVal? "layouts").getArr?
+    if raw.size > 4096 then throw "more than 4096 class layouts"
+    for item in raw do
+      fields item ["tag", "members"]
+      let tag ← textField item "tag"
+      if layouts.any (fun entry => entry.1 == tag) then throw "duplicate class layout tag"
+      let members ← (← item.getObjVal? "members").getArr?
+      if members.size > 4096 then throw "layout exceeds 4096 members"
+      layouts := (tag, ← members.toList.mapM tagText) :: layouts
   let program ← json.getObjVal? "program"
   fields program ["entry", "nodes"]
   let rawNodes ← (← program.getObjVal? "nodes").getArr?
   if rawNodes.size > 16384 then throw "more than 16384 nodes"
-  let nodes ← rawNodes.toList.mapM parseNode
+  let parsed ← rawNodes.toList.mapM (parseNode layouts)
+  let nodes := parsed.map Prod.fst
+  let obligations := parsed.flatMap Prod.snd
+  if obligations.length > 4096 then throw "more than 4096 layout obligations"
   let entry ← indexField program "entry"
   let rawCertificate ← (← json.getObjVal? "certificate").getArr?
   if rawCertificate.size > 16384 then throw "more than 16384 certificate entries"
@@ -94,7 +128,7 @@ private def parseInput (json : Json) : Except String (Program × Certificate) :=
       if members > 262144 then throw "more than 262144 certificate tags"
       facts := (value, tags) :: facts
     certificate := facts.reverse :: certificate
-  return (⟨nodes, entry⟩, certificate.reverse)
+  return (⟨nodes, entry⟩, certificate.reverse, obligations)
 
 private def readInput : IO String := do
   let stream ← IO.getStdin
@@ -113,12 +147,13 @@ private def readInput : IO String := do
 private def respond (input : String) : Json × UInt32 :=
   match Json.parse input >>= parseInput with
   | .error message => (Json.mkObj [("accepted", toJson false), ("error", toJson message)], 2)
-  | .ok (program, certificate) =>
-      let accepted := check program certificate
+  | .ok (program, certificate, layouts) =>
+      let accepted := check program certificate && PystachyLayout.check layouts
       let payloads := program.nodes.foldl (fun count node =>
         match node with | .payload .. => count + 1 | _ => count) (0 : Nat)
       (Json.mkObj [("accepted", toJson accepted),
-        ("nodes", toJson program.nodes.length), ("payloads", toJson payloads)],
+        ("nodes", toJson program.nodes.length), ("payloads", toJson payloads),
+         ("layouts", toJson layouts.length)],
         if accepted then 0 else 1)
 
 /-- `--batch`: each input line is one candidate, answered by one result line, in order, until

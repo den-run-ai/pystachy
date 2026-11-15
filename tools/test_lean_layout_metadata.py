@@ -230,11 +230,15 @@ class LayoutMetadataTests(unittest.TestCase):
                 self.assertEqual(version["representation"], "tuple[int,int,int,str,int]")
                 self.assertEqual([item["representation"] for item in version["items"]],
                                  ["int", "int", "int", "str", "int"])
-            searches = [source for source in functions["@f.fixed$contains"]["representation_metadata"]["sources"]
-                        if source["origin"] == "search_hold"]
+            contains = functions["@f.fixed$contains"]["representation_metadata"]["sources"]
+            parameter = next(source for source in contains if source["value"] == "%a1")
+            self.assertEqual(parameter["representation"], "opt[tuple[int,int]]")
+            searches = [source for source in contains if source["origin"] == "search_hold"]
             self.assertEqual(len(searches), 1)
             self.assertEqual(searches[0]["representation"], "opt[tuple[int+,int+]]")
-            self.assertEqual(searches[0]["definition_type"], "opt[tuple[int,int]]")
+            # The null-aware coercion now defines the held layout explicitly;
+            # the original fixed-width parameter remains a separate source.
+            self.assertEqual(searches[0]["definition_type"], "opt[tuple[int+,int+]]")
             ordinary = subprocess.run([sys.executable, str(ROOT / "pystachy.py"), "ir", str(program)],
                                       cwd=ROOT, env=environment, capture_output=True, timeout=40)
             self.assertEqual(ordinary.returncode, 0, ordinary.stderr)

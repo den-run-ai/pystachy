@@ -3,8 +3,8 @@ from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail, int_program
 from src.pystachy_compiler.ir import Blk, ClassInfo, IFn, Ins, Val, slot_register, tmpname, one_num
 from src.pystachy_compiler.lower_module import const_slot, struct_types
-from src.pystachy_compiler.specs import CHECKED, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSLOTS, GENSLOTSB, GENSLOTSX, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
-from src.pystachy_compiler.utils import atomic_dict, atomic_list, identity_abi, numeric_identity, is_dict, is_tuple, lt, selem, takes_self, targs, tslots
+from src.pystachy_compiler.specs import CHECKED, COMPLEXC, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
+from src.pystachy_compiler.utils import atomic_dict, atomic_list, gelem, generator_identity, generator_slots, identity_abi, numeric_identity, is_dict, is_tuple, lt, selem, takes_self, targs, tslots
 
 
 def gen_lower(self, fn: IFn) -> None:
@@ -39,7 +39,7 @@ def gen_lower(self, fn: IFn) -> None:
     prologue = len(o)
     self.ftags = {}  # (its own numbers: another function's %tN is no field address of this one)
     if fn.coro:
-        o.append(f"  %coro.promise = alloca [{promise_slots(self.gproto)} x i64], align 8")
+        o.append(f"  %coro.promise = alloca [{promise_slots(self.gproto, generator_identity(gelem(fn.f.ret), self.fn_identity(fn.f)))} x i64], align 8")
         self.coros = True
     for i in fn.slots:
         r = slot_register(i)
@@ -307,27 +307,30 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
     elif op == "field.addr":
         self.rangeused = self.rangeused or i.a[0].t == RANGEC
         self.objectused = self.objectused or i.a[0].t == OBJECTC
+        self.complexused = self.complexused or i.a[0].t == COMPLEXC
         o.append(f"  {tmpname(i.r[0])} = getelementptr %C.{i.a[0].t}, ptr {i.a[0].v}, i32 0, i32 {i.k}")
         if "fieldtbaa" in self.opts:
             self.ftags[tmpname(i.r[0])] = self.field_tag(i.a[0].t, i.k)
     elif op == "alloc.fixed":
         self.rangeused = self.rangeused or i.t == RANGEC
         self.objectused = self.objectused or i.t == OBJECTC
+        self.complexused = self.complexused or i.t == COMPLEXC
         size = str(8 * tslots(i.t)) if is_tuple(i.t) else f"ptrtoint (ptr getelementptr (%C.{i.t}, ptr null, i32 1) to i64)"
         if tmpname(i.r[0]) not in self.vtuples:  # (a tuple returned by value is never made: tupleret)
             o.append(f"  {tmpname(i.r[0])} = {self.alloc_call(size, i.t)}")
     elif op == "vtuple.make":
-        # The runtime VTuple layout is a length followed by 8-byte item slots.
+        # The runtime VTuple layout is a length, a nullable identity pointer,
+        # then 8-byte item slots. The zeroed allocator initializes the pointer.
         # Keep the scanned allocator and its GC boundary, including for scalar
         # items. References remain native pointer operands live across that call.
         # Address and bool-widening temporaries belong only to this emitter.
         p = tmpname(i.r[0])
-        o.append(f"  {p} = {self.alloc_call(str(8 * (len(i.a) + 1)), i.t)}")
+        o.append(f"  {p} = {self.alloc_call(str(8 * (len(i.a) + 2)), i.t)}")
         o.append(f"  store i64 {len(i.a)}, ptr {p}")
         for k in range(len(i.a)):
             v = i.a[k]
             a = f"%vt.{i.r[0]}.{k}"
-            o.append(f"  {a} = getelementptr i64, ptr {p}, i64 {k + 1}")
+            o.append(f"  {a} = getelementptr i64, ptr {p}, i64 {k + 2}")
             if v.t == "bool":
                 o.append(f"  {a}.value = zext i1 {v.v} to i64")
                 o.append(f"  store i64 {a}.value, ptr {a}")
@@ -533,7 +536,7 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         o.append("coro.begin:")
         o.append(f"  %coro.frame = phi ptr [null, %{self.lowblk}], [%coro.mem, %coro.alloc]")
         o.append("  %coro.hdl = call ptr @llvm.coro.begin(token %coro.id, ptr %coro.frame)")
-        o.append(f"  store [{promise_slots(self.gproto)} x i64] zeroinitializer, ptr %coro.promise")
+        o.append(f"  store [{promise_slots(self.gproto, generator_identity(gelem(fn.f.ret), self.fn_identity(fn.f)))} x i64] zeroinitializer, ptr %coro.promise")
         o.append(f"  %coro.name = getelementptr i64, ptr %coro.promise, i64 {GENNAME}")
         o.append(f"  store ptr {i.a[0].v}, ptr %coro.name")
         if self.gproto:
@@ -546,9 +549,12 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         # the value in the promise (and an int's pointer, GENVALP), the state (k: whether closing it
         # here runs code of its), suspend
         o.append(f"  store i64 {i.a[0].v}, ptr %coro.promise")
-        if len(i.a) > 1:
+        if len(i.a) == 2 or (len(i.a) == 3 and int_program() and gelem(fn.f.ret) == "int"):
             o.append(f"  {tmpname(i.r[0])}.hi = getelementptr i64, ptr %coro.promise, i64 {GENVALP}")
             o.append(f"  store ptr {i.a[1].v}, ptr {tmpname(i.r[0])}.hi")
+        if len(i.a) == 3:
+            o.append(f"  {tmpname(i.r[0])}.identity = getelementptr i64, ptr %coro.promise, i64 {promise_slots(self.gproto)}")
+            o.append(f"  store ptr {i.a[2].v}, ptr {tmpname(i.r[0])}.identity")
         o.append(f"  {tmpname(i.r[0])} = getelementptr i64, ptr %coro.promise, i64 {GENSTATE}")
         o.append(f"  store i64 {i.k}, ptr {tmpname(i.r[0])}")
         o.append(f"  {tmpname(i.r[1])} = call i8 @llvm.coro.suspend(token none, i1 false)")
@@ -588,10 +594,11 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
     else:
         fail(f"internal error: no lowering for IR op {op}", 0)
 
-def promise_slots(gproto: bool) -> int:
+def promise_slots(gproto: bool, identity: bool = False) -> int:
     # the i64 slots of a generator's promise (specs.GENSLOTS): seven in a program that uses send()
-    # or throw(), nine where a module opts in to promoting ints
-    return GENSLOTSB if int_program() else GENSLOTSX if gproto else GENSLOTS
+    # or throw(), nine where a module opts in to promoting ints; tracked numeric
+    # yields append one nullable scanned identity box after those words.
+    return generator_slots(gproto, int_program(), identity)
 
 def gen_invoke(self, c: str, i: Ins) -> str:
     # the call c of op i, an invoke if the exception passes made it one (Ins.b: [next, landing])

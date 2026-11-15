@@ -150,7 +150,7 @@ behavioral differences are listed as [deviations from CPython](https://github.co
 
 | Area | Supported | Not supported |
 |---|---|---|
-| Values | `int`, `float`, `bool`, `str`, `bytes`, `list`, `dict`, `set`, `frozenset`, `tuple` | `complex`, `bytearray`, `memoryview` |
+| Values | `int`, `float`, `complex`, `bool`, `str`, `bytes`, `list`, `dict`, `set`, `frozenset`, `tuple` | `bytearray`, `memoryview` |
 | Functions | Closures, lambdas, decorators, `*args` and `**kwargs`, generators | `async` and `await` |
 | Classes | Single inheritance, dataclasses, `NamedTuple`, properties, operator methods | General multiple inheritance, metaclasses, subclasses of builtin types |
 | Typing | Inferred locals and returns, generics, closed unions, `T \| None` narrowing | General object unions |

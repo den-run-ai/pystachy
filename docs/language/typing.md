@@ -9,6 +9,7 @@ unsupported forms, see [compatibility](compatibility.md).
 |---|---|
 | `int` | Signed 64-bit; overflow raises `OverflowError` |
 | `float`, `bool`, `str` | Double-precision floats; strings hold UTF-8, with code-point lengths, indexing and slicing |
+| `complex` | Two double-precision floats; an `int` or `float` where `complex` is declared is rejected, as an `int` is for `float` ([complex numbers](semantics.md#complex-numbers)) |
 | `bytes` | Immutable bytes, whose items are ints; also a dict key and set element |
 | `list[T]`, `dict[K, V]` | One static element type, or one key and value type |
 | `set[T]`, `frozenset[T]` | Elements must use the supported dict key types |
@@ -58,7 +59,7 @@ Runtime-length tuples concatenate (`a + b`, `a += b`) with each other and with f
 into a new tuple of one item type, or return the other operand itself where one is empty, as
 CPython does; items of a type and items that are `None`, or of that type or `None`, make a tuple
 of that type or `None` (`nums + (None,)`). They do not
-support repetition, membership, dictionary keys, or set elements yet. Their annotation is distinct
+support repetition or membership yet, but are dict keys and set elements (below). Their annotation is distinct
 from the fixed shape used by `*args`; `tuple()` takes a list, string, tuple, generator
 expression or `range`/`map`/`filter`/`reversed` call whose items are `int`, `float`,
 `bool`, `str` or optional versions of those types, the objects of iterator classes and
@@ -68,12 +69,19 @@ or `tuple(left + right for left, right in zip([1, 2], [3, 4]))`. This enables th
 without rewriting its capture loop or knowing the pattern's capture count at compile time.
 
 Dict keys are `int`, `str`, objects of the program's classes, or tuples containing `int`,
-`bool`, `str`, `str | None`, objects and nested tuples of these. An object whose class defines
+`bool`, `str`, `str | None`, objects and nested tuples of these. `None` is a key type too, and
+so is any of these types that may be `None`: `set[None]`, `set[str | None]` and
+`dict[int | None, V]` hold `None` as CPython does, found by `hash(None)` and identity. `{None}`
+is a `set[None]`, and `{None, "a"}` a `set[str | None]`. Runtime-length tuples of `int`,
+`bool`, `str` or `str | None` (`tuple[bool, ...]`) are keys too, equal to a tuple of the same
+items whatever its shape, as in CPython. An object whose class defines
 neither `__eq__` nor `__hash__` hashes and compares by identity; one whose class defines
 `__hash__` uses it and `__eq__`, which run where CPython calls them (once per insertion or
 lookup, and for each key of the same hash). A class that defines `__eq__` without `__hash__` is
 unhashable, as in CPython: adding or looking up its object raises `TypeError: unhashable type`.
-An object key may be `None`. Floats, frozensets, NamedTuples and exception objects cannot be
+A union of classes (`TypeInfo | TypeAlias`) is a key type where no class its objects may be of
+defines `__eq__` or `__hash__`: they hash and compare by identity, whichever member's they are,
+typed by their class or the union. An object key may be `None`. Floats, frozensets, NamedTuples and exception objects cannot be
 keys or set elements. `hash()` gives CPython's results for ints, floats, `None`, objects with
 `__hash__` and tuples and NamedTuples of these; a str's and an object's identity hash differ from CPython's,
 which change from run to run, but are equal for equal strs and for the same object.
@@ -337,16 +345,26 @@ assignment copy items that must fit as they are: a `list[list[str]]` cannot exte
 `list[list[str | None]]`, which would share its inner lists. Tuples can convert item by item.
 `join()` and `writelines()` check optional string items at runtime.
 
-An optional dict lookup key equal to `None` is absent: membership is false, `get()` and
-`pop()` use a supplied default, and indexing, deletion or a required `pop()` raise
-`KeyError: None`. Stores require a nonoptional key. A bool can look up or delete its equal
-integer key, but cannot be inserted into a dict of integer keys, since its printed value
-would differ from the integer.
+Where a dict's key type cannot be `None`, an optional lookup key equal to `None` is absent:
+membership is false, `get()` and `pop()` use a supplied default, and indexing, deletion or a
+required `pop()` raise `KeyError: None`. Stores require a nonoptional key. Where the key type
+can be `None`, as in `dict[str | None, V]`, `None` is stored and looked up like any other key.
+A bool can look up or delete its equal integer key, but cannot be inserted into a dict of
+integer keys, since its printed value would differ from the integer; among `int | None` keys
+it is rejected.
+
+Sets whose element types differ only in `None` combine: the operators and comparisons of a
+`set[str]` with a `set[str | None]` or a `set[None]` work on both, as `{a, b} - {None}` does
+for objects. `&=`, `-=`, `intersection()` and `difference()` take a set whose elements may
+also be `None`; `|=`, `^=`, `update()` and `union()` need the argument's elements to fit the
+set's own type. An `int | None` element is a box, so a `set[int]` and a `set[int | None]` do
+not combine. A type variable binds to `None` through a set's element or a dict's key
+(`set[T]` from a `set[None]`), but not from an argument that is `None` itself.
 
 ## Closed scalar unions
 
-Explicit `A | B` and `Union[A, B]` annotations may combine `int`, `float`, `bool`
-and `str`, optionally including `None`. Nested and repeated members normalize to
+Explicit `A | B` and `Union[A, B]` annotations may combine `int`, `float`, `bool`,
+`str` and `complex`, optionally including `None`. Nested and repeated members normalize to
 one type. These annotations are supported by default in both AOT and JIT modes.
 They may appear in arguments, returns, local variables, fields and container values:
 
@@ -421,6 +439,13 @@ described above. Recursive JSON-shaped types use the
 runtime compilation and speculative type assumptions are out of scope.
 Boxing may allocate; this feature expands supported programs and makes no performance
 claim.
+
+A `complex` member, as mypy's `int | bool | float | complex | str` holds one, narrows with
+`isinstance()`; truth tests, `str()`, `repr()`, printing, `format()` and f-string
+specifications, `==` and `!=` (across members, so `1 == 1+0j` is true), `+`, `-`, `*`, `/`
+and `**` of numeric members, and `abs()` select its operations by the tag. Ordering, `hash()`
+(as of any union), other builtins, and the equality of containers that hold such a union
+require narrowing first.
 
 ### Inferred unions
 
@@ -578,7 +603,10 @@ errors. `is` and `is not` compare the objects themselves, `None` included. A tup
 `count()` and `index()` find the same object first, then compare a member's object as an object
 of its class compares, but for methods that cannot take the other object
 ([compatibility](compatibility.md#functions-and-object-identity)). Narrow a local to a member
-before equality comparison, truth testing or formatting. Containers remain
+before equality comparison, truth testing or formatting. Beside only objects, a `complex`
+member makes a reference union, `complex | C`, whose `==` and `!=`, also in a tuple's
+searches, compare member by member: complex numbers by value, an object by its class's
+`__eq__`, else by identity. Containers remain
 invariant, and no reference union is [inferred](#inferred-unions). This adds deterministic
 native execution, without profiles, an interpreter, runtime compilation or speculative
 assumptions; boxing and dispatch have costs, so no performance improvement is claimed.
@@ -632,7 +660,7 @@ Ordinary methods with unannotated parameters, `*args` or `**kwargs` also special
 `self` or `cls`. A parameter annotated `object` is such a parameter too, as in
 `def __eq__(self, other: object) -> bool`, which `isinstance()` narrows; a class template's
 `__init__` can take one too. Other non-template methods cannot. The supported binary operator, comparison, `__call__`,
-`__getitem__`, `__setitem__`, `__delitem__` and `__contains__` methods can be templates.
+`__getitem__`, `__setitem__`, `__delitem__`, `__contains__` and `__round__` methods can be templates.
 `__iter__` and `__next__` also infer omitted return annotations; other special methods require
 concrete annotations. `__init__` is handled by class specialization below. A template method cannot change a field's
 established type, and comparison methods must return `bool`.
@@ -772,6 +800,31 @@ or not, so each field its `__init__` assigns needs a type. Calls whose fields ha
 the same types share a specialization: `Box(1)` and `Box(2)` share one, while `Box("s")`
 uses another. Methods compile when needed; non-template special methods compile when the
 specialization is created.
+
+When every initialized instance field has a concrete class-body annotation or an inline
+annotation before its first unannotated store in source order,
+constructor code can specialize without changing the class's layout. For example,
+`__init__(self, groups: Iterable[list[str]])` can fill `self.seen: dict[str, int]`
+from lists, tuples or generators. All such objects have the same static class and can
+share a variable or container. This gives consumer classes concrete parameter types,
+so those consumers can use ordinary inheritance without becoming class templates. Its constructor
+and instance methods remain compiled on demand, including in an unused class in the
+main module. Fixed-layout constructors also support ordinary inheritance, inherited
+initializers and `super().__init__`, including imported and aliased classes. All generic
+initializers in the hierarchy must meet the same storage rule. This path excludes
+explicit `Generic` classes, inferred fields, stored
+`Iterable`/`Iterator` fields, property stores, initialization delegated through `self`
+(including aliases and helpers), callable-controlled constructor layouts,
+deferred string field annotations and fields annotated with a specialization of another
+class template.
+
+An imported subclass becomes available when compiled code needs it, including class
+tests and annotations of a called helper. Its activation recompiles earlier dispatch sites
+with the complete set of used classes. Unused imported siblings and their overrides stay
+excluded; merely declaring them does not make a working base-class call compile their
+bodies. An initializer whose field types depend on its arguments still cannot take part
+in inheritance. Explicit `Base.__init__(self, ...)` delegation remains excluded from the
+fixed-layout proof because it passes the receiver to another callable.
 
 If `Box.__init__(self, value: Any) -> None` assigns `self.value = value`, it behaves like
 the unannotated constructor: `Box(1).value` is an `int`, and `Box("s").value` is a `str`.
@@ -1065,7 +1118,8 @@ class variables.
 ## Single inheritance
 
 An ordinary class may derive from one previously declared ordinary class, including an
-imported class. Annotate its `__init__` parameters; constructor-inferred class templates cannot
+imported class. Annotate its `__init__` parameters. Constructor arguments may be generic
+when all fields retain one fixed concrete layout; layout-specialized class templates cannot
 participate in a hierarchy. A generic base without its own `__init__` supports the
 [visitor subset](#explicit-generic-classes); bases whose constructor binds type variables and
 subclasses passing through their own type variables remain unsupported. Fields retain their

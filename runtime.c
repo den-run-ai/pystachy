@@ -103,7 +103,9 @@ _Static_assert(offsetof(Str, len) == 0 && offsetof(Str, dict_hash) == 8 &&
 typedef struct { I len, cap; I *a, *ids; } List; /* optional scanned numeric identity companion: kind, then boxes */
 _Static_assert(offsetof(List, len) == 0 && offsetof(List, cap) == 8 && offsetof(List, a) == 16 &&
                offsetof(List, ids) == 24 && sizeof(List) == 32, "List ABI: raw prefix and identity companion");
-typedef struct { I len; I a[]; } VTuple;                /* immutable homogeneous tuple, counted inline slots */
+typedef struct { I len; I *ids; I a[]; } VTuple; /* immutable raw slots and optional scanned numeric identities */
+_Static_assert(offsetof(VTuple, len) == 0 && offsetof(VTuple, ids) == 8 &&
+               offsetof(VTuple, a) == 16 && sizeof(VTuple) == 16, "VTuple ABI: length, identities, raw items");
 typedef struct { I len, kind, n, size; I *keys, *vals; uint64_t *hs; int32_t *idx; I cut, vatomic; I *vb, *kb; } Dict; /* kind 0: int keys, 1: str, else a Str *: the descriptor of tuple or object keys; vatomic: the values are ints, floats or bools, whose arrays are atomic; vb: the Mpz of each value past 64 bits of a dict of ints, or null (dbig); kb: of each key past 64 bits of int keys, or null (kbig); see dicts */
 typedef struct { I len, kind, fill, mask, finger; I *keys, *hs, *kb; } Set; /* a set or frozenset, kind as Dict's; kb: the Mpz of each element past 64 bits of a set of ints, or null (sbig); see sets */
 typedef struct { char *p; I n, cap; } Buf;
@@ -2007,6 +2009,101 @@ double pys_m_hypot(double x, double y) {
   return vnorm(v, 2, max);
 }
 double pys_m_copysign(double x, double y) { return copysign(x, y); }
+/* complex numbers (lib/_pystachy_complex.py): CPython 3.13's Objects/complexobject.c, its division
+   (_Py_c_quot), power (complex_pow) and absolute value (_Py_c_abs) with their errors, through libm
+   and errno as there. Products and sums are not contracted into an fma: CPython's x86-64 build
+   computes each apart. no_builtin keeps each libm call a call, as for pow in pys_fpow: LLVM folds
+   or rewrites none (and inlines none of these into code without the attribute). A result is a new
+   tuple of two floats, (real, imag) */
+typedef struct { double real, imag; } Cx;
+static void **cx_pair(Cx c) { I *t = pys_alloc(16); memcpy(t, &c.real, 8); memcpy(t + 1, &c.imag, 8); return (void **)t; }
+static Cx cx_prod(Cx a, Cx b) {   /* _Py_c_prod */
+#pragma clang fp contract(off)
+  return (Cx){a.real * b.real - a.imag * b.imag, a.real * b.imag + a.imag * b.real};
+}
+static Cx cx_quot(Cx a, Cx b) {   /* _Py_c_quot, before 3.14's recovery of infinities (C11 Annex G): EDOM for a zero divisor */
+#pragma clang fp contract(off)
+  Cx r;
+  const double abs_breal = b.real < 0 ? -b.real : b.real, abs_bimag = b.imag < 0 ? -b.imag : b.imag;
+  if (abs_breal >= abs_bimag) {
+    if (abs_breal == 0.0) {
+      errno = EDOM;
+      r.real = r.imag = 0.0;
+    } else {
+      const double ratio = b.imag / b.real, denom = b.real + b.imag * ratio;
+      r.real = (a.real + a.imag * ratio) / denom;
+      r.imag = (a.imag - a.real * ratio) / denom;
+    }
+  } else if (abs_bimag >= abs_breal) {
+    const double ratio = b.real / b.imag, denom = b.real * ratio + b.imag;
+    r.real = (a.real * ratio + a.imag) / denom;
+    r.imag = (a.imag * ratio - a.real) / denom;
+  } else {
+    r.real = r.imag = NAN;   /* (b.real or b.imag is a NaN) */
+  }
+  return r;
+}
+void **pys_complex_quot(double ar, double ai, double br, double bi) {   /* complex_div */
+  errno = 0;
+  Cx q = cx_quot((Cx){ar, ai}, (Cx){br, bi});
+  if (errno == EDOM) pys_fail("ZeroDivisionError: complex division by zero");
+  return cx_pair(q);
+}
+static Cx cx_powu(Cx x, long n) {   /* c_powu */
+  Cx r = {1.0, 0.0}, p = x;
+  long mask = 1;
+  while (mask > 0 && n >= mask) {
+    if (n & mask) r = cx_prod(r, p);
+    mask <<= 1;
+    p = cx_prod(p, p);
+  }
+  return r;
+}
+__attribute__((no_builtin("hypot", "pow", "atan2", "exp", "log", "cos", "sin"))) static Cx cx_pow(Cx a, Cx b) {   /* _Py_c_pow */
+#pragma clang fp contract(off)
+  Cx r;
+  if (b.real == 0. && b.imag == 0.) {
+    r.real = 1.;
+    r.imag = 0.;
+  } else if (a.real == 0. && a.imag == 0.) {
+    if (b.imag != 0. || b.real < 0.) errno = EDOM;
+    r.real = 0.;
+    r.imag = 0.;
+  } else {
+    double vabs = hypot(a.real, a.imag), len = pow(vabs, b.real), at = atan2(a.imag, a.real), phase = at * b.real;
+    if (b.imag != 0.0) {
+      len /= exp(at * b.imag);
+      phase += b.imag * log(vabs);
+    }
+    r.real = len * cos(phase);
+    r.imag = len * sin(phase);
+  }
+  return r;
+}
+void **pys_complex_pow(double ar, double ai, double br, double bi) {   /* complex_pow: c_powi for a small integral exponent */
+  Cx a = {ar, ai}, p;
+  errno = 0;
+  if (bi == 0.0 && br == floor(br) && fabs(br) <= 100.0) {
+    long n = (long)br;
+    p = n > 0 ? cx_powu(a, n) : cx_quot((Cx){1.0, 0.0}, cx_powu(a, -n));
+  } else {
+    p = cx_pow(a, (Cx){br, bi});
+  }
+  if (p.real == HUGE_VAL || p.real == -HUGE_VAL || p.imag == HUGE_VAL || p.imag == -HUGE_VAL) {   /* _Py_ADJUST_ERANGE2 */
+    if (errno == 0) errno = ERANGE;
+  } else if (errno == ERANGE) {
+    errno = 0;
+  }
+  if (errno == EDOM) pys_fail("ZeroDivisionError: 0.0 to a negative or complex power");
+  if (errno == ERANGE) pys_fail("OverflowError: complex exponentiation");
+  return cx_pair(p);
+}
+__attribute__((no_builtin("hypot"))) double pys_complex_abs(double re, double im) {   /* complex_abs: _Py_c_abs */
+  if (!isfinite(re) || !isfinite(im)) return isinf(re) ? fabs(re) : isinf(im) ? fabs(im) : NAN;   /* (C99: an infinity, even with a NaN) */
+  double r = hypot(re, im);
+  if (!isfinite(r)) pys_fail("OverflowError: absolute value too large");
+  return r;
+}
 double pys_m_logb(double x, double b) {   /* log(x) / log(b), and a base of 1 divides by zero, as in CPython */
   double n = mchk(log(x), x, 0, 0), d = mchk(log(b), b, 0, 0);
   if (d == 0) pys_fail("ZeroDivisionError: float division by zero");
@@ -2436,6 +2533,7 @@ I pys_dyn_hash(Dyn *x);
 Dyn *pys_dyn_int(I v);
 Dyn *pys_dyn_big(I lo, void *hi);
 Dyn *pys_dyn_float(double x);
+extern const Dyn pys_dyn_none_box;
 static int dyn_eqitem(Dyn *a, Dyn *b);
 static int dyn_keyeq(Dyn *a, Dyn *b);
 static uint64_t hdyn(Dyn *x);
@@ -2620,7 +2718,11 @@ static const char *repr_depth(Buf *b, I v, const char *d, I depth) {
     if (depth >= 512) rec_deep("RecursionError: maximum recursion depth exceeded while getting the repr of an object");
     repr_depth(b, v, recdesc(ref), depth + 1); return skip(ref);
   }
-  case 'U': { const char *end = skip(d - 1), *member = umember(&v, d - 1); repr_depth(b, v, member, depth); return end; }
+  case 'U': {
+    const char *end = skip(d - 1);
+    if (!v) { put(b, "None", 4); return end; }   /* (None, which a union of classes may hold: a KeyError's key, #1452) */
+    const char *member = umember(&v, d - 1); repr_depth(b, v, member, depth); return end;
+  }
   case 'A': { Dyn *x = (Dyn *)v; repr_depth(b, x->v, x->t->desc->s, depth); return d; }
   case 'G': put(b, "<generator object>", 18); return d;
   case 'Q': put(b, "<iterator object>", 17); return d;
@@ -2817,7 +2919,8 @@ static int eqv(I a, I b, const char *d) {
     if (x == y) return 1;
     if (!x || !y) return x == y;
     if (x->len != y->len) return 0;
-    for (I i = 0; i < x->len; i++) if (!eqitem(x->a[i], y->a[i], d + 1)) return 0;
+    for (I i = 0; i < x->len; i++)
+      if (!(x->ids && y->ids && x->ids[i + 1] && x->ids[i + 1] == y->ids[i + 1]) && !eqitem(x->a[i], y->a[i], d + 1)) return 0;
     return 1;
   }
   case 'S': case 'F': return pys_set_cmp((Set *)a, (Set *)b, 4);   /* (a set equals a frozenset of its elements) */
@@ -2837,7 +2940,7 @@ static EqValue eqresolve(I v, const char *d) {
   while (*d == '?' || *d == 'U' || *d == 'R') {
     if (*d == 'R') { d = recdesc(d); edge = 1; continue; }
     if (*d == '?') { if (!v) return (EqValue){0, "n", edge}; v = unbox(v, ++d); }
-    else { I *box = (I *)v; d = utype(box[0], d); v = box[1]; }
+    else { if (!v) return (EqValue){0, "n", edge}; I *box = (I *)v; d = utype(box[0], d); v = box[1]; }   /* (None: a union key's, #1452) */
   }
   return (EqValue){v, d, edge};
 }
@@ -2851,8 +2954,9 @@ static int same_desc(const char *x, const char *y) {
 }
 static int eqpair_depth(I a, I b, const char *x, const char *y, I depth) {
   /* Only closed builtin value trees reach this path (the compiler rejects user
-     callbacks). Never decode b with x: equal Python types may have different
-     native element layouts, including nested unions and boxed optionals. */
+     callbacks), and objects that compare by identity (P: a union key's member).
+     Never decode b with x: equal Python types may have different native element
+     layouts, including nested unions and boxed optionals. */
   EQ_PROBE();
   EqValue ax = eqresolve(a, x), by = eqresolve(b, y);
   a = ax.value; x = ax.desc; b = by.value; y = by.desc;
@@ -2884,6 +2988,7 @@ static int eqpair_depth(I a, I b, const char *x, const char *y, I depth) {
   if (*x != *y && !(tx && ty)) return 0;
   if (*x == 'f') return dbl(a) == dbl(b);
   if (*x == 's') return a && b ? pys_str_eq((Str *)a, (Str *)b) : a == b;
+  if (*x == 'P') return a == b;   /* (objects of union keys' classes, which compare by identity: #1452) */
   if (*x == 'L') {
     List *p = (List *)a, *q = (List *)b;
     if (p->len != q->len) return 0;
@@ -2919,6 +3024,7 @@ static int eqpair_depth(I a, I b, const char *x, const char *y, I depth) {
     I *p = *x == 'T' ? (I *)a : ((VTuple *)a)->a, *q = *y == 'T' ? (I *)b : ((VTuple *)b)->a, wx[2], wy[2];
     const char *ex = x + (*x == 'T' ? 2 : 1), *ey = y + (*y == 'T' ? 2 : 1);
     for (I i = 0; i < nx; i++) {
+      if (*x == 'V' && *y == 'V' && ((VTuple *)a)->ids && ((VTuple *)b)->ids && ((VTuple *)a)->ids[i + 1] && ((VTuple *)a)->ids[i + 1] == ((VTuple *)b)->ids[i + 1]) continue;
       if (!eqpair_depth(*x == 'T' ? titem(p, nx, i, ex, wx) : p[i], *y == 'T' ? titem(q, ny, i, ey, wy) : q[i], ex, ey, depth)) return 0;
       if (*x == 'T') ex = skip(ex);
       if (*y == 'T') ey = skip(ey);
@@ -2970,7 +3076,7 @@ static int opv(I a, I b, const char *d, I op) {
   case 'V': {
     VTuple *x = (VTuple *)a, *y = (VTuple *)b; I i = 0;
     if (x == y) return cmpop(0, op);
-    while (i < x->len && i < y->len && eqitem(x->a[i], y->a[i], d + 1)) i++;
+    while (i < x->len && i < y->len && ((x->ids && y->ids && x->ids[i + 1] && x->ids[i + 1] == y->ids[i + 1]) || eqitem(x->a[i], y->a[i], d + 1))) i++;
     if (i < x->len && i < y->len) return opv(x->a[i], y->a[i], d + 1, op);
     return cmpop((x->len > y->len) - (x->len < y->len), op);
   }
@@ -3020,6 +3126,35 @@ void pys_unpack_ex_check(I have, I want) {
 /* Variable-length tuples own copied slots; later list mutation cannot change the
    tuple. Scanned allocation retains pointer-valued elements and optional boxes.
    The source remains live through the allocation because memcpy reads it after. */
+void pys_list_identity(List *l, I kind);
+static I list_box(I value, I kind);
+
+/* Identities are immutable once materialized. Copies own their companion arrays,
+   but share the item boxes. Materialize before sharing a pending numeric item. */
+static void vtuple_ids(VTuple *t, I kind) {
+  opt_in();
+  if (!t->ids) {
+    if (t->len > INT64_MAX / (I)sizeof(I) - 1) oom();
+    I *ids = pys_alloc((t->len + 1) * sizeof(I));
+    ids[0] = kind; t->ids = ids;
+  }
+}
+static void vtuple_identity(VTuple *t) {
+  if (t->ids && opt_in())
+    for (I i = 0; i < t->len; i++)
+      if (!t->ids[i + 1]) t->ids[i + 1] = list_box(t->a[i], t->ids[0]);
+}
+void pys_vtuple_set_identity(VTuple *t, I index, Dyn *box, I kind) {
+  vtuple_ids(t, kind); t->ids[index + 1] = (I)box;
+}
+Dyn *pys_vtuple_get_identity(VTuple *t, I index, I kind) {
+  if (!t) pys_fail("TypeError: 'NoneType' object is not subscriptable");
+  index = idx(index, t->len, "IndexError: tuple index out of range");
+  vtuple_ids(t, kind);
+  if (!t->ids[index + 1]) t->ids[index + 1] = list_box(t->a[index], kind);
+  return (Dyn *)t->ids[index + 1];
+}
+
 VTuple *pys_vtuple_from(I *src, I count) {
   if (count < 0 || count > (INT64_MAX - (I)sizeof(VTuple)) / (I)sizeof(I)) pys_fail("MemoryError");
   if (count && !src) pys_fail("TypeError: 'NoneType' object is not iterable");
@@ -3031,7 +3166,13 @@ VTuple *pys_vtuple_from(I *src, I count) {
 VTuple *pys_vtuple_new(List *src) {
   if (!src) pys_fail("TypeError: 'NoneType' object is not iterable");
   list_narrow(src);   /* (a tuple[int, ...] holds 64-bit ints: BIGIDS) */
-  return pys_vtuple_from(src->a, src->len);
+  VTuple *t = pys_vtuple_from(src->a, src->len);
+  if (src->ids && !big_list(src) && opt_in()) {
+    pys_list_identity(src, src->ids[0]);
+    vtuple_ids(t, src->ids[0]);
+    memcpy(t->ids + 1, src->ids + 1, src->len * sizeof(I));
+  }
+  return t;
 }
 /* Immutable widening from int/float/bool to the same scalar | None. The
    compiler restricts this helper to unboxed scalar source elements. */
@@ -3039,6 +3180,11 @@ VTuple *pys_vtuple_box(VTuple *src) {
   if (!src) pys_fail("TypeError: 'NoneType' object is not iterable");
   VTuple *t = pys_vtuple_from(src->a, src->len);
   for (I i = 0; i < src->len; i++) t->a[i] = (I)pys_box(src->a[i]);
+  if (src->ids && opt_in()) {
+    vtuple_identity(src);
+    vtuple_ids(t, src->ids[0] | 8);
+    memcpy(t->ids + 1, src->ids + 1, src->len * sizeof(I));
+  }
   return t;
 }
 I pys_vtuple_get(VTuple *t, I index) {
@@ -3055,6 +3201,13 @@ VTuple *pys_vtuple_concat(VTuple *a, VTuple *b) {
   t->len = a->len + b->len;
   memcpy(t->a, a->a, a->len * sizeof(I));
   memcpy(t->a + a->len, b->a, b->len * sizeof(I));
+  if ((a->ids || b->ids) && opt_in()) {
+    I kind = a->ids ? a->ids[0] : b->ids[0];
+    vtuple_ids(a, kind); vtuple_ids(b, kind);
+    vtuple_identity(a); vtuple_identity(b); vtuple_ids(t, kind);
+    memcpy(t->ids + 1, a->ids + 1, a->len * sizeof(I));
+    memcpy(t->ids + a->len + 1, b->ids + 1, b->len * sizeof(I));
+  }
   return t;
 }
 VTuple *pys_vtuple_slice(VTuple *t, I lo, I hi, I st) {   /* t[lo:hi:st]; all of t is t itself, as in CPython */
@@ -3063,6 +3216,10 @@ VTuple *pys_vtuple_slice(VTuple *t, I lo, I hi, I st) {   /* t[lo:hi:st]; all of
   VTuple *r = pys_alloc(sizeof(VTuple) + n * sizeof(I));
   r->len = n;
   for (I i = 0; i < n; i++) r->a[i] = t->a[lo + i * st];
+  if (t->ids && opt_in()) {
+    vtuple_identity(t); vtuple_ids(r, t->ids[0]);
+    for (I i = 0; i < n; i++) r->ids[i + 1] = t->ids[lo + i * st + 1];
+  }
   return r;
 }
 static int eqitem(I a, I b, const char *d);
@@ -3090,7 +3247,11 @@ I pys_vtuple_count(VTuple *t, I v, Str *d) { I c = 0; for (I i = 0; i < t->len; 
 #define INLINE_CAP 4                   /* the inline items' capacity, the least that any list has */
 static I empty_list[1];                /* valid even for zero-byte copies; distinct from sort's sentinel */
 static I empty_identity_int[1] = {1}, empty_identity_float[1] = {2}, empty_identity_big[1] = {3};
-static I *empty_identity(I kind) { return (kind & 3) == 1 ? empty_identity_int : (kind & 3) == 2 ? empty_identity_float : empty_identity_big; }
+static I empty_identity_optint[1] = {9}, empty_identity_optfloat[1] = {10};
+static I *empty_identity(I kind) {
+  if (kind & 8) return (kind & 3) == 1 ? empty_identity_optint : empty_identity_optfloat;
+  return (kind & 3) == 1 ? empty_identity_int : (kind & 3) == 2 ? empty_identity_float : empty_identity_big;
+}
 static I empty_atomic[1];              /* the same, for a list whose array was atomic */
 static I empty_inline[1];              /* and for one whose items were inline (scanned) */
 static I *inline_items(List *l) { return (I *)(l + 1); }
@@ -3135,6 +3296,8 @@ List *pys_list_from_const(const I *values, I n) {
    atomic, preserving its C ABI. A raw in-place store clears its companion without allocating;
    a later observation or sharing operation materializes that new object. Pure moves carry
    the null marker with the value. Bit 2 of the companion header marks pending entries.
+   Bit 3 marks an optional numeric slot: null for None, otherwise the address of
+   its representation box. That box is separate from the item's Python identity.
    Copies must materialize before sharing, so separate reads
    of copied items cannot create unrelated boxes.
    A list of ints with no identity observer keeps the Mpz of an item past 64 bits in a
@@ -3153,6 +3316,10 @@ List *pys_list_from_const(const I *values, I n) {
 void pys_list_narrow(List *l) { list_narrow(l); }
 static I list_box(I value, I kind) {
   opt_in();
+  if (kind & 8) {
+    if (!value) return (I)&pys_dyn_none_box;
+    value = *(I *)value;
+  }
   return (kind & 3) == BIGIDS ? 0 : (I)((kind & 3) == 1 ? pys_dyn_int(value) : pys_dyn_float(dbl(value)));
 }
 static __attribute__((noinline)) void list_identity_slow(List *l, I kind) {
@@ -3170,11 +3337,11 @@ static __attribute__((noinline)) void list_identity_slow(List *l, I kind) {
     /* Companion allocation limits use the allocator's fatal MemoryError convention. */
     if (l->cap > INT64_MAX / (I)sizeof(I) - 1) oom();
     I *ids = pys_alloc((l->cap + 1) * sizeof(I));
-    ids[0] = kind & 3; l->ids = ids;
+    ids[0] = kind & 11; l->ids = ids;
   }
   for (I i = 0; i < l->len; i++)
     if (!l->ids[i + 1]) l->ids[i + 1] = list_box(l->a[i], l->ids[0]);
-  l->ids[0] &= 3;
+  l->ids[0] &= 11;
 }
 void pys_list_identity(List *l, I kind) {
   /* Keep the clean check small enough to inline into getters/stores in the
@@ -3184,7 +3351,7 @@ void pys_list_identity(List *l, I kind) {
 static void identity_pair(List *a, List *b) {   /* before list a takes list b's items */
   if ((a->ids || b->ids) && opt_in()) {
     I kind = a->ids ? a->ids[0] : b->ids[0];
-    if ((a->ids && (a->ids[0] & 3) == 1) || (b->ids && (b->ids[0] & 3) == 1)) kind = 1;
+    if ((a->ids && (a->ids[0] & 11) == 1) || (b->ids && (b->ids[0] & 11) == 1)) kind = 1;
     if ((kind & 3) == BIGIDS) {   /* (promoting ints: a needs a companion where b has one) */
       if (b->ids) pys_list_identity(a, kind);
       return;
@@ -3197,7 +3364,7 @@ void pys_list_forget_identity(List *l) {
      unchanged numeric payload becomes a fresh Python value there. */
   if (l->ids && !big_list(l)) {
     for (I i = 0; i < l->len; i++) l->ids[i + 1] = list_box(l->a[i], l->ids[0]);
-    l->ids[0] &= 3;
+    l->ids[0] &= 11;
   }
 }
 
@@ -3216,6 +3383,12 @@ List *pys_vtuple_list(VTuple *t) {
   List *l = pys_list_new(t->len);
   if (t->len) memcpy(l->a, t->a, t->len * sizeof(I));
   l->len = t->len;
+  if (t->ids && opt_in()) {
+    vtuple_identity(t);
+    if (l->cap > INT64_MAX / (I)sizeof(I) - 1) oom();
+    l->ids = pys_alloc((l->cap + 1) * sizeof(I));
+    memcpy(l->ids, t->ids, (t->len + 1) * sizeof(I));
+  }
   return l;
 }
 static void reserve(List *l, I n) {
@@ -4102,11 +4275,25 @@ static int khash(I kind) { return (kind & KTAG) || (kind > 1 && (*kraw(kind) == 
    before it are ints, strs, None, objects by identity and such tuples, which run no code */
 static uint64_t hval(I k, const char *d) {
   if (*d == 'H' || *d == 'A' || (*d == '?' && d[1] == 'H')) return 0;
-  if ((*d == '?' || *d == 's' || *d == 'T' || *d == 'P') && !k) {   /* None (also a looked-up key's) */
+  if (*d == 'U') { if (!k) return 0x9E3779B97F4A7C15ULL; d = umember(&k, d); return hval(k, d); }   /* (a union of classes: the object its box holds, #1452; None, see below) */
+  if ((*d == '?' || *d == 's' || *d == 'T' || *d == 'V' || *d == 'P') && !k) {   /* None (also a looked-up key's) */
     for (const char *z = *d == 's' || *d == 'P' ? d : skip(d); d < z; d++) if (*d == 'H') return 0;
     return 0x9E3779B97F4A7C15ULL;
   }
-  if (*d == '?') d++;
+  if (*d == '?') { d++; k = unbox(k, d); }           /* (an int | None key that is an int: the int its box holds) */
+  if (*d == 'V') {   /* a runtime-length tuple: its items, of its one descriptor, hashed as a tuple's below, and its length */
+    VTuple *t = (VTuple *)k; uint64_t h = 0x27D4EB2F165667C5ULL; const char *e = d + 1;
+    for (I i = 0; i < t->len; i++) {
+      I x = t->a[i]; uint64_t v;
+      if (*e == 'i' || *e == 'b') { v = (uint64_t)pys_hash_int(x); v = v ? v : 1; }
+      else if (*e == 's' || (*e == '?' && e[1] == 's')) v = x ? hstrd((Str *)x) : 0x9E3779B97F4A7C15ULL;
+      else { v = hval(x, e); if (!v) return 0; }
+      h = (h ^ v) * 0x100000001B3ULL;
+    }
+    h = (h ^ (uint64_t)t->len) * 0x100000001B3ULL;
+    h ^= h >> 29;
+    return h ? h : 1;
+  }
   if (*d != 'T') { Dict t = {.kind = *d == 's'}; return hsh(&t, k); }   /* (a P<id>'s: its address's) */
   uint64_t h = 0x27D4EB2F165667C5ULL; const char *e = d + 2;
   for (int i = 0; i < d[1] - '0'; i++) {
@@ -4746,6 +4933,10 @@ static I hdbl(double v) {                            /* _Py_HashDouble; a NaN's 
   x = b >> 63 ? 0 - x : x;
   return (I)x == -1 ? -2 : (I)x;
 }
+I pys_complex_hash(double re, double im) {   /* complex_hash: hash(re) + 1000003 * hash(im), as a Py_uhash_t */
+  uint64_t h = (uint64_t)hdbl(re) + 1000003ULL * (uint64_t)hdbl(im);
+  return h == (uint64_t)-1 ? -2 : (I)h;
+}
 static I hitem(I k, const char *d);
 static I htuple(I *t, I n, const char *e, int each) {   /* tuplehash of n items, of descriptors from e on (each), or all e */
   uint64_t acc = 2870177450012600261ULL; I w[2];
@@ -4773,6 +4964,7 @@ static I hitem(I k, const char *d) {                 /* the hash of a value k (a
   case 'T': return htuple((I *)k, d[1] - '0', d + 2, 1);
   case 'V': return htuple(((VTuple *)k)->a, ((VTuple *)k)->len, d + 1, 0);
   case 'P': case 'C': case 'Y': return hptr(k);   /* (class objects: by identity, as object's) */
+  case 'U': if (!k) return NONE_HASH; d = umember(&k, d); return hitem(k, d);   /* (a union of classes: the object its box holds, #1452) */
   case 'H': return ohash(k, d);
   case 'A': return pys_dyn_hash((Dyn *)k);
   case 'J': { opt_in(); Big x = jbig(k); return x.hi ? pys_mpz_hash(x.hi) : hint(x.lo); }   /* (a promoting int's two words) */

@@ -214,6 +214,35 @@ also rejects a call by another name (`builtins.object()`, or an alias that an im
 assignment binds, `obj = object`) and `type(x) is object`; in any other program such a call makes a
 sentinel too.
 
+## Complex numbers
+
+`complex` is CPython's: imaginary literals (`1.5j`), `complex()` of a number, of a string (with
+CPython's grammar and `ValueError`s) or of two parts, by position or by keyword (a string with a
+second argument raises CPython's `TypeError` when called), `c.real`, `c.imag` and `c.conjugate()`,
+and `+`, `-`, `*`, `/` and `**` with another complex number, an `int`, a `bool` or a `float` on
+either side, which CPython 3.13 converts to `float(x)` and `0.0` (an int too large raises its
+`OverflowError`). A complex number is an object of the class in
+[`lib/_pystachy_complex.py`](../../lib/_pystachy_complex.py), which the compiler loads for a
+program that may use one: an imaginary literal or a read of the name `complex`. Division, power and
+`abs()` are runtime.c's ports of CPython 3.13's, with the same IEEE results and errors
+(`ZeroDivisionError: complex division by zero`, `OverflowError: complex exponentiation`). `==` and
+`!=` compare exactly, also with an int (`complex(2**53) == 2**53 + 1` is false), and `hash()` is
+CPython's, so a complex number equal to an int or a float hashes as it does. `bool()`, unary `-`
+and `+`, `repr()`, `str()`, `format()` and f-string format specifications,
+`isinstance(c, complex)`, `type(c).__name__`, `type(c) is complex`, dict keys, set elements and
+`copy` behave as in CPython. The compiler rejects what CPython rejects at run time (ordering, `//`,
+`%`, `divmod()`, `round()`, `int()`, `float()` and `math` functions of one, assigning an
+attribute), an `int` or a `float` where `complex` is declared (as for `float`: write `2+0j` or
+`complex(2)`), `sum()` of complex numbers, and subclasses of `complex`. Unions with other scalars
+are [closed scalar unions](typing.md#closed-scalar-unions), and unions with only objects of
+classes, `complex | C`, [native reference unions](typing.md#native-reference-unions). In a module
+that opts in to dynamic `Any`, an `Any` value may hold a complex number, whose operations are
+the class's methods (`__add__` and the others, a reflected one for an `int`, `float` or `bool`
+on the left), as CPython's are. There is no `cmath`.
+
+Direct `c.__eq__(other)` calls that may return `NotImplemented` are rejected under the
+[bounded comparison return contract](#object-protocols), including calls through `Any`.
+
 ## Iterators
 
 `iter(x)` returns an iterator object that shares its position with every use, as CPython's:
@@ -346,6 +375,10 @@ and fields are available. See [single inheritance](typing.md#single-inheritance)
 | In-place operators | `__iadd__` and counterparts, otherwise the binary method |
 | Unary `-`, `+`, `~` | `__neg__`, `__pos__`, `__invert__` |
 | `abs(o)`, `divmod(o, x)` | `__abs__`, `__divmod__` |
+| `int(o)`, `float(o)` | `__int__` or `__float__`, otherwise `__index__`, of the object's own class: a derived class's method is chosen through a base-typed reference, and a class with neither raises `TypeError`; the method's result type is checked when the call is compiled |
+| `round(o)`, `round(o, n)` | `__round__`, which may be a template: each call types its result |
+| `math.floor(o)`, `math.ceil(o)`, `math.trunc(o)` | `__floor__`, `__ceil__`, `__trunc__` |
+| A builtin number on the left, as in `2 * o` | `__radd__` and the other reflected arithmetic and bitwise methods |
 | Equality and ordering | `__eq__`, `__ne__` and rich comparisons |
 | Truth and length | `__bool__`, `__len__` |
 | Representation | `__str__`, `__repr__`, `__format__` |
@@ -354,11 +387,23 @@ and fields are available. See [single inheritance](typing.md#single-inheritance)
 | `reversed()` | Supported `__reversed__` |
 
 Rich comparisons use reflection, such as trying `b.__gt__(a)` for `a < b`.
-Reflected arithmetic methods such as `__radd__`, `__rdivmod__` and `__rpow__` remain
-unsupported. Power dispatch with an object exponent, optional numeric exponent, or the
+Reflected arithmetic methods run only for a builtin `int`, `float` or `bool` on the left, whose
+own method declines an object: `2 * o` calls `o.__rmul__(2)`, with both operands evaluated first.
+Between two objects they remain unsupported, as do `__rdivmod__`, `__rpow__` and an augmented
+assignment that would rebind a number to an object (`n *= o`). Power dispatch with an object exponent, optional numeric exponent, or the
 three-argument `pow(o, n, modulus)` is unsupported. A power method may declare an optional
-modulus parameter; two-argument power leaves it at its default. Returning `NotImplemented`
-from an operator remains unsupported.
+modulus parameter; two-argument power leaves it at its default.
+
+A comparison method (`__eq__`, `__ne__`, `__lt__`, `__le__`, `__gt__`, `__ge__`) may
+`return NotImplemented`. The comparison then calls the other operand's reflected method, and
+after both decline, `==` and `!=` compare identity and an ordering raises `TypeError`, as in
+CPython ([test](../../tests/programs/classes/cmp_notimplemented_hierarchy.py)). `NotImplemented`
+is not a value otherwise: an arithmetic method cannot return it, and neither can a `return`
+inside a `try` statement with a `finally` block or a `with` statement. Only a comparison reads
+it, so a call that takes the method's result as it is (`a.__eq__(b)`,
+`super().__eq__(other)`) is rejected where the method may return it for those operands. Such
+a call compiles where the method's `isinstance()` test of its operand is decided at compile
+time: for a new object, and for an operand the calling comparison method has passed on unchanged.
 Power methods require a positional `self`; following arguments may use `*args`.
 For `**=`, a base-typed receiver whose subclass introduces an `__ipow__` that the base
 lacks must be narrowed to the concrete receiver type; otherwise compilation rejects the
