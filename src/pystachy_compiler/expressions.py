@@ -321,6 +321,8 @@ def gen_has(self, t: str, a: str) -> int:
         ci = self.classes[t]
         if a == " enum int" and self.enum_intlike(t):
             return 0  # (the compiler's immutable payload is no Python attribute)
+        if a == " enum str" and self.enum_builtin(t) == "str":
+            return 0
         if "." in a:
             return 0  # (no attribute name: a key of a property's setter, x.setter, or a default_factory's)
         if a in ci.methods and ci.methods[a].prop:
@@ -3917,6 +3919,46 @@ def gen_enum_intlike(self, c: str) -> bool:
     # whose members' int methods take each other's members, as int's take ints
     return c in self.classes and (("enum$IntEnum" in self.classes and self.derives(c, "enum$IntEnum")) or ("enum$IntFlag" in self.classes and self.derives(c, "enum$IntFlag")) or c == "enum$IntEnum" or c == "enum$IntFlag")
 
+def gen_enum_builtin(self, c: str) -> str:
+    # The scalar type an enum subclasses in CPython, whose original payload is
+    # separate from the enum object's mutable _value_ attribute.
+    if self.enum_intlike(c):
+        return "int"
+    return "str" if c in self.classes and "enum$StrEnum" in self.classes and self.derives(c, "enum$StrEnum") else ""
+
+def gen_enum_scalar(self, at: str, bt: str) -> bool:
+    # A pair whose builtin scalar comparison can consume an enum's immutable
+    # payload. Its custom method keeps its Python subclass priority.
+    a = self.enum_builtin(at)
+    b = self.enum_builtin(bt)
+    return (a == "int" and (b == "int" or bt in ["int", "float", "bool", BIG])) or (b == "int" and at in ["int", "float", "bool", BIG]) or (a == "str" and (b == "str" or bt == "str")) or (b == "str" and at == "str")
+
+def gen_enum_compare(self, op: str, a: Val, b: Val) -> Val:
+    # Split an optional scalar before class dispatch. None still reaches an enum's
+    # custom method, so the generic optional-number shortcut is not sufficient.
+    v = a if is_opt(a.t) else b
+    if not is_opt(v.t):
+        return self.inherit_cmp(op, a, b)
+    none = self.label()
+    some = self.label()
+    end = self.label()
+    ph = Ins("phi", "bool", "")
+    self.cbr(self.isnull(v), none, some)
+    self.place(none)
+    n = Val("null", "None")
+    r = self.cmp2(op, n if v is a else a, b if v is a else n)
+    if not self.term:
+        self.incoming(ph, r.v, self.cur)
+        self.br(end)
+    self.place(some)
+    value = self.deref(v)
+    r = self.cmp2(op, value if v is a else a, b if v is a else value)
+    if not self.term:
+        self.incoming(ph, r.v, self.cur)
+        self.br(end)
+    self.place(end)
+    return Val(self.phi(ph), "bool")
+
 
 CMPDUNDERS = ["__eq__", "__ne__", "__lt__", "__le__", "__gt__", "__ge__"]
 
@@ -3976,7 +4018,7 @@ def gen_cmp_cands(self, op: str, at: str, bt: str) -> list[list[str]]:
     # every method CPython tries for op between objects of the concrete classes at and bt, in
     # its order (each as cmp_pick gives the first): the next is called where one returns
     # NotImplemented
-    right = at in self.classes and bt in self.classes and at != bt and self.derives(bt, at)
+    right = (at in self.classes and bt in self.classes and at != bt and self.derives(bt, at)) or (at in ["int", BIG] and self.enum_intlike(bt)) or (at == "str" and self.enum_builtin(bt) == "str")
     sides = ["b", "a"] if right else ["a", "b"]
     methods = [DUNDER[REFL[op]] if op in REFL else DUNDER[op], DUNDER[op]] if right else [DUNDER[op], DUNDER[REFL[op]] if op in REFL else DUNDER[op]]
     out: list[list[str]] = []
@@ -3985,6 +4027,9 @@ def gen_cmp_cands(self, op: str, at: str, bt: str) -> list[list[str]]:
         rt = at if sides[i] == "b" else bt
         m = methods[i]
         inv = ""
+        if lt in ["int", "float", "bool", BIG, "str"] and self.enum_scalar(lt, rt):
+            out.append([sides[i], "@scalar", ""])
+            continue
         if lt in self.classes:
             ms = self.classes[lt].methods
             if op == "!=" and m not in ms and "__eq__" in ms:
@@ -3994,6 +4039,9 @@ def gen_cmp_cands(self, op: str, at: str, bt: str) -> list[list[str]]:
                 continue
             if m in ms and ms[m].cls == COMPLEXC and rt != COMPLEXC and (rt == "None" or rt in self.classes) and not self.enum_intlike(rt):
                 continue  # (complex declines a foreign object; int-like enums compare by payload)
+            if m in ms and self.enum_scalar(lt, rt) and lib_source(ms[m].node.line, self.libdir, "enum.py"):
+                out.append([sides[i], "@scalar", ""])
+                continue  # (inherited scalar slots do not call a custom __eq__ for __ne__)
             if m in ms and lib_source(ms[m].node.line, self.libdir, "enum.py") and (rt == "None" or (rt in self.classes and not self.derives(rt, ms[m].cls) and not (self.enum_intlike(ms[m].cls) and self.enum_intlike(rt)))):
                 continue
             if m in ms:
@@ -4025,7 +4073,7 @@ def gen_cmp_stage(self, op: str, at: str, bt: str, stage: int) -> list[str]:
         return self.cmp_pick(op, at, bt)
     cs = self.cmp_cands(op, at, bt)
     for i in range(stage):
-        if i >= len(cs) or not self.may_decline(self.classes[at if cs[i][0] == "a" else bt].methods[cs[i][1]]):
+        if i >= len(cs) or cs[i][1] == "@scalar" or not self.may_decline(self.classes[at if cs[i][0] == "a" else bt].methods[cs[i][1]]):
             return ["never"]
     return cs[stage] if stage < len(cs) else []
 
@@ -4033,7 +4081,7 @@ def gen_cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
     # the method concrete_cmp calls for op between objects of the concrete classes at and bt, as
     # [the operand it is called on ("a" or "b"), the method, "!" if its result is inverted
     # (a != b by __eq__)]; [] where neither class has one
-    right = at in self.classes and bt in self.classes and at != bt and self.derives(bt, at)
+    right = (at in self.classes and bt in self.classes and at != bt and self.derives(bt, at)) or (at in ["int", BIG] and self.enum_intlike(bt)) or (at == "str" and self.enum_builtin(bt) == "str")
     sides = ["b", "a"] if right else ["a", "b"]
     methods = [DUNDER[REFL[op]] if op in REFL else DUNDER[op], DUNDER[op]] if right else [DUNDER[op], DUNDER[REFL[op]] if op in REFL else DUNDER[op]]
     for i in range(2):
@@ -4041,6 +4089,8 @@ def gen_cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
         rt = at if sides[i] == "b" else bt
         m = methods[i]
         inv = ""
+        if lt in ["int", "float", "bool", BIG, "str"] and self.enum_scalar(lt, rt):
+            return [sides[i], "@scalar", ""]
         if lt in self.classes:
             ms = self.classes[lt].methods
             if op == "!=" and m not in ms and "__eq__" in ms:
@@ -4050,6 +4100,8 @@ def gen_cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
                 continue  # (what @dataclass writes returns NotImplemented for an object of another class)
             if m in ms and ms[m].cls == COMPLEXC and rt != COMPLEXC and (rt == "None" or rt in self.classes) and not self.enum_intlike(rt):
                 continue  # (complex declines a foreign object; int-like enums compare by payload)
+            if m in ms and self.enum_scalar(lt, rt) and lib_source(ms[m].node.line, self.libdir, "enum.py"):
+                return [sides[i], "@scalar", ""]
             if m in ms and lib_source(ms[m].node.line, self.libdir, "enum.py") and (rt == "None" or (rt in self.classes and not self.derives(rt, ms[m].cls) and not (self.enum_intlike(ms[m].cls) and self.enum_intlike(rt)))):
                 # (and so do the int and str methods of an IntEnum's and a StrEnum's members, as
                 # int's and str's return it for None and for an object of a class not derived from
@@ -4212,7 +4264,7 @@ def gen_cmp_widen(self, op: str, x: Val, y: Val, at: str, bt: str, stage: int = 
     # and it takes an object of any of the type's classes, so that the method is compiled once
     # for each receiver class, not once for each pair of classes (#625). Else x, y
     p = self.cmp_stage(op, x.t, y.t, stage)
-    if len(p) != 3:
+    if len(p) != 3 or p[1] == "@scalar":
         return [x, y]
     lhs = x if p[0] == "a" else y
     rhs = y if p[0] == "a" else x
@@ -4248,6 +4300,8 @@ def gen_cmp_key(self, op: str, a: Val, b: Val, stage: int = 0) -> str:
         return "none" if (a.t == "None" and self.refl_may_none(b)) or (b.t == "None" and self.refl_may_none(a)) else "not"
     lhs = a if p[0] == "a" else b
     rhs = b if p[0] == "a" else a
+    if p[1] == "@scalar":
+        return f"scalar {a.t} {b.t}"
     if self.cmp_method(lhs.t, p[1], rhs.t) == "":
         return f"bad {p[0]} {p[1]} {lhs.t} {rhs.t}"  # (the error names both classes)
     f = self.classes[lhs.t].methods[p[1]]
@@ -4383,6 +4437,14 @@ def gen_concrete_cmp(self, op: str, a: Val, b: Val, stage: int = 0, decl: list[b
         lhs = a if p[0] == "a" else b
         rhs = b if p[0] == "a" else a
         m = p[1]
+        if m == "@scalar":
+            # Concrete enum arms exclude None before reading their immutable
+            # scalar fields. Reuse exact number or string comparison of the payloads.
+            ak = self.enum_builtin(a.t)
+            bk = self.enum_builtin(b.t)
+            x = self.mem_load(Val(self.fgep(a, self.classes[a.t].fpos[" enum " + ak]), "*" + ak)) if ak != "" else a
+            y = self.mem_load(Val(self.fgep(b, self.classes[b.t].fpos[" enum " + bk]), "*" + bk)) if bk != "" else b
+            return self.cmp2(op, x, y)
         if lhs.t == COMPLEXC and self.enum_intlike(rhs.t) and op in ["==", "!="]:
             # An enum's own comparison may decline before complex accepts its int
             # payload. These concrete pairs exclude None before reading that field;
@@ -5231,7 +5293,9 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str, 
         # declines) x's __eq__(item); with neither, they are not equal. An object of a class
         # with subclasses calls its runtime class's (#1430), as == does (inherit_cmp)
         runtime = [x for x in [item.t, a.t] if x in self.classes and self.classes[x].exc == "" and self.classes[x].tag != 0 and len(self.cmp_kinds(x)) > 1]
-        if len(runtime) > 0 or (lenient and (item.t in self.classes or a.t in self.classes)) or self.cmp_declining("==", item.t, a.t):
+        if self.enum_scalar(unopt(item.t), unopt(a.t)):
+            c = self.enum_compare("==", item, a)
+        elif len(runtime) > 0 or (lenient and (item.t in self.classes or a.t in self.classes)) or self.cmp_declining("==", item.t, a.t):
             c = self.inherit_cmp("==", item, a, True)
         else:
             c = self.foreign_eq(item, a)
@@ -5370,6 +5434,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         dc = self.dyn_cmp2(op, a, b)  # (a dynamic value's: dynamic.py)
         if dc.t != "":
             return dc
+    if op in ICMP and self.enum_scalar(unopt(a.t), unopt(b.t)):
+        return self.enum_compare(op, a, b)
     if (a.t == COMPLEXC or b.t == COMPLEXC) and (op == "==" or op == "!=") and all(t == COMPLEXC or t in ["int", "float", "bool", BIG] for t in [a.t, b.t]):
         return self.complex_cmp(op, a, b)
     if (op == "==" or op == "!=") and COMPLEXC in [a.t, b.t] and (is_sopt(a.t) or is_sopt(b.t)):

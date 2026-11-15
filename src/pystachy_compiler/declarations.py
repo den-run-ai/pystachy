@@ -1745,6 +1745,10 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
         # Only enum_member and enum_new initialize this slot; exit_member reads it.
         # It is absent from public field lookup, including literal reflection.
         self.add_field(ci, " enum int", "int")
+    if self.derives(ci.name, "enum$StrEnum") and " enum str" not in ci.ftypes:
+        # A str subclass's immutable text likewise survives changes to _value_.
+        # This scanned reference is initialized only when an enum member is made.
+        self.add_field(ci, " enum str", "str")
     dc = self.is_dc(ci.name) and ci.name not in self.nts
     kwmode = ci.kwonly  # (@dataclass(kw_only=True), or after _: KW_ONLY)
     kwseen = False
@@ -2872,7 +2876,7 @@ def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
         self.err(f"property '{name}' of '{short(o.t)}' is read-only")
     if store and ci.slotlimit and name not in ci.slots:
         self.err(f"field '{name}' is outside __slots__ of '{short(ci.name)}'")
-    if name not in ci.ftypes or (name == " enum int" and self.enum_intlike(o.t)):
+    if name not in ci.ftypes or (name == " enum int" and self.enum_intlike(o.t)) or (name == " enum str" and self.derives(o.t, "enum$StrEnum")):
         if name in ci.methods:
             self.err(f"{shown(o.t)}.{name} is a method: call it, {name}(...) (methods are not values)")
         if ci.exc != "":

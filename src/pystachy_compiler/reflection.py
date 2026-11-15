@@ -766,7 +766,7 @@ def gen_refl_setattr(self, args: list[Node]) -> Val:
     if o.t in self.classes and a in self.classes[o.t].ftypes and self.classes[o.t].ftypes[a] != NONEVAR:
         want = self.classes[o.t].ftypes[a]
     v = self.expr(args[2], want)
-    if o.t in self.classes and (a not in self.classes[o.t].ftypes or (a == " enum int" and self.enum_intlike(o.t))) and not self.is_prop(o.t, a) and self.classes[o.t].tag > 0:
+    if o.t in self.classes and (a not in self.classes[o.t].ftypes or (a == " enum int" and self.enum_intlike(o.t)) or (a == " enum str" and self.derives(o.t, "enum$StrEnum"))) and not self.is_prop(o.t, a) and self.classes[o.t].tag > 0:
         self.err(f"setattr() of '{a}' on a {short(o.t)}, which does not have it, would add an attribute to the object, which is not supported (#489)")
     self.assign(mk("attr", a, self.line, [self.vnode(o)]), v)
     return Val("null", "None")
@@ -3097,6 +3097,8 @@ def gen_enum_member(self, n: Node, want: str) -> Val:
     self.setfield(o, self.field(o, "_value_"), "_value_", v)
     if self.enum_intlike(c):
         self.mem_store(Val(self.fgep(o, ci.fpos[" enum int"]), "*int"), self.coerce(v, "int"))
+    elif self.derives(c, "enum$StrEnum"):
+        self.mem_store(Val(self.fgep(o, ci.fpos[" enum str"]), "*str"), self.coerce(v, "str"))
     return o
 
 
@@ -3263,10 +3265,13 @@ def gen_enum_new(self, args: list[Node]) -> Val:
     if c not in self.classes or self.classes[c].node.line not in ENUMCLASSES:
         self.err("internal error: __pys_enum_new of no enum class's members")
     nm = self.coerce(self.expr(args[1], "str"), "str")
-    v = self.coerce(self.expr(args[2], "int"), "int")
+    vt = "str" if self.derives(c, "enum$StrEnum") else "int"
+    v = self.coerce(self.expr(args[2], vt), vt)
     o = self.new_obj(c)
     self.setfield(o, self.field(o, "_name_"), "_name_", nm)
     self.setfield(o, self.field(o, "_value_"), "_value_", v)
     if self.enum_intlike(c):
         self.mem_store(Val(self.fgep(o, self.classes[c].fpos[" enum int"]), "*int"), v)
+    elif self.derives(c, "enum$StrEnum"):
+        self.mem_store(Val(self.fgep(o, self.classes[c].fpos[" enum str"]), "*str"), v)
     return o
