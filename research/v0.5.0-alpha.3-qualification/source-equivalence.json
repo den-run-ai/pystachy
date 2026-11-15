@@ -1,0 +1,242 @@
+{
+  "baseline_commit": "b0bda81ec2b9954c3c5e0f658c051439126a5c22",
+  "baseline_tree": "e027b37c888326e3d8a3e8b89522a6b397dcb86d",
+  "bindings": {
+    "bootstrap": {
+      "command": [
+        "make",
+        "BOOTSTRAP_AOT_OPT=1"
+      ],
+      "compiler_runtime_fixed_points": {
+        "rt1.ll": "cd645bebc4fea57b4824b5393843fea99bb31880a31a79dd825e1f34c388f830",
+        "rt2.ll": "cd645bebc4fea57b4824b5393843fea99bb31880a31a79dd825e1f34c388f830",
+        "rt3.ll": "cd645bebc4fea57b4824b5393843fea99bb31880a31a79dd825e1f34c388f830",
+        "stage1.ll": "5b6aa94337c0d5fdef4c5c0fe123653d75d795f28f1cf977ee1ecf703f7322f7",
+        "stage2.ll": "5b6aa94337c0d5fdef4c5c0fe123653d75d795f28f1cf977ee1ecf703f7322f7",
+        "stage3.ll": "5b6aa94337c0d5fdef4c5c0fe123653d75d795f28f1cf977ee1ecf703f7322f7"
+      },
+      "evaluated_commit": "b0bda81ec2b9954c3c5e0f658c051439126a5c22",
+      "returncode": 0,
+      "seconds": 382.302
+    },
+    "ir": {
+      "case_hashes_match_both_commits": true,
+      "cases": 4771,
+      "comparison_baseline": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+      "differences": 562,
+      "evaluated_commit": "b0bda81ec2b9954c3c5e0f658c051439126a5c22",
+      "new_rejections": 0,
+      "oracle_unchanged": true,
+      "symlink_case_resolution": [
+        {
+          "link_blob_sha256": "ed3041f694c8f3ed801ecdf4e7d37f546cf874dc07d18f550647b89db46a80e9",
+          "link_chain": [
+            "tests/programs/io/symlink_main.py"
+          ],
+          "path": "tests/programs/io/symlink_main.py",
+          "resolved_path": "tests/linked/main_real.py",
+          "resolved_sha256": "840ebe43f6ed0b70f9b901e3cbed054fccbcaafd3073c867e12f54f9524b8744"
+        }
+      ]
+    },
+    "performance": {
+      "binary_sha256": "193c0cd8b836005754b8cf1a51532f2044d4eaedc5d1b33f382dc585685e7552",
+      "evaluated_commit": "b0bda81ec2b9954c3c5e0f658c051439126a5c22",
+      "new_runs": 0,
+      "status": "passed",
+      "workload_hashes_match_both_commits": true,
+      "workloads": {
+        "bench/smoke/identity.py": "7693416300598013128588e740a6d8faf0a8de1dbc7b28db49d262f565320ec0",
+        "bench/smoke/ml.py": "e8814f71feb22de983f5e2c92854e9e7a50737acfddd8b17db7f758f825be946",
+        "bench/smoke/text.py": "abcf4ba78bd62af42207230106b96f63b1a64758c1aa2831a49d0ba7781e6302"
+      }
+    }
+  },
+  "changed_files": [
+    {
+      "after": {
+        "git_blob": "c576a1fed0889c2046f4c8378b5e0f678555fa67",
+        "mode": "100644",
+        "sha256": "213c48c578a01fde2802b1eebf17a2a9d7366c424621ddcdcd17b54e020cae4d",
+        "type": "blob"
+      },
+      "before": {
+        "git_blob": "b3570a27437b40437315f545dbeb6530005ca959",
+        "mode": "100644",
+        "sha256": "ee8bf451a76584c5f94b8865e5b9f156e1d1b8673f641d399f1c592212a2e6f3",
+        "type": "blob"
+      },
+      "path": "tools/check_lean_guards.py"
+    },
+    {
+      "after": {
+        "git_blob": "9e602ae43dff7c3ab726ef7ade2e05d93bedc58b",
+        "mode": "100644",
+        "sha256": "83bdc3d56f909282d9dd650af6313c829588afb484ec2616efd5db46853a2526",
+        "type": "blob"
+      },
+      "before": {
+        "git_blob": "7317b6b7796bd4ba04f274edddd5440df30ae312",
+        "mode": "100644",
+        "sha256": "eb7746d8cc883f87d90b86636e1f655fd0f05b3706d591f3260fd70c62ffa5c4",
+        "type": "blob"
+      },
+      "path": "tools/lean_report.py"
+    },
+    {
+      "after": {
+        "git_blob": "a00bf8ba999455daaf35eaba5066ef426f6e2bae",
+        "mode": "100644",
+        "sha256": "a9fdcaa663e26d20b347aca269bd99aa0a4a5df54612b6e8fc1896a9ab816bc3",
+        "type": "blob"
+      },
+      "before": {
+        "git_blob": "3b43ba49d8f414e5938fde1957c5e425352574bf",
+        "mode": "100644",
+        "sha256": "625eb597b9508fe8adbaabc41dc52be1a1bf5fca2dad093ab2193daf40add8f8",
+        "type": "blob"
+      },
+      "path": "tools/test_lean_report.py"
+    },
+    {
+      "after": {
+        "git_blob": "242b6155c0f650ae311e5d7791047c61481b3ad1",
+        "mode": "100644",
+        "sha256": "e0783749402f50fae884c5e2dfba5d618d1410585e3905c7fa6b56f7c0e4c2c5",
+        "type": "blob"
+      },
+      "before": {
+        "git_blob": "03e6867fca08f7e6b38127c49016c7a9826164ef",
+        "mode": "100644",
+        "sha256": "827d102ca0235651d34729354f89f617a516b0b7fd6aad33bf6abda9b4bf6e84",
+        "type": "blob"
+      },
+      "path": "tools/test_lean_union_split.py"
+    }
+  ],
+  "direct_subtree_objects": {
+    ".github": {
+      "after": "4d85e03df70fa81ee69da60758c34533014f66cb",
+      "before": "4d85e03df70fa81ee69da60758c34533014f66cb"
+    },
+    "bench": {
+      "after": "0b22897b17e602a409c2c42c816d4afb5f0dcdbb",
+      "before": "0b22897b17e602a409c2c42c816d4afb5f0dcdbb"
+    },
+    "examples": {
+      "after": "62fe17aca77d153aca3721379647870b419a0f11",
+      "before": "62fe17aca77d153aca3721379647870b419a0f11"
+    },
+    "lib": {
+      "after": "7dce3a258447bc0ee1acdcee5d69268f54424caf",
+      "before": "7dce3a258447bc0ee1acdcee5d69268f54424caf"
+    },
+    "mpz": {
+      "after": "538a843a8fb6b64858ee2d6af3e6add369e60734",
+      "before": "538a843a8fb6b64858ee2d6af3e6add369e60734"
+    },
+    "ports": {
+      "after": "0f866764a0f03e4acac8a29beb7eccab2065d6d4",
+      "before": "0f866764a0f03e4acac8a29beb7eccab2065d6d4"
+    },
+    "ryu": {
+      "after": "5ed2ef8d3226d57b05412dc33aa58a5ef7da958c",
+      "before": "5ed2ef8d3226d57b05412dc33aa58a5ef7da958c"
+    },
+    "src": {
+      "after": "3a42e00192b7faa3e81971248472afc3569cae5d",
+      "before": "3a42e00192b7faa3e81971248472afc3569cae5d"
+    },
+    "tests": {
+      "after": "aa728819b8eecff08d8b9ff43402bf187c627668",
+      "before": "aa728819b8eecff08d8b9ff43402bf187c627668"
+    }
+  },
+  "groups": {
+    "all_unchanged_tracked_files": {
+      "after_sha256": "a574ec543601251f932a0f608307ae42e91b231e7da757aff16c3e24fb081fde",
+      "before_sha256": "a574ec543601251f932a0f608307ae42e91b231e7da757aff16c3e24fb081fde",
+      "equal": true,
+      "files": 10489
+    },
+    "benchmark_examples_ports": {
+      "after_sha256": "638017cd53b015007e44d9e0261e30b2643b873a4b843229a7bb469b19f54915",
+      "before_sha256": "638017cd53b015007e44d9e0261e30b2643b873a4b843229a7bb469b19f54915",
+      "equal": true,
+      "files": 692
+    },
+    "build_release_configuration": {
+      "after_sha256": "22c86ede274d3e09e3d9dd0bcda789eba253cd0f471e8917565bdea2b395600c",
+      "before_sha256": "22c86ede274d3e09e3d9dd0bcda789eba253cd0f471e8917565bdea2b395600c",
+      "equal": true,
+      "files": 25
+    },
+    "compiler": {
+      "after_sha256": "927357a2e21ee318f83846cf5b92e40787310dc2e970f76d9b3f9e26839449da",
+      "before_sha256": "927357a2e21ee318f83846cf5b92e40787310dc2e970f76d9b3f9e26839449da",
+      "equal": true,
+      "files": 60
+    },
+    "library": {
+      "after_sha256": "85c0149abebfafc05ec235de3fb8f8138f9c70e7775ddc5d8b6bf7fe33e3015e",
+      "before_sha256": "85c0149abebfafc05ec235de3fb8f8138f9c70e7775ddc5d8b6bf7fe33e3015e",
+      "equal": true,
+      "files": 95
+    },
+    "runtime": {
+      "after_sha256": "f78aff5452c1ad4b7a5187ff1eba6e0f3e8584b7ac89b41a3c6b342809a116eb",
+      "before_sha256": "f78aff5452c1ad4b7a5187ff1eba6e0f3e8584b7ac89b41a3c6b342809a116eb",
+      "equal": true,
+      "files": 15
+    },
+    "test_corpus_and_helpers": {
+      "after_sha256": "a61a3cfc0babf51cb4b163c474a40ba179cb70b2087bf60d22ea15335ad5fd8d",
+      "before_sha256": "a61a3cfc0babf51cb4b163c474a40ba179cb70b2087bf60d22ea15335ad5fd8d",
+      "equal": true,
+      "files": 9113
+    }
+  },
+  "inventories": {
+    "path": "/workspace/scratch/980402bc01c4/evidence/lean/adapter-repair/source-equivalence-inventories.json",
+    "sha256": "61053cd006170082bb01eb6e346c4196debba4b590114db04cca8b0173401608"
+  },
+  "limits": [
+    "Only tracked Git objects and recorded input hashes are compared; this does not independently certify arbitrary untracked imports, environment, toolchain or machine state.",
+    "The Git commit and four proof-related tool files differ, so whole-checkout source identity differs even though production code is unchanged.",
+    "Do not bypass tools/verification_bootstrap.py commit, tracked-source, run identity, payload or toolchain checks; this receipt does not authorize strict artifact reuse across commits.",
+    "No bootstrap, IR comparison, benchmark, native/GC suite or full Lean census was rerun for this receipt.",
+    "Fresh proof qualification is required because the guard adapter and completion reporter changed; old Lean counts/errors are not relabeled as repaired results.",
+    "CI/release gates must still be tied to their exact evaluated release commit. Existing binaries retain b0bda81ec source provenance and may embed that revision; they are not 94f472d6 or eventual-main release artifacts.",
+    "VERSION bytes are unchanged; that does not establish actual binary version or eventual GitHub/Docker/PyPI artifact provenance."
+  ],
+  "meaning": "Earlier bootstrap, IR and performance observations concern identical tracked production code and unchanged exercised inputs. They remain earlier-commit evidence; this receipt is a source comparison, not a rerun.",
+  "repair_commit": "94f472d6de5350fc9481ecf3b9ec019d2ecdb4f2",
+  "repair_tree": "51f6c150748b2d17945e4d1c6779d8080b6edd6a",
+  "repair_worktree": "/workspace/scratch/980402bc01c4/alpha3-lean-fix",
+  "repair_worktree_status": "",
+  "retained_evidence": {
+    "bootstrap": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/bootstrap.json",
+      "sha256": "d7c7bd7f9d5a97e08b4a0bdd64c9d2eb92100a80eef23ebb8497acc717f27cf9"
+    },
+    "ir_analysis": {
+      "path": "/workspace/scratch/980402bc01c4/ir-audit/analysis.json",
+      "sha256": "1581e938781dfbc925525f91e325fb27e56471552cd6ae2c2f3e25bc32964d55"
+    },
+    "ir_identity": {
+      "path": "/workspace/scratch/980402bc01c4/ir-audit/identity.json",
+      "sha256": "438b3e6a78f3a494e563809334c75ded67c7383a4f0f9ea9f2173a598faf7556"
+    },
+    "performance_identity": {
+      "path": "/workspace/scratch/980402bc01c4/performance/identity.json",
+      "sha256": "82ab04e8ae29944dd8d006b6d47f5992472c209ea2f215ee14fcbfb769e71590"
+    },
+    "performance_report": {
+      "path": "/workspace/scratch/980402bc01c4/performance/report.json",
+      "sha256": "9cbb0d1ff91471a58177de2ccbfafa2e7da41abcbac2ccf24756edba30a9bfc4"
+    }
+  },
+  "status": "tracked production source equivalence verified",
+  "tracked_files_after": 10493,
+  "tracked_files_before": 10493
+}

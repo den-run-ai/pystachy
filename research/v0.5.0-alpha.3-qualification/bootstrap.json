@@ -1,0 +1,22 @@
+{
+  "started_utc": "2026-11-15T05:34:07.651018+00:00",
+  "source": "/workspace/scratch/980402bc01c4/alpha3",
+  "output": "/workspace/scratch/980402bc01c4/evidence/bootstrap.log",
+  "commit": "b0bda81ec2b9954c3c5e0f658c051439126a5c22",
+  "tree": "e027b37c888326e3d8a3e8b89522a6b397dcb86d",
+  "status_before": "",
+  "command": [
+    "make",
+    "BOOTSTRAP_AOT_OPT=1"
+  ],
+  "python": "/workspace/scratch/c2b093657c17/dev-venv/bin/python",
+  "llvm": "/workspace/scratch/c2b093657c17/toolchains/llvm18/payload/usr/lib/llvm-18",
+  "cache": "checkout build default",
+  "jobs": 2,
+  "returncode": 0,
+  "seconds": 382.302,
+  "child_peak_rss_kib": 974468,
+  "commit_after": "b0bda81ec2b9954c3c5e0f658c051439126a5c22",
+  "tree_after": "e027b37c888326e3d8a3e8b89522a6b397dcb86d",
+  "status_after": ""
+}
