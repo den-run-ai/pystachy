@@ -1,0 +1,64 @@
+COMMAND: lake build PystachyPipeline
+✔ [2/3] Built PystachyPipeline (7.2s)
+Build completed successfully (3 jobs).
+COMMAND: lake build Audit
+RETRY: previous supervisor could not inspect child /proc status; using elapsed time and wait accounting.
+COMMAND: lake build Audit
+ℹ [8/9] Built Audit (136s)
+info: Audit.lean:14:0: PystachyBoundary.check_iff: axiom audit passed ([propext])
+info: Audit.lean:14:0: PystachyBoundary.reachable_facts: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:14:0: PystachyBoundary.accepted_payload_safe: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:14:0: PystachyAccess.reachable_invariant: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:14:0: PystachyAccess.accepted_access_safe: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:14:0: PystachyAccess.writeField_step: axiom audit passed ([propext])
+info: Audit.lean:14:0: PystachyAccess.accepted_write_progress: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:14:0: PystachyInt.known_fits: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:14:0: PystachyInt.mod_fits: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:14:0: PystachyInt.floordiv_fits: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:14:0: PystachyInt.shr_fits: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:14:0: PystachyInt.shl_exact: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:14:0: PystachyInt.bitwise_fits: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:14:0: PystachyInt.and_mask: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:14:0: PystachyInline.no_overflow_exact: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:14:0: PystachyInline.no_overflow_fits: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:14:0: PystachyInline.accepted_arithmetic_exact: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:14:0: PystachyStorage.low_of_fit: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:14:0: PystachyStorage.promoting_decode: axiom audit passed ([propext])
+info: Audit.lean:14:0: PystachyStorage.plain_view_safe: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:14:0: PystachyStorage.plain_marker_has_no_tail: axiom audit passed ([propext])
+info: Audit.lean:14:0: PystachyStorage.null_digits_narrow: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:14:0: PystachyStorage.slot_fits_iff: axiom audit passed ([propext])
+info: Audit.lean:14:0: PystachyStorage.pair_truth_zero: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:14:0: PystachyStorage.layout_has_tail: axiom audit passed ([])
+info: Audit.lean:14:0: PystachyStorage.accepted_low_word: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:14:0: PystachyStorage.accepted_plain_view: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:14:0: PystachyStorage.accepted_tail_read: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:14:0: PystachyStorage.accepted_narrowing: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:14:0: PystachyStorage.accepted_slot_narrowing: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:14:0: PystachyStorage.accepted_optional_slot_narrowing: axiom audit passed ([propext, Classical.choice, Quot.sound])
+info: Audit.lean:14:0: PystachyStorage.accepted_stack_copy: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:14:0: PystachyStorage.erase_read_move_iff: axiom audit passed ([propext])
+info: Audit.lean:14:0: PystachyStorage.projected_reachable: axiom audit passed ([propext])
+info: Audit.lean:14:0: PystachyStorage.accepted_projected_payload: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:14:0: PystachyPipeline.step_preserves: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:14:0: PystachyPipeline.reachable_wellFormed: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:14:0: PystachyPipeline.active_cannot_begin: axiom audit passed ([propext])
+info: Audit.lean:14:0: PystachyPipeline.consumed_cannot_step: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:14:0: PystachyPipeline.consumed_has_finalization: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:14:0: PystachyPipeline.accepted_report_complete: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:14:0: PystachyPipeline.accepted_attempt_ordered: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:14:0: PystachyPipeline.accepted_terminal_target: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:14:0: PystachyPipeline.accepted_report_target: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:14:0: PystachyPipeline.accepted_terminal_consumed: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:14:0: PystachyPipeline.accepted_report_attempts: axiom audit passed ([propext, Quot.sound])
+info: Audit.lean:53:0: 'PystachyBoundary.accepted_payload_safe' depends on axioms: [propext, Quot.sound]
+info: Audit.lean:54:0: 'PystachyAccess.accepted_access_safe' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Audit.lean:55:0: 'PystachyInt.known_fits' depends on axioms: [propext, Quot.sound]
+Build completed successfully (9 jobs).
+{"target": "Audit", "exit": 0, "elapsed": 136.949, "cpu_seconds": 42.855}
+COMMAND: lake build pystachy-pipeline
+✔ [3/6] Built PystachyPipeline:c.o (998ms)
+✔ [4/6] Built PipelineMain (151s)
+✔ [6/6] Built «pystachy-pipeline»:exe (1.9s)
+Build completed successfully (6 jobs).
+{"target": "pystachy-pipeline", "exit": 0, "elapsed": 154.0, "cpu_seconds": 56.826}

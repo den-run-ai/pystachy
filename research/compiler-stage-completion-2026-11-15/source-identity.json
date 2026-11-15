@@ -1,0 +1,7 @@
+{
+  "baseline_commit": "800752d8a582bff77d4c375039af786b82a96f73",
+  "local_test_commit": "527dc89a02e8e8866fc4d83997847663a6e7c0aa",
+  "published_commit": "eabfe7b3d8f1be3e4615442423c7d3fbab10285b",
+  "identical_tree": "4deb05cd2f645d516dd37480d5510d0920747b6f",
+  "publication": "Shell push lacked credentials. GitHub Git-data connector uploaded blobs, verified each SHA and the complete tree, created the commit with the original PR tip as parent, and updated the PR branch with expected head and force=false."
+}

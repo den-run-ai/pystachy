@@ -1,0 +1,4 @@
+mkdir -p build
+PYSTACHY_AOT_OPT="2" python3.13 pystachy.py build pystachy.py -o build/pystachy1 --emit-ir build/stage1.ll
+src/pystachy_compiler/lower_module.py:451: error: cannot iterate over int
+make: *** [Makefile:11: pystachy] Error 1

@@ -1,0 +1,8 @@
+ruff check
+All checks passed!
+ruff check --no-force-exclude bench/pyperformance/pytest/*.py
+All checks passed!
+mypy --config-file mypy.ini
+Success: no issues found in 59 source files
+/workspace/scratch/c2b093657c17/dev-venv/bin/python3.13 tools/check_runtime.py
+672 RUNTIME entries, 70 exception classes: signatures, coverage and effects agree with runtime.c and runtime.py (193 functions, none of which reaches itself through a lowering or runtime.c), the classes with this Python

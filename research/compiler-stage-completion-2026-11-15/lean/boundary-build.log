@@ -1,0 +1,5 @@
+✔ [3/6] Built PystachyBoundary:c.o (750ms)
+✔ [4/6] Built Main (62s)
+✔ [5/6] Built Main:c.o (808ms)
+✔ [6/6] Built «pystachy-boundary»:exe (1.0s)
+Build completed successfully (6 jobs).

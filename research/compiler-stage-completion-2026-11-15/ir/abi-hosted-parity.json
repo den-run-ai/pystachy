@@ -1,0 +1,68 @@
+[
+  {
+    "case": "c_libc",
+    "base_exit": 0,
+    "head_exit": 0,
+    "exact_match": true
+  },
+  {
+    "case": "c_float",
+    "base_exit": 0,
+    "head_exit": 0,
+    "exact_match": true
+  },
+  {
+    "case": "c_at",
+    "base_exit": 0,
+    "head_exit": 0,
+    "exact_match": true
+  },
+  {
+    "case": "c_list_identity",
+    "base_exit": 0,
+    "head_exit": 0,
+    "exact_match": true
+  },
+  {
+    "case": "c_python_int",
+    "base_exit": 0,
+    "head_exit": 0,
+    "exact_match": true
+  },
+  {
+    "case": "c_ctypes_scalars",
+    "base_exit": 0,
+    "head_exit": 0,
+    "exact_match": true
+  },
+  {
+    "case": "c_ctypes_dynamic",
+    "base_exit": 0,
+    "head_exit": 0,
+    "exact_match": true
+  },
+  {
+    "case": "py_samesym",
+    "base_exit": 0,
+    "head_exit": 0,
+    "exact_match": true
+  },
+  {
+    "case": "errors/c_dup",
+    "base_exit": 1,
+    "head_exit": 1,
+    "exact_match": true
+  },
+  {
+    "case": "errors/c_rt",
+    "base_exit": 1,
+    "head_exit": 1,
+    "exact_match": true
+  },
+  {
+    "case": "errors/c_bool",
+    "base_exit": 1,
+    "head_exit": 1,
+    "exact_match": true
+  }
+]

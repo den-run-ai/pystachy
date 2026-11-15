@@ -1,0 +1,40 @@
+Evidence: /workspace/scratch/9f30aa4fd4fd/evidence/cost-comparison; CPU 0; pairs 5; mode all
+native/self/warmup-old: 7.254201 s; CPU 7.202563 s; RSS 902732 KiB; reference recorded
+native/self/warmup-new: 6.436559 s; CPU 6.386564 s; RSS 915380 KiB; bytes match
+native/self/pair-1-old: 6.907062 s; CPU 6.839074 s; RSS 902668 KiB; bytes match
+native/self/pair-1-new: 6.511648 s; CPU 6.462685 s; RSS 915364 KiB; bytes match
+native/self/pair-2-new: 6.869454 s; CPU 6.824277 s; RSS 915440 KiB; bytes match
+native/self/pair-2-old: 6.627526 s; CPU 6.582708 s; RSS 902728 KiB; bytes match
+native/self/pair-3-old: 7.111672 s; CPU 7.033698 s; RSS 902732 KiB; bytes match
+native/self/pair-3-new: 6.716652 s; CPU 6.661572 s; RSS 915428 KiB; bytes match
+native/self/pair-4-new: 6.695830 s; CPU 6.656879 s; RSS 915364 KiB; bytes match
+native/self/pair-4-old: 6.424038 s; CPU 6.367712 s; RSS 902660 KiB; bytes match
+native/self/pair-5-old: 6.592314 s; CPU 6.548007 s; RSS 902792 KiB; bytes match
+native/self/pair-5-new: 6.605720 s; CPU 6.546800 s; RSS 915408 KiB; bytes match
+native/runtime/warmup-old: 0.091627 s; CPU 0.089657 s; RSS 40688 KiB; reference recorded
+native/runtime/warmup-new: 0.088723 s; CPU 0.088203 s; RSS 40724 KiB; bytes match
+native/runtime/pair-1-old: 0.086554 s; CPU 0.086093 s; RSS 40856 KiB; bytes match
+native/runtime/pair-1-new: 0.084420 s; CPU 0.083744 s; RSS 40704 KiB; bytes match
+native/runtime/pair-2-new: 0.092652 s; CPU 0.091947 s; RSS 40768 KiB; bytes match
+native/runtime/pair-2-old: 0.082352 s; CPU 0.081855 s; RSS 40880 KiB; bytes match
+native/runtime/pair-3-old: 0.086719 s; CPU 0.086130 s; RSS 40728 KiB; bytes match
+native/runtime/pair-3-new: 0.080854 s; CPU 0.080394 s; RSS 40852 KiB; bytes match
+native/runtime/pair-4-new: 0.083529 s; CPU 0.082850 s; RSS 40796 KiB; bytes match
+native/runtime/pair-4-old: 0.079361 s; CPU 0.078640 s; RSS 40680 KiB; bytes match
+native/runtime/pair-5-old: 0.082286 s; CPU 0.081772 s; RSS 40676 KiB; bytes match
+native/runtime/pair-5-new: 0.085948 s; CPU 0.085436 s; RSS 40852 KiB; bytes match
+native/ffi/warmup-old: 0.008165 s; CPU 0.007052 s; RSS 20100 KiB; reference recorded
+native/ffi/warmup-new: 0.007120 s; CPU 0.006706 s; RSS 20100 KiB; bytes match
+native/ffi/pair-1-old: 0.006596 s; CPU 0.006246 s; RSS 20100 KiB; bytes match
+native/ffi/pair-1-new: 0.007557 s; CPU 0.007208 s; RSS 20100 KiB; bytes match
+native/ffi/pair-2-new: 0.008774 s; CPU 0.008323 s; RSS 20100 KiB; bytes match
+native/ffi/pair-2-old: 0.007162 s; CPU 0.006800 s; RSS 20100 KiB; bytes match
+native/ffi/pair-3-old: 0.007085 s; CPU 0.006724 s; RSS 20100 KiB; bytes match
+native/ffi/pair-3-new: 0.008231 s; CPU 0.007874 s; RSS 20100 KiB; bytes match
+native/ffi/pair-4-new: 0.006500 s; CPU 0.006049 s; RSS 20100 KiB; bytes match
+native/ffi/pair-4-old: 0.006906 s; CPU 0.006534 s; RSS 20100 KiB; bytes match
+native/ffi/pair-5-old: 0.007102 s; CPU 0.006720 s; RSS 20100 KiB; bytes match
+native/ffi/pair-5-new: 0.006447 s; CPU 0.006084 s; RSS 20100 KiB; bytes match
+inspect/library/warmup-full: 5.673867 s; CPU 5.524216 s; RSS 318044 KiB; reference recorded
+Measurement failed: inspect/library: warmup exceeded 5 s budget; stop and select a smaller workload or explicitly revise the bound
+failed: /workspace/scratch/9f30aa4fd4fd/evidence/cost-comparison/report.json

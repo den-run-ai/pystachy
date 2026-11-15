@@ -1,0 +1,16 @@
+[
+  {
+    "stage": "finalize",
+    "externs": 15,
+    "rendered_entries": 15,
+    "retained_llvm_bytes": 6817,
+    "compiler": "/workspace/scratch/78a63a74ecb5/pystachy"
+  },
+  {
+    "stage": "finalize",
+    "externs": 15,
+    "rendered_entries": 0,
+    "retained_llvm_bytes": 0,
+    "compiler": "/workspace/scratch/9f30aa4fd4fd/pystachy"
+  }
+]

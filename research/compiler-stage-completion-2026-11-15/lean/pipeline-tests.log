@@ -1,0 +1,26 @@
+test_all_reachable_python_states_and_actions_match_lean (test_lean_pipeline.PipelineProofTests.test_all_reachable_python_states_and_actions_match_lean) ... ok
+test_checker_response_count_and_exit_status_must_agree (test_lean_pipeline.PipelineProofTests.test_checker_response_count_and_exit_status_must_agree) ... ok
+test_completed_stage_reordering_duplication_and_omission_are_rejected (test_lean_pipeline.PipelineProofTests.test_completed_stage_reordering_duplication_and_omission_are_rejected) ... ok
+test_failed_or_completed_preceding_attempt_is_rejected (test_lean_pipeline.PipelineProofTests.test_failed_or_completed_preceding_attempt_is_rejected) ... ok
+test_foreign_attempt_snapshot_and_reused_attempt_index_are_rejected (test_lean_pipeline.PipelineProofTests.test_foreign_attempt_snapshot_and_reused_attempt_index_are_rejected) ... ok
+test_idle_trace_cannot_be_relabelled_as_an_aborted_retry (test_lean_pipeline.PipelineProofTests.test_idle_trace_cannot_be_relabelled_as_an_aborted_retry) ... ok
+test_incomplete_or_stale_terminal_state_is_rejected (test_lean_pipeline.PipelineProofTests.test_incomplete_or_stale_terminal_state_is_rejected) ... ok
+test_lost_or_forged_stage_evidence_is_rejected (test_lean_pipeline.PipelineProofTests.test_lost_or_forged_stage_evidence_is_rejected) ... ok
+test_partial_snapshot_cannot_certify_pipeline (test_lean_pipeline.PipelineProofTests.test_partial_snapshot_cannot_certify_pipeline) ... ok
+test_real_lower_finalize_and_retry_reports_are_accepted (test_lean_pipeline.PipelineProofTests.test_real_lower_finalize_and_retry_reports_are_accepted) ... ok
+test_retry_cannot_cross_requested_finalization_boundary (test_lean_pipeline.PipelineProofTests.test_retry_cannot_cross_requested_finalization_boundary) ... ok
+test_source_or_overall_failure_cannot_certify_pipeline (test_lean_pipeline.PipelineProofTests.test_source_or_overall_failure_cannot_certify_pipeline) ... ok
+test_actual_reports_normalize_requested_targets (test_lean_pipeline.ReportShapeTests.test_actual_reports_normalize_requested_targets) ... ok
+test_boolean_indices_and_unknown_status_are_malformed (test_lean_pipeline.ReportShapeTests.test_boolean_indices_and_unknown_status_are_malformed) ... ok
+test_duplicate_json_report_keys_fail_closed (test_lean_pipeline.ReportShapeTests.test_duplicate_json_report_keys_fail_closed) ... ok
+test_finalize_must_be_explicit (test_lean_pipeline.ReportShapeTests.test_finalize_must_be_explicit) ... ok
+test_malformed_nested_mappings_fail_closed (test_lean_pipeline.ReportShapeTests.test_malformed_nested_mappings_fail_closed) ... ok
+test_missing_source_or_verification_inventory_fails_closed (test_lean_pipeline.ReportShapeTests.test_missing_source_or_verification_inventory_fails_closed) ... ok
+test_snapshot_contents_are_bound_to_report (test_lean_pipeline.ReportShapeTests.test_snapshot_contents_are_bound_to_report) ... ok
+test_stage_inventory_cannot_be_silently_dropped (test_lean_pipeline.ReportShapeTests.test_stage_inventory_cannot_be_silently_dropped) ... ok
+test_target_cannot_hide_unexpected_llvm (test_lean_pipeline.ReportShapeTests.test_target_cannot_hide_unexpected_llvm) ... ok
+
+----------------------------------------------------------------------
+Ran 21 tests in 3.496s
+
+OK

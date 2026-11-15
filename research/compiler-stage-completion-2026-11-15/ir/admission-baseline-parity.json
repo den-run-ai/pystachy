@@ -1,0 +1,120 @@
+{
+  "base": "800752d8a582bff77d4c375039af786b82a96f73",
+  "scope": "hosted module-admission comparison, same input/lib paths; development source",
+  "counts": {
+    "cases": 10,
+    "identical": 10
+  },
+  "cases": [
+    {
+      "path": "/tmp/tmpl5ayvyid/probe.py",
+      "mode": "extension",
+      "identical": true,
+      "statuses": [
+        0,
+        0
+      ],
+      "stdout_sha256": "418859be367de7e9e96a9d8a3253be718a92efce5e59e74d810beccf124efd17",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/tmpl5ayvyid/probe.py",
+      "mode": "runtime",
+      "identical": true,
+      "statuses": [
+        0,
+        0
+      ],
+      "stdout_sha256": "2cc5c20f0193d3b96947ea51b2c397702c6ff7118f0746474d816657c7676d2b",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/workspace/scratch/9f30aa4fd4fd/pystachy/tests/ffi/errors/ext_call.py",
+      "mode": "extension",
+      "identical": true,
+      "statuses": [
+        1,
+        1
+      ],
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "f22ee220bf35f9ca9d77a601fdfef6f07c0c50aaef86fb60a3d83c3106c904fd"
+    },
+    {
+      "path": "/workspace/scratch/9f30aa4fd4fd/pystachy/tests/ffi/errors/ext_cls.py",
+      "mode": "extension",
+      "identical": true,
+      "statuses": [
+        1,
+        1
+      ],
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "bbcb27113ef9008feb0b60a33b66608d276b7557993869a647c5d0ba3cecb44f"
+    },
+    {
+      "path": "/workspace/scratch/9f30aa4fd4fd/pystachy/tests/ffi/errors/ext_def.py",
+      "mode": "extension",
+      "identical": true,
+      "statuses": [
+        1,
+        1
+      ],
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "a83b7f99d8bac525d9549f910483d784dd06550198f5fdc0e5225df92a5e5708"
+    },
+    {
+      "path": "/workspace/scratch/9f30aa4fd4fd/pystachy/tests/ffi/errors/ext_pub.py",
+      "mode": "extension",
+      "identical": true,
+      "statuses": [
+        1,
+        1
+      ],
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "d8af8d9d2ff1093ce6266aaca0c51b484f563d6b47e8c08c91d0250a0a544567"
+    },
+    {
+      "path": "/workspace/scratch/9f30aa4fd4fd/pystachy/tests/ffi/errors/ext_ret.py",
+      "mode": "extension",
+      "identical": true,
+      "statuses": [
+        1,
+        1
+      ],
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "ade95156672d622033b03741b94bc2a9963c10600dd3c339b246469ca4ae1988"
+    },
+    {
+      "path": "/workspace/scratch/9f30aa4fd4fd/pystachy/tests/ffi/errors/ext_singleton.py",
+      "mode": "extension",
+      "identical": true,
+      "statuses": [
+        1,
+        1
+      ],
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "c7f7c0d49bc48343b238663ba1f0c952a6b9ec99608a752c60012604b4a1829d"
+    },
+    {
+      "path": "/workspace/scratch/9f30aa4fd4fd/pystachy/tests/ffi/errors/ext_untyped.py",
+      "mode": "extension",
+      "identical": true,
+      "statuses": [
+        1,
+        1
+      ],
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "446e175ed7cb2574a20e62589ea6b1b425dfa9bee3f29ab02a532c7e64ecc5ed"
+    },
+    {
+      "path": "/workspace/scratch/9f30aa4fd4fd/pystachy/tests/ffi/errors/ext_var.py",
+      "mode": "extension",
+      "identical": true,
+      "statuses": [
+        1,
+        1
+      ],
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e0af54ad400b990c3d0517c2edbf4e7ee499c1651403576ee7551a8c23187b46"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+Evidence: /workspace/scratch/9f30aa4fd4fd/evidence/cost-inspection; CPU 0; pairs 5; mode inspect
+inspect/library/warmup-full: 4.690649 s; CPU 4.665255 s; RSS 318248 KiB; reference recorded
+inspect/library/warmup-finalize: 4.984911 s; CPU 4.941635 s; RSS 315548 KiB; bytes match
+inspect/library/pair-1-full: 4.949732 s; CPU 4.862419 s; RSS 318252 KiB; bytes match
+inspect/library/pair-1-finalize: 4.605375 s; CPU 4.559794 s; RSS 315540 KiB; bytes match
+inspect/library/pair-2-finalize: 4.715034 s; CPU 4.656629 s; RSS 315540 KiB; bytes match
+inspect/library/pair-2-full: 4.616922 s; CPU 4.542726 s; RSS 318252 KiB; bytes match
+inspect/library/pair-3-full: 4.647175 s; CPU 4.557307 s; RSS 318256 KiB; bytes match
+inspect/library/pair-3-finalize: 4.438832 s; CPU 4.388695 s; RSS 315536 KiB; bytes match
+inspect/library/pair-4-finalize: 4.791122 s; CPU 4.686364 s; RSS 315540 KiB; bytes match
+inspect/library/pair-4-full: 4.912511 s; CPU 4.864602 s; RSS 318244 KiB; bytes match
+inspect/library/pair-5-full: 4.550933 s; CPU 4.481636 s; RSS 318248 KiB; bytes match
+inspect/library/pair-5-finalize: 5.254468 s; CPU 5.117194 s; RSS 315500 KiB; bytes match
+inspect/ffi/warmup-full: 0.510863 s; CPU 0.473060 s; RSS 231768 KiB; reference recorded
+inspect/ffi/warmup-finalize: 0.814089 s; CPU 0.757280 s; RSS 231768 KiB; bytes match
+inspect/ffi/pair-1-full: 0.236690 s; CPU 0.216708 s; RSS 231768 KiB; bytes match
+inspect/ffi/pair-1-finalize: 0.229459 s; CPU 0.213045 s; RSS 231768 KiB; bytes match
+inspect/ffi/pair-2-finalize: 0.248150 s; CPU 0.243296 s; RSS 231768 KiB; bytes match
+inspect/ffi/pair-2-full: 0.238933 s; CPU 0.217073 s; RSS 231768 KiB; bytes match
+inspect/ffi/pair-3-full: 0.237699 s; CPU 0.212353 s; RSS 231768 KiB; bytes match
+inspect/ffi/pair-3-finalize: 0.231117 s; CPU 0.226996 s; RSS 231768 KiB; bytes match
+inspect/ffi/pair-4-finalize: 0.234601 s; CPU 0.214768 s; RSS 231768 KiB; bytes match
+inspect/ffi/pair-4-full: 0.236529 s; CPU 0.210894 s; RSS 231768 KiB; bytes match
+inspect/ffi/pair-5-full: 0.418366 s; CPU 0.383633 s; RSS 231768 KiB; bytes match
+inspect/ffi/pair-5-finalize: 0.232578 s; CPU 0.212587 s; RSS 231768 KiB; bytes match
+completed: /workspace/scratch/9f30aa4fd4fd/evidence/cost-inspection/report.json
