@@ -83,6 +83,70 @@ class GenericStateTests(unittest.TestCase):
         return (generator.selfcls, generator.line, generator.lib,
                 list(generator.making), dict(generator.specing))
 
+    def test_lexical_bindings_belong_to_each_function_specialization(self):
+        source = (ROOT / "tests/programs/generics/generic_lexical_bindings.py").read_text()
+        status, _, messages, generations = self.compile(source)
+        self.assertEqual(status, 0, messages)
+        g = generations[-1]
+        instances = list(g.funcs["nested"].insts.values())
+        self.assertEqual([f.tvars for f in instances], [{"T": "int"}, {"T": "str"}])
+        self.assertIsNot(instances[0].tvars, instances[1].tvars)
+        reads = [c.f for c in g.closures if c.f.name.startswith("nested.") and c.name == "read"]
+        self.assertEqual([f.tvars for f in reads], [{"T": "int"}, {"T": "str"}])
+        for f in reads:
+            scope = f
+            while scope.tvouter is not None:
+                scope = scope.tvouter
+            self.assertIn(scope, instances)
+            self.assertIsNot(f.tvars, scope.tvars)
+        # Declaring the first closure must not erase the header reused by the second.
+        read = g.funcs["nested"].node.kids[2].kids[0].kids[2].kids[0].kids[2].kids[0]
+        self.assertEqual((read.kids[1].kind, read.kids[1].s), ("name", "T"))
+        outer = next(iter(g.funcs["repeated_name"].insts.values()))
+        inner = next(c.f for c in g.closures if c.name == "repeated_name")
+        self.assertEqual(list(outer.tvars.values()), ["int"])
+        inner_instance = next(iter(inner.insts.values()))
+        self.assertEqual(list(inner_instance.tvars.values()), ["int", "str"])
+        self.assertTrue(set(outer.tvnames).isdisjoint(inner.tvnames))
+
+    def test_ignored_legacy_annotations_never_infer_iterator_methods(self):
+        source = (ROOT / "tests/programs/generics/generic_lexical_legacy.py").read_text()
+        with patch.object(Gen, "next_type", side_effect=AssertionError("unused iterator inferred")):
+            status, _, messages, generations = self.compile(source)
+        self.assertEqual(status, 0, messages)
+        g = generations[-1]
+        for name in ("choose", "result", "ignored"):
+            for f in g.funcs[name].insts.values():
+                self.assertEqual(f.tvars, {})
+        self.assertFalse(any(fn.f.name == "__iter__" for fn in g.fns))
+
+    def test_conflicting_function_bindings_do_not_publish_the_first_argument(self):
+        source = '''\
+from typing import TypeVar
+T = TypeVar("T")
+def choose(left: T, right: T):
+    result: T = left
+    return result
+print(choose(1, "other"))
+'''
+        status, _, messages, generations = self.compile(source)
+        self.assertEqual(status, 1)
+        self.assertIn("TypeVar 'T'", messages)
+        g = generations[-1]
+        self.assertEqual([f.tvars for f in g.funcs["choose"].insts.values()], [{}])
+
+    def test_module_callee_never_borrows_a_callers_lexical_bindings(self):
+        source = (ROOT / "tests/errors/generics/generic_lexical_caller_scope.py").read_text()
+        status, _, messages, generations = self.compile(source)
+        self.assertEqual(status, 1)
+        self.assertIn("TypeVar 'T'", messages)
+        g = generations[-1]
+        callers = list(g.funcs["caller"].insts.values())
+        callees = list(g.funcs["unrelated"].insts.values())
+        self.assertEqual([f.tvars for f in callers], [{"T": "int"}])
+        self.assertEqual([f.tvars for f in callees], [{}])
+        self.assertTrue(all(f.tvouter is None for f in callees))
+
     def test_recursive_annotation_and_call_share_one_layout(self):
         status, _, messages, generations = self.compile(RECURSIVE)
         self.assertEqual(status, 0, messages)

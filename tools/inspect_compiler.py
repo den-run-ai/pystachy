@@ -117,6 +117,7 @@ def base_report(source: str, function: str, typed_after_only: bool = False) -> d
             "This is the first terminal error, not multi-error or all-units semantic checking.",
             "Snapshot IR and schema are experimental; this is a hosted developer tool.",
             "Dynamic boundary counts are static typed-IR observations, not runtime, allocation or minimal-containment proofs.",
+            "Callable adapters and indirect-call counts describe compiled representations, not dispatch frequency, allocation cost or lifetime safety.",
         ],
     }
 
@@ -182,7 +183,8 @@ class Observer:
                            for name, t in zip(f.params, f.ptypes, strict=True)],
             "return_type": self.typestr(f.ret), "return_representation": f.ret,
             "representation_metadata": self.representation_metadata(fn),
-            "specialization": {"instantiated": f.inst, "generic": f.generic},
+            "specialization": {"instantiated": f.inst, "generic": f.generic,
+                               "type_bindings": dict(f.tvars)},
             "effects": self.fxs(fn.fx), "effects_scope": "last compiler analysis; may be conservative after rewrites",
             "recursion": {"counted": fn.counted, "rdepth": fn.rdepth, "landed": fn.landed, "gdepth": fn.gdepth,
                           "generator": f.gen, "coroutine": fn.coro},
@@ -367,6 +369,8 @@ class Observer:
                 self.attempt["enabled_optimizations"] = list(gen.opts)
                 footprint = self.attempt["dynamic_boundary"]["footprints"]["before"]
                 footprint.update(status="partial", functions={fn.f.ll: self.boundary_function(gen, fn) for fn in gen.fns})
+                footprint = self.attempt["callable_boundary"]["footprints"]["before"]
+                footprint.update(status="partial", functions={fn.f.ll: self.callable_function(fn) for fn in gen.fns})
 
     @staticmethod
     def dynamic_types(gen) -> list[dict]:
@@ -454,6 +458,32 @@ class Observer:
                 "numeric_companion_slots": sum(fn["numeric_companion_slots"] for fn in functions.values()),
                 "numeric_generation_slots": sum(fn["numeric_generation_slots"] for fn in functions.values())}
 
+    @staticmethod
+    def callable_function(fn) -> dict:
+        return {"name": fn.f.name,
+                "indirect_calls": sum(ins.op == "icall" for block in fn.blocks for ins in block.code)}
+
+    @staticmethod
+    def callable_totals(functions: dict) -> dict:
+        return {"functions": len(functions),
+                "indirect_calls": sum(fn["indirect_calls"] for fn in functions.values())}
+
+    @staticmethod
+    def callable_inventory(gen) -> dict:
+        # These are the compiler's actual cache keys and field representations. A cache entry
+        # can exist before its adapter body completes, so completion belongs to the footprint.
+        from src.pystachy_compiler.utils import is_callable, targs, unopt
+        adapters = []
+        for key, symbol in sorted(gen.adapters.items()):
+            source, _, signature = key.rpartition(" ")
+            parts = targs(signature)
+            adapters.append({"source_representation": source, "signature": signature,
+                             "symbol": symbol, "parameters": parts[1:], "result": parts[0]})
+        fields = {name: {field: cls.ftypes[field] for field in cls.fields
+                         if is_callable(unopt(cls.ftypes.get(field, "")))}
+                  for name, cls in sorted(gen.classes.items())}
+        return {"adapters": adapters, "fields": {name: found for name, found in fields.items() if found}}
+
     def identity_wrapper(self, original):
         def wrapped(gen, modules, *args, **kwargs):
             result = original(gen, modules, *args, **kwargs)
@@ -529,6 +559,9 @@ class Observer:
                             "dynamic_boundary": {"policy_status": "unavailable", "modules": [],
                                 "fallback_reason": None, "source_provenance": "consistent",
                                 "footprints": {stage: {"status": "unavailable", "functions": {}, "totals": None}
+                                               for stage in ("before", "after")}},
+                            "callable_boundary": {"source_provenance": "consistent", "adapters": [], "fields": {},
+                                "footprints": {stage: {"status": "unavailable", "functions": {}, "totals": None}
                                                for stage in ("before", "after")}}}
             self.report["attempts"].append(self.attempt)
             self.diagnostics.PHASE = "semantic"
@@ -550,6 +583,13 @@ class Observer:
                 for footprint in boundary["footprints"].values():
                     if footprint["status"] != "unavailable":
                         footprint["totals"] = self.boundary_totals(footprint["functions"])
+                        if self.attempt["status"] == "completed":
+                            footprint["status"] = "completed"
+                callables = self.attempt["callable_boundary"]
+                callables.update(self.callable_inventory(gen))
+                for footprint in callables["footprints"].values():
+                    if footprint["status"] != "unavailable":
+                        footprint["totals"] = self.callable_totals(footprint["functions"])
                         if self.attempt["status"] == "completed":
                             footprint["status"] = "completed"
                 # specdone contains only completed requests. A fresh Gen owns
@@ -735,6 +775,9 @@ class Observer:
                 footprint = self.attempt["dynamic_boundary"]["footprints"]["after"]
                 footprint["status"] = "partial"
                 footprint["functions"][fn.f.ll] = self.boundary_function(gen, fn)
+                footprint = self.attempt["callable_boundary"]["footprints"]["after"]
+                footprint["status"] = "partial"
+                footprint["functions"][fn.f.ll] = self.callable_function(fn)
             if self.selected(fn):
                 self.after.append(self.snapshot(fn))
             self.diagnostics.PHASE = "lower"
@@ -782,11 +825,12 @@ class Observer:
     def save(self) -> None:
         if self.report["input"]["changed_during_compilation"]:
             for attempt in self.report["attempts"]:
-                boundary = attempt["dynamic_boundary"]
-                boundary["source_provenance"] = "inconsistent"
-                for footprint in boundary["footprints"].values():
-                    if footprint["status"] == "completed":
-                        footprint["status"] = "partial"
+                for kind in ("dynamic_boundary", "callable_boundary"):
+                    boundary = attempt[kind]
+                    boundary["source_provenance"] = "inconsistent"
+                    for footprint in boundary["footprints"].values():
+                        if footprint["status"] == "completed":
+                            footprint["status"] = "partial"
         # Partial snapshots remain explicitly partial, never a completed pipeline.
         for name, functions, available in (("typed-before", self.before, self.captured_before and not self.typed_after_only),
                                            ("typed-after", self.after, bool(self.after) or self.report["status"] == "ok")):

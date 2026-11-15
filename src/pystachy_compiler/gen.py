@@ -570,6 +570,8 @@ from src.pystachy_compiler.declarations import (
     gen_rec_fold as declarations_rec_fold,
     gen_recursive_aliases as declarations_recursive_aliases,
     gen_ann as declarations_ann,
+    gen_bound_annotation as declarations_bound_annotation,
+    gen_lexical_ann as declarations_lexical_ann,
     gen_ann_base as declarations_ann_base,
     gen_ann_items as declarations_ann_items,
     gen_ann_none as declarations_ann_none,
@@ -1187,6 +1189,7 @@ from src.pystachy_compiler.templates import (
     gen_bind as templates_bind,
     gen_constructor_unions as templates_constructor_unions,
     gen_fn_sig as templates_fn_sig,
+    gen_fn_typevar as templates_fn_typevar,
     gen_instance as templates_instance,
     gen_generic_ann as templates_generic_ann,
     gen_generic_hint as templates_generic_hint,
@@ -2832,6 +2835,12 @@ class Gen:
 
     def ann(self, n: Node) -> str:
         return declarations_ann(self, n)
+
+    def bound_annotation(self, n: Node, bindings: dict[str, str], cls: str, head: bool = False) -> Node:
+        return declarations_bound_annotation(self, n, bindings, cls, head)
+
+    def lexical_ann(self, n: Node, f: FnInfo) -> str:
+        return declarations_lexical_ann(self, n, f)
 
     def ann_base(self, b: Node) -> str:
         return declarations_ann_base(self, b)
@@ -4920,14 +4929,17 @@ class Gen:
     def named_param(self, a: Node) -> str:
         return templates_named_param(self, a)
 
-    def match(self, a: Node, t: str, tv: dict[str, str], tvs: list[str]) -> str:
-        return templates_match(self, a, t, tv, tvs)
+    def match(self, a: Node, t: str, tv: dict[str, str], tvs: list[str], lexical: bool = False) -> str:
+        return templates_match(self, a, t, tv, tvs, lexical)
 
-    def match_items(self, xs: list[Node], ts: list[str], tv: dict[str, str], tvs: list[str]) -> str:
-        return templates_match_items(self, xs, ts, tv, tvs)
+    def match_items(self, xs: list[Node], ts: list[str], tv: dict[str, str], tvs: list[str], lexical: bool = False) -> str:
+        return templates_match_items(self, xs, ts, tv, tvs, lexical)
 
-    def fn_sig(self, t: str) -> list[str]:
-        return templates_fn_sig(self, t)
+    def fn_sig(self, t: str, lexical: bool = False) -> list[str]:
+        return templates_fn_sig(self, t, lexical)
+
+    def fn_typevar(self, f: FnInfo, name: str) -> str:
+        return templates_fn_typevar(self, f, name)
 
     def instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "", resultsoft: bool = False, cmpfields: str = "", nullable_self: bool = False) -> FnInfo:
         return templates_instance(self, f, ts, nnp, want, resultsoft, cmpfields, nullable_self)

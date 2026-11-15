@@ -1,5 +1,5 @@
 """Explicit stored iterator interfaces using existing typed callables."""
-from typing import Callable, Generic, TypeVar
+from typing import Callable, Generic, Iterable, TypeVar
 
 
 T = TypeVar("T")
@@ -25,3 +25,29 @@ def int_iterator(source) -> TypedIterator[int]:
         return next(iterator)
 
     return TypedIterator(advance)
+
+
+def typed_iterator(source: Iterable[T]) -> TypedIterator[T]:
+    """Adapt once, retaining the source iterator and its statically known item type."""
+    iterator = iter(source)
+
+    def advance() -> T:
+        return next(iterator)
+
+    return TypedIterator(advance)
+
+
+class TypedIterable(Generic[T]):
+    def __init__(self, iterate: Callable[[], TypedIterator[T]]) -> None:
+        self._iterate: Callable[[], TypedIterator[T]] = iterate
+
+    def __iter__(self) -> TypedIterator[T]:
+        return self._iterate()
+
+
+def typed_iterable(source: Iterable[T]) -> TypedIterable[T]:
+    """Retain source; call its iter only when the consumer requests an iterator."""
+    def iterate() -> TypedIterator[T]:
+        return typed_iterator(source)
+
+    return TypedIterable(iterate)

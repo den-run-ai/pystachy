@@ -162,6 +162,14 @@ class FnInfo:
         self.tvbparams: list[int] = []
         self.tvbclass: list[str] = []
         self.tvbpos: list[int] = []
+        # Original generic annotations remain inference hints for ordinary calls. A local
+        # annotation or an otherwise-unbound stored Callable may ask for their lexical
+        # bindings. The instance owns them; a closure retains its defining instance.
+        self.tvnames: list[str] = []
+        self.tvparams: list[Node] = []
+        self.tvresult = Node("noann", "", node.line)
+        self.tvars: dict[str, str] = {}
+        self.tvouter: FnInfo | None = None
         self.vararg = -1  # the index of a template's *args parameter (a tuple of the extra arguments), or -1
         self.varelem = ""  # its annotation (the type of each extra argument), or ""
         self.kwarg = -1  # the position of its **kwargs parameter, which a template's call gives a record of the extra keyword arguments (kw[...])

@@ -1,0 +1,6 @@
+generic iterator items and reference identity ok
+retained iterable replacement and repeatability ok
+deferred iter and live mutation ok
+shared multi-method lookups, mutation and exceptions ok
+retained generic closures ok
+[exit 0]

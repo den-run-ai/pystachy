@@ -109,10 +109,12 @@ a CPython host and verify the actual native extension against upstream results.
 For a component that stores several iterator implementations, follow the
 [typed iterator tutorial](../examples/typed_iterator/README.md). It uses an explicitly
 annotated `Callable` field to share one typed consumer across list, tuple, custom
-iterator and generator sources. The tutorial includes a CPython recording, native
+iterator and generator sources. Generic factories retain item bindings for their
+nested callbacks; further examples retain repeatable iterables and multiple lookup
+operations with fixed signatures. The tutorial includes CPython recordings, native
 JIT/AOT and GC-stress commands, and inspection of the actual compiled interface.
-This is a bounded adaptation with an integer item contract; broader `Iterable[T]`
-and `Protocol` storage remains a separate language feature.
+These are explicit source adaptations; automatic `Iterable[T]` and `Protocol`
+storage remain separate language features.
 
 Experiments with mypy and mypyc illustrate two ways to choose that boundary.
 

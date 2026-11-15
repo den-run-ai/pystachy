@@ -219,6 +219,12 @@ def gen_inherit(self, ci: ClassInfo) -> None:
                 g.tvbparams = list(f.tvbparams)
                 g.tvbclass = list(f.tvbclass)
                 g.tvbpos = list(f.tvbpos)
+            if len(g.tvparams) == 0:
+                # Inherited classmethods retain the defining method's lexical
+                # generic signature, just as they retain its visitor result plan.
+                g.tvnames = list(f.tvnames)
+                g.tvparams = f.tvparams
+                g.tvresult = f.tvresult
             g.orig = f.orig
             g.clsuse = True
             g.pending = True

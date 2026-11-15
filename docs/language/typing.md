@@ -640,6 +640,16 @@ established type, and comparison methods must return `bool`.
 Function annotations mentioning a module-level `TypeVar` or `TypeVarTuple` (also one
 from-imported from another module), or a PEP 695 function type parameter
 (`def identity[T](value: T) -> T`), make those parts of the signature inferred. Generic classes bind their type variables differently, as described below.
+When a local annotation or an otherwise-unbound stored callable needs a type
+variable, the compiler can match a specialization's argument types to its saved
+annotations. It retains consistent bindings for local annotations and nested
+functions. For example, `def adapt(source: Iterable[T])` can define an
+`advance() -> T` closure and store it as `Callable[[], T]`. The source still
+specializes on its concrete representation. Matching does not enforce the erased
+outer parameter or return annotations; an explicit local or stored-callable
+annotation establishes its own contract. Conflicting or unavailable bindings do
+not supply a type for such a contract. Bindings belong to each specialization and
+are captured where a nested function is defined, independently of its later caller.
 A PEP 695 function's `**P` and `*Ts` are such type parameters too, also in its nested defs:
 `def logged[**P, R](fn: Callable[P, R]) -> Callable[P, R]` may return a nested
 `def wrapper(*args: P.args, **kwargs: P.kwargs) -> R` that forwards them (also with
@@ -792,10 +802,11 @@ with the same signature share a specialization. This also works for
 `Callable[[A, B], Result]` where `Result` is a class template: the actual returned specialization
 determines the callable's result type.
 
-The [stored iterator tutorial](../../examples/typed_iterator/README.md) applies this
-to a `Callable[[], T]` field: a small adapter specializes for each source iterator,
-while a typed field or list retains the shared wrapper. It is an explicit source
-adaptation, not a general stored `Iterator[T]` representation.
+The [stored interface tutorial](../../examples/typed_iterator/README.md) applies this
+to generic iterators, retained iterables and multi-operation lookups: small adapters
+specialize for each source, while a typed field or list retains a shared wrapper.
+It is an explicit source adaptation, not a general stored `Iterator[T]` or
+`Protocol` representation.
 
 ### Explicit generic classes
 

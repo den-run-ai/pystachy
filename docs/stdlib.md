@@ -14,6 +14,7 @@ it works: each module supports its own subset, which compiles with the program t
 | Which modules does the compiler provide, and how are imports found? | [Modules and builtins](language/modules.md#builtin-modules-and-files) |
 | Which third-party packages are adapted? | [Ports](../ports/README.md) |
 | How are upstream test suites run? | [Porting and upstream tests](porting.md) |
+| How can a port retain several typed implementations? | [Explicit stored-interface adapters](../examples/typed_iterator/README.md) |
 
 <a id="the-standard-library-and-popular-packages-under-pystachy"></a>
 <a id="summary"></a>
