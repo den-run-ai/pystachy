@@ -1,0 +1,1006 @@
+{
+  "created_utc": "2026-11-15T07:42:10.902960+00:00",
+  "historical_commit": "b0bda81ec2b9954c3c5e0f658c051439126a5c22",
+  "current_commit": "94f472d6de5350fc9481ecf3b9ec019d2ecdb4f2",
+  "historical_status": "Interrupted incomplete census, 1,865 records; never accepted.",
+  "current_status": "Complete 2,699-record census, strict storage blocked by separate optional tuple keys unknown counts.",
+  "historical_records": {
+    "path": "/workspace/scratch/980402bc01c4/evidence/lean/records.jsonl",
+    "bytes": 1618782,
+    "sha256": "662de211e3bb3eadcbbd50c98daa3c0e03dc870e5448e6ae2b04b4824521ee0d"
+  },
+  "current_records": {
+    "path": "/workspace/scratch/980402bc01c4/evidence/lean-corrected/records.jsonl",
+    "bytes": 2361743,
+    "sha256": "396f4b02ede94afda93ecc796f1da3aa1d3cb022a78939c51c4fc34a22101bbe"
+  },
+  "source_equivalence": {
+    "path": "/workspace/scratch/980402bc01c4/evidence/lean/adapter-repair/source-equivalence-b0-to-94f4.json",
+    "bytes": 10404,
+    "sha256": "dc2ab90d901a64adff4a53c0bfeb1d39e90e0f50e79f00fb7e57f0872f95567c"
+  },
+  "complete_blocked_receipt": {
+    "path": "/workspace/scratch/980402bc01c4/evidence/lean-corrected/complete-blocked-census.json",
+    "bytes": 17758,
+    "sha256": "f7ff6e2aaf02f79fbc19e200dffbac0c3a6e3d3f5b9637d6e947bec454ed24e8"
+  },
+  "findings": {
+    "historical_nested_adapter_error_entries": 18,
+    "all18resolved_in_fresh_corrected_source_census": true,
+    "affected_complex_programs": 4,
+    "corrected_union_reads_proved": 126,
+    "corrected_union_payload_bits_proved": 126,
+    "corrected_removed_null_checks_proved": 24,
+    "previous_inspection_kills_completed_in_current_census": 2,
+    "inspection_kill_causes": "unknown; successful later inspections do not establish the cause of earlier -9 exits",
+    "records_reused_across_checker_source_change": false
+  },
+  "rows": [
+    {
+      "program": "tests/programs/inference/dynany_complex.py",
+      "historical_inspection_error": null,
+      "historical_nested_errors": [
+        {
+          "check": "union",
+          "function": "@m._pystachy_complex$complex.__radd__",
+          "obligations": null,
+          "reason": "split union member without a union tag",
+          "status": "error"
+        },
+        {
+          "check": "union",
+          "function": "@m._pystachy_complex$complex.__rsub__",
+          "obligations": null,
+          "reason": "split union member without a union tag",
+          "status": "error"
+        },
+        {
+          "check": "union",
+          "function": "@m._pystachy_complex$complex.__rmul__",
+          "obligations": null,
+          "reason": "split union member without a union tag",
+          "status": "error"
+        },
+        {
+          "check": "union",
+          "function": "@m._pystachy_complex$complex.__rtruediv__",
+          "obligations": null,
+          "reason": "split union member without a union tag",
+          "status": "error"
+        },
+        {
+          "check": "union",
+          "function": "@m._pystachy_complex$complex.__rpow__",
+          "obligations": null,
+          "reason": "split union member without a union tag",
+          "status": "error"
+        }
+      ],
+      "historical_record": {
+        "checks": {
+          "access": {
+            "functions": 1,
+            "obligations": 3,
+            "proved": 3,
+            "unproved": []
+          },
+          "fields": {
+            "functions": 10,
+            "obligations": 40,
+            "proved": 40,
+            "unproved": []
+          },
+          "gc": {
+            "functions": 2,
+            "obligations": 38,
+            "proved": 38,
+            "unproved": []
+          },
+          "null": {
+            "functions": 7,
+            "obligations": 8,
+            "proved": 8,
+            "unproved": []
+          },
+          "payload": {
+            "functions": 20,
+            "obligations": 31,
+            "proved": 31,
+            "unproved": []
+          },
+          "union": {
+            "functions": 10,
+            "obligations": 35,
+            "proved": 25,
+            "unproved": [
+              {
+                "function": "@m._pystachy_complex$complex.__radd__",
+                "obligations": null,
+                "reason": "split union member without a union tag",
+                "status": "error"
+              },
+              {
+                "function": "@m._pystachy_complex$complex.__rsub__",
+                "obligations": null,
+                "reason": "split union member without a union tag",
+                "status": "error"
+              },
+              {
+                "function": "@m._pystachy_complex$complex.__rmul__",
+                "obligations": null,
+                "reason": "split union member without a union tag",
+                "status": "error"
+              },
+              {
+                "function": "@m._pystachy_complex$complex.__rtruediv__",
+                "obligations": null,
+                "reason": "split union member without a union tag",
+                "status": "error"
+              },
+              {
+                "function": "@m._pystachy_complex$complex.__rpow__",
+                "obligations": null,
+                "reason": "split union member without a union tag",
+                "status": "error"
+              }
+            ]
+          },
+          "union_payload": {
+            "functions": 5,
+            "obligations": 20,
+            "proved": 20,
+            "unproved": []
+          }
+        },
+        "program": "tests/programs/inference/dynany_complex.py",
+        "seconds": 1.1,
+        "snapshot_sha256": "9d9664dbc69e3d23342bee0f1bbb262e456225b1d4afdead954c22f46cad4d41",
+        "timing": {
+          "access_check": 0.09,
+          "gc_check": 0.09,
+          "guard_checks": 0.25,
+          "inspect": 0.57,
+          "payload_check": 0.05
+        }
+      },
+      "current_record": {
+        "checks": {
+          "access": {
+            "functions": 1,
+            "obligations": 3,
+            "proved": 3,
+            "unproved": []
+          },
+          "fields": {
+            "functions": 10,
+            "obligations": 40,
+            "proved": 40,
+            "unproved": []
+          },
+          "gc": {
+            "functions": 2,
+            "obligations": 38,
+            "proved": 38,
+            "unproved": []
+          },
+          "null": {
+            "functions": 7,
+            "obligations": 8,
+            "proved": 8,
+            "unproved": []
+          },
+          "payload": {
+            "functions": 20,
+            "obligations": 31,
+            "proved": 31,
+            "unproved": []
+          },
+          "union": {
+            "functions": 10,
+            "obligations": 35,
+            "proved": 35,
+            "unproved": []
+          },
+          "union_payload": {
+            "functions": 10,
+            "obligations": 35,
+            "proved": 35,
+            "unproved": []
+          }
+        },
+        "program": "tests/programs/inference/dynany_complex.py",
+        "seconds": 1.7,
+        "snapshot_sha256": "2af0586dcb06b68af95d33e06646e2b602c41339152fff0d17807de4e2478491",
+        "timing": {
+          "access_check": 0.09,
+          "gc_check": 0.1,
+          "guard_checks": 0.52,
+          "inspect": 0.91,
+          "payload_check": 0.04
+        }
+      },
+      "current_inspection_completed": true,
+      "current_nested_error_count": 0
+    },
+    {
+      "program": "tests/programs/inference/dynany_complex_decline.py",
+      "historical_inspection_error": null,
+      "historical_nested_errors": [
+        {
+          "check": "union",
+          "function": "@m._pystachy_complex$complex.__radd__",
+          "obligations": null,
+          "reason": "split union member without a union tag",
+          "status": "error"
+        },
+        {
+          "check": "union",
+          "function": "@m._pystachy_complex$complex.__rsub__",
+          "obligations": null,
+          "reason": "split union member without a union tag",
+          "status": "error"
+        },
+        {
+          "check": "union",
+          "function": "@m._pystachy_complex$complex.__rmul__",
+          "obligations": null,
+          "reason": "split union member without a union tag",
+          "status": "error"
+        }
+      ],
+      "historical_record": {
+        "checks": {
+          "access": {
+            "functions": 0,
+            "obligations": 0,
+            "proved": 0,
+            "unproved": []
+          },
+          "fields": {
+            "functions": 8,
+            "obligations": 14,
+            "proved": 14,
+            "unproved": []
+          },
+          "gc": {
+            "functions": 1,
+            "obligations": 3,
+            "proved": 3,
+            "unproved": []
+          },
+          "null": {
+            "functions": 4,
+            "obligations": 4,
+            "proved": 4,
+            "unproved": []
+          },
+          "payload": {
+            "functions": 8,
+            "obligations": 21,
+            "proved": 21,
+            "unproved": []
+          },
+          "union": {
+            "functions": 6,
+            "obligations": 21,
+            "proved": 15,
+            "unproved": [
+              {
+                "function": "@m._pystachy_complex$complex.__radd__",
+                "obligations": null,
+                "reason": "split union member without a union tag",
+                "status": "error"
+              },
+              {
+                "function": "@m._pystachy_complex$complex.__rsub__",
+                "obligations": null,
+                "reason": "split union member without a union tag",
+                "status": "error"
+              },
+              {
+                "function": "@m._pystachy_complex$complex.__rmul__",
+                "obligations": null,
+                "reason": "split union member without a union tag",
+                "status": "error"
+              }
+            ]
+          },
+          "union_payload": {
+            "functions": 3,
+            "obligations": 12,
+            "proved": 12,
+            "unproved": []
+          }
+        },
+        "program": "tests/programs/inference/dynany_complex_decline.py",
+        "seconds": 0.6,
+        "snapshot_sha256": "3ffddc7876fde8421111d12236f0bc939d71b89c7285a23206b5724986fd2718",
+        "timing": {
+          "access_check": 0.01,
+          "gc_check": 0.02,
+          "guard_checks": 0.14,
+          "inspect": 0.37,
+          "payload_check": 0.03
+        }
+      },
+      "current_record": {
+        "checks": {
+          "access": {
+            "functions": 0,
+            "obligations": 0,
+            "proved": 0,
+            "unproved": []
+          },
+          "fields": {
+            "functions": 8,
+            "obligations": 14,
+            "proved": 14,
+            "unproved": []
+          },
+          "gc": {
+            "functions": 1,
+            "obligations": 3,
+            "proved": 3,
+            "unproved": []
+          },
+          "null": {
+            "functions": 4,
+            "obligations": 4,
+            "proved": 4,
+            "unproved": []
+          },
+          "payload": {
+            "functions": 8,
+            "obligations": 21,
+            "proved": 21,
+            "unproved": []
+          },
+          "union": {
+            "functions": 6,
+            "obligations": 21,
+            "proved": 21,
+            "unproved": []
+          },
+          "union_payload": {
+            "functions": 6,
+            "obligations": 21,
+            "proved": 21,
+            "unproved": []
+          }
+        },
+        "program": "tests/programs/inference/dynany_complex_decline.py",
+        "seconds": 1.1,
+        "snapshot_sha256": "bcad1c38c5e8b4de49432cc10c72d3f98fb210fc93f03efe1af9f291cc7a696b",
+        "timing": {
+          "access_check": 0.03,
+          "gc_check": 0.01,
+          "guard_checks": 0.29,
+          "inspect": 0.63,
+          "payload_check": 0.08
+        }
+      },
+      "current_inspection_completed": true,
+      "current_nested_error_count": 0
+    },
+    {
+      "program": "tests/programs/inference/dynany_complex_left.py",
+      "historical_inspection_error": null,
+      "historical_nested_errors": [
+        {
+          "check": "union",
+          "function": "@m._pystachy_complex$complex.__radd__",
+          "obligations": null,
+          "reason": "split union member without a union tag",
+          "status": "error"
+        },
+        {
+          "check": "union",
+          "function": "@m._pystachy_complex$complex.__rsub__",
+          "obligations": null,
+          "reason": "split union member without a union tag",
+          "status": "error"
+        },
+        {
+          "check": "union",
+          "function": "@m._pystachy_complex$complex.__rmul__",
+          "obligations": null,
+          "reason": "split union member without a union tag",
+          "status": "error"
+        },
+        {
+          "check": "union",
+          "function": "@m._pystachy_complex$complex.__rtruediv__",
+          "obligations": null,
+          "reason": "split union member without a union tag",
+          "status": "error"
+        },
+        {
+          "check": "union",
+          "function": "@m._pystachy_complex$complex.__rpow__",
+          "obligations": null,
+          "reason": "split union member without a union tag",
+          "status": "error"
+        }
+      ],
+      "historical_record": {
+        "checks": {
+          "access": {
+            "functions": 1,
+            "obligations": 2,
+            "proved": 2,
+            "unproved": []
+          },
+          "fields": {
+            "functions": 8,
+            "obligations": 14,
+            "proved": 14,
+            "unproved": []
+          },
+          "gc": {
+            "functions": 1,
+            "obligations": 17,
+            "proved": 17,
+            "unproved": []
+          },
+          "null": {
+            "functions": 6,
+            "obligations": 6,
+            "proved": 6,
+            "unproved": []
+          },
+          "payload": {
+            "functions": 12,
+            "obligations": 23,
+            "proved": 23,
+            "unproved": []
+          },
+          "union": {
+            "functions": 10,
+            "obligations": 35,
+            "proved": 25,
+            "unproved": [
+              {
+                "function": "@m._pystachy_complex$complex.__radd__",
+                "obligations": null,
+                "reason": "split union member without a union tag",
+                "status": "error"
+              },
+              {
+                "function": "@m._pystachy_complex$complex.__rsub__",
+                "obligations": null,
+                "reason": "split union member without a union tag",
+                "status": "error"
+              },
+              {
+                "function": "@m._pystachy_complex$complex.__rmul__",
+                "obligations": null,
+                "reason": "split union member without a union tag",
+                "status": "error"
+              },
+              {
+                "function": "@m._pystachy_complex$complex.__rtruediv__",
+                "obligations": null,
+                "reason": "split union member without a union tag",
+                "status": "error"
+              },
+              {
+                "function": "@m._pystachy_complex$complex.__rpow__",
+                "obligations": null,
+                "reason": "split union member without a union tag",
+                "status": "error"
+              }
+            ]
+          },
+          "union_payload": {
+            "functions": 5,
+            "obligations": 20,
+            "proved": 20,
+            "unproved": []
+          }
+        },
+        "program": "tests/programs/inference/dynany_complex_left.py",
+        "seconds": 0.5,
+        "snapshot_sha256": "bcaded99106bae66d065daf0240d9912ff5b36f298e71975a47708f87c0219cb",
+        "timing": {
+          "access_check": 0.03,
+          "gc_check": 0.01,
+          "guard_checks": 0.11,
+          "inspect": 0.34,
+          "payload_check": 0.02
+        }
+      },
+      "current_record": {
+        "checks": {
+          "access": {
+            "functions": 1,
+            "obligations": 2,
+            "proved": 2,
+            "unproved": []
+          },
+          "fields": {
+            "functions": 8,
+            "obligations": 14,
+            "proved": 14,
+            "unproved": []
+          },
+          "gc": {
+            "functions": 1,
+            "obligations": 17,
+            "proved": 17,
+            "unproved": []
+          },
+          "null": {
+            "functions": 6,
+            "obligations": 6,
+            "proved": 6,
+            "unproved": []
+          },
+          "payload": {
+            "functions": 12,
+            "obligations": 23,
+            "proved": 23,
+            "unproved": []
+          },
+          "union": {
+            "functions": 10,
+            "obligations": 35,
+            "proved": 35,
+            "unproved": []
+          },
+          "union_payload": {
+            "functions": 10,
+            "obligations": 35,
+            "proved": 35,
+            "unproved": []
+          }
+        },
+        "program": "tests/programs/inference/dynany_complex_left.py",
+        "seconds": 0.6,
+        "snapshot_sha256": "05c2896af9f8a7fabee8fa8635ec5b55532a46f2741963c0eeb812a1430f08e4",
+        "timing": {
+          "access_check": 0.04,
+          "gc_check": 0.02,
+          "guard_checks": 0.13,
+          "inspect": 0.36,
+          "payload_check": 0.02
+        }
+      },
+      "current_inspection_completed": true,
+      "current_nested_error_count": 0
+    },
+    {
+      "program": "tests/programs/inference/dynany_complex_wide.py",
+      "historical_inspection_error": null,
+      "historical_nested_errors": [
+        {
+          "check": "union",
+          "function": "@m._pystachy_complex$complex.__radd__",
+          "obligations": null,
+          "reason": "split union member without a union tag",
+          "status": "error"
+        },
+        {
+          "check": "union",
+          "function": "@m._pystachy_complex$complex.__rsub__",
+          "obligations": null,
+          "reason": "split union member without a union tag",
+          "status": "error"
+        },
+        {
+          "check": "union",
+          "function": "@m._pystachy_complex$complex.__rmul__",
+          "obligations": null,
+          "reason": "split union member without a union tag",
+          "status": "error"
+        },
+        {
+          "check": "union",
+          "function": "@m._pystachy_complex$complex.__rtruediv__",
+          "obligations": null,
+          "reason": "split union member without a union tag",
+          "status": "error"
+        },
+        {
+          "check": "union",
+          "function": "@m._pystachy_complex$complex.__rpow__",
+          "obligations": null,
+          "reason": "split union member without a union tag",
+          "status": "error"
+        }
+      ],
+      "historical_record": {
+        "checks": {
+          "access": {
+            "functions": 0,
+            "obligations": 0,
+            "proved": 0,
+            "unproved": []
+          },
+          "fields": {
+            "functions": 7,
+            "obligations": 18,
+            "proved": 18,
+            "unproved": []
+          },
+          "gc": {
+            "functions": 0,
+            "obligations": 0,
+            "proved": 0,
+            "unproved": []
+          },
+          "int": {
+            "functions": 0,
+            "obligations": 0,
+            "proved": 0,
+            "unproved": []
+          },
+          "int_inline": {
+            "functions": 0,
+            "obligations": 0,
+            "proved": 0,
+            "unproved": []
+          },
+          "null": {
+            "functions": 6,
+            "obligations": 6,
+            "proved": 6,
+            "unproved": []
+          },
+          "payload": {
+            "functions": 12,
+            "obligations": 23,
+            "proved": 23,
+            "unproved": []
+          },
+          "storage": {
+            "functions": 3,
+            "obligations": 1,
+            "proved": 1,
+            "unproved": []
+          },
+          "union": {
+            "functions": 10,
+            "obligations": 35,
+            "proved": 25,
+            "unproved": [
+              {
+                "function": "@m._pystachy_complex$complex.__radd__",
+                "obligations": null,
+                "reason": "split union member without a union tag",
+                "status": "error"
+              },
+              {
+                "function": "@m._pystachy_complex$complex.__rsub__",
+                "obligations": null,
+                "reason": "split union member without a union tag",
+                "status": "error"
+              },
+              {
+                "function": "@m._pystachy_complex$complex.__rmul__",
+                "obligations": null,
+                "reason": "split union member without a union tag",
+                "status": "error"
+              },
+              {
+                "function": "@m._pystachy_complex$complex.__rtruediv__",
+                "obligations": null,
+                "reason": "split union member without a union tag",
+                "status": "error"
+              },
+              {
+                "function": "@m._pystachy_complex$complex.__rpow__",
+                "obligations": null,
+                "reason": "split union member without a union tag",
+                "status": "error"
+              }
+            ]
+          },
+          "union_payload": {
+            "functions": 5,
+            "obligations": 20,
+            "proved": 20,
+            "unproved": []
+          }
+        },
+        "program": "tests/programs/inference/dynany_complex_wide.py",
+        "seconds": 0.5,
+        "snapshot_sha256": "18be9e59e6707a479890969b5e3d7f5091249602b0cbd26aecd9982fb49bb211",
+        "timing": {
+          "access_check": 0.01,
+          "gc_check": 0.01,
+          "guard_checks": 0.11,
+          "inspect": 0.29,
+          "payload_check": 0.02,
+          "storage_checks": 0.01
+        }
+      },
+      "current_record": {
+        "checks": {
+          "access": {
+            "functions": 0,
+            "obligations": 0,
+            "proved": 0,
+            "unproved": []
+          },
+          "fields": {
+            "functions": 7,
+            "obligations": 18,
+            "proved": 18,
+            "unproved": []
+          },
+          "gc": {
+            "functions": 0,
+            "obligations": 0,
+            "proved": 0,
+            "unproved": []
+          },
+          "int": {
+            "functions": 0,
+            "obligations": 0,
+            "proved": 0,
+            "unproved": []
+          },
+          "int_inline": {
+            "functions": 0,
+            "obligations": 0,
+            "proved": 0,
+            "unproved": []
+          },
+          "null": {
+            "functions": 6,
+            "obligations": 6,
+            "proved": 6,
+            "unproved": []
+          },
+          "payload": {
+            "functions": 12,
+            "obligations": 23,
+            "proved": 23,
+            "unproved": []
+          },
+          "storage": {
+            "functions": 3,
+            "obligations": 1,
+            "proved": 1,
+            "unproved": []
+          },
+          "union": {
+            "functions": 10,
+            "obligations": 35,
+            "proved": 35,
+            "unproved": []
+          },
+          "union_payload": {
+            "functions": 10,
+            "obligations": 35,
+            "proved": 35,
+            "unproved": []
+          }
+        },
+        "program": "tests/programs/inference/dynany_complex_wide.py",
+        "seconds": 0.6,
+        "snapshot_sha256": "0c534321851d99be5d263592bce9f834eef0dd2f47f3d916fbc8a66750c4b5fd",
+        "timing": {
+          "access_check": 0.01,
+          "gc_check": 0.01,
+          "guard_checks": 0.13,
+          "inspect": 0.4,
+          "payload_check": 0.03,
+          "storage_checks": 0.01
+        }
+      },
+      "current_inspection_completed": true,
+      "current_nested_error_count": 0
+    },
+    {
+      "program": "tests/programs/library/lib_argparse_required.py",
+      "historical_inspection_error": "inspection error: the compilation exited -9 without a report",
+      "historical_nested_errors": [],
+      "historical_record": {
+        "error": "inspection error: the compilation exited -9 without a report",
+        "program": "tests/programs/library/lib_argparse_required.py",
+        "seconds": 5.7
+      },
+      "current_record": {
+        "checks": {
+          "access": {
+            "functions": 102,
+            "obligations": 662,
+            "proved": 662,
+            "unproved": []
+          },
+          "fields": {
+            "functions": 48,
+            "obligations": 710,
+            "proved": 710,
+            "unproved": [
+              {
+                "function": "@f.re$_parse",
+                "obligations": null,
+                "reason": "candidate inference exceeds the prototype's resource bound",
+                "status": "unsupported"
+              },
+              {
+                "function": "@f.re$_sre$sre_match.1",
+                "obligations": null,
+                "reason": "function exceeds 1024 blocks",
+                "status": "unsupported"
+              },
+              {
+                "function": "@f.re$_sre$sre_match.2",
+                "obligations": null,
+                "reason": "function exceeds 1024 blocks",
+                "status": "unsupported"
+              }
+            ]
+          },
+          "gc": {
+            "functions": 106,
+            "obligations": 635,
+            "proved": 635,
+            "unproved": []
+          },
+          "null": {
+            "functions": 70,
+            "obligations": 900,
+            "proved": 900,
+            "unproved": []
+          },
+          "payload": {
+            "functions": 0,
+            "obligations": 0,
+            "proved": 0,
+            "unproved": []
+          },
+          "union": {
+            "functions": 0,
+            "obligations": 0,
+            "proved": 0,
+            "unproved": []
+          },
+          "union_payload": {
+            "functions": 0,
+            "obligations": 0,
+            "proved": 0,
+            "unproved": []
+          }
+        },
+        "program": "tests/programs/library/lib_argparse_required.py",
+        "seconds": 14.3,
+        "snapshot_sha256": "e32ba3a6c98ef2259feaa49cd016b10ea697438e3ecaf39961d25fe1016d3567",
+        "timing": {
+          "access_check": 1.58,
+          "gc_check": 1.88,
+          "guard_checks": 5.08,
+          "inspect": 5.76,
+          "payload_check": 0.02
+        }
+      },
+      "current_inspection_completed": true,
+      "current_nested_error_count": 0
+    },
+    {
+      "program": "tests/programs/library/lib_logging_config.py",
+      "historical_inspection_error": "inspection error: the compilation exited -9 without a report",
+      "historical_nested_errors": [],
+      "historical_record": {
+        "error": "inspection error: the compilation exited -9 without a report",
+        "program": "tests/programs/library/lib_logging_config.py",
+        "seconds": 14.7
+      },
+      "current_record": {
+        "checks": {
+          "access": {
+            "functions": 107,
+            "obligations": 459,
+            "proved": 459,
+            "unproved": []
+          },
+          "fields": {
+            "functions": 103,
+            "obligations": 1063,
+            "proved": 1054,
+            "unproved": [
+              {
+                "function": "@f.re$_sre$sre_match.1",
+                "obligations": null,
+                "reason": "function exceeds 1024 blocks",
+                "status": "unsupported"
+              },
+              {
+                "function": "@f.re$_sre$sre_match.2",
+                "obligations": null,
+                "reason": "function exceeds 1024 blocks",
+                "status": "unsupported"
+              },
+              {
+                "function": "@m.logging$Manager.getLogger",
+                "obligations": 9,
+                "reason": "{\"known\": [\"set\", \"unset\"], \"node\": 240, \"site\": [\"L18\", 2, \"escapes\", \"L107.0\", 0], \"value\": \"F:L107.0#0\"}",
+                "status": "rejected"
+              },
+              {
+                "function": "@f.re$_parse",
+                "obligations": null,
+                "reason": "candidate inference exceeds the prototype's resource bound",
+                "status": "unsupported"
+              }
+            ]
+          },
+          "gc": {
+            "functions": 187,
+            "obligations": 1077,
+            "proved": 1077,
+            "unproved": []
+          },
+          "null": {
+            "functions": 135,
+            "obligations": 1095,
+            "proved": 1095,
+            "unproved": []
+          },
+          "payload": {
+            "functions": 25,
+            "obligations": 50,
+            "proved": 50,
+            "unproved": []
+          },
+          "union": {
+            "functions": 28,
+            "obligations": 74,
+            "proved": 55,
+            "unproved": [
+              {
+                "function": "@m.string$Formatter._vformat.1",
+                "obligations": 12,
+                "reason": "union.tag at L70:3 needs %t73 in ['member:bool', 'member:int']; known: nothing",
+                "status": "rejected"
+              },
+              {
+                "function": "@m.string$Formatter.vformat.1",
+                "obligations": 2,
+                "reason": "union.tag at entry:22 needs %t23 in ['member:bool', 'member:int']; known: nothing",
+                "status": "rejected"
+              },
+              {
+                "function": "@m.logging$Manager.getLogger",
+                "obligations": 3,
+                "reason": "union.payload at L62:0 needs %t61 in ['member:logging$PlaceHolder']; known: ['member:logging$Logger', 'member:logging$PlaceHolder']",
+                "status": "rejected"
+              },
+              {
+                "function": "@m.logging$Manager._clear_cache",
+                "obligations": 2,
+                "reason": "union.payload at L56:0 needs %t55 in ['member:logging$Logger']; known: ['member:logging$Logger', 'member:logging$PlaceHolder']",
+                "status": "rejected"
+              }
+            ]
+          },
+          "union_payload": {
+            "functions": 25,
+            "obligations": 77,
+            "proved": 60,
+            "unproved": []
+          }
+        },
+        "program": "tests/programs/library/lib_logging_config.py",
+        "seconds": 30.4,
+        "snapshot_sha256": "f1ead8e5c8350bcd1c3a75cf13823892d5054e674b6fe79855600fdc45695af0",
+        "timing": {
+          "access_check": 3.95,
+          "gc_check": 3.74,
+          "guard_checks": 6.65,
+          "inspect": 15.96,
+          "payload_check": 0.1
+        }
+      },
+      "current_inspection_completed": true,
+      "current_nested_error_count": 0
+    }
+  ],
+  "limits": [
+    "Completed inspection is not an all-obligations-proved assertion; every current rejected/unsupported function remains present in its exact record.",
+    "The complete 94f4 census remains blocked by three unsupported storage functions in a new fixture beyond the original historical partial prefix.",
+    "Snapshot hashes differ between worktrees; source/compiler-runtime equivalence is separately retained, never claimed as raw snapshot equality."
+  ]
+}

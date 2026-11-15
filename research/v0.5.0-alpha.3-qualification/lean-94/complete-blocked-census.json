@@ -1,0 +1,444 @@
+{
+  "created_utc": "2026-11-15T07:33:44.608221+00:00",
+  "status": "complete_but_strict_storage_blocked",
+  "commit": "94f472d6de5350fc9481ecf3b9ec019d2ecdb4f2",
+  "tree": "51f6c150748b2d17945e4d1c6779d8080b6edd6a",
+  "programs": 2699,
+  "strict_storage_selections": 196,
+  "attempts": [
+    {
+      "receipt": "run-20261115T061318Z.json",
+      "report_exit": -9,
+      "completed_records": 2562,
+      "kill_cause": "unknown",
+      "secondary_failures": "status and audit lacked the not-yet-written final report"
+    },
+    {
+      "receipt": "run-20261115T072150Z.json",
+      "maintained_same_source_resume": true,
+      "report_exit": 0,
+      "status_exit": 0,
+      "independent_audit_exit": 1,
+      "appended_records": 137
+    }
+  ],
+  "prefix_preserved_byte_for_byte": true,
+  "saved_prefix_bytes": 2231387,
+  "no_records_reused_from_original_b0_attempt": true,
+  "acceptance_checks": {
+    "exact_corpus_census": true,
+    "exact_program_count": true,
+    "exact_storage_census": true,
+    "exact_storage_count": true,
+    "baseline_program_names_retained": true,
+    "baseline_storage_program_names_retained": true,
+    "header_inventory_matches": true,
+    "full_not_selected_inputs": true,
+    "source_commit_matches": true,
+    "source_tree_matches": true,
+    "source_clean": true,
+    "clean_inputs": true,
+    "input_identities_match": true,
+    "checker_identities_match": true,
+    "all_copied_checker_hashes_match": true,
+    "all_checker_sources_match": true,
+    "python_matches": true,
+    "platform_matches": true,
+    "completion_matches_records": true,
+    "completion_valid": true,
+    "no_incomplete_or_failed_records": true,
+    "valid_numeric_check_records": true,
+    "strict_storage_all_accepted": false
+  },
+  "storage_gaps": [
+    {
+      "program": "tests/programs/numbers/python_int_optional_tuple_keys.py",
+      "storage": {
+        "functions": 7,
+        "obligations": 8,
+        "proved": 8,
+        "unproved": [
+          {
+            "function": "@main.init",
+            "obligations": null,
+            "reason": "tuple boundary changes a non-integer representation",
+            "status": "unsupported"
+          },
+          {
+            "function": "@f.exercise",
+            "obligations": null,
+            "reason": "tuple boundary changes a non-integer representation",
+            "status": "unsupported"
+          },
+          {
+            "function": "@f.fixed_optional_tuple_keys$read_nested",
+            "obligations": null,
+            "reason": "tuple boundary changes a non-integer representation",
+            "status": "unsupported"
+          }
+        ]
+      }
+    }
+  ],
+  "known_storage_counts": {
+    "functions": 2172,
+    "obligations": 25682,
+    "proved": 25682
+  },
+  "known_counts_do_not_bound_unsupported_functions": true,
+  "delta_summary": {
+    "added_programs": 149,
+    "missing_programs": 0,
+    "new_unproved_shared": 0,
+    "added_program_unproved": 26,
+    "obligation_decreases": 38,
+    "proved_count_decreases": 38,
+    "shared_unproved_count_increases": 0
+  },
+  "new_residual_functions": [
+    {
+      "program": "tests/deviations/complex_union_none.py",
+      "check": "union",
+      "function": "@main.init",
+      "obligations": 12,
+      "reason": "mach.load at entry:9 needs %t3 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/inference/dynany_complex_union_identity.py",
+      "check": "union",
+      "function": "@m._pystachy_complex$complex.__eq__.1",
+      "obligations": 4,
+      "reason": "union.tag at entry:3 needs %a1 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/inference/dynany_complex_union_identity.py",
+      "check": "union",
+      "function": "@f.check",
+      "obligations": 26,
+      "reason": "union.tag at L84:19 needs %t119 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/library/lib_decimal.py",
+      "check": "fields",
+      "function": "@main.init",
+      "obligations": null,
+      "reason": "candidate inference exceeds the prototype's resource bound",
+      "status": "unsupported"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_container_eq.py",
+      "check": "union",
+      "function": "@f.lists",
+      "obligations": 8,
+      "reason": "union.tag at entry:6 needs %a0 in ['member:_pystachy_complex$complex', 'member:list[int]']; known: ['member:_pystachy_complex$complex', 'member:list[int]', 'nul",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_container_eq.py",
+      "check": "union",
+      "function": "@f.dicts",
+      "obligations": 6,
+      "reason": "union.tag at entry:6 needs %a0 in ['member:_pystachy_complex$complex', 'member:dict[str,int]']; known: ['member:_pystachy_complex$complex', 'member:dict[str,int",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_container_eq.py",
+      "check": "union",
+      "function": "@m._pystachy_complex$complex.__eq__.1",
+      "obligations": 3,
+      "reason": "union.tag at entry:3 needs %a1 in ['member:_pystachy_complex$complex', 'member:list[int]']; known: ['member:_pystachy_complex$complex', 'member:list[int]', 'nul",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_container_eq.py",
+      "check": "union",
+      "function": "@f.search",
+      "obligations": 72,
+      "reason": "union.tag at entry:4 needs %a0 in ['member:_pystachy_complex$complex', 'member:list[int]']; known: ['member:_pystachy_complex$complex', 'member:list[int]', 'nul",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_enum_eq.py",
+      "check": "union",
+      "function": "@f.numbers",
+      "obligations": 33,
+      "reason": "union.tag at entry:3 needs %a0 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_identity.py",
+      "check": "union",
+      "function": "@m._pystachy_complex$complex.__eq__.1",
+      "obligations": 4,
+      "reason": "union.tag at entry:3 needs %a1 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_identity.py",
+      "check": "union",
+      "function": "@f.search",
+      "obligations": 70,
+      "reason": "union.tag at entry:9 needs %t12 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_nested.py",
+      "check": "union",
+      "function": "@f.show",
+      "obligations": 6,
+      "reason": "mach.load at entry:12 needs %a0 in ['member:_pystachy_complex$complex', 'member:list[_pystachy_complex$complex]']; known: ['member:_pystachy_complex$complex', '",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_object_eq.py",
+      "check": "union",
+      "function": "@f.numbers",
+      "obligations": 6,
+      "reason": "union.tag at entry:6 needs %a0 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_tuple_search.py",
+      "check": "union",
+      "function": "@m._pystachy_complex$complex.__eq__.1",
+      "obligations": 4,
+      "reason": "union.tag at entry:3 needs %a1 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_tuple_search.py",
+      "check": "union",
+      "function": "@m._pystachy_complex$complex.__eq__.2",
+      "obligations": 4,
+      "reason": "union.tag at entry:3 needs %a1 in ['member:_pystachy_complex$complex', 'member:float']; known: ['member:_pystachy_complex$complex', 'member:float', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_tuple_search.py",
+      "check": "union",
+      "function": "@main.init",
+      "obligations": 30,
+      "reason": "union.tag at L4:13 needs %t20 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_unions.py",
+      "check": "union",
+      "function": "@main.init",
+      "obligations": 75,
+      "reason": "mach.load at L37:10 needs %t46 in ['member:_pystachy_complex$complex', 'member:bool', 'member:float', 'member:int', 'member:str']; known: ['member:_pystachy_com",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_unions.py",
+      "check": "union",
+      "function": "@f.describe",
+      "obligations": 9,
+      "reason": "union.tag at entry:2 needs %a0 in ['member:_pystachy_complex$complex', 'member:bool', 'member:float', 'member:int', 'member:str']; known: ['member:_pystachy_com",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_unions.py",
+      "check": "union",
+      "function": "@f.fold",
+      "obligations": 52,
+      "reason": "union.tag at entry:4 needs %a1 in ['member:_pystachy_complex$complex', 'member:bool', 'member:float', 'member:int', 'member:str']; known: ['member:_pystachy_com",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_unions.py",
+      "check": "union",
+      "function": "@m._pystachy_complex$complex.__eq__.2",
+      "obligations": 3,
+      "reason": "union.tag at entry:3 needs %a1 in ['member:_pystachy_complex$complex', 'member:float', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:float'",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_unions.py",
+      "check": "union",
+      "function": "@m._pystachy_complex$complex.__eq__.3",
+      "obligations": 5,
+      "reason": "union.tag at entry:3 needs %a1 in ['member:_pystachy_complex$complex', 'member:int', 'member:str']; known: ['member:_pystachy_complex$complex', 'member:int', 'm",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_unions.py",
+      "check": "union",
+      "function": "@f.numeric",
+      "obligations": 110,
+      "reason": "union.tag at entry:5 needs %a0 in ['member:_pystachy_complex$complex', 'member:float', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:float'",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_values.py",
+      "check": "gc",
+      "function": "@f._pystachy_copy$_memo_get.1",
+      "obligations": 3,
+      "reason": "ret at L20:7 (operand 0) needs %t29 in ['none', 'scanned']; known: nothing",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/python_int_optional_tuple_keys.py",
+      "check": "storage",
+      "function": "@main.init",
+      "obligations": null,
+      "reason": "tuple boundary changes a non-integer representation",
+      "status": "unsupported"
+    },
+    {
+      "program": "tests/programs/numbers/python_int_optional_tuple_keys.py",
+      "check": "storage",
+      "function": "@f.exercise",
+      "obligations": null,
+      "reason": "tuple boundary changes a non-integer representation",
+      "status": "unsupported"
+    },
+    {
+      "program": "tests/programs/numbers/python_int_optional_tuple_keys.py",
+      "check": "storage",
+      "function": "@f.fixed_optional_tuple_keys$read_nested",
+      "obligations": null,
+      "reason": "tuple boundary changes a non-integer representation",
+      "status": "unsupported"
+    }
+  ],
+  "counted_gaps": {
+    "payload": {
+      "baseline": 0,
+      "candidate": 0
+    },
+    "access": {
+      "baseline": 0,
+      "candidate": 0
+    },
+    "null": {
+      "baseline": 19,
+      "candidate": 19
+    },
+    "union": {
+      "baseline": 315,
+      "candidate": 857
+    },
+    "union_payload": {
+      "baseline": 249,
+      "candidate": 658
+    },
+    "fields": {
+      "baseline": 237,
+      "candidate": 237
+    },
+    "gc": {
+      "baseline": 375,
+      "candidate": 378
+    },
+    "int": {
+      "baseline": 0,
+      "candidate": 0
+    },
+    "int_inline": {
+      "baseline": 0,
+      "candidate": 0
+    },
+    "storage": {
+      "baseline": 0,
+      "candidate": 0
+    }
+  },
+  "union_payload_listing": "The 409 added unproved payload-bit obligations belong to the same rejected closed-union functions as the 542 added union reads. The maintained report lists both under union, not as independent function rows.",
+  "semantic_review_status": "pending; denominator-site attribution and final corrected-source qualification remain separate gates",
+  "files": {
+    "records.jsonl": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-corrected/records.jsonl",
+      "bytes": 2361743,
+      "sha256": "396f4b02ede94afda93ecc796f1da3aa1d3cb022a78939c51c4fc34a22101bbe"
+    },
+    "report.md": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-corrected/report.md",
+      "bytes": 15255,
+      "sha256": "c9b11d755c7367e0654d550c25803f22ae0c9d2e2de122b6b0be3cad0d31a66c"
+    },
+    "acceptance.json": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-corrected/acceptance.json",
+      "bytes": 63561,
+      "sha256": "38ea7e718fc7bbd85b371b6e952d5a3273ac2244f2387495be3154991505abac"
+    },
+    "delta-alpha2.json": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-corrected/delta-alpha2.json",
+      "bytes": 48465,
+      "sha256": "721fb78b19d6264a556236d43433802f0f410ff3a667df2bd3c921142fa8e8d1"
+    },
+    "prepared.json": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-corrected/prepared.json",
+      "bytes": 173471,
+      "sha256": "5a702283ab02c6340f6ad36e476cd923d86103c2c5bd7cbc9c46317a2eaa4621"
+    },
+    "qualification-source-equivalence.json": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-corrected/qualification-source-equivalence.json",
+      "bytes": 988,
+      "sha256": "20fedc7ff5a707c7ab29f365af70a387ef4f47dd1dd228ece77ec5dc734b9cc7"
+    },
+    "run-20261115T061318Z.json": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-corrected/run-20261115T061318Z.json",
+      "bytes": 1031,
+      "sha256": "83d26eca879b91d0a6bc5387502af8f32cb0c0f26c96a8c7ae143b1eb498db43"
+    },
+    "run-20261115T061318Z.log": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-corrected/run-20261115T061318Z.log",
+      "bytes": 162324,
+      "sha256": "b23179774429f56b652fb76b2b86309a8a766d1c14b7072fca5a569f7c72c8c2"
+    },
+    "run-20261115T072150Z.json": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-corrected/run-20261115T072150Z.json",
+      "bytes": 1044,
+      "sha256": "60271881a90f0b6e6af47e271d638467ff2d1466466402e50228a677a4faf0c4"
+    },
+    "run-20261115T072150Z.log": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-corrected/run-20261115T072150Z.log",
+      "bytes": 11785,
+      "sha256": "0008db82e77959e2c14742b8dd16361824cd4901ce9ca1fdd9f74be052052d59"
+    },
+    "pre-resume-2562/records.jsonl": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-corrected/pre-resume-2562/records.jsonl",
+      "bytes": 2231387,
+      "sha256": "bfb655c74867954575567037ff544abdb61329b404947859a4259b26c06d31fb"
+    },
+    "pre-resume-2562/failure-and-resume-preflight.json": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-corrected/pre-resume-2562/failure-and-resume-preflight.json",
+      "bytes": 23603,
+      "sha256": "759011ae2687ed77920b6b12494d588c8de623f3e470ab8abec6d0cad1b32ab1"
+    },
+    "pre-resume-2562/source-revalidation.json": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-corrected/pre-resume-2562/source-revalidation.json",
+      "bytes": 159,
+      "sha256": "e2b0b06bb36a0b8fde72d7c0e77639d840a37fd3114b4667be784b3b189239db"
+    },
+    "pre-resume-2562/kill-diagnostics.json": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-corrected/pre-resume-2562/kill-diagnostics.json",
+      "bytes": 2497,
+      "sha256": "2174354911278ec4a338a81124fe44418c49555a4a3f5236050788d75937cc67"
+    },
+    "prepare.py": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-corrected/prepare.py",
+      "bytes": 5085,
+      "sha256": "952b8c30aa1632ff6a96feaa060b685646faaf304e39572a957310815f644ba3"
+    },
+    "run.py": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-corrected/run.py",
+      "bytes": 3301,
+      "sha256": "ce9c9cf7d2fb4f8e22414daf50ec2ba1d03c76b44142a9f1e974c53c3fde08d2"
+    },
+    "audit.py": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-corrected/audit.py",
+      "bytes": 10135,
+      "sha256": "bd99f81b1d4dbdc7e11470c808a0bf27286a39ab011cc0a568d1a64e1e76333f"
+    },
+    "freeze-complete-census.py": {
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean-corrected/freeze-complete-census.py",
+      "bytes": 4859,
+      "sha256": "9b9a4e51f8cc5016dd248ff911b81c9dbb55ba4d117fbc03e4c64f10349eb015"
+    }
+  }
+}

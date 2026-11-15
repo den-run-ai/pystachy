@@ -1,0 +1,1648 @@
+{
+  "baseline_records": "/workspace/scratch/7dd0519bc14a/lean-reports/alpha2-storage-lean-records.jsonl",
+  "baseline_sha256": "98d2cd703064e39dbb14e41f3d13bb1b5df7bbcf4d30903966db4b427ecd09a6",
+  "baseline_commit": "950c0440ad79",
+  "candidate_commit": "94f472d6de53",
+  "baseline_programs": 2550,
+  "candidate_programs": 2699,
+  "shared_programs": 2550,
+  "added_programs": [
+    "tests/deviations/complex_identity.py",
+    "tests/deviations/complex_union_none.py",
+    "tests/programs/classes/cmp_notimplemented.py",
+    "tests/programs/classes/cmp_notimplemented_dataclass.py",
+    "tests/programs/classes/cmp_notimplemented_direct.py",
+    "tests/programs/classes/cmp_notimplemented_enum.py",
+    "tests/programs/classes/cmp_notimplemented_enum_big.py",
+    "tests/programs/classes/cmp_notimplemented_enum_cross.py",
+    "tests/programs/classes/cmp_notimplemented_enum_scalar.py",
+    "tests/programs/classes/cmp_notimplemented_enum_search.py",
+    "tests/programs/classes/cmp_notimplemented_except.py",
+    "tests/programs/classes/cmp_notimplemented_exception.py",
+    "tests/programs/classes/cmp_notimplemented_generic.py",
+    "tests/programs/classes/cmp_notimplemented_hierarchy.py",
+    "tests/programs/classes/cmp_notimplemented_ne.py",
+    "tests/programs/classes/cmp_notimplemented_nested.py",
+    "tests/programs/classes/cmp_notimplemented_none.py",
+    "tests/programs/classes/cmp_notimplemented_runtime.py",
+    "tests/programs/classes/cmp_notimplemented_strenum_scalar.py",
+    "tests/programs/classes/cmp_notimplemented_super.py",
+    "tests/programs/classes/cmp_notimplemented_tree.py",
+    "tests/programs/classes/cmp_notimplemented_tuple.py",
+    "tests/programs/classes/constructor_dependency_alias.py",
+    "tests/programs/classes/constructor_dependency_imported.py",
+    "tests/programs/classes/constructor_dependency_qualified.py",
+    "tests/programs/classes/constructor_dependency_quoted.py",
+    "tests/programs/classes/constructor_dependency_specialized.py",
+    "tests/programs/classes/constructor_dependency_transitive.py",
+    "tests/programs/classes/constructor_fixed_branches.py",
+    "tests/programs/classes/constructor_fixed_delegation.py",
+    "tests/programs/classes/constructor_fixed_hierarchy_base.py",
+    "tests/programs/classes/constructor_fixed_hierarchy_leaf.py",
+    "tests/programs/classes/constructor_fixed_layout.py",
+    "tests/programs/classes/constructor_fixed_lazy.py",
+    "tests/programs/classes/constructor_fixed_lazy_base.py",
+    "tests/programs/classes/constructor_fixed_lazy_imported.py",
+    "tests/programs/classes/constructor_fixed_lazy_leaf.py",
+    "tests/programs/classes/constructor_fixed_module.py",
+    "tests/programs/classes/constructor_fixed_property.py",
+    "tests/programs/classes/constructor_fixed_store_nested.py",
+    "tests/programs/classes/constructor_fixed_store_order.py",
+    "tests/programs/classes/constructor_fixed_store_sequence.py",
+    "tests/programs/classes/constructor_fixed_untyped.py",
+    "tests/programs/classes/constructor_hierarchy_any.py",
+    "tests/programs/classes/constructor_hierarchy_checks.py",
+    "tests/programs/classes/constructor_hierarchy_dependencies.py",
+    "tests/programs/classes/constructor_hierarchy_direct.py",
+    "tests/programs/classes/constructor_hierarchy_imported.py",
+    "tests/programs/classes/constructor_hierarchy_recursive.py",
+    "tests/programs/classes/constructor_hierarchy_recursive_child.py",
+    "tests/programs/classes/constructor_hierarchy_recursive_imported.py",
+    "tests/programs/classes/constructor_hierarchy_recursive_quoted.py",
+    "tests/programs/classes/constructor_hierarchy_speculative.py",
+    "tests/programs/classes/obj_number_conversion_subclass.py",
+    "tests/programs/classes/obj_number_conversions.py",
+    "tests/programs/classes/obj_reflected_number.py",
+    "tests/programs/containers/dict_none_keys.py",
+    "tests/programs/containers/set_none_elements.py",
+    "tests/programs/containers/set_none_generic.py",
+    "tests/programs/containers/set_optional_elements.py",
+    "tests/programs/containers/set_optional_mixed.py",
+    "tests/programs/containers/union_dict_keys.py",
+    "tests/programs/containers/union_dict_keys_dynamic.py",
+    "tests/programs/containers/union_key_none.py",
+    "tests/programs/containers/union_set_elements.py",
+    "tests/programs/containers/vtuple_dict_keys.py",
+    "tests/programs/containers/vtuple_set_elements.py",
+    "tests/programs/generics/dynany_template_isinstance.py",
+    "tests/programs/generics/dynany_template_type_import.py",
+    "tests/programs/generics/dynany_template_type_order.py",
+    "tests/programs/imports/complex_default_dynany.py",
+    "tests/programs/imports/deftime_complex_default.py",
+    "tests/programs/inference/dynany_cmp_notimplemented.py",
+    "tests/programs/inference/dynany_complex.py",
+    "tests/programs/inference/dynany_complex_decline.py",
+    "tests/programs/inference/dynany_complex_eq.py",
+    "tests/programs/inference/dynany_complex_init.py",
+    "tests/programs/inference/dynany_complex_init_bound.py",
+    "tests/programs/inference/dynany_complex_init_packed.py",
+    "tests/programs/inference/dynany_complex_left.py",
+    "tests/programs/inference/dynany_complex_notimplemented.py",
+    "tests/programs/inference/dynany_complex_setter.py",
+    "tests/programs/inference/dynany_complex_union_identity.py",
+    "tests/programs/inference/dynany_complex_wide.py",
+    "tests/programs/inference/dynany_decimal_complex.py",
+    "tests/programs/inference/dynany_identity_generator.py",
+    "tests/programs/inference/dynany_identity_generator_fresh.py",
+    "tests/programs/inference/dynany_identity_generator_protocol.py",
+    "tests/programs/inference/dynany_identity_generator_scope.py",
+    "tests/programs/inference/dynany_identity_optional_container_effects.py",
+    "tests/programs/inference/dynany_identity_optional_container_imports.py",
+    "tests/programs/inference/dynany_identity_optional_lists.py",
+    "tests/programs/inference/dynany_identity_optional_vtuples.py",
+    "tests/programs/inference/dynany_identity_vtuple_effects.py",
+    "tests/programs/inference/dynany_identity_vtuples.py",
+    "tests/programs/inference/union_object_identity.py",
+    "tests/programs/library/lib_datetime_reflected.py",
+    "tests/programs/library/lib_decimal.py",
+    "tests/programs/library/lib_decimal_complex_compare.py",
+    "tests/programs/library/lib_decimal_default_context.py",
+    "tests/programs/library/lib_decimal_extreme_exponents.py",
+    "tests/programs/library/lib_decimal_grid.py",
+    "tests/programs/library/lib_decimal_python_int.py",
+    "tests/programs/library/lib_decimal_quotient_limits.py",
+    "tests/programs/library/lib_decimal_records.py",
+    "tests/programs/library/lib_decimal_reflected_compare.py",
+    "tests/programs/library/lib_enum_int_left.py",
+    "tests/programs/library/lib_enum_str_payload.py",
+    "tests/programs/numbers/complex_arith.py",
+    "tests/programs/numbers/complex_dynany_typed.py",
+    "tests/programs/numbers/complex_enum_decline.py",
+    "tests/programs/numbers/complex_enum_eq.py",
+    "tests/programs/numbers/complex_enum_own_eq.py",
+    "tests/programs/numbers/complex_format.py",
+    "tests/programs/numbers/complex_init_noop.py",
+    "tests/programs/numbers/complex_new_errors.py",
+    "tests/programs/numbers/complex_none.py",
+    "tests/programs/numbers/complex_none_compare.py",
+    "tests/programs/numbers/complex_notimplemented_order.py",
+    "tests/programs/numbers/complex_object_eq.py",
+    "tests/programs/numbers/complex_optional_number_eq.py",
+    "tests/programs/numbers/complex_optional_number_search.py",
+    "tests/programs/numbers/complex_optional_object_eq.py",
+    "tests/programs/numbers/complex_parse.py",
+    "tests/programs/numbers/complex_python_int.py",
+    "tests/programs/numbers/complex_special.py",
+    "tests/programs/numbers/complex_subclass_eq.py",
+    "tests/programs/numbers/complex_tuple_reflected.py",
+    "tests/programs/numbers/complex_tuple_search.py",
+    "tests/programs/numbers/complex_union_container_eq.py",
+    "tests/programs/numbers/complex_union_enum_eq.py",
+    "tests/programs/numbers/complex_union_identity.py",
+    "tests/programs/numbers/complex_union_nested.py",
+    "tests/programs/numbers/complex_union_none_eq.py",
+    "tests/programs/numbers/complex_union_object_eq.py",
+    "tests/programs/numbers/complex_union_reference.py",
+    "tests/programs/numbers/complex_union_reference_eq.py",
+    "tests/programs/numbers/complex_union_subclass_eq.py",
+    "tests/programs/numbers/complex_union_tuple_search.py",
+    "tests/programs/numbers/complex_unions.py",
+    "tests/programs/numbers/complex_values.py",
+    "tests/programs/numbers/python_int_generator_identity.py",
+    "tests/programs/numbers/python_int_optional_container_identity.py",
+    "tests/programs/numbers/python_int_optional_tuple_keys.py",
+    "tests/programs/numbers/python_int_vtuple_identity.py",
+    "tests/programs/numbers/python_int_vtuple_keys.py",
+    "tests/programs/optional/opt_none_provisional_print.py",
+    "tests/programs/optional/opt_none_unknown.py",
+    "tests/programs/reflection/reflected_rand.py"
+  ],
+  "missing_programs": [],
+  "storage_selection_delta": {
+    "baseline": 175,
+    "candidate": 196,
+    "retained": 175,
+    "added": [
+      "tests/programs/apps/port_tomli_w_ini2toml.py",
+      "tests/programs/apps/port_tomli_w_tables.py",
+      "tests/programs/apps/port_tomli_w_values.py",
+      "tests/programs/classes/cmp_notimplemented_enum_big.py",
+      "tests/programs/inference/dynany_complex_wide.py",
+      "tests/programs/inference/dynany_decimal_complex.py",
+      "tests/programs/library/lib_decimal.py",
+      "tests/programs/library/lib_decimal_complex_compare.py",
+      "tests/programs/library/lib_decimal_default_context.py",
+      "tests/programs/library/lib_decimal_extreme_exponents.py",
+      "tests/programs/library/lib_decimal_grid.py",
+      "tests/programs/library/lib_decimal_python_int.py",
+      "tests/programs/library/lib_decimal_quotient_limits.py",
+      "tests/programs/library/lib_decimal_records.py",
+      "tests/programs/library/lib_decimal_reflected_compare.py",
+      "tests/programs/numbers/complex_python_int.py",
+      "tests/programs/numbers/python_int_generator_identity.py",
+      "tests/programs/numbers/python_int_optional_container_identity.py",
+      "tests/programs/numbers/python_int_optional_tuple_keys.py",
+      "tests/programs/numbers/python_int_vtuple_identity.py",
+      "tests/programs/numbers/python_int_vtuple_keys.py"
+    ],
+    "removed": []
+  },
+  "new_unproved_shared_programs": [],
+  "added_program_unproved": [
+    {
+      "program": "tests/deviations/complex_union_none.py",
+      "check": "union",
+      "function": "@main.init",
+      "obligations": 12,
+      "reason": "mach.load at entry:9 needs %t3 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/inference/dynany_complex_union_identity.py",
+      "check": "union",
+      "function": "@m._pystachy_complex$complex.__eq__.1",
+      "obligations": 4,
+      "reason": "union.tag at entry:3 needs %a1 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/inference/dynany_complex_union_identity.py",
+      "check": "union",
+      "function": "@f.check",
+      "obligations": 26,
+      "reason": "union.tag at L84:19 needs %t119 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/library/lib_decimal.py",
+      "check": "fields",
+      "function": "@main.init",
+      "obligations": null,
+      "reason": "candidate inference exceeds the prototype's resource bound",
+      "status": "unsupported"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_container_eq.py",
+      "check": "union",
+      "function": "@f.lists",
+      "obligations": 8,
+      "reason": "union.tag at entry:6 needs %a0 in ['member:_pystachy_complex$complex', 'member:list[int]']; known: ['member:_pystachy_complex$complex', 'member:list[int]', 'nul",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_container_eq.py",
+      "check": "union",
+      "function": "@f.dicts",
+      "obligations": 6,
+      "reason": "union.tag at entry:6 needs %a0 in ['member:_pystachy_complex$complex', 'member:dict[str,int]']; known: ['member:_pystachy_complex$complex', 'member:dict[str,int",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_container_eq.py",
+      "check": "union",
+      "function": "@m._pystachy_complex$complex.__eq__.1",
+      "obligations": 3,
+      "reason": "union.tag at entry:3 needs %a1 in ['member:_pystachy_complex$complex', 'member:list[int]']; known: ['member:_pystachy_complex$complex', 'member:list[int]', 'nul",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_container_eq.py",
+      "check": "union",
+      "function": "@f.search",
+      "obligations": 72,
+      "reason": "union.tag at entry:4 needs %a0 in ['member:_pystachy_complex$complex', 'member:list[int]']; known: ['member:_pystachy_complex$complex', 'member:list[int]', 'nul",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_enum_eq.py",
+      "check": "union",
+      "function": "@f.numbers",
+      "obligations": 33,
+      "reason": "union.tag at entry:3 needs %a0 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_identity.py",
+      "check": "union",
+      "function": "@m._pystachy_complex$complex.__eq__.1",
+      "obligations": 4,
+      "reason": "union.tag at entry:3 needs %a1 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_identity.py",
+      "check": "union",
+      "function": "@f.search",
+      "obligations": 70,
+      "reason": "union.tag at entry:9 needs %t12 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_nested.py",
+      "check": "union",
+      "function": "@f.show",
+      "obligations": 6,
+      "reason": "mach.load at entry:12 needs %a0 in ['member:_pystachy_complex$complex', 'member:list[_pystachy_complex$complex]']; known: ['member:_pystachy_complex$complex', '",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_object_eq.py",
+      "check": "union",
+      "function": "@f.numbers",
+      "obligations": 6,
+      "reason": "union.tag at entry:6 needs %a0 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_tuple_search.py",
+      "check": "union",
+      "function": "@m._pystachy_complex$complex.__eq__.1",
+      "obligations": 4,
+      "reason": "union.tag at entry:3 needs %a1 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_tuple_search.py",
+      "check": "union",
+      "function": "@m._pystachy_complex$complex.__eq__.2",
+      "obligations": 4,
+      "reason": "union.tag at entry:3 needs %a1 in ['member:_pystachy_complex$complex', 'member:float']; known: ['member:_pystachy_complex$complex', 'member:float', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_union_tuple_search.py",
+      "check": "union",
+      "function": "@main.init",
+      "obligations": 30,
+      "reason": "union.tag at L4:13 needs %t20 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_unions.py",
+      "check": "union",
+      "function": "@main.init",
+      "obligations": 75,
+      "reason": "mach.load at L37:10 needs %t46 in ['member:_pystachy_complex$complex', 'member:bool', 'member:float', 'member:int', 'member:str']; known: ['member:_pystachy_com",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_unions.py",
+      "check": "union",
+      "function": "@f.describe",
+      "obligations": 9,
+      "reason": "union.tag at entry:2 needs %a0 in ['member:_pystachy_complex$complex', 'member:bool', 'member:float', 'member:int', 'member:str']; known: ['member:_pystachy_com",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_unions.py",
+      "check": "union",
+      "function": "@f.fold",
+      "obligations": 52,
+      "reason": "union.tag at entry:4 needs %a1 in ['member:_pystachy_complex$complex', 'member:bool', 'member:float', 'member:int', 'member:str']; known: ['member:_pystachy_com",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_unions.py",
+      "check": "union",
+      "function": "@m._pystachy_complex$complex.__eq__.2",
+      "obligations": 3,
+      "reason": "union.tag at entry:3 needs %a1 in ['member:_pystachy_complex$complex', 'member:float', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:float'",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_unions.py",
+      "check": "union",
+      "function": "@m._pystachy_complex$complex.__eq__.3",
+      "obligations": 5,
+      "reason": "union.tag at entry:3 needs %a1 in ['member:_pystachy_complex$complex', 'member:int', 'member:str']; known: ['member:_pystachy_complex$complex', 'member:int', 'm",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_unions.py",
+      "check": "union",
+      "function": "@f.numeric",
+      "obligations": 110,
+      "reason": "union.tag at entry:5 needs %a0 in ['member:_pystachy_complex$complex', 'member:float', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:float'",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/complex_values.py",
+      "check": "gc",
+      "function": "@f._pystachy_copy$_memo_get.1",
+      "obligations": 3,
+      "reason": "ret at L20:7 (operand 0) needs %t29 in ['none', 'scanned']; known: nothing",
+      "status": "rejected"
+    },
+    {
+      "program": "tests/programs/numbers/python_int_optional_tuple_keys.py",
+      "check": "storage",
+      "function": "@main.init",
+      "obligations": null,
+      "reason": "tuple boundary changes a non-integer representation",
+      "status": "unsupported"
+    },
+    {
+      "program": "tests/programs/numbers/python_int_optional_tuple_keys.py",
+      "check": "storage",
+      "function": "@f.exercise",
+      "obligations": null,
+      "reason": "tuple boundary changes a non-integer representation",
+      "status": "unsupported"
+    },
+    {
+      "program": "tests/programs/numbers/python_int_optional_tuple_keys.py",
+      "check": "storage",
+      "function": "@f.fixed_optional_tuple_keys$read_nested",
+      "obligations": null,
+      "reason": "tuple boundary changes a non-integer representation",
+      "status": "unsupported"
+    }
+  ],
+  "obligation_decreases": [
+    {
+      "program": "tests/deviations/dynany_identity_boundary.py",
+      "check": "gc",
+      "before": 8,
+      "after": 4
+    },
+    {
+      "program": "tests/deviations/dynany_identity_boundary.py",
+      "check": "storage",
+      "before": 2,
+      "after": 1
+    },
+    {
+      "program": "tests/deviations/lib_types_mappingproxy_eq_other.py",
+      "check": "gc",
+      "before": 9,
+      "after": 6
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_ini2toml.py",
+      "check": "gc",
+      "before": 168,
+      "after": 162
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_tables.py",
+      "check": "gc",
+      "before": 1372,
+      "after": 1366
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_values.py",
+      "check": "gc",
+      "before": 564,
+      "after": 558
+    },
+    {
+      "program": "tests/programs/exceptions/exit_enum_member_caught.py",
+      "check": "null",
+      "before": 5,
+      "after": 3
+    },
+    {
+      "program": "tests/programs/exceptions/exit_enum_stored_reflection.py",
+      "check": "null",
+      "before": 32,
+      "after": 30
+    },
+    {
+      "program": "tests/programs/exceptions/exit_intflag_stored_mutated.py",
+      "check": "null",
+      "before": 6,
+      "after": 4
+    },
+    {
+      "program": "tests/programs/exceptions/exit_intflag_stored_zero.py",
+      "check": "null",
+      "before": 4,
+      "after": 2
+    },
+    {
+      "program": "tests/programs/inference/dynany_iter_errors.py",
+      "check": "access",
+      "before": 2,
+      "after": 1
+    },
+    {
+      "program": "tests/programs/library/lib_enum.py",
+      "check": "gc",
+      "before": 292,
+      "after": 280
+    },
+    {
+      "program": "tests/programs/library/lib_enum_any.py",
+      "check": "null",
+      "before": 14,
+      "after": 0
+    },
+    {
+      "program": "tests/programs/library/lib_enum_flag_bits.py",
+      "check": "null",
+      "before": 17,
+      "after": 15
+    },
+    {
+      "program": "tests/programs/library/lib_enum_flag_numeric_lookup.py",
+      "check": "null",
+      "before": 7,
+      "after": 5
+    },
+    {
+      "program": "tests/programs/library/lib_enum_flag_width.py",
+      "check": "null",
+      "before": 12,
+      "after": 6
+    },
+    {
+      "program": "tests/programs/library/lib_enum_format_str.py",
+      "check": "null",
+      "before": 4,
+      "after": 2
+    },
+    {
+      "program": "tests/programs/library/lib_enum_intflag.py",
+      "check": "null",
+      "before": 13,
+      "after": 10
+    },
+    {
+      "program": "tests/programs/library/lib_enum_mixin.py",
+      "check": "gc",
+      "before": 83,
+      "after": 77
+    },
+    {
+      "program": "tests/programs/library/lib_enum_plain_isinstance.py",
+      "check": "null",
+      "before": 24,
+      "after": 12
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib.py",
+      "check": "gc",
+      "before": 705,
+      "after": 699
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib.py",
+      "check": "null",
+      "before": 759,
+      "after": 756
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_boundary.py",
+      "check": "gc",
+      "before": 689,
+      "after": 683
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_boundary.py",
+      "check": "null",
+      "before": 736,
+      "after": 733
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_dynamic.py",
+      "check": "gc",
+      "before": 677,
+      "after": 671
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_dynamic.py",
+      "check": "null",
+      "before": 751,
+      "after": 748
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_flags.py",
+      "check": "gc",
+      "before": 679,
+      "after": 673
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_flags.py",
+      "check": "null",
+      "before": 731,
+      "after": 728
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_typed_callback.py",
+      "check": "gc",
+      "before": 555,
+      "after": 549
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_uncaught.py",
+      "check": "gc",
+      "before": 679,
+      "after": 673
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_uncaught.py",
+      "check": "null",
+      "before": 731,
+      "after": 728
+    },
+    {
+      "program": "tests/programs/library/lib_types_mappingproxy.py",
+      "check": "gc",
+      "before": 131,
+      "after": 119
+    },
+    {
+      "program": "tests/programs/library/lib_types_mappingproxy_opaque.py",
+      "check": "gc",
+      "before": 14,
+      "after": 11
+    },
+    {
+      "program": "tests/programs/numbers/python_int_vtuple_materialization.py",
+      "check": "storage",
+      "before": 46,
+      "after": 37
+    },
+    {
+      "program": "tests/programs/upstream/upstream_tomllib_data.py",
+      "check": "gc",
+      "before": 747,
+      "after": 741
+    },
+    {
+      "program": "tests/programs/upstream/upstream_tomllib_data.py",
+      "check": "null",
+      "before": 731,
+      "after": 728
+    },
+    {
+      "program": "tests/programs/upstream/upstream_tomllib_misc.py",
+      "check": "gc",
+      "before": 695,
+      "after": 689
+    },
+    {
+      "program": "tests/programs/upstream/upstream_tomllib_misc.py",
+      "check": "null",
+      "before": 736,
+      "after": 733
+    }
+  ],
+  "proved_count_decreases": [
+    {
+      "program": "tests/deviations/dynany_identity_boundary.py",
+      "check": "gc",
+      "before": 8,
+      "after": 4
+    },
+    {
+      "program": "tests/deviations/dynany_identity_boundary.py",
+      "check": "storage",
+      "before": 2,
+      "after": 1
+    },
+    {
+      "program": "tests/deviations/lib_types_mappingproxy_eq_other.py",
+      "check": "gc",
+      "before": 9,
+      "after": 6
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_ini2toml.py",
+      "check": "gc",
+      "before": 168,
+      "after": 162
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_tables.py",
+      "check": "gc",
+      "before": 1372,
+      "after": 1366
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_values.py",
+      "check": "gc",
+      "before": 564,
+      "after": 558
+    },
+    {
+      "program": "tests/programs/exceptions/exit_enum_member_caught.py",
+      "check": "null",
+      "before": 5,
+      "after": 3
+    },
+    {
+      "program": "tests/programs/exceptions/exit_enum_stored_reflection.py",
+      "check": "null",
+      "before": 32,
+      "after": 30
+    },
+    {
+      "program": "tests/programs/exceptions/exit_intflag_stored_mutated.py",
+      "check": "null",
+      "before": 6,
+      "after": 4
+    },
+    {
+      "program": "tests/programs/exceptions/exit_intflag_stored_zero.py",
+      "check": "null",
+      "before": 4,
+      "after": 2
+    },
+    {
+      "program": "tests/programs/inference/dynany_iter_errors.py",
+      "check": "access",
+      "before": 2,
+      "after": 1
+    },
+    {
+      "program": "tests/programs/library/lib_enum.py",
+      "check": "gc",
+      "before": 289,
+      "after": 277
+    },
+    {
+      "program": "tests/programs/library/lib_enum_any.py",
+      "check": "null",
+      "before": 14,
+      "after": 0
+    },
+    {
+      "program": "tests/programs/library/lib_enum_flag_bits.py",
+      "check": "null",
+      "before": 17,
+      "after": 15
+    },
+    {
+      "program": "tests/programs/library/lib_enum_flag_numeric_lookup.py",
+      "check": "null",
+      "before": 7,
+      "after": 5
+    },
+    {
+      "program": "tests/programs/library/lib_enum_flag_width.py",
+      "check": "null",
+      "before": 12,
+      "after": 6
+    },
+    {
+      "program": "tests/programs/library/lib_enum_format_str.py",
+      "check": "null",
+      "before": 4,
+      "after": 2
+    },
+    {
+      "program": "tests/programs/library/lib_enum_intflag.py",
+      "check": "null",
+      "before": 13,
+      "after": 10
+    },
+    {
+      "program": "tests/programs/library/lib_enum_mixin.py",
+      "check": "gc",
+      "before": 83,
+      "after": 77
+    },
+    {
+      "program": "tests/programs/library/lib_enum_plain_isinstance.py",
+      "check": "null",
+      "before": 24,
+      "after": 12
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib.py",
+      "check": "gc",
+      "before": 705,
+      "after": 699
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib.py",
+      "check": "null",
+      "before": 753,
+      "after": 750
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_boundary.py",
+      "check": "gc",
+      "before": 689,
+      "after": 683
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_boundary.py",
+      "check": "null",
+      "before": 736,
+      "after": 733
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_dynamic.py",
+      "check": "gc",
+      "before": 677,
+      "after": 671
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_dynamic.py",
+      "check": "null",
+      "before": 751,
+      "after": 748
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_flags.py",
+      "check": "gc",
+      "before": 679,
+      "after": 673
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_flags.py",
+      "check": "null",
+      "before": 731,
+      "after": 728
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_typed_callback.py",
+      "check": "gc",
+      "before": 555,
+      "after": 549
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_uncaught.py",
+      "check": "gc",
+      "before": 679,
+      "after": 673
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_uncaught.py",
+      "check": "null",
+      "before": 731,
+      "after": 728
+    },
+    {
+      "program": "tests/programs/library/lib_types_mappingproxy.py",
+      "check": "gc",
+      "before": 131,
+      "after": 119
+    },
+    {
+      "program": "tests/programs/library/lib_types_mappingproxy_opaque.py",
+      "check": "gc",
+      "before": 14,
+      "after": 11
+    },
+    {
+      "program": "tests/programs/numbers/python_int_vtuple_materialization.py",
+      "check": "storage",
+      "before": 46,
+      "after": 37
+    },
+    {
+      "program": "tests/programs/upstream/upstream_tomllib_data.py",
+      "check": "gc",
+      "before": 747,
+      "after": 741
+    },
+    {
+      "program": "tests/programs/upstream/upstream_tomllib_data.py",
+      "check": "null",
+      "before": 731,
+      "after": 728
+    },
+    {
+      "program": "tests/programs/upstream/upstream_tomllib_misc.py",
+      "check": "gc",
+      "before": 695,
+      "after": 689
+    },
+    {
+      "program": "tests/programs/upstream/upstream_tomllib_misc.py",
+      "check": "null",
+      "before": 736,
+      "after": 733
+    }
+  ],
+  "shared_unproved_count_increases": [],
+  "shared_changes": [
+    {
+      "program": "tests/deviations/dynany_identity_boundary.py",
+      "check": "gc",
+      "before": {
+        "functions": 1,
+        "obligations": 8,
+        "proved": 8,
+        "unproved": []
+      },
+      "after": {
+        "functions": 1,
+        "obligations": 4,
+        "proved": 4,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/deviations/dynany_identity_boundary.py",
+      "check": "storage",
+      "before": {
+        "functions": 1,
+        "obligations": 2,
+        "proved": 2,
+        "unproved": []
+      },
+      "after": {
+        "functions": 1,
+        "obligations": 1,
+        "proved": 1,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/deviations/lib_types_mappingproxy_eq_other.py",
+      "check": "gc",
+      "before": {
+        "functions": 5,
+        "obligations": 9,
+        "proved": 9,
+        "unproved": []
+      },
+      "after": {
+        "functions": 4,
+        "obligations": 6,
+        "proved": 6,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_ini2toml.py",
+      "check": "gc",
+      "before": {
+        "functions": 18,
+        "obligations": 168,
+        "proved": 168,
+        "unproved": []
+      },
+      "after": {
+        "functions": 17,
+        "obligations": 162,
+        "proved": 162,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_ini2toml.py",
+      "check": "int",
+      "before": {},
+      "after": {
+        "functions": 0,
+        "obligations": 0,
+        "proved": 0,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_ini2toml.py",
+      "check": "int_inline",
+      "before": {},
+      "after": {
+        "functions": 0,
+        "obligations": 0,
+        "proved": 0,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_ini2toml.py",
+      "check": "storage",
+      "before": {},
+      "after": {
+        "functions": 6,
+        "obligations": 0,
+        "proved": 0,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_tables.py",
+      "check": "gc",
+      "before": {
+        "functions": 95,
+        "obligations": 1372,
+        "proved": 1372,
+        "unproved": []
+      },
+      "after": {
+        "functions": 94,
+        "obligations": 1366,
+        "proved": 1366,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_tables.py",
+      "check": "int",
+      "before": {},
+      "after": {
+        "functions": 0,
+        "obligations": 0,
+        "proved": 0,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_tables.py",
+      "check": "int_inline",
+      "before": {},
+      "after": {
+        "functions": 0,
+        "obligations": 0,
+        "proved": 0,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_tables.py",
+      "check": "storage",
+      "before": {},
+      "after": {
+        "functions": 6,
+        "obligations": 0,
+        "proved": 0,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_values.py",
+      "check": "gc",
+      "before": {
+        "functions": 52,
+        "obligations": 564,
+        "proved": 564,
+        "unproved": []
+      },
+      "after": {
+        "functions": 51,
+        "obligations": 558,
+        "proved": 558,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_values.py",
+      "check": "int",
+      "before": {},
+      "after": {
+        "functions": 0,
+        "obligations": 0,
+        "proved": 0,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_values.py",
+      "check": "int_inline",
+      "before": {},
+      "after": {
+        "functions": 0,
+        "obligations": 0,
+        "proved": 0,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/apps/port_tomli_w_values.py",
+      "check": "storage",
+      "before": {},
+      "after": {
+        "functions": 12,
+        "obligations": 0,
+        "proved": 0,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/exceptions/exit_enum_member_caught.py",
+      "check": "null",
+      "before": {
+        "functions": 5,
+        "obligations": 5,
+        "proved": 5,
+        "unproved": []
+      },
+      "after": {
+        "functions": 3,
+        "obligations": 3,
+        "proved": 3,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/exceptions/exit_enum_stored_reflection.py",
+      "check": "null",
+      "before": {
+        "functions": 5,
+        "obligations": 32,
+        "proved": 32,
+        "unproved": []
+      },
+      "after": {
+        "functions": 3,
+        "obligations": 30,
+        "proved": 30,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/exceptions/exit_intflag_stored_mutated.py",
+      "check": "null",
+      "before": {
+        "functions": 6,
+        "obligations": 6,
+        "proved": 6,
+        "unproved": []
+      },
+      "after": {
+        "functions": 4,
+        "obligations": 4,
+        "proved": 4,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/exceptions/exit_intflag_stored_zero.py",
+      "check": "null",
+      "before": {
+        "functions": 4,
+        "obligations": 4,
+        "proved": 4,
+        "unproved": []
+      },
+      "after": {
+        "functions": 2,
+        "obligations": 2,
+        "proved": 2,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/inference/dynany_iter_errors.py",
+      "check": "access",
+      "before": {
+        "functions": 1,
+        "obligations": 2,
+        "proved": 2,
+        "unproved": []
+      },
+      "after": {
+        "functions": 1,
+        "obligations": 1,
+        "proved": 1,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/inference/dynany_iter_errors.py",
+      "check": "gc",
+      "before": {
+        "functions": 1,
+        "obligations": 13,
+        "proved": 13,
+        "unproved": []
+      },
+      "after": {
+        "functions": 1,
+        "obligations": 14,
+        "proved": 14,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/language/summary_worklist.py",
+      "check": "gc",
+      "before": {
+        "functions": 11,
+        "obligations": 3173,
+        "proved": 3173,
+        "unproved": []
+      },
+      "after": {
+        "functions": 11,
+        "obligations": 3193,
+        "proved": 3193,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/library/lib_enum.py",
+      "check": "gc",
+      "before": {
+        "functions": 56,
+        "obligations": 292,
+        "proved": 289,
+        "unproved": [
+          {
+            "function": "@f._pystachy_copy$_memo_get.1",
+            "obligations": 3,
+            "reason": "ret at L20:7 (operand 0) needs %t29 in ['none', 'scanned']; known: nothing",
+            "status": "rejected"
+          }
+        ]
+      },
+      "after": {
+        "functions": 54,
+        "obligations": 280,
+        "proved": 277,
+        "unproved": [
+          {
+            "function": "@f._pystachy_copy$_memo_get.1",
+            "obligations": 3,
+            "reason": "ret at L20:7 (operand 0) needs %t29 in ['none', 'scanned']; known: nothing",
+            "status": "rejected"
+          }
+        ]
+      }
+    },
+    {
+      "program": "tests/programs/library/lib_enum_any.py",
+      "check": "null",
+      "before": {
+        "functions": 14,
+        "obligations": 14,
+        "proved": 14,
+        "unproved": []
+      },
+      "after": {
+        "functions": 0,
+        "obligations": 0,
+        "proved": 0,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/library/lib_enum_flag_bits.py",
+      "check": "null",
+      "before": {
+        "functions": 10,
+        "obligations": 17,
+        "proved": 17,
+        "unproved": []
+      },
+      "after": {
+        "functions": 8,
+        "obligations": 15,
+        "proved": 15,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/library/lib_enum_flag_numeric_lookup.py",
+      "check": "null",
+      "before": {
+        "functions": 7,
+        "obligations": 7,
+        "proved": 7,
+        "unproved": []
+      },
+      "after": {
+        "functions": 5,
+        "obligations": 5,
+        "proved": 5,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/library/lib_enum_flag_width.py",
+      "check": "null",
+      "before": {
+        "functions": 11,
+        "obligations": 12,
+        "proved": 12,
+        "unproved": []
+      },
+      "after": {
+        "functions": 5,
+        "obligations": 6,
+        "proved": 6,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/library/lib_enum_format_str.py",
+      "check": "null",
+      "before": {
+        "functions": 4,
+        "obligations": 4,
+        "proved": 4,
+        "unproved": []
+      },
+      "after": {
+        "functions": 2,
+        "obligations": 2,
+        "proved": 2,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/library/lib_enum_intflag.py",
+      "check": "null",
+      "before": {
+        "functions": 10,
+        "obligations": 13,
+        "proved": 13,
+        "unproved": []
+      },
+      "after": {
+        "functions": 7,
+        "obligations": 10,
+        "proved": 10,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/library/lib_enum_mixin.py",
+      "check": "gc",
+      "before": {
+        "functions": 18,
+        "obligations": 83,
+        "proved": 83,
+        "unproved": []
+      },
+      "after": {
+        "functions": 17,
+        "obligations": 77,
+        "proved": 77,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/library/lib_enum_plain_isinstance.py",
+      "check": "null",
+      "before": {
+        "functions": 14,
+        "obligations": 24,
+        "proved": 24,
+        "unproved": []
+      },
+      "after": {
+        "functions": 2,
+        "obligations": 12,
+        "proved": 12,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib.py",
+      "check": "gc",
+      "before": {
+        "functions": 109,
+        "obligations": 705,
+        "proved": 705,
+        "unproved": []
+      },
+      "after": {
+        "functions": 108,
+        "obligations": 699,
+        "proved": 699,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib.py",
+      "check": "null",
+      "before": {
+        "functions": 85,
+        "obligations": 759,
+        "proved": 753,
+        "unproved": [
+          {
+            "function": "@f.typed.1",
+            "obligations": 6,
+            "reason": "access: node 314: {'op': 'deref', 'pointer': '%t126', 'next': 315} is not proved by []; finite-tag: rejected",
+            "status": "rejected"
+          }
+        ]
+      },
+      "after": {
+        "functions": 85,
+        "obligations": 756,
+        "proved": 750,
+        "unproved": [
+          {
+            "function": "@f.typed.1",
+            "obligations": 6,
+            "reason": "access: node 314: {'op': 'deref', 'pointer': '%t126', 'next': 315} is not proved by []; finite-tag: rejected",
+            "status": "rejected"
+          }
+        ]
+      }
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_boundary.py",
+      "check": "gc",
+      "before": {
+        "functions": 110,
+        "obligations": 689,
+        "proved": 689,
+        "unproved": []
+      },
+      "after": {
+        "functions": 109,
+        "obligations": 683,
+        "proved": 683,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_boundary.py",
+      "check": "null",
+      "before": {
+        "functions": 79,
+        "obligations": 736,
+        "proved": 736,
+        "unproved": []
+      },
+      "after": {
+        "functions": 79,
+        "obligations": 733,
+        "proved": 733,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_dynamic.py",
+      "check": "gc",
+      "before": {
+        "functions": 107,
+        "obligations": 677,
+        "proved": 677,
+        "unproved": []
+      },
+      "after": {
+        "functions": 106,
+        "obligations": 671,
+        "proved": 671,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_dynamic.py",
+      "check": "null",
+      "before": {
+        "functions": 83,
+        "obligations": 751,
+        "proved": 751,
+        "unproved": []
+      },
+      "after": {
+        "functions": 83,
+        "obligations": 748,
+        "proved": 748,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_flags.py",
+      "check": "gc",
+      "before": {
+        "functions": 108,
+        "obligations": 679,
+        "proved": 679,
+        "unproved": []
+      },
+      "after": {
+        "functions": 107,
+        "obligations": 673,
+        "proved": 673,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_flags.py",
+      "check": "null",
+      "before": {
+        "functions": 77,
+        "obligations": 731,
+        "proved": 731,
+        "unproved": []
+      },
+      "after": {
+        "functions": 77,
+        "obligations": 728,
+        "proved": 728,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_typed_callback.py",
+      "check": "gc",
+      "before": {
+        "functions": 73,
+        "obligations": 555,
+        "proved": 555,
+        "unproved": []
+      },
+      "after": {
+        "functions": 72,
+        "obligations": 549,
+        "proved": 549,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_uncaught.py",
+      "check": "gc",
+      "before": {
+        "functions": 108,
+        "obligations": 679,
+        "proved": 679,
+        "unproved": []
+      },
+      "after": {
+        "functions": 107,
+        "obligations": 673,
+        "proved": 673,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/library/lib_tomllib_uncaught.py",
+      "check": "null",
+      "before": {
+        "functions": 77,
+        "obligations": 731,
+        "proved": 731,
+        "unproved": []
+      },
+      "after": {
+        "functions": 77,
+        "obligations": 728,
+        "proved": 728,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/library/lib_types_mappingproxy.py",
+      "check": "gc",
+      "before": {
+        "functions": 26,
+        "obligations": 131,
+        "proved": 131,
+        "unproved": []
+      },
+      "after": {
+        "functions": 24,
+        "obligations": 119,
+        "proved": 119,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/library/lib_types_mappingproxy_opaque.py",
+      "check": "gc",
+      "before": {
+        "functions": 5,
+        "obligations": 14,
+        "proved": 14,
+        "unproved": []
+      },
+      "after": {
+        "functions": 4,
+        "obligations": 11,
+        "proved": 11,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/numbers/python_int_vtuple_materialization.py",
+      "check": "storage",
+      "before": {
+        "functions": 5,
+        "obligations": 46,
+        "proved": 46,
+        "unproved": []
+      },
+      "after": {
+        "functions": 5,
+        "obligations": 37,
+        "proved": 37,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/upstream/upstream_setcomps.py",
+      "check": "gc",
+      "before": {
+        "functions": 3,
+        "obligations": 8,
+        "proved": 8,
+        "unproved": []
+      },
+      "after": {
+        "functions": 3,
+        "obligations": 9,
+        "proved": 9,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/upstream/upstream_tomllib_data.py",
+      "check": "gc",
+      "before": {
+        "functions": 108,
+        "obligations": 747,
+        "proved": 747,
+        "unproved": []
+      },
+      "after": {
+        "functions": 107,
+        "obligations": 741,
+        "proved": 741,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/upstream/upstream_tomllib_data.py",
+      "check": "null",
+      "before": {
+        "functions": 77,
+        "obligations": 731,
+        "proved": 731,
+        "unproved": []
+      },
+      "after": {
+        "functions": 77,
+        "obligations": 728,
+        "proved": 728,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/upstream/upstream_tomllib_misc.py",
+      "check": "gc",
+      "before": {
+        "functions": 109,
+        "obligations": 695,
+        "proved": 695,
+        "unproved": []
+      },
+      "after": {
+        "functions": 108,
+        "obligations": 689,
+        "proved": 689,
+        "unproved": []
+      }
+    },
+    {
+      "program": "tests/programs/upstream/upstream_tomllib_misc.py",
+      "check": "null",
+      "before": {
+        "functions": 79,
+        "obligations": 736,
+        "proved": 736,
+        "unproved": []
+      },
+      "after": {
+        "functions": 79,
+        "obligations": 733,
+        "proved": 733,
+        "unproved": []
+      }
+    }
+  ],
+  "normalization": "Only temporary %tN, block LN, and trailing numeric specialization suffixes are normalized for residual matching; exact before/after dictionaries are retained."
+}

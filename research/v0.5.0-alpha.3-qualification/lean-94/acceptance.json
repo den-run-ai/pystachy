@@ -1,0 +1,1742 @@
+{
+  "commit": "94f472d6de5350fc9481ecf3b9ec019d2ecdb4f2",
+  "tree": "51f6c150748b2d17945e4d1c6779d8080b6edd6a",
+  "checks": {
+    "exact_corpus_census": true,
+    "exact_program_count": true,
+    "exact_storage_census": true,
+    "exact_storage_count": true,
+    "baseline_program_names_retained": true,
+    "baseline_storage_program_names_retained": true,
+    "header_inventory_matches": true,
+    "full_not_selected_inputs": true,
+    "source_commit_matches": true,
+    "source_tree_matches": true,
+    "source_clean": true,
+    "clean_inputs": true,
+    "input_identities_match": true,
+    "checker_identities_match": true,
+    "all_copied_checker_hashes_match": true,
+    "all_checker_sources_match": true,
+    "python_matches": true,
+    "platform_matches": true,
+    "completion_matches_records": true,
+    "completion_valid": true,
+    "no_incomplete_or_failed_records": true,
+    "valid_numeric_check_records": true,
+    "strict_storage_all_accepted": false
+  },
+  "programs": 2699,
+  "storage_programs": 196,
+  "full_proof_totals": {
+    "payload": {
+      "programs": 302,
+      "functions": 1249,
+      "obligations": 2760,
+      "proved": 2760,
+      "rejected": [],
+      "other": []
+    },
+    "access": {
+      "programs": 1270,
+      "functions": 16261,
+      "obligations": 86345,
+      "proved": 86345,
+      "rejected": [],
+      "other": []
+    },
+    "null": {
+      "programs": 981,
+      "functions": 13369,
+      "obligations": 137304,
+      "proved": 137285,
+      "rejected": [
+        {
+          "function": "@f.typed",
+          "programs": [
+            "tests/programs/library/lib_tomllib.py"
+          ],
+          "obligations": 6,
+          "reason": "access: node 314: {'op': 'deref', 'pointer': '%t126', 'next': 315} is not proved by []; finite-tag: rejected"
+        },
+        {
+          "function": "@f.checksum",
+          "programs": [
+            "tests/programs/inference/dynany_graph.py"
+          ],
+          "obligations": 5,
+          "reason": "access: node 334: {'op': 'deref', 'pointer': '%t251', 'next': 335} is not proved by []; finite-tag: rejected"
+        },
+        {
+          "function": "@f.render",
+          "programs": [
+            "tests/programs/inference/dynany_graph.py"
+          ],
+          "obligations": 5,
+          "reason": "access: node 298: {'op': 'deref', 'pointer': '%t245', 'next': 299} is not proved by []; finite-tag: rejected"
+        },
+        {
+          "function": "@main.init",
+          "programs": [
+            "tests/programs/exceptions/exc_values.py"
+          ],
+          "obligations": 3,
+          "reason": "access: node 108: {'op': 'deref', 'pointer': '%t59', 'next': 109} is not proved by []; finite-tag: rejected"
+        }
+      ],
+      "other": []
+    },
+    "union": {
+      "programs": 308,
+      "functions": 2373,
+      "obligations": 8146,
+      "proved": 7289,
+      "rejected": [
+        {
+          "function": "@f.numeric",
+          "programs": [
+            "tests/programs/numbers/complex_unions.py"
+          ],
+          "obligations": 110,
+          "reason": "union.tag at entry:5 needs %a0 in ['member:_pystachy_complex$complex', 'member:float', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:float'"
+        },
+        {
+          "function": "@main.init",
+          "programs": [
+            "tests/programs/numbers/complex_unions.py"
+          ],
+          "obligations": 75,
+          "reason": "mach.load at L37:10 needs %t46 in ['member:_pystachy_complex$complex', 'member:bool', 'member:float', 'member:int', 'member:str']; known: ['member:_pystachy_com"
+        },
+        {
+          "function": "@f.search",
+          "programs": [
+            "tests/programs/numbers/complex_union_container_eq.py"
+          ],
+          "obligations": 72,
+          "reason": "union.tag at entry:4 needs %a0 in ['member:_pystachy_complex$complex', 'member:list[int]']; known: ['member:_pystachy_complex$complex', 'member:list[int]', 'nul"
+        },
+        {
+          "function": "@f.search",
+          "programs": [
+            "tests/programs/numbers/complex_union_identity.py"
+          ],
+          "obligations": 70,
+          "reason": "union.tag at entry:9 needs %t12 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']"
+        },
+        {
+          "function": "@m.string$Formatter._vformat",
+          "programs": [
+            "tests/programs/library/lib_logging.py",
+            "tests/programs/library/lib_logging_config.py",
+            "tests/programs/library/lib_logging_int_min.py",
+            "tests/programs/library/lib_logging_make_record.py",
+            "tests/programs/library/lib_logging_stderr.py"
+          ],
+          "obligations": 60,
+          "reason": "union.tag at L70:3 needs %t73 in ['member:bool', 'member:int']; known: nothing"
+        },
+        {
+          "function": "@f.fold",
+          "programs": [
+            "tests/programs/numbers/complex_unions.py"
+          ],
+          "obligations": 52,
+          "reason": "union.tag at entry:4 needs %a1 in ['member:_pystachy_complex$complex', 'member:bool', 'member:float', 'member:int', 'member:str']; known: ['member:_pystachy_com"
+        },
+        {
+          "function": "@main.init",
+          "programs": [
+            "tests/programs/containers/tuple_index_variable.py"
+          ],
+          "obligations": 35,
+          "reason": "mach.load at L145:0 needs %t142 in ['member:bool', 'member:float', 'member:int', 'member:list[int]', 'member:str']; known: nothing"
+        },
+        {
+          "function": "@f.numbers",
+          "programs": [
+            "tests/programs/numbers/complex_union_enum_eq.py"
+          ],
+          "obligations": 33,
+          "reason": "union.tag at entry:3 needs %a0 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']"
+        },
+        {
+          "function": "@main.init",
+          "programs": [
+            "tests/programs/numbers/complex_union_tuple_search.py"
+          ],
+          "obligations": 30,
+          "reason": "union.tag at L4:13 needs %t20 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']"
+        },
+        {
+          "function": "@m._pystachy_complex$complex.__eq__",
+          "programs": [
+            "tests/programs/inference/dynany_complex_union_identity.py",
+            "tests/programs/numbers/complex_union_container_eq.py",
+            "tests/programs/numbers/complex_union_identity.py",
+            "tests/programs/numbers/complex_union_tuple_search.py",
+            "tests/programs/numbers/complex_unions.py"
+          ],
+          "obligations": 27,
+          "reason": "union.tag at entry:3 needs %a1 in ['member:_pystachy_complex$complex', 'member:float', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:float'"
+        },
+        {
+          "function": "@f.check",
+          "programs": [
+            "tests/programs/inference/dynany_complex_union_identity.py"
+          ],
+          "obligations": 26,
+          "reason": "union.tag at L84:19 needs %t119 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']"
+        },
+        {
+          "function": "@main.init",
+          "programs": [
+            "tests/programs/reflection/reflect_vars_union.py"
+          ],
+          "obligations": 15,
+          "reason": "union.tag at L53:1 needs %t54 in ['member:A', 'member:B', 'member:C']; known: ['member:A', 'member:B', 'member:C', 'null']"
+        },
+        {
+          "function": "@m.logging$Manager.getLogger",
+          "programs": [
+            "tests/programs/library/lib_logging.py",
+            "tests/programs/library/lib_logging_config.py",
+            "tests/programs/library/lib_logging_int_min.py",
+            "tests/programs/library/lib_logging_stderr.py"
+          ],
+          "obligations": 12,
+          "reason": "union.payload at L62:0 needs %t61 in ['member:logging$PlaceHolder']; known: ['member:logging$Logger', 'member:logging$PlaceHolder']"
+        },
+        {
+          "function": "@main.init",
+          "programs": [
+            "tests/deviations/complex_union_none.py"
+          ],
+          "obligations": 12,
+          "reason": "mach.load at entry:9 needs %t3 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']"
+        },
+        {
+          "function": "@f.main",
+          "programs": [
+            "tests/programs/inference/recursive_alias_quoted.py"
+          ],
+          "obligations": 11,
+          "reason": "union.payload at L117:4 needs %t124 in ['member:dict[str,rec[V]]']; known: ['member:dict[str,rec[V]]', 'member:int', 'member:list[rec[V]]', 'member:str', 'null'"
+        },
+        {
+          "function": "@f.keys",
+          "programs": [
+            "tests/programs/library/json_long_text.py"
+          ],
+          "obligations": 10,
+          "reason": "union.payload at L114:1 needs %t116 in ['member:dict[str,rec[json$JSONValue]]']; known: ['member:bool', 'member:dict[str,rec[json$JSONValue]]', 'member:float', "
+        },
+        {
+          "function": "@m.string$Formatter.vformat",
+          "programs": [
+            "tests/programs/library/lib_logging.py",
+            "tests/programs/library/lib_logging_config.py",
+            "tests/programs/library/lib_logging_int_min.py",
+            "tests/programs/library/lib_logging_make_record.py",
+            "tests/programs/library/lib_logging_stderr.py"
+          ],
+          "obligations": 10,
+          "reason": "union.tag at entry:22 needs %t23 in ['member:bool', 'member:int']; known: nothing"
+        },
+        {
+          "function": "@main.init",
+          "programs": [
+            "tests/programs/containers/minmax_default_union_none.py"
+          ],
+          "obligations": 10,
+          "reason": "union.tag at L61:0 needs %t56 in ['member:Item', 'member:Other']; known: nothing"
+        },
+        {
+          "function": "@f.describe",
+          "programs": [
+            "tests/programs/numbers/complex_unions.py"
+          ],
+          "obligations": 9,
+          "reason": "union.tag at entry:2 needs %a0 in ['member:_pystachy_complex$complex', 'member:bool', 'member:float', 'member:int', 'member:str']; known: ['member:_pystachy_com"
+        },
+        {
+          "function": "@main.init",
+          "programs": [
+            "tests/programs/reflection/reflect_dataclasses.py"
+          ],
+          "obligations": 9,
+          "reason": "union box payload at L310:4 needs %bits.L310.4.6 in ['member:dict[str,int]', 'null']; known: ['member:dict[K,V]', 'null']"
+        },
+        {
+          "function": "@f.desc",
+          "programs": [
+            "tests/programs/inference/scalar_union_edges.py"
+          ],
+          "obligations": 8,
+          "reason": "union.tag at L4:0 needs %a0 in ['member:bool', 'member:float', 'member:int', 'member:str']; known: nothing"
+        },
+        {
+          "function": "@f.lists",
+          "programs": [
+            "tests/programs/numbers/complex_union_container_eq.py"
+          ],
+          "obligations": 8,
+          "reason": "union.tag at entry:6 needs %a0 in ['member:_pystachy_complex$complex', 'member:list[int]']; known: ['member:_pystachy_complex$complex', 'member:list[int]', 'nul"
+        },
+        {
+          "function": "@m.logging$Manager._clear_cache",
+          "programs": [
+            "tests/programs/library/lib_logging.py",
+            "tests/programs/library/lib_logging_config.py",
+            "tests/programs/library/lib_logging_int_min.py",
+            "tests/programs/library/lib_logging_stderr.py"
+          ],
+          "obligations": 8,
+          "reason": "union.payload at L56:0 needs %t55 in ['member:logging$Logger']; known: ['member:logging$Logger', 'member:logging$PlaceHolder']"
+        },
+        {
+          "function": "@f.dicts",
+          "programs": [
+            "tests/programs/numbers/complex_union_container_eq.py"
+          ],
+          "obligations": 6,
+          "reason": "union.tag at entry:6 needs %a0 in ['member:_pystachy_complex$complex', 'member:dict[str,int]']; known: ['member:_pystachy_complex$complex', 'member:dict[str,int"
+        },
+        {
+          "function": "@f.numbers",
+          "programs": [
+            "tests/programs/numbers/complex_union_object_eq.py"
+          ],
+          "obligations": 6,
+          "reason": "union.tag at entry:6 needs %a0 in ['member:_pystachy_complex$complex', 'member:int']; known: ['member:_pystachy_complex$complex', 'member:int', 'null']"
+        },
+        {
+          "function": "@f.show",
+          "programs": [
+            "tests/programs/numbers/complex_union_nested.py"
+          ],
+          "obligations": 6,
+          "reason": "mach.load at entry:12 needs %a0 in ['member:_pystachy_complex$complex', 'member:list[_pystachy_complex$complex]']; known: ['member:_pystachy_complex$complex', '"
+        },
+        {
+          "function": "@f.refine",
+          "programs": [
+            "tests/programs/inference/scalar_union_optional_narrowing.py"
+          ],
+          "obligations": 5,
+          "reason": "union.payload at L49:1 needs %a0 in ['member:float']; known: ['member:bool', 'member:float', 'member:str']"
+        },
+        {
+          "function": "@m.mpz$mpz.__init__",
+          "programs": [
+            "tests/programs/numbers/mpz_dynamic.py"
+          ],
+          "obligations": 5,
+          "reason": "union.tag at entry:8 needs %a1 in ['member:bool', 'member:int', 'member:str']; known: nothing"
+        },
+        {
+          "function": "@c.1",
+          "programs": [
+            "tests/programs/library/lib_string_template_kwargs.py"
+          ],
+          "obligations": 4,
+          "reason": "mach.load at L102:0 needs %t100 in ['member:float', 'member:int', 'member:str']; known: nothing"
+        },
+        {
+          "function": "@f.describe",
+          "programs": [
+            "tests/programs/inference/scalar_union_optional_narrowing.py"
+          ],
+          "obligations": 4,
+          "reason": "union.payload at L16:0 needs %a0 in ['member:str']; known: ['member:int', 'member:str']"
+        },
+        {
+          "function": "@f.optional_member",
+          "programs": [
+            "tests/programs/inference/scalar_union_storage.py"
+          ],
+          "obligations": 4,
+          "reason": "union.payload at L15:0 needs %a0 in ['member:int']; known: ['member:int', 'member:str']"
+        },
+        {
+          "function": "@m.string$Formatter.convert_field",
+          "programs": [
+            "tests/programs/library/lib_string_formatter.py"
+          ],
+          "obligations": 4,
+          "reason": "mach.load at L15:0 needs %a1 in ['member:bool', 'member:float', 'member:list[int]']; known: nothing"
+        },
+        {
+          "function": "@c.0",
+          "programs": [
+            "tests/programs/inference/dynany_identity_joined_cells.py"
+          ],
+          "obligations": 3,
+          "reason": "union.tag at L9:0 needs %t7 in ['member:float', 'member:int']; known: nothing"
+        },
+        {
+          "function": "@c.0",
+          "programs": [
+            "tests/programs/inference/scalar_union_edges.py"
+          ],
+          "obligations": 3,
+          "reason": "union.tag at entry:5 needs %t6 in ['member:int', 'member:str']; known: nothing"
+        },
+        {
+          "function": "@c.2",
+          "programs": [
+            "tests/programs/inference/dynany_identity_joined_cells.py"
+          ],
+          "obligations": 3,
+          "reason": "union.tag at L11:0 needs %t9 in ['member:float', 'member:int']; known: nothing"
+        },
+        {
+          "function": "@c.3",
+          "programs": [
+            "tests/programs/inference/dynany_identity_joined_cells.py"
+          ],
+          "obligations": 3,
+          "reason": "union.tag at L9:0 needs %t7 in ['member:int', 'member:str']; known: nothing"
+        },
+        {
+          "function": "@f.pick",
+          "programs": [
+            "tests/programs/inference/union_unbound_payload.py"
+          ],
+          "obligations": 3,
+          "reason": "union.tag at L18:1 needs %t19 in ['member:int', 'member:str']; known: nothing"
+        },
+        {
+          "function": "@f.pick_text",
+          "programs": [
+            "tests/programs/inference/union_unbound_payload.py"
+          ],
+          "obligations": 3,
+          "reason": "union.tag at L19:1 needs %t20 in ['member:int', 'member:str']; known: nothing"
+        },
+        {
+          "function": "@f.union",
+          "programs": [
+            "tests/programs/inference/narrow_nonlocal_closure.py"
+          ],
+          "obligations": 3,
+          "reason": "mach.load at entry:10 needs %t8 in ['member:int', 'member:str']; known: nothing"
+        },
+        {
+          "function": "@m.A.__eq__",
+          "programs": [
+            "tests/programs/inference/dynany_cmp_missing_write_union.py"
+          ],
+          "obligations": 3,
+          "reason": "union.tag at L24:4 needs %t25 in ['member:list[int]', 'member:list[str]']; known: ['member:list[int]', 'member:list[str]', 'null']"
+        },
+        {
+          "function": "@m.C.__eq__",
+          "programs": [
+            "tests/programs/inference/dynany_cmp_missing_write_union.py"
+          ],
+          "obligations": 3,
+          "reason": "union.tag at L24:4 needs %t25 in ['member:list[int]', 'member:list[str]']; known: ['member:list[int]', 'member:list[str]', 'null']"
+        },
+        {
+          "function": "@f.f",
+          "programs": [
+            "tests/programs/language/flow_locals_deferred_read.py"
+          ],
+          "obligations": 2,
+          "reason": "union.payload at entry:9 needs %t8 in ['member:str']; known: nothing"
+        },
+        {
+          "function": "@f.nonlocal_snapshot",
+          "programs": [
+            "tests/programs/inference/scalar_union_edges.py"
+          ],
+          "obligations": 2,
+          "reason": "union.tag at entry:10 needs %t7 in ['member:int', 'member:str']; known: nothing"
+        },
+        {
+          "function": "@f.annotated",
+          "programs": [
+            "tests/programs/optional/optional_scalar_slots_unbound.py"
+          ],
+          "obligations": 0,
+          "reason": "payload interpretation at L25:1 needs %t31 in ['member:int']; known: nothing"
+        },
+        {
+          "function": "@f.drain",
+          "programs": [
+            "tests/programs/generators/iterator_next_only.py"
+          ],
+          "obligations": 0,
+          "reason": "payload interpretation at L6:3 needs %t40 in ['member:int']; known: ['member:int', 'null']"
+        },
+        {
+          "function": "@f.inferred",
+          "programs": [
+            "tests/programs/optional/optional_scalar_slots_unbound.py"
+          ],
+          "obligations": 0,
+          "reason": "payload interpretation at L24:1 needs %t30 in ['member:int']; known: nothing"
+        }
+      ],
+      "other": [
+        {
+          "status": "unsupported",
+          "reason": "union read has no declared source domain",
+          "programs": 4,
+          "functions": 4
+        },
+        {
+          "status": "unsupported",
+          "reason": "union payload bits used by gen.yield with no member type",
+          "programs": 1,
+          "functions": 2
+        },
+        {
+          "status": "unsupported",
+          "reason": "union payload bits of no known member",
+          "programs": 1,
+          "functions": 1
+        }
+      ]
+    },
+    "union_payload": {
+      "programs": 370,
+      "functions": 1869,
+      "obligations": 15016,
+      "proved": 14358,
+      "rejected": [],
+      "other": []
+    },
+    "fields": {
+      "programs": 1526,
+      "functions": 17941,
+      "obligations": 166521,
+      "proved": 166284,
+      "rejected": [
+        {
+          "function": "@m.logging$Manager.getLogger",
+          "programs": [
+            "tests/programs/library/lib_logging.py",
+            "tests/programs/library/lib_logging_config.py",
+            "tests/programs/library/lib_logging_int_min.py",
+            "tests/programs/library/lib_logging_stderr.py"
+          ],
+          "obligations": 36,
+          "reason": "{\"known\": [\"set\", \"unset\"], \"node\": 240, \"site\": [\"L18\", 2, \"escapes\", \"L107.0\", 0], \"value\": \"F:L107.0#0\"}"
+        }
+      ],
+      "other": [
+        {
+          "status": "unsupported",
+          "reason": "candidate inference exceeds the prototype's resource bound",
+          "programs": 164,
+          "functions": 7
+        },
+        {
+          "status": "unsupported",
+          "reason": "function exceeds blocks",
+          "programs": 126,
+          "functions": 2
+        },
+        {
+          "status": "unsupported",
+          "reason": "field facts exceed the prototype's resource bound",
+          "programs": 1,
+          "functions": 1
+        },
+        {
+          "status": "unsupported",
+          "reason": "function exceeds instructions",
+          "programs": 5,
+          "functions": 1
+        },
+        {
+          "status": "unsupported",
+          "reason": "gives an object under construction to unsupported",
+          "programs": 2,
+          "functions": 1
+        },
+        {
+          "status": "unsupported",
+          "reason": "outside the boundary validator: invalid instruction operands",
+          "programs": 2,
+          "functions": 1
+        }
+      ]
+    },
+    "gc": {
+      "programs": 1760,
+      "functions": 26609,
+      "obligations": 194685,
+      "proved": 194307,
+      "rejected": [
+        {
+          "function": "@f._pystachy_copy$_memo_get",
+          "programs": [
+            "tests/deviations/dynany_native_int_list_store.py",
+            "tests/deviations/lib_copy_any_object.py",
+            "tests/programs/library/lib_copy.py",
+            "tests/programs/library/lib_copy_any.py",
+            "tests/programs/library/lib_copy_deep_live.py",
+            "tests/programs/library/lib_copy_deep_set_hook.py",
+            "tests/programs/library/lib_copy_deep_tuple_key.py",
+            "tests/programs/library/lib_copy_deepcopy_base.py",
+            "tests/programs/library/lib_copy_native_any.py",
+            "tests/programs/library/lib_copy_native_any_promote.py",
+            "tests/programs/library/lib_enum.py",
+            "tests/programs/numbers/complex_values.py",
+            "tests/programs/upstream/upstream_copy_extracted_any.py"
+          ],
+          "obligations": 99,
+          "reason": "ret at L20:7 (operand 0) needs %t29 in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@main.init",
+          "programs": [
+            "tests/programs/containers/dict_union_object_keys.py"
+          ],
+          "obligations": 41,
+          "reason": "rt at entry:103 (operand 0) needs %t59#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@main.init",
+          "programs": [
+            "tests/programs/generics/template_empty_methods.py"
+          ],
+          "obligations": 39,
+          "reason": "mem.store at L8:28 (operand 1) needs %t32#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@main.init",
+          "programs": [
+            "tests/programs/generics/template_empty_forward.py"
+          ],
+          "obligations": 34,
+          "reason": "mem.store at entry:26 (operand 1) needs %t16#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@main.init",
+          "programs": [
+            "tests/programs/generics/template_empty_literal_returns.py"
+          ],
+          "obligations": 32,
+          "reason": "mem.store at entry:39 (operand 1) needs %t24#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.b",
+          "programs": [
+            "tests/programs/inference/dynany_forward_cycle_dict.py"
+          ],
+          "obligations": 19,
+          "reason": "ret at L30:14 (operand 0) needs %t14 in ['none', 'scanned']; known: ['atomic', 'none', 'scanned']"
+        },
+        {
+          "function": "@main.init",
+          "programs": [
+            "tests/programs/generics/template_varargs_empty.py"
+          ],
+          "obligations": 13,
+          "reason": "mem.store at L40:42 (operand 1) needs %t79#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.local_mapping",
+          "programs": [
+            "tests/programs/generics/template_local_result.py"
+          ],
+          "obligations": 10,
+          "reason": "mem.store at entry:4 (operand 1) needs %t4#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@main.init",
+          "programs": [
+            "tests/programs/containers/sets_more.py"
+          ],
+          "obligations": 8,
+          "reason": "mem.store at L284:50 (operand 1) needs %t309 in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.shaped",
+          "programs": [
+            "tests/programs/generics/template_return_context_calls.py"
+          ],
+          "obligations": 7,
+          "reason": "slot.pack at L8:5 (operand 0) needs %t10#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.flags_or_empty",
+          "programs": [
+            "tests/programs/generics/template_empty_forward.py"
+          ],
+          "obligations": 6,
+          "reason": "ret at L4:2 (operand 0) needs %t7 in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@main.init",
+          "programs": [
+            "tests/programs/generics/template_empty_union_context.py"
+          ],
+          "obligations": 6,
+          "reason": "slot.pack at entry:6 (operand 0) needs %t5#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@main.init",
+          "programs": [
+            "tests/programs/generics/template_forward_cycle_str_keys.py"
+          ],
+          "obligations": 6,
+          "reason": "mem.store at entry:7 (operand 1) needs %t5#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.a",
+          "programs": [
+            "tests/programs/generics/template_forward_cycle_finally.py"
+          ],
+          "obligations": 5,
+          "reason": "ret at L5:3 (operand 0) needs %t9#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.a",
+          "programs": [
+            "tests/programs/generics/template_forward_cycle_finally_set.py"
+          ],
+          "obligations": 5,
+          "reason": "ret at L5:3 (operand 0) needs %t9 in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.a",
+          "programs": [
+            "tests/programs/generics/template_forward_cycle_str_keys.py"
+          ],
+          "obligations": 5,
+          "reason": "ret at L5:3 (operand 0) needs %t9#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.a",
+          "programs": [
+            "tests/programs/inference/dynany_forward_cycle_dict.py"
+          ],
+          "obligations": 5,
+          "reason": "ret at L5:8 (operand 0) needs %t13#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.a",
+          "programs": [
+            "tests/programs/generics/template_forward_cycle_set.py"
+          ],
+          "obligations": 4,
+          "reason": "ret at L5:3 (operand 0) needs %t9 in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.collect",
+          "programs": [
+            "tests/programs/generics/template_empty_forward_recursive.py"
+          ],
+          "obligations": 4,
+          "reason": "ret at L5:3 (operand 0) needs %t9#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.recursive_strings",
+          "programs": [
+            "tests/programs/generics/template_empty_forward_joins.py"
+          ],
+          "obligations": 4,
+          "reason": "ret at L5:3 (operand 0) needs %t9#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.names_or_empty",
+          "programs": [
+            "tests/programs/generics/template_empty_forward.py"
+          ],
+          "obligations": 3,
+          "reason": "ret at L4:2 (operand 0) needs %t7#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.tuple_keys",
+          "programs": [
+            "tests/programs/generics/template_empty_forward_joins.py"
+          ],
+          "obligations": 3,
+          "reason": "ret at L5:3 (operand 0) needs %t9#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.tuples_or_empty",
+          "programs": [
+            "tests/programs/generics/template_empty_forward.py"
+          ],
+          "obligations": 3,
+          "reason": "ret at L4:2 (operand 0) needs %t7#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@m.Factory.maybe_filled",
+          "programs": [
+            "tests/programs/generics/template_empty_methods.py"
+          ],
+          "obligations": 3,
+          "reason": "ret at L5:3 (operand 0) needs %t9#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.b",
+          "programs": [
+            "tests/programs/generics/template_forward_cycle_str_keys.py"
+          ],
+          "obligations": 2,
+          "reason": "ret at entry:5 (operand 0) needs %t4 in ['none', 'scanned']; known: ['atomic', 'none', 'scanned']"
+        },
+        {
+          "function": "@f.a",
+          "programs": [
+            "tests/programs/generics/template_forward_cycle_hashed_keys.py"
+          ],
+          "obligations": 1,
+          "reason": "rt at L25:9 (operand 0) needs %t29#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.annotated",
+          "programs": [
+            "tests/programs/generics/template_empty_methods.py"
+          ],
+          "obligations": 1,
+          "reason": "ret at L6:2 (operand 0) needs %t7#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.b",
+          "programs": [
+            "tests/programs/generics/template_forward_cycle_finally.py"
+          ],
+          "obligations": 1,
+          "reason": "ret at L12:25 (operand 0) needs %t10 in ['none', 'scanned']; known: ['atomic', 'none', 'scanned']"
+        },
+        {
+          "function": "@f.b",
+          "programs": [
+            "tests/programs/generics/template_forward_cycle_hashed_keys.py"
+          ],
+          "obligations": 1,
+          "reason": "ret at L46:15 (operand 0) needs %t14 in ['none', 'scanned']; known: ['atomic', 'none', 'scanned']"
+        },
+        {
+          "function": "@f.e",
+          "programs": [
+            "tests/programs/inference/dynany_forward_cycle_dict.py"
+          ],
+          "obligations": 1,
+          "reason": "ret at L30:14 (operand 0) needs %t14 in ['none', 'scanned']; known: ['atomic', 'none', 'scanned']"
+        },
+        {
+          "function": "@f.forward",
+          "programs": [
+            "tests/programs/generics/template_forward_cycle_dict.py"
+          ],
+          "obligations": 1,
+          "reason": "ret at entry:5 (operand 0) needs %t4 in ['none', 'scanned']; known: ['atomic', 'none', 'scanned']"
+        },
+        {
+          "function": "@f.forward",
+          "programs": [
+            "tests/programs/generics/template_forward_cycle_list.py"
+          ],
+          "obligations": 1,
+          "reason": "ret at entry:4 (operand 0) needs %t4 in ['none', 'scanned']; known: ['atomic', 'none', 'scanned']"
+        },
+        {
+          "function": "@f.forward_two",
+          "programs": [
+            "tests/programs/generics/template_forward_cycle_list.py"
+          ],
+          "obligations": 1,
+          "reason": "ret at entry:4 (operand 0) needs %t4 in ['none', 'scanned']; known: ['atomic', 'none', 'scanned']"
+        },
+        {
+          "function": "@f.result",
+          "programs": [
+            "tests/programs/generics/template_empty_literal_returns.py"
+          ],
+          "obligations": 1,
+          "reason": "ret at entry:2 (operand 0) needs %t2#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.result",
+          "programs": [
+            "tests/programs/generics/template_empty_union_context.py"
+          ],
+          "obligations": 1,
+          "reason": "slot.pack at entry:2 (operand 0) needs %t2#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.union",
+          "programs": [
+            "tests/programs/containers/dict_union_object_keys.py"
+          ],
+          "obligations": 1,
+          "reason": "rt at L8:5 (operand 0) needs %t20#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.unique",
+          "programs": [
+            "tests/programs/generics/template_empty_forward_builtins.py"
+          ],
+          "obligations": 1,
+          "reason": "rt at entry:4 (operand 0) needs %t5 in ['none', 'scanned']; known: ['atomic']"
+        }
+      ],
+      "other": [
+        {
+          "status": "unsupported",
+          "reason": "graph exceeds nodes",
+          "programs": 7,
+          "functions": 2
+        },
+        {
+          "status": "unsupported",
+          "reason": "outside the boundary validator: invalid instruction operands",
+          "programs": 2,
+          "functions": 1
+        }
+      ]
+    },
+    "int": {
+      "programs": 39,
+      "functions": 122,
+      "obligations": 344,
+      "proved": 344,
+      "rejected": [],
+      "other": []
+    },
+    "int_inline": {
+      "programs": 145,
+      "functions": 559,
+      "obligations": 2784,
+      "proved": 2784,
+      "rejected": [],
+      "other": []
+    },
+    "storage": {
+      "programs": 180,
+      "functions": 2172,
+      "obligations": 25682,
+      "proved": 25682,
+      "rejected": [],
+      "other": [
+        {
+          "status": "unsupported",
+          "reason": "tuple boundary changes a non-integer representation",
+          "programs": 1,
+          "functions": 3
+        }
+      ]
+    }
+  },
+  "failed_records": [],
+  "baseline_proof_totals": {
+    "payload": {
+      "programs": 282,
+      "functions": 1156,
+      "obligations": 2583,
+      "proved": 2583,
+      "rejected": [],
+      "other": []
+    },
+    "access": {
+      "programs": 1223,
+      "functions": 16186,
+      "obligations": 86150,
+      "proved": 86150,
+      "rejected": [],
+      "other": []
+    },
+    "null": {
+      "programs": 926,
+      "functions": 13211,
+      "obligations": 136413,
+      "proved": 136394,
+      "rejected": [
+        {
+          "function": "@f.typed",
+          "programs": [
+            "tests/programs/library/lib_tomllib.py"
+          ],
+          "obligations": 6,
+          "reason": "access: node 314: {'op': 'deref', 'pointer': '%t126', 'next': 315} is not proved by []; finite-tag: rejected"
+        },
+        {
+          "function": "@f.checksum",
+          "programs": [
+            "tests/programs/inference/dynany_graph.py"
+          ],
+          "obligations": 5,
+          "reason": "access: node 334: {'op': 'deref', 'pointer': '%t251', 'next': 335} is not proved by []; finite-tag: rejected"
+        },
+        {
+          "function": "@f.render",
+          "programs": [
+            "tests/programs/inference/dynany_graph.py"
+          ],
+          "obligations": 5,
+          "reason": "access: node 298: {'op': 'deref', 'pointer': '%t245', 'next': 299} is not proved by []; finite-tag: rejected"
+        },
+        {
+          "function": "@main.init",
+          "programs": [
+            "tests/programs/exceptions/exc_values.py"
+          ],
+          "obligations": 3,
+          "reason": "access: node 108: {'op': 'deref', 'pointer': '%t59', 'next': 109} is not proved by []; finite-tag: rejected"
+        }
+      ],
+      "other": []
+    },
+    "union": {
+      "programs": 276,
+      "functions": 2214,
+      "obligations": 6948,
+      "proved": 6633,
+      "rejected": [
+        {
+          "function": "@m.string$Formatter._vformat",
+          "programs": [
+            "tests/programs/library/lib_logging.py",
+            "tests/programs/library/lib_logging_config.py",
+            "tests/programs/library/lib_logging_int_min.py",
+            "tests/programs/library/lib_logging_make_record.py",
+            "tests/programs/library/lib_logging_stderr.py"
+          ],
+          "obligations": 60,
+          "reason": "union.tag at L70:3 needs %t73 in ['member:bool', 'member:int']; known: nothing"
+        },
+        {
+          "function": "@main.init",
+          "programs": [
+            "tests/programs/containers/tuple_index_variable.py"
+          ],
+          "obligations": 35,
+          "reason": "mach.load at L145:0 needs %t142 in ['member:bool', 'member:float', 'member:int', 'member:list[int]', 'member:str']; known: nothing"
+        },
+        {
+          "function": "@main.init",
+          "programs": [
+            "tests/programs/reflection/reflect_vars_union.py"
+          ],
+          "obligations": 15,
+          "reason": "union.tag at L53:1 needs %t54 in ['member:A', 'member:B', 'member:C']; known: ['member:A', 'member:B', 'member:C', 'null']"
+        },
+        {
+          "function": "@m.logging$Manager.getLogger",
+          "programs": [
+            "tests/programs/library/lib_logging.py",
+            "tests/programs/library/lib_logging_config.py",
+            "tests/programs/library/lib_logging_int_min.py",
+            "tests/programs/library/lib_logging_stderr.py"
+          ],
+          "obligations": 12,
+          "reason": "union.payload at L62:0 needs %t61 in ['member:logging$PlaceHolder']; known: ['member:logging$Logger', 'member:logging$PlaceHolder']"
+        },
+        {
+          "function": "@f.main",
+          "programs": [
+            "tests/programs/inference/recursive_alias_quoted.py"
+          ],
+          "obligations": 11,
+          "reason": "union.payload at L117:4 needs %t124 in ['member:dict[str,rec[V]]']; known: ['member:dict[str,rec[V]]', 'member:int', 'member:list[rec[V]]', 'member:str', 'null'"
+        },
+        {
+          "function": "@f.keys",
+          "programs": [
+            "tests/programs/library/json_long_text.py"
+          ],
+          "obligations": 10,
+          "reason": "union.payload at L114:1 needs %t116 in ['member:dict[str,rec[json$JSONValue]]']; known: ['member:bool', 'member:dict[str,rec[json$JSONValue]]', 'member:float', "
+        },
+        {
+          "function": "@m.string$Formatter.vformat",
+          "programs": [
+            "tests/programs/library/lib_logging.py",
+            "tests/programs/library/lib_logging_config.py",
+            "tests/programs/library/lib_logging_int_min.py",
+            "tests/programs/library/lib_logging_make_record.py",
+            "tests/programs/library/lib_logging_stderr.py"
+          ],
+          "obligations": 10,
+          "reason": "union.tag at entry:22 needs %t23 in ['member:bool', 'member:int']; known: nothing"
+        },
+        {
+          "function": "@main.init",
+          "programs": [
+            "tests/programs/containers/minmax_default_union_none.py"
+          ],
+          "obligations": 10,
+          "reason": "union.tag at L61:0 needs %t56 in ['member:Item', 'member:Other']; known: nothing"
+        },
+        {
+          "function": "@main.init",
+          "programs": [
+            "tests/programs/reflection/reflect_dataclasses.py"
+          ],
+          "obligations": 9,
+          "reason": "union box payload at L310:4 needs %bits.L310.4.6 in ['member:dict[str,int]', 'null']; known: ['member:dict[K,V]', 'null']"
+        },
+        {
+          "function": "@f.desc",
+          "programs": [
+            "tests/programs/inference/scalar_union_edges.py"
+          ],
+          "obligations": 8,
+          "reason": "union.tag at L4:0 needs %a0 in ['member:bool', 'member:float', 'member:int', 'member:str']; known: nothing"
+        },
+        {
+          "function": "@m.logging$Manager._clear_cache",
+          "programs": [
+            "tests/programs/library/lib_logging.py",
+            "tests/programs/library/lib_logging_config.py",
+            "tests/programs/library/lib_logging_int_min.py",
+            "tests/programs/library/lib_logging_stderr.py"
+          ],
+          "obligations": 8,
+          "reason": "union.payload at L56:0 needs %t55 in ['member:logging$Logger']; known: ['member:logging$Logger', 'member:logging$PlaceHolder']"
+        },
+        {
+          "function": "@f.refine",
+          "programs": [
+            "tests/programs/inference/scalar_union_optional_narrowing.py"
+          ],
+          "obligations": 5,
+          "reason": "union.payload at L49:1 needs %a0 in ['member:float']; known: ['member:bool', 'member:float', 'member:str']"
+        },
+        {
+          "function": "@m.mpz$mpz.__init__",
+          "programs": [
+            "tests/programs/numbers/mpz_dynamic.py"
+          ],
+          "obligations": 5,
+          "reason": "union.tag at entry:8 needs %a1 in ['member:bool', 'member:int', 'member:str']; known: nothing"
+        },
+        {
+          "function": "@c.1",
+          "programs": [
+            "tests/programs/library/lib_string_template_kwargs.py"
+          ],
+          "obligations": 4,
+          "reason": "mach.load at L102:0 needs %t100 in ['member:float', 'member:int', 'member:str']; known: nothing"
+        },
+        {
+          "function": "@f.describe",
+          "programs": [
+            "tests/programs/inference/scalar_union_optional_narrowing.py"
+          ],
+          "obligations": 4,
+          "reason": "union.payload at L16:0 needs %a0 in ['member:str']; known: ['member:int', 'member:str']"
+        },
+        {
+          "function": "@f.optional_member",
+          "programs": [
+            "tests/programs/inference/scalar_union_storage.py"
+          ],
+          "obligations": 4,
+          "reason": "union.payload at L15:0 needs %a0 in ['member:int']; known: ['member:int', 'member:str']"
+        },
+        {
+          "function": "@m.string$Formatter.convert_field",
+          "programs": [
+            "tests/programs/library/lib_string_formatter.py"
+          ],
+          "obligations": 4,
+          "reason": "mach.load at L15:0 needs %a1 in ['member:bool', 'member:float', 'member:list[int]']; known: nothing"
+        },
+        {
+          "function": "@c.0",
+          "programs": [
+            "tests/programs/inference/dynany_identity_joined_cells.py"
+          ],
+          "obligations": 3,
+          "reason": "union.tag at L9:0 needs %t7 in ['member:float', 'member:int']; known: nothing"
+        },
+        {
+          "function": "@c.0",
+          "programs": [
+            "tests/programs/inference/scalar_union_edges.py"
+          ],
+          "obligations": 3,
+          "reason": "union.tag at entry:5 needs %t6 in ['member:int', 'member:str']; known: nothing"
+        },
+        {
+          "function": "@c.2",
+          "programs": [
+            "tests/programs/inference/dynany_identity_joined_cells.py"
+          ],
+          "obligations": 3,
+          "reason": "union.tag at L11:0 needs %t9 in ['member:float', 'member:int']; known: nothing"
+        },
+        {
+          "function": "@c.3",
+          "programs": [
+            "tests/programs/inference/dynany_identity_joined_cells.py"
+          ],
+          "obligations": 3,
+          "reason": "union.tag at L9:0 needs %t7 in ['member:int', 'member:str']; known: nothing"
+        },
+        {
+          "function": "@f.pick",
+          "programs": [
+            "tests/programs/inference/union_unbound_payload.py"
+          ],
+          "obligations": 3,
+          "reason": "union.tag at L18:1 needs %t19 in ['member:int', 'member:str']; known: nothing"
+        },
+        {
+          "function": "@f.pick_text",
+          "programs": [
+            "tests/programs/inference/union_unbound_payload.py"
+          ],
+          "obligations": 3,
+          "reason": "union.tag at L19:1 needs %t20 in ['member:int', 'member:str']; known: nothing"
+        },
+        {
+          "function": "@f.union",
+          "programs": [
+            "tests/programs/inference/narrow_nonlocal_closure.py"
+          ],
+          "obligations": 3,
+          "reason": "mach.load at entry:10 needs %t8 in ['member:int', 'member:str']; known: nothing"
+        },
+        {
+          "function": "@m.A.__eq__",
+          "programs": [
+            "tests/programs/inference/dynany_cmp_missing_write_union.py"
+          ],
+          "obligations": 3,
+          "reason": "union.tag at L24:4 needs %t25 in ['member:list[int]', 'member:list[str]']; known: ['member:list[int]', 'member:list[str]', 'null']"
+        },
+        {
+          "function": "@m.C.__eq__",
+          "programs": [
+            "tests/programs/inference/dynany_cmp_missing_write_union.py"
+          ],
+          "obligations": 3,
+          "reason": "union.tag at L24:4 needs %t25 in ['member:list[int]', 'member:list[str]']; known: ['member:list[int]', 'member:list[str]', 'null']"
+        },
+        {
+          "function": "@f.f",
+          "programs": [
+            "tests/programs/language/flow_locals_deferred_read.py"
+          ],
+          "obligations": 2,
+          "reason": "union.payload at entry:9 needs %t8 in ['member:str']; known: nothing"
+        },
+        {
+          "function": "@f.nonlocal_snapshot",
+          "programs": [
+            "tests/programs/inference/scalar_union_edges.py"
+          ],
+          "obligations": 2,
+          "reason": "union.tag at entry:10 needs %t7 in ['member:int', 'member:str']; known: nothing"
+        },
+        {
+          "function": "@f.annotated",
+          "programs": [
+            "tests/programs/optional/optional_scalar_slots_unbound.py"
+          ],
+          "obligations": 0,
+          "reason": "payload interpretation at L25:1 needs %t31 in ['member:int']; known: nothing"
+        },
+        {
+          "function": "@f.drain",
+          "programs": [
+            "tests/programs/generators/iterator_next_only.py"
+          ],
+          "obligations": 0,
+          "reason": "payload interpretation at L6:3 needs %t40 in ['member:int']; known: ['member:int', 'null']"
+        },
+        {
+          "function": "@f.inferred",
+          "programs": [
+            "tests/programs/optional/optional_scalar_slots_unbound.py"
+          ],
+          "obligations": 0,
+          "reason": "payload interpretation at L24:1 needs %t30 in ['member:int']; known: nothing"
+        }
+      ],
+      "other": [
+        {
+          "status": "unsupported",
+          "reason": "union read has no declared source domain",
+          "programs": 4,
+          "functions": 4
+        },
+        {
+          "status": "unsupported",
+          "reason": "union payload bits used by gen.yield with no member type",
+          "programs": 1,
+          "functions": 2
+        },
+        {
+          "status": "unsupported",
+          "reason": "union payload bits of no known member",
+          "programs": 1,
+          "functions": 1
+        }
+      ]
+    },
+    "union_payload": {
+      "programs": 335,
+      "functions": 1717,
+      "obligations": 13533,
+      "proved": 13284,
+      "rejected": [],
+      "other": []
+    },
+    "fields": {
+      "programs": 1401,
+      "functions": 17209,
+      "obligations": 161987,
+      "proved": 161750,
+      "rejected": [
+        {
+          "function": "@m.logging$Manager.getLogger",
+          "programs": [
+            "tests/programs/library/lib_logging.py",
+            "tests/programs/library/lib_logging_config.py",
+            "tests/programs/library/lib_logging_int_min.py",
+            "tests/programs/library/lib_logging_stderr.py"
+          ],
+          "obligations": 36,
+          "reason": "{\"known\": [\"set\", \"unset\"], \"node\": 240, \"site\": [\"L18\", 2, \"escapes\", \"L107.0\", 0], \"value\": \"F:L107.0#0\"}"
+        }
+      ],
+      "other": [
+        {
+          "status": "unsupported",
+          "reason": "candidate inference exceeds the prototype's resource bound",
+          "programs": 163,
+          "functions": 7
+        },
+        {
+          "status": "unsupported",
+          "reason": "function exceeds blocks",
+          "programs": 126,
+          "functions": 2
+        },
+        {
+          "status": "unsupported",
+          "reason": "field facts exceed the prototype's resource bound",
+          "programs": 1,
+          "functions": 1
+        },
+        {
+          "status": "unsupported",
+          "reason": "function exceeds instructions",
+          "programs": 5,
+          "functions": 1
+        },
+        {
+          "status": "unsupported",
+          "reason": "gives an object under construction to unsupported",
+          "programs": 2,
+          "functions": 1
+        },
+        {
+          "status": "unsupported",
+          "reason": "outside the boundary validator: invalid instruction operands",
+          "programs": 2,
+          "functions": 1
+        }
+      ]
+    },
+    "gc": {
+      "programs": 1659,
+      "functions": 26289,
+      "obligations": 191244,
+      "proved": 190869,
+      "rejected": [
+        {
+          "function": "@f._pystachy_copy$_memo_get",
+          "programs": [
+            "tests/deviations/dynany_native_int_list_store.py",
+            "tests/deviations/lib_copy_any_object.py",
+            "tests/programs/library/lib_copy.py",
+            "tests/programs/library/lib_copy_any.py",
+            "tests/programs/library/lib_copy_deep_live.py",
+            "tests/programs/library/lib_copy_deep_set_hook.py",
+            "tests/programs/library/lib_copy_deep_tuple_key.py",
+            "tests/programs/library/lib_copy_deepcopy_base.py",
+            "tests/programs/library/lib_copy_native_any.py",
+            "tests/programs/library/lib_copy_native_any_promote.py",
+            "tests/programs/library/lib_enum.py",
+            "tests/programs/upstream/upstream_copy_extracted_any.py"
+          ],
+          "obligations": 96,
+          "reason": "ret at L20:7 (operand 0) needs %t29 in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@main.init",
+          "programs": [
+            "tests/programs/containers/dict_union_object_keys.py"
+          ],
+          "obligations": 41,
+          "reason": "rt at entry:103 (operand 0) needs %t59#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@main.init",
+          "programs": [
+            "tests/programs/generics/template_empty_methods.py"
+          ],
+          "obligations": 39,
+          "reason": "mem.store at L8:28 (operand 1) needs %t32#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@main.init",
+          "programs": [
+            "tests/programs/generics/template_empty_forward.py"
+          ],
+          "obligations": 34,
+          "reason": "mem.store at entry:26 (operand 1) needs %t16#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@main.init",
+          "programs": [
+            "tests/programs/generics/template_empty_literal_returns.py"
+          ],
+          "obligations": 32,
+          "reason": "mem.store at entry:39 (operand 1) needs %t24#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.b",
+          "programs": [
+            "tests/programs/inference/dynany_forward_cycle_dict.py"
+          ],
+          "obligations": 19,
+          "reason": "ret at L30:14 (operand 0) needs %t14 in ['none', 'scanned']; known: ['atomic', 'none', 'scanned']"
+        },
+        {
+          "function": "@main.init",
+          "programs": [
+            "tests/programs/generics/template_varargs_empty.py"
+          ],
+          "obligations": 13,
+          "reason": "mem.store at L40:42 (operand 1) needs %t79#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.local_mapping",
+          "programs": [
+            "tests/programs/generics/template_local_result.py"
+          ],
+          "obligations": 10,
+          "reason": "mem.store at entry:4 (operand 1) needs %t4#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@main.init",
+          "programs": [
+            "tests/programs/containers/sets_more.py"
+          ],
+          "obligations": 8,
+          "reason": "mem.store at L284:50 (operand 1) needs %t309 in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.shaped",
+          "programs": [
+            "tests/programs/generics/template_return_context_calls.py"
+          ],
+          "obligations": 7,
+          "reason": "slot.pack at L8:5 (operand 0) needs %t10#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.flags_or_empty",
+          "programs": [
+            "tests/programs/generics/template_empty_forward.py"
+          ],
+          "obligations": 6,
+          "reason": "ret at L4:2 (operand 0) needs %t7 in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@main.init",
+          "programs": [
+            "tests/programs/generics/template_empty_union_context.py"
+          ],
+          "obligations": 6,
+          "reason": "slot.pack at entry:6 (operand 0) needs %t5#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@main.init",
+          "programs": [
+            "tests/programs/generics/template_forward_cycle_str_keys.py"
+          ],
+          "obligations": 6,
+          "reason": "mem.store at entry:7 (operand 1) needs %t5#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.a",
+          "programs": [
+            "tests/programs/generics/template_forward_cycle_finally.py"
+          ],
+          "obligations": 5,
+          "reason": "ret at L5:3 (operand 0) needs %t9#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.a",
+          "programs": [
+            "tests/programs/generics/template_forward_cycle_finally_set.py"
+          ],
+          "obligations": 5,
+          "reason": "ret at L5:3 (operand 0) needs %t9 in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.a",
+          "programs": [
+            "tests/programs/generics/template_forward_cycle_str_keys.py"
+          ],
+          "obligations": 5,
+          "reason": "ret at L5:3 (operand 0) needs %t9#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.a",
+          "programs": [
+            "tests/programs/inference/dynany_forward_cycle_dict.py"
+          ],
+          "obligations": 5,
+          "reason": "ret at L5:8 (operand 0) needs %t13#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.a",
+          "programs": [
+            "tests/programs/generics/template_forward_cycle_set.py"
+          ],
+          "obligations": 4,
+          "reason": "ret at L5:3 (operand 0) needs %t9 in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.collect",
+          "programs": [
+            "tests/programs/generics/template_empty_forward_recursive.py"
+          ],
+          "obligations": 4,
+          "reason": "ret at L5:3 (operand 0) needs %t9#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.recursive_strings",
+          "programs": [
+            "tests/programs/generics/template_empty_forward_joins.py"
+          ],
+          "obligations": 4,
+          "reason": "ret at L5:3 (operand 0) needs %t9#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.names_or_empty",
+          "programs": [
+            "tests/programs/generics/template_empty_forward.py"
+          ],
+          "obligations": 3,
+          "reason": "ret at L4:2 (operand 0) needs %t7#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.tuple_keys",
+          "programs": [
+            "tests/programs/generics/template_empty_forward_joins.py"
+          ],
+          "obligations": 3,
+          "reason": "ret at L5:3 (operand 0) needs %t9#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.tuples_or_empty",
+          "programs": [
+            "tests/programs/generics/template_empty_forward.py"
+          ],
+          "obligations": 3,
+          "reason": "ret at L4:2 (operand 0) needs %t7#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@m.Factory.maybe_filled",
+          "programs": [
+            "tests/programs/generics/template_empty_methods.py"
+          ],
+          "obligations": 3,
+          "reason": "ret at L5:3 (operand 0) needs %t9#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.b",
+          "programs": [
+            "tests/programs/generics/template_forward_cycle_str_keys.py"
+          ],
+          "obligations": 2,
+          "reason": "ret at entry:5 (operand 0) needs %t4 in ['none', 'scanned']; known: ['atomic', 'none', 'scanned']"
+        },
+        {
+          "function": "@f.a",
+          "programs": [
+            "tests/programs/generics/template_forward_cycle_hashed_keys.py"
+          ],
+          "obligations": 1,
+          "reason": "rt at L25:9 (operand 0) needs %t29#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.annotated",
+          "programs": [
+            "tests/programs/generics/template_empty_methods.py"
+          ],
+          "obligations": 1,
+          "reason": "ret at L6:2 (operand 0) needs %t7#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.b",
+          "programs": [
+            "tests/programs/generics/template_forward_cycle_finally.py"
+          ],
+          "obligations": 1,
+          "reason": "ret at L12:25 (operand 0) needs %t10 in ['none', 'scanned']; known: ['atomic', 'none', 'scanned']"
+        },
+        {
+          "function": "@f.b",
+          "programs": [
+            "tests/programs/generics/template_forward_cycle_hashed_keys.py"
+          ],
+          "obligations": 1,
+          "reason": "ret at L46:15 (operand 0) needs %t14 in ['none', 'scanned']; known: ['atomic', 'none', 'scanned']"
+        },
+        {
+          "function": "@f.e",
+          "programs": [
+            "tests/programs/inference/dynany_forward_cycle_dict.py"
+          ],
+          "obligations": 1,
+          "reason": "ret at L30:14 (operand 0) needs %t14 in ['none', 'scanned']; known: ['atomic', 'none', 'scanned']"
+        },
+        {
+          "function": "@f.forward",
+          "programs": [
+            "tests/programs/generics/template_forward_cycle_dict.py"
+          ],
+          "obligations": 1,
+          "reason": "ret at entry:5 (operand 0) needs %t4 in ['none', 'scanned']; known: ['atomic', 'none', 'scanned']"
+        },
+        {
+          "function": "@f.forward",
+          "programs": [
+            "tests/programs/generics/template_forward_cycle_list.py"
+          ],
+          "obligations": 1,
+          "reason": "ret at entry:4 (operand 0) needs %t4 in ['none', 'scanned']; known: ['atomic', 'none', 'scanned']"
+        },
+        {
+          "function": "@f.forward_two",
+          "programs": [
+            "tests/programs/generics/template_forward_cycle_list.py"
+          ],
+          "obligations": 1,
+          "reason": "ret at entry:4 (operand 0) needs %t4 in ['none', 'scanned']; known: ['atomic', 'none', 'scanned']"
+        },
+        {
+          "function": "@f.result",
+          "programs": [
+            "tests/programs/generics/template_empty_literal_returns.py"
+          ],
+          "obligations": 1,
+          "reason": "ret at entry:2 (operand 0) needs %t2#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.result",
+          "programs": [
+            "tests/programs/generics/template_empty_union_context.py"
+          ],
+          "obligations": 1,
+          "reason": "slot.pack at entry:2 (operand 0) needs %t2#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.union",
+          "programs": [
+            "tests/programs/containers/dict_union_object_keys.py"
+          ],
+          "obligations": 1,
+          "reason": "rt at L8:5 (operand 0) needs %t20#keys in ['none', 'scanned']; known: nothing"
+        },
+        {
+          "function": "@f.unique",
+          "programs": [
+            "tests/programs/generics/template_empty_forward_builtins.py"
+          ],
+          "obligations": 1,
+          "reason": "rt at entry:4 (operand 0) needs %t5 in ['none', 'scanned']; known: ['atomic']"
+        }
+      ],
+      "other": [
+        {
+          "status": "unsupported",
+          "reason": "graph exceeds nodes",
+          "programs": 7,
+          "functions": 2
+        },
+        {
+          "status": "unsupported",
+          "reason": "outside the boundary validator: invalid instruction operands",
+          "programs": 2,
+          "functions": 1
+        }
+      ]
+    },
+    "int": {
+      "programs": 29,
+      "functions": 36,
+      "obligations": 187,
+      "proved": 187,
+      "rejected": [],
+      "other": []
+    },
+    "int_inline": {
+      "programs": 131,
+      "functions": 351,
+      "obligations": 1692,
+      "proved": 1692,
+      "rejected": [],
+      "other": []
+    },
+    "storage": {
+      "programs": 162,
+      "functions": 1710,
+      "obligations": 18582,
+      "proved": 18582,
+      "rejected": [],
+      "other": []
+    }
+  },
+  "incomplete_records": [],
+  "invalid_records": [],
+  "storage_gaps": [
+    {
+      "program": "tests/programs/numbers/python_int_optional_tuple_keys.py",
+      "storage": {
+        "functions": 7,
+        "obligations": 8,
+        "proved": 8,
+        "unproved": [
+          {
+            "function": "@main.init",
+            "obligations": null,
+            "reason": "tuple boundary changes a non-integer representation",
+            "status": "unsupported"
+          },
+          {
+            "function": "@f.exercise",
+            "obligations": null,
+            "reason": "tuple boundary changes a non-integer representation",
+            "status": "unsupported"
+          },
+          {
+            "function": "@f.fixed_optional_tuple_keys$read_nested",
+            "obligations": null,
+            "reason": "tuple boundary changes a non-integer representation",
+            "status": "unsupported"
+          }
+        ]
+      }
+    }
+  ],
+  "report_sha256": "c9b11d755c7367e0654d550c25803f22ae0c9d2e2de122b6b0be3cad0d31a66c",
+  "records_sha256": "396f4b02ede94afda93ecc796f1da3aa1d3cb022a78939c51c4fc34a22101bbe",
+  "delta_summary": {
+    "added_programs": 149,
+    "missing_programs": 0,
+    "new_unproved_shared": 0,
+    "added_program_unproved": 26,
+    "obligation_decreases": 38,
+    "proved_count_decreases": 38,
+    "shared_unproved_count_increases": 0
+  },
+  "limitation": "Complete census acceptance is separate from semantic proof-delta review; changed or newly unproved obligations require explicit review before release."
+}

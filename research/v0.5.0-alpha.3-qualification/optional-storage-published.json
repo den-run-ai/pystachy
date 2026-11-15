@@ -1,0 +1,12 @@
+{
+  "commit": "0a2fe77a580106c197face4d2904be80e3f85dbc",
+  "tree": "107460d5f89bdcf37f2741b233eac0568d82604a",
+  "parent": "bbc8c8c38858ea2d90859751e34b885fdea1ca1d",
+  "branch": "fix/alpha3-lean-optional-storage-20261115",
+  "pr": 1501,
+  "url": "https://github.com/den-run-ai/pystachy/pull/1501",
+  "reviewed_tree_matches": true,
+  "pr_draft": true,
+  "changed_files": 4,
+  "body_readback_matches": true
+}

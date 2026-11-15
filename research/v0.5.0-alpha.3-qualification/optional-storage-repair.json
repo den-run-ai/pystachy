@@ -1,0 +1,66 @@
+{
+  "state": "frozen staged four-file repair; no local commit or push",
+  "worktree": "/workspace/scratch/980402bc01c4/alpha3-storage-fix",
+  "branch": "codex/alpha3-lean-optional-storage-980402",
+  "base_commit": "94f472d6de5350fc9481ecf3b9ec019d2ecdb4f2",
+  "base_tree": "51f6c150748b2d17945e4d1c6779d8080b6edd6a",
+  "repair_tree": "107460d5f89bdcf37f2741b233eac0568d82604a",
+  "patch_sha256": "6b5b1e467cf23cb5b7ae292e312cb071a0ba016283ec02161bc1bd9f3298249b",
+  "files": {
+    "tools/check_lean_storage.py": {
+      "sha256": "be97d9a093d6535d87167484740fed0b0ad7d6b712d71283c798c533d1031869",
+      "git_blob": "015bbf436ecec626202b9b0d40b4ef3b644d8690"
+    },
+    "tools/lean_boundary/STORAGE.md": {
+      "sha256": "b6fe62828133ceccd31c61ddf5106fefdada1363652f32ddf3c1a96e2652fbc6",
+      "git_blob": "5efa163f2a6a37033427e61ef3f607ddff5867b4"
+    },
+    "tools/test_lean_storage.py": {
+      "sha256": "34ca1290494a8bafcf7eb6f723ae60fa9be9e82a741059334c801235b3487116",
+      "git_blob": "18c65bc02d70ec9def230e8b23e83627b63460c3"
+    },
+    "tools/test_lean_storage_layout.py": {
+      "sha256": "36d7d61daf1ea0be5b043cefceeb6d0475c9afa449aaa0c6d3e8a9628d75a202",
+      "git_blob": "e73a15396f3f6b42b1b0d6fa76c01f2e68aada1f"
+    }
+  },
+  "git_status": "M  tools/check_lean_storage.py\nM  tools/lean_boundary/STORAGE.md\nM  tools/test_lean_storage.py\nM  tools/test_lean_storage_layout.py",
+  "production_inputs_changed": false,
+  "lean_checker_sources_changed": false,
+  "target_inputs": {
+    "tests/programs/numbers/python_int_optional_tuple_keys.py": "f825d7eeef5cc97dfd8607e51c073fc45f31ba52242db97f3d392d6634a1d665",
+    "tests/programs/numbers/python_int_optional_tuple_keys.path": "372e61e02eda375f5684719ded51516ea3e5da3e010c2a887adf75f0f8b21bec",
+    "tests/python_int_modules/fixed_optional_tuple_keys.py": "0b87ecad6697e1888f51d0b2afec8845cadfcdfb1c2258e76453f1b3dfd1457a",
+    "src/pystachy_compiler/bigints.py": "3592d29d5ab8849e2f9fd845240a7533097053d9fd2e31c2f5239462fef1053a",
+    "src/pystachy_compiler/utils.py": "3bc81820c00f130c1b9cb82032fa34b781f2df69fc4f8389b2f775ca2971e952"
+  },
+  "validation": {
+    "all_storage_tests": {
+      "tests": 69,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "seconds": 21.531,
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean/optional-storage-repair/final-all-storage-tests.json"
+    },
+    "target": {
+      "status": "accepted",
+      "obligations": 142,
+      "proved_obligations": 142,
+      "unclassified_functions": 0,
+      "unsupported": 0,
+      "rejected": 0,
+      "error": 0,
+      "path": "/workspace/scratch/980402bc01c4/evidence/lean/optional-storage-repair/final-target-result.json"
+    },
+    "baseline_controls": "/workspace/scratch/980402bc01c4/evidence/lean/optional-storage-repair/baseline-final-regressions.json",
+    "ruff": "ruff check tools/check_lean_storage.py tools/test_lean_storage.py tools/test_lean_storage_layout.py passed",
+    "diff_check": "git diff --cached --check passed"
+  },
+  "limits": [
+    "Focused target snapshot is a fresh typed-after-only inspection with SHA da903fa37e5e7685dad7eae60c9b8812c2bd8c79e41aad0ffc0b171f44abc62e, not exact replay of census snapshot SHA 9638ff0347f8a12f23fdd7a7be72bd35343080ec966bcfe432f74c3819c7d76b.",
+    "No compiler/runtime/corpus/Lean theorem source changed; no bootstrap/native execution or full census rerun claimed.",
+    "Final full census must use the frozen repaired source and retain historical strict-storage failure.",
+    "Python adapter/inspection correspondence and immutable tuple contracts remain trusted; bounded storage checks do not prove general null-dereference safety."
+  ]
+}
