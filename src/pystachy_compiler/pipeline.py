@@ -47,7 +47,9 @@ class PipelineState:
         self.active = name
 
     def complete(self, name: str) -> None:
-        if self.active != name:
+        if name not in STAGE_PREDECESSORS:
+            fail(f"internal error: unknown compiler stage {name}", 0)
+        if self.active != name or self.stage != STAGE_PREDECESSORS[name]:
             fail(f"internal error: compiler stage {name} is not active", 0)
         self.stage = name
         self.history.append(name)
@@ -151,6 +153,11 @@ def gen_finalize_program(self) -> None:
             print(f"{fn.f.ll}: {fxs(fn.fx)}".rstrip(), file=sys.stderr)
     if "tupleret" in on:
         self.tuple_rets()  # (which functions return their tuples' slots by value: lowering reads it)
+    # Admission belongs to the retained program boundary. The backend may consume
+    # bodies only after runtime/extension export contracts have been checked.
+    self.validate_module()
+    if chk and not one_nums_intact():
+        fail("internal error: an op changed the shared list of its number (one_num)", 0)
     timing_end(phase + ".finalize", started)
     self.pipeline.complete("finalize")
 

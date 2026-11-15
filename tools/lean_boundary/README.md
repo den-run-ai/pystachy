@@ -6,6 +6,7 @@ the model does not establish that the exporter or runtime implements that model.
 
 | Area | Enforced property | Current boundary |
 |---|---|---|
+| Compiler stages | Completed stages form an ordered prefix; unfinished stages block new starts; lowering follows finalization and is terminal; successful inspection reports bind the snapshot to the terminal attempt ([PIPELINE.md](PIPELINE.md)) | Python state/exporter correspondence, stage body semantics and artifact authenticity |
 | Dynamic `Any` | Payload reads have matching type guards | Runtime tag/layout contracts |
 | Lists, dictionaries and sets | Unchecked accesses have bounds/live-entry facts | Runtime effects and container contracts |
 | Closure cells and calls | Captured-container facts survive only valid reads; visible callee writes invalidate facts | Independent Python body-effect scan and cell ABI |
@@ -94,8 +95,8 @@ audit; that historical comparison found no copied implementation. The shared log
 and dependency review, not a formal proof of authorship.
 
 Current Lean imports are limited to `Std`, `Lean` and the local `PystachyBoundary`,
-`PystachyAccess`, `PystachyInt`, `PystachyInline`, `PystachyStorage` and
-`PystachyGuards` modules; `lake-manifest.json`
+`PystachyAccess`, `PystachyInt`, `PystachyInline`, `PystachyStorage`,
+`PystachyGuards` and `PystachyPipeline` modules; `lake-manifest.json`
 contains no external packages. The pinned Lean
 toolchain is an external development dependency with its own
 [Apache-2.0 license](https://github.com/leanprover/lean4/blob/v4.35.0/LICENSE).

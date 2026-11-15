@@ -56,11 +56,11 @@ stages in order, for both ordinary programs and `runtime.py`:
 | Method | Input and completed contract |
 |---|---|
 | `prepare_program(modules)` | Qualified modules become a `PreparedProgram` with declarations, class records, normalized aliases and flow-marked top-level statements. |
-| `discover_program(prepared)` | Reachable functions, module initializers, specializations and helpers produce typed `IFn` bodies. Empty-container holes resolve as types become known; a pending inference retry prevents completion. |
+| `discover_program(prepared)` | Reachable functions, module initializers, specializations and helpers produce typed `IFn` bodies. C declarations become validated ABI plans with their dependencies registered. Empty-container holes resolve as types become known; a pending inference retry prevents completion. |
 | `analyze_program()` | Callback versions and the function index are complete. Effect summaries and the recursion policy precede requested typed-IR verification. |
 | `optimize_program()` | Enabled typed-IR passes run under their existing prerequisites, preserved facts and invalidation contracts. Exception regions remain in pre-lowering form. |
-| `finalize_program()` | Required exception edges and tuple-return ABI decisions are ready for the backend. Function bodies and representation tables remain available for inspection. |
-| `lower_program()` | Function and module lowering serialize LLVM. Function bodies are consumed; summaries remain available. |
+| `finalize_program()` | Required exception edges and tuple-return ABI decisions are ready for the backend. Runtime-module and CPython-export admission checks have passed. Function bodies, ABI plans and representation tables remain available for inspection. |
+| `lower_program()` | Function, adapter and module lowering serialize LLVM. Function bodies are consumed; summaries remain available. |
 
 `Gen.typed_program(modules)` runs through finalization without calling
 `lower_program`. This is an internal, attempt-local boundary for tools that need
@@ -78,9 +78,12 @@ Consumers must not mutate retained IR or configuration between stages.
 The stage names describe real orchestration boundaries, not a sequence of
 independent semantic passes. Preparation and discovery still combine resolution,
 typing, representation selection and specialization, and can compile required
-declarations lazily. The retained program also contains native ABI decisions;
-some C ABI stubs are already prepared during discovery. This boundary is not a
-portable semantic IR, an LLVM-free frontend or a standalone compatibility-checking API.
+declarations lazily. The retained program contains native ABI decisions, symbol
+names and target-specific constant expressions; it is not a portable semantic IR
+or a standalone compatibility-checking API. C adapter instructions and external
+declarations are serialized only during lowering. Their attempt-owned plans copy
+the admitted signatures and conversion policy, so serialization does not revisit
+ASTs, register dependencies or read changing dynamic/integer policy.
 
 `PYSTACHY_IRCHECK=1` verifies IR before the passes and after transformations. Function effect
 summaries remain available after the rest of the function's IR is released.
@@ -93,6 +96,12 @@ tables are copied before lowering consumes their source records. Existing
 [Lean checks](../tools/lean_boundary/README.md) check selected guard and storage
 properties of those snapshots; stage ordering does not establish semantic
 equivalence, alias lifetime, collector correctness or LLVM correctness.
+
+For a consumer that needs only those retained functions, inspection supports
+`--stop-after finalize`. It uses the ordinary driver's fresh-attempt retry rules,
+marks LLVM output as skipped and publishes the same finalized snapshot as a full
+inspection. `--typed-after-only` independently controls how many snapshots and
+pass records are collected.
 
 Module declarations follow the same boundary. Globals retain native types in `Val`
 records; `Data` records retain string bytes, constant tuples' slots, callable

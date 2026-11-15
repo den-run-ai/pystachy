@@ -143,6 +143,69 @@ class InspectionTests(unittest.TestCase):
         self.assertEqual(self.report(quick)["passes"], [])
         self.assertTrue(any(item["name"] == "nullcheck" for item in self.report(complete)["passes"]))
 
+    def test_finalized_inspection_preserves_snapshots_and_driver_retries(self):
+        retry = "total = 0\ndef add(value: float) -> None:\n    global total\n    total += value\nadd(1.5)\nprint(total)\n"
+        for label, source in (("ordinary", LOOP), ("retry", retry)):
+            with self.subTest(source=label):
+                program = self.source(source)
+                options = ("--typed-after-only", "--guard-evidence")
+                full, complete = self.inspect(program, label + "-full", options)
+                typed, retained = self.inspect(program, label + "-typed", options + ("--stop-after", "finalize"))
+                self.assertEqual(full.returncode, 0, full.stderr)
+                self.assertEqual(typed.returncode, 0, typed.stderr)
+                self.assertEqual(self.snapshot(retained, "typed-after"), self.snapshot(complete, "typed-after"))
+                report = self.report(retained)
+                reference = self.report(complete)
+                self.assertEqual(report["status"], "ok")
+                self.assertEqual(report["settings"]["stop_after"], "finalize")
+                self.assertTrue(report["verification"]["completed"])
+                self.assertNotIn("llvm", report["artifacts"])
+                self.assertFalse((retained / "llvm.ll").exists())
+                self.assertEqual(report["stages"][-1], {"name": "llvm", "status": "skipped", "artifact": None})
+                self.assertEqual(report["attempts"][:-1], reference["attempts"][:-1])
+                pipeline = report["attempts"][-1]["pipeline"]
+                self.assertEqual(pipeline["completed_stages"], PIPELINE_STAGES[:-1])
+                self.assertEqual((pipeline["stage"], pipeline["active_stage"], pipeline["status"]), ("finalize", None, "completed"))
+                self.assertEqual(pipeline["stages"][-1], {"name": "lower", "status": "unavailable"})
+                if label == "retry":
+                    self.assertGreater(len(report["attempts"]), 1)
+
+    def test_finalized_inspection_never_calls_backend(self):
+        marker = self.directory / "executed.txt"
+        program = self.source(LOOP + f"with open({str(marker)!r}, 'w') as stream:\n    stream.write('ran')\n")
+        output = self.directory / "retained"
+        output.mkdir()
+        script = """
+import argparse
+from unittest.mock import patch
+from src.pystachy_compiler.gen import Gen
+from tools.inspect_compiler import worker
+def forbidden(*args, **kwargs):
+    raise AssertionError('backend executed during finalized inspection')
+args = argparse.Namespace(source=SOURCE, output=OUTPUT, function='',
+                          typed_after_only=True, guard_evidence=True, stop_after='finalize')
+with patch.object(Gen, 'lower_program', forbidden), patch.object(Gen, 'lower_module', forbidden):
+    raise SystemExit(worker(args))
+""".replace("SOURCE", repr(str(program))).replace("OUTPUT", repr(str(output)))
+        result = subprocess.run([sys.executable, "-c", script], cwd=ROOT, env=self.env,
+                                capture_output=True, text=True, timeout=40)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.report(output)["status"], "ok")
+        self.assertFalse((output / "llvm.ll").exists())
+        self.assertFalse(marker.exists())
+
+    def test_finalized_inspection_does_not_accept_rejected_source(self):
+        program = self.source("print(unknown)\n")
+        full, complete = self.inspect(program, "full-rejection")
+        typed, retained = self.inspect(program, "typed-rejection", ("--stop-after", "finalize"))
+        self.assertEqual((full.returncode, typed.returncode), (1, 1))
+        report, reference = self.report(retained), self.report(complete)
+        self.assertEqual(report["status"], "rejected")
+        self.assertFalse(report["verification"]["completed"])
+        self.assertEqual(report["diagnostics"], reference["diagnostics"])
+        self.assertEqual(report["attempts"], reference["attempts"])
+        self.assertFalse((retained / "typed-after.json").exists())
+
     def test_dynamic_boundary_records_transitive_graph_outside_snapshot_filter(self):
         self.source("def number(text: str) -> int:\n    return int(text)\n", "boundary_leaf.py")
         self.source("import boundary_leaf\ndef number(text: str) -> int:\n"

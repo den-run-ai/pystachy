@@ -109,6 +109,42 @@ class CompilerPipelineTests(unittest.TestCase):
     def succeeded(self, result):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
+    def test_empty_and_unknown_completions_cannot_create_a_stage(self):
+        result = self.run_stage(self.source(), """
+from src.pystachy_compiler.pipeline import PipelineState
+for name in ['', 'new', 'unknown']:
+    state = PipelineState()
+    rejected(lambda: state.complete(name))
+    assert (state.stage, state.active, state.history) == ('new', '', [])
+state = PipelineState()
+state.begin('prepare')
+rejected(lambda: state.complete('discover'))
+assert (state.stage, state.active, state.history) == ('new', 'prepare', [])
+state.complete('prepare')
+assert (state.stage, state.active, state.history) == ('prepare', '', ['prepare'])
+""")
+        self.succeeded(result)
+
+    def test_finalized_boundary_checks_shared_ir_fragments(self):
+        result = self.run_stage(self.source(), """
+from src.pystachy_compiler.ir import ONENUMS, one_num
+g, modules = fresh()
+prepared = g.prepare_program(modules)
+g.discover_program(prepared)
+g.analyze_program()
+g.optimize_program()
+one_num(0)
+ONENUMS[0].append(1)
+try:
+    error = rejected(g.finalize_program)
+    assert 'shared list of its number' in error
+    assert (g.pipeline.stage, g.pipeline.active) == ('optimize', 'finalize')
+finally:
+    ONENUMS[0].pop()
+rejected(g.lower_program)
+""")
+        self.succeeded(result)
+
     def test_explicit_stages_preserve_ordinary_llvm(self):
         path = self.source()
         script = """

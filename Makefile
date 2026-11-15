@@ -472,6 +472,8 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_exception_bindings.py
 	$(PY) -m unittest discover -s tools -p test_inspect_compiler.py
 	$(PY) -m unittest discover -s tools -p test_compiler_pipeline.py
+	$(PY) -m unittest discover -s tools -p test_compiler_stage_admission.py
+	$(PY) -m unittest discover -s tools -p test_compiler_abi_stages.py
 	$(PY) -m unittest discover -s tools -p 'test_lean_boundary*.py'
 	$(PY) -m unittest discover -s tools -p test_lean_access.py
 	$(PY) -m unittest discover -s tools -p test_lean_inline.py
@@ -488,6 +490,7 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_lean_report.py
 	$(PY) -m unittest discover -s tools -p test_lean_fields.py
 	$(PY) -m unittest discover -s tools -p test_lean_int.py
+	$(PY) -m unittest discover -s tools -p test_lean_pipeline.py
 	$(PY) -m unittest discover -s tools -p 'test_lean_storage*.py'
 	$(PY) -m unittest discover -s tools -p test_lean_layout_metadata.py
 	$(PY) -m unittest discover -s tools -p test_source_lines.py
@@ -514,6 +517,7 @@ check-lean-boundary:
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_generators.py
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_fields.py
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_int.py
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_pipeline.py
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p 'test_lean_storage*.py'
 	$(PY) -m unittest discover -s tools -p test_lean_layout_metadata.py
 

@@ -880,6 +880,21 @@ class WorkerTests(unittest.TestCase):
                            env=dict(env, PYSTACHY_HOME=str(report.ROOT)), check=True, capture_output=True, timeout=120)
             self.assertEqual(digest, hashlib.sha256((output / "typed-after.json").read_bytes()).hexdigest())
 
+    def test_report_compilation_stops_with_complete_retained_ir(self):
+        env = {key: value for key, value in os.environ.items() if not key.startswith("PYSTACHY_")}
+        env.update(PYSTACHY_HOME=str(report.ROOT), PYSTACHY_IRCHECK="1")
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            self.assertEqual(report.compiled(self.PROGRAM, output, env, 120), 0)
+            result = json.loads((output / "report.json").read_text())
+            self.assertEqual(result["settings"]["stop_after"], "finalize")
+            self.assertEqual(result["attempts"][-1]["pipeline"]["stage"], "finalize")
+            self.assertEqual(result["attempts"][-1]["pipeline"]["status"], "completed")
+            self.assertEqual(result["stages"][-1]["status"], "skipped")
+            self.assertFalse((output / "llvm.ll").exists())
+            snapshot = output / "typed-after.json"
+            self.assertEqual(result["artifact_sha256"]["typed-after"], hashlib.sha256(snapshot.read_bytes()).hexdigest())
+
     def test_a_rejected_program_and_a_compilation_past_its_time_fail(self):
         with tempfile.TemporaryDirectory() as directory:
             program = Path(directory) / "rejected.py"

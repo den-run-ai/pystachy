@@ -34,7 +34,7 @@ compiler is resolving imports.
 
 | File | Contents |
 |---|---|
-| `report.json` | Outcome, provenance, diagnostics, stage information and pass records |
+| `report.json` | Outcome, provenance, diagnostics, stage information, snapshot hashes and pass records |
 | `typed-before.json` | Selected typed functions before the function optimization passes |
 | `typed-after.json` | Selected functions and representation tables at the completed finalization boundary, before function/module LLVM lowering |
 | `llvm.ll` | Final LLVM IR, when compilation succeeds |
@@ -49,6 +49,20 @@ complete `typed-after` snapshot is captured when `Gen.finalize_program` returns;
 it does not depend on observing each function as LLVM lowering consumes it.
 Failed compilations may stop before any typed IR or LLVM output is available;
 read `report.json` first.
+
+To inspect retained typed IR without serializing LLVM, add `--stop-after finalize`.
+This still prepares, discovers, analyzes, optimizes and finalizes the whole
+reachable program, including inference retries and module admission checks.
+The `llvm` artifact is absent and its report stage is `skipped`. The finalized
+snapshot matches the default `--stop-after lower` mode for the same inputs and
+settings. Combine it with `--typed-after-only` when before/pass snapshots are not
+needed. Neither mode assembles LLVM or executes the program.
+
+`settings.stop_after` records the requested terminal stage. `artifact_sha256`
+binds the report to the exact bytes of each written typed snapshot; it detects a
+replaced or mismatched artifact but does not authenticate the exporter.
+The [Lean stage checker](../tools/lean_boundary/PIPELINE.md) validates the recorded
+stage sequence, retry evidence and association with the finalized snapshot.
 
 `--typed-after-only` records only `typed-after.json`, `llvm.ll` and the report:
 no `typed-before.json`, pass records or diffs, with `"captures": "typed-after"`
@@ -161,15 +175,16 @@ being inferred from an emitted operation or timing label:
 | Stage | Completed work |
 |---|---|
 | `prepare` | Module declarations, aliases, class records and flow analysis |
-| `discover` | Reachable function and helper discovery, specialization and typed-IR construction without a pending inference retry |
+| `discover` | Reachable function and helper discovery, specialization, typed-IR construction and validated C ABI plans without a pending inference retry |
 | `analyze` | Callback versions, symbol indexing, effect summaries, recursion policy and requested initial verification |
 | `optimize` | The enabled typed-IR passes, before exception lowering |
-| `finalize` | Exception lowering and tuple-return ABI selection; the whole typed program is still available |
-| `lower` | Function/module LLVM lowering and release of typed function bodies |
+| `finalize` | Exception lowering, tuple-return ABI selection and module/export admission; the whole typed program is still available |
+| `lower` | Function, C adapter and module LLVM lowering and release of typed function bodies |
 
 `stage` is the last completed compiler transition, `active_stage` identifies a
 started transition that did not finish, and `completed_stages` retains the actual
-completion sequence. `stages` gives an evidence status for every stage:
+completion sequence. Success ends at the requested `settings.stop_after` stage.
+`stages` gives an evidence status for every stage:
 `completed` for a successful attempt, `partial` for retained work in a failed or
 retried attempt, and `unavailable` for stages never reached. The overall
 `pipeline.status` is `completed` only for a successful attempt with consistent
@@ -187,8 +202,9 @@ The [typed-IR pipeline](typed-ir.md#pipeline) documents the internal staged API
 and its ownership limits. The stages do not prove their transformations correct;
 existing Lean checkers continue to check selected properties of the finalized
 IR, with their exporter, runtime and lowering assumptions stated separately.
-Some C ABI adapters are still prepared during discovery, so this boundary does
-not promise that the frontend has produced no LLVM text.
+C ABI signatures and conversions are planned during discovery and rendered only
+in lowering. The typed IR still contains native representations, LLVM symbol
+names and some constant expressions; it is not target-independent.
 
 ### Whole-program recursion observations
 

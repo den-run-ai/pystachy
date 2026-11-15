@@ -5,6 +5,7 @@ import PystachyAccess
 import PystachyInt
 import PystachyInline
 import PystachyStorage
+import PystachyPipeline
 
 /- Fail the build if the public guarantees depend on an admitted proof, a
 custom assumption, or native computation trusted by the kernel. The three
@@ -31,7 +32,18 @@ run_cmd do
       ``PystachyStorage.accepted_optional_slot_narrowing,
       ``PystachyStorage.accepted_stack_copy,
       ``PystachyStorage.erase_read_move_iff, ``PystachyStorage.projected_reachable,
-      ``PystachyStorage.accepted_projected_payload] do
+      ``PystachyStorage.accepted_projected_payload,
+      ``PystachyPipeline.step_preserves,
+      ``PystachyPipeline.reachable_wellFormed,
+      ``PystachyPipeline.active_cannot_begin,
+      ``PystachyPipeline.consumed_cannot_step,
+      ``PystachyPipeline.consumed_has_finalization,
+      ``PystachyPipeline.accepted_report_complete,
+      ``PystachyPipeline.accepted_attempt_ordered,
+      ``PystachyPipeline.accepted_terminal_target,
+      ``PystachyPipeline.accepted_report_target,
+      ``PystachyPipeline.accepted_terminal_consumed,
+      ``PystachyPipeline.accepted_report_attempts] do
     let axioms ← collectAxioms theoremName
     for axiomName in axioms do
       unless allowed.contains axiomName do

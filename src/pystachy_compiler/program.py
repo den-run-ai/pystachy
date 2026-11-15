@@ -1286,7 +1286,7 @@ def gen_discover_program(self, prepared: PreparedProgram) -> None:
                 if rt_subset(RTSYM[f.ll[1:]], [f.ret] + f.ptypes) != "":
                     self.err(f"{f.name}() is declared as {typestr(f.ret)}({', '.join([typestr(t) for t in f.ptypes])}), but the compiler calls it as {rt_subset(RTSYM[f.ll[1:]], [f.ret] + f.ptypes)} (RUNTIME's {RTSYM[f.ll[1:]]})")
                 self.runtime(f.ll[1:])
-                self.externs[f.ll] = ""
+                self.extern_decl(f, True)
             else:
                 self.untold(f, [f.ret] + f.ptypes, "declared")
                 self.extern_decl(f)

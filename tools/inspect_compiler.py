@@ -92,7 +92,7 @@ def compiler_identity() -> dict:
             "python": platform.python_version(), "platform": platform.platform()}
 
 
-def base_report(source: str, function: str, typed_after_only: bool = False) -> dict:
+def base_report(source: str, function: str, typed_after_only: bool = False, stop_after: str = "lower") -> dict:
     return {
         "schema_version": SCHEMA_VERSION, "status": "error",
         "compiler": compiler_identity(),
@@ -103,13 +103,14 @@ def base_report(source: str, function: str, typed_after_only: bool = False) -> d
                      | {"PYSTACHY_IRCHECK": "1"},
                      "function_filter": function, "command": "ir", "executes_program": False,
                      "forced_environment": {"PYSTACHY_IRCHECK": "1"},
+                     "stop_after": stop_after,
                      "captures": "typed-after" if typed_after_only else "all"},
         "diagnostics": [], "attempts": [], "passes": [], "pass_contracts": {}, "program_passes": [],
         "stages": [{"name": name, "status": "unavailable", "artifact": None}
                    for name in ("typed-before", "typed-after", "llvm")],
         "verification": {"requested": True, "calls": 0, "completed": False,
                          "scope": "Pystachy typed IR; LLVM assembly and execution are not performed"},
-        "artifacts": {},
+        "artifacts": {}, "artifact_sha256": {},
         "limitations": [
             "Function-level source locations only; typed instructions currently carry no source spans.",
             "The frontend combines semantic analysis, specialization and IR construction.",
@@ -553,7 +554,14 @@ class Observer:
             self.report["attempts"].append(self.attempt)
             self.diagnostics.PHASE = "semantic"
             try:
-                result = original(gen, *args, **kwargs)
+                if self.report["settings"]["stop_after"] == "finalize":
+                    # Use the driver's real attempt/retry orchestration and the
+                    # retained frontend API. The ir command prints this empty
+                    # result; it never receives a filename or invokes LLVM.
+                    gen.typed_program(*args, **kwargs)
+                    result = ""
+                else:
+                    result = original(gen, *args, **kwargs)
             except Rejoin as retry:
                 reason = ("dynamic slice iterator acquisition requires exception handling" if isinstance(retry, NeedSliceEH)
                           else "compiler requested a fresh semantic attempt")
@@ -834,6 +842,7 @@ class Observer:
                     snapshot.update(self.after_metadata)
                 write_json(self.output / artifact, snapshot)
                 self.report["artifacts"][name] = artifact
+                self.report["artifact_sha256"][name] = digest(self.output / artifact)
                 for stage in self.report["stages"]:
                     if stage["name"] == name:
                         stage.update(status=state, artifact=artifact)
@@ -844,9 +853,13 @@ def worker(args) -> int:
     from src.pystachy_compiler import diagnostics, driver
     output = Path(args.output)
     typed_after_only = getattr(args, "typed_after_only", False)
-    report = base_report(args.source, args.function, typed_after_only)
+    stop_after = getattr(args, "stop_after", "lower")
+    report = base_report(args.source, args.function, typed_after_only, stop_after)
     if typed_after_only:
         report["stages"][0]["status"] = "skipped"
+    if stop_after == "finalize":
+        report["stages"][-1]["status"] = "skipped"
+        report["verification"]["scope"] = "Pystachy finalized typed IR; LLVM lowering, assembly and execution are not performed"
     observer = Observer(report, output, args.function, typed_after_only, getattr(args, "guard_evidence", False))
     diagnostics.CAPTURE = True
     diagnostics.CAPTURED.clear()
@@ -856,7 +869,9 @@ def worker(args) -> int:
     old_argv = sys.argv
     exitcode = 2
     try:
-        sys.argv = [str(ROOT / "pystachy.py"), "ir", args.source, "-o", str(output / "llvm.ll")]
+        sys.argv = [str(ROOT / "pystachy.py"), "ir", args.source]
+        if stop_after == "lower":
+            sys.argv.extend(["-o", str(output / "llvm.ll")])
         with (output / "compiler.stderr").open("w", encoding="utf-8") as stderr, \
              (output / "compiler.stdout").open("w", encoding="utf-8") as stdout, \
              redirect_stderr(stderr), redirect_stdout(stdout):
@@ -877,8 +892,9 @@ def worker(args) -> int:
             else:
                 report["status"] = "ok"
                 report["verification"]["completed"] = True
-                report["artifacts"]["llvm"] = "llvm.ll"
-                report["stages"][-1].update(status="completed", artifact="llvm.ll")
+                if stop_after == "lower":
+                    report["artifacts"]["llvm"] = "llvm.ll"
+                    report["stages"][-1].update(status="completed", artifact="llvm.ll")
                 exitcode = 0
     finally:
         sys.argv = old_argv
@@ -925,15 +941,16 @@ def run_worker(args, output: Path) -> int:
     env = os.environ.copy()
     env["PYSTACHY_IRCHECK"] = "1"
     typed_after_only = getattr(args, "typed_after_only", False)
+    stop_after = getattr(args, "stop_after", "lower")
     command = [sys.executable, str(Path(__file__).resolve()), args.source, "--output", str(output),
-               "--function", args.function, "--_worker"] + (["--typed-after-only"] if typed_after_only else []) + (["--guard-evidence"] if getattr(args, "guard_evidence", False) else [])
+               "--function", args.function, "--stop-after", stop_after, "--_worker"] + (["--typed-after-only"] if typed_after_only else []) + (["--guard-evidence"] if getattr(args, "guard_evidence", False) else [])
     start = time.monotonic()
     try:
         with (output / "worker.stderr").open("w", encoding="utf-8") as errors:
             run = subprocess.run(command, env=env, stdout=subprocess.DEVNULL, stderr=errors, timeout=args.timeout)
         exitcode = run.returncode
     except (subprocess.TimeoutExpired, OSError) as error:
-        report = base_report(args.source, args.function, typed_after_only)
+        report = base_report(args.source, args.function, typed_after_only, stop_after)
         timeout = isinstance(error, subprocess.TimeoutExpired)
         report["status"] = "timeout" if timeout else "error"
         report["diagnostics"].append(tool_diagnostic("PYS9002" if timeout else "PYS9001", "worker",
@@ -942,7 +959,7 @@ def run_worker(args, output: Path) -> int:
         write_json(output / "report.json", report)
         exitcode = 124 if timeout else 2
     if not (output / "report.json").exists():
-        report = base_report(args.source, args.function, typed_after_only)
+        report = base_report(args.source, args.function, typed_after_only, stop_after)
         report["diagnostics"].append(tool_diagnostic("PYS9001", "worker",
             f"Compilation worker exited {exitcode} without a report; see worker.stderr", args.source))
         report["elapsed_seconds"] = time.monotonic() - start
@@ -959,6 +976,8 @@ def main() -> int:
     parser.add_argument("--timeout", type=positive_timeout, default=120.0, help="worker deadline in seconds (default: 120)")
     parser.add_argument("--typed-after-only", action="store_true",
                         help="record only the typed-after snapshot: no typed-before snapshot, pass records or diffs")
+    parser.add_argument("--stop-after", choices=("finalize", "lower"), default="lower",
+                        help="stop with retained typed IR, or include LLVM serialization (default: lower)")
     parser.add_argument("--guard-evidence", action="store_true",
                         help="retain union tags and nullcheck pass inputs/outputs for independent checking")
     parser.add_argument("--_worker", action="store_true", help=argparse.SUPPRESS)
