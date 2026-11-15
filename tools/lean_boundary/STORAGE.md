@@ -25,8 +25,12 @@ A container decode's obligation is a plain tuple view's `ordinary` payload
 runtime helper that reads the container's digits on the marker path is trusted.
 
 For optional tuples, a fit fact means either the tuple is absent or its item
-fits. A null branch may establish the absent case, while every present branch
-must justify the item checks. This does not prove null-dereference safety.
+fits; a non-marker fact similarly means absent or an ordinary item word. These
+facts extend through nested tuple children that preserve their shape and
+optionality, or add optionality to a nonnull child. A null branch or an explicit
+null child stored during tuple construction may establish the absent case;
+replacing that child invalidates those facts. Every present branch must justify
+the item checks. This does not prove null-dereference safety.
 
 The distinction between a storage representation and a declared type matters.
 A promoting view can refer to a shorter plain tuple when its words exclude the
