@@ -1,0 +1,3549 @@
+{
+  "aot_shard_limit": 4,
+  "base": "adac7f4c88fd86ddaecbb889042b778c701b29ed",
+  "check_conclusions": {
+    "cancelled": 1,
+    "skipped": 2,
+    "success": 19
+  },
+  "check_count": 22,
+  "combined_status": "success",
+  "complete": true,
+  "concurrency_note": "Workflow concurrency cancels superseded runs for the same PR; no matrix max-parallel is configured. Repeated metadata events add separate format jobs without expanding the configured per-event job matrix.",
+  "condition_assumptions": {
+    "event_plan": "code",
+    "evidence": "Code-plan bootstrap executed; Lint built/audited Lean. All pinned workflows match the locally qualified source byte for byte.",
+    "lean_boundary_validation": true
+  },
+  "configured_pr_job_row_budget": 19,
+  "configured_pr_job_rows": 19,
+  "current_attempt_job_count": 21,
+  "current_check_conclusions": {
+    "skipped": 2,
+    "success": 19
+  },
+  "current_check_count": 21,
+  "draft_at_capture": true,
+  "failures": [],
+  "global_matrix_max_parallel": null,
+  "head": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+  "historical_attempt_job_count": 1,
+  "historical_check_conclusions": {
+    "cancelled": 1
+  },
+  "historical_check_count": 1,
+  "historical_jobs": [
+    {
+      "accounting": "historical attempt retained; current replacement must independently pass every required step",
+      "check_run_url": "https://api.github.com/repos/den-run-ai/pystachy/check-runs/132629324385",
+      "completed_at": "2026-11-14T23:54:24Z",
+      "conclusion": "cancelled",
+      "created_at": "2026-11-14T23:39:05Z",
+      "duration_seconds": 916.0,
+      "head_branch": "codex/boundary-continuation-20261114",
+      "head_sha": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43654295641/job/132629324385",
+      "id": 132629324385,
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "latest_run_attempt": 2,
+      "name": "make lint (ruff, shellcheck, clang -Wall -Wextra)",
+      "node_id": "CR_kwDOU_6QTs8AAAAe4VLiYQ",
+      "run_attempt": 1,
+      "run_id": 43654295641,
+      "run_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/43654295641",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions",
+      "runner_id": 1000090529,
+      "runner_name": "GitHub Actions 1000090529",
+      "started_at": "2026-11-14T23:39:08Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completed_at": "2026-11-14T23:39:10Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "started_at": "2026-11-14T23:39:09Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:39:13Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "number": 2,
+          "started_at": "2026-11-14T23:39:10Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:39:23Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "number": 3,
+          "started_at": "2026-11-14T23:39:13Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:39:29Z",
+          "conclusion": "success",
+          "name": "Run python3 -m pip install -r tools/requirements-dev.txt",
+          "number": 4,
+          "started_at": "2026-11-14T23:39:23Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:39:29Z",
+          "conclusion": "success",
+          "name": "Select Lean boundary validation",
+          "number": 5,
+          "started_at": "2026-11-14T23:39:29Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:39:37Z",
+          "conclusion": "success",
+          "name": "Cache the pinned Lean release archive",
+          "number": 6,
+          "started_at": "2026-11-14T23:39:29Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:40:05Z",
+          "conclusion": "success",
+          "name": "Build and audit the Lean boundary prototype",
+          "number": 7,
+          "started_at": "2026-11-14T23:39:37Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:40:06Z",
+          "conclusion": "success",
+          "name": "Validate GitHub Actions workflows (actionlint)",
+          "number": 8,
+          "started_at": "2026-11-14T23:40:05Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:44:53Z",
+          "conclusion": "success",
+          "name": "Fast hosted checks and full lint",
+          "number": 9,
+          "started_at": "2026-11-14T23:40:06Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:45:50Z",
+          "conclusion": "success",
+          "name": "Retained IR and failed native build controls",
+          "number": 10,
+          "started_at": "2026-11-14T23:44:53Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:50:58Z",
+          "conclusion": "success",
+          "name": "Verification harness and compiler state controls",
+          "number": 11,
+          "started_at": "2026-11-14T23:45:50Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:50:59Z",
+          "conclusion": "success",
+          "name": "Compact CI sampling and variant controls",
+          "number": 12,
+          "started_at": "2026-11-14T23:50:58Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:51:00Z",
+          "conclusion": "success",
+          "name": "Upstream port preservation (CPython)",
+          "number": 13,
+          "started_at": "2026-11-14T23:50:59Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:51:00Z",
+          "conclusion": "success",
+          "name": "Router benchmark validation tests",
+          "number": 14,
+          "started_at": "2026-11-14T23:51:00Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:51:03Z",
+          "conclusion": "success",
+          "name": "Example benchmark validation tests",
+          "number": 15,
+          "started_at": "2026-11-14T23:51:00Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:51:04Z",
+          "conclusion": "success",
+          "name": "Example CLI smoke contract tests",
+          "number": 16,
+          "started_at": "2026-11-14T23:51:03Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:51:15Z",
+          "conclusion": "success",
+          "name": "Native text reads on open pipes",
+          "number": 17,
+          "started_at": "2026-11-14T23:51:04Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:51:52Z",
+          "conclusion": "success",
+          "name": "Owned communication buffer and completion checks",
+          "number": 18,
+          "started_at": "2026-11-14T23:51:15Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:52:03Z",
+          "conclusion": "success",
+          "name": "pyperformance runner and port record tests",
+          "number": 19,
+          "started_at": "2026-11-14T23:51:52Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:52:03Z",
+          "conclusion": "success",
+          "name": "Performance smoke comparison tests",
+          "number": 20,
+          "started_at": "2026-11-14T23:52:03Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:52:03Z",
+          "conclusion": "success",
+          "name": "nanoGPT parity checker contract tests",
+          "number": 21,
+          "started_at": "2026-11-14T23:52:03Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:52:04Z",
+          "conclusion": "success",
+          "name": "Import sweep and PyPI probe tests",
+          "number": 22,
+          "started_at": "2026-11-14T23:52:03Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:52:06Z",
+          "conclusion": "success",
+          "name": "CPython test-method extraction tests",
+          "number": 23,
+          "started_at": "2026-11-14T23:52:04Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:52:06Z",
+          "conclusion": "success",
+          "name": "Dynamic Any fuzzer generator and comparison tests",
+          "number": 24,
+          "started_at": "2026-11-14T23:52:06Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:52:07Z",
+          "conclusion": "success",
+          "name": "Dynamic Any builtin call binding tests",
+          "number": 25,
+          "started_at": "2026-11-14T23:52:06Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:52:08Z",
+          "conclusion": "success",
+          "name": "Dynamic Any corpus sweep controls",
+          "number": 26,
+          "started_at": "2026-11-14T23:52:07Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:52:09Z",
+          "conclusion": "success",
+          "name": "Promoting int tooling and retry controls",
+          "number": 27,
+          "started_at": "2026-11-14T23:52:08Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:52:09Z",
+          "conclusion": "success",
+          "name": "Function-local join retry controls",
+          "number": 28,
+          "started_at": "2026-11-14T23:52:09Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:52:09Z",
+          "conclusion": "success",
+          "name": "microGPT graph parity and benchmark contract tests",
+          "number": 29,
+          "started_at": "2026-11-14T23:52:09Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:52:10Z",
+          "conclusion": "success",
+          "name": "Integer benchmark checksum agreement tests",
+          "number": 30,
+          "started_at": "2026-11-14T23:52:09Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:52:15Z",
+          "conclusion": "success",
+          "name": "Compiler function-state lists (Gen, Frame, gen_save, gen_restore, gen_enter)",
+          "number": 31,
+          "started_at": "2026-11-14T23:52:10Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:52:15Z",
+          "conclusion": "success",
+          "name": "JSON benchmark evidence tests",
+          "number": 32,
+          "started_at": "2026-11-14T23:52:15Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:52:15Z",
+          "conclusion": "success",
+          "name": "LLVM IR diagnostic inventory tests",
+          "number": 33,
+          "started_at": "2026-11-14T23:52:15Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:52:15Z",
+          "conclusion": "success",
+          "name": "Issue and PR reading budgets and metadata checks",
+          "number": 34,
+          "started_at": "2026-11-14T23:52:15Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:52:15Z",
+          "conclusion": "success",
+          "name": "Release notes rendering and the current version's notes",
+          "number": 35,
+          "started_at": "2026-11-14T23:52:15Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:52:16Z",
+          "conclusion": "success",
+          "name": "Coverage report checks tests",
+          "number": 36,
+          "started_at": "2026-11-14T23:52:15Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:52:18Z",
+          "conclusion": "success",
+          "name": "PR job budget (20 jobs, two workers per group, 15 minutes each)",
+          "number": 37,
+          "started_at": "2026-11-14T23:52:16Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:52:18Z",
+          "conclusion": "success",
+          "name": "Linux ELF compatibility audit controls",
+          "number": 38,
+          "started_at": "2026-11-14T23:52:18Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:52:19Z",
+          "conclusion": "success",
+          "name": "Installed JSON repair wheel validation controls",
+          "number": 39,
+          "started_at": "2026-11-14T23:52:18Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:52:22Z",
+          "conclusion": "success",
+          "name": "Generated regex matcher tests",
+          "number": 40,
+          "started_at": "2026-11-14T23:52:19Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:52:42Z",
+          "conclusion": "success",
+          "name": "Concurrency contract and local process ownership controls",
+          "number": 41,
+          "started_at": "2026-11-14T23:52:22Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:53:08Z",
+          "conclusion": "success",
+          "name": "Native program cache manifests and tool inputs",
+          "number": 42,
+          "started_at": "2026-11-14T23:52:42Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:54:21Z",
+          "conclusion": "cancelled",
+          "name": "Run make check-recordings",
+          "number": 43,
+          "started_at": "2026-11-14T23:53:08Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:54:21Z",
+          "conclusion": "skipped",
+          "name": "Post Cache the pinned Lean release archive",
+          "number": 84,
+          "started_at": "2026-11-14T23:54:21Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:54:21Z",
+          "conclusion": "skipped",
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "number": 85,
+          "started_at": "2026-11-14T23:54:21Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:54:21Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "number": 86,
+          "started_at": "2026-11-14T23:54:21Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-14T23:54:21Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 87,
+          "started_at": "2026-11-14T23:54:21Z",
+          "status": "completed"
+        }
+      ],
+      "superseded_by_job_id": 132633664559,
+      "timeout_minutes": 15,
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/jobs/132629324385",
+      "workflow_name": "Lint"
+    }
+  ],
+  "jobs": [
+    {
+      "completed_at": "2026-11-14T23:58:43Z",
+      "conclusion": "success",
+      "condition": null,
+      "created_at": "2026-11-14T23:58:31Z",
+      "duration_seconds": 10.0,
+      "expected_conclusion": "success",
+      "head_sha": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43655856876/job/132634091479",
+      "id": 132634091479,
+      "job_key": "description",
+      "matrix": {},
+      "name": "Check title and description",
+      "run_attempt": 1,
+      "run_id": 43655856876,
+      "started_at": "2026-11-14T23:58:33Z",
+      "status": "completed",
+      "step_checks": [
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Validate current metadata",
+          "status": "completed"
+        }
+      ],
+      "strategy_max_parallel": null,
+      "timeout_minutes": 2,
+      "workflow": "submissions.yml"
+    },
+    {
+      "completed_at": "2026-11-14T23:39:54Z",
+      "conclusion": "success",
+      "condition": null,
+      "created_at": "2026-11-14T23:39:40Z",
+      "duration_seconds": 11.0,
+      "expected_conclusion": "success",
+      "head_sha": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43654339567/job/132629466395",
+      "id": 132629466395,
+      "job_key": "description",
+      "matrix": {},
+      "name": "Check title and description",
+      "run_attempt": 1,
+      "run_id": 43654339567,
+      "started_at": "2026-11-14T23:39:43Z",
+      "status": "completed",
+      "step_checks": [
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Validate current metadata",
+          "status": "completed"
+        }
+      ],
+      "strategy_max_parallel": null,
+      "timeout_minutes": 2,
+      "workflow": "submissions.yml"
+    },
+    {
+      "completed_at": "2026-11-14T23:44:02Z",
+      "conclusion": "success",
+      "condition": null,
+      "created_at": "2026-11-14T23:39:05Z",
+      "duration_seconds": 295.0,
+      "expected_conclusion": "success",
+      "head_sha": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43654295644/job/132629324378",
+      "id": 132629324378,
+      "job_key": "bootstrap",
+      "matrix": {
+        "machine": "x86_64"
+      },
+      "name": "verify (bootstrap, x86_64)",
+      "run_attempt": 1,
+      "run_id": 43654295644,
+      "started_at": "2026-11-14T23:39:07Z",
+      "status": "completed",
+      "step_checks": [
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Select documentation or code verification",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "steps.plan.outputs.kind == 'code'",
+          "expected": "success",
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "steps.plan.outputs.kind == 'code'",
+          "expected": "success",
+          "name": "LLVM toolchain",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "steps.plan.outputs.kind == 'code'",
+          "expected": "success",
+          "name": "Record native Linux ABI",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "steps.plan.outputs.kind == 'code'",
+          "expected": "success",
+          "name": "Verify compiler and runtime fixed points",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "steps.plan.outputs.kind == 'code'",
+          "expected": "success",
+          "name": "Package verified bootstrap",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "steps.plan.outputs.kind == 'code'",
+          "expected": "success",
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "${{ !cancelled() && steps.plan.outputs.kind == 'code' }}",
+          "expected": "success",
+          "name": "Upload bootstrap report",
+          "status": "completed"
+        }
+      ],
+      "strategy_max_parallel": null,
+      "timeout_minutes": 15,
+      "workflow": "ci.yml"
+    },
+    {
+      "completed_at": "2026-11-14T23:50:11Z",
+      "conclusion": "success",
+      "condition": "github.event_name == 'pull_request' && needs.bootstrap.outputs.plan_x86_64 == 'code'",
+      "created_at": "2026-11-14T23:44:02Z",
+      "duration_seconds": 366.0,
+      "expected_conclusion": "success",
+      "head_sha": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43654295644/job/132630556859",
+      "id": 132630556859,
+      "job_key": "pr-variants",
+      "matrix": {
+        "worker": "1"
+      },
+      "name": "native JIT and variants (worker 1)",
+      "run_attempt": 1,
+      "run_id": 43654295644,
+      "started_at": "2026-11-14T23:44:05Z",
+      "status": "completed",
+      "step_checks": [
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run tools/setup.sh --minimal",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Complete native JIT corpus half",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "always()",
+          "expected": "success",
+          "name": "Upload native JIT report",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Sampled configurations on representative and changed cases",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.worker == 0",
+          "expected": "skipped",
+          "name": "Native program cache invalidation and execution",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "matrix.worker == 1",
+          "expected": "success",
+          "name": "Runtime ABI and GC root checker controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "always()",
+          "expected": "success",
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "status": "completed"
+        }
+      ],
+      "strategy_max_parallel": null,
+      "timeout_minutes": 15,
+      "workflow": "ci.yml"
+    },
+    {
+      "completed_at": "2026-11-14T23:52:30Z",
+      "conclusion": "success",
+      "condition": "github.event_name == 'pull_request' && needs.bootstrap.outputs.plan_x86_64 == 'code'",
+      "created_at": "2026-11-14T23:44:02Z",
+      "duration_seconds": 506.0,
+      "expected_conclusion": "success",
+      "head_sha": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43654295644/job/132630556861",
+      "id": 132630556861,
+      "job_key": "pr-variants",
+      "matrix": {
+        "worker": "0"
+      },
+      "name": "native JIT and variants (worker 0)",
+      "run_attempt": 1,
+      "run_id": 43654295644,
+      "started_at": "2026-11-14T23:44:04Z",
+      "status": "completed",
+      "step_checks": [
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run tools/setup.sh --minimal",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Complete native JIT corpus half",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "always()",
+          "expected": "success",
+          "name": "Upload native JIT report",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Sampled configurations on representative and changed cases",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "matrix.worker == 0",
+          "expected": "success",
+          "name": "Native program cache invalidation and execution",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.worker == 1",
+          "expected": "skipped",
+          "name": "Runtime ABI and GC root checker controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "always()",
+          "expected": "success",
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "status": "completed"
+        }
+      ],
+      "strategy_max_parallel": null,
+      "timeout_minutes": 15,
+      "workflow": "ci.yml"
+    },
+    {
+      "completed_at": "2026-11-14T23:51:29Z",
+      "conclusion": "success",
+      "condition": "needs.bootstrap.outputs.plan_x86_64 == 'code' && (github.event_name == 'pull_request' || needs.bootstrap.outputs.plan_aarch64 == 'code')",
+      "created_at": "2026-11-14T23:44:02Z",
+      "duration_seconds": 445.0,
+      "expected_conclusion": "success",
+      "head_sha": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43654295644/job/132630556948",
+      "id": 132630556948,
+      "job_key": "verification",
+      "matrix": {
+        "group": "safety-1",
+        "machine": "x86_64"
+      },
+      "name": "verify (safety-1, x86_64)",
+      "run_attempt": 1,
+      "run_id": 43654295644,
+      "started_at": "2026-11-14T23:44:04Z",
+      "status": "completed",
+      "step_checks": [
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "LLVM 18 toolchain",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "startsWith(matrix.group, 'dynany-optin-') || startsWith(matrix.group, 'python-int-optin-') || matrix.group == 'opt-in' || matrix.group == 'runtime-cache' || (matrix.group == 'gc-jit-1' && matrix.machine == 'x86_64')",
+          "expected": "skipped",
+          "name": "Opt-in, widening and Lean corpus CPython dependency",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks' || ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "skipped",
+          "name": "Workload pytest oracle dependency",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Download verified bootstrap",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Verify group",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'gc-jit-0' && matrix.machine == 'x86_64'",
+          "expected": "skipped",
+          "name": "Runtime ABI and GC root checker controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && (matrix.group == 'gc-jit-1' || matrix.group == 'scaling' || matrix.group == 'contracts')",
+          "expected": "skipped",
+          "name": "Cache the pinned Lean release archive",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && (matrix.group == 'gc-jit-1' || matrix.group == 'scaling' || matrix.group == 'contracts')",
+          "expected": "skipped",
+          "name": "Lean proofs of compiler guard obligations",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'contracts'",
+          "expected": "skipped",
+          "name": "Require C, embedding and extension FFI coverage",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'contracts'",
+          "expected": "skipped",
+          "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'safety-1') || (github.event_name != 'pull_request' && matrix.group == 'gc-jit-0'))",
+          "expected": "success",
+          "name": "Generated user and runtime ASan controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "matrix.group == 'ubsan-0' || matrix.group == 'safety-1'",
+          "expected": "success",
+          "name": "Sanitized shared and object JIT linkage controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'runtime-cache'",
+          "expected": "skipped",
+          "name": "Native program cache invalidation and execution",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Extended subset benchmark correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Adapted pyperformance benchmark correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Bounded match dispatch correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "skipped",
+          "name": "Shared pytest example assertions",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "skipped",
+          "name": "Generated native pytest runner parity",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Upstream large regex (JIT and AOT, normal GC)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "always()",
+          "expected": "success",
+          "name": "Upload group report",
+          "status": "completed"
+        }
+      ],
+      "strategy_max_parallel": null,
+      "timeout_minutes": 15,
+      "workflow": "ci.yml"
+    },
+    {
+      "completed_at": "2026-11-14T23:47:06Z",
+      "conclusion": "success",
+      "condition": "needs.bootstrap.outputs.plan_x86_64 == 'code' && (github.event_name == 'pull_request' || needs.bootstrap.outputs.plan_aarch64 == 'code')",
+      "created_at": "2026-11-14T23:44:02Z",
+      "duration_seconds": 181.0,
+      "expected_conclusion": "success",
+      "head_sha": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43654295644/job/132630556953",
+      "id": 132630556953,
+      "job_key": "verification",
+      "matrix": {
+        "group": "native-aot-1",
+        "machine": "x86_64"
+      },
+      "name": "verify (native-aot-1, x86_64)",
+      "run_attempt": 1,
+      "run_id": 43654295644,
+      "started_at": "2026-11-14T23:44:05Z",
+      "status": "completed",
+      "step_checks": [
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "LLVM 18 toolchain",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "startsWith(matrix.group, 'dynany-optin-') || startsWith(matrix.group, 'python-int-optin-') || matrix.group == 'opt-in' || matrix.group == 'runtime-cache' || (matrix.group == 'gc-jit-1' && matrix.machine == 'x86_64')",
+          "expected": "skipped",
+          "name": "Opt-in, widening and Lean corpus CPython dependency",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks' || ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "skipped",
+          "name": "Workload pytest oracle dependency",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Download verified bootstrap",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Verify group",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'gc-jit-0' && matrix.machine == 'x86_64'",
+          "expected": "skipped",
+          "name": "Runtime ABI and GC root checker controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && (matrix.group == 'gc-jit-1' || matrix.group == 'scaling' || matrix.group == 'contracts')",
+          "expected": "skipped",
+          "name": "Cache the pinned Lean release archive",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && (matrix.group == 'gc-jit-1' || matrix.group == 'scaling' || matrix.group == 'contracts')",
+          "expected": "skipped",
+          "name": "Lean proofs of compiler guard obligations",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'contracts'",
+          "expected": "skipped",
+          "name": "Require C, embedding and extension FFI coverage",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'contracts'",
+          "expected": "skipped",
+          "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'safety-1') || (github.event_name != 'pull_request' && matrix.group == 'gc-jit-0'))",
+          "expected": "skipped",
+          "name": "Generated user and runtime ASan controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'ubsan-0' || matrix.group == 'safety-1'",
+          "expected": "skipped",
+          "name": "Sanitized shared and object JIT linkage controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'runtime-cache'",
+          "expected": "skipped",
+          "name": "Native program cache invalidation and execution",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Extended subset benchmark correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Adapted pyperformance benchmark correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Bounded match dispatch correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "skipped",
+          "name": "Shared pytest example assertions",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "skipped",
+          "name": "Generated native pytest runner parity",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Upstream large regex (JIT and AOT, normal GC)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "always()",
+          "expected": "success",
+          "name": "Upload group report",
+          "status": "completed"
+        }
+      ],
+      "strategy_max_parallel": null,
+      "timeout_minutes": 15,
+      "workflow": "ci.yml"
+    },
+    {
+      "completed_at": "2026-11-14T23:48:51Z",
+      "conclusion": "success",
+      "condition": "needs.bootstrap.outputs.plan_x86_64 == 'code' && (github.event_name == 'pull_request' || needs.bootstrap.outputs.plan_aarch64 == 'code')",
+      "created_at": "2026-11-14T23:44:02Z",
+      "duration_seconds": 286.0,
+      "expected_conclusion": "success",
+      "head_sha": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43654295644/job/132630556965",
+      "id": 132630556965,
+      "job_key": "verification",
+      "matrix": {
+        "group": "opt-in",
+        "machine": "x86_64"
+      },
+      "name": "verify (opt-in, x86_64)",
+      "run_attempt": 1,
+      "run_id": 43654295644,
+      "started_at": "2026-11-14T23:44:05Z",
+      "status": "completed",
+      "step_checks": [
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "LLVM 18 toolchain",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "startsWith(matrix.group, 'dynany-optin-') || startsWith(matrix.group, 'python-int-optin-') || matrix.group == 'opt-in' || matrix.group == 'runtime-cache' || (matrix.group == 'gc-jit-1' && matrix.machine == 'x86_64')",
+          "expected": "success",
+          "name": "Opt-in, widening and Lean corpus CPython dependency",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "matrix.group == 'benchmarks' || ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "success",
+          "name": "Workload pytest oracle dependency",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Download verified bootstrap",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Verify group",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'gc-jit-0' && matrix.machine == 'x86_64'",
+          "expected": "skipped",
+          "name": "Runtime ABI and GC root checker controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && (matrix.group == 'gc-jit-1' || matrix.group == 'scaling' || matrix.group == 'contracts')",
+          "expected": "skipped",
+          "name": "Cache the pinned Lean release archive",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && (matrix.group == 'gc-jit-1' || matrix.group == 'scaling' || matrix.group == 'contracts')",
+          "expected": "skipped",
+          "name": "Lean proofs of compiler guard obligations",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'contracts'",
+          "expected": "skipped",
+          "name": "Require C, embedding and extension FFI coverage",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'contracts'",
+          "expected": "skipped",
+          "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'safety-1') || (github.event_name != 'pull_request' && matrix.group == 'gc-jit-0'))",
+          "expected": "skipped",
+          "name": "Generated user and runtime ASan controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'ubsan-0' || matrix.group == 'safety-1'",
+          "expected": "skipped",
+          "name": "Sanitized shared and object JIT linkage controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'runtime-cache'",
+          "expected": "skipped",
+          "name": "Native program cache invalidation and execution",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Extended subset benchmark correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Adapted pyperformance benchmark correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Bounded match dispatch correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "success",
+          "name": "Shared pytest example assertions",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "success",
+          "name": "Generated native pytest runner parity",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Upstream large regex (JIT and AOT, normal GC)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "always()",
+          "expected": "success",
+          "name": "Upload group report",
+          "status": "completed"
+        }
+      ],
+      "strategy_max_parallel": null,
+      "timeout_minutes": 15,
+      "workflow": "ci.yml"
+    },
+    {
+      "completed_at": "2026-11-14T23:47:38Z",
+      "conclusion": "success",
+      "condition": "needs.bootstrap.outputs.plan_x86_64 == 'code' && (github.event_name == 'pull_request' || needs.bootstrap.outputs.plan_aarch64 == 'code')",
+      "created_at": "2026-11-14T23:44:02Z",
+      "duration_seconds": 213.0,
+      "expected_conclusion": "success",
+      "head_sha": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43654295644/job/132630556984",
+      "id": 132630556984,
+      "job_key": "verification",
+      "matrix": {
+        "group": "native-aot-3",
+        "machine": "x86_64"
+      },
+      "name": "verify (native-aot-3, x86_64)",
+      "run_attempt": 1,
+      "run_id": 43654295644,
+      "started_at": "2026-11-14T23:44:05Z",
+      "status": "completed",
+      "step_checks": [
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "LLVM 18 toolchain",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "startsWith(matrix.group, 'dynany-optin-') || startsWith(matrix.group, 'python-int-optin-') || matrix.group == 'opt-in' || matrix.group == 'runtime-cache' || (matrix.group == 'gc-jit-1' && matrix.machine == 'x86_64')",
+          "expected": "skipped",
+          "name": "Opt-in, widening and Lean corpus CPython dependency",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks' || ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "skipped",
+          "name": "Workload pytest oracle dependency",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Download verified bootstrap",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Verify group",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'gc-jit-0' && matrix.machine == 'x86_64'",
+          "expected": "skipped",
+          "name": "Runtime ABI and GC root checker controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && (matrix.group == 'gc-jit-1' || matrix.group == 'scaling' || matrix.group == 'contracts')",
+          "expected": "skipped",
+          "name": "Cache the pinned Lean release archive",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && (matrix.group == 'gc-jit-1' || matrix.group == 'scaling' || matrix.group == 'contracts')",
+          "expected": "skipped",
+          "name": "Lean proofs of compiler guard obligations",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'contracts'",
+          "expected": "skipped",
+          "name": "Require C, embedding and extension FFI coverage",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'contracts'",
+          "expected": "skipped",
+          "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'safety-1') || (github.event_name != 'pull_request' && matrix.group == 'gc-jit-0'))",
+          "expected": "skipped",
+          "name": "Generated user and runtime ASan controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'ubsan-0' || matrix.group == 'safety-1'",
+          "expected": "skipped",
+          "name": "Sanitized shared and object JIT linkage controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'runtime-cache'",
+          "expected": "skipped",
+          "name": "Native program cache invalidation and execution",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Extended subset benchmark correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Adapted pyperformance benchmark correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Bounded match dispatch correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "skipped",
+          "name": "Shared pytest example assertions",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "skipped",
+          "name": "Generated native pytest runner parity",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Upstream large regex (JIT and AOT, normal GC)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "always()",
+          "expected": "success",
+          "name": "Upload group report",
+          "status": "completed"
+        }
+      ],
+      "strategy_max_parallel": null,
+      "timeout_minutes": 15,
+      "workflow": "ci.yml"
+    },
+    {
+      "completed_at": "2026-11-14T23:50:06Z",
+      "conclusion": "success",
+      "condition": "needs.bootstrap.outputs.plan_x86_64 == 'code' && (github.event_name == 'pull_request' || needs.bootstrap.outputs.plan_aarch64 == 'code')",
+      "created_at": "2026-11-14T23:44:02Z",
+      "duration_seconds": 362.0,
+      "expected_conclusion": "success",
+      "head_sha": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43654295644/job/132630556986",
+      "id": 132630556986,
+      "job_key": "verification",
+      "matrix": {
+        "group": "hosted",
+        "machine": "x86_64"
+      },
+      "name": "verify (hosted, x86_64)",
+      "run_attempt": 1,
+      "run_id": 43654295644,
+      "started_at": "2026-11-14T23:44:04Z",
+      "status": "completed",
+      "step_checks": [
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "LLVM 18 toolchain",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "startsWith(matrix.group, 'dynany-optin-') || startsWith(matrix.group, 'python-int-optin-') || matrix.group == 'opt-in' || matrix.group == 'runtime-cache' || (matrix.group == 'gc-jit-1' && matrix.machine == 'x86_64')",
+          "expected": "skipped",
+          "name": "Opt-in, widening and Lean corpus CPython dependency",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks' || ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "skipped",
+          "name": "Workload pytest oracle dependency",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Download verified bootstrap",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Verify group",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'gc-jit-0' && matrix.machine == 'x86_64'",
+          "expected": "skipped",
+          "name": "Runtime ABI and GC root checker controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && (matrix.group == 'gc-jit-1' || matrix.group == 'scaling' || matrix.group == 'contracts')",
+          "expected": "skipped",
+          "name": "Cache the pinned Lean release archive",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && (matrix.group == 'gc-jit-1' || matrix.group == 'scaling' || matrix.group == 'contracts')",
+          "expected": "skipped",
+          "name": "Lean proofs of compiler guard obligations",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'contracts'",
+          "expected": "skipped",
+          "name": "Require C, embedding and extension FFI coverage",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'contracts'",
+          "expected": "skipped",
+          "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'safety-1') || (github.event_name != 'pull_request' && matrix.group == 'gc-jit-0'))",
+          "expected": "skipped",
+          "name": "Generated user and runtime ASan controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'ubsan-0' || matrix.group == 'safety-1'",
+          "expected": "skipped",
+          "name": "Sanitized shared and object JIT linkage controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'runtime-cache'",
+          "expected": "skipped",
+          "name": "Native program cache invalidation and execution",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Extended subset benchmark correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Adapted pyperformance benchmark correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Bounded match dispatch correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "skipped",
+          "name": "Shared pytest example assertions",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "skipped",
+          "name": "Generated native pytest runner parity",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Upstream large regex (JIT and AOT, normal GC)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "always()",
+          "expected": "success",
+          "name": "Upload group report",
+          "status": "completed"
+        }
+      ],
+      "strategy_max_parallel": null,
+      "timeout_minutes": 15,
+      "workflow": "ci.yml"
+    },
+    {
+      "completed_at": "2026-11-14T23:47:05Z",
+      "conclusion": "success",
+      "condition": "needs.bootstrap.outputs.plan_x86_64 == 'code' && (github.event_name == 'pull_request' || needs.bootstrap.outputs.plan_aarch64 == 'code')",
+      "created_at": "2026-11-14T23:44:02Z",
+      "duration_seconds": 181.0,
+      "expected_conclusion": "success",
+      "head_sha": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43654295644/job/132630556989",
+      "id": 132630556989,
+      "job_key": "verification",
+      "matrix": {
+        "group": "native-aot-0",
+        "machine": "x86_64"
+      },
+      "name": "verify (native-aot-0, x86_64)",
+      "run_attempt": 1,
+      "run_id": 43654295644,
+      "started_at": "2026-11-14T23:44:04Z",
+      "status": "completed",
+      "step_checks": [
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "LLVM 18 toolchain",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "startsWith(matrix.group, 'dynany-optin-') || startsWith(matrix.group, 'python-int-optin-') || matrix.group == 'opt-in' || matrix.group == 'runtime-cache' || (matrix.group == 'gc-jit-1' && matrix.machine == 'x86_64')",
+          "expected": "skipped",
+          "name": "Opt-in, widening and Lean corpus CPython dependency",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks' || ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "skipped",
+          "name": "Workload pytest oracle dependency",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Download verified bootstrap",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Verify group",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'gc-jit-0' && matrix.machine == 'x86_64'",
+          "expected": "skipped",
+          "name": "Runtime ABI and GC root checker controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && (matrix.group == 'gc-jit-1' || matrix.group == 'scaling' || matrix.group == 'contracts')",
+          "expected": "skipped",
+          "name": "Cache the pinned Lean release archive",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && (matrix.group == 'gc-jit-1' || matrix.group == 'scaling' || matrix.group == 'contracts')",
+          "expected": "skipped",
+          "name": "Lean proofs of compiler guard obligations",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'contracts'",
+          "expected": "skipped",
+          "name": "Require C, embedding and extension FFI coverage",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'contracts'",
+          "expected": "skipped",
+          "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'safety-1') || (github.event_name != 'pull_request' && matrix.group == 'gc-jit-0'))",
+          "expected": "skipped",
+          "name": "Generated user and runtime ASan controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'ubsan-0' || matrix.group == 'safety-1'",
+          "expected": "skipped",
+          "name": "Sanitized shared and object JIT linkage controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'runtime-cache'",
+          "expected": "skipped",
+          "name": "Native program cache invalidation and execution",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Extended subset benchmark correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Adapted pyperformance benchmark correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Bounded match dispatch correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "skipped",
+          "name": "Shared pytest example assertions",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "skipped",
+          "name": "Generated native pytest runner parity",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Upstream large regex (JIT and AOT, normal GC)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "always()",
+          "expected": "success",
+          "name": "Upload group report",
+          "status": "completed"
+        }
+      ],
+      "strategy_max_parallel": null,
+      "timeout_minutes": 15,
+      "workflow": "ci.yml"
+    },
+    {
+      "completed_at": "2026-11-14T23:52:51Z",
+      "conclusion": "success",
+      "condition": "needs.bootstrap.outputs.plan_x86_64 == 'code' && (github.event_name == 'pull_request' || needs.bootstrap.outputs.plan_aarch64 == 'code')",
+      "created_at": "2026-11-14T23:44:02Z",
+      "duration_seconds": 527.0,
+      "expected_conclusion": "success",
+      "head_sha": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43654295644/job/132630557042",
+      "id": 132630557042,
+      "job_key": "verification",
+      "matrix": {
+        "group": "contracts",
+        "machine": "x86_64"
+      },
+      "name": "verify (contracts, x86_64)",
+      "run_attempt": 1,
+      "run_id": 43654295644,
+      "started_at": "2026-11-14T23:44:04Z",
+      "status": "completed",
+      "step_checks": [
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "LLVM 18 toolchain",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "startsWith(matrix.group, 'dynany-optin-') || startsWith(matrix.group, 'python-int-optin-') || matrix.group == 'opt-in' || matrix.group == 'runtime-cache' || (matrix.group == 'gc-jit-1' && matrix.machine == 'x86_64')",
+          "expected": "skipped",
+          "name": "Opt-in, widening and Lean corpus CPython dependency",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks' || ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "skipped",
+          "name": "Workload pytest oracle dependency",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Download verified bootstrap",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Verify group",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'gc-jit-0' && matrix.machine == 'x86_64'",
+          "expected": "skipped",
+          "name": "Runtime ABI and GC root checker controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "matrix.machine == 'x86_64' && (matrix.group == 'gc-jit-1' || matrix.group == 'scaling' || matrix.group == 'contracts')",
+          "expected": "success",
+          "name": "Cache the pinned Lean release archive",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "matrix.machine == 'x86_64' && (matrix.group == 'gc-jit-1' || matrix.group == 'scaling' || matrix.group == 'contracts')",
+          "expected": "success",
+          "name": "Lean proofs of compiler guard obligations",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "matrix.group == 'contracts'",
+          "expected": "success",
+          "name": "Require C, embedding and extension FFI coverage",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "matrix.group == 'contracts'",
+          "expected": "success",
+          "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'safety-1') || (github.event_name != 'pull_request' && matrix.group == 'gc-jit-0'))",
+          "expected": "skipped",
+          "name": "Generated user and runtime ASan controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'ubsan-0' || matrix.group == 'safety-1'",
+          "expected": "skipped",
+          "name": "Sanitized shared and object JIT linkage controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'runtime-cache'",
+          "expected": "skipped",
+          "name": "Native program cache invalidation and execution",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Extended subset benchmark correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Adapted pyperformance benchmark correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Bounded match dispatch correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "skipped",
+          "name": "Shared pytest example assertions",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "skipped",
+          "name": "Generated native pytest runner parity",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Upstream large regex (JIT and AOT, normal GC)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "always()",
+          "expected": "success",
+          "name": "Upload group report",
+          "status": "completed"
+        }
+      ],
+      "strategy_max_parallel": null,
+      "timeout_minutes": 15,
+      "workflow": "ci.yml"
+    },
+    {
+      "completed_at": "2026-11-14T23:47:29Z",
+      "conclusion": "success",
+      "condition": "needs.bootstrap.outputs.plan_x86_64 == 'code' && (github.event_name == 'pull_request' || needs.bootstrap.outputs.plan_aarch64 == 'code')",
+      "created_at": "2026-11-14T23:44:02Z",
+      "duration_seconds": 204.0,
+      "expected_conclusion": "success",
+      "head_sha": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43654295644/job/132630557044",
+      "id": 132630557044,
+      "job_key": "verification",
+      "matrix": {
+        "group": "safety-0",
+        "machine": "x86_64"
+      },
+      "name": "verify (safety-0, x86_64)",
+      "run_attempt": 1,
+      "run_id": 43654295644,
+      "started_at": "2026-11-14T23:44:05Z",
+      "status": "completed",
+      "step_checks": [
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "LLVM 18 toolchain",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "startsWith(matrix.group, 'dynany-optin-') || startsWith(matrix.group, 'python-int-optin-') || matrix.group == 'opt-in' || matrix.group == 'runtime-cache' || (matrix.group == 'gc-jit-1' && matrix.machine == 'x86_64')",
+          "expected": "skipped",
+          "name": "Opt-in, widening and Lean corpus CPython dependency",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks' || ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "skipped",
+          "name": "Workload pytest oracle dependency",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Download verified bootstrap",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Verify group",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'gc-jit-0' && matrix.machine == 'x86_64'",
+          "expected": "skipped",
+          "name": "Runtime ABI and GC root checker controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && (matrix.group == 'gc-jit-1' || matrix.group == 'scaling' || matrix.group == 'contracts')",
+          "expected": "skipped",
+          "name": "Cache the pinned Lean release archive",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && (matrix.group == 'gc-jit-1' || matrix.group == 'scaling' || matrix.group == 'contracts')",
+          "expected": "skipped",
+          "name": "Lean proofs of compiler guard obligations",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'contracts'",
+          "expected": "skipped",
+          "name": "Require C, embedding and extension FFI coverage",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'contracts'",
+          "expected": "skipped",
+          "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'safety-1') || (github.event_name != 'pull_request' && matrix.group == 'gc-jit-0'))",
+          "expected": "skipped",
+          "name": "Generated user and runtime ASan controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'ubsan-0' || matrix.group == 'safety-1'",
+          "expected": "skipped",
+          "name": "Sanitized shared and object JIT linkage controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'runtime-cache'",
+          "expected": "skipped",
+          "name": "Native program cache invalidation and execution",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Extended subset benchmark correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Adapted pyperformance benchmark correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Bounded match dispatch correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "skipped",
+          "name": "Shared pytest example assertions",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "skipped",
+          "name": "Generated native pytest runner parity",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Upstream large regex (JIT and AOT, normal GC)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "always()",
+          "expected": "success",
+          "name": "Upload group report",
+          "status": "completed"
+        }
+      ],
+      "strategy_max_parallel": null,
+      "timeout_minutes": 15,
+      "workflow": "ci.yml"
+    },
+    {
+      "completed_at": "2026-11-14T23:51:20Z",
+      "conclusion": "success",
+      "condition": "needs.bootstrap.outputs.plan_x86_64 == 'code' && (github.event_name == 'pull_request' || needs.bootstrap.outputs.plan_aarch64 == 'code')",
+      "created_at": "2026-11-14T23:44:02Z",
+      "duration_seconds": 435.0,
+      "expected_conclusion": "success",
+      "head_sha": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43654295644/job/132630557046",
+      "id": 132630557046,
+      "job_key": "verification",
+      "matrix": {
+        "group": "benchmarks",
+        "machine": "x86_64"
+      },
+      "name": "verify (benchmarks, x86_64)",
+      "run_attempt": 1,
+      "run_id": 43654295644,
+      "started_at": "2026-11-14T23:44:05Z",
+      "status": "completed",
+      "step_checks": [
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "LLVM 18 toolchain",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "startsWith(matrix.group, 'dynany-optin-') || startsWith(matrix.group, 'python-int-optin-') || matrix.group == 'opt-in' || matrix.group == 'runtime-cache' || (matrix.group == 'gc-jit-1' && matrix.machine == 'x86_64')",
+          "expected": "skipped",
+          "name": "Opt-in, widening and Lean corpus CPython dependency",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "matrix.group == 'benchmarks' || ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "success",
+          "name": "Workload pytest oracle dependency",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Download verified bootstrap",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Verify group",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'gc-jit-0' && matrix.machine == 'x86_64'",
+          "expected": "skipped",
+          "name": "Runtime ABI and GC root checker controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && (matrix.group == 'gc-jit-1' || matrix.group == 'scaling' || matrix.group == 'contracts')",
+          "expected": "skipped",
+          "name": "Cache the pinned Lean release archive",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && (matrix.group == 'gc-jit-1' || matrix.group == 'scaling' || matrix.group == 'contracts')",
+          "expected": "skipped",
+          "name": "Lean proofs of compiler guard obligations",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'contracts'",
+          "expected": "skipped",
+          "name": "Require C, embedding and extension FFI coverage",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'contracts'",
+          "expected": "skipped",
+          "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'safety-1') || (github.event_name != 'pull_request' && matrix.group == 'gc-jit-0'))",
+          "expected": "skipped",
+          "name": "Generated user and runtime ASan controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'ubsan-0' || matrix.group == 'safety-1'",
+          "expected": "skipped",
+          "name": "Sanitized shared and object JIT linkage controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'runtime-cache'",
+          "expected": "skipped",
+          "name": "Native program cache invalidation and execution",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "success",
+          "name": "Extended subset benchmark correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "success",
+          "name": "Adapted pyperformance benchmark correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "success",
+          "name": "Bounded match dispatch correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "skipped",
+          "name": "Shared pytest example assertions",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "skipped",
+          "name": "Generated native pytest runner parity",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "success",
+          "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "success",
+          "name": "Upstream large regex (JIT and AOT, normal GC)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "always()",
+          "expected": "success",
+          "name": "Upload group report",
+          "status": "completed"
+        }
+      ],
+      "strategy_max_parallel": null,
+      "timeout_minutes": 15,
+      "workflow": "ci.yml"
+    },
+    {
+      "completed_at": "2026-11-14T23:46:53Z",
+      "conclusion": "success",
+      "condition": "needs.bootstrap.outputs.plan_x86_64 == 'code' && (github.event_name == 'pull_request' || needs.bootstrap.outputs.plan_aarch64 == 'code')",
+      "created_at": "2026-11-14T23:44:02Z",
+      "duration_seconds": 168.0,
+      "expected_conclusion": "success",
+      "head_sha": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43654295644/job/132630557049",
+      "id": 132630557049,
+      "job_key": "verification",
+      "matrix": {
+        "group": "native-aot-2",
+        "machine": "x86_64"
+      },
+      "name": "verify (native-aot-2, x86_64)",
+      "run_attempt": 1,
+      "run_id": 43654295644,
+      "started_at": "2026-11-14T23:44:05Z",
+      "status": "completed",
+      "step_checks": [
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "LLVM 18 toolchain",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "startsWith(matrix.group, 'dynany-optin-') || startsWith(matrix.group, 'python-int-optin-') || matrix.group == 'opt-in' || matrix.group == 'runtime-cache' || (matrix.group == 'gc-jit-1' && matrix.machine == 'x86_64')",
+          "expected": "skipped",
+          "name": "Opt-in, widening and Lean corpus CPython dependency",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks' || ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "skipped",
+          "name": "Workload pytest oracle dependency",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Download verified bootstrap",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Verify group",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'gc-jit-0' && matrix.machine == 'x86_64'",
+          "expected": "skipped",
+          "name": "Runtime ABI and GC root checker controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && (matrix.group == 'gc-jit-1' || matrix.group == 'scaling' || matrix.group == 'contracts')",
+          "expected": "skipped",
+          "name": "Cache the pinned Lean release archive",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && (matrix.group == 'gc-jit-1' || matrix.group == 'scaling' || matrix.group == 'contracts')",
+          "expected": "skipped",
+          "name": "Lean proofs of compiler guard obligations",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'contracts'",
+          "expected": "skipped",
+          "name": "Require C, embedding and extension FFI coverage",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'contracts'",
+          "expected": "skipped",
+          "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'safety-1') || (github.event_name != 'pull_request' && matrix.group == 'gc-jit-0'))",
+          "expected": "skipped",
+          "name": "Generated user and runtime ASan controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'ubsan-0' || matrix.group == 'safety-1'",
+          "expected": "skipped",
+          "name": "Sanitized shared and object JIT linkage controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'runtime-cache'",
+          "expected": "skipped",
+          "name": "Native program cache invalidation and execution",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Extended subset benchmark correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Adapted pyperformance benchmark correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Bounded match dispatch correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "skipped",
+          "name": "Shared pytest example assertions",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "skipped",
+          "name": "Generated native pytest runner parity",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Upstream large regex (JIT and AOT, normal GC)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "always()",
+          "expected": "success",
+          "name": "Upload group report",
+          "status": "completed"
+        }
+      ],
+      "strategy_max_parallel": null,
+      "timeout_minutes": 15,
+      "workflow": "ci.yml"
+    },
+    {
+      "completed_at": "2026-11-14T23:53:34Z",
+      "conclusion": "success",
+      "condition": "needs.bootstrap.outputs.plan_x86_64 == 'code' && (github.event_name == 'pull_request' || needs.bootstrap.outputs.plan_aarch64 == 'code')",
+      "created_at": "2026-11-14T23:44:02Z",
+      "duration_seconds": 569.0,
+      "expected_conclusion": "success",
+      "head_sha": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43654295644/job/132630557087",
+      "id": 132630557087,
+      "job_key": "verification",
+      "matrix": {
+        "group": "cache-gc",
+        "machine": "x86_64"
+      },
+      "name": "verify (cache-gc, x86_64)",
+      "run_attempt": 1,
+      "run_id": 43654295644,
+      "started_at": "2026-11-14T23:44:05Z",
+      "status": "completed",
+      "step_checks": [
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "LLVM 18 toolchain",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "startsWith(matrix.group, 'dynany-optin-') || startsWith(matrix.group, 'python-int-optin-') || matrix.group == 'opt-in' || matrix.group == 'runtime-cache' || (matrix.group == 'gc-jit-1' && matrix.machine == 'x86_64')",
+          "expected": "skipped",
+          "name": "Opt-in, widening and Lean corpus CPython dependency",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks' || ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "skipped",
+          "name": "Workload pytest oracle dependency",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Download verified bootstrap",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Verify group",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'gc-jit-0' && matrix.machine == 'x86_64'",
+          "expected": "skipped",
+          "name": "Runtime ABI and GC root checker controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && (matrix.group == 'gc-jit-1' || matrix.group == 'scaling' || matrix.group == 'contracts')",
+          "expected": "skipped",
+          "name": "Cache the pinned Lean release archive",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && (matrix.group == 'gc-jit-1' || matrix.group == 'scaling' || matrix.group == 'contracts')",
+          "expected": "skipped",
+          "name": "Lean proofs of compiler guard obligations",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'contracts'",
+          "expected": "skipped",
+          "name": "Require C, embedding and extension FFI coverage",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'contracts'",
+          "expected": "skipped",
+          "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'safety-1') || (github.event_name != 'pull_request' && matrix.group == 'gc-jit-0'))",
+          "expected": "skipped",
+          "name": "Generated user and runtime ASan controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'ubsan-0' || matrix.group == 'safety-1'",
+          "expected": "skipped",
+          "name": "Sanitized shared and object JIT linkage controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'runtime-cache'",
+          "expected": "skipped",
+          "name": "Native program cache invalidation and execution",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Extended subset benchmark correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Adapted pyperformance benchmark correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Bounded match dispatch correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "skipped",
+          "name": "Shared pytest example assertions",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))",
+          "expected": "skipped",
+          "name": "Generated native pytest runner parity",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "condition": "matrix.group == 'benchmarks'",
+          "expected": "skipped",
+          "name": "Upstream large regex (JIT and AOT, normal GC)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "always()",
+          "expected": "success",
+          "name": "Upload group report",
+          "status": "completed"
+        }
+      ],
+      "strategy_max_parallel": null,
+      "timeout_minutes": 15,
+      "workflow": "ci.yml"
+    },
+    {
+      "completed_at": "2026-11-14T23:44:02Z",
+      "conclusion": "skipped",
+      "condition": "github.event_name != 'pull_request'",
+      "created_at": "2026-11-14T23:44:02Z",
+      "duration_seconds": 0.0,
+      "expected_conclusion": "skipped",
+      "head_sha": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43654295644/job/132630558113",
+      "id": 132630558113,
+      "job_key": "qualification",
+      "matrix": {},
+      "name": "Bootstrap tier and native archive qualification",
+      "run_attempt": 1,
+      "run_id": 43654295644,
+      "started_at": "2026-11-14T23:44:02Z",
+      "status": "completed",
+      "step_checks": [],
+      "strategy_max_parallel": null,
+      "timeout_minutes": 15,
+      "workflow": "ci.yml"
+    },
+    {
+      "completed_at": "2026-11-14T23:53:59Z",
+      "conclusion": "success",
+      "condition": "${{ !cancelled() }}",
+      "created_at": "2026-11-14T23:53:34Z",
+      "duration_seconds": 22.0,
+      "expected_conclusion": "success",
+      "head_sha": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43654295644/job/132632893095",
+      "id": 132632893095,
+      "job_key": "verify",
+      "matrix": {
+        "machine": "x86_64"
+      },
+      "name": "Verification",
+      "run_attempt": 1,
+      "run_id": 43654295644,
+      "started_at": "2026-11-14T23:53:37Z",
+      "status": "completed",
+      "step_checks": [
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "needs.bootstrap.outputs.plan_x86_64 == 'code' && (github.event_name == 'pull_request' || needs.bootstrap.outputs.plan_aarch64 == 'code')",
+          "expected": "success",
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "${{ !cancelled() && needs.bootstrap.outputs.plan_x86_64 == 'code' && (github.event_name == 'pull_request' || needs.bootstrap.outputs.plan_aarch64 == 'code') }}",
+          "expected": "success",
+          "name": "Run actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "${{ !cancelled() && needs.bootstrap.outputs.plan_x86_64 == 'code' && (github.event_name == 'pull_request' || needs.bootstrap.outputs.plan_aarch64 == 'code') }}",
+          "expected": "success",
+          "name": "Require complete verification reports",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "${{ !cancelled() }}",
+          "expected": "success",
+          "name": "Require every verification group",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "${{ !cancelled() && needs.bootstrap.outputs.plan_x86_64 == 'code' && (github.event_name == 'pull_request' || needs.bootstrap.outputs.plan_aarch64 == 'code') }}",
+          "expected": "success",
+          "name": "Upload combined verification report",
+          "status": "completed"
+        }
+      ],
+      "strategy_max_parallel": null,
+      "timeout_minutes": 10,
+      "workflow": "ci.yml"
+    },
+    {
+      "completed_at": "2026-11-15T00:08:33Z",
+      "conclusion": "success",
+      "condition": null,
+      "created_at": "2026-11-14T23:56:43Z",
+      "duration_seconds": 707.0,
+      "expected_conclusion": "success",
+      "head_sha": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43654295641/job/132633664559",
+      "id": 132633664559,
+      "job_key": "lint",
+      "matrix": {},
+      "name": "make lint (ruff, shellcheck, clang -Wall -Wextra)",
+      "run_attempt": 2,
+      "run_id": 43654295641,
+      "started_at": "2026-11-14T23:56:46Z",
+      "status": "completed",
+      "step_checks": [
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run python3 -m pip install -r tools/requirements-dev.txt",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Select Lean boundary validation",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "steps.lean-boundary.outputs.run == 'true'",
+          "expected": "success",
+          "name": "Cache the pinned Lean release archive",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": "steps.lean-boundary.outputs.run == 'true'",
+          "expected": "success",
+          "name": "Build and audit the Lean boundary prototype",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Validate GitHub Actions workflows (actionlint)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Fast hosted checks and full lint",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Retained IR and failed native build controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Verification harness and compiler state controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Compact CI sampling and variant controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Upstream port preservation (CPython)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Router benchmark validation tests",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Example benchmark validation tests",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Example CLI smoke contract tests",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Native text reads on open pipes",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Owned communication buffer and completion checks",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "pyperformance runner and port record tests",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Performance smoke comparison tests",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "nanoGPT parity checker contract tests",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Import sweep and PyPI probe tests",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "CPython test-method extraction tests",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Dynamic Any fuzzer generator and comparison tests",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Dynamic Any builtin call binding tests",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Dynamic Any corpus sweep controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Promoting int tooling and retry controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Function-local join retry controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "microGPT graph parity and benchmark contract tests",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Integer benchmark checksum agreement tests",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Compiler function-state lists (Gen, Frame, gen_save, gen_restore, gen_enter)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "JSON benchmark evidence tests",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "LLVM IR diagnostic inventory tests",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Issue and PR reading budgets and metadata checks",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Release notes rendering and the current version's notes",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Coverage report checks tests",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "PR job budget (20 jobs, two workers per group, 15 minutes each)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Linux ELF compatibility audit controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Installed JSON repair wheel validation controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Generated regex matcher tests",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Concurrency contract and local process ownership controls",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Native program cache manifests and tool inputs",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run make check-recordings",
+          "status": "completed"
+        }
+      ],
+      "strategy_max_parallel": null,
+      "timeout_minutes": 15,
+      "workflow": "lint.yml"
+    },
+    {
+      "completed_at": "2026-11-14T23:39:04Z",
+      "conclusion": "skipped",
+      "condition": "github.event_name != 'pull_request_target'",
+      "created_at": "2026-11-14T23:39:05Z",
+      "duration_seconds": -1.0,
+      "expected_conclusion": "skipped",
+      "head_sha": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43654293819/job/132629322424",
+      "id": 132629322424,
+      "job_key": "dco",
+      "matrix": {},
+      "name": "DCO certified (fork pull requests)",
+      "run_attempt": 1,
+      "run_id": 43654293819,
+      "started_at": "2026-11-14T23:39:05Z",
+      "status": "completed",
+      "step_checks": [],
+      "strategy_max_parallel": null,
+      "timeout_minutes": 2,
+      "workflow": "dco.yml"
+    },
+    {
+      "completed_at": "2026-11-14T23:39:14Z",
+      "conclusion": "success",
+      "condition": null,
+      "created_at": "2026-11-14T23:39:05Z",
+      "duration_seconds": 7.0,
+      "expected_conclusion": "success",
+      "head_sha": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43654293773/job/132629321753",
+      "id": 132629321753,
+      "job_key": "description",
+      "matrix": {},
+      "name": "Check title and description",
+      "run_attempt": 1,
+      "run_id": 43654293773,
+      "started_at": "2026-11-14T23:39:07Z",
+      "status": "completed",
+      "step_checks": [
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "condition": null,
+          "expected": "success",
+          "name": "Validate current metadata",
+          "status": "completed"
+        }
+      ],
+      "strategy_max_parallel": null,
+      "timeout_minutes": 2,
+      "workflow": "submissions.yml"
+    }
+  ],
+  "latest_statuses": {
+    "Submission format": {
+      "created_at": "2026-11-14T23:58:41Z",
+      "id": 58940037553,
+      "state": "success",
+      "target_url": "https://github.com/den-run-ai/pystachy/blob/main/CONTRIBUTING.md#issues-and-pull-requests",
+      "updated_at": "2026-11-14T23:58:41Z"
+    }
+  },
+  "local_process_limit": 4,
+  "merge_commit": "81a8c451f5fd6db69f143cdf5b27531dc80f8e8f",
+  "merge_tree_identical_to_head": true,
+  "observed_at": "2026-11-15T00:08:41.609Z",
+  "observed_jobs_including_metadata_retriggers": 22,
+  "observed_peak_ci_jobs": 13,
+  "observed_peak_concurrent_jobs": 14,
+  "other_group_worker_limit": 2,
+  "pagination": {
+    "checks": {
+      "complete": true,
+      "pages": [
+        {
+          "count": 22,
+          "file": "checks-page1.json",
+          "observed_at": "2026-11-15T00:08:38.712Z",
+          "sha256": "52e9484ac2a6bae5775ae48b9fdeb0b7a060e74479fe86c8cb4627cd5e1ff83e",
+          "url": "https://api.github.com/repos/den-run-ai/pystachy/commits/1f9309a0b6db9598ea16ff2b5195bd3e1aa30504/check-runs?filter=all&per_page=100&page=1"
+        }
+      ],
+      "total": 22
+    },
+    "combined_status": {
+      "complete": true,
+      "total": 1
+    },
+    "jobs-43654293773": {
+      "complete": true,
+      "pages": [
+        {
+          "count": 1,
+          "file": "jobs-43654293773-page1.json",
+          "observed_at": "2026-11-15T00:08:41.179Z",
+          "sha256": "2c941384b9986db0178192cb832afec52b48748e43c67c3834fba082b3e79bcd",
+          "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/43654293773/jobs?filter=all&per_page=100&page=1"
+        }
+      ],
+      "total": 1
+    },
+    "jobs-43654293819": {
+      "complete": true,
+      "pages": [
+        {
+          "count": 1,
+          "file": "jobs-43654293819-page1.json",
+          "observed_at": "2026-11-15T00:08:41.208Z",
+          "sha256": "9b3b867e0706fead0ca00717a3817754695285b33a895175a749fd94fb0a3cd6",
+          "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/43654293819/jobs?filter=all&per_page=100&page=1"
+        }
+      ],
+      "total": 1
+    },
+    "jobs-43654295641": {
+      "complete": true,
+      "pages": [
+        {
+          "count": 2,
+          "file": "jobs-43654295641-page1.json",
+          "observed_at": "2026-11-15T00:08:41.347Z",
+          "sha256": "f38e45a6631c37a8e4ec0aad26e458512a3af841da45bbd8e2131497e7db188e",
+          "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/43654295641/jobs?filter=all&per_page=100&page=1"
+        }
+      ],
+      "total": 2
+    },
+    "jobs-43654295644": {
+      "complete": true,
+      "pages": [
+        {
+          "count": 16,
+          "file": "jobs-43654295644-page1.json",
+          "observed_at": "2026-11-15T00:08:41.609Z",
+          "sha256": "00f634e69b0736e85d99fdd66abb1b6e0f717c729873485acc61cde8eaf29a8f",
+          "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/43654295644/jobs?filter=all&per_page=100&page=1"
+        }
+      ],
+      "total": 16
+    },
+    "jobs-43654339567": {
+      "complete": true,
+      "pages": [
+        {
+          "count": 1,
+          "file": "jobs-43654339567-page1.json",
+          "observed_at": "2026-11-15T00:08:41.189Z",
+          "sha256": "fe2592612540fb41ee0f3febd8cf27fcda03ec30def9e1843fb7a2390529db55",
+          "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/43654339567/jobs?filter=all&per_page=100&page=1"
+        }
+      ],
+      "total": 1
+    },
+    "jobs-43655856876": {
+      "complete": true,
+      "pages": [
+        {
+          "count": 1,
+          "file": "jobs-43655856876-page1.json",
+          "observed_at": "2026-11-15T00:08:41.178Z",
+          "sha256": "2a115c0570e55cd61f6432d7f2e91d78f69f7b923380699b4538c5ab42c87bfe",
+          "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/43655856876/jobs?filter=all&per_page=100&page=1"
+        }
+      ],
+      "total": 1
+    },
+    "runs": {
+      "complete": true,
+      "pages": [
+        {
+          "count": 6,
+          "file": "runs-page1.json",
+          "observed_at": "2026-11-15T00:08:38.746Z",
+          "sha256": "fc0a098b59ac58c212612e4719f489683aae12b3dafdf51d2459a376ab697ffa",
+          "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs?head_sha=1f9309a0b6db9598ea16ff2b5195bd3e1aa30504&per_page=100&page=1"
+        }
+      ],
+      "total": 6
+    },
+    "status_history": {
+      "complete": true,
+      "pages": [
+        {
+          "count": 3,
+          "file": "statuses-page1.json",
+          "observed_at": "2026-11-15T00:08:38.580Z",
+          "sha256": "11d97108522b62dd9d9894b86866d7181d9f1cf6b9a84e94fa75c9b51fe40380",
+          "url": "https://api.github.com/repos/den-run-ai/pystachy/commits/1f9309a0b6db9598ea16ff2b5195bd3e1aa30504/statuses?per_page=100&page=1"
+        }
+      ],
+      "total": 3
+    }
+  },
+  "pending": [],
+  "pr_updated_at": "2026-11-14T23:58:27Z",
+  "pr_url": "https://github.com/den-run-ai/pystachy/pull/1495",
+  "runs": [
+    {
+      "conclusion": "success",
+      "created_at": "2026-11-14T23:58:30Z",
+      "event": "pull_request_target",
+      "head_sha": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43655856876",
+      "id": 43655856876,
+      "name": "Submission format",
+      "run_attempt": 1,
+      "run_started_at": "2026-11-14T23:58:30Z",
+      "status": "completed",
+      "updated_at": "2026-11-14T23:58:44Z"
+    },
+    {
+      "conclusion": "success",
+      "created_at": "2026-11-14T23:39:39Z",
+      "event": "pull_request_target",
+      "head_sha": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43654339567",
+      "id": 43654339567,
+      "name": "Submission format",
+      "run_attempt": 1,
+      "run_started_at": "2026-11-14T23:39:39Z",
+      "status": "completed",
+      "updated_at": "2026-11-14T23:39:55Z"
+    },
+    {
+      "conclusion": "success",
+      "created_at": "2026-11-14T23:39:05Z",
+      "event": "pull_request",
+      "head_sha": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43654295644",
+      "id": 43654295644,
+      "name": "CI",
+      "run_attempt": 1,
+      "run_started_at": "2026-11-14T23:39:05Z",
+      "status": "completed",
+      "updated_at": "2026-11-14T23:53:59Z"
+    },
+    {
+      "conclusion": "success",
+      "created_at": "2026-11-14T23:39:05Z",
+      "event": "pull_request",
+      "head_sha": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43654295641",
+      "id": 43654295641,
+      "name": "Lint",
+      "run_attempt": 2,
+      "run_started_at": "2026-11-14T23:56:42Z",
+      "status": "completed",
+      "updated_at": "2026-11-15T00:08:34Z"
+    },
+    {
+      "conclusion": "skipped",
+      "created_at": "2026-11-14T23:39:04Z",
+      "event": "pull_request_target",
+      "head_sha": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43654293819",
+      "id": 43654293819,
+      "name": "DCO (legacy)",
+      "run_attempt": 1,
+      "run_started_at": "2026-11-14T23:39:04Z",
+      "status": "completed",
+      "updated_at": "2026-11-14T23:39:10Z"
+    },
+    {
+      "conclusion": "success",
+      "created_at": "2026-11-14T23:39:03Z",
+      "event": "pull_request_target",
+      "head_sha": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43654293773",
+      "id": 43654293773,
+      "name": "Submission format",
+      "run_attempt": 1,
+      "run_started_at": "2026-11-14T23:39:03Z",
+      "status": "completed",
+      "updated_at": "2026-11-14T23:39:15Z"
+    }
+  ],
+  "schema": 1,
+  "snapshot": "snapshot-015",
+  "status_history_reconciled_with_combined": true,
+  "tree": "3960ae03b0cacfeaa71b8b2c32ced798562fc68b"
+}

@@ -86,7 +86,7 @@
     "published_commit": "cb7c93b77456e0c39f2a2e449c6c1cdd9dfdda0e"
   },
   "final_qualification": {
-    "status": "all_local_gates_and_ci_passed_lint_retry_pending",
+    "status": "passed",
     "pr": 1495,
     "public_final_head": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
     "local_final_head": "3b03fed2a0d97eb1c1465262d576e18555218299",
@@ -99,10 +99,20 @@
     "strict_storage_programs": 182,
     "strict_storage_obligations_proved": 18658,
     "ci": "passed",
-    "lint": "attempt1_cancelled_retry_pending",
+    "lint": "passed_on_unchanged_attempt2",
     "submission_format": "passed",
     "ci_run": 43654295644,
     "lint_run": 43654295641,
-    "cancelled_lint_job": 132629324385
+    "cancelled_lint_job": 132629324385,
+    "lint_attempt": 2,
+    "lint_job": 132633664559,
+    "captured_utc": "2026-11-15T00:08:43Z",
+    "source_or_limits_changed_for_retry": false,
+    "lint_attempt2_seconds": 707,
+    "lint_limit_seconds": 900,
+    "current_check_runs": 21,
+    "current_successful_check_runs": 19,
+    "current_expected_skips": 2,
+    "historical_cancelled_lint_checks": 1
   }
 }

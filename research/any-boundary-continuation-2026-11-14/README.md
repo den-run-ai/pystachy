@@ -7,13 +7,14 @@ whose complete tree is identical to local `2df26bde21451abb89cc487f57b0a5531c655
 The baseline is `adac7f4c88fd86ddaecbb889042b778c701b29ed`.
 [Publication mappings](publication-map.json) preserve the full local/public commit and tree identities.
 
-**Publication status: final checks are in progress.** The final bootstrap, complete IR
+**Publication status: final qualification passed.** The final bootstrap, complete IR
 comparison, native verification and canonical Lean report have passed. The final PR head is
 [`1f9309a0`](https://github.com/den-run-ai/pystachy/commit/1f9309a0b6db9598ea16ff2b5195bd3e1aa30504),
 whose complete tree matches local `3b03fed2a0d97eb1c1465262d576e18555218299`.
 Its only change from the tested compiler source is the regenerated Lean report.
-All local gates and final-head CI have passed. Lint attempt 1 was cancelled after 916 seconds
-during its final recording check, after all earlier steps passed; its unchanged retry is pending. The preserved
+All local gates and final-head CI, Lint and Submission format have passed. Lint passed on
+its second attempt in 707 seconds, with unchanged source, checks and time limits. The first attempt was
+cancelled after 916 seconds during its final recording check and is included in the evidence. The historical
 [provisional Lean checkpoint](lean-checkpoint-20261114T231015Z/README.md) remains explicitly
 incomplete historical recovery evidence.
 
@@ -86,7 +87,7 @@ allocation. It does not prove the concrete collector or a whole program's root/l
 | Native contracts, recordings and lint | Passed: 2,715 IR/LLVM programs; 674 runtime entries, 70 exception classes and 193 runtime functions; 2,476 recordings, 136 deviations, 11 library copies; full lint |
 | Canonical Lean report | Complete: all 2,612 programs, zero execution errors; clean source/executable provenance and passing canonical status |
 | Strict promoting-integer storage corpus | Passed: all 182 programs, 18,658/18,658 obligations across 1,733 obligation functions; zero rejected, unsupported, execution errors or failed programs |
-| Exact-head CI, Lint and Submission format | CI and Submission format passed on `1f9309a0`; Lint attempt 1 cancelled at the final recording check, unchanged retry pending |
+| Exact-head CI, Lint and Submission format | Passed on `1f9309a0`; CI run `43654295644`, Lint run `43654295641` attempt 2, all current format checks/statuses successful |
 
 The verified native compiler SHA-256 is
 `960326040b35ed71405c188ff4627d119925351dd084430c18a213ff416c31e2`.
@@ -164,12 +165,10 @@ authorized whole-scope recovery. The termination causes were not established. No
 report is labeled complete. Initial-head CI and Lint passed at `2a758d1`; that head precedes
 the cleanup repair and does not qualify the final source.
 
-Final whole-corpus Lean and strict-storage evidence is complete. Exact-final-head remote-check
-evidence is being finalized. Research artifacts stay on this research branch and are not part
+Final whole-corpus Lean, strict-storage and exact-final-head remote-check evidence is complete. Research artifacts stay on this research branch and are not part
 of the code PR.
 
 Remaining work includes fixed-shape tuple and broader dict/set/general-union numeric identities,
 static `Annotated` dependencies and stored-`Iterable` representation limits, and general alias,
 allocation-liveness and collector proofs. The broader issues remain open. This continuation does
-not enable default-on Any, change the runtime object model, merge the dependent PRs or publish a
-release.
+not enable default-on Any or change the runtime object model. The dependent PRs remain unmerged.
