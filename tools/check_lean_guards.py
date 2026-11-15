@@ -682,8 +682,10 @@ def split_layout(fn, slots, tag_names):
         members = union_members(typ)
         if members is None or not set(members) <= SCALAR_MEMBERS:
             raise boundary.Unsupported(f"split union of {typ}")
+        # gen_utag assigns literals only when emitted. A member handled by the
+        # final default arm may have no literal at all. Keep it in the domain;
+        # only recorded literals may narrow a test or construct a member's bits.
         decode = {literal: member for literal, member in tag_names.items() if member in members}
-        boundary.require(len(decode) == len(members), "split union member without a union tag")
         layout[tag] = (payload, members, decode)
     # (only unionslots names slots so: a pair the inspection did not record stays unmodeled)
     named = {slot for slot in slots if slot.rsplit(".", 1)[0].endswith((".tag", ".pay"))}
