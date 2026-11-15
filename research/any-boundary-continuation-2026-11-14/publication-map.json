@@ -114,5 +114,25 @@
     "current_successful_check_runs": 19,
     "current_expected_skips": 2,
     "historical_cancelled_lint_checks": 1
+  },
+  "final_metadata": {
+    "captured_utc": "2026-11-15T00:14:01Z",
+    "head": "1f9309a0b6db9598ea16ff2b5195bd3e1aa30504",
+    "base": "adac7f4c88fd86ddaecbb889042b778c701b29ed",
+    "draft": false,
+    "state": "open",
+    "merged": false,
+    "mergeable": true,
+    "final_body_format_run": 43657035332,
+    "ready_format_run": 43657104879,
+    "format": "passed",
+    "current_checks": 23,
+    "current_success": 21,
+    "current_expected_skips": 2,
+    "historical_cancelled_lint_checks": 1,
+    "automated_review": "failed_to_complete_usage_quota_exhausted",
+    "automated_review_comment": "https://github.com/den-run-ai/pystachy/pull/1495#issuecomment-6886418892",
+    "independent_reviews": "clean_within_stated_scopes",
+    "prior_complete_evidence_commit": "e613a0b2607aa4007cb3d37592ceb4d2b022cd66"
   }
 }

@@ -18,6 +18,19 @@ cancelled after 916 seconds during its final recording check and is included in 
 [provisional Lean checkpoint](lean-checkpoint-20261114T231015Z/README.md) remains explicitly
 incomplete historical recovery evidence.
 
+## Review and submission status
+
+[PR #1495](https://github.com/den-run-ai/pystachy/pull/1495) is open, ready for review and unmerged,
+stacked on PR #1493. The final body and ready-event Submission format checks passed with
+head `1f9309a0` and base `adac7f4c` unchanged. Independent compiler, proof and evidence reviews
+are clean within their stated scopes.
+
+The automatic Codex review triggered when the draft was marked ready, but could not complete
+because the account had reached its code-review usage quota. The
+[bot's explicit quota message](https://github.com/den-run-ai/pystachy/pull/1495#issuecomment-6886418892)
+and full review response are preserved with the final metadata. No additional review retry was
+requested. This external review status is separate from the successful compiler and CI checks.
+
 ## Changes and scope
 
 ### Demanded constructor dependencies
@@ -151,6 +164,7 @@ final compiler without rerunning allocation or timing experiments.
 - `lean/`: physical-layout negative controls, native mutant replay and proof review.
 - `lean-final/`: complete canonical report, all program records, independent strict-storage results, frozen source/checker identities, recovery history and model assumptions.
 - `ci-final/`: exact-head workflow, job, step, check/status and source-tree evidence.
+- `final-metadata/`: final body/ready-state readbacks, successful metadata checks and the automated review quota response.
 - `lean-checkpoint-20261114T231015Z/`: incomplete final-source Lean snapshot, immutable attempt/recovery history, and byte-preserving compression manifests.
 - `cleanup-review/`: the confirmed review finding, deliberate pre-fix failures, repaired runs,
   controls and independent review with source hashes.
