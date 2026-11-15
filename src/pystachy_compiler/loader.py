@@ -767,8 +767,8 @@ class Loader:
         self.starm: list[Mod] = []
         self.qdef = False  # is qstmts() in a function
         # the type parameters of the generic classes and defs (class C[T], def f[T]) it is in, by
-        # name: the names of their own that they are qualified to (<class's or def's name>$$T,
-        # unlike any other). A key prefixed by a space maps an original private spelling to its
+        # name: the names of their own that they are qualified to (class$$T or
+        # def$$source-location$$T, unlike any other). A key prefixed by a space maps an original private spelling to its
         # lexical name, only for quoted annotations; qexpr never consults these aliases.
         self.qren: dict[str, str] = {}
         # the function simplify() is in (own_specials()), and the names that its own imports which
@@ -3569,6 +3569,31 @@ class Loader:
         for k in n.kids:
             self.quoted_types(k)
 
+    def def_typevar(self, f: Node, name: str) -> str:
+        # The encoded line includes the module. Same-named nested definitions and
+        # methods have distinct bindings; short() still shows the source name.
+        return f.s + "$$" + str(f.line) + "$$" + name
+
+    def qfnann(self, m: Mod, n: Node, loc: dict[str, bool], f: Node) -> None:
+        # A PEP 695 signature is kept below noann for generic inference. Its own
+        # parameters have the same identities as in the body; defaults still use
+        # the enclosing scope. Retain the qualified annotation for lexical bindings.
+        params = f.kids[2].s.split()
+        if len(params) == 0:
+            self.qann(m, n, loc)
+            return
+        ren = self.qren
+        self.qren = dict(ren)
+        annotation_loc = dict(loc)
+        for name in params:
+            self.qren[name] = self.def_typevar(f, name)
+            annotation_loc.pop(name, False)
+        source = f.tpsource.split()
+        for i in range(len(source)):
+            self.qren[" " + source[i]] = params[i]
+        self.qann(m, n.kids[0] if n.kind == "noann" and len(n.kids) > 0 else n, annotation_loc)
+        self.qren = ren
+
     def fragile_chk(self, m: Mod, x: str, loc: dict[str, bool]) -> str:
         # the check (Node.mchk) of a read of name x in m, where an import in a try statement binds
         # it: its flag, x and whether it is a function's (L) or module code's (G); "" elsewhere
@@ -3641,9 +3666,9 @@ class Loader:
                     if d.s != "async":
                         self.qdeco(m, d, loc, not cls)
                 for p in st.kids[0].kids:
-                    self.qann(m, p.kids[0], loc)
+                    self.qfnann(m, p.kids[0], loc, st)
                     self.qexpr(m, p.kids[1], loc)
-                self.qann(m, st.kids[1], loc)
+                self.qfnann(m, st.kids[1], loc, st)
                 # (a def in a function sees that function's names too: those it does not bind itself
                 # are the enclosing function's, which a closure reads)
                 own: dict[str, bool] = {}
@@ -3700,7 +3725,7 @@ class Loader:
                     # (a generic def's type parameters, in its body as a generic class's are in its
                     # methods: CPython's TypeVars, not the module's or an enclosing function's
                     # names, which they hide)
-                    self.qren[nm] = st.s + "$$" + nm
+                    self.qren[nm] = self.def_typevar(st, nm)
                     m.deftps.append(self.qren[nm])
                     if nm not in own:
                         inner.pop(nm, False)

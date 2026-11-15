@@ -1,4 +1,3 @@
-# error: TypeVar 'T' is only supported in the annotations of a module-level function's parameters and return
 from typing import TypeVar
 
 T = TypeVar("T")
