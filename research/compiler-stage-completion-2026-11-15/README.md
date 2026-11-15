@@ -29,12 +29,16 @@ This is still an incremental separation. Typing, representation choice and speci
 
 **Qualification in progress.** This section will be replaced with the final exact-revision results before the evidence commit is published and the PR is marked ready.
 
-Completed before the full verification run:
+Completed checks on the final source tree:
 
 - Compiler bootstrap fixed point: all three compiler stages emitted identical 934,358-line LLVM IR. Runtime bootstrap fixed point: all three emitted identical 21,214-line IR.
 - All 59 stage, admission, C ABI and inspection test methods passed on the final tree.
 - Ruff, mypy over 59 files, runtime declaration consistency and `git diff --check` passed.
 - Focused hosted comparisons matched the original PR on all 11 C ABI cases and all 10 module-admission cases, including accepted and rejected programs.
+- The complete retained corpus comparison passed all 4,579 inputs against the original PR compiler: 2,653 accepted by both and 1,926 matching rejections, with zero LLVM/comparator, raw diagnostic or exit-status differences and no new rejections. Both compilers used identical absolute input paths and a common library home after all 105 actual library/runtime files were checked equal. Before/after snapshots confirm unchanged binaries, sources, fixtures and corpus. See the [summary](ir/full-corpus/summary.json), [all case results](ir/full-corpus/case-results.json.gz), [exact command](ir/full-corpus/command.json), and [retained comparator](ir/full-corpus/irsame-retain.sh). This is corpus parity, not an all-program equivalence proof.
+- The full required Lean-related suite passed 409/409 test methods with zero skips. A fresh report from the original ten programs proved all 535 obligations or uses, with no rejected or unsupported records. Strict source inventories and all four checker hashes matched before and after.
+- Required PR CI, Lint, CodeQL and submission checks passed on the published head. The CI merge checkout has the identical tested tree. CI's PR profile completed 43/43 checks across 14 groups; this is separate from the ongoing full local 58-stage profile.
+- CI exercised all 196 FFI checks without skips or failures; the JSON-repair extension replay matched 943/943 cases. See the [CI qualification](ci/README.md), [complete inventory](ci/final-eabfe7b3.json), and [original FFI log](ci/contracts-ffi.log).
 
 The initial native bootstrap exposed missing explicit annotations on the new `ExternDecl` record: the compiler rejected iteration over a field it had inferred as `int`. The record fields were annotated, then hosted self-compilation and the complete compiler/runtime fixed points passed. Both the preliminary failure and the final passing log are retained under [validation](validation/).
 
@@ -47,6 +51,8 @@ The report bridge rejects incomplete stage inventories, malformed mappings, dupl
 The proof scope is recorded sequencing and association. Stage semantics, Python object ownership, exporter authenticity, the Python bridge, source provenance, native Lean execution, IR equivalence, GC and LLVM correctness remain trusted or outside the model. These are not whole-compiler correctness proofs. See [the detailed Lean review](lean/review.md), [pipeline build and axiom audit](lean/pipeline-build.log), and [focused tests](lean/pipeline-tests.log).
 
 An earlier combined build was interrupted after proof checking but before executable completion. A diagnostic wrapper also failed because child PIDs were unavailable through `/proc`. Successful final sequential builds superseded both attempts; neither was a Lean counterexample.
+
+The final ten-program report initially refused the active verification checkout because ignored, importable library copies under `build/verify/home/lib` made its strict corpus inventory unclean. No tests ran in that attempt. The successful qualification used a detached checkout of the exact published commit and byte-verified copies of the four existing checker executables, without rebuilding. Both the failed preflight and successful clean-source run are retained under [lean/final](lean/final/).
 
 ## Cost measurements
 
@@ -68,10 +74,12 @@ Library inspection's reported peak RSS decreased by approximately 0.85%. The FFI
 
 Every native warm-up and measured output matched its reference exactly. Every finalized snapshot matched the full-lowering snapshot exactly, and every finalized-only run was checked for absence of LLVM artifacts. A separate negative control found 15 rendered extern strings totaling 6,817 LLVM text bytes at the original PR's finalized boundary, versus 15 plans and zero rendered LLVM text bytes after this change. That establishes phase placement, not a memory or performance benefit.
 
-The initial all-mode measurement completed all three native workloads, then stopped because the first library inspection warm-up took 5.67 seconds, exceeding its five-second guard. That failed overall report is preserved in [native and preliminary inspection data](cost/native-and-preliminary-inspection.json). Only the inspection portion was repeated, with an explicit ten-second warm-up limit; the [inspection run](cost/inspection.json) completed. No native timing sample was discarded or repeated to improve a result.
+The initial all-mode measurement completed all three native workloads, then stopped because the first library inspection warm-up took 5.67 seconds, exceeding its five-second guard. That failed overall report is preserved in [native and preliminary inspection data](cost/native-and-preliminary-inspection.json.gz). Only the inspection portion was repeated, with an explicit ten-second warm-up limit; the [inspection run](cost/inspection.json.gz) completed. No native timing sample was discarded or repeated to improve a result.
 
 ## Reviews and reproducibility
 
 Independent agents reviewed the ABI planning, finalization admission, stage/inspection behavior and Lean report bridge. The bridge review found a malformed nested mapping that could raise `AttributeError`; the adapter now rejects it with a controlled diagnostic and a regression test. Review scopes and remaining limitations are recorded with the test evidence. Automated Codex review was unavailable because the account's review quota was exhausted; that is not a completed review or a code finding.
 
 All implementation files remain on the PR branch. This `research/` directory exists only on the evidence branch and must not be merged into main.
+
+Large JSON records are stored as deterministic gzip files. [The compression manifest](compressed-artifacts.json) records their original byte lengths and SHA-256 digests as well as the compressed digests; decompressing restores the original records exactly. The [raw corpus archive](ir/full-corpus/raw-cases.tar.gz) retains the ordered corpus and every case's two diagnostics, exit statuses and comparison report. Matching LLVM files were deleted only after the maintained comparator checked them; the sources, binaries, harness and reproduction command are pinned by their recorded identities.

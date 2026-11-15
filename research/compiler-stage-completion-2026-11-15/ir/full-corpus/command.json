@@ -1,0 +1,14 @@
+{
+  "command": [
+    "/workspace/scratch/9f30aa4fd4fd/evidence/irsame/irsame-retain.sh",
+    "/workspace/scratch/78a63a74ecb5/pystachy/pystachy",
+    "/workspace/scratch/9f30aa4fd4fd/pystachy/pystachy"
+  ],
+  "cwd": "/workspace/scratch/9f30aa4fd4fd/pystachy",
+  "environment": {
+    "PATH": "/usr/bin:/bin",
+    "PYSTACHY_HOME": "/workspace/scratch/9f30aa4fd4fd/pystachy",
+    "PYSTACHY_JOBS": "2",
+    "TMPDIR": "/workspace/scratch/9f30aa4fd4fd/evidence/irsame"
+  }
+}

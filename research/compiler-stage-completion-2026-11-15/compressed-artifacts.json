@@ -1,0 +1,58 @@
+[
+  {
+    "json": "cost/native-and-preliminary-inspection.json",
+    "gzip": "cost/native-and-preliminary-inspection.json.gz",
+    "uncompressed_bytes": 344270,
+    "uncompressed_sha256": "cee10b0d87f00ee6c4d0bfb8bd5e6d98442817d99bfd2106404061335fa43d62",
+    "gzip_bytes": 72293,
+    "gzip_sha256": "bc2d2a0076a46314ab3b169eb3fd269d287d3378faceb2da8e99be9d49e321e6"
+  },
+  {
+    "json": "cost/inspection.json",
+    "gzip": "cost/inspection.json.gz",
+    "uncompressed_bytes": 285032,
+    "uncompressed_sha256": "cf83a8b5aeb2651e382969af8d27458193fbd0f3b0a091be48d87d4a265549e8",
+    "gzip_bytes": 67942,
+    "gzip_sha256": "d030724205c39b2f30eacfe0038b10aaff7f4daf47cfc0b70a3982e478ad6afe"
+  },
+  {
+    "json": "ci/aggregate-verification.json",
+    "gzip": "ci/aggregate-verification.json.gz",
+    "uncompressed_bytes": 656745,
+    "uncompressed_sha256": "da15ba69048b06152ef43bc8cfed660e378f6978feef9ecd9230a1dfba411237",
+    "gzip_bytes": 85369,
+    "gzip_sha256": "0b8f98905014bd9fba0c0dce11eafa7576b0877ca484bf359bc96fb0c5fe419c"
+  },
+  {
+    "json": "ir/full-corpus/before.json",
+    "gzip": "ir/full-corpus/before.json.gz",
+    "uncompressed_bytes": 2843321,
+    "uncompressed_sha256": "c8f3f7f8952ced050c11f158eda98135470dcd1da88ab47aad34d365d914e8a2",
+    "gzip_bytes": 706947,
+    "gzip_sha256": "ab93b75d9d22667ffad7ca6b9733f4e9ea39b35f68f91147ca998d29c39ba885"
+  },
+  {
+    "json": "ir/full-corpus/case-results.json",
+    "gzip": "ir/full-corpus/case-results.json.gz",
+    "uncompressed_bytes": 1769916,
+    "uncompressed_sha256": "ceb012126ce637d88c51a4ca5587f58cd8890870f0ec75e926ed3012d5d4cee5",
+    "gzip_bytes": 142318,
+    "gzip_sha256": "110c77aca1e075e8adc096d96cfbdc7333cbc7a16b3c1f00e259167d73a33656"
+  },
+  {
+    "json": "ir/full-corpus/preflight-identity.json",
+    "gzip": "ir/full-corpus/preflight-identity.json.gz",
+    "uncompressed_bytes": 2860399,
+    "uncompressed_sha256": "945e1dd8455ee13b07dbb56494e7536bb14bd984fab14ea9ff0489d4c3ff03bc",
+    "gzip_bytes": 713494,
+    "gzip_sha256": "277d378ea20ce70545bac2de618072ae41000a024f78f32548e2b4e5430abe9c"
+  },
+  {
+    "json": "ir/full-corpus/after.json",
+    "gzip": "ir/full-corpus/after.json.gz",
+    "uncompressed_bytes": 2843321,
+    "uncompressed_sha256": "c8f3f7f8952ced050c11f158eda98135470dcd1da88ab47aad34d365d914e8a2",
+    "gzip_bytes": 706947,
+    "gzip_sha256": "ab93b75d9d22667ffad7ca6b9733f4e9ea39b35f68f91147ca998d29c39ba885"
+  }
+]

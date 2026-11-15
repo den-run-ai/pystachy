@@ -1,0 +1,37 @@
+{
+  "ffi_step": {
+    "name": "ffi",
+    "result": "pass",
+    "seconds": 65.886,
+    "log": "build/verify/ffi.log",
+    "passed": 196,
+    "failed": 0
+  },
+  "ffi_skip_lines": [],
+  "full_log": "Checking /tmp/pystachy-ffi.25526/repair/pystachy_json_repair/_native.abi3.so\n943/943 match; 0 problems\n196 passed, 0 failed\n",
+  "contracts_summary": {
+    "steps": 22,
+    "passed": 22,
+    "failed": 0,
+    "seconds": 373.783
+  },
+  "profile": "pr",
+  "ci_checkout_commit": "a59d373a5355fff42909121be09d96fd7b41975b",
+  "source_hashes_checked": 61,
+  "source_hashes_all_match": true,
+  "source_mismatches": [],
+  "files": {
+    "contracts-14152039125.zip": {
+      "bytes": 42899,
+      "sha256": "45517b4bf606f5046feac86028f46c06ab87f2c7ebfe9fe212bae336e5203601"
+    },
+    "contracts-ffi.log": {
+      "bytes": 124,
+      "sha256": "fce21b511c9a56d333cc5aeb2992fe502ca889139afff5d36b56517d2fcfeea4"
+    },
+    "contracts-verification.json": {
+      "bytes": 17189,
+      "sha256": "4a9791d6e2d5cc58727f18eb5474f248b006ed4df093ee6f769cec83ff689655"
+    }
+  }
+}

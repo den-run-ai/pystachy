@@ -7,6 +7,11 @@ The final stage model, axiom audit and focused bridge tests pass for local commi
 This note records completed checks; the parent owns subsequent full Lean-suite and
 corpus-report qualification. No tests or builds were rerun while preparing this note.
 
+The subsequent clean-tree qualification is now recorded in
+[lean-final/RESULTS.md](lean-final/RESULTS.md): 409 tests with zero skips, and
+535/535 obligations or uses across the original ten programs at the published
+commit. It reused the four built checkers without rebuilding or editing source.
+
 ## Model and correspondence
 
 `tools/lean_boundary/PystachyPipeline.lean` models the actual six-stage

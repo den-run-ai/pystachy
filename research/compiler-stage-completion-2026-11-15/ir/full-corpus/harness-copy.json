@@ -1,0 +1,11 @@
+{
+  "source": "/workspace/scratch/78a63a74ecb5/pipeline-irsame-details/irsame-retain.sh",
+  "source_sha256": "77d8885734710d1cf937e300381a28d439585b9e993918e7bd6c695f37c6b52e",
+  "destination_sha256": "2c803cd54f1576b0ebb331c1349e3662e08d2164ab9b8daddc86ab3e8a57bf97",
+  "maintained_source": "/workspace/scratch/9f30aa4fd4fd/pystachy/tools/irsame.sh",
+  "maintained_sha256": "7baa4d09a86103485f6b6c87a739162347b97542051d80b6cfb57c8a108587d5",
+  "path_substitutions": {
+    "/workspace/scratch/78a63a74ecb5/pystachy": "/workspace/scratch/9f30aa4fd4fd/pystachy",
+    "/workspace/scratch/78a63a74ecb5/pipeline-irsame-details": "/workspace/scratch/9f30aa4fd4fd/evidence/irsame"
+  }
+}

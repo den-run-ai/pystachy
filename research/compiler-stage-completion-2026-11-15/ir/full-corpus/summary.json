@@ -1,0 +1,35 @@
+{
+  "baseline_checkout_commit": "800752d8a582bff77d4c375039af786b82a96f73",
+  "candidate_commit": "eabfe7b3d8f1be3e4615442423c7d3fbab10285b",
+  "case_directory": "/workspace/scratch/9f30aa4fd4fd/evidence/irsame/shared-home.b2n91i",
+  "completed_reports": 4579,
+  "exit_counts": {
+    "0->0": 2653,
+    "1->1": 1926
+  },
+  "inputs_and_binaries_unchanged": true,
+  "ir_or_report_differences": 0,
+  "ircheck": "unset",
+  "library_runtime_file_count": 105,
+  "library_runtime_inputs_identical": true,
+  "new": {
+    "kind": "file",
+    "path": "/workspace/scratch/9f30aa4fd4fd/pystachy/pystachy",
+    "sha256": "25af1f17f712d599cf73164f1ec6481afa47e5a534a986347d56bb850fc46f28",
+    "size": 6729184
+  },
+  "new_rejections": 0,
+  "old": {
+    "kind": "file",
+    "path": "/workspace/scratch/78a63a74ecb5/pystachy/pystachy",
+    "sha256": "33c0fb45f19776c5f1f9c96252f4c82af89e267ffbfc82f376eff165823dd757",
+    "size": 6724320
+  },
+  "options": "default",
+  "problems": [],
+  "programs": 4579,
+  "raw_diagnostic_differences": 0,
+  "shared_home": "/workspace/scratch/9f30aa4fd4fd/pystachy",
+  "status": "passed",
+  "workers": 2
+}

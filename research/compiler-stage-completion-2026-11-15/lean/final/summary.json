@@ -1,0 +1,355 @@
+{
+  "after": {
+    "actual_commit": "eabfe7b3d8f1be3e4615442423c7d3fbab10285b",
+    "actual_tree": "4deb05cd2f645d516dd37480d5510d0920747b6f",
+    "checker_executables": {
+      "pystachy-access": {
+        "bytes": 118683288,
+        "path": "/workspace/scratch/9f30aa4fd4fd/pystachy-lean-qualification/tools/lean_boundary/.lake/build/bin/pystachy-access",
+        "sha256": "614d42998c1b49867ce8d3505140a2e1fb2ee91b00d969577e09aba1970ae9c0"
+      },
+      "pystachy-boundary": {
+        "bytes": 118484656,
+        "path": "/workspace/scratch/9f30aa4fd4fd/pystachy-lean-qualification/tools/lean_boundary/.lake/build/bin/pystachy-boundary",
+        "sha256": "2d491bc79c80b390f503d0c223108f70abd31e70a81d144125128a4a1f98546c"
+      },
+      "pystachy-int": {
+        "bytes": 118472920,
+        "path": "/workspace/scratch/9f30aa4fd4fd/pystachy-lean-qualification/tools/lean_boundary/.lake/build/bin/pystachy-int",
+        "sha256": "0720d6d555ec4e93f6336d3150c599367e1982c1769b1152ac1f5bc846232003"
+      },
+      "pystachy-pipeline": {
+        "bytes": 118471544,
+        "path": "/workspace/scratch/9f30aa4fd4fd/pystachy-lean-qualification/tools/lean_boundary/.lake/build/bin/pystachy-pipeline",
+        "sha256": "f5f2c67af89e722efed6ab5cb9b82aab05ca6ad720a8144c4be8fc923f33f762"
+      }
+    },
+    "inputs": {
+      "checkers": {
+        "clean": true,
+        "digest": "89a4924fd7c6816a"
+      },
+      "compiler": {
+        "clean": true,
+        "digest": "c5709f03621fac0b"
+      },
+      "corpus": {
+        "clean": true,
+        "digest": "b4870baa6a194721",
+        "programs": [
+          "tests/programs/generics/generic_distinct_layouts.py",
+          "tests/programs/numbers/python_int_storage.py",
+          "tests/programs/numbers/python_int_vtuple_materialization.py",
+          "tools/lean_boundary/examples/classes_and_ints.py",
+          "tools/lean_boundary/examples/field_init.py",
+          "tools/lean_boundary/examples/generators.py",
+          "tools/lean_boundary/examples/guarded_state.py",
+          "tools/lean_boundary/examples/narrowed_float.py",
+          "tools/lean_boundary/examples/unchecked_accesses.py",
+          "tools/lean_boundary/examples/union_memory.py"
+        ],
+        "untrusted": []
+      }
+    },
+    "published_commit": "eabfe7b3d8f1be3e4615442423c7d3fbab10285b",
+    "published_tree": "4deb05cd2f645d516dd37480d5510d0920747b6f"
+  },
+  "artifact_sha256": {
+    "records.jsonl": "e587aca9c28ab102f2ef3284d71aca55caa365bb63cee749e71d1a05b838ebe3",
+    "report.log": "867bd74a00a96860a828e7b0691cffdc8596574f1a2be7fe079ba50913b6e863",
+    "report.md": "208bd99143d7671b4fd20c063a89905a308fbd1e04c2724ba959d250574ffdec",
+    "unit-results.json": "29ba5aef392a4bac3aba26b0ea9cfc572c37ccb18e1738eaa913f4c457dd6c36",
+    "unit-tests.log": "9810aaa3a5a82dc7c99f99c9957c63e0af537df910b92a5685dc7ff786669303"
+  },
+  "before": {
+    "actual_commit": "eabfe7b3d8f1be3e4615442423c7d3fbab10285b",
+    "actual_tree": "4deb05cd2f645d516dd37480d5510d0920747b6f",
+    "checker_executables": {
+      "pystachy-access": {
+        "bytes": 118683288,
+        "path": "/workspace/scratch/9f30aa4fd4fd/pystachy-lean-qualification/tools/lean_boundary/.lake/build/bin/pystachy-access",
+        "sha256": "614d42998c1b49867ce8d3505140a2e1fb2ee91b00d969577e09aba1970ae9c0"
+      },
+      "pystachy-boundary": {
+        "bytes": 118484656,
+        "path": "/workspace/scratch/9f30aa4fd4fd/pystachy-lean-qualification/tools/lean_boundary/.lake/build/bin/pystachy-boundary",
+        "sha256": "2d491bc79c80b390f503d0c223108f70abd31e70a81d144125128a4a1f98546c"
+      },
+      "pystachy-int": {
+        "bytes": 118472920,
+        "path": "/workspace/scratch/9f30aa4fd4fd/pystachy-lean-qualification/tools/lean_boundary/.lake/build/bin/pystachy-int",
+        "sha256": "0720d6d555ec4e93f6336d3150c599367e1982c1769b1152ac1f5bc846232003"
+      },
+      "pystachy-pipeline": {
+        "bytes": 118471544,
+        "path": "/workspace/scratch/9f30aa4fd4fd/pystachy-lean-qualification/tools/lean_boundary/.lake/build/bin/pystachy-pipeline",
+        "sha256": "f5f2c67af89e722efed6ab5cb9b82aab05ca6ad720a8144c4be8fc923f33f762"
+      }
+    },
+    "inputs": {
+      "checkers": {
+        "clean": true,
+        "digest": "89a4924fd7c6816a"
+      },
+      "compiler": {
+        "clean": true,
+        "digest": "c5709f03621fac0b"
+      },
+      "corpus": {
+        "clean": true,
+        "digest": "b4870baa6a194721",
+        "programs": [
+          "tests/programs/generics/generic_distinct_layouts.py",
+          "tests/programs/numbers/python_int_storage.py",
+          "tests/programs/numbers/python_int_vtuple_materialization.py",
+          "tools/lean_boundary/examples/classes_and_ints.py",
+          "tools/lean_boundary/examples/field_init.py",
+          "tools/lean_boundary/examples/generators.py",
+          "tools/lean_boundary/examples/guarded_state.py",
+          "tools/lean_boundary/examples/narrowed_float.py",
+          "tools/lean_boundary/examples/unchecked_accesses.py",
+          "tools/lean_boundary/examples/union_memory.py"
+        ],
+        "untrusted": []
+      }
+    },
+    "published_commit": "eabfe7b3d8f1be3e4615442423c7d3fbab10285b",
+    "published_tree": "4deb05cd2f645d516dd37480d5510d0920747b6f"
+  },
+  "case_manifest_sha256": "012bae8082cc5fdbfbc027e3cace62e5073781fc2fcd4c1695cab4b60d81bfee",
+  "commands": [
+    {
+      "argv": [
+        "/workspace/scratch/c2b093657c17/dev-venv/bin/python",
+        "/workspace/scratch/9f30aa4fd4fd/evidence/lean-final/run.py",
+        "--unit-worker",
+        "--root",
+        "/workspace/scratch/9f30aa4fd4fd/pystachy-lean-qualification",
+        "--unit-output",
+        "/workspace/scratch/9f30aa4fd4fd/evidence/lean-final/run-clean/unit-results.json"
+      ],
+      "cwd": "/workspace/scratch/9f30aa4fd4fd/pystachy-lean-qualification",
+      "elapsed_seconds": 143.433,
+      "exit_code": 0,
+      "log": "/workspace/scratch/9f30aa4fd4fd/evidence/lean-final/run-clean/unit-tests.log",
+      "started_utc": "2026-11-15T07:55:23.636022+00:00",
+      "timeout_seconds": 900
+    },
+    {
+      "argv": [
+        "/workspace/scratch/c2b093657c17/dev-venv/bin/python",
+        "/workspace/scratch/9f30aa4fd4fd/pystachy-lean-qualification/tools/lean_report.py",
+        "--jobs",
+        "2",
+        "--start-method",
+        "spawn",
+        "--timeout",
+        "300",
+        "--checker",
+        "/workspace/scratch/9f30aa4fd4fd/pystachy-lean-qualification/tools/lean_boundary/.lake/build/bin/pystachy-boundary",
+        "--access-checker",
+        "/workspace/scratch/9f30aa4fd4fd/pystachy-lean-qualification/tools/lean_boundary/.lake/build/bin/pystachy-access",
+        "--output",
+        "/workspace/scratch/9f30aa4fd4fd/evidence/lean-final/run-clean/report.md",
+        "--records",
+        "/workspace/scratch/9f30aa4fd4fd/evidence/lean-final/run-clean/records.jsonl",
+        "--progress",
+        "tools/lean_boundary/examples/narrowed_float.py",
+        "tools/lean_boundary/examples/guarded_state.py",
+        "tools/lean_boundary/examples/classes_and_ints.py",
+        "tools/lean_boundary/examples/unchecked_accesses.py",
+        "tools/lean_boundary/examples/union_memory.py",
+        "tools/lean_boundary/examples/field_init.py",
+        "tools/lean_boundary/examples/generators.py",
+        "tests/programs/generics/generic_distinct_layouts.py",
+        "tests/programs/numbers/python_int_storage.py",
+        "tests/programs/numbers/python_int_vtuple_materialization.py"
+      ],
+      "cwd": "/workspace/scratch/9f30aa4fd4fd/pystachy-lean-qualification",
+      "elapsed_seconds": 25.723,
+      "exit_code": 0,
+      "log": "/workspace/scratch/9f30aa4fd4fd/evidence/lean-final/run-clean/report.log",
+      "started_utc": "2026-11-15T07:57:56.886220+00:00",
+      "timeout_seconds": 600
+    }
+  ],
+  "environment": {
+    "LEAN_BOUNDARY_REQUIRED": "1",
+    "PATH": "/workspace/scratch/c2b093657c17/dev-venv/bin:/workspace/scratch/c2b093657c17/toolchains/lean-4.35.0-linux/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/override:/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin:/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/fallback",
+    "PYSTACHY_HOME": "/workspace/scratch/9f30aa4fd4fd/pystachy-lean-qualification",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "TMPDIR": "/workspace/scratch/9f30aa4fd4fd/evidence/lean-final/run-clean/tmp"
+  },
+  "finished_utc": "2026-11-15T07:58:34.780085+00:00",
+  "programs": [
+    "tools/lean_boundary/examples/narrowed_float.py",
+    "tools/lean_boundary/examples/guarded_state.py",
+    "tools/lean_boundary/examples/classes_and_ints.py",
+    "tools/lean_boundary/examples/unchecked_accesses.py",
+    "tools/lean_boundary/examples/union_memory.py",
+    "tools/lean_boundary/examples/field_init.py",
+    "tools/lean_boundary/examples/generators.py",
+    "tests/programs/generics/generic_distinct_layouts.py",
+    "tests/programs/numbers/python_int_storage.py",
+    "tests/programs/numbers/python_int_vtuple_materialization.py"
+  ],
+  "report_totals": {
+    "checks": {
+      "access": {
+        "functions": 19,
+        "obligations": 38,
+        "other": [],
+        "programs": 4,
+        "proved": 38,
+        "rejected": []
+      },
+      "fields": {
+        "functions": 44,
+        "obligations": 168,
+        "other": [],
+        "programs": 7,
+        "proved": 168,
+        "rejected": []
+      },
+      "gc": {
+        "functions": 26,
+        "obligations": 75,
+        "other": [],
+        "programs": 4,
+        "proved": 75,
+        "rejected": []
+      },
+      "int": {
+        "functions": 0,
+        "obligations": 0,
+        "other": [],
+        "programs": 0,
+        "proved": 0,
+        "rejected": []
+      },
+      "int_inline": {
+        "functions": 7,
+        "obligations": 32,
+        "other": [],
+        "programs": 2,
+        "proved": 32,
+        "rejected": []
+      },
+      "null": {
+        "functions": 9,
+        "obligations": 17,
+        "other": [],
+        "programs": 6,
+        "proved": 17,
+        "rejected": []
+      },
+      "payload": {
+        "functions": 9,
+        "obligations": 12,
+        "other": [],
+        "programs": 3,
+        "proved": 12,
+        "rejected": []
+      },
+      "storage": {
+        "functions": 10,
+        "obligations": 116,
+        "other": [],
+        "programs": 2,
+        "proved": 116,
+        "rejected": []
+      },
+      "union": {
+        "functions": 16,
+        "obligations": 31,
+        "other": [],
+        "programs": 3,
+        "proved": 31,
+        "rejected": []
+      },
+      "union_payload": {
+        "functions": 14,
+        "obligations": 46,
+        "other": [],
+        "programs": 3,
+        "proved": 46,
+        "rejected": []
+      }
+    },
+    "completion": {
+      "evaluated": {
+        "count": 10,
+        "sha256": "0013be8576c81789b5c05ec44bb3dc6fae0adfbe88a623794d1619a641f2669e"
+      },
+      "expected": {
+        "count": 10,
+        "sha256": "0013be8576c81789b5c05ec44bb3dc6fae0adfbe88a623794d1619a641f2669e"
+      },
+      "failed": 0,
+      "promoting": {
+        "count": 2,
+        "sha256": "647babba96c49760c1aa6257b73c64cbb76b17bef389fb0b1d943cc0abfe67dd"
+      },
+      "version": 1
+    },
+    "failed": [],
+    "limits": "Obligations overlap across checks; these are bounded IR checks, not a whole-compiler proof or verified-code percentage.",
+    "programs": 10,
+    "total_obligations_or_uses": 535,
+    "total_proved": 535
+  },
+  "runner_sha256": "ed39cee58ac5dbc76d79afe9f96e9f394a59e2530a84e5900cc49e9fb0418159",
+  "started_utc": "2026-11-15T07:55:06.583155+00:00",
+  "status": "passed",
+  "toolchain": {
+    "lean": "Lean (version 4.35.0, x86_64-unknown-linux-gnu, commit eb6cafb7290e8bd5f2937522d8d804f58f02bafc, Release)",
+    "lean_executable": "/workspace/scratch/c2b093657c17/toolchains/lean-4.35.0-linux/bin/lean",
+    "lean_sha256": "bf8d54e4714cc4b03d3f6bb34c83b7202b87e49c8bfcbff6895c085bb90ceb38",
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+    "python_executable": "/workspace/scratch/c2b093657c17/dev-venv/bin/python",
+    "python_sha256": "6e9b7d27499f26dbec3c8687728f3a0500b9b61688664f03678242744567c461"
+  },
+  "unit_files": [
+    "tools/test_lean_access.py",
+    "tools/test_lean_boundary.py",
+    "tools/test_lean_boundary_setup.py",
+    "tools/test_lean_boundary_workflow.py",
+    "tools/test_lean_closure_cells.py",
+    "tools/test_lean_corpus.py",
+    "tools/test_lean_effects.py",
+    "tools/test_lean_fields.py",
+    "tools/test_lean_gc.py",
+    "tools/test_lean_generators.py",
+    "tools/test_lean_guard_mutations.py",
+    "tools/test_lean_guards.py",
+    "tools/test_lean_inline.py",
+    "tools/test_lean_int.py",
+    "tools/test_lean_layout_metadata.py",
+    "tools/test_lean_null_access.py",
+    "tools/test_lean_pipeline.py",
+    "tools/test_lean_range_bounds.py",
+    "tools/test_lean_report.py",
+    "tools/test_lean_storage.py",
+    "tools/test_lean_storage_container.py",
+    "tools/test_lean_storage_corpus.py",
+    "tools/test_lean_storage_iteration.py",
+    "tools/test_lean_storage_layout.py",
+    "tools/test_lean_storage_liveness.py",
+    "tools/test_lean_storage_stack_copy.py",
+    "tools/test_lean_union_effects.py",
+    "tools/test_lean_union_memory.py",
+    "tools/test_lean_union_split.py"
+  ],
+  "unit_results": {
+    "discovered": 409,
+    "errors": [],
+    "expected_failures": [],
+    "failures": [],
+    "loader_errors": [],
+    "skipped": [],
+    "successful": true,
+    "tests_run": 409,
+    "unexpected_successes": []
+  }
+}
