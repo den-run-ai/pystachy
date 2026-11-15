@@ -1,0 +1,4823 @@
+{
+  "schema_version": 1,
+  "observed_at_utc": "2026-11-15T09:21:27.117Z",
+  "scope": "Current-head GitHub workflows, jobs, checks and PR metadata; read-only capture.",
+  "result": "passed_with_intentional_skips",
+  "reviewed_pr_metadata": {
+    "number": 1499,
+    "html_url": "https://github.com/den-run-ai/pystachy/pull/1499",
+    "title": "Separate and verify compiler stage boundaries",
+    "body": "## Problem\n\nCompiler discovery, finalization and consuming LLVM emission shared one entry point. The first stage split still rendered C adapters during discovery and deferred extension admission until lowering. Full local verification also exposed persistent JIT discovery failures with symlinked LLVM tools.\n\n## Change\n\nAdd six guarded, attempt-owned stages and finalized typed-IR inspection. Retain validated C ABI plans until serialization and finish module/export admission before exposing finalized IR. Add finalized-only inspection for the Lean reporter and bind snapshots to reports by hash. A Lean model checks stage order, retries and snapshot association. Canonicalize LLVM library discovery and invalidate stale negative caches. Typing, representation and specialization remain coupled. ChatGPT-assisted implementation and independent agent reviews. Refs #767, #709, #409.\n\n## Validation\n\nHead 5ccd1841 adds actual-ELF regression tests: the old driver fails both, canonicalization alone fails cache migration, and the complete fix passes alongside the existing real-LLVM cache/wrapper test. Fresh bootstrap, corpus, Lean, CI and full local 58-stage qualification are underway. The interrupted run and its pre-existing launcher defect are retained; no full-pass claim is made. [Earlier exact-tree evidence and limitations](https://github.com/den-run-ai/pystachy/blob/b0806cea40f358b892604a7af66c5aa661e744f2/research/compiler-stage-completion-2026-11-15/README.md).",
+    "head": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+    "head_ref": "prototype/compiler-stage-boundaries",
+    "base": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+    "base_ref": "main",
+    "state": "open",
+    "draft": true,
+    "merged": false,
+    "merged_at": null,
+    "mergeable": true,
+    "mergeable_state": "clean",
+    "merge_commit_sha": "b08a344558fc87aeb211470c8e58f154e76d4c5b",
+    "updated_at": "2026-11-15T09:02:22Z",
+    "auto_merge": null,
+    "requested_reviewers": [],
+    "submitted_reviews": [],
+    "automated_codex_review": {
+      "status": "failed_due_to_quota_exhaustion",
+      "reviewed_commit": "800752d8a582bff77d4c375039af786b82a96f73",
+      "summary_comment_id": 6890748616,
+      "quota_comment_id": 6890749124,
+      "counted_as_success": false
+    }
+  },
+  "source_identity": {
+    "published_head": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+    "published_tree": "b8c3b7b1a6d6517f716934b1600e31caf434bd7a",
+    "published_parents": [
+      "eabfe7b3d8f1be3e4615442423c7d3fbab10285b"
+    ],
+    "ci_merge_commit": "b08a344558fc87aeb211470c8e58f154e76d4c5b",
+    "ci_merge_tree": "b8c3b7b1a6d6517f716934b1600e31caf434bd7a",
+    "ci_merge_parents": [
+      "80490143498d149d407343ba1cb7aedb1db2d2c5",
+      "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8"
+    ]
+  },
+  "totals": {
+    "workflows": 6,
+    "workflow_conclusions": {
+      "success": 5,
+      "skipped": 1
+    },
+    "jobs": 23,
+    "job_conclusions": {
+      "success": 21,
+      "skipped": 2
+    },
+    "checks": 24,
+    "check_conclusions": {
+      "success": 22,
+      "skipped": 2
+    }
+  },
+  "workflows": [
+    {
+      "id": 43697285085,
+      "name": "Submission format",
+      "event": "pull_request_target",
+      "path": ".github/workflows/submissions.yml",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "head_branch": "prototype/compiler-stage-boundaries",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "created_at": "2026-11-15T09:02:26Z",
+      "updated_at": "2026-11-15T09:02:39Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697285085",
+      "total_jobs": 1,
+      "jobs": [
+        {
+          "id": 132760539454,
+          "run_id": 43697285085,
+          "run_attempt": 1,
+          "name": "Check title and description",
+          "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:02:30Z",
+          "completed_at": "2026-11-15T09:02:38Z",
+          "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697285085/job/132760539454",
+          "runner_name": "GitHub Actions 1000090818",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-15T09:02:31Z",
+              "completed_at": "2026-11-15T09:02:31Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-15T09:02:31Z",
+              "completed_at": "2026-11-15T09:02:33Z"
+            },
+            {
+              "name": "Validate current metadata",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-15T09:02:33Z",
+              "completed_at": "2026-11-15T09:02:35Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-11-15T09:02:35Z",
+              "completed_at": "2026-11-15T09:02:35Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-15T09:02:35Z",
+              "completed_at": "2026-11-15T09:02:35Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 43697221818,
+      "name": "Lint",
+      "event": "pull_request",
+      "path": ".github/workflows/lint.yml",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "head_branch": "prototype/compiler-stage-boundaries",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "created_at": "2026-11-15T09:01:38Z",
+      "updated_at": "2026-11-15T09:15:02Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221818",
+      "total_jobs": 1,
+      "jobs": [
+        {
+          "id": 132760339864,
+          "run_id": 43697221818,
+          "run_attempt": 1,
+          "name": "make lint (ruff, shellcheck, clang -Wall -Wextra)",
+          "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:01:41Z",
+          "completed_at": "2026-11-15T09:15:01Z",
+          "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221818/job/132760339864",
+          "runner_name": "GitHub Actions 1000090816",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-15T09:01:43Z",
+              "completed_at": "2026-11-15T09:01:44Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-15T09:01:44Z",
+              "completed_at": "2026-11-15T09:01:46Z"
+            },
+            {
+              "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-15T09:01:46Z",
+              "completed_at": "2026-11-15T09:01:56Z"
+            },
+            {
+              "name": "Run python3 -m pip install -r tools/requirements-dev.txt",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-15T09:01:56Z",
+              "completed_at": "2026-11-15T09:02:02Z"
+            },
+            {
+              "name": "Select Lean boundary validation",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-15T09:02:02Z",
+              "completed_at": "2026-11-15T09:02:02Z"
+            },
+            {
+              "name": "Cache the pinned Lean release archive",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-11-15T09:02:02Z",
+              "completed_at": "2026-11-15T09:02:08Z"
+            },
+            {
+              "name": "Build and audit the Lean boundary prototype",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-15T09:02:08Z",
+              "completed_at": "2026-11-15T09:02:33Z"
+            },
+            {
+              "name": "Validate GitHub Actions workflows (actionlint)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-15T09:02:33Z",
+              "completed_at": "2026-11-15T09:02:34Z"
+            },
+            {
+              "name": "Fast hosted checks and full lint",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-15T09:02:34Z",
+              "completed_at": "2026-11-15T09:05:44Z"
+            },
+            {
+              "name": "Retained IR and failed native build controls",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-15T09:05:44Z",
+              "completed_at": "2026-11-15T09:06:39Z"
+            },
+            {
+              "name": "Verification harness and compiler state controls",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-11-15T09:06:39Z",
+              "completed_at": "2026-11-15T09:11:36Z"
+            },
+            {
+              "name": "Compact CI sampling and variant controls",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 12,
+              "started_at": "2026-11-15T09:11:36Z",
+              "completed_at": "2026-11-15T09:11:38Z"
+            },
+            {
+              "name": "Upstream port preservation (CPython)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-11-15T09:11:38Z",
+              "completed_at": "2026-11-15T09:11:39Z"
+            },
+            {
+              "name": "Router benchmark validation tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-11-15T09:11:39Z",
+              "completed_at": "2026-11-15T09:11:39Z"
+            },
+            {
+              "name": "Example benchmark validation tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-11-15T09:11:39Z",
+              "completed_at": "2026-11-15T09:11:41Z"
+            },
+            {
+              "name": "Example CLI smoke contract tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 16,
+              "started_at": "2026-11-15T09:11:41Z",
+              "completed_at": "2026-11-15T09:11:43Z"
+            },
+            {
+              "name": "Native text reads on open pipes",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17,
+              "started_at": "2026-11-15T09:11:43Z",
+              "completed_at": "2026-11-15T09:11:53Z"
+            },
+            {
+              "name": "Owned communication buffer and completion checks",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18,
+              "started_at": "2026-11-15T09:11:53Z",
+              "completed_at": "2026-11-15T09:12:30Z"
+            },
+            {
+              "name": "pyperformance runner and port record tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19,
+              "started_at": "2026-11-15T09:12:30Z",
+              "completed_at": "2026-11-15T09:12:41Z"
+            },
+            {
+              "name": "Performance smoke comparison tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 20,
+              "started_at": "2026-11-15T09:12:41Z",
+              "completed_at": "2026-11-15T09:12:42Z"
+            },
+            {
+              "name": "nanoGPT parity checker contract tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 21,
+              "started_at": "2026-11-15T09:12:42Z",
+              "completed_at": "2026-11-15T09:12:42Z"
+            },
+            {
+              "name": "Import sweep and PyPI probe tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 22,
+              "started_at": "2026-11-15T09:12:42Z",
+              "completed_at": "2026-11-15T09:12:43Z"
+            },
+            {
+              "name": "CPython test-method extraction tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 23,
+              "started_at": "2026-11-15T09:12:43Z",
+              "completed_at": "2026-11-15T09:12:45Z"
+            },
+            {
+              "name": "Dynamic Any fuzzer generator and comparison tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 24,
+              "started_at": "2026-11-15T09:12:45Z",
+              "completed_at": "2026-11-15T09:12:45Z"
+            },
+            {
+              "name": "Dynamic Any builtin call binding tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 25,
+              "started_at": "2026-11-15T09:12:45Z",
+              "completed_at": "2026-11-15T09:12:45Z"
+            },
+            {
+              "name": "Dynamic Any corpus sweep controls",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 26,
+              "started_at": "2026-11-15T09:12:45Z",
+              "completed_at": "2026-11-15T09:12:46Z"
+            },
+            {
+              "name": "Promoting int tooling and retry controls",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 27,
+              "started_at": "2026-11-15T09:12:46Z",
+              "completed_at": "2026-11-15T09:12:47Z"
+            },
+            {
+              "name": "Function-local join retry controls",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 28,
+              "started_at": "2026-11-15T09:12:47Z",
+              "completed_at": "2026-11-15T09:12:48Z"
+            },
+            {
+              "name": "microGPT graph parity and benchmark contract tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 29,
+              "started_at": "2026-11-15T09:12:48Z",
+              "completed_at": "2026-11-15T09:12:48Z"
+            },
+            {
+              "name": "Integer benchmark checksum agreement tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 30,
+              "started_at": "2026-11-15T09:12:48Z",
+              "completed_at": "2026-11-15T09:12:48Z"
+            },
+            {
+              "name": "Compiler function-state lists (Gen, Frame, gen_save, gen_restore, gen_enter)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 31,
+              "started_at": "2026-11-15T09:12:48Z",
+              "completed_at": "2026-11-15T09:12:53Z"
+            },
+            {
+              "name": "JSON benchmark evidence tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 32,
+              "started_at": "2026-11-15T09:12:53Z",
+              "completed_at": "2026-11-15T09:12:53Z"
+            },
+            {
+              "name": "LLVM IR diagnostic inventory tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 33,
+              "started_at": "2026-11-15T09:12:53Z",
+              "completed_at": "2026-11-15T09:12:53Z"
+            },
+            {
+              "name": "Issue and PR reading budgets and metadata checks",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 34,
+              "started_at": "2026-11-15T09:12:53Z",
+              "completed_at": "2026-11-15T09:12:54Z"
+            },
+            {
+              "name": "Release notes rendering and the current version's notes",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 35,
+              "started_at": "2026-11-15T09:12:54Z",
+              "completed_at": "2026-11-15T09:12:54Z"
+            },
+            {
+              "name": "Coverage report checks tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 36,
+              "started_at": "2026-11-15T09:12:54Z",
+              "completed_at": "2026-11-15T09:12:54Z"
+            },
+            {
+              "name": "PR job budget (20 jobs, two workers per group, 15 minutes each)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 37,
+              "started_at": "2026-11-15T09:12:54Z",
+              "completed_at": "2026-11-15T09:12:56Z"
+            },
+            {
+              "name": "Linux ELF compatibility audit controls",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 38,
+              "started_at": "2026-11-15T09:12:56Z",
+              "completed_at": "2026-11-15T09:12:56Z"
+            },
+            {
+              "name": "Installed JSON repair wheel validation controls",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 39,
+              "started_at": "2026-11-15T09:12:56Z",
+              "completed_at": "2026-11-15T09:12:57Z"
+            },
+            {
+              "name": "Generated regex matcher tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 40,
+              "started_at": "2026-11-15T09:12:57Z",
+              "completed_at": "2026-11-15T09:13:01Z"
+            },
+            {
+              "name": "Concurrency contract and local process ownership controls",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 41,
+              "started_at": "2026-11-15T09:13:01Z",
+              "completed_at": "2026-11-15T09:13:20Z"
+            },
+            {
+              "name": "Native program cache manifests and tool inputs",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 42,
+              "started_at": "2026-11-15T09:13:20Z",
+              "completed_at": "2026-11-15T09:13:46Z"
+            },
+            {
+              "name": "Run make check-recordings",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 43,
+              "started_at": "2026-11-15T09:13:46Z",
+              "completed_at": "2026-11-15T09:14:58Z"
+            },
+            {
+              "name": "Post Cache the pinned Lean release archive",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 84,
+              "started_at": "2026-11-15T09:14:58Z",
+              "completed_at": "2026-11-15T09:14:58Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 85,
+              "started_at": "2026-11-15T09:14:58Z",
+              "completed_at": "2026-11-15T09:14:58Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 86,
+              "started_at": "2026-11-15T09:14:58Z",
+              "completed_at": "2026-11-15T09:14:58Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 87,
+              "started_at": "2026-11-15T09:14:58Z",
+              "completed_at": "2026-11-15T09:14:58Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 43697221888,
+      "name": "CI",
+      "event": "pull_request",
+      "path": ".github/workflows/ci.yml",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "head_branch": "prototype/compiler-stage-boundaries",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "created_at": "2026-11-15T09:01:38Z",
+      "updated_at": "2026-11-15T09:18:50Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888",
+      "total_jobs": 16,
+      "jobs": [
+        {
+          "id": 132760339936,
+          "run_id": 43697221888,
+          "run_attempt": 1,
+          "name": "verify (bootstrap, x86_64)",
+          "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:01:41Z",
+          "completed_at": "2026-11-15T09:07:00Z",
+          "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132760339936",
+          "runner_name": "GitHub Actions 1000090817",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-15T09:01:42Z",
+              "completed_at": "2026-11-15T09:01:43Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-15T09:01:43Z",
+              "completed_at": "2026-11-15T09:01:45Z"
+            },
+            {
+              "name": "Select documentation or code verification",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-15T09:01:45Z",
+              "completed_at": "2026-11-15T09:01:45Z"
+            },
+            {
+              "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-15T09:01:45Z",
+              "completed_at": "2026-11-15T09:01:52Z"
+            },
+            {
+              "name": "LLVM toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-15T09:01:52Z",
+              "completed_at": "2026-11-15T09:01:53Z"
+            },
+            {
+              "name": "Record native Linux ABI",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-11-15T09:01:53Z",
+              "completed_at": "2026-11-15T09:01:53Z"
+            },
+            {
+              "name": "Verify compiler and runtime fixed points",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-15T09:01:53Z",
+              "completed_at": "2026-11-15T09:06:52Z"
+            },
+            {
+              "name": "Package verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-15T09:06:52Z",
+              "completed_at": "2026-11-15T09:06:52Z"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-15T09:06:52Z",
+              "completed_at": "2026-11-15T09:06:55Z"
+            },
+            {
+              "name": "Upload bootstrap report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-15T09:06:55Z",
+              "completed_at": "2026-11-15T09:06:57Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19,
+              "started_at": "2026-11-15T09:06:57Z",
+              "completed_at": "2026-11-15T09:06:57Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 20,
+              "started_at": "2026-11-15T09:06:57Z",
+              "completed_at": "2026-11-15T09:06:57Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 21,
+              "started_at": "2026-11-15T09:06:57Z",
+              "completed_at": "2026-11-15T09:06:57Z"
+            }
+          ]
+        },
+        {
+          "id": 132761682711,
+          "run_id": 43697221888,
+          "run_attempt": 1,
+          "name": "native JIT and variants (worker 1)",
+          "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:07:10Z",
+          "completed_at": "2026-11-15T09:12:37Z",
+          "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682711",
+          "runner_name": "GitHub Actions 1000090823",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-15T09:07:11Z",
+              "completed_at": "2026-11-15T09:07:12Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-15T09:07:12Z",
+              "completed_at": "2026-11-15T09:07:14Z"
+            },
+            {
+              "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-15T09:07:14Z",
+              "completed_at": "2026-11-15T09:07:20Z"
+            },
+            {
+              "name": "Run tools/setup.sh --minimal",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-15T09:07:20Z",
+              "completed_at": "2026-11-15T09:07:22Z"
+            },
+            {
+              "name": "Run actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-15T09:07:22Z",
+              "completed_at": "2026-11-15T09:07:24Z"
+            },
+            {
+              "name": "Complete native JIT corpus half",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-11-15T09:07:24Z",
+              "completed_at": "2026-11-15T09:09:10Z"
+            },
+            {
+              "name": "Upload native JIT report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-15T09:09:10Z",
+              "completed_at": "2026-11-15T09:09:11Z"
+            },
+            {
+              "name": "Sampled configurations on representative and changed cases",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-15T09:09:11Z",
+              "completed_at": "2026-11-15T09:10:16Z"
+            },
+            {
+              "name": "Native program cache invalidation and execution",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 9,
+              "started_at": "2026-11-15T09:10:16Z",
+              "completed_at": "2026-11-15T09:10:16Z"
+            },
+            {
+              "name": "Runtime ABI and GC root checker controls",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-15T09:10:16Z",
+              "completed_at": "2026-11-15T09:12:33Z"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-11-15T09:12:33Z",
+              "completed_at": "2026-11-15T09:12:34Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 21,
+              "started_at": "2026-11-15T09:12:34Z",
+              "completed_at": "2026-11-15T09:12:35Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 22,
+              "started_at": "2026-11-15T09:12:35Z",
+              "completed_at": "2026-11-15T09:12:35Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 23,
+              "started_at": "2026-11-15T09:12:35Z",
+              "completed_at": "2026-11-15T09:12:35Z"
+            }
+          ]
+        },
+        {
+          "id": 132761682731,
+          "run_id": 43697221888,
+          "run_attempt": 1,
+          "name": "native JIT and variants (worker 0)",
+          "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:07:03Z",
+          "completed_at": "2026-11-15T09:13:54Z",
+          "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682731",
+          "runner_name": "GitHub Actions 1000090826",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-15T09:07:04Z",
+              "completed_at": "2026-11-15T09:07:06Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-15T09:07:06Z",
+              "completed_at": "2026-11-15T09:07:11Z"
+            },
+            {
+              "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-15T09:07:11Z",
+              "completed_at": "2026-11-15T09:07:16Z"
+            },
+            {
+              "name": "Run tools/setup.sh --minimal",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-15T09:07:16Z",
+              "completed_at": "2026-11-15T09:07:23Z"
+            },
+            {
+              "name": "Run actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-15T09:07:23Z",
+              "completed_at": "2026-11-15T09:07:24Z"
+            },
+            {
+              "name": "Complete native JIT corpus half",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-11-15T09:07:24Z",
+              "completed_at": "2026-11-15T09:09:00Z"
+            },
+            {
+              "name": "Upload native JIT report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-15T09:09:00Z",
+              "completed_at": "2026-11-15T09:09:01Z"
+            },
+            {
+              "name": "Sampled configurations on representative and changed cases",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-15T09:09:01Z",
+              "completed_at": "2026-11-15T09:10:55Z"
+            },
+            {
+              "name": "Native program cache invalidation and execution",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-15T09:10:55Z",
+              "completed_at": "2026-11-15T09:13:51Z"
+            },
+            {
+              "name": "Runtime ABI and GC root checker controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 10,
+              "started_at": "2026-11-15T09:13:51Z",
+              "completed_at": "2026-11-15T09:13:51Z"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-11-15T09:13:51Z",
+              "completed_at": "2026-11-15T09:13:52Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 21,
+              "started_at": "2026-11-15T09:13:52Z",
+              "completed_at": "2026-11-15T09:13:52Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 22,
+              "started_at": "2026-11-15T09:13:52Z",
+              "completed_at": "2026-11-15T09:13:52Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 23,
+              "started_at": "2026-11-15T09:13:52Z",
+              "completed_at": "2026-11-15T09:13:52Z"
+            }
+          ]
+        },
+        {
+          "id": 132761682750,
+          "run_id": 43697221888,
+          "run_attempt": 1,
+          "name": "verify (hosted, x86_64)",
+          "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:07:03Z",
+          "completed_at": "2026-11-15T09:12:52Z",
+          "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682750",
+          "runner_name": "GitHub Actions 1000090821",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-15T09:07:03Z",
+              "completed_at": "2026-11-15T09:07:05Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-15T09:07:05Z",
+              "completed_at": "2026-11-15T09:07:07Z"
+            },
+            {
+              "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-15T09:07:07Z",
+              "completed_at": "2026-11-15T09:07:15Z"
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-15T09:07:15Z",
+              "completed_at": "2026-11-15T09:07:18Z"
+            },
+            {
+              "name": "Opt-in, widening and Lean corpus CPython dependency",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 5,
+              "started_at": "2026-11-15T09:07:18Z",
+              "completed_at": "2026-11-15T09:07:18Z"
+            },
+            {
+              "name": "Workload pytest oracle dependency",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 6,
+              "started_at": "2026-11-15T09:07:18Z",
+              "completed_at": "2026-11-15T09:07:18Z"
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-15T09:07:18Z",
+              "completed_at": "2026-11-15T09:07:19Z"
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-15T09:07:19Z",
+              "completed_at": "2026-11-15T09:12:48Z"
+            },
+            {
+              "name": "Runtime ABI and GC root checker controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 9,
+              "started_at": "2026-11-15T09:12:48Z",
+              "completed_at": "2026-11-15T09:12:48Z"
+            },
+            {
+              "name": "Cache the pinned Lean release archive",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 10,
+              "started_at": "2026-11-15T09:12:48Z",
+              "completed_at": "2026-11-15T09:12:48Z"
+            },
+            {
+              "name": "Lean proofs of compiler guard obligations",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 11,
+              "started_at": "2026-11-15T09:12:48Z",
+              "completed_at": "2026-11-15T09:12:48Z"
+            },
+            {
+              "name": "Require C, embedding and extension FFI coverage",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 12,
+              "started_at": "2026-11-15T09:12:48Z",
+              "completed_at": "2026-11-15T09:12:48Z"
+            },
+            {
+              "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 13,
+              "started_at": "2026-11-15T09:12:48Z",
+              "completed_at": "2026-11-15T09:12:48Z"
+            },
+            {
+              "name": "Generated user and runtime ASan controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 14,
+              "started_at": "2026-11-15T09:12:48Z",
+              "completed_at": "2026-11-15T09:12:48Z"
+            },
+            {
+              "name": "Sanitized shared and object JIT linkage controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 15,
+              "started_at": "2026-11-15T09:12:48Z",
+              "completed_at": "2026-11-15T09:12:48Z"
+            },
+            {
+              "name": "Native program cache invalidation and execution",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 16,
+              "started_at": "2026-11-15T09:12:48Z",
+              "completed_at": "2026-11-15T09:12:48Z"
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 17,
+              "started_at": "2026-11-15T09:12:48Z",
+              "completed_at": "2026-11-15T09:12:48Z"
+            },
+            {
+              "name": "Adapted pyperformance benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 18,
+              "started_at": "2026-11-15T09:12:48Z",
+              "completed_at": "2026-11-15T09:12:48Z"
+            },
+            {
+              "name": "Bounded match dispatch correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 19,
+              "started_at": "2026-11-15T09:12:48Z",
+              "completed_at": "2026-11-15T09:12:48Z"
+            },
+            {
+              "name": "Shared pytest example assertions",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 20,
+              "started_at": "2026-11-15T09:12:48Z",
+              "completed_at": "2026-11-15T09:12:48Z"
+            },
+            {
+              "name": "Generated native pytest runner parity",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 21,
+              "started_at": "2026-11-15T09:12:48Z",
+              "completed_at": "2026-11-15T09:12:48Z"
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 22,
+              "started_at": "2026-11-15T09:12:48Z",
+              "completed_at": "2026-11-15T09:12:48Z"
+            },
+            {
+              "name": "Upstream large regex (JIT and AOT, normal GC)",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 23,
+              "started_at": "2026-11-15T09:12:48Z",
+              "completed_at": "2026-11-15T09:12:48Z"
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 24,
+              "started_at": "2026-11-15T09:12:48Z",
+              "completed_at": "2026-11-15T09:12:50Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 47,
+              "started_at": "2026-11-15T09:12:50Z",
+              "completed_at": "2026-11-15T09:12:50Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 48,
+              "started_at": "2026-11-15T09:12:50Z",
+              "completed_at": "2026-11-15T09:12:50Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 49,
+              "started_at": "2026-11-15T09:12:50Z",
+              "completed_at": "2026-11-15T09:12:50Z"
+            }
+          ]
+        },
+        {
+          "id": 132761682761,
+          "run_id": 43697221888,
+          "run_attempt": 1,
+          "name": "verify (contracts, x86_64)",
+          "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:07:03Z",
+          "completed_at": "2026-11-15T09:14:21Z",
+          "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682761",
+          "runner_name": "GitHub Actions 1000090822",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-15T09:07:04Z",
+              "completed_at": "2026-11-15T09:07:06Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-15T09:07:06Z",
+              "completed_at": "2026-11-15T09:07:11Z"
+            },
+            {
+              "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-15T09:07:11Z",
+              "completed_at": "2026-11-15T09:07:17Z"
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-15T09:07:17Z",
+              "completed_at": "2026-11-15T09:07:24Z"
+            },
+            {
+              "name": "Opt-in, widening and Lean corpus CPython dependency",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 5,
+              "started_at": "2026-11-15T09:07:24Z",
+              "completed_at": "2026-11-15T09:07:24Z"
+            },
+            {
+              "name": "Workload pytest oracle dependency",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 6,
+              "started_at": "2026-11-15T09:07:24Z",
+              "completed_at": "2026-11-15T09:07:24Z"
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-15T09:07:24Z",
+              "completed_at": "2026-11-15T09:07:24Z"
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-15T09:07:24Z",
+              "completed_at": "2026-11-15T09:12:47Z"
+            },
+            {
+              "name": "Runtime ABI and GC root checker controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 9,
+              "started_at": "2026-11-15T09:12:47Z",
+              "completed_at": "2026-11-15T09:12:47Z"
+            },
+            {
+              "name": "Cache the pinned Lean release archive",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-15T09:12:47Z",
+              "completed_at": "2026-11-15T09:12:50Z"
+            },
+            {
+              "name": "Lean proofs of compiler guard obligations",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-11-15T09:12:50Z",
+              "completed_at": "2026-11-15T09:13:20Z"
+            },
+            {
+              "name": "Require C, embedding and extension FFI coverage",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 12,
+              "started_at": "2026-11-15T09:13:20Z",
+              "completed_at": "2026-11-15T09:13:20Z"
+            },
+            {
+              "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-11-15T09:13:20Z",
+              "completed_at": "2026-11-15T09:14:18Z"
+            },
+            {
+              "name": "Generated user and runtime ASan controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 14,
+              "started_at": "2026-11-15T09:14:18Z",
+              "completed_at": "2026-11-15T09:14:18Z"
+            },
+            {
+              "name": "Sanitized shared and object JIT linkage controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 15,
+              "started_at": "2026-11-15T09:14:18Z",
+              "completed_at": "2026-11-15T09:14:18Z"
+            },
+            {
+              "name": "Native program cache invalidation and execution",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 16,
+              "started_at": "2026-11-15T09:14:18Z",
+              "completed_at": "2026-11-15T09:14:18Z"
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 17,
+              "started_at": "2026-11-15T09:14:18Z",
+              "completed_at": "2026-11-15T09:14:18Z"
+            },
+            {
+              "name": "Adapted pyperformance benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 18,
+              "started_at": "2026-11-15T09:14:18Z",
+              "completed_at": "2026-11-15T09:14:18Z"
+            },
+            {
+              "name": "Bounded match dispatch correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 19,
+              "started_at": "2026-11-15T09:14:18Z",
+              "completed_at": "2026-11-15T09:14:18Z"
+            },
+            {
+              "name": "Shared pytest example assertions",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 20,
+              "started_at": "2026-11-15T09:14:18Z",
+              "completed_at": "2026-11-15T09:14:18Z"
+            },
+            {
+              "name": "Generated native pytest runner parity",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 21,
+              "started_at": "2026-11-15T09:14:18Z",
+              "completed_at": "2026-11-15T09:14:18Z"
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 22,
+              "started_at": "2026-11-15T09:14:18Z",
+              "completed_at": "2026-11-15T09:14:18Z"
+            },
+            {
+              "name": "Upstream large regex (JIT and AOT, normal GC)",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 23,
+              "started_at": "2026-11-15T09:14:18Z",
+              "completed_at": "2026-11-15T09:14:18Z"
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 24,
+              "started_at": "2026-11-15T09:14:18Z",
+              "completed_at": "2026-11-15T09:14:19Z"
+            },
+            {
+              "name": "Post Cache the pinned Lean release archive",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 46,
+              "started_at": "2026-11-15T09:14:19Z",
+              "completed_at": "2026-11-15T09:14:19Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 47,
+              "started_at": "2026-11-15T09:14:19Z",
+              "completed_at": "2026-11-15T09:14:19Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 48,
+              "started_at": "2026-11-15T09:14:19Z",
+              "completed_at": "2026-11-15T09:14:19Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 49,
+              "started_at": "2026-11-15T09:14:19Z",
+              "completed_at": "2026-11-15T09:14:19Z"
+            }
+          ]
+        },
+        {
+          "id": 132761682768,
+          "run_id": 43697221888,
+          "run_attempt": 1,
+          "name": "verify (native-aot-0, x86_64)",
+          "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:07:03Z",
+          "completed_at": "2026-11-15T09:10:04Z",
+          "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682768",
+          "runner_name": "GitHub Actions 1000090824",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-15T09:07:04Z",
+              "completed_at": "2026-11-15T09:07:05Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-15T09:07:05Z",
+              "completed_at": "2026-11-15T09:07:09Z"
+            },
+            {
+              "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-15T09:07:09Z",
+              "completed_at": "2026-11-15T09:07:18Z"
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-15T09:07:18Z",
+              "completed_at": "2026-11-15T09:07:20Z"
+            },
+            {
+              "name": "Opt-in, widening and Lean corpus CPython dependency",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 5,
+              "started_at": "2026-11-15T09:07:20Z",
+              "completed_at": "2026-11-15T09:07:20Z"
+            },
+            {
+              "name": "Workload pytest oracle dependency",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 6,
+              "started_at": "2026-11-15T09:07:20Z",
+              "completed_at": "2026-11-15T09:07:20Z"
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-15T09:07:20Z",
+              "completed_at": "2026-11-15T09:07:22Z"
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-15T09:07:22Z",
+              "completed_at": "2026-11-15T09:09:59Z"
+            },
+            {
+              "name": "Runtime ABI and GC root checker controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 9,
+              "started_at": "2026-11-15T09:09:59Z",
+              "completed_at": "2026-11-15T09:09:59Z"
+            },
+            {
+              "name": "Cache the pinned Lean release archive",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 10,
+              "started_at": "2026-11-15T09:09:59Z",
+              "completed_at": "2026-11-15T09:09:59Z"
+            },
+            {
+              "name": "Lean proofs of compiler guard obligations",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 11,
+              "started_at": "2026-11-15T09:09:59Z",
+              "completed_at": "2026-11-15T09:09:59Z"
+            },
+            {
+              "name": "Require C, embedding and extension FFI coverage",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 12,
+              "started_at": "2026-11-15T09:09:59Z",
+              "completed_at": "2026-11-15T09:09:59Z"
+            },
+            {
+              "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 13,
+              "started_at": "2026-11-15T09:09:59Z",
+              "completed_at": "2026-11-15T09:09:59Z"
+            },
+            {
+              "name": "Generated user and runtime ASan controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 14,
+              "started_at": "2026-11-15T09:09:59Z",
+              "completed_at": "2026-11-15T09:09:59Z"
+            },
+            {
+              "name": "Sanitized shared and object JIT linkage controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 15,
+              "started_at": "2026-11-15T09:09:59Z",
+              "completed_at": "2026-11-15T09:09:59Z"
+            },
+            {
+              "name": "Native program cache invalidation and execution",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 16,
+              "started_at": "2026-11-15T09:09:59Z",
+              "completed_at": "2026-11-15T09:09:59Z"
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 17,
+              "started_at": "2026-11-15T09:09:59Z",
+              "completed_at": "2026-11-15T09:09:59Z"
+            },
+            {
+              "name": "Adapted pyperformance benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 18,
+              "started_at": "2026-11-15T09:09:59Z",
+              "completed_at": "2026-11-15T09:09:59Z"
+            },
+            {
+              "name": "Bounded match dispatch correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 19,
+              "started_at": "2026-11-15T09:09:59Z",
+              "completed_at": "2026-11-15T09:09:59Z"
+            },
+            {
+              "name": "Shared pytest example assertions",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 20,
+              "started_at": "2026-11-15T09:09:59Z",
+              "completed_at": "2026-11-15T09:09:59Z"
+            },
+            {
+              "name": "Generated native pytest runner parity",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 21,
+              "started_at": "2026-11-15T09:09:59Z",
+              "completed_at": "2026-11-15T09:09:59Z"
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 22,
+              "started_at": "2026-11-15T09:09:59Z",
+              "completed_at": "2026-11-15T09:09:59Z"
+            },
+            {
+              "name": "Upstream large regex (JIT and AOT, normal GC)",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 23,
+              "started_at": "2026-11-15T09:09:59Z",
+              "completed_at": "2026-11-15T09:09:59Z"
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 24,
+              "started_at": "2026-11-15T09:09:59Z",
+              "completed_at": "2026-11-15T09:10:01Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 47,
+              "started_at": "2026-11-15T09:10:01Z",
+              "completed_at": "2026-11-15T09:10:01Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 48,
+              "started_at": "2026-11-15T09:10:01Z",
+              "completed_at": "2026-11-15T09:10:01Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 49,
+              "started_at": "2026-11-15T09:10:01Z",
+              "completed_at": "2026-11-15T09:10:01Z"
+            }
+          ]
+        },
+        {
+          "id": 132761682777,
+          "run_id": 43697221888,
+          "run_attempt": 1,
+          "name": "verify (native-aot-1, x86_64)",
+          "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:07:03Z",
+          "completed_at": "2026-11-15T09:09:32Z",
+          "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682777",
+          "runner_name": "GitHub Actions 1000090820",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-15T09:07:04Z",
+              "completed_at": "2026-11-15T09:07:05Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-15T09:07:05Z",
+              "completed_at": "2026-11-15T09:07:07Z"
+            },
+            {
+              "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-15T09:07:07Z",
+              "completed_at": "2026-11-15T09:07:14Z"
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-15T09:07:14Z",
+              "completed_at": "2026-11-15T09:07:18Z"
+            },
+            {
+              "name": "Opt-in, widening and Lean corpus CPython dependency",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 5,
+              "started_at": "2026-11-15T09:07:18Z",
+              "completed_at": "2026-11-15T09:07:18Z"
+            },
+            {
+              "name": "Workload pytest oracle dependency",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 6,
+              "started_at": "2026-11-15T09:07:18Z",
+              "completed_at": "2026-11-15T09:07:18Z"
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-15T09:07:18Z",
+              "completed_at": "2026-11-15T09:07:19Z"
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-15T09:07:19Z",
+              "completed_at": "2026-11-15T09:09:29Z"
+            },
+            {
+              "name": "Runtime ABI and GC root checker controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 9,
+              "started_at": "2026-11-15T09:09:29Z",
+              "completed_at": "2026-11-15T09:09:29Z"
+            },
+            {
+              "name": "Cache the pinned Lean release archive",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 10,
+              "started_at": "2026-11-15T09:09:29Z",
+              "completed_at": "2026-11-15T09:09:29Z"
+            },
+            {
+              "name": "Lean proofs of compiler guard obligations",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 11,
+              "started_at": "2026-11-15T09:09:29Z",
+              "completed_at": "2026-11-15T09:09:29Z"
+            },
+            {
+              "name": "Require C, embedding and extension FFI coverage",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 12,
+              "started_at": "2026-11-15T09:09:29Z",
+              "completed_at": "2026-11-15T09:09:29Z"
+            },
+            {
+              "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 13,
+              "started_at": "2026-11-15T09:09:29Z",
+              "completed_at": "2026-11-15T09:09:29Z"
+            },
+            {
+              "name": "Generated user and runtime ASan controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 14,
+              "started_at": "2026-11-15T09:09:29Z",
+              "completed_at": "2026-11-15T09:09:29Z"
+            },
+            {
+              "name": "Sanitized shared and object JIT linkage controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 15,
+              "started_at": "2026-11-15T09:09:29Z",
+              "completed_at": "2026-11-15T09:09:29Z"
+            },
+            {
+              "name": "Native program cache invalidation and execution",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 16,
+              "started_at": "2026-11-15T09:09:29Z",
+              "completed_at": "2026-11-15T09:09:29Z"
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 17,
+              "started_at": "2026-11-15T09:09:29Z",
+              "completed_at": "2026-11-15T09:09:29Z"
+            },
+            {
+              "name": "Adapted pyperformance benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 18,
+              "started_at": "2026-11-15T09:09:29Z",
+              "completed_at": "2026-11-15T09:09:29Z"
+            },
+            {
+              "name": "Bounded match dispatch correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 19,
+              "started_at": "2026-11-15T09:09:29Z",
+              "completed_at": "2026-11-15T09:09:29Z"
+            },
+            {
+              "name": "Shared pytest example assertions",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 20,
+              "started_at": "2026-11-15T09:09:29Z",
+              "completed_at": "2026-11-15T09:09:29Z"
+            },
+            {
+              "name": "Generated native pytest runner parity",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 21,
+              "started_at": "2026-11-15T09:09:29Z",
+              "completed_at": "2026-11-15T09:09:29Z"
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 22,
+              "started_at": "2026-11-15T09:09:29Z",
+              "completed_at": "2026-11-15T09:09:29Z"
+            },
+            {
+              "name": "Upstream large regex (JIT and AOT, normal GC)",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 23,
+              "started_at": "2026-11-15T09:09:29Z",
+              "completed_at": "2026-11-15T09:09:29Z"
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 24,
+              "started_at": "2026-11-15T09:09:29Z",
+              "completed_at": "2026-11-15T09:09:30Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 47,
+              "started_at": "2026-11-15T09:09:30Z",
+              "completed_at": "2026-11-15T09:09:30Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 48,
+              "started_at": "2026-11-15T09:09:30Z",
+              "completed_at": "2026-11-15T09:09:30Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 49,
+              "started_at": "2026-11-15T09:09:30Z",
+              "completed_at": "2026-11-15T09:09:30Z"
+            }
+          ]
+        },
+        {
+          "id": 132761682782,
+          "run_id": 43697221888,
+          "run_attempt": 1,
+          "name": "verify (native-aot-3, x86_64)",
+          "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:07:03Z",
+          "completed_at": "2026-11-15T09:10:58Z",
+          "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682782",
+          "runner_name": "GitHub Actions 1000090819",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-15T09:07:04Z",
+              "completed_at": "2026-11-15T09:07:05Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-15T09:07:05Z",
+              "completed_at": "2026-11-15T09:07:07Z"
+            },
+            {
+              "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-15T09:07:07Z",
+              "completed_at": "2026-11-15T09:07:15Z"
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-15T09:07:15Z",
+              "completed_at": "2026-11-15T09:07:20Z"
+            },
+            {
+              "name": "Opt-in, widening and Lean corpus CPython dependency",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 5,
+              "started_at": "2026-11-15T09:07:20Z",
+              "completed_at": "2026-11-15T09:07:20Z"
+            },
+            {
+              "name": "Workload pytest oracle dependency",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 6,
+              "started_at": "2026-11-15T09:07:20Z",
+              "completed_at": "2026-11-15T09:07:20Z"
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-15T09:07:20Z",
+              "completed_at": "2026-11-15T09:07:20Z"
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-15T09:07:20Z",
+              "completed_at": "2026-11-15T09:10:54Z"
+            },
+            {
+              "name": "Runtime ABI and GC root checker controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 9,
+              "started_at": "2026-11-15T09:10:54Z",
+              "completed_at": "2026-11-15T09:10:54Z"
+            },
+            {
+              "name": "Cache the pinned Lean release archive",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 10,
+              "started_at": "2026-11-15T09:10:54Z",
+              "completed_at": "2026-11-15T09:10:54Z"
+            },
+            {
+              "name": "Lean proofs of compiler guard obligations",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 11,
+              "started_at": "2026-11-15T09:10:54Z",
+              "completed_at": "2026-11-15T09:10:54Z"
+            },
+            {
+              "name": "Require C, embedding and extension FFI coverage",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 12,
+              "started_at": "2026-11-15T09:10:54Z",
+              "completed_at": "2026-11-15T09:10:54Z"
+            },
+            {
+              "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 13,
+              "started_at": "2026-11-15T09:10:54Z",
+              "completed_at": "2026-11-15T09:10:54Z"
+            },
+            {
+              "name": "Generated user and runtime ASan controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 14,
+              "started_at": "2026-11-15T09:10:54Z",
+              "completed_at": "2026-11-15T09:10:54Z"
+            },
+            {
+              "name": "Sanitized shared and object JIT linkage controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 15,
+              "started_at": "2026-11-15T09:10:54Z",
+              "completed_at": "2026-11-15T09:10:54Z"
+            },
+            {
+              "name": "Native program cache invalidation and execution",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 16,
+              "started_at": "2026-11-15T09:10:54Z",
+              "completed_at": "2026-11-15T09:10:54Z"
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 17,
+              "started_at": "2026-11-15T09:10:54Z",
+              "completed_at": "2026-11-15T09:10:54Z"
+            },
+            {
+              "name": "Adapted pyperformance benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 18,
+              "started_at": "2026-11-15T09:10:54Z",
+              "completed_at": "2026-11-15T09:10:54Z"
+            },
+            {
+              "name": "Bounded match dispatch correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 19,
+              "started_at": "2026-11-15T09:10:54Z",
+              "completed_at": "2026-11-15T09:10:54Z"
+            },
+            {
+              "name": "Shared pytest example assertions",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 20,
+              "started_at": "2026-11-15T09:10:54Z",
+              "completed_at": "2026-11-15T09:10:54Z"
+            },
+            {
+              "name": "Generated native pytest runner parity",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 21,
+              "started_at": "2026-11-15T09:10:54Z",
+              "completed_at": "2026-11-15T09:10:54Z"
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 22,
+              "started_at": "2026-11-15T09:10:54Z",
+              "completed_at": "2026-11-15T09:10:54Z"
+            },
+            {
+              "name": "Upstream large regex (JIT and AOT, normal GC)",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 23,
+              "started_at": "2026-11-15T09:10:54Z",
+              "completed_at": "2026-11-15T09:10:54Z"
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 24,
+              "started_at": "2026-11-15T09:10:54Z",
+              "completed_at": "2026-11-15T09:10:55Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 47,
+              "started_at": "2026-11-15T09:10:55Z",
+              "completed_at": "2026-11-15T09:10:55Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 48,
+              "started_at": "2026-11-15T09:10:55Z",
+              "completed_at": "2026-11-15T09:10:55Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 49,
+              "started_at": "2026-11-15T09:10:55Z",
+              "completed_at": "2026-11-15T09:10:55Z"
+            }
+          ]
+        },
+        {
+          "id": 132761682789,
+          "run_id": 43697221888,
+          "run_attempt": 1,
+          "name": "verify (native-aot-2, x86_64)",
+          "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:07:03Z",
+          "completed_at": "2026-11-15T09:09:48Z",
+          "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682789",
+          "runner_name": "GitHub Actions 1000090827",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-15T09:07:04Z",
+              "completed_at": "2026-11-15T09:07:07Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-15T09:07:07Z",
+              "completed_at": "2026-11-15T09:07:12Z"
+            },
+            {
+              "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-15T09:07:12Z",
+              "completed_at": "2026-11-15T09:07:18Z"
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-15T09:07:18Z",
+              "completed_at": "2026-11-15T09:07:26Z"
+            },
+            {
+              "name": "Opt-in, widening and Lean corpus CPython dependency",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 5,
+              "started_at": "2026-11-15T09:07:26Z",
+              "completed_at": "2026-11-15T09:07:26Z"
+            },
+            {
+              "name": "Workload pytest oracle dependency",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 6,
+              "started_at": "2026-11-15T09:07:26Z",
+              "completed_at": "2026-11-15T09:07:26Z"
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-15T09:07:26Z",
+              "completed_at": "2026-11-15T09:07:27Z"
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-15T09:07:27Z",
+              "completed_at": "2026-11-15T09:09:45Z"
+            },
+            {
+              "name": "Runtime ABI and GC root checker controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 9,
+              "started_at": "2026-11-15T09:09:45Z",
+              "completed_at": "2026-11-15T09:09:45Z"
+            },
+            {
+              "name": "Cache the pinned Lean release archive",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 10,
+              "started_at": "2026-11-15T09:09:45Z",
+              "completed_at": "2026-11-15T09:09:45Z"
+            },
+            {
+              "name": "Lean proofs of compiler guard obligations",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 11,
+              "started_at": "2026-11-15T09:09:45Z",
+              "completed_at": "2026-11-15T09:09:45Z"
+            },
+            {
+              "name": "Require C, embedding and extension FFI coverage",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 12,
+              "started_at": "2026-11-15T09:09:45Z",
+              "completed_at": "2026-11-15T09:09:45Z"
+            },
+            {
+              "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 13,
+              "started_at": "2026-11-15T09:09:45Z",
+              "completed_at": "2026-11-15T09:09:45Z"
+            },
+            {
+              "name": "Generated user and runtime ASan controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 14,
+              "started_at": "2026-11-15T09:09:45Z",
+              "completed_at": "2026-11-15T09:09:45Z"
+            },
+            {
+              "name": "Sanitized shared and object JIT linkage controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 15,
+              "started_at": "2026-11-15T09:09:45Z",
+              "completed_at": "2026-11-15T09:09:45Z"
+            },
+            {
+              "name": "Native program cache invalidation and execution",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 16,
+              "started_at": "2026-11-15T09:09:45Z",
+              "completed_at": "2026-11-15T09:09:45Z"
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 17,
+              "started_at": "2026-11-15T09:09:45Z",
+              "completed_at": "2026-11-15T09:09:45Z"
+            },
+            {
+              "name": "Adapted pyperformance benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 18,
+              "started_at": "2026-11-15T09:09:45Z",
+              "completed_at": "2026-11-15T09:09:45Z"
+            },
+            {
+              "name": "Bounded match dispatch correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 19,
+              "started_at": "2026-11-15T09:09:45Z",
+              "completed_at": "2026-11-15T09:09:45Z"
+            },
+            {
+              "name": "Shared pytest example assertions",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 20,
+              "started_at": "2026-11-15T09:09:45Z",
+              "completed_at": "2026-11-15T09:09:45Z"
+            },
+            {
+              "name": "Generated native pytest runner parity",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 21,
+              "started_at": "2026-11-15T09:09:45Z",
+              "completed_at": "2026-11-15T09:09:45Z"
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 22,
+              "started_at": "2026-11-15T09:09:45Z",
+              "completed_at": "2026-11-15T09:09:45Z"
+            },
+            {
+              "name": "Upstream large regex (JIT and AOT, normal GC)",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 23,
+              "started_at": "2026-11-15T09:09:45Z",
+              "completed_at": "2026-11-15T09:09:45Z"
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 24,
+              "started_at": "2026-11-15T09:09:45Z",
+              "completed_at": "2026-11-15T09:09:46Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 47,
+              "started_at": "2026-11-15T09:09:46Z",
+              "completed_at": "2026-11-15T09:09:46Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 48,
+              "started_at": "2026-11-15T09:09:46Z",
+              "completed_at": "2026-11-15T09:09:46Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 49,
+              "started_at": "2026-11-15T09:09:46Z",
+              "completed_at": "2026-11-15T09:09:46Z"
+            }
+          ]
+        },
+        {
+          "id": 132761682801,
+          "run_id": 43697221888,
+          "run_attempt": 1,
+          "name": "verify (safety-0, x86_64)",
+          "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:07:03Z",
+          "completed_at": "2026-11-15T09:09:59Z",
+          "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682801",
+          "runner_name": "GitHub Actions 1000090828",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-15T09:07:04Z",
+              "completed_at": "2026-11-15T09:07:05Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-15T09:07:05Z",
+              "completed_at": "2026-11-15T09:07:07Z"
+            },
+            {
+              "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-15T09:07:07Z",
+              "completed_at": "2026-11-15T09:07:15Z"
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-15T09:07:15Z",
+              "completed_at": "2026-11-15T09:07:16Z"
+            },
+            {
+              "name": "Opt-in, widening and Lean corpus CPython dependency",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 5,
+              "started_at": "2026-11-15T09:07:16Z",
+              "completed_at": "2026-11-15T09:07:16Z"
+            },
+            {
+              "name": "Workload pytest oracle dependency",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 6,
+              "started_at": "2026-11-15T09:07:16Z",
+              "completed_at": "2026-11-15T09:07:16Z"
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-15T09:07:16Z",
+              "completed_at": "2026-11-15T09:07:17Z"
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-15T09:07:17Z",
+              "completed_at": "2026-11-15T09:09:55Z"
+            },
+            {
+              "name": "Runtime ABI and GC root checker controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 9,
+              "started_at": "2026-11-15T09:09:55Z",
+              "completed_at": "2026-11-15T09:09:55Z"
+            },
+            {
+              "name": "Cache the pinned Lean release archive",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 10,
+              "started_at": "2026-11-15T09:09:55Z",
+              "completed_at": "2026-11-15T09:09:55Z"
+            },
+            {
+              "name": "Lean proofs of compiler guard obligations",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 11,
+              "started_at": "2026-11-15T09:09:55Z",
+              "completed_at": "2026-11-15T09:09:55Z"
+            },
+            {
+              "name": "Require C, embedding and extension FFI coverage",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 12,
+              "started_at": "2026-11-15T09:09:55Z",
+              "completed_at": "2026-11-15T09:09:55Z"
+            },
+            {
+              "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 13,
+              "started_at": "2026-11-15T09:09:55Z",
+              "completed_at": "2026-11-15T09:09:55Z"
+            },
+            {
+              "name": "Generated user and runtime ASan controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 14,
+              "started_at": "2026-11-15T09:09:55Z",
+              "completed_at": "2026-11-15T09:09:55Z"
+            },
+            {
+              "name": "Sanitized shared and object JIT linkage controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 15,
+              "started_at": "2026-11-15T09:09:55Z",
+              "completed_at": "2026-11-15T09:09:55Z"
+            },
+            {
+              "name": "Native program cache invalidation and execution",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 16,
+              "started_at": "2026-11-15T09:09:55Z",
+              "completed_at": "2026-11-15T09:09:55Z"
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 17,
+              "started_at": "2026-11-15T09:09:55Z",
+              "completed_at": "2026-11-15T09:09:55Z"
+            },
+            {
+              "name": "Adapted pyperformance benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 18,
+              "started_at": "2026-11-15T09:09:55Z",
+              "completed_at": "2026-11-15T09:09:55Z"
+            },
+            {
+              "name": "Bounded match dispatch correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 19,
+              "started_at": "2026-11-15T09:09:55Z",
+              "completed_at": "2026-11-15T09:09:55Z"
+            },
+            {
+              "name": "Shared pytest example assertions",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 20,
+              "started_at": "2026-11-15T09:09:55Z",
+              "completed_at": "2026-11-15T09:09:55Z"
+            },
+            {
+              "name": "Generated native pytest runner parity",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 21,
+              "started_at": "2026-11-15T09:09:55Z",
+              "completed_at": "2026-11-15T09:09:55Z"
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 22,
+              "started_at": "2026-11-15T09:09:55Z",
+              "completed_at": "2026-11-15T09:09:55Z"
+            },
+            {
+              "name": "Upstream large regex (JIT and AOT, normal GC)",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 23,
+              "started_at": "2026-11-15T09:09:55Z",
+              "completed_at": "2026-11-15T09:09:55Z"
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 24,
+              "started_at": "2026-11-15T09:09:55Z",
+              "completed_at": "2026-11-15T09:09:56Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 47,
+              "started_at": "2026-11-15T09:09:56Z",
+              "completed_at": "2026-11-15T09:09:56Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 48,
+              "started_at": "2026-11-15T09:09:56Z",
+              "completed_at": "2026-11-15T09:09:56Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 49,
+              "started_at": "2026-11-15T09:09:56Z",
+              "completed_at": "2026-11-15T09:09:56Z"
+            }
+          ]
+        },
+        {
+          "id": 132761682806,
+          "run_id": 43697221888,
+          "run_attempt": 1,
+          "name": "verify (opt-in, x86_64)",
+          "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:07:03Z",
+          "completed_at": "2026-11-15T09:10:27Z",
+          "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682806",
+          "runner_name": "GitHub Actions 1000090825",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-15T09:07:04Z",
+              "completed_at": "2026-11-15T09:07:05Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-15T09:07:05Z",
+              "completed_at": "2026-11-15T09:07:07Z"
+            },
+            {
+              "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-15T09:07:07Z",
+              "completed_at": "2026-11-15T09:07:14Z"
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-15T09:07:14Z",
+              "completed_at": "2026-11-15T09:07:16Z"
+            },
+            {
+              "name": "Opt-in, widening and Lean corpus CPython dependency",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-15T09:07:16Z",
+              "completed_at": "2026-11-15T09:07:16Z"
+            },
+            {
+              "name": "Workload pytest oracle dependency",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-11-15T09:07:16Z",
+              "completed_at": "2026-11-15T09:07:17Z"
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-15T09:07:17Z",
+              "completed_at": "2026-11-15T09:07:19Z"
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-15T09:07:19Z",
+              "completed_at": "2026-11-15T09:08:45Z"
+            },
+            {
+              "name": "Runtime ABI and GC root checker controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 9,
+              "started_at": "2026-11-15T09:08:45Z",
+              "completed_at": "2026-11-15T09:08:45Z"
+            },
+            {
+              "name": "Cache the pinned Lean release archive",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 10,
+              "started_at": "2026-11-15T09:08:45Z",
+              "completed_at": "2026-11-15T09:08:45Z"
+            },
+            {
+              "name": "Lean proofs of compiler guard obligations",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 11,
+              "started_at": "2026-11-15T09:08:45Z",
+              "completed_at": "2026-11-15T09:08:45Z"
+            },
+            {
+              "name": "Require C, embedding and extension FFI coverage",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 12,
+              "started_at": "2026-11-15T09:08:45Z",
+              "completed_at": "2026-11-15T09:08:45Z"
+            },
+            {
+              "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 13,
+              "started_at": "2026-11-15T09:08:45Z",
+              "completed_at": "2026-11-15T09:08:45Z"
+            },
+            {
+              "name": "Generated user and runtime ASan controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 14,
+              "started_at": "2026-11-15T09:08:45Z",
+              "completed_at": "2026-11-15T09:08:45Z"
+            },
+            {
+              "name": "Sanitized shared and object JIT linkage controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 15,
+              "started_at": "2026-11-15T09:08:45Z",
+              "completed_at": "2026-11-15T09:08:45Z"
+            },
+            {
+              "name": "Native program cache invalidation and execution",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 16,
+              "started_at": "2026-11-15T09:08:45Z",
+              "completed_at": "2026-11-15T09:08:45Z"
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 17,
+              "started_at": "2026-11-15T09:08:45Z",
+              "completed_at": "2026-11-15T09:08:45Z"
+            },
+            {
+              "name": "Adapted pyperformance benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 18,
+              "started_at": "2026-11-15T09:08:45Z",
+              "completed_at": "2026-11-15T09:08:45Z"
+            },
+            {
+              "name": "Bounded match dispatch correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 19,
+              "started_at": "2026-11-15T09:08:45Z",
+              "completed_at": "2026-11-15T09:08:45Z"
+            },
+            {
+              "name": "Shared pytest example assertions",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 20,
+              "started_at": "2026-11-15T09:08:45Z",
+              "completed_at": "2026-11-15T09:09:33Z"
+            },
+            {
+              "name": "Generated native pytest runner parity",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 21,
+              "started_at": "2026-11-15T09:09:33Z",
+              "completed_at": "2026-11-15T09:10:19Z"
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 22,
+              "started_at": "2026-11-15T09:10:19Z",
+              "completed_at": "2026-11-15T09:10:19Z"
+            },
+            {
+              "name": "Upstream large regex (JIT and AOT, normal GC)",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 23,
+              "started_at": "2026-11-15T09:10:19Z",
+              "completed_at": "2026-11-15T09:10:19Z"
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 24,
+              "started_at": "2026-11-15T09:10:19Z",
+              "completed_at": "2026-11-15T09:10:24Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 47,
+              "started_at": "2026-11-15T09:10:24Z",
+              "completed_at": "2026-11-15T09:10:24Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 48,
+              "started_at": "2026-11-15T09:10:24Z",
+              "completed_at": "2026-11-15T09:10:24Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 49,
+              "started_at": "2026-11-15T09:10:24Z",
+              "completed_at": "2026-11-15T09:10:24Z"
+            }
+          ]
+        },
+        {
+          "id": 132761682840,
+          "run_id": 43697221888,
+          "run_attempt": 1,
+          "name": "verify (safety-1, x86_64)",
+          "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:07:04Z",
+          "completed_at": "2026-11-15T09:12:27Z",
+          "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682840",
+          "runner_name": "GitHub Actions 1000090830",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-15T09:07:05Z",
+              "completed_at": "2026-11-15T09:07:07Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-15T09:07:07Z",
+              "completed_at": "2026-11-15T09:07:10Z"
+            },
+            {
+              "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-15T09:07:10Z",
+              "completed_at": "2026-11-15T09:07:18Z"
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-15T09:07:18Z",
+              "completed_at": "2026-11-15T09:07:33Z"
+            },
+            {
+              "name": "Opt-in, widening and Lean corpus CPython dependency",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 5,
+              "started_at": "2026-11-15T09:07:33Z",
+              "completed_at": "2026-11-15T09:07:33Z"
+            },
+            {
+              "name": "Workload pytest oracle dependency",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 6,
+              "started_at": "2026-11-15T09:07:33Z",
+              "completed_at": "2026-11-15T09:07:33Z"
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-15T09:07:33Z",
+              "completed_at": "2026-11-15T09:07:35Z"
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-15T09:07:35Z",
+              "completed_at": "2026-11-15T09:10:48Z"
+            },
+            {
+              "name": "Runtime ABI and GC root checker controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 9,
+              "started_at": "2026-11-15T09:10:48Z",
+              "completed_at": "2026-11-15T09:10:48Z"
+            },
+            {
+              "name": "Cache the pinned Lean release archive",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 10,
+              "started_at": "2026-11-15T09:10:48Z",
+              "completed_at": "2026-11-15T09:10:48Z"
+            },
+            {
+              "name": "Lean proofs of compiler guard obligations",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 11,
+              "started_at": "2026-11-15T09:10:48Z",
+              "completed_at": "2026-11-15T09:10:48Z"
+            },
+            {
+              "name": "Require C, embedding and extension FFI coverage",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 12,
+              "started_at": "2026-11-15T09:10:48Z",
+              "completed_at": "2026-11-15T09:10:48Z"
+            },
+            {
+              "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 13,
+              "started_at": "2026-11-15T09:10:48Z",
+              "completed_at": "2026-11-15T09:10:48Z"
+            },
+            {
+              "name": "Generated user and runtime ASan controls",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-11-15T09:10:48Z",
+              "completed_at": "2026-11-15T09:12:14Z"
+            },
+            {
+              "name": "Sanitized shared and object JIT linkage controls",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-11-15T09:12:14Z",
+              "completed_at": "2026-11-15T09:12:21Z"
+            },
+            {
+              "name": "Native program cache invalidation and execution",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 16,
+              "started_at": "2026-11-15T09:12:21Z",
+              "completed_at": "2026-11-15T09:12:21Z"
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 17,
+              "started_at": "2026-11-15T09:12:21Z",
+              "completed_at": "2026-11-15T09:12:21Z"
+            },
+            {
+              "name": "Adapted pyperformance benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 18,
+              "started_at": "2026-11-15T09:12:21Z",
+              "completed_at": "2026-11-15T09:12:21Z"
+            },
+            {
+              "name": "Bounded match dispatch correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 19,
+              "started_at": "2026-11-15T09:12:21Z",
+              "completed_at": "2026-11-15T09:12:21Z"
+            },
+            {
+              "name": "Shared pytest example assertions",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 20,
+              "started_at": "2026-11-15T09:12:21Z",
+              "completed_at": "2026-11-15T09:12:21Z"
+            },
+            {
+              "name": "Generated native pytest runner parity",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 21,
+              "started_at": "2026-11-15T09:12:21Z",
+              "completed_at": "2026-11-15T09:12:21Z"
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 22,
+              "started_at": "2026-11-15T09:12:21Z",
+              "completed_at": "2026-11-15T09:12:21Z"
+            },
+            {
+              "name": "Upstream large regex (JIT and AOT, normal GC)",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 23,
+              "started_at": "2026-11-15T09:12:21Z",
+              "completed_at": "2026-11-15T09:12:21Z"
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 24,
+              "started_at": "2026-11-15T09:12:21Z",
+              "completed_at": "2026-11-15T09:12:23Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 47,
+              "started_at": "2026-11-15T09:12:23Z",
+              "completed_at": "2026-11-15T09:12:23Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 48,
+              "started_at": "2026-11-15T09:12:23Z",
+              "completed_at": "2026-11-15T09:12:23Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 49,
+              "started_at": "2026-11-15T09:12:23Z",
+              "completed_at": "2026-11-15T09:12:23Z"
+            }
+          ]
+        },
+        {
+          "id": 132761682867,
+          "run_id": 43697221888,
+          "run_attempt": 1,
+          "name": "verify (benchmarks, x86_64)",
+          "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:07:03Z",
+          "completed_at": "2026-11-15T09:13:59Z",
+          "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682867",
+          "runner_name": "GitHub Actions 1000090829",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-15T09:07:04Z",
+              "completed_at": "2026-11-15T09:07:05Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-15T09:07:05Z",
+              "completed_at": "2026-11-15T09:07:07Z"
+            },
+            {
+              "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-15T09:07:07Z",
+              "completed_at": "2026-11-15T09:07:15Z"
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-15T09:07:15Z",
+              "completed_at": "2026-11-15T09:07:29Z"
+            },
+            {
+              "name": "Opt-in, widening and Lean corpus CPython dependency",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 5,
+              "started_at": "2026-11-15T09:07:29Z",
+              "completed_at": "2026-11-15T09:07:29Z"
+            },
+            {
+              "name": "Workload pytest oracle dependency",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-11-15T09:07:29Z",
+              "completed_at": "2026-11-15T09:07:30Z"
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-15T09:07:30Z",
+              "completed_at": "2026-11-15T09:07:31Z"
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-15T09:07:31Z",
+              "completed_at": "2026-11-15T09:11:06Z"
+            },
+            {
+              "name": "Runtime ABI and GC root checker controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 9,
+              "started_at": "2026-11-15T09:11:06Z",
+              "completed_at": "2026-11-15T09:11:06Z"
+            },
+            {
+              "name": "Cache the pinned Lean release archive",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 10,
+              "started_at": "2026-11-15T09:11:06Z",
+              "completed_at": "2026-11-15T09:11:06Z"
+            },
+            {
+              "name": "Lean proofs of compiler guard obligations",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 11,
+              "started_at": "2026-11-15T09:11:06Z",
+              "completed_at": "2026-11-15T09:11:06Z"
+            },
+            {
+              "name": "Require C, embedding and extension FFI coverage",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 12,
+              "started_at": "2026-11-15T09:11:06Z",
+              "completed_at": "2026-11-15T09:11:06Z"
+            },
+            {
+              "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 13,
+              "started_at": "2026-11-15T09:11:06Z",
+              "completed_at": "2026-11-15T09:11:06Z"
+            },
+            {
+              "name": "Generated user and runtime ASan controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 14,
+              "started_at": "2026-11-15T09:11:06Z",
+              "completed_at": "2026-11-15T09:11:06Z"
+            },
+            {
+              "name": "Sanitized shared and object JIT linkage controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 15,
+              "started_at": "2026-11-15T09:11:06Z",
+              "completed_at": "2026-11-15T09:11:06Z"
+            },
+            {
+              "name": "Native program cache invalidation and execution",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 16,
+              "started_at": "2026-11-15T09:11:06Z",
+              "completed_at": "2026-11-15T09:11:06Z"
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17,
+              "started_at": "2026-11-15T09:11:06Z",
+              "completed_at": "2026-11-15T09:11:11Z"
+            },
+            {
+              "name": "Adapted pyperformance benchmark correctness",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18,
+              "started_at": "2026-11-15T09:11:11Z",
+              "completed_at": "2026-11-15T09:13:20Z"
+            },
+            {
+              "name": "Bounded match dispatch correctness",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19,
+              "started_at": "2026-11-15T09:13:20Z",
+              "completed_at": "2026-11-15T09:13:38Z"
+            },
+            {
+              "name": "Shared pytest example assertions",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 20,
+              "started_at": "2026-11-15T09:13:38Z",
+              "completed_at": "2026-11-15T09:13:38Z"
+            },
+            {
+              "name": "Generated native pytest runner parity",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 21,
+              "started_at": "2026-11-15T09:13:38Z",
+              "completed_at": "2026-11-15T09:13:38Z"
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 22,
+              "started_at": "2026-11-15T09:13:38Z",
+              "completed_at": "2026-11-15T09:13:51Z"
+            },
+            {
+              "name": "Upstream large regex (JIT and AOT, normal GC)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 23,
+              "started_at": "2026-11-15T09:13:51Z",
+              "completed_at": "2026-11-15T09:13:56Z"
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 24,
+              "started_at": "2026-11-15T09:13:56Z",
+              "completed_at": "2026-11-15T09:13:56Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 47,
+              "started_at": "2026-11-15T09:13:56Z",
+              "completed_at": "2026-11-15T09:13:57Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 48,
+              "started_at": "2026-11-15T09:13:57Z",
+              "completed_at": "2026-11-15T09:13:57Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 49,
+              "started_at": "2026-11-15T09:13:57Z",
+              "completed_at": "2026-11-15T09:13:57Z"
+            }
+          ]
+        },
+        {
+          "id": 132761682897,
+          "run_id": 43697221888,
+          "run_attempt": 1,
+          "name": "verify (cache-gc, x86_64)",
+          "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:07:03Z",
+          "completed_at": "2026-11-15T09:18:29Z",
+          "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682897",
+          "runner_name": "GitHub Actions 1000090831",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-15T09:07:04Z",
+              "completed_at": "2026-11-15T09:07:05Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-15T09:07:05Z",
+              "completed_at": "2026-11-15T09:07:07Z"
+            },
+            {
+              "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-15T09:07:07Z",
+              "completed_at": "2026-11-15T09:07:15Z"
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-15T09:07:15Z",
+              "completed_at": "2026-11-15T09:07:21Z"
+            },
+            {
+              "name": "Opt-in, widening and Lean corpus CPython dependency",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 5,
+              "started_at": "2026-11-15T09:07:21Z",
+              "completed_at": "2026-11-15T09:07:21Z"
+            },
+            {
+              "name": "Workload pytest oracle dependency",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 6,
+              "started_at": "2026-11-15T09:07:21Z",
+              "completed_at": "2026-11-15T09:07:21Z"
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-15T09:07:21Z",
+              "completed_at": "2026-11-15T09:07:22Z"
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-15T09:07:22Z",
+              "completed_at": "2026-11-15T09:18:26Z"
+            },
+            {
+              "name": "Runtime ABI and GC root checker controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 9,
+              "started_at": "2026-11-15T09:18:26Z",
+              "completed_at": "2026-11-15T09:18:26Z"
+            },
+            {
+              "name": "Cache the pinned Lean release archive",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 10,
+              "started_at": "2026-11-15T09:18:26Z",
+              "completed_at": "2026-11-15T09:18:26Z"
+            },
+            {
+              "name": "Lean proofs of compiler guard obligations",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 11,
+              "started_at": "2026-11-15T09:18:26Z",
+              "completed_at": "2026-11-15T09:18:26Z"
+            },
+            {
+              "name": "Require C, embedding and extension FFI coverage",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 12,
+              "started_at": "2026-11-15T09:18:26Z",
+              "completed_at": "2026-11-15T09:18:26Z"
+            },
+            {
+              "name": "Native thread stack-size edge cases, the native stack's floor and ABI controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 13,
+              "started_at": "2026-11-15T09:18:26Z",
+              "completed_at": "2026-11-15T09:18:26Z"
+            },
+            {
+              "name": "Generated user and runtime ASan controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 14,
+              "started_at": "2026-11-15T09:18:26Z",
+              "completed_at": "2026-11-15T09:18:26Z"
+            },
+            {
+              "name": "Sanitized shared and object JIT linkage controls",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 15,
+              "started_at": "2026-11-15T09:18:26Z",
+              "completed_at": "2026-11-15T09:18:26Z"
+            },
+            {
+              "name": "Native program cache invalidation and execution",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 16,
+              "started_at": "2026-11-15T09:18:26Z",
+              "completed_at": "2026-11-15T09:18:26Z"
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 17,
+              "started_at": "2026-11-15T09:18:26Z",
+              "completed_at": "2026-11-15T09:18:26Z"
+            },
+            {
+              "name": "Adapted pyperformance benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 18,
+              "started_at": "2026-11-15T09:18:26Z",
+              "completed_at": "2026-11-15T09:18:26Z"
+            },
+            {
+              "name": "Bounded match dispatch correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 19,
+              "started_at": "2026-11-15T09:18:26Z",
+              "completed_at": "2026-11-15T09:18:26Z"
+            },
+            {
+              "name": "Shared pytest example assertions",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 20,
+              "started_at": "2026-11-15T09:18:26Z",
+              "completed_at": "2026-11-15T09:18:26Z"
+            },
+            {
+              "name": "Generated native pytest runner parity",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 21,
+              "started_at": "2026-11-15T09:18:26Z",
+              "completed_at": "2026-11-15T09:18:26Z"
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 22,
+              "started_at": "2026-11-15T09:18:26Z",
+              "completed_at": "2026-11-15T09:18:26Z"
+            },
+            {
+              "name": "Upstream large regex (JIT and AOT, normal GC)",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 23,
+              "started_at": "2026-11-15T09:18:26Z",
+              "completed_at": "2026-11-15T09:18:26Z"
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 24,
+              "started_at": "2026-11-15T09:18:26Z",
+              "completed_at": "2026-11-15T09:18:27Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 47,
+              "started_at": "2026-11-15T09:18:27Z",
+              "completed_at": "2026-11-15T09:18:28Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 48,
+              "started_at": "2026-11-15T09:18:28Z",
+              "completed_at": "2026-11-15T09:18:28Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 49,
+              "started_at": "2026-11-15T09:18:28Z",
+              "completed_at": "2026-11-15T09:18:28Z"
+            }
+          ]
+        },
+        {
+          "id": 132761684398,
+          "run_id": 43697221888,
+          "run_attempt": 1,
+          "name": "Bootstrap tier and native archive qualification",
+          "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+          "status": "completed",
+          "conclusion": "skipped",
+          "started_at": "2026-11-15T09:07:01Z",
+          "completed_at": "2026-11-15T09:07:01Z",
+          "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761684398",
+          "runner_name": null,
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "steps": []
+        },
+        {
+          "id": 132764537828,
+          "run_id": 43697221888,
+          "run_attempt": 1,
+          "name": "Verification",
+          "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:18:32Z",
+          "completed_at": "2026-11-15T09:18:49Z",
+          "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132764537828",
+          "runner_name": "GitHub Actions 1000090832",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-15T09:18:32Z",
+              "completed_at": "2026-11-15T09:18:33Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-15T09:18:33Z",
+              "completed_at": "2026-11-15T09:18:36Z"
+            },
+            {
+              "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-15T09:18:36Z",
+              "completed_at": "2026-11-15T09:18:41Z"
+            },
+            {
+              "name": "Run actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-15T09:18:41Z",
+              "completed_at": "2026-11-15T09:18:44Z"
+            },
+            {
+              "name": "Require complete verification reports",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-15T09:18:44Z",
+              "completed_at": "2026-11-15T09:18:46Z"
+            },
+            {
+              "name": "Require every verification group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-11-15T09:18:46Z",
+              "completed_at": "2026-11-15T09:18:46Z"
+            },
+            {
+              "name": "Upload combined verification report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-15T09:18:46Z",
+              "completed_at": "2026-11-15T09:18:47Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-11-15T09:18:47Z",
+              "completed_at": "2026-11-15T09:18:47Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-11-15T09:18:47Z",
+              "completed_at": "2026-11-15T09:18:47Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-11-15T09:18:47Z",
+              "completed_at": "2026-11-15T09:18:47Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 43697218408,
+      "name": "DCO (legacy)",
+      "event": "pull_request_target",
+      "path": ".github/workflows/dco.yml",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "head_branch": "prototype/compiler-stage-boundaries",
+      "status": "completed",
+      "conclusion": "skipped",
+      "run_attempt": 1,
+      "created_at": "2026-11-15T09:01:35Z",
+      "updated_at": "2026-11-15T09:01:37Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697218408",
+      "total_jobs": 1,
+      "jobs": [
+        {
+          "id": 132760365799,
+          "run_id": 43697218408,
+          "run_attempt": 1,
+          "name": "DCO certified (fork pull requests)",
+          "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+          "status": "completed",
+          "conclusion": "skipped",
+          "started_at": "2026-11-15T09:01:45Z",
+          "completed_at": "2026-11-15T09:01:37Z",
+          "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697218408/job/132760365799",
+          "runner_name": null,
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "steps": []
+        }
+      ]
+    },
+    {
+      "id": 43697218437,
+      "name": "Submission format",
+      "event": "pull_request_target",
+      "path": ".github/workflows/submissions.yml",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "head_branch": "prototype/compiler-stage-boundaries",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "created_at": "2026-11-15T09:01:35Z",
+      "updated_at": "2026-11-15T09:01:49Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697218437",
+      "total_jobs": 1,
+      "jobs": [
+        {
+          "id": 132760331177,
+          "run_id": 43697218437,
+          "run_attempt": 1,
+          "name": "Check title and description",
+          "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:01:40Z",
+          "completed_at": "2026-11-15T09:01:49Z",
+          "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697218437/job/132760331177",
+          "runner_name": "GitHub Actions 1000090815",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-15T09:01:41Z",
+              "completed_at": "2026-11-15T09:01:42Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-15T09:01:42Z",
+              "completed_at": "2026-11-15T09:01:44Z"
+            },
+            {
+              "name": "Validate current metadata",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-15T09:01:44Z",
+              "completed_at": "2026-11-15T09:01:46Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-11-15T09:01:46Z",
+              "completed_at": "2026-11-15T09:01:46Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-15T09:01:46Z",
+              "completed_at": "2026-11-15T09:01:47Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 43697217840,
+      "name": "PR #1499",
+      "event": "dynamic",
+      "path": "dynamic/github-code-scanning/codeql",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "head_branch": "refs/pull/1499/head",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "created_at": "2026-11-15T09:01:35Z",
+      "updated_at": "2026-11-15T09:05:03Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697217840",
+      "total_jobs": 3,
+      "jobs": [
+        {
+          "id": 132760329656,
+          "run_id": 43697217840,
+          "run_attempt": 1,
+          "name": "Analyze (python)",
+          "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:01:39Z",
+          "completed_at": "2026-11-15T09:05:02Z",
+          "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697217840/job/132760329656",
+          "runner_name": "GitHub Actions 1000090812",
+          "labels": [
+            "ubuntu-latest"
+          ],
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-15T09:01:39Z",
+              "completed_at": "2026-11-15T09:01:40Z"
+            },
+            {
+              "name": "Checkout repository",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-15T09:01:40Z",
+              "completed_at": "2026-11-15T09:01:42Z"
+            },
+            {
+              "name": "Setup proxy for registries",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-15T09:01:42Z",
+              "completed_at": "2026-11-15T09:01:43Z"
+            },
+            {
+              "name": "Initialize CodeQL",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-15T09:01:43Z",
+              "completed_at": "2026-11-15T09:01:54Z"
+            },
+            {
+              "name": "Autobuild",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-15T09:01:54Z",
+              "completed_at": "2026-11-15T09:01:55Z"
+            },
+            {
+              "name": "Perform CodeQL Analysis",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-11-15T09:01:55Z",
+              "completed_at": "2026-11-15T09:04:59Z"
+            },
+            {
+              "name": "Post Perform CodeQL Analysis",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-15T09:04:59Z",
+              "completed_at": "2026-11-15T09:05:00Z"
+            },
+            {
+              "name": "Post Initialize CodeQL",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-15T09:05:00Z",
+              "completed_at": "2026-11-15T09:05:00Z"
+            },
+            {
+              "name": "Post Setup proxy for registries",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-11-15T09:05:00Z",
+              "completed_at": "2026-11-15T09:05:01Z"
+            },
+            {
+              "name": "Post Checkout repository",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 12,
+              "started_at": "2026-11-15T09:05:01Z",
+              "completed_at": "2026-11-15T09:05:01Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-11-15T09:05:01Z",
+              "completed_at": "2026-11-15T09:05:01Z"
+            }
+          ]
+        },
+        {
+          "id": 132760329864,
+          "run_id": 43697217840,
+          "run_attempt": 1,
+          "name": "Analyze (actions)",
+          "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:01:39Z",
+          "completed_at": "2026-11-15T09:02:20Z",
+          "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697217840/job/132760329864",
+          "runner_name": "GitHub Actions 1000090814",
+          "labels": [
+            "ubuntu-latest"
+          ],
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-15T09:01:40Z",
+              "completed_at": "2026-11-15T09:01:41Z"
+            },
+            {
+              "name": "Checkout repository",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-15T09:01:41Z",
+              "completed_at": "2026-11-15T09:01:43Z"
+            },
+            {
+              "name": "Setup proxy for registries",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-15T09:01:43Z",
+              "completed_at": "2026-11-15T09:01:43Z"
+            },
+            {
+              "name": "Initialize CodeQL",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-15T09:01:43Z",
+              "completed_at": "2026-11-15T09:01:50Z"
+            },
+            {
+              "name": "Autobuild",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-15T09:01:50Z",
+              "completed_at": "2026-11-15T09:01:51Z"
+            },
+            {
+              "name": "Perform CodeQL Analysis",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-11-15T09:01:51Z",
+              "completed_at": "2026-11-15T09:02:16Z"
+            },
+            {
+              "name": "Post Perform CodeQL Analysis",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-15T09:02:16Z",
+              "completed_at": "2026-11-15T09:02:16Z"
+            },
+            {
+              "name": "Post Initialize CodeQL",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-15T09:02:16Z",
+              "completed_at": "2026-11-15T09:02:17Z"
+            },
+            {
+              "name": "Post Setup proxy for registries",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-11-15T09:02:17Z",
+              "completed_at": "2026-11-15T09:02:17Z"
+            },
+            {
+              "name": "Post Checkout repository",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 12,
+              "started_at": "2026-11-15T09:02:17Z",
+              "completed_at": "2026-11-15T09:02:17Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-11-15T09:02:17Z",
+              "completed_at": "2026-11-15T09:02:17Z"
+            }
+          ]
+        },
+        {
+          "id": 132760329872,
+          "run_id": 43697217840,
+          "run_attempt": 1,
+          "name": "Analyze (c-cpp)",
+          "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-15T09:01:39Z",
+          "completed_at": "2026-11-15T09:02:53Z",
+          "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697217840/job/132760329872",
+          "runner_name": "GitHub Actions 1000090813",
+          "labels": [
+            "ubuntu-latest"
+          ],
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-15T09:01:40Z",
+              "completed_at": "2026-11-15T09:01:41Z"
+            },
+            {
+              "name": "Checkout repository",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-15T09:01:41Z",
+              "completed_at": "2026-11-15T09:01:43Z"
+            },
+            {
+              "name": "Setup proxy for registries",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-15T09:01:43Z",
+              "completed_at": "2026-11-15T09:01:44Z"
+            },
+            {
+              "name": "Initialize CodeQL",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-15T09:01:44Z",
+              "completed_at": "2026-11-15T09:02:00Z"
+            },
+            {
+              "name": "Autobuild",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-15T09:02:00Z",
+              "completed_at": "2026-11-15T09:02:01Z"
+            },
+            {
+              "name": "Perform CodeQL Analysis",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-11-15T09:02:01Z",
+              "completed_at": "2026-11-15T09:02:48Z"
+            },
+            {
+              "name": "Post Perform CodeQL Analysis",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-15T09:02:48Z",
+              "completed_at": "2026-11-15T09:02:49Z"
+            },
+            {
+              "name": "Post Initialize CodeQL",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-15T09:02:49Z",
+              "completed_at": "2026-11-15T09:02:50Z"
+            },
+            {
+              "name": "Post Setup proxy for registries",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-11-15T09:02:50Z",
+              "completed_at": "2026-11-15T09:02:50Z"
+            },
+            {
+              "name": "Post Checkout repository",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 12,
+              "started_at": "2026-11-15T09:02:50Z",
+              "completed_at": "2026-11-15T09:02:50Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-11-15T09:02:50Z",
+              "completed_at": "2026-11-15T09:02:50Z"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "id": 132764537828,
+      "name": "Verification",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:18:32Z",
+      "completed_at": "2026-11-15T09:18:49Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132764537828",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132764537828",
+      "app": "github-actions",
+      "annotations_count": 0
+    },
+    {
+      "id": 132761684398,
+      "name": "Bootstrap tier and native archive qualification",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-11-15T09:07:01Z",
+      "completed_at": "2026-11-15T09:07:01Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761684398",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761684398",
+      "app": "github-actions",
+      "annotations_count": 0
+    },
+    {
+      "id": 132761682897,
+      "name": "verify (cache-gc, x86_64)",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:07:03Z",
+      "completed_at": "2026-11-15T09:18:29Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682897",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682897",
+      "app": "github-actions",
+      "annotations_count": 0
+    },
+    {
+      "id": 132761682867,
+      "name": "verify (benchmarks, x86_64)",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:07:03Z",
+      "completed_at": "2026-11-15T09:13:59Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682867",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682867",
+      "app": "github-actions",
+      "annotations_count": 0
+    },
+    {
+      "id": 132761682840,
+      "name": "verify (safety-1, x86_64)",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:07:04Z",
+      "completed_at": "2026-11-15T09:12:27Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682840",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682840",
+      "app": "github-actions",
+      "annotations_count": 0
+    },
+    {
+      "id": 132761682806,
+      "name": "verify (opt-in, x86_64)",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:07:03Z",
+      "completed_at": "2026-11-15T09:10:27Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682806",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682806",
+      "app": "github-actions",
+      "annotations_count": 0
+    },
+    {
+      "id": 132761682801,
+      "name": "verify (safety-0, x86_64)",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:07:03Z",
+      "completed_at": "2026-11-15T09:09:59Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682801",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682801",
+      "app": "github-actions",
+      "annotations_count": 0
+    },
+    {
+      "id": 132761682789,
+      "name": "verify (native-aot-2, x86_64)",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:07:03Z",
+      "completed_at": "2026-11-15T09:09:48Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682789",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682789",
+      "app": "github-actions",
+      "annotations_count": 0
+    },
+    {
+      "id": 132761682782,
+      "name": "verify (native-aot-3, x86_64)",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:07:03Z",
+      "completed_at": "2026-11-15T09:10:58Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682782",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682782",
+      "app": "github-actions",
+      "annotations_count": 0
+    },
+    {
+      "id": 132761682777,
+      "name": "verify (native-aot-1, x86_64)",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:07:03Z",
+      "completed_at": "2026-11-15T09:09:32Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682777",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682777",
+      "app": "github-actions",
+      "annotations_count": 0
+    },
+    {
+      "id": 132761682768,
+      "name": "verify (native-aot-0, x86_64)",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:07:03Z",
+      "completed_at": "2026-11-15T09:10:04Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682768",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682768",
+      "app": "github-actions",
+      "annotations_count": 0
+    },
+    {
+      "id": 132761682761,
+      "name": "verify (contracts, x86_64)",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:07:03Z",
+      "completed_at": "2026-11-15T09:14:21Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682761",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682761",
+      "app": "github-actions",
+      "annotations_count": 0
+    },
+    {
+      "id": 132761682750,
+      "name": "verify (hosted, x86_64)",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:07:03Z",
+      "completed_at": "2026-11-15T09:12:52Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682750",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682750",
+      "app": "github-actions",
+      "annotations_count": 0
+    },
+    {
+      "id": 132761682731,
+      "name": "native JIT and variants (worker 0)",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:07:03Z",
+      "completed_at": "2026-11-15T09:13:54Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682731",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682731",
+      "app": "github-actions",
+      "annotations_count": 0
+    },
+    {
+      "id": 132761682711,
+      "name": "native JIT and variants (worker 1)",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:07:10Z",
+      "completed_at": "2026-11-15T09:12:37Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682711",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132761682711",
+      "app": "github-actions",
+      "annotations_count": 0
+    },
+    {
+      "id": 132760539454,
+      "name": "Check title and description",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:02:30Z",
+      "completed_at": "2026-11-15T09:02:38Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697285085/job/132760539454",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697285085/job/132760539454",
+      "app": "github-actions",
+      "annotations_count": 0
+    },
+    {
+      "id": 132760466729,
+      "name": "CodeQL",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:02:10Z",
+      "completed_at": "2026-11-15T09:02:13Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/runs/132760466729",
+      "details_url": "https://github.com/den-run-ai/pystachy/runs/132760466729",
+      "app": "github-advanced-security",
+      "annotations_count": 0
+    },
+    {
+      "id": 132760365799,
+      "name": "DCO certified (fork pull requests)",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-11-15T09:01:45Z",
+      "completed_at": "2026-11-15T09:01:37Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697218408/job/132760365799",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697218408/job/132760365799",
+      "app": "github-actions",
+      "annotations_count": 0
+    },
+    {
+      "id": 132760339936,
+      "name": "verify (bootstrap, x86_64)",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:01:41Z",
+      "completed_at": "2026-11-15T09:07:00Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132760339936",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221888/job/132760339936",
+      "app": "github-actions",
+      "annotations_count": 0
+    },
+    {
+      "id": 132760339864,
+      "name": "make lint (ruff, shellcheck, clang -Wall -Wextra)",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:01:41Z",
+      "completed_at": "2026-11-15T09:15:01Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221818/job/132760339864",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697221818/job/132760339864",
+      "app": "github-actions",
+      "annotations_count": 0
+    },
+    {
+      "id": 132760331177,
+      "name": "Check title and description",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:01:40Z",
+      "completed_at": "2026-11-15T09:01:49Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697218437/job/132760331177",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697218437/job/132760331177",
+      "app": "github-actions",
+      "annotations_count": 0
+    },
+    {
+      "id": 132760329872,
+      "name": "Analyze (c-cpp)",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:01:39Z",
+      "completed_at": "2026-11-15T09:02:53Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697217840/job/132760329872",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697217840/job/132760329872",
+      "app": "github-actions",
+      "annotations_count": 1
+    },
+    {
+      "id": 132760329864,
+      "name": "Analyze (actions)",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:01:39Z",
+      "completed_at": "2026-11-15T09:02:20Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697217840/job/132760329864",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697217840/job/132760329864",
+      "app": "github-actions",
+      "annotations_count": 1
+    },
+    {
+      "id": 132760329656,
+      "name": "Analyze (python)",
+      "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-15T09:01:39Z",
+      "completed_at": "2026-11-15T09:05:02Z",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697217840/job/132760329656",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/43697217840/job/132760329656",
+      "app": "github-actions",
+      "annotations_count": 1
+    }
+  ],
+  "commit_statuses": [
+    {
+      "id": 58954445014,
+      "context": "Submission format",
+      "state": "success",
+      "description": "Title and three-section body meet the reading budget.",
+      "created_at": "2026-11-15T09:02:34Z",
+      "updated_at": "2026-11-15T09:02:34Z",
+      "target_url": "https://github.com/den-run-ai/pystachy/blob/main/CONTRIBUTING.md#issues-and-pull-requests"
+    },
+    {
+      "id": 58954421397,
+      "context": "Submission format",
+      "state": "success",
+      "description": "Title and three-section body meet the reading budget.",
+      "created_at": "2026-11-15T09:01:45Z",
+      "updated_at": "2026-11-15T09:01:45Z",
+      "target_url": "https://github.com/den-run-ai/pystachy/blob/main/CONTRIBUTING.md#issues-and-pull-requests"
+    }
+  ],
+  "intentional_job_skips": [
+    {
+      "name": "Bootstrap tier and native archive qualification",
+      "workflow": "CI",
+      "condition": "github.event_name != 'pull_request'",
+      "reason": "Pull-request event; qualification is for non-PR runs.",
+      "source": "https://github.com/den-run-ai/pystachy/blob/5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8/.github/workflows/ci.yml"
+    },
+    {
+      "name": "DCO certified (fork pull requests)",
+      "workflow": "DCO (legacy)",
+      "condition": "github.event_name != 'pull_request_target'",
+      "reason": "Compatibility-only workflow is always skipped for its only trigger.",
+      "source": "https://github.com/den-run-ai/pystachy/blob/5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8/.github/workflows/dco.yml"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 14155615054,
+      "node_id": "MDg6QXJ0aWZhY3QxNDE1NTYxNTA1NA==",
+      "name": "x86_64-verification-native-aot-0",
+      "size_in_bytes": 39534,
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14155615054",
+      "archive_download_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14155615054/zip",
+      "expired": false,
+      "digest": "sha256:9d76d9b926d7a1e6fed9fe546c38988046b4412a8265feda1c70f3469369d266",
+      "created_at": "2026-11-15T09:10:01Z",
+      "updated_at": "2026-11-15T09:10:01Z",
+      "expires_at": "2026-11-22T09:09:59Z",
+      "workflow_run": {
+        "id": 43697221888,
+        "repository_id": 1409192014,
+        "head_repository_id": 1409192014,
+        "head_branch": "prototype/compiler-stage-boundaries",
+        "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8"
+      }
+    },
+    {
+      "id": 14155590615,
+      "node_id": "MDg6QXJ0aWZhY3QxNDE1NTU5MDYxNQ==",
+      "name": "x86_64-verification-hosted",
+      "size_in_bytes": 44026,
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14155590615",
+      "archive_download_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14155590615/zip",
+      "expired": false,
+      "digest": "sha256:f2c9ac1fd46b82c5415e8115dc4cf0cccc28c4e3e6f3d876d1376d56605dddc7",
+      "created_at": "2026-11-15T09:12:50Z",
+      "updated_at": "2026-11-15T09:12:50Z",
+      "expires_at": "2026-11-22T09:12:49Z",
+      "workflow_run": {
+        "id": 43697221888,
+        "repository_id": 1409192014,
+        "head_repository_id": 1409192014,
+        "head_branch": "prototype/compiler-stage-boundaries",
+        "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8"
+      }
+    },
+    {
+      "id": 14155535587,
+      "node_id": "MDg6QXJ0aWZhY3QxNDE1NTUzNTU4Nw==",
+      "name": "x86_64-verification-safety-0",
+      "size_in_bytes": 18479,
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14155535587",
+      "archive_download_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14155535587/zip",
+      "expired": false,
+      "digest": "sha256:991cee716f727c628b06109cf0691cd658faaeb817d6c5c1817f667eca553866",
+      "created_at": "2026-11-15T09:09:56Z",
+      "updated_at": "2026-11-15T09:09:56Z",
+      "expires_at": "2026-11-22T09:09:55Z",
+      "workflow_run": {
+        "id": 43697221888,
+        "repository_id": 1409192014,
+        "head_repository_id": 1409192014,
+        "head_branch": "prototype/compiler-stage-boundaries",
+        "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8"
+      }
+    },
+    {
+      "id": 14155386906,
+      "node_id": "MDg6QXJ0aWZhY3QxNDE1NTM4NjkwNg==",
+      "name": "x86_64-verification-native-jit-1",
+      "size_in_bytes": 64052,
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14155386906",
+      "archive_download_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14155386906/zip",
+      "expired": false,
+      "digest": "sha256:d8f79ae77f2b214997b6daacee0a234df964d3f3b22bbfa88b1bd26922e3fa4b",
+      "created_at": "2026-11-15T09:09:11Z",
+      "updated_at": "2026-11-15T09:09:11Z",
+      "expires_at": "2026-11-22T09:09:10Z",
+      "workflow_run": {
+        "id": 43697221888,
+        "repository_id": 1409192014,
+        "head_repository_id": 1409192014,
+        "head_branch": "prototype/compiler-stage-boundaries",
+        "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8"
+      }
+    },
+    {
+      "id": 14155193217,
+      "node_id": "MDg6QXJ0aWZhY3QxNDE1NTE5MzIxNw==",
+      "name": "x86_64-verification-opt-in",
+      "size_in_bytes": 7393285,
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14155193217",
+      "archive_download_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14155193217/zip",
+      "expired": false,
+      "digest": "sha256:1c52ba27514ef59b82dbe6e46bf4f50f97d03c88695be635bbbce8e842f89f72",
+      "created_at": "2026-11-15T09:10:24Z",
+      "updated_at": "2026-11-15T09:10:24Z",
+      "expires_at": "2026-11-22T09:10:20Z",
+      "workflow_run": {
+        "id": 43697221888,
+        "repository_id": 1409192014,
+        "head_repository_id": 1409192014,
+        "head_branch": "prototype/compiler-stage-boundaries",
+        "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8"
+      }
+    },
+    {
+      "id": 14155003843,
+      "node_id": "MDg6QXJ0aWZhY3QxNDE1NTAwMzg0Mw==",
+      "name": "pr-variants-1",
+      "size_in_bytes": 2328,
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14155003843",
+      "archive_download_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14155003843/zip",
+      "expired": false,
+      "digest": "sha256:06fafea279d9f2e6cd4587373dbc55c6e7dfe175d5741f04219bc67f45c8d575",
+      "created_at": "2026-11-15T09:12:34Z",
+      "updated_at": "2026-11-15T09:12:34Z",
+      "expires_at": "2026-11-22T09:12:34Z",
+      "workflow_run": {
+        "id": 43697221888,
+        "repository_id": 1409192014,
+        "head_repository_id": 1409192014,
+        "head_branch": "prototype/compiler-stage-boundaries",
+        "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8"
+      }
+    },
+    {
+      "id": 14154918314,
+      "node_id": "MDg6QXJ0aWZhY3QxNDE1NDkxODMxNA==",
+      "name": "x86_64-verification-cache-gc",
+      "size_in_bytes": 12858,
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14154918314",
+      "archive_download_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14154918314/zip",
+      "expired": false,
+      "digest": "sha256:64877f4638f64ec613b178bce0ea8e98bac424e87787b94117745974e80d3308",
+      "created_at": "2026-11-15T09:18:27Z",
+      "updated_at": "2026-11-15T09:18:27Z",
+      "expires_at": "2026-11-22T09:18:27Z",
+      "workflow_run": {
+        "id": 43697221888,
+        "repository_id": 1409192014,
+        "head_repository_id": 1409192014,
+        "head_branch": "prototype/compiler-stage-boundaries",
+        "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8"
+      }
+    },
+    {
+      "id": 14154804525,
+      "node_id": "MDg6QXJ0aWZhY3QxNDE1NDgwNDUyNQ==",
+      "name": "x86_64-verification-contracts",
+      "size_in_bytes": 42872,
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14154804525",
+      "archive_download_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14154804525/zip",
+      "expired": false,
+      "digest": "sha256:0978921a37a6e04aa06a343860d94e38b302fae0fa0a92d79ca89362c9277caa",
+      "created_at": "2026-11-15T09:14:19Z",
+      "updated_at": "2026-11-15T09:14:19Z",
+      "expires_at": "2026-11-22T09:14:18Z",
+      "workflow_run": {
+        "id": 43697221888,
+        "repository_id": 1409192014,
+        "head_repository_id": 1409192014,
+        "head_branch": "prototype/compiler-stage-boundaries",
+        "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8"
+      }
+    },
+    {
+      "id": 14154804464,
+      "node_id": "MDg6QXJ0aWZhY3QxNDE1NDgwNDQ2NA==",
+      "name": "x86_64-verification-benchmarks",
+      "size_in_bytes": 49047,
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14154804464",
+      "archive_download_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14154804464/zip",
+      "expired": false,
+      "digest": "sha256:7e49a42eb653a9525ae6ab6a1753ab7061c5cbab44e0172eed059e2cdd046080",
+      "created_at": "2026-11-15T09:13:56Z",
+      "updated_at": "2026-11-15T09:13:56Z",
+      "expires_at": "2026-11-22T09:13:56Z",
+      "workflow_run": {
+        "id": 43697221888,
+        "repository_id": 1409192014,
+        "head_repository_id": 1409192014,
+        "head_branch": "prototype/compiler-stage-boundaries",
+        "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8"
+      }
+    },
+    {
+      "id": 14154778865,
+      "node_id": "MDg6QXJ0aWZhY3QxNDE1NDc3ODg2NQ==",
+      "name": "x86_64-verification-native-jit-0",
+      "size_in_bytes": 63862,
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14154778865",
+      "archive_download_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14154778865/zip",
+      "expired": false,
+      "digest": "sha256:1e1359ab6ae258e0bd191a70fc173dd1907cc5d45593008e7966602d144b576d",
+      "created_at": "2026-11-15T09:09:01Z",
+      "updated_at": "2026-11-15T09:09:01Z",
+      "expires_at": "2026-11-22T09:09:00Z",
+      "workflow_run": {
+        "id": 43697221888,
+        "repository_id": 1409192014,
+        "head_repository_id": 1409192014,
+        "head_branch": "prototype/compiler-stage-boundaries",
+        "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8"
+      }
+    },
+    {
+      "id": 14154669639,
+      "node_id": "MDg6QXJ0aWZhY3QxNDE1NDY2OTYzOQ==",
+      "name": "x86_64-verification-safety-1",
+      "size_in_bytes": 17708,
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14154669639",
+      "archive_download_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14154669639/zip",
+      "expired": false,
+      "digest": "sha256:d188b0b5ce9bb9302cccf0d113f680da5a690812f899dc94491d624a70ad8cfe",
+      "created_at": "2026-11-15T09:12:23Z",
+      "updated_at": "2026-11-15T09:12:23Z",
+      "expires_at": "2026-11-22T09:12:22Z",
+      "workflow_run": {
+        "id": 43697221888,
+        "repository_id": 1409192014,
+        "head_repository_id": 1409192014,
+        "head_branch": "prototype/compiler-stage-boundaries",
+        "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8"
+      }
+    },
+    {
+      "id": 14154669243,
+      "node_id": "MDg6QXJ0aWZhY3QxNDE1NDY2OTI0Mw==",
+      "name": "x86_64-verification-native-aot-2",
+      "size_in_bytes": 39285,
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14154669243",
+      "archive_download_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14154669243/zip",
+      "expired": false,
+      "digest": "sha256:d1349bef36123887e426ebbb96635c3eb2603d9d97840ca873d70e07f5c5e5d9",
+      "created_at": "2026-11-15T09:09:46Z",
+      "updated_at": "2026-11-15T09:09:46Z",
+      "expires_at": "2026-11-22T09:09:45Z",
+      "workflow_run": {
+        "id": 43697221888,
+        "repository_id": 1409192014,
+        "head_repository_id": 1409192014,
+        "head_branch": "prototype/compiler-stage-boundaries",
+        "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8"
+      }
+    },
+    {
+      "id": 14154598918,
+      "node_id": "MDg6QXJ0aWZhY3QxNDE1NDU5ODkxOA==",
+      "name": "verified-bootstrap-x86_64",
+      "size_in_bytes": 9093385,
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14154598918",
+      "archive_download_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14154598918/zip",
+      "expired": false,
+      "digest": "sha256:7449267f0e388570a499d25c007c9d281d1b3c515b63c813b8b558937f7f6383",
+      "created_at": "2026-11-15T09:06:55Z",
+      "updated_at": "2026-11-15T09:06:55Z",
+      "expires_at": "2026-11-22T09:06:53Z",
+      "workflow_run": {
+        "id": 43697221888,
+        "repository_id": 1409192014,
+        "head_repository_id": 1409192014,
+        "head_branch": "prototype/compiler-stage-boundaries",
+        "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8"
+      }
+    },
+    {
+      "id": 14154573890,
+      "node_id": "MDg6QXJ0aWZhY3QxNDE1NDU3Mzg5MA==",
+      "name": "x86_64-verification-bootstrap",
+      "size_in_bytes": 4102,
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14154573890",
+      "archive_download_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14154573890/zip",
+      "expired": false,
+      "digest": "sha256:964d2c15700711a240db33bb91bd612841412136144a723abda0cecf0cf6b524",
+      "created_at": "2026-11-15T09:06:57Z",
+      "updated_at": "2026-11-15T09:06:57Z",
+      "expires_at": "2026-11-22T09:06:56Z",
+      "workflow_run": {
+        "id": 43697221888,
+        "repository_id": 1409192014,
+        "head_repository_id": 1409192014,
+        "head_branch": "prototype/compiler-stage-boundaries",
+        "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8"
+      }
+    },
+    {
+      "id": 14154568292,
+      "node_id": "MDg6QXJ0aWZhY3QxNDE1NDU2ODI5Mg==",
+      "name": "pr-variants-0",
+      "size_in_bytes": 20074,
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14154568292",
+      "archive_download_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14154568292/zip",
+      "expired": false,
+      "digest": "sha256:c85ed4949bb123096030d481706950689aa01e288c1d5c527b396eed84f8f138",
+      "created_at": "2026-11-15T09:13:51Z",
+      "updated_at": "2026-11-15T09:13:51Z",
+      "expires_at": "2026-11-22T09:13:51Z",
+      "workflow_run": {
+        "id": 43697221888,
+        "repository_id": 1409192014,
+        "head_repository_id": 1409192014,
+        "head_branch": "prototype/compiler-stage-boundaries",
+        "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8"
+      }
+    },
+    {
+      "id": 14154489108,
+      "node_id": "MDg6QXJ0aWZhY3QxNDE1NDQ4OTEwOA==",
+      "name": "x86_64-verification",
+      "size_in_bytes": 87328,
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14154489108",
+      "archive_download_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14154489108/zip",
+      "expired": false,
+      "digest": "sha256:6f9ba7aa9900aa852411eb365de347df90b8885793816b0bddb45569f50c362a",
+      "created_at": "2026-11-15T09:18:47Z",
+      "updated_at": "2026-11-15T09:18:47Z",
+      "expires_at": "2026-11-22T09:18:46Z",
+      "workflow_run": {
+        "id": 43697221888,
+        "repository_id": 1409192014,
+        "head_repository_id": 1409192014,
+        "head_branch": "prototype/compiler-stage-boundaries",
+        "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8"
+      }
+    },
+    {
+      "id": 14154474559,
+      "node_id": "MDg6QXJ0aWZhY3QxNDE1NDQ3NDU1OQ==",
+      "name": "x86_64-verification-native-aot-1",
+      "size_in_bytes": 39347,
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14154474559",
+      "archive_download_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14154474559/zip",
+      "expired": false,
+      "digest": "sha256:c103c33ba28844f8fcb331a6cd50b1776f39d0e1eea34c382b4b7c0aa54be772",
+      "created_at": "2026-11-15T09:09:30Z",
+      "updated_at": "2026-11-15T09:09:30Z",
+      "expires_at": "2026-11-22T09:09:29Z",
+      "workflow_run": {
+        "id": 43697221888,
+        "repository_id": 1409192014,
+        "head_repository_id": 1409192014,
+        "head_branch": "prototype/compiler-stage-boundaries",
+        "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8"
+      }
+    },
+    {
+      "id": 14154469913,
+      "node_id": "MDg6QXJ0aWZhY3QxNDE1NDQ2OTkxMw==",
+      "name": "x86_64-verification-native-aot-3",
+      "size_in_bytes": 40590,
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14154469913",
+      "archive_download_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/14154469913/zip",
+      "expired": false,
+      "digest": "sha256:b2b1eab0e125824a99ebdd9ee1a034d441e990ac5b53aff09f9733717b7046ee",
+      "created_at": "2026-11-15T09:10:55Z",
+      "updated_at": "2026-11-15T09:10:55Z",
+      "expires_at": "2026-11-22T09:10:54Z",
+      "workflow_run": {
+        "id": 43697221888,
+        "repository_id": 1409192014,
+        "head_repository_id": 1409192014,
+        "head_branch": "prototype/compiler-stage-boundaries",
+        "head_sha": "5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8"
+      }
+    }
+  ],
+  "limitations": [
+    "CI uses the PR profile; it is not the exhaustive local 58-stage verification.",
+    "Fresh full local verification remains pending at this capture.",
+    "No submitted GitHub review is recorded. The quota-exhausted Codex attempt is not a successful independent review.",
+    "No PR status, source, workflow or review mutation was performed during this capture."
+  ],
+  "source_api_urls": [
+    "https://api.github.com/repos/den-run-ai/pystachy/pulls/1499",
+    "https://api.github.com/repos/den-run-ai/pystachy/actions/runs?head_sha=5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8&per_page=100",
+    "https://api.github.com/repos/den-run-ai/pystachy/commits/5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8/check-runs?filter=all&per_page=100",
+    "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/43697285085/jobs?filter=all&per_page=100",
+    "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/43697221818/jobs?filter=all&per_page=100",
+    "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/43697221888/jobs?filter=all&per_page=100",
+    "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/43697218408/jobs?filter=all&per_page=100",
+    "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/43697218437/jobs?filter=all&per_page=100",
+    "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/43697217840/jobs?filter=all&per_page=100",
+    "https://api.github.com/repos/den-run-ai/pystachy/git/commits/5ccd1841e2090a6a8e4076ed22f0cb4c015a94e8",
+    "https://api.github.com/repos/den-run-ai/pystachy/git/commits/b08a344558fc87aeb211470c8e58f154e76d4c5b"
+  ]
+}

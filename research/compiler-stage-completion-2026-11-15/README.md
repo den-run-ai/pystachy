@@ -1,5 +1,7 @@
 # Compiler stage completion and qualification
 
+> **Corrected-head update:** This page records the historical `eabfe7b3` checkpoint. See [the current status and recovered evidence](STATUS_5ccd1841.md) for published head `5ccd1841`, the JIT discovery fix, fresh qualification, and the unconfirmed full local run after the execution environment became unavailable.
+
 This report records the follow-up to [PR #1499](https://github.com/den-run-ai/pystachy/pull/1499). The implementation is published at `eabfe7b3d8f1be3e4615442423c7d3fbab10285b`, with tree `4deb05cd2f645d516dd37480d5510d0920747b6f`. The earlier local commit `527dc89a02e8e8866fc4d83997847663a6e7c0aa` has exactly that tree. The connected GitHub app published the tree because the local shell had no push credentials; every uploaded blob and the complete remote tree were checked against Git before the branch was advanced with an expected-head lease and no force.
 
 The direct comparison baseline is the original PR tip, `800752d8a582bff77d4c375039af786b82a96f73`. Its [initial qualification report](https://github.com/den-run-ai/pystachy/blob/64c894424b43ff69a3601c78f9b0d25fba91371c/research/compiler-stages-2026-11-15/README.md) remains historical evidence. This report does not relabel earlier tests as new runs.
