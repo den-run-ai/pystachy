@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Check live numeric-list identity stores and their two tracing edges with Lean.
+"""Check live numeric-list identity stores, copies and tracing edges with Lean.
 
-The contract covers a stable, initialized companion and a successful in-bounds
-setter/getter. Materialization, growth/copies, callbacks, collection scheduling,
-and the concrete allocator/collector remain outside the proof. The bounded C-AST
-adapter fails closed on unknown statement shapes; it is part of the trusted base.
+The contract covers an initialized companion, successful in-bounds stores and
+successful reserve/slice copies. Materialization, allocation-time liveness,
+callbacks and the concrete allocator/collector remain outside the proof. The
+bounded C-AST adapter fails closed on unknown shapes; it is part of the trusted base.
 """
 from __future__ import annotations
 
@@ -64,8 +64,54 @@ static Dyn *companion_contract_pys_list_get_identity(List *l, I i, I kind) {
   i = idx(i, l->len, "IndexError: list index out of range");
   pys_list_identity(l, kind); return (Dyn *)l->ids[i + 1];
 }
+static int companion_contract_big_list(List *l) {
+  return l->ids && (l->ids[0] & 3) == BIGIDS && opt_in();
+}
+static void companion_contract_pys_list_identity(List *l, I kind) {
+  if (!l->ids || (l->ids[0] & 4) || ((kind & 3) == 1 && big_list(l))) list_identity_slow(l, kind);
+}
+static void companion_contract_reserve(List *l, I n) {
+  if (n <= l->cap) return;
+  I c = l->cap * 2 > n ? l->cap * 2 : n, *a;
+  if (c < INLINE_CAP) c = INLINE_CAP;
+  if (l->a == empty_inline && c == INLINE_CAP) a = inline_items(l);
+  else {
+    a = item_array(c, atomic_items(l->a));
+    memcpy(a, l->a, l->len * 8);
+    if (l->a == inline_items(l)) memset(l->a, 0, INLINE_CAP * sizeof(I));
+  }
+  l->a = a;
+  if (l->ids && opt_in()) {
+    if (c > INT64_MAX / (I)sizeof(I) - 1) oom();
+    I *ids = pys_alloc((c + 1) * sizeof(I));
+    memcpy(ids, l->ids, (l->len + 1) * sizeof(I)); l->ids = ids;
+  }
+  l->cap = c;
+}
+static List *companion_contract_pys_list_slice(List *l, I lo, I hi) {
+  span(&lo, &hi, l->len);
+  if (l->ids && opt_in()) pys_list_identity(l, l->ids[0]);
+  List *r = list_new(hi - lo, atomic_items(l->a));
+  if (l->ids && opt_in()) {
+    pys_list_identity(r, l->ids[0]); memcpy(r->ids + 1, l->ids + lo + 1, (hi - lo) * 8);
+  }
+  memcpy(r->a, l->a + lo, (hi - lo) * 8); r->len = hi - lo; return r;
+}
+static List *companion_contract_pys_list_copy(List *l) {
+  return pys_list_slice(l, NONE, NONE);
+}
 """
-FUNCTIONS = ("list_new", "list_identity_slow", "pys_list_set_identity", "pys_list_get_identity")
+FUNCTIONS = ("list_new", "list_identity_slow", "pys_list_set_identity", "pys_list_get_identity",
+             "big_list", "pys_list_identity", "reserve", "pys_list_slice", "pys_list_copy")
+
+# Source macros must not rewrite the independent reference operations. The live
+# functions were parsed before these undefines, so redirecting memcpy or an
+# allocator is observable even when a function-like macro expands in both calls.
+REFERENCE_UNDEFINES = "".join("#undef " + name + "\n" for name in (
+    *FUNCTIONS, "pys_alloc", "pys_alloc_atomic", "memcpy", "memset", "item_array",
+    "atomic_items", "inline_items", "idx", "opt_in", "oom", "list_box", "span", "pys_dyn_big"))
+FIELD_UNDEFINES = "".join("#undef " + name + "\n" for name in (
+    "len", "cap", "a", "ids", "List", "I", "Slot", "v", "sizeof", "__builtin_offsetof"))
 
 
 def expression(node):
@@ -148,22 +194,42 @@ def allocations(tree):
 
 
 def physical_layout(path):
-    source = '#include ' + json.dumps(str(Path(path).resolve())) + "\n" + """
+    source = '#include ' + json.dumps(str(Path(path).resolve())) + "\n" + FIELD_UNDEFINES + """
 const uint64_t companion_header = sizeof(List);
-const uint64_t companion_field = offsetof(List, ids);
+const uint64_t companion_field = __builtin_offsetof(List, ids);
 const uint64_t companion_field_width = sizeof(((List *)0)->ids);
 const uint64_t companion_item_width = sizeof(*((List *)0)->ids);
 const uint64_t companion_word = sizeof(I);
 const uint64_t companion_pointer = sizeof(void *);
+const uint64_t companion_length = __builtin_offsetof(List, len);
+const uint64_t companion_length_width = sizeof(((List *)0)->len);
+const uint64_t companion_capacity = __builtin_offsetof(List, cap);
+const uint64_t companion_capacity_width = sizeof(((List *)0)->cap);
+const uint64_t companion_raw = __builtin_offsetof(List, a);
+const uint64_t companion_raw_width = sizeof(((List *)0)->a);
+const uint64_t companion_slot_size = sizeof(Slot);
+const uint64_t companion_slot_value = __builtin_offsetof(Slot, v);
+const uint64_t companion_slot_width = sizeof(((Slot *)0)->v);
 """
     llvm = alias.run_clang(["-x", "c", "-S", "-emit-llvm", "-o", "-", "-"], source=source)
     layout = {key: int(value) for key, value in
               re.findall(r"^@companion_(\w+) = .*constant i64 (\d+)", llvm, re.M)}
-    alias.require(layout.keys() == {"header", "field", "field_width", "item_width", "word", "pointer"},
+    alias.require(layout.keys() == {"header", "field", "field_width", "item_width", "word", "pointer",
+                                    "length", "length_width", "capacity", "capacity_width", "raw", "raw_width",
+                                    "slot_size", "slot_value", "slot_width"},
                   "incomplete companion physical layout")
     alias.require(layout["field_width"] == layout["item_width"] == layout["word"] == layout["pointer"] == 8
-                  and layout["header"] % 8 == layout["field"] % 8 == 0,
+                  and layout["length_width"] == layout["capacity_width"] == layout["raw_width"] == 8
+                  and layout["header"] % 8 == 0,
                   "unsupported companion pointer/word ABI")
+    # Raw writes and capacity updates must not alias the identity pointer. Check
+    # physical ranges independently of the runtime's own static assertions:
+    # anonymous unions can give correctly sized fields the same address.
+    fields = [layout[name] for name in ("length", "capacity", "raw", "field")]
+    alias.require(all(offset % 8 == 0 and offset + 8 <= layout["header"] for offset in fields)
+                  and len(set(fields)) == len(fields), "overlapping or invalid companion header fields")
+    alias.require(layout["slot_size"] == layout["slot_width"] == 8 and layout["slot_value"] == 0,
+                  "raw list slot stride or value offset disagrees with companion storage")
     return layout
 
 
@@ -172,7 +238,8 @@ def normalize_runtime(path):
     layout = physical_layout(path)
     reference = parse_functions(alias.run_clang([
         "-x", "c", "-Xclang", "-ast-dump=json", "-Xclang", "-ast-dump-filter=companion_contract_",
-        "-fsyntax-only", "-"], source='#include ' + json.dumps(str(path)) + "\n" + CONTRACTS))
+        "-fsyntax-only", "-"], source='#include ' + json.dumps(str(path)) + "\n" +
+        FIELD_UNDEFINES + REFERENCE_UNDEFINES + CONTRACTS))
     bodies = {}
     for name in FUNCTIONS:
         functions = parse_functions(alias.run_clang([
@@ -185,16 +252,21 @@ def normalize_runtime(path):
         bodies[name] = actual[2]
     header_allocations = allocations(bodies["list_new"])
     array_allocations = allocations(bodies["list_identity_slow"])
-    alias.require(len(header_allocations) == 2 and len(array_allocations) == 1,
+    growth_allocations = allocations(bodies["reserve"])
+    alias.require(len(header_allocations) == 2 and len(array_allocations) == len(growth_allocations) == 1,
                   "companion allocator inventory changed")
     # Matching the complete ASTs establishes exactly one fresh-array attachment
     # to l->ids and identical i+1 pointer-word setter/getter addresses. The one
     # prefix word is the kind header, not an item or an independently supplied fact.
-    return {"schema_version": 1, "header_words": layout["header"] // 8,
+    return {"schema_version": 2, "header_words": layout["header"] // 8,
             "header_scanned": all(name == "pys_alloc" for name in header_allocations),
             "store_word": layout["field"] // 8, "read_word": layout["field"] // 8,
             "array_scanned": array_allocations == ["pys_alloc"],
-            "prefix_words": 1, "store_offset": 1, "read_offset": 1}
+            "prefix_words": 1, "store_offset": 1, "read_offset": 1,
+            "growth": {"array_scanned": growth_allocations == ["pys_alloc"], "allocation_prefix": 1,
+                       "source_offset": 0, "target_offset": 0, "copy_extra": 1},
+            "slice": {"array_scanned": array_allocations == ["pys_alloc"], "allocation_prefix": 1,
+                      "source_offset": 1, "target_offset": 1, "copy_extra": 0}}
 
 
 def checked(candidate, checker=CHECKER):
@@ -216,8 +288,8 @@ def main(argv=None):
         print(json.dumps({"status": "accepted" if accepted else "rejected", "checked": True,
                           "runtime_sha256": hashlib.sha256(args.runtime.read_bytes()).hexdigest(),
                           "candidate": candidate,
-                          "scope": "Stable initialized numeric-list companion: exact identity readback and header/array tracing edges.",
-                          "trusted": "C AST/layout adapter, initialized live index, materialization/lifecycle, allocator and collector implementations."}))
+                          "scope": "Initialized numeric-list companion: identity readback and tracing after direct stores, reserve growth and contiguous slice/copy.",
+                          "trusted": "C AST/layout adapter, initialized live indices, valid nonoverflowing extents, materialization and allocation-time liveness, called helpers, allocator and collector implementations."}))
         return 0 if accepted else 1
     except (ValueError, OSError, subprocess.SubprocessError) as error:
         print(json.dumps({"status": "error", "checked": False, "error": str(error)}))

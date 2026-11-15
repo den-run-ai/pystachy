@@ -4087,7 +4087,9 @@ void pys_list_sort(List *l, Str *d) { pys_list_sort_r(l, d, 0); }
    the records (pys_list_unkey). xs.sort(key=f) gives its items up while compiled code calls f on
    each (pys_list_take), as CPython's list does: it looks empty meanwhile, a change to it makes the
    sort fail afterwards (pys_list_give), and a raise gives it its items back (untake): as they were
-   if a key call raised, else in the order the sort reached when a comparison raised. */
+   if a key call raised, else in the order the sort reached when a comparison raised. A list of
+   numbers with identity companions sorts through the same records and take/give, its items being
+   their own keys, so each box moves with its number (pys_list_sort_r). */
 typedef struct { List t; List *l, *p; } Taken;     /* the items l gave up, and the records sorting them */
 static void untake(void *p) {
   Taken *k = p;

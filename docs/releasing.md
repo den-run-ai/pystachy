@@ -64,7 +64,11 @@ Changed package contents require a new version; existing PyPI files are not repl
 1. Set [VERSION](../VERSION) to the intended semantic version and add its notes as
    `docs/releases/VERSION.md`, written as the [writing guide](writing.md#release-notes)
    describes, such as [v0.4.0-alpha.6](releases/v0.4.0-alpha.6.md). Then merge the
-   version bump, intended fixes and packaging changes into `main`.
+   version bump, intended fixes and packaging changes into `main`. Before merging a
+   release branch, run **CI** manually on it: a run that is not for a pull request
+   executes the full profile, while PR CI runs the dynamic-`Any` and promoting-int sweeps
+   over sampled programs only. That gap let
+   [#1502](https://github.com/den-run-ai/pystachy/issues/1502) first fail on `main`.
 2. Wait for **CI**, **Installation**, **Lint** and **Packages** to succeed on the exact
    `main` commit. CI on a `main` push includes the complete Linux x86-64 and Linux ARM64
    verification matrices; a success on only one architecture does not satisfy this gate.

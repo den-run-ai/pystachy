@@ -1,0 +1,16 @@
+inner '<' not supported between instances of 'NoneType' and 'NoneType' [None, None]
+inner '<' not supported between instances of 'NoneType' and 'NoneType' [None, None]
+nested [0, 1, 2, 3] [5, 0, None, 2, 9] [1, 4, 8]
+through '<' not supported between instances of 'NoneType' and 'int'
+[Raiser(5, [1, 2]), Raiser(4, [3, 2, 1]), Raiser(3, [9, 8]), Raiser(2, [7, None, 8, 1]), Raiser(1, [0])]
+keyed after [1, 2, 3]
+keyed '<' not supported between instances of 'NoneType' and 'int'
+keyed after [3, None, 1, 2]
+keyed after [None, 1, 2, 3]
+merged '<' not supported between instances of 'NoneType' and 'int'
+merged after 200 180 525990
+merged '<' not supported between instances of 'NoneType' and 'int'
+merged after 200 120 462600
+merged '<' not supported between instances of 'NoneType' and 'int'
+merged after 300 299 1190778
+[exit 0]
