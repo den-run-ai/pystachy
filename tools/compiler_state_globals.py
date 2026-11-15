@@ -28,6 +28,7 @@ ir.NONUMS ir.NOVALS ir.NOLABELS ircheck.RESULT_NUMBERS
 lexer.KEYWORDS lexer.OPS lexer.ESCAPES lexer.PREFIXES lexer.NONPRINT lexer.NOTID
 loader.ENUM_NAMES loader.ENUM_BASES loader.ENUM_HOOKS
 local_versions.UNVERSIONED optimizations.PASS_CONTRACTS parser.ATOMS patterns.SEQ_SCALARS
+pipeline.STAGE_PREDECESSORS
 reflection.BUILTIN_TYPES reflection.CLASS_BUILTINS reflection.SLOT_WRAPPERS reflection.OBJ_BUILTINS reflection.TYPE_BUILTINS reflection.PICKLING
 scalar_ir.SCALAR_INTS scalar_ir.SCALAR_BIN scalar_ir.SCALAR_FLOAT
 scalar_ir.SCALAR_ICMP scalar_ir.SCALAR_FCMP scalar_ir.SCALAR_CASTS scope.COMPNAMES
@@ -98,7 +99,7 @@ WRITERS = {
     "diagnostics.INTFILES": {"loader.Loader.program", "loader.Loader.pragmas"},
     "diagnostics.INTSPANS": {"loader.Loader.program", "loader.Loader.int_spans"},
     "syntax.LAMBDAS": {"parser.Parser.test1", "driver.compile_program"},
-    "names.RENAMED": {"program.gen_program", "driver.compile_program"},
+    "names.RENAMED": {"program.gen_prepare_program", "pipeline.gen_lower_program", "driver.compile_program"},
     "names.ENUMCLASSES": {"loader.Loader.program", "loader.enum_classes"},
     "program_cache.ACTIVE": {"program_cache.start", "program_cache.stop"},
     "program_cache.VALID": {"program_cache.start", "program_cache._record", "program_cache.tracked_kind",

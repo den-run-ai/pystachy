@@ -1111,13 +1111,24 @@ from src.pystachy_compiler.program import (
     gen_partly as program_partly,
     gen_path_of as program_path_of,
     gen_plain as program_plain,
-    gen_program as program_program,
+    gen_prepare_program as program_prepare_program,
+    gen_discover_program as program_discover_program,
     gen_pure as program_pure,
     gen_raisers as program_raisers,
     gen_subclass_problem as program_subclass_problem,
     gen_generic_subclass as program_generic_subclass,
     gen_tmpl_ann as program_tmpl_ann,
     gen_tmpl_of as program_tmpl_of,
+)
+from src.pystachy_compiler.pipeline import (
+    PipelineState,
+    PreparedProgram,
+    gen_analyze_program as pipeline_analyze_program,
+    gen_optimize_program as pipeline_optimize_program,
+    gen_finalize_program as pipeline_finalize_program,
+    gen_lower_program as pipeline_lower_program,
+    gen_typed_program as pipeline_typed_program,
+    gen_program as pipeline_program,
 )
 from src.pystachy_compiler.specs import IROPS
 from src.pystachy_compiler.statements import (
@@ -1297,6 +1308,7 @@ from src.pystachy_compiler.variables import (
 
 class Gen:
     def __init__(self):
+        self.pipeline = PipelineState()  # attempt-owned; never borrowed by a function Frame
         self.classes: dict[str, ClassInfo] = {}
         self.tmpl: dict[str, bool] = {}  # the class templates (an __init__ parameter without an annotation)
         self.compiling = False  # every declaration is made: code is being compiled (see guess)
@@ -3834,8 +3846,29 @@ class Gen:
     def partly(self, e: Node, use: int) -> str:
         return program_partly(self, e, use)
 
+    def prepare_program(self, mods: list[Mod]) -> PreparedProgram:
+        return program_prepare_program(self, mods)
+
+    def discover_program(self, prepared: PreparedProgram) -> None:
+        return program_discover_program(self, prepared)
+
+    def analyze_program(self) -> None:
+        return pipeline_analyze_program(self)
+
+    def optimize_program(self) -> None:
+        return pipeline_optimize_program(self)
+
+    def finalize_program(self) -> None:
+        return pipeline_finalize_program(self)
+
+    def typed_program(self, mods: list[Mod]) -> None:
+        return pipeline_typed_program(self, mods)
+
+    def lower_program(self) -> str:
+        return pipeline_lower_program(self)
+
     def program(self, mods: list[Mod]) -> str:
-        return program_program(self, mods)
+        return pipeline_program(self, mods)
 
     def flow_program(self, top: list[Node], mod: str, mfns: list[FnInfo], mcls: list[ClassInfo], first: bool) -> None:
         return flow_flow_program(self, top, mod, mfns, mcls, first)

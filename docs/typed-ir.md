@@ -2,11 +2,12 @@
 
 # Typed intermediate representation
 
-Pystachy's typed IR sits between the type checker and LLVM lowering. It gives control flow,
+Pystachy's typed IR sits between frontend discovery and LLVM lowering. It gives control flow,
 runtime calls, effects and exception handling explicit representations shared by JIT and AOT.
 The implementation lives in the [compiler components](../src/README.md):
 [IR records](../src/pystachy_compiler/ir.py),
 [verification and effects](../src/pystachy_compiler/ircheck.py),
+[stage orchestration](../src/pystachy_compiler/pipeline.py),
 [optimizations](../src/pystachy_compiler/optimizations.py) and
 [LLVM lowering](../src/pystachy_compiler/lowering.py).
 The original proposal and measurements are retained in the [historical design](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/archive/typed-ir-design.md).
@@ -49,21 +50,49 @@ the current backend; WebAssembly remains future work, and dynamic `Any` values a
 
 ## Pipeline
 
-1. The loader prepares qualified modules; `Flow` marks potentially uninitialized reads.
-2. `Gen` collects declarations and builds an `IFn` for each compiled function, including
-   template instances, module initializers and generated helpers.
-3. Empty-container holes are resolved as their element/key/value types become known.
-4. `Gen.effects` computes summaries across the call graph.
-5. IR optimization passes run before exception lowering.
-6. `Gen.eh_ir` makes exceptional edges explicit where required.
-7. `Gen.lower` prints LLVM text; `Gen.program` then releases the function's temporary IR data.
+The loader produces qualified modules. `Gen.program` then runs these explicit
+stages in order, for both ordinary programs and `runtime.py`:
+
+| Method | Input and completed contract |
+|---|---|
+| `prepare_program(modules)` | Qualified modules become a `PreparedProgram` with declarations, class records, normalized aliases and flow-marked top-level statements. |
+| `discover_program(prepared)` | Reachable functions, module initializers, specializations and helpers produce typed `IFn` bodies. Empty-container holes resolve as types become known; a pending inference retry prevents completion. |
+| `analyze_program()` | Callback versions and the function index are complete. Effect summaries and the recursion policy precede requested typed-IR verification. |
+| `optimize_program()` | Enabled typed-IR passes run under their existing prerequisites, preserved facts and invalidation contracts. Exception regions remain in pre-lowering form. |
+| `finalize_program()` | Required exception edges and tuple-return ABI decisions are ready for the backend. Function bodies and representation tables remain available for inspection. |
+| `lower_program()` | Function and module lowering serialize LLVM. Function bodies are consumed; summaries remain available. |
+
+`Gen.typed_program(modules)` runs through finalization without calling
+`lower_program`. This is an internal, attempt-local boundary for tools that need
+the whole finalized typed program before function/module LLVM lowering. `Gen.program`
+preserves the ordinary complete-compilation entry point by calling both.
+
+`PipelineState` enforces the stage order. It rejects premature or repeated
+lowering, repeated stages, and attempts to continue a stage that failed or
+requested an inference retry. `PreparedProgram` borrows mutable ASTs and is owned
+by the generator that prepared it; another generator cannot discover it. The
+driver retains a fresh loader and generator for every retry. These guards do not
+make a generator reusable, concurrent or independent of process-global state.
+Consumers must not mutate retained IR or configuration between stages.
+
+The stage names describe real orchestration boundaries, not a sequence of
+independent semantic passes. Preparation and discovery still combine resolution,
+typing, representation selection and specialization, and can compile required
+declarations lazily. The retained program also contains native ABI decisions;
+some C ABI stubs are already prepared during discovery. This boundary is not a
+portable semantic IR, an LLVM-free frontend or a standalone compatibility-checking API.
 
 `PYSTACHY_IRCHECK=1` verifies IR before the passes and after transformations. Function effect
 summaries remain available after the rest of the function's IR is released.
 
 The hosted [inspection prototype](compiler-inspection.md) captures those live
 stages, function signatures/effects and per-pass diffs in one compilation. Its
-JSON report also retains terminal diagnostic locations and specialization notes.
+JSON report also retains terminal diagnostic locations, specialization notes and
+each attempt's stage completion sequence. Finalized snapshots and representation
+tables are copied before lowering consumes their source records. Existing
+[Lean checks](../tools/lean_boundary/README.md) check selected guard and storage
+properties of those snapshots; stage ordering does not establish semantic
+equivalence, alias lifetime, collector correctness or LLVM correctness.
 
 Module declarations follow the same boundary. Globals retain native types in `Val`
 records; `Data` records retain string bytes, constant tuples' slots, callable

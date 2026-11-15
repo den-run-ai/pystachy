@@ -149,6 +149,8 @@ class Observer:
         self.before: list[dict] = []
         self.after: list[dict] = []
         self.captured_before = False
+        self.captured_after = False
+        self.after_metadata: dict = {}
         self.attempt: dict | None = None
         self.gen = None
         self.restores: list[tuple] = []
@@ -368,6 +370,22 @@ class Observer:
                 footprint = self.attempt["dynamic_boundary"]["footprints"]["before"]
                 footprint.update(status="partial", functions={fn.f.ll: self.boundary_function(gen, fn) for fn in gen.fns})
 
+    def capture_after(self, gen) -> None:
+        # Finalization is the whole-program boundary: capture every function and its
+        # representation tables before LLVM lowering can consume or mutate them.
+        self.after = [self.snapshot(fn) for fn in gen.fns if self.selected(fn)]
+        self.after_metadata = {"dynamic_types": self.dynamic_types(gen), "classes": self.classes(gen)}
+        if self.guard_evidence:
+            self.after_metadata.update(
+                class_layouts=self.class_layouts(gen), union_tags=dict(gen.utags), holes=list(gen.holes),
+                key_descriptors=self.key_descriptors(gen, self.after), nullcheck_evidence=self.nullcheck_evidence,
+                guard_inventory={"nullcheck_passes": len(self.nullcheck_evidence),
+                    "removed_checks": sum(r["reported_rewrites"] for r in self.nullcheck_evidence)})
+        self.captured_after = True
+        if self.attempt is not None:
+            footprint = self.attempt["dynamic_boundary"]["footprints"]["after"]
+            footprint.update(status="partial", functions={fn.f.ll: self.boundary_function(gen, fn) for fn in gen.fns})
+
     @staticmethod
     def dynamic_types(gen) -> list[dict]:
         # Every DynType the program emits (dynamic.py: dyn_class_type, dyn_fn_type and generator
@@ -525,6 +543,8 @@ class Observer:
             self.before, self.after = [], []
             self.gen = gen
             self.captured_before = False
+            self.captured_after = False
+            self.after_metadata = {}
             self.attempt = {"index": len(self.report["attempts"]) + 1, "status": "failed",
                             "dynamic_boundary": {"policy_status": "unavailable", "modules": [],
                                 "fallback_reason": None, "source_provenance": "consistent",
@@ -545,6 +565,7 @@ class Observer:
                 self.attempt["status"] = "completed"
                 return result
             finally:
+                self.attempt["pipeline"] = self.pipeline_state(gen)
                 boundary = self.attempt["dynamic_boundary"]
                 boundary["fallback_reason"] = gen.idevent or None
                 for footprint in boundary["footprints"].values():
@@ -566,6 +587,19 @@ class Observer:
                     selected[identity]["request_keys"].append(key)
                 self.attempt["class_specializations"] = selected
         return wrapped
+
+    def pipeline_state(self, gen) -> dict:
+        # Report actual completed transitions, not inferred semantic subpasses. A
+        # retained prefix of a failed/retried attempt is evidence of partial work.
+        from src.pystachy_compiler.pipeline import STAGE_PREDECESSORS
+        completed = list(gen.pipeline.history)
+        successful = self.attempt is not None and self.attempt["status"] == "completed"
+        return {"stage": gen.pipeline.stage, "active_stage": gen.pipeline.active or None,
+                "completed_stages": completed, "source_provenance": "consistent",
+                "status": "completed" if successful else "partial",
+                "stages": [{"name": name, "status": "completed" if successful and name in completed
+                            else "partial" if name in completed or name == gen.pipeline.active else "unavailable"}
+                           for name in STAGE_PREDECESSORS]}
 
     def effects_wrapper(self, original):
         def wrapped(gen, *args, **kwargs):
@@ -728,17 +762,12 @@ class Observer:
             return result
         return wrapped
 
-    def lower_wrapper(self, original):
-        def wrapped(gen, fn, *args, **kwargs):
+    def finalize_wrapper(self, original):
+        def wrapped(gen, *args, **kwargs):
+            result = original(gen, *args, **kwargs)
             self.capture_before(gen)
-            if self.attempt is not None:
-                footprint = self.attempt["dynamic_boundary"]["footprints"]["after"]
-                footprint["status"] = "partial"
-                footprint["functions"][fn.f.ll] = self.boundary_function(gen, fn)
-            if self.selected(fn):
-                self.after.append(self.snapshot(fn))
-            self.diagnostics.PHASE = "lower"
-            return original(gen, fn, *args, **kwargs)
+            self.capture_after(gen)
+            return result
         return wrapped
 
     def install(self) -> None:
@@ -772,7 +801,8 @@ class Observer:
         for name in PROGRAM_PASS_UNITS:
             self.wrap(Gen, name, self.program_pass_wrapper(name))
         self.wrap(Gen, "eh_ir", self.pass_wrapper("exceptions"))
-        self.wrap(Gen, "lower", self.lower_wrapper)
+        self.wrap(Gen, "finalize_program", self.finalize_wrapper)
+        self.wrap(Gen, "lower_program", self.phase_wrapper("lower"))
         self.wrap(Gen, "lower_module", self.phase_wrapper("lower"))
 
     def restore(self) -> None:
@@ -782,6 +812,11 @@ class Observer:
     def save(self) -> None:
         if self.report["input"]["changed_during_compilation"]:
             for attempt in self.report["attempts"]:
+                pipeline = attempt["pipeline"]
+                pipeline.update(source_provenance="inconsistent", status="partial")
+                for stage in pipeline["stages"]:
+                    if stage["status"] == "completed":
+                        stage["status"] = "partial"
                 boundary = attempt["dynamic_boundary"]
                 boundary["source_provenance"] = "inconsistent"
                 for footprint in boundary["footprints"].values():
@@ -789,27 +824,14 @@ class Observer:
                         footprint["status"] = "partial"
         # Partial snapshots remain explicitly partial, never a completed pipeline.
         for name, functions, available in (("typed-before", self.before, self.captured_before and not self.typed_after_only),
-                                           ("typed-after", self.after, bool(self.after) or self.report["status"] == "ok")):
+                                           ("typed-after", self.after, self.captured_after)):
             if available:
                 artifact = name + ".json"
                 state = "completed" if self.report["status"] == "ok" else "partial"
                 snapshot = {"schema_version": SCHEMA_VERSION, "stage": name, "status": state,
                             "attempt": self.attempt["index"] if self.attempt else 0, "functions": functions}
-                if name == "typed-after" and self.gen is not None:
-                    snapshot["dynamic_types"] = self.dynamic_types(self.gen)
-                    snapshot["classes"] = self.classes(self.gen)
-                    if self.guard_evidence:
-                        snapshot["class_layouts"] = self.class_layouts(self.gen)
-                        snapshot["union_tags"] = dict(self.gen.utags)
-                        # (each type hole's resolved type, which lowering reads to allocate an empty
-                        # list or dict a later use typed: check_lean_gc.py)
-                        snapshot["holes"] = list(self.gen.holes)
-                        # (the text of each string constant whose address a dict or set's key kind
-                        # is, a hash descriptor: runtime.c's keymem reads its first character)
-                        snapshot["key_descriptors"] = self.key_descriptors(self.gen, functions)
-                        snapshot["nullcheck_evidence"] = self.nullcheck_evidence
-                        snapshot["guard_inventory"] = {"nullcheck_passes": len(self.nullcheck_evidence),
-                            "removed_checks": sum(r["reported_rewrites"] for r in self.nullcheck_evidence)}
+                if name == "typed-after":
+                    snapshot.update(self.after_metadata)
                 write_json(self.output / artifact, snapshot)
                 self.report["artifacts"][name] = artifact
                 for stage in self.report["stages"]:

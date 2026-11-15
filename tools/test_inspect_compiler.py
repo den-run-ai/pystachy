@@ -13,6 +13,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
 TOOL = ROOT / "tools" / "inspect_compiler.py"
+PIPELINE_STAGES = ["prepare", "discover", "analyze", "optimize", "finalize", "lower"]
 LOOP = """def total(values: list[int]) -> int:
     result = 0
     for value in values:
@@ -91,6 +92,10 @@ class InspectionTests(unittest.TestCase):
         self.assertTrue(report["verification"]["completed"])
         self.assertGreater(report["verification"]["calls"], 0)
         self.assertEqual(report["input"]["sha256"], hashlib.sha256(program.read_bytes()).hexdigest())
+        pipeline = report["attempts"][-1]["pipeline"]
+        self.assertEqual(pipeline["completed_stages"], PIPELINE_STAGES)
+        self.assertEqual((pipeline["stage"], pipeline["active_stage"], pipeline["status"]), ("lower", None, "completed"))
+        self.assertEqual(pipeline["stages"], [{"name": name, "status": "completed"} for name in PIPELINE_STAGES])
         boundary = report["attempts"][-1]["dynamic_boundary"]
         self.assertFalse(boundary["dynamic_any_enabled"])
         self.assertEqual(boundary["tracked_modules"], [])
@@ -122,6 +127,7 @@ class InspectionTests(unittest.TestCase):
         self.assertEqual((report["settings"]["captures"], reference["settings"]["captures"]), ("typed-after", "all"))
         self.assertEqual([stage["status"] for stage in report["stages"]], ["skipped", "completed", "completed"])
         self.assertEqual(report["attempts"][-1]["dynamic_boundary"], reference["attempts"][-1]["dynamic_boundary"])
+        self.assertEqual(report["attempts"][-1]["pipeline"], reference["attempts"][-1]["pipeline"])
 
     def test_guard_evidence_keeps_nullcheck_inputs_but_typed_after_only_records_no_passes(self):
         # (the Lean report's mode: each nullcheck's input and output are in the snapshot)
@@ -262,9 +268,50 @@ raise SystemExit(inspect_compiler.worker(argparse.Namespace(
         self.assertEqual(report["status"], "error")
         attempt = report["attempts"][-1]
         self.assertEqual(attempt["status"], "failed")
+        pipeline = attempt["pipeline"]
+        self.assertEqual(pipeline["completed_stages"], PIPELINE_STAGES[:-1])
+        self.assertEqual((pipeline["stage"], pipeline["active_stage"], pipeline["status"]), ("finalize", "lower", "partial"))
+        self.assertTrue(all(stage["status"] == "partial" for stage in pipeline["stages"]))
         for footprint in attempt["dynamic_boundary"]["footprints"].values():
             self.assertEqual(footprint["status"], "partial")
             self.assertGreater(footprint["totals"]["functions"], 0)
+        snapshot = self.snapshot(destination, "typed-after")
+        self.assertEqual((snapshot["status"], snapshot["functions"]), ("partial", []))
+
+    def test_finalized_snapshot_precedes_backend_mutation(self):
+        program = self.source("class Box:\n    def __init__(self, value: int):\n        self.value = value\n"
+                              + LOOP + "print(Box(5).value)\n")
+        completed, reference = self.inspect(program, "reference", ("--guard-evidence",))
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        destination = self.directory / "mutated"
+        destination.mkdir()
+        script = '''
+import argparse
+from pathlib import Path
+import sys
+sys.path.insert(0, str(Path.cwd() / "tools"))
+import inspect_compiler
+from src.pystachy_compiler.gen import Gen
+def mutate_backend(gen, fn):
+    for function in gen.fns:
+        function.blocks.clear()
+    gen.classes.clear()
+    gen.holes.clear()
+    raise RuntimeError("test destroys backend inputs after finalization")
+Gen.lower = mutate_backend
+raise SystemExit(inspect_compiler.worker(argparse.Namespace(
+    source=sys.argv[1], output=sys.argv[2], function="", guard_evidence=True)))
+'''
+        stopped = subprocess.run([sys.executable, "-c", script, str(program), str(destination)],
+                                 cwd=ROOT, env=self.env, capture_output=True, text=True, timeout=40)
+        self.assertEqual(stopped.returncode, 2, stopped.stderr)
+        snapshot = self.snapshot(destination, "typed-after")
+        expected = self.snapshot(reference, "typed-after")
+        self.assertEqual(snapshot.pop("status"), "partial")
+        self.assertEqual(expected.pop("status"), "completed")
+        self.assertEqual(snapshot, expected)
+        self.assertGreater(len(snapshot["functions"]), 1)
+        self.assertTrue(snapshot["class_layouts"])
 
     def test_same_operation_count_rewrite_has_immutable_snapshots_and_real_diff(self):
         program = self.source(LOOP)
@@ -440,6 +487,11 @@ print(kernel(3))
         self.assertTrue(any("add(int)" in context for context in diagnostic["context"]))
         self.assertFalse((destination / "llvm.ll").exists())
         self.assertTrue(all(stage["status"] == "unavailable" for stage in report["stages"]))
+        pipeline = report["attempts"][-1]["pipeline"]
+        self.assertEqual(pipeline["active_stage"], "discover")
+        self.assertEqual(pipeline["completed_stages"], ["prepare"])
+        self.assertEqual(pipeline["status"], "partial")
+        self.assertTrue(all(stage["status"] != "completed" for stage in pipeline["stages"]))
 
     def test_syntax_failure_is_not_reported_as_semantic_or_verified(self):
         program = self.source("def broken(:\n    pass\n")
@@ -475,6 +527,12 @@ print(kernel(3))
         self.assertGreaterEqual(len(report["attempts"]), 2)
         self.assertTrue(any(attempt["status"] == "retry" for attempt in report["attempts"]))
         self.assertEqual(report["attempts"][-1]["status"], "completed")
+        self.assertEqual(report["attempts"][-1]["pipeline"]["completed_stages"], PIPELINE_STAGES)
+        for attempt in report["attempts"][:-1]:
+            pipeline = attempt["pipeline"]
+            self.assertEqual(pipeline["status"], "partial")
+            self.assertNotIn("lower", pipeline["completed_stages"])
+            self.assertTrue(all(stage["status"] != "completed" for stage in pipeline["stages"]))
         earlier, final = (attempt["class_specializations"] for attempt in
                           (report["attempts"][0], report["attempts"][-1]))
         self.assertEqual(set(earlier), set(final))
@@ -666,6 +724,9 @@ raise SystemExit(inspect_compiler.worker(argparse.Namespace(
         self.assertTrue(any(item["changed_since_read"] for item in reads))
         self.assertTrue(all(stage["status"] != "completed" for stage in report["stages"]))
         for attempt in report["attempts"]:
+            pipeline = attempt["pipeline"]
+            self.assertEqual((pipeline["source_provenance"], pipeline["status"]), ("inconsistent", "partial"))
+            self.assertTrue(all(stage["status"] != "completed" for stage in pipeline["stages"]))
             boundary = attempt["dynamic_boundary"]
             self.assertEqual(boundary["source_provenance"], "inconsistent")
             self.assertTrue(all(footprint["status"] != "completed" for footprint in boundary["footprints"].values()))
