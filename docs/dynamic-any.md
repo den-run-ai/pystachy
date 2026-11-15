@@ -969,7 +969,10 @@ can still need an explicit `list[Any]` destination.
   [bounded reconstruction contract](#class-values-and-type-keyed-registries)
   raise `NotImplementedError`, although `callable()` reports true. This includes
   classes with additional methods and no existing boxed adapter, uncompiled
-  initializers and `__init__` stored as class data.
+  initializers and `__init__` stored as class data. An imported class whose
+  constructor dependencies are discovered on demand reaches this error when called
+  through `Any` before a static call compiles its initializer, where
+  v0.5.0-alpha.3 rejected the program at compile time.
 
 - Stored `type()` of an erased `Callable` held in `Any` raises
   `NotImplementedError`; its existing supported calls still work. Restoring the

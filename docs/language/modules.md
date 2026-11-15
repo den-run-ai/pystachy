@@ -144,7 +144,10 @@ including the standard library's optional C accelerators. The imports run in ord
 
 Successful earlier imports keep their bindings. A failing module runs up to its raise,
 then the handler runs. A later import retries the failed module. These fallback choices can
-differ from CPython when CPython has a module or accelerator that Pystachy lacks.
+differ from CPython when CPython has a module or accelerator that Pystachy lacks. When
+Pystachy provides part of a module, such as `json` or `hashlib`, an optional import of it
+succeeds, so the `try` branch's uses of names the module lacks are compile-time errors
+rather than a fallback.
 
 An import in another kind of `try` statement, such as one with `finally` or other exception
 clauses, follows normal import rules: a missing module is a compile-time error.
