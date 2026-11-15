@@ -4692,8 +4692,8 @@ class Gen:
     def enum_builtin(self, c: str) -> str:
         return expressions_enum_builtin(self, c)
 
-    def enum_compare(self, op: str, a: Val, b: Val) -> Val:
-        return expressions_enum_compare(self, op, a, b)
+    def enum_compare(self, op: str, a: Val, b: Val, lenient: bool = False) -> Val:
+        return expressions_enum_compare(self, op, a, b, lenient)
 
     def cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
         return expressions_cmp_pick(self, op, at, bt)

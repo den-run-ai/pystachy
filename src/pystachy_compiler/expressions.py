@@ -3933,12 +3933,14 @@ def gen_enum_scalar(self, at: str, bt: str) -> bool:
     b = self.enum_builtin(bt)
     return (a == "int" and (b == "int" or bt in ["int", "float", "bool", BIG])) or (b == "int" and at in ["int", "float", "bool", BIG]) or (a == "str" and (b == "str" or bt == "str")) or (b == "str" and at == "str")
 
-def gen_enum_compare(self, op: str, a: Val, b: Val) -> Val:
+def gen_enum_compare(self, op: str, a: Val, b: Val, lenient: bool = False) -> Val:
     # Split an optional scalar before class dispatch. None still reaches an enum's
     # custom method, so the generic optional-number shortcut is not sufficient.
+    # Keep tuple searches' leniency through each split: an incompatible method
+    # annotation remains a nonmatch instead of rejecting a previously valid search.
     v = a if is_opt(a.t) else b
     if not is_opt(v.t):
-        return self.inherit_cmp(op, a, b)
+        return self.inherit_cmp(op, a, b, lenient)
     none = self.label()
     some = self.label()
     end = self.label()
@@ -3946,13 +3948,13 @@ def gen_enum_compare(self, op: str, a: Val, b: Val) -> Val:
     self.cbr(self.isnull(v), none, some)
     self.place(none)
     n = Val("null", "None")
-    r = self.cmp2(op, n if v is a else a, b if v is a else n)
+    r = self.enum_compare(op, n if v is a else a, b if v is a else n, lenient)
     if not self.term:
         self.incoming(ph, r.v, self.cur)
         self.br(end)
     self.place(some)
     value = self.deref(v)
-    r = self.cmp2(op, value if v is a else a, b if v is a else value)
+    r = self.enum_compare(op, value if v is a else a, b if v is a else value, lenient)
     if not self.term:
         self.incoming(ph, r.v, self.cur)
         self.br(end)
@@ -5294,7 +5296,7 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str, 
         # with subclasses calls its runtime class's (#1430), as == does (inherit_cmp)
         runtime = [x for x in [item.t, a.t] if x in self.classes and self.classes[x].exc == "" and self.classes[x].tag != 0 and len(self.cmp_kinds(x)) > 1]
         if self.enum_scalar(unopt(item.t), unopt(a.t)):
-            c = self.enum_compare("==", item, a)
+            c = self.enum_compare("==", item, a, True)
         elif len(runtime) > 0 or (lenient and (item.t in self.classes or a.t in self.classes)) or self.cmp_declining("==", item.t, a.t):
             c = self.inherit_cmp("==", item, a, True)
         else:
