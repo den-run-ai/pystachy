@@ -30,8 +30,6 @@ observable contract.
 | `statistics` | `Lib/statistics.py` | `80b677e786418c299ced99993f4a89804d4532e0b5e26971286713a6de538c18` |
 | `urllib.parse` | `Lib/urllib/parse.py` | `491b233e8d87a2ab73964afff029717177d53ad8def328ed9b00575db983da27` |
 | `contextlib` | `Lib/contextlib.py` | `c1e0d67b2007de11ae93cd36cf6faf38d9ab32656a832d592a49325eec579f96` |
-| `html` | `Lib/html/__init__.py` | `923d82d821e75e8d235392c10c145ab8587927b3faf9c952bbd48081eebd8522` |
-| `html.entities` | `Lib/html/entities.py` | `d9c65fb2828dbc1f3e399058a341d51e9375ec5bca95a8e92599c41bd5b78bde` |
 | `keyword` | `Lib/keyword.py` | `18c2be738c04ad20ad375f6a71db34b3823c7f40b0340f5294d0e89f3c9b093b` |
 | `token` | `Lib/token.py` | `1d2ab814992e6afbd6f1e5323edcddd681f65f7679ad1eb87fe1357a433a5bdf` |
 | `shlex` | `Lib/shlex.py` | `f927227de5ba5b1b2bdd75e3d9c8cb72b602b3bba3cc8edbf8fb554de0dc1fd7` |
