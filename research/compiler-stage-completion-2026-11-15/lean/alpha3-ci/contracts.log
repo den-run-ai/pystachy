@@ -1,0 +1,684 @@
+﻿2026-11-15T10:06:41.0851164Z Current runner version: '2.338.2'
+2026-11-15T10:06:41.0876597Z ##[group]Runner Image Provisioner
+2026-11-15T10:06:41.0877434Z Hosted Compute Agent
+2026-11-15T10:06:41.0878051Z Version: 20261103.629
+2026-11-15T10:06:41.0878686Z Commit: 15dbd9ccb5dbf34fae002b6ed1a2670f52df37bc
+2026-11-15T10:06:41.0879526Z Build Date: 2026-11-03T17:26:59Z
+2026-11-15T10:06:41.0880448Z Worker ID: {cda47722-a9f2-4aec-afff-3094fa18263e}
+2026-11-15T10:06:41.0881145Z Region: us-east-1
+2026-11-15T10:06:41.0881740Z Cloud: AWS
+2026-11-15T10:06:41.0882242Z ##[endgroup]
+2026-11-15T10:06:41.0883794Z ##[group]Operating System
+2026-11-15T10:06:41.0884398Z Ubuntu
+2026-11-15T10:06:41.0884862Z 24.04.5
+2026-11-15T10:06:41.0885380Z LTS
+2026-11-15T10:06:41.0885887Z ##[endgroup]
+2026-11-15T10:06:41.0886477Z ##[group]Runner Image
+2026-11-15T10:06:41.0887034Z Image: ubuntu-24.04
+2026-11-15T10:06:41.0887561Z Version: 20261111.127.1
+2026-11-15T10:06:41.0888888Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261111.127/images/ubuntu/Ubuntu2404-Readme.md
+2026-11-15T10:06:41.0890697Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261111.127
+2026-11-15T10:06:41.0891622Z ##[endgroup]
+2026-11-15T10:06:41.0892745Z ##[group]GITHUB_TOKEN Permissions
+2026-11-15T10:06:41.0894883Z Contents: read
+2026-11-15T10:06:41.0895498Z Metadata: read
+2026-11-15T10:06:41.0896036Z ##[endgroup]
+2026-11-15T10:06:41.0898106Z Secret source: Actions
+2026-11-15T10:06:41.0899039Z Cache mode: write
+2026-11-15T10:06:41.0899727Z Prepare workflow directory
+2026-11-15T10:06:41.1423996Z Prepare all required actions
+2026-11-15T10:06:41.1478447Z Getting action download info
+2026-11-15T10:06:41.2916711Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-11-15T10:06:42.9825841Z Download action repository 'actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0' (SHA:6d4fd22b20465ccc0f7354476588e8df7c9ca0e0)
+2026-11-15T10:06:43.1231382Z Download action repository 'actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333' (SHA:9000827ccba6bdab643e8b6fd33ac0654aef8333)
+2026-11-15T10:06:43.2663215Z Download action repository 'actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9' (SHA:55cc8345863c7cc4c66a329aec7e433d2d1c52a9)
+2026-11-15T10:06:43.3951237Z Download action repository 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9' (SHA:cf430e030ddbb5b0abf93d22962f4752f3646cd9)
+2026-11-15T10:06:43.6002519Z Complete job name: verify (contracts, x86_64)
+2026-11-15T10:06:43.6609089Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+2026-11-15T10:06:43.6609714Z with:
+2026-11-15T10:06:43.6610210Z   persist-credentials: false
+2026-11-15T10:06:43.6610564Z   fetch-depth: 2
+2026-11-15T10:06:43.6610850Z   repository: den-run-ai/pystachy
+2026-11-15T10:06:43.6612961Z   token: ***
+2026-11-15T10:06:43.6613252Z   ssh-strict: true
+2026-11-15T10:06:43.6613511Z   ssh-user: git
+2026-11-15T10:06:43.6613796Z   clean: true
+2026-11-15T10:06:43.6614149Z   sparse-checkout-cone-mode: true
+2026-11-15T10:06:43.6614474Z   fetch-tags: false
+2026-11-15T10:06:43.6614754Z   show-progress: true
+2026-11-15T10:06:43.6615021Z   lfs: false
+2026-11-15T10:06:43.6615261Z   submodules: false
+2026-11-15T10:06:43.6615545Z   set-safe-directory: true
+2026-11-15T10:06:43.6615838Z   allow-unsafe-pr-checkout: false
+2026-11-15T10:06:43.6616294Z env:
+2026-11-15T10:06:43.6616549Z   PYSTACHY_JOBS: 4
+2026-11-15T10:06:43.6616970Z   CI_EVENT_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:06:43.6617357Z   CI_HEAD_SHA: d266e919eb0c11dbbb41918b8d212bce7872910a
+2026-11-15T10:06:43.6617702Z   VERIFY_PROFILE: pr
+2026-11-15T10:06:43.6618229Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-15T10:06:43.6618573Z   CI_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:06:43.6618900Z ##[endgroup]
+2026-11-15T10:06:47.4660619Z Syncing repository: den-run-ai/pystachy
+2026-11-15T10:06:47.4662046Z ##[group]Getting Git version info
+2026-11-15T10:06:47.4662816Z Working directory is '/home/runner/work/pystachy/pystachy'
+2026-11-15T10:06:47.4663479Z [command]/usr/bin/git version
+2026-11-15T10:06:47.6805250Z git version 2.56.1
+2026-11-15T10:06:47.6819281Z ##[endgroup]
+2026-11-15T10:06:47.6828144Z Temporarily overriding HOME='/home/runner/work/_temp/ee934a87-03be-4418-b3a5-df3dd9b12a75' before making global git config changes
+2026-11-15T10:06:47.6828870Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-15T10:06:47.6833452Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/pystachy/pystachy
+2026-11-15T10:06:47.7236467Z Deleting the contents of '/home/runner/work/pystachy/pystachy'
+2026-11-15T10:06:47.7238830Z ##[group]Determining repository object format
+2026-11-15T10:06:47.7240299Z ##[endgroup]
+2026-11-15T10:06:47.7240990Z ##[group]Initializing the repository
+2026-11-15T10:06:47.7245232Z [command]/usr/bin/git init /home/runner/work/pystachy/pystachy
+2026-11-15T10:06:47.7706021Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-11-15T10:06:47.7706664Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-11-15T10:06:47.7707199Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-11-15T10:06:47.7707540Z hint: call:
+2026-11-15T10:06:47.7707747Z hint:
+2026-11-15T10:06:47.7708137Z hint: 	git config --global init.defaultBranch <name>
+2026-11-15T10:06:47.7708459Z hint:
+2026-11-15T10:06:47.7708791Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-11-15T10:06:47.7709265Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-11-15T10:06:47.7709616Z hint:
+2026-11-15T10:06:47.7709845Z hint: 	git branch -m <name>
+2026-11-15T10:06:47.7710266Z hint:
+2026-11-15T10:06:47.7710580Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-11-15T10:06:47.7717547Z Initialized empty Git repository in /home/runner/work/pystachy/pystachy/.git/
+2026-11-15T10:06:47.7725782Z [command]/usr/bin/git remote add origin https://github.com/den-run-ai/pystachy
+2026-11-15T10:06:47.7776951Z ##[endgroup]
+2026-11-15T10:06:47.7777588Z ##[group]Disabling automatic garbage collection
+2026-11-15T10:06:47.7780533Z [command]/usr/bin/git config --local gc.auto 0
+2026-11-15T10:06:47.7804440Z ##[endgroup]
+2026-11-15T10:06:47.7804869Z ##[group]Setting up auth
+2026-11-15T10:06:47.7805162Z Removing SSH command configuration
+2026-11-15T10:06:47.7808736Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-15T10:06:47.7835718Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-15T10:06:48.1770363Z Removing HTTP extra header
+2026-11-15T10:06:48.1781242Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-15T10:06:48.1802564Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-15T10:06:48.1951967Z Removing includeIf entries pointing to credentials config files
+2026-11-15T10:06:48.1956140Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-15T10:06:48.1978783Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-15T10:06:48.2125873Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-ae0b88e1-e444-45a4-9020-f9ad67b027bc.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-11-15T10:06:48.2153588Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/pystachy/pystachy/.git.path /home/runner/work/_temp/git-credentials-ae0b88e1-e444-45a4-9020-f9ad67b027bc.config
+2026-11-15T10:06:48.2177251Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/pystachy/pystachy/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-ae0b88e1-e444-45a4-9020-f9ad67b027bc.config
+2026-11-15T10:06:48.2200707Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-ae0b88e1-e444-45a4-9020-f9ad67b027bc.config
+2026-11-15T10:06:48.2223861Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-ae0b88e1-e444-45a4-9020-f9ad67b027bc.config
+2026-11-15T10:06:48.2248122Z ##[endgroup]
+2026-11-15T10:06:48.2248655Z ##[group]Fetching the repository
+2026-11-15T10:06:48.2249625Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=2 origin +106dfa1cfa5d8ebdb457ebb1d3011e10fd7f972f:refs/remotes/pull/1499/merge
+2026-11-15T10:06:48.8364997Z From https://github.com/den-run-ai/pystachy
+2026-11-15T10:06:48.8365649Z  * [new ref]         106dfa1cfa5d8ebdb457ebb1d3011e10fd7f972f -> pull/1499/merge
+2026-11-15T10:06:48.8369187Z ##[endgroup]
+2026-11-15T10:06:48.8370425Z ##[group]Determining the checkout info
+2026-11-15T10:06:48.8371101Z ##[endgroup]
+2026-11-15T10:06:48.8374701Z [command]/usr/bin/git sparse-checkout disable
+2026-11-15T10:06:48.8448092Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-11-15T10:06:48.8472176Z ##[group]Checking out the ref
+2026-11-15T10:06:48.8474635Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/1499/merge
+2026-11-15T10:06:49.1621296Z Note: switching to 'refs/remotes/pull/1499/merge'.
+2026-11-15T10:06:49.1621673Z 
+2026-11-15T10:06:49.1621922Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-11-15T10:06:49.1622513Z changes and commit them, and you can discard any commits you make in this
+2026-11-15T10:06:49.1622969Z state without impacting any branches by switching back to a branch.
+2026-11-15T10:06:49.1623206Z 
+2026-11-15T10:06:49.1623396Z If you want to create a new branch to retain commits you create, you may
+2026-11-15T10:06:49.1623821Z do so (now or later) by using -c with the switch command. Example:
+2026-11-15T10:06:49.1624013Z 
+2026-11-15T10:06:49.1624145Z   git switch -c <new-branch-name>
+2026-11-15T10:06:49.1624300Z 
+2026-11-15T10:06:49.1624432Z Or undo this operation with:
+2026-11-15T10:06:49.1624618Z 
+2026-11-15T10:06:49.1624700Z   git switch -
+2026-11-15T10:06:49.1624873Z 
+2026-11-15T10:06:49.1625280Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-11-15T10:06:49.1625524Z 
+2026-11-15T10:06:49.1625888Z HEAD is now at 106dfa1 Merge d266e919eb0c11dbbb41918b8d212bce7872910a into 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:06:49.1640191Z ##[endgroup]
+2026-11-15T10:06:49.1683838Z [command]/usr/bin/git log -1 --format=%H
+2026-11-15T10:06:49.1704931Z 106dfa1cfa5d8ebdb457ebb1d3011e10fd7f972f
+2026-11-15T10:06:49.1711585Z ##[group]Removing auth
+2026-11-15T10:06:49.1712066Z Removing SSH command configuration
+2026-11-15T10:06:49.1713711Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-15T10:06:49.1737088Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-15T10:06:49.1899350Z Removing HTTP extra header
+2026-11-15T10:06:49.1901854Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-15T10:06:49.1923217Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-15T10:06:49.2077763Z Removing includeIf entries pointing to credentials config files
+2026-11-15T10:06:49.2081156Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-15T10:06:49.2103759Z includeif.gitdir:/home/runner/work/pystachy/pystachy/.git.path
+2026-11-15T10:06:49.2104692Z includeif.gitdir:/home/runner/work/pystachy/pystachy/.git/worktrees/*.path
+2026-11-15T10:06:49.2105347Z includeif.gitdir:/github/workspace/.git.path
+2026-11-15T10:06:49.2105814Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-15T10:06:49.2110308Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/pystachy/pystachy/.git.path
+2026-11-15T10:06:49.2126973Z /home/runner/work/_temp/git-credentials-ae0b88e1-e444-45a4-9020-f9ad67b027bc.config
+2026-11-15T10:06:49.2144320Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/pystachy/pystachy/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-ae0b88e1\-e444\-45a4\-9020\-f9ad67b027bc\.config
+2026-11-15T10:06:49.2162995Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/pystachy/pystachy/.git/worktrees/*.path
+2026-11-15T10:06:49.2180680Z /home/runner/work/_temp/git-credentials-ae0b88e1-e444-45a4-9020-f9ad67b027bc.config
+2026-11-15T10:06:49.2186290Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/pystachy/pystachy/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-ae0b88e1\-e444\-45a4\-9020\-f9ad67b027bc\.config
+2026-11-15T10:06:49.2210691Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-11-15T10:06:49.2227776Z /github/runner_temp/git-credentials-ae0b88e1-e444-45a4-9020-f9ad67b027bc.config
+2026-11-15T10:06:49.2232855Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-ae0b88e1\-e444\-45a4\-9020\-f9ad67b027bc\.config
+2026-11-15T10:06:49.2256891Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-15T10:06:49.2275231Z /github/runner_temp/git-credentials-ae0b88e1-e444-45a4-9020-f9ad67b027bc.config
+2026-11-15T10:06:49.2279864Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-ae0b88e1\-e444\-45a4\-9020\-f9ad67b027bc\.config
+2026-11-15T10:06:49.2303215Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-15T10:06:49.2454701Z Removing credentials config '/home/runner/work/_temp/git-credentials-ae0b88e1-e444-45a4-9020-f9ad67b027bc.config'
+2026-11-15T10:06:49.2460419Z ##[endgroup]
+2026-11-15T10:06:49.2647138Z ##[group]Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+2026-11-15T10:06:49.2647480Z with:
+2026-11-15T10:06:49.2647751Z   python-version-file: .python-version
+2026-11-15T10:06:49.2648013Z   cache: pip
+2026-11-15T10:06:49.2648262Z   cache-dependency-path: tools/requirements-dev.txt
+2026-11-15T10:06:49.2648572Z   check-latest: false
+2026-11-15T10:06:49.2650827Z   token: ***
+2026-11-15T10:06:49.2651154Z   mirror: https://raw.githubusercontent.com/actions/python-versions/main
+2026-11-15T10:06:49.2651510Z   update-environment: true
+2026-11-15T10:06:49.2651756Z   allow-prereleases: false
+2026-11-15T10:06:49.2651993Z   freethreaded: false
+2026-11-15T10:06:49.2652228Z env:
+2026-11-15T10:06:49.2652464Z   PYSTACHY_JOBS: 4
+2026-11-15T10:06:49.2652729Z   CI_EVENT_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:06:49.2653071Z   CI_HEAD_SHA: d266e919eb0c11dbbb41918b8d212bce7872910a
+2026-11-15T10:06:49.2653360Z   VERIFY_PROFILE: pr
+2026-11-15T10:06:49.2653695Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-15T10:06:49.2653993Z   CI_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:06:49.2654269Z ##[endgroup]
+2026-11-15T10:06:49.3498876Z Resolved .python-version as 3.13.16
+2026-11-15T10:06:49.3499502Z ##[group]Installed versions
+2026-11-15T10:06:49.3515390Z Version 3.13.16 was not found in the local cache
+2026-11-15T10:06:49.9818123Z Version 3.13.16 is available for downloading
+2026-11-15T10:06:49.9818780Z Download from "https://github.com/actions/python-versions/releases/download/3.13.16-36805956071/python-3.13.16-linux-24.04-x64.tar.gz"
+2026-11-15T10:06:50.6467195Z Extract downloaded archive
+2026-11-15T10:06:50.6568432Z [command]/usr/bin/tar xz --warning=no-unknown-keyword --overwrite -C /home/runner/work/_temp/40cfdff7-2e05-4b51-8a6f-22d90dc1753d -f /home/runner/work/_temp/c2a79c6c-cb38-4c32-bfd4-64ef6b4c296a
+2026-11-15T10:06:52.4315510Z Execute installation script
+2026-11-15T10:06:52.4389486Z Check if Python hostedtoolcache folder exist...
+2026-11-15T10:06:52.4390299Z Create Python 3.13.16 folder
+2026-11-15T10:06:52.4399616Z Copy Python binaries to hostedtoolcache folder
+2026-11-15T10:06:52.6528651Z Create additional symlinks (Required for the UsePythonVersion Azure Pipelines task and the setup-python GitHub Action)
+2026-11-15T10:06:52.6557466Z Upgrading pip...
+2026-11-15T10:06:54.3054035Z Collecting pip
+2026-11-15T10:06:54.3441313Z Downloading pip-26.3-py3-none-any.whl.metadata (4.6 kB)
+2026-11-15T10:06:54.3515021Z Downloading pip-26.3-py3-none-any.whl (2.0 MB)
+2026-11-15T10:06:54.3832858Z ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.0/2.0 MB 138.4 MB/s  0:00:00
+2026-11-15T10:06:54.3833294Z 
+2026-11-15T10:06:54.5187486Z Installing collected packages: pip
+2026-11-15T10:06:54.5188199Z Attempting uninstall: pip
+2026-11-15T10:06:54.5208155Z Found existing installation: pip 26.2.1
+2026-11-15T10:06:54.5372288Z Uninstalling pip-26.2.1:
+2026-11-15T10:06:54.5403561Z Successfully uninstalled pip-26.2.1
+2026-11-15T10:06:55.1648008Z Successfully installed pip-26.3
+2026-11-15T10:06:55.2203890Z Create complete file
+2026-11-15T10:06:55.2232520Z Successfully set up CPython (3.13.16)
+2026-11-15T10:06:55.2233110Z ##[endgroup]
+2026-11-15T10:06:55.2419694Z [command]/opt/hostedtoolcache/Python/3.13.16/x64/bin/pip cache dir
+2026-11-15T10:06:55.3436854Z /home/runner/.cache/pip
+2026-11-15T10:06:55.4036966Z Cache hit for: setup-python-Linux-x64-24.04-Ubuntu-python-3.13.16-pip-1aae6a492a841f2c802a95114ba38e013026d5fa37b34831af2d4165a21ab83b
+2026-11-15T10:06:55.7805958Z Received 87558691 of 87558691 (100.0%), 276.5 MBs/sec
+2026-11-15T10:06:55.7806873Z Cache Size: ~84 MB (87558691 B)
+2026-11-15T10:06:55.7832275Z [command]/usr/bin/tar -xf /home/runner/work/_temp/f35a7445-348a-4867-be16-9660630cf941/cache.tzst -P -C /home/runner/work/pystachy/pystachy --use-compress-program unzstd
+2026-11-15T10:06:55.8487445Z Cache restored successfully
+2026-11-15T10:06:55.8521998Z Cache restored from key: setup-python-Linux-x64-24.04-Ubuntu-python-3.13.16-pip-1aae6a492a841f2c802a95114ba38e013026d5fa37b34831af2d4165a21ab83b
+2026-11-15T10:06:55.8688744Z ##[group]Run case "$VERIFY_GROUP" in
+2026-11-15T10:06:55.8689169Z [36;1mcase "$VERIFY_GROUP" in[0m
+2026-11-15T10:06:55.8690216Z [36;1m  hosted|native-[012]|native-aot-[0123]|opt-off-[012]|python-free-[0123]|gc-self|gc-ir-[01]|gc-jit-[01]|gc-aot-[012]|runtime-cache|dynany-optin-[012]|python-int-optin-[012]|contracts|scaling|safety-0|opt-in|cache-gc)[0m
+2026-11-15T10:06:55.8690918Z [36;1m    tools/setup.sh --minimal ;;[0m
+2026-11-15T10:06:55.8691207Z [36;1m  *) tools/setup.sh --verify ;;[0m
+2026-11-15T10:06:55.8691501Z [36;1mesac[0m
+2026-11-15T10:06:56.2393452Z shell: /usr/bin/bash -e {0}
+2026-11-15T10:06:56.2393804Z env:
+2026-11-15T10:06:56.2394087Z   PYSTACHY_JOBS: 4
+2026-11-15T10:06:56.2394401Z   CI_EVENT_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:06:56.2394780Z   CI_HEAD_SHA: d266e919eb0c11dbbb41918b8d212bce7872910a
+2026-11-15T10:06:56.2395161Z   VERIFY_PROFILE: pr
+2026-11-15T10:06:56.2395470Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-15T10:06:56.2396008Z   CI_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:06:56.2396361Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:06:56.2396748Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-15T10:06:56.2397188Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:06:56.2397530Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:06:56.2397900Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:06:56.2398425Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-15T10:06:56.2398802Z   VERIFY_GROUP: contracts
+2026-11-15T10:06:56.2399046Z ##[endgroup]
+2026-11-15T10:07:04.3428248Z Ubuntu clang version 18.1.3 (1ubuntu1)
+2026-11-15T10:07:04.3534215Z Ubuntu LLVM version 18.1.3
+2026-11-15T10:07:04.3624718Z Ubuntu LLVM version 18.1.3
+2026-11-15T10:07:04.3707778Z Ubuntu LLVM version 18.1.3
+2026-11-15T10:07:04.3787791Z Ubuntu LLVM version 18.1.3
+2026-11-15T10:07:04.3796459Z Python 3.13.16
+2026-11-15T10:07:04.3797547Z ready: make PY=/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13
+2026-11-15T10:07:04.3913659Z ##[group]Run actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+2026-11-15T10:07:04.3914049Z with:
+2026-11-15T10:07:04.3914305Z   name: verified-bootstrap-x86_64
+2026-11-15T10:07:04.3914585Z   path: build/ci-bootstrap
+2026-11-15T10:07:04.3914832Z   merge-multiple: false
+2026-11-15T10:07:04.3915082Z   repository: den-run-ai/pystachy
+2026-11-15T10:07:04.3915424Z   run-id: 43701897758
+2026-11-15T10:07:04.3915655Z   skip-decompress: false
+2026-11-15T10:07:04.3915900Z   digest-mismatch: error
+2026-11-15T10:07:04.3916144Z env:
+2026-11-15T10:07:04.3916373Z   PYSTACHY_JOBS: 4
+2026-11-15T10:07:04.3916652Z   CI_EVENT_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:07:04.3916991Z   CI_HEAD_SHA: d266e919eb0c11dbbb41918b8d212bce7872910a
+2026-11-15T10:07:04.3917292Z   VERIFY_PROFILE: pr
+2026-11-15T10:07:04.3917568Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-15T10:07:04.3917864Z   CI_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:07:04.3918302Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:07:04.3918668Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-15T10:07:04.3919088Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:07:04.3919417Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:07:04.3919777Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:07:04.3920292Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-15T10:07:04.3920628Z ##[endgroup]
+2026-11-15T10:07:04.5024456Z Downloading single artifact
+2026-11-15T10:07:04.5705089Z Preparing to download the following artifacts:
+2026-11-15T10:07:04.5706160Z - verified-bootstrap-x86_64 (ID: 14156722376, Size: 9443372, Expected Digest: sha256:f0ff58da941e5f7e461e0e5b261bfdddcd7f4ce98288844ee43fc5875ff3a908)
+2026-11-15T10:07:04.7079281Z Redirecting to blob download url: https://productionresultssa6.blob.core.windows.net/actions-results/84505212-2cdb-8bee-bcc5-ef9375f8cd2f/workflow-job-run-5702fad0-0452-5bd6-9b0f-8186c1b19675/artifacts/a767f8208e76347bd597b40ad6b34dfd978d6d400b07b2af453ccb8e86ce156b.zip
+2026-11-15T10:07:04.7081117Z Starting download of artifact to: /home/runner/work/pystachy/pystachy/build/ci-bootstrap
+2026-11-15T10:07:04.7675614Z (node:2381) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.
+2026-11-15T10:07:04.7676729Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-11-15T10:07:05.0052689Z SHA256 digest of downloaded artifact is f0ff58da941e5f7e461e0e5b261bfdddcd7f4ce98288844ee43fc5875ff3a908
+2026-11-15T10:07:05.0053613Z Artifact download completed successfully.
+2026-11-15T10:07:05.0054070Z Total of 1 artifact(s) downloaded
+2026-11-15T10:07:05.0054924Z Download artifact has finished successfully
+2026-11-15T10:07:05.0161188Z ##[group]Run tests/verify.sh "$VERIFY_GROUP"
+2026-11-15T10:07:05.0161676Z [36;1mtests/verify.sh "$VERIFY_GROUP"[0m
+2026-11-15T10:07:05.0190907Z shell: /usr/bin/bash -e {0}
+2026-11-15T10:07:05.0191318Z env:
+2026-11-15T10:07:05.0191582Z   PYSTACHY_JOBS: 4
+2026-11-15T10:07:05.0191878Z   CI_EVENT_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:07:05.0192313Z   CI_HEAD_SHA: d266e919eb0c11dbbb41918b8d212bce7872910a
+2026-11-15T10:07:05.0192737Z   VERIFY_PROFILE: pr
+2026-11-15T10:07:05.0193055Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-15T10:07:05.0193366Z   CI_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:07:05.0193721Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:07:05.0194146Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-15T10:07:05.0194510Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:07:05.0194994Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:07:05.0195370Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:07:05.0195730Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-15T10:07:05.0196062Z   VERIFY_GROUP: contracts
+2026-11-15T10:07:05.0196403Z   VERIFY_BOOTSTRAP_DIR: build/ci-bootstrap
+2026-11-15T10:07:05.0196672Z ##[endgroup]
+2026-11-15T10:07:09.1735524Z bootstrap      pass     0.440s  build/verify/bootstrap-restore.log
+2026-11-15T10:12:43.2490336Z check-ir       pass    54.843s  build/verify/check-ir.log
+2026-11-15T10:12:43.2496414Z runtime-table  pass    28.150s  build/verify/runtime-table.log
+2026-11-15T10:12:43.2503363Z rtcheck        pass    33.420s  build/verify/rtcheck.log
+2026-11-15T10:12:43.2511808Z re-fuzz        pass    38.155s  build/verify/re-fuzz.log
+2026-11-15T10:12:43.2518935Z dynany-fuzz    pass    16.802s  build/verify/dynany-fuzz.log
+2026-11-15T10:12:43.2525614Z re-probe       pass     1.972s  build/verify/re-probe.log
+2026-11-15T10:12:43.2532323Z rt-abi         pass    23.358s  build/verify/rt-abi.log
+2026-11-15T10:12:43.2538623Z inherited-ast  pass     1.272s  build/verify/inherited-ast.log
+2026-11-15T10:12:43.2546013Z streaming      pass     1.091s  build/verify/streaming.log
+2026-11-15T10:12:43.2554076Z ffi            pass    61.631s  build/verify/ffi.log
+2026-11-15T10:12:43.2561742Z list-storage   pass     8.862s  build/verify/list-storage.log
+2026-11-15T10:12:43.2568656Z container-eq   pass     6.846s  build/verify/container-eq.log
+2026-11-15T10:12:43.2575467Z weakrefs       pass     6.753s  build/verify/weakrefs.log
+2026-11-15T10:12:43.2582489Z box-slots      pass     6.907s  build/verify/box-slots.log
+2026-11-15T10:12:43.2589081Z file-buffers   pass     6.886s  build/verify/file-buffers.log
+2026-11-15T10:12:43.2595944Z select-io      pass     6.968s  build/verify/select-io.log
+2026-11-15T10:12:43.2602802Z dict-probes    pass     7.645s  build/verify/dict-probes.log
+2026-11-15T10:12:43.2609335Z compile-limits pass    44.972s  build/verify/compile-limits.log
+2026-11-15T10:12:43.2616146Z jit-dead-code  pass    98.275s  build/verify/jit-dead-code.log
+2026-11-15T10:12:43.2623225Z aot-dead-code  pass    45.040s  build/verify/aot-dead-code.log
+2026-11-15T10:12:43.2630098Z unicode-audit  pass    89.197s  build/verify/unicode-audit.log
+2026-11-15T10:12:46.7061076Z verification: 22/22 steps passed -> build/verification.json
+2026-11-15T10:12:46.7133049Z ##[group]Run actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+2026-11-15T10:12:46.7133429Z with:
+2026-11-15T10:12:46.7133701Z   path: ~/.cache/pystachy/lean
+2026-11-15T10:12:46.7134094Z   key: lean-Linux-X64-7289597a44543246c9227b8cae501767e095ce17f6d448b95fc4a8dc97268f6d
+2026-11-15T10:12:46.7134516Z   enableCrossOsArchive: false
+2026-11-15T10:12:46.7134822Z   fail-on-cache-miss: false
+2026-11-15T10:12:46.7135172Z   lookup-only: false
+2026-11-15T10:12:46.7135430Z   save-always: false
+2026-11-15T10:12:46.7135660Z env:
+2026-11-15T10:12:46.7135869Z   PYSTACHY_JOBS: 4
+2026-11-15T10:12:46.7136193Z   CI_EVENT_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:12:46.7136554Z   CI_HEAD_SHA: d266e919eb0c11dbbb41918b8d212bce7872910a
+2026-11-15T10:12:46.7136869Z   VERIFY_PROFILE: pr
+2026-11-15T10:12:46.7137140Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-15T10:12:46.7137467Z   CI_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:12:46.7138139Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:12:46.7138529Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-15T10:12:46.7139033Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:12:46.7139445Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:12:46.7139805Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:12:46.7140391Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-15T10:12:46.7140716Z ##[endgroup]
+2026-11-15T10:12:46.8739118Z Cache hit for: lean-Linux-X64-7289597a44543246c9227b8cae501767e095ce17f6d448b95fc4a8dc97268f6d
+2026-11-15T10:12:47.9110779Z Received 184549376 of 594451567 (31.0%), 175.6 MBs/sec
+2026-11-15T10:12:48.9112345Z Received 482344960 of 594451567 (81.1%), 229.8 MBs/sec
+2026-11-15T10:12:49.3665705Z Received 594451567 of 594451567 (100.0%), 230.6 MBs/sec
+2026-11-15T10:12:49.3666755Z Cache Size: ~567 MB (594451567 B)
+2026-11-15T10:12:49.3723152Z [command]/usr/bin/tar -xf /home/runner/work/_temp/024c7ec9-867b-4221-a9d1-8e3cdcbaf1ba/cache.tzst -P -C /home/runner/work/pystachy/pystachy --use-compress-program unzstd
+2026-11-15T10:12:49.7056811Z Cache restored successfully
+2026-11-15T10:12:50.0471276Z Cache restored from key: lean-Linux-X64-7289597a44543246c9227b8cae501767e095ce17f6d448b95fc4a8dc97268f6d
+2026-11-15T10:12:50.0625515Z ##[group]Run lean_boundary_dir=$(mktemp -d)
+2026-11-15T10:12:50.0625817Z [36;1mlean_boundary_dir=$(mktemp -d)[0m
+2026-11-15T10:12:50.0626070Z [36;1mtrap 'rm -rf "$lean_boundary_dir"' EXIT[0m
+2026-11-15T10:12:50.0626391Z [36;1mlean_bin=$(python3 tools/setup_lean.py --output "$lean_boundary_dir")[0m
+2026-11-15T10:12:50.0626704Z [36;1mcase "$VERIFY_GROUP" in[0m
+2026-11-15T10:12:50.0626912Z [36;1m  gc-jit-1)[0m
+2026-11-15T10:12:50.0627109Z [36;1m    PATH="$lean_bin:$PATH" \[0m
+2026-11-15T10:12:50.0627473Z [36;1m      make check-lean-corpus LEAN_CORPUS_FLAGS='--jobs 2 --report build/verify/lean-corpus.json'[0m
+2026-11-15T10:12:50.0627838Z [36;1m    PATH="$lean_bin:$PATH" \[0m
+2026-11-15T10:12:50.0628179Z [36;1m      make check-lean-int LEAN_INT_FLAGS='--jobs 2 --report build/verify/lean-int.json' ;;[0m
+2026-11-15T10:12:50.0628521Z [36;1mesac[0m
+2026-11-15T10:12:50.0628701Z [36;1mcase "$VERIFY_GROUP" in[0m
+2026-11-15T10:12:50.0628903Z [36;1m  contracts)[0m
+2026-11-15T10:12:50.0629137Z [36;1m    PATH="$lean_bin:$PATH" \[0m
+2026-11-15T10:12:50.0630679Z [36;1m      make check-lean-guards LEAN_GUARD_FLAGS='--jobs 2 --report build/verify/lean-guards.json tools/lean_boundary/examples/null_guards.py tools/lean_boundary/examples/null_reloads.py tools/lean_boundary/examples/union_effects.py tools/lean_boundary/examples/union_guards.py tools/lean_boundary/examples/union_split.py tools/lean_boundary/examples/union_memory.py tools/lean_boundary/examples/union_defaults.py tools/lean_boundary/examples/gc_arrays.py tools/lean_boundary/examples/field_init.py' ;;[0m
+2026-11-15T10:12:50.0631913Z [36;1mesac[0m
+2026-11-15T10:12:50.0632091Z [36;1mcase "$VERIFY_GROUP" in[0m
+2026-11-15T10:12:50.0632287Z [36;1m  scaling)[0m
+2026-11-15T10:12:50.0632487Z [36;1m    PATH="$lean_bin:$PATH" \[0m
+2026-11-15T10:12:50.0632887Z [36;1m      make check-lean-storage LEAN_STORAGE_FLAGS='--jobs 2 --report build/verify/lean-storage.json' ;;[0m
+2026-11-15T10:12:50.0633250Z [36;1mesac[0m
+2026-11-15T10:12:50.0660916Z shell: /usr/bin/bash -e {0}
+2026-11-15T10:12:50.0661150Z env:
+2026-11-15T10:12:50.0661327Z   PYSTACHY_JOBS: 4
+2026-11-15T10:12:50.0661576Z   CI_EVENT_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:12:50.0661882Z   CI_HEAD_SHA: d266e919eb0c11dbbb41918b8d212bce7872910a
+2026-11-15T10:12:50.0662139Z   VERIFY_PROFILE: pr
+2026-11-15T10:12:50.0662341Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-15T10:12:50.0662611Z   CI_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:12:50.0662908Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:12:50.0663251Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-15T10:12:50.0663587Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:12:50.0664011Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:12:50.0664308Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:12:50.0664622Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-15T10:12:50.0664894Z   VERIFY_GROUP: contracts
+2026-11-15T10:12:50.0665069Z ##[endgroup]
+2026-11-15T10:12:56.5141340Z cd tools/lean_boundary && lake build
+2026-11-15T10:12:57.2721570Z ✔ [1/15] Built PystachyAlias (711ms)
+2026-11-15T10:12:57.8744241Z ✔ [3/23] Built PystachyInt (1.3s)
+2026-11-15T10:12:57.9778594Z ✔ [5/38] Built PystachyCompanion (641ms)
+2026-11-15T10:12:58.1758480Z ✔ [7/42] Built PystachyBoundary (1.5s)
+2026-11-15T10:12:58.4805916Z ✔ [9/42] Built PystachyInt:c.o (564ms)
+2026-11-15T10:12:58.8821957Z ✔ [10/42] Built PystachyPipeline (942ms)
+2026-11-15T10:12:58.9841365Z ✔ [12/46] Built PystachyBoundary:c.o (454ms)
+2026-11-15T10:12:59.0851479Z ✔ [13/46] Built PystachyAlias:c.o (263ms)
+2026-11-15T10:12:59.6921986Z ✔ [14/46] Built IntMain (1.5s)
+2026-11-15T10:12:59.7844510Z ✔ [15/46] Built PystachyGuards (803ms)
+2026-11-15T10:13:00.0858636Z ✔ [17/46] Built PystachyInline (1.0s)
+2026-11-15T10:13:00.5891884Z ✔ [19/46] Built PystachyLayout (840ms)
+2026-11-15T10:13:00.9872898Z ✔ [22/50] Built PystachyStorage (1.4s)
+2026-11-15T10:13:00.9891038Z ✔ [24/50] Built PystachyCompanion:c.o (314ms)
+2026-11-15T10:13:01.1911687Z ✔ [25/50] Built PystachyLayout:c.o (206ms)
+2026-11-15T10:13:01.2911834Z ✔ [26/50] Built AliasMain (1.2s)
+2026-11-15T10:13:01.4921334Z ✔ [27/50] Built IntMain:c.o (565ms)
+2026-11-15T10:13:01.7909613Z ✔ [28/50] Built PystachyPipeline:c.o (494ms)
+2026-11-15T10:13:02.2951482Z ✔ [29/50] Built CompanionMain (1.1s)
+2026-11-15T10:13:02.3946681Z ℹ [30/50] Built GuardAudit (925ms)
+2026-11-15T10:13:02.3991165Z info: GuardAudit.lean:6:0: PystachyGuards.removed_check_nonnull: axiom audit passed ([propext, Classical.choice, Quot.sound])
+2026-11-15T10:13:02.4060910Z info: GuardAudit.lean:6:0: PystachyGuards.union_member_matches: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:02.4120793Z info: GuardAudit.lean:6:0: PystachyGuards.union_read_nonnull: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:02.4170998Z info: GuardAudit.lean:6:0: PystachyGuards.field_assigned: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:02.4944862Z ✔ [32/50] Built AliasMain:c.o (251ms)
+2026-11-15T10:13:03.2031740Z ✔ [33/50] Built Main (1.3s)
+2026-11-15T10:13:03.5985112Z ✔ [34/50] Built «pystachy-int»:exe (1.1s)
+2026-11-15T10:13:03.5990994Z ✔ [35/50] Built CompanionMain:c.o (451ms)
+2026-11-15T10:13:03.7031546Z ✔ [36/50] Built PipelineMain (1.3s)
+2026-11-15T10:13:04.4024872Z ✔ [37/50] Built Main:c.o (781ms)
+2026-11-15T10:13:04.7031586Z ✔ [38/50] Built «pystachy-alias»:exe (1.1s)
+2026-11-15T10:13:05.0111911Z ✔ [39/50] Built «pystachy-companion»:exe (1.2s)
+2026-11-15T10:13:05.0112651Z ✔ [40/50] Built PipelineMain:c.o (639ms)
+2026-11-15T10:13:05.6071703Z ✔ [41/50] Built «pystachy-boundary»:exe (931ms)
+2026-11-15T10:13:05.9062700Z ✔ [42/50] Built PystachyAccess (9.3s)
+2026-11-15T10:13:05.9081799Z ✔ [44/50] Built «pystachy-pipeline»:exe (859ms)
+2026-11-15T10:13:06.7077104Z ℹ [45/50] Built Audit (845ms)
+2026-11-15T10:13:06.7077950Z info: Audit.lean:17:0: PystachyBoundary.check_iff: axiom audit passed ([propext])
+2026-11-15T10:13:06.7078769Z info: Audit.lean:17:0: PystachyLayout.checked_projection: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:06.7079557Z info: Audit.lean:17:0: PystachyLayout.accepted_layout_projection: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:06.7080778Z info: Audit.lean:17:0: PystachyAlias.accepted_reference_roundtrip: axiom audit passed ([propext])
+2026-11-15T10:13:06.7081748Z info: Audit.lean:17:0: PystachyAlias.accepted_alias_write: axiom audit passed ([propext])
+2026-11-15T10:13:06.7082569Z info: Audit.lean:17:0: PystachyAlias.accepted_traces_reference: axiom audit passed ([propext])
+2026-11-15T10:13:06.7083384Z info: Audit.lean:17:0: PystachyAlias.accepted_root_chain: axiom audit passed ([propext])
+2026-11-15T10:13:06.7084546Z info: Audit.lean:17:0: PystachyCompanion.accepted_identity_roundtrip: axiom audit passed ([propext])
+2026-11-15T10:13:06.7085434Z info: Audit.lean:17:0: PystachyCompanion.accepted_traces_identity: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:06.7086314Z info: Audit.lean:17:0: PystachyCompanion.accepted_root_chain: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:06.7087360Z info: Audit.lean:17:0: PystachyCompanion.accepted_boxed_root_chain: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:06.7088236Z info: Audit.lean:17:0: PystachyBoundary.reachable_facts: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:06.7089087Z info: Audit.lean:17:0: PystachyBoundary.accepted_payload_safe: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:06.7090199Z info: Audit.lean:17:0: PystachyAccess.reachable_invariant: axiom audit passed ([propext, Classical.choice, Quot.sound])
+2026-11-15T10:13:06.7091186Z info: Audit.lean:17:0: PystachyAccess.accepted_access_safe: axiom audit passed ([propext, Classical.choice, Quot.sound])
+2026-11-15T10:13:06.7092020Z info: Audit.lean:17:0: PystachyAccess.writeField_step: axiom audit passed ([propext])
+2026-11-15T10:13:06.7093225Z info: Audit.lean:17:0: PystachyAccess.accepted_write_progress: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:06.7094017Z info: Audit.lean:17:0: PystachyInt.known_fits: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:06.7094675Z info: Audit.lean:17:0: PystachyInt.mod_fits: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:06.7095526Z info: Audit.lean:17:0: PystachyInt.floordiv_fits: axiom audit passed ([propext, Classical.choice, Quot.sound])
+2026-11-15T10:13:06.7096311Z info: Audit.lean:17:0: PystachyInt.shr_fits: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:06.7097014Z info: Audit.lean:17:0: PystachyInt.shl_exact: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:06.7097738Z info: Audit.lean:17:0: PystachyInt.bitwise_fits: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:06.7098677Z info: Audit.lean:17:0: PystachyInt.and_mask: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:06.7099450Z info: Audit.lean:17:0: PystachyInline.no_overflow_exact: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:06.7100498Z info: Audit.lean:17:0: PystachyInline.no_overflow_fits: axiom audit passed ([propext, Classical.choice, Quot.sound])
+2026-11-15T10:13:06.7101497Z info: Audit.lean:17:0: PystachyInline.accepted_arithmetic_exact: axiom audit passed ([propext, Classical.choice, Quot.sound])
+2026-11-15T10:13:06.7102453Z info: Audit.lean:17:0: PystachyStorage.low_of_fit: axiom audit passed ([propext, Classical.choice, Quot.sound])
+2026-11-15T10:13:06.7103267Z info: Audit.lean:17:0: PystachyStorage.promoting_decode: axiom audit passed ([propext])
+2026-11-15T10:13:06.7104106Z info: Audit.lean:17:0: PystachyStorage.plain_view_safe: axiom audit passed ([propext, Classical.choice, Quot.sound])
+2026-11-15T10:13:06.7105140Z info: Audit.lean:17:0: PystachyStorage.plain_marker_has_no_tail: axiom audit passed ([propext])
+2026-11-15T10:13:06.7106024Z info: Audit.lean:17:0: PystachyStorage.null_digits_narrow: axiom audit passed ([propext, Classical.choice, Quot.sound])
+2026-11-15T10:13:06.7106856Z info: Audit.lean:17:0: PystachyStorage.slot_fits_iff: axiom audit passed ([propext])
+2026-11-15T10:13:06.7107601Z info: Audit.lean:17:0: PystachyStorage.pair_truth_zero: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:06.7108352Z info: Audit.lean:17:0: PystachyStorage.layout_has_tail: axiom audit passed ([])
+2026-11-15T10:13:06.7109154Z info: Audit.lean:17:0: PystachyStorage.accepted_low_word: axiom audit passed ([propext, Classical.choice, Quot.sound])
+2026-11-15T10:13:06.7110429Z info: Audit.lean:17:0: PystachyStorage.accepted_plain_view: axiom audit passed ([propext, Classical.choice, Quot.sound])
+2026-11-15T10:13:06.7111417Z info: Audit.lean:17:0: PystachyStorage.accepted_tail_read: axiom audit passed ([propext, Classical.choice, Quot.sound])
+2026-11-15T10:13:06.7112588Z info: Audit.lean:17:0: PystachyStorage.accepted_narrowing: axiom audit passed ([propext, Classical.choice, Quot.sound])
+2026-11-15T10:13:06.7113643Z info: Audit.lean:17:0: PystachyStorage.accepted_slot_narrowing: axiom audit passed ([propext, Classical.choice, Quot.sound])
+2026-11-15T10:13:06.7114676Z info: Audit.lean:17:0: PystachyStorage.accepted_optional_slot_narrowing: axiom audit passed ([propext, Classical.choice, Quot.sound])
+2026-11-15T10:13:06.7115625Z info: Audit.lean:17:0: PystachyStorage.accepted_stack_copy: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:06.7116484Z info: Audit.lean:17:0: PystachyStorage.erase_read_move_iff: axiom audit passed ([propext])
+2026-11-15T10:13:06.7122353Z info: Audit.lean:17:0: PystachyStorage.projected_reachable: axiom audit passed ([propext])
+2026-11-15T10:13:06.7123248Z info: Audit.lean:17:0: PystachyStorage.accepted_projected_payload: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:06.7124115Z info: Audit.lean:17:0: PystachyPipeline.step_preserves: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:06.7125145Z info: Audit.lean:17:0: PystachyPipeline.reachable_wellFormed: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:06.7125943Z info: Audit.lean:17:0: PystachyPipeline.active_cannot_begin: axiom audit passed ([propext])
+2026-11-15T10:13:06.7126664Z info: Audit.lean:17:0: PystachyPipeline.consumed_cannot_step: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:06.7127498Z info: Audit.lean:17:0: PystachyPipeline.consumed_has_finalization: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:06.7128556Z info: Audit.lean:17:0: PystachyPipeline.accepted_report_complete: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:06.7129435Z info: Audit.lean:17:0: PystachyPipeline.accepted_attempt_ordered: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:06.7130461Z info: Audit.lean:17:0: PystachyPipeline.accepted_terminal_target: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:06.7131304Z info: Audit.lean:17:0: PystachyPipeline.accepted_report_target: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:06.7132706Z info: Audit.lean:17:0: PystachyPipeline.accepted_terminal_consumed: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:06.7133477Z info: Audit.lean:17:0: PystachyPipeline.accepted_report_attempts: axiom audit passed ([propext, Quot.sound])
+2026-11-15T10:13:06.7134227Z info: Audit.lean:62:0: 'PystachyBoundary.accepted_payload_safe' depends on axioms: [propext, Quot.sound]
+2026-11-15T10:13:06.7135016Z info: Audit.lean:63:0: 'PystachyAccess.accepted_access_safe' depends on axioms: [propext, Classical.choice, Quot.sound]
+2026-11-15T10:13:06.7135674Z info: Audit.lean:64:0: 'PystachyInt.known_fits' depends on axioms: [propext, Quot.sound]
+2026-11-15T10:13:07.0084315Z ✔ [47/50] Built AccessMain (1.1s)
+2026-11-15T10:13:07.7091200Z ✔ [48/50] Built AccessMain:c.o (731ms)
+2026-11-15T10:13:09.4111549Z ✔ [49/50] Built PystachyAccess:c.o (3.5s)
+2026-11-15T10:13:09.9138951Z ✔ [50/50] Built «pystachy-access»:exe (518ms)
+2026-11-15T10:13:09.9142499Z Build completed successfully (50 jobs).
+2026-11-15T10:13:09.9168832Z LEAN_BOUNDARY_REQUIRED=1 /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p 'test_lean_guard*.py'
+2026-11-15T10:13:10.7128985Z ............................................
+2026-11-15T10:13:10.7129435Z ----------------------------------------------------------------------
+2026-11-15T10:13:10.7129807Z Ran 44 tests in 0.652s
+2026-11-15T10:13:10.7130122Z 
+2026-11-15T10:13:10.7130226Z OK
+2026-11-15T10:13:10.7362021Z LEAN_BOUNDARY_REQUIRED=1 /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_lean_null_access.py
+2026-11-15T10:13:11.4083074Z ......................
+2026-11-15T10:13:11.4083476Z ----------------------------------------------------------------------
+2026-11-15T10:13:11.4083839Z Ran 22 tests in 0.620s
+2026-11-15T10:13:11.4084375Z 
+2026-11-15T10:13:11.4084463Z OK
+2026-11-15T10:13:11.4242578Z LEAN_BOUNDARY_REQUIRED=1 /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_lean_union_effects.py
+2026-11-15T10:13:12.0626148Z ........
+2026-11-15T10:13:12.0626609Z ----------------------------------------------------------------------
+2026-11-15T10:13:12.0626959Z Ran 8 tests in 0.572s
+2026-11-15T10:13:12.0627180Z 
+2026-11-15T10:13:12.0627328Z OK
+2026-11-15T10:13:12.0828002Z LEAN_BOUNDARY_REQUIRED=1 /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_lean_union_split.py
+2026-11-15T10:13:12.8457186Z ......
+2026-11-15T10:13:12.8457567Z ----------------------------------------------------------------------
+2026-11-15T10:13:12.8457887Z Ran 6 tests in 0.712s
+2026-11-15T10:13:12.8458034Z 
+2026-11-15T10:13:12.8458109Z OK
+2026-11-15T10:13:12.8638235Z LEAN_BOUNDARY_REQUIRED=1 /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_lean_union_memory.py
+2026-11-15T10:13:13.6346911Z .........
+2026-11-15T10:13:13.6347288Z ----------------------------------------------------------------------
+2026-11-15T10:13:13.6349414Z Ran 9 tests in 0.705s
+2026-11-15T10:13:13.6349824Z 
+2026-11-15T10:13:13.6350611Z OK
+2026-11-15T10:13:13.6589170Z LEAN_BOUNDARY_REQUIRED=1 /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_lean_gc.py
+2026-11-15T10:13:14.9080868Z ...................
+2026-11-15T10:13:14.9081260Z ----------------------------------------------------------------------
+2026-11-15T10:13:14.9081631Z Ran 19 tests in 1.182s
+2026-11-15T10:13:14.9081787Z 
+2026-11-15T10:13:14.9081893Z OK
+2026-11-15T10:13:14.9307722Z LEAN_BOUNDARY_REQUIRED=1 /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_lean_generators.py
+2026-11-15T10:13:15.4425137Z ....
+2026-11-15T10:13:15.4425577Z ----------------------------------------------------------------------
+2026-11-15T10:13:15.4425947Z Ran 4 tests in 0.447s
+2026-11-15T10:13:15.4426140Z 
+2026-11-15T10:13:15.4426231Z OK
+2026-11-15T10:13:15.4667402Z LEAN_BOUNDARY_REQUIRED=1 /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_lean_fields.py
+2026-11-15T10:13:20.1096628Z .......
+2026-11-15T10:13:20.1097048Z ----------------------------------------------------------------------
+2026-11-15T10:13:20.1097429Z Ran 7 tests in 4.577s
+2026-11-15T10:13:20.1097559Z 
+2026-11-15T10:13:20.1097629Z OK
+2026-11-15T10:13:20.1498622Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 tools/check_lean_guard_corpus.py --jobs 2 --report build/verify/lean-guards.json tools/lean_boundary/examples/null_guards.py tools/lean_boundary/examples/null_reloads.py tools/lean_boundary/examples/union_effects.py tools/lean_boundary/examples/union_guards.py tools/lean_boundary/examples/union_split.py tools/lean_boundary/examples/union_memory.py tools/lean_boundary/examples/union_defaults.py tools/lean_boundary/examples/gc_arrays.py tools/lean_boundary/examples/field_init.py
+2026-11-15T10:13:21.6612863Z {"field_limitations": "Proves, in a finite-tag model, that each field a class's code reads without a flag test is assigned before that code can see an object under construction; trusts the inspection's class layouts and classes table, that only compiled allocations make objects of the program's classes, that complete objects' flags are set only after their fields, the closure layout (cells, environments and Callables), the IR's operand views and typed memory; a Callable that escapes lets its environment's objects escape, and a raw access of an object under construction counts as an escape", "gc_limitations": "Proves, per function in the finite-tag model, that no list, dict or set whose item, value or key array may be atomic (unscanned) reaches a use whose type lets that array hold pointers, and that words that may be pointers are written only into scanned arrays. The runtime's array kinds (allocators, copies, columns and writes keep their arrays' kinds; empty.kind sets the kind of a dict's or set's next tables), the exported type holes and key descriptors, IR operand and declared types, item types and the Python adapter are trusted; a program's proof needs every function accepted. Does not prove pointers in other atomic memory (strings, buffers), GC roots or lifetime.", "inventory_complete": true, "limitations": "Proves union guard safety in a normalized finite-tag model, across writes and calls only where no compiled code may write a union box (typed memory, the runtime ABI and complete inspection trusted), that fields, globals, packed container words, parameters and results hold members of their declared unions (each write proved, a greatest fixed point), that union payload bits are read, boxed and stored in split union locals only as their box's member, and removed null checks redundant in the before-pass graph in the access model (fields, tracked globals, closure cells and write effects) or the finite-tag model. The Python adapters (their dominance and call-graph analyses included), inspection fidelity (split slot records included), the field checker's initialization proof, IR operand and container item types, runtime callbacks' arguments, the classes table, runtime effect contracts and union tag/layout ABI are trusted. Does not prove reconstruction from other tag sources, closure cells, GC, lifetime, pass equivalence or source/LLVM semantics. Unsupported forms fail closed.", "seconds": 1.5, "status": "accepted", "totals": {"accepted": 9, "error": 0, "field_obligations": 151, "gc_obligations": 136, "payload_obligations": 101, "programs": 9, "proved_field_obligations": 151, "proved_gc_obligations": 136, "proved_payload_obligations": 101, "proved_removed_checks": 27, "proved_union_reads": 61, "rejected": 0, "removed_checks": 27, "uninventoried_programs": 0, "union_reads": 61, "unsupported": 0, "vacuous_programs": 0}}
+2026-11-15T10:13:22.0624629Z ##[group]Run test -s build/verify/ffi.log
+2026-11-15T10:13:22.0625001Z [36;1mtest -s build/verify/ffi.log[0m
+2026-11-15T10:13:22.0625392Z [36;1mif grep -Fq '; skipped:' build/verify/ffi.log; then[0m
+2026-11-15T10:13:22.0625768Z [36;1m  cat build/verify/ffi.log[0m
+2026-11-15T10:13:22.0626219Z [36;1m  echo 'Native Linux verification requires every advertised FFI mode' >&2[0m
+2026-11-15T10:13:22.0626631Z [36;1m  exit 1[0m
+2026-11-15T10:13:22.0626848Z [36;1mfi[0m
+2026-11-15T10:13:22.0661309Z shell: /usr/bin/bash -e {0}
+2026-11-15T10:13:22.0661587Z env:
+2026-11-15T10:13:22.0661785Z   PYSTACHY_JOBS: 4
+2026-11-15T10:13:22.0662067Z   CI_EVENT_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:13:22.0662432Z   CI_HEAD_SHA: d266e919eb0c11dbbb41918b8d212bce7872910a
+2026-11-15T10:13:22.0662724Z   VERIFY_PROFILE: pr
+2026-11-15T10:13:22.0662954Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-15T10:13:22.0663264Z   CI_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:13:22.0663682Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:13:22.0664082Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-15T10:13:22.0664491Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:13:22.0664845Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:13:22.0665201Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:13:22.0665577Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-15T10:13:22.0665874Z ##[endgroup]
+2026-11-15T10:13:22.0749910Z ##[group]Run python3 -m unittest discover -s tools -p test_runtime_thread.py
+2026-11-15T10:13:22.0750738Z [36;1mpython3 -m unittest discover -s tools -p test_runtime_thread.py[0m
+2026-11-15T10:13:22.0751108Z [36;1mpython3 -m unittest discover -s tools -p test_stack_floor.py[0m
+2026-11-15T10:13:22.0751475Z [36;1mpython3 -m unittest discover -s tools -p test_runtime_signatures.py[0m
+2026-11-15T10:13:22.0774672Z shell: /usr/bin/bash -e {0}
+2026-11-15T10:13:22.0774887Z env:
+2026-11-15T10:13:22.0775058Z   PYSTACHY_JOBS: 4
+2026-11-15T10:13:22.0775419Z   CI_EVENT_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:13:22.0775730Z   CI_HEAD_SHA: d266e919eb0c11dbbb41918b8d212bce7872910a
+2026-11-15T10:13:22.0775975Z   VERIFY_PROFILE: pr
+2026-11-15T10:13:22.0776176Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-15T10:13:22.0776424Z   CI_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:13:22.0776727Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:13:22.0777112Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-15T10:13:22.0777442Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:13:22.0777749Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:13:22.0778044Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:13:22.0778354Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-15T10:13:22.0778601Z ##[endgroup]
+2026-11-15T10:13:38.0176371Z ......
+2026-11-15T10:13:38.0176748Z ----------------------------------------------------------------------
+2026-11-15T10:13:38.0177092Z Ran 6 tests in 15.896s
+2026-11-15T10:13:38.0177210Z 
+2026-11-15T10:13:38.0177289Z OK
+2026-11-15T10:14:21.4892083Z ...........
+2026-11-15T10:14:21.4893920Z ----------------------------------------------------------------------
+2026-11-15T10:14:21.4894415Z Ran 11 tests in 43.416s
+2026-11-15T10:14:21.4894625Z 
+2026-11-15T10:14:21.4894731Z OK
+2026-11-15T10:14:21.6530657Z ........
+2026-11-15T10:14:21.6530995Z ----------------------------------------------------------------------
+2026-11-15T10:14:21.6531294Z Ran 8 tests in 0.104s
+2026-11-15T10:14:21.6531417Z 
+2026-11-15T10:14:21.6531485Z OK
+2026-11-15T10:14:21.6758449Z ##[group]Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+2026-11-15T10:14:21.6758785Z with:
+2026-11-15T10:14:21.6758965Z   name: x86_64-verification-contracts
+2026-11-15T10:14:21.6761158Z   path: build/pyperformance-smoke.json
+build/match-dispatch-smoke.json
+build/pytest-pyperformance.json
+build/pytest-workloads.json
+build/pytest-native/examples.json
+build/pytest-native-aot/examples.json
+build/pytest-controls.json
+build/pytest-upstream-bundled.json
+build/verification.json
+build/extended-smoke.json
+build/program-cache-checks.json
+build/verify/*.log
+build/verify/example-cli.json
+build/verify/dynany-fuzz/*.py
+build/verify/dynany-optin-*.json
+build/verify/lean-corpus.json
+build/verify/lean-int.json
+build/verify/lean-storage.json
+build/verify/lean-guards.json
+build/verify/dynany-optin-*/tests/programs/*/*
+build/verify/python-int-optin-*.json
+build/verify/python-int-optin-*/tests/programs/*/*
+build/verify/python-int-optin-*/evidence/
+
+2026-11-15T10:14:21.6763117Z   if-no-files-found: error
+2026-11-15T10:14:21.6763322Z   retention-days: 7
+2026-11-15T10:14:21.6763500Z   overwrite: true
+2026-11-15T10:14:21.6763675Z   compression-level: 6
+2026-11-15T10:14:21.6763869Z   include-hidden-files: false
+2026-11-15T10:14:21.6764064Z   archive: true
+2026-11-15T10:14:21.6764225Z env:
+2026-11-15T10:14:21.6764384Z   PYSTACHY_JOBS: 4
+2026-11-15T10:14:21.6764616Z   CI_EVENT_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:14:21.6764912Z   CI_HEAD_SHA: d266e919eb0c11dbbb41918b8d212bce7872910a
+2026-11-15T10:14:21.6765162Z   VERIFY_PROFILE: pr
+2026-11-15T10:14:21.6765354Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-15T10:14:21.6765606Z   CI_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:14:21.6765899Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:14:21.6766231Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-15T10:14:21.6766558Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:14:21.6766862Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:14:21.6767155Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:14:21.6767459Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-15T10:14:21.6767715Z ##[endgroup]
+2026-11-15T10:14:21.8146608Z Multiple search paths detected. Calculating the least common ancestor of all paths
+2026-11-15T10:14:21.8150283Z The least common ancestor is /home/runner/work/pystachy/pystachy/build. This will be the root directory of the artifact
+2026-11-15T10:14:21.8150922Z With the provided path, there will be 35 files uploaded
+2026-11-15T10:14:21.8811515Z Artifact name is valid!
+2026-11-15T10:14:21.8812886Z Root directory input is valid!
+2026-11-15T10:14:22.1195360Z Uploading artifact: x86_64-verification-contracts.zip
+2026-11-15T10:14:22.1224297Z Beginning upload of artifact content to blob storage
+2026-11-15T10:14:22.2192626Z Uploaded bytes 42912
+2026-11-15T10:14:22.2353135Z Finished uploading artifact content to blob storage!
+2026-11-15T10:14:22.2354728Z SHA256 digest of uploaded artifact is 5a3d45acd06abf2fb1a6ae493c92f6801dffa712e8c55824fd2144ca1ec76ed7
+2026-11-15T10:14:22.2355164Z Finalizing artifact upload
+2026-11-15T10:14:22.6041188Z Artifact x86_64-verification-contracts successfully finalized. Artifact ID 14157233173
+2026-11-15T10:14:22.6041875Z Artifact x86_64-verification-contracts has been successfully uploaded! Final size is 42912 bytes. Artifact ID is 14157233173
+2026-11-15T10:14:22.6044218Z Artifact download URL: https://github.com/den-run-ai/pystachy/actions/runs/43701897758/artifacts/14157233173
+2026-11-15T10:14:22.6179164Z Post job cleanup.
+2026-11-15T10:14:22.7124736Z Cache hit occurred on the primary key lean-Linux-X64-7289597a44543246c9227b8cae501767e095ce17f6d448b95fc4a8dc97268f6d, not saving cache.
+2026-11-15T10:14:22.7210069Z Post job cleanup.
+2026-11-15T10:14:22.8066794Z Cache hit occurred on the primary key setup-python-Linux-x64-24.04-Ubuntu-python-3.13.16-pip-1aae6a492a841f2c802a95114ba38e013026d5fa37b34831af2d4165a21ab83b, not saving cache.
+2026-11-15T10:14:22.8157117Z Post job cleanup.
+2026-11-15T10:14:22.8804629Z [command]/usr/bin/git version
+2026-11-15T10:14:22.8836453Z git version 2.56.1
+2026-11-15T10:14:22.8859541Z Temporarily overriding HOME='/home/runner/work/_temp/33a91275-76f3-4cf4-abf7-1a66c8290b70' before making global git config changes
+2026-11-15T10:14:22.8860805Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-15T10:14:22.8863616Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/pystachy/pystachy
+2026-11-15T10:14:22.8889031Z Removing SSH command configuration
+2026-11-15T10:14:22.8894564Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-15T10:14:22.8918606Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-15T10:14:22.9100122Z Removing HTTP extra header
+2026-11-15T10:14:22.9121476Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-15T10:14:22.9154343Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-15T10:14:22.9333144Z Removing includeIf entries pointing to credentials config files
+2026-11-15T10:14:22.9339031Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-15T10:14:22.9396804Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-15T10:14:22.9673196Z Cleaning up orphan processes

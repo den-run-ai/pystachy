@@ -1,0 +1,398 @@
+﻿2026-11-15T10:16:31.1206362Z Current runner version: '2.338.2'
+2026-11-15T10:16:31.1232294Z ##[group]Runner Image Provisioner
+2026-11-15T10:16:31.1233342Z Hosted Compute Agent
+2026-11-15T10:16:31.1234027Z Version: 20261103.629
+2026-11-15T10:16:31.1234687Z Commit: 15dbd9ccb5dbf34fae002b6ed1a2670f52df37bc
+2026-11-15T10:16:31.1235528Z Build Date: 2026-11-03T17:26:59Z
+2026-11-15T10:16:31.1236268Z Worker ID: {9268a9d4-e757-4579-95b4-3b7c4cef9c3b}
+2026-11-15T10:16:31.1237038Z Region: westus2
+2026-11-15T10:16:31.1237675Z Cloud: Azure
+2026-11-15T10:16:31.1238345Z ##[endgroup]
+2026-11-15T10:16:31.1240204Z ##[group]Operating System
+2026-11-15T10:16:31.1240949Z Ubuntu
+2026-11-15T10:16:31.1241632Z 24.04.5
+2026-11-15T10:16:31.1242248Z LTS
+2026-11-15T10:16:31.1242797Z ##[endgroup]
+2026-11-15T10:16:31.1243446Z ##[group]Runner Image
+2026-11-15T10:16:31.1244084Z Image: ubuntu-24.04
+2026-11-15T10:16:31.1244662Z Version: 20261111.370.1
+2026-11-15T10:16:31.1246086Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261111.370/images/ubuntu/Ubuntu2404-Readme.md
+2026-11-15T10:16:31.1247790Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261111.370
+2026-11-15T10:16:31.1248899Z ##[endgroup]
+2026-11-15T10:16:31.1250574Z ##[group]GITHUB_TOKEN Permissions
+2026-11-15T10:16:31.1252898Z Contents: read
+2026-11-15T10:16:31.1253533Z Metadata: read
+2026-11-15T10:16:31.1254241Z ##[endgroup]
+2026-11-15T10:16:31.1256464Z Secret source: Actions
+2026-11-15T10:16:31.1257647Z Cache mode: write
+2026-11-15T10:16:31.1258822Z Prepare workflow directory
+2026-11-15T10:16:31.1869158Z Prepare all required actions
+2026-11-15T10:16:31.1918113Z Getting action download info
+2026-11-15T10:16:31.5721333Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-11-15T10:16:31.7228150Z Download action repository 'actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0' (SHA:6d4fd22b20465ccc0f7354476588e8df7c9ca0e0)
+2026-11-15T10:16:31.8142476Z Download action repository 'actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333' (SHA:9000827ccba6bdab643e8b6fd33ac0654aef8333)
+2026-11-15T10:16:32.0352360Z Download action repository 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9' (SHA:cf430e030ddbb5b0abf93d22962f4752f3646cd9)
+2026-11-15T10:16:32.2066561Z Complete job name: Verification
+2026-11-15T10:16:32.2928551Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+2026-11-15T10:16:32.2929682Z with:
+2026-11-15T10:16:32.2930417Z   persist-credentials: false
+2026-11-15T10:16:32.2930983Z   fetch-depth: 2
+2026-11-15T10:16:32.2931495Z   repository: den-run-ai/pystachy
+2026-11-15T10:16:32.2935207Z   token: ***
+2026-11-15T10:16:32.2935668Z   ssh-strict: true
+2026-11-15T10:16:32.2936131Z   ssh-user: git
+2026-11-15T10:16:32.2936587Z   clean: true
+2026-11-15T10:16:32.2937069Z   sparse-checkout-cone-mode: true
+2026-11-15T10:16:32.2937630Z   fetch-tags: false
+2026-11-15T10:16:32.2938094Z   show-progress: true
+2026-11-15T10:16:32.2938592Z   lfs: false
+2026-11-15T10:16:32.2939025Z   submodules: false
+2026-11-15T10:16:32.2939508Z   set-safe-directory: true
+2026-11-15T10:16:32.2940181Z   allow-unsafe-pr-checkout: false
+2026-11-15T10:16:32.2941019Z env:
+2026-11-15T10:16:32.2941469Z   PYSTACHY_JOBS: 4
+2026-11-15T10:16:32.2942107Z   CI_EVENT_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:16:32.2942869Z   CI_HEAD_SHA: d266e919eb0c11dbbb41918b8d212bce7872910a
+2026-11-15T10:16:32.2943595Z   CI_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:16:32.2944237Z ##[endgroup]
+2026-11-15T10:16:32.5978011Z Syncing repository: den-run-ai/pystachy
+2026-11-15T10:16:32.5980741Z ##[group]Getting Git version info
+2026-11-15T10:16:32.5982338Z Working directory is '/home/runner/work/pystachy/pystachy'
+2026-11-15T10:16:32.5983749Z [command]/usr/bin/git version
+2026-11-15T10:16:32.6062575Z git version 2.56.1
+2026-11-15T10:16:32.6089252Z ##[endgroup]
+2026-11-15T10:16:32.6102064Z Temporarily overriding HOME='/home/runner/work/_temp/672a3ea1-f657-4a56-8e51-7b10e530f59e' before making global git config changes
+2026-11-15T10:16:32.6104919Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-15T10:16:32.6108250Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/pystachy/pystachy
+2026-11-15T10:16:32.6165087Z Deleting the contents of '/home/runner/work/pystachy/pystachy'
+2026-11-15T10:16:32.6168856Z ##[group]Determining repository object format
+2026-11-15T10:16:32.6174940Z ##[endgroup]
+2026-11-15T10:16:32.6176169Z ##[group]Initializing the repository
+2026-11-15T10:16:32.6181775Z [command]/usr/bin/git init /home/runner/work/pystachy/pystachy
+2026-11-15T10:16:32.6312059Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-11-15T10:16:32.6314226Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-11-15T10:16:32.6316003Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-11-15T10:16:32.6317607Z hint: call:
+2026-11-15T10:16:32.6318575Z hint:
+2026-11-15T10:16:32.6319633Z hint: 	git config --global init.defaultBranch <name>
+2026-11-15T10:16:32.6321099Z hint:
+2026-11-15T10:16:32.6322428Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-11-15T10:16:32.6324260Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-11-15T10:16:32.6325751Z hint:
+2026-11-15T10:16:32.6326754Z hint: 	git branch -m <name>
+2026-11-15T10:16:32.6327781Z hint:
+2026-11-15T10:16:32.6328989Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-11-15T10:16:32.6331534Z Initialized empty Git repository in /home/runner/work/pystachy/pystachy/.git/
+2026-11-15T10:16:32.6335176Z [command]/usr/bin/git remote add origin https://github.com/den-run-ai/pystachy
+2026-11-15T10:16:32.6396995Z ##[endgroup]
+2026-11-15T10:16:32.6506726Z ##[group]Disabling automatic garbage collection
+2026-11-15T10:16:32.6508908Z [command]/usr/bin/git config --local gc.auto 0
+2026-11-15T10:16:32.6512227Z ##[endgroup]
+2026-11-15T10:16:32.6514166Z ##[group]Setting up auth
+2026-11-15T10:16:32.6515214Z Removing SSH command configuration
+2026-11-15T10:16:32.6516697Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-15T10:16:32.6531700Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-15T10:16:32.6980950Z Removing HTTP extra header
+2026-11-15T10:16:32.6988623Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-15T10:16:32.7039516Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-15T10:16:32.7295068Z Removing includeIf entries pointing to credentials config files
+2026-11-15T10:16:32.7300634Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-15T10:16:32.7349464Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-15T10:16:32.7607014Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-bb725db7-8ac6-4db1-ae88-c75727fcf95f.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-11-15T10:16:32.7661562Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/pystachy/pystachy/.git.path /home/runner/work/_temp/git-credentials-bb725db7-8ac6-4db1-ae88-c75727fcf95f.config
+2026-11-15T10:16:32.7708452Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/pystachy/pystachy/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-bb725db7-8ac6-4db1-ae88-c75727fcf95f.config
+2026-11-15T10:16:32.7757413Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-bb725db7-8ac6-4db1-ae88-c75727fcf95f.config
+2026-11-15T10:16:32.7807357Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-bb725db7-8ac6-4db1-ae88-c75727fcf95f.config
+2026-11-15T10:16:32.7852463Z ##[endgroup]
+2026-11-15T10:16:32.7853336Z ##[group]Fetching the repository
+2026-11-15T10:16:32.7860677Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=2 origin +106dfa1cfa5d8ebdb457ebb1d3011e10fd7f972f:refs/remotes/pull/1499/merge
+2026-11-15T10:16:34.2251690Z From https://github.com/den-run-ai/pystachy
+2026-11-15T10:16:34.2252512Z  * [new ref]         106dfa1cfa5d8ebdb457ebb1d3011e10fd7f972f -> pull/1499/merge
+2026-11-15T10:16:34.2255939Z ##[endgroup]
+2026-11-15T10:16:34.2257209Z ##[group]Determining the checkout info
+2026-11-15T10:16:34.2257962Z ##[endgroup]
+2026-11-15T10:16:34.2263140Z [command]/usr/bin/git sparse-checkout disable
+2026-11-15T10:16:34.2342890Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-11-15T10:16:34.2387772Z ##[group]Checking out the ref
+2026-11-15T10:16:34.2392650Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/1499/merge
+2026-11-15T10:16:34.7958700Z Note: switching to 'refs/remotes/pull/1499/merge'.
+2026-11-15T10:16:34.7959572Z 
+2026-11-15T10:16:34.7960372Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-11-15T10:16:34.7961476Z changes and commit them, and you can discard any commits you make in this
+2026-11-15T10:16:34.7962490Z state without impacting any branches by switching back to a branch.
+2026-11-15T10:16:34.7963070Z 
+2026-11-15T10:16:34.7963478Z If you want to create a new branch to retain commits you create, you may
+2026-11-15T10:16:34.7964491Z do so (now or later) by using -c with the switch command. Example:
+2026-11-15T10:16:34.7965009Z 
+2026-11-15T10:16:34.7965245Z   git switch -c <new-branch-name>
+2026-11-15T10:16:34.7965640Z 
+2026-11-15T10:16:34.7965887Z Or undo this operation with:
+2026-11-15T10:16:34.7966196Z 
+2026-11-15T10:16:34.7966381Z   git switch -
+2026-11-15T10:16:34.7967155Z 
+2026-11-15T10:16:34.7967628Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-11-15T10:16:34.7968395Z 
+2026-11-15T10:16:34.7969861Z HEAD is now at 106dfa1 Merge d266e919eb0c11dbbb41918b8d212bce7872910a into 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:16:34.7982189Z ##[endgroup]
+2026-11-15T10:16:34.8043129Z [command]/usr/bin/git log -1 --format=%H
+2026-11-15T10:16:34.8084227Z 106dfa1cfa5d8ebdb457ebb1d3011e10fd7f972f
+2026-11-15T10:16:34.8094699Z ##[group]Removing auth
+2026-11-15T10:16:34.8095328Z Removing SSH command configuration
+2026-11-15T10:16:34.8099832Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-15T10:16:34.8146438Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-15T10:16:34.8413150Z Removing HTTP extra header
+2026-11-15T10:16:34.8416370Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-15T10:16:34.8465730Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-15T10:16:34.8733385Z Removing includeIf entries pointing to credentials config files
+2026-11-15T10:16:34.8737518Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-15T10:16:34.8778783Z includeif.gitdir:/home/runner/work/pystachy/pystachy/.git.path
+2026-11-15T10:16:34.8779674Z includeif.gitdir:/home/runner/work/pystachy/pystachy/.git/worktrees/*.path
+2026-11-15T10:16:34.8781145Z includeif.gitdir:/github/workspace/.git.path
+2026-11-15T10:16:34.8781822Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-15T10:16:34.8788586Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/pystachy/pystachy/.git.path
+2026-11-15T10:16:34.8825386Z /home/runner/work/_temp/git-credentials-bb725db7-8ac6-4db1-ae88-c75727fcf95f.config
+2026-11-15T10:16:34.8837147Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/pystachy/pystachy/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-bb725db7\-8ac6\-4db1\-ae88\-c75727fcf95f\.config
+2026-11-15T10:16:34.8892707Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/pystachy/pystachy/.git/worktrees/*.path
+2026-11-15T10:16:34.8931106Z /home/runner/work/_temp/git-credentials-bb725db7-8ac6-4db1-ae88-c75727fcf95f.config
+2026-11-15T10:16:34.8941186Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/pystachy/pystachy/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-bb725db7\-8ac6\-4db1\-ae88\-c75727fcf95f\.config
+2026-11-15T10:16:34.8988756Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-11-15T10:16:34.9027082Z /github/runner_temp/git-credentials-bb725db7-8ac6-4db1-ae88-c75727fcf95f.config
+2026-11-15T10:16:34.9038359Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-bb725db7\-8ac6\-4db1\-ae88\-c75727fcf95f\.config
+2026-11-15T10:16:34.9087402Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-15T10:16:34.9124428Z /github/runner_temp/git-credentials-bb725db7-8ac6-4db1-ae88-c75727fcf95f.config
+2026-11-15T10:16:34.9133675Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-bb725db7\-8ac6\-4db1\-ae88\-c75727fcf95f\.config
+2026-11-15T10:16:34.9181600Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-15T10:16:34.9446911Z Removing credentials config '/home/runner/work/_temp/git-credentials-bb725db7-8ac6-4db1-ae88-c75727fcf95f.config'
+2026-11-15T10:16:34.9457080Z ##[endgroup]
+2026-11-15T10:16:34.9744838Z ##[group]Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+2026-11-15T10:16:34.9745345Z with:
+2026-11-15T10:16:34.9745620Z   python-version-file: .python-version
+2026-11-15T10:16:34.9745955Z   check-latest: false
+2026-11-15T10:16:34.9748371Z   token: ***
+2026-11-15T10:16:34.9748763Z   mirror: https://raw.githubusercontent.com/actions/python-versions/main
+2026-11-15T10:16:34.9749238Z   update-environment: true
+2026-11-15T10:16:34.9749534Z   allow-prereleases: false
+2026-11-15T10:16:34.9749817Z   freethreaded: false
+2026-11-15T10:16:34.9750284Z env:
+2026-11-15T10:16:34.9750524Z   PYSTACHY_JOBS: 4
+2026-11-15T10:16:34.9750854Z   CI_EVENT_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:16:34.9751292Z   CI_HEAD_SHA: d266e919eb0c11dbbb41918b8d212bce7872910a
+2026-11-15T10:16:34.9751717Z   CI_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:16:34.9752067Z ##[endgroup]
+2026-11-15T10:16:35.0950313Z Resolved .python-version as 3.13.16
+2026-11-15T10:16:35.0951921Z ##[group]Installed versions
+2026-11-15T10:16:35.0972260Z Version 3.13.16 was not found in the local cache
+2026-11-15T10:16:35.6845407Z Version 3.13.16 is available for downloading
+2026-11-15T10:16:35.6846842Z Download from "https://github.com/actions/python-versions/releases/download/3.13.16-36805956071/python-3.13.16-linux-24.04-x64.tar.gz"
+2026-11-15T10:16:36.3145841Z Extract downloaded archive
+2026-11-15T10:16:36.3293617Z [command]/usr/bin/tar xz --warning=no-unknown-keyword --overwrite -C /home/runner/work/_temp/306306e1-d300-456a-aeab-dd4faf4b56d5 -f /home/runner/work/_temp/db0e9821-3209-4e4c-b183-13d5c913b9fe
+2026-11-15T10:16:38.3910940Z Execute installation script
+2026-11-15T10:16:38.4029879Z Check if Python hostedtoolcache folder exist...
+2026-11-15T10:16:38.4031003Z Create Python 3.13.16 folder
+2026-11-15T10:16:38.4045172Z Copy Python binaries to hostedtoolcache folder
+2026-11-15T10:16:38.8735089Z Create additional symlinks (Required for the UsePythonVersion Azure Pipelines task and the setup-python GitHub Action)
+2026-11-15T10:16:38.8779814Z Upgrading pip...
+2026-11-15T10:16:40.9413570Z Collecting pip
+2026-11-15T10:16:41.0003744Z Downloading pip-26.3-py3-none-any.whl.metadata (4.6 kB)
+2026-11-15T10:16:41.0137178Z Downloading pip-26.3-py3-none-any.whl (2.0 MB)
+2026-11-15T10:16:41.1275056Z ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.0/2.0 MB 21.0 MB/s  0:00:00
+2026-11-15T10:16:41.1275640Z 
+2026-11-15T10:16:41.2216316Z Installing collected packages: pip
+2026-11-15T10:16:41.2217371Z Attempting uninstall: pip
+2026-11-15T10:16:41.2246054Z Found existing installation: pip 26.2.1
+2026-11-15T10:16:41.2580536Z Uninstalling pip-26.2.1:
+2026-11-15T10:16:41.2637967Z Successfully uninstalled pip-26.2.1
+2026-11-15T10:16:42.3165270Z Successfully installed pip-26.3
+2026-11-15T10:16:42.3804422Z Create complete file
+2026-11-15T10:16:42.3840881Z Successfully set up CPython (3.13.16)
+2026-11-15T10:16:42.3842311Z ##[endgroup]
+2026-11-15T10:16:42.4072228Z ##[group]Run actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+2026-11-15T10:16:42.4072694Z with:
+2026-11-15T10:16:42.4072914Z   pattern: x86_64-verification-*
+2026-11-15T10:16:42.4073181Z   path: build/ci-reports
+2026-11-15T10:16:42.4073410Z   merge-multiple: false
+2026-11-15T10:16:42.4073661Z   repository: den-run-ai/pystachy
+2026-11-15T10:16:42.4073907Z   run-id: 43701897758
+2026-11-15T10:16:42.4074154Z   skip-decompress: false
+2026-11-15T10:16:42.4074379Z   digest-mismatch: error
+2026-11-15T10:16:42.4074590Z env:
+2026-11-15T10:16:42.4074778Z   PYSTACHY_JOBS: 4
+2026-11-15T10:16:42.4075050Z   CI_EVENT_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:16:42.4075430Z   CI_HEAD_SHA: d266e919eb0c11dbbb41918b8d212bce7872910a
+2026-11-15T10:16:42.4075773Z   CI_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:16:42.4076156Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:16:42.4076669Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-15T10:16:42.4077108Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:16:42.4077500Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:16:42.4077888Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:16:42.4078275Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-15T10:16:42.4078599Z ##[endgroup]
+2026-11-15T10:16:42.8475831Z Found 17 artifact(s)
+2026-11-15T10:16:42.8476669Z Filtering artifacts by pattern 'x86_64-verification-*'
+2026-11-15T10:16:42.8498891Z Preparing to download the following artifacts:
+2026-11-15T10:16:42.8501512Z - x86_64-verification-native-aot-1 (ID: 14157430362, Size: 41017, Expected Digest: sha256:ea6c160e1bbb421a4b1d3cde0849a1f373c1e90f56f91e809aa1be21c613324b)
+2026-11-15T10:16:42.8511916Z - x86_64-verification-contracts (ID: 14157233173, Size: 42912, Expected Digest: sha256:5a3d45acd06abf2fb1a6ae493c92f6801dffa712e8c55824fd2144ca1ec76ed7)
+2026-11-15T10:16:42.8513450Z - x86_64-verification-opt-in (ID: 14157217664, Size: 7725458, Expected Digest: sha256:6807129510eafed6f69fa68655991fcbcfe39a5bc2843e5aaeaa434496ef0937)
+2026-11-15T10:16:42.8514752Z - x86_64-verification-cache-gc (ID: 14157153716, Size: 12860, Expected Digest: sha256:87379c941733614be9c9b5ddffa33cbe28dd7742e37e34e44f1b063787f06ae7)
+2026-11-15T10:16:42.8516134Z - x86_64-verification-native-jit-0 (ID: 14157112770, Size: 66494, Expected Digest: sha256:7ab7c360d04ba8b338ca16a26da40ba93b1e668379988e6dc3cf76b306c71fbd)
+2026-11-15T10:16:42.8517225Z - x86_64-verification-native-aot-3 (ID: 14157078072, Size: 41438, Expected Digest: sha256:17e360df15facaf1119bfb30458cd2cbb262ec9dee090b98e774d46ebbf1655a)
+2026-11-15T10:16:42.8518255Z - x86_64-verification-safety-1 (ID: 14157033318, Size: 17671, Expected Digest: sha256:4563846dfe94c5bb03df366b5af36b5c3a6c064482e0a2fd26eff6aa1904174c)
+2026-11-15T10:16:42.8519641Z - x86_64-verification-safety-0 (ID: 14156943722, Size: 18506, Expected Digest: sha256:c39a310c3f15cec871708ba05cddf4f7f2650599c2f62445075e2dc0e86f50fc)
+2026-11-15T10:16:42.8520992Z - x86_64-verification-benchmarks (ID: 14156809312, Size: 49114, Expected Digest: sha256:697726be8c8c90f478b5ad2504c3962786787a48494a767d6d460ab8662be599)
+2026-11-15T10:16:42.8522143Z - x86_64-verification-native-aot-2 (ID: 14156684458, Size: 40829, Expected Digest: sha256:0d4c2e4b5bdc7a7cef9f5d1d27310d8837794087bf7e7ec6681f8d8d4a770772)
+2026-11-15T10:16:42.8524057Z - x86_64-verification-native-jit-1 (ID: 14156629450, Size: 66226, Expected Digest: sha256:f66171449975de855ae5eaaf7315e218d0b0ea16462b70f4302f6e2cbb7bdf3c)
+2026-11-15T10:16:42.8525937Z - x86_64-verification-native-aot-0 (ID: 14156354032, Size: 40669, Expected Digest: sha256:d03999d65b1c507abf4506f47c2922ecfdbae31bf7f7c2748d698f2119e374a6)
+2026-11-15T10:16:42.8527791Z - x86_64-verification-hosted (ID: 14156244609, Size: 45449, Expected Digest: sha256:81d44ed9cd4bbc5259d79934e6eb048128b683ba79ba4444ad6004316b93fcc2)
+2026-11-15T10:16:42.8530211Z - x86_64-verification-bootstrap (ID: 14156194403, Size: 4107, Expected Digest: sha256:c0736bb81571213e97d83e212487e45a9ae25bb317b9a14ec64c24e8864cd6d7)
+2026-11-15T10:16:43.3436802Z Redirecting to blob download url: https://productionresultssa6.blob.core.windows.net/actions-results/84505212-2cdb-8bee-bcc5-ef9375f8cd2f/workflow-job-run-5661995a-5816-5705-b932-95d2c3422b83/artifacts/b0656304e96261f36f82285fdcda5a4d11befa84567a548af36b42700849b77e.zip
+2026-11-15T10:16:43.3440218Z Starting download of artifact to: /home/runner/work/pystachy/pystachy/build/ci-reports/x86_64-verification-opt-in
+2026-11-15T10:16:43.3519680Z Redirecting to blob download url: https://productionresultssa6.blob.core.windows.net/actions-results/84505212-2cdb-8bee-bcc5-ef9375f8cd2f/workflow-job-run-a1bf6391-5442-5d2e-88f8-65551c673e34/artifacts/a461dc163805df8512d1dd83c116cc1645d3e53d0568ccaaf08cf9e744ac8ec8.zip
+2026-11-15T10:16:43.3523441Z Starting download of artifact to: /home/runner/work/pystachy/pystachy/build/ci-reports/x86_64-verification-cache-gc
+2026-11-15T10:16:43.3531329Z Redirecting to blob download url: https://productionresultssa6.blob.core.windows.net/actions-results/84505212-2cdb-8bee-bcc5-ef9375f8cd2f/workflow-job-run-f6be3557-f06e-532e-af4e-458950686462/artifacts/0847870c7db9402835c59a165fbacc55bb70d55343e9a932bd87676f6cfac86c.zip
+2026-11-15T10:16:43.3533107Z Starting download of artifact to: /home/runner/work/pystachy/pystachy/build/ci-reports/x86_64-verification-contracts
+2026-11-15T10:16:43.3541656Z Redirecting to blob download url: https://productionresultssa6.blob.core.windows.net/actions-results/84505212-2cdb-8bee-bcc5-ef9375f8cd2f/workflow-job-run-2fe19748-d21d-5977-9407-c3c676cd40ef/artifacts/2079c451804b651e6072fa05942e17b87fc1d4ec141dcaa702b2f68c3ea44bf6.zip
+2026-11-15T10:16:43.3544469Z Starting download of artifact to: /home/runner/work/pystachy/pystachy/build/ci-reports/x86_64-verification-native-jit-0
+2026-11-15T10:16:43.3567887Z Redirecting to blob download url: https://productionresultssa6.blob.core.windows.net/actions-results/84505212-2cdb-8bee-bcc5-ef9375f8cd2f/workflow-job-run-233d58e3-0a3d-56e6-aac5-acd01f2dbca3/artifacts/bf857367d68df7ae1c1d0b70b0cd9f7d4a9ce26b0e3e1976507d8c645ef178da.zip
+2026-11-15T10:16:43.3569413Z Starting download of artifact to: /home/runner/work/pystachy/pystachy/build/ci-reports/x86_64-verification-native-aot-3
+2026-11-15T10:16:43.3637081Z Redirecting to blob download url: https://productionresultssa6.blob.core.windows.net/actions-results/84505212-2cdb-8bee-bcc5-ef9375f8cd2f/workflow-job-run-975f9811-599c-599b-ada6-d9d3db1f4780/artifacts/b14fbeba23f5ceac7d17e96473eadd1184ed2cc2d5a088472137c4bdce461368.zip
+2026-11-15T10:16:43.3638615Z Starting download of artifact to: /home/runner/work/pystachy/pystachy/build/ci-reports/x86_64-verification-native-aot-1
+2026-11-15T10:16:43.3660366Z Redirecting to blob download url: https://productionresultssa6.blob.core.windows.net/actions-results/84505212-2cdb-8bee-bcc5-ef9375f8cd2f/workflow-job-run-f63f0e32-f371-5d3b-9754-1c2ea2a88194/artifacts/956a1cdbe43e1674c9dded58ae5b50eb07b0f9a373bef033aa30ff05d23dcee4.zip
+2026-11-15T10:16:43.3663953Z Starting download of artifact to: /home/runner/work/pystachy/pystachy/build/ci-reports/x86_64-verification-safety-1
+2026-11-15T10:16:43.3676803Z Redirecting to blob download url: https://productionresultssa6.blob.core.windows.net/actions-results/84505212-2cdb-8bee-bcc5-ef9375f8cd2f/workflow-job-run-5702fad0-0452-5bd6-9b0f-8186c1b19675/artifacts/d8ada26e64584b144f6672e544051ef2179187d57e6f3fbce7543b965a726e2d.zip
+2026-11-15T10:16:43.3680327Z Starting download of artifact to: /home/runner/work/pystachy/pystachy/build/ci-reports/x86_64-verification-bootstrap
+2026-11-15T10:16:43.3704671Z Redirecting to blob download url: https://productionresultssa6.blob.core.windows.net/actions-results/84505212-2cdb-8bee-bcc5-ef9375f8cd2f/workflow-job-run-c147acc8-15a5-5b88-a903-b40c11aad048/artifacts/13a5cde31b750ea2acb31d874008ede516ceacdd14e69f57f774075a018cb48e.zip
+2026-11-15T10:16:43.3706788Z Starting download of artifact to: /home/runner/work/pystachy/pystachy/build/ci-reports/x86_64-verification-benchmarks
+2026-11-15T10:16:43.3751421Z Redirecting to blob download url: https://productionresultssa6.blob.core.windows.net/actions-results/84505212-2cdb-8bee-bcc5-ef9375f8cd2f/workflow-job-run-10d3a5b4-5fc3-5587-8a00-91989ab69743/artifacts/36c572d568d11bd8eef8df714e5206a98ad86cfceb3028656e04fd02c6414c0d.zip
+2026-11-15T10:16:43.3754315Z Starting download of artifact to: /home/runner/work/pystachy/pystachy/build/ci-reports/x86_64-verification-native-aot-2
+2026-11-15T10:16:43.3825813Z Redirecting to blob download url: https://productionresultssa6.blob.core.windows.net/actions-results/84505212-2cdb-8bee-bcc5-ef9375f8cd2f/workflow-job-run-585f5d0f-efe6-5cac-879d-d4cb67523fda/artifacts/42bf909e92228c217aa7c41a47e55071b7bddc9118c60b53e15e72836bb9b9d7.zip
+2026-11-15T10:16:43.3828635Z Starting download of artifact to: /home/runner/work/pystachy/pystachy/build/ci-reports/x86_64-verification-hosted
+2026-11-15T10:16:43.3844283Z Redirecting to blob download url: https://productionresultssa6.blob.core.windows.net/actions-results/84505212-2cdb-8bee-bcc5-ef9375f8cd2f/workflow-job-run-5812e7e2-0695-55c2-bd7e-3b5c9721cc36/artifacts/9855cc6383528937a6f2adc4f0025080e551cf195b1d1c17abedbed5693cdc4a.zip
+2026-11-15T10:16:43.3846205Z Starting download of artifact to: /home/runner/work/pystachy/pystachy/build/ci-reports/x86_64-verification-safety-0
+2026-11-15T10:16:43.3953435Z Redirecting to blob download url: https://productionresultssa6.blob.core.windows.net/actions-results/84505212-2cdb-8bee-bcc5-ef9375f8cd2f/workflow-job-run-728af1de-096e-50eb-a46b-75d8390ff053/artifacts/1f1e32eb3876949d689934c6f42e711f07439bccbcce67567c15a7c80bcd1045.zip
+2026-11-15T10:16:43.3955753Z Starting download of artifact to: /home/runner/work/pystachy/pystachy/build/ci-reports/x86_64-verification-native-aot-0
+2026-11-15T10:16:43.4192226Z Redirecting to blob download url: https://productionresultssa6.blob.core.windows.net/actions-results/84505212-2cdb-8bee-bcc5-ef9375f8cd2f/workflow-job-run-0f7b839e-f641-5a19-8c40-6a63831334bc/artifacts/0827001b0775ee471dc5ad0c020d1186dbf530adfbffdd57358216aa57a3505c.zip
+2026-11-15T10:16:43.4195744Z Starting download of artifact to: /home/runner/work/pystachy/pystachy/build/ci-reports/x86_64-verification-native-jit-1
+2026-11-15T10:16:43.6397753Z (node:2991) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.
+2026-11-15T10:16:43.6400225Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-11-15T10:16:43.6892308Z SHA256 digest of downloaded artifact is 87379c941733614be9c9b5ddffa33cbe28dd7742e37e34e44f1b063787f06ae7
+2026-11-15T10:16:43.6895718Z Artifact download completed successfully.
+2026-11-15T10:16:43.6962038Z SHA256 digest of downloaded artifact is 4563846dfe94c5bb03df366b5af36b5c3a6c064482e0a2fd26eff6aa1904174c
+2026-11-15T10:16:43.6963467Z Artifact download completed successfully.
+2026-11-15T10:16:43.6964302Z SHA256 digest of downloaded artifact is c0736bb81571213e97d83e212487e45a9ae25bb317b9a14ec64c24e8864cd6d7
+2026-11-15T10:16:43.6965368Z Artifact download completed successfully.
+2026-11-15T10:16:43.6981005Z SHA256 digest of downloaded artifact is c39a310c3f15cec871708ba05cddf4f7f2650599c2f62445075e2dc0e86f50fc
+2026-11-15T10:16:43.6982121Z Artifact download completed successfully.
+2026-11-15T10:16:43.7176379Z SHA256 digest of downloaded artifact is 5a3d45acd06abf2fb1a6ae493c92f6801dffa712e8c55824fd2144ca1ec76ed7
+2026-11-15T10:16:43.7177762Z Artifact download completed successfully.
+2026-11-15T10:16:43.7229839Z SHA256 digest of downloaded artifact is ea6c160e1bbb421a4b1d3cde0849a1f373c1e90f56f91e809aa1be21c613324b
+2026-11-15T10:16:43.7231193Z Artifact download completed successfully.
+2026-11-15T10:16:43.7307253Z SHA256 digest of downloaded artifact is 17e360df15facaf1119bfb30458cd2cbb262ec9dee090b98e774d46ebbf1655a
+2026-11-15T10:16:43.7308283Z Artifact download completed successfully.
+2026-11-15T10:16:43.7364143Z SHA256 digest of downloaded artifact is 0d4c2e4b5bdc7a7cef9f5d1d27310d8837794087bf7e7ec6681f8d8d4a770772
+2026-11-15T10:16:43.7364839Z Artifact download completed successfully.
+2026-11-15T10:16:43.7522168Z SHA256 digest of downloaded artifact is 81d44ed9cd4bbc5259d79934e6eb048128b683ba79ba4444ad6004316b93fcc2
+2026-11-15T10:16:43.7523595Z Artifact download completed successfully.
+2026-11-15T10:16:43.7532738Z SHA256 digest of downloaded artifact is 697726be8c8c90f478b5ad2504c3962786787a48494a767d6d460ab8662be599
+2026-11-15T10:16:43.7534061Z Artifact download completed successfully.
+2026-11-15T10:16:43.7547088Z SHA256 digest of downloaded artifact is d03999d65b1c507abf4506f47c2922ecfdbae31bf7f7c2748d698f2119e374a6
+2026-11-15T10:16:43.7547877Z Artifact download completed successfully.
+2026-11-15T10:16:43.7831536Z SHA256 digest of downloaded artifact is 7ab7c360d04ba8b338ca16a26da40ba93b1e668379988e6dc3cf76b306c71fbd
+2026-11-15T10:16:43.7832671Z Artifact download completed successfully.
+2026-11-15T10:16:43.8802311Z SHA256 digest of downloaded artifact is f66171449975de855ae5eaaf7315e218d0b0ea16462b70f4302f6e2cbb7bdf3c
+2026-11-15T10:16:43.8803039Z Artifact download completed successfully.
+2026-11-15T10:16:46.8747675Z SHA256 digest of downloaded artifact is 6807129510eafed6f69fa68655991fcbcfe39a5bc2843e5aaeaa434496ef0937
+2026-11-15T10:16:46.8749228Z Artifact download completed successfully.
+2026-11-15T10:16:46.8750373Z Total of 14 artifact(s) downloaded
+2026-11-15T10:16:46.8756949Z Download artifact has finished successfully
+2026-11-15T10:16:46.9368137Z ##[group]Run python3 tools/merge_verification.py build/ci-reports --machine "$VERIFY_MACHINE" \
+2026-11-15T10:16:46.9369035Z [36;1mpython3 tools/merge_verification.py build/ci-reports --machine "$VERIFY_MACHINE" \[0m
+2026-11-15T10:16:46.9369709Z [36;1m  --profile "$VERIFY_PROFILE" -o build/verification.json[0m
+2026-11-15T10:16:46.9395377Z shell: /usr/bin/bash -e {0}
+2026-11-15T10:16:46.9395757Z env:
+2026-11-15T10:16:46.9396038Z   PYSTACHY_JOBS: 4
+2026-11-15T10:16:46.9396429Z   CI_EVENT_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:16:46.9396919Z   CI_HEAD_SHA: d266e919eb0c11dbbb41918b8d212bce7872910a
+2026-11-15T10:16:46.9397380Z   CI_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:16:46.9397854Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:16:46.9398380Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-15T10:16:46.9398899Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:16:46.9399404Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:16:46.9400188Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:16:46.9400727Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-15T10:16:46.9401218Z   VERIFY_MACHINE: x86_64
+2026-11-15T10:16:46.9401530Z   VERIFY_PROFILE: pr
+2026-11-15T10:16:46.9402046Z ##[endgroup]
+2026-11-15T10:16:50.9100263Z PR verification: 43 checks passed across 14 groups
+2026-11-15T10:16:50.9274751Z ##[group]Run python3 tools/ci_gate.py require-jobs "$GITHUB_EVENT_NAME" "$X86_PLAN" "$ARM_PLAN" \
+2026-11-15T10:16:50.9275619Z [36;1mpython3 tools/ci_gate.py require-jobs "$GITHUB_EVENT_NAME" "$X86_PLAN" "$ARM_PLAN" \[0m
+2026-11-15T10:16:50.9276328Z [36;1m  "$BOOTSTRAP_RESULT" "$GROUP_RESULT" "$VARIANTS_RESULT" "$QUALIFICATION_RESULT"[0m
+2026-11-15T10:16:50.9297680Z shell: /usr/bin/bash -e {0}
+2026-11-15T10:16:50.9298024Z env:
+2026-11-15T10:16:50.9298300Z   PYSTACHY_JOBS: 4
+2026-11-15T10:16:50.9298697Z   CI_EVENT_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:16:50.9299188Z   CI_HEAD_SHA: d266e919eb0c11dbbb41918b8d212bce7872910a
+2026-11-15T10:16:50.9299634Z   CI_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:16:50.9300340Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:16:50.9300890Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-15T10:16:50.9301476Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:16:50.9301959Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:16:50.9302440Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:16:50.9302929Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-15T10:16:50.9303366Z   X86_PLAN: code
+2026-11-15T10:16:50.9303652Z   ARM_PLAN: 
+2026-11-15T10:16:50.9303933Z   BOOTSTRAP_RESULT: success
+2026-11-15T10:16:50.9304271Z   GROUP_RESULT: success
+2026-11-15T10:16:50.9304573Z   VARIANTS_RESULT: success
+2026-11-15T10:16:50.9304886Z   QUALIFICATION_RESULT: skipped
+2026-11-15T10:16:50.9305209Z ##[endgroup]
+2026-11-15T10:16:50.9755679Z ##[group]Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+2026-11-15T10:16:50.9756399Z with:
+2026-11-15T10:16:50.9756941Z   name: x86_64-verification
+2026-11-15T10:16:50.9757427Z   path: build/verification.json
+2026-11-15T10:16:50.9758017Z   if-no-files-found: warn
+2026-11-15T10:16:50.9772182Z   retention-days: 7
+2026-11-15T10:16:50.9772698Z   overwrite: true
+2026-11-15T10:16:50.9773227Z   compression-level: 6
+2026-11-15T10:16:50.9773712Z   include-hidden-files: false
+2026-11-15T10:16:50.9774076Z   archive: true
+2026-11-15T10:16:50.9774354Z env:
+2026-11-15T10:16:50.9774625Z   PYSTACHY_JOBS: 4
+2026-11-15T10:16:50.9774997Z   CI_EVENT_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:16:50.9775471Z   CI_HEAD_SHA: d266e919eb0c11dbbb41918b8d212bce7872910a
+2026-11-15T10:16:50.9775910Z   CI_BASE_SHA: 6bf3f73af7edb02c5b2bdb6b2ac23fc3f5fffe93
+2026-11-15T10:16:50.9776379Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:16:50.9776961Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-15T10:16:50.9777492Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:16:50.9777973Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:16:50.9778455Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-15T10:16:50.9778935Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-15T10:16:50.9779343Z ##[endgroup]
+2026-11-15T10:16:51.1321098Z With the provided path, there will be 1 file uploaded
+2026-11-15T10:16:51.3823168Z Artifact name is valid!
+2026-11-15T10:16:51.3823964Z Root directory input is valid!
+2026-11-15T10:16:51.7462959Z Uploading artifact: x86_64-verification.zip
+2026-11-15T10:16:51.7505056Z Beginning upload of artifact content to blob storage
+2026-11-15T10:16:52.2166058Z Uploaded bytes 90437
+2026-11-15T10:16:52.3154981Z Finished uploading artifact content to blob storage!
+2026-11-15T10:16:52.3156352Z SHA256 digest of uploaded artifact is fde0fbec62df20af1bbe25726991b9538efd0fcf433977f49b3a494effbcd9f4
+2026-11-15T10:16:52.3157610Z Finalizing artifact upload
+2026-11-15T10:16:52.8298606Z Artifact x86_64-verification successfully finalized. Artifact ID 14156974297
+2026-11-15T10:16:52.8300624Z Artifact x86_64-verification has been successfully uploaded! Final size is 90437 bytes. Artifact ID is 14156974297
+2026-11-15T10:16:52.8303891Z Artifact download URL: https://github.com/den-run-ai/pystachy/actions/runs/43701897758/artifacts/14156974297
+2026-11-15T10:16:52.8502828Z Post job cleanup.
+2026-11-15T10:16:52.9794357Z Post job cleanup.
+2026-11-15T10:16:53.0758605Z [command]/usr/bin/git version
+2026-11-15T10:16:53.0805882Z git version 2.56.1
+2026-11-15T10:16:53.0849641Z Temporarily overriding HOME='/home/runner/work/_temp/ff1002d8-cb7e-4d94-98a2-8987c3774cc9' before making global git config changes
+2026-11-15T10:16:53.0851591Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-15T10:16:53.0853926Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/pystachy/pystachy
+2026-11-15T10:16:53.0892139Z Removing SSH command configuration
+2026-11-15T10:16:53.0900599Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-15T10:16:53.0946539Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-15T10:16:53.1233400Z Removing HTTP extra header
+2026-11-15T10:16:53.1240578Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-15T10:16:53.1286524Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-15T10:16:53.1581478Z Removing includeIf entries pointing to credentials config files
+2026-11-15T10:16:53.1590692Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-15T10:16:53.1685424Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-15T10:16:53.2107229Z Cleaning up orphan processes
