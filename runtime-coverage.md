@@ -1,20 +1,16 @@
 ## Native runtime coverage
 
-Commit `49a149adba833bf2ed249053f6d4f3f13bccc33b`: lines **95.0%** (7720 of 8124) and branches **85.0%** (8291 of 9756) of `runtime.c` (with the `ryu/` and `mpz/` files it includes), `pyembed.c` and `pyext.c`, as clang's source-based coverage counts them; functions 96.1%, regions 91.8%. `pys_init` ran 5435 times: the program runs whose profiles were written.
+Commit `3da553ee569d519031508f2177cdb04f9f436991`: lines **95.0%** (7720 of 8124) and branches **85.0%** (8291 of 9756) of `runtime.c` (with the `ryu/` and `mpz/` files it includes), `pyembed.c` and `pyext.c`, as clang's source-based coverage counts them; functions 96.1%, regions 91.8%. `pys_init` ran 5477 times: the program runs whose profiles were written.
 Programs built by the native compiler against an instrumented runtime; `runtime.py`, compiled by Pystachy, is not measured, nor are the C probes. The compiler's own coverage is the [hosted compiler coverage](https://github.com/den-run-ai/pystachy/blob/badges/coverage.md).
 
 | Suite | Runs | Checks | Time |
 |---|---|---|---:|
-| corpus | `tests/run.sh`, JIT and AOT (6 shards) | 7615 passed, 0 failed | 2039 s |
-| ffi | `tests/ffi/run.sh`, AOT and extension modules | 148 passed, 0 failed | 155 s |
+| corpus | `tests/run.sh`, JIT and AOT (6 shards) | 7660 passed, 0 failed | 1918 s |
+| ffi | `tests/ffi/run.sh`, AOT and extension modules | 148 passed, 0 failed | 111 s |
 
-### Changed since 80490143498d149d407343ba1cb7aedb1db2d2c5 (merge base `80490143498d`)
+### Changed since 49a149adba833bf2ed249053f6d4f3f13bccc33b (merge base `49a149adba83`)
 
-Changed lines of code: 179 of 189 run (94.7%); their branches: 172 of 220 taken (78.2%).
-
-| File | Lines not run | Branches not taken |
-|---|---|---|
-| `runtime.c` | 2042-2043, 2066-2067, 2095-2096, 3320-3322, 4297 | 2037 (1 of 2), 2055 (1 of 4), 2065 (1 of 4), 2069 (3 of 4), 2086 (1 of 6), 2092 (3 of 8), 2093 (1 of 2), 2094 (1 of 2), 2102 (1 of 4), 2923 (3 of 10), 2943 (1 of 2), 3027 (5 of 12), 3079 (3 of 14), 3137 (1 of 2), 3143 (2 of 4), 3151 (1 of 2), 3170 (2 of 6), 3183 (1 of 4), 3204 (2 of 6), 3205 (1 of 2), 3219 (1 of 4), 3319 (1 of 2), 3320 (2 of 2), 3386 (1 of 4), 3388 (1 of 2), 4286 (1 of 12), 4296 (2 of 8), 4297 (2 of 2), 4302 (1 of 2), 4945 (1 of 2) |
+Changed lines of code: 0 of 0 run (-); their branches: 0 of 0 taken (-).
 
 | File | Lines | Missed | Lines % | Branches | Missed | Branches % | Functions % | Regions % |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -40,14 +36,14 @@ Changed lines of code: 179 of 189 run (94.7%); their branches: 172 of 220 taken 
 | promoting ints (# pystachy: python-int, docs/python-int.md) | 1613 | 633 | 98.1% | 626 | 90.7% | 98 | 100.0% |
 | generic repr / equality / ordering driven by a type descriptor | 2503 | 582 | 97.8% | 1032 | 86.3% | 66 | 97.0% |
 | lists | 3234 | 826 | 99.2% | 1090 | 86.4% | 106 | 98.1% |
-| dicts: CPython's compact ordered layout | 4219 | 488 | 99.8% | 616 | 92.7% | 105 | 100.0% |
-| sets: CPython's setobject.c | 4890 | 70 | 100.0% | 98 | 94.9% | 12 | 100.0% |
-| dynamic values | 5000 | 1263 | 97.6% | 1700 | 90.6% | 179 | 99.4% |
-| formatting: f"{x:spec}" | 6528 | 66 | 100.0% | 158 | 87.3% | 5 | 100.0% |
-| I/O and process | 6607 | 1013 | 88.0% | 1284 | 74.0% | 128 | 88.3% |
-| exceptions: table-driven unwinding (the Itanium C++ ABI's) | 7908 | 322 | 93.2% | 376 | 75.3% | 61 | 98.4% |
-| the time module: clocks and sleep | 8377 | 51 | 98.0% | 50 | 48.0% | 11 | 90.9% |
-| select: a POSIX integer-descriptor subset | 8437 | 73 | 87.7% | 62 | 71.0% | 2 | 100.0% |
-| the errno module: the platform's error numbers | 8517 | 4 | 50.0% | 4 | 75.0% | 1 | 100.0% |
-| temporary directories: tempfile.mkdtemp, os.remove, os.rmdir | 8793 | 301 | 93.0% | 402 | 67.4% | 34 | 97.1% |
-| tables | 9135 | 92 | 98.9% | 102 | 83.3% | 17 | 94.1% |
+| dicts: CPython's compact ordered layout | 4221 | 488 | 99.8% | 616 | 92.7% | 105 | 100.0% |
+| sets: CPython's setobject.c | 4892 | 70 | 100.0% | 98 | 94.9% | 12 | 100.0% |
+| dynamic values | 5002 | 1263 | 97.6% | 1700 | 90.6% | 179 | 99.4% |
+| formatting: f"{x:spec}" | 6530 | 66 | 100.0% | 158 | 87.3% | 5 | 100.0% |
+| I/O and process | 6609 | 1013 | 88.0% | 1284 | 74.0% | 128 | 88.3% |
+| exceptions: table-driven unwinding (the Itanium C++ ABI's) | 7910 | 322 | 93.2% | 376 | 75.3% | 61 | 98.4% |
+| the time module: clocks and sleep | 8379 | 51 | 98.0% | 50 | 48.0% | 11 | 90.9% |
+| select: a POSIX integer-descriptor subset | 8439 | 73 | 87.7% | 62 | 71.0% | 2 | 100.0% |
+| the errno module: the platform's error numbers | 8519 | 4 | 50.0% | 4 | 75.0% | 1 | 100.0% |
+| temporary directories: tempfile.mkdtemp, os.remove, os.rmdir | 8795 | 301 | 93.0% | 402 | 67.4% | 34 | 97.1% |
+| tables | 9137 | 92 | 98.9% | 102 | 83.3% | 17 | 94.1% |
