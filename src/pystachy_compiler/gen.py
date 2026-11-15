@@ -823,6 +823,9 @@ from src.pystachy_compiler.expressions import (
     gen_cmp_stage as expressions_cmp_stage,
     gen_cmp_declining as expressions_cmp_declining,
     gen_enum_intlike as expressions_enum_intlike,
+    gen_enum_scalar as expressions_enum_scalar,
+    gen_enum_builtin as expressions_enum_builtin,
+    gen_enum_compare as expressions_enum_compare,
     gen_inherit_cmp as expressions_inherit_cmp,
     gen_cmp_alts as expressions_cmp_alts,
     gen_cmp_try as expressions_cmp_try,
@@ -4682,6 +4685,15 @@ class Gen:
 
     def enum_intlike(self, c: str) -> bool:
         return expressions_enum_intlike(self, c)
+
+    def enum_scalar(self, at: str, bt: str) -> bool:
+        return expressions_enum_scalar(self, at, bt)
+
+    def enum_builtin(self, c: str) -> str:
+        return expressions_enum_builtin(self, c)
+
+    def enum_compare(self, op: str, a: Val, b: Val, lenient: bool = False) -> Val:
+        return expressions_enum_compare(self, op, a, b, lenient)
 
     def cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
         return expressions_cmp_pick(self, op, at, bt)

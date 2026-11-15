@@ -723,6 +723,13 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   ([test](../tests/errors/library/lib_enum_isinstance_base.py)), and a member as an `Any` value,
   whose `isinstance()` would find no `int` or `str`
   ([test](../tests/errors/library/lib_enum_any_strenum.py)): its `.value` can be one.
+- Comparisons of `IntEnum`, `IntFlag` and `StrEnum` members with builtin scalars preserve Python's
+  subclass priority and reflected fallback after a custom method returns `NotImplemented`
+  ([numbers](../tests/programs/classes/cmp_notimplemented_enum_scalar.py),
+  [strings](../tests/programs/classes/cmp_notimplemented_strenum_scalar.py)). The builtin
+  fallback uses the member's original scalar value. Reassigning `_value_` is qualified only
+  for these comparison paths; inherited hashing and other methods still use the changed
+  attribute and can differ from CPython after such a reassignment.
 - `sys.exit()` and `SystemExit` take the member of an `IntEnum` or `IntFlag` class, or of a class
   of `int` and `Enum`, as CPython takes its `int`: the value is the exit status, and nothing is
   written to stderr ([test](../tests/programs/exceptions/exit_enum_member_caught.py)).
