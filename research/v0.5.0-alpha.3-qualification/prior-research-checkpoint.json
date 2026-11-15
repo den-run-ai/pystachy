@@ -1,0 +1,14 @@
+{
+  "created_at": "2026-11-15T08:01:34.235Z",
+  "repository": "den-run-ai/pystachy",
+  "branch": "research/v0.5.0-alpha.3-qualification-20261115",
+  "commit": "788ede51e18a11ece70c38bd0c5152b6a01a197b",
+  "tree": "0ce7be22915a6ad99cb509cb3cfac219b1894600",
+  "parent": "7d8abcf65b31147db09f27d18481815e98c967d8",
+  "files": 53,
+  "changed_files": 32,
+  "readme_exact_match": true,
+  "source_commit": "0a2fe77a580106c197face4d2904be80e3f85dbc",
+  "state": "checkpoint only; fresh full census and release gates pending",
+  "url": "https://github.com/den-run-ai/pystachy/blob/788ede51e18a11ece70c38bd0c5152b6a01a197b/research/v0.5.0-alpha.3-qualification/README.md"
+}

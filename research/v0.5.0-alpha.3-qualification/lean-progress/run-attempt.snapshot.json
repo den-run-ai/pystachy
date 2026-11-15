@@ -1,0 +1,42 @@
+{
+  "started_utc": "2026-11-15T07:55:04.186528+00:00",
+  "commit": "0a2fe77a580106c197face4d2904be80e3f85dbc",
+  "tree": "107460d5f89bdcf37f2741b233eac0568d82604a",
+  "command": [
+    "/workspace/scratch/c2b093657c17/dev-venv/bin/python",
+    "tools/lean_report.py",
+    "--jobs",
+    "1",
+    "--start-method",
+    "spawn",
+    "--timeout",
+    "300",
+    "--progress",
+    "--output",
+    "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/report.md",
+    "--records",
+    "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/records.jsonl"
+  ],
+  "resume": false,
+  "cwd": "/workspace/scratch/980402bc01c4/alpha3-lean-storage-corrected",
+  "source_before": "",
+  "jobs": 1,
+  "runner": {
+    "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/run.py",
+    "bytes": 5867,
+    "sha256": "6357e04bd8521aef63b417e4fe57d6fb5d860526c594f60abc57e6b6e25090f1"
+  },
+  "preparation": {
+    "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/prepared.json",
+    "bytes": 174505,
+    "sha256": "5ad25a8ad008882ae65c84f3a77ecf18dcfabdc76d26fc2aa39cb17e7f20ff69"
+  },
+  "audit_script": {
+    "path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/audit.py",
+    "bytes": 10135,
+    "sha256": "bd99f81b1d4dbdc7e11470c808a0bf27286a39ab011cc0a568d1a64e1e76333f"
+  },
+  "log": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/run-20261115T075504Z.log",
+  "resource_samples": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/run-20261115T075504Z-resources.jsonl",
+  "report_pid": 49
+}

@@ -1,0 +1,42 @@
+{
+  "status": "INCOMPLETE_PROGRESS_SNAPSHOT_NOT_FINAL_ACCEPTANCE",
+  "source_path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/records.jsonl",
+  "source_commit": "0a2fe77a580106c197face4d2904be80e3f85dbc",
+  "source_tree": "107460d5f89bdcf37f2741b233eac0568d82604a",
+  "capture_started_utc": "2026-11-15T08:53:08.339619+00:00",
+  "capture_finished_utc": "2026-11-15T08:53:08.342640+00:00",
+  "method": "One bounded read to the active append-only file size at open; no live-file rewriting or second read.",
+  "source_stat_before": {
+    "device": 27,
+    "inode": 2844399,
+    "bytes": 1713401,
+    "mtime_ns": 1794732786694109115
+  },
+  "source_stat_after": {
+    "device": 27,
+    "inode": 2844399,
+    "bytes": 1713401,
+    "mtime_ns": 1794732786694109115
+  },
+  "captured_read_bytes": 1713401,
+  "captured_read_sha256": "76c41ab61e4fa0aef89498e534f1e10b5b5f180e8cffbff2c3f8feb912580933",
+  "retained_complete_line_bytes": 1713401,
+  "retained_complete_line_sha256": "76c41ab61e4fa0aef89498e534f1e10b5b5f180e8cffbff2c3f8feb912580933",
+  "complete_lines_including_header": 1967,
+  "program_record_lines": 1966,
+  "unique_programs": 1966,
+  "duplicate_program_records": 0,
+  "expected_programs": 2699,
+  "expected_storage_selections": 196,
+  "observed_selected_storage_programs": 53,
+  "last_retained_program": "tests/programs/numbers/complex_union_tuple_search.py",
+  "excluded_partial_tail_bytes": 0,
+  "excluded_partial_tail_sha256": null,
+  "excluded_partial_tail_contents_retained": false,
+  "header_commit": "0a2fe77a5801",
+  "header_inputs_match_preparation": true,
+  "header_checker_identities_match_preparation": true,
+  "header_storage_selection_matches_preparation": true,
+  "final_completion_or_acceptance_inferred": false,
+  "limitation": "Prefix completeness does not establish census completion, strict-storage acceptance, semantic disposition or final independent review. Later appended bytes are not represented."
+}

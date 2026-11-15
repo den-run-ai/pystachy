@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "status": "INCOMPLETE_PROGRESS_CHECKPOINT",
+  "capture_started_utc": "2026-11-15T08:53:08.232847+00:00",
+  "packaged_utc": "2026-11-15T08:53:10.288677+00:00",
+  "source_commit": "0a2fe77a580106c197face4d2904be80e3f85dbc",
+  "source_tree": "107460d5f89bdcf37f2741b233eac0568d82604a",
+  "merged_release_commit": "328b945f02788b296d9981d1b44706a2a0092255",
+  "base_research_head": "788ede51e18a11ece70c38bd0c5152b6a01a197b",
+  "base_research_tree": "0ce7be22915a6ad99cb509cb3cfac219b1894600",
+  "records": {
+    "status": "INCOMPLETE_PROGRESS_SNAPSHOT_NOT_FINAL_ACCEPTANCE",
+    "source_path": "/workspace/scratch/980402bc01c4/evidence/lean-storage-corrected/records.jsonl",
+    "source_commit": "0a2fe77a580106c197face4d2904be80e3f85dbc",
+    "source_tree": "107460d5f89bdcf37f2741b233eac0568d82604a",
+    "capture_started_utc": "2026-11-15T08:53:08.339619+00:00",
+    "capture_finished_utc": "2026-11-15T08:53:08.342640+00:00",
+    "method": "One bounded read to the active append-only file size at open; no live-file rewriting or second read.",
+    "source_stat_before": {
+      "device": 27,
+      "inode": 2844399,
+      "bytes": 1713401,
+      "mtime_ns": 1794732786694109115
+    },
+    "source_stat_after": {
+      "device": 27,
+      "inode": 2844399,
+      "bytes": 1713401,
+      "mtime_ns": 1794732786694109115
+    },
+    "captured_read_bytes": 1713401,
+    "captured_read_sha256": "76c41ab61e4fa0aef89498e534f1e10b5b5f180e8cffbff2c3f8feb912580933",
+    "retained_complete_line_bytes": 1713401,
+    "retained_complete_line_sha256": "76c41ab61e4fa0aef89498e534f1e10b5b5f180e8cffbff2c3f8feb912580933",
+    "complete_lines_including_header": 1967,
+    "program_record_lines": 1966,
+    "unique_programs": 1966,
+    "duplicate_program_records": 0,
+    "expected_programs": 2699,
+    "expected_storage_selections": 196,
+    "observed_selected_storage_programs": 53,
+    "last_retained_program": "tests/programs/numbers/complex_union_tuple_search.py",
+    "excluded_partial_tail_bytes": 0,
+    "excluded_partial_tail_sha256": null,
+    "excluded_partial_tail_contents_retained": false,
+    "header_commit": "0a2fe77a5801",
+    "header_inputs_match_preparation": true,
+    "header_checker_identities_match_preparation": true,
+    "header_storage_selection_matches_preparation": true,
+    "final_completion_or_acceptance_inferred": false,
+    "limitation": "Prefix completeness does not establish census completion, strict-storage acceptance, semantic disposition or final independent review. Later appended bytes are not represented."
+  },
+  "completed_attribution": {
+    "programs": 29,
+    "side_inspections": 58,
+    "inventory": {
+      "path": "evidence/lean-storage-corrected/count-attribution/inventory.json",
+      "bytes": 12922419,
+      "sha256": "7200136d2f198e297688a66aeceb60eb1e7ade0423e8f2dd27a286fb098ccb00"
+    },
+    "final_census_binding": "pending; no binding executed by this package"
+  },
+  "archives": [
+    {
+      "archive": "completed-attribution-and-prepared-finalization.tar.gz",
+      "members": 486,
+      "uncompressed_member_bytes": 59364112,
+      "archive_bytes": 3014378,
+      "archive_sha256": "e79fe09f06974793c2686d5d547cc6a4f12c07093d871a938e5f4a6991d6c453",
+      "member_manifest": "completed-attribution-and-prepared-finalization.tar.gz.manifest.json.gz",
+      "all_member_identities_verified": true,
+      "deterministic_metadata": "sorted paths; tar mtime/uid/gid zero, mode0644; gzip mtime0 and empty filename"
+    },
+    {
+      "archive": "workflow-evidence-through-328b.tar.gz",
+      "members": 39,
+      "uncompressed_member_bytes": 21922303,
+      "archive_bytes": 1271964,
+      "archive_sha256": "c27fc13cefecfc21c5cb873ea585eb96bab3bf6a6382e04e784390c991f28ec4",
+      "member_manifest": "workflow-evidence-through-328b.tar.gz.manifest.json.gz",
+      "all_member_identities_verified": true,
+      "deterministic_metadata": "sorted paths; tar mtime/uid/gid zero, mode0644; gzip mtime0 and empty filename"
+    }
+  ],
+  "excluded_files": 143,
+  "excluded_bytes": 1921688755,
+  "excluded_typed_snapshot_bytes_not_read": 1861468608,
+  "finalization_scripts_status": "Prepared and preserved only; no finalizer, pack-qualified script or acceptance checker executed by this packager.",
+  "final_qualification_pass_claimed": false,
+  "alpha3_publication_verified": false,
+  "new_ci_log_sensitive_data_scan": "39 unchanged files: no signed-URL or credential-value candidates detected; both bounded pattern-scan receipts are preserved under publication-scan/.",
+  "pending_gates": [
+    "complete final-source census and strict-storage audit",
+    "bind all attribution inventories to final census",
+    "complete semantic disposition and final independent review",
+    "expected-head release merge and all seven exact-main workflows",
+    "native, Docker and PyPI publication with actual public-byte verification"
+  ],
+  "historical_evidence": "All prior checkpoint files remain preserved; original README, checksum list and upload manifest are retained under explicit historical names.",
+  "mutations": "Only this new checkpoint directory and its new packager are created; no prior evidence, live records, source or run is modified."
+}

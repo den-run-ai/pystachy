@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-11-15T08:05:57.824Z",
+  "repair_pr": 1501,
+  "repair_commit": "0a2fe77a580106c197face4d2904be80e3f85dbc",
+  "repair_tree": "107460d5f89bdcf37f2741b233eac0568d82604a",
+  "release_branch": "release/v0.5.0-alpha.3",
+  "release_commit": "328b945f02788b296d9981d1b44706a2a0092255",
+  "release_tree": "107460d5f89bdcf37f2741b233eac0568d82604a",
+  "parents": [
+    "bbc8c8c38858ea2d90859751e34b885fdea1ca1d",
+    "0a2fe77a580106c197face4d2904be80e3f85dbc"
+  ],
+  "identical_tree": true,
+  "release_pr": 1494,
+  "release_pr_draft": true,
+  "main_commit": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+  "main_unchanged": true,
+  "normal_expected_head_merge": true,
+  "automatic_review": {
+    "status": "failed_account_quota",
+    "commit": "0a2fe77a580106c197face4d2904be80e3f85dbc",
+    "summary_comment": 6891447520,
+    "quota_comment": 6891447956,
+    "completed_review": false
+  },
+  "limitation": "The source trees are identical, but this is not a new execution. The full fresh census continues on the exact repair commit; integrated PR and exact-main checks remain separate."
+}

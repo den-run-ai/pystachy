@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "status": "complete_integrated_ci_and_codeql_evidence_frozen",
+  "observed_utc": "2026-11-15 08:28:25 UTC",
+  "head_sha": "328b945f02788b296d9981d1b44706a2a0092255",
+  "base_sha": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+  "pr_number": 1494,
+  "pr_draft": true,
+  "jobs": {
+    "total": 23,
+    "success": 21,
+    "conditional_skips": 2
+  },
+  "checks": {
+    "total": 24,
+    "success": 22,
+    "conditional_skips": 2
+  },
+  "all_required_observed_workflows_succeeded": true,
+  "codeql_warning_review": {
+    "path": "/workspace/scratch/980402bc01c4/evidence/ci/pr1494-storage/managed-codeql-review.json",
+    "bytes": 8191,
+    "sha256": "9954772c8b3f9d6e1637e3e1a682df0b854da6ab63aafd7eda0f1aef8de2bad1"
+  },
+  "qualification": {
+    "path": "/workspace/scratch/980402bc01c4/evidence/ci/pr1494-storage/qualification.json",
+    "bytes": 334547,
+    "sha256": "4818eed6b196fdce7c5f4adde44b18af8e0ac87597bf4a6504602b6c7e911114"
+  },
+  "evidence_files": [
+    {
+      "path": "/workspace/scratch/980402bc01c4/evidence/ci/pr1494-storage/job-132747065881.log",
+      "bytes": 165729,
+      "sha256": "636352d9c3d823a4f1f4c15a5cd526c63318be50ca9655326ce029d2dba87b7b"
+    },
+    {
+      "path": "/workspace/scratch/980402bc01c4/evidence/ci/pr1494-storage/job-132747065881.tool.json",
+      "bytes": 170042,
+      "sha256": "e17892e8b52796e9ad837d21faddc591775492593b2d00a1b5da30b8cdb5c00a"
+    },
+    {
+      "path": "/workspace/scratch/980402bc01c4/evidence/ci/pr1494-storage/job-132747066006.log",
+      "bytes": 123523,
+      "sha256": "730413837b2e69969b8e8aee966c2bd02f71ab683e01a1006ce405dc0d21d692"
+    },
+    {
+      "path": "/workspace/scratch/980402bc01c4/evidence/ci/pr1494-storage/job-132747066006.tool.json",
+      "bytes": 127472,
+      "sha256": "7d31efc9df9aa210f4147b1179e472772543855dcacc8a3814e6e12a0730f0bd"
+    },
+    {
+      "path": "/workspace/scratch/980402bc01c4/evidence/ci/pr1494-storage/job-132747066072.log",
+      "bytes": 1416253,
+      "sha256": "4bc38c376f105beafcdb4c6643e42a22f617041e572e7547690fe0335c9b1903"
+    },
+    {
+      "path": "/workspace/scratch/980402bc01c4/evidence/ci/pr1494-storage/job-132747066072.tool.json",
+      "bytes": 1428099,
+      "sha256": "b3446d405c80d5c89346c39da5281222b50b13668442a36c7df088665a66a6c2"
+    },
+    {
+      "path": "/workspace/scratch/980402bc01c4/evidence/ci/pr1494-storage/managed-codeql-review.json",
+      "bytes": 8191,
+      "sha256": "9954772c8b3f9d6e1637e3e1a682df0b854da6ab63aafd7eda0f1aef8de2bad1"
+    },
+    {
+      "path": "/workspace/scratch/980402bc01c4/evidence/ci/pr1494-storage/managed-codeql-review.md",
+      "bytes": 1890,
+      "sha256": "bc7197fe11f62c191f3a10591d3ebb122358dd3ff953729086e20b3036a446d7"
+    },
+    {
+      "path": "/workspace/scratch/980402bc01c4/evidence/ci/pr1494-storage/observed-001.json",
+      "bytes": 562117,
+      "sha256": "836d793a83daf793216120318589cfa4c8c573cab71bdd479ca743a25c0851dc"
+    },
+    {
+      "path": "/workspace/scratch/980402bc01c4/evidence/ci/pr1494-storage/observed-002.json",
+      "bytes": 778511,
+      "sha256": "fbed045b38784801db76f1d6d44d683175907c3bc99ef20795196e4b3bb6a67b"
+    },
+    {
+      "path": "/workspace/scratch/980402bc01c4/evidence/ci/pr1494-storage/observed-003.json",
+      "bytes": 1177915,
+      "sha256": "597d2dfd400ca92a3484c83bb256125bda5c8df53668c503f8023e3cfe87d52c"
+    },
+    {
+      "path": "/workspace/scratch/980402bc01c4/evidence/ci/pr1494-storage/observed-004.json",
+      "bytes": 1188100,
+      "sha256": "05feaa3faddbf2f1b1409c43ebd025fa69f57ae1600f7762e8e07d1f0892b91e"
+    },
+    {
+      "path": "/workspace/scratch/980402bc01c4/evidence/ci/pr1494-storage/observed-005.json",
+      "bytes": 1200098,
+      "sha256": "9cb4c1aa41cf79856d1c708f45e20a0d3574c60b9bb0ffb1c7612e87ba24a98a"
+    },
+    {
+      "path": "/workspace/scratch/980402bc01c4/evidence/ci/pr1494-storage/observed-006.json",
+      "bytes": 1209784,
+      "sha256": "30ec47913809f709f19e5ad85ec42752cd61453059f6d3fa7936aa9928f1cfd5"
+    },
+    {
+      "path": "/workspace/scratch/980402bc01c4/evidence/ci/pr1494-storage/observed-007.json",
+      "bytes": 1235840,
+      "sha256": "a09c006b29165af12db6b22e29f6b3e4bda2ab27168315245a979c8b6d2f70f8"
+    },
+    {
+      "path": "/workspace/scratch/980402bc01c4/evidence/ci/pr1494-storage/observed-008.json",
+      "bytes": 1236532,
+      "sha256": "ae5667661128299a6ac94cf0241a80dd3831a41e5de9a4818a662f039e66ec9b"
+    },
+    {
+      "path": "/workspace/scratch/980402bc01c4/evidence/ci/pr1494-storage/qualification.json",
+      "bytes": 334547,
+      "sha256": "4818eed6b196fdce7c5f4adde44b18af8e0ac87597bf4a6504602b6c7e911114"
+    },
+    {
+      "path": "/workspace/scratch/980402bc01c4/evidence/ci/pr1494-storage/qualification.md",
+      "bytes": 6018,
+      "sha256": "a5851d50452f7829358d273acb55d580acfbbfddf636a19fd53611184aacfd3f"
+    },
+    {
+      "path": "/workspace/scratch/980402bc01c4/evidence/ci/pr1494-storage/review-codeql.py",
+      "bytes": 7089,
+      "sha256": "ea1a1aab2f8ce52601fecfbf2fe02381534e2fdca4d92aa165640ff663db0175"
+    },
+    {
+      "path": "/workspace/scratch/980402bc01c4/evidence/ci/pr1494-storage/summarize.py",
+      "bytes": 12224,
+      "sha256": "ca1398565bb67e7cec4d6b9bfdf20dd96a24e63daeb48bd9bf2b2e769af84680"
+    }
+  ],
+  "limits": [
+    "This snapshot is frozen before ready-for-review; later checks/comments require a new observation.",
+    "Parent owns live head/base/review/check verification and merge; full census/semantic acceptance is separate.",
+    "No CI rerun, cancellation, source edit or GitHub mutation was performed by this reviewer."
+  ]
+}
