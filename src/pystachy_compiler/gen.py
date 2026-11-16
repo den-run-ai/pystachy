@@ -1104,12 +1104,14 @@ from src.pystachy_compiler.lowering import (
     gen_alloc_call as lowering_alloc_call,
 )
 from src.pystachy_compiler.lower_module import (
+    ExternDecl,
     gen_cextern as lower_module_cextern,
     gen_dispatch as lower_module_dispatch,
     gen_extern_decl as lower_module_extern_decl,
     gen_gen_module as lower_module_gen_module,
     gen_lower_module as lower_module_lower_module,
     gen_pyext as lower_module_pyext,
+    gen_validate_module as lower_module_validate_module,
     gen_tbaa_nodes as lower_module_tbaa_nodes,
 )
 from src.pystachy_compiler.module import Mod
@@ -1178,13 +1180,24 @@ from src.pystachy_compiler.program import (
     gen_partly as program_partly,
     gen_path_of as program_path_of,
     gen_plain as program_plain,
-    gen_program as program_program,
+    gen_prepare_program as program_prepare_program,
+    gen_discover_program as program_discover_program,
     gen_pure as program_pure,
     gen_raisers as program_raisers,
     gen_subclass_problem as program_subclass_problem,
     gen_generic_subclass as program_generic_subclass,
     gen_tmpl_ann as program_tmpl_ann,
     gen_tmpl_of as program_tmpl_of,
+)
+from src.pystachy_compiler.pipeline import (
+    PipelineState,
+    PreparedProgram,
+    gen_analyze_program as pipeline_analyze_program,
+    gen_optimize_program as pipeline_optimize_program,
+    gen_finalize_program as pipeline_finalize_program,
+    gen_lower_program as pipeline_lower_program,
+    gen_typed_program as pipeline_typed_program,
+    gen_program as pipeline_program,
 )
 from src.pystachy_compiler.specs import IROPS
 from src.pystachy_compiler.statements import (
@@ -1367,6 +1380,7 @@ from src.pystachy_compiler.variables import (
 
 class Gen:
     def __init__(self):
+        self.pipeline = PipelineState()  # attempt-owned; never borrowed by a function Frame
         self.classes: dict[str, ClassInfo] = {}
         self.tmpl: dict[str, bool] = {}  # the class templates (an __init__ parameter without an annotation)
         self.compiling = False  # every declaration is made: code is being compiled (see guess)
@@ -1597,7 +1611,7 @@ class Gen:
         self.ext = ""  # pystachy ext: the name of the CPython extension module the program becomes
         self.libdir = ""  # the lib/ beside the compiler, the last directory of the module path (lib_fn)
         self.prefix = ""  # the directory that holds it, absolute: sys.prefix (gen_modattr)
-        self.csyms: dict[str, str] = {}  # @ffi.extern: each C symbol's declare (one signature per program)
+        self.csyms: dict[str, ExternDecl] = {}  # @ffi.extern: each C symbol's ABI plan (one signature per program)
         self.csymline: dict[str, int] = {}  # and the line that declared it
         self.cdirect: dict[str, bool] = {}  # the C symbols a GLUE module (lib/pyobj.py) calls directly, declared once
         self.extvars: dict[str, int] = {}  # pystachy ext: the main module's variables, and the line that binds each
@@ -1605,7 +1619,7 @@ class Gen:
         self.rtmode = False  # compiling runtime.py: its pys_* functions join runtime.c's under their C names (see runtime_ir)
         self.rtdefs: dict[str, FnInfo] = {}  # runtime mode: the pys_* functions this module defines, by C name
         self.rtcache = False  # runtime mode, for the driver's runtime cache: PYSTACHY_IRFX is the program's
-        self.externs: dict[str, str] = {}  # runtime mode: runtime.c's functions runtime.py declares (def f(...) -> T: ...), by symbol: their declare line ("" if RUNTIME's)
+        self.externs: dict[str, ExternDecl] = {}  # attempt-owned C adapters and runtime declarations, serialized only in lower_module
         self.deps: dict[str, str] = {}  # the modules each module's top-level code imports, space-separated
         self.comp: dict[str, str] = {}  # each module's strongly connected component of that graph (one of its modules)
         self.flowmod = ""
@@ -3779,11 +3793,14 @@ class Gen:
     def pyext(self) -> list[str]:
         return lower_module_pyext(self)
 
+    def validate_module(self) -> None:
+        return lower_module_validate_module(self)
+
     def untold(self, f: FnInfo, ts: list[str], how: str) -> None:
         return functions_untold(self, f, ts, how)
 
-    def extern_decl(self, f: FnInfo) -> None:
-        return lower_module_extern_decl(self, f)
+    def extern_decl(self, f: FnInfo, provided: bool = False) -> None:
+        return lower_module_extern_decl(self, f, provided)
 
     def lower_module(self) -> str:
         return lower_module_lower_module(self)
@@ -4040,8 +4057,29 @@ class Gen:
     def partly(self, e: Node, use: int) -> str:
         return program_partly(self, e, use)
 
+    def prepare_program(self, mods: list[Mod]) -> PreparedProgram:
+        return program_prepare_program(self, mods)
+
+    def discover_program(self, prepared: PreparedProgram) -> None:
+        return program_discover_program(self, prepared)
+
+    def analyze_program(self) -> None:
+        return pipeline_analyze_program(self)
+
+    def optimize_program(self) -> None:
+        return pipeline_optimize_program(self)
+
+    def finalize_program(self) -> None:
+        return pipeline_finalize_program(self)
+
+    def typed_program(self, mods: list[Mod]) -> None:
+        return pipeline_typed_program(self, mods)
+
+    def lower_program(self) -> str:
+        return pipeline_lower_program(self)
+
     def program(self, mods: list[Mod]) -> str:
-        return program_program(self, mods)
+        return pipeline_program(self, mods)
 
     def flow_program(self, top: list[Node], mod: str, mfns: list[FnInfo], mcls: list[ClassInfo], first: bool) -> None:
         return flow_flow_program(self, top, mod, mfns, mcls, first)

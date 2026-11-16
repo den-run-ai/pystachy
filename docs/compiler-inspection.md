@@ -34,9 +34,9 @@ compiler is resolving imports.
 
 | File | Contents |
 |---|---|
-| `report.json` | Outcome, provenance, diagnostics, stage information and pass records |
+| `report.json` | Outcome, provenance, diagnostics, stage information, snapshot hashes and pass records |
 | `typed-before.json` | Selected typed functions before the function optimization passes |
-| `typed-after.json` | Selected functions after optimization and exception lowering, just before LLVM serialization |
+| `typed-after.json` | Selected functions and representation tables at the completed finalization boundary, before function/module LLVM lowering |
 | `llvm.ll` | Final LLVM IR, when compilation succeeds |
 | `passes/NNNN-name.diff` | A readable before/after diff for a pass that changed a selected function |
 | `program-passes/NNNN-name.json` | Whole-program pass snapshots keyed by LLVM symbol (the native recursion depth policy) |
@@ -44,9 +44,25 @@ compiler is resolving imports.
 | `compiler.stderr`, `compiler.stdout` | The ordinary compiler's captured text streams |
 
 The snapshots are serialized from the live IR in the same compilation. They do
-not come from separate compilations with different optimization settings.
+not come from separate compilations with different optimization settings. The
+complete `typed-after` snapshot is captured when `Gen.finalize_program` returns;
+it does not depend on observing each function as LLVM lowering consumes it.
 Failed compilations may stop before any typed IR or LLVM output is available;
 read `report.json` first.
+
+To inspect retained typed IR without serializing LLVM, add `--stop-after finalize`.
+This still prepares, discovers, analyzes, optimizes and finalizes the whole
+reachable program, including inference retries and module admission checks.
+The `llvm` artifact is absent and its report stage is `skipped`. The finalized
+snapshot matches the default `--stop-after lower` mode for the same inputs and
+settings. Combine it with `--typed-after-only` when before/pass snapshots are not
+needed. Neither mode assembles LLVM or executes the program.
+
+`settings.stop_after` records the requested terminal stage. `artifact_sha256`
+binds the report to the exact bytes of each written typed snapshot; it detects a
+replaced or mismatched artifact but does not authenticate the exporter.
+The [Lean stage checker](../tools/lean_boundary/PIPELINE.md) validates the recorded
+stage sequence, retry evidence and association with the finalized snapshot.
 
 `--typed-after-only` records only `typed-after.json`, `llvm.ll` and the report:
 no `typed-before.json`, pass records or diffs, with `"captures": "typed-after"`
@@ -98,7 +114,7 @@ A pass record's `rule` explains the pass's general safety contract. A zero
 optimization. The retained operations, effect summaries and source provide the
 evidence for this example's mutation barrier.
 
-`report.json` also includes the compiler's four registered `pass_contracts`,
+`report.json` also includes the compiler's six registered `pass_contracts`,
 with their required and preserved facts, local analyses, invalidations and
 checks to rerun after a rewrite.
 
@@ -175,11 +191,51 @@ and require full, unfiltered snapshots for whole-program coverage.
   policy, which runs whatever `PYSTACHY_OPT` turns off. Other
   [optimization settings](typed-ir.md#71-language-level-optimizations)
   control frontend or lowering choices and have no invented pass snapshot here.
-- **Phases:** the compiler still combines name resolution, typing, folding and
-  specialization while building IR. The report does not imply a new independent
-  type-checking stage.
+- **Phases:** `attempts[].pipeline` records the explicit compiler stages described
+  below. Preparation and discovery still combine name resolution, typing,
+  representation choices, folding and specialization. The report does not imply
+  a new independent type-checking stage.
 - **Retries:** inference may restart compilation. An incomplete attempt is not
   a successful compilation; interpret stages together with the final outcome.
+
+### Compiler stage boundaries
+
+Each `attempts[].pipeline` comes from that attempt's `PipelineState`, rather than
+being inferred from an emitted operation or timing label:
+
+| Stage | Completed work |
+|---|---|
+| `prepare` | Module declarations, aliases, class records and flow analysis |
+| `discover` | Reachable function and helper discovery, specialization, typed-IR construction and validated C ABI plans without a pending inference retry |
+| `analyze` | Callback versions, symbol indexing, effect summaries, recursion policy and requested initial verification |
+| `optimize` | The enabled typed-IR passes, before exception lowering |
+| `finalize` | Exception lowering, tuple-return ABI selection and module/export admission; the whole typed program is still available |
+| `lower` | Function, C adapter and module LLVM lowering and release of typed function bodies |
+
+`stage` is the last completed compiler transition, `active_stage` identifies a
+started transition that did not finish, and `completed_stages` retains the actual
+completion sequence. Success ends at the requested `settings.stop_after` stage.
+`stages` gives an evidence status for every stage:
+`completed` for a successful attempt, `partial` for retained work in a failed or
+retried attempt, and `unavailable` for stages never reached. The overall
+`pipeline.status` is `completed` only for a successful attempt with consistent
+source provenance. A provenance mismatch sets `source_provenance` to
+`inconsistent` and downgrades its stage evidence to `partial`, without rewriting
+the recorded completion sequence.
+
+For example, a failure in LLVM lowering can leave `stage: "finalize"`,
+`active_stage: "lower"` and a complete inventory of finalization-time functions.
+The retained snapshot is still marked `partial`; it is not accepted as a completed
+Lean-checker input. A retry owns a fresh loader, generator and pipeline state.
+Earlier attempts' completion sequences cannot certify a later attempt.
+
+The [typed-IR pipeline](typed-ir.md#pipeline) documents the internal staged API
+and its ownership limits. The stages do not prove their transformations correct;
+existing Lean checkers continue to check selected properties of the finalized
+IR, with their exporter, runtime and lowering assumptions stated separately.
+C ABI signatures and conversions are planned during discovery and rendered only
+in lowering. The typed IR still contains native representations, LLVM symbol
+names and some constant expressions; it is not target-independent.
 
 ### Whole-program recursion observations
 

@@ -236,8 +236,44 @@ def gen_tbaa_nodes(self) -> list[str]:
     return md
 
 
-def gen_extern_decl(self, f: FnInfo) -> None:
-    self.externs[f.ll] = f"declare {lt(f.ret)} {f.ll}({', '.join([lt(t) for t in f.ptypes])})"
+class ExternDecl:
+    # Attempt-owned ABI plan, not LLVM text or a borrowed FnInfo/AST. Discovery
+    # validates types and registers dependencies; only lower_extern serializes it.
+    def __init__(self, f: FnInfo, provided: bool = False):
+        self.symbol: str = f.ll
+        self.params: list[str] = [t for t in f.ptypes]
+        self.result: str = f.ret
+        self.provided: bool = provided
+        self.c: bool = False
+        self.csym: str = f.csym
+        self.library: str = f.lib
+        self.ctypes: list[str] = []
+        self.cret: str = ""
+        self.at: bool = False
+        self.direct: bool = False
+        self.declare: bool = False
+        self.dynamic: bool = False
+        self.narrow: bool = False
+
+
+def c_abi(c: str) -> str:
+    # A normalized C signature keeps aliases equal without retaining a rendered
+    # declaration. Preserve parameter/result extension attributes in comparisons.
+    return "ptr" if c in ("str", "opt[str]", "c_buf", "bytes", "opt[bytes]", "list[float]", "list[c_int64]") else "double" if c == "float" else "float" if c == "c_float" else "void" if c == "None" else CTYPES[c].split(":")[0]
+
+
+def c_signature(plan: ExternDecl) -> list[str]:
+    return [c_abi(plan.cret)] + [c_abi(t) for t in plan.ctypes]
+
+
+def c_declaration(plan: ExternDecl) -> str:
+    result = c_abi(plan.cret)
+    result = result[result.find(" ") + 1 :] + " " + result[: result.find(" ")] if " " in result else result
+    return f"declare {result} {plan.csym}({', '.join([c_abi(t) for t in plan.ctypes])})"
+
+
+def gen_extern_decl(self, f: FnInfo, provided: bool = False) -> None:
+    self.externs[f.ll] = ExternDecl(f, provided)
 
 
 def const_slot(v: Val) -> str:
@@ -348,39 +384,86 @@ def lower_data(d: Data) -> str:
 
 
 def gen_cextern(self, f: FnInfo, at: bool = False) -> None:
-    # @ffi.extern: the program calls @f.<name> as any function, an internal stub that checks and
-    # narrows C integers (OverflowError), passes a str as its bytes (const char *, NUL-terminated;
-    # ValueError for a NUL in it), bytes as their raw bytes (NULs allowed; None as NULL), and
-    # a list[float] or list[c_int64] as its items (double *,
-    # int64_t *: runtime.c's List.a, which C reads and writes in place for the call; the collector
-    # moves nothing, and no subset code runs until the call returns, so the list cannot grow
-    # meanwhile), and copies a returned char * (NULL: None, or ValueError). It calls
-    # the C function through @ffi.fp.<f.ll>, which the def statement set as ctypes.CDLL would find it, in
-    # the library's own handle (pys_c_bind: see stmt's defaults); only a GLUE module (lib/pyobj.py)
-    # calls its functions directly, libpython's ("python") and those of the C glue linked in ("").
-    # With at, @f.<name>.at, which a call that passes a list as ffi.at(xs, k) calls (Gen.call_fn):
-    # after the arguments, an index for each list, checked as the call starts (pys_c_at), from which
-    # C gets the list's items
+    # Validate @ffi.extern when it is discovered, preserving diagnostic order and
+    # runtime registration. Conversion code is rendered from this plan in lower.
     self.line = f.node.line
+    plan = ExternDecl(f)
+    plan.c = True
+    plan.at = at
+    plan.direct = f.mod in GLUE
+    plan.dynamic = dynamic_program()
+    plan.narrow = int_lists()
     sym = f.csym[1:]
-    direct = f.mod in GLUE
-    if f.lib == "python" and not direct:
+    if f.lib == "python" and not plan.direct:
         self.err('@extern("python") is reserved for Pystachy\'s lib/pyobj.py: import pyobj to call CPython')
     for pre in ("pys_", "pyx_", "PyInit_", "PyModExport_"):
         if sym.startswith(pre) or sym == "main":
             self.err(f"C function {sym} is reserved for Pystachy's runtime and extension modules")
+    for j in range(len(f.ptypes)):
+        c = self.externtype(f.node.kids[0].kids[j].kids[0], f.ptypes[j], "takes", f)
+        plan.ctypes.append(c)
+        if c == "str":
+            self.runtime("pys_c_str")
+        elif (c == "list[float]" or c == "list[c_int64]") and at:
+            self.runtime("pys_c_at")
+        elif c == "list[c_int64]" and plan.narrow:
+            self.runtime("pys_list_narrow")
+        elif c not in ("c_buf", "bytes", "opt[bytes]", "list[float]", "list[c_int64]", "float", "c_float"):
+            if CTYPES[c].split(":")[1] != "-1":
+                self.runtime("pys_c_check")
+    c = self.externtype(f.node.kids[1], f.ret, "returns", f)
+    plan.cret = c
+    if c in ("str", "opt[str]", "bytes", "opt[bytes]"):
+        self.runtime("pys_cstr")
+    elif c not in ("None", "float", "c_float") and CTYPES[c].split(":")[1] == "2":
+        self.runtime("pys_c_check")
+    if plan.dynamic and any(t in ["list[int]", "list[float]"] for t in f.ptypes):
+        self.runtime("pys_list_forget_identity")
+    if at:
+        self.externs[f.ll + ".at"] = plan
+        return
+    signature = c_signature(plan)
+    if sym in RTSYM:
+        have = [t.split(" ")[0] for t in signature]
+        expected = RtFn(RTSYM[sym]).ll
+        if have != expected:
+            self.err(f"C function {sym} is declared as {have[0]}({', '.join(have[1:])}), but Pystachy's runtime calls it as {expected[0]}({', '.join(expected[1:])})")
+        if plan.direct:
+            self.runtime(sym)
+    elif sym in self.csyms:
+        if c_signature(self.csyms[sym]) != signature:
+            self.err(f"C function {sym} is declared again with other types: {c_declaration(self.csyms[sym])[8:]} at line {self.csymline[sym]}, {c_declaration(plan)[8:]} here")
+    else:
+        self.csyms[sym] = plan
+        self.csymline[sym] = f.node.line
+    if plan.direct:
+        plan.declare = sym not in RTSYM and sym not in self.cdirect
+        self.cdirect[sym] = True
+    elif len(LINKDL) == 0:
+        LINKDL.append("dl")
+    self.externs[f.ll] = plan
+    if f.lib == "python" and f.lib not in LIBS:
+        LIBS.append(f.lib)
+
+
+def lower_extern(plan: ExternDecl) -> str:
+    # Serializing a completed plan reads no AST, inference, environment or mutable
+    # compiler tables, and registers no additional runtime/link dependencies.
+    if plan.provided:
+        return ""
+    if not plan.c:
+        return f"declare {lt(plan.result)} {plan.symbol}({', '.join([lt(t) for t in plan.params])})"
     ps: list[str] = []
     args: list[str] = []
     code: list[str] = []
     cts: list[str] = []
     offs: list[str] = []
-    for j in range(len(f.ptypes)):
-        t = f.ptypes[j]
+    for j in range(len(plan.params)):
+        t = plan.params[j]
         ps.append(f"{lt(t)} %a{j}")
-        c = self.externtype(f.node.kids[0].kids[j].kids[0], t, "takes", f)
+        c = plan.ctypes[j]
         if c in ("str", "c_buf", "bytes", "opt[bytes]"):
             if c == "str":
-                self.runtime("pys_c_str")
                 code.append(f"  call void @pys_c_str(ptr %a{j})")
             # The call only borrows immutable bytes; the same stable Str storage backs str and bytes.
             if c == "opt[bytes]":
@@ -390,15 +473,13 @@ def gen_cextern(self, f: FnInfo, at: bool = False) -> None:
             else:
                 code.append(f"  %p{j} = getelementptr i8, ptr %a{j}, i64 {STR_HEADER_SIZE}")  # (bytes after Str's byte length, hash and character-count cache)
             cts.append("ptr")
-        elif (c == "list[float]" or c == "list[c_int64]") and at:
-            self.runtime("pys_c_at")
+        elif (c == "list[float]" or c == "list[c_int64]") and plan.at:
             code.append(f"  %p{j} = call ptr @pys_c_at(ptr %a{j}, i64 %o{j})")
             offs.append(f"i64 %o{j}")
             cts.append("ptr")
         elif c == "list[float]" or c == "list[c_int64]":
-            if c == "list[c_int64]" and int_lists():
+            if c == "list[c_int64]" and plan.narrow:
                 # (an item past 64 bits, whose slot holds -2**63: OverflowError, as pys_c_at raises)
-                self.runtime("pys_list_narrow")
                 code.append(f"  call void @pys_list_narrow(ptr %a{j})")
             code.append(f"  %l{j} = getelementptr inbounds {{i64, i64, ptr}}, ptr %a{j}, i64 0, i32 2")  # (List.a: runtime.c's {len, cap, a})
             code.append(f"  %p{j} = load ptr, ptr %l{j}")
@@ -413,22 +494,20 @@ def gen_cextern(self, f: FnInfo, at: bool = False) -> None:
             ll, k = CTYPES[c].split(":")
             v = f"%a{j}"
             if k != "-1":
-                self.runtime("pys_c_check")
                 code.append(f"  %k{j} = call i64 @pys_c_check(i64 %a{j}, i64 {k})")
                 v = f"%k{j}"
             code.append(f"  %p{j} = {'trunc i64 ' + v + ' to i32' if ll.startswith('i32') else 'inttoptr i64 ' + v + ' to ptr' if ll == 'ptr' else 'add i64 0, ' + v}")
             cts.append(ll)
         args.append(f"{cts[-1]} %p{j}")
-    c = self.externtype(f.node.kids[1], f.ret, "returns", f)
+    c = plan.cret
     r = "ptr" if c in ("str", "opt[str]", "bytes", "opt[bytes]") else "double" if c == "float" else "float" if c == "c_float" else "void" if c == "None" else CTYPES[c].split(":")[0]
     rr = r[r.find(" ") + 1 :] + " " + r[: r.find(" ")] if " " in r else r  # (a result's attribute comes first: zeroext i32)
-    cl = f"call {rr} {f.csym if direct else '%fp'}({', '.join(args)})"
-    if not direct:
-        code.insert(0, f"  %fp = load ptr, ptr @ffi.fp.{f.ll[1:]}")
+    cl = f"call {rr} {plan.csym if plan.direct else '%fp'}({', '.join(args)})"
+    if not plan.direct:
+        code.insert(0, f"  %fp = load ptr, ptr @ffi.fp.{plan.symbol[1:]}")
     if r == "void":
         code.extend([f"  {cl}", "  ret void"])
     elif c in ("str", "opt[str]", "bytes", "opt[bytes]"):
-        self.runtime("pys_cstr")
         code.extend([f"  %r = {cl}", f"  %s = call ptr @pys_cstr(ptr %r, i64 {1 if c == 'str' else 2 if c == 'bytes' else 0})", "  ret ptr %s"])
     elif c == "float":
         code.extend([f"  %r = {cl}", "  ret double %r"])
@@ -439,48 +518,57 @@ def gen_cextern(self, f: FnInfo, at: bool = False) -> None:
         code.append(f"  %r = {cl}")
         code.append(f"  %x = {'sext i32 %r to i64' if r == 'i32 signext' else 'zext i32 %r to i64' if r == 'i32 zeroext' else 'ptrtoint ptr %r to i64' if r == 'ptr' else 'add i64 0, %r'}")
         if k == "2":
-            self.runtime("pys_c_check")
             code.append("  %y = call i64 @pys_c_check(i64 %x, i64 3)")
         code.append(f"  ret i64 {'%y' if k == '2' else '%x'}")
-    if dynamic_program():
-        changed = [j for j in range(len(f.ptypes)) if f.ptypes[j] in ["list[int]", "list[float]"]]
+    if plan.dynamic:
+        changed = [j for j in range(len(plan.params)) if plan.params[j] in ["list[int]", "list[float]"]]
         if len(changed) > 0:
             # The CPython ffi twin replaces the numeric list's items after C returns,
             # including read-only calls. Keep raw aliases during C, then renew objects.
-            self.runtime("pys_list_forget_identity")
             call_at = code.index(f"  {cl}" if r == "void" else f"  %r = {cl}")
             code = code[:call_at + 1] + [f"  call void @pys_list_forget_identity(ptr %a{j})" for j in changed] + code[call_at + 1:]
-    if at:
-        self.externs[f.ll + ".at"] = f"define internal {lt(f.ret)} {f.ll}.at({', '.join(ps + offs)}) {{\n" + "\n".join(code) + "\n}"
-        return  # (the C function's declaration and address are the stub's: see below)
-    decl = f"declare {rr} {f.csym}({', '.join(cts)})"
-    tys = [r.split(" ")[0]] + [x.split(" ")[0] for x in cts]
-    if sym in RTSYM:
-        # one the compiler or the runtime calls too (fabs, memchr, ...): RUNTIME's types, declared from RUNTIME
-        e = RtFn(RTSYM[sym]).ll
-        if tys != e:
-            self.err(f"C function {sym} is declared as {tys[0]}({', '.join(tys[1:])}), but Pystachy's runtime calls it as {e[0]}({', '.join(e[1:])})")
-        if direct:
-            self.runtime(sym)
-    elif sym in self.csyms:
-        if self.csyms[sym] != decl:
-            self.err(f"C function {sym} is declared again with other types: {self.csyms[sym][8:]} at line {self.csymline[sym]}, {decl[8:]} here")
-    else:
-        self.csyms[sym] = decl
-        self.csymline[sym] = f.node.line
-    if direct:
-        # (the C function itself, declared once for the calls that name it)
-        decl = decl if sym not in RTSYM and sym not in self.cdirect else ""
-        self.cdirect[sym] = True
-    else:
-        # (the C function's address, and the library and symbol pys_c_bind looks it up by)
-        x = f.ll[1:]
-        decl = f"@ffi.fp.{x} = internal global ptr null\n@ffi.lib.{x} = private unnamed_addr constant [{len(f.lib) + 1} x i8] c\"{llstr(f.lib)}\\00\"\n@ffi.sym.{x} = private unnamed_addr constant [{len(sym) + 1} x i8] c\"{llstr(sym)}\\00\""
-        if len(LINKDL) == 0:
-            LINKDL.append("dl")
-    self.externs[f.ll] = (decl + "\n" if decl != "" else "") + f"define internal {lt(f.ret)} {f.ll}({', '.join(ps)}) {{\n" + "\n".join(code) + "\n}"
-    if f.lib == "python" and f.lib not in LIBS:
-        LIBS.append(f.lib)
+    if plan.at:
+        return f"define internal {lt(plan.result)} {plan.symbol}.at({', '.join(ps + offs)}) {{\n" + "\n".join(code) + "\n}"
+    decl = c_declaration(plan) if plan.declare else ""
+    if not plan.direct:
+        x = plan.symbol[1:]
+        sym = plan.csym[1:]
+        decl = f"@ffi.fp.{x} = internal global ptr null\n@ffi.lib.{x} = private unnamed_addr constant [{len(plan.library) + 1} x i8] c\"{llstr(plan.library)}\\00\"\n@ffi.sym.{x} = private unnamed_addr constant [{len(sym) + 1} x i8] c\"{llstr(sym)}\\00\""
+    return (decl + "\n" if decl != "" else "") + f"define internal {lt(plan.result)} {plan.symbol}({', '.join(ps)}) {{\n" + "\n".join(code) + "\n}"
+
+def gen_validate_module(self) -> None:
+    # Admit the module before the finalized typed program is exposed. These
+    # source restrictions do not depend on LLVM function bodies or wrappers.
+    if self.rtmode:
+        for ci in self.classes.values():
+            self.err(f"runtime.py may not define classes ({ci.name})")
+        return
+    if self.ext == "":
+        return
+    letter = {"int": "i", "float": "f", "bool": "b", "str": "s", "None": "n"}
+    for f in self.funcs.values():
+        if f.mod != "" or f.cls != "" or f.name.startswith("_") or f.extern:
+            continue
+        self.line = f.node.line
+        if not f.pyexport:
+            self.err(f"{f.name}() is public in extension module '{self.ext}' but not @export: CPython would not see it; export it or name it _{f.name}")
+        dflt = False
+        for x in f.defaults:
+            dflt = dflt or x.kind != "noann"
+        if dflt or f.vararg >= 0 or f.npos != len(f.params):
+            self.err(f"{f.name}() is @export: its parameters are positional, with no default values and no *args (as CPython calls it)")
+        for t in [f.ret] + f.ptypes:
+            if t not in letter or (t == "None" and t != f.ret):
+                self.err(f"{f.name}() cannot be called from CPython: it takes or returns {typestr(t) if t != '' else 'an untyped value'} (an extension module's function takes int, float, bool or str and returns one or None); name it _{f.name} to keep it private")
+    # what CPython would see of the module but an extension cannot give it yet: an error
+    for ci in self.classes.values():
+        if "$" not in ci.name and not ci.name.startswith("_") and short(ci.name) == ci.name:
+            self.line = ci.node.line
+            self.err(f"class {ci.name} is public in extension module '{self.ext}', but classes cannot cross to CPython yet: name it _{ci.name}")
+    for nm in self.mvars:
+        if "$" not in nm and not nm.startswith("_") and nm not in self.imports and nm not in self.funcs and nm not in self.classes:
+            self.line = self.extvars.get(nm, 1)
+            self.err(f"variable '{nm}' is public in extension module '{self.ext}', but CPython would not see it (variables cannot cross yet): name it _{nm}")
 
 def gen_pyext(self) -> list[str]:
     # pystachy ext: in place of @main, what pyext.c calls. @pyx.init runs the module's code and
@@ -503,17 +591,6 @@ def gen_pyext(self) -> list[str]:
     for f in self.funcs.values():
         if f.mod != "" or f.cls != "" or f.name.startswith("_") or f.extern:
             continue
-        self.line = f.node.line
-        if not f.pyexport:
-            self.err(f"{f.name}() is public in extension module '{self.ext}' but not @export: CPython would not see it; export it or name it _{f.name}")
-        dflt = False
-        for x in f.defaults:
-            dflt = dflt or x.kind != "noann"
-        if dflt or f.vararg >= 0 or f.npos != len(f.params):
-            self.err(f"{f.name}() is @export: its parameters are positional, with no default values and no *args (as CPython calls it)")
-        for t in [f.ret] + f.ptypes:
-            if t not in letter or (t == "None" and t != f.ret):
-                self.err(f"{f.name}() cannot be called from CPython: it takes or returns {typestr(t) if t != '' else 'an untyped value'} (an extension module's function takes int, float, bool or str and returns one or None); name it _{f.name} to keep it private")
         sig = "".join([letter[t] for t in [f.ret] + f.ptypes])
         o.extend([f"define internal i64 @pyx.f.{f.name}(ptr %a, ptr %err) personality ptr @pys_personality {{", "entry:",
                   "  %mark = call i64 @pys_try_mark()", "  %prev = call ptr @pys_exc_handled()", "  %depth = call i64 @pys.recursion.depth()"])
@@ -535,15 +612,6 @@ def gen_pyext(self) -> list[str]:
                   f"  %r = call ptr @pyx_call(i64 {len(tab)}, ptr %args, i64 %n, ptr %kw)", "  ret ptr %r", "}"])
         tab.append(f"{{ptr, ptr, ptr, ptr}} {{ptr @pyx.n.{f.name}, ptr @pyx.s.{f.name}, ptr @pyx.f.{f.name}, ptr @pyx.m.{f.name}}}")
     o.append(f"@pyx_exports = constant [{len(tab) + 1} x {{ptr, ptr, ptr, ptr}}] [{', '.join(tab + ['{ptr, ptr, ptr, ptr} zeroinitializer'])}]")
-    # what CPython would see of the module but an extension cannot give it yet: an error
-    for ci in self.classes.values():
-        if "$" not in ci.name and not ci.name.startswith("_") and short(ci.name) == ci.name:
-            self.line = ci.node.line
-            self.err(f"class {ci.name} is public in extension module '{self.ext}', but classes cannot cross to CPython yet: name it _{ci.name}")
-    for nm in self.mvars:
-        if "$" not in nm and not nm.startswith("_") and nm not in self.imports and nm not in self.funcs and nm not in self.classes:
-            self.line = self.extvars.get(nm, 1)
-            self.err(f"variable '{nm}' is public in extension module '{self.ext}', but CPython would not see it (variables cannot cross yet): name it _{nm}")
     # a raise of one of the program's exception classes leaves as its nearest builtin base
     xs: list[str] = []
     for ci in self.classes.values():
@@ -732,14 +800,13 @@ def gen_lower_module(self) -> str:
             hdr.append(runtime_decl(k))  # (runtime mode: what runtime.py defines is not declared)
     for sym in self.rtdatas:
         hdr.append(f"@{sym} = external constant {RTDATA[sym]}")  # (the runtime's data that dynamic values use)
-    for x in self.externs.values():
-        if x != "":
-            hdr.append(x)
+    for plan in self.externs.values():
+        text = lower_extern(plan)
+        if text != "":
+            hdr.append(text)
     if self.coros or self.gendrops or self.gendrops_counted:
         hdr.extend(self.gen_module())
     if self.rtmode:
-        for ci in self.classes.values():
-            self.err(f"runtime.py may not define classes ({ci.name})")
         # TBAA: a str's length and its bytes never alias (see RTL); other accesses carry no tag
         hdr.append(f'!{TBAA_LEN - 3} = !{{!"pystachy runtime.py"}}')
         hdr.append(f'!{TBAA_LEN - 2} = !{{!"str length", !{TBAA_LEN - 3}, i64 0}}')
