@@ -301,6 +301,8 @@ def gen_dyn_boxable(self, t: str) -> str:
     # of these, and dyn
     if t == DYN or dyn_builtin_type(t) != "" or t == BIG or t == NONEVAR or self.refl_builtin_class(t) != "":
         return ""
+    if self.is_iface(t):
+        return f"a value of {short(t)}, an interface, cannot become an Any value yet (its box is not its object)"
     if t in self.classes and t not in self.tmpl:
         if self.classes[t].exc != "":
             return f"an exception object ({typestr(t)}) as Any is not supported yet"

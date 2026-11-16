@@ -42,6 +42,9 @@ def workload(mode, implementations, consumers):
     lines = ["import sys", "from time import perf_counter_ns"]
     if mode == "stored":
         lines.append("from adapter import TypedIterator, int_iterator")
+    if mode == "native":
+        lines.extend(["from typing import Protocol", "", "", "class IntCursor(Protocol):",
+                      "    def __next__(self) -> int: ..."])
     for index in range(implementations):
         lines.extend([
             "", "", f"class Cursor{index}:",
@@ -52,7 +55,7 @@ def workload(mode, implementations, consumers):
             "            raise StopIteration", "        self.index += 1",
             f"        return self.index * 3 + self.seed + {index}",
         ])
-    annotation = ": TypedIterator[int]" if mode == "stored" else ": Cursor0 | Cursor1" if mode == "union" else ""
+    annotation = {"stored": ": TypedIterator[int]", "native": ": IntCursor", "union": ": Cursor0 | Cursor1"}.get(mode, "")
     for index in range(consumers):
         lines.extend([
             "", "", f"def consume{index}(source{annotation}) -> int:",
@@ -191,7 +194,7 @@ def main():
     state = {}
     checksums = {}
     for implementations, consumers in shapes:
-        for mode in ("specialized", "stored", "union") if implementations == 2 else ("specialized", "stored"):
+        for mode in ("specialized", "stored", "native", "union") if implementations == 2 else ("specialized", "stored", "native"):
             tag = f"{implementations}x{consumers}-{mode}"
             directory = output / tag
             directory.mkdir()

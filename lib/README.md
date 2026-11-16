@@ -166,8 +166,8 @@ inputs, unsupported APIs and observable differences from CPython. The
 The [porting checklist](../docs/porting.md) describes compiled upstream test
 coverage and the pinned `make port-check` checks for fnmatch and textwrap.
 The [stored-interface tutorial](../examples/typed_iterator/README.md) demonstrates
-explicit generic adapters for retaining different implementations behind fixed
-callable signatures; these examples are not extra standard-library APIs.
+`Protocol` interfaces and explicit generic adapters for retaining different
+implementations; these examples are not extra standard-library APIs.
 Builtin modules such as `sys`, `os` and `math` are documented in the
 [language guide](../docs/language.md#builtins-and-library-modules).
 

@@ -1,0 +1,8 @@
+one True False 2
+1 True True 99
+True 3
+KeyError 9
+['one', 'one', '1', 'y'] [2, 3, 99, 3]
+IndexError list index out of range
+{'a': 3} 3
+[exit 0]

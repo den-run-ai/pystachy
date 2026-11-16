@@ -14,6 +14,7 @@ remain valid Python and compile together through Pystachy's existing loader.
 | Compilation | [gen](pystachy_compiler/gen.py), [program](pystachy_compiler/program.py), [functions](pystachy_compiler/functions.py): compiler state, program orchestration and function compilation. |
 | Types | [declarations](pystachy_compiler/declarations.py), [templates](pystachy_compiler/templates.py): annotations, fields and specialization. |
 | Unions | [unions](pystachy_compiler/unions.py), [union_arithmetic](pystachy_compiler/union_arithmetic.py): explicit closed scalar, container and native reference unions, their narrowing and numeric operations. |
+| Interfaces | [interfaces](pystachy_compiler/interfaces.py): `Protocol` classes and joined iterators as stored interfaces, boxes of a method table and an object, and their tables' adapters. |
 | Values | [variables](pystachy_compiler/variables.py), [local_versions](pystachy_compiler/local_versions.py), [expressions](pystachy_compiler/expressions.py): binding, bounded local retyping, closures and expression typing. |
 | Dynamic values | [dynamic](pystachy_compiler/dynamic.py): `typing.Any` as a runtime-typed box in modules that opt in ([dynamic `Any`](../docs/dynamic-any.md)), with the dispatchers that run its operations on the program's classes. |
 | Promoting ints | [bigints](pystachy_compiler/bigints.py): `int` as CPython's arbitrary-precision int in modules that opt in ([promoting ints](../docs/python-int.md)): its two-word value, the inline 64-bit paths and the calls of `runtime.c`'s `pys_big_*` functions. |

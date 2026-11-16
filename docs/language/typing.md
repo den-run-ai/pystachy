@@ -21,7 +21,8 @@ unsupported forms, see [compatibility](compatibility.md).
 | `T \| None` | Optional values, including containers, `Callable`, generators (`Generator[Y, None, None] \| None`) and exceptions (`BaseException \| None`) |
 | `type[E]`, `type[E] \| None` | The class of an exception (`E` an exception class), as a context manager's `__exit__` takes it; see [context managers](semantics.md#context-managers) |
 | `TextIO` | Text files |
-| `Generator[Y, S, R]`; `Iterator[T]` or `Iterable[T]` as a generator function's return | Generator objects that yield `Y` (any generator function's) and take `S` from `send()`; see [generators](semantics.md#generators). Elsewhere `Iterator[T]` and `Iterable[T]` type nothing ([iterators](semantics.md#iterators)) |
+| `Generator[Y, S, R]`; `Iterator[T]` or `Iterable[T]` as a generator function's return | Generator objects that yield `Y` (any generator function's) and take `S` from `send()`; see [generators](semantics.md#generators). Elsewhere `Iterator[T]` and `Iterable[T]` type nothing ([iterators](semantics.md#iterators)), but in a protocol's methods |
+| `typing.Protocol` classes | Objects of any class that defines the protocol's methods ([stored interfaces](#protocols-and-stored-interfaces)) |
 
 A `bytes` value comes from a literal (`b"\x00ab"`, `rb"..."`), `bytes()` (empty, `bytes(n)` zero
 bytes, `bytes(xs)` of ints, also of a `range()`, `map()` or generator expression, `bytes(b)`,
@@ -611,6 +612,70 @@ invariant, and no reference union is [inferred](#inferred-unions). This adds det
 native execution, without profiles, an interpreter, runtime compilation or speculative
 assumptions; boxing and dispatch have costs, so no performance improvement is claimed.
 
+## Protocols and stored interfaces
+
+A class whose base is `typing.Protocol` (or `Protocol[T, ...]`) is a stored interface.
+A variable, field, parameter, result or container item annotated with it holds an object
+of any class that defines the protocol's methods; the class does not name the protocol.
+Unrelated classes then share one list, field and compiled consumer:
+
+```python
+class Shape(Protocol):
+    def area(self) -> float: ...
+
+class Square:
+    def __init__(self, side: float) -> None:
+        self.side = side
+
+    def area(self) -> float:
+        return self.side * self.side
+
+shapes: list[Shape] = [Square(2.0), Circle(1.0)]  # Circle defines area() too
+print(sum(s.area() for s in shapes))
+```
+
+A protocol's methods and properties need annotated parameters and results: calls through
+the protocol pass and return these types for every implementation. Its body holds methods,
+properties, a docstring, `pass` and `...`; `@runtime_checkable` and `@abstractmethod` are
+accepted. Attribute members (`name: str`), `*args` and `**kwargs`, `__init__`, protocol
+inheritance and naming a protocol as a base (`class Square(Shape)`) are not supported. Such a
+protocol is an error where it is declared in the main program, and where the program uses it
+in an imported module.
+
+As in CPython, converting a value checks nothing: an implementation needs only the methods
+that the program calls through the protocol. A called method that its class lacks, or whose
+result does not convert to the protocol's result type, is a compilation error at the
+conversion. `Protocol[T]` names one interface for each binding, so `Cell[int]` and `Cell[str]`
+are distinct types. In a protocol's methods, `Iterator[X]` and `Iterable[X]` annotate stored
+interfaces too: a `def __iter__(self) -> Iterator[int]` accepts lists, tuples, ranges,
+dictionaries, sets, generators and objects with `__iter__` alike
+([test](../../tests/programs/classes/protocol_iterable.py)).
+
+A protocol's value is its object. `is` and `is not` compare the objects; `str()`, `repr()`,
+printing and truth tests use the object's class. A value that is `None` stays `None`. Only the
+run time knows the object's class, so `==`, `!=`, ordering, `hash()`, dict keys and set
+elements, `type()`, `isinstance()` and other reflection of protocol values are compilation
+errors (#487): compare them with `is`. Converting one protocol's value to another protocol,
+and to or from a dynamic `Any` value, is not supported.
+
+Protocol-annotated parameters take protocol values: a call with a `Square` converts it. To
+specialize a function for each argument's class instead, leave the parameter unannotated or
+annotate it with a `TypeVar` whose bound is the protocol's name as a string.
+
+Where iterators of distinct types with one item type meet, the location holds the stored
+interface `Iterator[T]`, which programs did not compile before: a list or dict display, a
+conditional expression, a function's returns, or a variable or field assigned more than once
+(`self.it = iter(xs)`, then `self.it = gen()`). `next()`, `iter()`, loops and the other
+consumers advance the object itself; iterators of one type keep that type
+([tests](../../tests/programs/generators/iterator_join_display.py)). Modules that opt in to
+[dynamic `Any`](../dynamic-any.md) keep their dynamic joins.
+
+A protocol value is a pointer to an immutable 16-byte box of a method table and the object,
+so a conversion allocates one box. The program has one constant table for each pair of
+implementation type and protocol; a call loads the table's entry and calls it indirectly with
+the object. Entries are compiled only for operations that the program calls
+([internals](../internals.md#interface-values)).
+
 ## Function and method templates
 
 A module-level function with an unannotated parameter is a template, compiled once for
@@ -871,11 +936,9 @@ with the same signature share a specialization. This also works for
 `Callable[[A, B], Result]` where `Result` is a class template: the actual returned specialization
 determines the callable's result type.
 
-The [stored interface tutorial](../../examples/typed_iterator/README.md) applies this
-to generic iterators, retained iterables and multi-operation lookups: small adapters
-specialize for each source, while a typed field or list retains a shared wrapper.
-It is an explicit source adaptation, not a general stored `Iterator[T]` or
-`Protocol` representation.
+The [stored interface tutorial](../../examples/typed_iterator/README.md) compares this
+with [protocols](#protocols-and-stored-interfaces): explicit `Callable` adapters specialize
+for each source, while a typed field or list retains a shared wrapper with its own identity.
 
 ### Explicit generic classes
 

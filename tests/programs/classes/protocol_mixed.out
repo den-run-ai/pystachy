@@ -1,0 +1,8 @@
+[('square', 4.0), ('circle', 3.0), ('square', 2.25)]
+square 9.25
+[16.0, 12.0, 9.0]
+circle ['square', 'circle']
+3.0 square
+a 27.0
+b 16.0
+[exit 0]

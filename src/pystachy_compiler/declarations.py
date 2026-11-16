@@ -157,6 +157,10 @@ def gen_ann(self, n: Node) -> str:
     k = n.kind
     if k == "boundtype":
         return n.s  # a saved lexical annotation's already-resolved native type
+    if k == "ifacetype":
+        # Iterator[X] or Iterable[X] in a Protocol's method: the stored interface (interfaces.py)
+        t = self.ann(n.kids[0])
+        return t if t.startswith("!") else self.iface_of(n.s, [t])
     if k == "None":
         return "None"
     if k == "str":
@@ -231,6 +235,8 @@ def gen_ann(self, n: Node) -> str:
         return "exctype"
     elif k == "index" and n.kids[0].kind == "name" and n.kids[0].s in self.taliases:
         return self.alias_ann(n)
+    elif k == "index" and n.kids[0].kind == "name" and n.kids[0].s in self.ifgeneric:
+        return self.iface_spec(n.kids[0].s, n.kids[1])  # (P[X] of a generic Protocol: interfaces.py)
     elif k == "index" and n.kids[0].kind == "name" and n.kids[0].s in self.tparams:
         return self.generic_ann(n.kids[0].s, n.kids[1])
     elif k == "index" and (n.kids[0].kind == "name" or n.kids[0].kind == "attr") and self.ann(n.kids[0]) in self.galias:

@@ -281,6 +281,10 @@ def lower_data(d: Data) -> str:
     if d.kind == "fieldnames":
         # Class-tag indexed static strings: neither the table nor its entries need GC roots.
         return f"{d.name} = private constant [{len(d.refs)} x ptr] [{', '.join(['ptr ' + x for x in d.refs])}], align 8"
+    if d.kind == "itab":
+        # An interface's table for one implementation type (interfaces.py): its operations'
+        # adapters, null for one that nothing calls. Code pointers only: no GC roots
+        return f"{d.name} = private constant [{max(len(d.refs), 1)} x ptr] [{', '.join(['ptr ' + x for x in d.refs]) if len(d.refs) > 0 else 'ptr null'}], align 8"
     if d.kind == "callable" or d.kind == "exception":
         # (an ExcClass whose displayed name the program assigns, d.text, is written: exc_set_module)
         how = "global" if d.text == "global" else "constant"
@@ -705,6 +709,8 @@ def gen_lower_module(self) -> str:
     for ci in self.classes.values():
         if ci.name in self.tmpl:
             continue  # (a class template's objects are its specializations')
+        if ci.name in self.ifaces:
+            continue  # (an interface's values are boxes of a table and an object: interfaces.py)
         if ci.name == RANGEC and not self.rangeused:
             continue  # (lib's class of range objects, which a program that may make one loads: of no code here)
         if ci.name == OBJECTC and not self.objectused:

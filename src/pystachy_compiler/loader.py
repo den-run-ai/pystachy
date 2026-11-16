@@ -1938,8 +1938,8 @@ class Loader:
         g = base.kids[0]
         if g.kind == "name":
             k = m.kinds.get(g.s, "")
-            return k == "b:typing.Generic" or k == "b:typing_extensions.Generic"
-        if g.kind == "attr" and g.s == "Generic" and g.kids[0].kind == "name":
+            return k in ["b:typing.Generic", "b:typing_extensions.Generic", "b:typing.Protocol", "b:typing_extensions.Protocol"]  # (Protocol[T] too)
+        if g.kind == "attr" and (g.s == "Generic" or g.s == "Protocol") and g.kids[0].kind == "name":
             k = m.kinds.get(g.kids[0].s, "")
             return k == "b:typing" or k == "b:typing_extensions"
         return False

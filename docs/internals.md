@@ -187,6 +187,27 @@ serve multiple static element types. Optional reference values use null for `Non
 numbers use boxes. Integers use checked 64-bit arithmetic rather than CPython's arbitrary
 precision.
 
+<a id="interface-values"></a>
+
+A [protocol](language/typing.md#protocols-and-stored-interfaces) value is a pointer to an
+immutable 16-byte box `{table, object}`, or null for `None`; `interfaces.py` builds it. The
+object is the implementation's own pointer, never copied, so the box keeps it alive and
+identity tests compare objects, not boxes. A table is a private constant array of adapter
+code pointers, one per pair of implementation type and protocol. Each protocol method's
+body loads its entry and calls it with the object through the `icall` operation that
+`Callable` calls use, with the same dynamic-identity arguments. An adapter takes the object
+as the implementation's type and runs the operation: a method call, a property read, or the
+builtin form (`next(o)`, `iter(o)`, `repr(o)`) for builtin implementations such as lists,
+generators and files. Every protocol also has `__repr__`, `__str__` and `__bool__` entries,
+which printing and truth tests use.
+
+Conversions only name a table. After the program's code is compiled, the final discovery
+loop compiles the adapters of the entries that calls of protocol methods use; an entry no
+call uses stays null. `Protocol[T]` bindings and the `Iterator[T]` and `Iterable[T]`
+interfaces are interface classes made per binding. The driver keeps their names across
+compilation passes, so a later pass recreates one that a join hint names before compiling
+code. Protocol classes have no struct layout and are never instantiated.
+
 Strings retain UTF-8 storage: their header holds the byte length, cached dictionary hash,
 and cached code-point count plus one (zero means unknown), followed by the bytes at offset
 24. ASCII literals start with the character count cached. `bytes` shares the storage layout

@@ -1,27 +1,115 @@
-# Port stored values with explicit typed interfaces
+# Port stored values with typed interfaces
 
-These examples let unrelated implementations share one field, list and consumer
-using Pystachy's `Callable` support. They are source-level prototypes of the
-stored-interface problem in [#488](https://github.com/den-run-ai/pystachy/issues/488).
-The [integer iterator example](../../tests/programs/apps/example_typed_iterator.py)
-and [generic interfaces example](../../tests/programs/apps/example_typed_interfaces.py)
-run unchanged on CPython and are part of the normal differential corpus. The second
-example also retains repeatable iterables and dictionaries or lists behind a
-three-operation lookup interface.
+These examples let unrelated implementations share one field, list and consumer. A
+`typing.Protocol` gives them a native stored interface; explicit `Callable` adapters
+remain an alternative, described from step 5 on. The
+[protocol example](../../tests/programs/apps/example_typed_protocols.py), the
+[integer iterator example](../../tests/programs/apps/example_typed_iterator.py)
+and the [generic interfaces example](../../tests/programs/apps/example_typed_interfaces.py)
+run unchanged on CPython and are part of the normal differential corpus. They are
+the stored-interface problem of [#488](https://github.com/den-run-ai/pystachy/issues/488).
 
 ## 1. Identify the storage boundary
 
 Try the original component first. An unannotated function can specialize for each
 concrete argument type; it does not automatically need dynamic `Any`. A different
 problem arises when one field or collection must retain unrelated implementations.
-An `Iterable[int]` annotation currently does not give that storage a common native
-representation; see [typing](../../docs/language/typing.md).
+An `Iterable[int]` annotation alone does not give that storage a common native
+representation; see [typing](../../docs/language/typing.md#protocols-and-stored-interfaces).
 
 Choose the operations the consumer actually needs. Here they are `iter` returning
 the same iterator and `next` returning an `int` or propagating an exception. The
 consumer needs a single-pass iterator, not a source it can restart.
 
-## 2. Give stored callbacks a fixed signature
+## 2. Declare the operations as a Protocol
+
+A protocol names those operations and their types. Classes implement it by defining
+the methods; they do not name it:
+
+```python
+class IntStream(Protocol):
+    def __iter__(self) -> Iterator[int]: ...
+
+    def __next__(self) -> int: ...
+
+
+class Slot:
+    def __init__(self, current: IntStream) -> None:
+        self.current = current
+
+
+def drain(stream: IntStream) -> list[int]:
+    return list(stream)
+
+
+streams: list[IntStream] = [iter([1, 2]), iter((3, 4)), Counter(2), numbers()]
+print([drain(stream) for stream in streams])
+```
+
+A list iterator, a tuple iterator, a custom class and a generator enter one list and
+one field, and one compiled `drain` body consumes them. Each conversion allocates a
+16-byte box holding the object and a constant method table for its class; calls go
+through the table. The value is still the object: `slot.current is source` holds, and
+advancing either advances both. Converting calls nothing, so a lazy source stays lazy,
+and exceptions from `__next__` propagate as they would in CPython. In a protocol's
+methods, `Iterator[int]` names such an interface too, so `__iter__` may return any
+iterator of `int` items.
+
+Every annotation in the protocol's methods is a contract that each implementation must
+meet when the program calls that method through the protocol. A class whose `__next__`
+returned `str` would be rejected at the conversion; a class that lacks a method the
+program never calls through the protocol is accepted, as in CPython. Comparisons,
+hashing and `type()` of protocol values are rejected, because only the run time knows
+the object's class; compare with `is`.
+
+## 3. Retain an iterable without consuming it
+
+A protocol with only `__iter__` retains a source that can be read again:
+
+```python
+class Source(Protocol):
+    def __iter__(self) -> Iterator[int]: ...
+
+
+def total(source: Source) -> int:
+    result = 0
+    for value in source:
+        result += value
+    return result
+
+
+sources: list[Source] = [[1, 2], (3, 4), range(5, 7), {8: "x"}]
+print([total(source) for source in sources])
+```
+
+Each loop calls the object's own `__iter__`, so the list, tuple, range and dictionary
+are read again on a second pass, while a generator remains a single-pass source.
+`Protocol[T]` binds the item type for several interfaces at once: `Cell[int]` and
+`Cell[str]` are distinct interfaces.
+
+## 4. Let distinct iterators join
+
+Iterators of different types with one item type also join without a protocol:
+
+```python
+def numbers() -> Iterator[int]:
+    yield 9
+    yield 10
+
+streams = [iter([1, 2]), numbers()]  # an Iterator[int] interface for both
+```
+
+The same applies to a function returning either kind, a conditional expression, and a
+variable or field assigned both. Iterators of one type keep that type, and modules that
+opt in to dynamic `Any` keep their dynamic values.
+
+## 5. Explicit adapters
+
+The rest of this tutorial builds the same boundary from typed `Callable` fields. Choose
+it when the wrapper should have an identity of its own, or to see the moving parts that
+a protocol's table replaces.
+
+### Give stored callbacks a fixed signature
 
 [`adapter.py`](adapter.py) defines a generic wrapper with one explicitly typed field:
 
@@ -78,7 +166,7 @@ checked boundary. A requested promoting tuple view can copy a tuple containing
 `-2**63`, including nested tuples; see the
 [integer boundary rules](../../docs/python-int.md#callable-boundaries).
 
-## 3. Keep the consumer shared
+### Keep the consumer shared
 
 ```python
 from adapter import TypedIterator, typed_iterator
@@ -99,7 +187,7 @@ The source-specific code stays in the adapters. Typed callables use indirect cal
 and captured state; adapter construction adds allocations. This example establishes
 a shared representation, not a speed or allocation improvement.
 
-## 4. Retain an iterable without consuming it
+### Retain an iterable with adapters
 
 A retained source and a retained iterator have different contracts. `TypedIterable[T]`
 stores `Callable[[], TypedIterator[T]]`; its `__iter__` requests a new adapter.
@@ -128,7 +216,7 @@ and generators' exhaustion. Neither adapter materializes the source. Both wrappe
 have their own identities and retain their source through the existing closure
 representation.
 
-## 5. Choose several operations with fixed signatures
+### Choose several operations with fixed signatures
 
 [`lookup.py`](lookup.py) applies the same pattern to `TypedLookup[K, V]`:
 
@@ -148,8 +236,8 @@ uses lookup semantics: out-of-range or negative keys raise `KeyError`.
 This is an explicit three-operation contract. It provides neither mutation through
 the wrapper nor the complete `Mapping` API. Choose the operations required by the
 consumer, annotate their callable signatures, and keep any additional resource or
-identity contract explicit. It uses existing closure and class machinery without
-introducing a runtime method table or structural `Protocol` conversion.
+identity contract explicit. A protocol declaring `__getitem__`, `__contains__` and
+`__len__` expresses the same contract with a method table instead of three callables.
 
 ## 6. Verify behavior and inspect the compiled interfaces
 
@@ -157,6 +245,9 @@ From the repository root, after [setup](../../docs/install.md), use the CPython
 version in `.python-version`:
 
 ```sh
+python3.13 tests/programs/apps/example_typed_protocols.py
+make test FILES="tests/programs/apps/example_typed_protocols.py tests/programs/classes/protocol_*.py tests/errors/classes/protocol_*.py"
+PYSTACHY_GC_STRESS_PROGRAM=1 make test FILES="tests/programs/apps/example_typed_protocols.py"
 PYTHONPATH=examples/typed_iterator python3.13 tests/programs/apps/example_typed_iterator.py
 make test-py FILES="tests/programs/apps/example_typed_iterator.py tests/errors/generators/typed_iterator_item_type.py"
 make test FILES="tests/programs/apps/example_typed_iterator.py tests/errors/generators/typed_iterator_item_type.py"
@@ -195,17 +286,24 @@ These are static observations; they do not count runtime calls or allocations.
 The [interface benchmark](../../bench/typed_interfaces/README.md) measures dispatch,
 construction, compilation and code growth separately.
 
-## Limits when choosing this adaptation
+## Limits when choosing an interface
 
-The wrapper has its own identity and concrete type. It preserves shared underlying
-iterator state, not identity with the source. It does not forward generator
-`send`, `throw` or `close`, length hints, reflection or pickling. Keep a separate
+A protocol value has the object's identity and state, but only the protocol's
+operations: `==`, ordering, hashing, dictionary keys, `type()`, `isinstance()` and other
+reflection are rejected, and so are conversions between protocols and to or from
+dynamic `Any`. Protocol methods need annotated parameters and results; attribute
+members, protocol inheritance and naming a protocol as a base are not supported. See
+[typing](../../docs/language/typing.md#protocols-and-stored-interfaces).
+
+An explicit adapter has its own identity and concrete type. It preserves shared
+underlying iterator state, not identity with the source. It does not forward generator
+`send`, `throw` or `close`, length hints, reflection or pickling, and neither does a
+protocol value unless the protocol declares the operation. Keep a separate
 resource-management contract where cleanup depends on those operations.
 
 The factories require source operations and item types already supported by
 Pystachy. A type variable needs a consistent supported binding before a local or
 nested annotation can use it; unresolved or conflicting bindings do not create
-dynamic storage. This is explicit adaptation, not automatic `Iterator[T]` or
-structural `Protocol` support. Native erased interfaces
-still need method compatibility, identity and GC rules and comparisons of dispatch,
-allocation and code-size costs before replacing this prototype.
+dynamic storage. The [interface benchmark](../../bench/typed_interfaces/README.md)
+compares the dispatch, allocation and code-size costs of both representations with
+specialization.

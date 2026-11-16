@@ -1,0 +1,3 @@
+NotImplementedError: repr() of a generator held by a value of Numbers is not supported
+[1, 2]
+[exit 0]

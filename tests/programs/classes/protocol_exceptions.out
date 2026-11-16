@@ -1,0 +1,5 @@
+all [10, 20]
+1
+stopped [1, 2] third item failed
+missing 'a'
+[exit 0]

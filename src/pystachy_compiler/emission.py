@@ -586,8 +586,9 @@ def gen_convert_at(self, v: Val, t: str, label: str) -> Val:
     return v
 
 def gen_converts(self, a: str, b: str) -> bool:
-    # does a value of type a take code to be one of type b (convert_in)
-    return self.boxes(a, b) or (is_sopt(a) and b == unopt(a)) or (b == "int+" and a == "int")
+    # does a value of type a take code to be one of type b (convert_in): also an object as a
+    # value of an interface, its box (interfaces.py)
+    return self.boxes(a, b) or (is_sopt(a) and b == unopt(a)) or (b == "int+" and a == "int") or (self.is_iface(b) and a != b and a != "None" and not self.is_iface(a) and self.iface_impl(a) == "")
 
 def gen_boxes(self, a: str, b: str) -> bool:
     # is a value of type a one of type b once boxed: an int as an int | None, a member as a
