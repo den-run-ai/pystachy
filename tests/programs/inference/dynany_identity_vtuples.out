@@ -1,0 +1,18 @@
+items True True
+list True True
+independent True False
+search 2 0 2
+distinct 0
+slice True True
+concat True True True
+container True True True True
+equal True True True
+iteration True False
+iteration False True
+iteration True False
+unpack True True True
+retained True
+fresh True True True
+int True False True
+literals True True False
+[exit 0]

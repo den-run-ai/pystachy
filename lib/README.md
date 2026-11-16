@@ -65,6 +65,8 @@ described [below](#unchanged-cpython-files).
 |---|---|---|---|
 | 🟡 `struct` | Unchanged CPython on a subset port of the C module `_struct` (`_pystachy_struct`) | `pack`, `unpack`, `unpack_from`, `iter_unpack`, `calcsize` and `Struct` for every code of the native and standard tables, with CPython's bytes, values and errors | The format must be known as the program compiles (`calcsize()` takes any); `bytes` buffers; no `pack_into` |
 | 🟢 `binascii` | Subset port of CPython's C module (`_pystachy_binascii`) | Hex with separators, base64 with strict mode, uu, quoted-printable, `crc32`, `crc_hqx`, `Error` and `Incomplete` | Bytes and ASCII-str arguments only; Python functions, not builtins |
+| 🟡 `hashlib` | Subset implementation, from the algorithms' specifications | `md5`, `sha1`, `sha224`, `sha256` and `new()`: hash objects with `update()`, `digest()`, `hexdigest()`, `copy()`, `name`, `digest_size` and `block_size`, with CPython's digests | `bytes` data; no SHA-384, SHA-512, SHA-3 or BLAKE2, `file_digest()`, `pbkdf2_hmac()` or `scrypt()`; see [limits](compatibility.md#hashlib) |
+| 🟡 `hmac` | Subset implementation over `hashlib`, from RFC 2104 | `new()`, `digest()`, `HMAC` objects with `update()`, `digest()`, `hexdigest()`, `copy()`, `name`, `digest_size` and `block_size`, and `compare_digest()`, with CPython's digests | `bytes` keys and messages; `hashlib`'s four algorithms, by name or by constructor; see [limits](compatibility.md#hmac) |
 | 🟡 `codecs` | Adapted CPython on a subset `_codecs` (`_pystachy_codecs`) | BOM constants, `encode`, `decode`, the UTF-8, Latin-1, ASCII and charmap codec functions, `lookup_error`, `register_error`, the incremental classes | No codec registry (`lookup()`); no UTF-16, UTF-32, UTF-7 or escape codecs |
 
 ### Collections and functional tools
@@ -90,6 +92,7 @@ described [below](#unchanged-cpython-files).
 |---|---|---|---|
 | 🟡 `random` | Adapted CPython on a subset `_random` (`_pyrandom`) | Seeded `Random` and module functions, integers, sequences, distributions, state | Int, bool and float seeds; 63-bit `getrandbits`; no subclasses |
 | 🟡 `statistics` | Adapted CPython | `fmean`, geometric mean, medians, quantiles, mode, `covariance`, `linear_regression`, `correlation` (of floats) | Selected numeric types and APIs; `kde` now passes its `match` dispatch but still needs heterogeneous function storage |
+| 🧪 `decimal` | Subset implementation on [promoting ints](../docs/python-int.md) (`lib/decimal.py`) | `Decimal` from text, ints and floats; context-rounded arithmetic with Decimals and ints, comparison, hashing, `quantize()`, rounding in all eight modes, `sqrt()`, integer powers, formatting; `Context`, `getcontext()`, `localcontext()` | Fixed traps and no flags; no `exp()`, `ln()` or `log10()`; no `Decimal(Decimal)`, subclasses or `sum()`; see [limits](compatibility.md#decimal) |
 | 🟢 `colorsys` | Unchanged CPython | All conversion functions | Subset string and type rules apply |
 | 🧪 `mpz` | Experimental subset wrapper over the shared native bigint core | Explicit arbitrary-precision arithmetic, comparisons, decimal text, hashing and typed containers | Default `int` is checked 64-bit; [promoting ints](../docs/python-int.md) are a separate opt-in. See [API and limits](../docs/mpz.md) |
 
@@ -234,6 +237,11 @@ do not import it. See [range objects](../docs/language/semantics.md#range-object
 `_pystachy_object.py` holds the class of the objects that `object()` makes, sentinels. The compiler
 loads it for a program that may call `object()`; programs do not import it. See
 [sentinels](../docs/language/semantics.md#sentinels).
+
+`_pystachy_complex.py` holds the class of complex numbers. The compiler loads it for a program that
+may use one, an imaginary literal or a read of the builtin `complex`; programs do not import it.
+Its division, power, `abs()` and hash call runtime.c's ports of CPython 3.13's. See
+[complex numbers](../docs/language/semantics.md#complex-numbers).
 
 `_pystachy_json_any.py` holds `json.loads()` and `json.dumps()` of `Any` values: the decoder builds
 `Any`'s containers with `json`'s scanner, and the encoder walks `Any` values as CPython's does. The

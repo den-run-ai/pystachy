@@ -1,0 +1,10 @@
+(2+2j) [(1+0j), (1+1j), (2+2j)] (2-1j) (1.8333333333333333+0j)
+Point(at=(3-4j), label='a') 3.0 5.0
+[0j, 1j, (-2.5+0j), (3+4j)] (3+4j) [(3-4j), -1j, (-2.5-0j)]
+{(3+4j): 5.0, 1j: 1.0, (-2.5+0j): 2.5, 0j: 0.0} True True False
+True True complex True
+True [1j] True True
+False True True 1 2
+10j 5j 2
+(-1+0j) 2j (0.5-0.5j) (-1+1j) 3.0 (1+1j) 2.5j
+[exit 0]

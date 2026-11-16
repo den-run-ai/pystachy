@@ -83,7 +83,7 @@ class DiagnosticCaptureTests(unittest.TestCase):
                          ["compiling outer(int)", "compiling helper.inner(int)"])
 
     def generator(self, **changes):
-        values = dict(xtry="", newx={}, newhints={}, final=False, making=[], recursive=[], line=4)
+        values = dict(retry_hierarchy=lambda msg: None, xtry="", newx={}, newhints={}, final=False, making=[], recursive=[], line=4)
         values.update(changes)
         return SimpleNamespace(**values)
 

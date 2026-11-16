@@ -151,8 +151,127 @@ class StorageGuardTests(unittest.TestCase):
                 fn = function([block("entry", ins("ret", operands=[("%a0", target)]))], (source,))
                 self.assertFalse(self.accepted(fn))
 
+    def test_gaining_optional_tuple_type_does_not_excuse_integer_guards(self):
+        for source, target in (("tuple[tuple[int]]", "tuple[opt[tuple[int+]]]"),
+                               ("tuple[tuple[int+]]", "tuple[opt[tuple[int]]]")):
+            with self.subTest(source=source, target=target):
+                fn = function([block("entry", ins("ret", operands=[("%a0", target)]))], (source,))
+                self.assertFalse(self.accepted(fn))
+
+    def test_absent_nested_construction_facts_require_null_and_are_invalidated(self):
+        for item, viewed in (("int", "int+"), ("int+", "int")):
+            child = f"opt[tuple[{item}]]"
+            source, target = f"tuple[{child}]", f"tuple[opt[tuple[{viewed}]]]"
+            for values, accepted in ((("null",), True), (("%a0",), False), (("null", "%a0"), False)):
+                with self.subTest(item=item, stored=values):
+                    operations = [ins("alloc.fixed", source, result=10)]
+                    for index, value in enumerate(values):
+                        operations += [ins("slot.pack", "%slot", [(value, child)], 11 + index),
+                                       ins("tuple.store", operands=[("%t10", source), (f"%t{11 + index}", "%slot")],
+                                           text=child, immediate=0)]
+                    operations.append(ins("ret", operands=[("%t10", target)]))
+                    fn = function([block("entry", *operations)], (child,))
+                    self.assertEqual(self.accepted(fn), accepted)
+
+    def test_absent_nested_construction_facts_do_not_cross_a_present_branch(self):
+        child = "opt[tuple[int]]"
+        source, target = f"tuple[{child}]", "tuple[opt[tuple[int+]]]"
+        for other, accepted in (("null", True), ("%a0", False)):
+            with self.subTest(other=other):
+                fn = function([
+                    block("entry", ins("alloc.fixed", source, result=10),
+                          ins("cbr", operands=[("%a1", "bool")], targets=["absent", "other"])),
+                    block("absent", ins("slot.pack", "%slot", [("null", child)], 11),
+                          ins("tuple.store", operands=[("%t10", source), ("%t11", "%slot")], text=child),
+                          ins("br", targets=["join"])),
+                    block("other", ins("slot.pack", "%slot", [(other, child)], 12),
+                          ins("tuple.store", operands=[("%t10", source), ("%t12", "%slot")], text=child),
+                          ins("br", targets=["join"])),
+                    block("join", ins("ret", operands=[("%t10", target)])),
+                ], (child, "bool"))
+                self.assertEqual(self.accepted(fn), accepted)
+
+    def test_present_sentinel_child_cannot_keep_an_earlier_absence_fact(self):
+        child = "opt[tuple[int]]"
+        source, target = f"tuple[{child}]", "tuple[opt[tuple[int+]]]"
+        fn = function([block("entry",
+            ins("alloc.fixed", source, result=10),
+            ins("slot.pack", "%slot", [("null", child)], 11),
+            ins("tuple.store", operands=[("%t10", source), ("%t11", "%slot")], text=child),
+            ins("alloc.fixed", "tuple[int]", result=20),
+            ins("tuple.store", operands=[("%t20", "tuple[int]"), (storage.MIN, "int")], text="int"),
+            ins("slot.pack", "%slot", [("%t20", child)], 21),
+            ins("tuple.store", operands=[("%t10", source), ("%t21", "%slot")], text=child),
+            ins("ret", operands=[("%t10", target)]))], ())
+        self.assertFalse(self.accepted(fn))
+
+    def test_child_overwrites_invalidate_late_phi_boundary_cells(self):
+        child = "opt[tuple[int]]"
+        source, target = f"tuple[{child}]", "tuple[opt[tuple[int+]]]"
+        for stack in (False, True):
+            for replacement, accepted in (("null", True), ("%a0", False)):
+                with self.subTest(stack=stack, replacement=replacement):
+                    value = "%stk.10" if stack else "%t10"
+                    operations = [] if stack else [ins("alloc.fixed", source, result=10)]
+                    for index, item in enumerate(("null", replacement)):
+                        operations += [ins("slot.pack", "%slot", [(item, child)], 11 + index),
+                                       ins("tuple.store", operands=[(value, source), (f"%t{11 + index}", "%slot")],
+                                           text=child)]
+                    # The only width obligation is added on this phi edge,
+                    # after the first inventory of cells to invalidate.
+                    fn = function([block("entry", *operations, ins("br", targets=["join"])),
+                        block("join", ins("phi", target, [(value, target)], 20, targets=["entry"]),
+                              ins("ret", operands=[("%t20", target)]))], (child,))
+                    if stack:
+                        fn["slots"] = [ins("slot", source, result=10, immediate=2)]
+                    self.assertEqual(self.accepted(fn), accepted)
+
 
 class StorageSchemaTests(unittest.TestCase):
+    def test_absent_nested_child_does_not_excuse_alias_or_raw_overwrites(self):
+        child = "opt[tuple[int]]"
+        source = f"tuple[{child}]"
+        for alias in (True, False):
+            with self.subTest(alias=alias):
+                overwrite = (
+                    [ins("slot.pack", "%slot", [("%t10", source)], 12),
+                     ins("slot.unpack", source, [("%t12", "%slot")], 13),
+                     ins("tuple.store", operands=[("%t13", source), ("0", "%slot")], text=child)]
+                    if alias else
+                    [ins("mach.addr", "%ptr", [("%t10", source), ("0", "int")], 12, "int"),
+                     ins("mach.store", operands=[("%t12", "%ptr"), ("0", "int")])])
+                fn = function([block("entry", ins("alloc.fixed", source, result=10),
+                    ins("slot.pack", "%slot", [("null", child)], 11),
+                    ins("tuple.store", operands=[("%t10", source), ("%t11", "%slot")], text=child),
+                    *overwrite, ins("ret", operands=[("%t10", "tuple[opt[tuple[int+]]]")]))], ())
+                with self.assertRaises(storage.Unsupported):
+                    storage.Normalize(fn).build(infer=False)
+
+    def test_nested_optional_tuple_views_keep_source_layout_and_identity(self):
+        source = "opt[tuple[opt[tuple[int,int]],str]]"
+        view = "tuple[opt[tuple[int+,int+]],str]"
+        child = "opt[tuple[int+,int+]]"
+        fn = function([block("entry",
+            ins("tuple.load", "%slot", [("%a0", view)], 1, child, immediate=0),
+            ins("slot.unpack", child, [("%t1", "%slot")], 2),
+            ins("ret.none"))], (source,))
+        normalized = storage.Normalize(fn)
+        for value in ("%t1", "%t2"):
+            self.assertEqual(normalized.layout_type(value), "opt[tuple[int,int]]")
+            self.assertEqual(normalized.tuple_path(value), "%a0/0")
+
+    def test_nested_optional_boundary_refuses_other_representation_changes(self):
+        for source, target, message in (
+            ("tuple[opt[tuple[int+,str]]]", "tuple[opt[tuple[int,float]]]", "non-integer representation"),
+            ("tuple[opt[tuple[int+]]]", "tuple[tuple[int]]", "non-integer representation"),
+            ("tuple[opt[tuple[int]]]", "tuple[tuple[int+]]", "non-integer representation"),
+            ("tuple[opt[tuple[int+,int+]]]", "tuple[opt[tuple[int]]]", "changes arity"),
+        ):
+            with self.subTest(source=source, target=target):
+                fn = function([block("entry", ins("ret", operands=[("%a0", target)]))], (source,))
+                with self.assertRaisesRegex(ValueError, message):
+                    storage.Normalize(fn).build(infer=False)
+
     def test_kwargs_read_layout_preserves_order_and_nested_types(self):
         typ = "kw[plain:int,nested:tuple[int+,int],large:int+]"
         fn = function([block("entry", ins("mem.load", typ, [("%a1", "*" + typ)], 1),

@@ -1,0 +1,10 @@
+True True False False
+False False True True
+False False True True
+True True False
+False False True
+True True 1 0 True
+True True 1 0 True
+False False 0 1 True
+False False 0 1 False
+[exit 0]

@@ -17,7 +17,7 @@ the [module guide](README.md#module-guide) summarizes what each module supports.
 | [Text](#text) | [`textwrap`](#textwrap), [`unicodedata`](#unicodedata), [`shlex`](#shlex), [`keyword`](#keyword), [`curses.ascii`](#cursesascii), [`string`](#string), [`difflib`](#difflib), [`gettext`](#gettext) |
 | [Regular expressions](#regular-expressions) | [`re`](#re), [`fnmatch`](#fnmatch) |
 | [Data formats and markup](#data-formats-and-markup) | [`json`](#json), [`tomllib`](#tomllib), [`csv`](#csv), [`html` and `html.parser`](#html-and-htmlparser), [`urllib.parse`](#urllibparse) |
-| [Binary data and encodings](#binary-data-and-encodings) | [`struct`](#struct), [`binascii`](#binascii), [`codecs`](#codecs) |
+| [Binary data and encodings](#binary-data-and-encodings) | [`struct`](#struct), [`binascii`](#binascii), [`hashlib`](#hashlib), [`hmac`](#hmac), [`codecs`](#codecs) |
 | [Collections and functional tools](#collections-and-functional-tools) | [`collections`](#collections), [`copy`](#copy), [`enum`](#enum), [`heapq`](#heapq), [`itertools`](#itertools), [`functools`](#functools), [`operator`](#operator), [`contextlib`](#contextlib) |
 | [Numbers and randomness](#numbers-and-randomness) | [`random`](#random), [`statistics`](#statistics), [`mpz`](#mpz) |
 | [Dates and times](#dates-and-times) | [`datetime`](#datetime) |
@@ -36,7 +36,7 @@ Ports keep code that only CPython can run, as CPython's sources have it, under
 `sys.implementation.name` is `"pystachy"`, and drops the block (see
 [compile-time branches](../docs/language/modules.md#compile-time-branches)): `urllib.parse`'s
 imports of `warnings` and `ipaddress`, its docstrings of the result fields and its
-byte tables, and `statistics`' import of `random` and table of kernels.
+byte tables, and `statistics`' loading of `random` and `decimal` and table of kernels.
 
 ### Pure-Python accelerators
 
@@ -503,6 +503,41 @@ messages): `hexlify` and `b2a_hex` with `sep` and `bytes_per_sep`, `unhexlify` a
   indentation of its option's description, which CPython 3.13 removes from a Python function's
   docstring.
 
+### `hashlib`
+
+`hashlib` is a subset implementation of CPython's module, whose hash objects are OpenSSL's there.
+MD5, SHA-1, SHA-224 and SHA-256 are written in the subset from their specifications (RFC 1321 and
+FIPS 180-4) and give CPython's digests. `md5()`, `sha1()`, `sha224()`, `sha256()` and `new(name)`
+return a hash object with `update()`, `digest()`, `hexdigest()`, `copy()`, `name`, `digest_size`
+and `block_size`; they take `usedforsecurity`, which changes nothing here.
+
+- Data is `bytes`. A `str` is a compile-time error, where CPython raises `TypeError`.
+- SHA-384 and SHA-512 (their words are 64-bit, and Pystachy's `int` arithmetic is checked), SHA-3,
+  SHAKE and BLAKE2 are not there, nor are `file_digest()`, `pbkdf2_hmac()` and `scrypt()`: a use
+  of one is a compile-time error. `new()` raises CPython's `ValueError` (`unsupported hash type`)
+  for their names, and `algorithms_guaranteed` and `algorithms_available` hold the four names
+  only ([deviation](../tests/deviations/lib_hashlib_algorithms.py)).
+- `new()` takes a name in any letter case. OpenSSL's other spellings of a name, such as
+  `"sha-1"`, are unsupported hash types.
+- The hash objects are of one class, `hashlib.HASH`, which CPython has as `_hashlib.HASH`; their
+  repr is an object's. The constructors are Python functions, not builtins.
+
+### `hmac`
+
+`hmac` is a subset implementation of CPython's module over [`hashlib`](#hashlib), written from
+RFC 2104. `new(key, msg, digestmod)` and `digest(key, msg, digest)` take the hash as its name
+(`"sha256"`) or as a `hashlib` constructor (`hashlib.sha256`), and `HMAC` objects have `update()`,
+`digest()`, `hexdigest()`, `copy()`, `name`, `digest_size` and `block_size`, with CPython's
+results ([test](../tests/programs/library/lib_hmac.py)). `compare_digest()` compares two `bytes`
+or two ASCII `str`s in time that depends on the second one's length only.
+
+- Keys and messages are `bytes`. A `str` is a compile-time error, where CPython raises
+  `TypeError`.
+- The hashes are `hashlib`'s four. Another name raises `hashlib.new()`'s `ValueError`, where
+  CPython computes the HMAC ([deviation](../tests/deviations/lib_hmac_sha512.py)).
+- The `HMAC` class takes the hash's name; a constructor goes through `new()` or `digest()`. A
+  module as `digestmod` (PEP 247) is not supported.
+
 ### `codecs`
 
 `codecs` is CPython 3.13.16's `Lib/codecs.py` with three marked edits, on `_pystachy_codecs`,
@@ -713,13 +748,23 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   whose results are ints and strs, and with CPython's `TypeError` for an operand of another
   type. Compared with an object of another class, a member lets that object's reflected method
   decide, or identity where it has none, as `int`'s and `str`'s methods return `NotImplemented`
-  ([test](../tests/programs/library/lib_enum_reflected.py)). One cannot be passed where an `int`
+  ([test](../tests/programs/library/lib_enum_reflected.py)). A number on the left of an
+  `IntEnum` or `IntFlag` member computes as CPython's `int` does (`1 + member`, `n += member`,
+  `4 | flag`, which keeps the flag's class), through the member's reflected method
+  ([test](../tests/programs/library/lib_enum_int_left.py)). One cannot be passed where an `int`
   or `str` is typed, `int(member)` is not supported, and these are compile-time errors, as
   CPython's member is an `int` or a `str`: `isinstance()` of one and `int` or `str`, also of a
   value of a base class, such as `Enum`, that may hold one
   ([test](../tests/errors/library/lib_enum_isinstance_base.py)), and a member as an `Any` value,
   whose `isinstance()` would find no `int` or `str`
   ([test](../tests/errors/library/lib_enum_any_strenum.py)): its `.value` can be one.
+- Comparisons of `IntEnum`, `IntFlag` and `StrEnum` members with builtin scalars preserve Python's
+  subclass priority and reflected fallback after a custom method returns `NotImplemented`
+  ([numbers](../tests/programs/classes/cmp_notimplemented_enum_scalar.py),
+  [strings](../tests/programs/classes/cmp_notimplemented_strenum_scalar.py)). The builtin
+  fallback uses the member's original scalar value. Reassigning `_value_` is qualified only
+  for these comparison paths; inherited hashing and other methods still use the changed
+  attribute and can differ from CPython after such a reassignment.
 - `sys.exit()` and `SystemExit` take the member of an `IntEnum` or `IntFlag` class, or of a class
   of `int` and `Enum`, as CPython takes its `int`: the value is the exit status, and nothing is
   written to stderr ([test](../tests/programs/exceptions/exit_enum_member_caught.py)).
@@ -1095,6 +1140,8 @@ CPython's `math.sumprod` algorithm; unsupported iterators are materialized first
   floats otherwise ([error test](../tests/errors/library/lib_statistics_quantiles_int.py)).
   `median_low` and `median_high` retain the item type. `median` of strings is unsupported.
 - `mode` and `multimode` cannot use float keys. String inputs iterate code points.
+- `Decimal` data is not accepted: natively the module does not load `decimal`, so a program
+  that imports `statistics` compiles none of it.
 - Integer products in weighted `fmean` and in `linear_regression(..., proportional=True)`
   can raise `OverflowError` beyond 64 bits; CPython's integers continue growing.
 - The port's `sumprod` returns a float, including `11.0` for integer inputs and
@@ -1111,6 +1158,54 @@ CPython runs the module's import of `random`, which `kde_random` and
 `NormalDist.samples` use ([CPython-only code](#cpython-only-code)). Bounded pattern
 matching now lowers `kde`'s kernel selection, but its distinct lambda values cannot
 share one inferred native function slot; function `__doc__` writes also remain unsupported.
+
+### `decimal`
+
+`decimal` is a subset implementation (`lib/decimal.py`) that opts in to
+[promoting ints](../docs/python-int.md) for its coefficients. `Decimal` values are exact when
+constructed and rounded to the current context by arithmetic, with CPython's results, text,
+hashes and messages for the supported API
+([API walk](../tests/programs/library/lib_decimal.py),
+[operand grid](../tests/programs/library/lib_decimal_grid.py),
+[typed program data](../tests/programs/library/lib_decimal_records.py)).
+
+Supported: construction from `str`, `int` and `float`; `+ - * / // %`, `divmod()`, integer
+`**`, unary operators and `abs()`, with a `Decimal` or an `int` on either side; comparison with
+a `Decimal`, `int` or `float`; equality with a `complex` number (comparing its real part's
+exact float value when the imaginary part is zero); `hash()`, `int()`, `float()`, `round()`, `math.floor()`,
+`math.ceil()`, `math.trunc()`, `bool()`, `str()`, `repr()` and `format()`; `quantize()`,
+`to_integral_value()`, `normalize()`, `sqrt()`, `fma()`, `remainder_near()`, `scaleb()`,
+`compare()`, `max()`, `min()`, the `is_*()`, `copy_*()` and `as_*()` methods; `Context`,
+`getcontext()`, `setcontext()`, `localcontext()` and the three predefined contexts; all eight
+rounding modes; NaNs, infinities and signed zeros.
+
+Comparisons decline operands outside these numeric types so that their reflected
+comparison methods run, including in tuple searches. Direct comparison-method calls
+that could return `NotImplemented` retain the compiler's
+[bounded comparison contract](../docs/language/semantics.md#object-protocols).
+
+- **Signals.** Flags are not recorded and traps are fixed at the default:
+  `InvalidOperation`, `DivisionByZero` and `Overflow` always raise, and the other signals
+  never do. `Context` has no `flags` or `traps`, and its `repr()` shows none set.
+- **Exception classes.** A class has one exception base here: `DivisionByZero` derives from
+  `ZeroDivisionError` but not from `DecimalException`; `Overflow` and `Underflow` derive from
+  `Inexact` but not from `Rounded` (or `Subnormal`); `FloatOperation` is not a `TypeError`.
+- **Constructor.** `Decimal(d)` of a `Decimal`, `Decimal(True)` and
+  `Decimal((sign, digits, exponent))` are compile-time errors: use the value itself, or `+d`
+  to round it to the context.
+- **Powers and logarithms.** The exponent of `**` is an `int`; `exp()`, `ln()`, `log10()`,
+  `logb()`, the logical and shifting operations, `next_minus()`, `next_plus()`,
+  `next_toward()`, `compare_total()` and `compare_signal()` are not provided, and
+  `int ** Decimal` is not supported.
+- **Integers beyond 64 bits.** `int()`, `round()`, `math.floor()` and `as_integer_ratio()`
+  return large integers to a module that opts in to promoting ints
+  ([test](../tests/programs/library/lib_decimal_python_int.py)) and raise `OverflowError` in
+  one that does not. An `int` given to the constructor or to an operator is a 64-bit value:
+  pass a larger one as text.
+- **Typing.** `sum()` of Decimals is not supported: add them in a loop. `Decimal` cannot be
+  subclassed. A NaN hashes to 0, and one context is shared by all threads.
+- **Formatting.** The `n` type uses the C locale's format, and a value whose coefficient has
+  more than 4,300 digits cannot be converted to text.
 
 ### `mpz`
 
@@ -1154,8 +1249,9 @@ can use the inherited `fromutc()`.
 - `timetuple()` returns a NamedTuple with `time.struct_time`'s nine fields and repr, without
   `tm_zone` and `tm_gmtoff`. `isocalendar()`'s result is a NamedTuple: index or unpack it, as
   `tuple()` of it is unsupported.
-- Reflected operators are unsupported: write `timedelta * 2` and `date + timedelta`, not
-  `2 * timedelta` or `timedelta + date`.
+- A number on the left calls the reflected method: `2 * timedelta` and `1.5 * timedelta` work.
+  Reflected operators between two objects are unsupported: write `date + timedelta`, not
+  `timedelta + date`.
 - `datetime.min` and `datetime.max` are typed `date` (a subclass's class attribute keeps its
   base's type). `fromisoformat()` and `fromtimestamp()` must be called through their class,
   not a `date` object.

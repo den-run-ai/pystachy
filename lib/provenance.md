@@ -30,8 +30,6 @@ observable contract.
 | `statistics` | `Lib/statistics.py` | `80b677e786418c299ced99993f4a89804d4532e0b5e26971286713a6de538c18` |
 | `urllib.parse` | `Lib/urllib/parse.py` | `491b233e8d87a2ab73964afff029717177d53ad8def328ed9b00575db983da27` |
 | `contextlib` | `Lib/contextlib.py` | `c1e0d67b2007de11ae93cd36cf6faf38d9ab32656a832d592a49325eec579f96` |
-| `html` | `Lib/html/__init__.py` | `923d82d821e75e8d235392c10c145ab8587927b3faf9c952bbd48081eebd8522` |
-| `html.entities` | `Lib/html/entities.py` | `d9c65fb2828dbc1f3e399058a341d51e9375ec5bca95a8e92599c41bd5b78bde` |
 | `keyword` | `Lib/keyword.py` | `18c2be738c04ad20ad375f6a71db34b3823c7f40b0340f5294d0e89f3c9b093b` |
 | `token` | `Lib/token.py` | `1d2ab814992e6afbd6f1e5323edcddd681f65f7679ad1eb87fe1357a433a5bdf` |
 | `shlex` | `Lib/shlex.py` | `f927227de5ba5b1b2bdd75e3d9c8cb72b602b3bba3cc8edbf8fb554de0dc1fd7` |
@@ -89,6 +87,7 @@ CPython runs the source.
 | `_pystachy_bfile` | `Modules/_io/_iomodule.c`, `Modules/_io/fileio.c`, `Modules/_io/bufferedio.c` | The binary files of `open()`: `FileIO`, `BufferedReader`, `BufferedWriter` and `BufferedRandom` over the runtime's files (runtime.c's `pys_bopen`), with `open()`'s argument checks and each class's messages and reprs |
 | `types` (`_pystachy_types`, `_pystachy_mappingproxy`) | `Lib/types.py` (SHA-256 `3a289bc5366e96d01017038870b5b8861b87305d351b99c688bcc681d908fa7d`), `Objects/descrobject.c` | The module's docstring and its names: `TracebackType`, as `from types import TracebackType` imports it for `__exit__`'s annotation, `MappingProxyType`, the C type `mappingproxy` of a dict, with its docstrings and messages, and the others, of which the compiler supports `GenericAlias` in `__class_getitem__ = classmethod(GenericAlias)` |
 | `csv` | `Modules/_csv.c`, `Lib/csv.py` | Reader state machine, writer and dialect APIs |
+| `decimal` | `Lib/_pydecimal.py`, `Modules/_decimal/libmpdec/mpdecimal.c` | `Decimal` on integer coefficients with the Python module's rounding, arithmetic, text and hashing, the C library's integer power and the C module's messages; contexts without flags or configurable traps |
 | `collections.deque` | `Modules/_collectionsmodule.c` | Typed two-list queue with CPython comparison-state checks |
 | `collections.defaultdict` | `Modules/_collectionsmodule.c` | Typed dict wrapper with the C type's factory, repr and `\|` |
 | `collections.OrderedDict` | `Lib/collections/__init__.py`, `Objects/odictobject.c` | Two typed dicts, the first items reversed, with the Python class's docstrings and the C type's messages |
@@ -99,6 +98,8 @@ CPython runs the source.
 | `re` | `Lib/re/`, `Modules/_sre/sre_lib.h`, `sre.c` | Typed parser/compiler and matching engine with an explicit context stack |
 | `_pyrandom` | `Modules/_randommodule.c`, `Python/pyhash.c` | `_random.Random`'s Mersenne Twister, seeding and state; float hashing for float seeds |
 | `binascii` (`_pystachy_binascii`) | `Modules/binascii.c`, `Python/pystrhex.c` | All twelve functions of the C module, with its errors and messages |
+| `hashlib` | `Lib/hashlib.py`, `Modules/_hashopenssl.c` for the API; RFC 1321 and FIPS 180-4 for the algorithms | MD5, SHA-1, SHA-224 and SHA-256 on 32-bit words in Pystachy's ints, as one class of hash object with the C type's docstrings and `new()`'s message |
+| `hmac` | `Lib/hmac.py` for the API and docstrings; RFC 2104 for the algorithm | HMAC over `lib/hashlib.py`'s hash objects, with the hash given by name or by constructor, and a constant-time `compare_digest()` in place of `_operator`'s |
 | `atexit` (`_pystachy_atexit`) | `Modules/atexitmodule.c` (SHA-256 `a61f11e295d38463b36524e51b8eba64d5a84022bb7df7b3c0ccd8aa9fe9521b`) | `register()`, `_clear()`, `_run_exitfuncs()` and `_ncallbacks()`, with the C module's order of callbacks; `unregister()` raises `NotImplementedError` |
 | `abc` (`_pystachy_abc`) | `Lib/abc.py` (SHA-256 `e558702a95cdce3febd289da021715d2b92bc43995b8a1bc58dfa1c3d8010287`), `Modules/_abc.c`, `Objects/typeobject.c` | `ABC`, `ABCMeta`, `abstractmethod()` and the deprecated decorators, which the compiler applies, with `object.__new__`'s `TypeError` for an abstract class; their docstrings |
 | `_codecs` (`_pystachy_codecs`) | `Modules/_codecsmodule.c`, `Objects/unicodeobject.c`, `Objects/stringlib/codecs.h` | The UTF-8, Latin-1, ASCII and charmap codec functions, `encode()`, `decode()` and the error handler registry, with the C module's errors and messages; the other codecs raise `NotImplementedError` |
@@ -206,6 +207,14 @@ formats, with those of the C module (`Modules/_struct.c`, SHA-256
 `Objects/floatobject.c`'s `PyFloat_Pack2()`, `PyFloat_Pack4()` and `PyFloat_Pack8()`, SHA-256
 `be9a74fef157cf6105de8ce3beedb5325f0b433ebd4c64e604aeb9ebf29394b1`), and compares the functions'
 signatures and docstrings.
+
+`tools/hashlib_check.py` runs `lib/hashlib.py` on CPython and compares it with CPython's
+`hashlib`, whose hash objects are OpenSSL's: 16,085 comparisons of the digests and attributes of random
+data of every length up to 259 bytes and some longer ones, hashed whole and in pieces with digests
+and copies between them; `new()`'s error for an unknown name; and the docstrings.
+`tools/hmac_check.py` runs `lib/hmac.py` over `lib/hashlib.py` on CPython and compares it with
+CPython's `hmac`: 8,000 comparisons of digests, attributes, copies, `digest()` and
+`compare_digest()` for random keys and messages around the block size.
 
 `tools/itertools_check.py` runs `lib/_pystachy_itertools.py` on CPython and compares it with the
 C module (`Modules/itertoolsmodule.c`, SHA-256

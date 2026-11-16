@@ -6,7 +6,9 @@ the model does not establish that the exporter or runtime implements that model.
 
 | Area | Enforced property | Current boundary |
 |---|---|---|
-| Dynamic `Any` | Payload reads have matching type guards | Runtime tag/layout contracts |
+| Dynamic `Any` | Payload reads have matching type guards and compatible class layout prefixes | Exported layouts, runtime tag/boxing contracts and LLVM offsets |
+| Reference boxing | A non-null reference round trip preserves its address, mutable aliases and abstract tracing edge | Bounded C-AST adapter, physical layout correspondence and allocator/collector semantics |
+| Numeric-list identity | Initialized companions preserve identity readback and tracing after stores, reserve growth and contiguous slice/copy | Bounded C-AST adapter, valid nonoverflowing lengths, allocation-time liveness and collector semantics |
 | Lists, dictionaries and sets | Unchecked accesses have bounds/live-entry facts | Runtime effects and container contracts |
 | Closure cells and calls | Captured-container facts survive only valid reads; visible callee writes invalidate facts | Independent Python body-effect scan and cell ABI |
 | Promoting integers | Selected result-fit claims and actual checked `+`, `-`, `*` reconstruction paths | Other inline arithmetic, LLVM and integer runtime |
@@ -94,7 +96,7 @@ audit; that historical comparison found no copied implementation. The shared log
 and dependency review, not a formal proof of authorship.
 
 Current Lean imports are limited to `Std`, `Lean` and the local `PystachyBoundary`,
-`PystachyAccess`, `PystachyInt`, `PystachyInline`, `PystachyStorage` and
+`PystachyAlias`, `PystachyAccess`, `PystachyInt`, `PystachyInline`, `PystachyStorage` and
 `PystachyGuards` modules; `lake-manifest.json`
 contains no external packages. The pinned Lean
 toolchain is an external development dependency with its own
@@ -221,6 +223,123 @@ dependencies of the public theorems, rejecting admitted proofs, extra axioms and
 native-computation assumptions. The allowed axioms are Lean's standard
 `propext`, `Classical.choice` and `Quot.sound`.
 
+## Class layouts and boxing correspondence
+
+`PystachyLayout.accepted_layout_projection` connects an accepted payload guard
+with independently checked layout obligations: every admitted concrete descriptor
+must have the requested class's complete member prefix. A member records both
+its source representation and LLVM storage type; two pointer fields with different
+source representations are not interchangeable. Assignment flags and numeric
+identity companions are members too.
+
+The inspector exports `dynamic_layouts` from the class registry and the ordered
+members used by `lower_module.struct_types`, independently of `dynamic_types`'s
+DynType constants. The adapter cross-checks their payload names, class numbers,
+bases, roles and inventory. Schema 3 candidates distinguish `class_payload`
+from ordinary payload nodes. Each class read names its expected layout, and the
+native front end constructs a prefix obligation for every tag that read admits.
+Deleting a layout entry, clearing the table or downgrading the candidate to
+schema 2 cannot discard those obligations. Schema 2 remains supported for the
+other guard-based proof adapters. Old inspection snapshots with classes must be
+regenerated to include the layout inventory.
+
+Mutation tests change a subclass's member representation, LLVM type, order or
+extent, and independently change descriptor metadata. They compare exported
+layouts with emitted `%C.*` struct declarations and compile the real C Dyn/DynType
+declarations to check named offsets against payload lowering. `make boxprobe`
+tests the actual runtime's integer and float payload bits (including negative
+zero and NaN), reference addresses and null boxing, alongside its existing GC
+controls. These are ABI/runtime tests, not Lean boxing or alias-preservation
+theorems. Snapshot fidelity, the adapter's classification of reads, LLVM's layout
+rules and the runtime implementation remain trusted.
+
+## Reference aliases and tracing roots
+
+`PystachyAlias.accepted_reference_roundtrip` proves that a non-null reference
+boxed by an accepted transfer and read back has exactly its original address.
+`accepted_alias_write` proves equality of the entire heap update through either
+alias, for an arbitrary initial heap and stored value. Copying a mutable object
+does not satisfy this contract. `accepted_traces_reference` proves that the
+reference occupies a traced word of the box. `accepted_root_chain` composes that
+edge with an **assumed** downstream edge in an explicit reachability model; it
+does not prove the downstream edge or concrete collector behavior.
+
+`tools/check_lean_alias.py` derives the transfer from Clang's AST for the live
+`pys_dyn_ref` and `gc_box` bodies. It inventories every statement of the bounded
+non-null path, resolves the scanned versus atomic allocator, and extracts every
+field store in execution order. It independently compiles the runtime's `Dyn`
+declaration for named byte offsets and widths, then obtains the read offset by
+running the actual `dyn.payload` lowerer. Lean checks the extent, scanned storage
+and final symbolic word read. Overwritten or omitted reference stores, changed
+field order, wrong read offsets and atomic allocations fail. Unknown C shapes,
+pointer arithmetic, narrowing casts and changed result bindings fail closed in
+the adapter. The native JSON front end refuses missing/extra fields and unknown
+sources. Run `python3.13 tools/check_lean_alias.py` after building the checker;
+`make check-lean-boundary` includes the live-runtime check, mutation controls and
+the theorem's axiom audit.
+
+`make boxprobe` separately tests bidirectional typed/Any mutations through one
+native integer list, then keeps its list and numeric companion alive through
+only a rooted reference box. An otherwise identical atomic box must fail to
+retain the list. This negative control checks the need for the actual trace edge;
+the list/companion chain is runtime-tested, not formally established by the
+reference-transfer theorem.
+
+### Numeric-list companion stores and copies
+
+`PystachyCompanion.accepted_identity_roundtrip` proves that an identity store and
+load recover the exact box address for arbitrary other memory cells.
+`accepted_traces_identity` proves the stored box occupies a traced array word
+for **every** valid index below capacity. `accepted_root_chain` establishes the
+list-header → companion-array → identity-box chain, and
+`accepted_boxed_root_chain` composes it with the preceding reference-box theorem.
+These theorems replace the assumed downstream edge for this bounded list case;
+they retain the assumption that the concrete collector follows scanned words.
+
+`accepted_copy_identity` proves that reserve growth and contiguous slice/copy
+retain each original item address, for arbitrary source/destination contents and
+every live index. Reserve copies the kind header and all live identity words;
+slicing copies the selected identities after the destination's own kind header.
+`accepted_copy_traces_identity` puts every copied identity inside the new scanned
+extent, and `accepted_copied_root_chain` establishes its header/array trace chain.
+Reserve keeps the original list header, so its existing aliases see the attached
+replacement array. A slice gets a fresh header and array while sharing item identities.
+
+`tools/check_lean_companion.py` obtains the real `List` field offsets and widths
+by compiling constants in the runtime's translation unit. Length, capacity,
+raw-data and companion fields must occupy distinct full words inside the header;
+an anonymous union is rejected even if the runtime's own assertions allow it.
+The raw `Slot` must contain exactly one full word at offset zero, so padding cannot
+change the setter's stride or address. Member-name macros are undefined before
+independent layout extraction. Clang AST comparisons
+check the complete bounded constructor, companion allocation/materialization,
+clean-companion fast path, identity setter/getter, reserve and contiguous
+slice/copy bodies. Header and companion allocations must use scanned storage.
+The adapter derives the copy's source/destination offsets, extra header words
+and scanned extent; Lean checks their relationships. The pointer attachment,
+setter and getter must retain the same addresses and `i + 1` word. Unknown
+statements, narrowing length/capacity fields, changed copy sources, truncated
+extents and missing/overwritten attachments fail closed. The reference spells
+out the raw-data store independently of `AT` and undefines callable macros before
+parsing, so those macros cannot rewrite both the code and its reference. Schema 2
+requires both copy contracts; the native parser rejects omissions, schema
+downgrades, extra fields and oversized offsets. Run
+`python3.13 tools/check_lean_companion.py`; its tests and theorem axiom audit are
+also included by `make check-lean-boundary`.
+
+The companion theorem starts with a stable, initialized companion and a valid
+live index. Store and copy results assume successful operations, valid
+length/capacity relationships and nonoverflowing C extents. The copy model assumes
+fresh destination storage and standard `memcpy` behavior. It does **not** prove
+materialization's numeric value, those invariants, promotion, iteration, stepped
+copies, other list mutations, tuple/generator companions or a whole program's
+roots. In particular, a final trace chain is not a proof of source liveness
+while allocations or collections execute. Kind masks' numeric semantics remain
+outside the model. The C-to-model adapter, layout extraction, pointer/word ABI,
+called helper semantics, allocator slack/size classes and collector implementation
+remain trusted. The null reference-box branch is structurally checked but excluded
+from its theorem. These results do not justify removing roots, companions or guards.
+
 ## How actual IR reaches the model
 
 `tools/check_lean_boundary.py` reads the existing inspection schema, validates
@@ -236,6 +355,15 @@ explicit role:
   accepts its own descriptor, those whose bases lead to it (subclasses share its
   layout) and those naming it as their secondary role. A function's or
   generator's read accepts its one descriptor. Other payload types are refused.
+  Before constructing the proof, the adapter also checks how the projection's
+  bits are consumed: `slot.unpack` must use the declared payload type, and only
+  an `int` payload may be used directly as an integer or copied unchanged into
+  the runtime's `box`/`ubox` slot argument. The internal address may
+  not escape, and other raw-slot transports are unsupported. Producer identity
+  comes from result numbers, not a consumer's operand annotation. This is a
+  structural check in the trusted Python bridge. Class projections additionally
+  receive the checked layout-prefix obligations above; `slot.unpack` lowering
+  remains outside the theorem.
 - Guards come from tests of a box's tag: comparisons of its DynType with a
   descriptor; runtime.c's `pys_dyn_isa` and `pys_dyn_role_isa`, whose accepted
   descriptors the table determines (a class's subclasses and None, or both int
@@ -331,13 +459,17 @@ not proved by this version:
 - The descriptor table: that it lists every DynType the program emits. (runtime.c's
   iterator descriptors have no base, class number or kind that an interpreted test
   admits.) The class numbers that dispatchers switch on must identify the program's
-  classes. The bridge's copies of runtime.c's builtin kinds, role flag, class number
+  classes; the bridge cross-checks them against the separate class registry
+  export. The bridge's copies of runtime.c's builtin kinds, role flag, class number
   word and builtin payload tags are tested against runtime.c
   ([test_typed_dynamic_tables.py](../test_typed_dynamic_tables.py)), not proved.
-- Payload layout: that a subclass's, a secondary role's, a bool's and a native
-  int list's payloads have the layouts their accepted reads assume.
+- The correspondence of exported class members to physical LLVM offsets. Lean
+  checks each admitted class/role prefix, but the exporter and LLVM layout rules
+  remain trusted. Builtin bool and native int-list payload contracts are tested,
+  not proved.
 - Object initialization, null/unbound behavior (a null dynamic value has no tag,
-  so it must never pass a guard), GC, aliases in mutable containers, or the
+  so it must never pass a guard), general GC/alias correctness beyond the bounded
+  reference-transfer theorem above, or the
   implementation of runtime tag operations.
 - Source-language or LLVM equivalence, generic specialization, identity-slot
   elision, absence of dynamic operations, or necessity/removal of `Any`.

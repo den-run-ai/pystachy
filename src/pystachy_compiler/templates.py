@@ -171,6 +171,10 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
                     self.specdone[canonical] = t.specs[key]
             return t.specs[key]
         if s.bad != "":
+            # A needed constructor can fail before a later hierarchy use requests
+            # its fixed-layout annotation dependencies. Retain only syntax-verified
+            # names and retry the whole program, as for a demanded descendant.
+            self.request_hierarchy(c)
             self.err(s.bad)  # (an imported module's class: where the program makes an object of it)
         if self.template_instances >= TEMPLATE_INSTANCES:
             self.err(f"compilation needs more than {TEMPLATE_INSTANCES} template specializations; annotate template parameters or reduce type combinations")
@@ -545,9 +549,9 @@ def gen_match(self, a: Node, t: str, tv: dict[str, str], tvs: list[str], lexical
     if base == "list" and is_list(t) and len(xs) == 1:
         return self.match(xs[0], elem(t), tv, tvs, lexical)
     if (base == "set" or base == "frozenset") and is_set(t) and len(xs) == 1:
-        return self.match(xs[0], selem(t), tv, tvs, lexical)
+        return self.match_key(xs[0], selem(t), tv, tvs, lexical)
     if base == "dict" and is_dict(t) and len(xs) == 2:
-        why = self.match(xs[0], targs(t)[0], tv, tvs, lexical)
+        why = self.match_key(xs[0], targs(t)[0], tv, tvs, lexical)
         return why if why != "" else self.match(xs[1], targs(t)[1], tv, tvs, lexical)
     if base == "tuple" and is_tuple(t):
         return self.match_items(xs, targs(t), tv, tvs, lexical)
@@ -558,6 +562,20 @@ def gen_match(self, a: Node, t: str, tv: dict[str, str], tvs: list[str], lexical
         why = self.match_items(xs[0].kids, sig[1:], tv, tvs, lexical)
         return why if why != "" else self.match(xs[1], sig[0], tv, tvs, lexical)
     return "it does not fit the parameter's annotation (or that annotation's type variables are not supported there: they are in T, list[T], dict[K, V], set[T], tuple[T, *Ts], T | None, Iterable[T], Callable[[T, *Ts], R], a generic class's C[T] and unions of these)"
+
+def gen_match_key(self, a: Node, t: str, tv: dict[str, str], tvs: list[str], lexical: bool = False) -> str:
+    # match for the element type of a set, or the key type of a dict: None is one (a set[None]'s,
+    # utils.none_key), and binds a type variable as any other type does, where an argument that is
+    # None itself binds none (match)
+    if a.kind == "str":
+        a = self.parse_expr(a.s)
+    if t != "None" or a.kind != "name" or not self.names_tv(a, tvs) or a.s in self.tvtuples:
+        return self.match(a, t, tv, tvs, lexical)
+    j = self.join(tv[a.s], t) if a.s in tv else t
+    if j == "":
+        return f"'{short(a.s)}' is {typestr(tv[a.s])} already, and {typestr(t)} here"
+    tv[a.s] = j
+    return ""
 
 def gen_match_items(self, xs: list[Node], ts: list[str], tv: dict[str, str], tvs: list[str], lexical: bool = False) -> str:
     # (see match) values of types ts for the items of tuple[...] or the parameters of
@@ -790,6 +808,11 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
                 g.ret = "None"
             elif f.gen:
                 self.err(f"cannot infer what {short(f.name)}() yields: it calls itself before its first yield; annotate its return type (-> Iterator[T])")
+            elif self.may_decline(f):
+                # (a comparison method that names NotImplemented returns that or a bool: a tree's
+                # __eq__, whose guard is decided here, compares its children first. The
+                # first-return path refuses another type)
+                g.ret = "bool"
             else:
                 self.err(f"cannot infer what {short(f.name)}() returns: it calls itself before a return statement does; annotate its return type")
         if g.ll in self.building:
