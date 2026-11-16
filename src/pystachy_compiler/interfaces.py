@@ -14,7 +14,7 @@ from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import SPECSHOW
 from src.pystachy_compiler.syntax import Node, mk
-from src.pystachy_compiler.utils import clone, elem, gelem, is_dict, is_gen, is_list, is_opt, lt, targs, typestr
+from src.pystachy_compiler.utils import clone, elem, gelem, is_callable, is_dict, is_gen, is_list, is_opt, is_union, lt, targs, typestr, unopt
 
 # the intrinsic that an interface method's body calls: its table entry (iface_call)
 IFACE_CALL = "__pystachy_iface__"
@@ -426,6 +426,11 @@ def gen_iface_impl(self, t: str) -> str:
     # pointer the box holds
     if t == "None" or t == "dyn" or is_opt(t) or lt(t) != "ptr" or t.startswith("fn[") or t == "exc" or t == "exctype":
         return f"an interface value cannot hold a value of type {typestr(t)} (it holds objects, containers, generators and files)"
+    if is_union(unopt(t)):
+        # (its box would stand for the object, which is and id() must see: convert each member)
+        return f"a union's value converts once narrowed to one class (isinstance() first), not as {typestr(t)}"
+    if is_callable(unopt(t)):
+        return f"a {typestr(t)} is not an implementation: annotate a callback with Callable[[A], R] rather than a protocol with __call__"
     return ""
 
 
@@ -535,7 +540,7 @@ def gen_iface_adapter(self, tab: ITab, k: int) -> str:
         a.append(x if m.npos < 0 or j + 1 < m.npos else mk("kw", m.params[j + 1], line, [x]))
     if op in face.props:
         e = mk("attr", op, line, [o])
-    elif op in BUILTIN_FORMS and len(ps) == 0 and (op in face.implicit or tab.impl not in self.classes or op == "__next__" or op == "__iter__"):
+    elif op in BUILTIN_FORMS and len(ps) == 0 and (op in IMPLICIT or tab.impl not in self.classes or op == "__next__" or op == "__iter__"):
         e = mk("call", "", line, [mk("name", BUILTIN_FORMS[op], line, []), o])
     elif tab.impl not in self.classes and operator_form(op, len(a)) != "":
         e = operator_expr(op, o, a, line)  # (a builtin type's operator: o[a0], a0 in o, o + a0, ...)

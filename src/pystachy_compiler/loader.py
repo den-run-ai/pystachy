@@ -18,6 +18,7 @@ from src.pystachy_compiler.analysis import (
     del_line,
     declares,
     deferred_use,
+    defines,
     deleted,
     false_flag,
     sole_binding,
@@ -88,7 +89,7 @@ from src.pystachy_compiler.specs import (
     VERSIONINFO,
     is_excname,
 )
-from src.pystachy_compiler.syntax import NOKIDS, Node, comp_names, has_kind, mk, names_in
+from src.pystachy_compiler.syntax import NOKIDS, Node, comp_names, has_kind, mentions, mk, names_in
 from src.pystachy_compiler.utils import clone, int_fits, is_const
 
 
@@ -685,6 +686,25 @@ def ascii_ident(s: str) -> bool:
     return s != ""
 
 
+
+def protocol_iterates(body: Node) -> bool:
+    # does module body declare a Protocol class whose methods iterate (an __iter__ or __next__,
+    # or an Iterator or Iterable annotation): the tables of its interface call iter() of builtin
+    # containers, whose iterators lib's module makes (interfaces.py)
+    for st in body.kids:
+        if st.kind != "subclass" or not any([protocol_named(b) for b in st.kids[1:]]):
+            continue
+        if defines(st.kids[0], "__iter__") or defines(st.kids[0], "__next__") or mentions(st.kids[0], ["Iterator", "Iterable"]):
+            return True
+    return False
+
+
+def protocol_named(b: Node) -> bool:
+    # does base b name Protocol, also subscripted (Protocol[T], typing.Protocol)
+    if b.kind == "index":
+        b = b.kids[0]
+    return (b.kind == "name" or b.kind == "attr") and b.s == "Protocol"
+
 class Loader:
     def __init__(self, dirs: list[str]):
         self.dirs = dirs  # the module search path
@@ -871,10 +891,11 @@ class Loader:
             self.order = [self.order[-1]] + self.order[:-1]
             for x in users:
                 x.deps[COMPLEXS] = True
-        users = [x for x in self.order if module_reads(x.body, "iter")] if not self.rtmode and len(self.dirs) > 0 and ITERS not in self.mods else []
+        users = [x for x in self.order if module_reads(x.body, "iter") or protocol_iterates(x.body)] if not self.rtmode and len(self.dirs) > 0 and ITERS not in self.mods else []
         if len(users) > 0:
             # iter() makes iterator objects of builtin containers: of lib's classes, whose module
-            # nothing imports (it imports nothing either, so it comes first)
+            # nothing imports (it imports nothing either, so it comes first). A Protocol that
+            # iterates calls it in its tables (interfaces.py)
             self.load(ITERS, self.dirs[-1] + "/" + ITERS + ".py", "")
             self.order = [self.order[-1]] + self.order[:-1]
             for x in users:

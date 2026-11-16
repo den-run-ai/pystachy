@@ -187,7 +187,7 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         captured.idfrom = self.dyn_id_box(v).v
         v = captured
     if v.t == "dyn" and self.is_iface(t):
-        self.err(f"an Any value as a value of {short(t)}, an interface, is not supported yet (its table is chosen by its static type)")
+        self.err(f"an Any value as a value of {typestr(t)}, an interface, is not supported yet (its table is chosen by its static type)")
     if v.t == "dyn":
         return self.dyn_unbox(v, t, what)  # (out of it, where a concrete type is expected)
     if is_vtuple(unopt(t)) and is_tuple(v.t):

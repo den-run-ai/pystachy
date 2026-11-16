@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.utils import identity_abi, identity_default, is_union
 from src.pystachy_compiler.analysis import appends_to, builtin_has, local_names, none_display
-from src.pystachy_compiler.diagnostics import shown
+from src.pystachy_compiler.diagnostics import NeedSliceEH, shown
 from src.pystachy_compiler.ir import Blk, ClassInfo, Exit, FnInfo, Ins, IterArg, Loop, SeqStart, StopCatch, Val, tmpname
 from src.pystachy_compiler.names import ENUMCLASSES, owner, short
 from src.pystachy_compiler.specs import (
@@ -2143,6 +2143,8 @@ def gen_stop_catch(self) -> StopCatch:
     # a handler for the StopIteration that ends the items of the iterator objects a loop (or
     # next(it, default)) takes: the try's mark and the exception being handled are taken now,
     # before the first __next__ call (next_in); stop_landing places its landing block
+    if not self.eh and len(self.ifaces) > 0:
+        raise NeedSliceEH()  # (an interface's iterator, which needs_eh cannot see: interfaces.py)
     if not self.eh:
         self.err("internal error: an iterator's __next__ needs exception handling (needs_eh)")
     mark = Val(self.rt("pys_try_mark", "i64", []), "int")

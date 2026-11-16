@@ -851,7 +851,7 @@ def gen_key_problem(self, t: str) -> str:
     # (hashed by their types at run time: TypeError: unhashable type)
     t = narrow_type(t)  # (a promoting int, also a tuple's, is a key as a 64-bit int: bigints.py)
     if self.is_iface(unopt(t)):
-        return f"dict keys cannot be values of {short(unopt(t))}: an interface's objects hash and compare as their classes do, which only the run time knows"
+        return f"dict keys cannot be values of {typestr(unopt(t))}: an interface's objects hash and compare as their classes do, which only the run time knows"
     if t == "dyn" or self.key_class(t) or self.key_union(t) or (is_tuple(t) and self.key_items(t)):
         return ""
     if is_opt(t) and t != NONEVAR and t != NONE_ITEM and is_tuple(unopt(t)) and self.key_items(unopt(t)):

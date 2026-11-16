@@ -656,7 +656,9 @@ printing and truth tests use the object's class. A value that is `None` stays `N
 run time knows the object's class, so `==`, `!=`, ordering, `hash()`, dict keys and set
 elements, `type()`, `isinstance()` and other reflection of protocol values are compilation
 errors (#487): compare them with `is`. Converting one protocol's value to another protocol,
-and to or from a dynamic `Any` value, is not supported.
+and to or from a dynamic `Any` value, is not supported. A union's value converts once
+narrowed to one class; functions and `Callable` values are not implementations (annotate a
+callback with `Callable[[A], R]` rather than a protocol with `__call__`).
 
 Protocol-annotated parameters take protocol values: a call with a `Square` converts it. To
 specialize a function for each argument's class instead, leave the parameter unannotated or

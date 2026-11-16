@@ -1,13 +1,16 @@
 # Stored typed interface costs
 
-This runner compares three representations of the same integer iterator workload:
+This runner compares four representations of the same integer iterator workload:
 ordinary function specialization, the explicitly stored `TypedIterator[int]` from
-the [tutorial](../../examples/typed_iterator/README.md), and a closed union of two
-concrete iterator classes. The union control runs only for two implementations.
+the [tutorial](../../examples/typed_iterator/README.md), a native
+[protocol interface](../../docs/language/typing.md#protocols-and-stored-interfaces), and a
+closed union of two concrete iterator classes. The union control runs only for two
+implementations.
 
 Each generated source has independent concrete iterator classes and consumer
 functions. Every consumer uses every implementation. The specialized variant leaves
-its parameter unannotated; the stored variant takes `TypedIterator[int]`; the union
+its parameter unannotated; the stored variant takes `TypedIterator[int]`; the native
+variant takes `IntCursor`, a `Protocol` declaring `__next__(self) -> int`; the union
 variant takes `Cursor0 | Cursor1`. All perform the same ordered modular checksum,
 with `__next__` calls and `StopIteration` handling. This explicit method call also
 keeps the union control independent of broader builtin `iter` support for unions.

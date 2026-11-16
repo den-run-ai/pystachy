@@ -629,7 +629,8 @@ See [annotations](typing.md#annotations), [aliases](typing.md#type-aliases) and
   inheritance, a protocol as a class's base, unannotated method parameters or results,
   `TypeVarTuple` parameters; `==`, ordering, `hash()`, dict keys, set elements, `type()`,
   `isinstance()` and reflection of protocol values; conversions between protocols and to or
-  from dynamic `Any`. See [stored interfaces](typing.md#protocols-and-stored-interfaces).
+  from dynamic `Any`; a closed union's, function's or `Callable`'s value as an implementation.
+  See [stored interfaces](typing.md#protocols-and-stored-interfaces).
 - **Dynamic `Any`:** typed mutable containers other than the supported native `list[int]`
   boundary becoming `Any`, unimplemented prototype operations,
   runtime `**` expansion of native dictionaries with non-str keys, or None-first storage
