@@ -14,7 +14,7 @@ from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import SPECSHOW
 from src.pystachy_compiler.syntax import Node, mk
-from src.pystachy_compiler.utils import clone, gelem, is_gen, is_opt, lt, typestr
+from src.pystachy_compiler.utils import clone, elem, gelem, is_dict, is_gen, is_list, is_opt, lt, targs, typestr
 
 # the intrinsic that an interface method's body calls: its table entry (iface_call)
 IFACE_CALL = "__pystachy_iface__"
@@ -310,6 +310,36 @@ def gen_iface_item(self, t: str) -> str:
     if self.is_iterator(t):
         return self.next_type(t)
     return ""
+
+
+def gen_iface_widens(self, body: list[Node], name: str, t: str, vt: str) -> bool:
+    # may a store of a value of type vt widen variable name of type t, which code body annotates
+    # (join_hint): where its annotation types nothing (Iterator[T] and Iterable[T] annotations, also
+    # inside a list's or dict's, tmpl_ann) and the join is the Iterator[T] interface of distinct
+    # iterators (iter_join), as the variable's value, a list's items or a dict's values
+    a = ann_node(body, name)
+    if a is None or not self.tmpl_ann(a):
+        return False
+    j = self.join_type(t, vt)
+    return self.is_iface(j) or (is_list(j) and self.is_iface(elem(j))) or (is_dict(j) and self.is_iface(targs(j)[1]))
+
+
+def ann_node(body: list[Node], name: str) -> Node | None:
+    # the annotation of variable name in code body (into blocks, as ann_target looks), or None
+    for st in body:
+        if st.kind == "def" or st.kind == "class" or st.kind == "subclass":
+            continue
+        if st.kind == "annassign" and st.kids[0].kind == "name" and st.kids[0].s == name:
+            return st.kids[1]
+        for kid in st.kids:
+            found: Node | None = None
+            if kid.kind == "block":
+                found = ann_node(kid.kids, name)
+            elif kid.kind == "except":
+                found = ann_node(kid.kids[1].kids, name)
+            if found is not None:
+                return found
+    return None
 
 
 def gen_iter_join(self, a: str, b: str) -> str:

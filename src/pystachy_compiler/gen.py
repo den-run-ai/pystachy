@@ -259,6 +259,7 @@ from src.pystachy_compiler.interfaces import (
     gen_iface_respec as interfaces_iface_respec,
     gen_iface_spec as interfaces_iface_spec,
     gen_iface_use as interfaces_iface_use,
+    gen_iface_widens as interfaces_iface_widens,
     gen_iface_item as interfaces_iface_item,
     gen_iter_join as interfaces_iter_join,
     gen_protocol_params as interfaces_protocol_params,
@@ -3334,6 +3335,9 @@ class Gen:
 
     def iface_use(self, f: FnInfo) -> None:
         interfaces_iface_use(self, f)
+
+    def iface_widens(self, body: list[Node], name: str, t: str, vt: str) -> bool:
+        return interfaces_iface_widens(self, body, name, t, vt)
 
     def iface_item(self, t: str) -> str:
         return interfaces_iface_item(self, t)

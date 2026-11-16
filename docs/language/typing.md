@@ -665,10 +665,12 @@ annotate it with a `TypeVar` whose bound is the protocol's name as a string.
 Where iterators of distinct types with one item type meet, the location holds the stored
 interface `Iterator[T]`, which programs did not compile before: a list or dict display, a
 conditional expression, a function's returns, or a variable or field assigned more than once
-(`self.it = iter(xs)`, then `self.it = gen()`). `next()`, `iter()`, loops and the other
-consumers advance the object itself; iterators of one type keep that type
-([tests](../../tests/programs/generators/iterator_join_display.py)). Modules that opt in to
-[dynamic `Any`](../dynamic-any.md) keep their dynamic joins.
+(`self.it = iter(xs)`, then `self.it = gen()`), also where an `Iterator[T]` annotation names it.
+`next()`, `iter()`, loops and the other consumers advance the object itself; iterators of one
+type keep that type ([tests](../../tests/programs/generators/iterator_join_display.py)). A list
+that `append()` fills takes its first item's type, as for other types: annotate its items with
+a protocol to hold several kinds. Modules that opt in to [dynamic `Any`](../dynamic-any.md)
+keep their dynamic joins.
 
 A protocol value is a pointer to an immutable 16-byte box of a method table and the object,
 so a conversion allocates one box. The program has one constant table for each pair of
