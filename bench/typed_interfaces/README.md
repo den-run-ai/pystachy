@@ -126,3 +126,54 @@ and are approximate. At 8 × 8, the counted collector's peak heap capacity incre
 from 3,866,624 to 7,274,496 bytes; this is neither live memory nor process RSS.
 These costs justify investigating a cheaper adapter representation, but do not
 predict the performance of an unimplemented native interface table.
+
+## Measured native interface costs
+
+The [recorded samples](results/2026-11-16.json) measure all four representations at
+[`8eabad6d`](https://github.com/den-run-ai/pystachy/commit/8eabad6d1cd25e6861db0f8a7e9e9eefd359689e)
+on Linux x86-64, an Intel Xeon processor at 2.10 GHz, CPU 3, CPython 3.13.18 (not the pinned
+3.13.16) and LLVM 18.1.3. The checkout was clean and its source manifest remained unchanged.
+Other cores built the compiler during the run, so timings come from a shared host. All seven
+variants matched CPython in both workloads under AOT and JIT. Cold builds took 15–17 s.
+
+| Implementations × consumers | Representation | Consumer bodies | LLVM lines | Executable bytes | Median warm AOT build, s |
+|---|---|---:|---:|---:|---:|
+| 2 × 1 | Specialized | 2 | 545 | 99,728 | 0.302 |
+| 2 × 1 | Stored adapter | 1 | 752 | 104,280 | 0.353 |
+| 2 × 1 | Native protocol | 1 | 561 | 104,312 | 0.314 |
+| 2 × 1 | Union | 1 | 496 | 99,864 | 0.371 |
+| 8 × 8 | Specialized | 64 | 6,691 | 136,624 | 1.579 |
+| 8 × 8 | Stored adapter | 8 | 3,387 | 121,840 | 0.619 |
+| 8 × 8 | Native protocol | 8 | 2,720 | 121,416 | 0.642 |
+
+The native protocol shares consumer bodies as the stored adapter does, with 20% fewer program
+LLVM lines at 8 × 8: its tables replace the adapter's wrapper class and closures. With two
+implementations and one consumer, it stays larger than specialization or the two-class union.
+
+Long-stream runs used 2,048 items per iterator and 20 rounds; values are five-sample workload
+medians in milliseconds, with minimum–maximum in parentheses.
+
+| Shape and representation | AOT, ms | JIT, ms |
+|---|---:|---:|
+| 2 × 1 specialized | 0.473 (0.467–0.550) | 0.948 (0.820–0.984) |
+| 2 × 1 stored adapter | 0.555 (0.522–0.632) | 0.935 (0.897–1.130) |
+| 2 × 1 native protocol | 0.554 (0.515–0.586) | 0.870 (0.860–0.915) |
+| 2 × 1 union | 0.548 (0.492–0.595) | 0.922 (0.857–1.002) |
+| 8 × 8 specialized | 16.404 (15.646–19.063) | 29.261 (28.518–33.092) |
+| 8 × 8 stored adapter | 16.633 (15.695–17.407) | 31.694 (29.216–38.079) |
+| 8 × 8 native protocol | 16.628 (16.319–17.254) | 28.876 (28.485–30.927) |
+
+The ranges overlap except at 2 × 1 AOT, where specialization's direct calls were faster.
+These runs establish no execution speed improvement for either stored representation.
+
+| Shape | Traversals | Specialized C GC requests | Stored adapter | Native protocol | Union |
+|---|---:|---:|---:|---:|---:|
+| 2 × 1 | 1,000 | 1,006 | 6,006 | 3,006 | 3,006 |
+| 8 × 8 | 32,000 | 32,006 | 192,006 | 96,006 | — |
+
+Each native traversal makes two more C GC requests and about 40 more requested bytes than
+specialization; the adapter makes five more and about 64 bytes. One of the two is the 16-byte
+box of the traversal's conversion; the two-class union's traversals make the same count, and
+these counters do not attribute the other request. At 8 × 8 the counted
+collector's peak heap capacity was 3,866,624 bytes specialized, 5,701,632 native and 7,274,496
+with the adapter; this is neither live memory nor process RSS.
