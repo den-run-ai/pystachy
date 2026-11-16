@@ -1,0 +1,4 @@
+fixed point: stage1 == stage2 == stage3 (968315 lines of IR)
+fixed point: runtime.py's IR, rt1 == rt2 == rt3 (21214 lines)
+real	6m3.345s
+make exit 0

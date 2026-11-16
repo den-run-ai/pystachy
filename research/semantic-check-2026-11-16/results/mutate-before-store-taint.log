@@ -1,0 +1,14 @@
+{
+ "mutants": 3235,
+ "programs": 1762,
+ "rejected_by_ir": 3186,
+ "errors_reported": 5412,
+ "two_errors_found": 1047,
+ "two_site_mutants": 1473,
+ "with_notes": 295,
+ "stopped": 112,
+ "invented": 33,
+ "first_line_mismatch": 0
+}
+PROBLEM tests/programs/classes/cmp_notimplemented_dataclass.py ['__lt__'] ['/tmp/mutate-check-x2o3li0r/tmpaeqidsyx/cmp_notimplemented_dataclass.py:27: error: ']
+    cmp_notimplemented_dataclass.py:10: error: unsupported operand type(s) for +: 'int' and 'str' (compiling Money.__lt__(None) for the call at cmp_notimplemented_dataclass.py:27)

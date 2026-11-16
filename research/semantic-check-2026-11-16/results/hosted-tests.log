@@ -1,0 +1,36 @@
+== python3 -m unittest discover -s tools -p 'test_check_command.py'
+Ran 13 tests in 2.474s
+
+OK
+== python3 -m unittest discover -s tools -p 'test_compiler_pipeline.py'
+Ran 13 tests in 2.604s
+
+OK
+== python3 -m unittest discover -s tools -p 'test_lean_pipeline.py'
+Ran 21 tests in 5.303s
+
+OK
+== python3 -m unittest discover -s tools -p 'test_frame_fields.py'
+Ran 18 tests in 4.360s
+
+OK
+== python3 -m unittest discover -s tools -p 'test_cached_run*.py'
+Ran 33 tests in 1.476s
+
+OK
+== python3 -m unittest discover -s tools -p 'test_inspect_compiler.py'
+Ran 34 tests in 17.400s
+
+OK
+== python3 -m unittest discover -s tools -p 'test_compiler_state*.py'
+Ran 138 tests in 125.859s
+
+OK
+== PYSTACHY_TEST_LLVM=/usr/lib/llvm-18/bin python3 -m unittest discover -s tools -p 'test_retained_ir.py'
+Ran 10 tests in 27.242s
+
+OK
+== PYSTACHY_TEST_LLVM=/usr/lib/llvm-18/bin python3 -m unittest discover -s tools -p 'test_bootstrap_tier.py'
+Ran 8 tests in 19.539s
+
+OK

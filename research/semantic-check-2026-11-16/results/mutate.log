@@ -1,0 +1,13 @@
+{
+ "mutants": 3229,
+ "programs": 1760,
+ "rejected_by_ir": 3180,
+ "errors_reported": 5149,
+ "two_errors_found": 966,
+ "two_site_mutants": 1469,
+ "with_notes": 392,
+ "stopped": 99,
+ "invented": 0,
+ "first_line_mismatch": 0
+}
+mutate exit 0 (300s)

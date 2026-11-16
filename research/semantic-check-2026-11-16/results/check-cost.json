@@ -1,0 +1,69 @@
+{
+ "compiler": "./pystachy",
+ "cpu": 3,
+ "samples": 7,
+ "programs": {
+  "pystachy.py": {
+   "ir": {
+    "wall_median": 5.47792829700029,
+    "wall_min": 5.184985539000081,
+    "rss_median_kib": 999448,
+    "exits": [
+     0
+    ]
+   },
+   "check": {
+    "wall_median": 4.791312363999168,
+    "wall_min": 4.574231212000086,
+    "rss_median_kib": 853164,
+    "exits": [
+     0
+    ]
+   },
+   "check_over_ir_wall": 0.8746577363239472
+  },
+  "bench/pyperformance/raytrace.py": {
+   "ir": {
+    "wall_median": 0.03073810699970636,
+    "wall_min": 0.024040711000452575,
+    "rss_median_kib": 20344,
+    "exits": [
+     0
+    ]
+   },
+   "check": {
+    "wall_median": 0.029074349999973492,
+    "wall_min": 0.021567613999650348,
+    "rss_median_kib": 19036,
+    "exits": [
+     0
+    ]
+   },
+   "check_over_ir_wall": 0.9458731469784798
+  },
+  "tests/programs/classes/dataclass_inheritance_property.py": {
+   "ir": {
+    "wall_median": 0.006753246000698709,
+    "wall_min": 0.00616305600033229,
+    "rss_median_kib": 14232,
+    "exits": [
+     0
+    ]
+   },
+   "check": {
+    "wall_median": 0.005964136999864422,
+    "wall_min": 0.0053752799994981615,
+    "rss_median_kib": 14232,
+    "exits": [
+     0
+    ]
+   },
+   "check_over_ir_wall": 0.8831511541631026
+  }
+ },
+ "loadavg_after": [
+  1.265625,
+  1.89697265625,
+  1.75439453125
+ ]
+}
