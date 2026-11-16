@@ -1,4 +1,4 @@
-# error: protocol_result.py:16: error: expected str, got int (making the table of A as Named (for name), converted at protocol_result.py:16)
+# error: protocol_result.py:16: error: expected str, got int (making the table of A as Named (for name), converted at tests/errors/classes/protocol_result.py:16)
 from typing import Protocol
 
 

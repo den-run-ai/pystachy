@@ -1,4 +1,4 @@
-# error: protocol_missing.py:16: error: 'Square' object has no method 'perimeter' (making the table of Square as Shape (for perimeter), converted at protocol_missing.py:16)
+# error: protocol_missing.py:16: error: 'Square' object has no method 'perimeter' (making the table of Square as Shape (for perimeter), converted at tests/errors/classes/protocol_missing.py:16)
 from typing import Protocol
 
 
