@@ -461,6 +461,16 @@ print(kernel(3))
             self.assertEqual(footprint["status"], "completed")
             self.assertGreater(footprint["totals"]["indirect_calls"], 0)
 
+    def test_typed_displays_of_distinct_iterators_make_no_interface(self):
+        # A file and a StringIO are iterators of str, but an annotated reference-union display
+        # holds them as the union: no Iterator[str] interface or table may appear (irsame).
+        program = ROOT / "tests/programs/inference/reference_union_streams.py"
+        completed, destination = self.inspect(program, args=("--typed-after-only", "--function", "consume"))
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        callables = self.report(destination)["attempts"][-1]["callable_boundary"]
+        self.assertEqual(callables["interfaces"], {})
+        self.assertEqual(callables["tables"], [])
+
     def test_callable_inventory_separates_sources_from_shared_signatures(self):
         program = self.source('''
 from typing import Callable
