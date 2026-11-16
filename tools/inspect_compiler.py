@@ -498,7 +498,15 @@ class Observer:
         fields = {name: {field: cls.ftypes[field] for field in cls.fields
                          if is_callable(unopt(cls.ftypes.get(field, "")))}
                   for name, cls in sorted(gen.classes.items())}
-        return {"adapters": adapters, "fields": {name: found for name, found in fields.items() if found}}
+        # Protocol interfaces: their operations, those that calls use, and each implementation
+        # type's table with the adapters compiled for those operations (interfaces.py)
+        interfaces = {name: {"operations": list(face.ops), "called": [face.ops[k] for k in range(len(face.ops)) if k in face.used]}
+                      for name, face in sorted(gen.ifaces.items())}
+        tables = [{"implementation": tab.impl, "interface": tab.iface, "symbol": tab.name,
+                   "entries": {gen.ifaces[tab.iface].ops[k]: tab.codes[k] for k in sorted(tab.codes)}}
+                  for tab in gen.itabs.values()]
+        return {"adapters": adapters, "fields": {name: found for name, found in fields.items() if found},
+                "interfaces": interfaces, "tables": tables}
 
     def identity_wrapper(self, original):
         def wrapped(gen, modules, *args, **kwargs):
@@ -577,6 +585,7 @@ class Observer:
                                 "footprints": {stage: {"status": "unavailable", "functions": {}, "totals": None}
                                                for stage in ("before", "after")}},
                             "callable_boundary": {"source_provenance": "consistent", "adapters": [], "fields": {},
+                                "interfaces": {}, "tables": [],
                                 "footprints": {stage: {"status": "unavailable", "functions": {}, "totals": None}
                                                for stage in ("before", "after")}}}
             self.report["attempts"].append(self.attempt)

@@ -134,7 +134,10 @@ concrete functions that implement it. `adapters` records the compiler's adapter
 cache: source representation, callable signature, parameter and result
 representations, and generated symbol. `fields` records each class's callable
 fields, including optional callable fields. Several adapters can share one field
-signature without making separate wrapper layouts or consumer bodies.
+signature without making separate wrapper layouts or consumer bodies. `interfaces`
+records each [protocol](language/typing.md#protocols-and-stored-interfaces)'s operations
+and those that calls use; `tables` records each implementation type's table and the
+adapter compiled for each used operation.
 
 Its `footprints.before` and `footprints.after` count `icall` instructions per
 function across the complete compilation graph; `--function` does not filter

@@ -438,6 +438,29 @@ print(kernel(3))
             self.assertEqual(footprint["totals"]["dynamic_operations"], {})
             self.assertEqual(footprint["totals"]["dynamic_runtime_calls"], {})
 
+    def test_protocol_values_share_one_consumer_through_tables(self):
+        # Two unrelated classes reach one consumer through Shape's tables; only the
+        # operations that calls through the protocol use have compiled entries.
+        program = ROOT / "tests/programs/classes/protocol_mixed.py"
+        completed, destination = self.inspect(program, args=("--typed-after-only", "--function", "largest"))
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        report = self.report(destination)
+        self.assertEqual(report["status"], "ok")
+        snapshot = self.snapshot(destination, "typed-after")
+        consumer = self.named_function(snapshot, "largest")
+        self.assertEqual(consumer["parameters"][0]["representation"], "list[Shape]")
+        callables = report["attempts"][-1]["callable_boundary"]
+        shape = callables["interfaces"]["Shape"]
+        self.assertEqual(shape["operations"], ["area", "scaled", "label", "__repr__", "__str__", "__bool__"])
+        self.assertCountEqual(shape["called"], ["area", "scaled", "label"])
+        tables = [table for table in callables["tables"] if table["interface"] == "Shape"]
+        self.assertCountEqual([table["implementation"] for table in tables], ["Square", "Circle"])
+        for table in tables:
+            self.assertCountEqual(table["entries"], shape["called"])
+        for footprint in callables["footprints"].values():
+            self.assertEqual(footprint["status"], "completed")
+            self.assertGreater(footprint["totals"]["indirect_calls"], 0)
+
     def test_callable_inventory_separates_sources_from_shared_signatures(self):
         program = self.source('''
 from typing import Callable
