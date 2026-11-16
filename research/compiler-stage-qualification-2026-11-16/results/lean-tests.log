@@ -1,0 +1,232 @@
+== test_lean_access.py
+...............................
+----------------------------------------------------------------------
+Ran 31 tests in 4.269s
+
+OK
+exit test_lean_access.py 0
+== test_lean_boundary.py
+..................................................................
+----------------------------------------------------------------------
+Ran 66 tests in 8.511s
+
+OK
+exit test_lean_boundary.py 0
+== test_lean_boundary_alias.py
+...........
+----------------------------------------------------------------------
+Ran 11 tests in 11.322s
+
+OK
+exit test_lean_boundary_alias.py 0
+== test_lean_boundary_companion.py
+...................
+----------------------------------------------------------------------
+Ran 19 tests in 62.511s
+
+OK
+exit test_lean_boundary_companion.py 0
+== test_lean_boundary_layouts.py
+...............
+----------------------------------------------------------------------
+Ran 15 tests in 1.272s
+
+OK
+exit test_lean_boundary_layouts.py 0
+== test_lean_boundary_setup.py
+.........
+----------------------------------------------------------------------
+Ran 9 tests in 0.106s
+
+OK
+exit test_lean_boundary_setup.py 0
+== test_lean_boundary_workflow.py
+.........
+----------------------------------------------------------------------
+Ran 9 tests in 1.248s
+
+OK
+exit test_lean_boundary_workflow.py 0
+== test_lean_closure_cells.py
+......
+----------------------------------------------------------------------
+Ran 6 tests in 0.318s
+
+OK
+exit test_lean_closure_cells.py 0
+== test_lean_corpus.py
+............
+----------------------------------------------------------------------
+Ran 12 tests in 5.336s
+
+OK
+exit test_lean_corpus.py 0
+== test_lean_effects.py
+.................
+----------------------------------------------------------------------
+Ran 17 tests in 0.082s
+
+OK
+exit test_lean_effects.py 0
+== test_lean_fields.py
+.......
+----------------------------------------------------------------------
+Ran 7 tests in 5.387s
+
+OK
+exit test_lean_fields.py 0
+== test_lean_gc.py
+...................
+----------------------------------------------------------------------
+Ran 19 tests in 1.326s
+
+OK
+exit test_lean_gc.py 0
+== test_lean_generators.py
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.602s
+
+OK
+exit test_lean_generators.py 0
+== test_lean_guard_mutations.py
+.........
+----------------------------------------------------------------------
+Ran 9 tests in 0.360s
+
+OK
+exit test_lean_guard_mutations.py 0
+== test_lean_guards.py
+...................................
+----------------------------------------------------------------------
+Ran 35 tests in 0.541s
+
+OK
+exit test_lean_guards.py 0
+== test_lean_inline.py
+.........
+----------------------------------------------------------------------
+Ran 9 tests in 0.549s
+
+OK
+exit test_lean_inline.py 0
+== test_lean_int.py
+.............
+----------------------------------------------------------------------
+Ran 13 tests in 0.916s
+
+OK
+exit test_lean_int.py 0
+== test_lean_layout_metadata.py
+..........
+----------------------------------------------------------------------
+Ran 10 tests in 0.904s
+
+OK
+exit test_lean_layout_metadata.py 0
+== test_lean_null_access.py
+......................
+----------------------------------------------------------------------
+Ran 22 tests in 0.799s
+
+OK
+exit test_lean_null_access.py 0
+== test_lean_pipeline.py
+.....................
+----------------------------------------------------------------------
+Ran 21 tests in 2.337s
+
+OK
+exit test_lean_pipeline.py 0
+== test_lean_range_bounds.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.264s
+
+OK
+exit test_lean_range_bounds.py 0
+== test_lean_report.py
+............................................
+----------------------------------------------------------------------
+Ran 44 tests in 9.099s
+
+OK
+exit test_lean_report.py 0
+== test_lean_storage.py
+........................
+----------------------------------------------------------------------
+Ran 24 tests in 0.083s
+
+OK
+exit test_lean_storage.py 0
+== test_lean_storage_container.py
+......
+----------------------------------------------------------------------
+Ran 6 tests in 0.057s
+
+OK
+exit test_lean_storage_container.py 0
+== test_lean_storage_corpus.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 9.693s
+
+OK
+exit test_lean_storage_corpus.py 0
+== test_lean_storage_generators.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 0.583s
+
+OK
+exit test_lean_storage_generators.py 0
+== test_lean_storage_iteration.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.638s
+
+OK
+exit test_lean_storage_iteration.py 0
+== test_lean_storage_layout.py
+............
+----------------------------------------------------------------------
+Ran 12 tests in 6.534s
+
+OK
+exit test_lean_storage_layout.py 0
+== test_lean_storage_liveness.py
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.064s
+
+OK
+exit test_lean_storage_liveness.py 0
+== test_lean_storage_stack_copy.py
+...
+----------------------------------------------------------------------
+Ran 3 tests in 0.335s
+
+OK
+exit test_lean_storage_stack_copy.py 0
+== test_lean_union_effects.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 0.876s
+
+OK
+exit test_lean_union_effects.py 0
+== test_lean_union_memory.py
+.........
+----------------------------------------------------------------------
+Ran 9 tests in 1.091s
+
+OK
+exit test_lean_union_memory.py 0
+== test_lean_union_split.py
+......
+----------------------------------------------------------------------
+Ran 6 tests in 0.943s
+
+OK
+exit test_lean_union_split.py 0
+seconds 142

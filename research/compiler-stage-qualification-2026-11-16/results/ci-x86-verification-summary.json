@@ -1,0 +1,654 @@
+{
+ "artifact": "x86_64-verification (artifact 14200313257, zip sha256 6173e1ba6a7cbd181a1d7f86d6d6cb3e911bd2ab5664bb5eeb392073c01f1a17)",
+ "run": "https://github.com/den-run-ai/pystachy/actions/runs/43809511213",
+ "git": {
+  "commit": "bb04e1964bc9769c4de4f4d9b3a66f023669fe90",
+  "dirty": false
+ },
+ "profile": "full",
+ "toolchain": {
+  "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+  "llvm": "Ubuntu LLVM version 18.1.3",
+  "llvm_dir": "/usr/lib/llvm-18/bin",
+  "python": "Python 3.13.16"
+ },
+ "platform": {
+  "cpu": "znver3",
+  "machine": "x86_64",
+  "os": "Ubuntu 24.04.5 LTS",
+  "system": "Linux 7.0.0-1017-azure"
+ },
+ "summary": {
+  "steps": 58,
+  "passed": 58,
+  "failed": 0,
+  "seconds": 854.699
+ },
+ "aarch64": "aggregate job 133114925827: 'verification: 58 checks passed across 35 groups'; artifact aarch64-verification 14201170236, zip sha256 2f0e1ea1d7a67f61f1cbcf3c0b058470836062da6036500af47d8770a8f78ccd",
+ "steps": [
+  {
+   "name": "bootstrap",
+   "result": "pass",
+   "seconds": 388.312,
+   "ir_identical": true,
+   "ir_lines": 961586,
+   "ir_sha256": "aeecb628595bc2b89719d978f30993c1492839548890c40a18cc7207cb198ed9",
+   "ci_group": "bootstrap"
+  },
+  {
+   "name": "tests-cpython",
+   "result": "pass",
+   "seconds": 341.794,
+   "passed": 131,
+   "failed": 0,
+   "expected": 131,
+   "ir_cases": 4693,
+   "ir_identical": true,
+   "check_cases": 254,
+   "check_identical": true,
+   "modes": [
+    "jit",
+    "aot"
+   ],
+   "ci_group": "hosted",
+   "compiler": "CPython-hosted",
+   "reference": "stage2"
+  },
+  {
+   "name": "tests-native-0",
+   "result": "pass",
+   "seconds": 262.813,
+   "passed": 2550,
+   "failed": 0,
+   "expected": 2550,
+   "modes": [
+    "jit",
+    "aot"
+   ],
+   "shard_index": 0,
+   "shard_count": 3,
+   "ci_group": "native-0",
+   "compiler": "stage2"
+  },
+  {
+   "name": "tests-native-1",
+   "result": "pass",
+   "seconds": 214.315,
+   "passed": 2555,
+   "failed": 0,
+   "expected": 2555,
+   "modes": [
+    "jit",
+    "aot"
+   ],
+   "shard_index": 1,
+   "shard_count": 3,
+   "ci_group": "native-1",
+   "compiler": "stage2"
+  },
+  {
+   "name": "tests-native-2",
+   "result": "pass",
+   "seconds": 222.508,
+   "passed": 2555,
+   "failed": 0,
+   "expected": 2555,
+   "modes": [
+    "jit",
+    "aot"
+   ],
+   "shard_index": 2,
+   "shard_count": 3,
+   "ci_group": "native-2",
+   "compiler": "stage2"
+  },
+  {
+   "name": "tests-opt-off-0",
+   "result": "pass",
+   "seconds": 212.818,
+   "passed": 2550,
+   "failed": 0,
+   "expected": 2550,
+   "modes": [
+    "jit",
+    "aot"
+   ],
+   "shard_index": 0,
+   "shard_count": 3,
+   "ci_group": "opt-off-0",
+   "compiler": "stage2"
+  },
+  {
+   "name": "tests-opt-off-1",
+   "result": "pass",
+   "seconds": 251.382,
+   "passed": 2555,
+   "failed": 0,
+   "expected": 2555,
+   "modes": [
+    "jit",
+    "aot"
+   ],
+   "shard_index": 1,
+   "shard_count": 3,
+   "ci_group": "opt-off-1",
+   "compiler": "stage2"
+  },
+  {
+   "name": "tests-opt-off-2",
+   "result": "pass",
+   "seconds": 204.701,
+   "passed": 2555,
+   "failed": 0,
+   "expected": 2555,
+   "modes": [
+    "jit",
+    "aot"
+   ],
+   "shard_index": 2,
+   "shard_count": 3,
+   "ci_group": "opt-off-2",
+   "compiler": "stage2"
+  },
+  {
+   "name": "runtime-cache",
+   "result": "pass",
+   "seconds": 227.535,
+   "passed": 192,
+   "failed": 0,
+   "expected": 192,
+   "ci_group": "runtime-cache",
+   "compilers": [
+    "stage2",
+    "CPython-hosted"
+   ]
+  },
+  {
+   "name": "python-free-0",
+   "result": "pass",
+   "seconds": 272.418,
+   "passed": 1916,
+   "failed": 0,
+   "expected": 1916,
+   "ir_identical": true,
+   "shard_index": 0,
+   "shard_count": 4,
+   "ci_group": "python-free-0",
+   "python_on_path": false
+  },
+  {
+   "name": "python-free-1",
+   "result": "pass",
+   "seconds": 309.611,
+   "passed": 1917,
+   "failed": 0,
+   "expected": 1917,
+   "ir_identical": true,
+   "shard_index": 1,
+   "shard_count": 4,
+   "ci_group": "python-free-1",
+   "python_on_path": false
+  },
+  {
+   "name": "python-free-2",
+   "result": "pass",
+   "seconds": 393.978,
+   "passed": 1915,
+   "failed": 0,
+   "expected": 1915,
+   "ir_identical": true,
+   "shard_index": 2,
+   "shard_count": 4,
+   "ci_group": "python-free-2",
+   "python_on_path": false
+  },
+  {
+   "name": "python-free-3",
+   "result": "pass",
+   "seconds": 387.322,
+   "passed": 1912,
+   "failed": 0,
+   "expected": 1912,
+   "ir_identical": true,
+   "shard_index": 3,
+   "shard_count": 4,
+   "ci_group": "python-free-3",
+   "python_on_path": false
+  },
+  {
+   "name": "ubsan-0",
+   "result": "pass",
+   "seconds": 260.716,
+   "passed": 1968,
+   "failed": 0,
+   "expected": 1968,
+   "ir_identical": true,
+   "modes": [
+    "aot",
+    "jit"
+   ],
+   "shard_index": 0,
+   "shard_count": 5,
+   "ci_group": "ubsan-0",
+   "cflags": "-fsanitize=undefined -fno-sanitize-recover=all --rtlib=compiler-rt"
+  },
+  {
+   "name": "ubsan-1",
+   "result": "pass",
+   "seconds": 271.65,
+   "passed": 1984,
+   "failed": 0,
+   "expected": 1984,
+   "ir_identical": true,
+   "modes": [
+    "aot",
+    "jit"
+   ],
+   "shard_index": 1,
+   "shard_count": 5,
+   "ci_group": "ubsan-1",
+   "cflags": "-fsanitize=undefined -fno-sanitize-recover=all --rtlib=compiler-rt"
+  },
+  {
+   "name": "ubsan-2",
+   "result": "pass",
+   "seconds": 231.316,
+   "passed": 1978,
+   "failed": 0,
+   "expected": 1978,
+   "ir_identical": true,
+   "modes": [
+    "aot",
+    "jit"
+   ],
+   "shard_index": 2,
+   "shard_count": 5,
+   "ci_group": "ubsan-2",
+   "cflags": "-fsanitize=undefined -fno-sanitize-recover=all --rtlib=compiler-rt"
+  },
+  {
+   "name": "ubsan-3",
+   "result": "pass",
+   "seconds": 378.634,
+   "passed": 1980,
+   "failed": 0,
+   "expected": 1980,
+   "ir_identical": true,
+   "modes": [
+    "aot",
+    "jit"
+   ],
+   "shard_index": 3,
+   "shard_count": 5,
+   "ci_group": "ubsan-3",
+   "cflags": "-fsanitize=undefined -fno-sanitize-recover=all --rtlib=compiler-rt"
+  },
+  {
+   "name": "ubsan-4",
+   "result": "pass",
+   "seconds": 230.627,
+   "passed": 1968,
+   "failed": 0,
+   "expected": 1968,
+   "ir_identical": true,
+   "modes": [
+    "aot",
+    "jit"
+   ],
+   "shard_index": 4,
+   "shard_count": 5,
+   "ci_group": "ubsan-4",
+   "cflags": "-fsanitize=undefined -fno-sanitize-recover=all --rtlib=compiler-rt"
+  },
+  {
+   "name": "gc-self",
+   "result": "pass",
+   "seconds": 279.312,
+   "ir_identical": true,
+   "ci_group": "gc-self",
+   "compiler_interval": 5000
+  },
+  {
+   "name": "gc-ir-0",
+   "result": "pass",
+   "seconds": 409.126,
+   "ir_cases": 2346,
+   "ir_identical": true,
+   "check_cases": 129,
+   "check_identical": true,
+   "runtime_identical": true,
+   "shard_index": 0,
+   "shard_count": 2,
+   "ci_group": "gc-ir-0",
+   "reference": "stage2",
+   "compiler_interval": 1000
+  },
+  {
+   "name": "gc-ir-1",
+   "result": "pass",
+   "seconds": 456.44,
+   "ir_cases": 2347,
+   "ir_identical": true,
+   "check_cases": 125,
+   "check_identical": true,
+   "runtime_identical": true,
+   "shard_index": 1,
+   "shard_count": 2,
+   "ci_group": "gc-ir-1",
+   "reference": "stage2",
+   "compiler_interval": 1000
+  },
+  {
+   "name": "gc-jit-0",
+   "result": "pass",
+   "seconds": 181.839,
+   "passed": 2315,
+   "failed": 0,
+   "expected": 2315,
+   "modes": [
+    "jit"
+   ],
+   "shard_index": 0,
+   "shard_count": 2,
+   "shard_cases": 2347,
+   "ci_group": "gc-jit-0",
+   "tests_interval": 1
+  },
+  {
+   "name": "gc-jit-1",
+   "result": "pass",
+   "seconds": 184.572,
+   "passed": 2314,
+   "failed": 0,
+   "expected": 2314,
+   "modes": [
+    "jit"
+   ],
+   "shard_index": 1,
+   "shard_count": 2,
+   "shard_cases": 2346,
+   "ci_group": "gc-jit-1",
+   "tests_interval": 1
+  },
+  {
+   "name": "gc-aot-0",
+   "result": "pass",
+   "seconds": 289.366,
+   "passed": 1541,
+   "failed": 0,
+   "expected": 1541,
+   "modes": [
+    "aot"
+   ],
+   "shard_index": 0,
+   "shard_count": 3,
+   "shard_cases": 1564,
+   "ci_group": "gc-aot-0",
+   "tests_interval": 1
+  },
+  {
+   "name": "gc-aot-1",
+   "result": "pass",
+   "seconds": 215.089,
+   "passed": 1544,
+   "failed": 0,
+   "expected": 1544,
+   "modes": [
+    "aot"
+   ],
+   "shard_index": 1,
+   "shard_count": 3,
+   "shard_cases": 1565,
+   "ci_group": "gc-aot-1",
+   "tests_interval": 1
+  },
+  {
+   "name": "gc-aot-2",
+   "result": "pass",
+   "seconds": 214.898,
+   "passed": 1545,
+   "failed": 0,
+   "expected": 1545,
+   "modes": [
+    "aot"
+   ],
+   "shard_index": 2,
+   "shard_count": 3,
+   "shard_cases": 1564,
+   "ci_group": "gc-aot-2",
+   "tests_interval": 1
+  },
+  {
+   "name": "benchmarks",
+   "result": "pass",
+   "seconds": 51.446,
+   "programs": 16,
+   "ci_group": "benchmarks",
+   "identical": 16
+  },
+  {
+   "name": "example-cli",
+   "result": "pass",
+   "seconds": 165.748,
+   "ci_group": "benchmarks"
+  },
+  {
+   "name": "dynany-optin-0",
+   "result": "pass",
+   "seconds": 268.843,
+   "ci_group": "dynany-optin-0"
+  },
+  {
+   "name": "dynany-optin-1",
+   "result": "pass",
+   "seconds": 249.607,
+   "ci_group": "dynany-optin-1"
+  },
+  {
+   "name": "dynany-optin-2",
+   "result": "pass",
+   "seconds": 384.983,
+   "ci_group": "dynany-optin-2"
+  },
+  {
+   "name": "python-int-optin-0",
+   "result": "pass",
+   "seconds": 432.398,
+   "ci_group": "python-int-optin-0"
+  },
+  {
+   "name": "python-int-optin-1",
+   "result": "pass",
+   "seconds": 264.348,
+   "ci_group": "python-int-optin-1"
+  },
+  {
+   "name": "python-int-optin-2",
+   "result": "pass",
+   "seconds": 404.359,
+   "ci_group": "python-int-optin-2"
+  },
+  {
+   "name": "annotation-widening",
+   "result": "pass",
+   "seconds": 29.087,
+   "ci_group": "runtime-cache"
+  },
+  {
+   "name": "check-ir",
+   "result": "pass",
+   "seconds": 53.306,
+   "programs": 2824,
+   "ci_group": "contracts"
+  },
+  {
+   "name": "runtime-table",
+   "result": "pass",
+   "seconds": 27.555,
+   "ci_group": "contracts"
+  },
+  {
+   "name": "rtcheck",
+   "result": "pass",
+   "seconds": 33.148,
+   "failed": 0,
+   "ci_group": "contracts"
+  },
+  {
+   "name": "re-fuzz",
+   "result": "pass",
+   "seconds": 38.21,
+   "failed": 0,
+   "ci_group": "contracts"
+  },
+  {
+   "name": "dynany-fuzz",
+   "result": "pass",
+   "seconds": 16.03,
+   "programs": 3,
+   "modes": [
+    "jit",
+    "aot",
+    "jit-gc",
+    "aot-gc"
+   ],
+   "ci_group": "contracts"
+  },
+  {
+   "name": "re-probe",
+   "result": "pass",
+   "seconds": 1.948,
+   "failed": 0,
+   "ci_group": "contracts"
+  },
+  {
+   "name": "rt-abi",
+   "result": "pass",
+   "seconds": 23.149,
+   "programs": 2823,
+   "ci_group": "contracts"
+  },
+  {
+   "name": "inherited-ast",
+   "result": "pass",
+   "seconds": 1.276,
+   "ci_group": "contracts"
+  },
+  {
+   "name": "streaming",
+   "result": "pass",
+   "seconds": 1.075,
+   "ci_group": "contracts"
+  },
+  {
+   "name": "ffi",
+   "result": "pass",
+   "seconds": 61.133,
+   "passed": 196,
+   "failed": 0,
+   "ci_group": "contracts"
+  },
+  {
+   "name": "list-storage",
+   "result": "pass",
+   "seconds": 8.837,
+   "ci_group": "contracts"
+  },
+  {
+   "name": "container-eq",
+   "result": "pass",
+   "seconds": 6.887,
+   "ci_group": "contracts"
+  },
+  {
+   "name": "weakrefs",
+   "result": "pass",
+   "seconds": 6.756,
+   "ci_group": "contracts"
+  },
+  {
+   "name": "box-slots",
+   "result": "pass",
+   "seconds": 6.79,
+   "ci_group": "contracts"
+  },
+  {
+   "name": "file-buffers",
+   "result": "pass",
+   "seconds": 6.907,
+   "ci_group": "contracts"
+  },
+  {
+   "name": "select-io",
+   "result": "pass",
+   "seconds": 6.843,
+   "ci_group": "contracts"
+  },
+  {
+   "name": "dict-probes",
+   "result": "pass",
+   "seconds": 7.663,
+   "ci_group": "contracts"
+  },
+  {
+   "name": "compile-limits",
+   "result": "pass",
+   "seconds": 44.833,
+   "modes": [
+    "ir",
+    "run",
+    "build"
+   ],
+   "ci_group": "contracts"
+  },
+  {
+   "name": "jit-dead-code",
+   "result": "pass",
+   "seconds": 95.114,
+   "ci_group": "contracts",
+   "compilers": [
+    "CPython-hosted",
+    "stage2"
+   ]
+  },
+  {
+   "name": "aot-dead-code",
+   "result": "pass",
+   "seconds": 44.466,
+   "programs": [
+    "plain",
+    "python-int",
+    "dynamic-any",
+    "python-int-import",
+    "dynamic-any-import"
+   ],
+   "ci_group": "contracts",
+   "compilers": [
+    "CPython-hosted",
+    "stage2"
+   ]
+  },
+  {
+   "name": "unicode-audit",
+   "result": "pass",
+   "seconds": 88.24,
+   "ci_group": "contracts",
+   "compilers": [
+    "CPython-hosted",
+    "stage2"
+   ]
+  },
+  {
+   "name": "scaling-0",
+   "result": "pass",
+   "seconds": 33.395,
+   "ci_group": "scaling"
+  },
+  {
+   "name": "scaling-1",
+   "result": "pass",
+   "seconds": 43.435,
+   "ci_group": "scaling"
+  }
+ ]
+}

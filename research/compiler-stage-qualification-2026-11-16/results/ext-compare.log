@@ -1,0 +1,23 @@
+SAME exit=[0, 0] lines=215 tests/ffi/ext/av.py
+SAME exit=[0, 0] lines=1991 tests/ffi/ext/bx.py
+SAME exit=[0, 0] lines=3474 tests/ffi/ext/cb.py
+SAME exit=[0, 0] lines=2264 tests/ffi/ext/evl.py
+SAME exit=[0, 0] lines=911 tests/ffi/ext/fastmath.py
+SAME exit=[0, 0] lines=151 tests/ffi/ext/fm.py
+SAME exit=[0, 0] lines=179 tests/ffi/ext/mg.py
+SAME exit=[0, 0] lines=554 tests/ffi/ext/pw.py
+SAME exit=[0, 0] lines=259 tests/ffi/ext/rd.py
+SAME exit=[0, 0] lines=2385 tests/ffi/ext/recdeep.py
+SAME exit=[0, 0] lines=462 tests/ffi/ext/recguard.py
+SAME exit=[0, 0] lines=2344 tests/ffi/ext/reent.py
+SAME exit=[0, 0] lines=2652 tests/ffi/ext/viajson.py
+SAME exit=[0, 0] lines=2174 tests/ffi/ext/wr.py
+SAME exit=[1, 1] lines=0 tests/ffi/errors/ext_call.py tests/ffi/errors/ext_call.py:7: error: fib() is @export, so Pystachy code may not call it (under CPython each call goes through the export's checks and conversions): call a private function that both
+SAME exit=[1, 1] lines=0 tests/ffi/errors/ext_cls.py tests/ffi/errors/ext_cls.py:5: error: class TooBig is public in extension module 'ext_cls', but classes cannot cross to CPython yet: name it _TooBig
+SAME exit=[1, 1] lines=0 tests/ffi/errors/ext_def.py tests/ffi/errors/ext_def.py:6: error: f() is @export: its parameters are positional, with no default values and no *args (as CPython calls it)
+SAME exit=[1, 1] lines=0 tests/ffi/errors/ext_pub.py tests/ffi/errors/ext_pub.py:10: error: g() is public in extension module 'ext_pub' but not @export: CPython would not see it; export it or name it _g
+SAME exit=[1, 1] lines=0 tests/ffi/errors/ext_ret.py tests/ffi/errors/ext_ret.py:6: error: evens() cannot be called from CPython: it takes or returns list[int] (an extension module's function takes int, float, bool or str and returns one or None); name
+SAME exit=[1, 1] lines=0 tests/ffi/errors/ext_singleton.py tests/ffi/errors/ext_singleton.py:8: error: variable 'Mode' is public in extension module 'ext_singleton', but CPython would not see it (variables cannot cross yet): name it _Mode
+SAME exit=[1, 1] lines=0 tests/ffi/errors/ext_untyped.py tests/ffi/errors/ext_untyped.py:6: error: twice() cannot be called from CPython: it takes or returns an untyped value (an extension module's function takes int, float, bool or str and returns one or N
+SAME exit=[1, 1] lines=0 tests/ffi/errors/ext_var.py tests/ffi/errors/ext_var.py:4: error: variable 'limit' is public in extension module 'ext_var', but CPython would not see it (variables cannot cross yet): name it _limit
+22 programs, 0 differ, 14 compiled by both, 8 rejected by both

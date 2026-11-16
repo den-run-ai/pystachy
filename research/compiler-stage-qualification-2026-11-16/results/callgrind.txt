@@ -1,0 +1,6 @@
+==25747== Command: /home/user/pystachy/build/ref/pystachy ir pystachy.py -o /tmp/claude-0/-home-user-pystachy/32b15605-4c12-5125-80bf-e81b14bf7947/scratchpad/callgrind/alpha4.ll
+==25747== Collected : 22427672829
+==25747== I   refs:      22,427,672,829
+==25748== Command: /home/user/pystachy/pystachy ir pystachy.py -o /tmp/claude-0/-home-user-pystachy/32b15605-4c12-5125-80bf-e81b14bf7947/scratchpad/callgrind/stages.ll
+==25748== Collected : 22437058311
+==25748== I   refs:      22,437,058,311

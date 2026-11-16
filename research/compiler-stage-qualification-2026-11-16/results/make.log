@@ -1,0 +1,16 @@
+mkdir -p build
+PYSTACHY_AOT_OPT="2" /tmp/claude-0/-home-user-pystachy/32b15605-4c12-5125-80bf-e81b14bf7947/scratchpad/venv-dev/bin/python3.13 pystachy.py build pystachy.py -o build/pystachy1 --emit-ir build/stage1.ll
+PYSTACHY_AOT_OPT=2 build/pystachy1 build pystachy.py -o build/pystachy2 --emit-ir build/stage2.ll
+build/pystachy2 ir pystachy.py -o build/stage3.ll
+cmp build/stage1.ll build/stage2.ll && cmp build/stage2.ll build/stage3.ll
+fixed point: stage1 == stage2 == stage3 (961586 lines of IR)
+/tmp/claude-0/-home-user-pystachy/32b15605-4c12-5125-80bf-e81b14bf7947/scratchpad/venv-dev/bin/python3.13 pystachy.py rt runtime.py -o build/rt1.ll
+build/pystachy1 rt runtime.py -o build/rt2.ll
+build/pystachy2 rt runtime.py -o build/rt3.ll
+cmp build/rt1.ll build/rt2.ll && cmp build/rt2.ll build/rt3.ll
+fixed point: runtime.py's IR, rt1 == rt2 == rt3 (21214 lines)
+cp build/pystachy2 pystachy
+
+real	5m46.112s
+user	5m36.065s
+sys	0m6.556s

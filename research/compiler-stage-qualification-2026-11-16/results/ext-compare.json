@@ -1,0 +1,244 @@
+[
+ {
+  "file": "tests/ffi/ext/av.py",
+  "same": true,
+  "exit": [
+   0,
+   0
+  ],
+  "ir_lines": 215,
+  "ir_sha256": "19f6d33a4c82482651fda67614061db4cddb92422e9c71c43b811c2ceb1d93be",
+  "stderr_last": ""
+ },
+ {
+  "file": "tests/ffi/ext/bx.py",
+  "same": true,
+  "exit": [
+   0,
+   0
+  ],
+  "ir_lines": 1991,
+  "ir_sha256": "026056fccaa0701c56a230cd778bc7473a90e575fb7fa4bf36ea82f1ca1acc54",
+  "stderr_last": ""
+ },
+ {
+  "file": "tests/ffi/ext/cb.py",
+  "same": true,
+  "exit": [
+   0,
+   0
+  ],
+  "ir_lines": 3474,
+  "ir_sha256": "e0cbc331dbd5438605eb57c256b70ef1af1638958f2a1bc66bc38cfcead96d5d",
+  "stderr_last": ""
+ },
+ {
+  "file": "tests/ffi/ext/evl.py",
+  "same": true,
+  "exit": [
+   0,
+   0
+  ],
+  "ir_lines": 2264,
+  "ir_sha256": "8b686490c4f33e17e1f09c147d75c75b625ca696eabfc814c2beeceaa01c6c6b",
+  "stderr_last": ""
+ },
+ {
+  "file": "tests/ffi/ext/fastmath.py",
+  "same": true,
+  "exit": [
+   0,
+   0
+  ],
+  "ir_lines": 911,
+  "ir_sha256": "5f78a19d8228f8752a76f90bf9270fead20ac8af498114f0088ff9d8ca7d74ef",
+  "stderr_last": ""
+ },
+ {
+  "file": "tests/ffi/ext/fm.py",
+  "same": true,
+  "exit": [
+   0,
+   0
+  ],
+  "ir_lines": 151,
+  "ir_sha256": "604e688bea05cc9d542afa8d228f4dd005113fd0c9a7b9c634ff825b9c61432c",
+  "stderr_last": ""
+ },
+ {
+  "file": "tests/ffi/ext/mg.py",
+  "same": true,
+  "exit": [
+   0,
+   0
+  ],
+  "ir_lines": 179,
+  "ir_sha256": "69069214b3091b678fa32c1682e31afdec16f2393174b2ab4c16be9ed21ef00c",
+  "stderr_last": ""
+ },
+ {
+  "file": "tests/ffi/ext/pw.py",
+  "same": true,
+  "exit": [
+   0,
+   0
+  ],
+  "ir_lines": 554,
+  "ir_sha256": "8ac3b45f9872ad8015b5ca28b3b6d92bb949e1d3a91aad0d68255929439e1ae0",
+  "stderr_last": ""
+ },
+ {
+  "file": "tests/ffi/ext/rd.py",
+  "same": true,
+  "exit": [
+   0,
+   0
+  ],
+  "ir_lines": 259,
+  "ir_sha256": "dba045a3e10c4423de88594c5f0849ab7a620875caa36b735668084dcdbe63c7",
+  "stderr_last": ""
+ },
+ {
+  "file": "tests/ffi/ext/recdeep.py",
+  "same": true,
+  "exit": [
+   0,
+   0
+  ],
+  "ir_lines": 2385,
+  "ir_sha256": "d8524aa3a8a85215ca189701c6bff698dcf878d06de07f52811957bb521dc5ce",
+  "stderr_last": ""
+ },
+ {
+  "file": "tests/ffi/ext/recguard.py",
+  "same": true,
+  "exit": [
+   0,
+   0
+  ],
+  "ir_lines": 462,
+  "ir_sha256": "6cb66465306455dcbfb62499de3c929a3f0db16a9ddb10c6f270642e6138adb5",
+  "stderr_last": ""
+ },
+ {
+  "file": "tests/ffi/ext/reent.py",
+  "same": true,
+  "exit": [
+   0,
+   0
+  ],
+  "ir_lines": 2344,
+  "ir_sha256": "6c1f521c15eb233df3e27e019656d0c3382cd203b6faf3afaec9a4a2e680272a",
+  "stderr_last": ""
+ },
+ {
+  "file": "tests/ffi/ext/viajson.py",
+  "same": true,
+  "exit": [
+   0,
+   0
+  ],
+  "ir_lines": 2652,
+  "ir_sha256": "8a49ff8b885a78d6d6149401269b972b34d9449a051157d160a7f5e36fb20362",
+  "stderr_last": ""
+ },
+ {
+  "file": "tests/ffi/ext/wr.py",
+  "same": true,
+  "exit": [
+   0,
+   0
+  ],
+  "ir_lines": 2174,
+  "ir_sha256": "55376e65f1321379f93d7e3f12f67c7c322abec910aa4bd38c17dc594ffbc19f",
+  "stderr_last": ""
+ },
+ {
+  "file": "tests/ffi/errors/ext_call.py",
+  "same": true,
+  "exit": [
+   1,
+   1
+  ],
+  "ir_lines": 0,
+  "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_last": "tests/ffi/errors/ext_call.py:7: error: fib() is @export, so Pystachy code may not call it (under CPython each call goes through the export's checks and conversions): call a private function that both "
+ },
+ {
+  "file": "tests/ffi/errors/ext_cls.py",
+  "same": true,
+  "exit": [
+   1,
+   1
+  ],
+  "ir_lines": 0,
+  "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_last": "tests/ffi/errors/ext_cls.py:5: error: class TooBig is public in extension module 'ext_cls', but classes cannot cross to CPython yet: name it _TooBig"
+ },
+ {
+  "file": "tests/ffi/errors/ext_def.py",
+  "same": true,
+  "exit": [
+   1,
+   1
+  ],
+  "ir_lines": 0,
+  "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_last": "tests/ffi/errors/ext_def.py:6: error: f() is @export: its parameters are positional, with no default values and no *args (as CPython calls it)"
+ },
+ {
+  "file": "tests/ffi/errors/ext_pub.py",
+  "same": true,
+  "exit": [
+   1,
+   1
+  ],
+  "ir_lines": 0,
+  "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_last": "tests/ffi/errors/ext_pub.py:10: error: g() is public in extension module 'ext_pub' but not @export: CPython would not see it; export it or name it _g"
+ },
+ {
+  "file": "tests/ffi/errors/ext_ret.py",
+  "same": true,
+  "exit": [
+   1,
+   1
+  ],
+  "ir_lines": 0,
+  "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_last": "tests/ffi/errors/ext_ret.py:6: error: evens() cannot be called from CPython: it takes or returns list[int] (an extension module's function takes int, float, bool or str and returns one or None); name "
+ },
+ {
+  "file": "tests/ffi/errors/ext_singleton.py",
+  "same": true,
+  "exit": [
+   1,
+   1
+  ],
+  "ir_lines": 0,
+  "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_last": "tests/ffi/errors/ext_singleton.py:8: error: variable 'Mode' is public in extension module 'ext_singleton', but CPython would not see it (variables cannot cross yet): name it _Mode"
+ },
+ {
+  "file": "tests/ffi/errors/ext_untyped.py",
+  "same": true,
+  "exit": [
+   1,
+   1
+  ],
+  "ir_lines": 0,
+  "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_last": "tests/ffi/errors/ext_untyped.py:6: error: twice() cannot be called from CPython: it takes or returns an untyped value (an extension module's function takes int, float, bool or str and returns one or N"
+ },
+ {
+  "file": "tests/ffi/errors/ext_var.py",
+  "same": true,
+  "exit": [
+   1,
+   1
+  ],
+  "ir_lines": 0,
+  "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_last": "tests/ffi/errors/ext_var.py:4: error: variable 'limit' is public in extension module 'ext_var', but CPython would not see it (variables cannot cross yet): name it _limit"
+ }
+]
