@@ -2,7 +2,7 @@
 """Run every Lean check over the test corpus and write the small verification report.
 
 The hosted compiler compiles each differential test program and deviation once
-(tools/inspect_compiler.py --typed-after-only --guard-evidence), and every adapter checks that
+(tools/inspect_compiler.py --typed-after-only --guard-evidence --stop-after finalize), and every adapter checks that
 snapshot: dynamic payload reads (check_lean_boundary), unchecked accesses (check_lean_access),
 removed null checks and closed-union reads (check_lean_guards), field initialization
 (check_lean_fields) and collector scanning (check_lean_gc) in every program, and promoting ints'
@@ -278,7 +278,7 @@ def checker_executables(checker, access_checker):
 
 def inspect(program, timeout):
     """The typed-after snapshot of one program with guard evidence, and its SHA-256: what
-    `tools/inspect_compiler.py PROGRAM --typed-after-only --guard-evidence` writes, but compiled by
+    `tools/inspect_compiler.py PROGRAM --typed-after-only --guard-evidence --stop-after finalize` writes, but compiled by
     its worker in a child of this process (compiled)."""
     env = {key: value for key, value in os.environ.items() if not key.startswith("PYSTACHY_")}
     # (inspect_compiler's run_worker checks the IR it compiles)
@@ -313,7 +313,7 @@ def compiled(path, output, env, timeout):
     The child's exit status; past timeout seconds it is killed."""
     from src.pystachy_compiler import diagnostics, driver  # noqa: F401 (the child's compiler)
     arguments = argparse.Namespace(source=str(path.absolute()), output=str(output), function="",
-                                   typed_after_only=True, guard_evidence=True)
+                                   typed_after_only=True, guard_evidence=True, stop_after="finalize")
     done, finished = os.pipe()  # (finished closes when the child exits)
     gc.freeze()  # (the child's collections then leave this process's objects and their pages alone)
     child = os.fork()

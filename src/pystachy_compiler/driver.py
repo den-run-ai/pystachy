@@ -79,6 +79,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/optimizations.py',
     'src/pystachy_compiler/parser.py',
     'src/pystachy_compiler/patterns.py',
+    'src/pystachy_compiler/pipeline.py',
     'src/pystachy_compiler/program.py',
     'src/pystachy_compiler/program_cache.py',
     'src/pystachy_compiler/reflection.py',
@@ -525,7 +526,8 @@ def jit_launcher(runner: str, home: str, cache: str, lli: str, clang: str, src: 
         return ("", "no-toolchain")
     names = "\n".join([os.path.realpath(home + "/lljit.c"), os.path.realpath(lli), os.path.realpath(clang)])
     lin = fnv(names)[8:]
-    base = fnv("\n".join(["lljit-v1", names] + st + [src[1]]))
+    # v2 rediscovers entries made with an unresolved lli path, including cached no-libLLVM results.
+    base = fnv("\n".join(["lljit-v2", names] + st + [src[1]]))
     stem = f"{cache}/lljit-{lin}-"
     llvmf = stem + base + ".llvm"
     # the complete entries of this L but those named, removed (no partial file: its run may yet use it)
@@ -537,9 +539,10 @@ def jit_launcher(runner: str, home: str, cache: str, lli: str, clang: str, src: 
             return ("", "program-cache")
         # (ldd first: an lli that is a script, as a wrapper may be, is not run. A shell without ldd or
         # sed, which may have them another time, finds nothing it keeps)
+        # ldd invokes the loader explicitly: resolve lli so $ORIGIN agrees with direct execution.
         out = tmp + "/lljit.llvm"
         code = sh(f"command -v ldd > /dev/null && command -v sed > /dev/null || exit 3; "
-                  f"l=$(ldd {q(lli)} 2> /dev/null | sed -n 's/^[[:space:]]*libLLVM[^ ]* => \\(.*\\) (0x[0-9a-f]*)$/\\1/p' | sed 1q); v=; "
+                  f"l=$(ldd {q(os.path.realpath(lli))} 2> /dev/null | sed -n 's/^[[:space:]]*libLLVM[^ ]* => \\(.*\\) (0x[0-9a-f]*)$/\\1/p' | sed 1q); v=; "
                   f"[ -z \"$l\" ] || v=$({q(lli)} --version 2> /dev/null | sed -n 's/.*LLVM version \\([0-9][0-9]*\\)\\..*/\\1/p' | sed 1q); "
                   f"printf '%s\\n%s\\n' \"$v\" \"$l\" > {q(out)}")
         got = text_of(out).split("\n") + ["", ""]
