@@ -1157,6 +1157,12 @@ from src.pystachy_compiler.program import (
     gen_tmpl_ann as program_tmpl_ann,
     gen_tmpl_of as program_tmpl_of,
 )
+from src.pystachy_compiler.checking import (
+    gen_check_body as checking_check_body,
+    gen_check_edge as checking_check_edge,
+    gen_check_failure as checking_check_failure,
+)
+from src.pystachy_compiler.diagnostics import CheckFailed
 from src.pystachy_compiler.pipeline import (
     PipelineState,
     PreparedProgram,
@@ -1348,6 +1354,12 @@ from src.pystachy_compiler.variables import (
 class Gen:
     def __init__(self):
         self.pipeline = PipelineState()  # attempt-owned; never borrowed by a function Frame
+        # pystachy check (checking.py): the units of earlier attempts whose bodies are left out,
+        # by Gen.fnkey (the driver's); this attempt's units left out and the units that used
+        # their results, by LLVM name, each with the name of the unit left out
+        self.stubs: dict[str, bool] = {}
+        self.stubbed: dict[str, str] = {}
+        self.taint: dict[str, str] = {}
         self.classes: dict[str, ClassInfo] = {}
         self.tmpl: dict[str, bool] = {}  # the class templates (an __init__ parameter without an annotation)
         self.compiling = False  # every declaration is made: code is being compiled (see guess)
@@ -3952,6 +3964,15 @@ class Gen:
 
     def program(self, mods: list[Mod]) -> str:
         return pipeline_program(self, mods)
+
+    def check_failure(self, msg: str) -> CheckFailed:
+        return checking_check_failure(self, msg)
+
+    def check_body(self, f: FnInfo, body: list[Node]) -> list[Node]:
+        return checking_check_body(self, f, body)
+
+    def check_edge(self, g: FnInfo) -> None:
+        return checking_check_edge(self, g)
 
     def flow_program(self, top: list[Node], mod: str, mfns: list[FnInfo], mcls: list[ClassInfo], first: bool) -> None:
         return flow_flow_program(self, top, mod, mfns, mcls, first)

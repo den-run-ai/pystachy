@@ -17,6 +17,7 @@ program you can also run under CPython, then check the APIs your application use
 | I want to… | Read |
 |---|---|
 | Understand types, inference or a rejected program | [Language](language.md), [typing](language/typing.md), [compatibility limits](language/compatibility.md) |
+| Find everything that keeps a program from compiling | [Checking a program](checking.md): every failed function, and the types, layouts and specializations chosen |
 | Choose an appropriate workload | [Costs by feature](language.md#performance-and-complexity), [representation costs](performance.md#representation-costs), [application examples](../examples/) |
 | Use a library or adapt a Python package | [Library support](stdlib.md#library-support-at-a-glance), [module guide](../lib/README.md#module-guide), [porting and upstream tests](porting.md), [third-party ports](../ports/README.md) |
 | Read or write JSON | [Native JSON](json.md): API, recursive values, dynamic storage and limits |

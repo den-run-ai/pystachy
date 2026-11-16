@@ -24,6 +24,17 @@ def first(values: list[int]) -> int:
 
 print(total([1, 2, 3]), first([]))
 """
+TEMPLATES = """class Box:
+    def __init__(self, v):
+        self.v = v
+
+
+def twice(x):
+    return x + x
+
+
+print(Box(1).v, twice(2))
+"""
 RETRY = """total = 0
 def add(value: float) -> None:
     global total
@@ -190,6 +201,35 @@ print(json.dumps({'stage': g.pipeline.stage, 'history': g.pipeline.history}))
         self.succeeded(result)
         self.assertEqual(json.loads(result.stdout), {"stage": "finalize", "history": STAGES[:-1]})
         self.assertFalse(marker.exists(), "compiling to typed IR executed the source")
+
+    def test_only_preparation_and_discovery_make_decisions(self):
+        # Template instances, class specializations and field layouts are final once
+        # discovery completes: the stages that consume them cannot add one.
+        result = self.run_stage(self.source(TEMPLATES), """
+from src.pystachy_compiler.pipeline import PipelineState
+state = PipelineState()
+state.decide('outside any stage')
+for name in ['prepare', 'discover']:
+    state.begin(name)
+    state.decide('while ' + name)
+    state.complete(name)
+for name in ['analyze', 'optimize', 'finalize', 'lower']:
+    assert 'after discovery completed (stage ' in rejected(lambda: state.decide('a probe'))
+    state.begin(name)
+    assert 'after discovery completed (stage ' + name + ')' in rejected(lambda: state.decide('a probe'))
+    state.complete(name)
+g, modules = fresh()
+g.typed_program(modules)
+twice = g.funcs['twice']
+made = lambda: (len(twice.insts), len([c for c in g.classes.values() if c.origin == 'Box']))
+before = made()
+assert 'an instance of twice()' in rejected(lambda: g.instance(twice, ['float'], []))
+assert 'a specialization of class Box' in rejected(lambda: g.specialize('Box', ['float'], {}, False, {}))
+assert made() == before
+print(json.dumps(before))
+""")
+        self.succeeded(result)
+        self.assertEqual(json.loads(result.stdout), [1, 1])
 
     def test_lowering_consumes_ir_and_rejects_a_second_lowering(self):
         result = self.run_stage(self.source(), """

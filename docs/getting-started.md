@@ -75,8 +75,10 @@ the three-line `match` block with a supported conditional:
 Run the CPython, JIT and AOT commands again; each prints `285`. You can also call
 `sum_squares(0)` and check that all three return `0`. See
 [unsupported features](language.md#unsupported-features) when a diagnostic names
-a construct your program needs. `pystachy check` checks syntax only; compiling
-and executing the relevant path gives stronger evidence.
+a construct your program needs. `pystachy check squares.py` reports the same
+diagnostic without generating code, and the errors of other functions with it
+([checking a program](checking.md)). Compiling and executing the relevant path gives
+stronger evidence.
 
 ## Measure the work you care about
 

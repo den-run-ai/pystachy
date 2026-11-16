@@ -4,8 +4,8 @@ usage: python3 -I tools/syntax_sweep.py [--compiler C] PATH ...
 Each PATH is a .py file, a directory (every .py file under it), or a .txt file of snippets
 separated by lines "----"; a snippet is checked as a module, as the body of a function, of a
 method and of a class. CPython's compile() is the reference (it never runs what it reads); the
-compiler (default ./pystachy; "python3 pystachy.py" works too) runs "check", which parses the
-file with the checks CPython makes before running a file and compiles nothing. Prints each case
+compiler (default ./pystachy; "python3 pystachy.py" works too) runs "check --syntax", which parses
+the file with the checks CPython makes before running a file and compiles nothing. Prints each case
 whose verdicts differ (the SyntaxError's line and message, or none), then the counts. Valid code
 Pystachy cannot parse (tabs in indentation, \\N{...} escapes) counts apart.
 """
@@ -46,7 +46,7 @@ def cpython(raw, name):
 
 
 def pystachy(cmd, path):
-    r = subprocess.run(cmd + ["check", path], capture_output=True, text=True, errors="replace")
+    r = subprocess.run(cmd + ["check", path, "--syntax"], capture_output=True, text=True, errors="replace")
     if r.returncode == 0:
         return "OK"
     last = (r.stderr.strip().splitlines() or ["?"])[-1]

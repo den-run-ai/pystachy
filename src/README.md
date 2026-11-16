@@ -28,6 +28,7 @@ remain valid Python and compile together through Pystachy's existing loader.
 | Union proofs | [union_proof](pystachy_compiler/union_proof.py), [union_state](pystachy_compiler/union_state.py): control-flow tag proofs and raw payload provenance for closed unions under `PYSTACHY_IRCHECK=1`. |
 | Dynamic guards | [dynamic_proof](pystachy_compiler/dynamic_proof.py): payload-tag proofs of every dynamic payload read, against the program's `DynType` constants, over the real control-flow graph under `PYSTACHY_IRCHECK=1`. |
 | Shared support | [specs](pystachy_compiler/specs.py), [diagnostics](pystachy_compiler/diagnostics.py), [names](pystachy_compiler/names.py), [utils](pystachy_compiler/utils.py): operation tables, source locations, names and type helpers. |
+| Checking | [checking](pystachy_compiler/checking.py), [check_report](pystachy_compiler/check_report.py): `pystachy check`'s failed units, bodies left out and their dependents, and its text and JSON reports of failures and of typing, layout and specialization decisions. |
 | CLI | [driver](pystachy_compiler/driver.py): JIT (the [JIT runner](../docs/internals.md#the-jit-runner), `lljit.c`, or `lli`), AOT, extensions, LLVM tools and runtime caching. |
 
 ## How components fit
@@ -41,7 +42,10 @@ linking or extension output. Each generator owns its stage state, and a failed
 stage cannot be resumed. The driver creates fresh state for inference retries.
 The [pipeline contracts](../docs/typed-ir.md#pipeline) describe these boundaries.
 Resolution, typing, representation selection and specialization still share the
-frontend walk; this extraction does not add an independent type-checking pass.
+frontend walk; this extraction does not add an independent type-checking pass. Only
+preparation and discovery make those decisions (`PipelineState.decide`).
+`pystachy check` stops after finalization and reports them by kind
+([checking a program](../docs/checking.md)).
 
 `Gen` owns shared compilation state and exposes forwarding methods. Their bodies
 live in the operation modules as generic `gen_*` functions taking an explicit

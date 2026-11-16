@@ -96,8 +96,8 @@ driver.main()
             root = Path(temporary)
             source = root / "probe.py"
             source.write_text(PROGRAMS[1])
-            for mode in ("ir", "check"):
-                command = [sys.executable, str(ROOT / "pystachy.py"), mode, str(source)]
+            for mode in (["ir"], ["check"], ["check", "--syntax"]):
+                command = [sys.executable, str(ROOT / "pystachy.py"), mode[0], str(source)] + mode[1:]
                 ordinary = subprocess.run(command, cwd=ROOT, env=environment(root),
                                           capture_output=True, timeout=30)
                 changed = subprocess.run(command, cwd=ROOT,

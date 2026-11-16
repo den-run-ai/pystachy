@@ -252,7 +252,8 @@ class PipelineProofTests(ReportFixtures, unittest.TestCase):
 
     def test_all_reachable_python_states_and_actions_match_lean(self):
         # Thirteen reachable idle/active states, both methods, six valid names,
-        # empty and unknown names: 208 independently evaluated transitions.
+        # empty and unknown names: 208 independently evaluated transitions, and
+        # a decision (PipelineState.decide) in each state: 221 in all.
         from src.pystachy_compiler.pipeline import PipelineState, STAGE_PREDECESSORS
         self.assertEqual(list(STAGE_PREDECESSORS), STAGES)
         self.assertEqual(list(STAGE_PREDECESSORS.values()), ["new", *STAGES[:-1]])
@@ -262,6 +263,7 @@ class PipelineProofTests(ReportFixtures, unittest.TestCase):
             return {"stage": numbers[value.stage], "active": numbers[value.active],
                     "history": [numbers[name] for name in value.history]}
 
+        decided = []
         current = PipelineState()
         states = [copy.deepcopy(current)]
         for name in STAGES:
@@ -284,7 +286,20 @@ class PipelineProofTests(ReportFixtures, unittest.TestCase):
                             expected.append(None)
                         else:
                             expected.append(state(current))
-        self.assertEqual(len(trials), 208)
+            current = copy.deepcopy(previous)
+            trials.append({"state": state(current), "kind": "decide", "stage": 0})
+            with redirect_stderr(StringIO()):
+                try:
+                    current.decide("a probe")
+                except SystemExit as error:
+                    self.assertEqual(error.code, 1)
+                    expected.append(None)
+                else:
+                    expected.append(state(current))
+            decided.append(expected[-1] is not None)
+            self.assertEqual(state(current), state(previous), "a decision changed the stage state")
+        self.assertEqual(len(trials), 221)
+        self.assertEqual(decided, [True] * 4 + [False] * 9, "only the new, preparing, prepared and discovering states decide")
         result = subprocess.run([str(CHECKER)], input=json.dumps({"steps": trials}),
                                 text=True, capture_output=True, timeout=10)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

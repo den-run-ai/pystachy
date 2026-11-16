@@ -151,11 +151,35 @@ class Diagnostic:
 CAPTURE = False
 PHASE = "compile"
 CAPTURED: list[Diagnostic] = []
+# pystachy check (driver.check_program): a terminal diagnostic ends the compilation attempt
+# with CheckFailed instead of the process. Nothing recovers inside an attempt: the driver
+# records the diagnostic and starts a fresh Loader and Gen, as an inference retry does.
+CHECKING: list[bool] = [False]
+
+
+class CheckFailed(Exception):
+    # The unit is the function, method, closure or template instance whose body was being
+    # compiled (Gen.check_failure): key is its Gen.fnkey, the same in every attempt, and
+    # body says whether a later attempt may leave that body out. Any other failure (syntax,
+    # imports, declarations, module code, compiler helpers, internal errors) has no unit:
+    # checking stops there. place is where the unit's def is (FILE:LINE), and after names the
+    # unit left out whose result this one used.
+    def __init__(self, diag: Diagnostic, key: str, name: str, kind: str, place: str, body: bool, after: str):
+        super().__init__(diag.message)
+        self.diag = diag
+        self.key = key
+        self.name = name
+        self.kind = kind
+        self.place = place
+        self.body = body
+        self.after = after
 
 
 def fail(msg: str, line: int, context: list[str] | None = None) -> None:
     if CAPTURE:
         CAPTURED.append(Diagnostic(msg, line, [] if context is None else context))
+    if CHECKING[0]:
+        raise CheckFailed(Diagnostic(msg, line, [] if context is None else context), "", "", "program", "", False, "")
     print(f"{where(line)}: error: {shown(msg)}", file=sys.stderr)
     sys.exit(1)
 

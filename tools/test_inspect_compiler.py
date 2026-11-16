@@ -603,7 +603,7 @@ print(kernel(3))
         support = self.source("def add(value):\n    return value + 'x'\n", "folder:é/worker_support.py")
         program = self.source("import worker_support\nprint(worker_support.add(1))\n", "folder:é/program.py")
         syntax_only = subprocess.run(
-            [sys.executable, str(ROOT / "pystachy.py"), "check", str(program)],
+            [sys.executable, str(ROOT / "pystachy.py"), "check", str(program), "--syntax"],
             cwd=ROOT, env=self.env, capture_output=True, timeout=40,
         )
         self.assertEqual(syntax_only.returncode, 0, syntax_only.stderr)

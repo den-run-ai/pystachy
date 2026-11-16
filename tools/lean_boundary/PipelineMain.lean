@@ -68,6 +68,7 @@ private def run (json : Json) : Except String (Json × Bool) := do
         let action ← match name with
           | "begin" => pure (Action.begin n)
           | "complete" => pure (Action.complete n)
+          | "decide" => pure Action.decision
           | _ => throw "unknown action"
         return match step state action with
           | none => Json.null

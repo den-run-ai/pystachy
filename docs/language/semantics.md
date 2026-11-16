@@ -734,6 +734,7 @@ follows the parser, tokenizer where reached, symbol table, then compiler checks.
 
 Some messages fall back to `invalid syntax` where CPython is more specific, and the supported
 source syntax has [additional restrictions](compatibility.md#source-text).
-`tools/syntax_sweep.py` compares `pystachy check` with CPython's `compile()`;
-`pystachy check` checks parsing and syntax, not whether a program can compile.
+`tools/syntax_sweep.py` compares `pystachy check --syntax` with CPython's `compile()`; that mode
+checks parsing and syntax only. `pystachy check` without it also checks whether the program
+compiles ([checking a program](../checking.md)).
 

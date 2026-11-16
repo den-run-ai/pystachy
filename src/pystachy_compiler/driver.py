@@ -5,7 +5,8 @@ import sys
 import tempfile
 import time
 from src.pystachy_compiler import aot_runtime, cached_run, diagnostics, program_cache
-from src.pystachy_compiler.diagnostics import MAXNEST, RAW, NeedHierarchy, NeedSliceEH, Rejoin, fail
+from src.pystachy_compiler.check_report import CheckRun, check_json, check_text
+from src.pystachy_compiler.diagnostics import CHECKING, MAXNEST, RAW, CheckFailed, NeedHierarchy, NeedSliceEH, Rejoin, fail
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.loader import Loader
@@ -48,6 +49,8 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/bigints.py',
     'src/pystachy_compiler/builtins.py',
     'src/pystachy_compiler/calls.py',
+    'src/pystachy_compiler/check_report.py',
+    'src/pystachy_compiler/checking.py',
     'src/pystachy_compiler/cached_run.py',
     'src/pystachy_compiler/cache_toolchain.py',
     'src/pystachy_compiler/containers.py',
@@ -100,7 +103,7 @@ COMPILER_SOURCES: list[str] = [
 ]
 
 
-def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
+def compile_program(path: str, src: str, dirs: list[str], ext: str, check: CheckRun | None = None) -> str:
     # the program's IR: where a join finds a location's inferred type too narrow for a value the
     # program stores to it (Gen.join_hint), the program is compiled again with the union of both
     # types, as if annotated, until no join widens one (at most JOINS passes after the first).
@@ -108,6 +111,8 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
     # without that call (Gen.xnot: each such pass adds a method, so these passes count toward no
     # limit). Unsupported iteration protocol bodies use the same per-method retry
     # registry, but their replacement arms raise an explicit compatibility error.
+    # pystachy check (check): each pass leaves out check.stubs and stops after finalization; a
+    # failure leaves the globals the next attempt starts from as a retry does (check_program).
     hints: dict[str, str] = {}
     xnot: dict[str, bool] = {}
     lambdas = LAMBDAS[0]
@@ -135,13 +140,28 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
         g.final = passes >= JOINS
         g.idfull = idfull
         g.idtry = idtry
+        if check is not None:
+            g.stubs = check.stubs
+            check.gen = g
+            check.attempts += 1
         ld = Loader(dirs)
         ld.ext = ext
         try:
             loaded = timing_start()
             mods = ld.program(path, src)
             timing_end("program.load", loaded)
+            if check is not None:
+                g.typed_program(mods)  # (nothing is lowered: the finalized program is checked)
+                return ""
             return g.program(mods)
+        except CheckFailed:
+            LAMBDAS[0] = lambdas
+            RENAMED.clear()
+            while len(LIBS) > libs:
+                LIBS.pop()
+            while len(LINKDL) > linkdl:
+                LINKDL.pop()
+            raise
         except Rejoin as retry:
             if isinstance(retry, NeedHierarchy):
                 # Class-template instances may now be nominal classes. Recompute joins
@@ -177,6 +197,82 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
                 LINKDL.pop()
         finally:
             timing_end("program.attempt", attempt)
+
+
+def check_program(path: str, src: str, dirs: list[str], ext: str, limit: int) -> CheckRun:
+    # pystachy check: compile through finalization; after a failure in a unit's body, compile
+    # again with that body left out (Gen.check_body), until an attempt completes, a failure no
+    # body holds stops it, or limit failures have been found
+    run = CheckRun()
+    CHECKING[0] = True
+    try:
+        while True:
+            try:
+                compile_program(path, src, dirs, ext, run)
+                run.done = True
+                return run
+            except CheckFailed as e:
+                run.failures.append(e)
+                g = run.gen
+                if g is not None and g.pipeline.stage == "new" and g.pipeline.active == "":
+                    e.kind = "load"  # (the loader's: syntax, scopes, imports)
+                if e.key == "" or not e.body:
+                    run.stopped = check_stop(e)
+                    return run
+                run.stubs[e.key] = True
+                if len(run.failures) >= limit:
+                    run.stopped = f"checking stopped after {limit} failed unit{'s' if limit > 1 else ''} (--max-errors {limit})"
+                    return run
+    finally:
+        CHECKING[0] = False
+
+
+def check_options(args: list[str]) -> tuple[str, str, int]:
+    # pystachy check FILE.py [--syntax | [--json] [--ext] [--max-errors N]]: what is checked
+    # ("syntax", "program" or "ext": as pystachy ext compiles it), the report ("text" on stderr,
+    # "json" on stdout) and how many failed units end checking
+    mode = "program"
+    report = "text"
+    limit = 20
+    i = 0
+    while i < len(args):
+        a = args[i]
+        if a == "--syntax" and mode == "program" and report == "text" and limit == 20:
+            mode = "syntax"
+        elif a == "--json" and mode != "syntax":
+            report = "json"
+        elif a == "--ext" and mode == "program":
+            mode = "ext"
+        elif a == "--max-errors" and mode != "syntax" and i + 1 < len(args) and decimal(args[i + 1]) and int(args[i + 1]) > 0:
+            limit = int(args[i + 1])
+            i += 1
+        else:
+            print(f"pystachy check: unexpected argument '{a}': use --syntax alone, or --json, --ext and --max-errors N (N > 0)", file=sys.stderr)
+            sys.exit(2)
+        i += 1
+    return (mode, report, limit)
+
+
+def decimal(s: str) -> bool:
+    # an ASCII decimal of at most six digits (isdigit() also accepts other scripts' digits)
+    return 0 < len(s) <= 6 and all(c in "0123456789" for c in s)
+
+
+def check_stop(e: CheckFailed) -> str:
+    # why a failure ended checking: code that is not one function's body
+    if e.kind == "load":
+        return "checking stopped: the program did not load, so nothing was checked"
+    if e.kind == "module":
+        return "checking stopped: module code is checked as one unit, and its later code and the functions compiled after it were not checked"
+    if e.kind == "declarations":
+        return "checking stopped: the program's declarations did not compile, so no function was checked"
+    if e.kind == "admission":
+        return "checking stopped at this export's admission, after every function was checked: later exports were not checked"
+    if e.kind == "program" and e.diag.code == "PYS9000":
+        return "checking stopped at an internal compiler error"
+    if e.key != "":
+        return f"checking stopped: {e.name} failed again with its body left out"
+    return "checking stopped: this failure is not inside a function body, so later code was not checked"
 
 
 def runtime_ir(path: str, src: str, cache: bool) -> str:
@@ -692,7 +788,9 @@ def main() -> None:
         print("                    [--emit-ir RAW.ll] retain raw IR after a successful build", file=sys.stderr)
         print("       pystachy ext NAME.py [-o NAME.abi3.so]  compile to a CPython extension module (abi3, CPython 3.12+)", file=sys.stderr)
         print("       pystachy ir FILE.py [-o OUT.ll]  emit LLVM IR", file=sys.stderr)
-        print("       pystachy check FILE.py           only parse it, with the checks CPython makes before running it", file=sys.stderr)
+        print("       pystachy check FILE.py           check that it compiles, without generating code: each failed", file=sys.stderr)
+        print("                    function separately [--json] [--ext] [--max-errors N]", file=sys.stderr)
+        print("       pystachy check FILE.py --syntax  only parse it, with the checks CPython makes before running it", file=sys.stderr)
         print("       pystachy rt runtime.py [-o OUT.ll] emit the LLVM IR of the runtime's part written in the subset", file=sys.stderr)
         print("       pystachy --version               show version and source commit", file=sys.stderr)
         sys.exit(2)
@@ -729,7 +827,12 @@ def main() -> None:
         # moved into main, and a try statement there missed what it should have caught (the JIT
         # runner takes the same flag, and needs it as much)
         jitflags = " -profile-guided-section-prefix=false"
+    checkmode = "program"
+    report = "text"
+    limit = 20
     if cmd == "check":
+        checkmode, report, limit = check_options(argv[3:])
+    if cmd == "check" and checkmode == "syntax":
         f = open(diagnostics.SRC, "r", encoding=RAW)
         Parser(Lexer(f.read(), 1).file()).module()
         f.close()
@@ -787,7 +890,21 @@ def main() -> None:
             del MODULES["ffi"]  # (the program's own ffi module comes first, as under CPython: Pystachy's is not imported then)
             break
     f = open(diagnostics.SRC, "r", encoding=RAW)
-    ext = diagnostics.SRC[diagnostics.SRC.rfind("/") + 1 : -3] if cmd == "ext" and diagnostics.SRC.endswith(".py") else ""
+    ext = diagnostics.SRC[diagnostics.SRC.rfind("/") + 1 : -3] if (cmd == "ext" or checkmode == "ext") and diagnostics.SRC.endswith(".py") else ""
+    if cmd == "check":
+        # the frontend through finalization, as ir compiles the program (runtime.py is not compiled:
+        # it is checked as the runtime it is), each failed function's body left out in turn
+        checked = check_program(diagnostics.SRC, f.read(), dirs, ext, limit)
+        f.close()
+        if report == "json":
+            print(check_json(checked), end="")
+        else:
+            for line in check_text(checked):
+                print(line, file=sys.stderr)
+        timing_end("driver.total", total)
+        if len(checked.failures) > 0:
+            sys.exit(1)
+        return
     if pcroot != "":
         cached_run.trace("frontend")
     frontend = timing_start()

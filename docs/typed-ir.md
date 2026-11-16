@@ -64,7 +64,8 @@ stages in order, for both ordinary programs and `runtime.py`:
 
 `Gen.typed_program(modules)` runs through finalization without calling
 `lower_program`. This is an internal, attempt-local boundary for tools that need
-the whole finalized typed program before function/module LLVM lowering. `Gen.program`
+the whole finalized typed program before function/module LLVM lowering;
+[`pystachy check`](checking.md) is one. `Gen.program`
 preserves the ordinary complete-compilation entry point by calling both.
 
 `PipelineState` enforces the stage order. It rejects premature or repeated
@@ -78,7 +79,10 @@ Consumers must not mutate retained IR or configuration between stages.
 The stage names describe real orchestration boundaries, not a sequence of
 independent semantic passes. Preparation and discovery still combine resolution,
 typing, representation selection and specialization, and can compile required
-declarations lazily. The retained program contains native ABI decisions, symbol
+declarations lazily. They alone make those decisions: once discovery completes,
+`PipelineState.decide` rejects a new template instance, class specialization or
+field layout as an internal error, so analysis, optimization, finalization and
+lowering consume a fixed set. `pystachy check --json` reports that set by kind. The retained program contains native ABI decisions, symbol
 names and target-specific constant expressions; it is not a portable semantic IR
 or a standalone compatibility-checking API. C adapter instructions and external
 declarations are serialized only during lowering. Their attempt-owned plans copy

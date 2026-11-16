@@ -1,7 +1,7 @@
 """Templates component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.analysis import local_names
-from src.pystachy_compiler.diagnostics import int_lists, shown, where
+from src.pystachy_compiler.diagnostics import CHECKING, int_lists, shown, where
 from src.pystachy_compiler.dynamic import comparison_aliases, comparison_properties, comparison_rebinds, comparison_reserve_fields
 from src.pystachy_compiler.generators import fresh_yield_context
 from src.pystachy_compiler.ir import ClassInfo, FnInfo
@@ -66,6 +66,7 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
         return self.specing[doing]
     if len(self.making) >= 100:
         self.err(f"{short(c)}() needs more than 100 nested template functions; annotate its parameters")
+    self.pipeline.decide(f"a specialization of class {short(c)}")
     t.nspec += 1
     name = f"{c}-{t.nspec}"
     self.specing[doing] = name
@@ -754,6 +755,8 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
             if g.ll != self.curfn.ll:
                 self.dynseen[g.ll] = True  # (nor compiling it again change what it returns: dyn_again)
         f.lastikey = key
+        if CHECKING[0]:
+            self.check_edge(g)  # (pystachy check: does this code take a result left out)
         return g
     if f.bad != "":
         self.err(f.bad)
@@ -771,6 +774,7 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
                 top = w
         self.err(f"retained template signatures exceed {TEMPLATE_RETAINED} bytes, {top}() keeping the most ({self.retainers[top]}); annotate template parameters or reduce type combinations")
     self.materialize(f)  # (an inherited class method's own body)
+    self.pipeline.decide(f"an instance of {who}()")
     g = FnInfo(f.name, f"{f.ll}.{len(f.insts) + 1}", f.node, f.cls)
     g.deco = f.deco
     g.nullable_self = nullable_self
@@ -840,11 +844,14 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     self.function(g, g.node.kids[2].kids)
     self.restore(fr)
     ret = SPECIAL[f.name][SPECIAL[f.name].find(":") + 1 :] if f.cls != "" and f.name in SPECIAL and not raw_hint else ""
-    if ret != "" and g.ret != ret and not ((f.name == "__len__" or f.name == "__hash__") and g.ret == "bool") and not (ret == "int" and g.ret == BIG):
+    # (pystachy check: a body left out returns nothing, which says nothing of what it returns)
+    if ret != "" and g.ret != ret and not ((f.name == "__len__" or f.name == "__hash__") and g.ret == "bool") and not (ret == "int" and g.ret == BIG) and g.ll not in self.stubbed:
         self.err(f"{f.name} must return {ret}, and {shown(f.cls)}.{f.name}() returns {typestr(g.ret)}")
     self.making.pop()
     self.template_bytes -= size
     f.lastikey = key
+    if CHECKING[0]:
+        self.check_edge(g)
     return g
 
 # ---- classes that specialize on literal arguments

@@ -57,8 +57,9 @@ NOT_RESET = {
 # and the function it interrupts sees what it added. Only Gen.__init__ assigns them of the lists.
 # source_lines accumulates metadata across module lowering, outside AST/dry traversal.
 # pipeline belongs to the compilation attempt; nested functions never advance or restore it.
+# stubs, stubbed and taint are pystachy check's per-attempt record of bodies left out (checking.py).
 PROGRAM = """
-    pipeline classes tmpl compiling utags specdone funcs aliases imports fglobals mvars gtypes globs gcroots
+    pipeline stubs stubbed taint classes tmpl compiling utags specdone funcs aliases imports fglobals mvars gtypes globs gcroots
     consts fieldnames bconsts tconsts tconstdata lconsts strs bstrs strvals vnodes cmexit rtfns opfxs out source_lines fns fll callsites summaries xcls xvals
     xmods xsigs xctors xtypes exctree eh opts reds lazy lazyat wake called gflag ocls ocmp hcls one
     xobj impg wide nokey nonereads noneglobalpending attrvals attrown hints newhints final xnot newx retseen

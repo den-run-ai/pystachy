@@ -103,7 +103,9 @@ Rejections `tests/errors/AREA/*.py` must fail with status 1 and one source diagn
 `FILE:LINE: error: MESSAGE`, containing the expected message from the source's first line. A
 `NAME.path` beside a rejection is its `PYSTACHY_PATH`.
 A traceback containing that message does not pass. Syntax cases also exercise the parse-only
-`pystachy check` command; runtime-mode cases use `pystachy rt`.
+`pystachy check --syntax` command; runtime-mode cases use `pystachy rt`.
+`tools/test_check_command.py` covers the [semantic check](checking.md): unit recovery,
+notes for units that may depend on a body left out, stopping rules and the JSON report.
 
 `tests/deviations/*.py` use hand-written expectations for the
 [documented differences](language/compatibility.md#deviations-from-cpython). They are kept apart
@@ -211,6 +213,12 @@ It normalizes each compiler's own library prefix to `lib/` in diagnostic source 
 diagnostic text, line numbers, unrelated paths and IR remain significant. Each compiler
 still reads its own library and runtime inputs. Direct executables and Python script
 commands have their homes recognized; unfamiliar wrappers keep raw comparisons.
+
+`tools/irsame.sh --semantic OLD NEW` compares the [semantic check](checking.md) with
+compilation instead: OLD runs `ir` and NEW runs `check` on every case. NEW must accept
+exactly the programs OLD compiles, silently, and reject the others with OLD's message as
+its first line and the same exit status. `tools/irsame.sh --semantic ./pystachy ./pystachy`
+checks that the check agrees with its own compiler. CI does not run either mode.
 Messages with quoted library paths or ambiguous quoting also stay raw so normalization
 cannot hide a change to diagnostic prose.
 Use it when a refactor should preserve code generation. An intentional optimization can
@@ -224,8 +232,8 @@ compile without running;
 
 ## Syntax errors against CPython
 
-`tools/syntax_sweep.py` compares `pystachy check` with CPython's `compile()` without running
-the sources. Give it files, directories or snippet files separated by `----` lines:
+`tools/syntax_sweep.py` compares `pystachy check --syntax` with CPython's `compile()` without
+running the sources. Give it files, directories or snippet files separated by `----` lines:
 
 ```sh
 python3 -I tools/syntax_sweep.py --compiler ./pystachy /usr/lib/python3.13
@@ -626,13 +634,13 @@ benchmark correctness, and Lint checks CPython port preservation. The full group
 
 | Group | Work after bootstrap |
 |---|---|
-| `hosted` | The CPython-hosted compiler against stage 2 on every corpus case: identical IR, messages and exit status (`tools/irsame.sh`) and `check` results (`tools/irsame.sh --check`); one case in 64 and a program of each hosted-driver path after the IR also run end to end, JIT and AOT. |
+| `hosted` | The CPython-hosted compiler against stage 2 on every corpus case: identical IR, messages and exit status (`tools/irsame.sh`) and `check --syntax` results (`tools/irsame.sh --check`); one case in 64 and a program of each hosted-driver path after the IR also run end to end, JIT and AOT. |
 | `native-0`, `native-1`, `native-2` | Three disjoint thirds of the native differential suite, JIT and AOT. |
 | `opt-off-0`, `opt-off-1`, `opt-off-2` | Three disjoint thirds of the native suite with IR optimizations disabled. |
 | `python-free-0`, `python-free-1`, `python-free-2`, `python-free-3` | Rebuild with no Python on `PATH`; four disjoint quarters of the suite with that compiler. |
 | `ubsan-0`, `ubsan-1`, `ubsan-2`, `ubsan-3`, `ubsan-4` | Sanitized compiler/runtime; five disjoint fifths of the JIT/AOT suite. |
 | `gc-self` | Collector-stressed self-compilation and identical-IR check. |
-| `gc-ir-0`, `gc-ir-1` | Two disjoint halves of the corpus: the compiler collecting every 1,000 allocations gives stage 2's IR, messages and exit status for every case and stage 2's `check` results. Both halves also compare `runtime.py`. |
+| `gc-ir-0`, `gc-ir-1` | Two disjoint halves of the corpus: the compiler collecting every 1,000 allocations gives stage 2's IR, messages and exit status for every case and stage 2's `check --syntax` results. Both halves also compare `runtime.py`. |
 | `gc-jit-0`, `gc-jit-1` | Two disjoint halves of the JIT suite with program GC stress, one case in 16 of each half with the compiler stressed too. Execution uses its own weighted partition, independently of the identity halves. The x86-64 `gc-jit-0` job then runs runtime ABI, cache, GC and generated-code ASan controls. |
 | `gc-aot-0`, `gc-aot-1`, `gc-aot-2` | Three disjoint thirds of the AOT suite with program GC stress, one case in 16 of each third with the compiler stressed too. |
 | `dynany-optin-0` through `dynany-optin-2` | Three disjoint thirds of `tests/programs/`, opted into dynamic `Any`, compared with a fresh pinned-CPython oracle in JIT and AOT. |
@@ -759,7 +767,7 @@ and `gc-ir-1` run independently of JIT and compile the cases of two disjoint hal
 corpus (`gc_shard_cases`, balanced as above) with it and with stage 2 unstressed, through
 `tools/irsame.sh` (`rt` for `rtmode_*` cases, with the IR check on), and require the same IR byte
 for byte, the same messages and the same exit status for every case, the same IR of `runtime.py`,
-and the same `check` output and status for every `syntax_*` case (`tools/irsame.sh --check`). The
+and the same `check --syntax` output and status for every `syntax_*` case (`tools/irsame.sh --check`). The
 GC suites then collect at **every program allocation** (`PYSTACHY_GC_STRESS_PROGRAM=1`) and run
 every case of the corpus once in each mode, rejection and syntax checks included, compiled by
 stage 2 unstressed: JIT in two halves balanced for execution, AOT in three thirds. Each suite used to
@@ -837,7 +845,7 @@ shards and Python-free four, retaining their complete corpus and mode counts. Th
 still needs repeated CI timing evidence for the headroom target; the 15-minute job limit is unchanged.
 The CPython-hosted compiler is checked by identity rather than by executing its output again:
 `hosted` requires its IR (`rt` for `rtmode_*` cases, with the IR check on), every message and the
-exit status to equal stage 2's for every case (`sources.corpus_cases`), and its `check` results
+exit status to equal stage 2's for every case (`sources.corpus_cases`), and its `check --syntax` results
 for every `syntax_*` case (`sources.syntax_cases`; both counted in `tests/corpus.sh`'s corpus), each
 comparison in a worker per CPU. The LLVM tools build the same program from the
 same IR, and the `native-*` groups run every case's stage-2 output in JIT and AOT, so executing
