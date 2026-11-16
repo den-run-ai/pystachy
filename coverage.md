@@ -5,18 +5,14 @@ The statements and branches of `src/pystachy_compiler/`, run by CPython; not `ru
 
 | Suite | Runs | Checks | Processes | Time | Statements | Branches |
 |---|---|---|---:|---:|---:|---:|
-| corpus | `tests/run.sh`, JIT and AOT (10 shards) | 7660 passed, 0 failed | 7670 | 4034 s | 92.6% | 88.8% |
-| ffi | `tests/ffi/run.sh`, JIT and AOT | 194 passed, 0 failed; skipped: py_coerce (the CPython-hosted compiler's own locale coercion reaches the program) | 175 | 165 s | 48.5% | 41.3% |
-| cache | `tests/cache.sh` | 97 passed, 0 failed | 51 | 282 s | 27.2% | 18.1% |
-| unit | `tools/test_typed*.py`, `tools/test_function_summaries.py`, the native program cache's, `--emit-ir`'s, the C runtime cache's, `ctypes_schema.py`'s and `source_lines.py`'s | 551 tests, OK | 9 | 67 s | 51.9% | 45.1% |
-| ir | `tools/check_ir.sh`: `pystachy.py`, `runtime.py`, `bench/`, the `tests/ir/` contracts | the IR check and llvm-as accept the IR of 103 programs | 103 | 141 s | 59.4% | 53.1% |
+| corpus | `tests/run.sh`, JIT and AOT (10 shards) | 7660 passed, 0 failed | 7670 | 4154 s | 92.6% | 88.8% |
+| ffi | `tests/ffi/run.sh`, JIT and AOT | 194 passed, 0 failed; skipped: py_coerce (the CPython-hosted compiler's own locale coercion reaches the program) | 175 | 192 s | 48.5% | 41.3% |
+| cache | `tests/cache.sh` | 97 passed, 0 failed | 51 | 367 s | 27.2% | 18.1% |
+| unit | `tools/test_typed*.py`, `tools/test_function_summaries.py`, the native program cache's, `--emit-ir`'s, the C runtime cache's, `ctypes_schema.py`'s and `source_lines.py`'s | 551 tests, OK | 9 | 87 s | 51.9% | 45.1% |
+| ir | `tools/check_ir.sh`: `pystachy.py`, `runtime.py`, `bench/`, the `tests/ir/` contracts | the IR check and llvm-as accept the IR of 103 programs | 103 | 170 s | 59.4% | 53.1% |
 | **all** | | | **8008** | | **95.7%** | **92.3%** |
 
 The other suites run 1628 statements and 994 branches that the corpus does not.
-
-### Changed since 49a149adba833bf2ed249053f6d4f3f13bccc33b (merge base `49a149adba83`)
-
-Changed statements: 10 of 10 run (100.0%); their branches: 6 of 6 taken (100.0%).
 
 | Module | Statements | Missed | Statements % | Branches | Missed | Branches % | Total | Corpus alone |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
