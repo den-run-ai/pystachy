@@ -1602,8 +1602,10 @@ lines.
   closure's cell and a generator's frame, which would need their users compiled again too.
 - **Broader typed-container crossings**: the flow analysis that selects `list[Any]` storage at the
   allocation of every alias of a container that may flow into `Any` storage.
-- **Calls**: an `Any` value unpacked into a call's arguments, through a generic binding entry;
-  builtin functions as values; `type(x)` as a class object.
+- **Calls**: an `Any` value unpacked into the arguments of a typed function's call
+  (`f(*args)` with `args: Any`), through a generic binding entry; a callable held in `Any`
+  already takes [runtime-sized arguments](#runtime-argument-unpacking). Builtin functions as
+  values; `type(x)` as a class object.
 - **Protocols**: legacy sequence iteration through `__getitem__`, reverse iteration through
   `__len__`/`__getitem__`, `__length_hint__`, and the
   builtins listed under [deviations](#deviations) that do not take `Any` values yet.

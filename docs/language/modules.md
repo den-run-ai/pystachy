@@ -121,8 +121,9 @@ Pystachy resolves these guards while compiling:
 
 These tests work inside `not`, `and` and `or`, while preserving the other operands' evaluation
 order. The branch that does not run is not compiled at all, as CPython never runs it: its
-imports are not resolved and its code is not checked, so `import nt` under
-`if sys.platform == "win32":` compiles. For example, `effect()` still runs in `if effect() and os.name == "nt":`.
+imports are not resolved and its code is not type-checked, so `import nt` under
+`if sys.platform == "win32":` compiles. Its syntax is still checked, as CPython checks a whole
+file before running it ([syntax errors](../language.md#syntax-errors)). For example, `effect()` still runs in `if effect() and os.name == "nt":`.
 They apply only when a name still refers to the imported module or constant; a parameter,
 local, loop variable or another import can shadow it.
 
@@ -167,9 +168,8 @@ m.total() is not supported: parameter 'xs': unsupported type annotation
 ```
 
 This permits a module to keep unsupported generator forms (such as `async` generators), unsupported annotations or classes with unsupported
-inheritance beside functions that compile. An unsupported special method, such as an
-unannotated `__len__`, is rejected when an operation needs it, including implicit use by
-printing, sorting or container comparisons.
+inheritance beside functions that compile. An unsupported special method is rejected when an
+operation needs it, including implicit use by printing, sorting or container comparisons.
 
 The `def` or `class` statement still executes when module code reaches it. Function defaults,
 the compilable items of otherwise unsupported default displays, and supported function
