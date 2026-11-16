@@ -24,6 +24,7 @@ driver.COMPILER_SOURCES driver.CPUID driver.LLJIT_LLVM driver.RTPARTS
 dynamic.XCMP dynamic.XOPS dynamic.BINOPS dynamic.UNOPS dynamic.CMPOPS
 dynamic.BINDUNDERS dynamic.BUILTIN dynamic_proof.BUILTIN_KINDS dynamic_proof.BUILTIN_PAYLOADS
 dynamic_proof.BOX_TAGS expressions.ORDERS expressions.CMPDUNDERS
+interfaces.IMPLICIT interfaces.PROTOCOLS interfaces.BUILTIN_FORMS interfaces.BINOPS interfaces.CMPOPS
 ir.NONUMS ir.NOVALS ir.NOLABELS ircheck.RESULT_NUMBERS
 lexer.KEYWORDS lexer.OPS lexer.ESCAPES lexer.PREFIXES lexer.NONPRINT lexer.NOTID
 loader.ENUM_NAMES loader.ENUM_BASES loader.ENUM_HOOKS
@@ -118,7 +119,7 @@ WRITERS = {
     # appends the same per-pass requirement as @extern; compile_program rewinds it.
     "specs.LINKDL": {"lower_module.gen_cextern", "builtins.gen_builtin", "driver.compile_program"},
     "specs.GLUE": {"loader.Loader.load"},
-    "specs.SPECSHOW": {"templates.gen_specialize"},
+    "specs.SPECSHOW": {"templates.gen_specialize", "interfaces.gen_iface_of"},
     "specs.MODULES": {"driver.runtime_ir", "driver.main"},
     "ir.TMPNAMES": {"ir.tmpname"},
     "ir.ONENUMS": {"ir.one_num"},

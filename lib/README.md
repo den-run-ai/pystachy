@@ -165,6 +165,9 @@ inputs, unsupported APIs and observable differences from CPython. The
 [provenance reference](provenance.md) records upstream files and checks.
 The [porting checklist](../docs/porting.md) describes compiled upstream test
 coverage and the pinned `make port-check` checks for fnmatch and textwrap.
+The [stored-interface tutorial](../examples/typed_iterator/README.md) demonstrates
+`Protocol` interfaces and explicit generic adapters for retaining different
+implementations; these examples are not extra standard-library APIs.
 Builtin modules such as `sys`, `os` and `math` are documented in the
 [language guide](../docs/language.md#builtins-and-library-modules).
 

@@ -487,11 +487,11 @@ def gen_join_hint(self, t: str, vt: str) -> bool:
     key = ""
     if self.joinkind == "local":
         body = self.curfn.node.kids[2].kids if self.curfn.node.kind == "def" else self.curfn.node.kids
-        if self.joinname in self.curfn.params or self.joinname in self.compvars or ann_target(body, self.joinname):
+        if self.joinname in self.curfn.params or self.joinname in self.compvars or (ann_target(body, self.joinname) and not self.iface_widens(body, self.joinname, t, vt)):
             return False
         key = f"{self.fnkey(self.curfn)}|{self.joinname}"
     elif self.joinkind == "global":
-        if self.joinname in self.constflags or owner(self.joinname) not in self.inits or ann_target(self.inits[owner(self.joinname)].node.kids, self.joinname):
+        if self.joinname in self.constflags or owner(self.joinname) not in self.inits or (ann_target(self.inits[owner(self.joinname)].node.kids, self.joinname) and not self.iface_widens(self.inits[owner(self.joinname)].node.kids, self.joinname, t, vt)):
             return False
         key = f"global:{self.joinname}"
     elif self.joinkind == "field" or self.joinkind == "return":
@@ -548,6 +548,9 @@ def gen_join_type(self, a: str, b: str) -> str:
     if (a == BIG and b in ["bool", "float", "str"]) or (b == BIG and a in ["bool", "float", "str"]):
         # (with a bool, a float or a str, their union, which holds 64-bit ints, as in other modules)
         a, b = "int" if a == BIG else a, "int" if b == BIG else b
+    it = self.iter_join(a, b)
+    if it != "":
+        return it  # (distinct iterators of one item type: the interface Iterator[T], interfaces.py)
     j = self.union_type([a, b])
     return j if not j.startswith("!") and self.joinable(j) else ""
 

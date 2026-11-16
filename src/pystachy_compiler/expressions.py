@@ -409,6 +409,9 @@ def gen_isinst(self, t: str, c: Node) -> int:
         return -1  # (its box's type decides: dynamic.py)
     if t == BIG:
         t = "int"  # (a promoting int is an int)
+    self.iface_reflect(unopt(t), "isinstance()")
+    if c.kind == "name" and c.s in self.ifaces:
+        self.err(f"isinstance() with Protocol {short(c.s)} is not supported (CPython checks a @runtime_checkable protocol's methods by name only when the program runs)")
     if c.kind == "binop" and c.s == "|":
         # (a union, where None is NoneType; None | None raises, and so does a tuple in it)
         if not self.puretype(c, False):
@@ -1198,7 +1201,10 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 v = self.big_tuple_narrow(v)  # (an item holds 64-bit ints, and is typed so: bigints.py)
             if et == "" and v.t != "None":
                 et = v.t
-            jt = v.t if jt == "" else self.join(jt, v.t) or "-"  # (the items' types together)
+            # (the items' types together; distinct iterators: their Iterator[T], interfaces.py, made
+            # only where the display has no expected item type, which would make its join unused,
+            # and in a module that does not compile Any dynamically, whose items stay Any values)
+            jt = v.t if jt == "" else self.join(jt, v.t) or (self.iter_join(jt, v.t) if not given and not self.dyn_policy(n.line) else "") or "-"
             items.append(v)
         if (returnctx or resultsoft) and given and len([v for v in items if not self.widens(v.t, et) and not self.boxes(v.t, et) and not (is_fn(v.t) and is_callable(unopt(et)))]) > 0:
             # A comparison's expected type is only a hint. Keep the display's
@@ -1208,8 +1214,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             for v in items:
                 if et == "" and v.t != "None":
                     et = v.t
-        if not given and (is_opt(jt) or is_tuple(jt)):
-            et = jt  # None among strings (or T | None among T): T | None (also as tuple items)
+        if not given and (is_opt(jt) or is_tuple(jt) or self.is_iface(jt)):
+            et = jt  # None among strings (or T | None among T): T | None (also as tuple items); distinct iterators: their Iterator[T]
         if not given and jt == "-" and self.dyn_policy(n.line) and not self.dyn_callables([v.t for v in items]):
             et = "dyn"  # (items of no one type, in a module that compiles Any so: dynamic values)
         if given and soft:
@@ -1281,7 +1287,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 b = self.big_tuple_narrow(b)
             if kv[1] == "" and b.t != "None":
                 kv[1] = b.t
-            jt = b.t if jt == "" else self.join(jt, b.t) or "-"
+            jt = b.t if jt == "" else self.join(jt, b.t) or (self.iter_join(jt, b.t) if not given and not self.dyn_policy(n.line) else "") or "-"  # (as a list's)
             kj = a.t if kj == "" else self.join(kj, a.t) or "-"
             ks.append(a)
             vs.append(b)
@@ -1294,8 +1300,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             for v in vs:
                 if kv[1] == "" and v.t != "None":
                     kv[1] = v.t
-        if not given and (is_opt(jt) or is_tuple(jt)):
-            kv[1] = jt  # None among strings (or T | None among T): T | None (also as tuple items)
+        if not given and (is_opt(jt) or is_tuple(jt) or self.is_iface(jt)):
+            kv[1] = jt  # None among strings (or T | None among T): T | None (also as tuple items); distinct iterators: their Iterator[T]
         if not given and jt == "-" and not self.term:
             vh = vs[0].t
             for b in vs[1:]:
@@ -3525,6 +3531,8 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False, kept: list[str
         t = "dyn"  # (an arm's dynamic value: the other's value boxed in its arm, dynamic.py)
     if e1 != "" and e2 != "" and a.t != b.t and self.join(a.t, b.t) == BIG:
         t = BIG  # (an int and a promoting int: the int made one in its arm, bigints.py)
+    if e1 != "" and e2 != "" and a.t != b.t and want == "" and self.is_iface(self.iter_join(a.t, b.t)):
+        t = self.iter_join(a.t, b.t)  # (distinct iterators: each boxed in its arm as their Iterator[T], interfaces.py)
     ph = Ins("phi", t, "")
     if e1 != "":
         a = self.convert_at(a, t, e1)  # (an int as an int | None: its box, made there)
@@ -5436,6 +5444,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         dc = self.dyn_cmp2(op, a, b)  # (a dynamic value's: dynamic.py)
         if dc.t != "":
             return dc
+    if (self.is_iface(a.t) or self.is_iface(b.t)) and op != "in" and op != "not in":
+        return self.iface_cmp(op, a, b)  # (a value of an interface: its object's identity, interfaces.py)
     if op in ICMP and self.enum_scalar(unopt(a.t), unopt(b.t)):
         return self.enum_compare(op, a, b)
     if (a.t == COMPLEXC or b.t == COMPLEXC) and (op == "==" or op == "!=") and all(t == COMPLEXC or t in ["int", "float", "bool", BIG] for t in [a.t, b.t]):

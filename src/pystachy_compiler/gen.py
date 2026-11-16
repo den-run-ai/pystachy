@@ -242,6 +242,35 @@ from src.pystachy_compiler.dynamic import (
     gen_empty_ctor as dynamic_empty_ctor,
     gen_rtdata as dynamic_rtdata,
 )
+from src.pystachy_compiler.interfaces import (
+    Iface,
+    ITab,
+    gen_iface_adapter as interfaces_iface_adapter,
+    gen_iface_ann as interfaces_iface_ann,
+    gen_iface_box as interfaces_iface_box,
+    gen_iface_call as interfaces_iface_call,
+    gen_iface_cmp as interfaces_iface_cmp,
+    gen_iface_finish as interfaces_iface_finish,
+    gen_iface_impl as interfaces_iface_impl,
+    gen_iface_make as interfaces_iface_make,
+    gen_iface_obj as interfaces_iface_obj,
+    gen_iface_of as interfaces_iface_of,
+    gen_iface_reflect as interfaces_iface_reflect,
+    gen_iface_respec as interfaces_iface_respec,
+    gen_iface_spec as interfaces_iface_spec,
+    gen_iface_use as interfaces_iface_use,
+    gen_iface_widens as interfaces_iface_widens,
+    gen_iface_item as interfaces_iface_item,
+    gen_iter_join as interfaces_iter_join,
+    gen_protocol_params as interfaces_protocol_params,
+    gen_protocol_problem as interfaces_protocol_problem,
+    gen_iface_table as interfaces_iface_table,
+    gen_iface_tables as interfaces_iface_tables,
+    gen_is_iface as interfaces_is_iface,
+    gen_protocol_base as interfaces_protocol_base,
+    gen_protocol_class as interfaces_protocol_class,
+    gen_to_iface as interfaces_to_iface,
+)
 from src.pystachy_compiler.unions import (
     gen_field_key as unions_field_key,
     gen_fnkey as unions_fnkey,
@@ -444,6 +473,7 @@ from src.pystachy_compiler.calls import (
     gen_call as calls_call,
     gen_call_cache as calls_call_cache,
     gen_call_callable as calls_call_callable,
+    gen_icall as calls_icall,
     gen_call_fn as calls_call_fn,
     gen_call_value as calls_call_value,
     gen_callable_pat as calls_callable_pat,
@@ -579,6 +609,8 @@ from src.pystachy_compiler.declarations import (
     gen_rec_fold as declarations_rec_fold,
     gen_recursive_aliases as declarations_recursive_aliases,
     gen_ann as declarations_ann,
+    gen_bound_annotation as declarations_bound_annotation,
+    gen_lexical_ann as declarations_lexical_ann,
     gen_ann_base as declarations_ann_base,
     gen_ann_items as declarations_ann_items,
     gen_ann_none as declarations_ann_none,
@@ -1236,6 +1268,7 @@ from src.pystachy_compiler.templates import (
     gen_bind as templates_bind,
     gen_constructor_unions as templates_constructor_unions,
     gen_fn_sig as templates_fn_sig,
+    gen_fn_typevar as templates_fn_typevar,
     gen_instance as templates_instance,
     gen_generic_ann as templates_generic_ann,
     gen_generic_hint as templates_generic_hint,
@@ -1522,6 +1555,20 @@ class Gen:
         self.xnot: dict[str, bool] = {}
         self.newx: dict[str, bool] = {}
         self.xtry = ""
+        # Protocol classes as interfaces (interfaces.py): their operations, which the program's
+        # class statements give before any code is compiled; and the tables of the implementation
+        # types converted to them, keyed "<impl> <interface>", which conversions add
+        self.ifaces: dict[str, Iface] = {}
+        self.itabs: dict[str, ITab] = {}
+        # generic Protocols: their type variables, stubbed class statements and modules; the
+        # interfaces of their bindings (and Iterator[T]'s) that this pass made, by key, and those
+        # of the whole compilation (the driver's, kept across passes: iface_of)
+        self.ifgeneric: dict[str, list[str]] = {}
+        self.ifnodes: dict[str, Node] = {}
+        self.ifmods: dict[str, str] = {}
+        self.ifmade: dict[str, str] = {}
+        self.ifspecs: dict[str, list[str]] = {}
+        self.ifbad: dict[str, str] = {}  # Protocol classes that are no interface: why (protocol_problem)
         self.joinkind = ""  # the location being stored to, which a join may widen: "local", "global", "field"
         self.joinname = ""  # (its name: the variable's, or the field's key, see field_key)
         self.jointype = ""  # (and its type)
@@ -2892,6 +2939,12 @@ class Gen:
     def ann(self, n: Node) -> str:
         return declarations_ann(self, n)
 
+    def bound_annotation(self, n: Node, bindings: dict[str, str], cls: str, head: bool = False) -> Node:
+        return declarations_bound_annotation(self, n, bindings, cls, head)
+
+    def lexical_ann(self, n: Node, f: FnInfo) -> str:
+        return declarations_lexical_ann(self, n, f)
+
     def ann_base(self, b: Node) -> str:
         return declarations_ann_base(self, b)
 
@@ -3266,6 +3319,81 @@ class Gen:
 
     def join_hint(self, t: str, vt: str) -> bool:
         return unions_join_hint(self, t, vt)
+
+    def protocol_base(self, n: Node) -> bool:
+        return interfaces_protocol_base(self, n)
+
+    def protocol_class(self, name: str, c: Node, tvs: list[str], mod: str) -> None:
+        interfaces_protocol_class(self, name, c, tvs, mod)
+
+    def protocol_params(self, n: Node) -> list[str]:
+        return interfaces_protocol_params(self, n)
+
+    def protocol_problem(self, name: str, c: Node, tvs: list[str]) -> str:
+        return interfaces_protocol_problem(self, name, c, tvs)
+
+    def iface_spec(self, c: str, a: Node) -> str:
+        return interfaces_iface_spec(self, c, a)
+
+    def iface_ann(self, a: Node) -> Node:
+        return interfaces_iface_ann(self, a)
+
+    def iface_of(self, c: str, ts: list[str]) -> str:
+        return interfaces_iface_of(self, c, ts)
+
+    def iface_make(self, name: str, origin: str, node: Node) -> None:
+        interfaces_iface_make(self, name, origin, node)
+
+    def iface_respec(self) -> None:
+        interfaces_iface_respec(self)
+
+    def iface_use(self, f: FnInfo) -> None:
+        interfaces_iface_use(self, f)
+
+    def iface_widens(self, body: list[Node], name: str, t: str, vt: str) -> bool:
+        return interfaces_iface_widens(self, body, name, t, vt)
+
+    def iface_item(self, t: str) -> str:
+        return interfaces_iface_item(self, t)
+
+    def iter_join(self, a: str, b: str) -> str:
+        return interfaces_iter_join(self, a, b)
+
+    def is_iface(self, t: str) -> bool:
+        return interfaces_is_iface(self, t)
+
+    def iface_call(self, args: list[Node]) -> Val:
+        return interfaces_iface_call(self, args)
+
+    def iface_obj(self, v: Val) -> Val:
+        return interfaces_iface_obj(self, v)
+
+    def iface_reflect(self, t: str, what: str) -> None:
+        interfaces_iface_reflect(self, t, what)
+
+    def iface_impl(self, t: str) -> str:
+        return interfaces_iface_impl(self, t)
+
+    def to_iface(self, v: Val, t: str) -> Val:
+        return interfaces_to_iface(self, v, t)
+
+    def iface_box(self, tab: str, obj: str, t: str) -> Val:
+        return interfaces_iface_box(self, tab, obj, t)
+
+    def iface_table(self, impl: str, t: str) -> str:
+        return interfaces_iface_table(self, impl, t)
+
+    def iface_finish(self) -> bool:
+        return interfaces_iface_finish(self)
+
+    def iface_tables(self) -> None:
+        interfaces_iface_tables(self)
+
+    def iface_adapter(self, tab: ITab, k: int) -> str:
+        return interfaces_iface_adapter(self, tab, k)
+
+    def iface_cmp(self, op: str, a: Val, b: Val) -> Val:
+        return interfaces_iface_cmp(self, op, a, b)
 
     def joinable(self, t: str) -> bool:
         return unions_joinable(self, t)
@@ -4931,6 +5059,9 @@ class Gen:
     def call_callable(self, o: Val, args: list[Node]) -> Val:
         return calls_call_callable(self, o, args)
 
+    def icall(self, code: str, env: str, vals: list[Val], rt: str) -> Val:
+        return calls_icall(self, code, env, vals, rt)
+
     def call_value(self, v: Val, args: list[Node], want: str, resultsoft: bool = False) -> Val:
         return calls_call_value(self, v, args, want, resultsoft)
 
@@ -5084,17 +5215,20 @@ class Gen:
     def named_param(self, a: Node) -> str:
         return templates_named_param(self, a)
 
-    def match(self, a: Node, t: str, tv: dict[str, str], tvs: list[str]) -> str:
-        return templates_match(self, a, t, tv, tvs)
+    def match(self, a: Node, t: str, tv: dict[str, str], tvs: list[str], lexical: bool = False) -> str:
+        return templates_match(self, a, t, tv, tvs, lexical)
 
-    def match_key(self, a: Node, t: str, tv: dict[str, str], tvs: list[str]) -> str:
-        return templates_match_key(self, a, t, tv, tvs)
+    def match_key(self, a: Node, t: str, tv: dict[str, str], tvs: list[str], lexical: bool = False) -> str:
+        return templates_match_key(self, a, t, tv, tvs, lexical)
 
-    def match_items(self, xs: list[Node], ts: list[str], tv: dict[str, str], tvs: list[str]) -> str:
-        return templates_match_items(self, xs, ts, tv, tvs)
+    def match_items(self, xs: list[Node], ts: list[str], tv: dict[str, str], tvs: list[str], lexical: bool = False) -> str:
+        return templates_match_items(self, xs, ts, tv, tvs, lexical)
 
-    def fn_sig(self, t: str) -> list[str]:
-        return templates_fn_sig(self, t)
+    def fn_sig(self, t: str, lexical: bool = False) -> list[str]:
+        return templates_fn_sig(self, t, lexical)
+
+    def fn_typevar(self, f: FnInfo, name: str) -> str:
+        return templates_fn_typevar(self, f, name)
 
     def instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "", resultsoft: bool = False, cmpfields: str = "", nullable_self: bool = False) -> FnInfo:
         return templates_instance(self, f, ts, nnp, want, resultsoft, cmpfields, nullable_self)

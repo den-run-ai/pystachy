@@ -270,6 +270,11 @@ An iterator's type is its class. `Iterator[T]` and `Iterable[T]` annotations (`t
 such a parameter or return is compiled for each call's argument types, a class whose
 `__init__` takes one or calls `iter()` is a class template, and an annotated variable or field
 has its value's type. A `Generic[T]` class's `Iterable[T]` parameter binds `T` to the items.
+Where iterators of distinct types with one item type meet in one location, and no other join
+applies (as a class's and its subclass's do: the base class), it holds the
+stored interface `Iterator[T]`, whose value is the iterator itself; a protocol's methods can
+also declare `Iterator[T]` and `Iterable[T]` values
+([stored interfaces](typing.md#protocols-and-stored-interfaces)).
 
 ## Generators
 
