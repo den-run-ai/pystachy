@@ -1,0 +1,5 @@
+True Skip [5, 3, 1]
+['Countdown', 'Skip'] [[1, 0], [3, 1]]
+False [1, 0]
+True [5, 3, 1]
+[exit 0]

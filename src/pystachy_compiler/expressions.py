@@ -1202,8 +1202,9 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             if et == "" and v.t != "None":
                 et = v.t
             # (the items' types together; distinct iterators: their Iterator[T], interfaces.py, made
-            # only where the display has no expected item type, which would make its join unused)
-            jt = v.t if jt == "" else self.join(jt, v.t) or (self.iter_join(jt, v.t) if not given else "") or "-"
+            # only where the display has no expected item type, which would make its join unused,
+            # and in a module that does not compile Any dynamically, whose items stay Any values)
+            jt = v.t if jt == "" else self.join(jt, v.t) or (self.iter_join(jt, v.t) if not given and not self.dyn_policy(n.line) else "") or "-"
             items.append(v)
         if (returnctx or resultsoft) and given and len([v for v in items if not self.widens(v.t, et) and not self.boxes(v.t, et) and not (is_fn(v.t) and is_callable(unopt(et)))]) > 0:
             # A comparison's expected type is only a hint. Keep the display's
@@ -1286,7 +1287,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 b = self.big_tuple_narrow(b)
             if kv[1] == "" and b.t != "None":
                 kv[1] = b.t
-            jt = b.t if jt == "" else self.join(jt, b.t) or (self.iter_join(jt, b.t) if not given else "") or "-"
+            jt = b.t if jt == "" else self.join(jt, b.t) or (self.iter_join(jt, b.t) if not given and not self.dyn_policy(n.line) else "") or "-"  # (as a list's)
             kj = a.t if kj == "" else self.join(kj, a.t) or "-"
             ks.append(a)
             vs.append(b)

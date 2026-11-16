@@ -100,8 +100,9 @@ streams = [iter([1, 2]), numbers()]  # an Iterator[int] interface for both
 ```
 
 The same applies to a function returning either kind, a conditional expression, and a
-variable or field assigned both. Iterators of one type keep that type, and modules that
-opt in to dynamic `Any` keep their dynamic values.
+variable or field assigned both. Iterators of one type keep that type, and a class's and
+its subclass's meet as the base class. In a module that opts in to dynamic `Any`, a list or
+dict display like `streams` keeps dynamic `Any` items instead.
 
 ## 5. Explicit adapters
 

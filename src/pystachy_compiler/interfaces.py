@@ -12,7 +12,7 @@ from __future__ import annotations
 from src.pystachy_compiler.diagnostics import where
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import SPECSHOW
+from src.pystachy_compiler.specs import BIG, SPECSHOW
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import clone, elem, gelem, is_callable, is_dict, is_gen, is_list, is_opt, is_union, lt, targs, typestr, unopt
 
@@ -344,24 +344,27 @@ def ann_node(body: list[Node], name: str) -> Node | None:
 
 def gen_iter_join(self, a: str, b: str) -> str:
     # the type of a value that is an iterator of type a or one of type b, distinct types of which
-    # no other join is: the stored interface Iterator[T] (iface_of), where both give items of type
-    # T; "" otherwise. Its values hold either object, which calls of next(), iter() and loops
-    # advance as their own. A module that compiles Any dynamically keeps its own joins (Any values)
-    if a == b or self.rtmode or self.dyn_policy(self.line):
+    # no other join is (a class and its base class join as the base: join): the stored interface
+    # Iterator[T] (iface_of), where both give items of type T, or one gives ints and the other
+    # promoting ints (T is the promoting int, which the other's ints become, bigints.py); ""
+    # otherwise. Its values hold either object, which calls of next(), iter() and loops advance as
+    # their own. (A display in a module that compiles Any dynamically keeps its Any items: expr)
+    if a == b or self.rtmode or self.join(a, b) != "":
         return ""
     ta = self.iface_item(a)
     tb = self.iface_item(b)
-    if ta == "" or tb == "" or ta != tb or "?" in ta:
+    t = ta if ta == tb else (BIG if (ta == BIG and tb == "int") or (ta == "int" and tb == BIG) else "")
+    if t == "" or "?" in t:
         return ""
     if self.iface_impl(a) != "" or self.iface_impl(b) != "":
         return ""
     if self.is_iface(a) and self.ifaces[a].origin == ITERATOR:
-        return a if not self.is_iface(b) else ""
+        return a if not self.is_iface(b) and ta == t else ""
     if self.is_iface(b) and self.ifaces[b].origin == ITERATOR:
-        return b if not self.is_iface(a) else ""
+        return b if not self.is_iface(a) and tb == t else ""
     if self.is_iface(a) or self.is_iface(b):
         return ""
-    return self.iface_of(ITERATOR, [ta])
+    return self.iface_of(ITERATOR, [t])
 
 
 def stub_def(d: Node) -> Node:
