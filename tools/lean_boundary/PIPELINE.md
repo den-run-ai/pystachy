@@ -37,6 +37,11 @@ a fresh state keep an ordered completion prefix and at most one active next
 stage. `active_cannot_begin` proves that an unfinished stage prevents any new
 stage from starting. `consumed_cannot_step` proves that completed lowering is
 terminal, and `consumed_has_finalization` proves that finalization precedes it.
+The `decision` action is `PipelineState.decide`: a template instance, class
+specialization or field layout, which changes no stage. `discovery_may_decide`
+proves that the active discovery stage may decide; `consumers_cannot_decide` and
+`discovered_cannot_decide` prove that no decision is accepted while analysis,
+optimization, finalization or lowering is active, or once discovery has completed.
 
 The report checker requires sequential attempt indices, valid stage histories,
 matching active stages, and a complete inventory of completed/partial/unavailable
@@ -58,14 +63,16 @@ Lean's standard `propext`, `Classical.choice` and `Quot.sound`.
 ## Correspondence and limits
 
 The tests compare all 208 combinations of the actual Python state machine's
-13 reachable states, both operations, six stage names and empty/unknown names
-with the Lean executable. Mutation controls corrupt real ordinary, retried and
+13 reachable states, both operations, six stage names and empty/unknown names,
+and a decision in each of those states (221 transitions), with the Lean executable. Mutation controls corrupt real ordinary, retried and
 finalization-only inspection reports: swapped/duplicated/omitted completions,
 stale active stages, forged stage evidence, foreign snapshot attempts, repeated
 attempt indices, partial snapshots, changed sources and failed terminal outcomes
 must fail closed. Content mutations also must fail the report's snapshot digest.
 
-These checks establish report sequencing and association. They do not prove
+These checks establish report sequencing and association. The compiler calls the
+decision guard where it creates template instances, class specializations and field
+layouts; Lean does not prove that no other decision bypasses those calls. They do not prove
 that a stage body implements its stated postcondition, that the exporter faithfully
 records execution, that a prepared Python object belongs to an attempt, or that
 typing, specialization, representations, IR operations, GC or LLVM are correct.

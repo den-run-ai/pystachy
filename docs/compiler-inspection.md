@@ -8,8 +8,10 @@ adding logging to the compiler.
 
 The tool runs the real `pystachy ir` path in a fresh worker process, with
 `PYSTACHY_IRCHECK=1`. It does not execute the input program, run LLVM's optimization
-pipeline, build an executable or prove JIT/AOT correctness. `pystachy check`
-remains parse-only; it is not the inspection tool's compilation oracle.
+pipeline, build an executable or prove JIT/AOT correctness. `pystachy check` runs the
+same frontend through finalization from the CLI and reports each failed unit and the
+compiler's decisions ([checking a program](checking.md)); this tool records the stages
+and passes of one attempt in detail.
 
 ## Quick start
 

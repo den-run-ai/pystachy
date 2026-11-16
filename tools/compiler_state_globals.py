@@ -68,6 +68,7 @@ RESET = {
 }
 RETAINED = {
     "diagnostics.CAPTURED": "opt-in observer records; inspection worker clears before its request and exits after it, not compiler restart state",
+    "diagnostics.CHECKING": "pystachy check's mode for every attempt of one check; check_program sets it and clears it on every exit",
     # CLI cache-attempt state survives inference retries. Only start begins a new
     # attempt; loader resets must not discard dependencies or an invalid snapshot.
     "program_cache.ACTIVE": "start enables tracking; stop disables it without discarding the attempt's snapshots",
@@ -93,6 +94,7 @@ WRITERS = {
     # Only fail appends terminal records inside the compiler. The hosted observer's
     # pre-request clear is outside this source inventory; see docs/testing.md.
     "diagnostics.CAPTURED": {"diagnostics.fail"},
+    "diagnostics.CHECKING": {"driver.check_program"},
     "diagnostics.FILES": {"loader.Loader.program", "loader.Loader.parse"},
     "diagnostics.DYNFILES": {"loader.Loader.program", "loader.Loader.pragmas"},
     "diagnostics.IDINERT": {"loader.Loader.program", "loader.Loader.pragmas"},

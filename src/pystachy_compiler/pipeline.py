@@ -1,7 +1,9 @@
 """Attempt-owned compiler stages, from declarations to consumed typed IR.
 
 Preparation and discovery still combine semantic typing, representation choices
-and specialization. The finalized typed program is a real boundary: lowering is
+and specialization, and only they make those decisions: once discovery completes,
+no stage may add a template instance, a class specialization or a field layout
+(PipelineState.decide). The finalized typed program is a real boundary: lowering is
 an explicit, consuming operation. This does not make Gen reusable or concurrent.
 """
 from __future__ import annotations
@@ -45,6 +47,12 @@ class PipelineState:
         # An exception or retry leaves active set. Partially mutated state cannot
         # be resumed, finalized or lowered by a later stage call.
         self.active = name
+
+    def decide(self, what: str) -> None:
+        # Typing, layout and specialization decisions: before discovery completes (also outside
+        # any stage, for tools that drive Gen directly), never in the stages that consume them
+        if self.stage != "new" and self.stage != "prepare":
+            fail(f"internal error: {what} after discovery completed (stage {self.active or self.stage})", 0)
 
     def complete(self, name: str) -> None:
         if name not in STAGE_PREDECESSORS:

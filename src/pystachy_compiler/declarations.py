@@ -1638,6 +1638,7 @@ def gen_declare_fields(self, ci: ClassInfo) -> None:
             if key not in ci.methods or ci.methods[key].node is not d:
                 return
     line, cls = self.line, self.selfcls
+    self.pipeline.decide(f"the layout of class {ci.name}")
     self.selfcls = ci.name
     ci.fields_preparing = True
     try:

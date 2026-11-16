@@ -18,8 +18,8 @@
 # "pystachy rt" compiles runtime.py; its NAME.path, if any, is PYSTACHY_PATH): exit status 1, and
 # one line on stderr, the diagnostic FILE:LINE: error: MESSAGE, which holds the expected message;
 # and every tests/deviations/*.py must print its hand-written .out (documented deviations from
-# CPython). "pystachy check", which only parses, must accept the programs syntax_*.py and report
-# the error of a rejection syntax_*.py whose error is in its own file.
+# CPython). "pystachy check --syntax", which only parses, must accept the programs syntax_*.py and
+# report the error of a rejection syntax_*.py whose error is in its own file.
 # Without FILEs, it runs every case, and fails first if a test lies where none is looked for (a
 # program or rejection directly in tests/, from before the corpus's areas: corpus_strays).
 # The compiler checks the IR it builds (PYSTACHY_IRCHECK=1, unless set otherwise).
@@ -115,7 +115,7 @@ program() { # tests/programs/AREA/NAME.py, its sidecars B.in, B.out... (B: the p
   done
   case $n in
     syntax_*)
-      if $PYS check "$1" > "$T/chk.$n" 2>&1 && [ ! -s "$T/chk.$n" ]; then pass=$((pass + 1)); else
+      if $PYS check "$1" --syntax > "$T/chk.$n" 2>&1 && [ ! -s "$T/chk.$n" ]; then pass=$((pass + 1)); else
         fail=$((fail + 1)); echo "FAIL $n (check)"; head -5 "$T/chk.$n"; fi ;;
   esac
 }
@@ -158,7 +158,7 @@ rejection() { # tests/errors/AREA/NAME.py
     fail=$((fail + 1)); echo "FAIL $1: expected error '$want', got (exit $st): $(cat "$T/rej.$n")"; fi
   case $n:$want in
     syntax_*:"$n.py:"*)
-      $PYS check "$1" > /dev/null 2> "$T/chk.$n"; st=$?
+      $PYS check "$1" --syntax > /dev/null 2> "$T/chk.$n"; st=$?
       if [ $st = 1 ] && diag "$T/chk.$n"; then pass=$((pass + 1)); else
         fail=$((fail + 1)); echo "FAIL $1 (check): expected error '$want', got (exit $st): $(cat "$T/chk.$n")"; fi ;;
   esac

@@ -14,9 +14,12 @@ structure State where
   history : List Nat
   deriving BEq, DecidableEq, Repr
 
+/-- `decision` is `PipelineState.decide`: a typing, layout or specialization decision
+(a template instance, a class specialization, a field layout). It changes no stage. -/
 inductive Action where
   | begin (stage : Nat)
   | complete (stage : Nat)
+  | decision
   deriving BEq, DecidableEq, Repr
 
 def initial : State := ⟨0, 0, []⟩
@@ -38,6 +41,7 @@ def step (s : State) : Action → Option State
       if 1 ≤ n ∧ n ≤ 6 ∧ s.active = n ∧ s.stage + 1 = n then
         some ⟨n, 0, s.history ++ [n]⟩
       else none
+  | .decision => if s.stage ≤ 1 then some s else none
 
 theorem initial_wellFormed : WellFormed initial := by
   simp [WellFormed, initial, stagePrefix]
@@ -67,6 +71,13 @@ theorem step_preserves (s t : State) (action : Action)
         rw [history, ← next]
         simp [stagePrefix, List.range_succ]
       · contradiction
+  | decision =>
+      simp only [step] at taken
+      split at taken
+      · simp only [Option.some.injEq] at taken
+        subst t
+        exact ⟨bound, history, active⟩
+      · contradiction
 
 inductive Reachable : State → Prop where
   | start : Reachable initial
@@ -93,6 +104,33 @@ theorem consumed_has_finalization (s : State) (valid : WellFormed s)
     (consumed : s.stage = 6) : 5 ∈ s.history := by
   rw [valid.2.1, consumed]
   decide
+
+/-! Decisions belong to preparation and discovery. Analysis, optimization,
+finalization and lowering consume a fixed set: none of them may add one. -/
+theorem discovery_may_decide (s : State) (valid : WellFormed s)
+    (discovering : s.active = 2) : step s .decision = some s := by
+  have stage : s.stage = 1 := by
+    rcases valid.2.2 with idle | ⟨_, next⟩ <;> omega
+  simp [step, stage]
+
+theorem consumers_cannot_decide (s : State) (valid : WellFormed s)
+    (consuming : 3 ≤ s.active) : step s .decision = none := by
+  have stage : 2 ≤ s.stage := by
+    rcases valid.2.2 with idle | ⟨_, next⟩ <;> omega
+  simp only [step]
+  split
+  · omega
+  · rfl
+
+theorem discovered_cannot_decide (s : State) (valid : WellFormed s)
+    (discovered : 2 ∈ s.history) : step s .decision = none := by
+  rw [valid.2.1] at discovered
+  simp only [stagePrefix, List.mem_map, List.mem_range] at discovered
+  obtain ⟨i, below, two⟩ := discovered
+  simp only [step]
+  split
+  · omega
+  · rfl
 
 /-! Actual report normalization. Status is 0 failed, 1 retry, 2 completed;
 evidence is 0 unavailable, 1 partial, 2 completed. The bridge supplies these
@@ -179,5 +217,7 @@ example : step initial (.begin 2) = none := by decide
 example : step ⟨5, 0, stagePrefix 5⟩ (.begin 6) = some ⟨5, 6, stagePrefix 5⟩ := by decide
 example : step ⟨5, 6, stagePrefix 5⟩ (.begin 6) = none := by decide
 example : step ⟨5, 6, stagePrefix 5⟩ (.complete 6) = some ⟨6, 0, stagePrefix 6⟩ := by decide
+example : step ⟨1, 2, stagePrefix 1⟩ .decision = some ⟨1, 2, stagePrefix 1⟩ := by decide
+example : step ⟨2, 0, stagePrefix 2⟩ .decision = none := by decide
 
 end PystachyPipeline

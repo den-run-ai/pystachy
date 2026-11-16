@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, unionnames
 from src.pystachy_compiler.bigints import narrows
-from src.pystachy_compiler.diagnostics import Rejoin, fail, int_lists
+from src.pystachy_compiler.diagnostics import CHECKING, Rejoin, fail, int_lists
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.ir import Blk, Data, Frame, Ins, Val, tmpname, one_num
 from src.pystachy_compiler.specs import BIGOPT, CHECKED, LIST_READS, LIST_WRITES, NARROWED, RTL, RTSYM, STR_HEADER_SIZE, TEXT_OPS, UNICODE_AUDIT
@@ -46,6 +46,8 @@ def gen_err(self, msg: str) -> None:
         # (a recursive alias's edge is the alias, as typestr writes it; the message may quote the
         # program's text, getattr(o, "rec[1]"), which only an alias's own name could match)
         msg = msg.replace("rec[" + name + "]", short(name))
+    if CHECKING[0]:
+        raise self.check_failure(msg)  # (pystachy check: which unit failed, see checking.py)
     fail(msg, self.line, self.making)
 
 def gen_save(self) -> Frame:

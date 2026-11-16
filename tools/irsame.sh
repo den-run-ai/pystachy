@@ -19,18 +19,23 @@
 # left. The first 3 that differ are shown with the start of each diff (the IR's from its first
 # differing line, named by the function that holds it); the last line counts them all. Only sh and
 # the tools tests/run.sh uses are needed (no python), as in the Python-free stage of tests/verify.sh.
-# With --check, they run `check` (which only parses) instead, as tests/run.sh runs it (no NAME.path,
-# no IR), and must print the same messages with the same exit status (tests/verify.sh's tests-cpython,
-# on the syntax_*.py cases).
+# With --check, they run `check --syntax` (which only parses) instead, as tests/run.sh runs it (no
+# NAME.path, no IR), and must print the same messages with the same exit status (tests/verify.sh's
+# tests-cpython, on the syntax_*.py cases). A compiler from before `check` compiled programs only
+# parses and ignores the flag. With --semantic, OLD runs `ir` and NEW runs `check` (docs/checking.md):
+# NEW must accept exactly the programs OLD compiles, silently, and reject the others with OLD's
+# message as its first line and the same exit status; the lines after it (other failed units,
+# notes) are not compared. Give the same compiler twice to check that its check agrees with it.
 # PYSTACHY_CASE_TIMES=FILE appends "MILLISECONDS CASE" as each worker finishes, timing both
 # compilers and the comparison together. Completed timings survive interruption; GNU date's %N
 # is required, as in tests/run.sh. The report itself stays in input order.
-# usage: tools/irsame.sh [--check] OLD NEW [FILE...]   (compiler commands, e.g. build/ref/pystachy
+# usage: tools/irsame.sh [--check | --semantic] OLD NEW [FILE...]   (compiler commands, e.g. build/ref/pystachy
 #        ./pystachy or "python3 pystachy.py"; make irsame REF=<commit> runs it against that commit's compiler)
 cd "$(dirname "$0")/.." || exit 1
 HOW=ir
 [ "${1:-}" != --check ] || { HOW=check; shift; }
-[ $# -ge 2 ] || { echo "usage: tools/irsame.sh [--check] OLD NEW [FILE...]" >&2; exit 2; }
+[ "${1:-}" != --semantic ] || { HOW=semantic; shift; }
+[ $# -ge 2 ] || { echo "usage: tools/irsame.sh [--check | --semantic] OLD NEW [FILE...]" >&2; exit 2; }
 OLD=$1; NEW=$2; shift 2
 for f; do [ -f "$f" ] || { echo "tools/irsame.sh: no such program: $f" >&2; exit 2; }; done
 
@@ -111,7 +116,7 @@ normalize_messages() {
 }
 
 RT=0  # (whether both have runtime mode: their usage names it)
-[ $HOW = check ] || { { $OLD 2>&1 | grep -q 'pystachy rt '; } && { $NEW 2>&1 | grep -q 'pystachy rt '; } && RT=1; }
+[ $HOW != ir ] || { { $OLD 2>&1 | grep -q 'pystachy rt '; } && { $NEW 2>&1 | grep -q 'pystachy rt '; } && RT=1; }
 if [ $# = 0 ]; then
   for f in pystachy.py runtime.py tests/programs/*/*.py tests/deviations/*.py bench/*.py bench/pyperformance/*.py \
       tests/ir/*.py tests/errors/*/*.py; do
@@ -134,8 +139,8 @@ trap 'exit 130' INT TERM
 # same FILE DIR: compile FILE with both compilers in DIR; DIR/report says what differs (empty: nothing)
 same() {
   if [ $HOW = check ]; then
-    $OLD check "$1" > "$2/old.msg" 2>&1; a=$?
-    $NEW check "$1" > "$2/new.msg" 2>&1; b=$?
+    $OLD check "$1" --syntax > "$2/old.msg" 2>&1; a=$?
+    $NEW check "$1" --syntax > "$2/new.msg" 2>&1; b=$?
   else
     mp=$PYSTACHY_PATH
     if [ -f "${1%.py}.path" ]; then
@@ -146,7 +151,15 @@ same() {
     how=ir
     case $RT:$1 in 1:runtime.py | 1:*/runtime.py | 1:*/rtmode_*.py) how=rt ;; esac
     PYSTACHY_PATH=$mp $OLD $how "$1" -o "$2/old.ll" > "$2/old.msg" 2>&1; a=$?
-    PYSTACHY_PATH=$mp $NEW $how "$1" -o "$2/new.ll" > "$2/new.msg" 2>&1; b=$?
+    if [ $HOW = semantic ]; then
+      rm -f "$2/old.ll"
+      PYSTACHY_PATH=$mp $NEW check "$1" > "$2/new.all" 2>&1; b=$?
+      # (a program OLD compiles must check silently: then OLD's message, and the first line, are empty)
+      head -n 1 "$2/new.all" > "$2/new.msg"
+      [ ! -s "$2/new.all" ] || [ -s "$2/new.msg" ] || echo > "$2/new.msg"
+    else
+      PYSTACHY_PATH=$mp $NEW $how "$1" -o "$2/new.ll" > "$2/new.msg" 2>&1; b=$?
+    fi
   fi
   messages=0
   if ! cmp -s "$2/old.msg" "$2/new.msg"; then

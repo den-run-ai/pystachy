@@ -85,6 +85,7 @@ print(f"{stats.served:,} customers, mean wait {stats.waited / stats.served:.2f}"
 
 ```sh
 python3 checkout.py                      # CPython reference
+pystachy check checkout.py               # Report what keeps it from compiling, without generating code
 pystachy run checkout.py                 # Compile and run with the JIT
 pystachy build checkout.py -o checkout   # Build a native executable
 ./checkout

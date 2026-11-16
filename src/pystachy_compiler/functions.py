@@ -1,7 +1,7 @@
 """Functions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.analysis import globals_in, lambda_flags, local_names, nonlocal_decls, numeric_statement, numeric_return_names, str_appends, targets
-from src.pystachy_compiler.diagnostics import Rejoin, int_program
+from src.pystachy_compiler.diagnostics import CHECKING, Rejoin, int_program
 from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Try, Val
 from src.pystachy_compiler.local_versions import local_versions
 from src.pystachy_compiler.names import short
@@ -110,6 +110,8 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
     if f.pending:
         self.materialize(f)
         body = f.node.kids[2].kids
+    if CHECKING[0]:
+        body = self.check_body(f, body)  # (pystachy check: a body an earlier attempt failed in is left out)
     if not self.modlevel and not self.rtmode and len(f.node.kids) >= 3:
         versioned = local_versions(f, body)
         # Template instances share their declaration. Mark this instance's

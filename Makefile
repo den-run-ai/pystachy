@@ -474,6 +474,7 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_compiler_pipeline.py
 	$(PY) -m unittest discover -s tools -p test_compiler_stage_admission.py
 	$(PY) -m unittest discover -s tools -p test_compiler_abi_stages.py
+	$(PY) -m unittest discover -s tools -p test_check_command.py
 	$(PY) -m unittest discover -s tools -p 'test_lean_boundary*.py'
 	$(PY) -m unittest discover -s tools -p test_lean_access.py
 	$(PY) -m unittest discover -s tools -p test_lean_inline.py
