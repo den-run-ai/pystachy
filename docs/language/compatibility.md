@@ -261,7 +261,10 @@ or generator/async initializers retain eager formatting
   errors. See [import-time scope](modules.md#unsupported-code-in-imported-modules).
 - **Optional imports** can take the fallback where CPython finds an installed
   module or API. A failed module retains globals already assigned; a later import
-  reruns its code over them. See [optional imports](modules.md#optional-imports).
+  reruns its code over them. A subclass of `ImportError` ends the program instead of
+  reaching the handler when an imported module's code raises it, or when the statements
+  after resolved imports raise it but cannot keep the `except` clauses. See
+  [optional imports](modules.md#optional-imports).
 - **Unbound globals** read as `m.x` raise `AttributeError` without CPython's
   circular-import/renaming hints. `from m import x` raises `ImportError`, using the
   file path from compilation rather than a runtime installation.
@@ -416,7 +419,8 @@ See [module initialization](modules.md#finding-and-running-modules),
   aliases used before assignment, including cyclic from-import aliases. Function and
   module-attribute alias reads use runtime guards; `A = m.C` still uses a conservative
   early-read check.
-- **Optional imports:** a possible `ImportError` other than a definite module-top-level raise;
+- **Optional imports:** a possible `ImportError` or `ModuleNotFoundError` raised under that name,
+  other than a definite module-top-level raise;
   a possibly unbound from-import; handlers using `as e`, re-raising, or potentially ending
   the program when the module is missing; a failing module importing its caller back.
   Optional from-imports also require a definite binding, excluding conditional, deleted,

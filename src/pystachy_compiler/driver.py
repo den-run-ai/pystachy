@@ -5,7 +5,7 @@ import sys
 import tempfile
 import time
 from src.pystachy_compiler import aot_runtime, cached_run, diagnostics, program_cache
-from src.pystachy_compiler.diagnostics import MAXNEST, RAW, NeedHierarchy, NeedSliceEH, Rejoin, fail
+from src.pystachy_compiler.diagnostics import MAXNEST, RAW, NeedHandlers, NeedHierarchy, NeedSliceEH, Rejoin, fail
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.loader import Loader
@@ -108,6 +108,12 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
     # without that call (Gen.xnot: each such pass adds a method, so these passes count toward no
     # limit). Unsupported iteration protocol bodies use the same per-method retry
     # registry, but their replacement arms raise an explicit compatibility error.
+    # Where a load finds optional imports whose statements after the imports may raise a subclass
+    # of ImportError (Loader.keep_site, #1504), the passes after it keep their except clauses at
+    # run time (diagnostics.TRIAL); if one of those fails, the program is compiled from the start
+    # as before, keeping none, and that compilation reports what it finds.
+    keeps: dict[str, bool] = {}
+    nokeep = False
     hints: dict[str, str] = {}
     xnot: dict[str, bool] = {}
     lambdas = LAMBDAS[0]
@@ -137,13 +143,21 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
         g.idtry = idtry
         ld = Loader(dirs)
         ld.ext = ext
+        ld.keeps = keeps
+        ld.nokeep = nokeep
         try:
             loaded = timing_start()
             mods = ld.program(path, src)
             timing_end("program.load", loaded)
-            return g.program(mods)
+            ir = g.program(mods)
+            diagnostics.TRIAL = False
+            return ir
         except Rejoin as retry:
-            if isinstance(retry, NeedHierarchy):
+            if isinstance(retry, NeedHandlers):
+                for k in ld.newkeeps:
+                    keeps[k] = True
+                diagnostics.TRIAL = True
+            elif isinstance(retry, NeedHierarchy):
                 # Class-template instances may now be nominal classes. Recompute joins
                 # and declined dynamic adapters against those layouts; only the monotone
                 # class-name registry survives alongside the identity/EH policy.
@@ -167,16 +181,31 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
                     passes += 1
                 for k in g.newx:
                     xnot[k] = True
-            # (as parsing and lowering found them: the next pass numbers lambdas and
-            # lists C libraries as the first did; Loader.program rebuilds its file-index space)
-            LAMBDAS[0] = lambdas
-            RENAMED.clear()
-            while len(LIBS) > libs:
-                LIBS.pop()
-            while len(LINKDL) > linkdl:
-                LINKDL.pop()
+        except Exception:
+            if not diagnostics.TRIAL:
+                raise
+            # (diagnostics.Untried, or any other failure of a pass that kept except clauses: the
+            # program is compiled as if that had never been tried)
+            diagnostics.TRIAL = False
+            keeps = {}
+            nokeep = True
+            hints = {}
+            xnot = {}
+            passes = 0
+            idfull = False
+            idtry = True
+            slice_eh = False
+            hierarchies = {}
         finally:
             timing_end("program.attempt", attempt)
+        # (as parsing and lowering found them: the next pass numbers lambdas and
+        # lists C libraries as the first did; Loader.program rebuilds its file-index space)
+        LAMBDAS[0] = lambdas
+        RENAMED.clear()
+        while len(LIBS) > libs:
+            LIBS.pop()
+        while len(LINKDL) > linkdl:
+            LINKDL.pop()
 
 
 def runtime_ir(path: str, src: str, cache: bool) -> str:
