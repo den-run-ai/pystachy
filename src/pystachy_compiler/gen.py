@@ -802,6 +802,8 @@ from src.pystachy_compiler.expressions import (
     gen_titem_eq as expressions_titem_eq,
     gen_titem_union as expressions_titem_union,
     gen_titem_nt as expressions_titem_nt,
+    gen_big_union as expressions_big_union,
+    gen_titem_big as expressions_titem_big,
     gen_union_same as expressions_union_same,
     gen_cmp_method as expressions_cmp_method,
     gen_concrete_cmp as expressions_concrete_cmp,
@@ -4811,6 +4813,12 @@ class Gen:
 
     def titem_nt(self, item: Val, a: Val, left: bool, hit: str, ph: Ins | None, value: str, lenient: bool = False) -> bool:
         return expressions_titem_nt(self, item, a, left, hit, ph, value, lenient)
+
+    def big_union(self, v: Val) -> bool:
+        return expressions_big_union(self, v)
+
+    def titem_big(self, item: Val, a: Val, left: bool, hit: str, ph: Ins | None, value: str, lenient: bool = False) -> bool:
+        return expressions_titem_big(self, item, a, left, hit, ph, value, lenient)
 
     def union_same(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) -> bool:
         return expressions_union_same(self, item, a, hit, ph, value)
