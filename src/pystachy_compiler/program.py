@@ -1882,13 +1882,13 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
         if ci.exc == "" and ci.base in self.classes:
             ci.tag = 1
             self.classes[ci.base].tag = 1
-            for named in ci.roles:
-                if named in self.classes[ci.base].roles:
+            for secondary in ci.roles:
+                if secondary in self.classes[ci.base].roles:
                     continue
                 # (an interface's own chain, role_chain: each class of it is a secondary base of
                 # this class too, and of the objects that a value of its type may be)
-                chain = self.role_chain(ci.base, named)
-                for role in chain if len(chain) > 0 else [named]:
+                chain = self.role_chain(ci.base, secondary)
+                for role in chain if len(chain) > 0 else [secondary]:
                     self.classes[role].tag = 1
                     self.classes[role].isrole = True
                     self.classes[role].isiface = self.classes[role].isiface or len(chain) > 0
@@ -1897,7 +1897,7 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
                     # it extends (role_chain).
                     others: list[str] = []
                     for r in ci.roles:
-                        if r != named:
+                        if r != secondary:
                             extended = self.role_chain(ci.base, r)
                             others += extended if len(extended) > 0 else [r]
                     ancestor = ci.base
