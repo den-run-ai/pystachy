@@ -1125,7 +1125,8 @@ exit is a closure in a list, where CPython keeps bound methods and wrappers in a
   the method again runs the base class's
   ([test](../tests/programs/classes/contextmanager_abstract_super.py)). An abstract method that
   could return, yields another type or has another default is rejected
-  ([error test](../tests/errors/classes/contextmanager_abstract_returns.py)).
+  ([error test](../tests/errors/classes/contextmanager_abstract_returns.py)), and so is
+  `with super().NAME():` of the abstract method, whose call raises.
 - A method manager's `func` retains the port's bound-generator representation, and `args` omits
   that bound receiver. Recreation observes same-type replacements of `args` and `kwds`.
   Assigning `func`, even to itself, restores the port's ordinary bound-method dispatch: it

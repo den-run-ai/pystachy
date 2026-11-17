@@ -1165,7 +1165,10 @@ binds (`TABLE: Final[dict[str, Kind]] = {...}`), also through an item of one (`T
 dict's value or a list's item). They can also come from the fields and properties of a
 parameter's object, or `self`'s, read through attributes (`arg.variable.name`),
 `None if c else v`, and list comprehensions without conditions
-([test](../../tests/programs/inference/field_comprehensions.py)). A field that `__init__` sets
+([test](../../tests/programs/inference/field_comprehensions.py)). A tuple or list target in
+`__init__` (`self.a, self.b = v`) types its fields by the items of `v`, unless a method of the
+class assigns the field alone, whose value types it then
+([test](../../tests/programs/inference/field_tuple_targets.py)). A field that `__init__` sets
 to `None` takes `T | None` from the first other value the program gives it, or holds only
 `None` (see [optional values](#optional-values-and-narrowing)). When specializing a class
 template, a field can also use an ordinary generic function's inferred return type if its
