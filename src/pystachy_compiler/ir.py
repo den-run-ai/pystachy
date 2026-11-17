@@ -142,6 +142,8 @@ class FnInfo:
         self.void_default = False  # newly inferred concrete signature: recursion may retain its old None contract
         self.insts: dict[str, FnInfo] = {}
         self.dtypes: list[str] = []  # the type of each default value evaluated at def time
+        self.sentinels: dict[str, str] = {}  # a parameter p: T = S of a module's sentinel S = object(): S, by parameter (declare_fn)
+        self.sentann: dict[str, str] = {}  # and T, the type that a given argument takes
         self.bad = ""  # why a template cannot be compiled (it is an error only if a call needs it)
         self.infer = False  # a template's function: its first return statement decides its return type
         self.rctx = ""  # a caller's result context, only for fresh return displays and forwarding calls

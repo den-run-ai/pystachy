@@ -1,7 +1,7 @@
 """Program component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.reflection import refl_needs_eh, refl_props
-from src.pystachy_compiler.analysis import all_imports, collect, defines, module_ints, module_reads, module_strs, needs_eh, none_assigns, reads_builtin
+from src.pystachy_compiler.analysis import all_imports, collect, constant_writes, defines, module_ints, module_reads, module_strs, needs_eh, none_assigns, reads_builtin
 from src.pystachy_compiler.diagnostics import NeedHierarchy, Rejoin, dynamic_program, fail, shown
 from src.pystachy_compiler.dynamic import comparison_properties, comparison_storage
 from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_protocol
@@ -1456,6 +1456,17 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
                 self.dc_options(self.classes[st.s])
     for m in mods:
         self.any_variables(m.body, False)
+    # the sentinels, NAME = object() (also NAME: Final[Any] = object()), that nothing else binds,
+    # in any module: constant_writes also counts global declarations and other modules' stores
+    # of mod.NAME. A parameter annotated T whose default is one is a sentinel parameter (declare_fn)
+    writes: dict[str, int] = {}
+    for m in own:
+        constant_writes(m.body, writes)
+    for m in mods:
+        for st in m.body.kids:
+            v = st.kids[-1] if (st.kind == "assign" and len(st.kids) == 2) or (st.kind == "annassign" and len(st.kids) == 3) else None
+            if v is not None and st.kids[0].kind == "name" and v.kind == "call" and len(v.kids) == 1 and v.kids[0].kind == "name" and v.kids[0].s == "object" and writes.get(st.kids[0].s, 0) == 1:
+                self.sentinelglobals[st.kids[0].s] = True
     # Only ordinary inheritance hierarchies need a runtime class tag. Keeping unrelated
     # classes unchanged preserves their compact layout, including dataclasses and tuples.
     for ci in self.classes.values():
