@@ -528,6 +528,7 @@ from src.pystachy_compiler.containers import (
     gen_hash_value as containers_hash_value,
     gen_hashable as containers_hashable,
     gen_iter_elem as containers_iter_elem,
+    gen_vtuple_holds as containers_vtuple_holds,
     gen_key_class as containers_key_class,
     gen_key_fx as containers_key_fx,
     gen_key_items as containers_key_items,
@@ -5519,6 +5520,9 @@ class Gen:
 
     def iter_elem(self, t: str) -> str:
         return containers_iter_elem(self, t)
+
+    def vtuple_holds(self, t: str) -> bool:
+        return containers_vtuple_holds(self, t)
 
     def siter(self, n: Node, et: str, what: str, resultsoft: bool = False, mode: str = "") -> Val:
         return containers_siter(self, n, et, what, resultsoft, mode)

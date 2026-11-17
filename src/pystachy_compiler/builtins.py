@@ -46,6 +46,7 @@ from src.pystachy_compiler.specs import (
     TYPESMOD,
     TYPESUSE,
     VERSIONINFO,
+    VTUPLE_ITEMS,
 )
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import (
@@ -496,8 +497,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             v = self.as_list(v, "tuple")  # (the items of its iterator object; a range's numbers)
         if not is_list(v.t):
             self.err(f"tuple() of {typestr(v.t)} is not supported: use a list, string or tuple")
-        if unopt(elem(v.t)) not in ["int", "float", "bool", "str", "dyn"]:
-            self.err("runtime-length tuple elements must be int, float, bool, str or their optional types")
+        if unopt(elem(v.t)) == BIG or not self.vtuple_holds(elem(v.t)):
+            self.err(VTUPLE_ITEMS)
         v = self.list_identity(v)
         return Val(self.rt("pys_vtuple_new", "ptr", [f"ptr {v.v}"]), self.ctype("vtuple", [elem(v.t)]))
     if name == "typing.NamedTuple":
