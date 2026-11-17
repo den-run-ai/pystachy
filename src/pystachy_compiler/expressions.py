@@ -3920,6 +3920,11 @@ def gen_dunder(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
         if pw != "":
             self.err(f"** and pow() of objects are not supported ({tname(unopt(a.t))} {sh} {tname(b.t)} calls {pw})")
     rm = "__r" + m[2:]
+    if op == "*" and (a.t == "str" or a.t == "bytes" or is_list(a.t)) and self.enum_intlike(b.t) and "__index__" in self.classes[b.t].methods:
+        # seq * member of an IntEnum or IntFlag, an int to CPython, whose int.__rmul__ declines a
+        # sequence: the sequence repeats itself by the member's __index__() (arith), not by the
+        # reflected method lib/enum.py gives the member for numbers on its left
+        return Val("", "")
     if m != "" and op != "==" and op != "!=" and b.t in self.classes and (a.t == "int" or a.t == "float" or a.t == "bool" or a.t == BIG) and rm in self.classes[b.t].methods:
         # A builtin number on the left has no method for an object: CPython calls the object's
         # reflected method, with the operands evaluated left to right as they are here. No class is
