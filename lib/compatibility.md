@@ -1050,9 +1050,9 @@ object keeps: the method runs on the first read, an assignment replaces the valu
 calling it, and `del` forgets it, so that the next read calls the method again
 ([test](../tests/programs/library/lib_functools_cached_property_set.py)). The value is a field
 of the object, where CPython keeps it in the object's `__dict__`, so the method needs a return
-annotation, which gives the field's type. `dir()`, `vars()` and `hasattr()` see the names the
-compiler adds for the method `NAME`: the method `_pys_cpget_NAME` and the fields
-`_pys_cpset_NAME` and `_pys_cpval_NAME`, which keep its value
+annotation, which gives the field's type. `dir()` and `hasattr()` see the names the compiler
+adds for the method `NAME`: the method `_pys_cpget_NAME` and the fields `_pys_cpset_NAME` and
+`_pys_cpval_NAME`, which keep its value
 ([deviation](../tests/deviations/lib_functools_cached_property_names.py)). A dataclass's
 method, a method with other parameters, `cached_property(f)` as a call, and the decorator in
 an enum class or with a value of a generic class's type variable are compile-time errors.
