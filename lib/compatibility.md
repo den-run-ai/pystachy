@@ -126,7 +126,7 @@ plus the template and pattern attributes, are available.
 
 Template subclasses are unsupported. Keyword values of different types, as in
 `substitute(name="Ann", count=3)`, are looked up as values of their union type.
-`Template.flags` is an int, and `capwords` capitalizes ASCII letters only.
+`Template.flags` is an int.
 
 `Formatter` supports `format`, `vformat`, `parse`, `get_field`, `get_value`,
 `check_unused_args`, `format_field` and `convert_field`, and subclasses that
@@ -388,8 +388,7 @@ data, comment, declaration, processing-instruction and reference callbacks.
 `scripting` are exercised by the probe tests, including RAWTEXT and RCDATA.
 Attribute records use `list[tuple[str, str | None]]`; missing values remain None.
 
-Column offsets count Unicode code points. Tag/attribute name case conversion uses
-ASCII-only `str.lower`, so non-ASCII uppercase names can differ from CPython. User subclass
+Column offsets count Unicode code points. User subclass
 constructors and callback signatures need compatible annotations. Multiple inheritance
 and dynamic attributes remain unavailable.
 
