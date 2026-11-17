@@ -35,17 +35,21 @@ for name, args in [
     FIXED.append((f"str.{name}", f"print(repr(s.{name}({args})))"))
 for name in ("isalpha", "isalnum", "isdecimal", "isdigit", "isnumeric"):
     FIXED.append((f"str.{name}", f"print(s.{name}())"))
-OPS = [
+# Case mapping and the case tests follow CPython's characters (#120), also through a bound
+# method, with the result dropped and in another module.
+for name in ("upper", "lower", "swapcase", "capitalize", "title", "casefold", "isupper", "islower", "istitle"):
+    FIXED.append((f"str.{name}", f"print(repr(s.{name}()))"))
+FIXED += [
     ("str.upper", "f = s.upper\nprint(repr(f()))"),
     ("str.upper", "s.upper()\nprint('discarded')"),
     ("str.upper", "print(repr(audit_module.upper(s)))"),
 ]
-for name, args in [
-    ("upper", ""), ("lower", ""), ("swapcase", ""),
-    ("capitalize", ""), ("title", ""), ("casefold", ""), ("isupper", ""), ("islower", ""),
-    ("istitle", ""), ("expandtabs", "4"),
-]:
-    OPS.append((f"str.{name}", f"print(repr(s.{name}({args})))"))
+OPS = [
+    ("str.expandtabs", "f = s.expandtabs\nprint(repr(f()))"),
+    ("str.expandtabs", "s.expandtabs()\nprint('discarded')"),
+    ("str.expandtabs", "print(repr(audit_module.expandtabs(s)))"),
+    ("str.expandtabs", "print(repr(s.expandtabs(4)))"),
+]
 SAFE = "\n".join(body for _, body in FIXED) + "\n" + """print(repr(s), bool(s), s == s, s in s, repr(s + s))
 print(s.split(), repr(s.strip()), repr(s.center(8)), s.isascii(), s.isspace())
 print(s.partition('b'))
@@ -81,22 +85,25 @@ def main():
         temp = Path(tmp)
         program = temp / "audit.py"
         program.write_text(source())
-        (temp / "audit_module.py").write_text("def upper(s: str) -> str:\n    return s.upper()\n")
+        (temp / "audit_module.py").write_text("def upper(s: str) -> str:\n    return s.upper()\n\n\n"
+                                              "def expandtabs(s: str) -> str:\n    return s.expandtabs()\n")
         safe = temp / "safe.py"
-        safe.write_text("s = input()\n" + SAFE)
+        safe.write_text("import audit_module\n\ns = input()\n" + SAFE)
         env = dict(os.environ, PYSTACHY_IRCHECK="1", PYSTACHY_CACHE=str(temp / "cache"))
         env.pop("PYSTACHY_UNICODE_AUDIT", None)
         audit = env | {"PYSTACHY_UNICODE_AUDIT": "1"}
         samples = [b"axb\n", b"a\0b\n", "añb\n".encode(), "a\0ñb\n".encode(),
-                   "a日本😀b\n".encode(), "ae\u0301b\n".encode()]
+                   "a日本😀b\n".encode(), "ae\u0301b\n".encode(), "straße ΟΔΟΣ ǅungla ﬁn İb\n".encode()]
         literal = temp / "literal.py"
         literal.write_text('try:\n    print(len("日本語"))\nexcept NotImplementedError as e:\n    print(str(e))\n'
-                           'try:\n    print("ß".upper())\nexcept NotImplementedError as e:\n    print(str(e))\n'
+                           'try:\n    print("ß\\t|".expandtabs())\nexcept NotImplementedError as e:\n    print(str(e))\n'
                            'try:\n    print(len(chr(233)))\nexcept NotImplementedError as e:\n    print(str(e))\n'
+                           'try:\n    print("ß".upper(), "ΟΔΟΣ".lower())\nexcept NotImplementedError as e:\n    print(str(e))\n'
                            'print(len(""), bool("日本語"), "é" == "é")\n')
         literal_expected = ("3\n"
-                            "Unicode audit: str.upper on non-ASCII str uses byte/ASCII semantics\n"
+                            "Unicode audit: str.expandtabs on non-ASCII str uses byte/ASCII semantics\n"
                             "1\n"
+                            "SS οδος\n"
                             "0 True True\n").encode()
         errors = "".join(f"Unicode audit: {name} on non-ASCII str uses byte/ASCII semantics\n" for name, _ in OPS).encode()
         # Exact comparison of five predicate bits for every code point, emitted in bounded
@@ -111,6 +118,34 @@ def main():
     print(result)
 """)
         classification_expected = invoke([sys.executable, str(classification)], env)
+        # Every code point's six mappings (printed where one changes it) and three case tests,
+        # and the two properties that only context shows: whether a character is cased (title()
+        # lowers the letter after it) and whether it is case-ignorable (lower() looks past it
+        # for a capital sigma's context, on either side).
+        case = temp / "case.py"
+        case.write_text("""for start in range(0, 0x110000, 4096):
+    tests = ""
+    context = ""
+    maps = ""
+    for cp in range(start, start + 4096):
+        s = chr(cp)
+        tests += chr(48 + int(s.isupper()) + int(s.islower()) * 2 + int(s.istitle()) * 4)
+        bits = int((s + "A").title()[-1] == "a") + int(("A" + s + "\u03a3").lower()[-1] == "\u03c2") * 2
+        bits += int((s + "\u03a3").lower()[-1] == "\u03c2") * 4 + int(("\u0391\u03a3" + s).lower()[1] == "\u03c2") * 8
+        context += chr(48 + bits)
+        u = s.upper()
+        low = s.lower()
+        t = s.title()
+        f = s.casefold()
+        c = s.capitalize()
+        w = s.swapcase()
+        if u != s or low != s or t != s or f != s or c != s or w != s:
+            maps += str(cp) + ":" + u + "|" + low + "|" + t + "|" + f + "|" + c + "|" + w + ";"
+    print(tests)
+    print(context)
+    print(maps)
+""")
+        case_expected = invoke([sys.executable, str(case)], env)
         for item in commands:
             label, command = item.split("=", 1)
             cmd = shlex.split(command)
@@ -149,7 +184,7 @@ def main():
                                  ([str(literal_binary)], env | {"PYSTACHY_GC_STRESS": "1"})]:
                 if invoke(call, config) != literal_expected:
                     raise RuntimeError("literal/chr auditing or truth/empty-string controls failed")
-                checked += 6
+                checked += 8
             # Runtime IR is independent of audit mode, even when rebuilt rather than reused.
             irs = []
             for config in (env, audit):
@@ -164,8 +199,14 @@ def main():
                 if invoke(call, audit) != classification_expected:
                     raise RuntimeError(f"{label}: Unicode classification differs from CPython")
                 checked += 5 * 0x110000
+            case_binary = temp / "case"
+            invoke(cmd + ["build", str(case), "-o", str(case_binary)], audit)
+            for call in (cmd + ["run", str(case)], [str(case_binary)]):
+                if invoke(call, audit) != case_expected:
+                    raise RuntimeError(f"{label}: Unicode case mapping or case tests differ from CPython")
+                checked += 13 * 0x110000
             print(f"{label}: normal/audit/normal JIT + AOT + GC stress passed; runtime IR identical; "
-                  "all 1,114,112 code points classify identically")
+                  "all 1,114,112 code points classify, map and test their case identically")
     print(f"{checked} operation/control checks passed")
 
 

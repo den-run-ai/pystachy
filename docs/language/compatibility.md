@@ -52,12 +52,18 @@ characters are distinct: `"²".isdigit()` is true and `"²".isdecimal()` is fals
 letters, so `"e\u0301".isalpha()` is false. Bytes character tests remain ASCII-only.
 See [storage and indexing costs](../internals.md#values-and-runtime).
 
-- **Case mapping and case tests:** `upper()`, `lower()`, `swapcase()`,
-  `capitalize()`, `title()`, `casefold()`, `isupper()`, `islower()` and `istitle()`
-  remain ASCII-only ([#120](https://github.com/den-run-ai/pystachy/issues/120)).
+`upper()`, `lower()`, `swapcase()`, `capitalize()`, `title()`, `casefold()`,
+`isupper()`, `islower()` and `istitle()` use the same Unicode 15.1.0 data, as the
+pinned CPython applies it to each character. A mapping may give two or three
+characters (`"ß".upper()` is `"SS"`), titlecase letters keep their own form
+(`"ǆ".title()` is `"ǅ"`), and a capital sigma lowers to its final form after a cased
+letter where none follows (`"ΟΔΟΣ".lower()` is `"οδος"`). As in CPython, no locale
+applies. Bytes case methods remain ASCII-only.
+
 - **Invalid UTF-8:** builtin text files read/write unchecked bytes, where CPython
   decodes or raises `UnicodeDecodeError`. Each invalid byte counts as one character
-  for length, widths, padding, precision and `expandtabs()`. `read(n)` counts
+  for length, widths, padding, precision and `expandtabs()`. Case methods keep such
+  a byte and give it no case. `read(n)` counts
   non-continuation bytes instead, so malformed input can return `len(text) > n`.
 - **Surrogates:** U+D800–U+DFFF retain their three-byte encoding and can be printed
   or written to UTF-8 files; CPython normally raises `UnicodeEncodeError`.
@@ -105,8 +111,8 @@ PYSTACHY_UNICODE_AUDIT=1 ./pystachy build app.py -o app
 ```
 
 The checks raise `NotImplementedError: Unicode audit: ...` for non-ASCII input to
-case mapping, case tests and `expandtabs()`, even when the result would match
-CPython. Character classification, code-point operations, printing, equality,
+`expandtabs()`, even when the result would match CPython. Case mapping, case tests,
+character classification, code-point operations, printing, equality,
 concatenation and Unicode whitespace operations remain usable. File write counts, invalid UTF-8 decoding and
 other unlisted boundaries are **not audited**.
 

@@ -84,7 +84,43 @@ alpha, digit, decimal and numeric flags preserve CPython's overlapping propertie
 pinned CPython and `--check` compares it with all 1,114,112 code points. The table
 check runs in `tools/rtcheck.py`; `tools/unicode_audit.py` compares each native
 predicate result over the same entire range in JIT and AOT. Bytes predicates keep
-their independent ASCII scan. Case mapping and case tests remain separate work.
+their independent ASCII scan.
+
+## Unicode case
+
+`str`'s case methods keep their ASCII loops, which also learn whether a byte is not
+ASCII. The vectorized loops of `lower`, `upper`, `swapcase`, `casefold` and
+`capitalize` gather that in a boolean reduction of the bytes they map. `title`,
+`isupper` and `islower` keep their loops unchanged and scan separately (`nonascii`,
+also vectorized); `istitle` notes such a byte where it finds no ASCII letter. An ASCII
+letter of the other case decides `isupper` and `islower` without a scan. Bytes
+methods keep their own loops.
+
+A string with a byte that is not ASCII takes `ucasemap`, `ucased` or `utitled`, which
+decode with `uchar` and follow CPython's `do_lower`, `do_upper`, `do_swapcase`,
+`do_capitalize`, `do_title`, `do_casefold` and its three case tests. A byte that
+begins no character is kept and has no case. Most mappings keep a character's size in
+bytes, so `ucasemap` first fills a string of the input's size in one pass. It copies
+a shorter result, and counts and refills a longer one: no character maps to more than
+three times its bytes. `final_sigma` reads the context of a capital sigma in both
+directions, as `handle_capital_sigma` does.
+
+Two pure C helpers read 13,726 bytes of constant tables in `runtime.c`.
+`pys_unicode_case_flags` returns a code point's upper, lower, titlecase and
+case-ignorable flags from runs that alternate with period two, so a script that
+interleaves its cases takes one entry. `pys_unicode_case_map` returns the lower,
+upper, title or casefold mapping as up to three 21-bit code points, from runs of
+equal distance at step one or two and a pool of the 255 longer mappings. Both
+search their runs without a data-dependent branch.
+
+`tools/unicode_classification_tables.py` generates these tables with the
+classification table. It reads every value from the pinned CPython's `str` methods,
+one code point at a time, including the two properties that only context shows, and
+`--check` decodes the tables again for all 1,114,112 code points. `tools/rtcheck.py`
+fuzzes the traversal against CPython, and `tools/unicode_audit.py` compares the
+native mappings, tests and context properties of every code point in JIT and AOT.
+[`bench/unicode_case`](../bench/unicode_case/README.md) measures the cost to ASCII text
+and compares the per-character path with CPython.
 
 ## Private primitives
 

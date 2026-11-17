@@ -131,8 +131,8 @@ listed in the [ports catalog](../ports/README.md).
    deviations or exclusions. Do not silently normalize Unicode offsets or remove
    failing assertions to count a whole method as covered.
 6. Put unsupported uses in `tests/errors/` and observable differences in
-   `tests/deviations/`. Non-ASCII behavior remains part of the inventory while
-   [#120](https://github.com/den-run-ai/pystachy/issues/120) is open.
+   `tests/deviations/`. Non-ASCII behavior remains part of the inventory: invalid
+   UTF-8 and surrogates [still differ](language/compatibility.md#unicode).
 7. Measure runtime, build time and memory separately from correctness. Compare
    upstream CPython, the adapted source on CPython, JIT and AOT; disclose losses
    and CPython-only accelerators as well as gains.

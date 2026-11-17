@@ -1,4 +1,4 @@
-# Non-ASCII tag/attribute case conversion uses Pystachy's ASCII-only str.lower.
+# html.parser lowers tag and attribute names of any script, as str.lower() does (#120).
 from html.parser import HTMLParser
 class Names(HTMLParser):
     def __init__(self) -> None:
