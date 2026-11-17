@@ -38,7 +38,7 @@ described [below](#unchanged-cpython-files).
 | 🟢 `token` | Adapted CPython | Token constants, `tok_name`, `EXACT_TOKEN_TYPES`, `ISTERMINAL`, `ISNONTERMINAL`, `ISEOF` | `__all__` and `tok_name` written out, with CPython's values and order |
 | 🟢 `curses.ascii`, `this` | Unchanged CPython | ASCII character predicates and conversions; the Zen of Python | Subset string and type rules apply |
 | 🟡 `string` | Adapted CPython | Constants, `capwords`, `Template`, `Formatter` and its subclasses | No `Template` subclasses; `Formatter` arguments of one union, no attribute or item fields |
-| 🟡 `difflib` | Adapted CPython | `SequenceMatcher` (also the generator `get_grouped_opcodes()`), `unified_diff()`, `context_diff()`, `restore()`, `get_close_matches`, junk predicates and `Match` | String items; `ndiff()` and `Differ` need the yield type of a recursive generator, and `HtmlDiff` its class attributes' types |
+| 🟡 `difflib` | Adapted CPython | `SequenceMatcher` (also the generator `get_grouped_opcodes()`), `unified_diff()`, `context_diff()`, `restore()`, `get_close_matches`, junk predicates and `Match` | String items; `ndiff()` and `Differ` need the yield type of a recursive generator, and `HtmlDiff` a field that `__init__` does not set |
 | 🟡 `gettext` | Adapted CPython | `NullTranslations`, `textdomain`, `bindtextdomain` | Catalog lookups (`gettext()`, `translation()`, `install()`) do not compile: they import `locale` and key their cache by a class (#7); no subclass of `NullTranslations`; see [limits](compatibility.md#gettext) |
 
 ### Regular expressions

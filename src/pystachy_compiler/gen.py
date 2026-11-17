@@ -1576,6 +1576,15 @@ class Gen:
         self.guessvars: dict[str, str] = {}  # comprehension variables that guess binds to their items' types
         self.guessowner: dict[str, FnInfo] = {}  # and the function whose comprehension binds each
         self.globanns: dict[str, Node] = {}  # and the annotations of single-binding annotated globals (module_anns)
+        # single-binding module globals: their values and modules (analysis.module_values), which
+        # field inference types them by (guess); guessing: those whose value it is typing now
+        self.globvalues: dict[str, Node] = {}
+        self.globowners: dict[str, Mod] = {}
+        self.guessing: dict[str, bool] = {}
+        # the types guess() gave constants' values within one guess of a constant's value, which
+        # starts afresh, and the reads of a constant being guessed that it has cut (guess)
+        self.globguess: dict[str, str] = {}
+        self.guesscuts = 0
         self.strtuples: dict[str, list[str]] = {}  # and tuples of them: functools.wraps()'s assigned
         self.abstracts: dict[str, list[str]] = {}  # each class's own @abstractmethod methods (abstract_defs)
         self.abcmeta: dict[str, bool] = {}  # the classes whose statements pass metaclass=ABCMeta

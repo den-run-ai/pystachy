@@ -163,8 +163,9 @@ keyword arguments; the upstream generator and grouping algorithm are unchanged.
 `tests/programs/upstream/upstream_difflib_context.py` checks selected CPython output-format
 assertions and empty, insertion, deletion, replacement, grouping and Unicode cases.
 `ndiff()` and `Differ.compare()` still fail because their recursive `_fancy_helper()`
-generator yields a type the compiler cannot infer; `HtmlDiff`'s class attribute types
-also remain unsupported.
+generator yields a type the compiler cannot infer. `HtmlDiff`'s class attributes now take
+their module constants' types, but `make_table()` still fails: `_make_prefix()` sets a field
+(`self._prefix`) that `__init__` does not.
 
 ### `gettext`
 

@@ -1,7 +1,7 @@
 """Program component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.reflection import refl_needs_eh, refl_props
-from src.pystachy_compiler.analysis import all_imports, collect, constant_writes, defines, module_anns, module_ints, module_reads, module_strs, needs_eh, none_assigns, reads_builtin
+from src.pystachy_compiler.analysis import all_imports, collect, constant_writes, defines, module_anns, module_ints, module_reads, module_strs, module_values, needs_eh, none_assigns, reads_builtin
 from src.pystachy_compiler.diagnostics import NeedHierarchy, Rejoin, dynamic_program, fail, shown
 from src.pystachy_compiler.dynamic import comparison_properties, comparison_storage
 from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_protocol
@@ -1359,6 +1359,7 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
                 # (N = NewType("N", T) binds N where it runs, as a def does: a call N(x) that may come
                 # first checks it, see call)
                 m.body.kids[i] = mk("newtype", st.kids[0].s, st.line, []) if self.newtype_name(st.kids[0].s) else mk("pass", "", st.line, [])
+    module_values(own, self.globvalues, self.globowners)  # (after typing_forms: x: Final = v is x = v)
     for q in self.taliases:
         # (CPython evaluates an assigned alias's value where it assigns it, a type statement's
         # only where its __value__ is read)
