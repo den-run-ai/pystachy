@@ -1648,7 +1648,8 @@ A subset implementation of CPython's `platform` ([test](../tests/programs/librar
   `os.uname()`: `system`, `node`, `release`, `version` and `machine`, a field that is
   `unknown` as `''`. `system()`, `node()`, `release()`, `version()` and `machine()` are its
   fields. Its result is a NamedTuple of those five; CPython's has a sixth item, `processor`,
-  which it reads from the command `uname -p`.
+  which it reads from the command `uname -p`
+  ([deviation](../tests/deviations/lib_platform_uname_items.py)).
 - `python_implementation()` is `'Pystachy'`
   ([deviation](../tests/deviations/lib_platform_implementation.py)): a program that tests it for
   `'CPython'` or `'PyPy'` takes its other branch. `python_version()` and

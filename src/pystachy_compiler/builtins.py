@@ -232,7 +232,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return Val(self.rt("pys_thread_stack_valid", "i64", [f"i64 {size.v}"]), "int")
     if name == "__pys_uname":
         # platform.uname()'s fields (lib/platform.py): the i-th of the system's uname(2)
-        if self.curfn.mod != "platform" or len(args) != 1:
+        if (self.curfn.mod != "platform" or not lib_source(self.curfn.node.line, self.libdir, "platform.py") or
+                len(args) != 1 or any([a.kind in ["kw", "starred", "dstar"] for a in args])):
             self.err(f"name '{name}' is not defined")
         field = self.as_int(self.expr(args[0], "int"))
         return Val(self.rt("pys_uname", "ptr", [f"i64 {field.v}"]), "str")
