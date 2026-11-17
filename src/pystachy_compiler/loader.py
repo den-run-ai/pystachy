@@ -179,23 +179,48 @@ def cm_methods(n: Node, names: list[str]) -> None:
                     # def NAME(self, ...): raise E, abstract and a context manager: CPython's helper
                     # calls it for the generator, where it raises. _pys_cm_abs_NAME_LINE is that
                     # function, which NAME calls first; _pys_cm_NAME is the generator the
-                    # overrides' managers are typed with, which nothing then makes
+                    # overrides' managers are typed with, which nothing then makes. NAME is
+                    # otherwise the wrapper of the branch below, abstract
                     me = d.kids[0].kids[0].s
                     cms.append(st.s + "." + d.s)
+                    root = cm_root(st.s, d.s, bases, cms)
+                    reads = [st.s, root, "_pys_cm_GCM"]
+                    a = "_pys_cm_args" if "args" in reads else "args"
+                    while a in reads:
+                        a += "_"
+                    k = "_pys_cm_kwds" if "kwds" in reads else "kwds"
+                    while k in reads + [a]:
+                        k += "_"
+                    factory = "_pys_cm_factory"
+                    while factory in reads + [a, k]:
+                        factory += "_"
+                    held = "_pys_cm_self"
+                    while held in reads + [a, k, factory]:
+                        held += "_"
+                    if me in reads + [a, k, factory, held]:
+                        me = "_pys_cm_me"
+                        while me in reads + [a, k, factory, held]:
+                            me += "_"
                     if not imported:
                         top.append(Parser(Lexer("from contextlib import _GeneratorContextManager as _pys_cm_GCM\n", st.line).file()).module().kids[0])
                         imported = True
-                    own = f"{st.s}._pys_cm_{d.s}({me}, *args, **kwds)" if st.s in derived else f"{me}._pys_cm_{d.s}(*args, **kwds)"
                     # (this def's body, whatever class the object is of: the method's name has the
                     # def's line, which no other def of the program has, so super().NAME() of a
                     # subclass that declares the method again, also in another module, runs this one)
                     helper = f"_pys_cm_abs_{d.s}_{d.line}"
-                    body = f"{me}.{helper}(*args, **kwds)"
-                    src = f"@{abstract}\ndef {d.s}({me}, /, *args, **kwds):\n    {body}\n    _pys_cm_self: {cm_root(st.s, d.s, bases, cms)} = {me}\n    return _pys_cm_GCM(_pys_cm_self._pys_cm_{d.s}, args, kwds, {own})\n"
+                    own = f"{st.s}._pys_cm_{d.s}({me}, *{a}, **{k})"
+                    src = (f"@{abstract}\ndef {d.s}({me}, /, *{a}, **{k}):\n    {me}.{helper}(*{a}, **{k})\n    {factory} = lambda {a}, {k}: {own}\n"
+                           f"    {held}: {root} = {me}\n    return _pys_cm_GCM({held}._pys_cm_{d.s}, {a}, {k}, {factory}({a}, {k}), {factory})\n")
                     w = Parser(Lexer(src, d.line).file()).module().kids[0]
+                    assignment = w.kids[2].kids[1]
+                    assignment.kids[1] = mk("cmfactory", "", d.line, [assignment.kids[1], mk("name", a, d.line, []), mk("name", k, d.line, [])])
+                    call = w.kids[2].kids[-1].kids[0]
+                    call.kids[1].kind = "cmref"  # metadata binding, not an attribute lookup on self
                     raises = clone(d)
                     raises.s = helper
                     raises.kids = [raises.kids[0], mk("noann", "", d.line, []), raises.kids[2]]
+                    if d.pyname == "":
+                        d.pyname = d.s  # the generator's source name, before its hidden binding
                     d.s = "_pys_cm_" + d.s
                     d.kids = d.kids[:3]
                     d.kids[2].kids.append(Parser(Lexer("def _pys_cm_yield():\n    yield\n", d.line).file()).module().kids[0].kids[2].kids[0])
