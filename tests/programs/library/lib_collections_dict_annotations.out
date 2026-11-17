@@ -1,0 +1,5 @@
+['a', 'b'] defaultdict(<class 'int'>, {'x': 2}) defaultdict(<class 'list'>, {'k': [1]}) ['n'] 7 1
+1 0 0 defaultdict(<class 'int'>, {'z': 0})
+OrderedDict({'b': 2, 'a': 1}) ['b', 'a'] 2 0 3
+True defaultdict OrderedDict Counter
+[exit 0]
