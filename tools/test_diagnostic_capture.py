@@ -112,6 +112,12 @@ class DiagnosticCaptureTests(unittest.TestCase):
         self.assertEqual(output.getvalue(), "")
         self.assertEqual(diagnostics.CAPTURED, [])
         self.assertEqual(generator.newwant, {mine: True})
+        # (an error that a join may explain restarts for the join first, asking for nothing)
+        generator = self.generator(curfn="f", ncand={mine: True}, newhints={"local": "int | str"})
+        with redirect_stderr(StringIO()):
+            with self.assertRaises(diagnostics.Rejoin):
+                gen_err(generator, "'Base' object has no method 'label'")
+        self.assertEqual(generator.newwant, {})
 
     def test_terminal_specialization_context_matches_legacy_message(self):
         diagnostics.CAPTURE = True
