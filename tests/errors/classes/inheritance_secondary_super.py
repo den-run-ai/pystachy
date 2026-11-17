@@ -1,4 +1,4 @@
-# error: a primary hierarchy with another secondary base or super() is not supported
+# error: super() in a primary hierarchy with a secondary base is not supported
 class Root:
     def action(self) -> int:
         return 1
