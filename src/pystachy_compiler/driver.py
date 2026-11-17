@@ -7,7 +7,7 @@ import time
 from src.pystachy_compiler import aot_runtime, cached_run, diagnostics, program_cache
 from src.pystachy_compiler.diagnostics import MAXNEST, RAW, NeedHandlers, NeedHierarchy, NeedSliceEH, Rejoin, fail
 from src.pystachy_compiler.gen import Gen
-from src.pystachy_compiler.lexer import Lexer
+from src.pystachy_compiler.lexer import Lexer, host_text
 from src.pystachy_compiler.loader import Loader
 from src.pystachy_compiler.lower_module import OBJHOOKS, OBJHOOKS_MAIN, address_runtime_ir, jit_alloc
 from src.pystachy_compiler.names import RENAMED
@@ -134,7 +134,7 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
         g.ext = ext
         g.eh = slice_eh
         g.libdir = dirs[-1] if len(dirs) > 0 else ""
-        g.prefix = os.path.realpath(dirs[-1] + "/..") if len(dirs) > 0 else ""
+        g.prefix = host_text(os.path.realpath(dirs[-1] + "/..")) if len(dirs) > 0 else ""
         g.hints = hints
         g.xnot = xnot
         g.hierarchies = hierarchies
