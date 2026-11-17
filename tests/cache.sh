@@ -34,7 +34,8 @@
 #     not executable, and through a symbolic link; a script run by CPython is opened as named, in the
 #     current directory, not looked for in PATH.
 #   - All of it runs in a directory named with a non-ASCII character, whose path reaches programs as
-#     its UTF-8 bytes: sys.prefix names the home and __file__ the program (#1517).
+#     its UTF-8 bytes: sys.prefix names the home, __file__ the program, and importlib.metadata
+#     searches the program's directory (#1517).
 # usage: tests/cache.sh [COMPILER]   (default ./pystachy; "python3 -m pystachy" tests the CPython-hosted
 #        compiler, from a copy of pystachy.py, src/ and the private cache helper). $PY (default python3) loads the extension modules;
 #        for the hosted compiler, the CPython that runs it does unless $PY is set (tools/coverage.sh runs
@@ -401,11 +402,12 @@ same "$E" "and writes no entry"
 out=$(printf '%s\n%s' "$P0" "$C0")
 check "the next run builds the runtime" "$out" 1
 npairs 4 "and its entry replaces the old"
-# host paths reach the program as their UTF-8 bytes (#1517): sys.prefix names the home, and
-# __file__ the program's file
-printf 'import os, sys\nprint(os.path.isdir(sys.prefix), os.path.basename(sys.prefix), os.path.isfile(__file__))\n' > "$T/prefix.py"
+# host paths reach the program as their UTF-8 bytes (#1517): sys.prefix names the home, __file__
+# the program's file, and importlib.metadata finds a distribution beside the program
+mkdir -p "$T/cachedemo-1.0.dist-info" && printf 'Name: cachedemo\nVersion: 1.0\n' > "$T/cachedemo-1.0.dist-info/METADATA"
+printf 'import os, sys\nfrom importlib.metadata import version\nprint(os.path.isdir(sys.prefix), os.path.basename(sys.prefix), os.path.isfile(__file__), version("cachedemo"))\n' > "$T/prefix.py"
 got=$(pys run prefix.py 2>&1)
-if [ "$got" = "True home True" ]; then ok "sys.prefix and __file__ name the home and the program, in a directory named with a non-ASCII character"
-else bad "sys.prefix and __file__ in a directory named with a non-ASCII character: printed '$got', not 'True home True'"; fi
+if [ "$got" = "True home True 1.0" ]; then ok "sys.prefix, __file__ and importlib.metadata's search path, in a directory named with a non-ASCII character"
+else bad "host paths in a directory named with a non-ASCII character: printed '$got', not 'True home True 1.0'"; fi
 echo "$pass passed, $fail failed"
 [ $fail = 0 ]
