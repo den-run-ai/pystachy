@@ -64,6 +64,7 @@ class StateProbeTests(unittest.TestCase):
             def __init__(self):
                 self.newhints = {}
                 self.newx = {}
+                self.newwant = {}
                 self.gtypes = {}
                 self.idevent = ""
                 self.idhint = {}
@@ -83,9 +84,11 @@ class StateProbeTests(unittest.TestCase):
                     self.gtypes["xs"] = "list[int]"
                     self.newhints["join"] = "union[int,str]"
                     self.newx["A.__eq__"] = True
+                    self.newwant["narrow:f:1:x:union[A,B]"] = True
                     raise Rejoin()
                 test.assertEqual(self.hints, {"join": "union[int,str]"})
                 test.assertEqual(self.xnot, {"A.__eq__": True})
+                test.assertEqual(self.xwant, {"narrow:f:1:x:union[A,B]": True})
                 return "clean pass"
 
         try:
@@ -361,6 +364,7 @@ class StateProbeTests(unittest.TestCase):
             def __init__(self):
                 self.newhints = {}
                 self.newx = {}
+                self.newwant = {}
                 self.idevent = ""
                 self.idhint = {}
                 generations.append(self)
@@ -370,11 +374,13 @@ class StateProbeTests(unittest.TestCase):
                     test.assertFalse(self.idfull)
                     self.newhints["join"] = "union[int,str]"
                     self.newx["A.__eq__"] = True
+                    self.newwant["narrow:f:1:x:union[A,B]"] = True
                     self.idevent = "number as an Any value"
                     raise Rejoin()
                 test.assertTrue(self.idfull)
                 test.assertEqual(self.hints, {})
                 test.assertEqual(self.xnot, {})
+                test.assertEqual(self.xwant, {})
                 test.assertFalse(self.final)
                 return "tracking pass"
 
@@ -406,6 +412,7 @@ class StateProbeTests(unittest.TestCase):
             def __init__(self):
                 self.newhints = {}
                 self.newx = {}
+                self.newwant = {}
                 self.idevent = ""
                 self.idhint = {}
                 generations.append(self)
