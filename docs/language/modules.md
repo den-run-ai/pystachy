@@ -89,6 +89,11 @@ A global that module code may leave unbound is checked when a function or anothe
 reads it. A missing binding raises `NameError` or `AttributeError`. This includes a global
 assigned only in a branch, or read during a circular import before its assignment runs.
 
+During a circular import, code may read only the constants of a module that is still being
+imported: its `NAME = literal` (also `Final`) assignments, and its copies of other modules'
+constants (`from m import K`, as mypy's `types.py` re-exports `type_visitor`'s `ANY_STRATEGY`).
+Reading another of its globals there is a compile-time error.
+
 When a template is compiled before module code has assigned a global it reads, Pystachy
 infers the global's type from its first binding in the module-level branches retained by
 the compiler: an annotation, a value whose type is known, or an empty container later filled
@@ -111,7 +116,7 @@ Pystachy resolves these guards while compiling:
 | Guard | Treatment |
 |---|---|
 | `if __name__ == "__main__":` in an imported module | Drops the body. |
-| `if typing.TYPE_CHECKING:` or the imported `TYPE_CHECKING` | Drops the body, including the common optional `typing` import whose handler sets `TYPE_CHECKING = False`. |
+| `if typing.TYPE_CHECKING:` or the imported `TYPE_CHECKING` | Drops the body, including the common optional `typing` import whose handler sets `TYPE_CHECKING = False`. Annotations may still name what its imports bind: see [type-only imports](#type-only-imports). |
 | Module-level `if False:` or `if 0:` | Drops the body outside functions and classes. |
 | Module-level `TYPE_CHECKING = False` followed by `if TYPE_CHECKING:` | Drops the body when that is the name's only binding; other assignments, deletion, imports, star imports or `global` declarations disable this rule. |
 | Tests of the platform: `sys.platform ==` or `!=` a literal string, `in` or `not in` a tuple or list of them, `sys.platform.startswith()` of one or a tuple of them, `os.name ==` or `!=` one, `sys.implementation.name ==` or `!=` one | Resolves them for the system Pystachy compiles for, the one it runs on, with the values its runtime reports: `sys.platform` is `"linux"`, `"darwin"` or `"freebsd"`, `os.name` is `"posix"` and `sys.implementation.name` is `"pystachy"`. This also holds in conditional expressions (`sep = "\\" if sys.platform == "win32" else "/"`), in functions, and in module code for a name that the module assigns such a test once, which nothing else binds, deletes or declares global (`_MS_WINDOWS = sys.platform == "win32"`, then `if _MS_WINDOWS:`); another module may assign that name only the value it holds. |
@@ -131,6 +136,37 @@ Discarding a branch does not change Python scoping. A binding in discarded code 
 a function's name local, including bindings from `:=`, `match` captures and `type` statements.
 A `global` declaration still applies to its entire function. In a class body, Pystachy rejects
 `global` because its class-scope behavior is unsupported.
+
+### Type-only imports
+
+The imports of a module-level `if TYPE_CHECKING:` branch (or the `else` branch of
+`if not TYPE_CHECKING:`) never run, as in CPython, so code cannot read the names they would
+bind. Annotations that CPython does not evaluate may still name what they would bind: a
+class, function, type alias or module of a module that the program imports anyway, through
+`from M import X [as Y]`, a relative import or `import M [as Y]`. This is how modules that
+import each other, such as mypyc's `rtypes` and `class_ir`, annotate with each other's classes:
+
+```python
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pkg.class_ir import ClassIR  # pkg.class_ir imports this module
+
+
+class RInstance:
+    def __init__(self, class_ir: ClassIR) -> None:
+        self.class_ir = class_ir
+```
+
+CPython does not evaluate annotations in a module that imports `annotations` from
+`__future__`, strings (`"ClassIR"`, `list["ClassIR"]`), local variables' annotations, or
+`type` statements' values. Other annotations are evaluated where their statement runs, and
+reading such a name there is rejected (`NameError` in CPython). An annotation that names a
+class of a module the program never imports is rejected with an explanation. A name that
+`typing` or the builtins offer too, such as `Callable`, `Type` or `int`, keeps that meaning in
+annotations even where such an import binds it, as without the import; to name a class of
+that name, import it under another (`from model import Type as ModelType`).
 
 ## Optional imports
 

@@ -843,6 +843,11 @@ def gen_gtype(self, name: str) -> str:
     # has not been compiled yet (see ahead and early), or ""
     if name not in self.gtypes and name in self.mvars and name not in self.noneglobals and not self.copying and self.globread(name) and self.ahead(name) == "":
         self.early(name)
+    if name not in self.gtypes and name in self.earlycopies and owner(name) != self.curfn.mod and owner(name) not in self.inited:
+        # (a module's copy of another module's constant, from m import K, read while its module
+        # is still being imported: typed as that constant is, program.py; declared before
+        # gen_read's check that the import has bound it, which a read before then fails)
+        self.declare(name, self.earlycopies[name])
     return self.gtypes.get(name, "")
 
 def gen_ahead(self, name: str) -> str:
@@ -868,7 +873,7 @@ def gen_ahead(self, name: str) -> str:
     copying = self.copying
     self.copying = st.s == "from" and self.foreign(e.s)  # (see copying)
     if st.kind == "annassign" and st.kids[0].kind == "name":
-        self.new_global(name, self.vtype(st.kids[1]))
+        self.new_global(name, self.mapping_ann(self.vtype(st.kids[1]), st.kids[2]) if len(st.kids) == 3 else self.vtype(st.kids[1]))
     elif st.kind == "assign" and assigns(st, name) and self.empty_of(e) != "":
         self.new_global(name, "dict[?,?]" if e.kind == "dict" else f"{self.empty_of(e)}[?]")
         self.lookahead(name, True)

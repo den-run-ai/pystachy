@@ -55,7 +55,8 @@ its numbers as results for your build.
 | Work on runtime code or its ABI | [Runtime in the subset](runtime-in-subset.md) |
 | Choose a check or investigation tool | [Development tools](../tools/README.md), [testing and CI](testing.md) |
 | Write an issue, pull request, guide or release notes | [Writing guide](writing.md), [submission format](../CONTRIBUTING.md#issues-and-pull-requests) |
-| Prepare a release | [Release procedure](releasing.md), [published releases](https://github.com/den-run-ai/pystachy/releases) |
+| Support a compatibility, port or performance claim | [Evidence guide](evidence.md) |
+| Prepare a release | [Release procedure and stages](releasing.md), [published releases](https://github.com/den-run-ai/pystachy/releases) |
 
 Keep these guides focused on current behavior. Superseded designs, dated audit
 dumps and chronological development logs remain in Git history and their PRs.

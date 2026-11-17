@@ -21,6 +21,7 @@ observable contract.
 | `_markupbase` | `Lib/_markupbase.py` | `cb14dd6f2e2439eb70b806cd49d19911363d424c2b6b9f4b73c9c08022d47030` |
 | `difflib` | `Lib/difflib.py` | `1593ae08143632f4f81fea3beeeb279d803f8a9be922b12fe79664d78bba879d` |
 | `getopt` | `Lib/getopt.py` | `0ce875700c8798193b8e2748f7a27fc542cc4d525a1e6fc403767450ec92be99` |
+| `base64` | `Lib/base64.py` | `a80fc2454f7a0ad644f02259184de5b52084392ddb8b41c1ce372e50a09f3993` |
 | `gettext` | `Lib/gettext.py` | `7178d6ebdd0647b003da0ccdffb9431bc5fcf5c3822a247b578fdb745162865d` |
 | `heapq` | `Lib/heapq.py` | `6d43277e5c76fc0f073cd388fcff852d14d068f6bb6d4886c340f8b75a1229a9` |
 | `fnmatch` | `Lib/fnmatch.py` | `95391dac2ce9f60084d65eba2f4b9d9735e28136d55b684e1fde7d6342555963` |
@@ -96,6 +97,7 @@ CPython runs the source.
 | `functools` | `Modules/_functoolsmodule.c`, `Lib/functools.py` | Generic cache wrapper, plus adapted reduction, comparison-key and `partial` fallbacks, and the unchanged `update_wrapper()` and `wraps()`, which the compiler applies |
 | `_pystachy_string` | `Objects/stringlib/unicode_format.h`, `Objects/unicodeobject.c` | `_string.formatter_parser()` and `formatter_field_name_split()`, returning lists |
 | `re` | `Lib/re/`, `Modules/_sre/sre_lib.h`, `sre.c` | Typed parser/compiler and matching engine with an explicit context stack |
+| `sysconfig` | `Lib/sysconfig/__init__.py` (SHA-256 `09a99ccf9fd3a2b5455167bf1cf64d869fe0e93107baf6c3edb1cbeb7a063b10`) | The variables CPython computes as it starts (`_init_config_vars()`), `get_config_vars()`, `get_config_var()`, `get_paths()`, `get_path()`, `get_preferred_scheme()`, `get_default_scheme()`, the name functions and their docstrings, for one scheme of Pystachy's own layout; the path expansion is a loop in place of `str.format(**vars)` |
 | `_pyrandom` | `Modules/_randommodule.c`, `Python/pyhash.c` | `_random.Random`'s Mersenne Twister, seeding and state; float hashing for float seeds |
 | `binascii` (`_pystachy_binascii`) | `Modules/binascii.c`, `Python/pystrhex.c` | All twelve functions of the C module, with its errors and messages |
 | `hashlib` | `Lib/hashlib.py`, `Modules/_hashopenssl.c` for the API; RFC 1321 and FIPS 180-4 for the algorithms | MD5, SHA-1, SHA-224 and SHA-256 on 32-bit words in Pystachy's ints, as one class of hash object with the C type's docstrings and `new()`'s message |
@@ -147,6 +149,7 @@ Historical upstream-suite checks recorded with the ports:
 | `shlex` | `test_shlex` | 43 of 44 passed; punctuation field is writable |
 | `random` | `test_random` | 106 passed, two memory-limited skips; with `_pyrandom`, 96: nine need over 63 bits, one pickles `_random.Random` |
 | `datetime` | `test_datetime`'s pure-Python cases | 1209 of 1775 passed, 27 skipped; the others need local time, pickling, hashing, subclass construction, `NotImplemented` reflection, the `timezone.utc` singleton or dynamic argument types |
+| `base64` | `test_base64` | All 40 tests passed |
 | `binascii` | `test_binascii`, with `_pystachy_binascii` as `binascii` | 72 of 93 passed and 17 skipped (Hypothesis and big-memory tests); the 4 `test_c_contiguity` cases need non-contiguous `memoryview` buffers |
 
 These counts describe specific recorded checks of the adapted source under

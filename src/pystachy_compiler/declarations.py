@@ -159,6 +159,8 @@ def gen_ann(self, n: Node) -> str:
         return "None"
     if k == "str":
         return self.ann(self.parse_expr(n.s))
+    if k == "badattr":
+        return "!" + n.s  # (why the loader could not qualify a name: an if TYPE_CHECKING: import's, ...)
     s = n.s
     if k == "attr":
         c = self.imported_ref(n)
@@ -251,8 +253,15 @@ def gen_ann(self, n: Node) -> str:
             # (Annotated[Any, ...] in a module that compiles Any as dyn: its type, Any, where other
             # modules infer what it annotates; its metadata aside, as any_in reads it, #782)
             return self.ann(a[0])
-        if base == "literal" or base == "annotated":
-            return "!unsupported type annotation"  # (metadata is not an annotation: Literal["Any"], Annotated[int, "Any"])
+        if (base == "typeguard" or base == "typeis") and len(a) == 1:
+            # TypeGuard[T], TypeIs[T] (typing's): what a type predicate returns, a bool, which tells a
+            # static checker that its argument is a T; Pystachy narrows by what the code tests
+            # (isinstance(), is None, ...), not by a predicate's annotation
+            return "bool"
+        if base == "literal":
+            return self.literal_ann(a, n.line)
+        if base == "annotated":
+            return "!unsupported type annotation"  # (metadata is not an annotation: Annotated[int, "Any"])
         if base == "iterator" or base == "generator":
             # Iterator[T], Generator[Y, None, R] (typing's or collections.abc's): a generator object
             # (an iterator of another kind, as #477 makes them, is not one of these)
@@ -347,6 +356,34 @@ def gen_ann_base(self, b: Node) -> str:
     if base == "mutableset":
         return "set"
     return "!" + CLASSVAR if base == "classvar" else base
+
+def gen_literal_ann(self, items: list[Node], line: int) -> str:
+    # Literal[v, ...] as an annotation: the type of its values, which CPython does not check
+    # against it. A value is True or False, an int (also negative), a str or bytes literal, None
+    # or a nested Literal[...]; values of several types make their union (Literal["r", None]:
+    # str | None), where there is one. "!" and why not
+    ts: list[str] = []
+    for x in items:
+        t = ""
+        if x.kind == "True" or x.kind == "False":
+            t = "bool"
+        elif x.kind == "int" or (x.kind == "unary" and x.s == "-" and len(x.kids) == 1 and x.kids[0].kind == "int"):
+            t = BIG if self.int_policy(line) else "int"
+        elif x.kind == "str":
+            t = "str"
+        elif x.kind == "bytes":
+            t = "bytes"
+        elif x.kind == "None":
+            t = "None"
+        elif x.kind == "index" and (x.kids[0].kind == "name" or x.kids[0].kind == "attr") and self.ann_base(x.kids[0]) == "literal":
+            t = self.literal_ann(x.kids[1].kids if x.kids[1].kind == "tuple" else [x.kids[1]], line)
+        if t == "" or t.startswith("!"):
+            return t if t != "" else "!Literal[...] is supported with bool, int, str and bytes literals and None"
+        if t not in ts:
+            ts.append(t)
+    if len(ts) == 0:
+        return "!unsupported type annotation"
+    return ts[0] if len(ts) == 1 else self.union_type(narrowed(ts))  # (a union holds 64-bit ints, as an annotated one: ann)
 
 def gen_ann_items(self, xs: list[Node]) -> list[str]:
     # the types annotations xs denote, those of tuple[...] or of Callable[[...], R]'s parameters:
@@ -532,8 +569,11 @@ def gen_class_params(self, st: Node) -> str:
     return ""
 
 def gen_alias_value(self, name: str) -> Node:
-    # the value of type alias name: a type statement's, or that an assignment binds
+    # the value of type alias name: a type statement's, or that an assignment binds (of
+    # N = NewType("N", T), T: Loader.newtype)
     st = self.taliases[name]
+    if st.kind == "assign" and st.kids[1].kind == "call":
+        return st.kids[1].kids[2]
     return st.kids[0].kids[0] if st.kind == "typealias" else st.kids[1]
 
 def gen_alias_params(self, name: str) -> list[str]:
@@ -545,7 +585,7 @@ def gen_alias_params(self, name: str) -> list[str]:
     out: list[str] = []
     v = self.alias_whole(name)
     if v.kind != "name" or v.s not in self.typevars:  # (X = T is the TypeVar, which takes none)
-        self.alias_tvars(st.kids[1], out, [name])
+        self.alias_tvars(self.alias_value(name), out, [name])
     return out
 
 def gen_alias_whole(self, name: str) -> Node:
@@ -619,11 +659,17 @@ def gen_alias_problem(self, e: Node) -> str:
         return ""
     return f"!{p}[...] is not supported in a type alias's value"
 
+# CPython's TypeError for N[...] of a NewType N, also of one whose type names a TypeVar
+NEWTYPE_SUBSCRIPT = "'NewType' object is not subscriptable"
+
+
 def gen_alias_args(self, name: str, n: int) -> str:
     # (alias_problem) CPython's TypeError for name[...] with n type arguments, name a type alias
     st = self.taliases[name]
     if st.kind == "typealias":
         return "Only generic type aliases are subscriptable" if st.kids[0].s == "" else ""  # (others take any)
+    if self.newtype_name(name):
+        return NEWTYPE_SUBSCRIPT  # (N = NewType("N", list[T]) too: a NewType is no generic alias)
     v = self.alias_whole(name)
     if v.kind == "name" and v.s in self.taliases:
         return self.alias_args(v.s, n)  # (X = Y of a type statement Y: that TypeAliasType)
@@ -664,6 +710,24 @@ def gen_alias_tvars(self, a: Node, out: list[str], seen: list[str]) -> None:
         return
     for k in a.kids:
         self.alias_tvars(k, out, seen)
+
+def gen_newtype_name(self, name: str) -> bool:
+    # is name a module global that N = NewType("N", T) binds (Loader.newtype), a type alias of T
+    # whose calls return their argument
+    return name in self.taliases and self.taliases[name].kind == "assign" and self.taliases[name].kids[1].kind == "call"
+
+def gen_newtype_reads(self, e: Node) -> None:
+    # N = NewType("N", T) runs (statement newtype): CPython evaluates T first, where a class or
+    # NewType that T names may not be bound yet, as one read through its module (a.C) during a
+    # circular import, or one that an import which raised was to bind: their errors, as
+    # isinstance's argument has them (isinst_reads). (A string in T is not evaluated)
+    if e.kind == "name":
+        self.modchk(e)
+        if (e.s in self.classes or self.newtype_name(e.s)) and (e.chk or self.foreign(e.s)) and e.s in self.gflag:
+            self.guard(self.scalar('xor', [Val(self.mload('bool', f'@g.{e.s}.def'), 'bool'), Val('true', 'bool')]), self.unbound(e.s))
+        return
+    for k in e.kids if e.kind != "str" else []:
+        self.newtype_reads(k)
 
 def gen_alias_kept(self, name: str) -> bool:
     # does the assignment that binds type alias name stay in the module's code: Pos = int binds
@@ -736,8 +800,8 @@ def gen_unalias(self, a: Node, seen: list[str]) -> Node:
         name = a.kids[0].s
         tps = self.alias_params(name)
         xs = a.kids[1].kids if a.kids[1].kind == "tuple" else [a.kids[1]]
-        if len(tps) == 0 or len(xs) != len(tps) or self.alias_variadic(name):
-            return a
+        if len(tps) == 0 or len(xs) != len(tps) or self.alias_variadic(name) or self.newtype_name(name):
+            return a  # (left for alias_ann's error)
         # (the type arguments replace the type parameters first: in type Pair[Row] = ..., Row is
         # the parameter, not the module's alias Row)
         v = self.subst_ann(clone(self.alias_value(name)), tps, [self.unalias(x, seen) for x in xs])
@@ -763,6 +827,8 @@ def gen_alias_ann(self, n: Node) -> str:
     xs = (n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]) if n.kind == "index" else []
     if name in self.resolving:
         return f"!recursive type aliases are not supported: '{short(name)}' refers to itself"
+    if n.kind == "index" and self.newtype_name(name):
+        return "!" + NEWTYPE_SUBSCRIPT + " (CPython raises TypeError where it evaluates this annotation)"
     if n.kind == "index" and self.alias_variadic(name):
         return f"!type alias '{short(name)}' with a TypeVarTuple (*Ts) or ParamSpec (**P) parameter is not supported with type arguments: write its value out"
     if n.kind == "index" and self.alias_arity(name, tps, len(xs)) != "":
@@ -1423,8 +1489,8 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         elif d.s.startswith("__") and d.s.endswith("__"):
             bad = f"@property on the special method {d.s} is not supported"
         elif d.kids[1].kind == "noann" and d not in held:
-            if self.dyn_policy(d.line) and not f.gen:
-                # Opt-in getters infer through the same function instances as
+            if not f.gen:
+                # Getters infer through the same function instances as
                 # ordinary methods. They had no accepted implicit None ABI to
                 # preserve, so a recursive return must be genuinely inferred.
                 f.void_default = False
@@ -2236,7 +2302,7 @@ def gen_scan_fields(self, ci: ClassInfo, f: FnInfo, body: list[Node], known: dic
                 # (Iterator[T] or Iterable[T] types nothing: the field's is its value's, see tmpl_ann)
                 k = "assign" if k == "annassign" and len(st.kids) == 3 and self.iter_item(st.kids[1]) is not None else k
                 why = self.ann_problem(st.kids[1], False) if k == "annassign" and ci.mod != "" else ""
-                t = "" if why != "" else self.vtype(st.kids[1]) if k == "annassign" else self.guess(st.kids[-1], f)
+                t = "" if why != "" else self.mapping_ann(self.vtype(st.kids[1]), st.kids[-1]) if k == "annassign" and len(st.kids) == 3 else self.vtype(st.kids[1]) if k == "annassign" else self.guess(st.kids[-1], f)
                 if t.startswith("!"):
                     why = t[1:]  # (a call of a function Pystachy cannot compile: its error)
                 given = t
@@ -2362,6 +2428,13 @@ def guess_scope(f: FnInfo) -> list[Node]:
     return f.node.kids[0].kids if f.node.kind == "class" else f.node.kids[2].kids
 
 
+def attr_root(e: Node) -> Node:
+    # what attribute chain e (a.b.c) reads its first attribute of: a's node (a call's, ...)
+    while e.kind == "attr":
+        e = e.kids[0]
+    return e
+
+
 def gen_guess(self, e: Node, f: FnInfo) -> str:
     k = e.kind
     if k == "int" or k == "float" or k == "str" or k == "bytes":
@@ -2389,6 +2462,10 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         if t == COMPLEXC and e.s != "~":
             return t
         return "int" if t == "bool" else "" if t in self.classes and UNARY[e.s] in self.classes[t].methods else t
+    if k == "name" and e.s in self.guessvars and self.guessowner[e.s] is f:
+        # (a variable of a comprehension of f: an item of its iterable, see below; not of another
+        # function, whose fields or instance the comprehension's element may need guessed)
+        return self.guessvars[e.s]
     if k == "name" and e.s in f.params:
         t = f.ptypes[f.params.index(e.s)]
         if t == "" and takes_self(f) and e.s == f.params[0] and self.classes[f.cls].tag != 0:
@@ -2427,11 +2504,26 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         if e.s not in ci.ftypes and e.s in ci.methods and ci.methods[e.s].deco == "":
             return f"fn[m:{f.cls}.{e.s}]"  # (self.m: the method bound to the object)
         return ci.ftypes.get(e.s, "")
-    if k == "attr" and e.kids[0].kind == "name" and e.kids[0].s in f.params and e.kids[0].s != me:
-        # p.k of a parameter p holding an object: the type of its field k
+    if k == "attr" and not (e.kids[0].kind == "name" and e.kids[0].s == me) and attr_root(e).kind == "name" and (attr_root(e).s in f.params or (attr_root(e).s in self.guessvars and self.guessowner[attr_root(e).s] is f)):
+        # p.k of a parameter p holding an object (also of a comprehension's variable, or of an
+        # attribute of either or of self's: p.j.k, self.j.k): the type of its field k, or what its
+        # property k returns (its class's fields are declared first: a class declared later, as a
+        # forward reference or a TYPE_CHECKING import names it)
         t = self.guess(e.kids[0], f)
+        chain: list[str] = []
+        c = t
+        while c in self.classes and c not in chain:
+            chain.append(c)
+            c = self.classes[c].base
+        for j in range(len(chain) - 1, -1, -1):
+            # (its bases' first, as their declarations order them: class_fields copies a base's
+            # slots and fields, so a class whose base is not ready yet waits for its turn)
+            if j == len(chain) - 1 or self.classes[chain[j + 1]].fields_ready:
+                self.declare_fields(self.classes[chain[j]])
         if t in self.classes and e.s in self.classes[t].ftypes and e.s not in self.classes[t].methods:
             return self.classes[t].ftypes[e.s]
+        if t in self.classes and e.s in self.classes[t].methods and self.classes[t].methods[e.s].prop and self.classes[t].methods[e.s].bad == "":
+            return self.classes[t].methods[e.s].ret
     if k == "dictstar":
         # {**a, **b} of **kwargs records: their record, each name with its last value's type
         names: list[str] = []
@@ -2526,6 +2618,8 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
             return COMPLEXC  # (complex(): an object of lib/_pystachy_complex.py's class)
         if c == "len" or c == "ord":
             return "int"
+        if c in ["any", "all", "callable", "isinstance", "issubclass", "hasattr"] and not self.bound(c):
+            return "bool"  # (whatever their arguments: self.amb = any(t.x for t in ts))
         if c == "input" or c == "repr" or c == "chr" or c == "ascii" or c == "hex" or c == "oct" or c == "bin":
             return "str"
         if c == "open":
@@ -2542,13 +2636,57 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         return ms[e.kids[0].s].ret if e.kids[0].s in ms and ms[e.kids[0].s].deco != "" else ""
     if k == "cmp" or (k == "unary" and e.s == "not"):
         return "bool"
+    if k == "ifexp" and e.kids[1].kind == "None":
+        # None if c else v: v's type or None
+        t = self.guess(e.kids[2], f)
+        return t if t.startswith("!") else self.optional(t) if t != "" and t != "None" and "?" not in t else ""
     if k == "ifexp":
         return self.guess(e.kids[1], f)
+    if k == "boolop":
+        # a or b, a and b: one of its operands, so the type both have; for a or b, also a's type
+        # without None where b has it or is an empty list or dict display (items or [])
+        a = self.guess(e.kids[0], f)
+        b = self.guess(e.kids[1], f)
+        if a.startswith("!") or b.startswith("!"):
+            return a if a.startswith("!") else b
+        if a != "" and (a == b or (a == BIG and b == "int")):
+            return a  # (an int literal is a promoting int where ints promote: bigints.py)
+        if e.s == "or" and is_opt(a):
+            other = e.kids[1]
+            if unopt(a) == b or (unopt(a) == BIG and b == "int") or (len(other.kids) == 0 and ((other.kind == "list" and is_list(unopt(a))) or (other.kind == "dict" and is_dict(unopt(a))))):
+                return unopt(a)
+        return ""
     if k == "walrus":
         return self.guess(e.kids[0], f)
     if k == "list" and len(e.kids) > 0:
         t = self.guess(e.kids[0], f)
         return self.ctype("list", [t]) if t != "" and not t.startswith("!") else t
+    if k == "listcomp" and e.s == "" and len(e.kids) == 3 and e.kids[1].kind == "name":
+        # [v for x in xs]: a list of v's type, where x is an item of xs (a list's, a tuple's, a
+        # set's, a str's, a range's, or a dict's key), as guessvars binds it while v is typed
+        arg = e.kids[2]
+        rng = arg.kind == "call" and arg.kids[0].kind == "name" and arg.kids[0].s == "range" and not self.bound("range")
+        t = "list[int]" if rng else self.guess(arg, f)
+        et = "int" if t == RANGEC else self.iter_elem(t)
+        if t.startswith("!") or et == "" or "?" in et:
+            return t if t.startswith("!") else ""
+        cv = e.kids[1].s
+        had = cv in self.guessvars
+        outer = self.guessvars[cv] if had else ""
+        outerf = self.guessowner[cv] if had else f
+        self.guessvars[cv] = et
+        self.guessowner[cv] = f
+        vt = ""
+        try:
+            vt = self.guess(e.kids[0], f)
+        finally:
+            if had:
+                self.guessvars[cv] = outer
+                self.guessowner[cv] = outerf
+            else:
+                del self.guessvars[cv]
+                del self.guessowner[cv]
+        return vt if vt.startswith("!") else self.ctype("list", [vt]) if vt != "" and vt != "None" and "?" not in vt else ""
     if k == "tuple" and 0 < len(e.kids) <= 9:
         ts = [self.guess(x, f) for x in e.kids if x.kind != "starred"]
         bad = [t for t in ts if t.startswith("!")]

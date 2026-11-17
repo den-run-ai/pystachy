@@ -739,6 +739,8 @@ def gen_stmt_main(self, n: Node) -> None:
         if n.s != "" and self.ann_problem(n.kids[1], False) != "":
             self.err(n.s)  # (the declaration of a local that only dropped code binds: Loader.dropped_locals())
         t = self.vtype(n.kids[1])
+        if len(n.kids) == 3:
+            t = self.mapping_ann(t, n.kids[2])  # (x: dict[K, V] = defaultdict(...): the defaultdict's)
         if n.kids[0].kind == "name":
             self.declare(n.kids[0].s, t)
         if len(n.kids) == 3:
@@ -1135,6 +1137,10 @@ def gen_stmt_main(self, n: Node) -> None:
             self.sdiscard(f"ptr {self.lcs[-1]}", v, et)
         else:
             self.list_store(Val(self.lcs[-1], self.ctype("list", [et])), self.list_hold(v, et), "append")
+    elif k == "newtype":
+        self.newtype_reads(self.alias_value(n.s))
+        if n.s in self.gflag:
+            self.mstore('bool', 'true', f'@g.{n.s}.def')  # (N = NewType(...) has run: see call)
     elif k == "defaults" or k == "cdefaults":
         if k == "defaults":
             self.decorators(self.funcs[n.s].node, self.funcs[n.s].node.kids[3:] if self.curfn.mod != "" else [], {})

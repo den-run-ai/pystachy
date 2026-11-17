@@ -424,8 +424,9 @@ The generator operations mark an LLVM switched-resume coroutine's structure (see
 [generators](internals.md#generators)). `gen.start` ends the entry block of a generator function
 (`IFn.coro`, printed `presplitcoroutine`) and holds its name; `gen.yield` (a `%slot` value and a
 flag: whether closing the generator there runs its code) and `gen.ret` (an optional `%slot`)
-end blocks where it suspends (lowering alone sizes the promise, five words or seven with `send()`
-and `throw()` in the program, and gives a generator that has not started its state); `gen.promise` without an operand is its own promise's address,
+end blocks where it suspends (lowering alone sizes the promise, five words, seven with `send()`
+and `throw()` in the program, or nine where a module opts in to promoting ints, and gives a
+generator that has not started its state); `gen.promise` without an operand is its own promise's address,
 and with a generator operand that generator's. `gen.resume` runs a generator to its next
 suspend and has every effect (user code); the exception passes make it an `invoke` like a
 call. `gen.drop` closes and destroys a generator a loop owns and never raises. The verifier
