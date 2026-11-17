@@ -284,8 +284,9 @@ call barriers, so the representation change preserves dictionary lookup fusion.
 
 `alloc.fixed` allocates a declared class (including specialized classes and custom
 exceptions) or a fixed tuple. Its result retains the native type; LLVM lowering alone
-chooses the class layout's byte size or the tuple's eight-byte slot count. It uses the
-existing zeroed, GC-scanned `pys_alloc` allocation and keeps its `A` effect. Object
+chooses the class layout's byte size or the tuple's eight-byte slot count, and the call: the
+existing zeroed, GC-scanned `pys_alloc` allocation, or `pys_new` where the `allocelide`
+optimization below takes a layout that holds no reference. It keeps its `A` effect. Object
 initialization, field and tuple stores, stack tuple promotion, and the runtime ABI
 retain their existing behavior. The verifier checks the layout type, one result,
 runtime declaration and absence of unused operands or metadata. Variable-sized
