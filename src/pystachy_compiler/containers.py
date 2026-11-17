@@ -225,6 +225,8 @@ def gen_set_display(self, n: Node, want: str, folded: bool, returnctx: bool = Fa
         et = self.none_items(jt)  # (None among the strs of a tuple's item: str | None)
     elif not given and none_key(jt) and len([v for v in items if v.t == "None" or is_opt(v.t)]) > 0:
         et = jt  # (None among the elements, {None, "a"}: T | None; {None}: a set whose elements are None, set[None])
+    if not given and self.class_join(et, jt, "") != "":
+        et = jt  # (objects of classes of one hierarchy: of their nearest common base)
     if self.elem_problem(et) != "":
         self.err(self.elem_problem(et))
     if const:
