@@ -56,7 +56,7 @@ from src.pystachy_compiler.analysis import (
 from src.pystachy_compiler.argparse_schema import lower_argparse, parser_import
 from src.pystachy_compiler.ctypes_schema import ctypes_import, lower_ctypes
 from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, IDPRAGMA, INTFILES, INTSPANS, LINES, MODDUNDERS, RAW, NeedHandlers, dynamic_pragma, fail, int_pragma, leading_pragma
-from src.pystachy_compiler.lexer import KEYWORDS, Lexer
+from src.pystachy_compiler.lexer import KEYWORDS, Lexer, host_text
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, short
 from src.pystachy_compiler.parser import Parser
@@ -3681,7 +3681,7 @@ class Loader:
             return ""
         if n.s == "__file__" and "__file__" not in t.kinds and t.path != "":
             n.kind = "str"  # (module t's source file: see qexpr)
-            n.s = os.path.abspath(t.path)
+            n.s = host_text(os.path.abspath(t.path))
             n.kids = []
             return ""
         k = t.kinds.get(n.s, "")
@@ -3726,7 +3726,7 @@ class Loader:
                 # built ahead of time keeps from where it was built; not a type parameter of that
                 # name, which a generic def's signature and body, and a generic class, may read)
                 n.kind = "str"
-                n.s = os.path.abspath(m.path)
+                n.s = host_text(os.path.abspath(m.path))
                 return
             if k == "name" and n.s == "__debug__":
                 n.kind = "True"  # (CPython runs without -O; nothing can bind __debug__)

@@ -34,7 +34,7 @@
 #     not executable, and through a symbolic link; a script run by CPython is opened as named, in the
 #     current directory, not looked for in PATH.
 #   - All of it runs in a directory named with a non-ASCII character, whose path reaches programs as
-#     its UTF-8 bytes: sys.prefix names the home (#1517).
+#     its UTF-8 bytes: sys.prefix names the home and __file__ the program (#1517).
 # usage: tests/cache.sh [COMPILER]   (default ./pystachy; "python3 -m pystachy" tests the CPython-hosted
 #        compiler, from a copy of pystachy.py, src/ and the private cache helper). $PY (default python3) loads the extension modules;
 #        for the hosted compiler, the CPython that runs it does unless $PY is set (tools/coverage.sh runs
@@ -401,10 +401,11 @@ same "$E" "and writes no entry"
 out=$(printf '%s\n%s' "$P0" "$C0")
 check "the next run builds the runtime" "$out" 1
 npairs 4 "and its entry replaces the old"
-# the home's path reaches the program as its UTF-8 bytes (#1517): sys.prefix names the home
-printf 'import os, sys\nprint(os.path.isdir(sys.prefix), os.path.basename(sys.prefix))\n' > "$T/prefix.py"
+# host paths reach the program as their UTF-8 bytes (#1517): sys.prefix names the home, and
+# __file__ the program's file
+printf 'import os, sys\nprint(os.path.isdir(sys.prefix), os.path.basename(sys.prefix), os.path.isfile(__file__))\n' > "$T/prefix.py"
 got=$(pys run prefix.py 2>&1)
-if [ "$got" = "True home" ]; then ok "sys.prefix is the home, in a directory named with a non-ASCII character"
-else bad "sys.prefix in a directory named with a non-ASCII character: printed '$got', not 'True home'"; fi
+if [ "$got" = "True home True" ]; then ok "sys.prefix and __file__ name the home and the program, in a directory named with a non-ASCII character"
+else bad "sys.prefix and __file__ in a directory named with a non-ASCII character: printed '$got', not 'True home True'"; fi
 echo "$pass passed, $fail failed"
 [ $fail = 0 ]
