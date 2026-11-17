@@ -435,7 +435,7 @@ unexpected output. Its `match-dispatch-smoke.json` artifact is correctness evide
 paired performance and optional pyperf measurements have separate reproduction commands
 in [the match benchmark](../bench/match_dispatch/README.md).
 
-The PR `opt-in` worker and full-run `hosted` jobs run 20 independent example API suites through
+The PR `opt-in` worker and full-run `gc-aot-2` jobs run 20 independent example API suites through
 `make test-pytest-workloads PYTEST_WORKLOAD_ARGS='--group examples'`, reusing the
 verified compiler. Splitting these checks between existing jobs leaves more room
 within the 15-minute budget without adding workers. `pytest-workloads.json` records every
@@ -447,7 +447,7 @@ Missing modules/results, empty suites, skips, xfails and failed builds fail this
 check. These tests supplement the exact CLI, FFI, upstream-reference and timing
 contracts below; they do not replace those distinct observations.
 
-The x86-64 PR `opt-in` worker (full-run `hosted`) also runs `make test-pytest-native` with the verified compiler
+The x86-64 PR `opt-in` worker (full-run `gc-aot-2`) also runs `make test-pytest-native` with the verified compiler
 and pinned original pytest oracle. Its JIT examples retain the hosted compiler; repeated
 native builds use `PYTEST_NATIVE_COMPILER="$PWD/build/verify/pystachy2"`, with `PYSTACHY_HOME`
 pointing at the checkout. Test modules run first, at most four at once. Only after they
