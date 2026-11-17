@@ -703,55 +703,6 @@ def last_name(s: str) -> str:
     return s[max(s.rfind("$"), s.rfind(".")) + 1 :]
 
 
-def all_stmts(body: list[Node]) -> list[Node]:
-    # the statements of module code that Loader.public() takes __all__ from: those at its top
-    # level and, in the place of a try statement there, the leading statements of its body that
-    # assign __all__ a list or tuple of strings, where nothing else in the try statement that may
-    # run mentions __all__. Such an assignment cannot raise, so CPython makes it wherever the try
-    # statement runs, and nothing rebinds it there (#1513); the except clauses run only where the
-    # rest of the body raises. __all__ bound in another way there, or in an if statement's branch,
-    # is not seen: the import then takes every public name, as before.
-    out: list[Node] = []
-    for st in body:
-        lead = 0
-        while st.kind == "try" and lead < len(st.kids[0].kids) and all_literal(st.kids[0].kids[lead]):
-            lead += 1
-        rest: list[Node] = []
-        if lead > 0:
-            rest = st.kids[0].kids[lead:]
-            raises = len(rest) > 0
-            for h in st.kids[1:]:
-                if h.kind != "except" or raises:
-                    rest.append(h)
-        if lead == 0 or mentions_all(rest):
-            out.append(st)
-        else:
-            out.extend(st.kids[0].kids[:lead])
-    return out
-
-
-def all_literal(st: Node) -> bool:
-    # is statement st __all__ = a list or tuple of strings
-    if st.kind != "assign" or len(st.kids) != 2 or st.kids[0].kind != "name" or st.kids[0].s != "__all__":
-        return False
-    v = st.kids[1]
-    if v.kind != "list" and v.kind != "tuple":
-        return False
-    for x in v.kids:
-        if x.kind != "str":
-            return False
-    return True
-
-
-def mentions_all(nodes: list[Node]) -> bool:
-    # does code in nodes mention __all__: a name, an import's alias, an except clause's name, an
-    # attribute or even a string of it
-    for n in nodes:
-        if n.s == "__all__" or mentions_all(n.kids):
-            return True
-    return False
-
-
 def ascii_ident(s: str) -> bool:
     # is ASCII string s an identifier, as str.isidentifier() tells
     for i in range(len(s)):
@@ -3339,7 +3290,7 @@ class Loader:
         # the names from src import * takes: those __all__ lists, else the names not starting with _
         out: list[str] = []
         found = False
-        for st in all_stmts(src.body.kids):
+        for st in src.body.kids:
             if st.kind == "assign" and len(st.kids) == 2 and st.kids[0].kind == "name" and st.kids[0].s == "__all__":
                 found = True
                 out = []
