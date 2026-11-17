@@ -642,7 +642,7 @@ TEXT_OPS: dict[str, str] = {
 # Byte-oriented boundaries audited only in user/library code, not inside runtime.py.
 # These are conservative: a call on any non-ASCII str is a porting audit hit, even where its
 # result is right.
-UNICODE_AUDIT: list[str] = ("upper lower swapcase capitalize title casefold isupper islower istitle expandtabs").split()
+UNICODE_AUDIT: list[str] = ["expandtabs"]
 
 # the methods of frozenset (those that change nothing) and of set, which Gen.smethod compiles
 FSETMETHODS: list[str] = "copy difference intersection isdisjoint issubset issuperset symmetric_difference union".split()
