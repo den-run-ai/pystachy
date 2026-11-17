@@ -132,6 +132,7 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
     self.building[f.ll] = True
     sel = self.selfcls
     self.selfcls = ""  # (its annotations name its class's types: f.cls's, see tvar)
+    tried = self.xtry  # (an attempt this function's narrowing makes lasts to its end: narrows)
     ret = f.ret
     noret = f.noret
     asked = self.dyn_asked(f)
@@ -162,6 +163,7 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
                 del self.newhints[key]
     del self.building[f.ll]
     self.selfcls = sel
+    self.xtry = tried
     self.fn.n = self.n
     self.fn.otherbinds = None  # the binding index is needed only while building this function
     self.fns.append(self.fn)

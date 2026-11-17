@@ -31,6 +31,10 @@ def gen_err(self, msg: str) -> None:
         # iteration protocol instead gets an explicit runtime-error arm; unused
         # methods must not make an otherwise accepted program fail to compile.
         self.newx[self.xtry] = True
+        if self.xtry.startswith("narrow:"):
+            # (nor may a declined narrowing's union type storage on the next pass: this pass's
+            # joins are found again where they are not its, see narrows)
+            self.newhints = {}
         raise Rejoin()
     if len(self.newhints) > 0 and not self.final:
         raise Rejoin()  # (an error after a join may come of the narrower type it widens: see Rejoin)

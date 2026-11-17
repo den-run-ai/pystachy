@@ -70,6 +70,20 @@
       "diagnostic": "tests/programs/upstream/upstream_colorsys_extracted.py:36: error: unpacking a Any into the arguments of colorsys.rgb_to_hsv() is not supported (a tuple's items are)",
       "reason": "With the pragma the mixed int/float tuples of the test's values list become Any values, and f(*value) of an Any value is not supported; the unchanged program passes.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/774"
+    },
+    {
+      "case": "tests/programs/classes/isinstance_class_tuples.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/classes/isinstance_class_tuples.py:49: error: 'Op' object has no attribute 'dest'",
+      "reason": "isinstance() with a tuple of classes narrows to their union only where no module opts in to dynamic Any, whose attempts end the narrowing's; there op keeps its class Op, as on main.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/1325"
+    },
+    {
+      "case": "tests/programs/classes/isinstance_class_tuples.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/classes/isinstance_class_tuples.py:49: error: 'Op' object has no attribute 'dest'",
+      "reason": "isinstance() with a tuple of classes narrows to their union only where no module opts in to dynamic Any, whose attempts end the narrowing's; there op keeps its class Op, as on main.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/1325"
     }
   ]
 }
