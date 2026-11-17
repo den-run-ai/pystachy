@@ -72,7 +72,7 @@ PROGRAM = """
     pep695 taliases recursive reflrecs reflstores refllate refltexts rtdatas dyntypes dynclasses
     dynfns dynkeys dynlines dynsig dynfuncs dynfnt dynboxes dynwide dynrets dynrline dynseen gidbox
     idoff idfull idevent idsplit idtry idhint gendrops_counted genplain rdpass entries resumes_counted
-    genbase genargs earlycopies sentinelglobals globvalues globowners globalts pseq pcall pstamps plogk plogv pdry
+    genargs earlycopies sentinelglobals globvalues globowners globalts pseq pcall pstamps plogk plogv pdry
     implicitgen iterabc
 """.split()
 # Gen's fields that hold a module's state, one lowering's, or one operation's, which the operation
