@@ -5286,6 +5286,8 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str, 
         item = self.ntup(item)
     if a.t in self.nts and "__eq__" not in self.classes[a.t].methods:
         a = self.ntup(a)
+    if (item.t == BIG) != (a.t == BIG) and self.big_union(a if item.t == BIG else item):
+        return self.titem_big(item, a, item.t == BIG, hit, ph, value, lenient) or identity
     paired = item.t != a.t and self.ueq_type(item.t) and self.ueq_type(a.t) and not (self.isnum(item.t) and self.isnum(a.t))
     setpair = is_set(item.t) and is_set(a.t) and self.wider(selem(item.t), selem(a.t)) != ""
     nested = self.dyn_policy(self.line) and self.container_pair_type(item.t, a.t)
@@ -5379,6 +5381,45 @@ def gen_titem_nt(self, item: Val, a: Val, left: bool, hit: str, ph: Ins | None, 
     if self.titem_eq(t if left else item, a if left else t, hit, ph, value, lenient):
         found = True
     self.br(done)
+    self.place(done)
+    return found
+
+def gen_big_union(self, v: Val) -> bool:
+    # whether titem_big compares a promoting int with v: a closed union of builtin scalars or
+    # containers (also one that may be None, or a recursive alias's), which holds a 64-bit int
+    # (bigints.py); a union of classes (titem_union) or with complex numbers compares otherwise
+    t = unopt(self.rec_type(v.t))
+    return is_union(t) and not self.reference_union(t) and COMPLEXC not in umembers(t) and self.ueq_type(t)
+
+def gen_titem_big(self, item: Val, a: Val, left: bool, hit: str, ph: Ins | None, value: str, lenient: bool = False) -> bool:
+    # titem_eq of tuple item and x, where item (left) or x is a promoting int and the other a
+    # union that big_union takes (#1354). Where the promoting int fits 64 bits, its 64-bit int
+    # compares with the union as an int does; its low word is read on that branch only. Past
+    # 64 bits it equals no int or bool the union may hold, only a float of its value, which
+    # pys_big_cmp_float compares exactly, as CPython compares an int with a float.
+    w = item if left else a
+    o = a if left else item
+    fit = self.label()
+    wide = self.label()
+    done = self.label()
+    self.cbr(self.big_fits([w]), fit, wide)
+    self.place(fit)
+    lo = Val(self.big_lo(w).v, "int")
+    found = self.titem_eq(lo if left else item, a if left else lo, hit, ph, value, lenient)
+    self.br(done)
+    self.place(wide)
+    u = Val(o.v, self.rec_type(o.t))
+    if "float" in umembers(unopt(u.t)):
+        isfloat = self.label()
+        self.cbr(self.utest(u, ["float"], is_opt(u.t) and o.v not in self.nn), isfloat, done)
+        self.place(isfloat)
+        c = self.big_float_cmp("==", w, self.uget(Val(u.v, unopt(u.t)), "float"))
+        if ph is not None:
+            self.incoming(ph, value, self.cur)
+        self.cbr(c.v, hit, done)
+        found = True
+    else:
+        self.br(done)
     self.place(done)
     return found
 

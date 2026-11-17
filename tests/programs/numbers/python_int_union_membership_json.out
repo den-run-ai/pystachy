@@ -1,0 +1,49 @@
+1 1 True False 1 True 0
+1.0 1 True False 1 True 0
+True 1 True False 1 True 0
+'a' 1 True False 1 False 1
+None 1 False True 0 False 1
+[1] 1 False True 0 False 1
+{'a': 1} 1 False True 0 False 1
+4611686018427387904 1 False True 0 False 1
+4.611686018427388e+18 1 False True 0 False 1
+1.1805916207174113e+21 1 False True 0 False 1
+0 1 False True 0 False 1
+False 1 False True 0 False 1
+1 0 False True 0 False 1
+1.0 0 False True 0 False 1
+True 0 False True 0 False 1
+'a' 0 True False 1 False 1
+None 0 False True 0 False 1
+[1] 0 False True 0 False 1
+{'a': 1} 0 False True 0 False 1
+4611686018427387904 0 False True 0 False 1
+4.611686018427388e+18 0 False True 0 False 1
+1.1805916207174113e+21 0 False True 0 False 1
+0 0 True False 1 True 0
+False 0 True False 1 True 0
+1 4611686018427387904 False True 0 False 1
+1.0 4611686018427387904 False True 0 False 1
+True 4611686018427387904 False True 0 False 1
+'a' 4611686018427387904 True False 1 False 1
+None 4611686018427387904 False True 0 False 1
+[1] 4611686018427387904 False True 0 False 1
+{'a': 1} 4611686018427387904 False True 0 False 1
+4611686018427387904 4611686018427387904 True False 1 True 0
+4.611686018427388e+18 4611686018427387904 True False 1 True 0
+1.1805916207174113e+21 4611686018427387904 False True 0 False 1
+0 4611686018427387904 False True 0 False 1
+False 4611686018427387904 False True 0 False 1
+1 1180591620717411303424 False True 0 False 1
+1.0 1180591620717411303424 False True 0 False 1
+True 1180591620717411303424 False True 0 False 1
+'a' 1180591620717411303424 True False 1 False 1
+None 1180591620717411303424 False True 0 False 1
+[1] 1180591620717411303424 False True 0 False 1
+{'a': 1} 1180591620717411303424 False True 0 False 1
+4611686018427387904 1180591620717411303424 False True 0 False 1
+4.611686018427388e+18 1180591620717411303424 False True 0 False 1
+1.1805916207174113e+21 1180591620717411303424 True False 1 True 0
+0 1180591620717411303424 False True 0 False 1
+False 1180591620717411303424 False True 0 False 1
+[exit 0]
