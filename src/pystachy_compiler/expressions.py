@@ -830,7 +830,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         return self.super_call(n.kids[0], n.s, n.kids[2:], own_bound=True, captured=self.expr(n.kids[1], ""))
     if k == "superowninit":
         return self.super_own_init(n.kids)
-    if k in ["matchbind", "matchconst", "matchvalue", "matchseq", "matchclass", "matchfield", "matchunsupported"]:
+    if k in ["matchbind", "matchconst", "matchvalue", "matchseq", "matchstar", "matchclass", "matchfield", "matchunsupported"]:
         return pattern_expr(self, n)
     if k == "cmfactory":
         # The generated contextmanager factory captures the original receiver and
