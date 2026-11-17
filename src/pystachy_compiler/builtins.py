@@ -195,6 +195,15 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         path = self.coerce(self.expr(args[0], "str"), "str")
         limit = self.as_int(self.expr(args[1], "int"))
         return Val(self.rt("pys_cache_file_hash", "ptr", [f"ptr {path.v}", f"i64 {limit.v}"]), "str")
+    if name == "__pys_module_path":
+        # importlib.metadata's search path (lib/importlib/metadata.py): the directories in which
+        # the compiler finds the program's modules, in order, as CPython's sys.path is searched
+        # for the metadata of installed distributions. The paths are those of the compilation,
+        # absolute: a built executable keeps them (as sys.prefix).
+        if (self.curfn.mod != "importlib.metadata" or not lib_source(self.curfn.node.line, self.libdir, "importlib/metadata.py") or
+                len(args) != 0):
+            self.err(f"name '{name}' is not defined")
+        return self.expr(mk("list", "", self.line, [mk("str", d, self.line, []) for d in self.moddirs]), "list[str]")
     if (name == "min" or name == "max") and len([a for a in args if a.kind == "kw" and a.s == "default"]) > 0:
         return self.minmax_default(name, args)
     if name == "__pys_ctypes_value":
@@ -230,6 +239,13 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             self.err(f"name '{name}' is not defined")
         size = self.as_int(self.expr(args[0], "int"))
         return Val(self.rt("pys_thread_stack_valid", "i64", [f"i64 {size.v}"]), "int")
+    if name == "__pys_uname":
+        # platform.uname()'s fields (lib/platform.py): the i-th of the system's uname(2)
+        if (self.curfn.mod != "platform" or not lib_source(self.curfn.node.line, self.libdir, "platform.py") or
+                len(args) != 1 or any([a.kind in ["kw", "starred", "dstar"] for a in args])):
+            self.err(f"name '{name}' is not defined")
+        field = self.as_int(self.expr(args[0], "int"))
+        return Val(self.rt("pys_uname", "ptr", [f"i64 {field.v}"]), "str")
     if name == "__pys_strftime_at":
         # (lib/_pystachy_time.py's: time.strftime(fmt, time.localtime(secs)), or of gmtime() where
         # utc, through runtime.c's pys_strftime_at)

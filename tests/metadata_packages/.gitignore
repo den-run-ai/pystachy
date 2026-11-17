@@ -1,0 +1,3 @@
+# These directories are fixtures, not build products (the repository ignores *.egg-info/).
+!*.egg-info/
+!*.egg-info

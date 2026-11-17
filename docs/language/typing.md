@@ -1062,16 +1062,19 @@ false where it raises `AttributeError`, as in CPython.
 
 ## Fields, dataclasses and NamedTuples
 
-Fields come from class-body annotations or assignments to `self` in `__init__`. Their types
-can be inferred from parameters, literals, constructors, declared function or method results,
+Fields come from class-body annotations or assignments to `self` in `__init__`. Their types can
+be inferred from parameters, literals, constructors, declared function or method results,
 function values, and supported container displays and operations, also through `and` and `or`
 when both operands have one type, or `a` without `None` has `b`'s or `b` is an empty list or
 dict display (`self.dirs = dirs or []`). They can also come from the fields and properties of a
 parameter's object, or `self`'s, read through attributes (`arg.variable.name`),
 `None if c else v`, and list comprehensions without conditions
-([test](../../tests/programs/inference/field_comprehensions.py)). A field that `__init__`
-sets to `None` takes `T | None` from the first other value the program gives it, or holds
-only `None` (see [optional values](#optional-values-and-narrowing)). When specializing a class
+([test](../../tests/programs/inference/field_comprehensions.py)). A tuple or list target in
+`__init__` (`self.a, self.b = v`) types its fields by the items of `v`, unless a method of the
+class assigns the field alone, whose value types it then
+([test](../../tests/programs/inference/field_tuple_targets.py)). A field that `__init__` sets
+to `None` takes `T | None` from the first other value the program gives it, or holds only
+`None` (see [optional values](#optional-values-and-narrowing)). When specializing a class
 template, a field can also use an ordinary generic function's inferred return type if its
 positional arguments and omitted defaults have known types. This uses normal function
 specialization and does not execute the helper or its defaults during inference. Keyword or
@@ -1181,8 +1184,15 @@ as `if not isinstance(obj, Derived): return`. The reference and its native repre
 unchanged; calls still select the actual subclass's override. Reassignment and control-flow
 joins discard refinements that no longer hold. Globals, fields and locals assigned by a
 `nonlocal` closure are not refined; copy a reference to a stable local and test that local.
-Only a single named derived class refines a base type; tuple/union tests and exception-class
-narrowing retain their existing restrictions.
+A tuple of derived classes, `isinstance(obj, (A, B))`, refines it to the union `A | B`, whose
+fields and methods are those every member declares. Where something the function does with that
+union does not compile (`hash(obj)`, or passing it where the base type is expected), or where
+the union would type storage outside the function (the first value of a module global or field
+that only None has held, also as a list's items, or the items of an empty global list, dict or
+set), the function is compiled with the base type instead, as
+without the test. Functions whose return
+type is inferred, module code and programs that opt in to dynamic `Any` keep the base type.
+Exception-class narrowing retains its existing restrictions.
 
 An explicit `C.method(obj, ...)` call evaluates all arguments before entering the method,
 including when the class-typed `obj` is `None`. A body that does not dereference it can

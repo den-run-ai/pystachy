@@ -33,6 +33,9 @@
 #   - The compiler is found through PATH as the shell finds it, past a directory and a file that is
 #     not executable, and through a symbolic link; a script run by CPython is opened as named, in the
 #     current directory, not looked for in PATH.
+#   - All of it runs in a directory named with a non-ASCII character, whose path reaches programs as
+#     its UTF-8 bytes: sys.prefix names the home, __file__ the program, and importlib.metadata
+#     searches the program's directory (#1517).
 # usage: tests/cache.sh [COMPILER]   (default ./pystachy; "python3 -m pystachy" tests the CPython-hosted
 #        compiler, from a copy of pystachy.py, src/ and the private cache helper). $PY (default python3) loads the extension modules;
 #        for the hosted compiler, the CPython that runs it does unless $PY is set (tools/coverage.sh runs
@@ -49,7 +52,8 @@ unset PYSTACHY_RUNTIME_C_CACHE
 unset PYSTACHY_PROGRAM_CACHE_TRACE PYSTACHY_PROGRAM_CACHE_INPUTS
 # This suite must exercise runtime-object reuse, including actual lli launches.
 export PYSTACHY_PROGRAM_CACHE=0
-T=${TMPDIR:-/tmp}/pystachy-cache.$$
+# (a directory named with a non-ASCII character: the home, the programs and the cache are in it)
+T=${TMPDIR:-/tmp}/pystachy-cache-é.$$
 rm -rf "$T"
 mkdir -p "$T/home" "$T/bin" "$T/llvm" "$T/llvmj" "$T/tmp" "$T/d1/pystachy" "$T/d1/clang" "$T/d2" "$T/d3" "$T/d4" "$T/ryu" "$T/mpz" || exit 1
 trap 'rm -rf "$T"' EXIT
@@ -398,5 +402,12 @@ same "$E" "and writes no entry"
 out=$(printf '%s\n%s' "$P0" "$C0")
 check "the next run builds the runtime" "$out" 1
 npairs 4 "and its entry replaces the old"
+# host paths reach the program as their UTF-8 bytes (#1517): sys.prefix names the home, __file__
+# the program's file, and importlib.metadata finds a distribution beside the program
+mkdir -p "$T/cachedemo-1.0.dist-info" && printf 'Name: cachedemo\nVersion: 1.0\n' > "$T/cachedemo-1.0.dist-info/METADATA"
+printf 'import os, sys\nfrom importlib.metadata import version\nprint(os.path.isdir(sys.prefix), os.path.basename(sys.prefix), os.path.isfile(__file__), version("cachedemo"))\n' > "$T/prefix.py"
+got=$(pys run prefix.py 2>&1)
+if [ "$got" = "True home True 1.0" ]; then ok "sys.prefix, __file__ and importlib.metadata's search path, in a directory named with a non-ASCII character"
+else bad "host paths in a directory named with a non-ASCII character: printed '$got', not 'True home True 1.0'"; fi
 echo "$pass passed, $fail failed"
 [ $fail = 0 ]
