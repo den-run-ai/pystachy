@@ -10,8 +10,9 @@ one temporary C array, and writes are copied back once per distinct list.
 ## Socket workload comparison
 
 The November 7, 2026 comparison uses the unchanged binary-validating consumer
-and native bridge from networking draft
-[`b9ab8d9d`](https://github.com/den-run-ai/pystachy/tree/b9ab8d9d3065b94c85952c79bada1de43a021c49/examples/netio).
+and native bridge of the networking prototype at
+[`b9ab8d9d`](https://github.com/den-run-ai/pystachy/tree/b9ab8d9d3065b94c85952c79bada1de43a021c49/examples/netio),
+since merged as [`examples/netio`](../../examples/netio/README.md).
 Both variants run under CPython 3.13.16; only `tools/rt_cpython/ffi.py` changes.
 The baseline twin is identical to main `6e5544cf`.
 
