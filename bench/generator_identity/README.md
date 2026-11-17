@@ -32,9 +32,10 @@ Ordinary no-Any and isolated nontracking generator IR are structural controls.
 
 ## Allocation qualification
 
-Linux x86-64, CPython 3.13.16, LLVM 18.1.3; one instrumented AOT process per row,
-three repetitions of 20,000 scores. Every checksum matched CPython. The baseline
-is main `5f81cc25`; the eager implementation is `e0f17211` (the initial #1486).
+Linux x86-64 (CPU model not recorded), CPython 3.13.16, LLVM 18.1.3; one instrumented
+AOT process per row, three repetitions of 20,000 scores. Every checksum matched
+CPython. The baseline is main `5f81cc25`; the eager implementation is `e0f17211` (the
+initial #1486).
 The companion implementation uses the code accompanying this workload.
 
 | Consumer | Main allocation requests | Eager yields | Nullable companions |
