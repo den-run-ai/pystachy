@@ -107,7 +107,10 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
     # Where a comparison method's call with an Any value does not compile, it is compiled again
     # without that call (Gen.xnot: each such pass adds a method, so these passes count toward no
     # limit). Unsupported iteration protocol bodies use the same per-method retry
-    # registry, but their replacement arms raise an explicit compatibility error.
+    # registry, but their replacement arms raise an explicit compatibility error. Where a
+    # function with isinstance() tests of class tuples does not compile, it is compiled again
+    # with those tests narrowing to the classes' union (Gen.xwant; these passes count toward no
+    # limit either).
     # Where a load finds optional imports whose statements after the imports may raise a subclass
     # of ImportError (Loader.keep_site, #1504), the passes after it keep their except clauses at
     # run time (diagnostics.TRIAL); if one of those fails, the program is compiled from the start
@@ -116,6 +119,7 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
     nokeep = False
     hints: dict[str, str] = {}
     xnot: dict[str, bool] = {}
+    xwant: dict[str, bool] = {}  # (the narrowings of class tuples that functions need: Gen.xwant)
     lambdas = LAMBDAS[0]
     libs = len(LIBS)
     linkdl = len(LINKDL)
@@ -138,6 +142,7 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
         g.moddirs = [host_text(os.path.realpath(d)) for d in dirs]
         g.hints = hints
         g.xnot = xnot
+        g.xwant = xwant
         g.hierarchies = hierarchies
         g.final = passes >= JOINS
         g.idfull = idfull
@@ -164,6 +169,7 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
                 # class-name registry survives alongside the identity/EH policy.
                 hints = {}
                 xnot = {}
+                xwant = {}
                 passes = 0
             elif isinstance(retry, NeedSliceEH):
                 slice_eh = True
@@ -174,14 +180,17 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
                     idfull = True
                 hints = {}
                 xnot = {}
+                xwant = {}
                 passes = 0
             else:
                 for k in g.newhints:
                     hints[k] = g.newhints[k]
-                if len([k for k in g.newx if k not in xnot]) == 0:
+                if len([k for k in g.newx if k not in xnot]) == 0 and len([k for k in g.newwant if k not in xwant]) == 0:
                     passes += 1
                 for k in g.newx:
                     xnot[k] = True
+                for k in g.newwant:
+                    xwant[k] = True
         except Exception:
             if not diagnostics.TRIAL:
                 raise
@@ -192,6 +201,7 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
             nokeep = True
             hints = {}
             xnot = {}
+            xwant = {}
             passes = 0
             idfull = False
             idtry = True

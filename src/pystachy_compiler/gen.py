@@ -837,6 +837,8 @@ from src.pystachy_compiler.expressions import (
     gen_enum_compare as expressions_enum_compare,
     gen_inherit_cmp as expressions_inherit_cmp,
     gen_cmp_alts as expressions_cmp_alts,
+    gen_class_members as expressions_class_members,
+    gen_cmp_object as expressions_cmp_object,
     gen_cmp_try as expressions_cmp_try,
     gen_cmp_key as expressions_cmp_key,
     gen_cmp_arm as expressions_cmp_arm,
@@ -1533,6 +1535,9 @@ class Gen:
         # finds; the method whose call with one is being compiled (then an error restarts: gen_err)
         self.xnot: dict[str, bool] = {}
         self.newx: dict[str, bool] = {}
+        self.xwant: dict[str, bool] = {}  # narrowings of class tuples that a function needs (narrows, err)
+        self.newwant: dict[str, bool] = {}  # and those this pass found it needs
+        self.ncand: dict[str, bool] = {}  # the narrowings this pass did not make (narrows)
         self.xtry = ""
         self.joinkind = ""  # the location being stored to, which a join may widen: "local", "global", "field"
         self.joinname = ""  # (its name: the variable's, or the field's key, see field_key)
@@ -4799,6 +4804,12 @@ class Gen:
 
     def cmp_alts(self, v: Val) -> list[Val]:
         return expressions_cmp_alts(self, v)
+
+    def class_members(self, t: str) -> list[str]:
+        return expressions_class_members(self, t)
+
+    def cmp_object(self, v: Val) -> Val:
+        return expressions_cmp_object(self, v)
 
     def cmp_widen(self, op: str, x: Val, y: Val, at: str, bt: str, stage: int = 0) -> list[Val]:
         return expressions_cmp_widen(self, op, x, y, at, bt, stage)

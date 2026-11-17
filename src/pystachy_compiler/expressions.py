@@ -159,6 +159,12 @@ def gen_narrows(self, n: Node, truth: bool, out: dict[str, str]) -> None:
                 # (nor where a return it infers could take the union to code outside the attempt,
                 # nor where dynamic Any's attempts, which end by clearing xtry, may end this one)
                 return
+            if attempt not in self.xwant:
+                # (only where the function does not compile without it, x as the classes' base:
+                # err asks for the union then, and the next pass narrows. A program that compiles
+                # without it keeps that code, whose reads box nothing, see #1379)
+                self.ncand[attempt] = True
+                return
             out[nm] = u
             self.xtry = attempt
         elif self.isinst(t, n.kids[2]) == (-2 if truth else -3):
@@ -4173,6 +4179,12 @@ def gen_inherit_cmp(self, op: str, a: Val, b: Val, lenient: bool = False, stage:
     # arms throughout share their tests of b: subclasses that inherit one method compile to an
     # arm for each call it makes, not one for each pair of classes (#625). The arms are
     # compiled in the order of the first pair of each, a's alternatives outermost.
+    if stage == 0:
+        # an object of a union of classes (isinstance(x, (A, B)), a parameter's A | B): the object
+        # its box holds, whose class the tests below read and whose identity is the operand's,
+        # not the box's (cmp_alts)
+        a = self.cmp_object(a)
+        b = self.cmp_object(b)
     xs = self.cmp_alts(a)
     ys = self.cmp_alts(b)
     for side in range(2):
@@ -4288,10 +4300,37 @@ def gen_inherit_cmp(self, op: str, a: Val, b: Val, lenient: bool = False, stage:
         return Val("false", "bool")
     return Val(self.phi(ph), "bool")
 
+def gen_class_members(self, t: str) -> list[str]:
+    # the members of t, a union of classes whose objects carry a class tag (not None, nor an
+    # exception's): [] for any other type
+    if not is_union(t) or is_opt(t):
+        return []
+    ms = umembers(t)
+    if len([m for m in ms if m not in self.classes or self.classes[m].tag == 0 or self.classes[m].exc != ""]) > 0:
+        return []
+    return ms
+
+def gen_cmp_object(self, v: Val) -> Val:
+    # operand v of inherit_cmp as the object a union of classes' box holds (class_members), still
+    # of the union's type, which cmp_alts tells apart by the object's class; v otherwise
+    ms = self.class_members(v.t)
+    if len(ms) == 0:
+        return v
+    return Val(self.uget(v, ms[0]).v, v.t)
+
 def gen_cmp_alts(self, v: Val) -> list[Val]:
     # what inherit_cmp tells operand v apart as: None where v may be None, then an object of each
     # class it may be of (cmp_kinds); v alone where it is no class's object, or one class's and
-    # known not to be None
+    # known not to be None. The object of a union of classes (cmp_object) is one of each class
+    # its members may be of
+    ms = self.class_members(v.t)
+    if len(ms) > 0:
+        alts: list[Val] = []
+        for m in ms:
+            for c in self.cmp_kinds(m):
+                if len([x for x in alts if x.t == c]) == 0:
+                    alts.append(Val(v.v, c))
+        return alts
     if v.t not in self.classes:
         return [v]
     cs = self.cmp_kinds(v.t)

@@ -61,7 +61,7 @@ PROGRAM = """
     pipeline classes tmpl compiling utags specdone funcs aliases imports fglobals mvars gtypes globs gcroots
     consts fieldnames bconsts tconsts tconstdata lconsts strs bstrs strvals vnodes cmexit rtfns opfxs out source_lines fns fll callsites summaries xcls xvals
     xmods xsigs xctors xtypes exctree eh opts reds lazy lazyat wake called gflag ocls ocmp hcls one
-    xobj impg wide nokey nonereads noneglobalpending attrvals attrown hints newhints final xnot newx retseen
+    xobj impg wide nokey nonereads noneglobalpending attrvals attrown hints newhints final xnot newx xwant newwant ncand retseen
     template_instances template_retained retainers unsupported hierarchies deferred_hierarchies cnodes hooks chooks flagged unraised
     noneglobals intglobals rangeused objectused declflag complexused intat strglobals strtuples abstracts abcmeta
     constflags late ext libdir prefix moddirs csyms csymline cdirect extvars unicode_audit rtmode rtdefs
