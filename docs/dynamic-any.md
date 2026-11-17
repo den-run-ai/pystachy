@@ -1556,8 +1556,8 @@ every mode once for the AOT build and for CPython 3.13.16, alternating and pinne
   and the graph's copy 22.8 instead of 31.0 ms; `typed` is unchanged. A million boxes no longer
   fill the collector's 32 MiB window, so `union`, `dyn` and `graph` run without a collection.
 - **Proven payloads**: after `isinstance(x, int)` the scan reads the payload with no dispatch or
-  new box, 3.2 ms, as the union's tag test does. Before that path the scan took 26.2 ms, 8.4×
-  as long (the same program built by the compiler at `48e31e33`, median of 7 runs interleaved
+  new box, 3.2 ms, as the union's tag test does. Before that path the scan took 26.2 ms, about
+  8× as long (the same program built by the compiler at `48e31e33`, median of 7 runs interleaved
   with this build's).
 - **Generic arithmetic**, a dispatch and a new box per addition, is 16× the typed sum
   (17.8 ms against 1.1 ms) and 0.6× CPython's processing time.
