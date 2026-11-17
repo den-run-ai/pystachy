@@ -1,6 +1,6 @@
 # error: cannot infer the type of field 'cap'
-# A module global that more than one statement binds is no constant: a field stored from it needs
-# an annotation, as the type the global ends up with is not its first value's
+# A module global that statements bind to values of different types is no constant: a field
+# stored from it needs an annotation, as the type the global ends up with is not its first value's
 LIMIT = 10
 
 
@@ -9,5 +9,5 @@ class Box:
         self.cap = LIMIT
 
 
-LIMIT = 20
+LIMIT = "twenty"
 print(Box().cap)

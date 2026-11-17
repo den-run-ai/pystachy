@@ -1359,7 +1359,7 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
                 # (N = NewType("N", T) binds N where it runs, as a def does: a call N(x) that may come
                 # first checks it, see call)
                 m.body.kids[i] = mk("newtype", st.kids[0].s, st.line, []) if self.newtype_name(st.kids[0].s) else mk("pass", "", st.line, [])
-    module_values(own, self.globvalues, self.globowners)  # (after typing_forms: x: Final = v is x = v)
+    module_values(own, self.globvalues, self.globowners, self.globalts)  # (after typing_forms: x: Final = v is x = v)
     for q in self.taliases:
         # (CPython evaluates an assigned alias's value where it assigns it, a type statement's
         # only where its __value__ is read)
