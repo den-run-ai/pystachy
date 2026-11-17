@@ -4314,12 +4314,20 @@ def gen_cmp_object(self, v: Val) -> Val:
     # operand v of inherit_cmp as the object a union of classes' box holds (class_members), still
     # of the union's type, which cmp_alts tells apart by the object's class; v otherwise. Each
     # member's object is read where the box's tag proves the member, as union_arithmetic splits
-    # a union (a payload read that no tag test proves is no typed read)
+    # a union (a payload read that no tag test proves is no typed read). The union holds None as
+    # a null box (A | B | None is union[A,B]): None then, a null object, unless v is known not
+    # to be None
     ms = self.class_members(v.t)
     if len(ms) == 0:
         return v
     end = self.label()
     ph = Ins("phi", "%ptr", "")
+    maybe = v.v not in self.nn
+    if maybe:
+        some = self.label()
+        self.incoming(ph, "null", self.cur)
+        self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, end, some)
+        self.place(some)
     for j in range(len(ms)):
         hit = self.label()
         miss = self.label() if j + 1 < len(ms) else ""
@@ -4333,7 +4341,10 @@ def gen_cmp_object(self, v: Val) -> Val:
         if miss != "":
             self.place(miss)
     self.place(end)
-    return Val(self.phi(ph), v.t)
+    r = Val(self.phi(ph), v.t)
+    if not maybe:
+        self.nn[r.v] = True
+    return r
 
 def gen_cmp_alts(self, v: Val) -> list[Val]:
     # what inherit_cmp tells operand v apart as: None where v may be None, then an object of each
@@ -4342,7 +4353,7 @@ def gen_cmp_alts(self, v: Val) -> list[Val]:
     # its members may be of
     ms = self.class_members(v.t)
     if len(ms) > 0:
-        alts: list[Val] = []
+        alts: list[Val] = [Val("null", "None")] if v.v not in self.nn else []
         for m in ms:
             for c in self.cmp_kinds(m):
                 if len([x for x in alts if x.t == c]) == 0:
