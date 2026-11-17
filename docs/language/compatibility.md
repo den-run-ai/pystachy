@@ -157,7 +157,9 @@ no effect. The shared runtime cache is independent of this setting.
   shared everywhere. CPython also folds operator expressions such as `(1 + 2, 3)`.
   Pystachy recreates those tuples, and tuples whose annotations retype/box items.
 - **Tuple conversions:** fixed-shape to runtime-length tuples, or scalar to
-  optional-element tuples, create new objects. Empty runtime-length tuples are
+  optional-element tuples, create new objects, also where tuples of other lengths
+  [join](typing.md#inferred-unions) into a runtime-length tuple
+  ([test](../../tests/deviations/tuple_runtime_join_identity.py)). Empty runtime-length tuples are
   not interned. `tuple(t)` preserves identity only when its representation fits.
   In graphs with dynamic `Any`, numeric runtime-tuple items retain their identity
   when widened to optional items; the outer tuple can still be a new object.
