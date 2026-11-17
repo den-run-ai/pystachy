@@ -99,7 +99,9 @@ but in a module that opts in to the [dynamic `Any` prototype](../dynamic-any.md)
 `List`, `Dict`, `Set`, `FrozenSet`, `Tuple`, `Optional`, `Union`, `Callable`, `TextIO`
 and `Self` work when imported from `typing` or `typing_extensions`. String forward
 references work, including `list["Node"]`. `Self` in a class's methods and fields denotes
-that class or its current specialization.
+that class or its current specialization. A type predicate's `TypeGuard[T]` or `TypeIs[T]`
+is a `bool`; Pystachy narrows by the code's own tests, such as `isinstance()`, not by the
+predicate's annotation ([test](../../tests/programs/generics/typeguard_returns.py)).
 
 The supported `collections.abc` annotations use concrete container types:
 
@@ -114,6 +116,13 @@ These types are invariant. A tuple or string is not a `Sequence`, and `isinstanc
 tests of these annotations are decided using the compiled type.
 `str | os.PathLike[str]` simplifies to `str`, because paths must be strings;
 `os.fspath()` returns its string argument. Other `PathLike` annotations are unsupported.
+
+An annotated assignment whose value is a call of `collections`' `defaultdict`, `OrderedDict`
+or `Counter`, which derive from `dict`, types its local, global or field as that class:
+`m: dict[str, list[str]] = defaultdict(list)`, or `Dict`, `Mapping` or `MutableMapping` in
+place of `dict`, gives `m` the type `defaultdict[str, list[str]]` (a `Counter`'s values must
+be `int`). `m` holds the object the call makes, so a missing key calls the factory, as in
+CPython. A `dict` stored to `m` later, or `m` passed where a `dict` is expected, is rejected.
 
 ## Annotations
 
@@ -135,6 +144,12 @@ types, including nested containers. These operations do not widen stored types; 
 between containers with different numeric item types remains unsupported. Unboxed numeric
 items retain the existing [NaN identity limitation](compatibility.md#numbers). Fixed-to-variable
 length tuple conversions retain their existing item-type restrictions.
+
+`Literal[...]` is the type of its values, which are not checked against it, as in CPython:
+`Literal[False]` is `bool`, `Literal["r", "w"]` is `str`, `Literal[1, 2]` is `int`, and
+`Literal["r", None]` is `str | None`. Its values are `True`, `False`, int, str and bytes literals,
+`None` and nested `Literal[...]`; values of several types make their union where one exists. A
+string in it is a value, not a forward reference.
 
 Parameter, return, class-body and module-level annotations follow CPython 3.13's evaluation
 timing. They are checked even in unused imported definitions. A name must be bound when its
@@ -190,6 +205,16 @@ order they first appear. Both make `Pair[int]` mean `tuple[int, int]`. Named wit
 arguments, an assigned generic alias keeps its type variables, which make a function
 annotated with it a template; a `type` statement's alias needs its arguments. Type
 arguments for a `TypeVarTuple` or `ParamSpec` parameter are unsupported.
+
+`N = NewType("N", T)` (typing's) is an alias of `T` in annotations, also in another module, and
+`N(x)` returns `x` unchanged, as CPython's does: `NewType("Ratio", float)(3)` stays an `int`
+([test](../../tests/programs/generics/newtype.py)). Its type is read when the assignment runs,
+as a type alias's value is: a class it reads through a module that has not bound it yet, as
+during a circular import, raises `AttributeError`
+([test](../../tests/programs/generics/newtype_cycle.py)). A function that imports `N` binds a
+local, which a call where the import may not have run checks, as for an imported function; a
+nested `def` that reads it is rejected. `N` is no generic alias, also where `T` names a TypeVar:
+`N[int]` is CPython's `TypeError`, an error here. Other uses of `N` as a value are rejected.
 
 Other code can use an alias of `int`, `float`, `str` or `bool` (`Pos = int`) as that class,
 to call it or pass it to `isinstance()`; using another alias as a value (`print(Row)`,
@@ -1019,7 +1044,8 @@ Methods support the dedicated decorators `@staticmethod`, `@classmethod`, `@prop
 with its `@value.setter` and `@value.deleter`, and recognized `@overload` stubs. Other method
 decorators, including `@final` and `@override`, are unsupported when the class is used.
 
-A property getter takes only `self` and needs a return annotation. Reading `obj.value`
+A property getter takes only `self`. Without a return annotation, its type is inferred from
+its return statements as a method's is; a generator getter needs one. Reading `obj.value`
 calls the getter each time; inherited getters, property overrides and `super().value`
 use the ordinary method dispatch. A callable-valued property can be called as `obj.value(args)`.
 A setter, defined after the getter under the same name, takes `self` and the value;
@@ -1038,7 +1064,12 @@ false where it raises `AttributeError`, as in CPython.
 
 Fields come from class-body annotations or assignments to `self` in `__init__`. Their types
 can be inferred from parameters, literals, constructors, declared function or method results,
-function values, and supported container displays and operations. A field that `__init__`
+function values, and supported container displays and operations, also through `and` and `or`
+when both operands have one type, or `a` without `None` has `b`'s or `b` is an empty list or
+dict display (`self.dirs = dirs or []`). They can also come from the fields and properties of a
+parameter's object, or `self`'s, read through attributes (`arg.variable.name`),
+`None if c else v`, and list comprehensions without conditions
+([test](../../tests/programs/inference/field_comprehensions.py)). A field that `__init__`
 sets to `None` takes `T | None` from the first other value the program gives it, or holds
 only `None` (see [optional values](#optional-values-and-narrowing)). When specializing a class
 template, a field can also use an ordinary generic function's inferred return type if its

@@ -569,6 +569,8 @@ from src.pystachy_compiler.declarations import (
     gen_alias_args as declarations_alias_args,
     gen_alias_arity as declarations_alias_arity,
     gen_alias_kept as declarations_alias_kept,
+    gen_newtype_name as declarations_newtype_name,
+    gen_newtype_reads as declarations_newtype_reads,
     gen_alias_params as declarations_alias_params,
     gen_alias_problem as declarations_alias_problem,
     gen_alias_tvars as declarations_alias_tvars,
@@ -581,6 +583,7 @@ from src.pystachy_compiler.declarations import (
     gen_ann as declarations_ann,
     gen_ann_base as declarations_ann_base,
     gen_ann_items as declarations_ann_items,
+    gen_literal_ann as declarations_literal_ann,
     gen_ann_none as declarations_ann_none,
     gen_ann_problem as declarations_ann_problem,
     gen_any_in as declarations_any_in,
@@ -879,6 +882,8 @@ from src.pystachy_compiler.expressions import (
     gen_obj_isinst as expressions_obj_isinst,
     gen_isinst_reads as expressions_isinst_reads,
     gen_isnone as expressions_isnone,
+    gen_dict_class as expressions_dict_class,
+    gen_dict_object as expressions_dict_object,
     gen_isnull as expressions_isnull,
     gen_iter_ret as expressions_iter_ret,
     gen_keep_stack as expressions_keep_stack,
@@ -1240,6 +1245,7 @@ from src.pystachy_compiler.templates import (
     gen_fn_sig as templates_fn_sig,
     gen_instance as templates_instance,
     gen_generic_ann as templates_generic_ann,
+    gen_mapping_ann as templates_mapping_ann,
     gen_generic_hint as templates_generic_hint,
     gen_named_param as templates_named_param,
     gen_named_params as templates_named_params,
@@ -1552,12 +1558,15 @@ class Gen:
         self.complexused = False  # and of lib's class of complex numbers
         self.intat: dict[str, int] = {}  # the line of each constant's own binding (including from-imports)
         self.strglobals: dict[str, str] = {}  # single-binding module str literals: formats for str.format()
+        self.guessvars: dict[str, str] = {}  # comprehension variables that guess binds to their items' types
+        self.guessowner: dict[str, FnInfo] = {}  # and the function whose comprehension binds each
         self.strtuples: dict[str, list[str]] = {}  # and tuples of them: functools.wraps()'s assigned
         self.abstracts: dict[str, list[str]] = {}  # each class's own @abstractmethod methods (abstract_defs)
         self.abcmeta: dict[str, bool] = {}  # the classes whose statements pass metaclass=ABCMeta
         # each module's TYPE_CHECKING that is a constant False (false_flag()), and its names that hold a
         # test of the platform (Loader.platform_flags()): the literal each holds, "False" or "True"
         self.constflags: dict[str, str] = {}
+        self.earlycopies: dict[str, str] = {}  # the types of modules' copies of other modules' constants (program.py), declared where a circular import reads them
         # an imported module's globals (and defs and classes) that other code may find unbound:
         # not assigned on every path through its module code, or before an import that may run
         # code calling back into the module
@@ -2903,6 +2912,9 @@ class Gen:
     def ann_items(self, xs: list[Node]) -> list[str]:
         return declarations_ann_items(self, xs)
 
+    def literal_ann(self, items: list[Node], line: int) -> str:
+        return declarations_literal_ann(self, items, line)
+
     def unpack_ann(self, n: Node) -> str:
         return declarations_unpack_ann(self, n)
 
@@ -2974,6 +2986,12 @@ class Gen:
 
     def alias_kept(self, name: str) -> bool:
         return declarations_alias_kept(self, name)
+
+    def newtype_name(self, name: str) -> bool:
+        return declarations_newtype_name(self, name)
+
+    def newtype_reads(self, e: Node) -> None:
+        return declarations_newtype_reads(self, e)
 
     def unalias(self, a: Node, seen: list[str]) -> Node:
         return declarations_unalias(self, a, seen)
@@ -4414,6 +4432,12 @@ class Gen:
     def isnone(self, t: str) -> int:
         return expressions_isnone(self, t)
 
+    def dict_class(self, t: str) -> bool:
+        return expressions_dict_class(self, t)
+
+    def dict_object(self, t: str) -> bool:
+        return expressions_dict_object(self, t)
+
     def isinst_reads(self, c: Node) -> None:
         return expressions_isinst_reads(self, c)
 
@@ -5085,6 +5109,9 @@ class Gen:
 
     def generic_ann(self, c: str, a: Node) -> str:
         return templates_generic_ann(self, c, a)
+
+    def mapping_ann(self, t: str, v: Node) -> str:
+        return templates_mapping_ann(self, t, v)
 
     def named_params(self, c: str, init: Node) -> list[str]:
         return templates_named_params(self, c, init)

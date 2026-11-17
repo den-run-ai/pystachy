@@ -1,0 +1,7 @@
+0.0 shape error: kind of shape 0 1.5 -
+4.0 shape square 4 2.5 -
+54.0 cube of shape square 8 2.5 shape
+10.0 12
+meow 4 tweet 2 none meow 6
+2
+[exit 0]

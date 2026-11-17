@@ -17,11 +17,11 @@ the [module guide](README.md#module-guide) summarizes what each module supports.
 | [Text](#text) | [`textwrap`](#textwrap), [`unicodedata`](#unicodedata), [`shlex`](#shlex), [`keyword`](#keyword), [`curses.ascii`](#cursesascii), [`string`](#string), [`difflib`](#difflib), [`gettext`](#gettext) |
 | [Regular expressions](#regular-expressions) | [`re`](#re), [`fnmatch`](#fnmatch) |
 | [Data formats and markup](#data-formats-and-markup) | [`json`](#json), [`tomllib`](#tomllib), [`csv`](#csv), [`html` and `html.parser`](#html-and-htmlparser), [`urllib.parse`](#urllibparse) |
-| [Binary data and encodings](#binary-data-and-encodings) | [`struct`](#struct), [`binascii`](#binascii), [`hashlib`](#hashlib), [`hmac`](#hmac), [`codecs`](#codecs) |
+| [Binary data and encodings](#binary-data-and-encodings) | [`struct`](#struct), [`binascii`](#binascii), [`base64`](#base64), [`hashlib`](#hashlib), [`hmac`](#hmac), [`codecs`](#codecs) |
 | [Collections and functional tools](#collections-and-functional-tools) | [`collections`](#collections), [`copy`](#copy), [`enum`](#enum), [`heapq`](#heapq), [`itertools`](#itertools), [`functools`](#functools), [`operator`](#operator), [`contextlib`](#contextlib) |
 | [Numbers and randomness](#numbers-and-randomness) | [`random`](#random), [`statistics`](#statistics), [`mpz`](#mpz) |
 | [Dates and times](#dates-and-times) | [`datetime`](#datetime) |
-| [Files, OS and command line](#files-os-and-command-line) | [`io`](#io), [Binary files](#binary-files), [Path modules](#path-modules), [`pathlib`](#pathlib), [`glob`](#glob), [`shutil`](#shutil), [`argparse`](#argparse), [`getopt`](#getopt) |
+| [Files, OS and command line](#files-os-and-command-line) | [`io`](#io), [Binary files](#binary-files), [Path modules](#path-modules), [`pathlib`](#pathlib), [`glob`](#glob), [`shutil`](#shutil), [`sysconfig`](#sysconfig), [`argparse`](#argparse), [`getopt`](#getopt) |
 | [Processes and threads](#processes-and-threads) | [`_thread`](#_thread), [`threading`](#threading), [`atexit`](#atexit) |
 | [Runtime services](#runtime-services) | [`abc`](#abc), [`types`](#types), [`warnings`](#warnings), [`logging`](#logging), [`traceback`](#traceback), [`weakref` and `_weakref` (prototype)](#weakref-and-_weakref-prototype) |
 | [Native interoperability](#native-interoperability) | [`ctypes`](#ctypes) |
@@ -502,6 +502,40 @@ messages): `hexlify` and `b2a_hex` with `sep` and `bytes_per_sep`, `unhexlify` a
   `<built-in function hexlify>`. `a2b_base64.__doc__` is CPython's docstring without the
   indentation of its option's description, which CPython 3.13 removes from a Python function's
   docstring.
+
+### `base64`
+
+`base64` is CPython 3.13.16's `Lib/base64.py` with marked edits, on `binascii`. Every function
+of `__all__` gives CPython's results, errors and messages:
+
+- `b64encode()` and `b64decode()` with `altchars` and `validate`, and the `standard_` and
+  `urlsafe_` functions ([test](../tests/programs/library/lib_base64_b64.py));
+- `b32encode()`, `b32hexencode()` and their decoders with `casefold` and `map01`
+  ([test](../tests/programs/library/lib_base64_b32.py)), `b16encode()` and `b16decode()`
+  ([test](../tests/programs/library/lib_base64_b16.py)), all on RFC 4648's vectors
+  ([test](../tests/programs/library/lib_base64_rfc4648.py));
+- `a85encode()` with `foldspaces`, `wrapcol`, `pad` and `adobe`, and `a85decode()` with
+  `ignorechars` ([test](../tests/programs/library/lib_base64_a85.py)); `b85encode()`,
+  `b85decode()`, `z85encode()` and `z85decode()` ([test](../tests/programs/library/lib_base64_b85.py));
+- `encode()` and `decode()` of binary files and `io.BytesIO` objects, `encodebytes()` and
+  `decodebytes()` ([test](../tests/programs/library/lib_base64_files.py)).
+
+The edits replace what the subset lacks: `int.from_bytes()` and `to_bytes()`, a `bytearray`
+result, a bytes pattern of `re`, and a `struct` format made at run time. Run under CPython, the
+edited module passes the 40 tests of `test_base64`; a
+[checksum over pseudo-random inputs](../tests/programs/library/lib_base64_random.py) covers every
+codec.
+
+- Binary data is `bytes`, as Pystachy has no `bytearray`, `memoryview` or `array`. The decoders
+  also take a `str` of ASCII characters, as CPython's do. Another type of argument is a
+  compile-time error, where CPython raises `TypeError`
+  (error tests: [a str to encode](../tests/errors/library/lib_base64_encode_str.py),
+  [str `altchars` to encode](../tests/errors/library/lib_base64_altchars_str.py),
+  [an int to decode](../tests/errors/library/lib_base64_decode_int.py)).
+- `main()`, the script that `python -m base64` runs, does not compile: calling it is a
+  compile-time error ([error test](../tests/errors/library/lib_base64_main.py)).
+- `bytes_types`, the tuple of the classes `bytes` and `bytearray`, is not there
+  ([error test](../tests/errors/library/lib_base64_bytes_types.py)).
 
 ### `hashlib`
 
@@ -1504,6 +1538,49 @@ and `copyfile()` of a link with `follow_symlinks=False`, raise `NotImplementedEr
 file system copies it with `copy()` (CPython uses `copy2()`, which also copies its times), and
 of a directory raises the rename's `OSError`. `copytree()`, `copy2()`, `copystat()`, `which()`,
 `disk_usage()`, `get_terminal_size()` and the archive functions are not provided.
+
+### `sysconfig`
+
+A subset implementation of CPython's `sysconfig` that answers for Pystachy
+([test](../tests/programs/library/lib_sysconfig.py)). CPython's reports the installation that
+runs the program: the variables of the Makefile and `pyconfig.h` it was built with, and the
+directories its installer writes.
+
+- **Variables.** `get_config_vars()` has the ones CPython computes as it starts: `prefix`,
+  `exec_prefix`, `base`, `platbase`, `installed_base` and `installed_platbase`, all the Pystachy
+  home ([`sys.prefix`](../docs/language/compatibility.md#modules-and-libraries)); `py_version`,
+  `py_version_short`, `py_version_nodot` and `py_version_nodot_plat`; `platlibdir` (`'lib'`);
+  `implementation` (`'Pystachy'`) and `implementation_lower`; `abiflags` and `abi_thread` (both
+  `''`). Of a build's variables it has the three that are true of every target: `SIZEOF_SIZE_T`
+  and `SIZEOF_VOID_P` (8) and `Py_GIL_DISABLED` (0). Any other, such as `EXT_SUFFIX`, `CC`,
+  `LIBDIR`, `projectbase`, `userbase` or `srcdir`, is not set: `get_config_var()` returns `None`
+  for it, as CPython does for a variable its build does not define
+  ([deviation](../tests/deviations/lib_sysconfig_vars.py)).
+- **A variable's type.** `get_config_var()` returns `int | str | None`. Convert the value with
+  `int()`, `str()` or `bool()`, or narrow it with `is None` and `isinstance()`, before using it
+  as one type ([test](../tests/programs/library/lib_sysconfig_mypyc.py),
+  [error test](../tests/errors/library/lib_sysconfig_var_unnarrowed.py)).
+  `get_config_vars()` takes no names: with names, CPython's returns a list instead of the dict
+  ([error test](../tests/errors/library/lib_sysconfig_config_vars_args.py)).
+- **One scheme.** `posix_prefix` is the layout of the Pystachy home: `stdlib` and `platstdlib`
+  are its `lib/`, `purelib` and `platlib` `lib/site-packages`, `include` and `platinclude`
+  `include`, `scripts` `bin`, and `data` the home. Only `lib/` is there: Pystachy installs
+  nothing in the others, and [no import searches them](../docs/language/modules.md#finding-and-running-modules).
+  CPython has nine schemes, and its paths name the implementation and version, as
+  `lib/python3.13`. `get_preferred_scheme()` of `'home'` or `'user'` raises CPython's
+  `ValueError` for a platform without that scheme, and `get_paths()` of another scheme raises
+  `KeyError` ([deviation](../tests/deviations/lib_sysconfig_scheme.py)).
+- **`vars`**, the caller's variables for `get_paths()` and `get_path()`, is a `dict[str, str]`
+  ([error test](../tests/errors/library/lib_sysconfig_paths_vars.py)). It is left as it was;
+  CPython adds every configuration variable to it.
+- An executable that `pystachy build` makes keeps the home it was compiled with, as it keeps
+  `sys.prefix`.
+
+Not supported, as compile-time errors where used: `get_platform()`, which needs `os.uname()`
+([error test](../tests/errors/library/lib_sysconfig_get_platform.py)); `get_makefile_filename()`,
+`get_config_h_filename()` and `parse_config_h()`, as there is no Makefile or `pyconfig.h`
+([error test](../tests/errors/library/lib_sysconfig_makefile.py)); and `is_python_build()`'s
+deprecated `check_home` argument.
 
 ### `argparse`
 

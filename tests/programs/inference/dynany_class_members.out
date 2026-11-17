@@ -1,0 +1,23 @@
+Base base base none
+Derived derived derived none
+Other 7 7 none
+base-kind 3 ['x', 'y'] 10 6 3 7 label of Base
+Base 9 <9>
+base-kind 3 ['x', 'y'] 10 6 3 7 label of Derived
+Derived 9 <9>
+[1, 2] ['a', None]
+AttributeError: type object 'Base' has no attribute 'absent'
+AttributeError: type object 'Base' has no attribute 'absent' []
+AttributeError: type object 'Derived' has no attribute 'absent'
+AttributeError: type object 'Derived' has no attribute 'absent' []
+AttributeError: type object 'Other' has no attribute 'absent'
+AttributeError: type object 'Other' has no attribute 'absent' []
+TypeError: Base.add() missing 1 required positional argument: 'a'
+TypeError: Base.add() takes from 1 to 2 positional arguments but 3 were given
+TypeError: Base.add() got an unexpected keyword argument 'c'
+TypeError: Base.kind() takes 0 positional arguments but 1 was given ['side']
+TypeError: 'int' object is not callable
+['base-kind', 'base-kind', 'plain-kind', 'special-kind']
+['Plain', 'special Special']
+base base-kind 3
+[exit 0]
