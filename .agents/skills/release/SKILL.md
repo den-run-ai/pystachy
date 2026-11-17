@@ -60,6 +60,8 @@ for its outward actions: merging, dispatching workflows and publishing.
     `docker run --rm IMAGE:VERSION --version` reports the version and commit. Retry
     anonymous registry requests after rate limits.
 12. Check that PyPI holds the tested sdist and wheel, and compare the sdist's files with
-    the Git blobs at the tag.
+    the Git blobs at the tag. A pip installation reports `commit unknown` by design.
+    For a stable version, also check that GitHub's latest release, Docker's `latest` tag
+    and PyPI's current version all name it.
 13. Comment on the issues the release advances, with `Refs` for partial work, and file
     follow-ups for anything the audit found.
