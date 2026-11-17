@@ -84,6 +84,20 @@
       "diagnostic": "tests/programs/classes/isinstance_class_tuples.py:49: error: 'Op' object has no attribute 'dest'",
       "reason": "isinstance() with a tuple of classes narrows to their union only where no module opts in to dynamic Any, whose attempts end the narrowing's; there op keeps its class Op, as on main.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/1325"
+    },
+    {
+      "case": "tests/programs/classes/isinstance_class_tuples_eq.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/classes/isinstance_class_tuples_eq.py:29: error: 'Base' object has no method 'label'",
+      "reason": "isinstance() with a tuple of classes narrows to their union only where no module opts in to dynamic Any, whose attempts end the narrowing's; there x keeps its class Base, as on main.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/1325"
+    },
+    {
+      "case": "tests/programs/classes/isinstance_class_tuples_eq.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/classes/isinstance_class_tuples_eq.py:29: error: 'Base' object has no method 'label'",
+      "reason": "isinstance() with a tuple of classes narrows to their union only where no module opts in to dynamic Any, whose attempts end the narrowing's; there x keeps its class Base, as on main.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/1325"
     }
   ]
 }
