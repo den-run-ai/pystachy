@@ -1,0 +1,6 @@
+mods: init mods
+mods.shapes: init mods.shapes
+3 5 4
+UnboundLocalError: cannot access local variable 'Meters' where it is not associated with a value
+NameError: cannot access free variable 'Meters' where it is not associated with a value in enclosing scope
+[exit 0]
