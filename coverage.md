@@ -1,27 +1,22 @@
 ## Hosted compiler coverage
 
-Commit `9cb9cc72ddc1dca56ca166af7dd30144cd644e14`: statements **95.7%** (50295 of 52532) and branches **92.3%** (26181 of 28362); 94.5% together, coverage.py's total. 5 suites, 8037 processes measured.
+Commit `d58034c1ca588c90363b8deb3b3c633b1cc90c47`: statements **95.7%** (50295 of 52532) and branches **92.3%** (26181 of 28362); 94.5% together, coverage.py's total. 5 suites, 8047 processes measured.
 The statements and branches of `src/pystachy_compiler/`, run by CPython; not `runtime.c`, `runtime.py`, `lib/` or the compiled programs, which run as native code ([native runtime coverage](https://github.com/den-run-ai/pystachy/blob/badges/runtime-coverage.md)).
 
 | Suite | Runs | Checks | Processes | Time | Statements | Branches |
 |---|---|---|---:|---:|---:|---:|
-| corpus | `tests/run.sh`, JIT and AOT (10 shards) | 7689 passed, 0 failed | 7699 | 3779 s | 92.6% | 88.7% |
-| ffi | `tests/ffi/run.sh`, JIT and AOT | 194 passed, 0 failed; skipped: py_coerce (the CPython-hosted compiler's own locale coercion reaches the program) | 175 | 246 s | 48.6% | 41.3% |
-| cache | `tests/cache.sh` | 97 passed, 0 failed | 51 | 283 s | 27.4% | 18.1% |
-| unit | `tools/test_typed*.py`, `tools/test_function_summaries.py`, the native program cache's, `--emit-ir`'s, the C runtime cache's, `ctypes_schema.py`'s and `source_lines.py`'s | 551 tests, OK | 9 | 66 s | 51.9% | 44.9% |
-| ir | `tools/check_ir.sh`: `pystachy.py`, `runtime.py`, `bench/`, the `tests/ir/` contracts | the IR check and llvm-as accept the IR of 103 programs | 103 | 220 s | 59.4% | 53.0% |
-| **all** | | | **8037** | | **95.7%** | **92.3%** |
+| corpus | `tests/run.sh`, JIT and AOT (10 shards) | 7699 passed, 0 failed | 7709 | 4397 s | 92.6% | 88.7% |
+| ffi | `tests/ffi/run.sh`, JIT and AOT | 194 passed, 0 failed; skipped: py_coerce (the CPython-hosted compiler's own locale coercion reaches the program) | 175 | 197 s | 48.6% | 41.3% |
+| cache | `tests/cache.sh` | 97 passed, 0 failed | 51 | 285 s | 27.4% | 18.1% |
+| unit | `tools/test_typed*.py`, `tools/test_function_summaries.py`, the native program cache's, `--emit-ir`'s, the C runtime cache's, `ctypes_schema.py`'s and `source_lines.py`'s | 551 tests, OK | 9 | 65 s | 51.9% | 44.9% |
+| ir | `tools/check_ir.sh`: `pystachy.py`, `runtime.py`, `bench/`, the `tests/ir/` contracts | the IR check and llvm-as accept the IR of 103 programs | 103 | 173 s | 59.4% | 53.0% |
+| **all** | | | **8047** | | **95.7%** | **92.3%** |
 
 The other suites run 1661 statements and 1021 branches that the corpus does not.
 
-### Changed since 9f1472309f030a26874f4983c0d381857ded2984 (merge base `9f1472309f03`)
+### Changed since 9cb9cc72ddc1dca56ca166af7dd30144cd644e14 (merge base `9cb9cc72ddc1`)
 
-Changed statements: 142 of 150 run (94.7%); their branches: 59 of 68 taken (86.8%).
-
-| File | Statements not run | Branches not taken |
-|---|---|---|
-| `src/pystachy_compiler/driver.py` | 186, 206, 208 | 185->186, 205->206, 207->208 |
-| `src/pystachy_compiler/loader.py` | 692-695, 2583 | 691->692, 692->693, 692->696, 693->692, 693->694, 2582->2583 |
+Changed statements: 0 of 0 run (-); their branches: 0 of 0 taken (-).
 
 | Module | Statements | Missed | Statements % | Branches | Missed | Branches % | Total | Corpus alone |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
