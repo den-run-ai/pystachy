@@ -435,7 +435,7 @@ unexpected output. Its `match-dispatch-smoke.json` artifact is correctness evide
 paired performance and optional pyperf measurements have separate reproduction commands
 in [the match benchmark](../bench/match_dispatch/README.md).
 
-The PR `opt-in` worker and full-run `hosted` jobs run 20 independent example API suites through
+The PR `opt-in` worker and full-run `gc-aot-2` jobs run 20 independent example API suites through
 `make test-pytest-workloads PYTEST_WORKLOAD_ARGS='--group examples'`, reusing the
 verified compiler. Splitting these checks between existing jobs leaves more room
 within the 15-minute budget without adding workers. `pytest-workloads.json` records every
@@ -447,7 +447,7 @@ Missing modules/results, empty suites, skips, xfails and failed builds fail this
 check. These tests supplement the exact CLI, FFI, upstream-reference and timing
 contracts below; they do not replace those distinct observations.
 
-The x86-64 PR `opt-in` worker (full-run `hosted`) also runs `make test-pytest-native` with the verified compiler
+The x86-64 PR `opt-in` worker (full-run `gc-aot-2`) also runs `make test-pytest-native` with the verified compiler
 and pinned original pytest oracle. Its JIT examples retain the hosted compiler; repeated
 native builds use `PYTEST_NATIVE_COMPILER="$PWD/build/verify/pystachy2"`, with `PYSTACHY_HOME`
 pointing at the checkout. Test modules run first, at most four at once. Only after they
@@ -1103,3 +1103,22 @@ without DCO certification. The existing submission bot sends a one-time,
 non-blocking rights/guidelines/AI acknowledgment reminder on new PRs. The legacy
 DCO workflow always skips; remove it after deleting its required status in
 GitHub branch protection settings.
+
+## Lessons from reviewed changes
+
+Each row pairs a failure that review caught with the rule that prevents it. The links are
+evidence, not claims about today's open work.
+
+| Failure pattern | Rule to carry forward |
+|---|---|
+| Another `iter()` masked a missing iterator helper ([#633](https://github.com/den-run-ai/pystachy/pull/633)) | Keep dependency regressions in separate programs; test all annotation spellings. |
+| Inferring `Any` erased concrete generator channels ([#633](https://github.com/den-run-ai/pystachy/pull/633)) | Preserve yield/send/return contracts independently. `Any` specializes concrete types; it adds dynamically typed storage only in modules that opt in to [dynamic `Any`](dynamic-any.md). |
+| An unresolved empty-container allocation could serve pointer-bearing callers ([#603](https://github.com/den-run-ai/pystachy/pull/603)) | Mark storage pointer-free only after representation is proven; test copy, growth, clear/refill and shared template results under GC. |
+| A lazily created global needed an explicit collector root ([#602](https://github.com/den-run-ai/pystachy/pull/602)) | Test survival after caller references disappear, including aliases and extension initialization. |
+| A C `float` declared as `double` compiled but returned zeros ([#609](https://github.com/den-run-ai/pystachy/pull/609)) | Verify ABI widths, mutation, aliasing and pointer lifetime with real C calls; twin parity alone cannot establish ABI correctness. |
+| A malformed view could make BLAS write past its buffer, under green CI ([#647](https://github.com/den-run-ai/pystachy/pull/647)) | Validate strides, offset, reachable storage and output length before a native write; reproduce suspected overruns with a spy, not a real write. |
+| Tuple repetition first divided by zero, then missed byte-size overflow ([#761](https://github.com/den-run-ai/pystachy/pull/761)) | Handle empty/zero/negative cases before division; check element width and header overhead before multiplication/allocation, not just the element count. |
+| AOT `-O2` rewrote constant-exponent `pow` and changed last digits ([#656](https://github.com/den-run-ai/pystachy/issues/656)) | Read floating-point inputs at run time (`NAME.in`, `sys.argv`) and compare exact output in both modes. |
+| Import counts barely changed after real feature fixes ([#635](https://github.com/den-run-ai/pystachy/pull/635)) | Record the next blocker and functional API delta; one removed blocker does not establish whole-package support. |
+| Cancelled runs retained queued final jobs ([#643](https://github.com/den-run-ai/pystachy/pull/643)) | Inspect run/job state and concurrency; a skipped summary is not successful verification. |
+| "This PR does not close #4" closed #4 on merge ([#168](https://github.com/den-run-ai/pystachy/pull/168)) | GitHub acts on closing keywords even when negated, in PR bodies and commit messages; write `Refs #N`. |

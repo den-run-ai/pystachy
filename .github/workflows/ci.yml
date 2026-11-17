@@ -141,7 +141,7 @@ jobs:
         run: python3 -m pip install "$(sed -n '/^typing_extensions==/p' tools/requirements-dev.txt)"
 
       - name: Workload pytest oracle dependency
-        if: matrix.group == 'benchmarks' || ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))
+        if: matrix.group == 'benchmarks' || ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'gc-aot-2'))
         run: python3 -m pip install "$(sed -n '/^pytest==/p' tools/requirements-dev.txt)"
 
       # No run-id or token: download-artifact can only select this workflow run here.
@@ -274,14 +274,14 @@ jobs:
         run: make bench-match-check BENCH_COMPILER=build/verify/pystachy2
 
       - name: Shared pytest example assertions
-        if: ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))
+        if: ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'gc-aot-2'))
         env:
           PYSTACHY_HOME: ${{ github.workspace }}
         run: make test-pytest-workloads PYTEST_WORKLOAD_COMPILER=build/verify/pystachy2 PYTEST_WORKLOAD_ARGS='--group examples'
 
       # Retain the hosted compiler and original pytest oracle without using Lint's budget.
       - name: Generated native pytest runner parity
-        if: matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))
+        if: matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'gc-aot-2'))
         env:
           PYSTACHY_HOME: ${{ github.workspace }}
         run: make test-pytest-native PYTEST_NATIVE_COMPILER="$PWD/build/verify/pystachy2"
