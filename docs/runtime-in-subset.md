@@ -119,6 +119,8 @@ one code point at a time, including the two properties that only context shows, 
 `--check` decodes the tables again for all 1,114,112 code points. `tools/rtcheck.py`
 fuzzes the traversal against CPython, and `tools/unicode_audit.py` compares the
 native mappings, tests and context properties of every code point in JIT and AOT.
+[`bench/unicode_case`](../bench/unicode_case/README.md) measures the cost to ASCII text
+and compares the per-character path with CPython.
 
 ## Private primitives
 
