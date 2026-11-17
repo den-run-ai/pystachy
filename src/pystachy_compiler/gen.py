@@ -1575,6 +1575,7 @@ class Gen:
         self.strglobals: dict[str, str] = {}  # single-binding module str literals: formats for str.format()
         self.guessvars: dict[str, str] = {}  # comprehension variables that guess binds to their items' types
         self.guessowner: dict[str, FnInfo] = {}  # and the function whose comprehension binds each
+        self.globanns: dict[str, Node] = {}  # and the annotations of single-binding annotated globals (module_anns)
         self.strtuples: dict[str, list[str]] = {}  # and tuples of them: functools.wraps()'s assigned
         self.abstracts: dict[str, list[str]] = {}  # each class's own @abstractmethod methods (abstract_defs)
         self.abcmeta: dict[str, bool] = {}  # the classes whose statements pass metaclass=ABCMeta

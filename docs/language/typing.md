@@ -1074,16 +1074,18 @@ false where it raises `AttributeError`, as in CPython.
 
 ## Fields, dataclasses and NamedTuples
 
-Fields come from class-body annotations or assignments to `self` in `__init__`. Their types
-can be inferred from parameters, literals, constructors, declared function or method results,
+Fields come from class-body annotations or assignments to `self` in `__init__`. Their types can
+be inferred from parameters, literals, constructors, declared function or method results,
 function values, and supported container displays and operations, also through `and` and `or`
 when both operands have one type, or `a` without `None` has `b`'s or `b` is an empty list or
-dict display (`self.dirs = dirs or []`). They can also come from the fields and properties of a
+dict display (`self.dirs = dirs or []`), and from a module global that one annotated assignment
+binds (`TABLE: Final[dict[str, Kind]] = {...}`), also through an item of one (`TABLE[key]`, a
+dict's value or a list's item). They can also come from the fields and properties of a
 parameter's object, or `self`'s, read through attributes (`arg.variable.name`),
 `None if c else v`, and list comprehensions without conditions
-([test](../../tests/programs/inference/field_comprehensions.py)). A field that `__init__`
-sets to `None` takes `T | None` from the first other value the program gives it, or holds
-only `None` (see [optional values](#optional-values-and-narrowing)). When specializing a class
+([test](../../tests/programs/inference/field_comprehensions.py)). A field that `__init__` sets
+to `None` takes `T | None` from the first other value the program gives it, or holds only
+`None` (see [optional values](#optional-values-and-narrowing)). When specializing a class
 template, a field can also use an ordinary generic function's inferred return type if its
 positional arguments and omitted defaults have known types. This uses normal function
 specialization and does not execute the helper or its defaults during inference. Keyword or
