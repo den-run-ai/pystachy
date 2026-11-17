@@ -113,6 +113,7 @@ def gen_save(self) -> Frame:
     fr.carried = self.carried
     fr.nonecmp = self.nonecmp
     fr.fieldcmp = self.fieldcmp
+    fr.rolex = self.rolex
     fr.cmpnode = self.cmpnode
     fr.stkkey = self.stkkey
     fr.reflcopies = self.reflcopies
@@ -176,6 +177,7 @@ def gen_restore(self, fr: Frame) -> None:
     self.carried = fr.carried
     self.nonecmp = fr.nonecmp
     self.fieldcmp = fr.fieldcmp
+    self.rolex = fr.rolex
     self.cmpnode = fr.cmpnode
     self.stkkey = fr.stkkey
     self.reflcopies = fr.reflcopies

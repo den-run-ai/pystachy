@@ -77,6 +77,7 @@ def gen_enter(self, f: FnInfo, body: list[Node]) -> None:
     self.carried = Val("", "")
     self.nonecmp = False
     self.fieldcmp = False
+    self.rolex = ""
     self.cmpnode = self.nokey
     self.stkkey = self.nokey
     self.reflcopies = 1
