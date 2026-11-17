@@ -1,4 +1,4 @@
-# error: argument 1 of need() may be None (str | None), and a test does not narrow a global or a field (a call may change it): copy it to a local variable, and test that
+# A test of a field narrows its reads until a call or a store may change it (it was a rejection).
 class C:
     def __init__(self) -> None:
         self.s: str | None = "a"

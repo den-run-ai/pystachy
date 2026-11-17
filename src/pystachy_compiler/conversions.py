@@ -237,7 +237,7 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         if what == "":
             what = "a value used as " + typestr(t)
         if self.curfn.ll + v.v in self.wide:
-            self.err(f"{what} may be None ({typestr(v.t)}), and a test does not narrow a global or a field (a call may change it): copy it to a local variable, and test that")
+            self.err(f"{what} may be None ({typestr(v.t)}), and a test does not narrow a global, nor a field past a call or a store that may change it: copy it to a local variable, and test that")
         self.err(f"{what} may be None ({typestr(v.t)}); test it with 'is not None' first")
     if (is_fset(unopt(v.t)) or v.t == EMPTYFS or (is_tuple(v.t) and ("frozenset[" in v.t or EMPTYFS in v.t))) and self.abcsets and "abstract-sets" not in self.hints and not self.final and not self.rtmode and len(self.newhints) == 0 and self.xtry == "" and self.drying == 0:
         # a frozenset where a set is expected, in a program that annotates collections.abc.Set,
