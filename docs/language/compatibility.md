@@ -268,6 +268,16 @@ or generator/async initializers retain eager formatting
 - **Unbound globals** read as `m.x` raise `AttributeError` without CPython's
   circular-import/renaming hints. `from m import x` raises `ImportError`, using the
   file path from compilation rather than a runtime installation.
+- **Builtin names bound on a path that does not run**, such as `len = mylen` in an `except`
+  clause or an untaken `if` branch at module level, raise `NameError` when read; CPython
+  finds the builtin ([#1512](https://github.com/den-run-ai/pystachy/issues/1512)).
+- **Star imports** take every public name where the module binds `__all__` in an `if` branch,
+  or in a `try` statement in another way than by leading `__all__ = [...]` assignments that
+  nothing else there rebinds; CPython takes the `__all__` that runs
+  ([#1513](https://github.com/den-run-ai/pystachy/issues/1513)).
+- **`except E as name` at module level**, where an import bound `name`, leaves the module
+  bound after a handler that ran; CPython unbinds `name`, so a later read raises `NameError`
+  ([#1514](https://github.com/den-run-ai/pystachy/issues/1514)).
 - **Module `__doc__`:** without a docstring, if its first mention is in a `def` or
   `class` and module code later assigns it, an earlier read raises `NameError`
   instead of returning `None`.
