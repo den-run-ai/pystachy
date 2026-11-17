@@ -1106,6 +1106,16 @@ arguments. `closing(thing)`, `nullcontext()`, `nullcontext(value)`, `suppress(A,
   when its body runs. Where an override is in
   another module than the method it overrides, a call through a value of the base class is
   rejected as the program compiles (the managers' types differ).
+- With `@abstractmethod` beside it, in either order, the method's body may only raise (no
+  `yield` or `return`, a `raise` last), its annotation yield `None` (`Iterator[None]`) and its
+  defaults be literals: a call of the abstract method raises there, as CPython's helper does when
+  it calls the function, and overrides are generators
+  ([test](../tests/programs/classes/contextmanager_abstract.py)). Its body is a method of its own,
+  `_pys_cm_abs_NAME_` and the line of the `def`, so `super().NAME()` of a subclass that declares
+  the method again runs the base class's
+  ([test](../tests/programs/classes/contextmanager_abstract_super.py)). An abstract method that
+  could return, yields another type or has another default is rejected
+  ([error test](../tests/errors/classes/contextmanager_abstract_returns.py)).
 - A method manager's `func` retains the port's bound-generator representation, and `args` omits
   that bound receiver. Recreation observes same-type replacements of `args` and `kwds`.
   Assigning `func`, even to itself, restores the port's ordinary bound-method dispatch: it
