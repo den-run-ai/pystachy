@@ -291,7 +291,8 @@ or generator/async initializers retain eager formatting
   ([error test](../../tests/errors/io/file_name.py)).
 - **`mypy_extensions`:** Pystachy's own module makes the native integer names (`i64`,
   `u8`, ...) aliases of `int`, so `i64 is int` and `i64.__name__ == "int"`; the package's
-  are classes whose calls return an `int`.
+  are classes whose calls return an `int`. Its `FlexibleAlias` is the generic class that
+  typeshed declares, whose subscripts at run time are rejected; the package's is an object.
 
 | Runtime value | Difference |
 |---|---|
