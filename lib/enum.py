@@ -214,6 +214,15 @@ def _int_left(x, a, op: str):
     raise TypeError("unsupported operand type(s) for %s: '%s' and '%s'" % (op, type(x).__name__, type(a).__name__))
 
 
+def _times_of(x, a):
+    # the operand of IntEnum or IntFlag member a's *: a str, bytes or list, which repeats itself
+    # once int's method declines it; else int's operand (_int_of)
+    if isinstance(x, str) or isinstance(x, bytes) or isinstance(x, list):
+        return x
+    else:
+        return _int_of(x, a, '*')
+
+
 class IntEnum(ReprEnum):
     """
     Enum where members are also (and must be) ints
@@ -272,7 +281,7 @@ class IntEnum(ReprEnum):
         return self._value_ - _int_of(other, self, '-')
 
     def __mul__(self, other):
-        return self._value_ * _int_of(other, self, '*')
+        return self._value_ * _times_of(other, self)
 
     def __truediv__(self, other):
         return self._value_ / _int_of(other, self, '/')
@@ -330,6 +339,12 @@ class IntEnum(ReprEnum):
 
     def __rxor__(self, other):
         return _int_left(other, self, '^') ^ self._value_
+
+    def __pow__(self, other):
+        return self._value_ ** _int_of(other, self, '** or pow()')
+
+    def bit_length(self) -> int:
+        return self._value_.bit_length()
 
     def __neg__(self) -> int:
         return -self._value_
@@ -852,7 +867,7 @@ class IntFlag(Flag):
         return self._value_ - _int_of(other, self, '-')
 
     def __mul__(self, other):
-        return self._value_ * _int_of(other, self, '*')
+        return self._value_ * _times_of(other, self)
 
     def __truediv__(self, other):
         return self._value_ / _int_of(other, self, '/')

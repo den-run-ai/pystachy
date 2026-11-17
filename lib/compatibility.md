@@ -785,8 +785,11 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   ([test](../tests/programs/library/lib_enum_reflected.py)). A number on the left of an
   `IntEnum` or `IntFlag` member computes as CPython's `int` does (`1 + member`, `n += member`,
   `4 | flag`, which keeps the flag's class), through the member's reflected method
-  ([test](../tests/programs/library/lib_enum_int_left.py)). One cannot be passed where an `int`
-  or `str` is typed, `int(member)` is not supported, and these are compile-time errors, as
+  ([test](../tests/programs/library/lib_enum_int_left.py)). An `IntEnum` or `IntFlag` member is
+  an index where CPython asks for one: a subscript, a slice bound, `range()`, a repetition count,
+  `hex()` and `%d` use its value ([test](../tests/programs/library/lib_enum_index.py)). One
+  cannot be passed where an `int` or `str` is typed, `int(member)` is not supported, and these
+  are compile-time errors, as
   CPython's member is an `int` or a `str`: `isinstance()` of one and `int` or `str`, also of a
   value of a base class, such as `Enum`, that may hold one
   ([test](../tests/errors/library/lib_enum_isinstance_base.py)), and a member as an `Any` value,
