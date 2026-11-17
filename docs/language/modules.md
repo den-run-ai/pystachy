@@ -17,6 +17,9 @@ If none has either, the directories named `NAME`, also through symbolic links, a
 of a namespace package, as in CPython. Any other file named `NAME`, such as a text file without
 the `.py` suffix, is not a module.
 
+[`importlib.metadata`](../../lib/compatibility.md#importlibmetadata) searches the same directories
+for the metadata of installed distributions.
+
 Builtin modules such as `sys`, `os` and `math` are handled by the compiler. A program's own
 `ffi.py` takes precedence over the builtin `ffi` module. A file named like a module built into
 CPython, such as `_weakref.py` or `itertools.py`, is never imported, as CPython imports its own.
