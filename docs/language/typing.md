@@ -77,7 +77,7 @@ hold. Project a scalar first, for example `tuple(value for index, value in enume
 or `tuple(left + right for left, right in zip([1, 2], [3, 4]))`. This enables the existing `re.Match.groups()` implementation
 without rewriting its capture loop or knowing the pattern's capture count at compile time.
 
-Dict keys are `int`, `str`, `bytes`, objects of the program's classes, or tuples containing `int`,
+Dict keys are `int`, `str`, `bytes`, objects of the program's classes, frozensets of supported elements, or tuples containing `int`,
 `bool`, `str`, `str | None`, objects and nested tuples of these. `None` is a key type too, and
 so is any of these types that may be `None`: `set[None]`, `set[str | None]` and
 `dict[int | None, V]` hold `None` as CPython does, found by `hash(None)` and identity. `{None}`
@@ -90,9 +90,9 @@ lookup, and for each key of the same hash). A class that defines `__eq__` withou
 unhashable, as in CPython: adding or looking up its object raises `TypeError: unhashable type`.
 A union of classes (`TypeInfo | TypeAlias`) is a key type where no class its objects may be of
 defines `__eq__` or `__hash__`: they hash and compare by identity, whichever member's they are,
-typed by their class or the union. An object key may be `None`. Floats, frozensets, NamedTuples and exception objects cannot be
-keys or set elements. `hash()` gives CPython's results for ints, floats, `None`, objects with
-`__hash__` and tuples and NamedTuples of these; a str's and an object's identity hash differ from CPython's,
+typed by their class or the union. An object key may be `None`. Floats, NamedTuples and exception objects cannot be keys or set
+elements. `hash()` gives CPython's results for ints, floats, `None`, objects with `__hash__`,
+frozensets and tuples and NamedTuples of these; a str's and an object's identity hash differ from CPython's,
 which change from run to run, but are equal for equal strs and for the same object.
 
 `Optional[T]`, `None | T` and `Union[T, None]` are equivalent. Repeated members of
