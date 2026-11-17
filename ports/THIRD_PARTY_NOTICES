@@ -154,6 +154,10 @@ lib/getopt.py is CPython 3.13.16's Lib/getopt.py with the edits lib/README.md li
 marked in the source; it is derived from Python and is used under the same license and copyright
 notice.
 
+lib/base64.py is CPython 3.13.16's Lib/base64.py with the edits lib/compatibility.md lists, each
+marked in the source; it is derived from Python and is used under the same license and copyright
+notice.
+
 lib/tomllib/ is CPython 3.13.16's Lib/tomllib with the edits lib/compatibility.md lists, each
 marked "Pystachy port:" in the source; it is derived from Python and is used under the same license
 and copyright notice. Its files are Taneli Hukkinen's code ("SPDX-FileCopyrightText: 2021 Taneli
