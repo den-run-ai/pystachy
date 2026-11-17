@@ -4463,7 +4463,7 @@ def gen_cmp_rest(self, v: Val, alts: list[Val], to: list[str]) -> str:
     # last class's, as before #625: its ExcClass need not be made
     first = 1 if alts[0].t == "None" else 0
     rest = to[len(to) - 1]
-    if self.classes[v.t].exc == "":
+    if v.t not in self.classes or self.classes[v.t].exc == "":  # (a union of classes' object: cmp_object)
         n: dict[str, int] = {}
         for j in range(first, len(to)):
             n[to[j]] = n[to[j]] + 1 if to[j] in n else 1
@@ -4492,7 +4492,7 @@ def gen_cmp_tags(self, v: Val, alts: list[Val], to: list[str]) -> None:
     if len(tested) == 0:
         self.br(rest)
         return
-    xc = self.classes[v.t].exc != ""
+    xc = v.t in self.classes and self.classes[v.t].exc != ""  # (a union of classes' object has a tag: cmp_object)
     tag = self.mload('%ptr' if xc else 'int', v.v)
     if not xc:
         self.switch(Val(tag, "int"), [str(self.classes[alts[j].t].tag) for j in tested], [to[j] for j in tested], rest)
