@@ -289,6 +289,9 @@ or generator/async initializers retain eager formatting
   modules have one, and neither has a namespace package, whose `__file__` is `None` in
   CPython: both are rejected
   ([error test](../../tests/errors/io/file_name.py)).
+- **`mypy_extensions`:** Pystachy's own module makes the native integer names (`i64`,
+  `u8`, ...) aliases of `int`, so `i64 is int` and `i64.__name__ == "int"`; the package's
+  are classes whose calls return an `int`.
 
 | Runtime value | Difference |
 |---|---|
@@ -550,7 +553,7 @@ See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
   NamedTuple or builtins; generic inheritance outside the [visitor subset](typing.md#explicit-generic-classes)
   (bases whose constructor binds type variables or subclasses passing through their own type
   variables); mixed dataclass/ordinary hierarchies; decorated subclasses except
-  dataclass-from-dataclass; changing method kind; incompatible virtual call signatures or
+  dataclass-from-dataclass and [identity decorators](typing.md#single-inheritance); changing method kind; incompatible virtual call signatures or
   results; overridden static/class methods called through base-typed objects. Independent
   classes and ordinary hierarchies with fixed concrete fields may specialize constructor
   arguments without specializing their layouts ([class templates](typing.md#class-templates-and-generic-classes)).

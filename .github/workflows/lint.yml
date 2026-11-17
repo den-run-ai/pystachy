@@ -2,7 +2,7 @@
 # tests; make lint adds shellcheck of the scripts as POSIX sh and clang's warnings on
 # runtime.c and tools/dictprobe.c, with the versions of tools/requirements-dev.txt; then make
 # check-recordings (tests/record.sh --check): the CPython of .python-version, which recorded the
-# tests' expected output (with the typing_extensions of tools/requirements-dev.txt), still prints
+# tests' expected output (with the typing_extensions and mypy_extensions of tools/requirements-dev.txt), still prints
 # every recording, every deviation still deviates from it, lib/'s copies are its files, and no
 # *.rej, *.orig or core file lies in the tree. Runs beside CI's make verify on the same
 # events: pull requests (forks too, and documentation-only ones), pushes to main,
