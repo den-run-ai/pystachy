@@ -2386,13 +2386,31 @@ def gen_target_types(self, f: FnInfo, x: Node, v: Node | None, t: str, out: list
     for i in range(len(x.kids)):
         self.target_types(f, x.kids[i], None, (ts[i] if len(ts) == len(x.kids) else "") if is_tuple(t) else et, out, types)
 
+def plain_binds(body: list[Node], me: str, name: str) -> bool:
+    # does a statement of body, or of a block in it as scan_fields reads them, assign me.name
+    # alone (me.name = v, me.name: T = v, me.name: T), not as an item of a tuple or list target
+    for st in body:
+        if (st.kind == "assign" or st.kind == "annassign") and st.kids[0].kind == "attr" and st.kids[0].s == name and st.kids[0].kids[0].kind == "name" and st.kids[0].kids[0].s == me:
+            return True
+        for kid in st.kids:
+            if kid.kind == "block" and plain_binds(kid.kids, me, name):
+                return True
+            if kid.kind == "except" and plain_binds(kid.kids[1].kids, me, name):
+                return True
+    return False
+
 def gen_scan_target(self, ci: ClassInfo, f: FnInfo, x: Node, t: str) -> None:
     # a target x = self.k of a tuple or list target in __init__ (scan_fields), whose item has
-    # type t (target_types): a field k of type t, unless an earlier statement gave k its type.
+    # type t (target_types): a field k of type t, unless an earlier statement gave k its type,
+    # or a statement of the function assigns self.k alone, whose value then types k wherever it
+    # is, as before tuple targets typed fields: an A first and a base class's object later keep
+    # the field the base's type, a named function first and a Callable later the Callable's.
     # Where t is unknown (None, or an item guess cannot type), k is left to a later self.k = v,
     # with no error here, as it was
     ms = self.classes[ci.origin].methods if ci.origin != "" else ci.methods
     if x.kind != "attr" or x.kids[0].kind != "name" or x.kids[0].s != f.params[0] or x.s in ci.ftypes or (x.s in ms and ms[x.s].prop):
+        return
+    if f.node.kind == "def" and plain_binds(f.node.kids[2].kids, f.params[0], x.s):
         return
     jh = self.hints.get(f"field:{self.stable(ci.name)}.{x.s}", "") if len(self.hints) > 0 else ""
     t = jh if jh != "" else t  # (a join's type: as if annotated, see join_hint)
