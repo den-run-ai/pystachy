@@ -123,6 +123,21 @@ def pattern_test(pattern: Node, subject: Node, counter: list[int], captures: dic
         late = not lazy and len([p for p in pattern.kids if p.kind != "pstar" and not leaf_pattern(p) and not wildcard(p)]) > 0
         fixed = n - (1 if star >= 0 else 0)
         parts = [mk("matchseq", str(fixed) + ("+" if star >= 0 else "") + ("!" if late else ""), line, [clone(subject)])]
+        if lazy:
+            # *_: each other item is read once, just before its subpattern, and no item that a
+            # wildcard matches (BINARY_SUBSCR, as CPython's compiler emits it): an as-pattern,
+            # or-pattern or nested pattern sees the item as it was read, whatever an earlier
+            # __eq__ did to the subject since. An item after the star is read at the subject's
+            # length then, less its distance from the end (GET_LEN; matchidx)
+            for i in range(n):
+                if i == star or wildcard(pattern.kids[i]):
+                    continue
+                item = mk("index", "", line, [clone(subject), mk("int", str(i), line, [])]) if i < star else mk("matchidx", str(n - i), line, [clone(subject)])
+                counter[0] += 1
+                name = f"__pys_match_item_{line}.{counter[0]}"
+                parts.append(mk("matchbind", "", line, [mk("walrus", name, line, [item])]))
+                parts.append(pattern_test(pattern.kids[i], made_var(name, line), counter, captures))
+            return conjunction(parts, line)
         items: list[Node] = []
         for i in range(n):
             if i == star:
@@ -131,7 +146,7 @@ def pattern_test(pattern: Node, subject: Node, counter: list[int], captures: dic
             # an item after the star counts from the subject's end
             at = mk("int", str(i), line, []) if star < 0 or i < star else mk("unary", "-", line, [mk("int", str(n - i), line, [])])
             item = mk("index", "", line, [clone(subject), at])
-            if not lazy and leaf_pattern(pattern.kids[i]) and not wildcard(pattern.kids[i]):
+            if leaf_pattern(pattern.kids[i]) and not wildcard(pattern.kids[i]):
                 # CPython unpacks every item (UNPACK_SEQUENCE) before it matches the first
                 # subpattern; reading a fixed tuple's items first runs no code. Staged reads
                 # leave the comparisons free of loads, which branch-free code can then join.
@@ -297,9 +312,9 @@ def pattern_type(self, node: Node) -> str:
     # the type of a subject: of a sequence pattern's item, the item type of the subject's type at
     # its index (from the end after a star: -k)
     at = node.kids[1] if node.kind == "index" else node
-    if node.kind == "index" and (at.kind == "int" or (at.kind == "unary" and at.s == "-" and at.kids[0].kind == "int")):
+    if node.kind == "matchidx" or (node.kind == "index" and (at.kind == "int" or (at.kind == "unary" and at.s == "-" and at.kids[0].kind == "int"))):
         parent = pattern_type(self, node.kids[0])
-        i = int(at.s) if at.kind == "int" else -int(at.kids[0].s)
+        i = -int(node.s) if node.kind == "matchidx" else int(at.s) if at.kind == "int" else -int(at.kids[0].s)
         if is_tuple(parent):
             size = len(targs(parent))
             return targs(parent)[i if i >= 0 else size + i] if -size <= i < size else ""
@@ -353,6 +368,15 @@ def pattern_expr(self, node: Node) -> Val:
         # (a range, immutable as a tuple is, has its length from its class's __len__)
         length = Val(self.list_len(value), "int") if is_list(value.t) else self.objlen(value) if value.t == RANGEC else Val(self.mload("int", value.v), "int")
         return self.expr(mk("cmp", ">=" if star else "==", node.line, [self.vnode(length), mk("int", str(n), node.line, [])]), "bool")
+    if k == "matchidx":
+        # the item k from the end of a sequence that *_ matched (pattern_test): a list's at its
+        # length as the item is read, less k, which indexes it as any int does (one that its
+        # items' __eq__ shortened below k counts from its end again, as in CPython); an
+        # immutable sequence's at -k
+        value = self.expr(node.kids[0], "")
+        back = mk("int", node.s, node.line, [])
+        at = mk("binop", "-", node.line, [self.vnode(Val(self.list_len(value), "int")), back]) if is_list(value.t) else mk("unary", "-", node.line, [back])
+        return self.expr(mk("index", "", node.line, [self.vnode(value), at]), "")
     if k == "matchstar":
         # *rest's new list: the subject's items between the before items before it and the after
         # items after it, as UNPACK_EX makes it (pattern_test)
