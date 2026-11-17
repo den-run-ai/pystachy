@@ -54,7 +54,7 @@ from src.pystachy_compiler.analysis import (
 )
 from src.pystachy_compiler.argparse_schema import lower_argparse, parser_import
 from src.pystachy_compiler.ctypes_schema import ctypes_import, lower_ctypes
-from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, IDPRAGMA, INTFILES, INTSPANS, LINES, MODDUNDERS, RAW, dynamic_pragma, fail, int_pragma, leading_pragma
+from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, IDPRAGMA, INTFILES, INTSPANS, LINES, MODDUNDERS, RAW, NeedHandlers, dynamic_pragma, fail, int_pragma, leading_pragma
 from src.pystachy_compiler.lexer import KEYWORDS, Lexer
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, short
@@ -676,6 +676,33 @@ def binary_opens(n: Node) -> None:
     n.kids = n.kids[:at] + [Parser(Lexer(src, first).file()).module().kids[0]] + n.kids[at:]
 
 
+def import_family(n: Node, fam: dict[str, bool]) -> bool:
+    # the names in code n that may name a subclass of ImportError (#1504), added to fam (which holds
+    # ImportError, ModuleNotFoundError and the names found so far): a class one of whose bases is
+    # such a name (or a module's attribute: errors.Missing), and a name assigned one (E = Missing);
+    # True if it added one
+    more = False
+    if n.kind == "subclass" and n.s not in fam:
+        for b in n.kids[1:]:
+            if (b.kind == "name" or b.kind == "attr") and last_name(b.s) in fam:
+                fam[n.s] = True
+                more = True
+                break
+    if n.kind == "assign" and (n.kids[-1].kind == "name" or n.kids[-1].kind == "attr") and last_name(n.kids[-1].s) in fam:
+        for t in n.kids[:-1]:
+            if t.kind == "name" and t.s not in fam:
+                fam[t.s] = True
+                more = True
+    for k in n.kids:
+        more = import_family(k, fam) or more
+    return more
+
+
+def last_name(s: str) -> str:
+    # a name without its module (errors$Missing, errors.Missing: Missing)
+    return s[max(s.rfind("$"), s.rfind(".")) + 1 :]
+
+
 def ascii_ident(s: str) -> bool:
     # is ASCII string s an identifier, as str.isidentifier() tells
     for i in range(len(s)):
@@ -745,6 +772,17 @@ class Loader:
         self.sites: list[Node] = []
         self.sitem: list[Mod] = []
         self.siterest: list[Node] = []
+        # and each one's try statement, its key (its file and line) where all its imports succeed,
+        # else "", and where it is (1 module code, 0 a function, -1 a class body): the optional
+        # imports whose statements after the imports keep the except clauses at run time, by key, as
+        # an earlier load found them (keep_site(), #1504), unless nokeep (the compilation that kept
+        # them failed: driver.compile_program), and those this load finds
+        self.sitetry: list[Node] = []
+        self.sitekey: list[str] = []
+        self.sitetop: list[int] = []
+        self.keeps: dict[str, bool] = {}
+        self.nokeep = False
+        self.newkeeps: list[str] = []
         # what raises() found for a module, where that does not depend on the modules whose code was
         # running (rcyc: a result that did); the function fn_raises() found, "?" before it looks
         self.rmemo: dict[str, int] = {}
@@ -2223,10 +2261,22 @@ class Loader:
         missing = bad != "" and exc == "ModuleNotFoundError" and self.modpath(bad) == ""
         if bad != "" and not missing and named == "":
             site.s = bad
+        key = f"{FILES[line // LINES]}:{line % LINES}" if bad == "" else ""
         if not scan:
             self.sites.append(site)
             self.sitem.append(m)
             self.siterest.append(mk("block", "", line, st.kids[0].kids[n:] if bad == "" else st.kids[0].kids[:0]))
+            self.sitetry.append(st)
+            self.sitekey.append(key)
+            self.sitetop.append(-1 if self.pos >= 0 and self.incls else 1 if self.pos >= 0 else 0)
+        if key in self.keeps and n < len(st.kids[0].kids):
+            # every import succeeds, and the statements after them may raise a subclass of
+            # ImportError (keep_site()): they run in a try statement of their own, with the except
+            # clauses and the else block, as CPython runs them (also for scan(), whose names they bind
+            # only maybe)
+            out.extend(st.kids[0].kids[:n])
+            out.append(mk("try", st.s, line, [mk("block", "", st.kids[0].line, st.kids[0].kids[n:])] + st.kids[1:]))
+            return True
         if bad == "" or h == 0:
             # every import succeeds, or the exception is not caught: the body runs (the failing
             # module's raise ends the program, as in CPython), then the else block
@@ -2463,8 +2513,11 @@ class Loader:
         # raise ImportError in another way: neither what the modules it imports run at import (and
         # the modules they import) nor the statements after the imports, by a raise of their own or
         # by a call, if a function of the program may raise ImportError. The site (a pass statement
-        # where the try was) becomes an error where it is compiled.
+        # where the try was) becomes an error where it is compiled. A subclass of ImportError, which
+        # these do not find, may be raised by the statements after the imports: keep_site() finds
+        # where they keep the except clauses at run time, which a new load does (NeedHandlers)
         back: dict[str, str] = {}  # what failing() found, by the failing module and the importing one
+        fam: dict[str, bool] = {}  # (import_family(), once a site may need it)
         for i in range(len(self.sites)):
             s = self.sites[i]
             m = self.sitem[i]
@@ -2478,12 +2531,70 @@ class Loader:
                 back[key] = self.failing(self.mods[s.s], m)
             if s.s in self.mods and why == "":
                 why = back[key]
+            r = 0
             if why == "":
-                why = self.why(self.raises_in(self.siterest[i], m, False, seen), "the code that runs in the try")
+                r = self.raises_in(self.siterest[i], m, False, seen)
+                why = self.why(r, "the code that runs in the try")
             s.kids = []
             if why != "":
                 s.kind = "badimport"
                 s.s = why
+            elif not self.nokeep and self.sitekey[i] != "" and self.sitekey[i] not in self.keeps and self.keep_site(i, r, fam):
+                self.newkeeps.append(self.sitekey[i])
+        if len(self.newkeeps) > 0:
+            raise NeedHandlers()
+
+    def keep_site(self, i: int, r: int, fam: dict[str, bool]) -> bool:
+        # do the statements after the imports of optional import i, which all succeed, keep its
+        # except clauses at run time (#1504)? Where the program may raise a subclass of ImportError
+        # (a class whose bases name one, import_family()) and these statements may raise an
+        # exception (r: raises_in() found a call or an operator; or a raise or an attribute's read).
+        # Where the program then does not compile, it is compiled as before, keeping none
+        # (driver.compile_program): so neither does a site whose try statement would not compile,
+        # which these, the except clauses or the else block show, or could change what runs where
+        # no exception is raised. Those are a site in a class body; statements that define a
+        # function or class or import a module; names, also an except clause's as name, that the
+        # imports bind (json = None), or that module code binds to anything but a variable; a
+        # dunder name other than __version__, which only module code's top level binds as it means
+        # (__all__); and a builtin's name (len = ...), which a read takes for a NameError where the
+        # except clause has not bound it
+        rest = self.siterest[i]
+        if len(rest.kids) == 0 or self.sitetop[i] < 0 or not (r > 0 or has_kind(rest, "raise") or has_kind(rest, "attr")):
+            return False
+        if len(fam) == 0:
+            fam["ImportError"] = True
+            fam["ModuleNotFoundError"] = True
+            more = True
+            while more:
+                more = False
+                for t in self.order:
+                    more = import_family(t.body, fam) or more
+                    for x in t.kinds:
+                        if t.kinds[x].startswith("a:") and last_name(t.kinds[x]) in fam and x not in fam:
+                            fam[x] = True  # (from errors import Missing as E)
+                            more = True
+        if len(fam) == 2:
+            return False
+        body: list[Node] = list(rest.kids)
+        for h in self.sitetry[i].kids[1:]:
+            body.extend(h.kids[1].kids if h.kind == "except" else h.kids)
+        for st in body:
+            if has_kind(st, "def") or has_kind(st, "class") or has_kind(st, "subclass") or has_kind(st, "import") or has_kind(st, "uimport"):
+                return False
+        names: dict[str, bool] = {}
+        binds(body, names, True)
+        for h in self.sitetry[i].kids[1:]:
+            if h.kind == "except" and h.s != "":
+                # (an except clause's as name, which CPython unbinds after the handler: where the
+                # imports bind it, `except ImportError as json` would keep the module bound)
+                names[h.s] = True
+        imported: dict[str, bool] = {}
+        binds([d for d in self.sitetry[i].kids[0].kids if d.kind == "import"], imported, True)
+        m = self.sitem[i]
+        for x in names:
+            if (x.startswith("__") and x.endswith("__") and x != "__version__") or x in PYBUILTINS or x in imported or (self.sitetop[i] == 1 and m.kinds.get(x, "v") != "v"):
+                return False
+        return True
 
     def failing(self, t: Mod, m: Mod) -> str:
         # what keeps an optional import in module m of module t, whose code raises ImportError at its

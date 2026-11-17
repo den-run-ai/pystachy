@@ -1,0 +1,6 @@
+handler: direct
+handler: load
+handler: name
+handler: add
+handler: next
+[exit 0]

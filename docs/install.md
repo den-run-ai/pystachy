@@ -147,7 +147,7 @@ make install
 
 ## macOS
 
-On macOS 14 or later, install [Homebrew](https://brew.sh) and the Xcode Command Line Tools first
+On macOS 15 or later, install [Homebrew](https://brew.sh) and the Xcode Command Line Tools first
 (`xcode-select --install` if they are missing). Then:
 
 ```sh

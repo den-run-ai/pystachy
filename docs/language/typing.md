@@ -68,7 +68,7 @@ hold. Project a scalar first, for example `tuple(value for index, value in enume
 or `tuple(left + right for left, right in zip([1, 2], [3, 4]))`. This enables the existing `re.Match.groups()` implementation
 without rewriting its capture loop or knowing the pattern's capture count at compile time.
 
-Dict keys are `int`, `str`, objects of the program's classes, or tuples containing `int`,
+Dict keys are `int`, `str`, `bytes`, objects of the program's classes, or tuples containing `int`,
 `bool`, `str`, `str | None`, objects and nested tuples of these. `None` is a key type too, and
 so is any of these types that may be `None`: `set[None]`, `set[str | None]` and
 `dict[int | None, V]` hold `None` as CPython does, found by `hash(None)` and identity. `{None}`
@@ -303,9 +303,9 @@ revisits its earlier reads and copies, including across calls to template setter
 inference does not override an explicit annotation. Where none of this finds a type in time, annotate it:
 `last: str | None = None`, `self.next: Node | None = None`.
 
-Class types already permit `None`: `C` and `C | None` use the same nullable type. Builtin
-exception annotations such as `Exception | None` are unsupported; objects of the program's
-own exception classes may be optional.
+Class types already permit `None`: `C` and `C | None` use the same nullable type. Exceptions
+may be optional too, builtin ones such as `Exception | None` and `BaseException | None` as well
+as the program's own exception classes.
 
 Conditional expressions combining `T` and `None`, `x or None`, mixed displays, and templates
 returning both produce optional values. `d.get(key)` returns `V | None`, and

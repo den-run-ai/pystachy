@@ -121,8 +121,9 @@ Pystachy resolves these guards while compiling:
 
 These tests work inside `not`, `and` and `or`, while preserving the other operands' evaluation
 order. The branch that does not run is not compiled at all, as CPython never runs it: its
-imports are not resolved and its code is not checked, so `import nt` under
-`if sys.platform == "win32":` compiles. For example, `effect()` still runs in `if effect() and os.name == "nt":`.
+imports are not resolved and its code is not type-checked, so `import nt` under
+`if sys.platform == "win32":` compiles. Its syntax is still checked, as CPython checks a whole
+file before running it ([syntax errors](../language.md#syntax-errors)). For example, `effect()` still runs in `if effect() and os.name == "nt":`.
 They apply only when a name still refers to the imported module or constant; a parameter,
 local, loop variable or another import can shadow it.
 
@@ -149,6 +150,17 @@ Pystachy provides part of a module, such as `json` or `hashlib`, an optional imp
 succeeds, so the `try` branch's uses of names the module lacks are compile-time errors
 rather than a fallback.
 
+When every import succeeds and the program defines a subclass of `ImportError`, the
+statements after the imports keep the `except` clauses wherever they may raise an exception.
+The handler then catches such a subclass as CPython's does. The clauses are still dropped, so
+that the exception ends the program, where the `try` statement is in a class body; where those
+statements, the handler or the `else` block define a function or class or import a module; or
+where they, or an `except` clause's `as` name, bind a builtin's name, a dunder name other than
+`__version__`, a name the imports bind (as `json = None` does) or one that module code binds
+to a module, function, class or type alias. They are also dropped for the whole program where
+it does not compile with them kept, which takes extra compilation passes. A subclass raised by
+an imported module's own code as it runs also ends the program.
+
 An import in another kind of `try` statement, such as one with `finally` or other exception
 clauses, follows normal import rules: a missing module is a compile-time error.
 Pystachy also rejects optional imports whose outcome or exception handling it cannot resolve;
@@ -167,9 +179,8 @@ m.total() is not supported: parameter 'xs': unsupported type annotation
 ```
 
 This permits a module to keep unsupported generator forms (such as `async` generators), unsupported annotations or classes with unsupported
-inheritance beside functions that compile. An unsupported special method, such as an
-unannotated `__len__`, is rejected when an operation needs it, including implicit use by
-printing, sorting or container comparisons.
+inheritance beside functions that compile. An unsupported special method is rejected when an
+operation needs it, including implicit use by printing, sorting or container comparisons.
 
 The `def` or `class` statement still executes when module code reaches it. Function defaults,
 the compilable items of otherwise unsupported default displays, and supported function

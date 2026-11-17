@@ -171,8 +171,8 @@ qualification after the corrections is recorded in
 [#1241](https://github.com/den-run-ai/pystachy/pull/1241). The exception in both sweeps is
 `fib_memo`'s `fib` in [`closures.py`](../../tests/programs/language/closures.py): it loads its
 captured dict from the closure's cell for `k in memo` and again for `memo[k]`, and the adapter
-does not track cells, so it cannot tell that the second load gives the dict whose entry the
-first lookup found. The current adapter recognizes those closure cells and proves the
+of those sweeps did not track cells, so it could not tell that the second load gives the dict
+whose entry the first lookup found. The current adapter recognizes those closure cells and proves the
 previously unproved access; a focused replay of `closures.py` proves all eight inventoried
 accesses. The whole-program numbers above remain historical until that sweep is rerun.
 

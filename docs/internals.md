@@ -185,7 +185,7 @@ Scalars use LLVM's `i64`, `double` and `i1`; strings, containers and objects use
 Container elements occupy uniform eight-byte slots, allowing one runtime implementation to
 serve multiple static element types. Optional reference values use null for `None`; optional
 numbers use boxes. Integers use checked 64-bit arithmetic rather than CPython's arbitrary
-precision.
+precision, except in modules that opt in to [promoting ints](python-int.md).
 
 Strings retain UTF-8 storage: their header holds the byte length, cached dictionary hash,
 and cached code-point count plus one (zero means unknown), followed by the bytes at offset
@@ -697,8 +697,9 @@ margin is what the deepest counted frame may still use without an entry
 of its own: on Linux x86-64, raising the error and unwinding to a handler used under 5 KiB
 below the floor (JIT and AOT, also with handlers or `finally` in every frame and through
 generator resumes), and a `repr()` of 510 nested lists from the deepest frame (the runtime
-stops at 512) about 150 KiB; the rest covers non-recursive callees and a signal handler's
-frame. No signal handler is involved ([#988](https://github.com/den-run-ai/pystachy/issues/988)).
+stops at 512) about 150 KiB; the rest covers non-recursive callees and the frame of a signal
+handler that runs there. No signal handler detects the floor: each counted entry compares the
+stack pointer with it ([#1015](https://github.com/den-run-ai/pystachy/issues/1015)).
 `tools/test_stack_floor.py` checks the floor's policy against simulated bounds and mappings,
 including 4 KiB and 64 KiB pages, and runs deep recursion in JIT and AOT under a fixed
 `RLIMIT_STACK`. Its extension probe also maps an obstacle before import and verifies catchable
