@@ -410,6 +410,103 @@ def names_name(n: Node, name: str) -> bool:
     return False
 
 
+# the builtins whose call reads a list's items as a tuple's: what each returns or raises is the
+# same for both, and none keeps its argument (see only_reads_items; not tuple(), whose tuple
+# argument CPython returns itself, nor iter() or reversed(), whose iterators show their sequence's
+# type)
+READS_ONLY_FNS = ["len", "enumerate", "sorted", "list", "set", "frozenset", "any", "all", "sum", "min", "max", "zip"]
+
+
+def called_only(n: Node, fn: str) -> bool:
+    # does code n use name fn only as the function its calls call, binding it nowhere
+    if (n.kind == "def" or n.kind == "class" or n.kind == "walrus" or n.kind == "except" or n.kind == "alias") and n.s == fn:
+        return False
+    for i in range(len(n.kids)):
+        k = n.kids[i]
+        if (k.kind == "name" and k.s == fn and not (n.kind == "call" and i == 0)) or not called_only(k, fn):
+            return False
+    return True
+
+
+def reads_args(n: Node) -> list[int]:
+    # the arguments (kids) of call n of a builtin of READS_ONLY_FNS that it only iterates: each
+    # positional one of zip's; the first of enumerate's, sorted's and sum's (a second is a start,
+    # which sum may return); the only one of the others' (min(xs, ys) compares xs itself)
+    pos = [i for i in range(1, len(n.kids)) if n.kids[i].kind != "kw"]
+    if len([i for i in pos if n.kids[i].kind == "starred"]) > 0 or len(pos) == 0 or pos[0] != 1:
+        return []
+    f = n.kids[0].s
+    if f == "zip":
+        return pos
+    if f == "enumerate" or f == "sorted" or f == "sum" or len(pos) == 1:
+        return [1]
+    return []
+
+
+def only_reads_items(n: Node, name: str, fns: list[str]) -> bool:
+    # does code n (a function's body) use variable name only to read its items, so that no code
+    # can tell a list in it from a tuple or keep it: as the iterable of a for loop or of a
+    # comprehension, an argument of a call of fns (builtins, see READS_ONLY_FNS), x in name, and
+    # a truth test (if name, while name, not name, a if name else b,
+    # assert name, also as an operand of and or or there: reads_test); never indexed (an empty
+    # tuple's IndexError says "tuple index"), stored into, rebound, deleted, or read by a
+    # function or class it defines
+    k = n.kind
+    if k == "name":
+        return n.s != name
+    if k == "def" or k == "lambda" or k == "class" or k == "subclass":
+        return not names_name(n, name)
+    targets: list[Node] = []
+    if k == "assign":
+        targets = n.kids[:-1]
+    elif k == "augassign" or k == "annassign" or k == "for" or k == "compfor":
+        targets = [n.kids[0]]
+    elif k == "listcomp":
+        targets = [n.kids[1]]
+    elif k == "del":
+        targets = n.kids
+    elif k == "withitem" and len(n.kids) > 1:
+        targets = [n.kids[1]]
+    for t in targets:
+        if names_name(t, name):
+            return False
+    ok: list[int] = []  # (the kids that may be name itself)
+    if k == "for" or k == "compfor":
+        ok = [1]
+    elif k == "listcomp":
+        ok = [2]
+    elif k == "while" or k == "if" or k == "ifexp" or k == "assert" or (k == "unary" and n.s == "not"):
+        ok = [0]
+    elif k == "cmp":
+        # (the container of the chain's last membership test: a middle operand is compared again,
+        # 0 in xs == [])
+        ops = n.s.split(",")
+        ok = [len(ops)] if ops[-1] == "in" or ops[-1] == "not in" else []
+    elif k == "call" and n.kids[0].kind == "name" and n.kids[0].s in fns:
+        ok = reads_args(n)
+    tests = k == "while" or k == "if" or k == "ifexp" or k == "assert" or (k == "unary" and n.s == "not")
+    for i in range(len(n.kids)):
+        x = n.kids[i]
+        if i in ok and tests and not reads_test(x, name, fns):
+            return False
+        if not (i in ok and x.kind == "name" and x.s == name) and not (i in ok and tests) and not only_reads_items(x, name, fns):
+            return False
+    return True
+
+
+def reads_test(n: Node, name: str, fns: list[str]) -> bool:
+    # only_reads_items for a truth test n: name itself, or an operand of and, or and not in it,
+    # whose value is only tested there
+    if n.kind == "name" and n.s == name:
+        return True
+    if n.kind == "boolop" or (n.kind == "unary" and n.s == "not"):
+        for x in n.kids:
+            if not reads_test(x, name, fns):
+                return False
+        return True
+    return only_reads_items(n, name, fns)
+
+
 def binds_first(st: Node, name: str) -> bool:
     # does module-level statement st bind name for sure without reading it first: name = v (also
     # among other names), name: T = v, or an import of that name
