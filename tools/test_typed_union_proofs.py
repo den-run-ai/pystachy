@@ -1047,6 +1047,33 @@ class UnionProofTests(unittest.TestCase):
                         with self.assertRaises(SystemExit):
                             c.g.verify(c.fn, False)
 
+    def test_runtime_tuple_item_reads_take_the_declared_members(self):
+        # pys_vtuple_get's item of a tuple[X, ...] (xs[i]) holds a box of X, whose members an
+        # exhaustive narrowing proves, else branch too; not that of a tuple of W items narrowed
+        # as X, nor an int read of another runtime function
+        x = "union[float,str]"
+        for owner, fn, valid in (("vtuple[" + x + "]", "vtuple.get", True), ("opt[vtuple[" + x + "]]", "vtuple.get", True),
+                                 ("vtuple[" + W + "]", "vtuple.get", False), ("vtuple[" + x + "]", "dyn.index_bound", False)):
+            with self.subTest(owner=owner, fn=fn):
+                c = Case("runtime_tuple_item", [owner, "int"])
+                c.g.runtime("pys_" + fn.replace(".", "_"))
+                bits = c.op("rt", "int", fn, [("%a0", "%ptr"), ("%a1", "int")])
+                item = W if W in owner else x
+                value = c.op("slot.unpack", item, a=[(bits, "%slot")])
+                c.guard(value=value, member="float", typ=item)
+                c.block("hit")
+                c.payload(value=value, member="float", typ=item)
+                c.ret()
+                c.block("miss")
+                c.payload(value=value, member="str", typ=item)
+                c.ret()
+                with redirect_stderr(StringIO()):
+                    if valid:
+                        c.g.verify(c.fn, False)
+                    else:
+                        with self.assertRaises(SystemExit):
+                            c.g.verify(c.fn, False)
+
     def test_tuple_slot_union_reads_take_the_storage_declaration(self):
         # A tuple loaded from storage declared tuple[W, W] holds W items, whatever the load's own
         # annotation says (tuple[X, X], narrower): its items' float test leaves int and str, so

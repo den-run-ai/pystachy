@@ -869,7 +869,7 @@ def gen_join_type(self, a: str, b: str) -> str:
         e = xs[0] if len(xs) > 0 else ""
         for x in xs[1:]:
             e = (e if e == x else self.join_type(e, x)) if e != "" else ""
-        return self.ctype("vtuple", [e]) if e != "" and unopt(e) != BIG and self.vtuple_item(e) else ""
+        return self.ctype("vtuple", [e]) if e != "" and unopt(e) != BIG and self.vtuple_holds(e) else ""
     if a == b:
         return a
     if (a == BIG and b == "int") or (b == BIG and a == "int"):

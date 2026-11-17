@@ -1213,7 +1213,7 @@ def gen_join(self, a: str, b: str) -> str:
         j = xs[0] if len(xs) > 0 else ""
         for x in xs[1:]:
             j = self.join(j, x) if j != "" else ""
-        return self.ctype("vtuple", [j]) if j != "" and "?" not in j and unopt(j) != BIG and self.vtuple_item(j) else ""
+        return self.ctype("vtuple", [j]) if j != "" and "?" not in j and unopt(j) != BIG and self.vtuple_holds(j) else ""
     return ""
 
 def gen_wider(self, a: str, b: str) -> str:
