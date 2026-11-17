@@ -405,3 +405,12 @@ try:
     from _functools import partial
 except ImportError:
     pass
+
+
+# Pystachy port: cached_property is the compiler's where it decorates a method of a class
+# statement (Loader.functools_classes), which is all it does here: a method's object is found
+# as its class is compiled, so the loader rejects a call of it. (__all__ does not name it:
+# a module imports it by name.)
+def cached_property(func):
+    """A property whose value is computed once for an object and then kept."""
+    return func
