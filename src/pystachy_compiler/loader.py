@@ -2553,10 +2553,11 @@ class Loader:
         # (driver.compile_program): so neither does a site whose try statement would not compile,
         # which these, the except clauses or the else block show, or could change what runs where
         # no exception is raised. Those are a site in a class body; statements that define a
-        # function or class or import a module; names that the imports bind (json = None), or that
-        # module code binds to anything but a variable; a dunder name other than __version__, which
-        # only module code's top level binds as it means (__all__); and a builtin's name (len =
-        # ...), which a read takes for a NameError where the except clause has not bound it
+        # function or class or import a module; names, also an except clause's as name, that the
+        # imports bind (json = None), or that module code binds to anything but a variable; a
+        # dunder name other than __version__, which only module code's top level binds as it means
+        # (__all__); and a builtin's name (len = ...), which a read takes for a NameError where the
+        # except clause has not bound it
         rest = self.siterest[i]
         if len(rest.kids) == 0 or self.sitetop[i] < 0 or not (r > 0 or has_kind(rest, "raise") or has_kind(rest, "attr")):
             return False
@@ -2582,6 +2583,11 @@ class Loader:
                 return False
         names: dict[str, bool] = {}
         binds(body, names, True)
+        for h in self.sitetry[i].kids[1:]:
+            if h.kind == "except" and h.s != "":
+                # (an except clause's as name, which CPython unbinds after the handler: where the
+                # imports bind it, `except ImportError as json` would keep the module bound)
+                names[h.s] = True
         imported: dict[str, bool] = {}
         binds([d for d in self.sitetry[i].kids[0].kids if d.kind == "import"], imported, True)
         m = self.sitem[i]

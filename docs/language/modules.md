@@ -152,14 +152,14 @@ rather than a fallback.
 
 When every import succeeds and the program defines a subclass of `ImportError`, the
 statements after the imports keep the `except` clauses wherever they may raise an exception.
-The handler then catches such a subclass as CPython's does, as it would catch
-`importlib.metadata`'s `PackageNotFoundError`. The clauses are still dropped, so that the
-exception ends the program, where the `try` statement is in a class body, or where those
-statements, the handler or the `else` block define a function or class, import a module, or
-bind a builtin's name, a dunder name other than `__version__`, a name the imports bind (as
-`json = None` does) or one that module code binds to a module, function, class or type alias.
-They are also dropped for the whole program where it does not compile with them kept. A
-subclass raised by an imported module's own code as it runs also ends the program.
+The handler then catches such a subclass as CPython's does. The clauses are still dropped, so
+that the exception ends the program, where the `try` statement is in a class body; where those
+statements, the handler or the `else` block define a function or class or import a module; or
+where they, or an `except` clause's `as` name, bind a builtin's name, a dunder name other than
+`__version__`, a name the imports bind (as `json = None` does) or one that module code binds
+to a module, function, class or type alias. They are also dropped for the whole program where
+it does not compile with them kept, which takes extra compilation passes. A subclass raised by
+an imported module's own code as it runs also ends the program.
 
 An import in another kind of `try` statement, such as one with `finally` or other exception
 clauses, follows normal import rules: a missing module is a compile-time error.
