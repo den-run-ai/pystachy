@@ -67,10 +67,11 @@ def gen_unumeric_case(self, op: str, a: Val, b: Val, shown: str, unary: bool) ->
             message = f"bad operand type for unary {op}: 'NoneType'" if unary else f"unsupported operand type(s) for {shown if shown != '' else op}: '{tname(a.t)}' and '{tname(b.t)}'"
             self.raise_("TypeError", self.sconst(message))
             return Val("null", "None")
-        if not unary and shown == op + "=" and b.t in self.classes and (a.t == "int" or a.t == "float" or a.t == "bool"):
+        if not unary and shown == op + "=" and b.t in self.classes and b.t != COMPLEXC and (a.t == "int" or a.t == "float" or a.t == "bool"):
             # (a number that the union's variable holds, and an object: the object's reflected
             # method, whose result the variable takes, as CPython's x += o rebinds x: gen_dunder
-            # keeps that for a variable of the number's type, which could not hold it)
+            # keeps that for a variable of the number's type, which could not hold it. A complex
+            # number's arithmetic is complex_arith's, as arith gives it, not the class's methods)
             rm = "__r" + DUNDER[op][2:] if op in DUNDER else ""
             if rm in self.classes[b.t].methods:
                 self.notnone(b, f"TypeError: unsupported operand type(s) for {shown}: '{tname(a.t)}' and 'NoneType'")
@@ -108,10 +109,10 @@ def gen_unumeric_case(self, op: str, a: Val, b: Val, shown: str, unary: bool) ->
     # A fixed operator has a finite result set: int, float, or int | float.
     # Do not widen int to float, which would lose its runtime type and precision.
     result_type = self.union_type([r.t for r in results])
-    if result_type.startswith("!") and (self.object_union(a.t) or (not unary and self.object_union(b.t)) or len([r for r in results if r.t in self.classes]) > 0):
-        # (a union with objects says which results have no union; one of numbers alone keeps the
-        # conversion's own diagnostic below, which the promoting-int baseline records:
-        # tools/python_int_optin_exceptions.json)
+    if result_type.startswith("!") and (self.object_union(a.t) or (not unary and self.object_union(b.t)) or len([r for r in results if r.t in self.classes and r.t != COMPLEXC]) > 0):
+        # (a union with objects says which results have no union; one of numbers alone, complex
+        # numbers too, keeps the conversion's own diagnostic below, which the promoting-int
+        # baseline records: tools/python_int_optin_exceptions.json)
         promoting = " (a promoting int joins no other result: docs/python-int.md)" if len([r for r in results if r.t == BIG]) > 0 else ""
         self.err(f"unsupported operand types for {shown if shown != '' else op}: the results of {typestr(v.t)}'s members ({', '.join([typestr(r.t) for r in results])}) have no union{promoting}; narrow it with isinstance() first")
     ph = Ins("phi", result_type, "")
