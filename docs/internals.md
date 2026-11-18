@@ -910,7 +910,6 @@ are required before promotion. `make verify` keeps the standard tier.
 | `PYSTACHY_TIMING=1` | Print monotonic compiler [stage durations](#compiler-stage-timings) to stderr; nested totals overlap |
 | `PYSTACHY_IRCHECK=1` | Verify typed IR before lowering and after transforming passes |
 | `PYSTACHY_IRFX=1` | Print function effect summaries to stderr |
-| `PYSTACHY_UNICODE_AUDIT=1` | Compile the [Unicode audit](language/compatibility.md#unicode-audit) checks into the program and its imported library code |
 | `PYSTACHY_OPT` | Disable named optimizations with `-name`, comma-separated, or all with `-all`; see [IR passes](typed-ir.md#optimizations) |
 | `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT user-function inlining, including the recursion entry helper; `0` disables it (the scalar recursion helpers remain inlined) |
 | `PYSTACHY_JIT_CODEGEN=0\|2` | `0` generates the program's code at `-O0`: the JIT runner's `-O0`, or `llc -O0` for `lli`'s ORC to link; `2` (default) keeps ORC's level |

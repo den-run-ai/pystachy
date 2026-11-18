@@ -650,10 +650,6 @@ TEXT_OPS: dict[str, str] = {
     "pys_str_count": "pys_text_count", "pys_str_startswith": "pys_text_startswith",
     "pys_str_endswith": "pys_text_endswith",
 }
-# Byte-oriented boundaries audited only in user/library code, not inside runtime.py.
-# These are conservative: a call on any non-ASCII str is a porting audit hit, even where its
-# result is right.
-UNICODE_AUDIT: list[str] = ["expandtabs"]
 
 # the methods of frozenset (those that change nothing) and of set, which Gen.smethod compiles
 FSETMETHODS: list[str] = "copy difference intersection isdisjoint issubset issuperset symmetric_difference union".split()
@@ -994,7 +990,6 @@ RUNTIME: dict[str, str] = {
     "text.count": "int:str,str,int,int|R|",
     "text.startswith": "bool:str,str,int,int|R|", "text.endswith": "bool:str,str,int,int|R|",
     # strings
-    "str.audit": "None:str,str|R|",
     "str.get": "str:S,int|R A|", "str.slice": "str:S,int,int|A|", "str.slice_step": "str:S,int,int,int|R A|", "str.add": "str:S,str|A|", "str.mul": "str:S,int|R A|",
     "str.iadd": "str:S,str,int|A|",  # (s += t of a str local, appending in place to the str it owns: Gen.str_append)
     "str.cat": "str:int,str,str,str,str,str,str,str,str|A|",  # (the first n of eight strs: Gen.concat)
