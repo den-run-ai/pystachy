@@ -283,6 +283,28 @@ def gen_list_tag(self, what: str) -> str:
         self.tbaa[key] = TBAA_FIELDS + len(self.tbaa)
     return f", !tbaa !{self.tbaa[key]}"
 
+def gen_str_tag(self, kind: str) -> str:
+    # the TBAA of a load or store of a str's or bytes's length (kind "length" or "length.range") or
+    # of one of its bytes ("bytes"), lib/_pystachy_bytearray.py's buffers' too: ", !tbaa !N", or ""
+    # for another kind. runtime.py's own tags in its module (lower_module's runtime mode); in a
+    # program's, under fieldtbaa's root, as members of a struct of their own ("@str", runtime.c's
+    # Str: the length at 0, the bytes at STR_HEADER_SIZE), which no class lays out. LLVM then tells
+    # a length from a byte, and both from the program's fields and list storage, and never one
+    # byte from another, of a bytes or of a bytearray's buffer, whose bytes change: a write to a
+    # buffer keeps the fields and lists that a loop reads in registers, and a read of a bytes stays
+    # after a write to a buffer. No load is marked invariant (Gen.buffer_escape keeps buffers from
+    # the code that reads a bytes)
+    if kind != "length" and kind != "length.range" and kind != "bytes":
+        return ""
+    if self.rtmode:
+        return f", !tbaa !{TBAA_LEN}" if kind != "bytes" else f", !tbaa !{TBAA_BYTES}"
+    if "fieldtbaa" not in self.opts:
+        return ""
+    key = "@str 0" if kind != "bytes" else "@str 3"
+    if key not in self.tbaa:
+        self.tbaa[key] = TBAA_FIELDS + len(self.tbaa)
+    return f", !tbaa !{self.tbaa[key]}"
+
 def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
     op = i.op
     o = self.out
@@ -290,9 +312,10 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         self.lower_scalar(i)
 
     elif op == "mach.load" or op == "mach.store":
-        metadata = f", !tbaa !{TBAA_LEN}" if i.s == "length" or i.s == "length.range" else f", !tbaa !{TBAA_BYTES}" if i.s == "bytes" else ""
+        metadata = self.str_tag(i.s)
         if i.s == "length.range":
             metadata += f", !range !{STRLEN_RANGE}"
+            self.lenrange = True  # (the program's module defines the range: lower_module)
         if op == "mach.load":
             o.append(f"  {tmpname(i.r[0])} = load {lt(i.t)}, ptr {i.a[0].v}{metadata}")
         else:

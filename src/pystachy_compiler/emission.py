@@ -484,11 +484,12 @@ def gen_primitive(self, name: str, vals: list[Val]) -> Val:
     if ",".join([v.t for v in vals]) != sig[0]:
         self.err(f"_rt.{name}() takes ({sig[0].replace(',', ', ')}), not ({', '.join([typestr(v.t) for v in vals])})")
     a = [v.v for v in vals]
-    # (a str's length and bytes are tagged, and the length bounded, in runtime.py's module, which
-    # defines the metadata: lib/_pystachy_bytearray.py's module has the same operations untagged)
-    lenr = "length.range" if self.rtmode else ""
-    lenw = "length" if self.rtmode else ""
-    data = "bytes" if self.rtmode else ""
+    # (a str's length and bytes are tagged, and the length bounded, in either mode: lowering
+    # names runtime.py's tags in its module, and a program's own in lib/_pystachy_bytearray.py's,
+    # whose buffers' bytes change: Gen.str_tag)
+    lenr = "length.range"
+    lenw = "length"
+    data = "bytes"
     if name == "wrap_add" or name == "wrap_sub" or name == "wrap_mul":
         return Val(self.scalar(name[5:], [Val(a[0], 'int'), Val(a[1], 'int')]), "int")
     if name == "udiv" or name == "urem":

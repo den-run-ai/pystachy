@@ -681,6 +681,20 @@ With `listguard`, inline list reads and stores carry TBAA tags under `fieldtbaa`
 list's items pointer and of an item, so that LLVM keeps a loop's items pointers in registers
 across its item stores and can vectorize the copy.
 
+Under `fieldtbaa`, a program's inline reads of a `bytes`'s length and bytes (`len()`, an index, a
+`for` loop) and the loads and stores of a `bytearray`'s buffer (its module's primitives) carry
+tags too (`Gen.str_tag`), as members of a struct `@str` under the same root: the length at 0 and
+the bytes at 24. Those are the `mach.load`/`mach.store` kinds `length`, `length.range` and
+`bytes`, which `runtime.py` tags under its own root. A `bytes`'s reads and a buffer's reads and
+writes share one tag. LLVM then keeps fields, list
+headers and lengths in registers across a buffer's writes, and keeps every byte read in its place
+after a write that may reach it; `Gen.memclass` gives `Gen.canon` the same three classes. No byte
+load is marked invariant. The compiler also reuses reads of a `bytes`, because a `bytes` never
+changes, so a buffer must never be read as one: `analysis.buffer_escape` rejects the module's
+code that would, and other modules reach none of a bytearray's fields.
+`tests/ir/bytes_tbaa.tbaa` pins the tags, and `tests/programs/strings/bytes_alias_orders.py`
+the orders that a wrong one would change.
+
 For a statically known string variable `s`, the frontend can lower `ord(s[i])` and
 comparisons such as `s[i] == ":"` directly to `text.ord_at`. The comparison accepts
 `==` or `!=` with a single ASCII literal on either side. The indexed read evaluates

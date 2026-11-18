@@ -1635,7 +1635,7 @@ def gen_canon(self, vs: Values, v: str) -> str:
             r = self.same(vs, v, f"{i.op} {i.t} {i.a[0].t} {self.canon(vs, i.a[0].v)}")
         elif i.op == "scalar.bin" or i.op == "scalar.cast" or i.op == "scalar.cmp" or i.op == "select" or i.op == "num.cast" or i.op == "num.cmp" or i.op == "int.ucmp" or i.op == "ptr.cmp":
             r = self.same(vs, v, f"{i.op} {i.t} {i.s} {i.x} {', '.join([a.t + ' ' + self.canon(vs, a.v) for a in i.a])}")
-        elif i.op == "mem.load" or (i.op == "mach.load" and i.s == ""):
+        elif i.op == "mem.load" or (i.op == "mach.load" and (i.s == "" or self.memclass(vs, i, "") != "")):
             x = self.reaching(vs, self.addr(vs, i.a[0].v), w // vs.stride, w % vs.stride)
             if x != "":
                 r = self.canon(vs, x)
@@ -1690,6 +1690,7 @@ def gen_reaching(self, vs: Values, a: str, j: int, x: int) -> str:
     heap = not slot and not glob
     stop = FXBIT["wG"] if glob else RAWW
     steps = 0
+    mine = self.memclass(vs, vs.fn.blocks[j].code[x], a) if x < len(vs.fn.blocks[j].code) else ""
     while True:
         code = vs.fn.blocks[j].code
         for y in range(x - 1, -1, -1):
@@ -1698,14 +1699,16 @@ def gen_reaching(self, vs: Values, a: str, j: int, x: int) -> str:
                 return ""
             i = code[y]
             if i.op == "mem.load" or i.op == "mem.store" or i.op == "mach.load" or i.op == "mach.store":
-                if i.op == "mach.load" and i.s != "":
+                if i.op == "mach.load" and i.s != "" and self.memclass(vs, i, "") == "":
                     continue
                 p = i.a[0].v
                 q = self.addr(vs, p)
                 if q == a:
                     return i.a[1].v if i.op == "mem.store" or i.op == "mach.store" else tmpname(i.r[0])
                 if (i.op == "mem.store" or i.op == "mach.store") and heap and not p.startswith("@") and "." not in p and not self.disjoint(vs, a, q):
-                    return ""
+                    theirs = self.memclass(vs, i, q)
+                    if mine == "" or theirs == "" or mine == theirs:
+                        return ""  # (another class of memory than the load's is not its memory: memclass)
                 continue
             if i.op == "tuple.load" or i.op == "tuple.store":
                 p = tmpname(i.r[0])
@@ -1722,6 +1725,19 @@ def gen_reaching(self, vs: Values, a: str, j: int, x: int) -> str:
             return ""  # (a landing block's predecessors reach it where an op raised, not from their end)
         j = ps[0]
         x = len(vs.fn.blocks[j].code)
+
+def gen_memclass(self, vs: Values, i: Ins, a: str) -> str:
+    # the memory that load or store i (at canonical address a) reaches, where a program tells
+    # memories apart: "field" (an object's field, field.addr's), "length" or "bytes" (a str's or
+    # bytes's length or one of its bytes, a bytearray buffer's too: the kinds that Gen.str_tag
+    # tags), or "" for any memory. Two loads or stores of different classes never reach the same
+    # memory, as the TBAA of the program's fields and str accesses says to LLVM (runtime.py, whose
+    # tags are its own, keeps them unknown)
+    if i.op == "mach.load" or i.op == "mach.store":
+        if self.rtmode or (i.s != "length" and i.s != "length.range" and i.s != "bytes"):
+            return ""
+        return "bytes" if i.s == "bytes" else "length"
+    return "field" if (i.op == "mem.load" or i.op == "mem.store") and a in vs.fieldtype else ""
 
 def gen_disjoint(self, vs: Values, a: str, b: str) -> bool:
     # whether canonical addresses a and b are fields at different indices of the same class

@@ -184,7 +184,7 @@ RTL: dict[str, str] = {
 STR_HEADER_SIZE = 24  # offsetof(Str, s), checked against runtime.c and both CPython glues by rt-abi
 TBAA_LEN = 3
 TBAA_BYTES = 4
-STRLEN_RANGE = 5  # !range of a str's length in runtime mode: 0 to 2**63 - 18 (_rt.str_new's limit)
+STRLEN_RANGE = 5  # !range of a str's length: 0 to 2**63 - 18 (_rt.str_new's limit), in either mode
 # Program-only metadata, below the object-field tags. The recursion scalar types
 # share the object-field root so LLVM can distinguish their storage from fields.
 TBAA_DEPTH = 6
