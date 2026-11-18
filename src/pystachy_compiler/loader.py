@@ -3379,6 +3379,11 @@ class Loader:
                 self.sites.append(site)
                 self.sitem.append(m)
                 self.siterest.append(mk("block", "", line, []))
+                # (each site has an entry in every list guarded() reads: the import of run fails, so,
+                # as for an optional import of a failing module, no key and no except clauses to keep)
+                self.sitetry.append(mk("try", "", line, [mk("block", "", line, [])]))
+                self.sitekey.append("")
+                self.sitetop.append(1)
             new.append(mk("import", "", line, [al]))
         r = mk("raise", "", line, [mk("call", "", line, [mk("name", "ModuleNotFoundError", line, []), mk("str", f"No module named '{miss}'", line, [])])])
         new.append(r)
