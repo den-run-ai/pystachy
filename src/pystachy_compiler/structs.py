@@ -1,13 +1,13 @@
 """struct's calls of a format known as the program compiles: component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.ir import Val
-from src.pystachy_compiler.specs import BIG
+from src.pystachy_compiler.specs import BIG, BYTEARRAYC, BYTEARRAYS
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import is_opt, is_tuple, targs, tname
 
 # the functions of _struct (lib/_pystachy_struct.py) whose calls the compiler makes where it knows
 # the format (Gen.struct_call), which decides the types of the values
-STRUCT_FNS: list[str] = ["_struct$pack", "_struct$unpack", "_struct$unpack_from", "_struct$iter_unpack", "_struct$calcsize"]
+STRUCT_FNS: list[str] = ["_struct$pack", "_struct$unpack", "_struct$unpack_from", "_struct$iter_unpack", "_struct$calcsize", "_struct$pack_into"]
 # each format character's size in the native table (x86-64 Linux, LP64), which is its alignment
 # too, and in the standard one, which aligns nothing and has no n, N and P (lib/_pystachy_struct.py's)
 NATIVE_SIZES: dict[str, int] = {"x": 1, "c": 1, "b": 1, "B": 1, "?": 1, "h": 2, "H": 2, "i": 4, "I": 4, "l": 8, "L": 8,
@@ -106,17 +106,19 @@ def gen_struct_format(self, a: Node) -> Node | None:
 
 
 def gen_struct_call(self, name: str, args: list[Node], want: str) -> Val | None:
-    # struct.pack(), unpack(), unpack_from(), iter_unpack() or calcsize() (lib/_pystachy_struct.py's)
-    # of a format known as the program compiles: calls of the module's functions for each item,
-    # whose value has the item's type (CPython's s_pack_internal and s_unpack_internal); None for
-    # calcsize() of another format, which the module's function parses as the program runs
+    # struct.pack(), pack_into(), unpack(), unpack_from(), iter_unpack() or calcsize()
+    # (lib/_pystachy_struct.py's) of a format known as the program compiles: calls of the module's
+    # functions for each item, whose value has the item's type (CPython's s_pack_internal and
+    # s_unpack_internal); None for calcsize() of another format, which the module's function
+    # parses as the program runs. The buffer that is unpacked is bytes or a bytearray, whose bytes
+    # are read in place; pack_into()'s is a bytearray, written in place
     fn = name[name.find("$") + 1 :]
     line = self.line
     pos = [a for a in args if a.kind != "kw"]
     for a in args:
         if a.kind == "kw" and not (fn == "unpack_from" and (a.s == "buffer" or a.s == "offset")):
             self.err(f"{fn}() takes no keyword arguments" if fn != "unpack_from" else f"unpack_from() got an unexpected keyword argument '{a.s}'")
-        if a.kind == "dstar" or (a.kind == "starred" and fn != "pack"):
+        if a.kind == "dstar" or (a.kind == "starred" and fn != "pack" and fn != "pack_into"):
             self.err(f"struct.{fn}() of unpacked arguments is not supported")
     if len(pos) == 0 or pos[0].kind == "starred":
         self.err(f"struct.{fn}() takes the format as its first argument")
@@ -141,7 +143,17 @@ def gen_struct_call(self, name: str, args: list[Node], want: str) -> Val | None:
             self.err(f"calcsize() takes exactly one argument ({len(args)} given)")
         return Val(str(sf.size), "int")
     if fn == "pack":
-        return self.struct_pack(sf, pos[1:])
+        return self.struct_pack(sf, pos[1:], None, None)
+    if fn == "pack_into":
+        if len(pos) < 3 or pos[1].kind == "starred" or pos[2].kind == "starred":
+            self.err("pack_into() takes the format, the buffer and the offset before the values")
+        into = self.expr(pos[1], "")
+        if into.t != BYTEARRAYC:  # (CPython's TypeError, as the program compiles: bytes cannot be written)
+            self.err(f"argument must be read-write bytes-like object, not {tname(into.t)}")
+        o = self.expr(pos[2], "int")
+        if o.t != "int" and o.t != "bool" and o.t != BIG:
+            self.err(f"'{tname(o.t)}' object cannot be interpreted as an integer")
+        return self.struct_pack(sf, pos[3:], into, self.as_int(o))
     buf: Node | None = pos[1] if len(pos) > 1 else None
     off: Node | None = pos[2] if len(pos) > 2 else None
     for a in args:
@@ -155,23 +167,34 @@ def gen_struct_call(self, name: str, args: list[Node], want: str) -> Val | None:
     if len(args) > nmax:
         self.err(f"{fn}() takes at most {nmax} arguments ({len(args)} given)")
     b = self.expr(buf, "bytes")
-    if b.t != "bytes":
+    if b.t != "bytes" and b.t != BYTEARRAYC:
         self.err(f"a bytes-like object is required, not '{tname(b.t)}'")
-    bn = self.vnode(b)
+    ln = self.vnode(b)  # (what the module's _need, _offset and _offsets measure)
+    bn = ln  # (the bytes that are read)
+    if b.t == BYTEARRAYC:
+        # a bytearray's bytes are read in place: its buffer's, within the length that was checked
+        bn = self.vnode(self.call_fn(self.funcs[BYTEARRAYS + "$_raw"], [], [ln]))
     sz = mk("int", str(sf.size), line, [])
     if fn == "unpack":
-        self.expr(self.struct_helper("_need", [bn, sz]), "")
+        self.expr(self.struct_helper("_need", [ln, sz]), "")
         return self.tuple_([self.expr(e, "") for e in self.struct_nodes(sf, bn, None)])
     if fn == "unpack_from":
         o = self.expr(off, "int") if off is not None else Val("0", "int")
         if o.t != "int" and o.t != "bool" and o.t != BIG:
             self.err(f"'{tname(o.t)}' object cannot be interpreted as an integer")
-        at = self.expr(self.struct_helper("_offset", [bn, self.vnode(self.as_int(o)), sz]), "int")
+        at = self.expr(self.struct_helper("_offset", [ln, self.vnode(self.as_int(o)), sz]), "int")
         return self.tuple_([self.expr(e, "") for e in self.struct_nodes(sf, bn, self.vnode(at))])
     # iter_unpack(): the list of the tuples, where CPython gives an iterator of them
-    starts = self.expr(self.struct_helper("_offsets", [bn, sz]), "list[int]")
+    starts = self.expr(self.struct_helper("_offsets", [ln, sz]), "list[int]")
     item = mk("name", "__offset", line, [])
     return self.expr(mk("listcomp", "", line, [mk("tuple", "", line, self.struct_nodes(sf, bn, item)), item, self.vnode(starts)]), want)
+
+
+def gen_struct_store(self, dst: Node, base: Node, k: int, p: Val) -> None:
+    # pack_into()'s store of the bytes p at offset base + k of bytearray dst, within it (the
+    # module's _into checked the struct's size there): lib/_pystachy_bytearray.py's _store
+    at = base if k == 0 else mk("binop", "+", self.line, [base, mk("int", str(k), self.line, [])])
+    self.call_fn(self.funcs[BYTEARRAYS + "$_store"], [], [dst, at, self.vnode(p)])
 
 
 def gen_struct_helper(self, f: str, args: list[Node]) -> Node:
@@ -206,9 +229,12 @@ def gen_struct_nodes(self, sf: StructFmt, bn: Node, base: Node | None) -> list[N
     return out
 
 
-def gen_struct_pack(self, sf: StructFmt, args: list[Node]) -> Val:
+def gen_struct_pack(self, sf: StructFmt, args: list[Node], into: Val | None, offset: Val | None) -> Val:
     # pack(format, *values) of format sf: the values evaluated in order, then each item's bytes,
-    # with pad bytes and native alignment between them
+    # with pad bytes and native alignment between them. pack_into(format, into, offset, *values):
+    # as CPython's s_pack_into, the offset checked once the values are evaluated, the struct's
+    # bytes of the bytearray zeroed, then each item's stored in its turn, so that an item that
+    # raises leaves those before it written
     line = self.line
     vals: list[Val] = []
     for a in args:
@@ -223,15 +249,22 @@ def gen_struct_pack(self, sf: StructFmt, args: list[Node]) -> Val:
             vals.append(self.expr(a, ""))
     n = sf.nvalues()
     if len(vals) != n:
-        self.err(f"pack expected {n} items for packing (got {len(vals)})")
+        self.err(f"{'pack' if into is None else 'pack_into'} expected {n} items for packing (got {len(vals)})")
     little = mk("True" if sf.little else "False", "", line, [])
+    dst: Node | None = None
+    base: Node | None = None
+    if into is not None and offset is not None:
+        dst = self.vnode(into)
+        base = self.vnode(self.expr(self.struct_helper("_into", [dst, self.vnode(offset), mk("int", str(sf.size), line, [])]), "int"))
+        if sf.size > 0:
+            self.struct_store(dst, base, 0, Val(self.bconst("\x00" * sf.size), "bytes"))
     parts: list[Val] = []
     done = 0  # (the bytes so far)
     j = 0
     for i in range(len(sf.codes)):
         c = sf.codes[i]
         k = sf.itemsize(c)
-        if sf.offsets[i] > done:
+        if sf.offsets[i] > done and dst is None:
             parts.append(Val(self.bconst("\x00" * (sf.offsets[i] - done)), "bytes"))
         for r in range(1 if c == "s" or c == "p" else sf.counts[i]):
             v = vals[j]
@@ -258,9 +291,20 @@ def gen_struct_pack(self, sf: StructFmt, args: list[Node]) -> Val:
                 if v.t != "int" and v.t != "bool" and v.t != BIG:
                     self.err("required argument is not an integer")  # (a promoting int: as_int narrows it)
                 signed = mk("True" if c in "bhilqnP" else "False", "", line, [])  # (P packs any int, as CPython's PyLong_AsVoidPtr does)
+                if dst is not None and base is not None:
+                    # (pack_into()'s integer: its bytes stored as they are made, once its range is checked)
+                    checked = self.struct_helper("_check_int", [mk("str", c, line, []), self.vnode(self.as_int(v)), mk("int", str(k), line, []), signed])
+                    at = base if sf.offsets[i] + r * k == 0 else mk("binop", "+", line, [base, mk("int", str(sf.offsets[i] + r * k), line, [])])
+                    self.call_fn(self.funcs[BYTEARRAYS + "$_store_int"], [], [dst, at, checked, mk("int", str(k), line, []), little])
+                    continue
                 e = self.struct_helper("_pack_int", [mk("str", c, line, []), self.vnode(self.as_int(v)), mk("int", str(k), line, []), signed, little])
-            parts.append(self.expr(e, "bytes"))
+            if dst is not None and base is not None:
+                self.struct_store(dst, base, sf.offsets[i] + r * k, self.expr(e, "bytes"))
+            else:
+                parts.append(self.expr(e, "bytes"))
         done = sf.offsets[i] + (sf.counts[i] if c == "s" or c == "p" else sf.counts[i] * k)
+    if dst is not None:
+        return Val("null", "None")
     if sf.size > done:
         parts.append(Val(self.bconst("\x00" * (sf.size - done)), "bytes"))
     if len(parts) == 0:

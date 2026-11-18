@@ -211,7 +211,7 @@ digest_size -- number of bytes in this hashes output"""
         self._tail = b""  # the bytes after the last whole block: fewer than 64
         self._count = 0  # the bytes hashed
         if len(data) > 0:
-            self.update(data)
+            self._update(data)
 
     @property
     def name(self) -> str:
@@ -225,8 +225,11 @@ digest_size -- number of bytes in this hashes output"""
     def block_size(self) -> int:
         return 64
 
-    def update(self, data: bytes, /) -> None:
+    def update(self, data: bytes | bytearray, /) -> None:
         """Update this hash object's state with the provided string."""
+        self._update(bytes(data))  # (a bytearray's bytes as they are now; bytes are themselves)
+
+    def _update(self, data: bytes) -> None:
         self._count += len(data)
         if len(self._tail) > 0:
             data = self._tail + data
@@ -289,32 +292,32 @@ digest_size -- number of bytes in this hashes output"""
         return other
 
 
-def md5(data: bytes = b"", *, usedforsecurity: bool = True) -> HASH:
+def md5(data: bytes | bytearray = b"", *, usedforsecurity: bool = True) -> HASH:
     """Returns a md5 hash object; optionally initialized with a string"""
-    return HASH(_MD5, data)
+    return HASH(_MD5, bytes(data))
 
 
-def sha1(data: bytes = b"", *, usedforsecurity: bool = True) -> HASH:
+def sha1(data: bytes | bytearray = b"", *, usedforsecurity: bool = True) -> HASH:
     """Returns a sha1 hash object; optionally initialized with a string"""
-    return HASH(_SHA1, data)
+    return HASH(_SHA1, bytes(data))
 
 
-def sha224(data: bytes = b"", *, usedforsecurity: bool = True) -> HASH:
+def sha224(data: bytes | bytearray = b"", *, usedforsecurity: bool = True) -> HASH:
     """Returns a sha224 hash object; optionally initialized with a string"""
-    return HASH(_SHA224, data)
+    return HASH(_SHA224, bytes(data))
 
 
-def sha256(data: bytes = b"", *, usedforsecurity: bool = True) -> HASH:
+def sha256(data: bytes | bytearray = b"", *, usedforsecurity: bool = True) -> HASH:
     """Returns a sha256 hash object; optionally initialized with a string"""
-    return HASH(_SHA256, data)
+    return HASH(_SHA256, bytes(data))
 
 
-def new(name: str, data: bytes = b"", *, usedforsecurity: bool = True) -> HASH:
+def new(name: str, data: bytes | bytearray = b"", *, usedforsecurity: bool = True) -> HASH:
     """new(name, data=b'') - Return a new hashing object using the named algorithm;
     optionally initialized with data (which must be a bytes-like object).
     """
     lower = name.lower()
     for kind in range(4):
         if _NAMES[kind] == lower:
-            return HASH(kind, data)
+            return HASH(kind, bytes(data))
     raise ValueError("unsupported hash type " + name)

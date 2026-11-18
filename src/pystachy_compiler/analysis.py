@@ -958,6 +958,21 @@ def reads_builtin(n: Node, name: str, hidden: bool, mods: dict[str, bool]) -> bo
     return False
 
 
+def bytearray_values(n: Node) -> bool:
+    # may code n name the builtin bytearray but as a member of the annotation bytes | bytearray,
+    # in either order? A module that names it only so reads the bytes of either without the
+    # class, which only the modules that make or name bytearrays import (Loader.bytearray_import,
+    # Gen.buffer_ann)
+    if n.kind == "name":
+        return n.s == "bytearray"
+    if n.kind == "binop" and n.s == "|" and n.kids[0].kind == "name" and n.kids[1].kind == "name" and sorted([n.kids[0].s, n.kids[1].s]) == ["bytearray", "bytes"]:
+        return False
+    for k in n.kids:
+        if bytearray_values(k):
+            return True
+    return False
+
+
 def module_reads(body: Node, name: str) -> bool:
     # may a module's code read builtin name (reads_builtin)? A module-level binding of the name,
     # also by a function's global statement, is what the module's code reads (Gen.bound)

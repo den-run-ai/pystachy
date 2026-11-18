@@ -582,6 +582,26 @@ def _span(n: int, lo: int | None, hi: int | None, st: int | None) -> tuple[int, 
     return (start, step, (start - stop - 1) // (-step) + 1 if stop < start else 0)
 
 
+def _raw(b: bytearray) -> bytes:
+    # b's buffer, of which the first len(b) bytes are b's: what the compiler reads a bytearray's
+    # bytes from in place, at offsets it has checked against len(b) (Gen.struct_call)
+    return b._b
+
+
+def _store(b: bytearray, at: int, p: bytes) -> None:
+    # b[at:at + len(p)] = p in place, which the caller knows to be within b (struct.pack_into()'s
+    # items, Gen.struct_pack)
+    __pys_ba_copy(b._b, at, p, 0, len(p))
+
+def _store_int(b: bytearray, at: int, v: int, size: int, little: bool) -> None:
+    # the low size bytes of v at b[at], the low byte first where little, which the caller knows to
+    # be within b: an integer that struct.pack_into() stores with no bytes object between
+    buf = b._b
+    for i in range(size):
+        __pys_ba_put(buf, at + i if little else at + size - 1 - i, v & 255)
+        v >>= 8
+
+
 def _new(source, encoding=None, errors=None) -> bytearray:
     # bytearray(source[, encoding[, errors]])
     r = bytearray()

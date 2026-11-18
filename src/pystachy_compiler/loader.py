@@ -36,6 +36,7 @@ from src.pystachy_compiler.analysis import (
     local_types,
     mark,
     may_end,
+    bytearray_values,
     module_reads,
     names_name,
     own_specials,
@@ -841,7 +842,7 @@ def bytearray_import(n: Node) -> None:
     # at the module's top level binds it): the class is lib/_pystachy_bytearray.py's, which the
     # module imports after its docstring and __future__ imports, as if it had written the import.
     # A function's own bytearray hides it there, as it hides the builtin
-    if not module_reads(n, "bytearray"):
+    if not module_reads(n, "bytearray") or not bytearray_values(n):
         return
     at = 1 if len(n.kids) > 0 and n.kids[0].kind == "expr" and n.kids[0].kids[0].kind == "str" else 0
     while at < len(n.kids) and n.kids[at].kind == "import" and n.kids[at].s == "from" and all([a.kind == "alias" and len(a.kids) == 2 and a.kids[0].s.startswith("__future__.") for a in n.kids[at].kids]):

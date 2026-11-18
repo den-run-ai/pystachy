@@ -1,0 +1,23 @@
+(67305985, 1541, 2055, 202050057) (1027,) (151653132,)
+(b'\x01\x02', True, 4) (2,)
+[(513, 3), (1284, 6), (2055, 9), (2826, 12)] (1284, 151521030) (513, 100992003)
+(218893066,) 13
+le 01020304050600000000000000000000 16
+be 0102030405060000fffe000700000000 16
+tail 0102030405060000fffe006162000001 16
+native 01020304010000000200000062000001 16
+float 000000000000f83f0200000062000001 16
+Struct 000000000000f83f0200ffffffffffff 16
+star 090800000000f83f0200ffffffffffff 16
+error: 'B' format requires 0 <= number <= 255
+partial ff0100020000ffff 8
+error: pack_into requires a buffer of at least 9 bytes for packing 4 bytes at offset 5 (actual buffer size is 8)
+error: offset -9 out of range for 8-byte buffer
+error: no space to pack 4 bytes at offset -3
+error: pack_into requires a buffer of at least 12 bytes for packing 4 bytes at offset 8 (actual buffer size is 8)
+error: unpack_from requires a buffer of at least 54 bytes for unpacking 4 bytes at offset 50 (actual buffer size is 53)
+error: offset -54 out of range for 53-byte buffer
+error: unpack requires a buffer of 4 bytes
+error: iterative unpacking requires a buffer of a multiple of 2 bytes
+8955050 1200 bytearray(b'9]\x01\x00')
+[exit 0]

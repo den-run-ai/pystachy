@@ -41,11 +41,16 @@ holds: `bytes(b)`, a slice and a method's result are copies, and two names of on
 its changes. It has CPython's constructor forms, items, slices (read, assigned and deleted, with
 steps), `append`, `extend`, `insert`, `pop`, `remove`, `reverse`, `+`, `+=`, `*`, comparisons with
 `bytes` and bytearrays, and the methods `bytes` has here. Rejected as the program compiles:
-`bytes + bytearray`, `bytes == bytearray` and `int * bytearray` (reflected operators),
-`bytes | bytearray` annotations, `%` formatting, `title()`, `istitle()` and `expandtabs()` (which
-`bytes` lacks too), a `range(...)` passed to `extend()` (pass `list(range(...))`), and a bytearray
-given to `struct`, a file or another library function, which take `bytes(b)`. There is no
-`memoryview`.
+`bytes + bytearray`, `bytes == bytearray` and `int * bytearray` (reflected operators), `%`
+formatting, `title()`, `istitle()` and `expandtabs()` (which `bytes` lacks too), a `range(...)`
+passed to `extend()` (pass `list(range(...))`), and a bytearray given to a file or to a library
+function other than `struct`'s and `hashlib`'s, which take `bytes(b)`. There is no `memoryview`.
+
+A parameter annotated `bytes | bytearray` takes either. The function is compiled once for each
+type it is called with, as one with an unannotated parameter is: it has the caller's own object,
+reads its bytes in place, and `isinstance()` of it is decided as the program compiles. An argument
+of another type is taken as an annotated `bytes` parameter takes it. The return may be annotated
+so too; a variable, a field or a container's items may not.
 
 ### Text and file positions
 

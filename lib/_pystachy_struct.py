@@ -109,13 +109,19 @@ def _range(code: str, size: int, signed: bool) -> str:
     return f"'{code}' format requires {-(top // 2)} <= number <= {top // 2 - 1}" if signed else f"'{code}' format requires 0 <= number <= {top - 1}"
 
 
-def _pack_int(code: str, v: int, size: int, signed: bool, little: bool) -> bytes:
-    # an integer of code's size bytes, in two's complement where it is signed
+def _check_int(code: str, v: int, size: int, signed: bool) -> int:
+    # v, which code's size bytes hold; CPython's struct.error for another
     if signed:
         if size < 8 and (v < -(1 << (8 * size - 1)) or v >= 1 << (8 * size - 1)):
             raise error(_range(code, size, True))
     elif v < 0 or (size < 8 and v >= 1 << (8 * size)):
         raise error(_range(code, size, False))
+    return v
+
+
+def _pack_int(code: str, v: int, size: int, signed: bool, little: bool) -> bytes:
+    # an integer of code's size bytes, in two's complement where it is signed
+    _check_int(code, v, size, signed)
     out = [0] * size
     for i in range(size):
         out[i if little else size - 1 - i] = v & 255
@@ -315,13 +321,13 @@ def _unpack_pascal(b: bytes, at: int, n: int) -> bytes:
     return b[at + 1 : at + 1 + k]
 
 
-def _need(b: bytes, size: int) -> None:
+def _need(b: bytes | bytearray, size: int) -> None:
     # unpack()'s buffer: exactly size bytes
     if len(b) != size:
         raise error(f"unpack requires a buffer of {size} bytes")
 
 
-def _offset(b: bytes, offset: int, size: int) -> int:
+def _offset(b: bytes | bytearray, offset: int, size: int) -> int:
     # unpack_from()'s offset in b of size bytes, from the end of b where it is negative
     n = len(b)
     if offset < 0:
@@ -335,7 +341,21 @@ def _offset(b: bytes, offset: int, size: int) -> int:
     return offset
 
 
-def _offsets(b: bytes, size: int) -> list[int]:
+def _into(b: bytes | bytearray, offset: int, size: int) -> int:
+    # pack_into()'s offset in b for size bytes, from the end of b where it is negative
+    n = len(b)
+    if offset < 0:
+        if offset + size > 0:
+            raise error(f"no space to pack {size} bytes at offset {offset}")
+        if offset + n < 0:
+            raise error(f"offset {offset} out of range for {n}-byte buffer")
+        offset += n
+    if n - offset < size:
+        raise error(f"pack_into requires a buffer of at least {size + offset} bytes for packing {size} bytes at offset {offset} (actual buffer size is {n})")
+    return offset
+
+
+def _offsets(b: bytes | bytearray, size: int) -> list[int]:
     # iter_unpack()'s: where each struct of size bytes starts in b
     if size == 0:
         raise error("cannot iteratively unpack with a struct of length 0")
@@ -394,7 +414,7 @@ Pack the values v1, v2, ... according to the format string and write
 the packed bytes into the writable buffer buf starting at offset.  Note
 that the offset is a required argument.  A negative offset counts from
 the end of the buffer.  See help(struct) for more on format strings."""
-    raise NotImplementedError("struct.pack_into() is not supported: it writes into a bytearray or memoryview, which Pystachy does not have")
+    raise NotImplementedError(_known("pack_into"))
 
 
 class Struct:
@@ -415,6 +435,15 @@ Return a bytes object containing values v1, v2, ... packed according
 to the format string S.format.  See help(struct) for more on format
 strings."""
         return pack(self.format, *v)
+
+    def pack_into(self, buffer, offset, *v):
+        """S.pack_into(buffer, offset, v1, v2, ...)
+
+Pack the values v1, v2, ... according to the format string S.format
+and write the packed bytes into the writable buffer buf starting at
+offset.  Note that the offset is a required argument.  See
+help(struct) for more on format strings."""
+        pack_into(self.format, buffer, offset, *v)
 
     def unpack(self, buffer, /):
         """Return a tuple containing unpacked values.

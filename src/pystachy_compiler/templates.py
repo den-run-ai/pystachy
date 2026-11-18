@@ -8,6 +8,7 @@ from src.pystachy_compiler.ir import ClassInfo, FnInfo
 from src.pystachy_compiler.names import retoken, short
 from src.pystachy_compiler.specs import (
     BIG,
+    BYTEARRAYC,
     SPECIAL,
     SPECSHOW,
     TEMPLATE_BYTES,
@@ -713,6 +714,9 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     # in the key and budgets: two callers may require different native storage.
     # A lambda's Callable result type, a generic class's specialization, types the C(...) it
     # returns (see call_fn): lambda: defaultdict(int) as a defaultdict[str, int]'s factory.
+    for j in range(min(len(ts), len(f.params))):
+        if f.params[j] in f.bufs and ts[j] != "bytes" and ts[j] != BYTEARRAYC:
+            self.err(f"expected bytes | bytearray, got {typestr(ts[j])}")  # (the parameter's annotation: declare_fn)
     body = f.orig.kids[2] if f.pending else f.node.kids[2]
     yield_context = not resultsoft and fresh_yield_context(f, want)
     context = f.ret == "" and "?" not in want and ("list[" in want or "dict[" in want or "set[" in want or "tuple[" in want)

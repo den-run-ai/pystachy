@@ -589,6 +589,7 @@ from src.pystachy_compiler.declarations import (
     gen_ann_none as declarations_ann_none,
     gen_ann_problem as declarations_ann_problem,
     gen_any_in as declarations_any_in,
+    gen_buffer_ann as declarations_buffer_ann,
     gen_any_variables as declarations_any_variables,
     gen_boxto as declarations_boxto,
     gen_boxwider as declarations_boxwider,
@@ -1246,6 +1247,7 @@ from src.pystachy_compiler.structs import (
     gen_struct_helper as structs_struct_helper,
     gen_struct_nodes as structs_struct_nodes,
     gen_struct_pack as structs_struct_pack,
+    gen_struct_store as structs_struct_store,
 )
 from src.pystachy_compiler.templates import (
     gen_bind as templates_bind,
@@ -2962,6 +2964,9 @@ class Gen:
 
     def any_in(self, anns: list[Node]) -> bool:
         return declarations_any_in(self, anns)
+
+    def buffer_ann(self, a: Node) -> bool:
+        return declarations_buffer_ann(self, a)
 
     def any_variables(self, n: Node, classbody: bool, local: bool = False) -> None:
         declarations_any_variables(self, n, classbody, local)
@@ -5278,8 +5283,11 @@ class Gen:
     def struct_nodes(self, sf: StructFmt, bn: Node, base: Node | None) -> list[Node]:
         return structs_struct_nodes(self, sf, bn, base)
 
-    def struct_pack(self, sf: StructFmt, args: list[Node]) -> Val:
-        return structs_struct_pack(self, sf, args)
+    def struct_pack(self, sf: StructFmt, args: list[Node], into: Val | None, offset: Val | None) -> Val:
+        return structs_struct_pack(self, sf, args, into, offset)
+
+    def struct_store(self, dst: Node, base: Node, k: int, p: Val) -> None:
+        structs_struct_store(self, dst, base, k, p)
 
     def bytes_(self, args: list[Node]) -> Val:
         return builtins_bytes_(self, args)

@@ -201,6 +201,7 @@ class FnInfo:
         # a function is that Callable of the specialization it returns (see pat_arg)
         self.pats: dict[int, Node] = {}
         self.anys: list[str] = []  # the parameters annotated typing.Any, "" its return: left unannotated (see declare_fn)
+        self.bufs: list[str] = []  # the parameters annotated bytes | bytearray: left unannotated, each call's is one of the two (see declare_fn)
         self.clo = -1  # a closure's function (a def or lambda inside a function): its Gen.closures position
         # a generator function (a def whose own body yields): a call makes a generator object, an
         # LLVM coroutine handle of type gen[Y] (ret; "" while a template's first yield decides Y),

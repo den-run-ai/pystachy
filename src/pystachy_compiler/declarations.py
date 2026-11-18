@@ -12,6 +12,7 @@ from src.pystachy_compiler.specs import (
     ANYUSE,
     BIG,
     BIGOPT,
+    BYTEARRAYC,
     CLASSVAR,
     CTYPES,
     EXCATTRS,
@@ -499,6 +500,25 @@ def gen_typevar_in(self, anns: list[Node], skip: list[str]) -> str:
         if r != "":
             return r
     return ""
+
+def gen_buffer_ann(self, a: Node) -> bool:
+    # is annotation a (also in a string) bytes | bytearray, in either order, of the builtin types:
+    # what a function that reads bytes from either takes
+    if a.kind == "str":
+        a = self.parse_expr(a.s)
+    if a.kind != "binop" or a.s != "|":
+        return False
+    ms = self.union_members(a, [])
+    if len(ms) != 2 or ms[0].kind != "name" or ms[1].kind != "name" or "bytes" not in [ms[0].s, ms[1].s]:
+        return False
+    one = ms[0] if ms[0].s == "bytes" else ms[1]
+    other = ms[1] if ms[0].s == "bytes" else ms[0]
+    if (other.s != "bytearray" and other.s != BYTEARRAYC) or self.ann(one) != "bytes":
+        return False
+    # (the class's name is its module's where the module imports it, the loader's; a module that
+    # names bytearray in such annotations alone imports no class, Loader.bytearray_import, and
+    # the name is the builtin's unless the program binds it)
+    return self.ann(other) == BYTEARRAYC if other.s == BYTEARRAYC or self.bound("bytearray") else True
 
 def gen_any_in(self, anns: list[Node]) -> bool:
     # do annotations anns mention typing.Any (also in a string: Any, list[Any], Mapping[str, Any],
@@ -1330,6 +1350,16 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         # types (any argument: isinstance() narrows it), where a template may be
         if ps[i].kind == "param" and ps[i].kids[0].kind == "name" and ps[i].kids[0].s == "object" and not (cls != "" and i == 0 and f.deco != "staticmethod") and (cls == "" or template_ok(d.s) or init):
             ps[i].kids[0] = mk("noann", "", d.line, [])
+    if (cls == "" or template_ok(d.s) or init) and not f.prop and f.acc == "" and not f.extern and not f.export and not f.pyexport:
+        # x: bytes | bytearray: a template's parameter that each call types, as the one or the
+        # other (instance() rejects an argument of another type), so that the function reads the
+        # bytes of either in place; its return annotated so is what it returns for that call
+        for i in range(len(ps)):
+            if ps[i].kind == "param" and not (cls != "" and i == 0 and f.deco != "staticmethod") and self.buffer_ann(ps[i].kids[0]):
+                ps[i].kids[0] = mk("noann", "", d.line, [])
+                f.bufs.append(ps[i].s)
+        if len(f.bufs) > 0 and not init and self.buffer_ann(d.kids[1]):
+            d.kids[1] = mk("noann", "", d.line, [])
     if (cls == "" or template_ok(d.s) or init) and not f.prop and f.acc == "" and not f.extern and not f.export and not f.pyexport and not self.dyn_policy(d.line):
         # typing.Any, also in list[Any] or Mapping[str, Any]: what it annotates is left to each
         # call, as a TypeVar's is. A parameter takes its argument's type (*args and **kwargs
