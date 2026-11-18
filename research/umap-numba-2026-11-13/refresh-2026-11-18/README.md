@@ -28,3 +28,19 @@ executables (`f.main`, into which both stages are inlined): the stack's kNN dist
 instructions per 4 elements with no exits (main: 25 instructions and 3 checks per element); the
 layout's edge loop has 211 instructions and 22 exits and calls libm's `pow` (main: 232, 36 exits
 and `pys_fpow`).
+
+## What the checks left in the loops are (stack, JIT `-O2`, 2,000 points)
+
+`loop_exits.py` on the module the JIT ran (`f.main`, both stages inlined into it):
+
+- Layout (one component of the epoch, edge and negative-sample loops, 642 instructions): list
+  bounds checks on the edge loop's own index (`head[i]`, `tail[i]`, `epoch_of_next_sample[i]`
+  and the other per-edge lists: listguard does not version this loop) and on `emb[j * 2]`,
+  `emb[k * 2]` (indices read from data, or `% n_vertices`); OverflowError checks on index
+  arithmetic; the zero-division checks of three float divisions; NaN, infinity and range checks of
+  `int()` of the negative-sample count; and, in the JIT only, `rtj.opt_in_trap` checks in the
+  copies of `pys_list_set` (`pys_plain` is not known there; AOT builds fold it) and three calls of
+  `pys_fpow` (over the copies' 40-instruction limit; AOT inlines it through #706's interface).
+- kNN (91 blocks): the distance loop's guarded copy has no checks; around it, per pair and per
+  point, OverflowError checks of `i * dim` and `j * dim`, bounds checks of `best_d`/`best_i` in the
+  insertion, a `math` import check per `math.sqrt` and the JIT's opt-in traps.
