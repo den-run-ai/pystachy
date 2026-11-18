@@ -40,11 +40,11 @@ raises only after the whole expression is evaluated
 holds: `bytes(b)`, a slice and a method's result are copies, and two names of one bytearray share
 its changes. It has CPython's constructor forms, items, slices (read, assigned and deleted, with
 steps), `append`, `extend`, `insert`, `pop`, `remove`, `reverse`, `+`, `+=`, `*`, comparisons with
-`bytes` and bytearrays, and the methods `bytes` has here. Rejected as the program compiles:
-`bytes + bytearray`, `bytes == bytearray` and `int * bytearray` (reflected operators), `%`
-formatting, `title()`, `istitle()` and `expandtabs()` (which `bytes` lacks too), a `range(...)`
-passed to `extend()` (pass `list(range(...))`), and a bytearray given to a file or to a library
-function other than `struct`'s and `hashlib`'s, which take `bytes(b)`. There is no `memoryview`.
+`bytes` and bytearrays on either side, and the methods `bytes` has here. Rejected as the program
+compiles: `bytes + bytearray` and `int * bytearray` (reflected operators), `%` formatting,
+`title()`, `istitle()` and `expandtabs()` (which `bytes` lacks too), a `range(...)` passed to
+`extend()` (pass `list(range(...))`), and a bytearray given to a file or to a library function
+other than `struct`'s and `hashlib`'s, which take `bytes(b)`. There is no `memoryview`.
 
 A parameter annotated `bytes | bytearray` takes either. The function is compiled once for each
 type it is called with, as one with an unannotated parameter is: it has the caller's own object,

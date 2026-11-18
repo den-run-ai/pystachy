@@ -1,0 +1,5 @@
+read TypeError: 'NoneType' object is not subscriptable
+assign TypeError: 'NoneType' object does not support item assignment
+del TypeError: 'NoneType' object does not support item deletion
+aug TypeError: 'NoneType' object is not subscriptable
+[exit 0]

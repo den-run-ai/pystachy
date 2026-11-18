@@ -2426,11 +2426,19 @@ def gen_bytes_(self, args: list[Node]) -> Val:
     if v.t == "None" or is_opt(v.t):
         v = self.unwrap(v, "TypeError: cannot convert 'NoneType' object to bytes")
     if v.t in self.classes and "__bytes__" in self.classes[v.t].methods:
-        # an object's __bytes__(), which CPython calls before it would iterate over the object
+        # an object's __bytes__(), which CPython calls before it would iterate over the object, and
+        # whose result must be bytes: CPython's TypeError as the program runs (a class's value may
+        # be None, as may the result where its type says so)
+        self.notnone(v, "TypeError: cannot convert 'NoneType' object to bytes")
         r = self.protocol(v, "__bytes__", [])
-        if r.t != "bytes":
-            self.err(f"__bytes__ returned non-bytes (type {tname(r.t)})")
-        return r
+        if r.t == "bytes":
+            return r
+        if unopt(r.t) == "bytes":
+            return self.unwrap(r, "TypeError: __bytes__ returned non-bytes (type NoneType)")
+        if r.t == "dyn":
+            return self.coerce(r, "bytes")
+        self.guard("true", f"TypeError: __bytes__ returned non-bytes (type {tname(r.t)})")
+        return Val(self.bconst(""), "bytes")  # (not reached)
     if is_tuple(v.t) or is_vtuple(v.t) or v.t in self.classes or is_set(v.t) or is_dict(v.t) or is_gen(v.t):
         v = self.as_list(v, "bytes")
     if not is_list(v.t) or (elem(v.t) != "int" and elem(v.t) != "bool"):
