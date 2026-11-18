@@ -729,7 +729,7 @@ See [user exception classes](semantics.md#user-exception-classes) and
 - **Dict methods:** `update` with different key/value types, pair iterables beyond lists of
   matching tuples, or keyword arguments for nonstring keys; `fromkeys` with generators or
   implicit `None` values without a contextual type.
-- **Bytes:** `bytearray`, `memoryview`, `expandtabs`, `title`, `istitle`, `%`
+- **Bytes:** `memoryview`, `expandtabs`, `title`, `istitle`, `%`
   formatting, integer search arguments, method keywords except `hex` / `translate`, and
   equality with strings.
 - **Formatting:** format strings beyond literals or uniquely bound module literals whose

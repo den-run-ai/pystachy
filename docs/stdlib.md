@@ -138,7 +138,7 @@ surface and changes. Application examples show these libraries in use; the
 ## Remaining limits
 
 Language features limit library coverage most: general multiple inheritance and subclasses of generic
-(template) classes, arbitrary recursive value types, `bytearray` and `memoryview`, dynamic
+(template) classes, arbitrary recursive value types, `memoryview`, dynamic
 reflection and unrestricted argument expansion. Runtime-typed values exist only in modules that
 opt in to the [dynamic `Any` prototype](dynamic-any.md); its [operations](dynamic-any.md#operations)
 and [iteration](dynamic-any.md#iteration) contracts list what such ports can rely on.

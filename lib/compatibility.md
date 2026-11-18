@@ -526,7 +526,7 @@ edited module passes the 40 tests of `test_base64`; a
 [checksum over pseudo-random inputs](../tests/programs/library/lib_base64_random.py) covers every
 codec.
 
-- Binary data is `bytes`, as Pystachy has no `bytearray`, `memoryview` or `array`. The decoders
+- Binary data is `bytes`: these functions take no `bytearray`, and Pystachy has no `memoryview` or `array`. The decoders
   also take a `str` of ASCII characters, as CPython's do. Another type of argument is a
   compile-time error, where CPython raises `TypeError`
   (error tests: [a str to encode](../tests/errors/library/lib_base64_encode_str.py),
@@ -1369,8 +1369,8 @@ CPython's `ValueError` for every method but `close()` (`iter()` returns it, and 
 raises). Positions and sizes count bytes, as in CPython.
 
 - `getbuffer()` (a `memoryview` of the buffer), `readinto()` and `readinto1()` (into a writable
-  buffer, such as a `bytearray`) are unavailable, as Pystachy has no `memoryview`, `bytearray`
-  or `array`; so are `detach()` and `fileno()` (which raise `io.UnsupportedOperation`) and
+  buffer, such as a `bytearray`) are unavailable, as Pystachy has no `memoryview` or `array`
+  and these methods take no `bytearray`; so are `detach()` and `fileno()` (which raise `io.UnsupportedOperation`) and
   pickling. A call of any is a compile-time error.
 - Invalid argument types such as `BytesIO("x")`, `write("x")` (and so `print(..., file=)` to a
   `BytesIO`) are compile-time errors, as are attributes of the program's own on one.
