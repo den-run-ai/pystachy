@@ -41,9 +41,9 @@ raises only after the whole expression is evaluated
 #### Unicode
 
 `str` uses UTF-8 storage. Length, indexing, slicing, iteration, search offsets,
-replacement, padding, formatting and text `read(n)` count **code points**, not
-visible characters: combining marks count separately. `chr()`, escapes, `ord()`
-and `repr()` use the same code points. Whitespace stripping/splitting, `splitlines()`
+replacement, padding, formatting, tab expansion and text `read(n)` count **code
+points**, not visible characters: combining marks count separately. `chr()`, escapes,
+`ord()` and `repr()` use the same code points. Whitespace stripping/splitting, `splitlines()`
 and `isspace()` recognize CPython's Unicode whitespace and line breaks.
 `isalpha()`, `isalnum()`, `isdecimal()`, `isdigit()` and `isnumeric()` use Unicode
 15.1.0 properties, matching the pinned CPython. Decimal digits, digits and numeric
@@ -100,25 +100,6 @@ applies. Bytes case methods remain ASCII-only.
   its overflow messages differ (`width too big` / `precision too big`).
 - Non-ASCII decimal digits in a format specification, such as `f"{x:٣}"`, raise
   `ValueError`; CPython reads them as numbers.
-
-#### Unicode audit
-
-Enable checks **when compiling**, including for imported library code:
-
-```sh
-PYSTACHY_UNICODE_AUDIT=1 ./pystachy run app.py
-PYSTACHY_UNICODE_AUDIT=1 ./pystachy build app.py -o app
-```
-
-The checks raise `NotImplementedError: Unicode audit: ...` for non-ASCII input to
-`expandtabs()`, even when the result would match CPython. Case mapping, case tests,
-character classification, code-point operations, printing, equality,
-concatenation and Unicode whitespace operations remain usable. File write counts, invalid UTF-8 decoding and
-other unlisted boundaries are **not audited**.
-
-Each check scans to the first non-ASCII byte; default builds omit it. An AOT
-executable keeps its compiled checks: changing the variable when running it has
-no effect. The shared runtime cache is independent of this setting.
 
 ### Containers and evaluation order
 

@@ -192,7 +192,7 @@ def prepare(cmd: str, source: str, me: str, home: str, dirs: list[str], llvm: st
         reason = "default ORC tier required"
     elif os.getenv("PYSTACHY_CFLAGS", "") != "":
         reason = "custom CFLAGS"
-    elif any(os.getenv(k, "") != "" for k in ["PYSTACHY_IRCHECK", "PYSTACHY_IRFX", "PYSTACHY_UNICODE_AUDIT"]):
+    elif any(os.getenv(k, "") != "" for k in ["PYSTACHY_IRCHECK", "PYSTACHY_IRFX"]):
         reason = "compiler diagnostics requested"
     elif any(os.getenv(k, "") != "" for k in BUILD_ENV):
         reason = "custom build environment"

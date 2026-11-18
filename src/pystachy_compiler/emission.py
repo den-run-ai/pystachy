@@ -5,7 +5,7 @@ from src.pystachy_compiler.bigints import narrows
 from src.pystachy_compiler.diagnostics import Rejoin, fail, int_lists
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.ir import Blk, Data, Frame, Ins, Val, tmpname, one_num
-from src.pystachy_compiler.specs import BIGOPT, CHECKED, LIST_READS, LIST_WRITES, NARROWED, RTL, RTSYM, STR_HEADER_SIZE, TEXT_OPS, UNICODE_AUDIT
+from src.pystachy_compiler.specs import BIGOPT, CHECKED, LIST_READS, LIST_WRITES, NARROWED, RTL, RTSYM, STR_HEADER_SIZE, TEXT_OPS
 from src.pystachy_compiler.utils import (
     RtFn,
     elem,
@@ -302,8 +302,6 @@ def gen_rt(self, name: str, ret: str, args: list[str], x: str = "") -> str:
             name = "pys_text_chr"
         elif name in TEXT_OPS:
             name = TEXT_OPS[name]
-    if self.unicode_audit and not self.rtmode and name.startswith("pys_str_") and name[8:] in UNICODE_AUDIT:
-        self.rt("pys_str_audit", "void", [args[0], f"ptr {self.sconst('str.' + name[8:])}"])
     if self.rtmode and "@" + name == self.curfn.ll:
         self.err(f"{name}() implements an operation that it uses: write it without that operation")
     k = self.runtime(name)

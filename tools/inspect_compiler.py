@@ -45,7 +45,7 @@ RECURSION_OPS = ("enter", "resume", "leave", "depth", "restore")
 # Only compiler inputs are recorded, never arbitrary process environment values.
 ENV_KEYS = (
     "PYSTACHY_HOME", "PYSTACHY_PATH", "PYSTACHY_OPT", "PYSTACHY_IRCHECK",
-    "PYSTACHY_IRFX", "PYSTACHY_UNICODE_AUDIT",
+    "PYSTACHY_IRFX",
 )
 
 

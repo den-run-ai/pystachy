@@ -1418,13 +1418,6 @@ I pys_float_is_integer(double d) { return isfinite(d) && d == floor(d); }
    digits with single underscores between them, 0x/0o/0b prefixes), not strtoll/strtod's */
 static void repr_str(Buf *b, Str *s);
 static _Noreturn void failf(const char *f, ...);
-/* Compile-time opt-in audit instrumentation calls this at byte-oriented str boundaries.
-   No header/cache change or default-path work: scan only audit builds; runtime.py's own
-   intentional byte operations are not instrumented. This is conservative, not UTF-8 validation. */
-void pys_str_audit(Str *s, Str *op) {
-  for (I i = 0; i < s->len; i++) if ((unsigned char)s->s[i] >= 128)
-    failf("NotImplementedError: Unicode audit: %s on non-ASCII str uses byte/ASCII semantics", op->s);
-}
 I pys_f2i(double d);
 static _Noreturn void badlit(const char *what, I base, Str *s) {   /* int() (base >= 0) shows at most 200 */
   Buf b = {0}; char t[64]; I r, k = 0, cp;                          /* characters of the repr (%.200R) */
