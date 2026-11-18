@@ -501,7 +501,10 @@ returns an `int | float`. The members are `int`, `float`, `bool` and `str`, with
 ([optional values](#optional-values-and-narrowing)). Lists, and dicts of one key type, join
 their items' types, and tuples of one length join item by item: the display
 `[1, 2.5]` makes a `list[int | float]`, and `[("a", 1), ("b", 2.5)]` a
-`list[tuple[str, int | float]]`. A list made by a call of a function without a return
+`list[tuple[str, int | float]]`. A display whose items no inferred union holds, such as a
+list or an object among scalars, is an error that names the two remedies: an annotation with
+a [union that holds them](#mixed-scalar-and-container-unions), or the module's
+[dynamic `Any`](../dynamic-any.md) opt-in. A list made by a call of a function without a return
 annotation, assigned where a list of joined items is kept or returned by a function that
 returns one, makes that function return the joined list type, as a fresh result. So does a
 method called on a variable (`ops.scale(u, 0.5)`, `self.scale(...)`) whose class no other
