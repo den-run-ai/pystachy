@@ -1,0 +1,4 @@
+[False, True, False, False, True, False, True, True] [False, True, False, True, False, True, False, True]
+[Card(rank=5, suit='clubs'), Card(rank=10, suit='hearts'), Card(rank=2, suit='spades')] Card(rank=10, suit='hearts') Card(rank=10, suit='hearts')
+[True, True, False, False, False, False, True, True] [Point(x=1, y=5), Point(x=2, y=0)] Point(x=2, y=0)
+[exit 0]

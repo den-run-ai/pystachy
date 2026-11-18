@@ -8,7 +8,8 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.pystachy_compiler.dynamic_proof import DK_OBJ, DF_ROLE, DynamicProof, DynTypes
 from src.pystachy_compiler.gen import Gen
-from src.pystachy_compiler.ir import Blk, Data, FnInfo, IFn, Ins, Val, slot_register
+from src.pystachy_compiler.ir import Blk, Data, IFn, Ins, Val, slot_register
+from src.pystachy_compiler.symbols import FnInfo
 from src.pystachy_compiler.syntax import Node
 
 

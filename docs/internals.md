@@ -231,7 +231,8 @@ its maker writes in full, are not cleared at all. Each sweep keeps as many free 
 next cycle may take (up to half as much again as its allocation window, which grows with the
 live bytes), reused before clean ones without page faults, and returns the rest to the system. Pointer-free slots of more than 136 bytes are cleared when they are handed out rather
 than when they die. `PYSTACHY_GC_MIN` sets the 32 MiB allocation window between collections
-([#650](https://github.com/den-run-ai/pystachy/issues/650)). The
+([#650](https://github.com/den-run-ai/pystachy/issues/650)), and [`gc.collect()`](../lib/compatibility.md#gc)
+starts one at once. The
 [2 November 2026 allocator evaluation](https://github.com/den-run-ai/pystachy/blob/a2cb8a3638d715577a7ab1cd1e4a0d6b01b6cdf2/docs/reports/allocator-prototype.md)
 records the measurements. Unreachable files close during collection or at program exit. Supported Python operations are checked
 against CPython; the [compatibility reference](language/compatibility.md) lists deviations.
@@ -792,7 +793,7 @@ it removes one and no longer adds `alwaysinline` beside `noinline` or `optnone`,
 pass only removes them. Clang then compiles the module without optimizing it again.
 `ext` does the same between its `opt -O2` and its compilation. A module without `pys_new`
 keeps the single `clang -O2 -c` step. The JIT tier, which never inlines the shared runtime,
-puts its own copy of the fast path in the program's module (`lower_module.py`'s `JITFAST`): calls of
+puts its own copy of the fast path for sizes below 136 bytes in the program's module (`lower_module.py`'s `JITFAST`): calls of
 `pys_new` and `pys_alloc` stay calls (`noinline`) through its cleanup pipeline, which deletes
 what instcombine can prove unused, and the same last `forceattrs` and `always-inline` passes
 then inline the calls left. Each pops the runtime's free list of its class (`pys_fl`, a
@@ -910,7 +911,6 @@ are required before promotion. `make verify` keeps the standard tier.
 | `PYSTACHY_TIMING=1` | Print monotonic compiler [stage durations](#compiler-stage-timings) to stderr; nested totals overlap |
 | `PYSTACHY_IRCHECK=1` | Verify typed IR before lowering and after transforming passes |
 | `PYSTACHY_IRFX=1` | Print function effect summaries to stderr |
-| `PYSTACHY_UNICODE_AUDIT=1` | Compile the [Unicode audit](language/compatibility.md#unicode-audit) checks into the program and its imported library code |
 | `PYSTACHY_OPT` | Disable named optimizations with `-name`, comma-separated, or all with `-all`; see [IR passes](typed-ir.md#optimizations) |
 | `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT user-function inlining, including the recursion entry helper; `0` disables it (the scalar recursion helpers remain inlined) |
 | `PYSTACHY_JIT_CODEGEN=0\|2` | `0` generates the program's code at `-O0`: the JIT runner's `-O0`, or `llc -O0` for `lli`'s ORC to link; `2` (default) keeps ORC's level |

@@ -11,7 +11,8 @@ that reach such a site, which LLVM's globaldce and llvm-link --only-needed drop 
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import LINES, dynamic_program, int_program, shown
 from src.pystachy_compiler.analysis import clean_doc, local_names
-from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Loop, Val, tmpname
+from src.pystachy_compiler.ir import Data, Ins, Loop, Val, tmpname
+from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, EMPTYFS, GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, RANGEC, TYPEMODS, is_excname
 from src.pystachy_compiler.syntax import Node, mk

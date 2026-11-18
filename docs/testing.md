@@ -454,6 +454,7 @@ pointing at the checkout. Test modules run first, at most four at once. Only aft
 finish do the JIT examples, AOT examples, failure controls and bundled upstream methods
 run together, each with its own work directory. This ordering prevents tests from
 competing with examples for the default directory's lock. The checks cover collection, fixture lifecycle,
+unittest cases, package layouts, `conftest.py` hooks answered for by the comparison, `-k`/`-m` selection,
 JIT/AOT parity, GC stress, failure controls and the bundled upstream fnmatch/textwrap
 methods. The existing job runs once on code PRs, main pushes and manual runs;
 documentation-only PRs retain their lightweight plan. Its artifact includes both
@@ -512,8 +513,13 @@ to emit an advisory Actions warning; other threshold crossings are `unconfirmed`
 Correctness, setup and measurement errors fail the job. Timing warnings do not gate merging.
 Peak RSS and retained-memory costs remain separate measurements; this suite records timing.
 The step summary and 30-day `perf-smoke` JSON artifacts retain revisions, toolchain, source
-hashes, raw samples and same-run CPython controls. The job allows 15 minutes for both
-compiler builds, warmups and any confirmation batches. Atomic JSON checkpoints preserve
+hashes, raw samples and same-run CPython controls. Each hosted compiler build is
+single-threaded, so the two run at once before the process pins itself to one CPU, and
+setup takes as long as the slower build rather than both
+([#1547](https://github.com/den-run-ai/pystachy/issues/1547)). Each build may take 480 seconds,
+recorded as `bootstrap_budget_s` beside each build's `wall_s` under `bootstrap`. The first
+build to fail stops the other, and `phase` names its side. The job allows 15 minutes for
+both builds, warmups and any confirmation batches. Atomic JSON checkpoints preserve
 completed workloads during execution. Their `status` is `incomplete` until every workload
 and the summary finish, `error` if a caught exception is recorded and re-raised, or
 `complete` after success; `phase` identifies the current or last stage. A cancelled process
@@ -551,7 +557,7 @@ base/head pairs on one CPU. A slowdown of at least 10% and 2 ms triggers three m
 batches must meet it with disjoint ranges to emit an advisory warning. A workload that the base
 cannot build or run correctly has no comparison, as a compiler may predate it; its head is still
 checked. A head failure fails the job after the other workloads and the report. All commands,
-including compiler builds and confirmation runs, share an 11-minute deadline, leaving job time
+including the concurrent compiler builds and confirmation runs, share an 11-minute deadline, leaving job time
 for setup, reporting and artifact upload. A budget-limited report is marked incomplete. The
 90-day `perf-weekly-*` JSON artifacts keep partial samples and each revision's failure. Replay a change locally with
 `python3 tools/perf_smoke.py --suite weekly --base OLD --head NEW --only bench/words`.

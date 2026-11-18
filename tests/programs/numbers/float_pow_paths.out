@@ -1,0 +1,64 @@
+2.0 0.5 | 1.4142135623730951 | 1.4142135623730951 | 1.4142135623730951
+3.0 2.0 | 9.0 | 9.0 | 9.0
+2.0 -1.0 | 0.5 | 0.5 | 0.5
+1e-300 2.0 | 0.0 | 0.0 | 0.0
+1e+300 2.0 | OverflowError: (34, 'Numerical result out of range') | OverflowError: (34, 'Numerical result out of range') | OverflowError: math range error
+10.0 308.0 | 1e+308 | 1e+308 | 1e+308
+10.0 309.0 | OverflowError: (34, 'Numerical result out of range') | OverflowError: (34, 'Numerical result out of range') | OverflowError: math range error
+-2.0 3.0 | -8.0 | -8.0 | -8.0
+-2.0 10000.0 | OverflowError: (34, 'Numerical result out of range') | OverflowError: (34, 'Numerical result out of range') | OverflowError: math range error
+-2.0 -1074.0 | 5e-324 | 5e-324 | 5e-324
+0.0 -1.0 | ZeroDivisionError: 0.0 cannot be raised to a negative power | ZeroDivisionError: 0.0 cannot be raised to a negative power | ValueError: math domain error
+-0.0 -1.0 | ZeroDivisionError: 0.0 cannot be raised to a negative power | ZeroDivisionError: 0.0 cannot be raised to a negative power | ValueError: math domain error
+0.0 -inf | inf | inf | inf
+-0.0 -inf | inf | inf | inf
+0.0 0.0 | 1.0 | 1.0 | 1.0
+0.0 nan | nan | nan | nan
+-0.0 3.0 | -0.0 | -0.0 | -0.0
+-0.0 2.0 | 0.0 | 0.0 | 0.0
+-0.0 0.5 | 0.0 | 0.0 | 0.0
+inf -1.0 | 0.0 | 0.0 | 0.0
+inf 2.0 | inf | inf | inf
+inf 0.0 | 1.0 | 1.0 | 1.0
+-inf 3.0 | -inf | -inf | -inf
+-inf -3.0 | -0.0 | -0.0 | -0.0
+-inf 2.0 | inf | inf | inf
+nan 0.0 | 1.0 | 1.0 | 1.0
+nan 2.0 | nan | nan | nan
+1.0 nan | 1.0 | 1.0 | 1.0
+2.0 nan | nan | nan | nan
+1.0 inf | 1.0 | 1.0 | 1.0
+0.5 inf | 0.0 | 0.0 | 0.0
+2.0 inf | inf | inf | inf
+0.5 -inf | inf | inf | inf
+2.0 -inf | 0.0 | 0.0 | 0.0
+-1.0 inf | 1.0 | 1.0 | 1.0
+-0.5 inf | 0.0 | 0.0 | 0.0
+-2.0 -inf | 0.0 | 0.0 | 0.0
+5e-324 0.5 | 2.2227587494850775e-162 | 2.2227587494850775e-162 | 2.2227587494850775e-162
+2.0 -1074.0 | 5e-324 | 5e-324 | 5e-324
+2.0 -1080.0 | 0.0 | 0.0 | 0.0
+1.0000000000000002 1e+16 | 9.21143870499353 | 9.21143870499353 | 9.21143870499353
+0.9999999999999999 1e+16 | 0.3294854695069476 | 0.3294854695069476 | 0.3294854695069476
+7.5 1.5 | 20.53959590644373 | 20.53959590644373 | 20.53959590644373
+1.5 2.5 | 2.7556759606310752 | 2.7556759606310752 | 2.7556759606310752
+-2.0 10001.0 | OverflowError: (34, 'Numerical result out of range') | OverflowError: (34, 'Numerical result out of range') | OverflowError: math range error
+-2.0 -1075.0 | -0.0 | -0.0 | -0.0
+-1.5 3.0 | -3.375 | -3.375 | -3.375
+-1.5 -2.0 | 0.4444444444444444 | 0.4444444444444444 | 0.4444444444444444
+-1.0 1e+300 | 1.0 | 1.0 | 1.0
+-1.5 1e+19 | OverflowError: (34, 'Numerical result out of range') | OverflowError: (34, 'Numerical result out of range') | OverflowError: math range error
+-0.5 1e+19 | 0.0 | 0.0 | 0.0
+-1.0 9.223372036854775e+18 | 1.0 | 1.0 | 1.0
+-3.0 0.0 | 1.0 | 1.0 | 1.0
+-3.0 -0.0 | 1.0 | 1.0 | 1.0
+-inf 0.0 | 1.0 | 1.0 | 1.0
+-inf -2.0 | 0.0 | 0.0 | 0.0
+0.0 2.0 | 0.0 | 0.0 | 0.0
+-0.0 1e+300 | 0.0 | 0.0 | 0.0
+negative base, fractional exponent: ValueError: math domain error
+8 [11.914213562373096, 1e+308, -2.0, 8.0, 10.0, nan, 42.06944444444444, 53.0]
+[28.28427124746191, 28.28427124746191, 28.28427124746191]
+stopped at 4 after 4 OverflowError
+[1.4142135623730951, 9.0, 0.5, 0.0]
+[exit 0]

@@ -22,7 +22,7 @@ the [module guide](README.md#module-guide) summarizes what each module supports.
 | [Numbers and randomness](#numbers-and-randomness) | [`random`](#random), [`statistics`](#statistics), [`mpz`](#mpz) |
 | [Dates and times](#dates-and-times) | [`datetime`](#datetime) |
 | [Files, OS and command line](#files-os-and-command-line) | [`io`](#io), [Binary files](#binary-files), [Path modules](#path-modules), [`pathlib`](#pathlib), [`glob`](#glob), [`shutil`](#shutil), [`sysconfig`](#sysconfig), [`argparse`](#argparse), [`getopt`](#getopt), [`platform`](#platform) |
-| [Processes and threads](#processes-and-threads) | [`_thread`](#_thread), [`threading`](#threading), [`atexit`](#atexit) |
+| [Processes and threads](#processes-and-threads) | [`_thread`](#_thread), [`threading`](#threading), [`concurrent.futures`](#concurrentfutures), [`atexit`](#atexit) |
 | [Runtime services](#runtime-services) | [`abc`](#abc), [`types`](#types), [`warnings`](#warnings), [`logging`](#logging), [`traceback`](#traceback), [`weakref` and `_weakref` (prototype)](#weakref-and-_weakref-prototype) |
 | [Native interoperability](#native-interoperability) | [`ctypes`](#ctypes) |
 | [Removed modules](#removed-modules) | `_imp`, `_ast`, `opcode` |
@@ -192,6 +192,49 @@ Not supported, as compile-time errors:
   `__init__`'s `fp`, a catalog file, has no concrete type here, so `NullTranslations` is a
   template class, which a class cannot derive from. `add_fallback()` takes another
   `NullTranslations`, which answers as the identity.
+
+### `pprint`
+
+CPython's `pprint`, with marked edits. `pformat()`, `pprint()`, `pp()`, `saferepr()`,
+`isreadable()`, `isrecursive()` and `PrettyPrinter` (its `pformat()`, `pprint()`, `format()`,
+`isreadable()` and `isrecursive()`) work with `indent`, `width`, `depth`, `compact`, `sort_dicts`
+and `underscore_numbers`, on `sys.stdout` or a stream with `write()`
+([test](../tests/programs/library/lib_pprint.py)).
+
+CPython chooses how to write a value by `type(value).__repr__`. Here the value's static type
+chooses, as in [`copy`](#copy). Dicts, lists, tuples, sets, frozensets, strs and bytes are wrapped as
+CPython wraps them, at any nesting ([strs and bytes](../tests/programs/library/lib_pprint_text.py)),
+also as members of a union or an optional type. Every other value is written as its `repr()`:
+numbers, `None`, enum members, NamedTuples and objects of classes
+([test](../tests/programs/library/lib_pprint_values.py)). Selected methods of CPython's
+`test_pprint` run compiled ([upstream cases](../tests/programs/upstream/upstream_pprint.py)).
+
+Differences from CPython:
+- An object of a dataclass, of a `collections` class (`deque`, `OrderedDict`, `defaultdict`,
+  `Counter`) or of `types.MappingProxyType` stays on one line where it is wider than the width.
+  CPython wraps its fields or items ([deviation](../tests/deviations/lib_pprint_wide_objects.py)).
+- Nothing is found recursive: there is no `id()` to find a container again by. `isrecursive()`
+  is `False`, and the `context` that `format()` takes stays empty. A value of a static type holds
+  itself only through an object of a class, which is written as its `repr()`, or as a list or
+  dict of a [recursive value alias](../docs/language/typing.md#recursive-value-aliases-prototype),
+  where the recursion limit raises `RecursionError` and CPython writes `<Recursion on list ...>`
+  ([deviation](../tests/deviations/lib_pprint_recursive_alias.py)).
+- Keys and set items whose `<` raises `TypeError` as the program runs are ordered by the names
+  of their types, as in CPython: `None` comes before the strs of a `dict[str | None, int]`
+  ([test](../tests/programs/library/lib_pprint_mixed_keys.py)). Those of one type, such as the
+  members of an `Enum`, keep the order of their dict or set, where CPython orders them by `id()`.
+- `isreadable()` is `False` for a value whose `repr()` is empty, where CPython gives `''`.
+
+Not supported, as compile-time errors:
+- A dict's keys or a set's items that are objects of a class without `__lt__()`. They are sorted
+  with `<`, also for `sort_dicts=False`, whose code compiles with the rest
+  ([error test](../tests/errors/library/lib_pprint_unordered_keys.py)).
+- `Any` values of a module that opts in to [dynamic `Any`](../docs/dynamic-any.md)
+  ([error test](../tests/errors/library/lib_pprint_any.py)).
+- A tuple of more than nine items of different types, which has no `repr()` either, and a
+  NamedTuple of more than nine such fields.
+- A subclass of `PrettyPrinter`. Its `stream` takes its argument's type, which makes it a
+  template class. `indent` and `width` are ints, and the flags are bools.
 
 ## Regular expressions
 
@@ -867,8 +910,9 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   that value has created a pseudo-member ([test](../tests/programs/library/lib_enum_flag_bits.py)).
   Such bits with out-of-order single-bit members or a custom (including inherited)
   `_iter_member_()` remain a compile-time error, as do a
-  `boundary=` keyword, a flag class's own `_missing_()`, and an int on the left of a flag's `|`, `&` or `^`, as reflected operator methods are not
-  supported.
+  `boundary=` keyword, a flag class's own `_missing_()`, and an int on the left of a `Flag`
+  member's `|`, `&` or `^`, which CPython rejects with `TypeError` (an `IntFlag` member's
+  computes, above).
 - These are compile-time errors: `ReprEnum` as a base; other mixin types
   (`class C(float, Enum)`) and keywords; members of other values or types, `_ignore_`, `_order_`
   and private names; a `__new__` of another form (`*args`, a `_value_` the compiler cannot
@@ -1075,8 +1119,25 @@ a wrapped function's names must be known as it compiles, so a wrapped `Callable`
 the wrapper's names a compile-time error to read, and a wrapped object without them (a
 callable object, a `partial`) leaves the wrapper its own, as in CPython. `__wrapped__`,
 `__doc__`, `__module__` and `__dict__` are not a function's attributes in Pystachy, and
-`wraps(f)` as a value, not a decorator, is a compile-time error. `total_ordering` remains
-unsupported: class decorators are not compiled.
+`wraps(f)` as a value, not a decorator, is a compile-time error.
+
+`@total_ordering` on a class statement adds the ordering methods the class lacks, each computed
+as CPython's from the greatest of `__lt__`, `__le__`, `__gt__` and `__ge__` that it has (in that
+order), with that method's parameters. As in CPython, the methods a class inherits count: a
+NamedTuple, an `IntEnum`, `StrEnum` or `IntFlag`, a dataclass with `order=True` and a subclass
+of a class the decorator completed have all four, so it adds none
+([test](../tests/programs/library/lib_functools_total_ordering_bases.py)), and an inherited
+method below the greatest of the body's stays the class's
+([test](../tests/programs/library/lib_functools_total_ordering_lower_root.py)). A method added
+calls the object's own class's method, and returns `NotImplemented` where that does, so the
+other operand's reflected method runs next
+([test](../tests/programs/library/lib_functools_total_ordering_declines.py)). The compiler
+writes the methods, where CPython's decorator sets them on the class, from a method of the
+class's body only: a class whose greatest method is inherited, while it lacks one, is a
+compile-time error ([error test](../tests/errors/library/lib_functools_total_ordering_inherited_root.py)),
+a class without one is the decorator's `ValueError` at compile time, and `total_ordering(C)` as
+a call is a compile-time error. The methods return `bool`: a method that returns another type
+for an ordering has its truth here.
 
 `@cached_property` on a method that takes the object alone makes the attribute a value the
 object keeps: the method runs on the first read, an assignment replaces the value without
@@ -1089,7 +1150,7 @@ adds for the method `NAME`: the method `_pys_cpget_NAME` and the fields `_pys_cp
 ([deviation](../tests/deviations/lib_functools_cached_property_names.py)). A dataclass's
 method, a method with other parameters, `cached_property(f)` as a call, and the decorator in
 an enum class or with a value of a generic class's type variable are compile-time errors.
-`from functools import *` does not bind the name.
+`from functools import *` binds neither decorator.
 
 ### `operator`
 
@@ -1583,7 +1644,9 @@ include `abspath`, `relpath`, `expanduser` and `commonprefix`.
   and passing a path is a compile-time error; `path.open()` opens one.
 - `expanduser()` of `~user`, and `open()` with `buffering`, `errors` or `newline`, raise
   `UnsupportedOperation` ([deviation](../tests/deviations/lib_pathlib_unsupported.py)).
-  Windows paths, `stat()`, `lstat()`, binary I/O (`read_bytes()`, `write_bytes()`), `walk()`,
+  `read_bytes()` and `write_bytes()` read and write the file's bytes; `open()` of a binary
+  mode raises `NotImplementedError`, as `open()` of a mode that is no literal does.
+  Windows paths, `stat()`, `lstat()`, `walk()`,
   `samefile()`, links, owners, `chmod()`, `as_uri()` and `full_match()` are not provided; a
   subclass's derived paths are `PurePath` or `Path` objects.
 
@@ -1794,6 +1857,81 @@ thread's `Thread` object (`MainThread`) work as in CPython where no other thread
   `current_thread()` never makes a `_DummyThread`. There is no `register_at_fork()` (no
   `os.fork()`), and the module does not `del _thread` (#612).
 
+### `concurrent.futures`
+
+CPython's `concurrent/futures/__init__.py`, `_base.py` and `thread.py` with marked edits, for the
+one thread a Pystachy program runs. `ThreadPoolExecutor.submit()` runs the call on the calling
+thread, before it returns, and gives back a finished `Future` that holds what the call returned
+or the exception it raised, also `SystemExit`: `result()` raises that exception and
+`exception()` returns it, as in CPython
+([tests](../tests/programs/library/lib_concurrent_futures_submit.py),
+[exceptions](../tests/programs/library/lib_concurrent_futures_exceptions.py)). For calls that do
+not wait for each other, that is one of the schedules CPython's pool may take; `max_workers` is
+checked as CPython checks it and bounds nothing. `Executor.map()`
+([test](../tests/programs/library/lib_concurrent_futures_map.py)), `shutdown()` and the context
+manager ([test](../tests/programs/library/lib_concurrent_futures_shutdown.py)), `wait()` with
+`return_when` and its named tuple `DoneAndNotDoneFutures`, `as_completed()`
+([test](../tests/programs/library/lib_concurrent_futures_wait.py)), the methods of `Future`
+(`result()`, `exception()`, `done()`, `running()`, `cancelled()`, `cancel()`,
+`add_done_callback()`, `set_running_or_notify_cancel()`, `set_result()`, `set_exception()`),
+`CancelledError`, `TimeoutError`, `InvalidStateError`, `BrokenExecutor` and
+`concurrent.futures.thread.BrokenThreadPool` work as CPython's do where no other thread runs.
+`Executor` types a parameter that takes any executor and is the base class of a program's own
+([test](../tests/programs/library/lib_concurrent_futures_executor.py)). mypy's
+`BuildManager.parse_all()` compiles as it is written: a bound method submitted for each state,
+the futures in a list, `wait(futures).done` and `result()`
+([test](../tests/programs/library/lib_concurrent_futures_mypy.py)).
+
+- **A call runs inside `submit()`.** Calls run in the order submitted, and `done()` is true as
+  soon as `submit()` returns, so `cancel()` returns `False` and `shutdown(wait=False)`,
+  `cancel_futures=True` and a timeout find nothing to act on. A call that waits for the thread
+  that submitted it cannot finish: a wait for a lock that thread holds raises `_thread`'s
+  `RuntimeError`, which the future keeps
+  ([deviation](../tests/deviations/lib_concurrent_futures_inline.py)), and a loop that polls
+  for what that thread does next does not end.
+- **`Future` is generic in its result's type.** `submit()` of a call that returns an `int` gives a
+  `Future[int]`, and of one that returns `None` a `Future[None]`; annotations name these types
+  ([test](../tests/programs/library/lib_concurrent_futures_names.py)). A list, set or dict holds
+  futures of one type ([error test](../tests/errors/library/lib_concurrent_futures_two_types.py)),
+  and a field that holds a future needs its annotation
+  ([error test](../tests/errors/library/lib_concurrent_futures_field.py)). A program that makes a
+  future itself names its type, `Future[int]()` or `f: Future[int] = Future()`
+  ([test](../tests/programs/library/lib_concurrent_futures_future.py)); a bare `Future()` is
+  rejected ([error test](../tests/errors/library/lib_concurrent_futures_bare.py)), and so is
+  `set_result()` of another type
+  ([error test](../tests/errors/library/lib_concurrent_futures_set_result.py)).
+- **A wait that only another thread could end raises `RuntimeError`.** A future is pending only
+  where the program made it and has not finished it. `result()`, `exception()`, `wait()` and
+  `as_completed()` of such a future raise `RuntimeError: deadlock: ...` without a timeout, where
+  CPython waits for another thread to finish it
+  ([deviation](../tests/deviations/lib_concurrent_futures_deadlock.py)); with a timeout they
+  sleep for it and then raise `TimeoutError` or return, as CPython's do
+  ([test](../tests/programs/library/lib_concurrent_futures_pending.py)).
+- `as_completed()` yields the futures that were done when it started in the order given, where
+  CPython's order is that of a set. Those that the program finishes between two yields come in
+  the order they finished in, as in CPython.
+- There is no `ProcessPoolExecutor` and no `concurrent.futures.process`
+  ([error test](../tests/errors/library/lib_concurrent_futures_process.py)), and `__all__` does
+  not name it ([deviation](../tests/deviations/lib_concurrent_futures_all.py)).
+  `ThreadPoolExecutor` takes no `initializer` and `initargs`
+  ([error test](../tests/errors/library/lib_concurrent_futures_initializer.py)), and `map()` at
+  most four iterables ([error test](../tests/errors/library/lib_concurrent_futures_map_five.py)).
+- The module does not import `logging`. An exception that a done callback raises is reported on
+  stderr, as CPython's logging reports it where a program configures none: the message, then the
+  exception's last line without a traceback
+  ([test](../tests/programs/library/lib_concurrent_futures_callbacks.py)). A program's own
+  logging configuration does not change that report.
+- `submit()` from an `atexit` callback runs the call; CPython's raises `RuntimeError`, its
+  worker threads having stopped ([deviation](../tests/deviations/lib_concurrent_futures_atexit.py)).
+  Without `max_workers`, the private `_max_workers` is 5, CPython's value where the CPU count is
+  unknown.
+- A future's repr shows its identity hash where CPython's shows `id()`, and names the class of
+  its result as far as the subset names classes: an object whose class defines
+  `__call__` is shown as a `function`
+  ([deviation](../tests/deviations/lib_concurrent_futures_repr_callable.py)), and a call that
+  returns a generator or a file is rejected
+  ([error test](../tests/errors/library/lib_concurrent_futures_generator.py)).
+
 ### `atexit`
 
 `atexit` is `_pystachy_atexit`, a port of the C module `atexit` that Pystachy loads for
@@ -1814,6 +1952,31 @@ CPython.
   CPython's own finalization does not know of them.
 
 ## Runtime services
+
+### `gc`
+
+CPython's `gc` controls its collector of reference cycles, which works beside reference counts.
+Here one tracing collector reclaims all memory, and `lib/_pystachy_gc.py`, which Pystachy loads
+for CPython's C module, has what of that interface means something for it ([test](../tests/programs/library/lib_gc.py)):
+
+- `collect()` runs a collection now, also after `disable()`, so that objects nothing refers to
+  are found dead where no allocation would have started one: weak references to them die
+  ([test](../tests/programs/library/lib_gc_collect.py)). It checks its generation as CPython
+  does (`ValueError: invalid generation`) and returns 0, where CPython returns the number of
+  unreachable objects it found ([deviation](../tests/deviations/lib_gc_collect_count.py)). With
+  `PYSTACHY_GC=off` it does nothing.
+- `enable()`, `disable()` and `isenabled()`, `set_threshold()` and `get_threshold()`,
+  `set_debug()` and `get_debug()` keep CPython's settings, with its initial values, and report
+  them. `freeze()` and `unfreeze()` do nothing. None of these changes when the collector runs:
+  it reclaims what CPython's reference counts would, which those settings do not stop there
+  either. `set_debug()` prints nothing. `set_threshold()` and `set_debug()` take their arguments
+  by position only, and a keyword or another number of arguments raises CPython's `TypeError` as
+  the call runs ([test](../tests/programs/library/lib_gc_positional.py)).
+
+Not supported, as compile-time errors where used: `get_objects()`, `get_referrers()`,
+`get_referents()`, `is_tracked()`, `is_finalized()`, `get_stats()`, `get_count()`,
+`get_freeze_count()`, `callbacks` and `garbage`, which describe CPython's object graph and
+generations ([error test](../tests/errors/library/lib_gc_get_objects.py)).
 
 ### `abc`
 

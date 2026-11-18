@@ -112,7 +112,6 @@ class EligibilityTests(unittest.TestCase):
         variants = [
             ("PYSTACHY_CFLAGS", "-fsanitize=address"), ("PYSTACHY_JIT_CODEGEN", "0"),
             ("PYSTACHY_IRCHECK", "1"), ("PYSTACHY_IRFX", "1"),
-            ("PYSTACHY_UNICODE_AUDIT", "1"),
         ] + [(key, "/external/input") for key in cached_run.BUILD_ENV]
         for key, value in variants:
             with self.subTest(key=key), patch.dict(os.environ, {key: value}):

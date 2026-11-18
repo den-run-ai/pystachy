@@ -59,7 +59,7 @@ from src.pystachy_compiler.ctypes_schema import ctypes_import, lower_ctypes
 from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, IDPRAGMA, INTFILES, INTSPANS, LINES, MODDUNDERS, RAW, NeedHandlers, dynamic_pragma, fail, int_pragma, leading_pragma
 from src.pystachy_compiler.lexer import KEYWORDS, Lexer, host_text
 from src.pystachy_compiler.module import Mod
-from src.pystachy_compiler.names import ENUMCLASSES, owner, short
+from src.pystachy_compiler.names import ENUMCLASSES, ORDERED, owner, short
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.specs import (
     ABCS,
@@ -277,14 +277,25 @@ def cm_methods(n: Node, names: list[str]) -> None:
     n.kids = top
 
 
-# functools' names that the methods of a module's class statements may be decorated with
-FUNCTOOLS_NAMES = ["cached_property"]
+# functools' class tools that a module's class statements may use, and what @total_ordering
+# makes of the first of __lt__, __le__, __gt__ and __ge__ that a class body defines: the others,
+# each as CPython's functools computes it from that one (the operation, with A the object and B
+# the other)
+FUNCTOOLS_NAMES = ["cached_property", "total_ordering"]
+# the methods functools.total_ordering() adds for a class's own one, each as CPython computes it
+# from R, what that one returns for the operands A and B (functools' _gt_from_lt & co)
+ORDERINGS: dict[str, list[list[str]]] = {
+    "__lt__": [["__gt__", "not R and A != B"], ["__le__", "R or A == B"], ["__ge__", "not R"]],
+    "__le__": [["__ge__", "not R or A == B"], ["__lt__", "R and A != B"], ["__gt__", "not R"]],
+    "__gt__": [["__lt__", "not R and A != B"], ["__ge__", "R or A == B"], ["__le__", "not R"]],
+    "__ge__": [["__le__", "not R or A == B"], ["__gt__", "R and A != B"], ["__lt__", "not R"]],
+}
 
 
 def functools_names(body: Node) -> dict[str, str]:
-    # the names module body binds functools' cached_property as (from functools import
-    # cached_property, or as another name; import functools, or as f: f.cached_property), each
-    # to its name in functools
+    # the names module body binds functools' cached_property and total_ordering as (from
+    # functools import total_ordering, or as another name; import functools, or as f:
+    # functools.total_ordering), each to its name in functools
     out: dict[str, str] = {}
     for st in body.kids:
         for a in st.kids if st.kind == "import" else []:
@@ -299,20 +310,28 @@ def functools_names(body: Node) -> dict[str, str]:
 def functools_calls(n: Node, names: dict[str, str]) -> None:
     # (functools_classes) a call of one of functools' names that the compiler applies as a
     # decorator, anywhere in n, is rejected: cached_property(f) makes an object that no class
-    # statement's method is
+    # statement's method is, and total_ordering(C) takes a class as a value
     for kid in n.kids:
         if kid.kind == "call" and dotted(kid.kids[0]) in names:
-            fail(f"{names[dotted(kid.kids[0])]}(...) as a call is not supported: the compiler applies it where it decorates a method of a class statement (@{dotted(kid.kids[0])})", kid.line)
+            made = names[dotted(kid.kids[0])]
+            fail(f"{made}(...) as a call is not supported: the compiler applies it where it decorates a {'class statement' if made == 'total_ordering' else 'method of a class statement'} (@{dotted(kid.kids[0])})", kid.line)
         functools_calls(kid, names)
 
 
 def functools_classes(n: Node, names: dict[str, str]) -> None:
-    # (functools) what functools' cached_property (names: as the module imports it) makes of
-    # the methods of the class statements of module body n, as source: the subset has no
-    # descriptors. A method decorated @cached_property is the method _pys_cpget_NAME, and NAME a
-    # property that calls it once for an object and keeps what it returns in a field of the
-    # object, whose type the method's return annotation gives; CPython keeps it in the
-    # object's __dict__
+    # (functools) what two decorators of functools (names: as the module imports them) make of
+    # the class statements of module body n, as source: the subset has neither class decorators
+    # nor descriptors.
+    # A method decorated @cached_property is the method _pys_cpget_NAME, and NAME a property that
+    # calls it once for an object and keeps what it returns in a field of the object, whose
+    # type the method's return annotation gives; CPython keeps it in the object's __dict__.
+    # A class decorated @total_ordering gets the ordering methods its body lacks, each computed
+    # from the one of __lt__, __le__, __gt__ and __ge__ that CPython's total_ordering() takes of
+    # those the body defines, as it computes it (ORDERINGS), with that method's parameters. The
+    # method calls type(self)'s own one, and returns NotImplemented where that does
+    # (__pys_ordering: Gen.ordering), else a bool. CPython's decorator also takes the ones the
+    # class inherits, and those a decorator applied before it defines, which Gen.ordered_class
+    # reads where it knows the class's bases (ORDERED)
     if len(names) == 0:
         return
     functools_calls(n, names)
@@ -321,7 +340,15 @@ def functools_classes(n: Node, names: dict[str, str]) -> None:
             continue
         c = st.kids[0] if st.kind == "subclass" else st
         b = c.kids[0]
-        decos = c.kids[1:]
+        ordered = False
+        first = False  # (another decorator applied before @total_ordering: c.kids has the innermost first)
+        decos: list[Node] = []
+        for dn in c.kids[1:]:
+            if names.get(dn.s, "") == "total_ordering" and len(dn.kids) == 0:
+                ordered = True
+            else:
+                first = first or not ordered
+                decos.append(dn)
         kept: list[Node] = []
         for d in b.kids:
             if d.kind == "def" and len(d.kids) == 4 and d.kids[3].kind == "deco" and len(d.kids[3].kids) == 0 and names.get(d.kids[3].s, "") == "cached_property":
@@ -356,7 +383,37 @@ def functools_classes(n: Node, names: dict[str, str]) -> None:
                 kept.append(deleter)
             else:
                 kept.append(d)
+        if ordered:
+            root: Node | None = None
+            have: dict[str, bool] = {}
+            for op in ["__ge__", "__gt__", "__le__", "__lt__"]:  # (the last one found is CPython's max(roots))
+                for d in kept:
+                    if d.kind == "def" and d.s == op:
+                        root = d
+                        have[op] = True
+            for d in kept:
+                if (d.kind == "assign" or d.kind == "annassign") and d.kids[0].kind == "name" and d.kids[0].s in ORDERINGS:
+                    fail(f"@total_ordering of class {st.s}, whose body assigns {d.kids[0].s}, is not supported (the decorator reads the methods that def statements of the body define)", d.line)
+            if root is None:
+                if not first and (st.kind != "subclass" or len([x for x in st.kids[1:] if x.kind != "typeparams" and dotted(x) != "object"]) == 0):
+                    fail("ValueError: must define at least one ordering operation: < > <= >=", c.line)
+                # (its methods are inherited, or a decorator's: Gen.ordered_class)
+            elif len(root.kids[0].kids) != 2 or root.kids[0].kids[0].kind != "param" or root.kids[0].kids[1].kind != "param":
+                fail(f"@total_ordering of class {st.s}: {root.s}() takes the object and the other one", root.line)
+            else:
+                me = root.kids[0].kids[0].s
+                other = root.kids[0].kids[1].s
+                for made in ORDERINGS[root.s]:
+                    if made[0] in have:
+                        continue
+                    # (A, B and R are the table's own names: a parameter may be called any of them)
+                    body = made[1].replace("A", "\x00").replace("B", "\x01").replace("R", "_pys_to_result").replace("\x00", me).replace("\x01", other)
+                    w = Parser(Lexer(f"def {made[0]}({me}, {other}) -> bool:\n    _pys_to_result = __pys_ordering({me}, {other}, {root.s!r})\n    return {body}\n", root.line).file()).module().kids[0]
+                    w.kids[0] = clone(root.kids[0])
+                    kept.append(w)
+            ORDERED[c.line] = " ".join((["+"] if first else []) + [op for op in ORDERINGS if op in have])
         b.kids = kept
+        c.kids = [b] + decos
 
 
 # lib/enum.py's names a module may import, and the classes of them an enum class derives from
@@ -1325,6 +1382,7 @@ class Loader:
         program_cache.track_source(path, src)
         FILES.clear()
         ENUMCLASSES.clear()
+        ORDERED.clear()
         DYNFILES.clear()
         IDINERT.clear()
         INTFILES.clear()

@@ -10,7 +10,7 @@ sys.path.insert(0, str(ROOT))
 
 from src.pystachy_compiler import driver, dynamic  # noqa: E402
 from src.pystachy_compiler.dynamic import comparison_discards_operand, comparison_equalities, comparison_invalid, comparison_fields, comparison_layout, comparison_properties, comparison_reads, comparison_record_write, comparison_storage  # noqa: E402
-from src.pystachy_compiler.ir import ClassInfo, FnInfo  # noqa: E402
+from src.pystachy_compiler.symbols import ClassInfo, FnInfo  # noqa: E402
 from src.pystachy_compiler.lexer import Lexer  # noqa: E402
 from src.pystachy_compiler.parser import Parser  # noqa: E402
 from src.pystachy_compiler.syntax import mk  # noqa: E402

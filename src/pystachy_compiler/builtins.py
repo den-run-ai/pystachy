@@ -2,7 +2,8 @@
 from __future__ import annotations
 from src.pystachy_compiler.utils import clsof, is_union, umembers
 from src.pystachy_compiler.diagnostics import int_lists
-from src.pystachy_compiler.ir import Data, Ins, IterArg, Loop, Reduce, Val
+from src.pystachy_compiler.frames import IterArg, Reduce
+from src.pystachy_compiler.ir import Data, Ins, Loop, Val
 from src.pystachy_compiler.lexer import Lexer, codepoint, utf8len
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.parser import Parser
@@ -103,6 +104,8 @@ def gen_modattr(self, path: str) -> Val:
         return Val(self.rt("pys_warnoptions", "ptr", []), "list[str]")
     if path == "sys.maxsize":
         return Val("9223372036854775807", "int")
+    if path == "sys.maxunicode":
+        return Val("1114111", "int")
     if path == "sys.stdin" or path == "sys.stdout" or path == "sys.stderr":
         return Val(self.rt("pys_std", "ptr", [f"i64 {0 if path == 'sys.stdin' else 1 if path == 'sys.stdout' else 2}"]), "file")
     if path == "math.pi":
@@ -176,6 +179,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.err(GALIASUSE if name == GALIAS else TYPESUSE.replace("NAME", name[len(TYPESMOD) + 1 :]))
     if name == "ffi.at":
         self.err("ffi.at(xs, k) passes a list from an index to C: it is only an argument of a call of an @extern function, for a list[float] or list[ffi.c_int64] parameter")
+    if name == "__pys_ordering":
+        return self.ordering(args)
     if name == "__pys_cache_lock":
         if (self.curfn.mod != "_pystachy_cache" or not lib_source(self.curfn.node.line, self.libdir, "_pystachy_cache.py") or
                 len(args) != 1 or any([a.kind in ["kw", "starred", "dstar"] for a in args])):
@@ -284,6 +289,12 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return Val("null", "None")
     if name == "__pys_exc_repr":
         return self.exc_brepr(self.expr(args[0], ""))  # (exc_helpers)
+    if name == "__pys_gc_collect":
+        # gc.collect()'s collection (lib/_pystachy_gc.py): the runtime's, started now
+        if self.curfn.mod != "gc" or len(args) != 0:
+            self.err(f"name '{name}' is not defined")
+        self.rt("pys_gc_collect", "void", [])
+        return Val("null", "None")
     if name == "__pys_repr_enter" or name == "__pys_repr_leave":
         o = self.expr(args[0], "")
         r = self.rt(name[2:], "i64" if name.endswith("enter") else "void", [f"ptr {o.v}"])
@@ -494,8 +505,10 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             v = self.gen_list(v, "")
         if v.t == "bytes":
             v = Val(self.rt("pys_bytes_list", "ptr", [f"ptr {v.v}"]), "list[int]")
-        if self.iter_object(v.t) or v.t == RANGEC:
-            v = self.as_list(v, "tuple")  # (the items of its iterator object; a range's numbers)
+        if self.iter_object(v.t) or v.t == RANGEC or is_set(v.t) or is_dict(v.t):
+            # (the items of its iterator object; a range's numbers; a set's items or a dict's keys,
+            # in the order list() gives them)
+            v = self.as_list(v, "tuple")
         if not is_list(v.t):
             self.err(f"tuple() of {typestr(v.t)} is not supported: use a list, string or tuple")
         if unopt(elem(v.t)) == BIG or not self.vtuple_holds(elem(v.t)):
@@ -3105,7 +3118,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 # index's later bounds may call back and rebind the query's source.
                 if m == "index" and v.idslot != "":
                     idquery.idfrom = self.dyn_id_box(v).v
-            if (base == "str" or base == "bytes") and (m == "startswith" or m == "endswith") and i == 0 and (is_tuple(unopt(v.t)) or v.t in self.nts):
+            if (base == "str" or base == "bytes") and (m == "startswith" or m == "endswith") and i == 0 and (is_tuple(unopt(v.t)) or is_vtuple(unopt(v.t)) or v.t in self.nts):
                 v = self.ntup(v)  # (a NamedTuple: the tuple of its fields, None if it is None)
                 for x in targs(unopt(v.t)):
                     if x != base and x != f"opt[{base}]":

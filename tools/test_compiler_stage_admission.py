@@ -175,7 +175,7 @@ class CompilerStageAdmissionTests(unittest.TestCase):
         # invariant independently of that parser/frontend admission check.
         path = self.source("def probe(value: int) -> int:\n    return value\n")
         injection = '''
-from src.pystachy_compiler.ir import ClassInfo
+from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.syntax import Node
 optimize = Gen.optimize_program
 def bad_optimization(gen):

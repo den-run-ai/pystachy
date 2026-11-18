@@ -48,7 +48,8 @@ messages.
 `tuple(xs)` copies a supported homogeneous list or a string into an immutable
 runtime-length tuple; later list mutation does not change it, and a field that `__init__`
 stores from it (`self.items = tuple(items)`) has that tuple's type. A string converts to a tuple of
-its code points ([text](compatibility.md#text-and-file-positions)). `tuple(t)` returns an
+its code points ([text](compatibility.md#text-and-file-positions)); a set gives its items and
+a dict its keys, in the order `list()` gives them. `tuple(t)` returns an
 existing tuple unchanged unless an annotation requests a representation conversion
 ([identity limitations](compatibility.md#functions-and-object-identity)). A fixed tuple literal can initialize `tuple[T, ...]`,
 including `()`, and a tuple display with a starred list makes one (`(*xs, 0)`). Supported
@@ -71,7 +72,7 @@ into a new tuple of one item type, or return the other operand itself where one 
 CPython does; items of a type and items that are `None`, or of that type or `None`, make a tuple
 of that type or `None` (`nums + (None,)`). They do not
 support repetition or membership yet, but are dict keys and set elements (below). Their annotation is distinct
-from the fixed shape used by `*args`; `tuple()` takes a list, string, tuple, generator
+from the fixed shape used by `*args`; `tuple()` takes a list, string, tuple, set, dict, generator
 expression or `range`/`map`/`filter`/`reversed` call whose items are `int`, `float`,
 `bool`, `str` or optional versions of those types, or objects, the objects of iterator classes and
 generators. Direct `enumerate` and `zip` produce tuple-valued items, which runtime-length tuples cannot
@@ -1428,9 +1429,10 @@ methods may call another method declared on the same base, for example
 `self.write(data)`. These calls use the concrete receiver's override. Other uses
 of the receiver, including reading a field the base does not declare (below) or capturing a
 bound method, are unsupported.
-A secondary base and the primary hierarchy must declare distinct method names; two secondary
-bases may declare one only where the class overrides it
-([error test](../../tests/errors/classes/inheritance_secondary_conflict.py)). Overrides of secondary
+A secondary base and the primary hierarchy must declare distinct method names, and so must two
+secondary bases, also where the class overrides the method
+([error test](../../tests/errors/classes/inheritance_secondary_conflict.py),
+[overridden](../../tests/errors/classes/inheritance_secondary_override_overlap.py)). Overrides of secondary
 methods must keep their parameter and return types (but those that name a generic base's type
 variables). They may return a class derived from the one that the base's method returns
 ([test](../../tests/programs/classes/inheritance_traits_covariant.py)), and may widen
