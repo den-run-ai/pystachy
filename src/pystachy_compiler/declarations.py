@@ -1244,6 +1244,9 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
     # is a template: a call compiles it, once per list of argument types, for those types
     # (see instance), and what cannot be compiled in it is an error only then
     self.line = d.line
+    # (may it be a template, its unannotated parameters typed by each call: also a dict
+    # subclass's __missing__, which a d[key] that misses calls, builtin_bases.py)
+    tok = template_ok(d.s) or (d.s == "__missing__" and self.bkind(cls) == "dict")
     # a generic class's methods: an annotation that mentions its type variables is left out
     # where they are not bound, in the class itself (whose objects are its specializations'),
     # and in its __init__'s parameters, which each call's arguments type (they bind them, see
@@ -1316,7 +1319,7 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
     if cls != "" and len(ps) == 0 and f.deco != "staticmethod":
         self.err(f"method '{d.s}' of class '{cls}' must take {'cls' if f.deco != '' else 'self'} as its first parameter")
     tv = self.typevar_in([p.kids[0] for p in ps] + [d.kids[1]], tvs)
-    if tv != "" and (cls == "" or template_ok(d.s)):
+    if tv != "" and (cls == "" or tok):
         # def f(x: T) with T = TypeVar("T"): what mentions a TypeVar is left unannotated, as in
         # def f[T](x: T) (a template); also *args: *Ts
         self.tv_plan(f, ps, d.kids[1], tvs)
@@ -1329,9 +1332,9 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
     for i in range(len(ps)):
         # x: object, as in __eq__(self, other: object): a template's parameter, which each call
         # types (any argument: isinstance() narrows it), where a template may be
-        if ps[i].kind == "param" and ps[i].kids[0].kind == "name" and ps[i].kids[0].s == "object" and not (cls != "" and i == 0 and f.deco != "staticmethod") and (cls == "" or template_ok(d.s) or init):
+        if ps[i].kind == "param" and ps[i].kids[0].kind == "name" and ps[i].kids[0].s == "object" and not (cls != "" and i == 0 and f.deco != "staticmethod") and (cls == "" or tok or init):
             ps[i].kids[0] = mk("noann", "", d.line, [])
-    if (cls == "" or template_ok(d.s) or init) and not f.prop and f.acc == "" and not f.extern and not f.export and not f.pyexport and not self.dyn_policy(d.line):
+    if (cls == "" or tok or init) and not f.prop and f.acc == "" and not f.extern and not f.export and not f.pyexport and not self.dyn_policy(d.line):
         # typing.Any, also in list[Any] or Mapping[str, Any]: what it annotates is left to each
         # call, as a TypeVar's is. A parameter takes its argument's type (*args and **kwargs
         # those of each call's), the return what the function returns; no value is boxed, so
@@ -1348,7 +1351,7 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
             if not genann:
                 d.kids[1] = mk("noann", "", d.line, [])
                 f.anys.append("")
-    elif (cls == "" or template_ok(d.s) or init) and not f.prop and f.acc == "" and not f.extern and not f.export and not f.pyexport:
+    elif (cls == "" or tok or init) and not f.prop and f.acc == "" and not f.extern and not f.export and not f.pyexport:
         # in a module that compiles Any as dyn: an annotation that mentions Any where no Any value
         # can stand (Callable[..., Any], whose parameters no Callable type names) requests
         # inference, as in a module that does not opt in, and so do __exit__'s, which a with
@@ -1376,7 +1379,7 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         d.kids[1] = mk("noann", "", d.line, [])
         f.anys.append("")
     tvbad = f"method '{d.s}' of class '{short(cls)}' mentions TypeVar '{short(tv)}', which is not supported: {d.s}() is not a template (another method whose parameters mention a TypeVar is, compiled for each call's argument types)"
-    if tv != "" and cls != "" and not template_ok(d.s) and not self.lib:
+    if tv != "" and cls != "" and not tok and not self.lib:
         self.err(tvbad)
     receiver = cls in self.classes and self.classes[cls].tag != 0 and f.deco == ""
     if receiver:
@@ -1387,11 +1390,11 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         # a method's are too, as M2 makes them (but its self or cls; see template_ok), and a
         # class template's __init__; an annotation that names a class template types nothing
         own = cls != "" and i == 0 and f.deco != "staticmethod"
-        if (cls == "" or ((template_ok(d.s) or init) and not own)) and ((ps[i].kind == "param" and (ps[i].kids[0].kind == "noann" or self.tmpl_ann(ps[i].kids[0]))) or ps[i].kind == "starparam" or ps[i].kind == "dstarparam"):
+        if (cls == "" or ((tok or init) and not own)) and ((ps[i].kind == "param" and (ps[i].kids[0].kind == "noann" or self.tmpl_ann(ps[i].kids[0]))) or ps[i].kind == "starparam" or ps[i].kind == "dstarparam"):
             f.generic = True
-    if (cls == "" or template_ok(d.s)) and d.kids[1].kind != "noann" and self.tmpl_ann(d.kids[1]) and not (cls in self.classes and self.classes[cls].origin != ""):
+    if (cls == "" or tok) and d.kids[1].kind != "noann" and self.tmpl_ann(d.kids[1]) and not (cls in self.classes and self.classes[cls].origin != ""):
         f.generic = True  # (-> Box: what it returns is one of the class's specializations)
-    if cls in self.classes and self.classes[cls].origin != "" and (template_ok(d.s) or init):
+    if cls in self.classes and self.classes[cls].origin != "" and (tok or init):
         f.generic = True  # (a specialization's methods: compiled where they are called, see specialize)
     gbad = self.gen_declare(f, d) if has_kind(d.kids[2], "yield") and not self.rtmode else ""
     # an __iter__ annotated -> Iterator[T] (or Iterable[T]) that returns something other than
@@ -1399,7 +1402,7 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
     # unannotated one's is (an iterator class's __next__ gives the items)
     selfiter = cls != "" and d.s == "__iter__" and d.kids[1].kind != "noann" and self.iter_item(d.kids[1]) is not None and other_return(d.kids[2]) and not f.gen
     protocol = cls != "" and (d.s == "__iter__" or d.s == "__next__") and d.kids[1].kind == "noann" and d not in held
-    if not f.gen and ((d.kids[1].kind == "noann" and (cls == "" or template_ok(d.s))) or selfiter or protocol) and not f.extern and not f.export and not f.pyexport and has_value_return(d.kids[2]):
+    if not f.gen and ((d.kids[1].kind == "noann" and (cls == "" or tok)) or selfiter or protocol) and not f.extern and not f.export and not f.pyexport and has_value_return(d.kids[2]):
         # The declared parameter types still coerce every call. Reuse return
         # inference even when all parameter types are already concrete.
         # Initializers and other implicit special methods keep their contracts.
@@ -1457,7 +1460,7 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
                 # A generic class's TypeVar annotation is restored on its specializations.
                 self.err(f"parameter '{p.s}' of '{d.s}' needs a type annotation")
             f.ptypes.append("")
-        elif f.generic and self.tmpl_ann(p.kids[0]) and not (cls in self.classes and self.classes[cls].origin != "" and not init and not template_ok(d.s)):
+        elif f.generic and self.tmpl_ann(p.kids[0]) and not (cls in self.classes and self.classes[cls].origin != "" and not init and not tok):
             f.ptypes.append("")  # (it names a class template: any of its specializations, see tmpl_ann)
             if self.callable_pat(p.kids[0]) != "":
                 f.pats[len(f.params) - 1] = p.kids[0]
@@ -1514,13 +1517,13 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         bad = gbad  # (a generator function whose yield or annotation Pystachy does not support)
     elif bad == "" and self.rtmode and has_kind(d.kids[2], "yield"):
         bad = "generator functions are not supported in runtime.py"
-    tret = d.kids[1].kind != "noann" and f.generic and self.tmpl_ann(d.kids[1]) and not (cls in self.classes and self.classes[cls].origin != "" and not template_ok(d.s)) and not f.gen
+    tret = d.kids[1].kind != "noann" and f.generic and self.tmpl_ann(d.kids[1]) and not (cls in self.classes and self.classes[cls].origin != "" and not tok) and not f.gen
     if bad == "" and self.lib and d.kids[1].kind != "noann" and not tret and not f.gen:
         it = self.iter_item(d.kids[1]) if cls != "" and (d.s == "__iter__" or d.s == "__reversed__") else None  # (see iter_ann)
         why = self.ann_problem(d.kids[1], True) if it is None else self.ann_problem(it, False)
         if why != "":
             bad = f"{cls + '.' if cls != '' else ''}{d.s}() is not supported: return annotation: {why}"
-    if tv != "" and cls != "" and not template_ok(d.s):
+    if tv != "" and cls != "" and not tok:
         bad = tvbad  # (an imported module's: an error only where it is used)
     if bad != "" and not f.generic and not self.lib:
         self.err(bad)

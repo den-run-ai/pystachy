@@ -1355,6 +1355,13 @@ def gen_augassign(self, n: Node) -> None:
     elif t.kind == "index":
         o = self.expr(t.kids[0], "")
         sub = "TypeError: 'NoneType' object is not subscriptable"
+        if self.bkind(o.t) == "dict" and "__missing__" in self.classes[o.t].methods and self.bdecays(o.t, BITEM + BSTORE):
+            # o[k] op= v where o's class derives from dict and defines __missing__: o[k] as
+            # bmissing reads it, k evaluated once, then dict's own store of k (builtin_bases.py)
+            kn = self.vnode(self.expr(t.kids[1], targs(unopt(self.bview(o).t))[0]))
+            cur = self.bmissing(o, kn)
+            self.assign(mk("index", "", t.line, [self.vnode(o), kn]), self.inplace(op, cur, n.kids[1]))
+            return
         if self.bdecays(o.t, BITEM + BSTORE):
             o = self.bview(o)  # (o[k] op= v of the builtin container its class derives from: builtin_bases.py)
         if o.t == "dyn":
@@ -1479,6 +1486,11 @@ def gen_inplace(self, op: str, cur: Val, rhs: Node) -> Val:
         # object it is (builtin_bases.py)
         if op == "+":
             self.bfill(cur.t, "extend", [rhs])
+        gen_inplace(self, op, self.bview(cur), rhs)
+        return cur
+    if is_dict(self.bbase(cur.t)) and op == "|" and "__ior__" not in self.classes[cur.t].methods:
+        # o |= m of a class deriving from dict: dict's own update, and o stays the object it is
+        self.bfill(cur.t, "update", [rhs])
         gen_inplace(self, op, self.bview(cur), rhs)
         return cur
     if is_list(unopt(cur.t)) and op == "+":

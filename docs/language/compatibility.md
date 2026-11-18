@@ -554,13 +554,15 @@ See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
   results; overridden static/class methods called through base-typed objects. Independent
   classes and ordinary hierarchies with fixed concrete fields may specialize constructor
   arguments without specializing their layouts ([class templates](typing.md#class-templates-and-generic-classes)).
-- **Builtin bases:** a base other than `list` or `list[T]` (`dict`, `set`, `str`, `int`,
-  `tuple`, ...); for a [list subclass](typing.md#subclasses-of-list), storing or passing its
-  object where a `list[T]` or a dynamic `Any` value is expected, `copy.copy()` and
+- **Builtin bases:** a base other than `list`, `list[T]`, `dict` or `dict[K, V]` (`set`,
+  `str`, `int`, `tuple`, ...); for a [list or dict
+  subclass](typing.md#subclasses-of-list-and-dict), storing or passing its object where a
+  `list[T]`, a `dict[K, V]` or a dynamic `Any` value is expected, `copy.copy()` and
   `copy.deepcopy()` of it, a class deriving from it, multiple inheritance or a decorator with
   it, a `TypeVar` item type, `__new__`, special methods other than `__init__`, `__repr__`,
-  `__str__` and `__len__` through `super()`, `match` sequence patterns, and a bare `list` base
-  whose objects receive no item, or items of different types (name the item type in the base).
+  `__str__` and `__len__` through `super()`, `C.fromkeys()`, `match` sequence patterns, a key
+  that `__missing__` would see converted (a `bool` among `int` keys), and a bare base whose
+  objects receive no item, or items of different types (name the types in the base).
 - **Inherited members:** assigning inherited class attributes through subclasses without their
   own defaults; changing field types; derived-only fields without supported narrowing;
   inherited `cls`-using classmethods through base-typed objects, across modules or with

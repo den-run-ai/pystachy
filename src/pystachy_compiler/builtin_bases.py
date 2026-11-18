@@ -1,21 +1,22 @@
 """Classes that derive from a builtin container: component of the self-hosting Pystachy compiler.
 
-An object of class C(list) begins with the container's header as runtime.c lays it out (a List's
-four words), followed by C's own fields. Its pointer is therefore the container's pointer, and an
-operation that C does not define is the builtin's own, compiled for that pointer exactly as for a
-list (Gen.bview). Which code an operation runs is decided from the static type alone: no list
-holds a class word or a flag, and no builtin path tests for a subclass.
+An object of class C(list) or C(dict) begins with the container's header as runtime.c lays it
+out (a List's four words, a Dict's twelve), followed by C's own fields. Its pointer is therefore
+the container's pointer, and an operation that C does not define is the builtin's own, compiled
+for that pointer exactly as for a list or a dict (Gen.bview). Which code an operation runs is
+decided from the static type alone: no list or dict holds a class word or a flag, and no builtin
+path tests for a subclass.
 """
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import where
-from src.pystachy_compiler.ir import FnInfo, Val
+from src.pystachy_compiler.ir import FnInfo, Ins, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.syntax import Node, made_var, mentions, mk
-from src.pystachy_compiler.utils import elem, is_list, targs, typestr
+from src.pystachy_compiler.utils import elem, is_dict, is_list, targs, typestr, unopt
 
 # the builtin containers a class may derive from, each with the 8-byte words of its header
-# (runtime.c's List), which the object's struct starts with as hidden fields
-BWORDS: dict[str, int] = {"list": 4}
+# (runtime.c's List and Dict), which the object's struct starts with as hidden fields
+BWORDS: dict[str, int] = {"list": 4, "dict": 12}
 # the special methods whose operations a class deriving from a container takes from it where it
 # defines none of them (Gen.bdecays): the others are an ordinary class's
 BITER: list[str] = ["__iter__"]
@@ -28,7 +29,7 @@ BTRUTH: list[str] = ["__bool__", "__len__"]
 BIN: list[str] = ["__contains__"]
 BSHOW: list[str] = ["__repr__", "__str__"]
 BREPR: list[str] = ["__repr__"]
-BARITH: list[str] = ["__add__", "__radd__", "__mul__", "__rmul__"]
+BARITH: list[str] = ["__add__", "__radd__", "__mul__", "__rmul__", "__or__", "__ror__"]
 # for each comparison, the special method that decides it for its left operand and the one for
 # its right operand, which CPython asks first where the right operand's class derives from the
 # left one's (gen_bcompared): the builtin container's own, inherited one per operator, unless
@@ -36,7 +37,7 @@ BARITH: list[str] = ["__add__", "__radd__", "__mul__", "__rmul__"]
 BCMP: dict[str, list[str]] = {"==": ["__eq__", "__eq__"], "!=": ["__ne__", "__ne__"], "<": ["__lt__", "__gt__"],
                               "<=": ["__le__", "__ge__"], ">": ["__gt__", "__lt__"], ">=": ["__ge__", "__le__"]}
 # the builtin functions that iterate their first argument
-BITERATE: list[str] = ["list", "tuple", "set", "frozenset", "sorted", "sum", "min", "max", "any", "all", "enumerate", "zip", "reversed",
+BITERATE: list[str] = ["list", "tuple", "set", "frozenset", "dict", "sorted", "sum", "min", "max", "any", "all", "enumerate", "zip", "reversed",
                        "math.fsum", "math.prod"]
 
 
@@ -54,10 +55,23 @@ def has_def(c: Node, name: str) -> bool:
     return False
 
 
+def bnamed(kind: str) -> str:
+    # how a class's base names the types of what builtin container kind holds, for messages
+    return "list[T]" if kind == "list" else "dict[K, V]"
+
+
+def bopen(kind: str, sized: bool) -> str:
+    # the type of builtin container kind whose items no fill has typed yet, or (sized) the type
+    # of one whose items no code reads, for its header alone (len() and truth)
+    if kind == "list":
+        return "list[int]" if sized else "list[?]"
+    return "dict[int,int]" if sized else "dict[?,?]"
+
+
 def may_fill(n: Node) -> bool:
     # may code n store a container's first item: a call of one of the methods that do, of
     # the container's __init__, or an assignment to an item or a slice
-    if n.kind == "call" and n.kids[0].kind == "attr" and n.kids[0].s in ["append", "extend", "insert", "__init__"]:
+    if n.kind == "call" and n.kids[0].kind == "attr" and n.kids[0].s in ["append", "extend", "insert", "__init__", "update", "setdefault"]:
         return True
     if (n.kind == "assign" or n.kind == "augassign") and n.kids[0].kind in ["index", "slice", "name", "attr"]:
         return n.kind == "augassign" or n.kids[0].kind in ["index", "slice"]
@@ -84,7 +98,8 @@ def gen_bbase(self, t: str) -> str:
     c = self.classes[t].origin if self.classes[t].origin != "" else t
     if c not in self.bsub:
         n = self.bsubn[c]
-        b = self.hints.get("base:" + c, "list[?]")
+        kind = builtin_base(n)
+        b = self.hints.get("base:" + c, bopen(kind, False))
         if n.kind == "index":
             line = self.line
             self.line = n.line
@@ -92,7 +107,7 @@ def gen_bbase(self, t: str) -> str:
             if b.startswith("!"):
                 self.err(b[1:])
             if "dyn" in b or "?" in b:
-                self.err(f"a class deriving from {typestr(b)} is not supported: name the type of its items (class {short(c)}(list[T]))")
+                self.err(f"a class deriving from {typestr(b)} is not supported: name the types of its items (class {short(c)}({bnamed(kind)}))")
             self.line = line
         self.bsub[c] = b
     return self.bsub[c]
@@ -119,9 +134,9 @@ def gen_bview(self, v: Val, sized: bool = False) -> Val:
         self.bearly(v.t)
         b = self.bbase(v.t)
         if "?" in b:
-            self.err(f"cannot infer what '{short(v.t)}' objects hold before an item is stored in one: name it in the base (class {short(v.t)}(list[T]))")
+            self.err(f"cannot infer what '{short(v.t)}' objects hold before an item is stored in one: name it in the base (class {short(v.t)}({bnamed(self.bkind(v.t))}))")
     if "?" in b:
-        b = "list[int]"
+        b = bopen(self.bkind(v.t), True)
     return Val(v.v, b if v.v in self.nn else self.optional(b))
 
 
@@ -138,6 +153,8 @@ def gen_bcompared(self, op: str, a: Val, b: Val) -> list[Val]:
     # or anything but such an object), else the left operand
     if op not in BCMP or (self.bkind(a.t) == "" and self.bkind(b.t) == ""):
         return [a, b]
+    if op != "==" and op != "!=" and (self.bkind(a.t) == "dict" or self.bkind(b.t) == "dict"):
+        return [a, b]  # (dicts have no order: an object's class raises CPython's TypeError, naming it)
     if self.bkind(a.t) != "" and BCMP[op][0] in self.classes[a.t].methods:
         return [a, b]
     if self.bkind(a.t) == "" and BCMP[op][1] in self.classes[b.t].methods:
@@ -151,10 +168,11 @@ def gen_bfound(self, t: str, b: str) -> None:
     # them without that type, and the next pass compiles the program with it from the start
     # (as a join's hint, see Rejoin; program() ends this pass even if a retry dropped newhints)
     c = self.classes[t].origin if self.classes[t].origin != "" else t
+    kind = self.bkind(t)
     if "?" in b or "None" in targs(b):
-        self.err(f"cannot infer what '{short(c)}' objects hold from {typestr(b)}: name it in the base (class {short(c)}(list[T]))")
+        self.err(f"cannot infer what '{short(c)}' objects hold from {typestr(b)}: name it in the base (class {short(c)}({bnamed(kind)}))")
     if self.final or self.rtmode:
-        self.err(f"cannot infer what '{short(c)}' objects hold: name it in the base (class {short(c)}(list[T]))")
+        self.err(f"cannot infer what '{short(c)}' objects hold: name it in the base (class {short(c)}({bnamed(kind)}))")
     self.bsub[c] = b
     self.bnew["base:" + c] = b
     self.newhints["base:" + c] = b
@@ -164,6 +182,13 @@ def gen_bfill(self, t: str, m: str, args: list[Node]) -> None:
     # o.append(v), o.insert(i, v) or o.extend(xs) on an object of class t whose bare base no
     # fill has typed yet: the item's type decides it (as a list variable's first fill does)
     if "?" not in self.bbase(t) or len([a for a in args if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar"]) > 0:
+        return
+    if self.bkind(t) == "dict":
+        # (d.update(m) of a dict m, d.setdefault(k, v): the first item's key and value)
+        if m == "update" and len(args) == 1 and is_dict(unopt(self.dry(args[0]))):
+            self.bfound(t, unopt(self.dry(args[0])))
+        elif m == "setdefault" and len(args) == 2:
+            self.bfound(t, self.ctype("dict", [self.dry(args[0]), self.dry(args[1])]))
         return
     if (m == "append" and len(args) == 1) or (m == "insert" and len(args) == 2):
         self.bfound(t, self.ctype("list", [self.dry(args[-1])]))
@@ -191,8 +216,8 @@ def gen_binit(self, o: Val) -> None:
         # (a hierarchy's class tag is an object's first word, which here is the header's)
         self.err(f"internal error: class {short(o.t)}, which derives from {kind}, has a class tag")
     if "?" in b:
-        b = "list[int]"
-    made = self.expr(mk("list", "", self.line, []), b)
+        b = bopen(kind, True)
+    made = self.expr(mk(kind, "", self.line, []), b)
     for k in range(BWORDS[kind]):
         self.mstore("int", self.mload("int", self.maddr("int", made.v, str(k))), self.maddr("int", o.v, str(k)))
 
@@ -200,13 +225,17 @@ def gen_binit(self, o: Val) -> None:
 def gen_bmake(self, c: str, args: list[Node]) -> Val:
     # C(args) of class C deriving from a builtin container, which defines no __init__: a new
     # object, then list.__init__(o, args), which takes at most an iterable of its items and
-    # extends the list as list's own extend() does, also where C defines an extend()
-    if len(args) > 1 or len([a for a in args if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar"]) > 0:
-        self.err(f"{short(c)}() takes at most one argument, an iterable of its items (as list() does)")
+    # extends the list as list's own extend() does, also where C defines an extend(); or
+    # dict.__init__(o, args), which updates the dict as dict's own update() does
+    kind = self.bkind(c)
+    pos = [a for a in args if a.kind != "kw"]
+    if len(pos) > 1 or len([a for a in args if a.kind == "starred" or a.kind == "dstar" or (a.kind == "kw" and kind == "list")]) > 0:
+        self.err(f"{short(c)}() takes at most one argument, an iterable of its items (as list() does)" if kind == "list" else
+                 f"{short(c)}() takes at most one positional argument, a mapping or an iterable of pairs, and keyword arguments (as dict() does)")
     o = self.new_obj(c)
-    if len(args) == 1:
-        self.bfill(c, "extend", args)
-        self.method(self.bview(o), "extend", args)
+    if len(args) > 0:
+        self.bfill(c, "extend" if kind == "list" else "update", args)
+        self.method(self.bview(o), "extend" if kind == "list" else "update", args)
     return o
 
 
@@ -229,9 +258,55 @@ def gen_bbuiltin(self, name: str, v: Val, n: int) -> Val:
 
 def gen_bstored(self, t: str, key: Node, vt: str) -> None:
     # o[key] = v, v of type vt, on an object of class t whose bare base no fill has typed yet:
-    # the value's type decides it
+    # the value's type decides it (a dict's, with the key's)
     if "?" in self.bbase(t):
-        self.bfound(t, self.ctype("list", [vt]))
+        self.bfound(t, self.ctype("dict", [self.dry(key), vt]) if self.bkind(t) == "dict" else self.ctype("list", [vt]))
+
+
+def gen_bmissing(self, me: Val, key: Node) -> Val:
+    # me[key] of an object me of a class deriving from dict that defines __missing__ (and no
+    # __getitem__): dict's lookup, and me.__missing__(key) where the key is not there, as
+    # CPython's dict_subscript calls it (get(), in, setdefault() and pop() never do). me's
+    # None raises once the key is evaluated, as for a dict. A bare base that no fill has typed
+    # yet holds keys of the key's type and values of what __missing__ returns for it, unless
+    # the __missing__ that this compiles (as a template's call does) stores a first item itself
+    if "?" in self.bbase(me.t):
+        kt = self.dry(key)
+        rt = self.dry(mk("call", "", key.line, [mk("attr", "__missing__", key.line, [self.vnode(me)]), key]))
+        if "?" in self.bbase(me.t):
+            self.bfound(me.t, self.ctype("dict", [kt, rt]))
+    d = self.bview(me)
+    kv = targs(unopt(d.t))
+    k = self.expr(key, kv[0])
+    if k.t == "dyn" or kv[0] == "dyn" or not self.bmissable(k.t, kv[0]):
+        self.err(f"{short(me.t)}[k] of a {typestr(k.t)} key, with __missing__, is not supported: the keys' type {typestr(kv[0])} must take it as it is")
+    kx = self.dkey(k, kv[0])
+    d = self.unwrap(d, "TypeError: 'NoneType' object is not subscriptable")
+    e = self.nonekey(kx, "-1", "pys_dict_find", [f"ptr {d.v}", f"i64 {self.to_slot(kx)}"], self.key_fx(kv[0]), kv[0])
+    hit = self.label()
+    miss = self.label()
+    end = self.label()
+    self.cbr(self.num_cmp("<", Val(e, "int"), Val("0", "int")).v, miss, hit)
+    self.place(hit)
+    v1 = self.dict_value(d, e)
+    l1 = self.cur
+    self.br(end)
+    self.place(miss)
+    v2 = self.coerce(self.method(Val(d.v, me.t), "__missing__", [self.vnode(k)]), v1.t, f"the value {short(me.t)}.__missing__() returns ({typestr(v1.t)}, as the dict's)")
+    l2 = self.cur
+    self.br(end)
+    self.place(end)
+    ph = Ins("phi", v1.t, "")
+    self.incoming(ph, v1.v, l1)
+    self.incoming(ph, v2.v, l2)
+    return Val(self.phi(ph), v1.t)
+
+
+def gen_bmissable(self, kt: str, dkt: str) -> bool:
+    # is a key of type kt looked up among a dict's keys of type dkt as it is (a str among strs,
+    # an int among ints, ...), which bmissing supports, not converted (a bool among ints, an
+    # int past 64 bits, an int among floats)
+    return kt == dkt or kt == "None" or unopt(kt) == unopt(dkt)
 
 
 def gen_bsuper(self, me: Val, m: str, args: list[Node]) -> Val:
@@ -241,6 +316,15 @@ def gen_bsuper(self, me: Val, m: str, args: list[Node]) -> Val:
     kind = self.bkind(me.t)
     if len([a for a in args if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar"]) > 0:
         self.err(f"keyword and star arguments of {kind}.{m}() are not supported here; pass them by position")
+    if m == "__init__" and kind == "dict":
+        # (dict.__init__(o, m): the items of m, a mapping or an iterable of pairs, update o's,
+        # which it keeps, as CPython's dict_init does)
+        if len(args) > 1:
+            self.err(f"dict.__init__() takes at most one positional argument, a mapping or an iterable of pairs ({len(args)} given)")
+        if len(args) == 1:
+            self.bfill(me.t, "update", args)
+            self.method(self.bview(me), "update", args)
+        return Val("null", "None")
     if m == "__init__":
         if len(args) > 1:
             self.err(f"{kind}.__init__() takes at most one argument, an iterable of its items ({len(args)} given)")

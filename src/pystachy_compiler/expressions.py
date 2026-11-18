@@ -475,7 +475,7 @@ def gen_isinst(self, t: str, c: Node) -> int:
     if abc == "Sequence" or abc == "MutableSequence" or abc == "Mapping" or abc == "MutableMapping":
         # (collections.abc's: str, bytes and tuple, also a NamedTuple, are Sequences, list is a mutable one)
         if abc.endswith("Mapping"):
-            return 1 if is_dict(t) else -2 if self.dict_object(t) else 0
+            return 1 if is_dict(t) else -2 if self.dict_object(t) or self.bkind(t) == "dict" else 0  # (builtin_bases.py)
         if is_list(t) or (abc == "Sequence" and (t == "str" or t == "bytes" or is_tuple(t) or is_vtuple(t))):
             return 1
         if self.bkind(t) == "list":
@@ -1308,6 +1308,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             self.list_store(Val(r, lty), v, "append")
         return Val(r, lty)
     if k == "dict":
+        if self.bkind(unopt(want)) == "dict" and "?" not in self.bbase(unopt(want)):
+            want = self.bbase(unopt(want))  # (a display is a dict, typed as the dict that the class expected there derives from: builtin_bases.py)
         kv = targs(want) if is_dict(want) and "?" not in want else ["", ""]
         soft = n is self.soft
         if kv[1] == "" and not soft and self.dyn_policy(n.line) and (self.dyn_mixed([n.kids[i] for i in range(0, len(n.kids), 2)]) or self.dyn_mixed([n.kids[i] for i in range(1, len(n.kids), 2)])):
@@ -2561,7 +2563,7 @@ def gen_dict_merge(self, n: Node, want: str) -> Val:
                 pairs.append(self.expr(n.kids[i + 1], ""))
             i += 2
             continue
-        v = self.expr(x.kids[0], want if is_dict(want) and r.t == "" else r.t)
+        v = self.bdecay(self.expr(x.kids[0], want if is_dict(want) and r.t == "" else r.t), BITER)  # ({**o}: a dict subclass's items, builtin_bases.py)
         self.line = x.line
         if is_kw(v.t) and r.t == "" and len([k for k in keys if k.kind != "str"]) == 0:
             if not kw:
@@ -3020,6 +3022,8 @@ def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
                 self.raise_("TypeError", self.sconst(error))
                 return Val("undef", "int")
             n = mk("index", "", n.line, [self.vnode(o), self.vnode(index)])
+    if self.bkind(o.t) == "dict" and "__missing__" in self.classes[o.t].methods and "__getitem__" not in self.classes[o.t].methods:
+        return self.bmissing(o, n.kids[1])  # (dict's lookup, then __missing__: builtin_bases.py)
     if self.bdecays(o.t, BITEM):
         o = self.bview(o)  # (o[i] of a class deriving from a builtin container, as the container's: builtin_bases.py)
     t = unopt(o.t)
@@ -4936,8 +4940,9 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
         if error != "" and a.infer_from == "" and b.infer_from == "":
             self.raise_("TypeError", self.sconst(error))
             return Val("undef", "int")
-    if len(self.bsubn) > 0 and (op == "+" or op == "*"):
-        # (xs + ys and xs * n of a list subclass's object make a plain list: builtin_bases.py)
+    if len(self.bsubn) > 0 and (op == "+" or op == "*" or op == "|"):
+        # (xs + ys and xs * n of a list subclass's object, d | m of a dict subclass's, make a
+        # plain list or dict: builtin_bases.py)
         a = self.bdecay(a, BARITH)
         b = self.bdecay(b, BARITH)
     if a.t == "int" and b.t == "int" and a.lit and b.lit and dynamic_program():

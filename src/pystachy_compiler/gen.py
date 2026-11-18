@@ -1250,6 +1250,8 @@ from src.pystachy_compiler.builtin_bases import (
     gen_bitems as builtin_bases_bitems,
     gen_bkind as builtin_bases_bkind,
     gen_bmake as builtin_bases_bmake,
+    gen_bmissable as builtin_bases_bmissable,
+    gen_bmissing as builtin_bases_bmissing,
     gen_bstored as builtin_bases_bstored,
     gen_bsuper as builtin_bases_bsuper,
     gen_bview as builtin_bases_bview,
@@ -5331,6 +5333,12 @@ class Gen:
 
     def bmake(self, c: str, args: list[Node]) -> Val:
         return builtin_bases_bmake(self, c, args)
+
+    def bmissing(self, me: Val, key: Node) -> Val:
+        return builtin_bases_bmissing(self, me, key)
+
+    def bmissable(self, kt: str, dkt: str) -> bool:
+        return builtin_bases_bmissable(self, kt, dkt)
 
     def struct_call(self, name: str, args: list[Node], want: str) -> Val | None:
         return structs_struct_call(self, name, args, want)
