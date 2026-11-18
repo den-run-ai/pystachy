@@ -239,8 +239,8 @@ and `+`, `repr()`, `str()`, `format()` and f-string format specifications,
 `isinstance(c, complex)`, `type(c).__name__`, `type(c) is complex`, dict keys, set elements and
 `copy` behave as in CPython. The compiler rejects what CPython rejects at run time (ordering, `//`,
 `%`, `divmod()`, `round()`, `int()`, `float()` and `math` functions of one, assigning an
-attribute), an `int` or a `float` where `complex` is declared (as for `float`: write `2+0j` or
-`complex(2)`), `sum()` of complex numbers, and subclasses of `complex`. Unions with other scalars
+attribute), an `int` or a `float` where `complex` is declared (write `2+0j` or `complex(2)`),
+`sum()` of complex numbers, and subclasses of `complex`. Unions with other scalars
 are [closed scalar unions](typing.md#closed-scalar-unions), and unions with only objects of
 classes, `complex | C`, [native reference unions](typing.md#native-reference-unions). In a module
 that opts in to dynamic `Any`, an `Any` value may hold a complex number, whose operations are

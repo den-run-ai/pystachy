@@ -6,6 +6,7 @@ from src.pystachy_compiler.diagnostics import Rejoin, fail, int_lists
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.ir import Blk, Data, Frame, Ins, Val, tmpname, one_num
 from src.pystachy_compiler.specs import BIGOPT, CHECKED, LIST_READS, LIST_WRITES, NARROWED, RTL, RTSYM, STR_HEADER_SIZE, TEXT_OPS, UNICODE_AUDIT
+from src.pystachy_compiler.unions import FLOATAT
 from src.pystachy_compiler.utils import (
     RtFn,
     elem,
@@ -55,6 +56,10 @@ def gen_err(self, msg: str) -> None:
         for i in range(len(self.making) - 1, -1, -1):
             msg += ("; " if i < len(self.making) - 1 else " (") + self.making[i]
         msg += ")"
+    if FLOATAT in self.hints:
+        # (an error of a pass after a join of a location annotated float, which may come of the
+        # union it holds now: float_takes)
+        msg += f" (note: what is annotated float and was given an int at {self.hints[FLOATAT]} holds an int | float; a float there, as in 1.0 or float(x), keeps it a float)"
     if "opt[" in msg or "union[" in msg:
         msg = optnames(unionnames(msg))
     for name in self.recursive:

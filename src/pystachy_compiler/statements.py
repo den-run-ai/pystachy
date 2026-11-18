@@ -33,6 +33,7 @@ from src.pystachy_compiler.specs import (
 )
 from src.pystachy_compiler.patterns import unsupported_match, unsupported_reason
 from src.pystachy_compiler.syntax import Node, mk, names_in, starred_target
+from src.pystachy_compiler.unions import float_returns, float_site, float_takes
 from src.pystachy_compiler.utils import (
     bool_for_int,
     elem,
@@ -742,11 +743,16 @@ def gen_stmt_main(self, n: Node) -> None:
         if len(n.kids) == 3:
             t = self.mapping_ann(t, n.kids[2])  # (x: dict[K, V] = defaultdict(...): the defaultdict's)
         if n.kids[0].kind == "name":
+            if t == "float" and len(self.hints) > 0:
+                # (a float variable that was given an int holds both: a join's type, see float_takes)
+                t = self.hints.get("global:" + n.kids[0].s if self.is_global(n.kids[0].s) else f"{self.fnkey(self.curfn)}|{n.kids[0].s}", t)
             self.declare(n.kids[0].s, t)
         if len(n.kids) == 3:
             v = self.expr(n.kids[2], t)
-            # (x: T | None = <a T> knows x holds a T, see narrowed)
-            self.assign(n.kids[0], v if n.kids[0].kind == "name" and ((is_opt(t) and self.widens(v.t, t)) or (is_union(unopt(t)) and (self.widens(v.t, t) or self.boxes(v.t, t)))) else self.coerce(v, t))
+            # (x: T | None = <a T> knows x holds a T, see narrowed. An int for a float variable or
+            # field is the store's to take or reject: its join, see join_hint)
+            takes = t == "float" and float_takes(v.t) and (n.kids[0].kind == "name" or n.kids[0].kind == "attr")
+            self.assign(n.kids[0], v if takes or (n.kids[0].kind == "name" and ((is_opt(t) and self.widens(v.t, t)) or (is_union(unopt(t)) and (self.widens(v.t, t) or self.boxes(v.t, t))))) else self.coerce(v, t))
     elif k == "augassign":
         self.augassign(n)
     elif k == "if":
@@ -901,7 +907,17 @@ def gen_stmt_main(self, n: Node) -> None:
                     if not joined:
                         self.err(f"{short(self.curfn.name)}() returns both {typestr(self.ret)} and {typestr(v.t)} (each function has one return type)")
                     v = Val("undef", self.ret)
-            v = self.coerce(v, self.ret, f"the value {short(self.curfn.name)}() returns ({typestr(self.ret)})" if is_opt(v.t) else "")
+            if float_site(self.ret) and float_takes(v.t) and float_returns(self.curfn):
+                # (-> float that returns an int, as CPython does: the return's join, see join_hint;
+                # a dataclass field's default_factory returns what the field holds: the field's)
+                if self.curfn.synthetic:
+                    was = self.join_at("float:field", self.field_key(self.classes[self.curfn.cls], self.curfn.name[:-8]), self.ret)
+                else:
+                    was = self.join_at("float:return", f"return:{self.curfn.node.line}", self.ret)
+                v = self.coerce(v, self.ret)
+                self.join_at(was[0], was[1], was[2])
+            else:
+                v = self.coerce(v, self.ret, f"the value {short(self.curfn.name)}() returns ({typestr(self.ret)})" if is_opt(v.t) else "")
             self.carried = v  # (the value first: a finally block runs after it is computed)
             ended = self.leave(0)
             v = self.carried

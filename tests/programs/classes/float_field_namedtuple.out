@@ -1,0 +1,5 @@
+V(x=1, y=0) V(x=1.5, y=2) 1 2 1.0 2 True True True
+1.5 2 [1, 0] (1, 0, 1.5, 2) True V(x=1.5, y=2) V(x=5, y=0) {'x': 1.5, 'y': 2}
+1.5 False
+2 True
+[exit 0]

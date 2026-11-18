@@ -604,6 +604,7 @@ class ClassInfo:
         self.fdefault: dict[str, Node] = {}
         self.fnone: dict[str, Node] = {}  # field -> the value of __init__ that gave it its first value, None (Gen.none_field)
         self.fguess: dict[str, bool] = {}  # the fields whose type __init__'s values gave them (not annotations: Gen.join_hint)
+        self.ffloat: dict[str, bool] = {}  # the fields annotated float, which hold an int too once given one (unions.float_takes)
         self.slots: list[str] = []  # literal __slots__, including inherited slots
         self.slotlimit = False  # every ordinary base and this class omit an instance dict
         self.fglob: dict[str, str] = {}

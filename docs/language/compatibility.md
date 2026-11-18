@@ -487,7 +487,8 @@ Other rejections:
 - **Type joins:** incompatible storage/return types, a joined union used where it is not
   accepted, or `None` joined with an unfilled empty container. Recursive calls must follow
   the returns establishing the complete return type, including optionality.
-  See [inferred unions](typing.md#inferred-unions).
+  See [inferred unions](typing.md#inferred-unions) and, for an `int` given where `float` is
+  annotated, [`int` values in `float` locations](typing.md#int-values-in-float-locations).
 - **`None` specialization:** unsupported operations such as `p.upper()` or `p[0]`, even
   inside runtime branches or catching handlers; incompatible rebinding across runtime
   branches, loops or a `for` target. `len`, `int`, `float` and `ord` raise at runtime.

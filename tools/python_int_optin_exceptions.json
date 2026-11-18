@@ -18,6 +18,38 @@
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {
+      "case": "tests/programs/classes/float_field_int.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/classes/float_field_int.py:38: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float (note: what is annotated float and was given an int at tests/programs/classes/float_field_int.py:34 holds an int | float; a float there, as in 1.0 or float(x), keeps it a float)",
+      "reason": "A location annotated float that is given an int holds a closed int | float union, whose int payload stays fixed-width; arithmetic on it that can yield a promoting int is rejected, as for inferred numeric unions.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/classes/float_field_int.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/classes/float_field_int.py:38: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float (note: what is annotated float and was given an int at tests/programs/classes/float_field_int.py:34 holds an int | float; a float there, as in 1.0 or float(x), keeps it a float)",
+      "reason": "A location annotated float that is given an int holds a closed int | float union, whose int payload stays fixed-width; arithmetic on it that can yield a promoting int is rejected, as for inferred numeric unions.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/classes/float_field_plain.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/classes/float_field_plain.py:88: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float (note: what is annotated float and was given an int at tests/programs/classes/float_field_plain.py:7 holds an int | float; a float there, as in 1.0 or float(x), keeps it a float)",
+      "reason": "A location annotated float that is given an int holds a closed int | float union, whose int payload stays fixed-width; arithmetic on it that can yield a promoting int is rejected, as for inferred numeric unions.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/classes/float_field_plain.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/classes/float_field_plain.py:88: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float (note: what is annotated float and was given an int at tests/programs/classes/float_field_plain.py:7 holds an int | float; a float there, as in 1.0 or float(x), keeps it a float)",
+      "reason": "A location annotated float that is given an int holds a closed int | float union, whose int payload stays fixed-width; arithmetic on it that can yield a promoting int is rejected, as for inferred numeric unions.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
       "case": "tests/programs/generics/generic_inferred_unions.py",
       "mode": "jit",
       "category": "unsupported-storage",
@@ -447,6 +479,38 @@
       "category": "unsupported-storage",
       "diagnostic": "tests/programs/numbers/complex_unions.py:38: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got complex",
       "reason": "Arithmetic on an int | float | complex union returns a promoting int into a closed numeric union, which has no promoting-int payload.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/float_return_int.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/numbers/float_return_int.py:86: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float (note: what is annotated float and was given an int at tests/programs/numbers/float_return_int.py:75 holds an int | float; a float there, as in 1.0 or float(x), keeps it a float)",
+      "reason": "A location annotated float that is given an int holds a closed int | float union, whose int payload stays fixed-width; arithmetic on it that can yield a promoting int is rejected, as for inferred numeric unions.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/float_return_int.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/numbers/float_return_int.py:86: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float (note: what is annotated float and was given an int at tests/programs/numbers/float_return_int.py:75 holds an int | float; a float there, as in 1.0 or float(x), keeps it a float)",
+      "reason": "A location annotated float that is given an int holds a closed int | float union, whose int payload stays fixed-width; arithmetic on it that can yield a promoting int is rejected, as for inferred numeric unions.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/float_var_int.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/numbers/float_var_int.py:69: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float (note: what is annotated float and was given an int at tests/programs/numbers/float_var_int.py:7 holds an int | float; a float there, as in 1.0 or float(x), keeps it a float)",
+      "reason": "A location annotated float that is given an int holds a closed int | float union, whose int payload stays fixed-width; arithmetic on it that can yield a promoting int is rejected, as for inferred numeric unions.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/float_var_int.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/numbers/float_var_int.py:69: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float (note: what is annotated float and was given an int at tests/programs/numbers/float_var_int.py:7 holds an int | float; a float there, as in 1.0 or float(x), keeps it a float)",
+      "reason": "A location annotated float that is given an int holds a closed int | float union, whose int payload stays fixed-width; arithmetic on it that can yield a promoting int is rejected, as for inferred numeric unions.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {
