@@ -854,11 +854,12 @@ PYSTACHY_PROFILE_USE=app.profdata pystachy build app.py -o app
 ```
 
 The settings give clang's `-fprofile-generate=DIR` and `-fprofile-use=FILE` to the one step
-that runs LLVM's passes over the program and the runtime it needs as one module, so the
-profile also covers the runtime code inlined into the program; the generating build's link takes
-the flag too, for LLVM's profile runtime. The runtime's own build takes neither: its modules are
-compiled apart, each would carry the module flag that a profile adds, and LLVM refuses to link
-two. `llvm-profdata` must be the toolchain's own, since the raw format follows LLVM's version.
+that runs LLVM's passes over the program's module: the program with the precompiled runtime's
+interface, or with the part of the runtime it needs where `build` links no precompiled runtime.
+So the profile also covers the runtime code inlined into the program; the generating build's link
+takes the flag too, for LLVM's profile runtime. The runtime's own build, and the precompiled
+runtime made of it, take neither: its modules are compiled apart, each would carry the module
+flag that a profile adds, and LLVM refuses to link two. `llvm-profdata` must be the toolchain's own, since the raw format follows LLVM's version.
 Only `build` reads the settings.
 
 Generator functions are left out of the profile (`noprofile`, which the generating build adds

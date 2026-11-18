@@ -545,13 +545,14 @@ def aot_optimization() -> str:
 
 
 def aot_profile() -> list[str]:
-    # Profile-guided builds of an executable: clang's flag for the step that optimizes the program
-    # and the runtime it needs as one module, and its flag for the link. PYSTACHY_PROFILE_GENERATE
-    # names the directory where the executable writes a raw profile each time it runs;
-    # PYSTACHY_PROFILE_USE names the indexed profile that llvm-profdata merge makes of them. The
-    # runtime's own build takes neither flag: its modules, compiled apart, would each carry the
-    # module flag that the profile adds, and LLVM cannot link two of them. A generating build
-    # leaves generator functions out of the profile (lower_module's unprofiled_generators)
+    # Profile-guided builds of an executable: clang's flag for the step that optimizes the program's
+    # module (with the precompiled runtime's interface, or the part of the runtime it needs), and
+    # its flag for the link. PYSTACHY_PROFILE_GENERATE names the directory where the executable
+    # writes a raw profile each time it runs; PYSTACHY_PROFILE_USE names the indexed profile that
+    # llvm-profdata merge makes of them. The runtime's own build, and the precompiled runtime made
+    # of it, take neither flag: its modules, compiled apart, would each carry the module flag that
+    # the profile adds, and LLVM cannot link two of them. A generating build leaves generator
+    # functions out of the profile (lower_module's unprofiled_generators)
     gen = os.getenv("PYSTACHY_PROFILE_GENERATE", "")
     use = os.getenv("PYSTACHY_PROFILE_USE", "")
     if gen != "" and use != "":
