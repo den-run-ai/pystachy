@@ -1439,6 +1439,17 @@ def gen_scalar_call_types(self, f: FnInfo, args: list[Node]) -> list[str]:
     return ts if all(numeric_statement(n, names, blocked, {}, True, True) for n in body) else []
 
 
+def int_for_float(f: FnInfo, j: int, t: str) -> bool:
+    # does an argument of type t compile f again, for a float parameter j that takes an int (a
+    # promoting one too) or a bool: a function's or an ordinary method's, whose body then reads
+    # the int, as CPython's does
+    if (t != "int" and t != "bool" and t != BIG) or f.ptypes[j] != "float" or j == f.vararg or j == f.kwarg or len(f.node.kids) < 3:
+        return False
+    if f.gen or f.extern or f.export or f.pyexport or f.clo >= 0 or f.prop or f.acc != "" or f.deco != "":
+        return False
+    return f.cls == "" or not (f.name.startswith("__") and f.name.endswith("__"))
+
+
 def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "", none: str = "", cache: Val | None = None, direct: bool = False, resultsoft: bool = False, typeargs: str = "", unbound: bool = False, got: list[FnInfo] | None = None) -> Val:
     # f(pre + args); none: the error where pre[0], an object called (o(args)), is None; got: of
     # a comparison, which reads whether its method returned NotImplemented (concrete_cmp), and
@@ -1481,6 +1492,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
     kwn: list[str] = []
     kwv: list[Val] = []
     offs: dict[int, Val] = {}  # (the index of each list that an @extern call takes as ffi.at(xs, k))
+    late = False  # (an argument that compiles f for its own type: see int_for_float)
     for a in args:
         j = pos
         e = a
@@ -1519,7 +1531,13 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         passing = self.fn.idpass
         self.fn.idpass = self.id_move(e)
         try:
-            vals[j] = self.pcoerce(arg, f.ptypes[j], f, j)
+            if cache is None and not self.rtmode and int_for_float(f, j, arg.t) and (f.cls == "" or (f.cls in self.classes and self.classes[f.cls].tag == 0 and self.classes[f.cls].origin == "" and f.cls not in self.tmpl)):
+                # an int for a float parameter (PEP 484 accepts it, and CPython passes the int
+                # on): the function compiles for it, as a template's does (see instance)
+                vals[j] = self.pcoerce(arg, "", f, j)
+                late = True
+            else:
+                vals[j] = self.pcoerce(arg, f.ptypes[j], f, j)
         finally:
             self.fn.idpass = passing
         if self.curfn.cmpops and self.term and vals[j].v == "undef":
@@ -1623,7 +1641,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         pre[0] = vals[0]
         f = self.classes[sc].methods["__init__"]
     nullable_self = unbound and len(pre) > 0 and pre[0].v not in self.nn
-    if f.generic or nullable_self or (not resultsoft and fresh_yield_context(f, want)):
+    if f.generic or nullable_self or late or (not resultsoft and fresh_yield_context(f, want)):
         nnp: list[str] = []
         for j in range(np):
             if vals[j].t in self.classes and vals[j].v in self.nn and self.dispatches(f, f.params[j]):

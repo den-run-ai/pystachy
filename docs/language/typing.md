@@ -134,7 +134,9 @@ Unannotated `__str__` and `__repr__` use their required `str` result type and `_
 uses `bool`; their bodies are checked against those contracts. An unannotated `__len__` or
 `__hash__` infers `int` or `bool`. Constructors keep their `None` result contract.
 There is no implicit `int` to `float`
-conversion in an assignment, argument or return: write `1.0`, or convert explicitly.
+conversion in an assignment or return: write `1.0`, or convert explicitly. An `int` argument
+for a `float` parameter is not converted either: the function is
+[compiled for the `int`](#int-arguments-for-float-parameters).
 Arithmetic and numeric list searches may mix integers and floats. Equality also compares
 closed builtin value trees with different layouts: numbers, strings, `None`, and lists, dicts
 or tuples of these, including optional and union members. Each operand keeps its own layout;
@@ -723,6 +725,37 @@ infers only that channel; the other concrete types still apply. `Iterator[Any]` 
 cannot contain `Any`: annotate it with a concrete type that accepts `None`, such as
 `str | None`. Its native layout must be known when the generator is compiled, before
 future `send()` calls. A yielding `__iter__` method can also use `Iterator[Any]`.
+
+### `int` arguments for `float` parameters
+
+A parameter annotated `float` takes an `int` or `bool` argument as PEP 484 allows and as
+CPython passes it: unconverted. The function or method is compiled again for that argument,
+as if the parameter had no annotation, so its body reads the `int`:
+
+```python
+def half(x: float) -> float:
+    return x / 2
+
+
+def keep(x: float) -> float:
+    return x
+
+
+print(half(3), keep(3), keep(3.0))  # 1.5 3 3.0
+```
+
+Where the return annotation is `float`, that compilation infers its result from its returns,
+so `keep(3)` is the `int` `3`. It has a template's limits: an augmented or conditional store
+of a `float` to the parameter, a store of the `int` into `float` storage (a field, a
+`list[float]`) and a recursive call before a return statement that returns the `int` are
+errors, which name the call and the parameter. Pass a `float` to compile the function as
+annotated.
+
+This applies to direct calls of module-level functions and of ordinary methods of classes
+outside inheritance hierarchies. Constructors and other special methods, properties, static
+and class methods, closures, generators, cached functions, `*args`, methods of generic
+classes and values called through a `Callable` keep the annotated type and reject the `int`,
+as annotated variables, fields and container items do.
 
 ### Variadic arguments
 
