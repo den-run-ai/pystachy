@@ -178,7 +178,8 @@ static inline int opt_in(void) { if (pys_plain) opt_in_trap(); return 1; }
    reorder them with the program's typed accesses to the first word of an object.
    Roots, all conservative: the C stack from the collector's frame up to the frame of @main
    (the generated @main passes its frame address to pys_init, so a @main.init inlined into
-   it is covered); callee-saved registers, which __builtin_unwind_init spills into the
+   it is covered, with the registers its prologue saves above that address: STACK_PAST);
+   callee-saved registers, which __builtin_unwind_init spills into the
    collector's frame; the program's pointer-typed globals (@main passes a table of their
    addresses: under the JIT they live in memory that no scanner would find); and the
    runtime's own statics. Container slots hold ints, float bits or pointers, so every word of
@@ -268,6 +269,17 @@ static I gc_ext;                       /* malloc'd bytes that heap objects hold:
 static int gc_off, gc_stats;
 /* GC_NO_ROOT(gc_bottom): stack boundary; mark_roots scans the stack range explicitly. */
 static char *gc_bottom;                /* the stack is scanned from the collector up to here */
+/* How far past sb, the frame address of @main or of an extension's outermost entry (pys_enter),
+   the scan reaches: sb's frame record, and on AArch64 outside Darwin also the callee-saved
+   registers that the prologue stores above the record (x19-x28 at most). Their area's alignment
+   slot, which x19 saved alone leaves, may hold a spill: LLVM kept a tuple there in @main, which
+   @main.init inlined into it had made before a set display's allocations, and the collector freed
+   it. x86-64 and Darwin keep a whole frame below its frame address. */
+#if defined(__aarch64__) && !defined(__APPLE__)
+#define STACK_PAST (12 * sizeof(void *))
+#else
+#define STACK_PAST (2 * sizeof(void *))
+#endif
 /* GC_NO_ROOT(gc_roots): program root addresses; mark_roots scans their referenced slots. */
 static I **gc_roots, gc_nroots;        /* addresses of the program's pointer-typed globals */
 /* GC_NO_ROOT(mstk): temporary collector work stack, consumed during marking. */
@@ -845,7 +857,7 @@ static void gc_report(void) {
 }
 static void gc_init(char *sb, I **roots, I nroots) {
   const char *e = getenv("PYSTACHY_GC");
-  gc_bottom = sb + 2 * sizeof(void *); /* sb is @main's frame address: include its frame record */
+  gc_bottom = sb + STACK_PAST;         /* sb is @main's frame address: include its frame record */
   gc_roots = roots; gc_nroots = nroots;
   if (!(pmap = calloc(1 << 18, sizeof *pmap))) oom();
   gc_off = e && !strcmp(e, "off");
@@ -7147,7 +7159,7 @@ __attribute__((minsize)) void pys_init(int argc, char **argv, char *sb, I **root
    outermost one's frame bounds the stack scan, as @main's does. One thread only (pyext.c). */
 static I lib_depth;
 void pys_set_hooks(int (*s)(const char *, I, I), Str *(*i)(I, Str *, I)) { std_hook = s; in_hook = i; }
-void pys_enter(char *sb) { if (!lib_depth++) gc_bottom = sb + 2 * sizeof(void *); }
+void pys_enter(char *sb) { if (!lib_depth++) gc_bottom = sb + STACK_PAST; }
 I pys_leave(void) { return --lib_depth; }
 void pys_out_sync(void) {              /* embedded CPython is about to run: what Pystachy wrote to stdout goes first */
   if (!std_out.closed) flush1(&std_out);   /* fflush of an empty stream is harmless; no libc-specific pending probe */
@@ -7156,7 +7168,7 @@ void pys_init_lib(I **roots, I nroots) {
   pys_c_numeric();                     /* (the host may call setlocale) */
   stack_floor(1);                     /* (the importing thread's; the host may have raised its limit) */
   if (!pmap) {                         /* (else an import that failed is tried again) */
-    gc_init(gc_bottom - 2 * sizeof(void *), roots, nroots);
+    gc_init(gc_bottom - STACK_PAST, roots, nroots);
     std_in.f = stdin; std_in.rd = 1; std_in.nl = 2; std_in.std = 1;
     std_out.f = stdout; std_out.wr = 1; std_out.std = 1;
     std_err.f = stderr; std_err.wr = 1; std_err.std = 1;
