@@ -43,8 +43,10 @@ saferepr()
 # (lib/compatibility.md#pprint).
 
 # Pystachy port: no collections, dataclasses, re or types. Their classes are written as their
-# repr(), and _split_spaces() below is the one regex.
+# repr(), and _split_spaces() below is the one regex. enum's classes name their members' types
+# (_type_repr()), as CPython's EnumType does.
 import sys as _sys
+from enum import Enum as _Enum, Flag as _Flag
 from io import StringIO as _StringIO
 
 __all__ = ["pprint","pformat","isreadable","isrecursive","saferepr",
@@ -107,10 +109,22 @@ class _safe_key:
         try:
             return self.obj < other.obj
         except TypeError:
-            # Pystachy port: in no order (CPython: by the pairs (str(type(x)), id(x)); there is
-            # no id(), and the two values have one static type). The < of two objects of a class
-            # that defines no __lt__() raises nothing: it does not compile.
-            return False
+            # Pystachy port: by the names of their types, and two of one type in no order
+            # (CPython: by the pairs (str(type(x)), id(x)); there is no id()). The < of two
+            # objects of a class that defines no __lt__() raises nothing: it does not compile.
+            return _type_repr(self.obj) < _type_repr(other.obj)
+
+# Pystachy port: str(type(x)), which does not compile for an enum member, as an enum class is no
+# value here: EnumType's repr for one, else type's, which leaves out a builtin type's module.
+def _type_repr(x) -> str:
+    if isinstance(x, _Flag):
+        return "<flag %r>" % type(x).__name__
+    if isinstance(x, _Enum):
+        return "<enum %r>" % type(x).__name__
+    module = type(x).__module__
+    if module == "builtins":
+        return "<class %r>" % type(x).__qualname__
+    return "<class '%s.%s'>" % (module, type(x).__qualname__)
 
 def _safe_item(o):
     # Pystachy port: _safe_key as a function, for sorted()'s key

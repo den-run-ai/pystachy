@@ -59,7 +59,7 @@ from src.pystachy_compiler.ctypes_schema import ctypes_import, lower_ctypes
 from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, IDPRAGMA, INTFILES, INTSPANS, LINES, MODDUNDERS, RAW, NeedHandlers, dynamic_pragma, fail, int_pragma, leading_pragma
 from src.pystachy_compiler.lexer import KEYWORDS, Lexer, host_text
 from src.pystachy_compiler.module import Mod
-from src.pystachy_compiler.names import ENUMCLASSES, owner, short
+from src.pystachy_compiler.names import ENUMCLASSES, ORDERED, owner, short
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.specs import (
     ABCS,
@@ -329,7 +329,9 @@ def functools_classes(n: Node, names: dict[str, str]) -> None:
     # from the one of __lt__, __le__, __gt__ and __ge__ that CPython's total_ordering() takes of
     # those the body defines, as it computes it (ORDERINGS), with that method's parameters. The
     # method calls type(self)'s own one, and returns NotImplemented where that does
-    # (__pys_ordering: Gen.ordering), else a bool
+    # (__pys_ordering: Gen.ordering), else a bool. CPython's decorator also takes the ones the
+    # class inherits, and those a decorator applied before it defines, which Gen.ordered_class
+    # reads where it knows the class's bases (ORDERED)
     if len(names) == 0:
         return
     functools_calls(n, names)
@@ -339,11 +341,13 @@ def functools_classes(n: Node, names: dict[str, str]) -> None:
         c = st.kids[0] if st.kind == "subclass" else st
         b = c.kids[0]
         ordered = False
+        first = False  # (another decorator applied before @total_ordering: c.kids has the innermost first)
         decos: list[Node] = []
         for dn in c.kids[1:]:
             if names.get(dn.s, "") == "total_ordering" and len(dn.kids) == 0:
                 ordered = True
             else:
+                first = first or not ordered
                 decos.append(dn)
         kept: list[Node] = []
         for d in b.kids:
@@ -391,9 +395,9 @@ def functools_classes(n: Node, names: dict[str, str]) -> None:
                 if (d.kind == "assign" or d.kind == "annassign") and d.kids[0].kind == "name" and d.kids[0].s in ORDERINGS:
                     fail(f"@total_ordering of class {st.s}, whose body assigns {d.kids[0].s}, is not supported (the decorator reads the methods that def statements of the body define)", d.line)
             if root is None:
-                if st.kind == "subclass" and len([x for x in st.kids[1:] if x.kind != "typeparams" and dotted(x) != "object"]) > 0:
-                    fail(f"@total_ordering of class {st.s}, whose body defines none of __lt__, __le__, __gt__ and __ge__, is not supported (an inherited one is not read)", c.line)
-                fail("ValueError: must define at least one ordering operation: < > <= >=", c.line)
+                if not first and (st.kind != "subclass" or len([x for x in st.kids[1:] if x.kind != "typeparams" and dotted(x) != "object"]) == 0):
+                    fail("ValueError: must define at least one ordering operation: < > <= >=", c.line)
+                # (its methods are inherited, or a decorator's: Gen.ordered_class)
             elif len(root.kids[0].kids) != 2 or root.kids[0].kids[0].kind != "param" or root.kids[0].kids[1].kind != "param":
                 fail(f"@total_ordering of class {st.s}: {root.s}() takes the object and the other one", root.line)
             else:
@@ -407,6 +411,7 @@ def functools_classes(n: Node, names: dict[str, str]) -> None:
                     w = Parser(Lexer(f"def {made[0]}({me}, {other}) -> bool:\n    _pys_to_result = __pys_ordering({me}, {other}, {root.s!r})\n    return {body}\n", root.line).file()).module().kids[0]
                     w.kids[0] = clone(root.kids[0])
                     kept.append(w)
+            ORDERED[c.line] = " ".join((["+"] if first else []) + [op for op in ORDERINGS if op in have])
         b.kids = kept
         c.kids = [b] + decos
 
@@ -1377,6 +1382,7 @@ class Loader:
         program_cache.track_source(path, src)
         FILES.clear()
         ENUMCLASSES.clear()
+        ORDERED.clear()
         DYNFILES.clear()
         IDINERT.clear()
         INTFILES.clear()

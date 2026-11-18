@@ -66,10 +66,17 @@ def collect(generation: int = 2) -> int:
     return 0
 
 
-def set_debug(flags: int) -> None:
+# set_debug() and set_threshold() take their arguments by position only, as CPython's C functions
+# do, which raise TypeError where a call passes a keyword or another number of arguments: so do
+# these, as the call runs (a positional-only parameter would make a keyword a compile-time error).
+def set_debug(*args: int, **kwargs) -> None:
     """Set the garbage collection debugging flags."""
     global _debug
-    _debug = flags
+    if len(kwargs) > 0:
+        raise TypeError("gc.set_debug() takes no keyword arguments")
+    if len(args) != 1:
+        raise TypeError("gc.set_debug() takes exactly one argument (%d given)" % len(args))
+    _debug = args[0]
 
 
 def get_debug() -> int:
@@ -77,17 +84,25 @@ def get_debug() -> int:
     return _debug
 
 
-def set_threshold(threshold0: int, threshold1: int | None = None, threshold2: int | None = None) -> None:
+def set_threshold(*args: int | None, **kwargs) -> None:
     """Set the collection thresholds (the collection frequency).
 
     Setting 'threshold0' to zero disables collection.
     """
-    # (a threshold that is not given stays what it is, as CPython's optional arguments leave it)
-    _threshold[0] = threshold0
-    if threshold1 is not None:
-        _threshold[1] = threshold1
-    if threshold2 is not None:
-        _threshold[2] = threshold2
+    if len(kwargs) > 0:
+        raise TypeError("set_threshold() takes no keyword arguments")
+    if len(args) < 1 or len(args) > 3:
+        raise TypeError("gc.set_threshold requires 1 to 3 arguments")
+    # threshold0, then threshold1 and threshold2 where given: one that is not stays what it is,
+    # as CPython's optional arguments leave it. Each is an int (CPython converts them all
+    # before it sets one), and None is CPython's TypeError.
+    given: list[int] = []
+    for a in args:
+        if a is None:
+            raise TypeError("'NoneType' object cannot be interpreted as an integer")
+        given.append(a)
+    for i in range(len(given)):
+        _threshold[i] = given[i]
 
 
 def get_threshold() -> tuple[int, int, int]:

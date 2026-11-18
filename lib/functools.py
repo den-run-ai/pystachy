@@ -420,5 +420,3 @@ def total_ordering(cls):
 def cached_property(func):
     """A property whose value is computed once for an object and then kept."""
     return func
-    """A property whose value is computed once for an object and then kept."""
-    return func

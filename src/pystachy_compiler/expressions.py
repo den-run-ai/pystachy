@@ -4293,8 +4293,11 @@ def gen_ordering(self, args: list[Node]) -> Val:
     # (functools_classes), which a class's own code cannot name (__pys... is private to its
     # class there): type(self).__lt__(self, other), as CPython's functools calls the class's
     # own ordering method. Where that returned NotImplemented the method written returns it too:
-    # it returns False here, with decl_flag's variable as its callee left it (decline). Else
-    # this is what the callee returned, a bool
+    # it returns False here, with decl_flag's variable as its callee left it (decline). A call
+    # that takes this method's result as it is (call_fn's plain), compiled before it was known to
+    # decline, as where the class's own method calls it while this one is compiled, would read
+    # that False: it is rejected, as decline rejects it. Else this is what the callee returned,
+    # a bool
     if self.curfn.cls not in self.classes or self.curfn.name not in ["__lt__", "__le__", "__gt__", "__ge__"] or len(args) != 3 or args[2].kind != "str" or self.ret != "bool" or len(self.exits) > 0:
         self.err("name '__pys_ordering' is not defined")
     me = self.expr(args[0], "")
@@ -4303,6 +4306,8 @@ def gen_ordering(self, args: list[Node]) -> Val:
     r = self.declining_call(self.classes[me.t].methods[args[2].s], me, other, False, decl)
     if len(decl) == 0:
         return r
+    if self.curfn.plain != "":
+        self.err(f"{short(self.curfn.cls)}.{self.curfn.name}() returns NotImplemented, which only a comparison of objects (==, <, ...) reads: the call at {self.curfn.plain}, which takes its result as it is, is not supported")
     self.curfn.declines = True
     lret = self.label()
     lgo = self.label()

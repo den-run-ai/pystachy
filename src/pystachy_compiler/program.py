@@ -8,7 +8,7 @@ from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_pr
 from src.pystachy_compiler.ir import Val
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.module import Mod
-from src.pystachy_compiler.names import RENAMED, owner, short
+from src.pystachy_compiler.names import ORDERED, RENAMED, owner, short
 from src.pystachy_compiler.pipeline import PreparedProgram
 from src.pystachy_compiler.specs import (
     ABSTRACT_DECOS,
@@ -594,6 +594,69 @@ def gen_dc_options(self, ci: ClassInfo) -> None:
         self.err(f"unsupported decorator @{st.kids[1].s}" + (" (import dataclass from dataclasses)" if st.kids[1].s == "dataclass" else ""))
     if len(st.kids) > 2:
         self.err(f"unsupported decorator @{st.kids[2].s}")
+
+
+# the ordering methods that functools.total_ordering() computes one another from, in the order
+# CPython's max(roots) prefers them
+ORDER_OPS = ["__lt__", "__le__", "__gt__", "__ge__"]
+
+
+def gen_ordering_ops(self, c: str, seen: list[str]) -> list[str]:
+    # the ones of __lt__, __le__, __gt__ and __ge__ that class c has other than object's, which
+    # CPython's functools.total_ordering() takes as roots (getattr(cls, op) is not object's),
+    # in ORDER_OPS's order: those its body binds, among them those @total_ordering wrote
+    # (Loader's functools_classes); all four for a NamedTuple (tuple's) and a dataclass with
+    # order=True; and those of its bases (an exception class's builtin bases have none). Classes
+    # in seen are left out (each base once)
+    if c not in self.classes or c in seen:
+        return []
+    seen.append(c)
+    ci = self.classes[c]
+    if c in self.nts or "order" in ci.dcopts:
+        return list(ORDER_OPS)
+    has: dict[str, bool] = {}
+    for d in ci.node.kids[0].kids:
+        if d.kind == "def" and d.s in ORDER_OPS:
+            has[d.s] = True
+        for t in d.kids[:-1] if d.kind == "assign" else d.kids[:1] if d.kind == "annassign" and len(d.kids) == 3 else NOKIDS:
+            if t.kind == "name" and t.s in ORDER_OPS:
+                has[t.s] = True
+    for b in [ci.base] + ci.roles:
+        for op in self.ordering_ops(b, seen):
+            has[op] = True
+    return [op for op in ORDER_OPS if op in has]
+
+def gen_ordered_class(self, ci: ClassInfo) -> None:
+    # class ci, decorated @total_ordering: the loader wrote the ordering methods its body lacks
+    # from the greatest of those it defines (functools_classes, ORDERED). CPython's decorator
+    # also takes as roots those the class inherits (ordering_ops), all four of a NamedTuple and
+    # those of a dataclass with order=True applied before it; it writes only the others, each
+    # computed from the greatest root (max(roots)). The methods written for a root the class
+    # inherits are left out of its body, so that it inherits that one; where the others are
+    # computed from an inherited root, which the loader did not read, the class is rejected
+    words = ORDERED[ci.node.line].split()
+    own = [op for op in ORDER_OPS if op in words]
+    inherited: list[str] = list(ORDER_OPS) if ci.name in self.nts or ("+" in words and "order" in ci.dcopts) else []
+    seen: list[str] = [ci.name]
+    bases = [ci.base] + ci.roles
+    for b in bases:
+        for op in self.ordering_ops(b, seen):
+            if op not in inherited:
+                inherited.append(op)
+    roots = [op for op in ORDER_OPS if op in own or op in inherited]
+    made = [op for op in ORDER_OPS if op not in roots]  # (what CPython's decorator writes)
+    self.line = ci.node.line
+    if len(roots) == 0:
+        self.err("ValueError: must define at least one ordering operation: < > <= >=")
+    if len(roots) == len(own):
+        return  # (as the loader wrote them)
+    if len(made) > 0 and (len(own) == 0 or own[0] != roots[0]):
+        held = [b for b in bases if roots[0] in self.ordering_ops(b, [])]
+        listed = made[0] if len(made) == 1 else ", ".join(made[:-1]) + " and " + made[-1]
+        self.err(f"@total_ordering of class {short(ci.name)} is not supported where it inherits {roots[0]}" + (f" from {short(held[0])}" if len(held) > 0 else "") +
+                 f": CPython's decorator computes {listed} from that method" + (f", not from {own[0]} of its body" if len(own) > 0 else ""))
+    drop = [op for op in roots if op not in own]
+    ci.node.kids[0].kids = [d for d in ci.node.kids[0].kids if d.kind != "def" or d.s not in drop]
 
 def gen_on_chain(self, c: str, a: str) -> bool:
     # is class a class c or one of the classes c derives from by its primary bases
@@ -1889,6 +1952,9 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
                 self.classes[st.s] = ClassInfo(st.s, st)
                 self.classes[st.s].mod = m.name
                 self.dc_options(self.classes[st.s])
+    for ci in list(self.classes.values()):
+        if ci.node.line in ORDERED:
+            self.ordered_class(ci)  # (before the methods of the class bodies are declared)
     for m in mods:
         self.any_variables(m.body, False)
     # the sentinels, NAME = object() (also NAME: Final[Any] = object()), that nothing else binds,
