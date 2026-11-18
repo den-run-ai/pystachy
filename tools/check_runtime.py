@@ -145,7 +145,7 @@ ALLOC = {"gc_slow", "gc_raw", "pys_alloc", "pys_alloc_atomic", "pys_new", "pys_g
 COLLECTS = {"gc_slow", "collect"}
 # C library functions that use no state but the memory their arguments point to
 PURE_C = set("""sqrt sin cos tan asin acos atan sinh cosh tanh asinh acosh atanh exp log log2 log10 log1p expm1
-    exp2 cbrt fmod atan2 pow ldexp frexp modf erf erfc nextafter remainder atoi memcmp bcmp memchr memmem strlen
+    exp2 cbrt fmod atan2 hypot pow ldexp frexp modf erf erfc nextafter remainder atoi memcmp bcmp memchr memmem strlen
     strchr strstr strcmp strncasecmp snprintf sprintf vsnprintf strtod __isoc23_strtol __isoc23_strtoll
     __ctype_b_loc __ctype_tolower_loc __errno_location uselocale""".split())
 # function pointers CPython's glue installs (pys_set_hooks: pyembed.c's std_hook, which writes the
@@ -793,7 +793,7 @@ def main():
     named.update(pys.IRT.values())
     named.update(pys.FRT.values())
     named.update(f"llvm.{op}.with.overflow.i64" for op in pys.CHECKED.values())
-    # (not the pys_obj_ functions and pys_plain, which the program defines, nor the names of the
+    # (not the pys_obj_ functions and pys_plain, which the program or the AOT runtime defines, nor the names of the
     # compiler's own builtins, __pys_*, of which Gen.builtin calls two by their names without __)
     named.update(s for s in re.findall(r"(?<!_)pys_[a-z0-9_]*[a-z0-9](?![\w{])", src) if not s.startswith("pys_obj_") and s != "pys_plain" and s not in pys.RTDATA and s not in MUTABLE_DATA)
     named.update(["pys_repr_enter", "pys_repr_leave"])

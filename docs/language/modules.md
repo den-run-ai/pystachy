@@ -17,6 +17,9 @@ If none has either, the directories named `NAME`, also through symbolic links, a
 of a namespace package, as in CPython. Any other file named `NAME`, such as a text file without
 the `.py` suffix, is not a module.
 
+[`importlib.metadata`](../../lib/compatibility.md#importlibmetadata) searches the same directories
+for the metadata of installed distributions.
+
 Builtin modules such as `sys`, `os` and `math` are handled by the compiler. A program's own
 `ffi.py` takes precedence over the builtin `ffi` module. A file named like a module built into
 CPython, such as `_weakref.py` or `itertools.py`, is never imported, as CPython imports its own.
@@ -53,7 +56,12 @@ or `class`, a read before the module binds `__doc__` raises `NameError`. Deletin
 `__doc__`, assigning another module's, and reading `__doc__` in a class body (but in its
 lambdas and comprehensions) are not supported. Some `lib/` modules' docstrings differ from
 CPython's (see the [library reference](../../lib/compatibility.md)).
-`__file__`, `__spec__` and CPython's other module metadata are unsupported.
+`__file__` is the absolute path of the module's source file, in the module's own code and as
+`m.__file__` ([test](../../tests/programs/imports/module_file.py)); a module may bind the name
+itself. A builtin module and a namespace package have none, and an executable built ahead of
+time keeps the path it was built from
+([deviations](compatibility.md#modules-and-libraries)). `__spec__` and CPython's other module
+metadata are unsupported.
 An imported module cannot bind `__name__`.
 
 ## Module scope
@@ -89,6 +97,11 @@ A global that module code may leave unbound is checked when a function or anothe
 reads it. A missing binding raises `NameError` or `AttributeError`. This includes a global
 assigned only in a branch, or read during a circular import before its assignment runs.
 
+During a circular import, code may read only the constants of a module that is still being
+imported: its `NAME = literal` (also `Final`) assignments, and its copies of other modules'
+constants (`from m import K`, as mypy's `types.py` re-exports `type_visitor`'s `ANY_STRATEGY`).
+Reading another of its globals there is a compile-time error.
+
 When a template is compiled before module code has assigned a global it reads, Pystachy
 infers the global's type from its first binding in the module-level branches retained by
 the compiler: an annotation, a value whose type is known, or an empty container later filled
@@ -111,7 +124,7 @@ Pystachy resolves these guards while compiling:
 | Guard | Treatment |
 |---|---|
 | `if __name__ == "__main__":` in an imported module | Drops the body. |
-| `if typing.TYPE_CHECKING:` or the imported `TYPE_CHECKING` | Drops the body, including the common optional `typing` import whose handler sets `TYPE_CHECKING = False`. |
+| `if typing.TYPE_CHECKING:` or the imported `TYPE_CHECKING` | Drops the body, including the common optional `typing` import whose handler sets `TYPE_CHECKING = False`. Annotations may still name what its imports bind: see [type-only imports](#type-only-imports). |
 | Module-level `if False:` or `if 0:` | Drops the body outside functions and classes. |
 | Module-level `TYPE_CHECKING = False` followed by `if TYPE_CHECKING:` | Drops the body when that is the name's only binding; other assignments, deletion, imports, star imports or `global` declarations disable this rule. |
 | Tests of the platform: `sys.platform ==` or `!=` a literal string, `in` or `not in` a tuple or list of them, `sys.platform.startswith()` of one or a tuple of them, `os.name ==` or `!=` one, `sys.implementation.name ==` or `!=` one | Resolves them for the system Pystachy compiles for, the one it runs on, with the values its runtime reports: `sys.platform` is `"linux"`, `"darwin"` or `"freebsd"`, `os.name` is `"posix"` and `sys.implementation.name` is `"pystachy"`. This also holds in conditional expressions (`sep = "\\" if sys.platform == "win32" else "/"`), in functions, and in module code for a name that the module assigns such a test once, which nothing else binds, deletes or declares global (`_MS_WINDOWS = sys.platform == "win32"`, then `if _MS_WINDOWS:`); another module may assign that name only the value it holds. |
@@ -121,8 +134,9 @@ Pystachy resolves these guards while compiling:
 
 These tests work inside `not`, `and` and `or`, while preserving the other operands' evaluation
 order. The branch that does not run is not compiled at all, as CPython never runs it: its
-imports are not resolved and its code is not checked, so `import nt` under
-`if sys.platform == "win32":` compiles. For example, `effect()` still runs in `if effect() and os.name == "nt":`.
+imports are not resolved and its code is not type-checked, so `import nt` under
+`if sys.platform == "win32":` compiles. Its syntax is still checked, as CPython checks a whole
+file before running it ([syntax errors](../language.md#syntax-errors)). For example, `effect()` still runs in `if effect() and os.name == "nt":`.
 They apply only when a name still refers to the imported module or constant; a parameter,
 local, loop variable or another import can shadow it.
 
@@ -130,6 +144,37 @@ Discarding a branch does not change Python scoping. A binding in discarded code 
 a function's name local, including bindings from `:=`, `match` captures and `type` statements.
 A `global` declaration still applies to its entire function. In a class body, Pystachy rejects
 `global` because its class-scope behavior is unsupported.
+
+### Type-only imports
+
+The imports of a module-level `if TYPE_CHECKING:` branch (or the `else` branch of
+`if not TYPE_CHECKING:`) never run, as in CPython, so code cannot read the names they would
+bind. Annotations that CPython does not evaluate may still name what they would bind: a
+class, function, type alias or module of a module that the program imports anyway, through
+`from M import X [as Y]`, a relative import or `import M [as Y]`. This is how modules that
+import each other, such as mypyc's `rtypes` and `class_ir`, annotate with each other's classes:
+
+```python
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pkg.class_ir import ClassIR  # pkg.class_ir imports this module
+
+
+class RInstance:
+    def __init__(self, class_ir: ClassIR) -> None:
+        self.class_ir = class_ir
+```
+
+CPython does not evaluate annotations in a module that imports `annotations` from
+`__future__`, strings (`"ClassIR"`, `list["ClassIR"]`), local variables' annotations, or
+`type` statements' values. Other annotations are evaluated where their statement runs, and
+reading such a name there is rejected (`NameError` in CPython). An annotation that names a
+class of a module the program never imports is rejected with an explanation. A name that
+`typing` or the builtins offer too, such as `Callable`, `Type` or `int`, keeps that meaning in
+annotations even where such an import binds it, as without the import; to name a class of
+that name, import it under another (`from model import Type as ModelType`).
 
 ## Optional imports
 
@@ -144,7 +189,21 @@ including the standard library's optional C accelerators. The imports run in ord
 
 Successful earlier imports keep their bindings. A failing module runs up to its raise,
 then the handler runs. A later import retries the failed module. These fallback choices can
-differ from CPython when CPython has a module or accelerator that Pystachy lacks.
+differ from CPython when CPython has a module or accelerator that Pystachy lacks. When
+Pystachy provides part of a module, such as `json` or `hashlib`, an optional import of it
+succeeds, so the `try` branch's uses of names the module lacks are compile-time errors
+rather than a fallback.
+
+When every import succeeds and the program defines a subclass of `ImportError`, the
+statements after the imports keep the `except` clauses wherever they may raise an exception.
+The handler then catches such a subclass as CPython's does. The clauses are still dropped, so
+that the exception ends the program, where the `try` statement is in a class body; where those
+statements, the handler or the `else` block define a function or class or import a module; or
+where they, or an `except` clause's `as` name, bind a builtin's name, a dunder name other than
+`__version__`, a name the imports bind (as `json = None` does) or one that module code binds
+to a module, function, class or type alias. They are also dropped for the whole program where
+it does not compile with them kept, which takes extra compilation passes. A subclass raised by
+an imported module's own code as it runs also ends the program.
 
 An import in another kind of `try` statement, such as one with `finally` or other exception
 clauses, follows normal import rules: a missing module is a compile-time error.
@@ -164,9 +223,8 @@ m.total() is not supported: parameter 'xs': unsupported type annotation
 ```
 
 This permits a module to keep unsupported generator forms (such as `async` generators), unsupported annotations or classes with unsupported
-inheritance beside functions that compile. An unsupported special method, such as an
-unannotated `__len__`, is rejected when an operation needs it, including implicit use by
-printing, sorting or container comparisons.
+inheritance beside functions that compile. An unsupported special method is rejected when an
+operation needs it, including implicit use by printing, sorting or container comparisons.
 
 The `def` or `class` statement still executes when module code reaches it. Function defaults,
 the compilable items of otherwise unsupported default displays, and supported function

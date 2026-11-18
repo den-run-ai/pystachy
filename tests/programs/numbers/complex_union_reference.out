@@ -1,0 +1,14 @@
+complex 2j 0.0 2.0 4j
+2j 2j 2j False
+complex (1-1j) 1.0 -1.0 (2-2j)
+(1-1j) (1-1j) (1-1j) False
+C 3 C(3)
+C(3) C(3) C(3) False
+none complex (2+2j) C 4
+complex 1j 0.0 1.0 2j
+1j 1j 1j False
+complex (1+1j)
+C 5 C(5)
+C(5) C(5) C(5) False
+C 5
+[exit 0]

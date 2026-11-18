@@ -1,0 +1,126 @@
+value 1
+enum eq
+enum eq
+enum ne
+enum ne
+True True False False
+enum eq
+enum eq
+True True
+enum lt
+enum lt
+False False
+value 2
+enum eq
+enum eq
+enum ne
+enum ne
+False False True True
+enum eq
+enum eq
+False False
+enum lt
+enum lt
+True True
+value 1.0
+enum eq
+enum ne
+True True False False
+enum eq
+True True
+enum lt
+False False
+value 2.0
+enum eq
+enum ne
+False False True True
+enum eq
+False False
+enum lt
+True True
+value True
+enum eq
+enum ne
+True True False False
+enum eq
+True True
+enum lt
+False False
+value False
+enum eq
+enum ne
+False False True True
+enum eq
+False False
+enum lt
+False False
+value nan
+enum eq
+enum ne
+False False True True
+enum eq
+False False
+enum lt
+False False
+value 1
+enum eq
+enum eq
+enum eq
+enum eq
+enum ne
+enum ne
+enum ne
+enum ne
+True True False False
+True True
+enum lt
+enum gt
+ordering error
+value 1
+enum eq
+enum eq
+enum ne
+enum ne
+True True False False
+enum eq
+enum eq
+True True
+enum lt
+enum lt
+False False
+value None
+enum eq
+enum eq
+enum ne
+enum ne
+False False True True
+enum eq
+enum eq
+False False
+enum lt
+ordering error
+value 1
+enum eq
+enum eq
+enum ne
+enum ne
+True True False False
+enum eq
+enum eq
+True True
+enum lt
+enum lt
+False False
+eq only
+eq only
+True True False False
+eq only
+True True False False
+answer eq
+answer eq
+answer ne
+answer ne
+False False True True
+answer eq
+False True True False
+[exit 0]

@@ -120,7 +120,8 @@ successful mode is Python-free or a native mypyc-to-C communication backend.
 - Inputs and destinations remain leased until acknowledgment, even when terminal.
   Cancellation only cancels queued local operations; compiler-process cancellation
   belongs to the coordinator and is tested separately.
-- Pystachy currently rejects `readline(size)`. The shared worker uses bounded
+- Pystachy currently rejects `readline(size)` on text files, including `sys.stdin`;
+  binary files and `io.StringIO`/`io.BytesIO` accept it. The shared worker uses bounded
   `read(1)` calls instead. Live-pipe validation additionally exposed the native
   text reader waiting for an extra character; the regression requires a complete
   record to be acknowledged while the input pipe stays open.

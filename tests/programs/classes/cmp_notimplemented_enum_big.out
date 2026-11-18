@@ -1,0 +1,25 @@
+eq
+eq
+lt
+lt
+True True False False
+eq
+eq
+True True
+eq
+eq
+lt
+lt
+False False True True
+eq
+eq
+False False
+eq
+eq
+lt
+lt
+False False False False
+eq
+eq
+False False
+[exit 0]

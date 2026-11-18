@@ -246,6 +246,7 @@ class UnionProof:
         self.domains: dict[str, list[str]] = {}
         self.native: dict[str, str] = {}
         self.memtypes: dict[str, str] = {}
+        self.declaredtypes: dict[str, str] = {}  # (declared(), by value)
         self.defs: dict[str, Ins] = {}
         self.blocks: dict[str, int] = {}
         self.raw: dict[str, bool] = {}
@@ -362,6 +363,17 @@ class UnionProof:
             for i in b.code:
                 if (i.op == "rt" and len(i.r) == 1) or i.op == "list.load":
                     self.native["%t" + str(i.r[0])] = self.runtime_type(i, i.t)
+                if i.op == "mach.addr" and len(i.r) == 1 and len(i.a) == 2:
+                    # An item slot of a tuple whose items are all of one union type (a fixed
+                    # tuple's, or a tuple[U, ...]'s past its length) holds a box of that union:
+                    # container typing is its own contract, as for a list's items (list.get), so
+                    # an item read from the slot has its members. A length read is no union read.
+                    # (Also of a tuple that may be None, read where it is not: a field's.)
+                    owner = self.declared(i.a[0].v)
+                    owner = owner[4:-1] if is_opt(owner) else owner
+                    items = targs(owner) if owner.startswith("tuple[") or owner.startswith("vtuple[") else []
+                    if len(items) > 0 and all(x == items[0] for x in items) and is_union(items[0][4:-1] if is_opt(items[0]) else items[0]) and self.item_slot(i, owner.startswith("vtuple["), len(items)):
+                        self.typebase("MU:%t" + str(i.r[0]), items[0])
         # Backward relevance for boxed values and forward/backward transport closure for
         # tags and bits. Literals never become tainted: the same integer spelling in an
         # unrelated loop index does not make that index a payload.
@@ -387,7 +399,7 @@ class UnionProof:
                             wanted["MU:" + i.a[0].v] = True
                     if (i.op == "mem.store" or i.op == "mach.store") and "MU:" + i.a[0].v in wanted:
                         wanted["U:" + i.a[1].v] = True
-                    if i.op == "mach.load" and i.t == "int" and "U:" + i.a[0].v in wanted:
+                    if i.op == "mach.load" and i.t == "int" and "U:" + i.a[0].v in wanted and not self.length_read(i.a[0].v):
                         self.tagvals[r] = True
                     self.transport_closure(i, self.raw, self.rawslots, True)
                     if i.op != "slot.pack":
@@ -529,6 +541,62 @@ class UnionProof:
         self.domains[t] = ts
         return ts
 
+    def item_slot(self, i: Ins, vtuple: bool, n: int) -> bool:
+        # Does mach.addr i address an item's slot, as gen_seq_item's addresses do: words, at
+        # an index of a fixed tuple's n items, or past a runtime-length tuple's length word
+        # (index + 1)? Not its length word, nor bytes. Whether the item index is below the
+        # length is the loop's test (Loop.idx), as a list.load's index is its caller's.
+        if i.s != "int":
+            return False
+        k = i.a[1].v
+        if not vtuple:
+            return not k.startswith("-") and (k.startswith("%") or proof_number(k, 0, n - 1) >= 0)
+        d = self.defs[k] if k in self.defs else None
+        if d is None or d.op != "scalar.bin" or d.s != "add" or d.t != "int" or len(d.a) != 2:
+            return False
+        x = d.a[0].v if d.a[1].v == "1" else d.a[1].v if d.a[0].v == "1" else ""
+        return x.startswith("%") or proof_number(x, 0, 1 << 62) >= 0
+
+    def length_read(self, v: str) -> bool:
+        # Is an integer machine load from v the length word of a tuple[T, ...] that may be None
+        # (a field's, read after its test): no union's tag, though None and the tuple make two
+        # members of v's domain. The compiler checks None before such a read where it must.
+        t = self.declared(v)
+        return is_opt(t) and t[4:-1].startswith("vtuple[")
+
+    def declared(self, v: str) -> str:
+        # The type that value v's definition declares: a load's is that of its storage
+        # (memtypes: a parameter's, a local's, a global's or a field's declaration), and a
+        # transport's (phi, select, slot.pack, slot.unpack) is the one its operands all declare
+        # (declared_from), never the op's own annotation, which a narrower type could spell;
+        # "" where that cannot be established. Else its definition's.
+        if v not in self.declaredtypes:
+            t = self.declared_from(v, {})
+            self.declaredtypes[v] = t if t != "?" else ""
+        return self.declaredtypes[v]
+
+    def declared_from(self, v: str, seen: dict[str, bool]) -> str:
+        # (declared) seen: the transports on the way to v. "?" for one of them again (a loop's
+        # back edge, which brings what the other edges declare) and for None (null), which has
+        # no items: they constrain nothing
+        d = self.defs[v] if v in self.defs else None
+        if v == "null":
+            return "?"
+        if d is not None and (d.op == "mem.load" or d.op == "mach.load"):
+            return self.memtypes[d.a[0].v] if len(d.a) > 0 and d.a[0].v in self.memtypes else ""
+        if d is not None and (d.op == "phi" or d.op == "select" or d.op == "slot.pack" or d.op == "slot.unpack"):
+            if v in seen:
+                return "?"
+            seen[v] = True
+            t = "?"
+            for a in d.a[1:] if d.op == "select" else d.a[:1] if d.op != "phi" else d.a:
+                x = self.declared_from(a.v, seen)
+                if x == "" or (x != "?" and t != "?" and x != t):
+                    return ""
+                t = x if x != "?" else t
+            return t
+        return self.native.get(v, "")
+
     def box(self, s: UnionState, v: str) -> str:
         k = "U:" + v
         if v == "null":
@@ -634,7 +702,7 @@ class UnionProof:
             return
         if (op == "mem.load" or op == "mach.load"):
             addr = a[0].v
-            if op == "mach.load" and i.t == "int" and ("U:" + addr in self.base or "U:" + addr in s.d):
+            if op == "mach.load" and i.t == "int" and ("U:" + addr in self.base or "U:" + addr in s.d) and not self.length_read(addr):
                 u = self.box(s, addr)
                 if checking and "None" in s.dom(u):
                     self.error(b, "mach.load needs a nonnull proof for " + addr)

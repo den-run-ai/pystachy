@@ -62,6 +62,26 @@ class ClosureCellTests(unittest.TestCase):
         fn["blocks"].append(continuation)
         self.assert_verdict(snapshot, False)
 
+    def test_cells_of_other_word_values_are_read_like_containers(self):
+        # (a bound method or object in a cell: one word, so a reload equals the earlier read;
+        # a promoting int's two words or a narrower scalar is not such a value)
+        for typ, expected in (("fn[m:Acc.add]", True), ("Acc", True), ("int", True), ("int+", False),
+                              ("bool", False)):
+            with self.subTest(typ=typ):
+                snapshot = self.snapshot()
+                fn = snapshot["functions"][0]
+                for block in fn["blocks"]:
+                    for operation in block["operations"]:
+                        if operation["op"] == "mem.load" and operation["operands"][0]["value"] == "%t21":
+                            operation["type"] = typ
+                # (the cell's value, compared with a dict register, stands for the dict below)
+                fn["blocks"][0]["operations"].insert(3, op("ptr.cmp", [("%t22", typ), ("null", typ)], [24],
+                                                            text="==", typ="bool"))
+                candidate, metadata = access.normalize_snapshot(snapshot, "@f.guarded")
+                nodes = candidate["program"]["nodes"]
+                reads = [node for node in nodes if node["op"] == "read_field" and node["class"] == "<closure-cell>"]
+                self.assertEqual(len(reads) == 2, expected)
+
     def test_arbitrary_pointer_and_different_cell_cannot_borrow_identity(self):
         snapshot = self.snapshot()
         snapshot["functions"][0]["parameters"][0]["representation"] = "%ptr"

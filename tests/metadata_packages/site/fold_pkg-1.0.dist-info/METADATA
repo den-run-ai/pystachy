@@ -1,0 +1,21 @@
+Name: fold-pkg
+Version: 1.0
+A: one
+	  deep
+	 shallow
+B: one
+    four
+  two
+      six
+C: one
+  
+    after blank
+D:
+  first on next line
+   second
+E: one
+ 	mixed
+	 mixed
+F: one
+        eight
+            twelve

@@ -1,0 +1,5 @@
+['librt.strings.h', 'capsule librt.strings', 'bytes_extra_ops.h', 'source bytes_extra_ops.c']
+['a.h', 'source a.c', 'b.h', 'source b.c']
+['header x.h', 'capsule librt.vecs', 'source y.c']
+['source z.c', 'capsule librt.time'] []
+[exit 0]

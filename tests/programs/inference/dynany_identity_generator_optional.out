@@ -1,0 +1,15 @@
+next True True True True
+default True True
+none default True True
+unpack True True True
+list True True True
+expression True True True
+dynamic True False
+dynamic False True
+dynamic True False
+narrowed True False
+narrowed False True
+narrowed True False
+boxed True True True
+int True True True
+[exit 0]

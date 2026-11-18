@@ -11,12 +11,14 @@ from dataclasses import asdict, dataclass, field
 import fcntl
 import hashlib
 import json
+import keyword
 import os
 from pathlib import Path
 import re
 import shlex
 import subprocess
 import sys
+import textwrap
 import time
 
 from pytest_native_codegen import CollectionError, generate
@@ -39,6 +41,72 @@ class Result:
     stdout: str = ""
     stderr: str = ""
     error: str = ""
+    # Comparison assertions report their operands unless the native build of that
+    # instrumented code failed; the suite then ran its plain assertions (first module).
+    assertion_operands: bool = True
+    operand_build_error: str = ""
+
+
+def parse_targets(arguments: list[str], root: Path) -> dict[Path, list[str]] | None:
+    """Node IDs (path::name or path::name[id]) by module, in first-seen order, or None.
+
+    As in pytest's arguments, cases run in the order given and a repeated node ID runs
+    once. Paths cannot be mixed with node IDs, and one module's node IDs must be adjacent.
+    """
+    if not any("::" in str(argument) for argument in arguments):
+        return None
+    selections: dict[Path, list[str]] = {}
+    previous = None
+    for argument in map(str, arguments):
+        location, _, selector = argument.partition("::")
+        if not selector:
+            raise CollectionError(f"give node IDs (path::name) for every argument, not a path: {argument}")
+        path = Path(location).resolve()
+        if path in selections and path != previous:
+            raise CollectionError(f"node IDs of one module must be given together: {argument}")
+        names = selections.setdefault(path, [])
+        if selector not in names:
+            names.append(selector)
+        previous = path
+    for path in selections:
+        if path.suffix != ".py":
+            raise CollectionError(f"expected a Python test module: {path}")
+        discover([path], root)
+    return selections
+
+
+def module_names(paths: list[Path]) -> list[str]:
+    """Import generated modules under their test modules' names where possible.
+
+    pytest imports a test module by its file name, which classes and functions show in
+    __module__ and repr(). Names that cannot be imported keep a reserved one.
+    """
+    names = []
+    for index, path in enumerate(paths):
+        stem = path.stem
+        usable = (stem.isidentifier() and not keyword.iskeyword(stem) and not stem.startswith("_pyn_")
+                  and stem != "pytest_native_support" and stem not in names)
+        names.append(stem if usable else f"_pyn_module_{index}")
+    return names
+
+
+def outcome_counts(results: list[Result]) -> dict[str, int]:
+    """Count cases as pytest's summary does: setup or call outcome, plus teardown errors."""
+    counts: dict[str, int] = {}
+    for result in results:
+        phases: dict[str, dict[str, str]] = {}
+        for event in result.events:
+            phases.setdefault(event["nodeid"], {})[event["phase"]] = event["outcome"]
+        for case in result.cases:
+            seen = phases.get(case, {})
+            setup = seen.get("setup", "")
+            outcome = seen.get("call", "") if setup == "passed" else setup
+            outcome = "error" if outcome == "error" or (setup != "passed" and outcome == "failed") else outcome
+            if outcome:
+                counts[outcome] = counts.get(outcome, 0) + 1
+            if seen.get("teardown") in {"failed", "error"}:
+                counts["error"] = counts.get("error", 0) + 1
+    return counts
 
 
 def compiler_command(text: str) -> list[str]:
@@ -216,14 +284,16 @@ def environment(paths: list[Path]) -> dict[str, str]:
 
 
 def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: list[str],
-              python: str, timeout: float) -> list[Result]:
+              python: str, timeout: float, selections: dict[Path, list[str]] | None = None) -> list[Result]:
     """Preflight every module, import all of them, then execute in one process.
 
     Per-file processes would lose pytest's shared imported-module state and could
-    turn a failing suite green. Empty modules must be imported too.
+    turn a failing suite green. Empty modules must be imported too. selections holds
+    node-ID selectors by module (parse_targets).
     """
     results = []
     generated_modules = []
+    texts = []
     if len({path.parent for path in paths}) > 1:
         return [Result(path=path.relative_to(root).as_posix(), error=(
             "selected tests must share one source directory; source-aware imports across "
@@ -233,9 +303,11 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
         result = Result(path=name)
         results.append(result)
         try:
-            generated = generate(path.read_text(), name)
+            text = path.read_text()
+            generated = generate(text, name, selected=selections.get(path) if selections else None)
             result.cases = generated.cases
             generated_modules.append(generated)
+            texts.append(text)
             result.state = "collected"
         except (CollectionError, OSError, UnicodeError, SyntaxError) as error:
             result.error = str(error)
@@ -249,61 +321,109 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
         return []
     identity = "\n".join(result.path for result in results)
     suite_work = work / hashlib.sha256(identity.encode()).hexdigest()[:16]
+    names = module_names(paths)
+    if suite_work.is_dir():
+        # Earlier runners wrote suite.py there, which a test's own `import suite` found first.
+        for stale in [suite_work / "suite.py", suite_work / "suite", *suite_work.glob("_pyn_module_*.py")]:
+            if stale.name.removesuffix(".py") not in names:
+                stale.unlink(missing_ok=True)
     imports = []
     calls = []
     reports = []
-    for index, (result, generated) in enumerate(zip(results, generated_modules)):
-        module = f"_pyn_module_{index}"
-        write_changed(suite_work / (module + ".py"), generated.source)
+    for index, name in enumerate(names):
         report = suite_work / f"events-{index}.jsonl"
-        report.unlink(missing_ok=True)
         reports.append(report)
-        imports.append(f"import {module}")
-        calls += [f"    _pyn_code = {module}._pyn_run({str(report)!r})",
+        imports.append(f"import {name}")
+        calls += [f"    _pyn_code = {name}._pyn_run({str(report)!r})",
                   "    if _pyn_code == 1:", "        _pyn_failed = True"]
     count = sum(len(result.cases) for result in results)
-    driver = "\n".join([*imports, "import sys", "", "def _pyn_main() -> int:",
-                         "    _pyn_failed = False", *calls, "    if _pyn_failed:",
-                         "        return 1", f"    return {0 if count else 5}", "",
+    marker = suite_work / "started"
+    # The marker is written before any test module's code runs: without it, a failed
+    # native command never started the program, and nothing observable happened.
+    driver = "\n".join(["import sys", f"open({str(marker)!r}, 'w').close()", *imports, "",
+                         "def _pyn_main() -> int:", "    _pyn_failed = False", *calls,
+                         "    if _pyn_failed:", "        return 1", f"    return {0 if count else 5}", "",
                          "sys.exit(_pyn_main())", ""])
-    source = suite_work / "suite.py"
+    source = suite_work / "_pyn_suite.py"
     write_changed(source, driver)
     write_changed(suite_work / "pytest_native_support.py", (TOOLS / "pytest_native_support.py").read_text())
     env = environment([suite_work, *dict.fromkeys(path.parent for path in paths), root])
     # Suite-level cost/output is attached to the first result, not multiplied by
     # the number of modules. The JSON records this execution model explicitly.
     first = results[0]
-    if mode == "python":
-        command = [python, str(source)]
-    elif mode == "jit":
-        command = [*compiler, "run", str(source)]
-    else:
-        executable = suite_work / "suite"
+
+    def plain_sources():
+        return [generate(text, result.path, operands=False,
+                         selected=selections.get(path) if selections else None).source
+                for text, result, path in zip(texts, results, paths)]
+
+    def attempt(sources):
+        for name, text in zip(names, sources):
+            write_changed(suite_work / (name + ".py"), text)
+        for report in reports:
+            report.unlink(missing_ok=True)
+        marker.unlink(missing_ok=True)
+        if mode == "python":
+            command = [python, str(source)]
+        elif mode == "jit":
+            command = [*compiler, "run", str(source)]
+        else:
+            executable = suite_work / "_pyn_suite"
+            started = time.perf_counter()
+            try:
+                built = subprocess.run([*compiler, "build", str(source), "-o", str(executable)],
+                                       env=env, cwd=root, capture_output=True, text=True, timeout=timeout)
+            except (OSError, subprocess.TimeoutExpired) as error:
+                first.build_seconds += time.perf_counter() - started
+                return "build-error", str(error)
+            first.build_seconds += time.perf_counter() - started
+            if built.returncode:
+                return "build-failed", built
+            command = [str(executable)]
         started = time.perf_counter()
         try:
-            built = subprocess.run([*compiler, "build", str(source), "-o", str(executable)],
-                                   env=env, cwd=root, capture_output=True, text=True, timeout=timeout)
+            ran = subprocess.run(command, env=env, cwd=root, capture_output=True, text=True, timeout=timeout)
         except (OSError, subprocess.TimeoutExpired) as error:
-            for result in results:
-                result.state, result.error = "compile-error", str(error)
-            first.build_seconds = time.perf_counter() - started
-            return results
-        first.build_seconds = time.perf_counter() - started
-        if built.returncode:
-            for result in results:
-                result.state, result.exit_code = "compile-error", built.returncode
-            first.stdout, first.stderr = built.stdout, built.stderr
-            return results
-        command = [str(executable)]
-    started = time.perf_counter()
-    try:
-        ran = subprocess.run(command, env=env, cwd=root, capture_output=True, text=True, timeout=timeout)
-    except (OSError, subprocess.TimeoutExpired) as error:
+            first.run_seconds += time.perf_counter() - started
+            return "run-error", str(error)
+        first.run_seconds += time.perf_counter() - started
+        if mode != "python" and ran.returncode and not marker.exists():
+            return "not-started", ran
+        return "ran", ran
+
+    # Assertion operands add code that the compiler may not accept (an operand's repr or
+    # its temporary's type). Such a build is retried once with plain assertions, which
+    # runs no test code twice, and the choice is kept until the instrumented code changes.
+    instrumented = [module.source for module in generated_modules]
+    fingerprint = hashlib.sha256("\0".join([shlex.join(compiler), *instrumented]).encode()).hexdigest()
+    plain_record = suite_work / "plain-assertions"
+    plain = None
+    if mode != "python" and plain_record.is_file() and plain_record.read_text() == fingerprint:
+        plain = plain_sources()
+        first.assertion_operands = False
+    status, value = attempt(plain if plain is not None else instrumented)
+    if status in ("build-failed", "not-started") and plain is None:
+        plain = plain_sources()
+        if plain != instrumented:
+            first.assertion_operands = False
+            first.operand_build_error = (value.stderr or value.stdout)[-4000:]
+            status, value = attempt(plain)
+            if status not in ("build-failed", "not-started"):
+                plain_record.write_text(fingerprint)
+            else:
+                # Both builds failed: the plain one's error is the module's own.
+                first.assertion_operands, first.operand_build_error = True, ""
+    if status == "build-error" or status == "run-error":
         for result in results:
-            result.state, result.error = "execution-error", str(error)
-        first.run_seconds = time.perf_counter() - started
+            result.state = "compile-error" if status == "build-error" else "execution-error"
+            result.error = value
         return results
-    first.run_seconds = time.perf_counter() - started
+    if status == "build-failed":
+        for result in results:
+            result.state, result.exit_code = "compile-error", value.returncode
+        first.stdout, first.stderr = value.stdout, value.stderr
+        return results
+    ran = value
     first.stdout, first.stderr = ran.stdout, ran.stderr
     for result, report in zip(results, reports):
         try:
@@ -355,7 +475,8 @@ def pytest_sessionfinish(session, exitstatus):
 '''
 
 
-def oracle(paths: list[Path], root: Path, work: Path, python: str, timeout: float) -> dict:
+def oracle(paths: list[Path], root: Path, work: Path, python: str, timeout: float,
+           selections: dict[Path, list[str]] | None = None) -> dict:
     write_changed(work / "_pyn_oracle.py", ORACLE_PLUGIN)
     write_changed(work / "empty.ini", "[pytest]\n")
     report = work / "oracle.jsonl"
@@ -367,11 +488,14 @@ def oracle(paths: list[Path], root: Path, work: Path, python: str, timeout: floa
         env.pop(key, None)
     command = [python, "-m", "pytest", "-q", "-p", "_pyn_oracle", "-p", "no:cacheprovider",
                "--noconftest", "--rootdir", str(root), "-c", str(work / "empty.ini"),
-               *(str(path) for path in paths)]
+               *([f"{path}::{selector}" for path in paths for selector in selections[path]]
+                 if selections else [str(path) for path in paths])]
     start = time.perf_counter()
     ran = None
     try:
         ran = subprocess.run(command, env=env, cwd=root, capture_output=True, text=True, timeout=timeout)
+        if not report.exists():
+            raise ValueError("pytest did not start")
         records = [json.loads(line) for line in report.read_text().splitlines()]
         if not records or records[-1] != {"complete": True, "exit_code": ran.returncode}:
             raise ValueError("incomplete pytest oracle report")
@@ -382,8 +506,15 @@ def oracle(paths: list[Path], root: Path, work: Path, python: str, timeout: floa
                 "exit_code": ran.returncode, "seconds": time.perf_counter() - start,
                 "stdout": ran.stdout, "stderr": ran.stderr}
     except (OSError, subprocess.TimeoutExpired, ValueError) as error:
-        return {"error": str(error), "seconds": time.perf_counter() - start,
-                "stdout": ran.stdout if ran is not None else "", "stderr": ran.stderr if ran is not None else ""}
+        message = str(error)
+        stderr = ran.stderr if ran is not None else ""
+        if "No module named pytest" in stderr:
+            message = (f"pytest is not installed for {python}; install tools/requirements-dev.txt "
+                       "or select another interpreter with --python")
+        elif ran is not None and (stderr.strip() or ran.stdout.strip()):
+            message += " (pytest: " + (stderr.strip() or ran.stdout.strip()).splitlines()[-1] + ")"
+        return {"error": message, "seconds": time.perf_counter() - start,
+                "stdout": ran.stdout if ran is not None else "", "stderr": stderr}
 
 
 def compare(results: list[Result], reference: dict) -> list[str]:
@@ -406,21 +537,64 @@ def compare(results: list[Result], reference: dict) -> list[str]:
     return errors
 
 
+def outcome_differences(results: list[Result], reference: dict) -> list[str]:
+    """Each test and phase whose collection or outcome differs from pytest's."""
+    if "error" in reference:
+        return []
+    native_cases = [case for result in results for case in result.cases]
+    lines = [f"{case}: collected natively, not by pytest" for case in native_cases
+             if case not in reference["cases"]]
+    lines += [f"{case}: collected by pytest, not natively" for case in reference["cases"]
+              if case not in native_cases]
+    if not lines and native_cases != reference["cases"]:
+        lines.append("collection order differs: pytest " + ", ".join(reference["cases"]))
+    if any(result.state not in {"passed", "test-failed", "empty"} for result in results):
+        return lines  # (no native outcomes to set beside pytest's)
+
+    def outcomes(events):
+        return {(event["nodeid"], event["phase"]): "failed" if event["outcome"] == "error" else event["outcome"]
+                for event in events}
+    native = outcomes(event for result in results for event in result.events)
+    original = outcomes(reference["events"])
+    for key in dict.fromkeys([*original, *native]):
+        if original.get(key) != native.get(key):
+            lines.append(f"{key[0]} [{key[1]}]: pytest {original.get(key, 'absent')}, "
+                         f"native {native.get(key, 'absent')}")
+    return lines
+
+
+def clipped(text: str, lines: int = 40) -> str:
+    """The end of a long failure report, where pytest puts the failing line and error."""
+    kept = text.rstrip("\n").splitlines()
+    if len(kept) <= lines:
+        return "\n".join(kept)
+    return "\n".join([f"... ({len(kept) - lines} earlier lines in the JSON report)", *kept[-lines:]])
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("paths", nargs="+", type=Path)
-    parser.add_argument("--root", type=Path, default=Path.cwd())
-    parser.add_argument("--mode", choices=("python", "jit", "aot"), default="jit")
-    parser.add_argument("--compiler", default=shlex.join([sys.executable, str(REPO / "pystachy.py")]))
+    parser.add_argument("paths", nargs="+",
+                        help="test modules or directories, or node IDs: path::test or path::test[id]")
+    parser.add_argument("--root", type=Path, default=Path.cwd(),
+                        help="directory that test IDs are relative to (default: the current directory)")
+    parser.add_argument("--mode", choices=("python", "jit", "aot"), default="jit",
+                        help="python runs the generated code under CPython; jit (default) and aot run it natively")
+    parser.add_argument("--compiler", help="Pystachy command (default: this checkout's hosted compiler; "
+                        "./pystachy after make reuses its program cache)")
     parser.add_argument("--python", default=sys.executable, help="CPython executable for generated/original tests")
-    parser.add_argument("--work-dir", type=Path, default=REPO / "build" / "pytest-native")
+    parser.add_argument("--work-dir", type=Path, default=REPO / "build" / "pytest-native",
+                        help="generated sources, programs and reports; one run at a time uses it")
     parser.add_argument("--compare", action=argparse.BooleanOptionalAction, default=True,
                         help="compare phase outcomes with real pytest (default); --no-compare is unverified")
     parser.add_argument("--json", type=Path, help="write complete machine-readable evidence")
-    parser.add_argument("--timeout", type=float, default=120)
+    parser.add_argument("--timeout", type=float, default=120,
+                        help="seconds allowed for each build, run and pytest process (default: 120)")
     args = parser.parse_args(argv)
     if args.timeout <= 0:
         parser.error("--timeout must be positive")
+    args.hosted_default = args.compiler is None
+    if args.compiler is None:
+        args.compiler = shlex.join([sys.executable, str(REPO / "pystachy.py")])
     try:
         args.compiler = shlex.join(compiler_command(args.compiler))
         with lock_work_directory(args.work_dir.resolve()):
@@ -431,50 +605,81 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def execute(args) -> int:
+    started = time.perf_counter()
     root, work = args.root.resolve(), args.work_dir.resolve()
     if not args.compare:
         print("UNVERIFIED: pytest oracle comparison is disabled (--no-compare). "
               "Use only for previously qualified, unchanged inputs.", file=sys.stderr)
+    if getattr(args, "hosted_default", False) and args.mode != "python":
+        print("note: the default hosted compiler compiles every run again; after make, "
+              "--compiler ./pystachy reuses the native program cache", file=sys.stderr)
     try:
-        paths = discover(args.paths, root)
+        selections = parse_targets(args.paths, root)
+        paths = list(selections) if selections is not None else discover([Path(path) for path in args.paths], root)
     except (CollectionError, OSError, UnicodeError) as error:
         print(f"collection error: {error}", file=sys.stderr)
         return 2
-    results = run_suite(paths, root, work, args.mode, shlex.split(args.compiler), args.python, args.timeout)
-    reference = oracle(paths, root, work, args.python, args.timeout) if args.compare and paths else None
+    results = run_suite(paths, root, work, args.mode, shlex.split(args.compiler), args.python, args.timeout,
+                        selections)
+    collected = not any(result.state == "collection-error" for result in results)
+    # A module the runner cannot collect is an error already; running pytest would only
+    # report the consequences as differences.
+    reference = (oracle(paths, root, work, args.python, args.timeout, selections)
+                 if args.compare and paths and collected else None)
     differences = compare(results, reference) if reference is not None else []
+    mismatches = outcome_differences(results, reference) if reference is not None else []
     if differences or any(result.state in {"collection-error", "compile-error", "execution-error"} for result in results):
         status = 2
     elif not any(result.cases for result in results):
         status = 5
     else:
         status = int(any(result.state == "test-failed" for result in results))
-    qualification = ("unverified" if not args.compare else "pytest-mismatch" if differences
-                     else "pytest-matched" if reference is not None else "no-tests")
+    qualification = ("unverified" if not args.compare else "not-compared" if not collected
+                     else "pytest-mismatch" if differences else "pytest-matched" if reference is not None
+                     else "no-tests")
     evidence = {"mode": args.mode, "qualification": qualification,
-                "execution": "one process; suite timings/output on first module", "root": str(root), "results": [asdict(result) for result in results],
-                "oracle": reference, "differences": differences, "exit_code": status}
+                "execution": "one process; suite timings/output on first module", "root": str(root),
+                "results": [asdict(result) for result in results],
+                "oracle": reference, "differences": differences, "mismatches": mismatches, "exit_code": status}
     if args.json:
         write_changed(args.json.resolve(), json.dumps(evidence, indent=2) + "\n")
+    expected = {(event["nodeid"], event["phase"]): event
+                for event in (reference or {}).get("events", [])}
     for result in results:
         print(f"{result.path}: {result.state} ({len(result.cases)} cases)")
         for event in result.events:
             if event["outcome"] in {"failed", "error"}:
-                print(f"  {event['nodeid']} [{event['phase']}]: {event['outcome']}")
+                print(f"{'FAILED' if event['outcome'] == 'failed' else 'ERROR'} {event['nodeid']} [{event['phase']}]")
                 if event["detail"]:
-                    print(event["detail"])
+                    print(textwrap.indent(clipped(event["detail"]), "    "))
+                original = expected.get((event["nodeid"], event["phase"]))
+                if original and original["outcome"] == "failed" and original["detail"]:
+                    print("  pytest (CPython) report:")
+                    print(textwrap.indent(clipped(original["detail"]), "    "))
         if result.error:
             print(result.error, file=sys.stderr)
         if result.state in {"compile-error", "execution-error"} and result.stderr:
             print(result.stderr, file=sys.stderr, end="")
         if result.state != "passed" and result.stdout:
             print(result.stdout, end="")
+    if results and not results[0].assertion_operands:
+        print("note: assertion operands are not shown: the native compiler rejected the code that keeps "
+              "them (operand_build_error in --json)", file=sys.stderr)
     for difference in differences:
         print(difference, file=sys.stderr)
+    for mismatch in mismatches:
+        print("MISMATCH " + mismatch, file=sys.stderr)
     if args.compare and reference is not None and not differences:
         print("pytest collection and phase outcomes match")
     if status == 5:
         print("no tests collected")
+    counts = outcome_counts(results)
+    summary = ", ".join(f"{counts[name]} {name + 's' if name == 'error' and counts[name] > 1 else name}"
+                        for name in ("failed", "passed", "skipped", "xfailed", "xpassed", "error") if counts.get(name))
+    if summary:
+        verdict = ("; UNVERIFIED" if not args.compare else "; pytest comparison failed"
+                   if differences or reference is None else "")
+        print(f"{summary} in {time.perf_counter() - started:.2f}s ({args.mode}{verdict})")
     return status
 
 

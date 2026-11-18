@@ -87,7 +87,7 @@ class Reach:
         return self.parsed[path]
 
     @staticmethod
-    def files(directories, parts):
+    def files(directories, parts, namespaces=None):
         # In each directory, each package's __init__.py from the top, then the module itself.
         # As loader.py's filepath finds them, NAME/__init__.py comes before NAME.py, and a
         # directory without either is a portion of a namespace package, which has no code.
@@ -104,6 +104,8 @@ class Reach:
                     break
                 elif (base / part).is_dir():
                     base = base / part
+                    if namespaces is not None:
+                        namespaces.add(base)
                 else:
                     break
         return found

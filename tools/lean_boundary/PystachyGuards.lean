@@ -47,4 +47,44 @@ def rebound : Program := ⟨[
   .guard "x" ["nonnull"] 1 3,
   .havoc "x" 2, .payload "x" ["nonnull"] 3, .stop], 0⟩
 example : check rebound [[], [("x", ["nonnull"])], [("x", ["nonnull"])], []] = false := by decide
+
+/-! Field initialization (`check_lean_fields.py`) maps each field of an object under
+construction to a location whose tag is `set` once a store assigned it and `unset` before,
+and each value that may be that object to a location whose tag names it (`obj:<object>`). An
+unflagged read, an escape, a call's pre-condition or a return's post-condition requires `set`. -/
+theorem field_assigned {program : Program} {certificate : Certificate}
+    {initial : Tags} {state : State} {field : Location} {next : Nat}
+    (checked : check program certificate = true)
+    (reachable : Reachable program initial state)
+    (obligation : program.nodes[state.pc]? = some (.payload field ["set"] next)) :
+    state.tags field = "set" := by
+  simpa only [List.mem_singleton] using accepted_payload_safe checked reachable obligation
+
+/-- Constants `#set` and `#unset` hold their tags; the object's field starts unset, a store
+assigns it, and the object escapes. -/
+def storedThenEscaped : Program := ⟨[
+  .guard "#set" ["set"] 1 7, .guard "#unset" ["unset"] 2 7,
+  .copy "f" "#unset" 3, .copy "f" "#set" 4,
+  .payload "f" ["set"] 5, .jump 6, .stop, .stop], 0⟩
+example : check storedThenEscaped [[], [("#set", ["set"])],
+    [("#set", ["set"]), ("#unset", ["unset"])], [("#set", ["set"])],
+    [("f", ["set"])], [], [], []] = true := by decide
+
+/-- The object escapes before the store. -/
+def escapedFirst : Program := ⟨[
+  .guard "#set" ["set"] 1 7, .guard "#unset" ["unset"] 2 7,
+  .copy "f" "#unset" 3, .payload "f" ["set"] 4,
+  .copy "f" "#set" 5, .jump 6, .stop, .stop], 0⟩
+example : check escapedFirst [[], [("#set", ["set"])],
+    [("#set", ["set"]), ("#unset", ["unset"])], [("f", ["unset"]), ("#set", ["set"])],
+    [("#set", ["set"])], [], [], []] = false := by decide
+
+/-- A store on one branch only: the join keeps both states, so the escape is rejected. -/
+def storedOnOneBranch : Program := ⟨[
+  .guard "#set" ["set"] 1 8, .guard "#unset" ["unset"] 2 8,
+  .copy "f" "#unset" 3, .choice 4 5,
+  .copy "f" "#set" 5, .payload "f" ["set"] 6, .stop, .stop, .stop], 0⟩
+example : check storedOnOneBranch [[], [("#set", ["set"])],
+    [("#set", ["set"]), ("#unset", ["unset"])], [("f", ["unset"]), ("#set", ["set"])],
+    [("#set", ["set"])], [("f", ["set", "unset"])], [], [], []] = false := by decide
 end PystachyGuards

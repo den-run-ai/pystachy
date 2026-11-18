@@ -99,6 +99,73 @@ class JitRunnerTests(unittest.TestCase):
     def run_jit(self, command, *, env=None):
         return subprocess.run(command, capture_output=True, text=True, timeout=120, env=env or self.environment)
 
+    def origin_lli(self, llvm):
+        # A real ELF dependency available only beside the resolved executable. Its deliberately
+        # unsupported LLVM version stops the launcher after discovery, without building lljit.c.
+        directory = self.work / "origin tools"
+        (directory / "bin").mkdir(parents=True)
+        (directory / "lib").mkdir()
+        soname = f"libLLVM-origin-{self.work.name}.so"
+        self.compile(llvm, f"origin tools/lib/{soname}", "int origin_probe(void) { return 42; }\n",
+                     "-shared", "-fPIC", f"-Wl,-soname,{soname}")
+        lli = Path(self.compile(llvm, "origin tools/bin/lli", '''#include <stdio.h>
+#include <string.h>
+int origin_probe(void);
+int main(int argc, char **argv) {
+  if (origin_probe() != 42 || argc != 2 || strcmp(argv[1], "--version")) return 1;
+  puts("LLVM version 999.0.0");
+  return 0;
+}
+''', "-Wl,--no-as-needed", f"-L{directory / 'lib'}", f"-l:{soname}",
+                                "-Wl,--enable-new-dtags,-rpath,$ORIGIN/../lib"))
+        alias = self.work / "lli"
+        alias.symlink_to(os.path.relpath(lli, alias.parent))
+        self.environment = {key: value for key, value in self.environment.items()
+                            if key not in ("LD_LIBRARY_PATH", "LD_PRELOAD", "LD_AUDIT")}
+        self.enterContext(patch.dict(os.environ, self.environment, clear=True))
+        for invoked in (lli, alias):
+            result = self.run_jit([str(invoked), "--version"])
+            self.assertEqual((result.returncode, result.stdout, result.stderr), (0, "LLVM version 999.0.0\n", ""))
+        time.sleep(2.1)  # The executable's identity must settle before discovery can be cached.
+        return lli, alias
+
+    def test_symlinked_lli_discovers_origin_library(self):
+        llvm = toolchains()[0]
+        lli, alias = self.origin_lli(llvm)
+        cache = self.work / "cache"
+        # Finding the library reaches the version check. Missing it would give no-libLLVM.
+        self.assertEqual(self.launcher(llvm, cache=cache, lli=alias), ("", "llvm-version"))
+        entries = list(cache.iterdir())
+        self.assertEqual(len(entries), 1)
+        self.assertTrue(entries[0].name.endswith(".llvm"))
+        self.assertEqual(entries[0].read_text(), "- llvm-version\n")
+        discovered = entries[0].stat().st_mtime_ns
+        self.assertEqual(self.launcher(llvm, cache=cache, lli=lli), ("", "llvm-version"))
+        self.assertEqual(list(cache.iterdir()), entries, "the same executable has one discovery entry")
+        self.assertEqual(entries[0].stat().st_mtime_ns, discovered, "discovered again")
+
+    def test_origin_discovery_ignores_v1_negative_cache(self):
+        llvm = toolchains()[0]
+        lli, alias = self.origin_lli(llvm)
+        cache = self.work / "cache"
+        cache.mkdir()
+        # Reproduce an entry left by the previous recipe, whose unresolved ldd argument could not
+        # find $ORIGIN libraries. An upgrade must retry it even when no tool or lljit.c changed.
+        source = driver.hashed(str(ROOT / "lljit.c"), {}, time.time(), False)
+        clang = str(Path(llvm) / "clang")
+        names = "\n".join([os.path.realpath(ROOT / "lljit.c"), os.path.realpath(alias), os.path.realpath(clang)])
+        previous = driver.fnv("\n".join(["lljit-v1", names, driver.stat3(str(alias)), driver.stat3(clang), source[1]]))
+        stale = cache / f"lljit-{driver.fnv(names)[8:]}-{previous}.llvm"
+        stale.write_text("- no-libLLVM\n")
+        self.assertEqual(self.launcher(llvm, cache=cache, lli=alias), ("", "llvm-version"))
+        entries = [entry for entry in cache.iterdir() if entry != stale]
+        self.assertEqual(len(entries), 1)
+        self.assertTrue(entries[0].name.endswith(".llvm"))
+        self.assertEqual(entries[0].read_text(), "- llvm-version\n")
+        discovered = entries[0].stat().st_mtime_ns
+        self.assertEqual(self.launcher(llvm, cache=cache, lli=lli), ("", "llvm-version"))
+        self.assertEqual(entries[0].stat().st_mtime_ns, discovered, "discovered again")
+
     def test_runner_behaves_as_lli(self):
         for llvm in toolchains():
             with self.subTest(llvm=llvm):

@@ -77,6 +77,8 @@ methods from that commit's Lib/test/test_fnmatch.py and Lib/test/test_re.py.
 They replace unittest scaffolding with standalone assertions; their headers name
 the methods and any exclusions. They use the same license and copyright notices.
 
+tests/programs/upstream/upstream_contextlib_exitstack.py adapts TestExitStack's methods of
+that commit's Lib/test/test_contextlib.py, whose source SHA-256 is recorded in its header.
 tests/programs/upstream/upstream_textwrap_wrap.py, tests/programs/upstream/upstream_textwrap_layout.py,
 tests/programs/upstream/upstream_textwrap_indent.py and tests/programs/upstream/upstream_textwrap_unicode.py
 adapt that commit's Lib/test/test_textwrap.py. tests/programs/upstream/upstream_functools_cache.py
@@ -154,6 +156,10 @@ lib/getopt.py is CPython 3.13.16's Lib/getopt.py with the edits lib/README.md li
 marked in the source; it is derived from Python and is used under the same license and copyright
 notice.
 
+lib/base64.py is CPython 3.13.16's Lib/base64.py with the edits lib/compatibility.md lists, each
+marked in the source; it is derived from Python and is used under the same license and copyright
+notice.
+
 lib/tomllib/ is CPython 3.13.16's Lib/tomllib with the edits lib/compatibility.md lists, each
 marked "Pystachy port:" in the source; it is derived from Python and is used under the same license
 and copyright notice. Its files are Taneli Hukkinen's code ("SPDX-FileCopyrightText: 2021 Taneli
@@ -195,6 +201,13 @@ lib/_pystachy_binascii.py ports CPython 3.13.16's Modules/binascii.c and the hex
 Python/pystrhex.c to Pystachy's subset, following their behaviour and messages and keeping the C
 module's docstrings; it is derived from Python and is used under the same license and copyright
 notice.
+
+lib/_pystachy_complex.py ports the complex type of CPython 3.13.16's Objects/complexobject.c to
+Pystachy's subset: construction from numbers and strings, arithmetic, comparison, hash and repr,
+with the complex presentation types of Python/formatter_unicode.c, following their behaviour and
+messages. runtime.c's division, power, absolute value and hash of complex numbers follow
+_Py_c_quot, complex_pow (_Py_c_pow, c_powi), _Py_c_abs and complex_hash there. They are derived
+from Python and are used under the same license and copyright notice.
 
 lib/_pystachy_struct.py ports CPython 3.13.16's Modules/_struct.c and the float packing of
 Objects/floatobject.c to Pystachy's subset, following their behaviour and messages and keeping
@@ -245,6 +258,16 @@ the Python fallbacks in Lib/functools.py, and its update_wrapper(), wraps() and 
 constants are that file's, unchanged. It is derived from Python and is used under the same
 license and copyright notice.
 
+lib/importlib/metadata.py is Pystachy's own code for a subset of CPython 3.13.16's
+Lib/importlib/metadata/__init__.py and _adapters.py: it keeps their names, docstrings and
+messages, the name normalization and search of Prepared, FastPath and Lookup, the requirement
+sections of Distribution, the header rules of Lib/email/feedparser.py and
+Lib/email/_policybase.py, and the algorithm of Lib/textwrap.py's dedent() (lib/provenance.md).
+It is derived from Python and is used under the same license and copyright notice. tests/programs/upstream/upstream_importlib_metadata.py adapts
+methods of that release's Lib/test/test_importlib/metadata/test_api.py, and the distributions in
+tests/metadata_packages/site that its header names hold the texts of that directory's
+fixtures.py; the SHA-256 of both sources is recorded in the test's header.
+
 lib/textwrap.py is CPython 3.13.16's Lib/textwrap.py with the edits lib/README.md lists, each
 marked in the source; it is derived from Python and is used under the same license and
 copyright notice.
@@ -270,9 +293,19 @@ those of reader(), writer(), the registry functions and field_size_limit(), and 
 reader's states). It is derived from Python and is used under the same license and copyright
 notice.
 
+lib/sysconfig.py is Pystachy's own code for its installation, written after CPython 3.13.16's
+Lib/sysconfig/__init__.py (lib/provenance.md); it keeps the functions, docstrings and comments
+it copies from it. tests/programs/upstream/upstream_sysconfig.py adapts five methods of that
+release's Lib/test/test_sysconfig.py, whose source SHA-256 is recorded in its header. They are
+derived from Python and are used under the same license and copyright notice.
+
 lib/statistics.py is CPython 3.13.16's Lib/statistics.py with the edits lib/README.md lists, each
 marked in the source; it is derived from Python and is used under the same license and copyright
 notice.
+
+lib/platform.py is Pystachy's own code, written after CPython 3.13.16's Lib/platform.py
+(lib/provenance.md); it keeps the docstrings and the function _unknown_as_blank() it copies
+from it. It is derived from Python and is used under the same license and copyright notice.
 
 lib/random.py is CPython 3.13.16's Lib/random.py with the edits lib/README.md lists, each
 marked in the source. lib/_pyrandom.py

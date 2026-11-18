@@ -1,0 +1,15 @@
+() ['e']
+(True,) ['t']
+(True, False) ['a', 'b', 'c']
+True False 3
+5 n0 n1 n3 None True False
+[((), 'n0'), ((0,), 'n1'), ((0, 1), 'fixed'), ((0, 1, 2), 'n3'), ((0, 1, 2, 3), 'n4')]
+fixed n0 n0 n4 - True
+n1 none 3 [(), (0, 1), (0, 1, 2, 3)]
+fixed - -
+KeyError (True, 5)
+[((), 3), (('a', 'b'), 2), (('bbb', 'a'), 4)] 4 3
+[2, 5] 2 False None
+{(None,): 5}
+True True True
+[exit 0]

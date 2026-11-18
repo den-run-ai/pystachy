@@ -976,6 +976,168 @@ class UnionProofTests(unittest.TestCase):
                             with self.assertRaises(SystemExit):
                                 c.g.verify(c.fn, False)
 
+    def test_tuple_slot_union_reads_take_the_declared_members(self):
+        # A tuple[X, ...] (or a fixed tuple of X items) read through an indexed machine slot
+        # holds a box of X, whose members an exhaustive narrowing proves, else branch too. A
+        # tuple without one union item type, an unguarded read, or a narrowing that leaves two
+        # members (W's) proves nothing. (X has no int member: an unseeded slot's int domain then
+        # proves no branch by coinciding with one.)
+        x = "union[float,str]"
+        for owner in ("vtuple[" + x + "]", "tuple[" + x + "," + x + "]", "opt[vtuple[" + x + "]]", "tuple[" + x + ",int]", "vtuple[" + W + "]"):
+            for guarded in (True, False):
+                with self.subTest(owner=owner, guarded=guarded):
+                    item = W if W in owner else x
+                    c = Case("tuple_slot_union", [owner, "int"])
+                    # (gen_seq_item's address: a runtime-length tuple's item past its length word)
+                    index = c.op("scalar.bin", "int", "add", [("%a1", "int"), ("1", "int")]) if "vtuple[" in owner else "%a1"
+                    address = c.op("mach.addr", "%ptr", "int", [("%a0", "%ptr"), (index, "int")])
+                    bits = c.op("mach.load", "int", a=[(address, "%ptr")])
+                    value = c.op("slot.unpack", item, a=[(bits, "%slot")])
+                    if guarded:
+                        c.guard(value=value, member="float", typ=item)
+                        c.block("hit")
+                        c.payload(value=value, member="float", typ=item)
+                        c.ret()
+                        c.block("miss")
+                        c.payload(value=value, member="str", typ=item)
+                        c.ret()
+                    else:
+                        c.payload(value=value, member="str", typ=item)
+                        c.ret()
+                    valid = guarded and owner in ("vtuple[" + x + "]", "tuple[" + x + "," + x + "]", "opt[vtuple[" + x + "]]")
+                    with redirect_stderr(StringIO()):
+                        if valid:
+                            c.g.verify(c.fn, False)
+                        else:
+                            with self.assertRaises(SystemExit):
+                                c.g.verify(c.fn, False)
+
+    def test_tuple_slot_union_reads_need_item_addresses(self):
+        # Only an item's slot holds a box of the items' union: not a runtime-length tuple's length
+        # word (index 0, or an index not past it as gen_seq_item's index + 1 is), nor bytes, nor a
+        # literal index past a fixed tuple's items. The first of each pair is the valid control.
+        x = "union[float,str]"
+        vt, ft = "vtuple[" + x + "]", "tuple[" + x + "," + x + "]"
+        cases = [(vt, "int", ["%a1", "1"], True), (vt, "int", None, False), (vt, "int", ["0"], False),
+                 (vt, "int", ["-1", "1"], False), (vt, "int", ["%a1", "2"], False), (vt, "%byte", ["%a1", "1"], False),
+                 (ft, "int", ["1"], True), (ft, "int", ["2"], False), (ft, "%byte", ["1"], False), (ft, "int", ["-1"], False)]
+        for owner, stride, index, valid in cases:
+            with self.subTest(owner=owner, stride=stride, index=index):
+                c = Case("tuple_item_address", [owner, "int"])
+                if index is None:
+                    at = "%a1"
+                elif len(index) == 2:
+                    at = c.op("scalar.bin", "int", "add", [(index[0], "int"), (index[1], "int")])
+                else:
+                    at = index[0]
+                address = c.op("mach.addr", "%ptr", stride, [("%a0", "%ptr"), (at, "int")])
+                bits = c.op("mach.load", "int", a=[(address, "%ptr")])
+                value = c.op("slot.unpack", x, a=[(bits, "%slot")])
+                c.guard(value=value, member="float", typ=x)
+                c.block("hit")
+                c.payload(value=value, member="float", typ=x)
+                c.ret()
+                c.block("miss")
+                c.payload(value=value, member="str", typ=x)
+                c.ret()
+                with redirect_stderr(StringIO()):
+                    if valid:
+                        c.g.verify(c.fn, False)
+                    else:
+                        with self.assertRaises(SystemExit):
+                            c.g.verify(c.fn, False)
+
+    def test_tuple_slot_union_reads_take_the_storage_declaration(self):
+        # A tuple loaded from storage declared tuple[W, W] holds W items, whatever the load's own
+        # annotation says (tuple[X, X], narrower): its items' float test leaves int and str, so
+        # the else branch's str payload is not proved. The control's storage is declared X's.
+        x = "union[float,str]"
+        for storage, valid in (("*tuple[" + x + "," + x + "]", True), ("*tuple[" + W + "," + W + "]", False)):
+            with self.subTest(storage=storage):
+                c = Case("tuple_slot_storage", [storage])
+                owner = c.op("mem.load", "tuple[" + x + "," + x + "]", a=[("%a0", "*tuple[" + x + "," + x + "]")])
+                address = c.op("mach.addr", "%ptr", "int", [(owner, "%ptr"), ("0", "int")])
+                bits = c.op("mach.load", "int", a=[(address, "%ptr")])
+                value = c.op("slot.unpack", x, a=[(bits, "%slot")])
+                c.guard(value=value, member="float", typ=x)
+                c.block("hit")
+                c.payload(value=value, member="float", typ=x)
+                c.ret()
+                c.block("miss")
+                c.payload(value=value, member="str", typ=x)
+                c.ret()
+                with redirect_stderr(StringIO()):
+                    if valid:
+                        c.g.verify(c.fn, False)
+                    else:
+                        with self.assertRaises(SystemExit):
+                            c.g.verify(c.fn, False)
+
+    def test_tuple_slot_union_reads_follow_transports(self):
+        # A tuple that a select, a slot.pack and slot.unpack, or a phi passes on holds the items
+        # that its operands declare, whatever the transport's own annotation says (tuple[X, X],
+        # narrower): from storage declared tuple[W, W], the float test leaves int and str, so the
+        # else branch's str payload is not proved. Each control's storage is declared X's, and
+        # None (a select's other operand) has no items to constrain.
+        x = "union[float,str]"
+        tx = "tuple[" + x + "," + x + "]"
+        for transport in ("select", "select None", "pack", "phi"):
+            for storage, valid in (("*" + tx, True), ("*tuple[" + W + "," + W + "]", False)):
+                with self.subTest(transport=transport, storage=storage):
+                    c = Case("tuple_slot_transport", [storage, "bool"])
+                    loaded = c.op("mem.load", storage[1:], a=[("%a0", storage)])
+                    if transport.startswith("select"):
+                        # (the operands' own annotations match the result's, as the IR check asks)
+                        t = "opt[" + tx + "]" if transport == "select None" else tx
+                        other = "null" if transport == "select None" else loaded
+                        owner = c.op("select", t, a=[("%a1", "bool"), (loaded, t), (other, t)])
+                    elif transport == "pack":
+                        packed = c.op("slot.pack", "%slot", a=[(loaded, tx)])
+                        owner = c.op("slot.unpack", tx, a=[(packed, "%slot")])
+                    else:
+                        c.op("cbr", a=[("%a1", "bool")], b=["left", "right"])
+                        c.block("left")
+                        c.op("br", b=["join"])
+                        c.block("right")
+                        c.op("br", b=["join"])
+                        c.block("join")
+                        owner = c.op("phi", tx, a=[(loaded, tx), (loaded, tx)], b=["left", "right"])
+                    address = c.op("mach.addr", "%ptr", "int", [(owner, "%ptr"), ("0", "int")])
+                    bits = c.op("mach.load", "int", a=[(address, "%ptr")])
+                    value = c.op("slot.unpack", x, a=[(bits, "%slot")])
+                    c.guard(value=value, member="float", typ=x)
+                    c.block("hit")
+                    c.payload(value=value, member="float", typ=x)
+                    c.ret()
+                    c.block("miss")
+                    c.payload(value=value, member="str", typ=x)
+                    c.ret()
+                    with redirect_stderr(StringIO()):
+                        if valid:
+                            c.g.verify(c.fn, False)
+                        else:
+                            with self.assertRaises(SystemExit):
+                                c.g.verify(c.fn, False)
+
+    def test_optional_runtime_tuple_length_read_is_no_tag_read(self):
+        # The length word of a tuple[T, ...] | None, read without a null test in a function that
+        # also narrows a union, is no union tag read; an optional union's machine read (its tag)
+        # still needs a nonnull proof.
+        for source in ("opt[vtuple[str]]", "opt[" + U + "]"):
+            with self.subTest(source=source):
+                c = Case("optional_length", [U, source])
+                c.guard()
+                c.block("hit")
+                c.payload()
+                c.op("mach.load", "int", a=[("%a1", "%ptr")])
+                c.finish_pair()
+                with redirect_stderr(StringIO()):
+                    if source.startswith("opt[vtuple["):
+                        c.g.verify(c.fn, False)
+                    else:
+                        with self.assertRaises(SystemExit):
+                            c.g.verify(c.fn, False)
+
     def test_numeric_parser_small_and_large_bounds_agree(self):
         numbers = ("", "0", "00", "01", "9", "10", "99999", "100000", "262143",
                    "262144", "262145", "999999", "1000000", "9999999",
