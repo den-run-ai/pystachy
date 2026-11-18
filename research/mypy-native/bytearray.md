@@ -71,3 +71,70 @@ so it changes the class it sits on.
 
 Not done: rejection cases for the unsupported forms (`bytes + bytearray`, `bytes == bytearray`,
 `int * bytearray`, `bytes | bytearray` annotations), `make irsame`, macOS.
+
+## #1478 in v0.6.0-alpha.3 (2026-11-18)
+
+Main `e2b97bb45` merged in; an independent review of `35c9bdeaa` found nine problems, fixed in
+`f0d3f0b59` with a case each recorded with CPython (two crashes of a `bytearray | None` that is
+None, a new compile-time rejection of a `__bytes__` returning no bytes, and six mismatches). The
+three crash and rejection cases fail with `35c9bdeaa`'s compiler. Fixing `__eq__` to return
+`NotImplemented` made `bytes == bytearray` compile and match CPython. Deferred: #1552.
+
+## Taking bytes or a bytearray (branch `-byteslike`, head `db8e3b42`)
+
+A parameter annotated `bytes | bytearray` is left unannotated and recorded (`FnInfo.bufs`), so
+each call specializes the function for its argument's type; `pcoerce` takes any other argument as
+an annotated `bytes` parameter does. `struct` reads a bytearray through its module's readers
+(`_get_int`, `_get_bool`, `_get_pascal`, `_bytes`) and `pack_into()` writes into one
+(`_store_int`, no bytes object between). `hashlib` takes `bytes(data)`.
+
+Found on the way: a slice of all of a bytes object is that object (`pys_str_slice`), so an `s`
+item spanning a full buffer was the live buffer (`b'!bcd'` where CPython prints `b'abcd'`); and
+Pystachy value-numbers a runtime call without memory effects, `pys_bytes_get` among them, so a
+buffer must never be read as a `bytes`. `analysis.buffer_escape` now rejects, when the module
+compiles, any read of a buffer but through the primitives; a copy of the module with a buffer
+alias is rejected, naming the line.
+
+Buffer benchmark (`bench_buffers.py`, 200,000 records of 6 bytes, AOT, best of 5 rounds, three
+runs; CPython 3.13.16 from an earlier run of the same script on this host):
+
+| Operation | This branch | CPython |
+|---|---:|---:|
+| `pack_into` a bytearray | 0.56 ms | 21.5 ms |
+| assign `struct.pack(...)` to a slice | 15.6 ms | 60.7 ms |
+| `b"".join` of `struct.pack(...)` | 17.3 ms | 33.2 ms |
+| `unpack_from` of bytes | 1.41 ms | 28.8 ms |
+| `unpack_from` of a bytearray, in place | 0.43-0.52 ms | 28.7 ms |
+| `unpack_from` of a copy of each record | 5.4 ms | 82.9 ms |
+
+## One alias class for byte payloads (branch `-bytetbaa`)
+
+A program's inline reads of a `bytes`'s length and bytes and the bytearray's primitives carry
+TBAA tags of a struct `@str` under the fields' root (length at 0 with `!range`, bytes at 24);
+a `bytes`'s reads and a buffer's reads and writes share one tag, and nothing is marked
+invariant. `Gen.memclass` gives `Gen.canon` the same classes. Against the bytes-like head, the
+IR of all 5,231 programs differs in metadata and checkout paths only (no code, status or message
+changes; tools/irsame-metadata-only.sh and a pass that also drops path lines).
+
+Negative controls: with buffer stores tagged apart from their loads, `bytes_alias_orders.py`
+prints 85244 where CPython prints 85850 (LLVM reuses a stale byte at indices only the run knows
+to be equal; at equal addresses basic alias analysis decides first and no tag matters); with
+`Gen.memclass`'s rules off, its unit test fails.
+
+Instructions (callgrind, one run, same outputs):
+
+| Program | Without | With | Change |
+|---|---:|---:|---:|
+| bytearray append, then index (2,000,000) | 38,438,053 | 34,438,081 | -10.4% |
+| `scan.py`: cursor in a field, 1 MiB | 34,177,284 | 27,885,828 | -18.4% |
+| parser, bytearray serializer | 1,222,669,094 | 1,211,636,199 | -0.9% |
+| parser, `list[int]` serializer | 1,329,363,940 | 1,327,199,909 | -0.2% |
+| buffer benchmark | 993,025,559 | 990,425,611 | -0.3% |
+
+Time, interleaved on one core: `scan.py` on 32 MiB, 0.160 s against 0.151 s (medians of 7,
+ranges 0.159-0.184 and 0.149-0.153), 5.6% less, as #1442's round measured for a cursor in a
+field. The append and index loops: no difference beyond noise (2.05 against 2.03 ms, 1.59
+against 1.61 ms), though they run 10.4% fewer instructions. One slower result: in the buffer
+benchmark's binary the `unpack_from` loop of bytes took 1.74 against 1.42 ms (medians of 8),
+with the same instructions in `_struct._unpack_int` (41.6 M in both); the same loop in a program
+of its own takes 0.101 against 0.102 s. That is the binary's layout, not the tags.
