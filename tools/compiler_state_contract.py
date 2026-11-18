@@ -39,11 +39,11 @@ def assignments(fn, owner, *, direct=False):
     return result
 
 
-def validate_sources(gen, ir, emission):
+def validate_sources(gen, frames, emission):
     """Return errors for the current explicit assignment/constructor convention."""
     try:
         gen_init = member(member(ast.parse(gen), "Gen"), "__init__")
-        frame_init = member(member(ast.parse(ir), "Frame"), "__init__")
+        frame_init = member(member(ast.parse(frames), "Frame"), "__init__")
         emitted = ast.parse(emission)
         save = member(emitted, "gen_save")
         restore = member(emitted, "gen_restore")
@@ -115,7 +115,7 @@ def validate_sources(gen, ir, emission):
 
 
 def read_sources():
-    return tuple((SOURCE / name).read_text(encoding="utf-8") for name in ("gen.py", "ir.py", "emission.py"))
+    return tuple((SOURCE / name).read_text(encoding="utf-8") for name in ("gen.py", "frames.py", "emission.py"))
 
 
 if __name__ == "__main__":

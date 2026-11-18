@@ -5,7 +5,8 @@ from src.pystachy_compiler.analysis import READS_ONLY_FNS, attr_fills, attr_valu
 from src.pystachy_compiler.bigints import PROMOTES, callable_ints, narrowed
 from src.pystachy_compiler.diagnostics import Rejoin, int_lists, shown, where
 from src.pystachy_compiler.dynamic import comparison_record_write, comparison_storage_key
-from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val, tmpname
+from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
+from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, short
 from src.pystachy_compiler.reflection import hook_class, hook_derived, hook_field, hook_of, hook_problem, hook_type

@@ -41,9 +41,9 @@ raises only after the whole expression is evaluated
 #### Unicode
 
 `str` uses UTF-8 storage. Length, indexing, slicing, iteration, search offsets,
-replacement, padding, formatting and text `read(n)` count **code points**, not
-visible characters: combining marks count separately. `chr()`, escapes, `ord()`
-and `repr()` use the same code points. Whitespace stripping/splitting, `splitlines()`
+replacement, padding, formatting, tab expansion and text `read(n)` count **code
+points**, not visible characters: combining marks count separately. `chr()`, escapes,
+`ord()` and `repr()` use the same code points. Whitespace stripping/splitting, `splitlines()`
 and `isspace()` recognize CPython's Unicode whitespace and line breaks.
 `isalpha()`, `isalnum()`, `isdecimal()`, `isdigit()` and `isnumeric()` use Unicode
 15.1.0 properties, matching the pinned CPython. Decimal digits, digits and numeric
@@ -100,25 +100,6 @@ applies. Bytes case methods remain ASCII-only.
   its overflow messages differ (`width too big` / `precision too big`).
 - Non-ASCII decimal digits in a format specification, such as `f"{x:٣}"`, raise
   `ValueError`; CPython reads them as numbers.
-
-#### Unicode audit
-
-Enable checks **when compiling**, including for imported library code:
-
-```sh
-PYSTACHY_UNICODE_AUDIT=1 ./pystachy run app.py
-PYSTACHY_UNICODE_AUDIT=1 ./pystachy build app.py -o app
-```
-
-The checks raise `NotImplementedError: Unicode audit: ...` for non-ASCII input to
-`expandtabs()`, even when the result would match CPython. Case mapping, case tests,
-character classification, code-point operations, printing, equality,
-concatenation and Unicode whitespace operations remain usable. File write counts, invalid UTF-8 decoding and
-other unlisted boundaries are **not audited**.
-
-Each check scans to the first non-ASCII byte; default builds omit it. An AOT
-executable keeps its compiled checks: changing the variable when running it has
-no effect. The shared runtime cache is independent of this setting.
 
 ### Containers and evaluation order
 
@@ -563,8 +544,8 @@ See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
 
 - **Inheritance:** multiple bases outside the [method-only secondary bases](typing.md#method-only-secondary-bases) subset; ordinary hierarchies involving layout-specialized templates,
   NamedTuple or builtins; generic inheritance outside the [visitor subset](typing.md#explicit-generic-classes)
-  (bases whose constructor binds type variables or subclasses passing through their own type
-  variables); mixed dataclass/ordinary hierarchies; decorated subclasses except
+  (bases whose constructor binds type variables, or a type variable inside a base's type
+  argument: `Visitor[list[T]]`); mixed dataclass/ordinary hierarchies; decorated subclasses except
   dataclass-from-dataclass and [identity decorators](typing.md#single-inheritance); changing method kind; incompatible virtual call signatures or
   results; overridden static/class methods called through base-typed objects. Independent
   classes and ordinary hierarchies with fixed concrete fields may specialize constructor
@@ -576,7 +557,9 @@ See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
   class or a different receiver.
 - **Methods and hooks:** assigning `cls`; static/class decorators on special
   methods; `C.__init__(o)` outside ordinary inheritance; decorators beyond staticmethod, classmethod,
-  property/setter/deleter, dataclass and overload. Defining or inheriting `__new__`,
+  property/setter/deleter, abstractmethod, contextmanager, functools.cached_property,
+  functools.total_ordering, dataclass and overload. Defining or inheriting `__new__` (but in an
+  [enum class](../../lib/compatibility.md#enum), in the form CPython's documentation gives),
   `__getattribute__`, `__setattr__` or `__delattr__`, or a base defining
   `__init_subclass__`, is rejected. `__getattr__` is called for the attributes a class does
   not define ([attribute fallback](semantics.md#attribute-fallback)); it is rejected in an
@@ -646,9 +629,9 @@ See [annotations](typing.md#annotations), [aliases](typing.md#type-aliases) and
   class; `PathLike` outside a union with `str`; `TypeVar` outside template parameters
   and returns, except bound class type variables; `TypeVarTuple` outside unpacking in tuple,
   Callable or `*args`; unbound class type variables.
-- **Generic classes:** `Generic[...]` alongside another base; PEP 695 classes with bases,
-  `ParamSpec` or multiple `TypeVarTuple`s; explicit `C[X]` with a `TypeVarTuple` or unannotated /
-  variadic constructor parameters.
+- **Generic classes:** `Generic[...]` alongside a base other than a generic base that takes its
+  type variables; PEP 695 classes with bases, `ParamSpec` or multiple `TypeVarTuple`s; explicit
+  `C[X]` with a `TypeVarTuple` or unannotated / variadic constructor parameters.
 - **Declarations:** bare `Final` outside assignments (a class's needs `Final[T]` or a value
   typed as in an unannotated class attribute, and a constant in a dataclass or `NamedTuple`);
   missing imports for typing names even in local annotations; overload stubs not followed in
@@ -788,8 +771,8 @@ See [reflection rules](semantics.md#reflection).
 
 ### Source text
 
-- Named Unicode escapes (`\N{...}`, including f-strings), non-ASCII identifiers, indentation
-  tabs, and source encodings outside UTF-8, Latin-1 and ASCII.
+- Named Unicode escapes (`\N{...}`, including f-strings), non-ASCII identifiers, and source
+  encodings outside UTF-8, Latin-1 and ASCII.
 - Nesting over 5,000 source levels (`**` and `lambda` count twice), or the 6,000-level CPython
   parser-stack budget. Grammar weights follow CPython 3.13: brackets 24–33, f-string fields
   33, blocks 7 and comparison operands 3. The check can stop a few dozen levels earlier.

@@ -14,7 +14,7 @@ from src.pystachy_compiler.analysis import (
     scope_binds,
 )
 from src.pystachy_compiler.diagnostics import shown
-from src.pystachy_compiler.ir import ClassInfo, FnInfo
+from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.syntax import Node, mentions, mk
 from src.pystachy_compiler.specs import NONEVAR

@@ -867,6 +867,9 @@ from src.pystachy_compiler.expressions import (
     gen_list_hint_type as expressions_list_hint_type,
     gen_argtype as expressions_argtype,
     gen_arith as expressions_arith,
+    gen_low32 as expressions_low32,
+    gen_low32_const as expressions_low32_const,
+    gen_low32_tree as expressions_low32_tree,
     gen_masked as expressions_masked,
     gen_wexpr as expressions_wexpr,
     gen_wflag as expressions_wflag,
@@ -900,6 +903,7 @@ from src.pystachy_compiler.expressions import (
     gen_may_decline as expressions_may_decline,
     gen_decl_flag as expressions_decl_flag,
     gen_cmp_cands as expressions_cmp_cands,
+    gen_ordering as expressions_ordering,
     gen_declining_call as expressions_declining_call,
     gen_cmp_stage as expressions_cmp_stage,
     gen_cmp_declining as expressions_cmp_declining,
@@ -1119,26 +1123,9 @@ from src.pystachy_compiler.functions import (
     gen_materialize as functions_materialize,
     gen_untold as functions_untold,
 )
-from src.pystachy_compiler.ir import (
-    Blk,
-    ClassInfo,
-    Closure,
-    Data,
-    Exit,
-    FmtArgs,
-    FnInfo,
-    Frame,
-    IFn,
-    Ins,
-    IterArg,
-    Loop,
-    Reduce,
-    SeqStart,
-    SetArg,
-    StopCatch,
-    Val,
-    Values,
-)
+from src.pystachy_compiler.frames import Exit, FmtArgs, Frame, IterArg, Reduce, SeqStart, SetArg, StopCatch
+from src.pystachy_compiler.ir import Blk, Data, IFn, Ins, Loop, Val, Values
+from src.pystachy_compiler.symbols import ClassInfo, Closure, FnInfo
 from src.pystachy_compiler.ircheck import (
     EffectSummaries,
     gen_bad_ir as ircheck_bad_ir,
@@ -1245,6 +1232,8 @@ from src.pystachy_compiler.program import (
     gen_raisers as program_raisers,
     gen_subclass_problem as program_subclass_problem,
     gen_on_chain as program_on_chain,
+    gen_ordered_class as program_ordered_class,
+    gen_ordering_ops as program_ordering_ops,
     gen_trait_root as program_trait_root,
     gen_role_field as program_role_field,
     gen_role_chain as program_role_chain,
@@ -1726,7 +1715,6 @@ class Gen:
         self.csymline: dict[str, int] = {}  # and the line that declared it
         self.cdirect: dict[str, bool] = {}  # the C symbols a GLUE module (lib/pyobj.py) calls directly, declared once
         self.extvars: dict[str, int] = {}  # pystachy ext: the main module's variables, and the line that binds each
-        self.unicode_audit = os.getenv("PYSTACHY_UNICODE_AUDIT", "") == "1"
         self.rtmode = False  # compiling runtime.py: its pys_* functions join runtime.c's under their C names (see runtime_ir)
         self.rtdefs: dict[str, FnInfo] = {}  # runtime mode: the pys_* functions this module defines, by C name
         self.rtcache = False  # runtime mode, for the driver's runtime cache: PYSTACHY_IRFX is the program's
@@ -4056,6 +4044,12 @@ class Gen:
     def on_chain(self, c: str, a: str) -> bool:
         return program_on_chain(self, c, a)
 
+    def ordered_class(self, ci: ClassInfo) -> None:
+        return program_ordered_class(self, ci)
+
+    def ordering_ops(self, c: str, seen: list[str]) -> list[str]:
+        return program_ordering_ops(self, c, seen)
+
     def trait_root(self, primary: str, secondary: str) -> str:
         return program_trait_root(self, primary, secondary)
 
@@ -5028,6 +5022,9 @@ class Gen:
     def declining_call(self, f: FnInfo, me: Val, arg: Val, direct: bool, decl: list[bool]) -> Val:
         return expressions_declining_call(self, f, me, arg, direct, decl)
 
+    def ordering(self, args: list[Node]) -> Val:
+        return expressions_ordering(self, args)
+
     def cmp_cands(self, op: str, at: str, bt: str) -> list[list[str]]:
         return expressions_cmp_cands(self, op, at, bt)
 
@@ -5096,6 +5093,15 @@ class Gen:
 
     def masked(self, n: Node, want: str, resultsoft: bool) -> Val:
         return expressions_masked(self, n, want, resultsoft)
+
+    def low32(self, e: Node) -> Val:
+        return expressions_low32(self, e)
+
+    def low32_const(self, e: Node) -> str:
+        return expressions_low32_const(self, e)
+
+    def low32_tree(self, e: Node, room: list[int]) -> bool:
+        return expressions_low32_tree(self, e, room)
 
     def wexpr(self, e: Node, want: str, resultsoft: bool, op: str = "", kept: list[str] | None = None) -> list[Val]:
         return expressions_wexpr(self, e, want, resultsoft, op, kept)

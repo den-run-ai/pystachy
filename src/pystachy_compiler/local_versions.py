@@ -5,7 +5,7 @@ source names stay intact, preserving target-context and look-ahead inference.
 """
 from __future__ import annotations
 from src.pystachy_compiler.analysis import local_names
-from src.pystachy_compiler.ir import FnInfo
+from src.pystachy_compiler.symbols import FnInfo
 from src.pystachy_compiler.specs import OBJECTC
 from src.pystachy_compiler.syntax import Node
 from src.pystachy_compiler.utils import clone

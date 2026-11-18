@@ -4,7 +4,7 @@ While the compiler builds one function it may compile another: a template's inst
 function compiled early for a global's type, a class's special methods. Gen.save() keeps the
 interrupted function's state in a Frame, gen_enter gives the nested function a fresh one, and
 Gen.restore() brings the first one's back. So each function-scoped field of Gen is written by hand in
-four lists: Gen.__init__ (src/pystachy_compiler/gen.py) initializes it, Frame.__init__ (ir.py) holds
+four lists: Gen.__init__ (src/pystachy_compiler/gen.py) initializes it, Frame.__init__ (frames.py) holds
 it, gen_save and gen_restore (emission.py) copy it out and back; and gen_enter (functions.py) assigns
 it for each function. A field that gen_enter assigns and Frame leaves out carries the nested
 function's state into the function it interrupts; one that Frame saves and gen_enter does not assign
@@ -34,11 +34,11 @@ import unittest
 
 ROOT = os.environ.get("PYSTACHY_SRC") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GEN = "src/pystachy_compiler/gen.py"
-IR = "src/pystachy_compiler/ir.py"
+FRAMES = "src/pystachy_compiler/frames.py"
 EMISSION = "src/pystachy_compiler/emission.py"
 FUNCTIONS = "src/pystachy_compiler/functions.py"
 # the lists: (the name messages give it, its file, its class or "", its def)
-LISTS = [("Gen.__init__", GEN, "Gen", "__init__"), ("Frame.__init__", IR, "Frame", "__init__"),
+LISTS = [("Gen.__init__", GEN, "Gen", "__init__"), ("Frame.__init__", FRAMES, "Frame", "__init__"),
          ("gen_save", EMISSION, "", "gen_save"), ("gen_restore", EMISSION, "", "gen_restore"),
          ("gen_enter", FUNCTIONS, "", "gen_enter")]
 SAVES = ["Frame.__init__", "gen_save", "gen_restore"]
@@ -64,7 +64,7 @@ PROGRAM = """
     xobj impg wide nokey nonereads noneglobalpending attrvals attrown hints newhints final xnot newx xwant newwant ncand retseen
     template_instances template_retained retainers unsupported hierarchies deferred_hierarchies cnodes hooks chooks flagged unraised
     noneglobals intglobals rangeused objectused abcsets declflag complexused intat strglobals globanns strtuples abstracts abcmeta
-    constflags late ext libdir prefix moddirs csyms csymline cdirect extvars unicode_audit rtmode rtdefs
+    constflags late ext libdir prefix moddirs csyms csymline cdirect extvars rtmode rtdefs
     rtcache externs deps comp flowctx closures clokeys adapters adrets ncv dispatchers cacheforms decorated
     decoexprs cvos ngenexp vowned gendrops gproto excread causeread coros tbaa tbaacls vrets vconst vcalls
     gkk holes twin_of twin_set origin inits mfile compiled pending qret qholes qused qforward qroot
@@ -134,7 +134,7 @@ SCOPED = {
 LEAKS: list = []
 
 FOOTER = (f"A function-scoped field of Gen is listed in four places, which must agree: Gen.__init__ ({GEN}), "
-          f"Frame.__init__ ({IR}), gen_save and gen_restore ({EMISSION}); and gen_enter ({FUNCTIONS}) assigns "
+          f"Frame.__init__ ({FRAMES}), gen_save and gen_restore ({EMISSION}); and gen_enter ({FUNCTIONS}) assigns "
           "it for each function. Leaving it out of one lets state leak between a function and one compiled in the "
           "middle of it (#767). NOT_SAVED and NOT_RESET in tools/test_frame_fields.py list the exceptions, each "
           "with its reason.")
@@ -336,13 +336,13 @@ def check(sources: dict, not_saved=None, not_reset=None, program=None, scoped=No
     pfields: dict = {}  # each parameter of Frame.__init__ that a field keeps, and that field
     for x, st in stores(fdef):
         if x in frame:
-            problems.append(f"Frame.__init__ ({IR}:{st.lineno}) assigns '{x}' again (also at line {frame[x]})")
+            problems.append(f"Frame.__init__ ({FRAMES}:{st.lineno}) assigns '{x}' again (also at line {frame[x]})")
             continue
         frame[x] = st.lineno
         if isinstance(st.value, ast.Name) and st.value.id in params:
             pfields[st.value.id] = x
     if len(frame) == 0:
-        problems.append(f"Frame.__init__ ({IR}:{fdef.lineno}) assigns no field: nothing to compare")
+        problems.append(f"Frame.__init__ ({FRAMES}:{fdef.lineno}) assigns no field: nothing to compare")
     for label, path, _, _ in LISTS:
         if label not in ["gen_save", "gen_restore"]:  # (which statements of the form above make)
             unconditional(defs[label], label, path, problems)
@@ -360,7 +360,7 @@ def check(sources: dict, not_saved=None, not_reset=None, program=None, scoped=No
         if x in has["gen_enter"]:
             problems.append(f"NOT_RESET lists '{x}', which gen_enter ({FUNCTIONS}) assigns: remove it")
         elif x not in has["Frame.__init__"]:
-            problems.append(f"NOT_RESET lists '{x}', which Frame.__init__ ({IR}) does not hold: remove it")
+            problems.append(f"NOT_RESET lists '{x}', which Frame.__init__ ({FRAMES}) does not hold: remove it")
     where = {label: f"{label} ({path}:{defs[label].lineno})" for label, path, _, _ in LISTS}
     for x in sorted(has["Frame.__init__"] | has["gen_save"] | has["gen_restore"] | has["gen_enter"]):
         if x in not_saved and not any(x in has[label] for label in SAVES):

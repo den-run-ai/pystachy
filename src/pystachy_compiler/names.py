@@ -14,6 +14,10 @@ RENAMED: dict[str, str] = {}
 # the enum classes the loader made (Loader's enum_classes), by the lines of their class statements:
 # the enum class each derives from (Enum, IntEnum or StrEnum)
 ENUMCLASSES: dict[int, str] = {}
+# the classes decorated @total_ordering (Loader's functools_classes), by the lines of their class
+# statements: the ones of __lt__, __le__, __gt__ and __ge__ that each body defines, after "+"
+# where another decorator comes first (Gen.ordered_class)
+ORDERED: dict[int, str] = {}
 
 
 def short(name: str) -> str:

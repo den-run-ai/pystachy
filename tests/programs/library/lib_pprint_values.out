@@ -1,0 +1,86 @@
+[   [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+    {'first': 1, 'second': 2, 'third': 3}]
+[   [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+    {   'first': 1,
+        'second': 2,
+        'third': 3}]
+[[[1, 2, 3]],
+ {1: [1,
+      2,
+      3],
+  2: [12,
+      34]},
+ 'abc def '
+ 'ghi']
+[[[1, 2, 3]],
+ {1: [1, 2, 3],
+  2: [12, 34]},
+ 'abc def ghi']
+[[[1, 2, 3]],
+ {1: [1, 2, 3],
+  2: [12, 34]},
+ 'abc def ghi']
+[[[1, 2, 3]],
+ {1: [1, 2, 3],
+  2: [12, 34]},
+ 'abc def ghi']
+[1,
+ 'two',
+ 3.5,
+ None,
+ 1000000] [1, 'two', 3.5, None, 1_000_000]
+{'b': 0,
+ 'n': 12_345_678,
+ 's': 'one two '
+      'three '
+      'four'}
+{'none': None,
+ 'some': [1,
+          2,
+          3]}
+None True
+[1,
+ 2]
+[1, 2] {'k': 'v w x'}
+1_234_567 'one two three four'
+[1, [2, 3], {'k': 4}, 5_000_000]
+[1.5, [2.5]] [1, [2, 3], {'a': 6, 'k': [4, {'z': 5}]}]
+[1, 2] {'k': 'v '
+      'w '
+      'x'}
+1_234_567 ('one '
+ 'two '
+ 'three '
+ 'four')
+[1,
+ [2, 3],
+ {'k': 4},
+ 5_000_000]
+[1.5,
+ [2.5]] [1,
+ [2, 3],
+ {'a': 6,
+  'k': [4,
+        {'z': 5}]}]
+[1, [2, 3], {'a': 6, 'k': [...]}] True [1, [2, 3], {'a': 6, 'k': [4, {'z': 5}]}]
+[<Color.RED: 1>, <Color.BLUE: 2>] <Level.HIGH: 2> <Name.B: 'b'>
+[<Level.LOW: 1>,
+ <Level.HIGH: 2>]
+[<Name.A: 'a'>,
+ <Name.B: 'b'>] False <Name.A: 'a'>
+{<Level.LOW: 1>: 'l', <Level.HIGH: 2>: 'h'} {<Name.A: 'a'>: 1, <Name.B: 'b'>: 2}
+{<Color.RED: 1>: 'r'} {<Level.LOW: 1>,
+ <Level.HIGH: 2>}
+P(x=1, name='n') [P(x=1, name='n'),
+ P(x=2, name='m')]
+Q(a=1, b=2) P(x=3, name='s') True
+{'k': P(x=1, name='nnnnnnnnnnnnnnnnnnnnnnnnnnnnnn')}
+(P(x=1, name='n'),
+ (1, 't'))
+D(name='n', values=[1, 2]) [D(name='a', values=[]),
+ D(name='b', values=[3])]
+deque([1, 2, 3]) Counter({'a': 2, 'b': 1, 'c': 1})
+OrderedDict({'b': 1}) {'q': deque([4, 5])}
+range(0, 5) [range(0, 2),
+ range(0, 3)]
+[exit 0]

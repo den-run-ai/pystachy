@@ -4,7 +4,7 @@ from src.pystachy_compiler.analysis import local_names
 from src.pystachy_compiler.diagnostics import int_lists, shown, where
 from src.pystachy_compiler.dynamic import comparison_aliases, comparison_properties, comparison_rebinds, comparison_reserve_fields
 from src.pystachy_compiler.generators import fresh_yield_context
-from src.pystachy_compiler.ir import ClassInfo, FnInfo
+from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.names import retoken, short
 from src.pystachy_compiler.specs import (
     BIG,

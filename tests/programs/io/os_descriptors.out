@@ -1,0 +1,10 @@
+'hidden 1\nwritten\n'
+visible again
+True True
+True
+True
+OSError [Errno 9] Bad file descriptor
+OSError [Errno 9] Bad file descriptor
+OSError [Errno 9] Bad file descriptor
+FileNotFoundError True
+[exit 0]

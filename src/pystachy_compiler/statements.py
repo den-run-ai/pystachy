@@ -3,7 +3,9 @@ from __future__ import annotations
 from src.pystachy_compiler.utils import identity_abi, identity_default, is_union
 from src.pystachy_compiler.analysis import appends_to, builtin_has, local_names, none_display
 from src.pystachy_compiler.diagnostics import shown
-from src.pystachy_compiler.ir import Blk, ClassInfo, Exit, FnInfo, Ins, IterArg, Loop, SeqStart, StopCatch, Val, tmpname
+from src.pystachy_compiler.frames import Exit, IterArg, SeqStart, StopCatch
+from src.pystachy_compiler.ir import Blk, Ins, Loop, Val, tmpname
+from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.names import ENUMCLASSES, owner, short
 from src.pystachy_compiler.specs import (
     STR_HEADER_SIZE,
