@@ -230,6 +230,8 @@ def gen_set_display(self, n: Node, want: str, folded: bool, returnctx: bool = Fa
         et = jt  # (objects of classes of one hierarchy: of their nearest common base)
     if not given and is_clsval(jt):
         et = jt  # (class objects: of a base class their classes have in common)
+    if not given and len(items) > 0 and all(self.refl_builtin_class(v.t) != "" or is_clsval(v.t) for v in items) and len([v for v in items if self.refl_builtin_class(v.t) != ""]) > 0:
+        et = "type[object]"  # (builtin classes named, beside class objects or not: their class objects)
     if self.elem_problem(et) != "":
         self.err(self.elem_problem(et))
     if const:
@@ -1200,6 +1202,8 @@ def gen_none_arg(self, m: str, k: int) -> str:
 def gen_to_str(self, v: Val) -> Val:
     if self.dyn_policy(self.line) and self.refl_builtin_class(v.t) != "":
         return self.dyn_str(self.dyn_box(v))
+    if self.refl_builtin_class(v.t) != "":
+        v = self.class_value_builtin(v)  # (a builtin class named: its class object, <class 'int'>)
     t = v.t
     if t == "dyn":
         return self.dyn_str(v)  # (by its box's type: dynamic.py)
@@ -1410,6 +1414,8 @@ def gen_hashable(self, t: str) -> bool:
 def gen_repr(self, v: Val) -> Val:
     if self.dyn_policy(self.line) and self.refl_builtin_class(v.t) != "":
         return self.dyn_repr(self.dyn_box(v))
+    if self.refl_builtin_class(v.t) != "":
+        v = self.class_value_builtin(v)  # (a builtin class named: its class object, <class 'int'>)
     if is_kw(v.t):
         return self.kw_repr(v)
     if v.t == BIG:
