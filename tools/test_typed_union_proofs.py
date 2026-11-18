@@ -827,19 +827,43 @@ class UnionProofTests(unittest.TestCase):
             self.assertEqual(instruction.b, values)
         self.assertEqual(NOLABELS, [])
 
-    def test_cached_graph_copies_before_accumulating_edges_and_check_failure(self):
-        for extra, check_labels in [(False, []), (False, ["left", "left"]),
-                                    (True, []), (True, ["left", "left"])]:
+    def test_cached_graph_copies_before_adding_a_check_failure_edge(self):
+        c = Case("accumulated_edges", [U])
+        c.op("union.tag", "int", a=[("%a0", U)])
+        c.op("check", s="message", a=[("true", "bool")], b=["right"])
+        c.b.code[-1].x = "cold-key"
+        c.fn.cold["cold-key"] = "left"
+        for label in ["left", "right"]:
+            c.block(label)
+            c.ret()
+        before = [(i, i.b, list(i.b)) for b in c.fn.blocks for i in b.code]
+
+        def observe(fn, tags, at, successors, types, before=before):
+            self.assertEqual(successors[0], ["right", "left"])
+            for _, labels, _ in before:
+                self.assertIsNot(successors[0], labels)
+            self.assertIsNot(successors[0], NOLABELS)
+            return simple_union_proof(fn, tags, at, successors, types)
+
+        with patch.object(ircheck, "simple_union_proof", side_effect=observe) as proof:
+            c.g.verify(c.fn, False)
+        self.assertEqual(proof.call_count, 1)
+        for instruction, labels, values in before:
+            self.assertIs(instruction.b, labels)
+            self.assertEqual(instruction.b, values)
+        self.assertEqual(NOLABELS, [])
+
+    def test_labels_outside_the_operation_table_are_rejected_unchanged(self):
+        # The table gives a check one label and an ovf none: lowering reads a check's first
+        # label and no other. The verifier once added such labels to a block's successors.
+        for extra, check_labels, expected in [(False, [], "check with 0 labels"),
+                                              (False, ["left", "left"], "check with 2 labels"),
+                                              (True, ["left"], "ovf with 2 labels")]:
             with self.subTest(extra=extra, check_labels=check_labels):
                 c = Case("accumulated_edges", [U])
                 c.op("union.tag", "int", a=[("%a0", U)])
                 if extra:
-                    # Preserve unusual nonterminal metadata that the structural
-                    # verifier already includes, even when instructions share it.
                     c.op("ovf", "int", "+", [("0", "int"), ("1", "int")], ["right", "left"])
-                    shared = c.b.code[-1].b
-                    c.op("ovf", "int", "+", [("0", "int"), ("1", "int")])
-                    c.b.code[-1].b = shared
                 c.op("check", s="message", a=[("true", "bool")], b=check_labels)
                 c.b.code[-1].x = "cold-key"
                 c.fn.cold["cold-key"] = "left"
@@ -847,18 +871,10 @@ class UnionProofTests(unittest.TestCase):
                     c.block(label)
                     c.ret()
                 before = [(i, i.b, list(i.b)) for b in c.fn.blocks for i in b.code]
-                expected = (["right", "left", "right", "left"] if extra else []) + check_labels + ["left"]
-
-                def observe(fn, tags, at, successors, types, expected=expected, before=before):
-                    self.assertEqual(successors[0], expected)
-                    for _, labels, _ in before:
-                        self.assertIsNot(successors[0], labels)
-                    self.assertIsNot(successors[0], NOLABELS)
-                    return simple_union_proof(fn, tags, at, successors, types)
-
-                with patch.object(ircheck, "simple_union_proof", side_effect=observe) as proof:
+                error = StringIO()
+                with redirect_stderr(error), self.assertRaises(SystemExit):
                     c.g.verify(c.fn, False)
-                self.assertEqual(proof.call_count, 1)
+                self.assertIn(expected + ", where the operation table has", error.getvalue())
                 for instruction, labels, values in before:
                     self.assertIs(instruction.b, labels)
                     self.assertEqual(instruction.b, values)
@@ -869,9 +885,11 @@ class UnionProofTests(unittest.TestCase):
             with self.subTest(invalid_metadata=invalid_metadata):
                 c = Case("invalid_edges", [U])
                 c.op("union.tag", "int", a=[("%a0", U)], b=["missing"] if invalid_metadata else [])
-                c.op("check", s="message", a=[("true", "bool")])
+                c.op("check", s="message", a=[("true", "bool")], b=["next"])
                 c.b.code[-1].x = "cold-key"
-                before = [(i.b, list(i.b)) for i in c.b.code]
+                c.block("next")
+                c.ret()
+                before = [(i.b, list(i.b)) for b in c.fn.blocks for i in b.code]
                 error = StringIO()
                 with redirect_stderr(error), self.assertRaises(SystemExit):
                     c.g.verify(c.fn, False)

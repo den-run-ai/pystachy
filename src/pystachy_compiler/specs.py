@@ -647,35 +647,100 @@ UNICODE_AUDIT: list[str] = ("upper lower swapcase capitalize title casefold isup
 # the methods of frozenset (those that change nothing) and of set, which Gen.smethod compiles
 FSETMETHODS: list[str] = "copy difference intersection isdisjoint issubset issuperset symmetric_difference union".split()
 SETMETHODS: list[str] = FSETMETHODS + "add clear difference_update discard intersection_update pop remove symmetric_difference_update update".split()
-# the IR's ops (Ins.op) and their effects (docs/typed-ir.md 3.4 and 3.7, and FX below): T ends
-# a block; an rt op has its runtime function's effects (RUNTIME), a call or an init its callee's
-# summary (IFn.fx). Every instruction has typed operands; there is no text escape hatch.
-IROPS: dict[str, str] = {
-    "slot": "", "rt": "*", "call": "*", "icall": "*", "init": "*", "br": "T", "cbr": "T", "switch": "T", "check": "T R",
-    "ret": "T", "ret.none": "T", "raise": "T R N", "unreachable": "T", "phi": "", "select": "", "ovf": "",
-    "list.load": "rL", "list.store": "rL wL", "list.len": "rL",
-    "alloc.fixed": "A", "vtuple.make": "A",
-    "mem.load": "*", "mem.store": "*",
-    "mach.load": "*", "mach.store": "*", "mach.addr": "",
-    "tuple.load": "rL rD rO", "tuple.store": "wL wD wO",
-    "field.addr": "",
-    "slot.pack": "", "slot.unpack": "",
-    "scalar.bin": "", "scalar.cast": "", "scalar.cmp": "",
-    "num.cast": "", "num.cmp": "", "int.ucmp": "", "ptr.cmp": "",
-    "empty.kind": "wD",
-    "union.tag": "rL rD rO", "union.payload": "rL rD rO", "union.raw": "rL rD rO",
-    "dyn.type": "", "dyn.payload": "", "dyn.raw": "",
-    "big.make": "", "big.lo": "", "big.hi": "",
-    "landing": "T", "throw": "T R N", "exc.match": "",
+# The typed IR's operations (Ins.op), one row each: "effects|operands|results|labels|fields|value".
+# Every instruction has typed operands; there is no text escape hatch. The rows are the one
+# definition of an operation's shape: IROPS, RESULT_NUMBERS, VALUE_AT and the shape tables below
+# are read from them, the IR check holds each instruction to its row (ircheck.op_shape_error), and
+# docs/typed-ir.md's reference table is written from them (tools/typed_ir_ops.py).
+#   effects   the op's own effect letters (FX below); T ends a block; E is entry storage, held by
+#             IFn.slots and by no block; * is decided per instruction: an rt op has its runtime
+#             function's effects (RUNTIME), a call or an init its callee's summary (IFn.fx), a
+#             memory op its address's (Gen.opfx)
+#   operands  how many Ins.a holds: N, N-M, or N+ for N or more
+#   results   how many numbers Ins.r holds, as its lowering prints them; ? is a call's, by its
+#             signature: none or one
+#   labels    how many Ins.b holds: N; i for none, or two once an exception edge makes a call an
+#             invoke (then it ends its block); a for one per operand (a phi's predecessors, a
+#             switch's default and cases)
+#   fields    which of Ins.t (result type), Ins.s (text), Ins.k (integer) and Ins.x (descriptor)
+#             it may set: t s k x; the others stay "" or 0
+#   value     which number names the value Values places: 0 none, 1 the first, 2 the second
+#             (after an address), 3 each
+OPS: dict[str, str] = {
+    "slot": "E|0|1|0|t s k|0",
+    "rt": "*|0+|?|i|t s k x|1", "call": "*|0+|?|i|t s x|0", "icall": "*|1+|?|i|t|0", "init": "*|0|0|i|s|0",
+    "br": "T|0|0|1||0", "cbr": "T|1|0|2||0", "switch": "T|2+|0|a||0", "check": "T R|1|0|1|s x|0",
+    "ret": "T|0-1|0|0||0", "ret.none": "T|0|0|0||0", "raise": "T R N|2|0|0|s|0", "unreachable": "T|0|0|0||0",
+    "phi": "|1+|1|a|t|0", "select": "|3|1|0|t|1", "ovf": "|2|3|0|t s|0",
+    "list.load": "rL|2|4|0|t|0", "list.store": "rL wL|3|3|0||0", "list.len": "rL|1|1|0|t|1",
+    "alloc.fixed": "A|0|1|0|t|0", "vtuple.make": "A|0+|1|0|t|0",
+    "mem.load": "*|1|1|0|t|1", "mem.store": "*|2|0|0||0",
+    "mach.load": "*|1|1|0|t s|1", "mach.store": "*|2|0|0|s|0", "mach.addr": "|2|1|0|t s k|1",
+    "tuple.load": "rL rD rO|1|2|0|t s k|3", "tuple.store": "wL wD wO|2|1|0|s k|3",
+    "field.addr": "|1|1|0|t k|1",
+    "slot.pack": "|1|1|0|t|1", "slot.unpack": "|1|1|0|t|1",
+    "scalar.bin": "|1-2|1|0|t s x|1", "scalar.cast": "|1|1|0|t s|1", "scalar.cmp": "|2|1|0|t s|1",
+    "num.cast": "|1|1|0|t|1", "num.cmp": "|2|1|0|t s|1", "int.ucmp": "|2|1|0|t s|1", "ptr.cmp": "|2|1|0|t s|1",
+    "empty.kind": "wD|1|1|0|k|0",
+    "union.tag": "rL rD rO|1|1|0|t|0", "union.payload": "rL rD rO|1|2|0|t s|2", "union.raw": "rL rD rO|1|2|0|t|2",
+    "dyn.type": "|1|1|0|t|1", "dyn.payload": "|1|2|0|t s|2", "dyn.raw": "|1|2|0|t|2",
+    "big.make": "|2|2|0|t|2", "big.lo": "|1|1|0|t|1", "big.hi": "|1|1|0|t|1",
+    "landing": "T|1|2|1|t|0", "throw": "T R N|1|0|0||0", "exc.match": "|2|2|0|t|0",
     # generators (LLVM switched-resume coroutines, docs/internals.md#generators): gen.start ends a
     # generator function's entry block (the frame, its promise and the initial suspend), gen.yield
     # and gen.ret suspend it (gen.ret finally); gen.promise is the address of its promise (of the
     # generator's own, or of a handle's), gen.resume runs it to its next suspend, and gen.drop
     # closes a generator a loop owns and destroys it (it reports what closing raises, as CPython
     # reports an exception it ignores, so it never raises itself)
-    "gen.start": "T A", "gen.yield": "T U", "gen.ret": "T", "gen.promise": "", "gen.resume": "U",
-    "gen.drop": "A I rL wL rD wD rO wO rG wG rF wF",
+    "gen.start": "T A|1|0|1||0", "gen.yield": "T U|1-3|2|1|k|0", "gen.ret": "T|0-2|2|0||0",
+    "gen.promise": "|0-1|1|0|t|0", "gen.resume": "U|1|0|i||0",
+    "gen.drop": "A I rL wL rD wD rO wO rG wG rF wF|1|0|0||0",
 }
+# What the rows say, by op. IROPS: the effects column without E (T ends a block; * as above).
+# RESULT_NUMBERS: the fixed result counts (a call's is Gen.nums'). VALUE_AT: the ops whose values
+# Values places, by the number each defines (its block and position there), as how: 1, the value
+# of one that defines one; 2, the payload of union.payload/raw and dyn.payload/raw, their second;
+# 3, each value of tuple.load and tuple.store. OP_ENTRY: whether it is entry storage. OP_MIN and
+# OP_MAX: the operand counts (OP_MAX -1 for no limit). OP_LABELS: the label count, or OP_PER_OPERAND
+# or OP_INVOKE. OP_FIELDS: the fields it may set, as bits (OP_T, OP_S, OP_K, OP_X).
+OP_T = 1
+OP_S = 2
+OP_K = 4
+OP_X = 8
+OP_PER_OPERAND = -1
+OP_INVOKE = -2
+IROPS: dict[str, str] = {}
+RESULT_NUMBERS: dict[str, int] = {}
+VALUE_AT: dict[str, int] = {}
+OP_ENTRY: dict[str, bool] = {}
+OP_MIN: dict[str, int] = {}
+OP_MAX: dict[str, int] = {}
+OP_LABELS: dict[str, int] = {}
+OP_FIELDS: dict[str, int] = {}
+for _k in OPS:
+    _s = OPS[_k].split("|")[0]
+    IROPS[_k] = _s.replace("E", "").strip()
+    OP_ENTRY[_k] = "E" in _s
+    _s = OPS[_k].split("|")[2]
+    if _s != "?" and _s != "0":
+        RESULT_NUMBERS[_k] = int(_s)
+    _s = OPS[_k].split("|")[5]
+    if _s != "0":
+        VALUE_AT[_k] = int(_s)
+    _s = OPS[_k].split("|")[1]
+    if _s.endswith("+"):
+        OP_MIN[_k] = int(_s[:-1])
+        OP_MAX[_k] = -1
+    elif "-" in _s:
+        OP_MIN[_k] = int(_s[: _s.find("-")])
+        OP_MAX[_k] = int(_s[_s.find("-") + 1 :])
+    else:
+        OP_MIN[_k] = int(_s)
+        OP_MAX[_k] = int(_s)
+    _s = OPS[_k].split("|")[3]
+    OP_LABELS[_k] = OP_PER_OPERAND if _s == "a" else OP_INVOKE if _s == "i" else int(_s)
+    _s = OPS[_k].split("|")[4]
+    OP_FIELDS[_k] = (OP_T if "t" in _s else 0) | (OP_S if "s" in _s else 0) | (OP_K if "k" in _s else 0) | (OP_X if "x" in _s else 0)
 # Native list reads whose receiver and encoded result survive in IR.
 LIST_READS: list[str] = ["list.get", "list.get_identity"]
 
@@ -740,13 +805,6 @@ CANON_DEPTH = 1000
 JIT_INLINE = 20000
 REACH = 256
 LOOKUPS = 32
-# the ops whose values Values places, by the number each defines (its block and position there),
-# as how: 1, the value of one that defines one; 2, the payload of union.payload/raw and dyn.payload/raw,
-# their second; 3, each value of tuple.load and tuple.store
-VALUE_AT: dict[str, int] = {"list.len": 1, "select": 1, "scalar.bin": 1, "scalar.cast": 1, "scalar.cmp": 1, "rt": 1, "slot.pack": 1, "slot.unpack": 1,
-                            "num.cast": 1, "num.cmp": 1, "mach.load": 1, "mach.addr": 1, "mem.load": 1, "field.addr": 1, "int.ucmp": 1,
-                            "ptr.cmp": 1, "dyn.type": 1, "big.lo": 1, "big.hi": 1, "union.payload": 2, "union.raw": 2, "dyn.payload": 2, "dyn.raw": 2,
-                            "big.make": 2, "tuple.load": 3, "tuple.store": 3}
 # Types are serialized strings. Bound their size before joining children, and the active
 # template signatures before making keys or call contexts; a depth limit alone misses
 # exponential width growth such as f((x, x)). These are compiler resource limits.

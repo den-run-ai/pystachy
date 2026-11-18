@@ -5,21 +5,8 @@ from src.pystachy_compiler.dynamic_proof import DynamicProof, DynTypes
 from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, tmpname
 from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
 from src.pystachy_compiler.specs import BIG, FX, FXALL, FXBIT, ICMP, IROPS, LIST_READS, LIST_WRITES, NONEVAR, RAWR, RAWW, RUNTIME
+from src.pystachy_compiler.specs import OPS, OP_ENTRY, OP_FIELDS, OP_INVOKE, OP_K, OP_LABELS, OP_MAX, OP_MIN, OP_PER_OPERAND, OP_S, OP_T, OP_X, RESULT_NUMBERS
 from src.pystachy_compiler.utils import elem, gelem, generator_identity, is_dict, is_gen, is_opt, is_set, is_tuple, is_union, is_vtuple, list_read_error, list_receiver_error, list_write_error, lt, same_kind, targs, tslots, umembers
-
-# Fixed SSA result counts printed by each lowering (gen_nums handles calls).
-RESULT_NUMBERS: dict[str, int] = {
-    "scalar.bin": 1, "scalar.cast": 1, "scalar.cmp": 1, "field.addr": 1,
-    "mach.load": 1, "mach.addr": 1, "ovf": 3, "list.load": 4, "list.store": 3,
-    "landing": 2, "exc.match": 2, "union.payload": 2, "union.raw": 2,
-    "tuple.load": 2, "dyn.payload": 2, "dyn.raw": 2, "dyn.type": 1, "phi": 1,
-    "select": 1, "list.len": 1, "slot.pack": 1, "slot.unpack": 1,
-    "union.tag": 1, "num.cast": 1, "num.cmp": 1, "alloc.fixed": 1,
-    "vtuple.make": 1, "tuple.store": 1, "mem.load": 1, "int.ucmp": 1, "ptr.cmp": 1,
-    "empty.kind": 1, "gen.yield": 2, "gen.ret": 2, "gen.promise": 1,
-    "big.make": 2, "big.lo": 1, "big.hi": 1,
-}
-
 
 class EffectSummaries:
     # One compilation's completed function contexts. FnInfo retains each context's parameter
@@ -130,6 +117,26 @@ def has_machine_union_tag(fn: IFn) -> bool:
     return False
 
 
+def op_shape_error(i: Ins, entry: bool) -> str:
+    # What its row of the operation table (specs.OPS) says of i's shape, or "": its place (entry
+    # is whether it is among a function's slots), its operand and label counts, and the fields
+    # it may set. Its result count is Gen.nums', which reads a call's from its signature.
+    op = i.op
+    if OP_ENTRY[op] != entry:
+        return f"{op} in a block, where entry storage belongs among the slots" if OP_ENTRY[op] else f"{op} among the slots"
+    n = len(i.a)
+    if n < OP_MIN[op] or (OP_MAX[op] >= 0 and n > OP_MAX[op]):
+        return f"{op} with {n} operands, where the operation table has {OPS[op].split('|')[1]}"
+    rule = OP_LABELS[op]
+    m = len(i.b)
+    if (m != n) if rule == OP_PER_OPERAND else (m != 0 and m != 2) if rule == OP_INVOKE else m != rule:
+        return f"{op} with {m} labels, where the operation table has {OPS[op].split('|')[3]}"
+    fields = OP_FIELDS[op]
+    if (i.t != "" and fields & OP_T == 0) or (i.s != "" and fields & OP_S == 0) or (i.k != 0 and fields & OP_K == 0) or (i.x != "" and fields & OP_X == 0):
+        return f"{op} sets a field outside the operation table's {OPS[op].split('|')[4] or 'none'}"
+    return ""
+
+
 def verify_dynamic_raw(self, fn: IFn) -> None:
     # Raw dynamic payload bits are only an identity-comparison input. Collect all
     # producers before uses: block order and an operand's annotation cannot hide
@@ -175,6 +182,9 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
             self.bad_ir(fn, fn.blocks[0], f"a {i.op} op among the slots, with {len(i.r)} numbers")
         if i.r[0] > fn.n:
             self.bad_ir(fn, fn.blocks[0], f"the slot of {i.s} numbered {i.r[0]}, above IFn.n ({fn.n})")
+        shape = op_shape_error(i, True)
+        if shape != "":
+            self.bad_ir(fn, fn.blocks[0], shape)
     for j in range(len(fn.blocks)):
         l = fn.blocks[j].label
         if l in at:
@@ -403,6 +413,9 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     self.bad_ir(fn, b, f"{i.op} has invalid operands, result type or metadata")
             if i.op.startswith("gen."):
                 self.verify_gen(fn, b, i, j)
+            shape = op_shape_error(i, False)
+            if shape != "":
+                self.bad_ir(fn, b, shape)
             n = self.nums(i)
             if len(i.r) != n:
                 self.bad_ir(fn, b, f"{i.op} {i.s} with {len(i.r)} numbers, where its lowering prints {n}")
