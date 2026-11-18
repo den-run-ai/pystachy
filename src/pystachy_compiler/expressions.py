@@ -32,6 +32,7 @@ from src.pystachy_compiler.specs import (
     ORDOP,
     PYBUILTINS,
     BYTEARRAYC,
+    BYTEARRAYS,
     RANGEC,
     RANGES,
     REFL,
@@ -387,6 +388,8 @@ def gen_has(self, t: str, a: str) -> int:
         return -1 if r == 1 else 0  # (unless it is None)
     if t in self.classes:
         ci = self.classes[t]
+        if t == BYTEARRAYC and self.curfn.mod != BYTEARRAYS and a.startswith("_") and not (a.startswith("__") and a.endswith("__")):
+            return 0  # (CPython's bytearray has no such attribute: lib's class's fields and helpers are its own)
         if a == " enum int" and self.enum_intlike(t):
             return 0  # (the compiler's immutable payload is no Python attribute)
         if a == " enum str" and self.enum_builtin(t) == "str":
@@ -1279,9 +1282,12 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 bs.append(self.vnode(self.as_int(bv) if bv.t == "bool" else bv))
             return self.call_fn(self.funcs[RANGES + "$_slice"], [], bs)
         if unopt(o.t) == BYTEARRAYC:
-            # a bytearray's slice: lib/_pystachy_bytearray.py's _getslice, of the bounds as written
+            # a bytearray's slice: lib/_pystachy_bytearray.py's _getslice, of the bounds as written,
+            # once they are evaluated, of an object that is not None (a class's value may be)
+            bounds = self.slice_written(n.kids[1:])
             o = self.unwrap(o, "TypeError: 'NoneType' object is not subscriptable")
-            return self.protocol(o, "_getslice", self.slice_written(n.kids[1:]))
+            self.notnone(o, "TypeError: 'NoneType' object is not subscriptable")
+            return self.protocol(o, "_getslice", bounds)
         if o.t == "dyn":
             return self.dyn_slice(o, n.kids[1:])  # (by its box's type, of the bounds as Any values: dynamic.py)
         fold = is_tuple(unopt(o.t)) or o.t in self.nts  # (constant bounds: the items' types)

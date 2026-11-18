@@ -2182,7 +2182,9 @@ def gen_slice_target(self, t: Node, bnd: list[str], nosub: str, raw: list[str] |
         # a bytearray's slice: its bounds as written (into written), for lib/_pystachy_bytearray.py's
         # _setslice or _delslice, which the caller calls
         written.extend(self.slice_written(t.kids[1:]))
-        return self.unwrap(o, nosub)
+        o = self.unwrap(o, nosub)
+        self.notnone(o, nosub)  # (a class's value may be None: unwrap tests an optional's box only)
+        return o
     bnd.append(self.slice_bound(t.kids[1], dvs))
     bnd.append(self.slice_bound(t.kids[2], dvs))
     bnd.append(self.slice_step(t.kids[3], dvs) if len(t.kids) == 4 else "1")
