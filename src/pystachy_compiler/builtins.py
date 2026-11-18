@@ -2075,9 +2075,10 @@ def gen_sum_objects(self, t: str, stt: str) -> bool:
     # is sum() of items of type t ("" where not known yet) from a start of type stt ("" where
     # none is given) a sum of objects (sum_object_item): an item or the start is a class's
     # object, or a union's that holds one beside numbers (object_union), which + adds by its
-    # methods. Exceptions, NamedTuples (tuples to +) and range objects are none
+    # methods. Exceptions, NamedTuples (tuples to +), range objects and complex numbers (whose
+    # sum() is not supported: docs/language/semantics.md#complex-numbers) are none
     for x in [t, stt]:
-        if x in self.classes and self.classes[x].exc == "" and x not in self.nts and x != RANGEC:
+        if x in self.classes and self.classes[x].exc == "" and x not in self.nts and x != RANGEC and x != COMPLEXC:
             return True
         if self.object_union(x) and len([m for m in umembers(unopt(x)) if m == "str" or m == "file"]) == 0:
             return True

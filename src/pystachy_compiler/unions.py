@@ -25,9 +25,11 @@ def gen_object_union(self, t: str) -> bool:
     # a union (or one | None) of a class's objects or files and of scalars (int | Decimal,
     # str | TextIO): one box, null for None as a class's value is, whose arithmetic, comparisons,
     # truth, str() and builtin calls select the member's by the tag, as a scalar union's do;
-    # a method call or an attribute needs the member, as a reference union's
+    # a method call or an attribute needs the member, as a reference union's. A complex number
+    # is not one of its objects: beside scalars it is a scalar member (cx_union), and beside
+    # objects and files alone a reference member (complex | C), as optional() and union_type say
     ms = umembers(unopt(t)) if is_union(unopt(t)) else []
-    refs = [m for m in ms if m == "file" or m in self.classes]
+    refs = [m for m in ms if m == "file" or (m in self.classes and m != COMPLEXC)]
     return 0 < len(refs) < len(ms) and all([m in refs or m in ["int", "float", "bool", "str"] for m in ms])
 
 def gen_scalar_union(self, t: str) -> bool:
@@ -189,9 +191,13 @@ def gen_union_type(self, ts: list[str]) -> str:
         # member beside only objects and files: complex | C)
         refs.remove(COMPLEXC)
     if len(refs) > 0:
-        # (scalars may be members beside them, each under its own tag: object_union)
-        if len([m for m in ms if m not in refs and m not in ["int", "float", "bool", "str"]]) > 0:
+        # (scalars may be members beside them, each under its own tag: object_union; but not a
+        # complex number as well, which is a scalar member beside scalars, see above)
+        others = [m for m in ms if m not in refs and m not in ["int", "float", "bool", "str"]]
+        if len([m for m in others if m != COMPLEXC]) > 0:
             return "!reference unions cannot mix native references with container members"
+        if len(others) > 0:
+            return "!reference unions cannot mix native references with complex and scalar members"
         if len(refs) > 4:
             return "!reference unions support at most four members"
         for a in refs:

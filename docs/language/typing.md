@@ -723,7 +723,9 @@ assumptions; boxing and dispatch have costs, so no performance improvement is cl
 
 A union may hold `int`, `float`, `bool` and `str` members beside its class or file members,
 as `int | Decimal`, `str | Path` and `TextIO | str` do. The four-member limit counts the
-class and file members only. The box, its tags and `isinstance()` narrowing are those of the
+class and file members only. A `complex` member joins scalars in a
+[closed scalar union](#closed-scalar-unions) or objects alone (`complex | C`), not both:
+`int | complex | C` is rejected. The box, its tags and `isinstance()` narrowing are those of the
 unions above, and such a union may hold `None` as any union with a class member may: after
 `isinstance(value, Money)` is excluded, an `int | Money` is an `int | None`, so test the
 scalar member (`isinstance(value, int)`) where an `int` is needed.
