@@ -33,8 +33,8 @@
 # - test_marshal, test_pickle and test_picklevalues (marshal, pickle)
 # - test_convert_to_bool's Foo and Bar, whose __bool__ returns no bool: compile-time errors with
 #   CPython's message where an annotation gives the return type
-#   (tests/errors/upstream/upstream_bool_convert_self.py and _str.py), worded "returned NoneType" without
-#   it (bug: message, NEW); its Baz and Spam (subclasses of int)
+#   (tests/errors/upstream/upstream_bool_convert_self.py and _str.py), worded "expected bool, got
+#   Foo" (or "str") without it (bug: message, NEW); its Baz and Spam (subclasses of int)
 # - test_interpreter_convert_to_bool_raises (Symbol.__gt__ returns a SymbolicBool: a comparison
 #   method that returns no bool is rejected at compile time)
 # - test_sane_len's A whose __len__ returns 'illegal' (rejected at compile time: "__len__ must

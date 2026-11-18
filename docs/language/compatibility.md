@@ -544,8 +544,8 @@ See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
 
 - **Inheritance:** multiple bases outside the [method-only secondary bases](typing.md#method-only-secondary-bases) subset; ordinary hierarchies involving layout-specialized templates,
   NamedTuple or builtins; generic inheritance outside the [visitor subset](typing.md#explicit-generic-classes)
-  (bases whose constructor binds type variables or subclasses passing through their own type
-  variables); mixed dataclass/ordinary hierarchies; decorated subclasses except
+  (bases whose constructor binds type variables, or a type variable inside a base's type
+  argument: `Visitor[list[T]]`); mixed dataclass/ordinary hierarchies; decorated subclasses except
   dataclass-from-dataclass and [identity decorators](typing.md#single-inheritance); changing method kind; incompatible virtual call signatures or
   results; overridden static/class methods called through base-typed objects. Independent
   classes and ordinary hierarchies with fixed concrete fields may specialize constructor
@@ -557,7 +557,9 @@ See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
   class or a different receiver.
 - **Methods and hooks:** assigning `cls`; static/class decorators on special
   methods; `C.__init__(o)` outside ordinary inheritance; decorators beyond staticmethod, classmethod,
-  property/setter/deleter, dataclass and overload. Defining or inheriting `__new__`,
+  property/setter/deleter, abstractmethod, contextmanager, functools.cached_property, dataclass
+  and overload. Defining or inheriting `__new__` (but in an
+  [enum class](../../lib/compatibility.md#enum), in the form CPython's documentation gives),
   `__getattr__`, `__getattribute__`, `__setattr__` or `__delattr__`, or a base defining
   `__init_subclass__`, is rejected.
 - **Properties and attributes:** getter decorators, duplicate/misnamed setters or deleters,
@@ -624,9 +626,9 @@ See [annotations](typing.md#annotations), [aliases](typing.md#type-aliases) and
   class; `PathLike` outside a union with `str`; `TypeVar` outside template parameters
   and returns, except bound class type variables; `TypeVarTuple` outside unpacking in tuple,
   Callable or `*args`; unbound class type variables.
-- **Generic classes:** `Generic[...]` alongside another base; PEP 695 classes with bases,
-  `ParamSpec` or multiple `TypeVarTuple`s; explicit `C[X]` with a `TypeVarTuple` or unannotated /
-  variadic constructor parameters.
+- **Generic classes:** `Generic[...]` alongside a base other than a generic base that takes its
+  type variables; PEP 695 classes with bases, `ParamSpec` or multiple `TypeVarTuple`s; explicit
+  `C[X]` with a `TypeVarTuple` or unannotated / variadic constructor parameters.
 - **Declarations:** bare `Final` outside assignments (a class's needs `Final[T]` or a value
   typed as in an unannotated class attribute, and a constant in a dataclass or `NamedTuple`);
   missing imports for typing names even in local annotations; overload stubs not followed in

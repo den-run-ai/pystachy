@@ -1429,9 +1429,10 @@ methods may call another method declared on the same base, for example
 `self.write(data)`. These calls use the concrete receiver's override. Other uses
 of the receiver, including reading a field the base does not declare (below) or capturing a
 bound method, are unsupported.
-A secondary base and the primary hierarchy must declare distinct method names; two secondary
-bases may declare one only where the class overrides it
-([error test](../../tests/errors/classes/inheritance_secondary_conflict.py)). Overrides of secondary
+A secondary base and the primary hierarchy must declare distinct method names, and so must two
+secondary bases, also where the class overrides the method
+([error test](../../tests/errors/classes/inheritance_secondary_conflict.py),
+[overridden](../../tests/errors/classes/inheritance_secondary_override_overlap.py)). Overrides of secondary
 methods must keep their parameter and return types (but those that name a generic base's type
 variables). They may return a class derived from the one that the base's method returns
 ([test](../../tests/programs/classes/inheritance_traits_covariant.py)), and may widen
