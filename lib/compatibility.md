@@ -219,8 +219,10 @@ Differences from CPython:
   dict of a [recursive value alias](../docs/language/typing.md#recursive-value-aliases-prototype),
   where the recursion limit raises `RecursionError` and CPython writes `<Recursion on list ...>`
   ([deviation](../tests/deviations/lib_pprint_recursive_alias.py)).
-- Keys and set items whose `<` raises `TypeError` as the program runs, such as the members of
-  an `Enum`, keep the order of their dict or set. CPython orders them by `id()`.
+- Keys and set items whose `<` raises `TypeError` as the program runs are ordered by the names
+  of their types, as in CPython: `None` comes before the strs of a `dict[str | None, int]`
+  ([test](../tests/programs/library/lib_pprint_mixed_keys.py)). Those of one type, such as the
+  members of an `Enum`, keep the order of their dict or set, where CPython orders them by `id()`.
 - `isreadable()` is `False` for a value whose `repr()` is empty, where CPython gives `''`.
 
 Not supported, as compile-time errors:
