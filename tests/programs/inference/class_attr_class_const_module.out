@@ -1,0 +1,7 @@
+mods: init mods
+mods.shapes: init mods.shapes
+100 Mode.SAFE [<Mode.FAST: 'f'>, <Mode.SAFE: 's'>] True [100, 101] (101, <Mode.FAST: 'f'>) 101
+%r:bool:SAFE is_error(%r)::FAST 100 101 Mode.FAST True False
+101/fs 3/fs 4/s ('is_error(%r)', '')
+['bool', 'is_error', 'extra'] ['bool', 'is_error', 'extra'] 2 1
+[exit 0]

@@ -1,0 +1,7 @@
+'x\n'
+ValueError a call that passes text, universal_newlines, encoding or errors is compiled to return str, and none of them is true: leave them out for bytes
+ValueError
+ValueError
+ValueError
+'x\n'
+[exit 0]

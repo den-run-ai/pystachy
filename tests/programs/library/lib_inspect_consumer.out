@@ -1,0 +1,15 @@
+mods: init mods
+mods.shapes: init mods.shapes
+method($self, a, count=42, ratio=1.5, *rest, key, label='xxx', flag=True, missing=None, pair=(3, 'three'), **options)
+function(a, count=42, ratio=1.5, *rest, key, label='xxx', flag=True, missing=None, pair=(3, 'three'), **options)
+empty()
+pos_only(x, y=1, /, z=2)
+None
+['POSITIONAL_OR_KEYWORD', 'POSITIONAL_OR_KEYWORD', 'POSITIONAL_OR_KEYWORD', 'POSITIONAL_OR_KEYWORD', 'POSITIONAL_OR_KEYWORD', 'VAR_POSITIONAL', 'KEYWORD_ONLY', 'KEYWORD_ONLY', 'KEYWORD_ONLY', 'KEYWORD_ONLY', 'KEYWORD_ONLY', 'VAR_KEYWORD']
+2 ['a', 'd']
+a True False False True POSITIONAL_OR_KEYWORD POSITIONAL_OR_KEYWORD a|POSITIONAL_OR_KEYWORD|<class 'inspect._empty'>
+b False True False True POSITIONAL_OR_KEYWORD POSITIONAL_OR_KEYWORD b=3|POSITIONAL_OR_KEYWORD|3
+c False True True False KEYWORD_ONLY KEYWORD_ONLY c=None|KEYWORD_ONLY|None
+d True False True False KEYWORD_ONLY KEYWORD_ONLY d|KEYWORD_ONLY|<class 'inspect._empty'>
+f(a, b=3, *, c=None, d) f(a, b=3, *, c=None, d)
+[exit 0]
