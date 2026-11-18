@@ -222,6 +222,25 @@ An `Ins` uses only the fields its operation needs:
 | `a` | Typed operands in evaluation order |
 | `b` | Successor labels, phi predecessors or invoke edges |
 
+### Operand values
+
+An operand is a `Val`: a spelling and a static type. The spelling is one of six kinds, which
+`operand_kind` in [ir](../src/pystachy_compiler/ir.py) decides:
+
+| Kind | Spelling | Names |
+|---|---|---|
+| `value` | `%t<n>` | Result number `n` of an instruction of the function |
+| `param` | `%a<n>`, `%aid<n>`, `%idret` | Parameter `n`, its numeric identity companion, or the identity result |
+| `slot` | `%<name>.<n>` | The register of slot `n` (`slot_register`): a local, its "is assigned" flag or a stack tuple |
+| `global` | `@<name>` | A symbol of the module: a global, a function, a string or tuple constant |
+| `const` | an integer, a decimal float, `true`, `false`, `null`, `undef` | That constant |
+| `expr` | `ptrtoint (ptr @G to i64)`, `ptrtoint (ptr getelementptr (i8, ptr @G, i64 N) to i64)`, `bitcast (i64 N to double)` | A constant's address, or an address inside it, as a slot's bits; a float that has no decimal spelling, by its bits |
+
+The set is closed. With `PYSTACHY_IRCHECK=1` the verifier rejects any other spelling, so an
+operand cannot carry instruction text. The spellings are LLVM's, and LLVM lowering prints
+them unchanged. Another backend would translate these six kinds; the three constant
+expressions are the only ones that hold LLVM syntax beyond a name or a literal.
+
 Empty operand/result/label lists are shared immutable placeholders until an instruction needs
 its own list. `IFn.n` bounds allocated value and label numbers. Object descriptors and
 specialized classes are supplied by the frontend; the IR does not turn them into dynamic types.
