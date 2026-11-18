@@ -312,7 +312,9 @@ def gen_bmissable(self, kt: str, dkt: str) -> bool:
 def gen_bsuper(self, me: Val, m: str, args: list[Node]) -> Val:
     # super().m(args) in a method of a class deriving from a builtin container, or list.m(me,
     # args): the container's own method m on object me, whatever the class defines. Its
-    # __init__ takes at most an iterable of the items, which replace those it holds
+    # __init__ takes at most an iterable of the items, which replace those it holds; its
+    # __getitem__, __setitem__, __delitem__ and __contains__ are those of o[k], o[k] = v, del
+    # o[k] and k in o on the container
     kind = self.bkind(me.t)
     if len([a for a in args if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar"]) > 0:
         self.err(f"keyword and star arguments of {kind}.{m}() are not supported here; pass them by position")
@@ -341,6 +343,26 @@ def gen_bsuper(self, me: Val, m: str, args: list[Node]) -> Val:
         return self.repr(self.bview(me)) if m == "__repr__" else self.repr(me)
     if m == "__len__" and len(args) == 0:
         return self.builtin("len", [self.vnode(self.bview(me, True))], "")
+    line = self.line
+    if m == "__getitem__" and len(args) == 1:
+        # (dict.__getitem__ calls a class's __missing__ where the key is not there, as d[k] does)
+        if kind == "dict" and "__missing__" in self.classes[me.t].methods:
+            return self.bmissing(me, args[0])
+        v = self.bview(me)
+        return self.subscript(mk("index", "", line, [self.vnode(v), args[0]]), v)
+    if m == "__setitem__" and len(args) == 2:
+        # (its key, then its value, evaluated before the store, as the call's arguments are)
+        b = self.bbase(me.t)
+        k = self.vnode(self.expr(args[0], "" if "?" in b else targs(b)[0] if kind == "dict" else "int"))
+        x = self.expr(args[1], "" if "?" in b else targs(b)[1] if kind == "dict" else elem(b))
+        self.bstored(me.t, k, x.t)
+        self.assign(mk("index", "", line, [self.vnode(self.bview(me)), k]), x)
+        return Val("null", "None")
+    if m == "__delitem__" and len(args) == 1:
+        self.stmt(mk("del", "", line, [mk("index", "", line, [self.vnode(self.bview(me)), args[0]])]))
+        return Val("null", "None")
+    if m == "__contains__" and len(args) == 1:
+        return self.expr(mk("cmp", "in", line, [args[0], self.vnode(self.bview(me))]), "")
     if m.startswith("__") and m.endswith("__"):
         self.err(f"{kind}.{m}() of a class that derives from {kind} is not supported: use the operation on {kind}(self) or a method of {kind}")
     self.bfill(me.t, m, args)

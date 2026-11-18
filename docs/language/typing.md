@@ -1265,16 +1265,19 @@ attributes, properties, `__slots__`, `__hash__` and any special method it define
 `type(x).__name__` is its name, and `isinstance(x, list)` or `isinstance(x, dict)` is true.
 
 The class's `__init__` may call `super().__init__()` or `super().__init__(items)`, and its
-methods reach the builtin's own methods through `super().m(...)`, `list.m(self, ...)` or
-`dict.m(self, ...)`. A class without `__init__` is made by `C()` or `C(items)` (and, for a dict,
-keyword arguments), as `list()` and `dict()` make one. The builtin's own operations call none of
-the class's methods, as in CPython: `C(items)`, `+=`, `extend()` and `update()` fill the object
-as the builtin does where the class defines `append()`, `extend()` or `__setitem__`. Each
-comparison operator is the builtin's unless the class defines that operator's method, so a
-class that defines `__eq__` alone still compares `!=` as the builtin does, and a right operand
-whose class defines the reflected method is asked first. A slice, `+`, `*`, `|` or `copy()`
-makes a plain list or dict, as in CPython. Without `__eq__` and `__hash__` the objects are
-unhashable, as lists and dicts are.
+methods reach the builtin's own methods, and its `__getitem__`, `__setitem__`, `__delitem__`
+and `__contains__`, through `super().m(...)`, `list.m(self, ...)` or `dict.m(self, ...)`, as
+an `OrderedDict` or a case-insensitive dict that overrides item access does; the class's own
+`__setitem__` and the others then serve `o[k] = v`, `o[k]`, `del o[k]` and `k in o`. A class
+without `__init__` is made by `C()` or `C(items)` (and, for a dict, keyword arguments), as
+`list()` and `dict()` make one. The builtin's own operations call none of the class's methods,
+as in CPython: `C(items)`, `+=`, `extend()` and `update()` fill the object as the builtin does
+where the class defines `append()`, `extend()` or `__setitem__`. Each comparison operator is
+the builtin's unless the class defines that operator's method, so a class that defines
+`__eq__` alone still compares `!=` as the builtin does, and a right operand whose class
+defines the reflected method is asked first. A slice, `+`, `*`, `|` or `copy()` makes a plain
+list or dict, as in CPython. Without `__eq__` and `__hash__` the objects are unhashable, as
+lists and dicts are.
 
 A dict subclass's `__missing__` is called by `d[key]` and `d[key] op= value` where `key` is not
 there, as CPython's `dict.__getitem__` calls it, and by nothing else (`get()`, `in`,
@@ -1298,5 +1301,6 @@ variable, or an item of `list[list[T]]`), as a dynamic `Any` value, or copying i
 `dict(x)` copy the items. Other builtin bases (`set`, `str`, `int`, `tuple`, ...), a class
 deriving from such a class, such a class in multiple inheritance or with a decorator, a
 `TypeVar` item type, `__new__`, `C.fromkeys()`, special methods called through `super()` other
-than `__init__`, `__repr__`, `__str__` and `__len__`, and sequence patterns in `match` on such
-an object are unsupported.
+than `__init__`, `__getitem__`, `__setitem__`, `__delitem__`, `__contains__`, `__len__`,
+`__repr__` and `__str__` (`__iter__`, `__eq__`, ...), slices of an object whose class defines
+`__getitem__`, and sequence patterns in `match` on such an object are unsupported.

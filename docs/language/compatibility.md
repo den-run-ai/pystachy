@@ -559,10 +559,12 @@ See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
   subclass](typing.md#subclasses-of-list-and-dict), storing or passing its object where a
   `list[T]`, a `dict[K, V]` or a dynamic `Any` value is expected, `copy.copy()` and
   `copy.deepcopy()` of it, a class deriving from it, multiple inheritance or a decorator with
-  it, a `TypeVar` item type, `__new__`, special methods other than `__init__`, `__repr__`,
-  `__str__` and `__len__` through `super()`, `C.fromkeys()`, `match` sequence patterns, a key
-  that `__missing__` would see converted (a `bool` among `int` keys), and a bare base whose
-  objects receive no item, or items of different types (name the types in the base).
+  it, a `TypeVar` item type, `__new__`, special methods other than `__init__`, `__getitem__`,
+  `__setitem__`, `__delitem__`, `__contains__`, `__len__`, `__repr__` and `__str__` through
+  `super()`, a slice of an object whose class defines `__getitem__`, `C.fromkeys()`, `match`
+  sequence patterns, a key that `__missing__` would see converted (a `bool` among `int` keys),
+  and a bare base whose objects receive no item, or items of different types (name the types
+  in the base).
 - **Inherited members:** assigning inherited class attributes through subclasses without their
   own defaults; changing field types; derived-only fields without supported narrowing;
   inherited `cls`-using classmethods through base-typed objects, across modules or with
