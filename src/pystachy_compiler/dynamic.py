@@ -4875,6 +4875,9 @@ def gen_dyn_mixed(self, es: list[Node], display: list[Node]) -> bool:
     rebound: dict[str, bool] = {}
     for e in display:
         walrus_names(e, rebound)
+    # (a name that already has a type where the display starts keeps it for the items that
+    # read it before a := rebinds it: only names with no type yet are left out)
+    rebound = {n: True for n in rebound if n not in self.ltype and not (self.is_global(n) and n in self.gtypes)}
     ts: list[str] = []
     for e in es:
         if len(rebound) > 0 and e.kind != "starred" and e.kind != "dstar" and mentions(e, list(rebound)):
