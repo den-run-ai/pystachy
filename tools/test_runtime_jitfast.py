@@ -5,10 +5,13 @@ IR: the 136-byte cutoff, the size class's free list in pys_fl, the complemented 
 call. The test compiles the module that lower_module.jit_alloc makes of a small program (JITFAST in place
 of pys_alloc's and pys_new's declarations) beside a harness built from runtime.c's own gc_alloc,
 cls() and size classes. For every size up to 300 bytes, with full and with empty free lists, it
-checks that JITFAST returns the slot gc_alloc returns, from cls()'s list, whose slots have room for
-the size, or calls the slow path with the same size and kind, and that it leaves the same lists
-behind. It also checks that jit_alloc declares pys_gc_slow once when the program declares it
-already. The negative control shifts JITFAST's class by one and expects the comparison to fail.
+checks that gc_alloc pops cls()'s list, whose slots have room for the size, and that below 136
+bytes JITFAST returns the slot gc_alloc returns or calls the slow path with the same size and
+kind, and leaves the same lists behind. From 136 bytes gc_alloc pops a list too, which the JIT
+tier does not copy: there JITFAST must call the slow path, which takes the slot itself, and
+leave the lists alone. It also checks that jit_alloc declares pys_gc_slow once when the program
+declares it already. The negative control shifts JITFAST's class by one and expects the
+comparison to fail.
 """
 import os
 from pathlib import Path
@@ -78,9 +81,14 @@ int main(void) {
         void *want = gc_alloc(n, 0);
         I want_n = slow_n, want_how = slow_how;
         memcpy(lists_after, pys_fl, sizeof lists_after); memcpy(cells_after, cells, sizeof cells_after);
-        if (full && n < 136) {         /* gc_alloc pops cls()'s list, whose slots hold n bytes and the slack byte */
+        if (full) {                    /* gc_alloc pops cls()'s list, whose slots hold n bytes and the slack byte */
           I k = (W *)want - &cells[0][0];
           if (k < 0 || k % 2 || k / 2 >= NK || k / 2 != 2 * cls(n) || csize[cls(n)] < n + 1) bad("gc_alloc", "pops a list without room", n, full);
+        } else if (want != &slow || want_n != n || want_how != 0) bad("gc_alloc", "does not call the slow path for an empty list", n, full);
+        if (n >= 136) {                /* the JIT tier's copy ends here: the slow path, and the lists as they were */
+          lists(full);
+          want = &slow; want_n = n; want_how = 0;
+          memcpy(lists_after, pys_fl, sizeof lists_after); memcpy(cells_after, cells, sizeof cells_after);
         }
         lists(full);
         void *got = jit[f](n);
@@ -108,6 +116,7 @@ def harness():
             # JITFAST is compared with the default, uninstrumented allocator.
             + runtime_part(runtime, r"^#define PROFILE_ALLOC\(n\) \(\(void\)0\)\n")
             + runtime_part(runtime, r"^typedef uintptr_t __attribute__\(\(may_alias\)\) W;[^\n]*\n")
+            + runtime_part(runtime, r"^#define SMALL [^\n]*\n")
             + runtime_part(runtime, r"^#define NK [^\n]*\n")
             + runtime_part(runtime, r"^static const short csize\[NK / 2\] = \{.*?\};\n")
             + runtime_part(runtime, r"^static I cls\(I n\) \{.*?^\}\n")
