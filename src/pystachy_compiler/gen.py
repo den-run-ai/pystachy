@@ -22,6 +22,11 @@ from src.pystachy_compiler.memory_ir import (
     gen_mload as memory_ir_mload,
     gen_mstore as memory_ir_mstore,
     gen_maddr as memory_ir_maddr,
+    gen_verify_memory as memory_ir_verify_memory,
+)
+from src.pystachy_compiler.machine_ir import (
+    gen_machine_ir as machine_ir_machine_ir,
+    gen_verify_machine as machine_ir_verify_machine,
 )
 from src.pystachy_compiler.bigints import (
     gen_big_builtin as bigints_big_builtin,
@@ -994,6 +999,7 @@ from src.pystachy_compiler.expressions import (
     gen_optcmp as expressions_optcmp,
     gen_optint as expressions_optint,
     gen_percent as expressions_percent,
+    gen_percent_map as expressions_percent_map,
     gen_percent_opt as expressions_percent_opt,
     gen_pformat as expressions_pformat,
     gen_str_field as expressions_str_field,
@@ -1039,6 +1045,9 @@ from src.pystachy_compiler.expressions import (
     gen_container_pair_eq as expressions_container_pair_eq,
     gen_tuple_pair_eq as expressions_tuple_pair_eq,
     gen_dict_pair_eq as expressions_dict_pair_eq,
+    gen_dict_view as expressions_dict_view,
+    gen_dict_view_has as expressions_dict_view_has,
+    gen_dict_view_cmp as expressions_dict_view_cmp,
     gen_unary as expressions_unary,
 )
 from src.pystachy_compiler.flow import (
@@ -2498,8 +2507,8 @@ class Gen:
     def dyn_slice(self, o: Val, bs: list[Node]) -> Val:
         return dynamic_dyn_slice(self, o, bs)
 
-    def dyn_mixed(self, es: list[Node]) -> bool:
-        return dynamic_dyn_mixed(self, es)
+    def dyn_mixed(self, es: list[Node], display: list[Node]) -> bool:
+        return dynamic_dyn_mixed(self, es, display)
 
     def dyn_dry(self, e: Node) -> str:
         return dynamic_dyn_dry(self, e)
@@ -2871,6 +2880,15 @@ class Gen:
 
     def maddr(self, t: str, p: str, index: str, inbounds: bool = False) -> str:
         return memory_ir_maddr(self, t, p, index, inbounds)
+
+    def verify_memory(self, fn: IFn, b: Blk, i: Ins, slots: bool) -> None:
+        return memory_ir_verify_memory(self, fn, b, i, slots)
+
+    def machine_ir(self, fn: IFn) -> None:
+        return machine_ir_machine_ir(self, fn)
+
+    def verify_machine(self, fn: IFn) -> None:
+        return machine_ir_verify_machine(self, fn)
 
     def mem_load(self, a: Val) -> Val:
         return emission_mem_load(self, a)
@@ -4752,6 +4770,9 @@ class Gen:
     def cls_bound(self, f: FnInfo, c: str, obj: bool) -> None:
         return expressions_cls_bound(self, f, c, obj)
 
+    def percent_map(self, fmt: str, v: Val) -> Val:
+        return expressions_percent_map(self, fmt, v)
+
     def percent(self, fmt: str, rhs: Node, lit: bool) -> Val:
         return expressions_percent(self, fmt, rhs, lit)
 
@@ -5171,6 +5192,15 @@ class Gen:
 
     def dict_pair_eq(self, op: str, a: Val, b: Val) -> Val:
         return expressions_dict_pair_eq(self, op, a, b)
+
+    def dict_view(self, n: Node) -> str:
+        return expressions_dict_view(self, n)
+
+    def dict_view_has(self, op: str, view: str, a: Val, n: Node) -> Val:
+        return expressions_dict_view_has(self, op, view, a, n)
+
+    def dict_view_cmp(self, op: str, items: bool, a: Val, b: Val) -> Val:
+        return expressions_dict_view_cmp(self, op, items, a, b)
 
     def tuple_order(self, op: str, a: Val, b: Val) -> Val:
         return expressions_tuple_order(self, op, a, b)

@@ -112,7 +112,7 @@ class RuntimeUBSan(unittest.TestCase):
                         PYSTACHY_CACHE=str(self.root / "cache"), PROBE_IR=str(self.ir), PROBE_ARGS=str(self.args),
                         LD_PRELOAD=library, UBSAN_OPTIONS="handle_segv=0")
         for name in ("PYSTACHY_OPT", "PYSTACHY_PATH", "PYSTACHY_GC", "PYSTACHY_GC_STRESS",
-                     "PYSTACHY_GC_STRESS_PROGRAM", "PYSTACHY_JIT_CODEGEN", "PYSTACHY_JIT_INLINE"):
+                     "PYSTACHY_GC_STRESS_PROGRAM", "PYSTACHY_JIT_CODEGEN", "PYSTACHY_JIT_INLINE", "PYSTACHY_JIT_OPT"):
             self.env.pop(name, None)
 
     def run_probe(self, mode, *, overflow=False, flags=None, drop_archive=False):

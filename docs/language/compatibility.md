@@ -108,6 +108,9 @@ applies. Bytes case methods remain ASCII-only.
   those in later call arguments. `enumerate`, `zip`, `reversed`, and `in`/`min`/`max`
   over values can therefore miss size changes that CPython detects. Plain `for`
   loops and `iter()` over `d.items()` traverse the dict and detect size changes.
+  Written directly in a test, `d.keys()` or `d.items()` of a dict variable, field or
+  display is looked up by `in` and compared with another such view as a set, as
+  CPython does: `{1: 0, 2: 0}.keys() == {2: 0, 1: 0}.keys()` is true.
 - **Set order differs.** String hashes are not CPython's randomized hashes;
   constant displays do not reuse CPython's frozenset constants or `.pyc` layouts.
   Identity-hashed objects depend on addresses in both runtimes. Use `sorted()`
@@ -250,10 +253,11 @@ or generator/async initializers retain eager formatting
   not created, and uncalled templates are not type-checked. Syntax errors remain
   errors. See [import-time scope](modules.md#unsupported-code-in-imported-modules).
 - **Optional imports** can take the fallback where CPython finds an installed
-  module or API. A failed module retains globals already assigned; a later import
-  reruns its code over them. A subclass of `ImportError` ends the program instead of
-  reaching the handler when an imported module's code raises it, or when the statements
-  after resolved imports raise it but cannot keep the `except` clauses. See
+  module or API, also where a module that the imported module needs is missing here
+  (CPython's `ssl` without `_ssl`). A failed module retains globals already assigned;
+  a later import reruns its code over them. A subclass of `ImportError` ends the program
+  instead of reaching the handler when an imported module's code raises it, or when the
+  statements after resolved imports raise it but cannot keep the `except` clauses. See
   [optional imports](modules.md#optional-imports).
 - **Unbound globals** read as `m.x` raise `AttributeError` without CPython's
   circular-import/renaming hints. `from m import x` raises `ImportError`, using the
@@ -434,7 +438,8 @@ See [module initialization](modules.md#finding-and-running-modules),
 - **Optional imports:** a possible `ImportError` or `ModuleNotFoundError` raised under that name,
   other than a definite module-top-level raise;
   a possibly unbound from-import; handlers using `as e`, re-raising, or potentially ending
-  the program when the module is missing; a failing module importing its caller back.
+  the program when the module, or one it needs, is missing; a failing module importing its
+  caller back; an import that is not optional of a module that needs a missing one.
   Optional from-imports also require a definite binding, excluding conditional, deleted,
   annotation-only, function-created or star-imported names.
 - **Module structure:** imported modules binding `__name__`; syntax errors even in imports

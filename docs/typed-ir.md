@@ -60,7 +60,7 @@ stages in order, for both ordinary programs and `runtime.py`:
 | `analyze_program()` | Callback versions and the function index are complete. Effect summaries and the recursion policy precede requested typed-IR verification. |
 | `optimize_program()` | Enabled typed-IR passes run under their existing prerequisites, preserved facts and invalidation contracts. Exception regions remain in pre-lowering form. |
 | `finalize_program()` | Required exception edges and tuple-return ABI decisions are ready for the backend. Runtime-module and CPython-export admission checks have passed. Function bodies, ABI plans and representation tables remain available for inspection. |
-| `lower_program()` | Function, adapter and module lowering serialize LLVM. Function bodies are consumed; summaries remain available. |
+| `lower_program()` | Each function's layout reads first become machine operations (`Gen.machine_ir`, see [machine lowering](#machine-lowering)). Function, adapter and module lowering serialize LLVM. Function bodies are consumed; summaries remain available. |
 
 `Gen.typed_program(modules)` runs through finalization without calling
 `lower_program`. This is an internal, attempt-local boundary for tools that need
@@ -473,6 +473,10 @@ product or an iteration cutoff. Conditional facts survive boolean phis and short
 expressions and are dropped after their last possible use. Type-name domains have no
 machine-word tag limit. The proof modules are `union_proof.py` and `union_state.py`;
 `tools/test_typed_union_proofs.py` checks malformed IR without lowering or executing it.
+This proof and the dynamic guard proof share `dataflow.py`: one definition of a block's
+outgoing edges (terminator, handler and cold check block), of the values still read at each
+block's start, and of the first-in, first-out worklist. Each proof supplies only its
+per-block facts, phi transfer and final report (`tools/test_typed_dataflow.py`).
 These operations preserve the previous LLVM loads and conservative `rL rD rO` effects.
 Canonicalization retains the equivalence of repeated reads of the same immutable union
 payload, so narrowing a dictionary key still permits the existing lookup fusion. This
@@ -719,7 +723,7 @@ before the next pass. Normal compilation does not add these verification scans.
 |---|---|
 | `charslots` | For a private local assigned once in the IR from a string index, keep the indexed code point if the store dominates every read and each read only compares it to a one-byte ASCII string literal. Indexing and its exceptions stay at the assignment. |
 | `listget` | Replace a list read in a sequence loop or an invariant forward range loop with an unchecked load when the loop test proves the index valid and effects preserve the list's length; a loop over a `bytes`, which never changes in place, reads each byte inline as it is lowered |
-| `listguard` | Give an innermost forward range loop whose ops change no list's length a copy whose item reads and assignments, at the index plus a constant, of lists the loop does not rebind are unchecked (`list.load`, `list.store`), and run the copy where tests before the loop find every such list long enough; give inline list reads and stores TBAA tags |
+| `listguard` | Give an innermost forward range loop whose ops change no list's length a copy whose item reads and assignments, at the index plus a constant (and a base no iteration changes), of lists the loop does not rebind are unchecked (`list.load`, `list.store`), and run the copy where tests before the loop find every such list long enough; give inline list reads and stores TBAA tags |
 | `dictfuse` | Reuse a known dictionary entry across membership tests, reads and updates of the same dictionary/key, until a mutation or user-code effect invalidates it |
 | `tupleiter` | Traverse tuple slots directly instead of materializing a list |
 | `listfast` | Inline a checked fast path for arbitrary `list[int]` and `bytes` reads, retaining the runtime fallback for negative or out-of-range indices |
@@ -781,7 +785,14 @@ the item inline as `list.set` does where no module opts in to promoting ints or 
 before the loop run the copy where every such list has `stop <= len(xs) - c` for its largest
 `c`, which keeps `0 <= i + c < len(xs)` for every `i` the loop takes; a list that a local not yet
 assigned would hold, and any shorter list, run the loop as compiled, which raises `IndexError`
-(or `UnboundLocalError`) after the same iterations as CPython. The copy doubles the loop's code.
+(or `UnboundLocalError`) after the same iterations as CPython. An index may also add a base that
+no iteration changes, an `int` local the loop never stores or a value it does not define, as in
+`data[bi + d]` (`tests/programs/containers/list_guard_base.py`). For each base `b`, the tests
+check `start + c + b >= 0` for its smallest `c` and compute `stop + b`, checked; each list then
+needs `stop + b <= len(xs) - c` for its largest `c` with that base. Where a test fails, as for a
+negative index that Python reads from the end, the loop runs as compiled. The copy reads `b` once,
+from the tests, and adds it to the index without an overflow check, since the tests keep `b + i`
+within `stop + b` (`tests/ir/list_guard_base.py`). The copy doubles the loop's code.
 A call in the loop of a function that the program calls nowhere else is `alwaysinline` in the
 copy, and the callee's ops count toward the 400. LLVM inlines an internal function's only call
 almost whatever its size, but each of two calls only if it is cheap: the copy's second call once
@@ -885,6 +896,23 @@ verifier checks unwind edges and rejects leftover unprotected may-raise calls in
 The runtime uses table-driven native unwinding, rather than the error-flag scheme considered
 in the original design. `finally` and `with` cleanup are part of the shipped implementation;
 see [architecture](internals.md#errors-and-cleanup) for the runtime overview.
+
+## Machine lowering
+
+`Gen.lower` begins with `Gen.machine_ir`, the last typed-IR stage. Until then a read of a
+runtime layout keeps its meaning: `list.len`, `union.tag`, `union.payload`, `union.raw`,
+`dyn.type`, `dyn.payload` and `dyn.raw` carry their receiver's type, effects and guard proofs
+through the passes, the verifier and the inspection snapshots. The stage rewrites each into the
+`mach.addr` and `mach.load` operations that other header reads already use, from one table of
+word offsets (`WORD_READS` in `machine_ir.py`). The LLVM printer has no case for a layout read
+and rejects one that reaches it.
+
+The rewrite keeps every value number, label and source line, so the emitted LLVM is unchanged.
+With `PYSTACHY_IRCHECK=1`, `Gen.verify_machine` then checks that no layout read is left and
+that machine memory operations keep their shape; only there may a `mach.load` give a payload's
+opaque `%slot`. Other layout-dependent operations are still printed directly. Inline list
+items need a struct address and TBAA tags that `mach.addr` cannot express, and `tupleret`
+decides a fixed tuple's slots while its function is printed.
 
 <a id="13-defects-found-on-the-way"></a>
 <a id="6-migration-plan"></a>
