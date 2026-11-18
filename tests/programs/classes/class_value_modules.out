@@ -1,0 +1,7 @@
+mods: init mods
+mods.shapes: init mods.shapes
+4 3 9 0
+<class 'mods.classval_shapes.Square'> <class 'mods.classval_shapes.Circle'> <class '__main__.Local'> mods.classval_shapes __main__ Circle
+True True True Circle
+3 ['circle', 'square'] NameError: name 'Circle' is not defined
+[exit 0]

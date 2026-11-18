@@ -1667,6 +1667,7 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
     phase = "runtime" if self.rtmode else "program"
     self.opts = optimizations()
     self.identity_modules(mods)  # (which modules' code tracks numeric identity: dynamic.py)
+    self.clsbodies = [m.body for m in mods]  # (class_values.py's class_value_annotated)
     # (lib's modules of range objects, of object()'s and of complex numbers bind no global of another module: the
     # names they bind do not keep a global of the program from being constant)
     own = [m for m in mods if m.name != RANGES and m.name != OBJECTS and m.name != COMPLEXS]

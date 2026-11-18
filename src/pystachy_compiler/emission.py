@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, unionnames
 from src.pystachy_compiler.bigints import narrows
-from src.pystachy_compiler.diagnostics import Rejoin, fail, int_lists
+from src.pystachy_compiler.diagnostics import ClassBoxes, Rejoin, fail, int_lists
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.ir import Blk, Data, Frame, Ins, Val, tmpname, one_num
 from src.pystachy_compiler.specs import BIGOPT, CHECKED, EMPTYFS, LIST_READS, LIST_WRITES, NARROWED, PATH_OPS, RTL, RTSYM, STR_HEADER_SIZE, TEXT_OPS, UNICODE_AUDIT
@@ -41,6 +41,11 @@ def gen_err(self, msg: str) -> None:
         raise Rejoin()
     if len(self.newhints) > 0 and not self.final:
         raise Rejoin()  # (an error after a join may come of the narrower type it widens: see Rejoin)
+    if len(self.clsused) > 0:
+        # (it may come of a class read as a typed class object where a module that opts in to
+        # dynamic Any, and names no type[C], made a class box of it before: compiled again so,
+        # see ClassBoxes, which then retries a hierarchy or a narrowing below as before)
+        raise ClassBoxes()
     self.retry_hierarchy(msg)
     if len(self.ncand) > 0 and self.curfn is not None:
         # (an error that no join or hierarchy explains, in a function whose isinstance() tests of

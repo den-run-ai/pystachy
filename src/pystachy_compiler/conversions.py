@@ -8,6 +8,7 @@ from src.pystachy_compiler.syntax import made_var, mk
 from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, DUNDER, EMPTYFS, NONEVAR, ORDOP, REFL
 from src.pystachy_compiler.bigints import big_viewable, held
 from src.pystachy_compiler.utils import (
+    is_clsval,
     elem,
     is_callable,
     is_dict,
@@ -389,6 +390,8 @@ def gen_plain_desc(self, t: str, use: str) -> str:
         return "E"  # (repr: pys_exc_repr; equality: identity)
     if t == "exctype":
         return "C"  # (an exception class's class object: repr pys_exc_type; equality and hash: identity)
+    if is_clsval(t):
+        return "Y"  # (an ordinary class's class object, its reflection record: repr <class 'M.Q'>; equality and hash: identity)
     if t in self.classes:
         # O<id>: the runtime calls back into pys_obj_eq/cmp/repr, which dispatch on the id, and
         # so the methods of use (a < b: __lt__, else the reflected __gt__) with objects of
