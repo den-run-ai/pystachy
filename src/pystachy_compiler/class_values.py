@@ -31,11 +31,19 @@ from src.pystachy_compiler.diagnostics import LINES, ClassBoxes, dynamic_program
 from src.pystachy_compiler.ir import Data, Ins, Val
 from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.reflection import RF_BUILTIN
-from src.pystachy_compiler.specs import ITERS, OBJECTC, RANGEC
+from src.pystachy_compiler.specs import COMPLEXC, ITERS, OBJECTC, RANGEC
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import clsof, is_callable, is_clsval, is_fn, is_opt, is_union, pure_arg, typestr, umembers, unopt
 
 NONETYPE_ARGS = "NoneType takes no arguments"
+
+
+def builtin_backed(c: str) -> bool:
+    # is c one of lib's classes whose objects are a builtin class's: object()'s, range's,
+    # complex's and the builtin containers' iterators'. reflection.py's refl_type_name gives
+    # them the builtin class's names, and refl_record its record where a module opts in to
+    # dynamic Any: keep this list as theirs
+    return c == OBJECTC or c == RANGEC or c == COMPLEXC or c.startswith(ITERS + "$")
 
 
 def gen_class_value_named(self, c: str) -> bool:
@@ -80,12 +88,13 @@ def gen_class_value(self, c: str) -> Val:
 
 def gen_class_value_builtin_record(self, name: str) -> str:
     # the reflection record of builtin class name (int, str, list, object, ...), its class
-    # object: the record that type(x) of its values gives. object(), ranges and the iterators
-    # are objects of lib's classes, whose records stand for the builtin classes' in a program
-    # without dynamic Any (with it, refl_record shares the builtin's)
+    # object: the record that type(x) of its values gives. object(), ranges, complex numbers
+    # and the iterators are objects of lib's classes (builtin_backed), whose records stand for
+    # the builtin classes' in a program without dynamic Any (with it, refl_record shares the
+    # builtin's)
     if not dynamic_program():
         for c in self.classes:
-            if (c == OBJECTC or c == RANGEC or c.startswith(ITERS + "$")) and short(c) == name:
+            if builtin_backed(c) and short(c) == name:
                 return self.refl_record(c)
     return self.refl_record("%class:" + name)
 
@@ -107,10 +116,10 @@ def gen_class_value_static(self, c: str, mod: str, line: int) -> bool:
     # type[C] itself was not compiled then: its reads stay typed, and its errors are theirs
     if line // LINES in self.clsany or not self.class_value_named(c) or self.class_value_problem(c) != "":
         return False
-    if c == OBJECTC or c == RANGEC or c.startswith(ITERS + "$"):
-        # (lib's classes of object()'s objects, of ranges and of iterators: in a program with
-        # such a module their class values are the builtin classes', object and range, whose
-        # records they share: reflection.py's refl_record)
+    if builtin_backed(c):
+        # (lib's classes of object()'s objects, of ranges, of complex numbers and of iterators:
+        # in a program with such a module their class values are the builtin classes', object,
+        # range and complex, whose records they share: reflection.py's refl_record)
         return False
     m = self.classes[c].mod
     if mod != "" and m != mod and m in self.comp and mod in self.comp and self.comp[m] == self.comp[mod]:
