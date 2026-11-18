@@ -1,4 +1,3 @@
-True bytearray bytearray True
-bytearray(b'xy') bytearray(b'\x00\x00') True
-True range
+<class 'bytearray'> <class 'bytearray'> <class 'bytearray'> <class 'bytearray'> builtins bytearray True True
+bytearray(b'\x00') True
 [exit 0]
