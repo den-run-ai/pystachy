@@ -1,0 +1,4 @@
+p5 p True True
+q 6 q6
+['q6', 'bare1']
+[exit 0]

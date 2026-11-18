@@ -1,0 +1,13 @@
+A2 False True
+no class
+A True False
+no class
+[<class '__main__.A'>, <class '__main__.A2'>, <class 'str'>, <class '__main__.B'>] 4 True True
+3 True True False
+<class '__main__.A'>
+<class '__main__.B'>
+<class 'int'>
+<class '__main__.B'> True
+<class 'int'> True
+a f a2 3
+[exit 0]

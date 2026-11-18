@@ -1,6 +1,6 @@
 """Builtins component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.utils import is_union, umembers
+from src.pystachy_compiler.utils import clsof, is_union, umembers
 from src.pystachy_compiler.diagnostics import int_lists
 from src.pystachy_compiler.ir import Data, Ins, IterArg, Loop, Reduce, Val
 from src.pystachy_compiler.lexer import Lexer, codepoint, utf8len
@@ -47,9 +47,11 @@ from src.pystachy_compiler.specs import (
     TYPESMOD,
     TYPESUSE,
     VERSIONINFO,
+    VTUPLE_ITEMS,
 )
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import (
+    is_clsval,
     atomic_dict,
     atomic_list,
     bool_for_int,
@@ -499,8 +501,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             v = self.as_list(v, "tuple")  # (the items of its iterator object; a range's numbers)
         if not is_list(v.t):
             self.err(f"tuple() of {typestr(v.t)} is not supported: use a list, string or tuple")
-        if unopt(elem(v.t)) not in ["int", "float", "bool", "str", "dyn"]:
-            self.err("runtime-length tuple elements must be int, float, bool, str or their optional types")
+        if unopt(elem(v.t)) == BIG or not self.vtuple_holds(elem(v.t)):
+            self.err(VTUPLE_ITEMS)
         v = self.list_identity(v)
         return Val(self.rt("pys_vtuple_new", "ptr", [f"ptr {v.v}"]), self.ctype("vtuple", [elem(v.t)]))
     if name == "typing.NamedTuple":
@@ -553,6 +555,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         hasharg = self.expr(args[0], "")
         if self.dyn_policy(self.line) and self.refl_builtin_class(hasharg.t) != "":
             hasharg = self.dyn_box(hasharg)
+        elif self.refl_builtin_class(hasharg.t) != "":
+            hasharg = self.class_value_builtin(hasharg)  # (a builtin class named: its class object)
         return self.hash_value(hasharg)
     if name == "format" and 1 <= len(args) <= 2 and len([a for a in args if a.kind == "kw"]) == 0:
         # format(v, spec): what the f-string field {v:spec} gives, v.__format__(spec)
@@ -586,16 +590,24 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         if tv.t == "exc" or tv.t == "opt[exc]" or (tv.t in self.classes and self.classes[tv.t].exc != ""):
             return self.exc_type_of(tv)  # (type(e) of an exception, as a value: its class's class object)
         if self.dyn_policy(self.line):
+            if self.class_value_typed(tv, self.knownobj(args[0])):
+                return self.class_value_of(tv, self.knownobj(args[0]))  # (as in other modules)
             return self.refl_type_value(tv)
         if tv.t == "exc" or (tv.t in self.classes and self.classes[tv.t].exc != ""):
             self.err(f"unsupported call type({tv.t}): type(e) of an exception is supported as type(e).__name__ (and isinstance(e, C) tests its class)")
-        self.err("type(x) as a value (a class object) is not supported (#7); type(x).__name__, x.__class__.__name__, type(x) is C and type(a) == type(b) are (#486)")
+        if self.class_value_named(tv.t) or (is_union(unopt(tv.t)) and self.class_value_objects(tv.t)):
+            return self.class_value_of(tv, self.knownobj(args[0]))  # (an object's class: its class object, class_values.py)
+        return self.class_value_type(tv, self.knownobj(args[0]))  # (another value's: its builtin class's)
     if name == "callable" and len(args) == 1 and args[0].kind != "kw" and args[0].kind != "starred":
         # decided by the static type: an object is callable where its class defines __call__
         # and it is not None
         v = self.expr(args[0], "")
         if v.t == "dyn":
             return self.dyn_call(self.dyn_dispatcher("callable", ["dyn"], "bool", ""), [v])
+        ucalls = [m for m in umembers(unopt(v.t)) if is_callable(m)] if is_union(unopt(v.t)) else []
+        if len(ucalls) > 0:
+            # (a union that holds a Callable: its box's tag tells, and None is not callable)
+            return Val(self.utest(v, ucalls, is_opt(v.t) and v.v not in self.nn), "bool")
         known = self.callable_type(v.t)
         if known == -2:
             return Val("true", "bool") if v.v in self.nn else self.ptr_cmp('!=', v, Val('null', 'None'))
@@ -673,12 +685,19 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     if name == "issubclass" and len(args) == 2 and args[0].kind != "kw" and args[1].kind != "kw" and args[1].kind != "starred" and not self.exc_classes(args[1]) and self.exc_dynamic(args[1]):
         # issubclass(t, c) of an exception class's class object t, c a value holding them
         v = self.expr(args[0], "")
+        if is_clsval(unopt(v.t)):
+            return self.class_value_issub(v, args[1])  # (an ordinary class's class object: class_values.py)
         if unopt(v.t) != "exctype":
             self.err(f"issubclass() is supported for exception classes (type[BaseException]), not {typestr(v.t)}")
         return self.exc_test(v, args[1], "issubclass")
     if name == "issubclass" and len(args) == 2 and args[0].kind != "kw" and args[1].kind != "kw" and self.exc_classes(args[1]):
         # issubclass(t, C) of an exception class's class object t
         v = self.expr(args[0], "")
+        if is_clsval(unopt(v.t)):
+            # (an ordinary class's class object derives from no exception class)
+            self.isinst_reads(args[1])
+            self.unwrap(v, "TypeError: issubclass() arg 1 must be a class")
+            return Val("false", "bool")
         if unopt(v.t) != "exctype":
             self.err(f"issubclass() is supported for the class of an exception (type[BaseException], as __exit__ takes it), not {typestr(v.t)}")
         self.isinst_reads(args[1])
@@ -688,6 +707,10 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             # class object type() gives of an exception that is None)
             return self.ptr_cmp('!=', v, self.exc_none_class())
         return self.exc_isinst(Val(v.v, "exc"), args[1])
+    if name == "issubclass" and len(args) == 2 and args[0].kind != "kw" and args[1].kind != "kw" and args[0].kind != "starred" and args[1].kind != "starred" and (self.class_value_holds(self.dry(args[0])) or (self.refl_builtin_class(self.dry(args[0])) != "" and not self.puretype(args[1], False))):
+        # issubclass(t, c) of an ordinary class's class object t, c no exception class
+        # (class_values.py)
+        return self.class_value_issub(self.expr(args[0], ""), args[1])
     if name == "isinstance" and len(args) == 2 and args[0].kind != "kw" and args[1].kind != "kw":
         # decided by the static types, or by whether it is None (an optional value, an object)
         v = self.expr(args[0], "")
@@ -714,16 +737,32 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         if v.t == "None" and self.exc_classes(args[1]):
             # (None is no exception: __exit__(None, None, None) of an unannotated __exit__)
             return Val("false", "bool")
-        if is_union(unopt(v.t)) and self.isinst(v.t, args[1]) == -1:
+        if is_union(unopt(v.t)) and self.isinst(v.t, args[1]) == -1 and not self.class_value_dynamic(args[1]):
             return Val(self.uisinst(v, args[1]), "bool")
         known = self.isinst(v.t, args[1])
         if known < -1:
             return self.ptr_cmp('!=' if known == -2 else '==', v, Val('null', 'None'))
         if known < 0:
-            if v.t in self.classes and self.classes[v.t].tag > 0:
+            tagged = v.t in self.classes and self.classes[v.t].tag > 0
+            if tagged and not self.class_value_dynamic(args[1]):
                 return self.obj_isinst(v, args[1])
-            if self.exc_dynamic(args[1]):
+            if not tagged and not is_union(unopt(v.t)) and self.exc_dynamic(args[1]):
                 return self.exc_test(v, args[1], "isinstance")  # (exception classes held as values)
+            if self.class_value_dynamic(args[1]):
+                # (an ordinary class's class object held as a value: an object's class is tested
+                # against it, a union's member's too; a value of another type is an instance
+                # of no class of the program: class_values.py)
+                clsv = self.expr(args[1], "")
+                if clsv.t == "dyn":
+                    # (type(x) of a union's object in a module that opts in to dynamic Any: the
+                    # class value of an ordinary class, as its class object)
+                    clsv = self.class_value_unbox(clsv, "type[object]")
+                if self.class_value_named(v.t) or v.t == "None" or is_union(unopt(v.t)) or clsof(unopt(clsv.t)) == "object":
+                    # (any class's class object may be a builtin class's, which a value that is
+                    # no object of the program is an instance of)
+                    return self.class_value_isinst(v, clsv, self.knownobj(args[0]))
+                self.unwrap(clsv, "TypeError: isinstance() arg 2 must be a type, a tuple of types, or a union")
+                return Val("false", "bool")
             self.err("isinstance() is only supported with the builtin types and classes as its second argument")
         return Val("true" if known == 1 else "false", "bool")
     if (name == "any" or name == "all") and len(args) == 1 and (self.iterator_call(args[0]) or (args[0].kind == "listcomp" and args[0].s == "gen")):
@@ -732,6 +771,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         if g.kind != "listcomp":
             g = mk("listcomp", "gen", g.line, [mk("name", "__item", g.line, []), made_var("__item", g.line), g])
         return self.listcomp(g, "", name)
+    if name == "sum" and len(args) == 2 and args[0].kind != "kw" and args[1].kind == "kw" and args[1].s == "start":
+        args = [args[0], args[1].kids[0]]  # (sum(iterable, start=s) is sum(iterable, s))
     if name == "sum" or name == "min" or name == "max":
         stt = self.stream_start(name, args)
         if stt != "-":
@@ -883,6 +924,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             self.key_check(keyv, f"{name}()")
     if len(vals) == 1 and len(kws) == 0 and name in ["str", "repr", "bool", "id"] and self.dyn_policy(self.line) and self.refl_builtin_class(vals[0].t) != "":
         vals[0] = self.dyn_box(vals[0])
+    elif len(vals) == 1 and len(kws) == 0 and (name == "str" or name == "repr") and self.refl_builtin_class(vals[0].t) != "":
+        vals[0] = self.class_value_builtin(vals[0])  # (a builtin class named: its class object)
     if len(vals) == 1 and len(kws) == 0 and vals[0].t == "dyn" and name in ["len", "str", "repr", "int", "float", "bool", "id", "abs"]:
         return self.dyn_builtin(name, vals[0])  # (by its box's type: dynamic.py)
     if name == "sum" and len(kws) == 0 and 1 <= len(vals) <= 2 and (vals[0].t == "dyn" or vals[0].t == "list[dyn]" or (len(vals) == 2 and vals[1].t == "dyn")):
@@ -898,6 +941,10 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             vals = [self.big_narrow(v) for v in vals]  # (keyed min/max and int | None compare their values as they are)
     if (name == "sum" or name == "math.prod") and len(vals) == 2 and vals[1].t == "bool":
         self.err(f"{name}() with a bool start is not supported: it returns the bool for an empty iterable, else a number; use int(start) for a numeric result")
+    if name == "sum" and len(kws) == 0 and 1 <= len(vals) <= 2 and self.sum_objects(gelem(vals[0].t) if is_gen(vals[0].t) else self.iter_elem(unopt(vals[0].t)), vals[1].t if len(vals) == 2 else ""):
+        # (objects: each added by its class's methods as it comes, see sum_object_item)
+        item = made_var("__item", self.line)
+        return self.reduce(name, [mk("listcomp", "gen", self.line, [item, item, self.vnode(vals[0])])] + [self.vnode(v) for v in vals[1:]], vals[1].t if len(vals) == 2 else "")
     if name == "sum" and len(vals) == 2 and (self.iter_object(vals[0].t) or is_gen(vals[0].t)) and (vals[1].t == "int" or vals[1].t == "float"):
         # (an iterator object's or a generator's items, added as they come)
         item = made_var("__item", self.line)
@@ -1089,6 +1136,11 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     if name == "divmod" and len(vals) == 2 and t in self.classes and "__divmod__" in self.classes[t].methods:
         self.none_operand("divmod()", v, vals[1])
         return self.method(v, "__divmod__", [self.vnode(vals[1])], want, resultsoft)
+    if name == "divmod" and len(vals) == 2 and (t == "int" or t == "float" or t == "bool" or t == BIG) and vals[1].t in self.classes and "__rdivmod__" in self.classes[vals[1].t].methods:
+        # divmod(x, o) for a number x, which has no method for an object: o.__rdivmod__(x), as
+        # x + o is o.__radd__(x) (gen_dunder); for a None o, CPython's TypeError
+        self.notnone(vals[1], f"TypeError: unsupported operand type(s) for divmod(): '{tname(t)}' and 'NoneType'")
+        return self.method(vals[1], "__rdivmod__", [self.vnode(v)], want, resultsoft)
     if (name == "int" or name == "float") and len(vals) == 1 and t in self.classes:
         # int(o) is o.__int__(), else o.__index__(); float(o) is o.__float__(), else o.__index__()
         # as a float. CPython checks the result's type where the call returns: here the method's
@@ -1241,8 +1293,10 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.err(f"{name}() is only supported in a for loop, after 'in', or as the argument of list(), {tuple_use}sorted(), sum(), min(), max(), any(), all(), math.fsum(), math.prod() or str.join()")
     if name in self.gtypes or name in self.ltype:
         self.err(f"'{name}' is not callable")
-    if (name == "hex" or name == "oct" or name == "bin") and t in self.classes and "__index__" in self.classes[t].methods:
-        self.err(f"{name}() of an object is not supported: Pystachy does not call __index__")
+    if (name == "hex" or name == "oct" or name == "bin") and len(vals) == 1 and t in self.classes and "__index__" in self.classes[t].methods:
+        # hex(o) is hex(o.__index__())
+        index = self.index_of(v, "TypeError: " + NONEARG[name])
+        return self.format_(index if index.t == BIG else self.as_int(index), mk("str", "#" + ("x" if name == "hex" else name[0]), self.line, []))
     if name == "dict" and t in self.classes and ("keys" in self.classes[t].methods or "__iter__" in self.classes[t].methods):
         # (CPython copies a mapping by its keys() and __getitem__, else the pairs it iterates over)
         self.err(f"dict() of an object ('{tname(t)}') is not supported: make the dict with a comprehension ({{k: v for k, v in x.items()}})")
@@ -1256,19 +1310,29 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.err(NONEARG[name].replace("NoneType", tname(t)))
     if name == "type" and len(vals) == 1 and (t == "exc" or (t in self.classes and self.classes[t].exc != "")):
         self.err(f"unsupported call {key}: type(e) of an exception is supported as type(e).__name__ (and isinstance(e, C) tests its class)")
-    us = [j for j in range(len(vals)) if (self.scalar_union(vals[j].t) or self.cx_union(vals[j].t)) and not is_opt(vals[j].t)]
+    us = [j for j in range(len(vals)) if ((self.scalar_union(vals[j].t) or self.cx_union(vals[j].t)) and not is_opt(vals[j].t)) or self.object_union(vals[j].t)]
     if len(us) > 0 and len([a for a in args if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar"]) == 0:
         return self.usplit(name, vals, us[0], want)  # (each member's call: union splitting)
     self.err(f"unsupported call {(asked if name.startswith('math.') else key).replace(RANGEC, 'range').replace(COMPLEXC, 'complex')}")
     return v
 
 def gen_callable_type(self, t: str) -> int:
-    # callable(x) for x of static type t: 1 (a function or Callable), 0, or -2 (an object whose
-    # class defines __call__: callable unless it is None)
-    if is_fn(t) or is_callable(t) or t == "exctype":
+    # callable(x) for x of static type t: 1 (a function or Callable), 0, -2 (an object whose
+    # class defines __call__: callable unless it is None), or -1 (a union that holds a Callable
+    # beside other values: its box's tag tells)
+    if is_fn(t) or is_callable(t) or t == "exctype" or is_clsval(t):
         return 1  # (a class object too: a call makes an object of its class)
-    if is_opt(t) and (is_callable(unopt(t)) or unopt(t) == "exctype"):
+    if is_union(unopt(t)) and len([m for m in umembers(unopt(t)) if is_callable(m)]) > 0:
+        return -1
+    if is_opt(t) and (is_callable(unopt(t)) or unopt(t) == "exctype" or is_clsval(unopt(t))):
         return -2
+    if self.object_union(t):
+        # (a union of objects and scalars: no number, str, file or None is callable, and an object
+        # is where its class defines __call__, as a reference union's may: not supported there)
+        ms = [m for m in umembers(unopt(t)) if m in self.classes]
+        if len([d for d in self.classes.values() if "__call__" in d.methods and len([m for m in ms if self.derives(d.name, m)]) > 0]) > 0:
+            self.err(f"callable() of a {typestr(t)} is not supported")
+        return 0
     cs = [t] if t in self.classes else umembers(unopt(t)) if self.reference_union(t) else []
     calls = [c for c in cs if c in self.classes and "__call__" in self.classes[c].methods]
     if len(calls) > 0 and (len(cs) > 1 or self.classes[t].exc != "" or t in self.nts):
@@ -1770,7 +1834,7 @@ def gen_stream_start(self, name: str, args: list[Node]) -> str:
     if len(args) == 1:
         return ""
     t = self.dry(args[1])
-    return t if t == "int" or t == "float" or t == BIG else "-"
+    return t if t == "int" or t == "float" or t == BIG or self.sum_objects("", t) else "-"
 
 def gen_reduce(self, name: str, args: list[Node], stt: str) -> Val:
     # sum(), min() or max() of a generator expression or an iterator call: each item is added
@@ -1798,6 +1862,10 @@ def gen_reduce(self, name: str, args: list[Node], stt: str) -> Val:
     if name == "math.prod":
         sv = self.expr(args[1], "")
         self.mstore(r.stt, self.coerce(sv, r.stt).v, r.acc)
+    elif name == "sum" and r.start != "":
+        sv = self.expr(args[1], "") if len(args) == 2 else Val("0", "int")
+        self.mstore(r.stt if r.stt != "" else "int", self.coerce(sv, r.stt if r.stt != "" else "int").v, r.start)
+        self.mstore('bool', 'true', r.first)
     elif name == "sum" and r.t == BIG:
         sv = self.expr(args[1], "") if len(args) == 2 else Val("0", "int")  # (an int: stream_start)
         self.mstore(BIG, self.to_big(sv).v, r.acc)
@@ -1830,6 +1898,8 @@ def gen_reduce(self, name: str, args: list[Node], stt: str) -> Val:
     self.place(back)
     if name == "math.prod":
         return Val(self.mload(r.stt, r.acc), r.stt)
+    if name == "sum" and r.start != "":
+        return self.sum_object_end(r)
     if name != "sum" and r.collect:
         d = self.sconst(self.desc(r.t, ">" if name == "max" else "<"))
         lv = self.mload('%ptr', r.acc)
@@ -1949,6 +2019,13 @@ def gen_reduce_item(self, r: Reduce, e: Node) -> None:
     # an item of reduce()'s generator: added to the sum, or compared with the item kept. Its
     # accumulators are made at its first compilation, which gives the items' type
     v = self.expr(e, "")
+    if r.t == "" and r.name == "sum" and self.sum_objects(v.t, r.stt):
+        r.t = v.t
+        r.start = self.alloca(r.stt if r.stt != "" else "int", "")
+        r.first = self.alloca("bool", "")
+    if r.start != "":
+        self.sum_object_item(r, v)
+        return
     if r.t == "":
         r.t = v.t
         if r.name == "sum" and r.stt != "float" and (v.t == BIG or ((v.t == "int" or v.t == "bool") and (r.stt == BIG or self.int_policy(self.line)))):
@@ -2039,6 +2116,90 @@ def gen_reduce_item(self, r: Reduce, e: Node) -> None:
     self.neumaier(r.acc, r.comp, v.v)
     self.br(nm)
     self.place(nm)
+
+def gen_sum_objects(self, t: str, stt: str) -> bool:
+    # is sum() of items of type t ("" where not known yet) from a start of type stt ("" where
+    # none is given) a sum of objects (sum_object_item): an item or the start is a class's
+    # object, or a union's that holds one beside numbers (object_union), which + adds by its
+    # methods. Exceptions, NamedTuples (tuples to +), range objects and complex numbers (whose
+    # sum() is not supported: docs/language/semantics.md#complex-numbers) are none
+    for x in [t, stt]:
+        if x in self.classes and self.classes[x].exc == "" and x not in self.nts and x != RANGEC and x != COMPLEXC:
+            return True
+        if self.object_union(x) and len([m for m in umembers(unopt(x)) if m == "str" or m == "file"]) == 0:
+            return True
+    return False
+
+def gen_sum_object_item(self, r: Reduce, v: Val) -> None:
+    # an item added to a sum of objects as CPython adds it: the first one to the start, start +
+    # item (0 + item where no start is given: the item's reflected method, as CPython's int
+    # declines it, gen_dunder), then each to the sum so far, sum + item. The first addition
+    # gives the sum's type, which the others must keep. No operand is dropped or swapped: an
+    # __add__ or __radd__ that records its operands sees CPython's, in CPython's order (#636)
+    st = r.stt if r.stt != "" else "int"
+    if self.object_union(v.t) and "float" in umembers(unopt(v.t)) and st not in self.classes:
+        # (CPython adds floats with compensation, from a float start or the first float after
+        # ints until the first object: these additions, one by one, would lose that. From an
+        # object start it adds them one by one too)
+        self.err(f"sum() of {typestr(v.t)} is not supported: CPython adds the floats with compensation until the first object; add the items in a loop, or sum the floats and the objects apart")
+    if st in ["int", "float", "bool", BIG] and v.t in self.classes and "__radd__" not in self.classes[v.t].methods:
+        if "__add__" not in self.classes[v.t].methods:
+            # (no class that adds: the call's own diagnostic, as before)
+            self.err(f"unsupported call sum(list[{v.t}]{',' + r.stt if r.stt != '' else ''})")
+        self.err(f"unsupported call sum(list[{typestr(v.t)}]{',' + typestr(r.stt) if r.stt != '' else ''}): its first addition is {'0' if r.stt == '' else typestr(st)} + {typestr(v.t)}, which needs {tname(v.t)}.__radd__; or give it a start to add to, as in sum(items, start)")
+    lfirst = self.label()
+    lnext = self.label()
+    lend = self.label()
+    self.cbr(self.mload('bool', r.first), lfirst, lnext)
+    self.place(lfirst)
+    one = self.arith("+", Val(self.mload(st, r.start), st), v)
+    if not self.term:
+        if r.sumt == "":
+            r.sumt = one.t
+            r.acc = self.alloca(one.t, "")
+        if one.t != r.sumt:
+            self.err(f"sum() of {typestr(v.t)}: its first addition is a {typestr(r.sumt)} for one item and a {typestr(one.t)} for another; add the items in a loop")
+        self.mstore(r.sumt, one.v, r.acc)
+        self.mstore('bool', 'false', r.first)
+        self.br(lend)
+    self.place(lnext)
+    if r.sumt == "":
+        self.unreachable()  # (the first addition always raises: no item follows one)
+    else:
+        more = self.arith("+", Val(self.mload(r.sumt, r.acc), r.sumt), v)
+        if not self.term:
+            if more.t != r.sumt and not is_union(unopt(r.sumt)):
+                self.err(f"sum() of {typestr(v.t)}: adding an item to the sum, a {typestr(r.sumt)}, makes a {typestr(more.t)}; add the items in a loop, whose variable is annotated with both")
+            self.mstore(r.sumt, self.coerce(more, r.sumt).v, r.acc)
+            self.br(lend)
+    self.place(lend)
+
+def gen_sum_object_end(self, r: Reduce) -> Val:
+    # a sum of objects: the start itself where no item came (the int 0 where none is given, as
+    # CPython's sum() of no items is), else the sum; of their union where their types differ
+    st = r.stt if r.stt != "" else "int"
+    if r.sumt == "":
+        return Val(self.mload(st, r.start), st)
+    rt = st if st == r.sumt else self.union_type([st, r.sumt])
+    if rt.startswith("!"):
+        self.err(f"unsupported call sum(list[{typestr(r.t)}]{',' + typestr(r.stt) if r.stt != '' else ''}): it is its start, a {typestr(st)}, for no items, else a {typestr(r.sumt)}, which have no union; add the items in a loop")
+    lnone = self.label()
+    lsome = self.label()
+    lend = self.label()
+    self.cbr(self.mload('bool', r.first), lnone, lsome)
+    self.place(lnone)
+    a = self.coerce(Val(self.mload(st, r.start), st), rt)
+    ea = self.cur
+    self.br(lend)
+    self.place(lsome)
+    b = self.coerce(Val(self.mload(r.sumt, r.acc), r.sumt), rt)
+    eb = self.cur
+    self.br(lend)
+    self.place(lend)
+    ph = Ins("phi", rt, "")
+    self.incoming(ph, a.v, ea)
+    self.incoming(ph, b.v, eb)
+    return Val(self.phi(ph), rt)
 
 def gen_iterator_call(self, n: Node) -> bool:
     if n.kind != "call" or n.kids[0].kind != "name" or self.bound(n.kids[0].s):
@@ -2887,6 +3048,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
     av = [f"{lt(o.t)} {o.v}"]
     nones: list[str] = []  # optional str arguments: None raises (nmsg) once all are evaluated
     nmsg: list[str] = []
+    nonesat: list[int] = []  # (each one's place among the arguments, for the order of the checks)
     dt = T  # the item type the # descriptor describes
     kx = Val("", "")  # a dict's key that may be None (see nonekey)
     bigkey = Val("", "")  # a promoting int key of a dict of int keys (dict_key_args)
@@ -2896,6 +3058,13 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
     idquery = Val("", "")
     idstore = Val("", "")
     alts = Val("", "")  # s.startswith((a, b)) or endswith: the tuple whose items are tried (affix_any)
+    # int arguments that are Any values or objects with __index__: each one's place in av, the
+    # value, the default None stands for (a str method's start or end) and CPython's TypeError.
+    # They are asked for their index once every argument is evaluated, as the method asks
+    asked: list[int] = []
+    askedv: list[Val] = []
+    askedd: list[str] = []
+    askedm: list[str] = []
     i = 0
     for p in spec[c + 1 :].split(","):
         if p == "":
@@ -2982,6 +3151,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 if is_opt(v.t):
                     nones.append(v.v)
                     nmsg.append(self.none_arg(m, 1))
+                    nonesat.append(len(av))
                 alts = Val(v.v, unopt(v.t))
                 v = Val("null", base)  # (each item in its place, in affix_any)
             if is_opt(v.t) and (join or key == "list.extend" or key == "file.writelines"):
@@ -3002,6 +3172,14 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 v = Val(v.v, pt)  # (its items are copied: list[str] extends a list[str | None])
             if span and is_sopt(v.t) and unopt(v.t) != "float":
                 v = Val(self.optint(v, dflt), "int")
+            if p == "int" and (v.t == "dyn" or (v.t in self.classes and "__index__" in self.classes[v.t].methods)):
+                asked.append(len(av))
+                askedv.append(v)
+                askedd.append(dflt if span else "")
+                askedm.append("TypeError: slice indices must be integers or None or have an __index__ method" if span else "TypeError: slice indices must be integers or have an __index__ method" if m == "index" else "TypeError: 'NoneType' object cannot be interpreted as an integer")
+                av.append("i64 0")
+                i += 1
+                continue
             if p == "int":
                 v = self.as_int(v)  # an index or a count may be a bool, as in CPython
             if base == "dict" and i == 0 and v.t == BIG and self.dict_bigkey(o.t) and (m == "get" or m == "pop" or m == "setdefault"):
@@ -3036,6 +3214,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
             elif is_opt(v.t) and not slot and unopt(v.t) == pt and (pt == "str" or pt == "bytes"):
                 nones.append(v.v)
                 nmsg.append(self.none_arg(m, i + 1))
+                nonesat.append(len(av))
                 v = Val(v.v, pt)
             elif (is_opt(v.t) or v.t == "None") and slot and p == "*T" and (unopt(v.t) == T or (v.t == "None" and T not in self.classes)) and (base == "list" or base == "vtuple") and m != "append" and m != "insert" and self.optional(T) != "" and not self.isnum(T):
                 pt = self.optional(T)  # xs.index(None): found where xs holds None, as == finds it
@@ -3065,8 +3244,19 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
         i += 1
     if i < len(args):
         self.err(f"too many arguments for {m}()")
-    for j in range(len(nones)):
-        self.guard(self.scalar_cmp('eq', Val(nones[j], '%ptr'), Val('null', '%ptr')), nmsg[j])
+    # CPython converts the arguments in the parameters' order: a None where a str is taken raises
+    # before a later argument is asked for its index, and after an earlier one was. startswith()
+    # and endswith() check their prefix last, once their bounds are converted
+    last = m == "startswith" or m == "endswith"
+    nj = 0
+    aj = 0
+    while nj < len(nones) or aj < len(asked):
+        if nj < len(nones) and (aj >= len(asked) or (nonesat[nj] < asked[aj] and not last)):
+            self.guard(self.scalar_cmp('eq', Val(nones[nj], '%ptr'), Val('null', '%ptr')), nmsg[nj])
+            nj += 1
+        else:
+            av[asked[aj]] = "i64 " + self.method_index(askedv[aj], askedd[aj], askedm[aj]).v
+            aj += 1
     if alts.t != "":
         return self.affix_any(alts, m, av, base)
     r = spec[:c]
@@ -3231,8 +3421,8 @@ def gen_prod_item(self, s: Val, item: Val) -> Val:
     # type; unsupported type-changing reflected methods are diagnosed explicitly.
     if is_opt(item.t) or is_union(unopt(item.t)):
         members = umembers(unopt(item.t)) if is_union(unopt(item.t)) else [unopt(item.t)]
-        if is_opt(item.t):
-            members = ["None"] + members
+        if is_opt(item.t) or ((self.object_union(item.t) or self.reference_union(item.t)) and item.v not in self.nn):
+            members = ["None"] + members  # (a union that holds objects is a null box where it is None)
         end = self.label()
         ph = Ins("phi", s.t, "")
         for i in range(len(members)):
@@ -3354,8 +3544,16 @@ def gen_tmethod(self, o: Val, m: str, args: list[Node]) -> Val:
     if is_vtuple(o.t) and self.list_id_kind(self.ctype("list", [targs(o.t)[0]])) != 0 and numeric_identity(x.t):
         x.idfrom = self.dyn_id_box(x).v
     bounds: list[Val] = []
+    asked: list[int] = []  # (the bounds that are Any values or objects with __index__: method_index)
     for j in range(1, len(args)):
-        bounds.append(self.coerce(self.as_int(self.expr(args[j], "int")), "int", f"argument {j + 1} of tuple.index()"))
+        b = self.expr(args[j], "int")
+        if b.t == "dyn" or (b.t in self.classes and "__index__" in self.classes[b.t].methods):
+            asked.append(len(bounds))
+            bounds.append(b)
+        else:
+            bounds.append(self.coerce(self.as_int(b), "int", f"argument {j + 1} of tuple.index()"))
+    for j in asked:
+        bounds[j] = self.method_index(bounds[j], "", "TypeError: slice indices must be integers or have an __index__ method")
     if is_vtuple(o.t):
         size = Val(self.mload('int', o.v), "int")
         span = [Val("0", "int"), size]

@@ -1,0 +1,4 @@
+True bytearray bytearray True
+bytearray(b'xy') bytearray(b'\x00\x00') True
+True range
+[exit 0]

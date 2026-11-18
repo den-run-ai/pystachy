@@ -1,0 +1,27 @@
+<class '__main__.Node'> [<class '__main__.Node'>, <class '__main__.Leaf'>] (<class '__main__.Leaf'>, <class '__main__.Branch'>) {'a': <class '__main__.Leaf'>}
+(True, False, True, False) (False, True, False, True) (False, True, False, True)
+True False True True True
+Leaf Leaf __main__ Leaf __main__
+<class '__main__.Leaf'> <class '__main__.Leaf'> <class '__main__.Leaf'> <class '__main__.Leaf'> <class '__main__.Leaf'> <class '__main__.Leaf'>
+True True type
+False True False False True False
+False True False
+(True, False, True, True, False) (False, True, False, False, True) (False, True, False, False, True) (False, True, False, False, True)
+('Branch', 'Leaf') ('Node', 'Branch') True <class '__main__.Leaf'>
+Leaf Branch Node Leaf
+Node True
+unset not Node False | set Leaf True | set Node True
+1 2 True True False True
+['Branch', 'Leaf', 'Leaf', 'Node'] ['Branch', 'Leaf', 'Leaf', 'Node']
+['Branch', 'Leaf', 'Leaf', 'Branch'] ['Branch', 'Leaf', 'Leaf', 'Branch'] 2
+3 2 1 3 True {<class '__main__.Leaf'>: 3, <class '__main__.Branch'>: 2, <class '__main__.Node'>: 1}
+[('Leaf', 3), ('Branch', 2), ('Node', 1)] 2 1 False
+2 True False ['Branch', 'Leaf']
+True False
+Branch (<class '__main__.Branch'>, 'ok') True True
+['Leaf', 'Branch'] branch leaf Branch 2 False
+Branch Leaf True
+True False None
+False True <class '__main__.Branch'> Branch
+TypeError: '<' not supported between instances of 'type' and 'type'
+[exit 0]

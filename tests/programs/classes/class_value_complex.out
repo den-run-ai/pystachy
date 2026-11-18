@@ -1,0 +1,8 @@
+<class 'complex'> complex builtins
+True True False False
+True False True
+True True False
+c i
+['int', 'complex', 'str'] True 1
+True True
+[exit 0]
