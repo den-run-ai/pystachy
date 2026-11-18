@@ -310,6 +310,16 @@ differ. For example, returning `tuple[int, str]` as `tuple[int, Any]` boxes its
 second item. Conversion in the other direction checks and unboxes dynamic items
 (`tests/programs/inference/dynany_tuple_items.py`).
 
+A `frozenset[Any]` crosses into a `frozenset[T]` or `AbstractSet[T]` annotation the same
+way, where `T` is `int`, `str` or a class of the program: nothing changes a frozenset, so
+a new frozenset of its elements has no alias to miss. Each element is checked as a `T`
+before the set is made (`TypeError: expected int, got str`). The new set keeps the
+elements' hashes and iteration order without calling `__hash__` or `__eq__`; only its
+identity differs. A `set[Any]` does not cross, since a copy would not see later changes,
+and other element types remain compile-time rejections. Coverage:
+`dynany_frozenset_crossing.py`, `tests/deviations/dynany_frozenset_item_check.py`,
+`tests/errors/containers/abstract_set_any_set.py` and `frozenset_any_tuple_items.py`.
+
 ### Generator channels
 
 Scalar and optional `int` and `float` yields preserve the original numeric object through
@@ -376,7 +386,19 @@ proves an int or bool payload for arithmetic and comparisons. Bool `&`, `|` and
 In an opted-in module, ordinary user classes and builtin classes can be stored in
 `Any`, passed to functions, and used as dictionary keys. `type(value)` returns a
 canonical class value; `value.__class__` does likewise unless an explicit
-attribute overrides it. For example:
+attribute overrides it. An ordinary class that no `Any` location holds is a typed
+[class object](language/semantics.md#classes-as-values) (`type[C]`), as in other
+modules: a call of it runs the class's constructor without the limits below, and
+`type[C]` annotates it. Storing it in `Any` gives its class value, the same object,
+and a `type[C]` location takes one back, [checking](#deviations) that it is `C` or a
+class deriving from it
+([test](../tests/programs/inference/dynany_class_objects.py)). `type[object]` annotates
+the class object of any ordinary class or builtin class; a display of unrelated classes without
+that annotation keeps its class values
+([test](../tests/programs/inference/dynany_class_value_any.py)). Where a program does
+not compile with typed class objects, its opted-in modules that have no `type[C]`
+annotation are compiled with class values throughout, as before they were typed
+([test](../tests/programs/inference/dynany_class_boxes_kept.py)). For example:
 
 ```python
 # pystachy: dynamic-any
@@ -633,7 +655,14 @@ before use, and exceptions propagate without trying the fallback.
 Builtin list, tuple and
 str indexing and slice bounds call a boxed index object's `__index__`; list assignment and
 deletion do too. Dictionary keys and user-defined `__getitem__` arguments retain the original
-object. Slicing accepts dynamic bounds: after evaluating every bound and validating
+object. A typed list, str, tuple or bytes takes an `Any` index by the same protocol, and so
+does `range()`: an `int`, a `bool` or an object's `__index__()`, with CPython's `TypeError`
+for any other value (`tests/programs/inference/dynany_index_typed_sequences.py`). The
+integer arguments of typed list, tuple and str methods (`xs.pop(i)`, `xs.insert(i, x)`,
+the bounds of `index()`, `find()` and `count()`, a width or a count) and `enumerate()`'s
+start take an `Any` value so too, once every argument is evaluated; `None` is a str
+method's omitted bound (`tests/programs/inference/dynany_index_method_args.py`). No
+annotation is checked there, unlike at a typed parameter. Slicing accepts dynamic bounds: after evaluating every bound and validating
 the receiver, it converts step, start and stop in that order. A dict hashes a slice
 key before raising its `KeyError`. Slice conversion preserves these rules
 (`tests/programs/inference/dynany_numeric_protocols.py`,
@@ -874,7 +903,9 @@ rejects: no method can return `NotImplemented`, so the first one that runs gives
 - A concrete annotation that receives an `Any` value raises `TypeError` where its type differs
   (CPython does not check annotations). `int` takes no `bool` and `float` no `int` this way,
   so that a typed variable never prints another value than CPython's. So does the storage that
-  [keeps its first type](#selecting-dynamic-storage) when an `Any` value reaches it.
+  [keeps its first type](#selecting-dynamic-storage) when an `Any` value reaches it. A
+  `type[C]` location takes the class value of `C` or of a class deriving from it
+  (`tests/deviations/dynany_class_object_check.py`).
 
 - The newly supported native `list[int]`/`Any` boundary checks dynamic writes against
   native storage. CPython accepts a str, float or bool in the annotated list; this

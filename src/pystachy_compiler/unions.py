@@ -5,8 +5,8 @@ from src.pystachy_compiler.diagnostics import dynamic_program, int_lists
 from src.pystachy_compiler.ir import ClassInfo, FnInfo, Ins, Val, tmpname
 from src.pystachy_compiler.names import owner
 from src.pystachy_compiler.syntax import Node, mk
-from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, NONEVAR, OPTTYPES
-from src.pystachy_compiler.utils import elem, is_dict, is_list, is_opt, is_sopt, is_tuple, is_union, is_vtuple, targs, typestr, umembers, unopt
+from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, FXBIT, NONEVAR, OPTTYPES
+from src.pystachy_compiler.utils import elem, is_callable, is_clsval, is_dict, is_fn, is_list, is_opt, is_sopt, is_tuple, is_union, is_vtuple, targs, typestr, umembers, unopt
 
 def gen_uboxes(self, a: str, b: str) -> bool:
     # is a value of type a one of union type b (or b | None) once boxed: a member's (one that
@@ -20,6 +20,17 @@ def gen_uboxes(self, a: str, b: str) -> bool:
 
 def gen_reference_union(self, t: str) -> bool:
     return is_union(unopt(t)) and all([m == "file" or m in self.classes for m in umembers(unopt(t))])
+
+def gen_object_union(self, t: str) -> bool:
+    # a union (or one | None) of a class's objects or files and of scalars (int | Decimal,
+    # str | TextIO): one box, null for None as a class's value is, whose arithmetic, comparisons,
+    # truth, str() and builtin calls select the member's by the tag, as a scalar union's do;
+    # a method call or an attribute needs the member, as a reference union's. A complex number
+    # is not one of its objects: beside scalars it is a scalar member (cx_union), and beside
+    # objects and files alone a reference member (complex | C), as optional() and union_type say
+    ms = umembers(unopt(t)) if is_union(unopt(t)) else []
+    refs = [m for m in ms if m == "file" or (m in self.classes and m != COMPLEXC)]
+    return 0 < len(refs) < len(ms) and all([m in refs or m in ["int", "float", "bool", "str"] for m in ms])
 
 def gen_scalar_union(self, t: str) -> bool:
     return is_union(unopt(t)) and all([m in ["int", "float", "bool", "str"] for m in umembers(unopt(t))])
@@ -57,14 +68,18 @@ def gen_uop(self, v: Val, op: str) -> Val:
     # handle None before loading the tag, and join only the operation's result.
     if not self.value_union(v.t) and op == "str" and self.reference_union(v.t):
         return self.refl_union_str(v, "__str__")  # (each class's: reflection.py)
-    if not self.value_union(v.t):
+    calls = op == "truth" and is_union(unopt(v.t)) and all([m in ["int", "float", "bool", "str"] or is_list(m) or is_dict(m) or is_callable(m) for m in umembers(unopt(v.t))])
+    objects = self.object_union(v.t) and op != "len"  # (each member's own, an object's by its methods; repr() too)
+    if not self.value_union(v.t) and not calls and not objects:
+        if len([m for m in umembers(unopt(v.t)) if is_callable(m)]) > 0:
+            self.err("a union that holds a Callable requires narrowing with isinstance() or callable() first")
         self.err("closed reference union operations require narrowing with isinstance() first")
     t = "bool" if op == "truth" else "int" if op == "len" else "str"
     if op == "len":
         self.notnone(v, "TypeError: object of type 'NoneType' has no len()")
     end = self.label()
     ph = Ins("phi", t, "")
-    if is_opt(v.t) and op != "len":
+    if (is_opt(v.t) or (objects and v.v not in self.nn)) and op != "len":
         arm = self.label()
         self.incoming(ph, "false" if op == "truth" else self.sconst("None"), self.cur)
         self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, end, arm)
@@ -77,14 +92,33 @@ def gen_uop(self, v: Val, op: str) -> Val:
             arm = self.label()
             self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(members[i])), "int")).v, arm, nxt)
             self.place(arm)
-        item = self.uget(Val(v.v, unopt(v.t)), members[i])
-        result = Val(self.truth(item), "bool") if op == "truth" else self.builtin("len", [self.vnode(item)], "") if op == "len" else self.to_str(item)
+        if is_callable(members[i]):
+            self.incoming(ph, "true", self.cur)  # (a function is true)
+            self.br(end)
+            if nxt != "":
+                self.place(nxt)
+            continue
+        if op == "repr" and members[i] not in self.classes:
+            result = self.repr(self.scalar_view(v))  # (the runtime reads the box's own tag)
+        else:
+            item = self.uget(Val(v.v, unopt(v.t)), members[i])
+            result = Val(self.truth(item), "bool") if op == "truth" else self.builtin("len", [self.vnode(item)], "") if op == "len" else self.repr(item) if op == "repr" else self.to_str(item)
         self.incoming(ph, result.v, self.cur)
         self.br(end)
         if nxt != "":
             self.place(nxt)
     self.place(end)
     return Val(self.phi(ph), t)
+
+def gen_scalar_view(self, v: Val) -> Val:
+    # The box of a union of objects and scalars, where its tag is one of the scalars', as a
+    # union of scalars alone: the same pointer, since a union's box is also one of a union of
+    # more types (utag). The runtime then formats it by its tag, as it does a scalar union's:
+    # no payload is read here, so none goes untyped to a descriptor's slot (docs/typed-ir.md).
+    scalars = [m for m in umembers(unopt(v.t)) if m == "int" or m == "float" or m == "bool" or m == "str"]
+    if len(scalars) == 1:
+        scalars.append("int" if scalars[0] == "str" else "str")  # (a tag the box never has)
+    return Val(v.v, self.union_type(scalars))
 
 def gen_uequal(self, op: str, a: Val, b: Val) -> Val:
     # Both operands are already evaluated. Boxes of a narrower union keep their
@@ -113,6 +147,8 @@ def gen_umember_problem(self, t: str) -> str:
         return ""
     if is_list(t) or is_dict(t):
         return ""
+    if is_callable(t):
+        return ""  # (a function value, as a Callable variable holds it: a pointer to its code and environment)
     return f"{typestr(t)} in a closed union is not supported (use scalar, list/dict or native class/file types)"
 
 def gen_union_type(self, ts: list[str]) -> str:
@@ -147,15 +183,22 @@ def gen_union_type(self, ts: list[str]) -> str:
     for m in ms:
         if self.umember_problem(m) != "":
             return "!" + self.umember_problem(m)
+    if len([m for m in ms if is_callable(m)]) > 1:
+        return "!a closed union holds one Callable type: callable() cannot tell two apart"
     refs = [m for m in ms if m == "file" or m in self.classes]
     if COMPLEXC in refs and len(refs) != len(ms):
         # (a complex number is a scalar member beside scalars or containers, and a reference
         # member beside only objects and files: complex | C)
         refs.remove(COMPLEXC)
     if len(refs) > 0:
-        if len(refs) != len(ms):
-            return "!reference unions cannot mix native references with scalar or container members"
-        if len(ms) > 4:
+        # (scalars may be members beside them, each under its own tag: object_union; but not a
+        # complex number as well, which is a scalar member beside scalars, see above)
+        others = [m for m in ms if m not in refs and m not in ["int", "float", "bool", "str"]]
+        if len([m for m in others if m != COMPLEXC]) > 0:
+            return "!reference unions cannot mix native references with container members"
+        if len(others) > 0:
+            return "!reference unions cannot mix native references with complex and scalar members"
+        if len(refs) > 4:
             return "!reference unions support at most four members"
         for a in refs:
             for b in refs:
@@ -228,6 +271,12 @@ def gen_to_union(self, v: Val, t: str, what: str) -> Val:
                 return Val("undef", t)  # (see join_hint)
             self.err(f"{what if what != '' else 'a value used as ' + typestr(t)} may be None ({typestr(v.t)}); test it with 'is not None' first")
         return Val(v.v, t).identity(v)
+    calls = [m for m in ms if is_callable(m)]
+    if src not in ms and len(calls) == 1 and (is_fn(src) or is_callable(src)):
+        # a function where the union's Callable member is expected: the value a Callable variable
+        # holds (to_callable, with its errors), in the union's box
+        v = self.coerce(v, calls[0], what)
+        src = calls[0]
     if src not in ms:
         bases = [m for m in ms if src in self.classes and m in self.classes and self.derives(src, m)]
         if len(bases) != 1:
@@ -323,7 +372,7 @@ def gen_unarrowed(self, v: Val) -> str:
     if not is_union(unopt(v.t)):
         return ""
     if self.curfn.ll + v.v in self.wide:
-        return ": copy it to a local variable, and narrow that to one of its types with isinstance() (a test does not narrow a global or a field, which a call may change)"
+        return ": copy it to a local variable, and narrow that to one of its types with isinstance() (a test does not narrow a global, nor a field past a call or a store that may change it)"
     return ": narrow it to one of its types first, with isinstance()"
 
 def gen_uisinst(self, v: Val, c: Node) -> str:
@@ -425,6 +474,277 @@ def gen_umethod(self, o: Val, m: str, args: list[Node]) -> Val:
     for i in range(len(results)):
         self.incoming(ph, results[i].v, edges[i])
     return Val(self.phi(ph), results[0].t)
+
+# ---- attribute paths that a test narrows (x.a, self.a.b)
+# A test of an attribute read narrows the reads of that attribute that follow it, as a test of a
+# local narrows the local: isinstance(e.node, T) and then e.node.name. CPython reads the
+# attribute again each time, so that holds only while nothing can have stored the attribute. A
+# fact is an entry of Gen.narrowed whose key is the path, and so follows the branches and joins
+# as a local's does; its value names the narrowed type, the value the test read (a narrowed read
+# is that very value where its block is on every way here, path_dominates, and else the field's
+# load again, which then holds it: path_again), the attribute's own type, and when it was made
+# (path_fact). What may have changed the attribute since voids the fact (path_live):
+# - an operation that may run code of the program or write objects' fields (Gen.pcall): a call,
+#   a generator's resume or yield, a runtime function with U, U? or wO, a store to a global
+#   (which a class attribute is) and any store this file cannot name;
+# - a store to an attribute of that name on any object (Gen.pstamps, by setfield);
+# - a store to the path's local;
+# - a loop, whose body runs again after what follows a read in it (path_void in forget).
+# Only fields are paths: a property's read is a call. An if statement's branches, a conditional
+# expression's arms and a failing assertion's message do not follow one another, so what one
+# does is taken back for the other (path_undo) and holds after them where it may have run. A
+# branch that ends in a raise, break or return is followed by other code of the function all the
+# same: an except clause or a finally block, which start with no fact (unnarrowed), and the code
+# after a loop, where every fact is void (loop).
+
+
+def gen_path_key(self, n: Node) -> str:
+    # "x.a.b" for a chain of attribute reads on local x, which only this function's own stores
+    # rebind (no global, nor a local a closure assigns); else ""
+    if n.kind != "attr" or len(n.kids) != 1:
+        return ""
+    b = n.kids[0]
+    if b.kind == "name":
+        if b.s not in self.ltype or b.s in self.nlw or self.is_global(b.s):
+            return ""
+        return b.s + "." + n.s
+    k = self.path_key(b)
+    return k + "." + n.s if k != "" else ""
+
+def gen_path_void(self) -> None:
+    # code of the program may run here, or run again: every fact made before is void
+    self.pseq += 1
+    self.pcall = self.pseq
+
+def gen_path_stamp(self, key: str) -> None:
+    # a store to an attribute ("a" and its name) or to a local's slot ("l" and its register)
+    self.pseq += 1
+    old = self.pstamps.get(key, 0)
+    self.plogk.append(key)
+    self.plogv.append(old)
+    self.pstamps[key] = self.pseq
+
+def gen_path_event(self, i: Ins, kind: int) -> None:
+    # instruction i, as it is added, may change what a path's read gives (PATH_OPS: kind)
+    if kind == 1:
+        self.path_void()
+    elif kind == 2:
+        f = self.rtfns[i.s]
+        if f.q or (f.fx & (FXBIT["U"] | FXBIT["wO"])) != 0:
+            self.path_void()
+    else:
+        a = i.a[0].v
+        if a.startswith("%") and "." in a:
+            self.path_stamp("l" + a)  # (a local's slot, or its flag: slot_register)
+        elif self.pfield != "" and not a.startswith("@"):
+            self.path_stamp("a" + self.pfield)
+        else:
+            self.path_void()  # (also a global's: a class attribute, which an object without its own reads)
+
+def gen_path_live(self, key: str, born: int, session: int) -> bool:
+    # has nothing that may change path key's value happened since born, in code that is kept
+    # (session: the dry() that made the fact, if one did, is still typing)
+    if self.pcall > born or session not in self.psess:
+        return False
+    parts = key.split(".")
+    if self.pstamps.get("l" + self.lreg.get(parts[0], ""), 0) > born or self.pstamps.get("l" + self.lflag.get(parts[0], ""), 0) > born:
+        return False
+    for a in parts[1:]:
+        if self.pstamps.get("a" + a, 0) > born:
+            return False
+    return True
+
+def gen_path_mark(self) -> int:
+    return len(self.plogk)
+
+def gen_path_undo(self, mark: int, keys: list[str], vals: list[int]) -> None:
+    # takes back the stamps made since mark (path_mark), which are those of code that the code
+    # compiled next does not follow (an if statement's other branch); keys and vals receive
+    # them, for path_redo
+    while len(self.plogk) > mark:
+        k = self.plogk.pop()
+        old = self.plogv.pop()
+        if k not in keys:
+            keys.append(k)
+            vals.append(self.pstamps[k])
+        self.pstamps[k] = old
+
+def gen_path_redo(self, keys: list[str], vals: list[int]) -> None:
+    # the stamps path_undo took back hold again, where the code they are of may have run
+    for j in range(len(keys)):
+        if self.pstamps.get(keys[j], 0) < vals[j]:
+            self.plogk.append(keys[j])
+            self.plogv.append(self.pstamps.get(keys[j], 0))
+            self.pstamps[keys[j]] = vals[j]
+
+def gen_path_read(self, n: Node, v: Val, born: int, block: str) -> None:
+    # attribute path n was read, as a field's load (v, of the field's type) in block, or as a
+    # fact's value
+    self.preadn.append(n)
+    self.preadv.append(v)
+    self.preads.append(born)
+    self.preadb.append(block)
+
+def gen_path_dominates(self, block: str) -> bool:
+    # does every way from the function's entry to the block being compiled pass block (where a
+    # fact's value was read: its uses there are then valid)? Of the blocks and branches made so
+    # far, which decide it: what is made later branches forward, or back to a loop's start,
+    # which the loop's code is reached through. A test that and/or compile to one value read
+    # its later operands in blocks that do not (path_value then reads the field again)
+    if block == self.cur:
+        return True
+    if self.drying > 0:
+        return True  # (its blocks are dropped)
+    key = block + ">" + self.cur
+    if key in self.pdoms:
+        return self.pdoms[key]
+    succs: dict[str, list[str]] = {}
+    for b in self.fn.blocks:
+        out: list[str] = [b.handler] if b.handler != "" else []
+        if len(b.code) > 0:
+            out.extend(b.code[len(b.code) - 1].b)
+        succs[b.label] = out
+    entry = self.fn.blocks[0].label
+    r = False
+    if entry == block:
+        r = True
+    else:
+        # reached at all, and not without block
+        for avoid in ["", block]:
+            seen: dict[str, bool] = {entry: True}
+            todo = [entry]
+            hit = False
+            while len(todo) > 0:
+                l = todo.pop()
+                if l == self.cur:
+                    hit = True
+                    break
+                for x in succs.get(l, []):
+                    if x != avoid and x not in seen:
+                        seen[x] = True
+                        todo.append(x)
+            if avoid == "" and not hit:
+                break  # (no way here yet: not known)
+            r = avoid != "" and not hit
+    self.pdoms[key] = r
+    return r
+
+def gen_path_seen(self, n: Node) -> int:
+    # where the statement being compiled read attribute path n and each attribute before it
+    # (so that each is a field: a property's read is a call, and is not recorded), or -1
+    at = -1
+    for j in range(len(self.preadn) - 1, -1, -1):
+        if self.preadn[j] is n:
+            at = j
+            break
+    b = n.kids[0]
+    if at < 0 or (b.kind == "attr" and self.path_seen(b) < 0):
+        return -1
+    return at
+
+def path_fact(nt: str, v: Val, born: int, session: int, block: str) -> str:
+    # (its last part: "1" for a number that has an identity for Any values, which is read with
+    # its box each time: path_again, dynamic.py)
+    return nt + "\t" + v.v + "\t" + v.t + "\t" + str(born) + "\t" + str(session) + "\t" + block + "\t" + ("1" if v.idslot != "" or v.idfrom != "" else "0")
+
+def gen_path_type(self, key: str, out: dict[str, str], t: str) -> str:
+    # the type path key has here: as out or a live fact narrowed it, else its field's type t
+    f = out[key] if key in out else self.narrowed.get(key, "")
+    if f == "":
+        return t
+    ps = f.split("\t")
+    return ps[0] if key in out or self.path_live(key, int(ps[3]), int(ps[4])) else t
+
+def gen_path_value(self, n: Node, key: str) -> Val:
+    # the read of attribute path n where narrowed has a fact for it: the value the test read, as
+    # of the type it narrowed to; Val("", "") where the fact is void, or where that value is not
+    # at hand here (path_dominates: the field is read again, path_again)
+    ps = self.narrowed[key].split("\t")
+    born = int(ps[3])
+    if not self.path_live(key, born, int(ps[4])) or ps[6] == "1" or not self.path_dominates(ps[5]):
+        return Val("", "")
+    v = Val(ps[1], ps[2])
+    self.path_read(n, v, born, ps[5])
+    return self.narrow_val(v, ps[0])
+
+def gen_path_again(self, n: Node, key: str, v: Val) -> Val:
+    # v, attribute path n's field read again where a fact, live before that read, has a value that
+    # is not at hand (path_value): nothing has stored the attribute since the test, so it holds the value the
+    # test read, of the type it narrowed to, which the IR is told by a test of it (a payload's
+    # read needs its tag's test: union_proof.py)
+    ps = self.narrowed[key].split("\t")
+    born = int(ps[3])
+    nt = ps[0]
+    if v.t != ps[2]:
+        return v
+    self.path_read(n, v, born, self.cur)
+    if v.idfrom != "" and v.t != BIGOPT and (is_opt(v.t) or is_union(v.t)):
+        return self.dyn_unbox(Val(v.idfrom, "dyn"), nt).identity(v)  # (as a local's narrowed read: Gen.read)
+    if v.t in self.classes:
+        return self.narrow_val(v, nt)  # (the same pointer, of the class its test proved)
+    if is_union(unopt(v.t)) and nt != "None" and not is_opt(nt) and not is_union(nt):
+        ok = self.utest(v, [nt], is_opt(v.t) or self.reference_union(v.t) or self.object_union(v.t))
+    elif is_opt(v.t) and not is_union(unopt(v.t)) and nt == unopt(v.t):
+        ok = self.ptr_cmp('!=', v, Val('null', 'None')).v
+    else:
+        return v  # (a narrower union, or None: as the field's type here)
+    # (no code reaches the failing branch while path_live is right; it is an error, not an
+    # unreachable, so that a mistake there cannot read one type's payload as another's)
+    self.guard(self.scalar('xor', [Val(ok, 'bool'), Val('true', 'bool')]), "SystemError: an attribute that a test narrowed changed before this read")
+    return self.narrow_val(v, nt)
+
+def gen_narrows_path(self, n: Node, test: str, c: Node, truth: bool, out: dict[str, str]) -> None:
+    # narrows, for a test of attribute path n that the statement has just read: test "" (its
+    # truth), "none" (n is not None), "isinstance" (of c) or "callable"
+    key = self.path_key(n)
+    at = self.path_seen(n) if key != "" else -1
+    if at < 0:
+        return
+    v = self.preadv[at]
+    born = self.preads[at]
+    block = self.preadb[at]
+    session = self.psess[len(self.psess) - 1]
+    if not self.path_live(key, born, session):
+        return
+    t = self.path_type(key, out, v.t)
+    nt = ""
+    if test == "" or test == "none":
+        nt = unopt(t) if truth and is_opt(t) else ""
+    elif test == "callable":
+        nt = self.callable_narrow(t, truth) if is_union(unopt(t)) else ""
+    elif is_union(unopt(t)):
+        nt = self.isinst_narrow(t, c, truth)
+    elif truth and t in self.classes and self.classes[t].tag > 0 and c.kind == "name" and c.s in self.classes and (self.derives(c.s, t) or c.s in self.classes[t].overlaps):
+        nt = c.s  # (the class its runtime class test proved: narrows)
+    elif self.isinst(t, c) == (-2 if truth else -3):
+        nt = unopt(t)
+    if nt != "" and nt != t:
+        out[key] = path_fact(nt, v, born, session, block)
+
+def gen_narrows_paths(self, n: Node, truth: bool, out: dict[str, str]) -> None:
+    # narrows, of the attribute paths alone (an if statement's else branch, whose facts are made
+    # where the test has just been read)
+    k = n.kind
+    if k == "unary" and n.s == "not":
+        self.narrows_paths(n.kids[0], not truth, out)
+    elif k == "boolop" and (n.s == "and") == truth:
+        self.narrows_paths(n.kids[0], truth, out)
+        self.narrows_paths(n.kids[1], truth, out)
+    else:
+        self.narrows_leaf(n, truth, out)
+
+def gen_narrows_leaf(self, n: Node, truth: bool, out: dict[str, str]) -> None:
+    # narrows, for a test that is no not/and/or: of an attribute path, if it is of one
+    k = n.kind
+    if k == "attr":
+        self.narrows_path(n, "", n, truth, out)
+    elif k == "cmp" and len(n.kids) == 2 and n.kids[1].kind == "None" and n.kids[0].kind == "attr" and (n.s == "is not" or n.s == "!=" or n.s == "is" or n.s == "=="):
+        self.narrows_path(n.kids[0], "none", n, (n.s == "is not" or n.s == "!=") == truth, out)
+    elif k == "call" and len(n.kids) == 3 and n.kids[0].kind == "name" and n.kids[0].s == "isinstance" and n.kids[1].kind == "attr" and not self.bound("isinstance"):
+        self.narrows_path(n.kids[1], "isinstance", n.kids[2], truth, out)
+    elif k == "call" and len(n.kids) == 2 and n.kids[0].kind == "name" and n.kids[0].s == "callable" and n.kids[1].kind == "attr" and not self.bound("callable"):
+        self.narrows_path(n.kids[1], "callable", n, truth, out)
+
 
 def gen_now_type(self, name: str) -> str:
     # the type local name has here: as a test or an assignment narrowed it, else its own
@@ -572,8 +892,24 @@ def gen_join_type(self, a: str, b: str) -> str:
                 return ""
             ts.append(x)
         return self.ctype("tuple", ts)
+    if (is_tuple(a) or is_vtuple(a)) and (is_tuple(b) or is_vtuple(b)) and "?" not in a and "?" not in b:
+        # tuples of other lengths (or one of a runtime length): a runtime-length tuple of their
+        # items' join, where one can hold them (tuple[()] and tuple[int, int]: tuple[int, ...])
+        xs = targs(a) + targs(b)
+        e = xs[0] if len(xs) > 0 else ""
+        for x in xs[1:]:
+            e = (e if e == x else self.join_type(e, x)) if e != "" else ""
+        return self.ctype("vtuple", [e]) if e != "" and unopt(e) != BIG and self.vtuple_holds(e) else ""
     if a == b:
         return a
+    if is_clsval(unopt(a)) or is_clsval(unopt(b)):
+        # class objects: those of a class that both classes derive from; with another value, where
+        # the module opts in to dynamic Any, an Any value (the class's box, which such a module's
+        # locations held before class objects were typed: class_values.py)
+        j = self.join(a, b)
+        if j != "" or not self.dyn_policy(self.line):
+            return j
+        return "dyn" if self.dyn_boxable(a) == "" and self.dyn_boxable(b) == "" else ""
     if (a == BIG and b == "int") or (b == BIG and a == "int"):
         return BIG  # (a promoting int holds both: bigints.py)
     if (a == BIG and b in ["bool", "float", "str"]) or (b == BIG and a in ["bool", "float", "str"]):

@@ -76,6 +76,10 @@ class Reduce:
         self.facc = ""
         self.isf = ""
         self.phase = ""  # dynamic sum: in-range int, compensated float, or generic addition
+        # a sum of objects (Gen.sum_object_item): start its start's slot, first whether no item
+        # was added yet, acc the sum so far, of type sumt, which the first addition gives
+        self.start = ""
+        self.sumt = ""
 
 
 class SetArg:
@@ -142,6 +146,8 @@ class FnInfo:
         self.void_default = False  # newly inferred concrete signature: recursion may retain its old None contract
         self.insts: dict[str, FnInfo] = {}
         self.dtypes: list[str] = []  # the type of each default value evaluated at def time
+        self.sentinels: dict[str, str] = {}  # a parameter p: T = S of a module's sentinel S = object(): S, by parameter (declare_fn)
+        self.sentann: dict[str, str] = {}  # and T, the type that a given argument takes
         self.bad = ""  # why a template cannot be compiled (it is an error only if a call needs it)
         self.infer = False  # a template's function: its first return statement decides its return type
         self.rctx = ""  # a caller's result context, only for fresh return displays and forwarding calls
@@ -566,6 +572,13 @@ class Frame:
         self.nonesites: dict[str, list[Node]] = {}
         self.nonepending: dict[str, bool] = {}
         self.narrowed: dict[str, str] = {}
+        self.preadn: list[Node] = []
+        self.preadv: list[Val] = []
+        self.preads: list[int] = []
+        self.preadb: list[str] = []
+        self.pdoms: dict[str, bool] = {}
+        self.psess: list[int] = []
+        self.pfield = ""
         self.lkk: dict[str, str] = {}
         self.branch = 0
         self.modlevel = False
@@ -578,6 +591,7 @@ class Frame:
         self.carried = Val("", "")
         self.nonecmp = False
         self.fieldcmp = False
+        self.rolex = ""
         self.cmpnode = Node("", "", 0)
         self.stkkey = Node("", "", 0)
         self.reflcopies = 1
@@ -627,8 +641,11 @@ class ClassInfo:
         # its single base (a class of the program or a builtin exception class), and the
         # builtin exception class it derives from through it ("" for an ordinary class)
         self.base = ""
-        self.role = ""  # a fieldless secondary base, inherited along the primary chain
+        # its fieldless secondary bases: those of its primary chain, then its own, in the order
+        # CPython's method resolution order takes them
+        self.roles: list[str] = []
         self.isrole = False  # some class names this root as its secondary base
+        self.isiface = False  # ... and it is no trait of that class: an object typed by it may have that class's layout (role_field)
         self.overlaps: list[str] = []  # unrelated bases with a common concrete subclass
         self.exc = ""
         self.excsecond = ""  # additional builtin exception ancestry; no fields or methods

@@ -1,0 +1,21 @@
+[<class '__main__.A'>, <class '__main__.C'>, <class '__main__.B'>] {<class '__main__.A'>: 'first', <class '__main__.C'>: 'second', <class '__main__.B'>: 'third'} <class '__main__.B'> 3
+['A/A/__main__', 'C/C/__main__', 'B/B/__main__'] second third True True
+<class '__main__.A'> True True True True
+[True, False, False] [True, False, False]
+[True, False, True] [True, False, True]
+[False, True, False] [True, False, True] [False, True, False]
+['A', 'B', 'C'] 2 True
+[<class '__main__.A'>, <class '__main__.C'>, <class '__main__.B'>] 1 True 1
+<class '__main__.C'> True <class '__main__.C'> <class '__main__.C'> <class '__main__.C'>
+None True True True
+handle A
+handle C
+no handler
+<class '__main__.B'> True True False
+<class '__main__.C'> ['A', 'C'] 2
+[<class '__main__.A'>, <class '__main__.C'>, <class '__main__.B'>] ['the A', 'the C', 'B'] the A
+[<class '__main__.A'>, <class '__main__.B'>, <class '__main__.C'>] <class '__main__.C'>
+A 1 True True
+C 2 False False
+<class '__main__.B'> True True False
+[exit 0]

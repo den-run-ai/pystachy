@@ -1,0 +1,26 @@
+1.000000000000000000000000001 0.9999999999999999999999999999 1.000000000000000000000000001 0.9999999999999999999999999999
+9.999999999999999999999999999E+999999 -9.999999999999999999999999999E+999999 1E-1000026 -1E-1000026 1.2346
+2 Overflow [<class 'decimal.Overflow'>]
+5 -3 Infinity NaN
+4 DivisionByZero [<class 'decimal.DivisionByZero'>]
+1000 1110 110 11010
+6 InvalidOperation [<class 'decimal.InvalidOperation'>]
+34512 45123 34500 123 12345.678 -Infinity
+8 InvalidOperation [<class 'decimal.InvalidOperation'>]
+9 InvalidOperation [<class 'decimal.InvalidOperation'>]
+1 -1 1 -1 1 -1
+-1 -4 3 3 1
+-1 0
+13 InvalidOperation [<class 'decimal.InvalidOperation'>]
+99999 8 1 12346 -2.322 24692.356 1234567.8 1234.5678 -12345.678 False
+15 InvalidOperation [<class 'decimal.InvalidOperation'>]
+3 -2.5 6.0 0.3333333333333333333333333333 3 1 (Decimal('3'), Decimal('1')) 1.414213562373095048801688724
+1.414213562373095048801688724 5 -3 0 -1 2 1 1.23 10 1.5
+1.001 0.9999 0.9999 3 1E+3 2341 123 110 101
+1 0 1 -3 2 True -1 1 -1 1.50
+True False True True True False True True True True -Normal 10 5
+1E+5 100E+3 2 2 -2 2.718 0.6931 0.4771
+7 8 1E+1
+Infinity 0 1
+1.01 10.0 0.999 1.24
+[exit 0]

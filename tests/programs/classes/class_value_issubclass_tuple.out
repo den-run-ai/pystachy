@@ -1,0 +1,21 @@
+True
+True
+True
+TypeError: issubclass() arg 2 must be a class, a tuple of classes, or a union
+True
+True
+read first
+read second
+True
+read first
+read second
+True
+read first
+read second
+False
+True True True False
+True True True True
+True True True True
+True True True True
+True True True False
+[exit 0]

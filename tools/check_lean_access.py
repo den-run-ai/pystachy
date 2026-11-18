@@ -992,7 +992,7 @@ def check_dominance(blocks, block_edges, sites):
 def class_relation(snapshot):
     """related(c, d): whether an object of class c may also be one of class d, so that their
     fields may share memory: one is the other or derives from it, by the snapshot's classes
-    table (each class's base and fieldless secondary base, as Gen.derives follows them), or the
+    table (each class's base and fieldless secondary bases, as Gen.derives follows them), or the
     table lists them as overlapping (a common subclass of a primary chain and a secondary base).
     A class the table lacks, such as the closure-cell label, is related to every class. And
     known(c): whether the table lists c, so that its objects are no dynamic or union boxes."""
@@ -1000,21 +1000,24 @@ def class_relation(snapshot):
     if table is None:
         return (lambda c, d: True), (lambda c: False)
     require(isinstance(table, dict) and len(table) <= 65536 and all(
-        isinstance(name_, str) and isinstance(entry, dict) and set(entry) == {"base", "role", "overlaps", "tagged"}
-        and all(isinstance(entry[key], str) for key in ("base", "role")) and type(entry["tagged"]) is bool
+        isinstance(name_, str) and isinstance(entry, dict) and set(entry) == {"base", "roles", "overlaps", "tagged"}
+        and isinstance(entry["base"], str) and type(entry["tagged"]) is bool
+        and isinstance(entry["roles"], list) and all(isinstance(role, str) for role in entry["roles"])
         and isinstance(entry["overlaps"], list) and all(isinstance(other, str) for other in entry["overlaps"])
         for name_, entry in table.items()), "invalid classes table")
 
     @functools.lru_cache(maxsize=None)
     def ancestors(c):
-        found, seen = set(), set()
-        while c in table and c not in seen:
-            seen.add(c)
-            found.add(c)
-            if table[c]["role"]:
-                found.add(table[c]["role"])
-            c = table[c]["base"]
-        found.add(c)  # (a builtin exception base ends the chain)
+        # (c, its bases and its secondary bases, and theirs: a secondary base may extend another)
+        found, todo = set(), [c]
+        while len(todo) > 0:
+            x = todo.pop()
+            if x in found:
+                continue
+            found.add(x)  # (a builtin exception base, which the table lacks, ends a chain)
+            if x in table:
+                todo.append(table[x]["base"])
+                todo.extend(table[x]["roles"])
         return frozenset(found)
 
     def related(c, d):
