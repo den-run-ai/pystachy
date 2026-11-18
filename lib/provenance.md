@@ -20,6 +20,7 @@ observable contract.
 | `html.parser` | `Lib/html/parser.py` | `4274e9112adf3fa57c7f9afa7c9b5c631456b18b7403cc627cc5027d02cdd2ae` |
 | `_markupbase` | `Lib/_markupbase.py` | `cb14dd6f2e2439eb70b806cd49d19911363d424c2b6b9f4b73c9c08022d47030` |
 | `difflib` | `Lib/difflib.py` | `1593ae08143632f4f81fea3beeeb279d803f8a9be922b12fe79664d78bba879d` |
+| `pprint` | `Lib/pprint.py` | `1585c8d74d7f485590db2af46680ae0a73737ca9fb66022b2bcbbc4c4925e203` |
 | `getopt` | `Lib/getopt.py` | `0ce875700c8798193b8e2748f7a27fc542cc4d525a1e6fc403767450ec92be99` |
 | `base64` | `Lib/base64.py` | `a80fc2454f7a0ad644f02259184de5b52084392ddb8b41c1ce372e50a09f3993` |
 | `gettext` | `Lib/gettext.py` | `7178d6ebdd0647b003da0ccdffb9431bc5fcf5c3822a247b578fdb745162865d` |
@@ -41,6 +42,9 @@ observable contract.
 | `warnings` | `Lib/warnings.py` | `e040f52be0199c69fa8c0d35428ba64e6f9b6412691a689ccbd7c23e07c6ed3f` |
 | `threading` | `Lib/threading.py` | `a979d5ab97993d7fbfd7601e928476c8dc90e1807df7c8c7d9f324e620331caa` |
 | `logging` | `Lib/logging/__init__.py` | `4106cc3aa4e722116bbf0a3ffae3a8c7bc4981468ca7998ca35ed201a5605519` |
+| `concurrent.futures` | `Lib/concurrent/futures/__init__.py` | `9b597f6de7da771109ca7bf96a1af5ea4d5fda69b27b39312d34966d987f73cd` |
+| `concurrent.futures._base` | `Lib/concurrent/futures/_base.py` | `6ca5d2bb59aa23af56d95dcdd31728fda687f7727e79f4465236d1f65c06b053` |
+| `concurrent.futures.thread` | `Lib/concurrent/futures/thread.py` | `62e194f69dcd39919d8c06d0abee8b92c6c3d3c71229d7b55e151005e2960a76` |
 | `tomllib._parser` | `Lib/tomllib/_parser.py` | `82591be9349687b88926a7b1a28b0f892a132e4043cb249bd1bd1594bdd721e3` |
 | `tomllib._re` | `Lib/tomllib/_re.py` | `0bd8a54280babaa755456e0e4ceabd5f072558f19373698e29d2491e0fb7e4b4` |
 | `tomllib._types` | `Lib/tomllib/_types.py` | `f864c6d9552a929c7032ace654ee05ef26ca75d21b027b801d77e65907138b74` |
@@ -54,6 +58,12 @@ Its selected compiled output-format tests derive from `Lib/test/test_difflib.py`
 CPython commit `cbc944f4bc59639a444dd971c737788ba2283a91`, SHA-256
 `dc6b140c8dd31e6971888070ea5175a0ab72ecadbdc96956071ceb062f34e636`;
 the test header identifies selections and exclusions.
+`pprint` selects each value's method by its static type, where upstream looks
+`type(object).__repr__` up in a table; its loops over items have their bodies in methods of
+their own, so that a tuple's items keep their types. Its selected compiled tests derive from
+`Lib/test/test_pprint.py` at the same commit, SHA-256
+`e189a2517eb6569907fdfd8dcb5f820e96ce3cf97275aa288623b6441af91e19`; the
+[test header](../tests/programs/upstream/upstream_pprint.py) identifies selections and exclusions.
 `tomllib`'s package file, `Lib/tomllib/__init__.py`, is unchanged (lib/README.md); its other
 modules opt in to dynamic `Any` and carry the edits lib/compatibility.md lists. The files and the
 test data of `tests/programs/upstream/upstream_tomllib_data.py` were taken from the
@@ -62,6 +72,11 @@ test data of `tests/programs/upstream/upstream_tomllib_data.py` were taken from 
 `threading` and `logging` were committed unchanged from the `Python-3.13.16` release first, so the
 diff of the next commit to each is its port's edits; both opt in to dynamic `Any` and carry the
 edits lib/compatibility.md lists.
+`concurrent.futures`' three modules were committed unchanged from that release first too, with
+the package file `Lib/concurrent/__init__.py`, which stays unchanged (lib/README.md); the
+later commits to them are the port's edits. The edits take out the worker threads, their queue,
+the waiters and the locks, run a submitted call in `submit()` and make `Future` a generic class
+of its result's type; `Lib/concurrent/futures/process.py` is not taken.
 `datetime` is `_pydatetime`, which CPython's `Lib/datetime.py` re-exports when its C
 accelerator is missing. Where CPython's accelerator behaves differently, the edits follow
 `Modules/_datetimemodule.c` (SHA-256
@@ -88,7 +103,7 @@ CPython runs the source.
 | `_pystachy_bfile` | `Modules/_io/_iomodule.c`, `Modules/_io/fileio.c`, `Modules/_io/bufferedio.c` | The binary files of `open()`: `FileIO`, `BufferedReader`, `BufferedWriter` and `BufferedRandom` over the runtime's files (runtime.c's `pys_bopen`), with `open()`'s argument checks and each class's messages and reprs |
 | `types` (`_pystachy_types`, `_pystachy_mappingproxy`) | `Lib/types.py` (SHA-256 `3a289bc5366e96d01017038870b5b8861b87305d351b99c688bcc681d908fa7d`), `Objects/descrobject.c` | The module's docstring and its names: `TracebackType`, as `from types import TracebackType` imports it for `__exit__`'s annotation, `MappingProxyType`, the C type `mappingproxy` of a dict, with its docstrings and messages, and the others, of which the compiler supports `GenericAlias` in `__class_getitem__ = classmethod(GenericAlias)` |
 | `csv` | `Modules/_csv.c`, `Lib/csv.py` | Reader state machine, writer and dialect APIs |
-| `decimal` | `Lib/_pydecimal.py`, `Modules/_decimal/libmpdec/mpdecimal.c` | `Decimal` on integer coefficients with the Python module's rounding, arithmetic, text and hashing, the C library's integer power and the C module's messages; contexts without flags or configurable traps |
+| `decimal` | `Lib/_pydecimal.py`, `Modules/_decimal/libmpdec/mpdecimal.c` | `Decimal` on integer coefficients with the Python module's rounding, arithmetic, text and hashing, its integer algorithms for `exp()`, `ln()` and `log10()` (`_ilog`, `_iexp`, `_dlog`, `_dlog10`, `_dexp`), the C library's power and the C module's messages; contexts without flags or configurable traps |
 | `collections.deque` | `Modules/_collectionsmodule.c` | Typed two-list queue with CPython comparison-state checks |
 | `collections.defaultdict` | `Modules/_collectionsmodule.c` | Typed dict wrapper with the C type's factory, repr and `\|` |
 | `collections.OrderedDict` | `Lib/collections/__init__.py`, `Objects/odictobject.c` | Two typed dicts, the first items reversed, with the Python class's docstrings and the C type's messages |
@@ -104,6 +119,7 @@ CPython runs the source.
 | `hashlib` | `Lib/hashlib.py`, `Modules/_hashopenssl.c` for the API; RFC 1321 and FIPS 180-4 for the algorithms | MD5, SHA-1, SHA-224 and SHA-256 on 32-bit words in Pystachy's ints, as one class of hash object with the C type's docstrings and `new()`'s message |
 | `hmac` | `Lib/hmac.py` for the API and docstrings; RFC 2104 for the algorithm | HMAC over `lib/hashlib.py`'s hash objects, with the hash given by name or by constructor, and a constant-time `compare_digest()` in place of `_operator`'s |
 | `atexit` (`_pystachy_atexit`) | `Modules/atexitmodule.c` (SHA-256 `a61f11e295d38463b36524e51b8eba64d5a84022bb7df7b3c0ccd8aa9fe9521b`) | `register()`, `_clear()`, `_run_exitfuncs()` and `_ncallbacks()`, with the C module's order of callbacks; `unregister()` raises `NotImplementedError` |
+| `gc` (`_pystachy_gc`) | `Modules/gcmodule.c` (SHA-256 `7b9d11b17f0e1811fbbf592e73b997b7a5a70d22af22c2be95a3774c2eb6a14a`), `Include/internal/pycore_runtime_init.h` | `collect()`, which runs Pystachy's collector, with the C module's check of its generation; the settings `enable()`, `disable()`, `set_threshold()` and `set_debug()` keep, with CPython's initial values and the `TypeError`s of the C functions' argument checks; their docstrings |
 | `abc` (`_pystachy_abc`) | `Lib/abc.py` (SHA-256 `e558702a95cdce3febd289da021715d2b92bc43995b8a1bc58dfa1c3d8010287`), `Modules/_abc.c`, `Objects/typeobject.c` | `ABC`, `ABCMeta`, `abstractmethod()` and the deprecated decorators, which the compiler applies, with `object.__new__`'s `TypeError` for an abstract class; their docstrings |
 | `_codecs` (`_pystachy_codecs`) | `Modules/_codecsmodule.c`, `Objects/unicodeobject.c`, `Objects/stringlib/codecs.h` | The UTF-8, Latin-1, ASCII and charmap codec functions, `encode()`, `decode()` and the error handler registry, with the C module's errors and messages; the other codecs raise `NotImplementedError` |
 | `_struct` (`_pystachy_struct`) | `Modules/_struct.c`, `Objects/floatobject.c` | `calcsize()`, and the packing and unpacking of each item, which the compiler composes into `pack()`, `unpack()`, `unpack_from()` and `iter_unpack()` for a format it knows, with the C module's sizes, alignment, errors and messages and `PyFloat_Pack2()`'s rounding; `Struct`; their docstrings |
@@ -119,6 +135,8 @@ CPython runs the source.
 | `traceback` | `Lib/traceback.py` (SHA-256 `d81f560ce5f09e217bc81a40cb9881d51720121661d1488834a7b2c72618a1a2`) | The exception-only formatting of `format_exception()` and its relatives, with causes, as `TracebackException` gives it for an exception whose `__traceback__` is `None`; empty stacks |
 | `_pystachy_percent` | `Objects/unicodeobject.c` (SHA-256 `68a5618c520f5b348e9e2abe1a77688c4b0c1f377d86f79e3399b41b445c24ab`) | `PyUnicode_Format()`, for `%` of a format string that only the run time knows, with its errors and messages |
 | `_pystachy_iterators` | `Objects/listobject.c`, `tupleobject.c`, `unicodeobject.c`, `rangeobject.c`, `dictobject.c`, `setobject.c` | Iterator classes of `iter()` over builtin containers, with CPython's exhaustion and size-change checks and messages |
+| `librt.internal` | librt 0.16.0's `internal/librt_internal.c` (SHA-256 `c9bb928d585188f83980bcc5ab2c3c26f68ce0620dbe2f2b84d241e770ce41a2`; MIT, see THIRD_PARTY_NOTICES) | mypy's cache codec: `ReadBuffer`, `WriteBuffer` (chunks joined by `getvalue()`) and every function, with the extension's byte formats, errors, messages and read positions; `extract_symbol()` keeps a stack rather than recursing |
+| `librt.base64` | librt 0.16.0's `base64/librt_base64.c` (SHA-256 `ff22e856eaaf15c1a597b2176d13ab4207347c9ab7f321f46a6cf0f9a90c29a6`; MIT, see THIRD_PARTY_NOTICES) | `b64encode()`, `b64decode()`, `urlsafe_b64encode()` and `urlsafe_b64decode()` on `binascii`: the characters the decoders ignore, and the extension's errors and messages (`ValueError` for incorrect padding, `RuntimeError` where one character and three padding characters end the data); the decoder of its bundled base64 library is described by what it accepts, not ported |
 
 `re/_constants.py` retains upstream opcode/flag numbers. `tools/re_tables.py`
 generates `re/_unicode.py` from CPython's Unicode functions, including group-name
@@ -192,6 +210,18 @@ SHA-256 `bd2f762ac481caabd817f6b94de19f3788ae7635406d06770b7972aafad03632`, whos
 `Objects/stringlib/codecs.h`, SHA-256
 `d126faea1dcf3f3b19a256237e5e87bdaa006dbc5b26fb0b5267f9a1dcbab3b4`), and compares the 39
 functions' signatures.
+
+`tools/librt_check.py` runs `lib/librt/internal.py` on CPython and compares it with librt 0.16.0's
+extension: 20,000 rounds of random values (at the integer formats' boundaries, random strings, bytes
+and float bit patterns) give the same bytes and read back the same values, and 560,000 reads and
+`extract_symbol()` calls of random nested cache objects and their truncations and corruptions give
+the same results or errors, with the same next position (`--rounds 20000 --seed 7`).
+
+`tools/librt_base64_check.py` does the same for `lib/librt/base64.py`: 1,416,764 calls of the four
+functions on random bytes, text over the alphabet with padding and other characters, and valid
+encodings with characters inserted, removed or appended, as bytes and as str, give the
+extension's bytes or its exception and message (`--rounds 200000 --seed 99`), and so do arguments
+of other types.
 
 `tools/binascii_check.py` runs `lib/_pystachy_binascii.py` on CPython, compares the results and
 errors of 420,000 calls of its functions, mostly at the edges of their inputs, with those of the C

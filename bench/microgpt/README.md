@@ -119,9 +119,9 @@ not comparable with this table: that host's CPython took 15.152 s for the same t
 |---|---|---|
 | Conditional `urllib.request` download | Require an existing local input file | Native urllib/networking support is outside this benchmark. |
 | Inferred recursive fields and empty captured/nested lists | Explicit concrete annotations and float gradient constants | Inference coverage; related #118/#246. |
-| Variable-length child tuples containing `Value` objects | `list[Value]` children; scalar derivative tuples retained | Reference elements in runtime-length tuples ([#637](https://github.com/den-run-ai/pystachy/issues/637)). |
+| Variable-length child tuples containing `Value` objects | `list[Value]` children; scalar derivative tuples retained | Returning to tuples and rerunning the benchmark. Runtime-length tuples hold objects since v0.6.0-alpha.2 ([#637](https://github.com/den-run-ai/pystachy/issues/637)). |
 | `isinstance` coercion of either a scalar or `Value` | Concrete operators and explicit scalar boxes at the same graph positions | Nullable class templates (#582) and mixed reference/scalar unions (#9/#108). |
-| `sum()` over values and generators | `value_sum`, preserving first reflected-add order | User-defined addition/reflected addition in `sum` ([#636](https://github.com/den-run-ai/pystachy/issues/636)). |
+| `sum()` over values and generators | `value_sum`, preserving first reflected-add order | Returning to `sum()` and rerunning the benchmark. Since v0.6.0-alpha.2, `sum()` adds objects in CPython's order ([#636](https://github.com/den-run-ai/pystachy/issues/636)); without a start, its result is an `int \| Value`. |
 | Scalar-left multiplication/division | Equivalent explicit `Value` operations | Reflected arithmetic (#113). |
 | Object `**` | Explicit `__pow__` calls | Bounded numeric-exponent support in [PR #638](https://github.com/den-run-ai/pystachy/pull/638); the benchmark works independently of it. |
 | Two attention generators capturing rebound loop locals | Eager comprehensions with the same products and edge order | More precise capture/lifetime analysis. |

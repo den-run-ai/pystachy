@@ -1,0 +1,17 @@
+ValueError: max_workers must be greater than 0
+ValueError: max_workers must be greater than 0
+8
+RuntimeError: cannot schedule new futures after shutdown
+RuntimeError: cannot schedule new futures after shutdown
+True True
+12 True
+RuntimeError: cannot schedule new futures after shutdown
+KeyError: 'in the block' 16
+True True
+True
+True
+True
+BrokenExecutor: broken
+RuntimeError: pool
+True True
+[exit 0]

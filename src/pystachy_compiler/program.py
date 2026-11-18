@@ -2,13 +2,14 @@
 from __future__ import annotations
 from src.pystachy_compiler.reflection import refl_needs_eh, refl_props
 from src.pystachy_compiler.builtin_bases import builtin_base
-from src.pystachy_compiler.analysis import all_imports, collect, defines, module_ints, module_reads, module_strs, needs_eh, none_assigns, reads_builtin
+from src.pystachy_compiler.analysis import all_imports, chk_names, collect, constant_writes, defines, module_anns, module_ints, module_reads, module_strs, module_values, name_nodes, needs_eh, none_assigns, reads_builtin
 from src.pystachy_compiler.diagnostics import NeedHierarchy, Rejoin, dynamic_program, fail, shown
 from src.pystachy_compiler.dynamic import comparison_properties, comparison_storage
 from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_protocol
-from src.pystachy_compiler.ir import Val, ClassInfo, FnInfo
+from src.pystachy_compiler.ir import Val
+from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.module import Mod
-from src.pystachy_compiler.names import RENAMED, owner, short
+from src.pystachy_compiler.names import ORDERED, RENAMED, owner, short
 from src.pystachy_compiler.pipeline import PreparedProgram
 from src.pystachy_compiler.specs import (
     ABSTRACT_DECOS,
@@ -18,6 +19,7 @@ from src.pystachy_compiler.specs import (
     PLAIN_EXC_BASES,
     exc_derives,
     GALIAS,
+    GENERICS,
     INERT,
     INERT_DECOS,
     is_excname,
@@ -33,7 +35,7 @@ from src.pystachy_compiler.specs import (
     TYPING,
     UNSUPPORTED,
 )
-from src.pystachy_compiler.syntax import Node, dc_args, has_kind, mentions, mk, names_in
+from src.pystachy_compiler.syntax import NOKIDS, Node, dc_args, has_kind, mentions, mk, names_in
 from src.pystachy_compiler.utils import (
     RtFn,
     clone,
@@ -56,21 +58,70 @@ from src.pystachy_compiler.utils import (
     timing_end,
     timing_start,
     typestr,
+    unopt,
 )
 
 
-def role_body_uses_storage(n: Node, receiver: str, methods: list[str]) -> bool:
+def role_body_uses_storage(n: Node, receiver: str, methods: list[str], attrs: list[str]) -> bool:
     # Ordinary calls can use the role's public method contract without depending on
     # the layout of the concrete receiver. Check the explicit arguments normally.
+    # An attribute the role declares (attrs: role_attrs) is the concrete receiver's own field.
     if n.kind == "name":
         return n.s == receiver or n.s == "super"
+    if n.kind == "attr" and n.s in attrs and n.kids[0].kind == "name" and n.kids[0].s == receiver:
+        return False
     kids = n.kids
     if n.kind == "call" and kids[0].kind == "attr":
         target = kids[0]
         if target.s in methods and target.kids[0].kind == "name" and target.kids[0].s == receiver:
             kids = kids[1:]
     for child in kids:
-        if role_body_uses_storage(child, receiver, methods):
+        if role_body_uses_storage(child, receiver, methods, attrs):
+            return True
+    return False
+
+
+def stores_attr(n: Node, receiver: str) -> bool:
+    # does code n store to or delete an attribute of name receiver (self.x = v, self.x += v,
+    # del self.x), also in what it nests
+    if (n.kind == "assign" or n.kind == "augassign" or n.kind == "annassign" or n.kind == "del") and len(n.kids) > 0:
+        for t in n.kids[:-1] if n.kind == "assign" else n.kids[:1] if n.kind != "del" else n.kids:
+            if t.kind == "attr" and t.kids[0].kind == "name" and t.kids[0].s == receiver:
+                return True
+    for k in n.kids:
+        if stores_attr(k, receiver):
+            return True
+    return False
+
+
+def fieldless(c: Node) -> bool:
+    # does class c (its class node) add no fields: no class-body variable, annotated or not (a
+    # class attribute has a slot in its objects too), no __init__, no store to an attribute of a
+    # method's first parameter, and no __slots__ but ()
+    for d in c.kids[0].kids:
+        slots = (d.kind == "assign" or d.kind == "annassign") and d.kids[0].kind == "name" and d.kids[0].s == "__slots__"
+        if slots and not (d.kids[-1].kind == "tuple" and len(d.kids[-1].kids) == 0 and len(d.kids) == (2 if d.kind == "assign" else 3)):
+            return False
+        if (d.kind == "annassign" or d.kind == "assign" or d.kind == "augassign") and not slots:
+            return False
+        if d.kind == "def" and (d.s == "__init__" or (len(d.kids[0].kids) > 0 and stores_attr(d.kids[2], d.kids[0].kids[0].s))):
+            return False
+    return True
+
+
+def super_calls(n: Node, shadow: dict[str, bool]) -> bool:
+    # does code n use super() otherwise than as super().m(...) of a method m that no secondary
+    # base defines (shadow): CPython's method resolution order puts the secondary bases after
+    # the primary's, so such a call finds what the primary base's bases have, as Pystachy's does
+    if n.kind == "name" and n.s == "super":
+        return True
+    kids = n.kids
+    if n.kind == "call" and kids[0].kind == "attr" and kids[0].kids[0].kind == "call" and len(kids[0].kids[0].kids) == 1 and kids[0].kids[0].kids[0].kind == "name" and kids[0].kids[0].kids[0].s == "super":
+        if kids[0].s in shadow:
+            return True
+        kids = kids[1:]
+    for k in kids:
+        if super_calls(k, shadow):
             return True
     return False
 
@@ -85,46 +136,123 @@ def gen_subclass_problem(self, st: Node) -> str:
     if st.kids[1].kind == "index" and self.imported_ref(st.kids[1].kids[0]) == "typing.Generic":
         return "a generic class's one base is Generic[...] of its TypeVars, and at most one TypeVarTuple, unpacked (Generic[T, *Ts]), each once" if len(st.kids) == 2 else "a generic class with another base than Generic[...] is not supported"
     if len(st.kids) > 2:
-        why = "multiple inheritance requires an ordinary primary base and an independent method-only secondary base"
-        if len(st.kids) != 3:
-            return why
-        first = self.exc_base(st.kids[1])
-        second = self.exc_base(st.kids[2])
-        if first in EXCBASES and first not in self.classes and second in EXCBASES and second not in self.classes:
-            if first not in PLAIN_EXC_BASES or second not in PLAIN_EXC_BASES or exc_derives(first, second) or exc_derives(second, first):
-                return "two builtin exception bases must be independent and have ordinary Exception behavior"
-            if len(st.kids[0].kids) > 1:
-                return "an exception class with a decorator is not supported"
-            return ""
-        if st.kids[1].kind != "name" or st.kids[2].kind != "name":
+        why = "multiple inheritance requires an ordinary primary base and an independent method-only secondary base, or several"
+        if len(st.kids) == 3:
+            first = self.exc_base(st.kids[1])
+            second = self.exc_base(st.kids[2])
+            if first in EXCBASES and first not in self.classes and second in EXCBASES and second not in self.classes:
+                if first not in PLAIN_EXC_BASES or second not in PLAIN_EXC_BASES or exc_derives(first, second) or exc_derives(second, first):
+                    return "two builtin exception bases must be independent and have ordinary Exception behavior"
+                if len(st.kids[0].kids) > 1:
+                    return "an exception class with a decorator is not supported"
+                return ""
+            if first != "" and second != "":
+                # An exception class of the program as one of two exception bases (decimal's
+                # DivisionByZero is a DecimalException and a ZeroDivisionError). The first base gives
+                # the object its layout, methods and text; the second only what catches it and what
+                # isinstance() and issubclass() tell (derives), so it defines nothing itself.
+                if (first not in self.classes and first not in PLAIN_EXC_BASES) or (second not in self.classes and second not in PLAIN_EXC_BASES):
+                    return "two builtin exception bases must be independent and have ordinary Exception behavior"
+                if self.derives(first, second) or self.derives(second, first):
+                    return "the two exception bases of a class must be independent: neither derives from the other"
+                ancestor = second
+                while ancestor in self.classes and not self.derives(first, ancestor):
+                    # (as far as an ancestor that the first base shares, whose own the object has)
+                    info = self.classes[ancestor]
+                    for d in info.node.kids[0].kids:
+                        if d.kind != "pass" and not (d.kind == "expr" and d.kids[0].kind == "str"):
+                            return f"a second exception base must define no methods or fields, which {ancestor} does: the first base gives the object its own"
+                    if info.excsecond != "":
+                        return "a second exception base with two bases of its own is not supported"
+                    ancestor = info.base
+                if ancestor not in self.classes and ancestor != "Exception" and ancestor not in PLAIN_EXC_BASES:
+                    return "two builtin exception bases must be independent and have ordinary Exception behavior"
+                if len(st.kids[0].kids) > 1:
+                    return "an exception class with a decorator is not supported"
+                return ""
+        if any(b.kind != "name" for b in st.kids[1:]):
             return why
         primary = st.kids[1].s
-        secondary = st.kids[2].s
-        if primary not in self.classes or secondary not in self.classes or self.derives(primary, secondary):
-            return why
-        if primary in self.bsubn or secondary in self.bsubn:
+        secondaries = [b.s for b in st.kids[2:]]
+        if primary in self.bsubn or len([b for b in secondaries if b in self.bsubn]) > 0:
             return "multiple inheritance with a class that derives from a builtin container is not supported"
-        role = self.classes[secondary]
-        if role.base != "" or len(role.node.kids) != 1 or secondary in self.tparams or secondary in self.nts:
+        if primary not in self.classes or self.abc_class(primary) or self.classes[primary].exc != "" or self.is_dc(primary) or len(st.kids[0].kids) != 1:
             return why
-        if self.abc_class(primary) or self.abc_class(secondary) or self.classes[primary].exc != "" or self.is_dc(primary) or len(st.kids[0].kids) != 1:
-            return why
+        shadow: dict[str, bool] = {}  # (the methods of the secondary bases' own classes: super_calls)
+        for secondary in secondaries:
+            if secondary not in self.classes or secondaries.count(secondary) > 1 or self.derives(primary, secondary):
+                return why
+            # (a root class of methods alone; a generic one binds nothing: it has no __init__. Or
+            # a trait, as mypyc's: a class of methods alone whose bases end at a class of the
+            # primary base's chain, so its objects' fields come first in the primary's too)
+            role = self.classes[secondary]
+            if (role.base != "" and self.trait_root(primary, secondary) == "" and len(self.role_chain(primary, secondary)) == 0) or len(role.node.kids) != 1 or secondary in self.nts or self.abc_class(secondary):
+                return why
+            c = secondary
+            while c in self.classes and not self.on_chain(primary, c):
+                for d in self.classes[c].node.kids[0].kids:
+                    if d.kind == "def":
+                        shadow[d.s] = True
+                c = self.classes[c].base
+        root = ""
+        first = ""
+        for secondary in self.classes[primary].roles + secondaries:
+            # (traits of one class, also those its primary base has, derive from one class of the
+            # primary chain, as mypy's do from Node: a trait of another class there would reorder
+            # CPython's method resolution order around the primary chain's classes between them,
+            # which super() and the checks of inherit do not follow)
+            t = self.trait_root(primary, secondary) if self.classes[secondary].base != "" else ""
+            if t != "" and root != "" and t != root:
+                return f"traits {short(first)} and {short(secondary)} of one class derive from different classes of its primary base's chain, {short(root)} and {short(t)}: not supported"
+            first = secondary if t != "" and root == "" else first
+            root = t if t != "" else root
         ancestor = primary
         while ancestor in self.classes:
             info = self.classes[ancestor]
-            if info.role != "" or mentions(info.node, ["super"]):
-                return "a primary hierarchy with another secondary base or super() is not supported"
+            if super_calls(info.node, shadow):
+                return "super() in a primary hierarchy with a secondary base is not supported"
             ancestor = info.base
-        if mentions(st.kids[0], ["super"]):
+        if super_calls(st.kids[0], shadow):
             return "super() in a class with a secondary base is not supported"
-        methods = [d.s for d in role.node.kids[0].kids if d.kind == "def"]
-        for d in role.node.kids[0].kids:
-            if d.kind == "pass" or (d.kind == "expr" and d.kids[0].kind == "str"):
-                continue
-            if d.kind != "def" or d.s.startswith("__") or len(d.kids) != 3 or len(d.kids[0].kids) == 0:
-                return why
-            if role_body_uses_storage(d.kids[2], d.kids[0].kids[0].s, methods):
-                return "secondary base methods may not use super() or read or write the instance"
+        for secondary in secondaries:
+            role = self.classes[secondary]
+            trait = role.base != "" and self.trait_root(primary, secondary) != ""
+            # (an interface's own chain, role_chain: each class's body is checked as the base's)
+            chain = [secondary] if trait else self.role_chain(primary, secondary)
+            methods: list[str] = []
+            attrs: list[str] = []  # (the attributes it declares, which its methods may read and store)
+            for rc in chain:
+                methods += [d.s for d in self.classes[rc].node.kids[0].kids if d.kind == "def"]
+                if not trait:
+                    attrs += role_attrs(self.classes[rc].node)
+                    # (... and its properties, which the receiver's class may override)
+                    attrs += [d.s for d in self.classes[rc].node.kids[0].kids if d.kind == "def" and len([x for x in d.kids[3:] if x.s == "property" and len(x.kids) == 0]) > 0]
+            body: list[Node] = []
+            for rc in chain:
+                body += self.classes[rc].node.kids[0].kids
+            for d in body:
+                if d.kind == "pass" or (d.kind == "expr" and d.kids[0].kind == "str"):
+                    continue
+                if not trait and d.kind == "annassign" and len(d.kids) == 2 and d.kids[0].kind == "name" and d.kids[0].s != "__slots__":
+                    continue  # (an attribute declared for the classes that combine it: role_field)
+                if trait and (d.kind == "assign" or d.kind == "annassign") and d.kids[0].kind == "name" and d.kids[0].s == "__slots__":
+                    continue  # (an empty one: fieldless)
+                if trait and d.kind == "def" and not d.s.startswith("__") and len(d.kids[0].kids) > 0 and len([x for x in d.kids[3:] if len(x.kids) > 0 or (self.imported(x.s) != "abc.abstractmethod" and x.s not in ["property", "classmethod", "staticmethod"])]) == 0:
+                    # (a trait's methods may read the instance, whose fields are its bases', and be
+                    # properties, class or static methods, abstract or not; they may not call super())
+                    if mentions(d, ["super"]):
+                        return "secondary base methods may not use super() or read or write the instance"
+                    continue
+                # (abc's @abstractmethod, without abc.ABCMeta, marks a method only: CPython makes
+                # its objects as any other's)
+                # (... and @property a getter, abstract or not, which the class may override)
+                abstract = d.kind == "def" and len(d.kids) > 3 and len([x for x in d.kids[3:] if len(x.kids) > 0 or (self.imported(x.s) != "abc.abstractmethod" and x.s != "property")]) == 0
+                if d.kind != "def" or d.s.startswith("__") or (len(d.kids) != 3 and not abstract) or len(d.kids[0].kids) == 0:
+                    return why
+                if "_pys_cm_" + d.s in methods and len(attrs) > 0:
+                    continue  # (a @contextmanager method's own code is _pys_cm_<name>, checked as a method: this one makes its context manager, loader.py)
+                if role_body_uses_storage(d.kids[2], d.kids[0].kids[0].s, methods, attrs):
+                    return "secondary base methods may not use super() or read or write the instance"
 
     if st.kids[1].kind == "name" and st.kids[1].s in self.classes and self.classes[st.kids[1].s].exc == "":
         base_ci = self.classes[st.kids[1].s]
@@ -163,20 +291,132 @@ def gen_generic_subclass(self, st: Node) -> str:
     # own, which binds nothing (Visitor[str] is Visitor, see generic_ann), is that class, whose
     # methods' parameters that name its type variables take each call's types. Its type
     # arguments are checked as the annotation Visitor[str] checks them, and the statement then
-    # names the class itself, as the rest of declaration reads its base (#962). "" or why not
-    b = st.kids[1] if len(st.kids) == 2 else st
-    if b.kind != "index" or b.kids[0].kind != "name" or b.kids[0].s not in self.tparams or b.kids[0].s not in self.classes:
-        return ""
-    g = b.kids[0].s
-    if self.init_template(self.classes[g].node):
-        return f"a subclass of {shown(g)}[...] is not supported: the __init__ of {shown(g)} binds its type variables, as its calls' arguments do"
-    t = self.generic_ann(g, b.kids[1])
-    if t.startswith("!"):
-        return t[1:]
-    self.genbase[st.s] = g  # (the types that bind its TypeVars for the methods of st's objects)
-    self.genargs[st.s] = [self.ann(x) for x in (b.kids[1].kids if b.kids[1].kind == "tuple" else [b.kids[1]])]
-    st.kids[1] = b.kids[0]
+    # names the class itself, as the rest of declaration reads its base (#962). Each base of
+    # several so (secondary bases: subclass_problem); a generic class's own type variables may
+    # be such a base's arguments (class N(Generic[T], A[T], B[T]), generic_traits), which N's
+    # subclasses bind (tv_bound). "" or why not
+    own = self.tparams.get(st.s, [])
+    for j in range(1, len(st.kids)):
+        b = st.kids[j]
+        if b.kind != "index" or b.kids[0].kind != "name" or b.kids[0].s not in self.tparams or b.kids[0].s not in self.classes:
+            continue
+        g = b.kids[0].s
+        if self.init_template(self.classes[g].node):
+            return f"a subclass of {shown(g)}[...] is not supported: the __init__ of {shown(g)} binds its type variables, as its calls' arguments do"
+        if "__class_getitem__" in self.body_names(self.classes[g].node):
+            # (as generic_ann: g[T] calls it, which may run code or name another class; also
+            # where the arguments are the class's own type variables, passed on)
+            return f"{short(g)}[...] with a custom __class_getitem__ is not supported"
+        xs = b.kids[1].kids if b.kids[1].kind == "tuple" else [b.kids[1]]
+        args: list[str] = []
+        if self.typevar_in(xs, []) == "" or len(own) == 0:
+            t = self.generic_ann(g, b.kids[1])
+            if t.startswith("!"):
+                return t[1:]
+            args = [self.ann(x) for x in xs]
+        else:
+            tvs = self.tparams[g]
+            if len(xs) != len(tvs) or len([x for x in tvs if x in self.tvtuples]) > 0:
+                return f"{shown(g)}[...] as a base takes one type for each of its type variables ({', '.join([short(x) for x in tvs])}), not a TypeVarTuple's"
+            for x in xs:
+                if x.kind == "name" and x.s in own and x.s not in self.tvtuples:
+                    args.append("~" + x.s)  # (its own type variable, passed on)
+                elif self.typevar_in([x], []) != "":
+                    return f"the type arguments of base {shown(g)}[...] must be types or type variables of {shown(st.s)}"
+                else:
+                    t = self.ann(x)
+                    if t.startswith("!"):
+                        return t[1:]
+                    args.append(t)
+        if st.s not in self.genargs:
+            self.genargs[st.s] = {}
+        self.genargs[st.s][g] = args
+        st.kids[j] = b.kids[0]
     return ""
+
+def gen_iter_abc(self, st: Node) -> str:
+    # "Iterator" or "Iterable" where class statement st, without decorators, has one base,
+    # typing's or collections.abc's (subscripted or not, with no TypeVarTuple), and a body that
+    # defines the methods that abstract base requires, __iter__ and __next__ (__iter__): the base
+    # then gives the class nothing it uses (its __iter__ mixin is the class's own); else ""
+    b = st.kids[1]
+    r = self.imported_ref(b.kids[0] if b.kind == "index" else b)  # (the import, not an annotation's name: a class base is evaluated)
+    r = r[r.rfind(".") + 1 :] if r in ["typing.Iterator", "typing.Iterable", "collections.abc.Iterator", "collections.abc.Iterable"] else ""
+    if r == "" or len(st.kids[0].kids) != 1 or (b.kind == "index" and not self.inert_subscript(b.kids[1])):
+        return ""
+    names: dict[str, bool] = {}
+    name_nodes(b, names)
+    if len([x for x in names if x in self.tvtuples]) > 0:
+        return ""
+    defs = [d.s for d in st.kids[0].kids[0].kids if d.kind == "def"]
+    if "__iter__" not in defs or (r == "Iterator" and "__next__" not in defs):
+        return ""
+    return r
+
+def gen_inert_subscript(self, n: Node) -> bool:
+    # can a class base's subscript n be left out where the class statement runs, as nothing of it
+    # can raise or run the program's code: type variables, builtin types the program does not
+    # rebind, typing's and collections.abc's names, strings (forward references), None and ...,
+    # and subscripts and tuples of those (set[T]); not a call, nor an attribute read through a
+    # module, which a circular import may not have bound yet
+    if n.kind == "name":
+        ref = self.imported_ref(n)
+        return n.s in self.typevars or ref.startswith("typing.") or ref.startswith("collections.abc.") or (n.s in ["int", "str", "float", "bool", "bytes", "object", "list", "dict", "set", "frozenset", "tuple", "type"] and not self.bound(n.s))
+    if n.kind == "str" or n.kind == "None" or n.kind == "ellipsis":
+        return True
+    if n.kind == "index" or n.kind == "tuple":
+        for k in n.kids:
+            if not self.inert_subscript(k):
+                return False
+        return True
+    return False
+
+def gen_iterabc_derived(self, c: str) -> bool:
+    # does class c (or a specialization's origin) derive from a class whose base was collections.abc's
+    # Iterator or Iterable (iter_abc), whose objects have ABCMeta's attributes too
+    while c in self.classes:
+        if c in self.iterabc or self.classes[c].origin in self.iterabc:
+            return True
+        c = self.classes[c].base
+    return False
+
+def subscript_tvars(n: Node, typevars: list[str], out: list[str]) -> None:
+    # the type variables that a base's subscript n names anywhere, in order of first appearance,
+    # as CPython's __parameters__ lists them (Iterator[set[T]]: T)
+    if n.kind == "name" and n.s in typevars and n.s not in out:
+        out.append(n.s)
+    for k in n.kids:
+        subscript_tvars(k, typevars, out)
+
+def gen_implicit_tparams(self, st: Node) -> list[str]:
+    # class S(A[T], B), without Generic[...]: the type variables that its subscripted bases, of
+    # generic classes, name as their arguments, in order of first appearance; [] where a base is
+    # another subscript or no class name
+    out: list[str] = []
+    for b in st.kids[1:]:
+        if b.kind == "index" and b.kids[0].kind == "name" and b.kids[0].s in self.tparams:
+            for x in b.kids[1].kids if b.kids[1].kind == "tuple" else [b.kids[1]]:
+                if x.kind == "name" and x.s in self.typevars and x.s not in out:
+                    out.append(x.s)
+        elif b.kind != "name":
+            return []
+    return out
+
+def gen_generic_traits(self, st: Node) -> int:
+    # class N(Generic[T], A[T], B[T], C): a generic class whose first other base is a generic
+    # class, subscripted (generic_subclass), and whose others are classes too (secondary bases,
+    # subclass_problem): the position of its Generic[...] base, else 0
+    k = 0
+    first = True
+    for j in range(1, len(st.kids)):
+        b = st.kids[j]
+        if len(self.generic_base(b)) > 0 and k == 0:
+            k = j
+        elif b.kind == "index" and b.kids[0].kind == "name" and b.kids[0].s in self.tparams:
+            first = False
+        elif first or b.kind != "name":
+            return 0
+    return k
 
 def gen_exc_base(self, b: Node) -> str:
     # the exception class that b, the base of a class statement, names: a class of the program
@@ -246,19 +486,64 @@ def gen_inherit(self, ci: ClassInfo) -> None:
         elif ci.exc != "" and m != "__init__" and m != "__str__" and m != "__repr__":
             self.line = ci.methods[m].node.line
             self.err(f"method '{m}' of '{short(ci.name)}' overrides that of '{short(b.methods[m].cls)}': only __init__, __str__ and __repr__ may be overridden")
-    if ci.role != "":
-        role = self.classes[ci.role]
+    seen: dict[str, str] = {}  # (the secondary base whose method of each name comes first)
+    order = self.mro(ci.name) if len(ci.roles) > 0 else []  # (CPython's method resolution order)
+    if len(ci.roles) > 0 and len(order) == 0:
+        self.line = ci.node.line
+        self.bad_class(ci, "Cannot create a consistent method resolution order (MRO) for its bases (CPython's TypeError)")
+    for r in ci.roles:
+        role = self.classes[r]
+        # (a generic secondary base's methods leave out the annotations that name its type
+        # variables, declare_fn: an override's own types them, as a generic primary base's does)
+        generic = r in self.tparams
+        trait = role.base != "" and len(self.role_chain(ci.base, r)) == 0  # (else an interface that extends another: as a root base)
         for method in role.methods:
             original = role.methods[method]
-            if ci.role != b.role:
-                if method in b.methods:
+            if role.base != "" and self.on_chain(ci.base, self.declarer(r, method)):
+                continue  # (a trait's from a class of the primary chain, which the primary base has too)
+            if r not in b.roles:
+                # (the classes that define it, not FnInfo.cls: inherit copies a class method that
+                # uses cls for each class that inherits it)
+                own = self.declares(ci.name, method)
+                if method not in b.methods and method in seen and seen[method] != r and own:
+                    # (also where the class's own overrides both: a Callable of its bound method
+                    # would differ by the base it is read through, adapter's method families)
+                    self.line = ci.node.line
+                    self.bad_class(ci, f"secondary bases {short(seen[method])} and {short(r)} both declare method '{method}' (not supported, also where {short(ci.name)} overrides it)")
+                seen[method] = seen.get(method, r)
+                first = self.mro_first(order, method)
+                if trait and first == r and method in b.methods:
+                    # (the trait's comes first in CPython's method resolution order: before the
+                    # primary chain's from the classes it derives from, and the primary base's
+                    # earlier traits' and other bases' that do not declare it)
+                    if original.deco == "classmethod" and original.clsuse:
+                        # (its cls names the trait, where CPython's names the class: compiled for
+                        # the trait, as it is, it would read the trait's class attributes)
+                        pm = self.declarer(ci.base, method)
+                        self.line = ci.node.line
+                        self.bad_class(ci, f"class method '{method}' of trait {short(r)} uses cls where it overrides that of {short(pm if pm != '' else b.methods[method].cls)}: not supported")
+                    for acc in [method + ".setter", method + ".deleter"] if original.prop else []:
+                        if acc in ci.methods and acc not in role.methods:
+                            del ci.methods[acc]  # (its property replaces the one with that accessor)
+                    ci.methods[method] = original
+                elif trait and method in b.methods:
+                    pass  # (the class's own, or one that comes before the trait's: kept, and checked against it)
+                elif method in b.methods or (method in ci.methods and ci.methods[method].cls != ci.name):
+                    # (also another secondary base's: CPython's method resolution order picks one)
                     self.line = ci.node.line
                     self.bad_class(ci, f"both bases declare method '{method}'")
                 elif method not in ci.methods:
                     ci.methods[method] = original
             fn = ci.methods[method]
-            if fn.cls == ci.name and (
-                fn.deco != "" or fn.prop or fn.ptypes[1:] != original.ptypes[1:] or fn.ret != original.ret
+            same = len(fn.ptypes) == len(original.ptypes)
+            for j in range(1, len(fn.ptypes) if same else 0):
+                if fn.ptypes[j] != original.ptypes[j] and not (generic and original.ptypes[j] == ""):
+                    same = False
+            # (an override may return a class that derives from what the secondary base's returns,
+            # as one of a primary base's may: its objects are the base's, also in a trait's view)
+            covariant = unopt(fn.ret) in self.classes and unopt(original.ret) in self.classes and (fn.ret == unopt(fn.ret)) == (original.ret == unopt(original.ret)) and self.derives(unopt(fn.ret), unopt(original.ret))
+            if fn is not original and (fn.cls == ci.name or trait) and (
+                fn.deco != original.deco or fn.prop != original.prop or not same or (fn.ret != original.ret and not (generic and original.ret == "") and not covariant)
                 or fn.posonly > original.posonly or fn.npos != original.npos
                 or fn.kwarg != original.kwarg or fn.vararg != original.vararg
             ):
@@ -320,16 +605,196 @@ def gen_dc_options(self, ci: ClassInfo) -> None:
     if len(st.kids) > 2:
         self.err(f"unsupported decorator @{st.kids[2].s}")
 
+
+# the ordering methods that functools.total_ordering() computes one another from, in the order
+# CPython's max(roots) prefers them
+ORDER_OPS = ["__lt__", "__le__", "__gt__", "__ge__"]
+
+
+def gen_ordering_ops(self, c: str, seen: list[str]) -> list[str]:
+    # the ones of __lt__, __le__, __gt__ and __ge__ that class c has other than object's, which
+    # CPython's functools.total_ordering() takes as roots (getattr(cls, op) is not object's),
+    # in ORDER_OPS's order: those its body binds, among them those @total_ordering wrote
+    # (Loader's functools_classes); all four for a NamedTuple (tuple's) and a dataclass with
+    # order=True; and those of its bases (an exception class's builtin bases have none). Classes
+    # in seen are left out (each base once)
+    if c not in self.classes or c in seen:
+        return []
+    seen.append(c)
+    ci = self.classes[c]
+    if c in self.nts or "order" in ci.dcopts:
+        return list(ORDER_OPS)
+    has: dict[str, bool] = {}
+    for d in ci.node.kids[0].kids:
+        if d.kind == "def" and d.s in ORDER_OPS:
+            has[d.s] = True
+        for t in d.kids[:-1] if d.kind == "assign" else d.kids[:1] if d.kind == "annassign" and len(d.kids) == 3 else NOKIDS:
+            if t.kind == "name" and t.s in ORDER_OPS:
+                has[t.s] = True
+    for b in [ci.base] + ci.roles:
+        for op in self.ordering_ops(b, seen):
+            has[op] = True
+    return [op for op in ORDER_OPS if op in has]
+
+def gen_ordered_class(self, ci: ClassInfo) -> None:
+    # class ci, decorated @total_ordering: the loader wrote the ordering methods its body lacks
+    # from the greatest of those it defines (functools_classes, ORDERED). CPython's decorator
+    # also takes as roots those the class inherits (ordering_ops), all four of a NamedTuple and
+    # those of a dataclass with order=True applied before it; it writes only the others, each
+    # computed from the greatest root (max(roots)). The methods written for a root the class
+    # inherits are left out of its body, so that it inherits that one; where the others are
+    # computed from an inherited root, which the loader did not read, the class is rejected
+    words = ORDERED[ci.node.line].split()
+    own = [op for op in ORDER_OPS if op in words]
+    inherited: list[str] = list(ORDER_OPS) if ci.name in self.nts or ("+" in words and "order" in ci.dcopts) else []
+    seen: list[str] = [ci.name]
+    bases = [ci.base] + ci.roles
+    for b in bases:
+        for op in self.ordering_ops(b, seen):
+            if op not in inherited:
+                inherited.append(op)
+    roots = [op for op in ORDER_OPS if op in own or op in inherited]
+    made = [op for op in ORDER_OPS if op not in roots]  # (what CPython's decorator writes)
+    self.line = ci.node.line
+    if len(roots) == 0:
+        self.err("ValueError: must define at least one ordering operation: < > <= >=")
+    if len(roots) == len(own):
+        return  # (as the loader wrote them)
+    if len(made) > 0 and (len(own) == 0 or own[0] != roots[0]):
+        held = [b for b in bases if roots[0] in self.ordering_ops(b, [])]
+        listed = made[0] if len(made) == 1 else ", ".join(made[:-1]) + " and " + made[-1]
+        self.err(f"@total_ordering of class {short(ci.name)} is not supported where it inherits {roots[0]}" + (f" from {short(held[0])}" if len(held) > 0 else "") +
+                 f": CPython's decorator computes {listed} from that method" + (f", not from {own[0]} of its body" if len(own) > 0 else ""))
+    drop = [op for op in roots if op not in own]
+    ci.node.kids[0].kids = [d for d in ci.node.kids[0].kids if d.kind != "def" or d.s not in drop]
+
+def gen_on_chain(self, c: str, a: str) -> bool:
+    # is class a class c or one of the classes c derives from by its primary bases
+    while c in self.classes:
+        if c == a:
+            return True
+        c = self.classes[c].base
+    return False
+
+def role_attrs(c: Node) -> list[str]:
+    # the attributes class c (its class node) declares by annotation alone (x: T), which a
+    # secondary base may: no object has them until its class's code stores them
+    return [d.kids[0].s for d in c.kids[0].kids if d.kind == "annassign" and len(d.kids) == 2 and d.kids[0].kind == "name" and d.kids[0].s != "__slots__"]
+
+def gen_role_field(self, t: str, name: str) -> bool:
+    # is name an attribute that t declares (role_attrs), a class that some class names as a
+    # secondary base outside its primary chain, or that such a base derives from (role_chain): an
+    # object typed t is then one of t's own, with t's layout, or one of a class that combines
+    # t, which holds the attribute among its own fields (class_fields). A read or store through t
+    # therefore goes by the object's exact class (refl_split), where Gen.rolex names the object
+    # once that class is known
+    if t not in self.classes:
+        return False
+    ci = self.classes[t]
+    return ci.isiface and name in ci.ftypes and not name.startswith(" ")
+
+def gen_role_chain(self, primary: str, secondary: str) -> list[str]:
+    # the classes of secondary base secondary's own chain, itself first, where it is no trait of
+    # primary (trait_root): a root class, or one that derives from root classes alone, none of
+    # them of primary's chain, with secondary bases of its own, decorated or a dataclass, a
+    # NamedTuple, an exception or abstract base class (an interface that extends another, as
+    # mypy's TypeCheckerSharedApi(CheckerPluginInterface)); else []
+    out: list[str] = []
+    c = secondary
+    while c != "":
+        if c not in self.classes or self.on_chain(primary, c):
+            return []
+        info = self.classes[c]
+        if info.exc != "" or self.is_dc(c) or c in self.nts or len(info.roles) > 0 or len(info.node.kids) != 1 or self.abc_class(c):
+            return []
+        out.append(c)
+        c = info.base
+    return out
+
+def gen_trait_root(self, primary: str, secondary: str) -> str:
+    # the class of primary's chain (on_chain) that secondary base secondary derives from
+    # directly, where secondary adds no fields (fieldless) and has no secondary bases of its own:
+    # every object of a class deriving from both then begins with that class's fields, as
+    # secondary's objects do; else "". Not through other classes: isinstance() and dispatch know
+    # the secondary base itself (ClassInfo.roles), not the classes between it and the chain
+    info = self.classes[secondary]
+    if info.exc != "" or self.is_dc(secondary) or secondary in self.nts or len(info.roles) > 0 or not fieldless(info.node):
+        return ""
+    return info.base if info.base != primary and self.on_chain(primary, info.base) else ""  # (not primary itself: no consistent MRO)
+
+def gen_declarer(self, c: str, m: str) -> str:
+    # the class of c's primary chain whose own body defines method m (an inherited class method
+    # that uses cls is a copy of its declaration's, inherit), or ""
+    while c in self.classes:
+        if self.declares(c, m):
+            return c
+        c = self.classes[c].base
+    return ""
+
+def gen_declares(self, c: str, m: str) -> bool:
+    # does class c's own body define method m (an accessor x.setter: its def x)
+    nm = m[: m.find(".")] if "." in m else m
+    return len([d for d in self.classes[c].node.kids[0].kids if d.kind == "def" and d.s == nm]) > 0
+
+def gen_mro(self, c: str) -> list[str]:
+    # CPython's method resolution order of class c (C3), as far as the program's classes go: c,
+    # then the merge of its bases' orders and its bases, the primary base and the secondary bases
+    # it names (ClassInfo.roles after its base's: subclass_problem rejects one named again); []
+    # where they have no consistent order
+    info = self.classes[c]
+    bases: list[str] = []
+    if info.base in self.classes:
+        bases.append(info.base)
+        bases += info.roles[len(self.classes[info.base].roles) :]
+    seqs: list[list[str]] = [self.mro(x) for x in bases]
+    seqs.append(bases)
+    out = [c]
+    while True:
+        seqs = [x for x in seqs if len(x) > 0]
+        if len(seqs) == 0:
+            return out
+        head = ""
+        for x in seqs:
+            if head == "" and len([y for y in seqs if x[0] in y[1:]]) == 0:
+                head = x[0]
+        if head == "":
+            return []
+        out.append(head)
+        seqs = [y[1:] if y[0] == head else y for y in seqs]
+
+def gen_mro_first(self, order: list[str], m: str) -> str:
+    # the first class of method resolution order order whose own body defines method m, or ""
+    for c in order:
+        if self.declares(c, m):
+            return c
+    return ""
+
+
+def gen_slotted_trait(self, cls: str, role: str) -> bool:
+    # is secondary base role of class cls a trait (trait_root) whose classes up to cls's chain
+    # all declare __slots__ (an empty one): its objects then have no __dict__ in CPython
+    c = role
+    if self.classes[c].base == "":
+        return False
+    while c in self.classes and not self.on_chain(cls, c):
+        if len([d for d in self.classes[c].node.kids[0].kids if (d.kind == "assign" or d.kind == "annassign") and d.kids[0].kind == "name" and d.kids[0].s == "__slots__"]) == 0:
+            return False
+        c = self.classes[c].base
+    return True
+
 def gen_derives(self, c: str, base: str) -> bool:
     # is c, a class of the program or a builtin exception class, base or derived from it
     while c in self.classes:
         if c == base:
             return True
         info = self.classes[c]
-        if info.role != "" and info.role == base:
+        if base in info.roles:
             return True
-        if info.excsecond != "" and exc_derives(info.excsecond, base):
-            return True
+        for r in info.roles:
+            if self.classes[r].base != "" and self.on_chain(self.classes[r].base, base):
+                return True  # (a class its secondary base derives from: role_chain, or a trait's, which c's chain has too)
+        if info.excsecond != "" and self.derives(info.excsecond, base):
+            return True  # (its second exception base, a builtin class or one of the program)
         c = info.base
     return c in EXCBASES and exc_derives(c, base)
 
@@ -346,8 +811,9 @@ def gen_init_generic(self, st: Node, hier: bool = False) -> bool:
         return False
     for d in st.kids[0].kids:
         if d.kind == "def" and d.s == "__init__" and len(d.kids) == 3:
-            if st.s in self.tparams:
-                return True  # (its context can bind variables absent from __init__ parameters)
+            if st.s in self.tparams and st.s not in self.implicitgen:
+                return True  # (its context can bind variables absent from __init__ parameters; not an
+                # implicitly generic class's, which, as one without __init__, binds nothing)
             ps = d.kids[0].kids
             for i in range(1, len(ps)):
                 a = ps[i].kids[0]
@@ -792,6 +1258,7 @@ def gen_class_effect(self, st: Node, why: str, runs: bool = True) -> bool:
     # the statement surely runs there (see body_effect, which gives the result)
     c = st.kids[0] if st.kind == "subclass" else st
     does = f"creates class {short(c.s)}"
+    self.modchk(c)  # (the names of the identity decorators the loader dropped: Loader.identity_decos)
     self.decorators(c, c.kids[1:], {})
     for b in st.kids[1:] if st.kind == "subclass" else []:
         self.line = b.line
@@ -1134,12 +1601,163 @@ def gen_abstract_of(self, c: str) -> list[str]:
     return sorted(out)
 
 def gen_abc_class(self, c: str) -> bool:
-    # does class c derive from abc.ABC, or from a class whose statement passes metaclass=ABCMeta
+    # does class c derive from abc.ABC, or from a class whose statement passes metaclass=ABCMeta,
+    # or whose base was collections.abc's Iterator or Iterable (iter_abc): ABCMeta makes it
     while c in self.classes:
-        if c == "abc$ABC" or c in self.abcmeta:
-            return True
+        if c == "abc$ABC" or c in self.abcmeta or c in self.iterabc or self.classes[c].origin in self.iterabc:
+            return True  # (collections.abc's Iterator and Iterable are ABCMeta's too: iter_abc)
         c = self.classes[c].base
     return False
+
+def tv_reads(st: Node) -> list[Node]:
+    # the names that TypeVar statement st's constraints and bound read, as qualified (Loader.qexpr)
+    out: list[Node] = []
+    todo = [a.kids[0] if a.kind == "kw" else a for a in st.kids[1].kids[2:] if a.kind != "kw" or a.s == "bound"]
+    while len(todo) > 0:
+        n = todo.pop()
+        if n.kind == "name":
+            out.append(n)
+        for k in n.kids:
+            todo.append(k)
+    return out
+
+
+# typing's names that TypeVar's bound may not be plain (typing._type_check's TypeError)
+BOUND_FORMS = "Annotated ClassVar Concatenate Final Generic Literal NotRequired Optional Protocol ReadOnly Required TypeGuard TypeIs Union Unpack".split()
+
+# typing's names that typing._type_check takes as types (as TypeVar's bound, and as an argument of
+# a subscript of typing's), each with the number of type arguments that it takes: 0, the special
+# forms that are types; * any (Tuple); the others typing's aliases of classes
+TV_TYPES = (
+    "Any:0 LiteralString:0 Never:0 NoReturn:0 Self:0 TypeAlias:0 AbstractSet:1 AsyncContextManager:1-2 AsyncGenerator:1-2 "
+    "AsyncIterable:1 AsyncIterator:1 Awaitable:1 Callable:2 ChainMap:2 Collection:1 Container:1 ContextManager:1-2 "
+    "Coroutine:3 Counter:1 DefaultDict:2 Deque:1 Dict:2 FrozenSet:1 Generator:1-3 ItemsView:2 Iterable:1 Iterator:1 "
+    "KeysView:1 List:1 Mapping:2 MappingView:1 Match:1 MutableMapping:2 MutableSequence:1 MutableSet:1 OrderedDict:2 "
+    "Pattern:1 Reversible:1 Sequence:1 Set:1 Tuple:* Type:1 ValuesView:1"
+).split()
+
+# why tv_problem() rejects what it cannot tell evaluates
+TVFORMS = "only classes, type aliases, TypeVars, typing's types, their subscripts and '|' of them, None and strings are supported in a TypeVar's constraints and bound, which Pystachy does not evaluate (CPython does, when the assignment runs)"
+
+
+def tv_type(nm: str) -> str:
+    # (TV_TYPES) how many type arguments typing's nm takes, a type that TypeVar takes as its
+    # bound; or "" if it is no such type
+    for x in TV_TYPES:
+        if x.startswith(nm + ":"):
+            return x[len(nm) + 1 :]
+    return ""
+
+
+def gen_bound_problem(self, x: Node) -> str:
+    # the TypeError CPython's TypeVar raises for bound x (typing._type_check): a plain special
+    # form (Union), Generic or Protocol, a subscript of ClassVar, Final, Generic or Protocol, or
+    # a tuple; else ""
+    if x.kind == "tuple":
+        return "Bound must be a type. Got a tuple"
+    b = x.kids[0] if x.kind == "index" else x
+    p = self.imported_ref(b) if b.kind == "name" or b.kind == "attr" else ""
+    nm = p[p.rfind(".") + 1 :]
+    if not (p.startswith("typing.") or p.startswith("typing_extensions.")) or nm not in BOUND_FORMS:
+        return ""
+    if x.kind == "index":
+        return f"typing.{nm}[...] is not valid as type argument" if nm in ["ClassVar", "Final", "Generic", "Protocol"] else ""
+    return f"Plain <class 'typing.{nm}'> is not valid as type argument" if nm == "Generic" or nm == "Protocol" else f"Plain typing.{nm} is not valid as type argument"
+
+
+def gen_tv_names(self, e: Node) -> str:
+    # what name or attribute e of a TypeVar's constraints or bound names: "class" (also a
+    # builtin one), "typevar", "alias" (a type alias), or "typing.<name>" or
+    # "collections.abc.<name>"; else "" (a variable, a function, a class's attribute)
+    if e.kind == "name" and (e.s in self.classes or e.s in GENERICS or e.s in ["int", "float", "complex", "str", "bytes", "bool", "object"]):
+        return "class"
+    if e.kind == "name" and e.s in self.typevars:
+        return "typevar" if e.s not in self.tvtuples else ""
+    if e.kind == "name" and e.s in self.taliases:
+        return "alias"
+    p = self.imported_ref(e)
+    p = "typing." + p[18:] if p.startswith("typing_extensions.") else p
+    return p if (p.startswith("typing.") and p[7:] in TYPING) or p.startswith("collections.abc.") else ""
+
+
+def gen_tv_problem(self, e: Node, ctx: int) -> str:
+    # why Pystachy cannot drop e, part of a TypeVar's constraint (ctx 0) or bound (1), which it
+    # does not evaluate: CPython's error there, or "!" where it cannot tell that CPython
+    # evaluates e without error (or running code of the program) and TypeVar takes it; else "".
+    # e may also be an argument of a subscript of typing's (2: typing._type_check checks it as
+    # TypeVar checks a bound, and makes a string a forward reference, which it compiles), of a
+    # builtin class's or collections.abc's (3: any), of a generic class's (4: a string is a
+    # forward reference), or an operand of '|' (5)
+    k = e.kind
+    if k == "None":
+        return ""
+    if k == "str":
+        return "" if ctx == 0 or ctx == 1 or ctx == 3 else "!"
+    if k == "badattr":
+        # (a module or its __dict__, which TypeVar takes: a missing attribute is typevar_def's)
+        return "" if ctx < 2 and (e.s.endswith("cannot be used as a value") or e.s == "module attribute '__dict__' is not supported") else "!"
+    if k == "name" or k == "attr":
+        r = self.tv_names(e)
+        if r == "class" or r == "typevar" or r.startswith("collections.abc."):
+            return ""
+        if r == "alias":
+            # (its value, which CPython evaluated where it assigned it)
+            st = self.taliases[e.s]
+            return self.tv_problem(st.kids[-1], ctx) if st.kind != "typealias" else ""
+        nm = r[7:]
+        if r == "":
+            return "!"
+        if ctx == 0 or ctx == 3 or ctx == 4 or tv_type(nm) != "":
+            return ""
+        if nm in BOUND_FORMS and ctx != 5:
+            return f"Plain <class 'typing.{nm}'> is not valid as type argument" if nm == "Generic" or nm == "Protocol" else f"Plain typing.{nm} is not valid as type argument"
+        return "!"
+    if k == "binop" and e.s == "|":
+        if e.kids[0].kind == "None" and e.kids[1].kind == "None":
+            return "unsupported operand type(s) for |: 'NoneType' and 'NoneType'"
+        r = self.tv_problem(e.kids[0], 5)
+        return r if r != "" else self.tv_problem(e.kids[1], 5)
+    if k != "index":
+        return "!"
+    b = e.kids[0]
+    xs = e.kids[1].kids if e.kids[1].kind == "tuple" else [e.kids[1]]
+    r = self.tv_names(b) if b.kind == "name" or b.kind == "attr" else ""
+    nm = r[r.rfind(".") + 1 :]
+    if r == "class" and b.s in GENERICS:
+        return self.tv_items(xs, 3, b.s == "tuple")  # (types.GenericAlias: any arguments)
+    if r == "class" and b.s in self.tparams:
+        return self.tv_items(xs, 4, False)  # (the number of them: alias_problem)
+    if nm == "Callable" and (r.startswith("typing.") or r.startswith("collections.abc.")):
+        # (Callable[[A, B], R] or Callable[..., R]; typing's makes each of A and B a forward
+        # reference if a string, and checks R)
+        c = 2 if r.startswith("typing.") else 3
+        if len(xs) != 2 or (xs[0].kind != "list" and xs[0].kind != "ellipsis"):
+            return "Callable must be used as Callable[[arg, ...], result]"
+        p = self.tv_items(xs[0].kids, 4 if c == 2 else 3, False)
+        return p if p != "" else self.tv_problem(xs[1], c)
+    if r.startswith("collections.abc."):
+        return self.tv_items(xs, 3, False)
+    w = tv_type(nm) if r.startswith("typing.") else ""
+    if nm != "Optional" and nm != "Union" and (w == "" or w == "0"):
+        return "!"  # (Literal, Annotated, ClassVar, ...: not supported)
+    lo = 1 if nm == "Optional" or nm == "Union" else 0 if w == "*" else int(w[0])
+    hi = 1 if nm == "Optional" else len(xs) if w == "*" or nm == "Union" else int(w[-1])
+    if len(xs) < lo or len(xs) > hi:
+        return f"Too {'many' if len(xs) > hi else 'few'} arguments for typing.{nm}; actual {len(xs)}, expected {str(hi) if lo == hi else 'at least ' + str(lo) if len(xs) < lo else str(hi)}"
+    return self.tv_items(xs, 2, nm == "Tuple")
+
+
+def gen_tv_items(self, xs: list[Node], ctx: int, tup: bool) -> str:
+    # (tv_problem) the first problem of xs, a subscript's arguments, each in ctx; of a tuple's
+    # (tup), the last of two or more may be ...
+    for i in range(len(xs)):
+        if xs[i].kind == "ellipsis" and tup and i > 0 and i == len(xs) - 1:
+            continue
+        r = self.tv_problem(xs[i], ctx)
+        if r != "":
+            return r
+    return ""
+
 
 def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
     self.pipeline.begin("prepare")
@@ -1147,12 +1765,14 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
     phase = "runtime" if self.rtmode else "program"
     self.opts = optimizations()
     self.identity_modules(mods)  # (which modules' code tracks numeric identity: dynamic.py)
+    self.clsbodies = [m.body for m in mods]  # (class_values.py's class_value_annotated)
     # (lib's modules of range objects, of object()'s and of complex numbers bind no global of another module: the
     # names they bind do not keep a global of the program from being constant)
     own = [m for m in mods if m.name != RANGES and m.name != OBJECTS and m.name != COMPLEXS]
     if "moduleints" in self.opts:
         self.intglobals = module_ints(own, self.intat)
     self.strglobals = module_strs(own, self.strtuples)
+    module_anns(own, self.globanns)
     for m in mods:
         m.body.kids = self.abstract_defs(m.body.kids)
     # the modules in the order their code may first run, the main program last
@@ -1184,6 +1804,7 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
         self.eh = dynamic_program() or len([m for m in mods if (defines(m.body, "__iter__") and m.name != RANGES) or module_reads(m.body, "next")]) > 0
     for m in mods:
         self.generic_aliases(m.body.kids)
+    tvdefs: list[Node] = []  # (the TypeVar statements, whose arguments are checked below)
     for m in mods:
         m.body.kids = self.typing_forms(m, m.body.kids, False, False, True)
         for i in range(len(m.body.kids)):
@@ -1202,19 +1823,45 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
             elif st.kind == "subclass" and len(st.kids) == 2 and len(self.generic_base(st.kids[1])) > 0:
                 m.body.kids[i] = st.kids[0]  # class C(Generic[T]): a class whose objects bind T (see bind)
                 self.tparams[st.s] = self.generic_base(st.kids[1])
+            elif st.kind == "subclass" and len(st.kids) > 2 and self.generic_traits(st) > 0:
+                # class N(Generic[T], A[T], B[T]): generic class N's other bases (generic_subclass)
+                gk = self.generic_traits(st)
+                self.tparams[st.s] = self.generic_base(st.kids[gk])
+                st.kids = [st.kids[j] for j in range(len(st.kids)) if j != gk]
+            elif st.kind == "subclass" and len(st.kids) == 2 and self.iter_abc(st) != "":
+                # class C(Iterator[T]) of typing or collections.abc, which defines the methods
+                # that abstract base requires (iter_abc): a class of its own, generic in the type
+                # variables its subscript names, as with Generic[T] (the base gives it nothing it
+                # uses; ABCMeta's attributes are rejected where reflection would show them)
+                m.body.kids[i] = st.kids[0]
+                self.iterabc[st.s] = True
+                tvs: list[str] = []
+                subscript_tvars(st.kids[1], self.typevars, tvs)
+                if len(tvs) > 0:
+                    self.tparams[st.s] = tvs
+            elif st.kind == "subclass" and len(self.implicit_tparams(st)) > 0:
+                # class S(Visitor[T]): generic in the type variables that its bases' subscripts
+                # name, as with Generic[T] first (PEP 484), which generic_subclass passes on
+                self.tparams[st.s] = self.implicit_tparams(st)
+                self.implicitgen[st.s] = True
             elif st.kind == "subclass" and st.kids[1].kind == "typeparams" and self.class_params(st) == "":
                 m.body.kids[i] = st.kids[0]  # class C[T]: as class C(Generic[T]) (see class_params)
                 self.tparams[st.s] = st.kids[1].s.split()
                 self.pep695[st.s] = True
             elif self.typevar_def(st):
                 self.typevars.append(st.kids[0].s)
+                tvdefs.append(st)
                 m.body.kids[i] = mk("pass", "", st.line, [])
             elif st.kind == "typealias" and st.s in self.taliases:
                 m.body.kids[i] = mk("pass", "", st.line, [])  # (a type alias, which only annotations name)
             elif st.kind == "assign" and st.kids[0].kind == "name" and st.kids[0].s in self.taliases and self.taliases[st.kids[0].s] is st and not self.alias_kept(st.kids[0].s):
                 # (N = NewType("N", T) binds N where it runs, as a def does: a call N(x) that may come
-                # first checks it, see call)
-                m.body.kids[i] = mk("newtype", st.kids[0].s, st.line, []) if self.newtype_name(st.kids[0].s) else mk("pass", "", st.line, [])
+                # first checks it, see call. CPython evaluates an alias's value there, which may read
+                # a class through its module before that module binds it: see ann_reads)
+                vreads: dict[str, bool] = {}
+                chk_names(st.kids[1], vreads)
+                m.body.kids[i] = mk("newtype", st.kids[0].s, st.line, []) if self.newtype_name(st.kids[0].s) else mk("aliasvalue", st.kids[0].s, st.line, []) if len(vreads) > 0 else mk("pass", "", st.line, [])
+    module_values(own, self.globvalues, self.globowners, self.globalts)  # (after typing_forms: x: Final = v is x = v)
     for q in self.taliases:
         # (CPython evaluates an assigned alias's value where it assigns it, a type statement's
         # only where its __value__ is read)
@@ -1224,6 +1871,18 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
             self.line = self.taliases[q].line
             what = "this NewType's type" if self.newtype_name(q) else "this type alias's value"
             self.err(why[1:] if why.startswith("!") else f"{why} (CPython evaluates {what} when the assignment runs)")
+    for st in tvdefs:
+        # a TypeVar's constraints and bound are evaluated as an alias's value is, where a subscript
+        # with the wrong number of arguments raises CPython's TypeError (Callable[int], Box[int,
+        # str] of a Box(Generic[T])); what Pystachy could not compile in an alias is no error here,
+        # as these types bind nothing (typevar_def)
+        if self.imported_ref(st.kids[1].kids[0]) != "typing.TypeVar":
+            continue
+        for a in st.kids[1].kids[2:]:
+            why = self.alias_problem(a.kids[0] if a.kind == "kw" else a) if a.kind != "kw" or a.s == "bound" else ""
+            if why != "" and not why.startswith("!"):
+                self.line = st.line
+                self.err(f"{why} (CPython evaluates a TypeVar's constraints and bound when the assignment runs)")
     if len(self.taliases) > 0:
         self.recursive_aliases()
         # an annotation that names a type alias is its value (unalias)
@@ -1284,7 +1943,11 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
                 if ci.base == "" and len(st.kids) == 2 and builtin_base(st.kids[1]) != "":
                     self.bsubn[st.s] = st.kids[1]  # (an ordinary class but for its objects' header: builtin_bases.py)
                 elif ci.exc == "":
-                    ci.role = st.kids[2].s if len(st.kids) == 3 else self.classes[ci.base].role
+                    # (its base's secondary bases, then its own: subclass_problem)
+                    ci.roles = list(self.classes[ci.base].roles)
+                    for b in st.kids[2:]:
+                        if b.s not in ci.roles:
+                            ci.roles.append(b.s)
                 elif len(st.kids) == 3:
                     ci.excsecond = self.exc_base(st.kids[2])
                 self.classes[st.s] = ci
@@ -1301,24 +1964,55 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
                 self.classes[st.s] = ClassInfo(st.s, st)
                 self.classes[st.s].mod = m.name
                 self.dc_options(self.classes[st.s])
+    for ci in list(self.classes.values()):
+        if ci.node.line in ORDERED:
+            self.ordered_class(ci)  # (before the methods of the class bodies are declared)
     for m in mods:
         self.any_variables(m.body, False)
+    # the sentinels, NAME = object() (also NAME: Final[Any] = object()), that nothing else binds,
+    # in any module: constant_writes also counts global declarations and other modules' stores
+    # of mod.NAME. A parameter annotated T whose default is one is a sentinel parameter (declare_fn)
+    writes: dict[str, int] = {}
+    for m in own:
+        constant_writes(m.body, writes)
+    for m in mods:
+        for st in m.body.kids:
+            v = st.kids[-1] if (st.kind == "assign" and len(st.kids) == 2) or (st.kind == "annassign" and len(st.kids) == 3) else None
+            if v is not None and st.kids[0].kind == "name" and v.kind == "call" and len(v.kids) == 1 and v.kids[0].kind == "name" and v.kids[0].s == "object" and writes.get(st.kids[0].s, 0) == 1:
+                self.sentinelglobals[st.kids[0].s] = True
     # Only ordinary inheritance hierarchies need a runtime class tag. Keeping unrelated
     # classes unchanged preserves their compact layout, including dataclasses and tuples.
     for ci in self.classes.values():
         if ci.exc == "" and ci.base in self.classes:
             ci.tag = 1
             self.classes[ci.base].tag = 1
-            if ci.role != "" and ci.role != self.classes[ci.base].role:
-                self.classes[ci.role].tag = 1
-                self.classes[ci.role].isrole = True
-                # These unrelated static types can now denote the same instance.
-                ancestor = ci.base
-                while ancestor in self.classes:
-                    if ci.role not in self.classes[ancestor].overlaps:
-                        self.classes[ancestor].overlaps.append(ci.role)
-                        self.classes[ci.role].overlaps.append(ancestor)
-                    ancestor = self.classes[ancestor].base
+            for secondary in ci.roles:
+                if secondary in self.classes[ci.base].roles:
+                    continue
+                # (an interface's own chain, role_chain: each class of it is a secondary base of
+                # this class too, and of the objects that a value of its type may be)
+                chain = self.role_chain(ci.base, secondary)
+                for role in chain if len(chain) > 0 else [secondary]:
+                    self.classes[role].tag = 1
+                    self.classes[role].isrole = True
+                    self.classes[role].isiface = self.classes[role].isiface or len(chain) > 0
+                    # These unrelated static types can now denote the same instance: the
+                    # primary ancestors, and the other secondary bases, each with the classes
+                    # it extends (role_chain).
+                    others: list[str] = []
+                    for r in ci.roles:
+                        if r != secondary:
+                            extended = self.role_chain(ci.base, r)
+                            others += extended if len(extended) > 0 else [r]
+                    ancestor = ci.base
+                    while ancestor in self.classes:
+                        if not self.on_chain(role, ancestor):  # (a trait's own bases are its bases)
+                            others.append(ancestor)
+                        ancestor = self.classes[ancestor].base
+                    for other in others:
+                        if role not in self.classes[other].overlaps:
+                            self.classes[other].overlaps.append(role)
+                            self.classes[role].overlaps.append(other)
     tag = 0
     for ci in self.classes.values():
         if ci.tag != 0:
@@ -1414,12 +2108,24 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
                         if "." in g.accof:
                             g.accof = self.class_ref(m, g.accof[: g.accof.rfind(".")]) + g.accof[g.accof.rfind(".") :]  # (@Base.x.setter)
                         self.classes[st.s].methods[key] = g
-                top.append(mk("cdefaults", st.s, st.line, []))
+                cd = mk("cdefaults", st.s, st.line, [])
+                cd.mchk = (st.kids[0] if st.kind == "subclass" else st).mchk  # (its identity decorators' reads: Loader.identity_decos)
+                top.append(cd)
             else:
                 top.append(st)
         tops.append(top)
     for ci in self.classes.values():
         self.inherit(ci)
+    for m in mods:
+        for q in m.finals:
+            # CPython's @final sets the class's __final__ to True, over what its body or a base's
+            # binds, which the class would read where the loader dropped the decorator
+            c = q
+            while c in self.classes and q in self.classes:
+                if "__final__" in self.body_names(self.classes[c].node):
+                    self.line = self.classes[q].node.line
+                    self.err(f"@final on class {short(q)} is not supported where {'its body' if c == q else 'the body of ' + short(c)} binds __final__ (CPython's @final sets __final__ to True)")
+                c = self.classes[c].base
     for ci in [x for x in self.classes.values()]:
         # (a dataclass's field annotated C[X] makes that specialization of generic class C here,
         # which specialize declares itself)
@@ -1457,6 +2163,28 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
         mcls[ci.mod].append(ci)
     for i in range(len(mods)):
         self.flow_program(tops[i], mods[i].name, mfns[mods[i].name], mcls[mods[i].name], i == 0)
+    for st in tvdefs:
+        # a class that a TypeVar's bound or constraints read through its module (a.Later), which
+        # that module may not have defined there, as during a circular import: CPython's
+        # AttributeError, which isinstance() would check (isinst_reads) but a TypeVar's
+        # arguments, which Pystachy does not evaluate, cannot
+        for rd in tv_reads(st):
+            if rd.chk and rd.s in self.gflag and rd.s in self.classes:
+                self.line = st.line
+                self.err(f"class '{shown(rd.s)}' may not be defined where this TypeVar reads it through its module (as during a circular import): not supported (CPython raises AttributeError if it is not)")
+        for a in st.kids[1].kids[2:] if self.imported_ref(st.kids[1].kids[0]) == "typing.TypeVar" else NOKIDS:
+            # (what TypeVar checks of its bound, typing._type_check; and what Pystachy cannot tell
+            # CPython evaluates without error, which it rejects: tv_problem)
+            if a.kind == "kw" and a.s != "bound":
+                continue
+            x = a.kids[0] if a.kind == "kw" else a
+            why = self.bound_problem(x) if a.kind == "kw" else ""
+            why = self.tv_problem(x, 1 if a.kind == "kw" else 0) if why == "" and not is_const(x) else why
+            self.line = st.line
+            if why == "!":
+                self.err(TVFORMS)
+            if why != "":
+                self.err(f"{why} (CPython evaluates a TypeVar's constraints and bound when the assignment runs)")
     for nm in self.gflag:
         if nm in self.funcs or nm in self.classes or self.newtype_name(nm):
             self.global_var(f"@g.{nm}.def", "bool")

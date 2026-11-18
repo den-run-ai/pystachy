@@ -1,0 +1,38 @@
+<class 'int'> int/int/builtins True False False True False False
+<class 'str'> str/str/builtins False True False True False False
+<class 'float'> float/float/builtins False False False True False False
+<class 'bool'> bool/bool/builtins False False False True False False
+<class 'list'> list/list/builtins False False False True False False
+<class 'dict'> dict/dict/builtins False False False True False False
+<class 'tuple'> tuple/tuple/builtins False False False True False False
+<class 'set'> set/set/builtins False False False True False False
+<class 'frozenset'> frozenset/frozenset/builtins False False False True False False
+<class 'bytes'> bytes/bytes/builtins False False False True False False
+<class 'object'> object/object/builtins False False False True True False
+<class 'type'> type/type/builtins False False False True False False
+<class '__main__.A'> A/A/__main__ False False True True False False
+<class '__main__.B'> B/B/__main__ False False False False False False
+<class '__main__.P'> P/P/__main__ False False False True False False
+<class 'NoneType'> NoneType/NoneType/builtins False False False True False True
+<class 'int'> <class 'str'> <class 'float'> <class 'NoneType'>
+True True True True True
+True True True True
+True False True True
+integer
+string
+an A
+nothing
+integer string an A nothing
+False False False 4
+3 True False True False ['A', 'int', 'str']
+True False 2 1
+True True False
+<class 'int'> <class 'str'> <class '__main__.A'> <class 'float'> <class 'bool'>
+<class 'int'> <class 'str'> <class 'float'> <class 'list'> <class 'dict'> <class 'bytes'> builtins int str
+1 1 1
+<class 'int'> int True <class 'type'> <class 'type'> type
+<class 'int'> True False
+f <class 'float'> float False
+i <class 'int'> int True
+s <class 'str'> str False
+[exit 0]

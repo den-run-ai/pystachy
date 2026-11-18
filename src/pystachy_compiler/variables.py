@@ -25,7 +25,9 @@ from src.pystachy_compiler.analysis import (
 )
 from src.pystachy_compiler.diagnostics import FILES, LINES, MODDUNDERS, Rejoin, dynamic_program, where
 from src.pystachy_compiler.dynamic import XCMP, boxed_list_items, comparison_record_write, comparison_storage_key
-from src.pystachy_compiler.ir import Blk, Closure, FnInfo, Frame, Ins, IterArg, Val, tmpname, one_num
+from src.pystachy_compiler.frames import Frame, IterArg
+from src.pystachy_compiler.ir import Blk, Ins, Val, tmpname, one_num
+from src.pystachy_compiler.symbols import Closure, FnInfo
 from src.pystachy_compiler.names import ENUMCLASSES, owner, short
 from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, INERT_DECOS, NONE_ITEM, NONEVAR, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
 from src.pystachy_compiler.syntax import NOKIDS, Node, comp_names, made_var, mk, name_targets, starred_target
@@ -34,6 +36,7 @@ from src.pystachy_compiler.utils import (
     empty_ann,
     empty_default,
     empty_display,
+    holds_no_object,
     is_const,
     is_dict,
     is_fn,
@@ -168,9 +171,9 @@ def gen_load_name(self, name: str) -> Val:
     if name in self.classes and self.classes[name].node.line in ENUMCLASSES:
         return self.expr(self.enum_view(name, self.line), "")  # (an enum class: its EnumType object)
     if name in self.classes:
-        if self.dyn_policy(self.line):
-            return self.refl_class_value(name)
-        self.err(f"class '{name}' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)")
+        if self.dyn_policy(self.line) and not self.class_value_static(name, self.curfn.mod, self.line):
+            return self.refl_class_value(name)  # (a class box, an Any value: reflection.py)
+        return self.class_value(name)  # (an ordinary class: its class object, class_values.py)
     if name in self.fglobals:
         self.err(f"name '{name}' is not defined yet here: a function assigns it, so declare it at module level{self.where_def(name)} first ({short(name)}: T)")
     if name in self.mvars and owner(name) != self.curfn.mod and owner(name) not in self.inited and self.comp[owner(name)] == self.comp[self.curfn.mod]:
@@ -256,6 +259,8 @@ def gen_decorate(self, n: Node) -> Val:
             wraps.append([])
             callees.append(self.vnode(self.call(e, "")) if len(decos[i].kids) > 0 else e)
     v = self.closure(n)
+    if self.modlevel:
+        self.def_ann_reads(n)  # (module code's def: after its defaults, before the decorators run)
     for j in range(len(callees) - 1, -1, -1):
         self.line = callees[j].line
         if len(wraps[j]) > 0:
@@ -452,6 +457,14 @@ def gen_new_closure(self, n: Node, key: str) -> Closure:
     qual = name if self.modlevel else self.qualname(outer) + ".<locals>." + name
     idx = len(self.closures)
     f = self.declare_fn(mk("def", d.s, d.line, d.kids[:3]), "")  # (its decorators apply to the closure: decorate)
+    for sp in list(f.sentinels) if not self.modlevel else []:
+        if not self.globread(f.sentinels[sp]):
+            # its default reads a variable of the function around it (a parameter, a local or a
+            # cell) spelled as the sentinel, not the module's sentinel: sp is a parameter of its
+            # annotated type, as without a sentinel
+            f.ptypes[f.params.index(sp)] = f.sentann[sp]
+            del f.sentinels[sp]
+            del f.sentann[sp]
     f.ll = f"@c.{idx}"
     f.name = qual
     f.mod = outer.mod
@@ -761,7 +774,7 @@ def gen_read(self, n: Node) -> Val:
         if name in self.gidbox and self.idhere():
             self.dyn_id_read(val, self.gidbox[name])  # (its binding's object, as an Any value: dyn_box)
         return val
-    if name not in self.ltype and name not in self.gtypes and name not in self.funcs and name not in self.aliases and name in self.classes and (self.classes[name].exc != "" or self.dyn_policy(n.line)):
+    if name not in self.ltype and name not in self.gtypes and name not in self.funcs and name not in self.aliases and name in self.classes and (self.classes[name].exc != "" or self.dyn_policy(n.line) or self.class_value_named(name)):
         self.class_ready(n)  # (a class value is unbound before its class statement runs)
     return self.load_name(name)
 
@@ -1559,7 +1572,22 @@ def gen_dry(self, e: Node, want: str = "") -> str:
     self.fn.blocks = []
     self.fn.loops = []
     self.drying += 1
+    # (what its code does to attributes has not happened, and the values it reads are dropped
+    # with its blocks: the facts of narrowed attribute paths, unions.py)
+    pcall = self.pcall
+    pmark = self.path_mark()
+    preads = len(self.preadn)
+    self.pdry += 1
+    self.psess.append(self.pdry)
     t = self.expr(e, want).t
+    self.psess.pop()
+    self.path_undo(pmark, [], [])
+    self.pcall = pcall
+    while len(self.preadn) > preads:
+        self.preadn.pop()
+        self.preadv.pop()
+        self.preads.pop()
+        self.preadb.pop()
     self.drying -= 1
     self.blk = blk
     self.fn.blocks = blocks
@@ -1583,7 +1611,9 @@ def gen_fill(self, n: Node, m: str, args: list[Node], want: str = "") -> Val:
     if is_list(o.t) and (m == "append" or m == "extend" or m == "insert") and len(args) == (2 if m == "insert" else 1):
         if empty_display(args[-1]):
             self.no_type(name)  # (xs.append([]) shows nothing of what xs holds)
-        i = self.ival(args[0]) if m == "insert" else Val("0", "int")
+        # (an object as insert's index stays an error here: CPython asks it for __index__()
+        # once the value is evaluated too, which is evaluated below)
+        i = self.ival(args[0], "", False) if m == "insert" else Val("0", "int")
         if m == "extend" and self.is_mapcall(args[0]):
             args = [self.mapgen(args[0])]
         if m == "extend" and args[0].kind == "listcomp" and args[0].s == "gen":
@@ -1725,6 +1755,11 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
         # forces replay if it later widens; a source that stays unresolved stores only
         # None. A restarted copy can therefore consume its own inferred payload hint.
         v = Val("null", "None")
+    if name in self.curfn.sentinels and not self.is_global(name) and not holds_no_object(v.t) and not (v.t == "dyn" and self.ltype.get(name, "") == "dyn"):
+        # (p is S of sentinel parameter p is decided by p's type, the sentinel's where the call
+        # left p out, see static: another object() that p held would be taken for S. A dynamic p
+        # is tested at run time)
+        self.err(f"assigning sentinel parameter '{name}' a value that may be an object() is not supported: its tests 'is {short(self.curfn.sentinels[name])}' are decided by its type")
     if name in self.noneglobals and name not in self.ltype:
         if v.t != "None":
             self.err(f"'{name}' is None in its module's code: giving it a {v.t} elsewhere (a function or another module) is not supported")
@@ -1944,7 +1979,7 @@ def gen_assign(self, t: Node, v: Val) -> None:
         self.class_store(self.cvar(t.kids[0], t.s), t.s, v)
     elif k == "attr":
         o = self.expr(t.kids[0], "")
-        if self.reference_union(o.t):
+        if self.reference_union(o.t) or (self.rolex != o.v and self.role_field(o.t, t.s)):
             end = self.label()
             narrow = dict(self.narrowed)
             for lf in self.refl_split(o, False, True):
@@ -1974,7 +2009,11 @@ def gen_assign(self, t: Node, v: Val) -> None:
                         if not self.frozen_store(lf.v, t.s):
                             self.raise_("TypeError", self.sconst(f"expected {typestr(actual)}, got {typestr(v.t)}"))
                     else:
-                        self.assign(mk("attr", t.s, t.line, [self.vnode(lf.v)]), v)
+                        self.rolex = lf.v.v if self.role_field(lf.c, t.s) else ""  # (exactly lf.c here)
+                        try:
+                            self.assign(mk("attr", t.s, t.line, [self.vnode(lf.v)]), v)
+                        finally:
+                            self.rolex = ""
                 if not self.term:
                     self.br(end)
             self.narrowed = narrow
@@ -2037,7 +2076,7 @@ def gen_assign(self, t: Node, v: Val) -> None:
             self.dyn_setitem(o, self.expr(t.kids[1], "dyn"), v)  # (by its box's type: dynamic.py)
             return
         if is_list(unopt(o.t)):
-            ix = self.ival(t.kids[1])
+            ix = self.ival(t.kids[1], "", True, o, nosub)
             o = self.unwrap(o, nosub)
             self.list_store(o, self.list_hold(v, elem(o.t)), "set", ix.v)
         elif is_dict(unopt(o.t)):
@@ -2133,8 +2172,9 @@ def gen_assign(self, t: Node, v: Val) -> None:
 def gen_slice_target(self, t: Node, bnd: list[str], nosub: str, raw: list[str] | None = None, values: list[Val] | None = None) -> Val:
     # the list that slice t (xs[lo:hi:st]) assigns to or deletes from: xs, then the bounds (into
     # bnd: start, stop and step, see Gen.slice_bound), are evaluated, and xs being None raises
-    # nosub. A dynamic augmented assignment also keeps the evaluated bounds in raw/values:
-    # CPython converts them again at the store, after the RHS has run. Strs and tuples cannot
+    # nosub. An augmented assignment also keeps the evaluated bounds in raw/values: CPython
+    # converts them again at the store, after the RHS has run (a typed list's objects, which
+    # their __index__() gives the bounds of: slice_late). Strs and tuples cannot
     # change, and Pystachy has no slice objects for __setitem__
     o = self.bdecay(self.expr(t.kids[0], ""), BSTORE if "assignment" in nosub else BDEL if "deletion" in nosub else BITEM)  # (builtin_bases.py)
     dvs: list[Val] = []
@@ -2156,6 +2196,10 @@ def gen_slice_target(self, t: Node, bnd: list[str], nosub: str, raw: list[str] |
     bnd.append(self.slice_step(t.kids[3], dvs) if len(t.kids) == 4 else "1")
     o = self.unwrap(o, nosub)
     if is_list(o.t):
+        if raw is not None:
+            raw.extend(bnd)
+        if values is not None:
+            values.extend(dvs)
         self.slice_dyn(bnd, dvs)  # (bounds that are Any values: converted now, as CPython does)
         return o
     what = "deletion" if "deletion" in nosub else "assignment"

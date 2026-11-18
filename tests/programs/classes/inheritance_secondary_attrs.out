@@ -1,0 +1,11 @@
+True ['m.py: x'] m.py! True v1 10 ['u'] None
+11 11 ['u', 'm.py!'] m.py!
+True ['sub: x'] sub.py! 7 11 sub.py!
+[False, True] [False, True] [True, False] True False an 22 -2
+m.py! error: 'NoneType' object has no attribute 'path' error: 'Lazy' object has no attribute 'path'
+['m.py!', 'sub.py!'] [23, 23] 46
+True False True
+m.py! True False none
+error: 'Api' object has no attribute 'path'
+own 1
+[exit 0]

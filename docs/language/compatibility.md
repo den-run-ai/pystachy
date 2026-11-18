@@ -41,9 +41,9 @@ raises only after the whole expression is evaluated
 #### Unicode
 
 `str` uses UTF-8 storage. Length, indexing, slicing, iteration, search offsets,
-replacement, padding, formatting and text `read(n)` count **code points**, not
-visible characters: combining marks count separately. `chr()`, escapes, `ord()`
-and `repr()` use the same code points. Whitespace stripping/splitting, `splitlines()`
+replacement, padding, formatting, tab expansion and text `read(n)` count **code
+points**, not visible characters: combining marks count separately. `chr()`, escapes,
+`ord()` and `repr()` use the same code points. Whitespace stripping/splitting, `splitlines()`
 and `isspace()` recognize CPython's Unicode whitespace and line breaks.
 `isalpha()`, `isalnum()`, `isdecimal()`, `isdigit()` and `isnumeric()` use Unicode
 15.1.0 properties, matching the pinned CPython. Decimal digits, digits and numeric
@@ -52,12 +52,18 @@ characters are distinct: `"²".isdigit()` is true and `"²".isdecimal()` is fals
 letters, so `"e\u0301".isalpha()` is false. Bytes character tests remain ASCII-only.
 See [storage and indexing costs](../internals.md#values-and-runtime).
 
-- **Case mapping and case tests:** `upper()`, `lower()`, `swapcase()`,
-  `capitalize()`, `title()`, `casefold()`, `isupper()`, `islower()` and `istitle()`
-  remain ASCII-only ([#120](https://github.com/den-run-ai/pystachy/issues/120)).
+`upper()`, `lower()`, `swapcase()`, `capitalize()`, `title()`, `casefold()`,
+`isupper()`, `islower()` and `istitle()` use the same Unicode 15.1.0 data, as the
+pinned CPython applies it to each character. A mapping may give two or three
+characters (`"ß".upper()` is `"SS"`), titlecase letters keep their own form
+(`"ǆ".title()` is `"ǅ"`), and a capital sigma lowers to its final form after a cased
+letter where none follows (`"ΟΔΟΣ".lower()` is `"οδος"`). As in CPython, no locale
+applies. Bytes case methods remain ASCII-only.
+
 - **Invalid UTF-8:** builtin text files read/write unchecked bytes, where CPython
   decodes or raises `UnicodeDecodeError`. Each invalid byte counts as one character
-  for length, widths, padding, precision and `expandtabs()`. `read(n)` counts
+  for length, widths, padding, precision and `expandtabs()`. Case methods keep such
+  a byte and give it no case. `read(n)` counts
   non-continuation bytes instead, so malformed input can return `len(text) > n`.
 - **Surrogates:** U+D800–U+DFFF retain their three-byte encoding and can be printed
   or written to UTF-8 files; CPython normally raises `UnicodeEncodeError`.
@@ -95,25 +101,6 @@ See [storage and indexing costs](../internals.md#values-and-runtime).
 - Non-ASCII decimal digits in a format specification, such as `f"{x:٣}"`, raise
   `ValueError`; CPython reads them as numbers.
 
-#### Unicode audit
-
-Enable checks **when compiling**, including for imported library code:
-
-```sh
-PYSTACHY_UNICODE_AUDIT=1 ./pystachy run app.py
-PYSTACHY_UNICODE_AUDIT=1 ./pystachy build app.py -o app
-```
-
-The checks raise `NotImplementedError: Unicode audit: ...` for non-ASCII input to
-case mapping, case tests and `expandtabs()`, even when the result would match
-CPython. Character classification, code-point operations, printing, equality,
-concatenation and Unicode whitespace operations remain usable. File write counts, invalid UTF-8 decoding and
-other unlisted boundaries are **not audited**.
-
-Each check scans to the first non-ASCII byte; default builds omit it. An AOT
-executable keeps its compiled checks: changing the variable when running it has
-no effect. The shared runtime cache is independent of this setting.
-
 ### Containers and evaluation order
 
 - **Dict views are snapshots.** `keys()`, `values()` and `items()` produce lists
@@ -150,8 +137,11 @@ no effect. The shared runtime cache is independent of this setting.
 - **Tuple constants:** literal-only displays share a module constant; `()` is
   shared everywhere. CPython also folds operator expressions such as `(1 + 2, 3)`.
   Pystachy recreates those tuples, and tuples whose annotations retype/box items.
-- **Tuple conversions:** fixed-shape to runtime-length tuples, or scalar to
-  optional-element tuples, create new objects. Empty runtime-length tuples are
+- **Tuple conversions:** fixed-shape to runtime-length tuples, scalar to
+  optional-element tuples, or objects to union-item tuples create new objects, also where
+  tuples of other lengths [join](typing.md#inferred-unions) into a runtime-length tuple
+  ([test](../../tests/deviations/tuple_runtime_join_identity.py),
+  [test](../../tests/deviations/tuple_runtime_union_identity.py)). Empty runtime-length tuples are
   not interned. `tuple(t)` preserves identity only when its representation fits.
   In graphs with dynamic `Any`, numeric runtime-tuple items retain their identity
   when widened to optional items; the outer tuple can still be a new object.
@@ -289,6 +279,10 @@ or generator/async initializers retain eager formatting
   modules have one, and neither has a namespace package, whose `__file__` is `None` in
   CPython: both are rejected
   ([error test](../../tests/errors/io/file_name.py)).
+- **`mypy_extensions`:** Pystachy's own module makes the native integer names (`i64`,
+  `u8`, ...) aliases of `int`, so `i64 is int` and `i64.__name__ == "int"`; the package's
+  are classes whose calls return an `int`. Its `FlexibleAlias` is the generic class that
+  typeshed declares, whose subscripts at run time are rejected; the package's is an object.
 
 | Runtime value | Difference |
 |---|---|
@@ -516,11 +510,11 @@ See [object protocols](semantics.md#object-protocols) and
   constructors storing an iterator whose concrete class depends on their arguments.
   Fixed-field constructors may consume `Iterator[T]` / `Iterable[T]`.
 - **Fallbacks and power:** `__getitem__`-only iteration/membership; `__len__` / `__getitem__`
-  fallback for `reversed`; reflected arithmetic between two objects, `__rdivmod__` and `__rpow__`;
-  `int(o)` through `__trunc__`; `NotImplemented` outside a
-  [comparison method's `return`](semantics.md#object-protocols); object or optional
-  numeric power exponents; three-argument object `pow`. Before `**=`, narrow a base-typed
-  receiver if only its subclass defines `__ipow__`.
+  fallback for `reversed`; reflected arithmetic between two objects; `int(o)` through
+  `__trunc__`; `NotImplemented` outside a
+  [comparison method's `return`](semantics.md#object-protocols); optional numeric power
+  exponents; `__ipow__` with an object exponent; three-argument object `pow`. Before `**=`,
+  narrow a base-typed receiver if only its subclass defines `__ipow__`.
 - **Comparisons:** equality between unrelated ordinary classes outside inheritance
   hierarchies when the left operand has no applicable comparison method; methods whose
   parameter type excludes a possible operand. The method restriction covers direct
@@ -532,7 +526,9 @@ See [object protocols](semantics.md#object-protocols) and
   homogeneous tuple items); unpacking noniterables or wrong-arity tuples; heterogeneous
   starred remainders without a compatible annotation; object slicing through slice-protocol
   methods; nonconstant tuple repetition.
-- **Specific builtins:** `sum(..., start)` with a bool start (use `int(start)`); a
+- **Specific builtins:** `sum(..., start)` with a bool start (use `int(start)`); `sum()` of
+  objects whose class has no `__radd__` without a start, or whose sum changes type after the
+  first addition; a
   `startswith` / `endswith` tuple containing anything beyond `str` / `str | None`.
 - **Function values:** mixing functions without a `Callable` annotation; `Callable[..., R]`;
   keyword calls, wrong arity or incompatible return types through `Callable`; printing
@@ -546,11 +542,11 @@ See [object protocols](semantics.md#object-protocols) and
 See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
 [single inheritance](typing.md#single-inheritance).
 
-- **Inheritance:** multiple bases outside the [method-only secondary base](typing.md#a-method-only-secondary-base) subset; ordinary hierarchies involving layout-specialized templates,
+- **Inheritance:** multiple bases outside the [method-only secondary bases](typing.md#method-only-secondary-bases) subset; ordinary hierarchies involving layout-specialized templates,
   NamedTuple or builtins; generic inheritance outside the [visitor subset](typing.md#explicit-generic-classes)
-  (bases whose constructor binds type variables or subclasses passing through their own type
-  variables); mixed dataclass/ordinary hierarchies; decorated subclasses except
-  dataclass-from-dataclass; changing method kind; incompatible virtual call signatures or
+  (bases whose constructor binds type variables, or a type variable inside a base's type
+  argument: `Visitor[list[T]]`); mixed dataclass/ordinary hierarchies; decorated subclasses except
+  dataclass-from-dataclass and [identity decorators](typing.md#single-inheritance); changing method kind; incompatible virtual call signatures or
   results; overridden static/class methods called through base-typed objects. Independent
   classes and ordinary hierarchies with fixed concrete fields may specialize constructor
   arguments without specializing their layouts ([class templates](typing.md#class-templates-and-generic-classes)).
@@ -570,9 +566,11 @@ See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
   inherited `cls`-using classmethods through base-typed objects, across modules or with
   nonconstant defaults; `super` outside supported instance-method contexts, with an unrelated
   class or a different receiver.
-- **Methods and hooks:** using or assigning `cls` as a value; static/class decorators on special
+- **Methods and hooks:** assigning `cls`; static/class decorators on special
   methods; `C.__init__(o)` outside ordinary inheritance; decorators beyond staticmethod, classmethod,
-  property/setter/deleter, dataclass and overload. Defining or inheriting `__new__`,
+  property/setter/deleter, abstractmethod, contextmanager, functools.cached_property,
+  functools.total_ordering, dataclass and overload. Defining or inheriting `__new__` (but in an
+  [enum class](../../lib/compatibility.md#enum), in the form CPython's documentation gives),
   `__getattr__`, `__getattribute__`, `__setattr__` or `__delattr__`, or a base defining
   `__init_subclass__`, is rejected.
 - **Properties and attributes:** getter decorators, duplicate/misnamed setters or deleters,
@@ -620,10 +618,10 @@ See [optional operations and narrowing](typing.md#optional-values-and-narrowing)
 ### Dict keys, set elements and `bool` values
 
 - Nullable keys/elements except user objects; tuple keys containing unsupported members
-  such as floats, lists or NamedTuples; NamedTuple, exception or frozenset keys/elements;
-  hashing these types except NamedTuples; classes with nonmethod `__hash__` / `__eq__`;
-  unions of classes as keys/elements where a member's classes define `__hash__` or `__eq__`,
-  and such unions as tuple-key items or as the keys of dicts compared with `==`.
+  such as floats, lists, NamedTuples or frozensets; NamedTuple or exception keys/elements;
+  hashing these types except NamedTuples and frozensets; classes with nonmethod `__hash__` /
+  `__eq__`; unions of classes as keys/elements where a member's classes define `__hash__` or
+  `__eq__`, and such unions as tuple-key items or as the keys of dicts compared with `==`.
 - Bool stored as int, including set elements, dict keys, tuple-key members, `setdefault` and
   displays. Bool-key lookup, `pop` and `del` work; augmented assignment requires an RHS that
   runs no user code and mutates no dict. Only `get` and `in` also accept optional bool keys.
@@ -637,11 +635,11 @@ See [annotations](typing.md#annotations), [aliases](typing.md#type-aliases) and
 
 - **Type variables:** `ClassVar`, except `x: ClassVar[T] = value` in an ordinary module-level
   class; `PathLike` outside a union with `str`; `TypeVar` outside template parameters
-  and returns, except bound class type variables; constraints or nonstring bounds;
-  `TypeVarTuple` outside unpacking in tuple, Callable or `*args`; unbound class type variables.
-- **Generic classes:** `Generic[...]` alongside another base; PEP 695 classes with bases,
-  `ParamSpec` or multiple `TypeVarTuple`s; explicit `C[X]` with a `TypeVarTuple` or unannotated /
-  variadic constructor parameters.
+  and returns, except bound class type variables; `TypeVarTuple` outside unpacking in tuple,
+  Callable or `*args`; unbound class type variables.
+- **Generic classes:** `Generic[...]` alongside a base other than a generic base that takes its
+  type variables; PEP 695 classes with bases, `ParamSpec` or multiple `TypeVarTuple`s; explicit
+  `C[X]` with a `TypeVarTuple` or unannotated / variadic constructor parameters.
 - **Declarations:** bare `Final` outside assignments (a class's needs `Final[T]` or a value
   typed as in an unannotated class attribute, and a constant in a dataclass or `NamedTuple`);
   missing imports for typing names even in local annotations; overload stubs not followed in
@@ -746,11 +744,21 @@ See [user exception classes](semantics.md#user-exception-classes) and
 
 See [reflection rules](semantics.md#reflection).
 
-- **Types:** stored `type(x)` values outside the
-  [dynamic-Any class registry prototype](../dynamic-any.md#class-values-and-type-keyed-registries)
-  and exception class objects; dynamic class calls beyond ordinary reconstruction
+- **Types:** stored `type(x)` values of anything but objects of the program's classes and
+  exceptions, outside the
+  [dynamic-Any class registry prototype](../dynamic-any.md#class-values-and-type-keyed-registries);
+  dynamic class calls beyond ordinary reconstruction
   and the bounded annotated-factory path, runtime class creation and metaclasses. Type names of files
   remain unsupported.
+- **[Class objects](semantics.md#classes-as-values):** those of classes without a base class in
+  common in one variable or container; of class templates, generic classes and builtin types;
+  `typing.Type[C]`; an instance method called through one (`k.m(o)`), a method read as a value
+  (`k.m`), an assignment through one (`k.x = v`) and other attributes than its names and its
+  class's attributes; a call with `*` / `**` arguments, or with arguments that the constructor of a class it
+  may be does not take; `isinstance()` / `issubclass()` with a tuple holding one; `k == o`
+  where the class of object `o` defines `__eq__` outside a hierarchy; `isinstance()` of an
+  `Any` value with one. A class whose body assigns `__module__` or `__qualname__`,
+  and one read from a module in a circular import with the reader, are not values.
 - **Runtime names:** retaining, passing, calling, comparing or sorting by a `getattr` result;
   formatting its text with a spec, or obtaining that text for dataclasses, generics, classes
   with annotated class attributes or builtins; `setattr` without slots, with values incompatible with any
@@ -765,8 +773,8 @@ See [reflection rules](semantics.md#reflection).
 
 ### Source text
 
-- Named Unicode escapes (`\N{...}`, including f-strings), non-ASCII identifiers, indentation
-  tabs, and source encodings outside UTF-8, Latin-1 and ASCII.
+- Named Unicode escapes (`\N{...}`, including f-strings), non-ASCII identifiers, and source
+  encodings outside UTF-8, Latin-1 and ASCII.
 - Nesting over 5,000 source levels (`**` and `lambda` count twice), or the 6,000-level CPython
   parser-stack budget. Grammar weights follow CPython 3.13: brackets 24–33, f-string fields
   33, blocks 7 and comparison operands 3. The check can stop a few dozen levels earlier.

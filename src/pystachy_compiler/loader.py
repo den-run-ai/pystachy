@@ -50,6 +50,7 @@ from src.pystachy_compiler.analysis import (
     special_import,
     specials,
     surely_binds,
+    targets,
     top_bindings,
     walrus_names,
 )
@@ -58,7 +59,7 @@ from src.pystachy_compiler.ctypes_schema import ctypes_import, lower_ctypes
 from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, IDPRAGMA, INTFILES, INTSPANS, LINES, MODDUNDERS, RAW, NeedHandlers, dynamic_pragma, fail, int_pragma, leading_pragma
 from src.pystachy_compiler.lexer import KEYWORDS, Lexer, host_text
 from src.pystachy_compiler.module import Mod
-from src.pystachy_compiler.names import ENUMCLASSES, owner, short
+from src.pystachy_compiler.names import ENUMCLASSES, ORDERED, owner, short
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.specs import (
     ABCS,
@@ -69,6 +70,7 @@ from src.pystachy_compiler.specs import (
     CTYPES,
     GENERICS,
     GLUE,
+    IDENTITY_DECOS,
     INT_HELPERS,
     ITERS,
     JSONANY,
@@ -89,7 +91,7 @@ from src.pystachy_compiler.specs import (
     VERSIONINFO,
     is_excname,
 )
-from src.pystachy_compiler.syntax import NOKIDS, Node, comp_names, has_kind, mk, names_in
+from src.pystachy_compiler.syntax import NOKIDS, Node, comp_names, has_kind, mentions, mk, names_in
 from src.pystachy_compiler.utils import clone, int_fits, is_const
 
 
@@ -275,14 +277,25 @@ def cm_methods(n: Node, names: list[str]) -> None:
     n.kids = top
 
 
-# functools' names that the methods of a module's class statements may be decorated with
-FUNCTOOLS_NAMES = ["cached_property"]
+# functools' class tools that a module's class statements may use, and what @total_ordering
+# makes of the first of __lt__, __le__, __gt__ and __ge__ that a class body defines: the others,
+# each as CPython's functools computes it from that one (the operation, with A the object and B
+# the other)
+FUNCTOOLS_NAMES = ["cached_property", "total_ordering"]
+# the methods functools.total_ordering() adds for a class's own one, each as CPython computes it
+# from R, what that one returns for the operands A and B (functools' _gt_from_lt & co)
+ORDERINGS: dict[str, list[list[str]]] = {
+    "__lt__": [["__gt__", "not R and A != B"], ["__le__", "R or A == B"], ["__ge__", "not R"]],
+    "__le__": [["__ge__", "not R or A == B"], ["__lt__", "R and A != B"], ["__gt__", "not R"]],
+    "__gt__": [["__lt__", "not R and A != B"], ["__ge__", "R or A == B"], ["__le__", "not R"]],
+    "__ge__": [["__le__", "not R or A == B"], ["__gt__", "R and A != B"], ["__lt__", "not R"]],
+}
 
 
 def functools_names(body: Node) -> dict[str, str]:
-    # the names module body binds functools' cached_property as (from functools import
-    # cached_property, or as another name; import functools, or as f: f.cached_property), each
-    # to its name in functools
+    # the names module body binds functools' cached_property and total_ordering as (from
+    # functools import total_ordering, or as another name; import functools, or as f:
+    # functools.total_ordering), each to its name in functools
     out: dict[str, str] = {}
     for st in body.kids:
         for a in st.kids if st.kind == "import" else []:
@@ -297,20 +310,28 @@ def functools_names(body: Node) -> dict[str, str]:
 def functools_calls(n: Node, names: dict[str, str]) -> None:
     # (functools_classes) a call of one of functools' names that the compiler applies as a
     # decorator, anywhere in n, is rejected: cached_property(f) makes an object that no class
-    # statement's method is
+    # statement's method is, and total_ordering(C) takes a class as a value
     for kid in n.kids:
         if kid.kind == "call" and dotted(kid.kids[0]) in names:
-            fail(f"{names[dotted(kid.kids[0])]}(...) as a call is not supported: the compiler applies it where it decorates a method of a class statement (@{dotted(kid.kids[0])})", kid.line)
+            made = names[dotted(kid.kids[0])]
+            fail(f"{made}(...) as a call is not supported: the compiler applies it where it decorates a {'class statement' if made == 'total_ordering' else 'method of a class statement'} (@{dotted(kid.kids[0])})", kid.line)
         functools_calls(kid, names)
 
 
 def functools_classes(n: Node, names: dict[str, str]) -> None:
-    # (functools) what functools' cached_property (names: as the module imports it) makes of
-    # the methods of the class statements of module body n, as source: the subset has no
-    # descriptors. A method decorated @cached_property is the method _pys_cpget_NAME, and NAME a
-    # property that calls it once for an object and keeps what it returns in a field of the
-    # object, whose type the method's return annotation gives; CPython keeps it in the
-    # object's __dict__
+    # (functools) what two decorators of functools (names: as the module imports them) make of
+    # the class statements of module body n, as source: the subset has neither class decorators
+    # nor descriptors.
+    # A method decorated @cached_property is the method _pys_cpget_NAME, and NAME a property that
+    # calls it once for an object and keeps what it returns in a field of the object, whose
+    # type the method's return annotation gives; CPython keeps it in the object's __dict__.
+    # A class decorated @total_ordering gets the ordering methods its body lacks, each computed
+    # from the one of __lt__, __le__, __gt__ and __ge__ that CPython's total_ordering() takes of
+    # those the body defines, as it computes it (ORDERINGS), with that method's parameters. The
+    # method calls type(self)'s own one, and returns NotImplemented where that does
+    # (__pys_ordering: Gen.ordering), else a bool. CPython's decorator also takes the ones the
+    # class inherits, and those a decorator applied before it defines, which Gen.ordered_class
+    # reads where it knows the class's bases (ORDERED)
     if len(names) == 0:
         return
     functools_calls(n, names)
@@ -319,7 +340,15 @@ def functools_classes(n: Node, names: dict[str, str]) -> None:
             continue
         c = st.kids[0] if st.kind == "subclass" else st
         b = c.kids[0]
-        decos = c.kids[1:]
+        ordered = False
+        first = False  # (another decorator applied before @total_ordering: c.kids has the innermost first)
+        decos: list[Node] = []
+        for dn in c.kids[1:]:
+            if names.get(dn.s, "") == "total_ordering" and len(dn.kids) == 0:
+                ordered = True
+            else:
+                first = first or not ordered
+                decos.append(dn)
         kept: list[Node] = []
         for d in b.kids:
             if d.kind == "def" and len(d.kids) == 4 and d.kids[3].kind == "deco" and len(d.kids[3].kids) == 0 and names.get(d.kids[3].s, "") == "cached_property":
@@ -354,11 +383,41 @@ def functools_classes(n: Node, names: dict[str, str]) -> None:
                 kept.append(deleter)
             else:
                 kept.append(d)
+        if ordered:
+            root: Node | None = None
+            have: dict[str, bool] = {}
+            for op in ["__ge__", "__gt__", "__le__", "__lt__"]:  # (the last one found is CPython's max(roots))
+                for d in kept:
+                    if d.kind == "def" and d.s == op:
+                        root = d
+                        have[op] = True
+            for d in kept:
+                if (d.kind == "assign" or d.kind == "annassign") and d.kids[0].kind == "name" and d.kids[0].s in ORDERINGS:
+                    fail(f"@total_ordering of class {st.s}, whose body assigns {d.kids[0].s}, is not supported (the decorator reads the methods that def statements of the body define)", d.line)
+            if root is None:
+                if not first and (st.kind != "subclass" or len([x for x in st.kids[1:] if x.kind != "typeparams" and dotted(x) != "object"]) == 0):
+                    fail("ValueError: must define at least one ordering operation: < > <= >=", c.line)
+                # (its methods are inherited, or a decorator's: Gen.ordered_class)
+            elif len(root.kids[0].kids) != 2 or root.kids[0].kids[0].kind != "param" or root.kids[0].kids[1].kind != "param":
+                fail(f"@total_ordering of class {st.s}: {root.s}() takes the object and the other one", root.line)
+            else:
+                me = root.kids[0].kids[0].s
+                other = root.kids[0].kids[1].s
+                for made in ORDERINGS[root.s]:
+                    if made[0] in have:
+                        continue
+                    # (A, B and R are the table's own names: a parameter may be called any of them)
+                    body = made[1].replace("A", "\x00").replace("B", "\x01").replace("R", "_pys_to_result").replace("\x00", me).replace("\x01", other)
+                    w = Parser(Lexer(f"def {made[0]}({me}, {other}) -> bool:\n    _pys_to_result = __pys_ordering({me}, {other}, {root.s!r})\n    return {body}\n", root.line).file()).module().kids[0]
+                    w.kids[0] = clone(root.kids[0])
+                    kept.append(w)
+            ORDERED[c.line] = " ".join((["+"] if first else []) + [op for op in ORDERINGS if op in have])
         b.kids = kept
+        c.kids = [b] + decos
 
 
 # lib/enum.py's names a module may import, and the classes of them an enum class derives from
-ENUM_NAMES = ["Enum", "IntEnum", "StrEnum", "ReprEnum", "EnumType", "EnumMeta", "auto", "unique", "Flag", "IntFlag"]
+ENUM_NAMES = ["Enum", "IntEnum", "StrEnum", "ReprEnum", "EnumType", "EnumMeta", "auto", "unique", "Flag", "IntFlag", "_simple_enum", "global_enum"]
 ENUM_BASES = ["Enum", "IntEnum", "StrEnum", "Flag", "IntFlag"]
 # the methods that make or look up enum members, which the compiler makes
 ENUM_HOOKS = ["__new__", "__init__", "_generate_next_value_", "__init_subclass__", "__set_name__", "_numeric_repr_"]
@@ -417,6 +476,24 @@ def enum_literal(e: Node) -> list[str]:
             ks.append(r[1])
         return ["tuple[" + ", ".join(ts) + "]", "(" + ", ".join(ks) + ")"]
     return []
+
+
+def enum_item_types(t: str) -> list[str]:
+    # the types of the arguments CPython passes an enum class's __init__ for a member whose value
+    # has type t (enum_literal's): a tuple's items, else the value itself
+    if not t.startswith("tuple["):
+        return [t]
+    out: list[str] = []
+    depth = 0
+    w = ""
+    for ch in t[6:-1] + ",":
+        if ch == "," and depth == 0:
+            out.append(w.strip())
+            w = ""
+        else:
+            depth += 1 if ch == "[" else -1 if ch == "]" else 0
+            w += ch
+    return out
 
 
 def enum_int_op(op: str, a: int, b: int) -> list[str]:
@@ -511,6 +588,172 @@ def enum_node(v: list[str], line: int) -> Node:
     return mk("unary", "-", line, [mk("int", str(-x), line, [])])
 
 
+def enum_simple(c: Node, names: dict[str, str], kinds: dict[str, str]) -> Node:
+    # (enum) class statement c, whose first decorator is @_simple_enum(etype): the statement of
+    # the enum class deriving from etype that CPython's _simple_enum makes of the class's body,
+    # whose members are the body's names as an enum class statement's are
+    dn = c.kids[1]
+    args = dn.kids[0].kids[1:] if len(dn.kids) == 1 and dn.kids[0].kind == "call" else []
+    if len(args) != 1 or args[0].kind == "kw" or args[0].kind == "starred":
+        fail("@_simple_enum of a class is supported with the class of enum it makes, as @_simple_enum(IntEnum) (no boundary= or use_args=)", dn.line)
+    d = dotted(args[0])
+    if names.get(d, "") not in ENUM_BASES and d not in kinds:
+        fail("@_simple_enum of a class is supported with Enum, IntEnum, StrEnum, Flag, IntFlag or an enum class of its module without members", dn.line)
+    c.kids = [c.kids[0]] + c.kids[2:]
+    return mk("subclass", c.s, c.line, [c, args[0]])
+
+
+def enum_count(n: Node, cls: str) -> bool:
+    # (enum) in tree n of an enum class's __new__, each len(cls.__members__), the number of names
+    # the class has so far, made the name __pys_count; whether there was one
+    found = False
+    for i in range(len(n.kids)):
+        k = n.kids[i]
+        if k.kind == "call" and len(k.kids) == 2 and k.kids[0].kind == "name" and k.kids[0].s == "len" and k.kids[1].kind == "attr" and k.kids[1].s == "__members__" and len(k.kids[1].kids) == 1 and k.kids[1].kids[0].kind == "name" and k.kids[1].kids[0].s == cls:
+            n.kids[i] = mk("name", "__pys_count", k.line, [])
+            found = True
+        elif enum_count(k, cls):
+            found = True
+    return found
+
+
+def enum_new(d: Node, cname: str, kind: str) -> list[Node]:
+    # (enum) d, the __new__ of enum class cname (of kind), in the form CPython's documentation
+    # gives one: it makes the member with its data type's __new__ (object's; int's in an IntEnum,
+    # str's in a StrEnum), may assign its _value_ and attributes, and returns it:
+    #     def __new__(cls, code, label=""):
+    #         obj = int.__new__(cls, code)
+    #         obj._value_ = code
+    #         obj.label = label
+    #         return obj
+    # [the statement that makes the member, the one that assigns its _value_ (else the former)];
+    # another form is an error. EnumType calls it for each member with the items of the member's
+    # value; here the compiler computes each member's _value_ from it (enum_new_value) and the
+    # rest of its body initializes the member (enum_new_init)
+    why = ""
+    ps = d.kids[0].kids
+    body = d.kids[2].kids
+    if len(ps) == 0 or len([q for q in ps if q.kind != "param"]) > 0 or d.kids[0].s != "0,-1":
+        why = "its parameters are the class and the items of a member's value, by position"
+    made: list[Node] = []
+    value: list[Node] = []
+    cls = ps[0].s if len(ps) > 0 else ""
+    want = "int" if kind == "IntEnum" else "str" if kind == "StrEnum" else "object"
+    for s in body if why == "" else []:
+        e = s.kids[1] if s.kind == "assign" and len(s.kids) == 2 else None
+        if e is not None and s.kids[0].kind == "name" and e.kind == "call" and e.kids[0].kind == "attr" and e.kids[0].s == "__new__" and e.kids[0].kids[0].kind == "name":
+            t = e.kids[0].kids[0].s
+            if t != want or len(e.kids) != (2 if want == "object" else 3) or e.kids[1].kind != "name" or e.kids[1].s != cls or e.kids[-1].kind == "kw" or e.kids[-1].kind == "starred":
+                why = f"it makes the member with {want}.__new__({cls}{'' if want == 'object' else ', value'}), as {'an Enum' if want == 'object' else 'an IntEnum' if want == 'int' else 'a StrEnum'} does"
+            made.append(s)
+        elif e is not None and s.kids[0].kind == "attr" and s.kids[0].s == "_value_" and s.kids[0].kids[0].kind == "name" and len(made) == 1 and s.kids[0].kids[0].s == made[0].kids[0].s:
+            value.append(s)
+    if why == "" and (len(made) != 1 or len(value) > 1):
+        why = f"it makes the member once, with {want}.__new__(), and assigns its _value_ at most once"
+    if why == "" and len(value) == 0 and want != "object":
+        why = "it assigns the member's _value_ (member._value_ = value)"
+    if why == "":
+        obj = made[0].kids[0].s
+        last = body[-1]
+        returns = 0
+        binds = 0
+        for s in body:
+            returns += 1 if has_kind(s, "return") else 0
+            binds += 1 if (s.kind == "assign" or s.kind == "annassign" or s.kind == "augassign") and s.kids[0].kind == "name" and s.kids[0].s == obj else 0
+        if last.kind != "return" or len(last.kids) != 1 or last.kids[0].kind != "name" or last.kids[0].s != obj or returns != 1 or binds != 1 or obj in [q.s for q in ps]:
+            why = "it returns the member it made, in its last statement"
+    if why == "":
+        rest = [s for s in body if s is not made[0]]
+        if mentions(mk("block", "", d.line, rest), [cls]) or len(made[0].kids[1].kids) > 2 and mentions(made[0].kids[1].kids[2], [cls]):
+            why = f"it reads its class only to make the member and as len({cls}.__members__)"
+    if why != "":
+        fail(f"enum class {cname}'s __new__() is not supported: {why}", d.line)
+    return [made[0], value[0] if len(value) > 0 else made[0]]
+
+
+def enum_new_value(d: Node, parts: list[Node], cname: str, member: str, items: list[Node], env: dict[str, list[str]], consts: dict[str, list[str]], count: int, line: int) -> list[Node]:
+    # (enum) the _value_ that __new__ d of enum class cname (parts: enum_new's) gives member, whose
+    # value's items are items, the count-th name of the class: [its literal], as the body computes
+    # it from its parameters (the items, or their defaults), len(cls.__members__) and the names
+    # it assigns before, with int's and str's operators (enum_fold); [] where it assigns none (the
+    # member's value is its _value_). An IntEnum's or a StrEnum's is the int or str it is made of
+    ps = d.kids[0].kids
+    if len(items) > len(ps) - 1:
+        fail(f"{cname}.__new__() takes {len(ps)} positional argument{'s' if len(ps) != 1 else ''} but {len(items) + 1} were given (enum member {cname}.{member})", line)
+    env2: dict[str, list[str]] = {}
+    nodes: dict[str, Node] = {}
+    for k in consts:
+        # (the names the function's body reads are the module's constants: a class body's
+        # names, the members before, are no names of a function in it)
+        env2[k] = consts[k]
+    env2["__pys_count"] = ["int", str(count)]
+    for i in range(1, len(ps)):
+        x = items[i - 1] if i - 1 < len(items) else ps[i].kids[1]
+        if x.kind == "noann":
+            fail(f"{cname}.__new__() missing a required positional argument: '{ps[i].s}' (enum member {cname}.{member})", line)
+        lit = enum_fold(x, env if i - 1 < len(items) else {})
+        if len(lit) > 0:
+            env2[ps[i].s] = lit
+            nodes[ps[i].s] = x
+        elif ps[i].s in env2:
+            del env2[ps[i].s]
+    made = parts[0]
+    assigned = parts[1]
+    if assigned is made and len(made.kids[1].kids) == 2:
+        return []
+    for s in d.kids[2].kids:
+        if s is assigned:
+            break
+        if s.kind == "assign" and len(s.kids) == 2 and s.kids[0].kind == "name" and s is not made:
+            lit = enum_fold(s.kids[1], env2)
+            if s.kids[0].s in nodes:
+                del nodes[s.kids[0].s]
+            if len(lit) > 0:
+                env2[s.kids[0].s] = lit
+            elif s.kids[0].s in env2:
+                del env2[s.kids[0].s]
+        elif s is not made:
+            # (another statement, such as value += 1: a name it binds holds no value the
+            # compiler computes, so a _value_ that reads it is not supported)
+            rebound: dict[str, bool] = {}
+            local_names([s], rebound)
+            for name in rebound:
+                if name in nodes:
+                    del nodes[name]
+                if name in env2:
+                    del env2[name]
+    e = assigned.kids[1]
+    lit = enum_fold(e, env2)
+    if len(lit) == 0:
+        fail(f"enum member {cname}.{member} is not supported: the compiler computes the _value_ that __new__() gives a member from the items of its value, len(cls.__members__) and literals, with int's and str's operators", line)
+    if len(made.kids[1].kids) == 3:
+        of = enum_fold(made.kids[1].kids[2], env2)
+        if len(of) == 0 or of[0] != lit[0] or of[1] != lit[1]:
+            fail(f"enum member {cname}.{member} is not supported: __new__() makes it of another value than its _value_", line)
+    if e.kind == "name" and e.s in nodes:
+        return [clone(nodes[e.s])]
+    if lit[0] != "int" and lit[0] != "str":
+        fail(f"enum member {cname}.{member} is not supported: the _value_ that __new__() computes is an int or a str, or an item of the member's value", line)
+    return [enum_node(lit, line)]
+
+
+def enum_new_init(d: Node, parts: list[Node], counted: bool) -> None:
+    # (enum) __new__ d of an enum class (parts: enum_new's) made the class's __init__: what its
+    # body does besides making the member and assigning its _value_, which the compiler does
+    # (the member is its first parameter, and the number of names before it the second where
+    # the body asks for it)
+    obj = parts[0].kids[0].s
+    d.s = "__init__"
+    first = d.kids[0].kids[0]
+    first.s = obj
+    ps = [first]
+    if counted:
+        ps.append(Parser(Lexer("def _(__pys_count: int): pass\n", d.line).file()).module().kids[0].kids[0].kids[0])
+    d.kids[0].kids = ps + d.kids[0].kids[1:]
+    body = [s for s in d.kids[2].kids[:-1] if s is not parts[0] and s is not parts[1]]
+    d.kids[2].kids = body if len(body) > 0 else [mk("pass", "", d.line, [])]
+
+
 def enum_classes(n: Node, names: dict[str, str]) -> None:
     # (enum) each class statement of module body n that derives from enum's Enum, IntEnum or
     # StrEnum (names: as the module imports them), or from an enum class of the module without
@@ -531,16 +774,21 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
     full: dict[str, bool] = {}  # (those with members, which no class may derive from)
     top: list[Node] = []
     custom_flag_iter: dict[str, bool] = {}  # classes with a user-defined or inherited _iter_member_
+    basenew: dict[str, Node] = {}  # the __new__ of each enum class without members that defines or inherits one
     imported = False
     mixed = False
     rebound: dict[str, bool] = {}  # (the names a function may rebind, or a del statement unbind)
     globals_deep(n.kids, rebound)
     deleted(n.kids, rebound)
     consts: dict[str, list[str]] = {}  # (the module's constants before: names bound once to an int or str)
-    for st in n.kids:
+    for at in range(len(n.kids)):
+        st = n.kids[at]
         kind = ""
         base = ""
         mixin = ""
+        simple = st.kind == "class" and len(st.kids) > 1 and names.get(st.kids[1].s, "") == "_simple_enum"
+        if simple:
+            st = enum_simple(st, names, kinds)
         if st.kind == "subclass" and len(st.kids) == 3 and st.kids[1].kind == "name" and (st.kids[1].s == "str" or st.kids[1].s == "int") and names.get(dotted(st.kids[2]), "") == "Enum":
             # (class C(str, Enum), class C(int, Enum): a mixed-in enum class, made as a StrEnum's
             # or an IntEnum's with Enum's str() and format(): lib/enum.py's _StrMixin, _IntMixin)
@@ -569,20 +817,49 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
             fail(f"enum class {st.s} is not supported: an enum class derives from one class, Enum, IntEnum, StrEnum, Flag, IntFlag or an enum class of its module without members, or from str or int and Enum (no other mixin type, and no keyword such as boundary=)", st.line)
         c = st.kids[0]
         uniq = False
+        glob = False
         for dn in c.kids[1:]:
-            if names.get(dn.s, "") != "unique" or len(dn.kids) > 0:
-                fail(f"decorator @{dn.s} of an enum class is not supported (only @unique)", dn.line)
-            uniq = True
+            dk = names.get(dn.s, "")
+            if (dk != "unique" and dk != "global_enum") or len(dn.kids) > 0:
+                fail(f"decorator @{dn.s} of an enum class is not supported (only @unique and @global_enum)", dn.line)
+            uniq = uniq or dk == "unique"
+            glob = glob or dk == "global_enum"
+        if glob and (kind == "Flag" or kind == "IntFlag"):
+            fail(f"@global_enum of flag class {st.s} is not supported", st.line)
         body = c.kids[0]
         c.kids = [body]
+        # the class's own __new__ (enum_new), which gives each member its _value_: found before
+        # the members, which may precede it in the body
+        news = [s for s in body.kids if s.kind == "def" and s.s == "__new__" and len(s.kids) == 3 and (kind == "Enum" or kind == "IntEnum" or kind == "StrEnum")]
+        inherited = len(news) == 0 and base in basenew and len([s for s in body.kids if s.kind == "def" and (s.s == "__new__" or s.s == "__init__")]) == 0
+        if inherited:
+            news = [clone(basenew[base])]  # (that of the enum class without members it derives from)
+        newparts: list[Node] = []
+        counted = False
+        pristine = clone(news[0]) if len(news) == 1 else st
+        if len(news) == 1:
+            if simple and kind == "Enum":
+                fail(f"enum class {st.s}'s __new__() is not supported: @_simple_enum(Enum) calls it without the member's value", news[0].line)
+            counted = enum_count(news[0].kids[2], news[0].kids[0].kids[0].s if len(news[0].kids[0].kids) > 0 else "")
+            newparts = enum_new(news[0], st.s, kind)
+        margs: dict[str, Node] = {}  # (with a __new__: each member's value as written, its arguments)
+        mcount: dict[str, int] = {}
+        ptypes: list[str] = []  # (and the types of those values' items, by position)
+        wnodes: dict[str, Node] = {}  # each member's value as the class body holds it
         out: list[Node] = []
         mnames: list[str] = []  # the members' names, aliases included, in definition order
         canon: dict[str, str] = {}  # each one's member: itself, or for an alias the member whose value it has
         keys: dict[str, str] = {}  # the members by their values' texts
         texts: dict[str, str] = {}  # the members' values' texts
+        avals: dict[str, Node] = {}  # (each alias's own value, which an __init__ is called with)
+        inits: list[Node] = []  # the class's own __init__, which each member's value's items initialize
+        if inherited:
+            out.append(news[0])
+            inits.append(news[0])
         defs: dict[str, bool] = {}
         vtype = ""
         last: list[int] = []
+        rawkind = ""  # (the type of a value written for a __new__ that auto() cannot count from)
         env: dict[str, list[str]] = {}  # (the names a member's value may read: the module's constants, then the members before)
         for k in consts:
             env[k] = consts[k]
@@ -590,8 +867,14 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
             nm = s.kids[0].s if s.kind == "assign" and len(s.kids) == 2 and s.kids[0].kind == "name" else ""
             dunder = len(nm) > 4 and nm.startswith("__") and nm.endswith("__")
             if s.kind == "def":
-                if s.s in ENUM_HOOKS or s.s in canon:
+                # (__init__ of an enum class but a flag's, whose pseudo-members the run time makes:
+                # called for each member with its value's items, below)
+                own_init = s.s == "__init__" and (kind == "Enum" or kind == "IntEnum" or kind == "StrEnum") and len(s.kids) == 3 and s.s not in canon and not simple and len(news) == 0
+                own_new = len(news) == 1 and s is news[0] and s.s not in canon
+                if (s.s in ENUM_HOOKS and not own_init and not own_new) or s.s in canon:
                     fail(f"enum class {st.s}'s {s.s}() is not supported{' (a member of that name precedes it)' if s.s in canon else ': the compiler makes and looks up its members'}", s.line)
+                if own_init or own_new:
+                    inits.append(s)
                 if s.s == "_missing_" and (kind == "Flag" or kind == "IntFlag"):
                     fail(f"flag class {st.s}'s _missing_() is not supported: Flag's own makes its pseudo-members", s.line)
                 if s.s == "_missing_" and (len(s.kids) != 4 or s.kids[3].s != "classmethod" or len(s.kids[3].kids) != 0):
@@ -608,9 +891,14 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                 if nm in defs or nm == "name" or nm == "value":
                     fail(f"enum member {st.s}.{nm} is not supported: the class has an attribute {nm}", s.line)
                 v = s.kids[1]
+                # (in a class that @_simple_enum makes an enum class of, the body's name is an
+                # auto object until the decorator runs: no value that a later statement reads)
+                unread = simple and v.kind == "call" and names.get(dotted(v.kids[0]), "") == "auto"
                 if v.kind == "call" and names.get(dotted(v.kids[0]), "") == "auto":
                     if len(v.kids) > 1:
                         fail("auto() with an argument is not supported", v.line)
+                    if simple and (kind == "Flag" or kind == "IntFlag"):
+                        fail("auto() in a flag class that @_simple_enum makes is not supported (CPython 3.13's raises AttributeError)", v.line)
                     if kind == "StrEnum" and mixin == "str":
                         fail("auto() in an enum class of str and Enum is not supported (CPython's is the str of Enum's next int)", v.line)
                     if (kind == "Flag" or kind == "IntFlag") and len(last) > 0:
@@ -623,15 +911,45 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                         v = mk("int", str(1 << hb), v.line, [])
                     elif kind == "StrEnum":
                         v = mk("str", nm.lower(), v.line, [])
-                    elif vtype != "" and vtype != "int":
+                    elif rawkind != "":
+                        fail(f"auto() after a member whose value is written as a {rawkind} is not supported (CPython's cannot increment it)", v.line)
+                    elif len(news) == 0 and vtype != "" and vtype != "int":
                         fail(f"auto() after a member whose value is a {vtype} is not supported", v.line)
                     else:
                         v = mk("int", str(max(last) + 1 if len(last) > 0 else 1), v.line, [])
-                lit = enum_fold(v, env)
+                if v.kind == "name" and v.s in wnodes:
+                    v = clone(wnodes[v.s])  # (NAME = MEMBER: the value the body's name holds, an alias)
+                noargs = len(news) == 1 and v.kind == "tuple" and len(v.kids) == 0  # (NAME = (): __new__(cls))
+                if v.kind == "tuple" and len(enum_literal(v)) == 0:
+                    # (a tuple some of whose items the class body computes: of their values)
+                    for j in range(len(v.kids)):
+                        il = enum_fold(v.kids[j], env)
+                        if len(il) > 0 and len(enum_literal(v.kids[j])) == 0:
+                            v.kids[j] = enum_node(il, v.kids[j].line)
+                lit = ["tuple[]", "()"] if noargs else enum_fold(v, env)
                 if len(lit) == 0:
                     fail(f"enum member {st.s}.{nm} is not supported: the compiler makes an enum class's members from literal values (numbers, strs, bytes, True, False, None and tuples of them), auto(), and int or str expressions of them, of the members before and of the module's constants (names bound once)", s.line)
-                if len(enum_literal(v)) == 0:
+                if len(enum_literal(v)) == 0 and not noargs:
                     v = enum_node(lit, v.line)  # (the value the class body computes)
+                written = lit  # (what the body's later statements read the name as)
+                wnodes[nm] = v
+                if len(news) == 1:
+                    # the class's __new__ takes the value's items and gives the member its _value_
+                    margs[nm] = v
+                    mcount[nm] = len(mnames)
+                    items = v.kids if v.kind == "tuple" else [v]
+                    for j in range(len(items)):
+                        it = enum_literal(items[j])[0]
+                        if j < len(ptypes) and ptypes[j] != it:
+                            fail(f"enum class {st.s}'s members' values have items of two types, {ptypes[j]} and {it}, where __new__() takes them: Pystachy's take one type each", s.line)
+                        if j >= len(ptypes):
+                            ptypes.append(it)
+                    given = enum_new_value(news[0], newparts, st.s, nm, items, env, consts, len(mnames), s.line)
+                    if len(given) > 0:
+                        v = given[0]
+                        lit = enum_literal(v)
+                    elif noargs:
+                        fail(f"enum member {st.s}.{nm} is not supported: its value is (), and __new__() assigns it no _value_", s.line)
                 if (kind == "IntEnum" and lit[0] != "int") or (kind == "StrEnum" and lit[0] != "str"):
                     fail(f"{kind} member {st.s}.{nm} must have an {'int' if kind == 'IntEnum' else 'str'} value", s.line)
                 if (kind == "Flag" or kind == "IntFlag") and (lit[0] != "int" or int(lit[1]) < 0):
@@ -639,14 +957,22 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                 if vtype != "" and lit[0] != vtype:
                     fail(f"enum class {st.s}'s members have values of two types, {vtype} and {lit[0]}: Pystachy's enum members' values have one type", s.line)
                 vtype = lit[0]
-                if vtype == "int":
-                    last.append(int(lit[1]))
-                if vtype == "int" or vtype == "str":
-                    env[nm] = lit
+                # (auto() counts from the values the body assigns, which a __new__ may give the
+                # members other _value_s than)
+                raw = written if len(news) == 1 else lit
+                if raw[0] == "int":
+                    last.append(int(raw[1]))
+                elif len(news) == 1:
+                    rawkind = raw[0]
+                if (written[0] == "int" or written[0] == "str") and not unread:
+                    env[nm] = written
+                elif nm in env:
+                    del env[nm]
                 mnames.append(nm)
                 texts[nm] = lit[1]
                 if lit[1] in keys:
                     canon[nm] = keys[lit[1]]
+                    avals[nm] = v
                     init = mk("enumalias", keys[lit[1]], s.line, [])
                 else:
                     keys[lit[1]] = nm
@@ -657,6 +983,50 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                 out.append(s)
             else:
                 fail(f"enum class {st.s}'s body is not supported: an enum class has members (NAME = value), methods and a docstring", s.line)
+        if len(news) == 1 and len(mnames) == 0:
+            # (a __new__ that the enum classes deriving from this one make their members with)
+            basenew[st.s] = pristine
+            out = [o for o in out if o is not news[0]]
+            inits = []
+        if len(inits) > 0:
+            # __init__(self, ...) of the class: EnumType calls it for each member with the items of
+            # the member's value (a tuple's, else the value), also for an alias, whose object it
+            # then drops for the member of that value. A parameter without an annotation takes
+            # the type of its item, which the members' values share
+            if len(mnames) == 0:
+                fail(f"enum class {st.s}'s {inits[0].s}() is not supported: the class that defines the members defines it", inits[0].line)
+            its = enum_item_types(vtype)
+            first = 1
+            if len(news) == 1:
+                # (its __new__, made the __init__ that does the rest of its body: enum_new_init)
+                enum_new_init(news[0], newparts, counted)
+                its = ptypes
+                first = 2 if counted else 1
+            ps = inits[0].kids[0].kids
+            kwonly = int(inits[0].kids[0].s.split(",")[1])  # (the first keyword-only parameter's index, or -1)
+            for i in range(first, len(ps)):
+                if ps[i].kind != "param" or ps[i].kids[0].kind != "noann":
+                    continue
+                # (an item goes to a parameter that takes it by position; another one, which the
+                # members' values never give, has the type of its default value)
+                t = its[i - first] if (kwonly < 0 or i < kwonly) and i - first < len(its) else ""
+                if t == "" and ps[i].kids[1].kind != "noann":
+                    lit = enum_literal(ps[i].kids[1])
+                    t = lit[0] if len(lit) > 0 and lit[0] != "None" else ""
+                if t != "":
+                    ps[i].kids[0] = Parser(Lexer(f"_: {t}\n", ps[i].line).file()).module().kids[0].kids[1]
+            for o in out:
+                # (a member's kids: its _value_, a mark that it is initialized, then with a
+                # __new__ its value as written, the arguments, and its number where asked for)
+                more: list[Node] = []
+                if o.kind == "annassign" and len(o.kids) == 3 and o.kids[0].s in margs:
+                    more.append(clone(margs[o.kids[0].s]))
+                    if counted:
+                        more.append(mk("int", str(mcount[o.kids[0].s]), o.line, []))
+                if o.kind == "annassign" and len(o.kids) == 3 and o.kids[2].kind == "enummember":
+                    o.kids[2].kids = o.kids[2].kids + [mk("str", "__init__", o.line, [])] + more
+                elif o.kind == "annassign" and len(o.kids) == 3 and o.kids[2].kind == "enumalias":
+                    o.kids[2].kids = [avals[o.kids[0].s], mk("str", o.kids[0].s, o.line, [])] + more
         aliases = [m for m in mnames if canon[m] != m]
         if uniq and len(aliases) > 0:
             fail(f"duplicate values found in <enum {st.s!r}>: " + ", ".join([f"{m} -> {canon[m]}" for m in aliases]), st.line)
@@ -684,6 +1054,15 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
         if flag and len(mnames) > 0:
             made = Parser(Lexer(f"def _flag_type_(self):\n    return _pys_enum_{st.s}\n", st.line).file()).module().kids
             out = out + made
+        if glob:
+            # @global_enum: repr() is the module's name and the member's, an Enum's str() the
+            # member's name (CPython replaces the class's own), and the module binds each
+            # member's name (below)
+            out = [o for o in out if o.kind != "def" or (o.s != "__repr__" and (o.s != "__str__" or kind != "Enum"))]
+            src = 'def __repr__(self) -> str:\n    return "%s.%s" % (type(self).__module__.split(".")[-1], self._name_)\n'
+            if kind == "Enum":
+                src += '\ndef __str__(self) -> str:\n    return self._name_\n'
+            out = out + Parser(Lexer(src, st.line).file()).module().kids
         if len(mnames) > 0 and kind == "Enum":
             src = f'_value_: {vtype}\n\n@property\ndef value(self) -> {vtype}:\n    """The value of the Enum member."""\n    return self._value_\n\ndef _value_repr_(self) -> str:\n    return repr(self._value_)\n'
             made = Parser(Lexer(src, st.line).file()).module().kids
@@ -714,6 +1093,8 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                 top.append(Parser(Lexer(f"_pys_enum_{st.s} = _pys_FlagType({st.s!r}, {member_list}, {{{mm}}}, {{{vm}}}, {fmask}, {smask}, {allb}, {kind == 'IntFlag'})\n", st.line).file()).module().kids[0])
             else:
                 top.append(Parser(Lexer(f"_pys_enum_{st.s} = _pys_EnumType({st.s!r}, [{ms}], {{{mm}}})\n", st.line).file()).module().kids[0])
+            for m in mnames if glob else []:
+                top.append(Parser(Lexer(f"{m} = {st.s}.{m}\n", st.line).file()).module().kids[0])
     n.kids = top
 
 
@@ -901,6 +1282,7 @@ class Loader:
         self.fragile: dict[str, str] = {}
         self.solid: dict[str, bool] = {}
         self.first_import: dict[str, bool] = {}  # first local import site's need for a binding flag
+        self.gvisit: dict[str, bool] = {}  # the classes generic_class is deciding: a recursion guard
         # the submodules that imports in try statements run, which their package has as an attribute
         # only once an import of them has run to its end (Gen.modchk), and the reads through such an
         # attribute that qmod() found in the expression being qualified (Node.mchk)
@@ -1000,6 +1382,7 @@ class Loader:
         program_cache.track_source(path, src)
         FILES.clear()
         ENUMCLASSES.clear()
+        ORDERED.clear()
         DYNFILES.clear()
         IDINERT.clear()
         INTFILES.clear()
@@ -1438,6 +1821,8 @@ class Loader:
                 m.kinds[st.s] = "f" if k == "def" else "c"
                 if k == "subclass" and (len(st.kids) == 2 or st.kids[1].kind == "typeparams") and "__class_getitem__" not in top_bindings(st.kids[0].kids[0].kids):
                     m.cbases[st.s] = st.kids[1]
+                elif k == "subclass" and "__class_getitem__" not in top_bindings(st.kids[0].kids[0].kids):
+                    m.cmulti[st.s] = st.kids[1:]  # (several bases: class N(Generic[T], A[T], B), S(A[T], B))
                 for x in st.kids[0].kids if k == "class" else st.kids[0].kids[0].kids if k == "subclass" else []:
                     if x.kind == "assign" and len(x.kids) == 2 and x.kids[0].kind == "name" and x.kids[0].s == "__class_getitem__":
                         v = x.kids[1]
@@ -1981,6 +2366,13 @@ class Loader:
                     self.reads(st.kids[-1], env, "CPython evaluates this type alias's value when the assignment runs", 3)
                 if k == "annassign":
                     self.ann(st.kids[1], env, "the class body" if cls != "" else "the annotated assignment")
+            elif top and cls == "" and k == "assign" and len(st.kids) == 2 and st.kids[0].kind == "name" and st.kids[1].kind == "call" and self.bpath(st.kids[1].kids[0]) == "typing.TypeVar":
+                # T = TypeVar("T", A, B) or TypeVar("T", bound=B): CPython evaluates its constraints
+                # and bound as the assignment runs, which Gen.typevar_def drops (finding it by the
+                # call): they are read as an annotation is, which must be bound and run no code
+                for x in st.kids[1].kids[2:]:
+                    if x.kind != "kw" or x.s == "bound":
+                        self.reads(x.kids[0] if x.kind == "kw" else x, env, "CPython evaluates a TypeVar's constraints and bound when the assignment runs", 3)
             first: dict[str, bool] = {}
             for i in range(len(st.kids) if k != "def" and k != "class" and k != "subclass" and k != "typealias" else 0):
                 x = st.kids[i]
@@ -2155,9 +2547,46 @@ class Loader:
         base = m.cbases.get(name, None)
         if base is not None and base.kind == "typeparams":
             return True  # (class C[T])
+        if m.q + name in self.gvisit:
+            return False  # (a class whose bases name it again: CPython's NameError)
+        if base is None and name in m.cmulti:
+            # (several bases: generic where one is Generic[...], or a generic class's subscript that
+            # passes on a type variable, if each is a class or a subscript of one, as gen_program's
+            # generic_traits and implicit_tparams take them)
+            bs = m.cmulti[name]
+            if len([x for x in bs if x.kind != "index" and x.kind != "name" and x.kind != "attr"]) > 0:
+                return False
+            self.gvisit[m.q + name] = True
+            r = len([x for x in bs if x.kind == "index" and self.generic_base(m, x)]) > 0
+            del self.gvisit[m.q + name]
+            return r
         if base is None or base.kind != "index":
             return False
+        self.gvisit[m.q + name] = True
+        r = self.generic_base(m, base)
+        del self.gvisit[m.q + name]
+        return r
+
+    def generic_base(self, m: Mod, base: Node) -> bool:
+        # is base, a subscript that a class statement of module m names as a base, typing.Generic[...],
+        # or a generic class's subscript that passes on a type variable (class S(Visitor[T]))
         g = base.kids[0]
+        dm = self.dm
+        self.dm = m
+        gm = self.mod_of(g.kids[0]) if g.kind == "attr" else ""
+        gk = self.kind_of(g) if g.kind == "name" else self.mods[gm].kinds.get(g.s, "") if gm != "" else ""
+        implicit = False
+        if gk == "c" or gk.startswith("a:"):
+            # class S(Visitor[T]), also S(pkg.visitors.Visitor[T]): generic as Visitor is, in the
+            # type variables it passes on (PEP 484), its module's own or ones it imports
+            if gm != "":
+                self.dm = self.mods[gm]
+            generic = self.generic_class(mk("name", g.s, g.line, []) if gm != "" else g)
+            self.dm = m
+            implicit = generic and len([x for x in (base.kids[1].kids if base.kids[1].kind == "tuple" else [base.kids[1]]) if self.tv_named(x)]) > 0
+        self.dm = dm
+        if gk == "c" or gk.startswith("a:"):
+            return implicit
         if g.kind == "name":
             k = m.kinds.get(g.s, "")
             return k == "b:typing.Generic" or k == "b:typing_extensions.Generic"
@@ -2173,6 +2602,48 @@ class Loader:
             return k[2:] if k.startswith("b:") else ""  # (also a user module's attribute: collections.abc)
         p = self.bpath(e.kids[0]) if e.kind == "attr" else ""
         return p + "." + e.s if p != "" else ""
+
+    def mod_of(self, e: Node) -> str:
+        # the user module that name or attribute e names in module dm (pkg.mod, where import
+        # pkg.mod binds pkg), or ""
+        if e.kind == "name":
+            k = self.dm.kinds.get(e.s, "")
+            return k[2:] if k.startswith("m:") and k[2:] in self.mods else ""
+        p = self.mod_of(e.kids[0]) if e.kind == "attr" else ""
+        k = self.mods[p].kinds.get(e.s, "") if p != "" else ""
+        if k.startswith("m:") and k[2:] in self.mods:
+            return k[2:]
+        return p + "." + e.s if p != "" and k == "" and p + "." + e.s in self.mods else ""
+
+    def tv_named(self, e: Node) -> bool:
+        # is name e a TypeVar of module dm (typevar), or another module's that an import binds
+        # there: its kind names it as its own module's records it ("t:", see bindings); or is e
+        # a user module's attribute that names one there (visitors.T)
+        if e.kind == "attr":
+            p = self.mod_of(e.kids[0])
+            if p == "":
+                return False
+            dm = self.dm
+            self.dm = self.mods[p]
+            r = self.tv_named(mk("name", e.s, e.line, []))
+            self.dm = dm
+            return r
+        if e.kind != "name":
+            return False
+        if self.typevar(e):
+            return True
+        k = self.dm.kinds.get(e.s, "")
+        if not k.startswith("t:"):
+            return False
+        for x in self.mods:
+            q = self.mods[x].q
+            if q != "" and k[2:].startswith(q) and "$" not in k[2 + len(q) :]:
+                dm = self.dm
+                self.dm = self.mods[x]
+                r = self.typevar(mk("name", k[2 + len(q) :], e.line, []))
+                self.dm = dm
+                return r
+        return False
 
     def typevar(self, e: Node) -> bool:
         # is name e a module global that only e = TypeVar(...) (or TypeVarTuple(...)) statements
@@ -2219,7 +2690,7 @@ class Loader:
             for d in (st.kids[1].kids if tc == 1 else st.kids[2].kids) if tc != 0 else NOKIDS:
                 if d.kind == "import" and d not in m.tcimports:
                     m.tcimports.append(d)  # (what annotations may name: type_only())
-            if self.static_if(m, st, scope, run) or self.optional(m, st, run, False) or (blk is m.body and self.unbound_try(m, st, out, blk.kids[i + 1 :], run)):
+            if self.static_if(m, st, scope, run) or self.flag_switch(st, out, run) or self.optional(m, st, run, False) or (blk is m.body and self.unbound_try(m, st, out, blk.kids[i + 1 :], run)):
                 b = mk("block", "", st.line, run)
                 self.simplify(m, b, scope)
                 out.extend(b.kids)
@@ -2408,6 +2879,47 @@ class Loader:
             return False
         out.extend(pre)
         out.extend(st.kids[1].kids if r == 1 else st.kids[2].kids)
+        return True
+
+    def flag_switch(self, st: Node, before: list[Node], out: list[Node]) -> bool:
+        # if NAME: or if not NAME: right after NAME = True or NAME = False, in module code outside
+        # class bodies (before: what runs before st in its block), as mypy's MYPYC = False then
+        # if MYPYC: Bogus = ... else: Bogus = ...: nothing runs between the assignment and the
+        # test, so CPython decides the test as the literal says. Only where the branch that does
+        # not run assigns names, and only names that the branch that runs binds too, at its own
+        # level: dropping it leaves each name a binding (an unbound global is an error: see Gen's
+        # read of a name) and changes no other declaration. Appends what runs to out; False if st
+        # is no such if
+        if st.kind != "if" or self.pos < 0 or self.incls or len(before) == 0:
+            return False
+        t = st.kids[0]
+        neg = t.kind == "unary" and t.s == "not"
+        t = t.kids[0] if neg else t
+        p = before[-1]
+        if t.kind != "name" or p.kind != "assign" or len(p.kids) != 2 or p.kids[0].kind != "name" or p.kids[0].s != t.s or (p.kids[1].kind != "True" and p.kids[1].kind != "False"):
+            return False
+        r = 1 if (p.kids[1].kind == "True") != neg else 0
+        run = st.kids[1].kids if r == 1 else st.kids[2].kids
+        kept: dict[str, bool] = {}
+        for x in run:
+            # (only what it binds at its own level, which simplify() keeps: a binding in a block of
+            # its own may be in code that simplify() drops too, as in if False: x = 1; and not
+            # what a := in a value binds, which fold_tests() may drop: (x := 1) if False else 0)
+            if x.kind == "assign" or (x.kind == "annassign" and len(x.kids) == 3):
+                targets(x, kept, False)
+            elif x.kind == "def" or x.kind == "class" or x.kind == "subclass":
+                kept[x.s] = True
+            elif x.kind == "import":
+                binds([x], kept, True)
+        for x in st.kids[2].kids if r == 1 else st.kids[1].kids:
+            names: dict[str, bool] = {}
+            binds([x], names, True)
+            for tg in x.kids[:-1] if x.kind == "assign" else []:
+                if tg.kind != "name":
+                    return False
+            if (x.kind != "assign" and x.kind != "pass") or len([nm for nm in names if nm not in kept]) > 0:
+                return False
+        out.extend(run)
         return True
 
     def optional(self, m: Mod, st: Node, out: list[Node], scan: bool) -> bool:
@@ -4002,6 +4514,66 @@ class Loader:
         key = f"{m.name} {self.fkey if inf else ''} {x}"
         return f"{self.fragile[key]} {x} {'L' if inf else 'G'}" if key in self.fragile else ""
 
+    def identity_decos(self, m: Mod, st: Node, loc: dict[str, bool]) -> None:
+        # class statement st of m without the decorators that CPython applies to the class itself
+        # as the identity (IDENTITY_DECOS), innermost first: the first other decorator but
+        # @dataclass (which returns the class it takes) ends them, since what it returns, which
+        # those above it take, may be no class (@final above @object.__new__ sets an object's
+        # __final__). CPython still reads their names first, outermost first: st.mchk keeps the
+        # checks of those an import binds (fragile_chk), which Gen runs where the class
+        # statement does (modchk)
+        kept = [st.kids[0]]
+        checks: list[str] = []
+        for i in range(1, len(st.kids)):
+            d = st.kids[i]
+            if self.identity_deco(m, d, loc):
+                chk = self.fragile_chk(m, d.s[: d.s.find(".")] if "." in d.s else d.s, loc)
+                if chk != "":
+                    checks.insert(0, chk)
+                if self.deco_target(m, d, loc) == "typing.final":
+                    m.finals.append(st.s)  # (whose __final__ CPython sets: Gen checks that none binds one)
+            elif self.deco_target(m, d, loc) == "dataclasses.dataclass":
+                kept.append(d)  # (@dataclass returns the class it takes, which @final above it takes)
+            else:
+                kept.extend(st.kids[i:])
+                break
+        st.kids = kept
+        st.mchk = ";".join(checks)
+
+    def identity_deco(self, m: Mod, d: Node, loc: dict[str, bool]) -> bool:
+        # is decorator d, of a class statement of m, an identity decorator (identity_decos): the
+        # name an import binds to typing's final or to lib/'s mypy_extensions trait (not a
+        # module of the program's of that name), or typing.final through typing's module, or a
+        # call of mypy_extensions' mypyc_attr whose arguments are constants (CPython evaluates
+        # them, then applies the identity it returns)
+        q = self.deco_target(m, d, loc)
+        if q not in IDENTITY_DECOS:
+            return False
+        if "$" in q and (q[: q.find("$")] not in self.mods or not self.in_lib(self.mods[q[: q.find("$")]].path)):
+            return False
+        if IDENTITY_DECOS[q] == "":
+            return len(d.kids) == 0
+        if len(d.kids) != 1 or d.kids[0].kind != "call":
+            return False
+        for a in d.kids[0].kids[1:]:
+            v = a.kids[0] if a.kind == "kw" else a
+            if v.kind not in ["int", "float", "str", "bytes", "None", "True", "False"]:
+                return False
+        return True
+
+    def deco_target(self, m: Mod, d: Node, loc: dict[str, bool]) -> str:
+        # what decorator d of m's code names through an import: a builtin module's name
+        # (typing.final, dataclasses.dataclass) or a module's function (mypy_extensions$trait);
+        # "" for anything else (a local, a module's attribute, an expression)
+        if d.kind != "deco" or "?" in d.s:
+            return ""
+        root = d.s[: d.s.find(".")] if "." in d.s else d.s
+        if root in loc:
+            return ""
+        k = self.kind(m, root)
+        rest = d.s[len(root) :]
+        return k[2:] + rest if k.startswith("b:") else k[2:] if k.startswith("a:") and rest == "" else ""
+
     def qdeco(self, m: Mod, d: Node, loc: dict[str, bool], fn: bool = False) -> None:
         # a decorator: the first name of its dotted name (unless it surely names a builtin
         # there: deftime), and the arguments of a call. A def's (fn), which CPython calls on the
@@ -4172,6 +4744,7 @@ class Loader:
             elif k == "class":
                 # (a class body's own names, in loc once bound, stay unqualified where it reads them)
                 st.s = self.qname(m, st.s, loc)
+                self.identity_decos(m, st, loc)
                 for d in st.kids[1:]:
                     self.qdeco(m, d, loc)
                 # (class scopes do not nest; a class body's __doc__ is the class's docstring, which

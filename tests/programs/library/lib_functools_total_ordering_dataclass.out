@@ -1,0 +1,4 @@
+True True False False True a
+False True True True 1 True
+TypeError '>=' not supported between instances of 'Above' and 'int'
+[exit 0]

@@ -32,12 +32,15 @@ CASES = {
 }
 
 
-def execute(command, env, timeout):
-    """Bound the whole compiler/LLVM process tree, retaining diagnostics on failure."""
+def execute(command, env, timeout, *, started=None):
+    """Bound the whole compiler/LLVM process tree, retaining diagnostics on failure. started, if
+    given, receives the running process before the wait, so another thread can kill its group."""
     start = time.perf_counter()
     with subprocess.Popen(command, cwd=ROOT, env=env, stdout=subprocess.PIPE,
                           stderr=subprocess.PIPE, text=True, start_new_session=True) as process:
         try:
+            if started is not None:
+                started(process)
             out, err = process.communicate(timeout=timeout)
         except subprocess.TimeoutExpired:
             try:

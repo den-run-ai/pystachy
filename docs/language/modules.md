@@ -30,6 +30,7 @@ Pystachy loads its ports of those C modules, `lib/_pystachy_binascii.py`,
 ([library reference](../../lib/compatibility.md#binascii)), and the
 end of the program runs `atexit`'s callbacks. For `abc`, which CPython imports as it starts, it
 loads `lib/_pystachy_abc.py` ([abc](../../lib/compatibility.md#abc)).
+`gc` loads `lib/_pystachy_gc.py` ([gc](../../lib/compatibility.md#gc)).
 `_weakref` loads `lib/_pystachy_weakref.py`,
 [collector-backed references](../weakref.md) to ordinary class instances, with
 callbacks that run after the collection that finds a referent dead; as in CPython, a reference
@@ -127,16 +128,19 @@ Pystachy resolves these guards while compiling:
 | `if typing.TYPE_CHECKING:` or the imported `TYPE_CHECKING` | Drops the body, including the common optional `typing` import whose handler sets `TYPE_CHECKING = False`. Annotations may still name what its imports bind: see [type-only imports](#type-only-imports). |
 | Module-level `if False:` or `if 0:` | Drops the body outside functions and classes. |
 | Module-level `TYPE_CHECKING = False` followed by `if TYPE_CHECKING:` | Drops the body when that is the name's only binding; other assignments, deletion, imports, star imports or `global` declarations disable this rule. |
+| Module-level `NAME = True` or `NAME = False` directly followed by `if NAME:` or `if not NAME:`, as mypy's `MYPYC = False` switch | Drops the branch that does not run when it only assigns names that the other branch binds too, at its own level rather than in a nested block. Nothing runs between the assignment and the test, so `NAME` may be bound elsewhere as well. |
 | Tests of the platform: `sys.platform ==` or `!=` a literal string, `in` or `not in` a tuple or list of them, `sys.platform.startswith()` of one or a tuple of them, `os.name ==` or `!=` one, `sys.implementation.name ==` or `!=` one | Resolves them for the system Pystachy compiles for, the one it runs on, with the values its runtime reports: `sys.platform` is `"linux"`, `"darwin"` or `"freebsd"`, `os.name` is `"posix"` and `sys.implementation.name` is `"pystachy"`. This also holds in conditional expressions (`sep = "\\" if sys.platform == "win32" else "/"`), in functions, and in module code for a name that the module assigns such a test once, which nothing else binds, deletes or declares global (`_MS_WINDOWS = sys.platform == "win32"`, then `if _MS_WINDOWS:`); another module may assign that name only the value it holds. |
 | Version tests: `sys.version_info`, a slice, an item or an attribute of it compared with a literal int, str or tuple of those | Resolves them for CPython 3.13.16, as in `if sys.version_info < (3,):`. |
 | A module-level `try:` without `finally` whose first statement reads or assigns a name (or a tuple of names) that is no builtin and that nothing but the `try` binds (no other module-level statement, `global` declaration, star import or, in a package, submodule of that name; and where the `try` binds it, no import of a Python module before the `try`, whose code could assign it through the module), with a handler that catches `NameError` without naming it or re-raising | Runs that handler instead of the `try`, as CPython does: shims such as `try: unicode` / `except NameError: unicode = str`. |
 | A module-level `try:` without `finally` whose statements only read builtins or assign them to names, such as `try: text_type = str`, which nothing else binds | Runs its body and `else` block; its handlers never run. |
 
-These tests work inside `not`, `and` and `or`, while preserving the other operands' evaluation
-order. The branch that does not run is not compiled at all, as CPython never runs it: its
-imports are not resolved and its code is not type-checked, so `import nt` under
-`if sys.platform == "win32":` compiles. Its syntax is still checked, as CPython checks a whole
-file before running it ([syntax errors](../language.md#syntax-errors)). For example, `effect()` still runs in `if effect() and os.name == "nt":`.
+Except for the `NAME = True` or `False` switch, these tests work inside `not`, `and` and `or`,
+while preserving the other operands' evaluation order. The branch that does not run is not
+compiled at all, as CPython never runs it: its imports are not resolved and its code is not
+type-checked, so `import nt` under `if sys.platform == "win32":` compiles. Its syntax is still
+checked, as CPython checks a whole file before running it ([syntax
+errors](../language.md#syntax-errors)). For example, `effect()` still runs in `if effect() and
+os.name == "nt":`.
 They apply only when a name still refers to the imported module or constant; a parameter,
 local, loop variable or another import can shadow it.
 
@@ -268,8 +272,8 @@ Pystachy. The [library reference](../../lib/README.md) records provenance, avail
 restrictions and tests for each module.
 
 The adapted sources remain valid Python, but that does not imply every upstream API compiles.
-Common limitations include unsupported generator forms, ASCII-only case mapping, lack of
-`bytearray`, and homogeneous container types. Check the module's reference before choosing an
+Common limitations include unsupported generator forms, lack of `bytearray`, and
+homogeneous container types. Check the module's reference before choosing an
 API; [binary files](../../lib/compatibility.md#binary-files) have their own supported calls and
 limits.
 
@@ -310,7 +314,7 @@ multiple iterable arguments where CPython's do.
 The common `str`, `list`, `dict` and `tuple` methods are implemented, including:
 
 - `find`, `index` and `count` with start and end bounds, including `None`.
-- `startswith` and `endswith`, including a tuple of strings.
+- `startswith` and `endswith`, including a tuple of strings of fixed or run-time length (`tuple[str, ...]`).
 - `split`, `rsplit`, `partition`, `rpartition`, `splitlines`, `removeprefix` and `removesuffix`.
 - `replace` with a count, also given as `count=`.
 - `center`, `ljust` and `rjust` with a fill character; `zfill`, `expandtabs`, `capitalize`,
@@ -346,10 +350,10 @@ arguments. Supported iteration contexts and other restrictions are in the
 
 | Module | Supported surface |
 |---|---|
-| `sys` | `argv`, `warnoptions`, `exit`, `stdin`/`stdout`/`stderr` (files), `maxsize`, `platform`, `implementation.name` (`"pystachy"`), `prefix`/`base_prefix`/`exec_prefix`/`base_exec_prefix`; see [runtime values](compatibility.md#modules-and-libraries). `setrecursionlimit`/`getrecursionlimit` enforce [native recursion limits](compatibility.md#recursion). |
+| `sys` | `argv`, `warnoptions`, `exit`, `stdin`/`stdout`/`stderr` (files), `maxsize`, `maxunicode`, `platform`, `implementation.name` (`"pystachy"`), `prefix`/`base_prefix`/`exec_prefix`/`base_exec_prefix`; see [runtime values](compatibility.md#modules-and-libraries). `setrecursionlimit`/`getrecursionlimit` enforce [native recursion limits](compatibility.md#recursion). |
 | `sys.version_info` | CPython 3.13.16's items and `major`, `minor`, `micro`, `releaselevel`, `serial`; see [representation differences](compatibility.md#modules-and-libraries). |
 | `sys.float_info` | `max`, `max_exp`, `max_10_exp`, `min`, `min_exp`, `min_10_exp`, `dig`, `mant_dig`, `epsilon`, `radix`, `rounds`, matching CPython for IEEE 754 doubles. `sys.float_info` itself is not a value. |
-| `os` | `system`, `execv`, `set_inheritable`, `getpid`, `getcwd`, `getenv`, `remove`, `unlink`, `rmdir`, `mkdir`, `makedirs` (`mode` and `exist_ok` by position or by name, in that order), `listdir`, `rename`, `replace`, `fspath`; `name`, `sep`, `curdir`, `pardir`, `extsep`, `pathsep`, `linesep`, `devnull`. |
+| `os` | `system`, `execv`, `set_inheritable`, `dup`, `dup2` (two descriptors), `close`, `getpid`, `getcwd`, `chdir` (a `str` path), `getenv`, `remove`, `unlink`, `rmdir`, `mkdir`, `makedirs` (`mode` and `exist_ok` by position or by name, in that order), `listdir`, `rename`, `replace`, `fspath`; `name`, `sep`, `curdir`, `pardir`, `extsep`, `pathsep`, `linesep`, `devnull`. |
 | `os.environ` | `os.environ[name]` reads (`KeyError` for a name that is not set), assignments and `del`; `name in os.environ`; `get(name)` and `get(name, default)`; direct `__setitem__(name, value)` and `pop(name, default)` calls, with `str` arguments. They read and update the process environment and `os.getenv()` together; `pop` requires an explicit `str` default. The mapping itself (iteration, `items()`, a value passed on) and saved bound methods are unsupported. |
 | `os.path` | `exists`, `lexists`, `isdir`, `isfile`, `islink`, `samefile`, `realpath`, `join`, `normcase`, `getsize`, `getmtime`, `getctime`; of `str` paths, `basename`, `dirname`, `split`, `splitext`, `isabs`, `normpath`, `abspath`, `relpath`, `expanduser` and `commonprefix` (of a `list[str]`); `sep`, `curdir`, `pardir`, `extsep`, `pathsep`, `devnull`. |
 | `time` | `time`, `time_ns`, `monotonic`, `perf_counter`, `process_time`, their `_ns` forms, and `sleep`. |

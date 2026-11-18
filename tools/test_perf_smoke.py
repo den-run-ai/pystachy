@@ -10,6 +10,8 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+import threading
+import time
 import unittest
 from unittest import mock
 
@@ -262,30 +264,67 @@ class ReportTests(unittest.TestCase):
             self.assertEqual(len(finished), 2)
             self.assertNotIn("error", report)
 
-    def test_bootstrap_failure_retains_the_completed_bootstrap(self):
+    def test_compilers_build_at_once_before_the_cpu_pin(self):
+        # The builds overlap (#1547), or the barrier breaks; only measurements run on one CPU.
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "report.json"
-            builds = 0
+            events, overlap = [], threading.Barrier(2, timeout=10)
 
-            def execute(command, env, timeout):
-                nonlocal builds
-                checkpoint = json.loads(path.read_text())
-                self.assertEqual(checkpoint["status"], "incomplete")
-                if "build" in command:
-                    builds += 1
-                    if builds == 2:
-                        self.assertEqual(set(checkpoint["bootstrap"]), {"base"})
-                        raise RuntimeError("head bootstrap failed")
-                return {"stdout": "revision\n", "wall_s": 1.0}
+            def execute(command, env, timeout, started=None):
+                if "build" not in command:
+                    return {"stdout": "revision\n", "wall_s": 1.0}
+                self.assertEqual(timeout, perf.BOOTSTRAP_TIMEOUT)
+                self.assertIsNotNone(started)
+                overlap.wait()
+                side = Path(command[-1]).parent.name
+                events.append("built " + side)
+                return {"stdout": "", "wall_s": {"base": 200.0, "head": 230.0}[side]}
 
-            with self.main_context(path, execute=execute), self.assertRaisesRegex(RuntimeError, "head bootstrap failed"):
+            def measure(name, *args):
+                events.append("measured " + name)
+                return self.result(name)
+
+            with self.main_context(path, measure, execute), \
+                    mock.patch.object(perf.os, "sched_setaffinity", side_effect=lambda pid, cpus: events.append(cpus)):
                 perf.main()
             report = json.loads(path.read_text())
-            self.assertEqual((report["status"], report["phase"]), ("error", "bootstrap:head"))
-            self.assertEqual(report["error"], "head bootstrap failed")
-            self.assertEqual(report["error_type"], "RuntimeError")
-            self.assertEqual(set(report["bootstrap"]), {"base"})
-            self.assertEqual(report["results"], [])
+        self.assertEqual(sorted(events[:2]), ["built base", "built head"])
+        self.assertEqual(events[2:], [{0}, "measured first", "measured second", [0, 1]])
+        self.assertEqual((report["status"], report["affinity"]), ("complete", [0]))
+        self.assertEqual(report["bootstrap_budget_s"], perf.BOOTSTRAP_TIMEOUT)
+        self.assertEqual({side: record["wall_s"] for side, record in report["bootstrap"].items()},
+                         {"base": 200.0, "head": 230.0})
+
+    def test_bootstrap_failure_retains_the_completed_bootstrap(self):
+        for failure in ("exit 1: head bootstrap failed", f"timeout after {perf.BOOTSTRAP_TIMEOUT}s: head build"):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "report.json"
+                base_built = threading.Event()
+
+                def execute(command, env, timeout, started=None, *, path=path, base_built=base_built,
+                            failure=failure):
+                    checkpoint = json.loads(path.read_text())
+                    self.assertEqual(checkpoint["status"], "incomplete")
+                    if "build" not in command:
+                        return {"stdout": "revision\n", "wall_s": 1.0}
+                    self.assertEqual(checkpoint["phase"], "bootstrap")
+                    if "/base/" in command[-1]:
+                        base_built.set()
+                        return {"stdout": "", "wall_s": 1.0}
+                    self.assertTrue(base_built.wait(10))
+                    raise RuntimeError(failure)
+
+                with self.main_context(path, execute=execute), \
+                        mock.patch.object(perf.os, "sched_setaffinity") as affinity, \
+                        self.assertRaisesRegex(RuntimeError, "head"):
+                    perf.main()
+                report = json.loads(path.read_text())
+                self.assertEqual((report["status"], report["phase"]), ("error", "bootstrap:head"))
+                self.assertEqual(report["error"], failure)
+                self.assertEqual(report["error_type"], "RuntimeError")
+                self.assertEqual(set(report["bootstrap"]), {"base"})
+                self.assertEqual(report["results"], [])
+                affinity.assert_not_called()
 
     def test_setup_failure_writes_an_error_report(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -382,6 +421,91 @@ class ReportTests(unittest.TestCase):
             with self.assertRaises(TypeError):
                 perf.write_report(path, {"status": "error", "unserializable": object()})
             self.assertEqual(json.loads(path.read_text()), complete)
+
+
+class BootstrapTests(unittest.TestCase):
+    """Both compilers build at once (#1547); real processes stand in for the hosted self-builds."""
+    # The head writes its pid and would sleep for a minute; the base waits until the head runs.
+    HEAD = """
+        import os, pathlib, sys, time
+        pid = pathlib.Path(sys.argv[1], "head.pid")
+        pathlib.Path(f"{pid}.tmp").write_text(str(os.getpid()))
+        os.replace(f"{pid}.tmp", pid)
+        time.sleep(60)
+    """
+    BASE = """
+        import pathlib, sys, time
+        deadline = time.monotonic() + 20
+        while not pathlib.Path(sys.argv[1], "head.pid").exists() and time.monotonic() < deadline:
+            time.sleep(0.01)
+    """
+
+    def build(self, directory, codes, report, write_report=perf.write_report):
+        commands = {side: [sys.executable, "-c", textwrap.dedent(code), str(directory), side]
+                    for side, code in codes.items()}
+        threads, started = threading.active_count(), time.monotonic()
+        try:
+            with contextlib.redirect_stdout(io.StringIO()), \
+                    mock.patch.object(perf, "write_report", side_effect=write_report):
+                perf.bootstrap(report, directory / "report.json", commands,
+                               {side: dict(os.environ) for side in commands})
+        finally:
+            # Neither a build nor its thread outlives bootstrap(), which never waits out the head's sleep.
+            self.assertLess(time.monotonic() - started, 30)
+            self.assertEqual(threading.active_count(), threads)
+        return commands
+
+    def assert_head_reaped(self, directory):
+        with self.assertRaises(ProcessLookupError):
+            os.kill(int((directory / "head.pid").read_text()), 0)
+
+    def test_builds_overlap_and_record_their_times(self):
+        # Each build waits for the other's mark: built one at a time, the first would fail.
+        code = """
+            import pathlib, sys, time
+            directory, side = pathlib.Path(sys.argv[1]), sys.argv[2]
+            (directory / side).touch()
+            deadline = time.monotonic() + 20
+            while not (directory / ("head" if side == "base" else "base")).exists():
+                if time.monotonic() > deadline:
+                    sys.exit("the other build has not started")
+                time.sleep(0.01)
+        """
+        with tempfile.TemporaryDirectory() as directory:
+            report = {"phase": "bootstrap", "bootstrap": {}}
+            commands = self.build(Path(directory), {"base": code, "head": code}, report)
+            self.assertEqual(json.loads((Path(directory) / "report.json").read_text()), report)
+        self.assertEqual((report["phase"], report["bootstrap_budget_s"]), ("bootstrap", perf.BOOTSTRAP_TIMEOUT))
+        self.assertEqual(set(report["bootstrap"]), {"base", "head"})
+        for side, record in report["bootstrap"].items():
+            self.assertEqual(record["command"], commands[side])
+            self.assertGreater(record["wall_s"], 0)
+
+    def test_first_failure_stops_the_other_build(self):
+        with tempfile.TemporaryDirectory() as directory:
+            report = {"phase": "bootstrap", "bootstrap": {}}
+            base = textwrap.dedent(self.BASE) + "sys.exit('base cannot build')\n"
+            with self.assertRaises(RuntimeError) as caught:
+                self.build(Path(directory), {"base": base, "head": self.HEAD}, report)
+            self.assertTrue(str(caught.exception).startswith("exit 1: "))
+            self.assertEqual(str(caught.exception).splitlines()[-1], "base cannot build")
+            self.assert_head_reaped(Path(directory))
+            self.assertEqual(json.loads((Path(directory) / "report.json").read_text())["bootstrap"], {})
+        self.assertEqual((report["phase"], report["bootstrap"]), ("bootstrap:base", {}))
+
+    def test_interruption_stops_the_running_build(self):
+        # The checkpoint of the base's finished build is interrupted while the head's still runs.
+        def write_report(path, report, write=perf.write_report):
+            if report["bootstrap"]:
+                raise KeyboardInterrupt
+            write(path, report)
+
+        with tempfile.TemporaryDirectory() as directory:
+            report = {"phase": "bootstrap", "bootstrap": {}}
+            with self.assertRaises(KeyboardInterrupt):
+                self.build(Path(directory), {"base": self.BASE, "head": self.HEAD}, report, write_report)
+            self.assert_head_reaped(Path(directory))
+        self.assertEqual((report["phase"], set(report["bootstrap"])), ("bootstrap", {"base"}))
 
 
 class WeeklyTests(unittest.TestCase):
@@ -571,35 +695,43 @@ class WeeklyTests(unittest.TestCase):
         execute.assert_not_called()
 
     def test_bootstrap_deadline_keeps_report_and_marks_unmeasured_workloads(self):
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "report.json"
-            clock = [0.0]
+        # The two revision lookups take a second each. Of a three-second budget, each build then has
+        # one second, which the base's overruns while the head's finishes; two seconds start neither.
+        for budget, phase, built, builds in (("3", "bootstrap:base", {"head"}, [1.0, 1.0]),
+                                             ("2", "bootstrap", set(), [])):
+            with self.subTest(budget=budget), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "report.json"
+                clock, timeouts = [0.0], []
 
-            def execute(command, env, timeout):
-                if "build" in command:
-                    self.assertEqual(timeout, 1.0)
-                    clock[0] += timeout
-                    raise RuntimeError(f"timeout after {timeout}s: compiler")
-                clock[0] += 1
-                return self.record(stdout="revision\n")
+                def execute(command, env, timeout, started=None, *, clock=clock, timeouts=timeouts):
+                    if "build" not in command:
+                        clock[0] += 1
+                        return self.record(stdout="revision\n")
+                    timeouts.append(timeout)
+                    if "/base/" in command[-1]:
+                        raise RuntimeError(f"timeout after {timeout}s: compiler")
+                    return self.record(stdout="")
 
-            with mock.patch.object(sys, "argv", ["perf_smoke.py", "--suite", "weekly", "--budget", "2",
-                                                 "--only", "bench/fib,bench/words",
-                                                 "--base", directory, "--json", str(path)]), \
-                    mock.patch.object(perf.time, "monotonic", side_effect=lambda: clock[0]), \
-                    mock.patch.object(perf, "execute", side_effect=execute), \
-                    mock.patch.object(perf, "measure_weekly") as measured, \
-                    mock.patch.object(perf.os, "sched_getaffinity", return_value={0, 1}), \
-                    mock.patch.object(perf.os, "sched_setaffinity") as affinity, \
-                    contextlib.redirect_stdout(io.StringIO()):
-                perf.main()
-            report = json.loads(path.read_text())
-            self.assertEqual((report["status"], report["phase"]), ("incomplete", "bootstrap:base"))
-            self.assertTrue(report["budget_exhausted"])
-            self.assertEqual([result["name"] for result in report["results"]], ["bench/fib", "bench/words"])
-            self.assertTrue(all(result["budget_exhausted"] for result in report["results"]))
-            measured.assert_not_called()
-            self.assertEqual(affinity.call_args_list[-1], mock.call(0, [0, 1]))
+                with mock.patch.object(sys, "argv", ["perf_smoke.py", "--suite", "weekly", "--budget", budget,
+                                                     "--only", "bench/fib,bench/words",
+                                                     "--base", directory, "--json", str(path)]), \
+                        mock.patch.object(perf.time, "monotonic", side_effect=lambda clock=clock: clock[0]), \
+                        mock.patch.object(perf, "execute", side_effect=execute), \
+                        mock.patch.object(perf, "measure_weekly") as measured, \
+                        mock.patch.object(perf.os, "sched_getaffinity", return_value={0, 1}), \
+                        mock.patch.object(perf.os, "sched_setaffinity") as affinity, \
+                        contextlib.redirect_stdout(io.StringIO()):
+                    perf.main()
+                report = json.loads(path.read_text())
+                self.assertEqual((report["status"], report["phase"]), ("incomplete", phase))
+                self.assertTrue(report["budget_exhausted"])
+                self.assertEqual(report["bootstrap_budget_s"], float(budget) - 2)
+                self.assertEqual(timeouts, builds)
+                self.assertEqual(set(report["bootstrap"]), built)
+                self.assertEqual([result["name"] for result in report["results"]], ["bench/fib", "bench/words"])
+                self.assertTrue(all(result["budget_exhausted"] for result in report["results"]))
+                measured.assert_not_called()
+                affinity.assert_not_called()
 
     def test_port_metric_is_the_timed_part(self):
         directory = Path(tempfile.mkdtemp())

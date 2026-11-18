@@ -1,0 +1,17 @@
+Word.__lt__
+ShortFirst.__le__
+Word.__lt__
+Word.__lt__
+False True True True
+Word.__lt__
+ShortFirst.__le__
+Word.__lt__
+Word.__lt__
+True False False False
+Word.__lt__
+aaa
+Tagged.__ge__
+False False True True
+Tagged.__ge__
+True v w
+[exit 0]
