@@ -31,7 +31,7 @@ from src.pystachy_compiler.diagnostics import LINES, ClassBoxes, dynamic_program
 from src.pystachy_compiler.ir import Data, Ins, Val
 from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.reflection import RF_BUILTIN
-from src.pystachy_compiler.specs import BYTEARRAYC, COMPLEXC, ITERS, OBJECTC, RANGEC
+from src.pystachy_compiler.specs import COMPLEXC, ITERS, OBJECTC, RANGEC
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import clsof, is_callable, is_clsval, is_fn, is_opt, is_union, pure_arg, typestr, umembers, unopt
 
@@ -40,10 +40,12 @@ NONETYPE_ARGS = "NoneType takes no arguments"
 
 def builtin_backed(c: str) -> bool:
     # is c one of lib's classes whose objects are a builtin class's: object()'s, range's,
-    # complex's, bytearray's and the builtin containers' iterators'. reflection.py's
-    # refl_type_name gives them the builtin class's names, and refl_record its record where a
-    # module opts in to dynamic Any: keep this list as theirs
-    return c == OBJECTC or c == RANGEC or c == COMPLEXC or c == BYTEARRAYC or c.startswith(ITERS + "$")
+    # complex's and the builtin containers' iterators'. reflection.py's refl_type_name gives
+    # them the builtin class's names, and refl_record its record where a module opts in to
+    # dynamic Any: keep this list as theirs. (Not lib's bytearray, which reflection names so too:
+    # its class object in an Any value is a program class's box, which a call makes objects of,
+    # where a builtin record's call raises; its name, module and repr are bytearray's either way)
+    return c == OBJECTC or c == RANGEC or c == COMPLEXC or c.startswith(ITERS + "$")
 
 
 def gen_class_value_named(self, c: str) -> bool:
