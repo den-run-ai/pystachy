@@ -1,0 +1,10 @@
+'a\xffb' 'A\xffB' 'a\xffb' 'a\xffb' 'A\xffB' 'A\xffb' 'A\xffB' False True False
+'\xc3' '\xc3' '\xc3' '\xc3' '\xc3' '\xc3' '\xc3' False False False
+'\xe9cole' '\xe9COLE' '\xe9cole' '\xe9cole' '\xe9Cole' '\xe9cole' '\xe9COLE' False True False
+'\xc9cole\xe9' '\xc9COLE\xe9' '\xe9cole\xe9' '\xe9cole\xe9' '\xc9cole\xe9' '\xc9cole\xe9' '\xe9COLE\xe9' False False True
+'x\xe9\x80Y' 'X\xc9\x80Y' 'x\xe9\x80y' 'x\xe9\x80y' 'X\xe9\x80Y' 'X\xe9\x80y' 'X\xc9\x80y' False False False
+'\u03c3\xff\u03a3' '\u03a3\xff\u03a3' '\u03c3\xff\u03c3' '\u03c3\xff\u03c3' '\u03a3\xff\u03a3' '\u03a3\xff\u03c3' '\u03a3\xff\u03c3' False False False
+'\u0391\u03a3\xff' '\u0391\u03a3\xff' '\u03b1\u03c2\xff' '\u03b1\u03c3\xff' '\u0391\u03c2\xff' '\u0391\u03c2\xff' '\u03b1\u03c2\xff' True False False
+'\xf0\x9f\x98' '\xf0\x9f\x98' '\xf0\x9f\x98' '\xf0\x9f\x98' '\xf0\x9f\x98' '\xf0\x9f\x98' '\xf0\x9f\x98' False False False
+'\u0391\xff\u03a3' '\u0391\xff\u03a3' '\u03b1\xff\u03c3' '\u03b1\xff\u03c3' '\u0391\xff\u03a3' '\u0391\xff\u03c3' '\u03b1\xff\u03c3' True False True
+[exit 0]

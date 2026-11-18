@@ -1,0 +1,189 @@
+'' '' '' '' '' '' '' False False False
+'abcXYZ' 'ABCXYZ' 'abcxyz' 'abcxyz' 'Abcxyz' 'Abcxyz' 'ABCxyz' False False False
+'a1 b2' 'A1 B2' 'a1 b2' 'a1 b2' 'A1 B2' 'A1 b2' 'A1 B2' False True False
+'é' 'É' 'é' 'é' 'É' 'É' 'É' False True False
+'É' 'É' 'é' 'é' 'É' 'É' 'é' True False True
+'éCOLE élémentaire' 'ÉCOLE ÉLÉMENTAIRE' 'école élémentaire' 'école élémentaire' 'École Élémentaire' 'École élémentaire' 'École ÉLÉMENTAIRE' False False False
+'ÉCOLE ÉLÉMENTAIRE' 'ÉCOLE ÉLÉMENTAIRE' 'école élémentaire' 'école élémentaire' 'École Élémentaire' 'École élémentaire' 'école élémentaire' True False False
+'Привет мир' 'ПРИВЕТ МИР' 'привет мир' 'привет мир' 'Привет Мир' 'Привет мир' 'пРИВЕТ МИР' False False False
+'ПРИВЕТ' 'ПРИВЕТ' 'привет' 'привет' 'Привет' 'Привет' 'привет' True False False
+'Ελληνικά' 'ΕΛΛΗΝΙΚΆ' 'ελληνικά' 'ελληνικά' 'Ελληνικά' 'Ελληνικά' 'εΛΛΗΝΙΚΆ' False False True
+'Ձայն' 'ՁԱՅՆ' 'ձայն' 'ձայն' 'Ձայն' 'Ձայն' 'ձԱՅՆ' False False True
+'ქართული' 'ᲥᲐᲠᲗᲣᲚᲘ' 'ქართული' 'ქართული' 'ქართული' 'ქართული' 'ᲥᲐᲠᲗᲣᲚᲘ' False True False
+'ᲥᲐᲠᲗᲣᲚᲘ' 'ᲥᲐᲠᲗᲣᲚᲘ' 'ქართული' 'ქართული' 'Ქართული' 'Ქართული' 'ქართული' True False False
+'Ꭰꭰ' 'ᎠᎠ' 'ꭰꭰ' 'ᎠᎠ' 'Ꭰꭰ' 'Ꭰꭰ' 'ꭰᎠ' False False True
+'𐐀𐐨' '𐐀𐐀' '𐐨𐐨' '𐐨𐐨' '𐐀𐐨' '𐐀𐐨' '𐐨𐐀' False False True
+'𞤀𞤢' '𞤀𞤀' '𞤢𞤢' '𞤢𞤢' '𞤀𞤢' '𞤀𞤢' '𞤢𞤀' False False True
+'ß' 'SS' 'ß' 'ss' 'Ss' 'Ss' 'SS' False True False
+'ẞ' 'ẞ' 'ß' 'ss' 'ẞ' 'ẞ' 'ß' True False True
+'straße' 'STRASSE' 'straße' 'strasse' 'Straße' 'Straße' 'STRASSE' False True False
+'STRASSE' 'STRASSE' 'strasse' 'strasse' 'Strasse' 'Strasse' 'strasse' True False False
+'ŉ' 'ʼN' 'ŉ' 'ʼn' 'ʼN' 'ʼN' 'ʼN' False True False
+'ǰ' 'J̌' 'ǰ' 'ǰ' 'J̌' 'J̌' 'J̌' False True False
+'ΐ' 'Ϊ́' 'ΐ' 'ΐ' 'Ϊ́' 'Ϊ́' 'Ϊ́' False True False
+'ΰ' 'Ϋ́' 'ΰ' 'ΰ' 'Ϋ́' 'Ϋ́' 'Ϋ́' False True False
+'և' 'ԵՒ' 'և' 'եւ' 'Եւ' 'Եւ' 'ԵՒ' False True False
+'ﬀ' 'FF' 'ﬀ' 'ff' 'Ff' 'Ff' 'FF' False True False
+'ﬁ' 'FI' 'ﬁ' 'fi' 'Fi' 'Fi' 'FI' False True False
+'ﬃ' 'FFI' 'ﬃ' 'ffi' 'Ffi' 'Ffi' 'FFI' False True False
+'ﬆ' 'ST' 'ﬆ' 'st' 'St' 'St' 'ST' False True False
+'ᾈ' 'ἈΙ' 'ᾀ' 'ἀι' 'ᾈ' 'ᾈ' 'ᾈ' False False True
+'ᾳ' 'ΑΙ' 'ᾳ' 'αι' 'ᾼ' 'ᾼ' 'ΑΙ' False True False
+'ᾼ' 'ΑΙ' 'ᾳ' 'αι' 'ᾼ' 'ᾼ' 'ᾼ' False False True
+'ῷ' 'Ω͂Ι' 'ῷ' 'ῶι' 'ῼ͂' 'ῼ͂' 'Ω͂Ι' False True False
+'İ' 'İ' 'i̇' 'i̇' 'İ' 'İ' 'i̇' True False True
+'ı' 'I' 'ı' 'ı' 'I' 'I' 'I' False True False
+'İstanbul' 'İSTANBUL' 'i̇stanbul' 'i̇stanbul' 'İstanbul' 'İstanbul' 'i̇STANBUL' False False True
+'ISTANBUL' 'ISTANBUL' 'istanbul' 'istanbul' 'Istanbul' 'Istanbul' 'istanbul' True False False
+'ſ' 'S' 'ſ' 's' 'S' 'S' 'S' False True False
+'K' 'K' 'k' 'k' 'K' 'K' 'k' True False True
+'Å' 'Å' 'å' 'å' 'Å' 'Å' 'å' True False True
+'Ω' 'Ω' 'ω' 'ω' 'Ω' 'Ω' 'ω' True False True
+'Ⱥ' 'Ⱥ' 'ⱥ' 'ⱥ' 'Ⱥ' 'Ⱥ' 'ⱥ' True False True
+'ⱥ' 'Ⱥ' 'ⱥ' 'ⱥ' 'Ⱥ' 'Ⱥ' 'Ⱥ' False True False
+'Ȿ' 'Ȿ' 'ȿ' 'ȿ' 'Ȿ' 'Ȿ' 'ȿ' True False True
+'ɐ' 'Ɐ' 'ɐ' 'ɐ' 'Ɐ' 'Ɐ' 'Ɐ' False True False
+'ꞵ' 'Ꞵ' 'ꞵ' 'ꞵ' 'Ꞵ' 'Ꞵ' 'Ꞵ' False True False
+'ꭓ' 'Ꭓ' 'ꭓ' 'ꭓ' 'Ꭓ' 'Ꭓ' 'Ꭓ' False True False
+'Ǆ' 'Ǆ' 'ǆ' 'ǆ' 'ǅ' 'ǅ' 'ǆ' True False True
+'ǅ' 'Ǆ' 'ǆ' 'ǆ' 'ǅ' 'ǅ' 'ǅ' False False True
+'ǆ' 'Ǆ' 'ǆ' 'ǆ' 'ǅ' 'ǅ' 'Ǆ' False True False
+'ǆungla' 'ǄUNGLA' 'ǆungla' 'ǆungla' 'ǅungla' 'ǅungla' 'ǄUNGLA' False True False
+'Ǆungla' 'ǄUNGLA' 'ǆungla' 'ǆungla' 'ǅungla' 'ǅungla' 'ǆUNGLA' False False True
+'ǅungla' 'ǄUNGLA' 'ǆungla' 'ǆungla' 'ǅungla' 'ǅungla' 'ǅUNGLA' False False True
+'ǅǅ' 'ǄǄ' 'ǆǆ' 'ǆǆ' 'ǅǆ' 'ǅǆ' 'ǅǅ' False False False
+'ǈ' 'Ǉ' 'ǉ' 'ǉ' 'ǈ' 'ǈ' 'ǈ' False False True
+'ǋ' 'Ǌ' 'ǌ' 'ǌ' 'ǋ' 'ǋ' 'ǋ' False False True
+'ǲ' 'Ǳ' 'ǳ' 'ǳ' 'ǲ' 'ǲ' 'ǲ' False False True
+'ª' 'ª' 'ª' 'ª' 'ª' 'ª' 'ª' False True False
+'º' 'º' 'º' 'º' 'º' 'º' 'º' False True False
+'ʰ' 'ʰ' 'ʰ' 'ʰ' 'ʰ' 'ʰ' 'ʰ' False True False
+'ͅ' 'Ι' 'ͅ' 'ι' 'Ι' 'Ι' 'Ι' False True False
+'Ⓐ' 'Ⓐ' 'ⓐ' 'ⓐ' 'Ⓐ' 'Ⓐ' 'ⓐ' True False True
+'ⓐ' 'Ⓐ' 'ⓐ' 'ⓐ' 'Ⓐ' 'Ⓐ' 'Ⓐ' False True False
+'Ⅳ' 'Ⅳ' 'ⅳ' 'ⅳ' 'Ⅳ' 'Ⅳ' 'ⅳ' True False True
+'ⅳ' 'Ⅳ' 'ⅳ' 'ⅳ' 'Ⅳ' 'Ⅳ' 'Ⅳ' False True False
+'ǂ' 'ǂ' 'ǂ' 'ǂ' 'ǂ' 'ǂ' 'ǂ' False False False
+'ƻ' 'ƻ' 'ƻ' 'ƻ' 'ƻ' 'ƻ' 'ƻ' False False False
+'界' '界' '界' '界' '界' '界' '界' False False False
+'日本語' '日本語' '日本語' '日本語' '日本語' '日本語' '日本語' False False False
+'123' '123' '123' '123' '123' '123' '123' False False False
+'٠١٢' '٠١٢' '٠١٢' '٠١٢' '٠١٢' '٠١٢' '٠١٢' False False False
+'😀' '😀' '😀' '😀' '😀' '😀' '😀' False False False
+'é' 'É' 'é' 'é' 'É' 'É' 'É' False True False
+'É' 'É' 'é' 'é' 'É' 'É' 'é' True False True
+'́' '́' '́' '́' '́' '́' '́' False False False
+'\xad' '\xad' '\xad' '\xad' '\xad' '\xad' '\xad' False False False
+'\u200b' '\u200b' '\u200b' '\u200b' '\u200b' '\u200b' '\u200b' False False False
+'\ud800' '\ud800' '\ud800' '\ud800' '\ud800' '\ud800' '\ud800' False False False
+'\udfff' '\udfff' '\udfff' '\udfff' '\udfff' '\udfff' '\udfff' False False False
+'\U0010ffff' '\U0010ffff' '\U0010ffff' '\U0010ffff' '\U0010ffff' '\U0010ffff' '\U0010ffff' False False False
+'\x00' '\x00' '\x00' '\x00' '\x00' '\x00' '\x00' False False False
+'a\x00B' 'A\x00B' 'a\x00b' 'a\x00b' 'A\x00B' 'A\x00b' 'A\x00b' False False False
+'a界Z' 'A界Z' 'a界z' 'a界z' 'A界Z' 'A界z' 'A界z' False False False
+'É界é' 'É界É' 'é界é' 'é界é' 'É界É' 'É界é' 'é界É' False False False
+'x²' 'X²' 'x²' 'x²' 'X²' 'X²' 'X²' False True False
+'ça va' 'ÇA VA' 'ça va' 'ça va' 'Ça Va' 'Ça va' 'ÇA VA' False True False
+'ÇA VA' 'ÇA VA' 'ça va' 'ça va' 'Ça Va' 'Ça va' 'ça va' True False False
+'Ça Va' 'ÇA VA' 'ça va' 'ça va' 'Ça Va' 'Ça va' 'çA vA' False False True
+"they're bill's friends" "THEY'RE BILL'S FRIENDS" "they're bill's friends" "they're bill's friends" "They'Re Bill'S Friends" "They're bill's friends" "THEY'RE BILL'S FRIENDS" False True False
+"o'neil d'été" "O'NEIL D'ÉTÉ" "o'neil d'été" "o'neil d'été" "O'Neil D'Été" "O'neil d'été" "O'NEIL D'ÉTÉ" False True False
+'x·y' 'X·Y' 'x·y' 'x·y' 'X·Y' 'X·y' 'X·Y' False True False
+'ß.ß' 'SS.SS' 'ß.ß' 'ss.ss' 'Ss.Ss' 'Ss.ß' 'SS.SS' False True False
+'ǆ ǆ' 'Ǆ Ǆ' 'ǆ ǆ' 'ǆ ǆ' 'ǅ ǅ' 'ǅ ǆ' 'Ǆ Ǆ' False True False
+'éa Éa aé aÉ' 'ÉA ÉA AÉ AÉ' 'éa éa aé aé' 'éa éa aé aé' 'Éa Éa Aé Aé' 'Éa éa aé aé' 'ÉA éA AÉ Aé' False False False
+'1é 1É' '1É 1É' '1é 1é' '1é 1é' '1É 1É' '1é 1é' '1É 1é' False False False
+'_é' '_É' '_é' '_é' '_É' '_é' '_É' False True False
+8193 536777 'AA' 'BB'
+8193 798953 'aa' 'bb'
+8193 798953 'aa' 'bb'
+8193 798921 'Aa' 'bb'
+8193 798921 'Aa' 'bb'
+8193 667849 'AA' 'bb'
+8193 False False False
+4096 270471 'BB' 'BÉ'
+4096 401543 'bb' 'bé'
+4096 401543 'bb' 'bé'
+4096 401511 'Bb' 'bé'
+4096 401511 'Bb' 'bé'
+4096 401543 'bb' 'bé'
+4096 True False False
+10000 830000 'SS' 'SS'
+5000 1115000 'ßß' 'ßß'
+10000 1150000 'ss' 'ss'
+5001 1114975 'Ss' 'ßß'
+5001 1114975 'Ss' 'ßß'
+10000 830000 'SS' 'SS'
+5000 False True False
+12288 10100736 'Ϊ' '̈́'
+4096 3735552 'ΐΐ' 'ΐΐ'
+12288 10231808 'ϊ' '̈́'
+4098 3737106 'Ϊ' 'ΐΐ'
+4098 3737106 'Ϊ' 'ΐΐ'
+12288 10100736 'Ϊ' '̈́'
+4096 False True False
+9000 639000 'FF' 'FI'
+3000 192777000 'ﬃﬃ' 'ﬃﬃ'
+9000 927000 'ff' 'fi'
+3002 192713018 'Ff' 'ﬃﬃ'
+3002 192713018 'Ff' 'ﬃﬃ'
+9000 639000 'FF' 'FI'
+3000 False True False
+4096 299008 'II' 'II'
+4096 1249280 'ıı' 'ıı'
+4096 1249280 'ıı' 'ıı'
+4096 1249048 'Iı' 'ıı'
+4096 1249048 'Iı' 'ıı'
+4096 299008 'II' 'II'
+4096 False True False
+4096 2334720 'ȺȺ' 'ȺȺ'
+4096 46551040 'ⱥⱥ' 'ⱥⱥ'
+4096 46551040 'ⱥⱥ' 'ⱥⱥ'
+4096 46540245 'Ⱥⱥ' 'ⱥⱥ'
+4096 46540245 'Ⱥⱥ' 'ⱥⱥ'
+4096 46551040 'ⱥⱥ' 'ⱥⱥ'
+4096 True False False
+4096 2334720 'ȺȺ' 'ȺȺ'
+4096 46551040 'ⱥⱥ' 'ⱥⱥ'
+4096 46551040 'ⱥⱥ' 'ⱥⱥ'
+4096 46540245 'Ⱥⱥ' 'ⱥⱥ'
+4096 46540245 'Ⱥⱥ' 'ⱥⱥ'
+4096 2334720 'ȺȺ' 'ȺȺ'
+4096 False True False
+4096 1245184 'İİ' 'İİ'
+8192 3604480 'i̇' 'i̇'
+8192 3604480 'i̇' 'i̇'
+8191 3603904 'İi' 'i̇'
+8191 3603904 'İi' 'i̇'
+8192 3604480 'i̇' 'i̇'
+4096 True False False
+2048 925696 'ǄǄ' 'ǄǄ'
+2048 929792 'ǆǆ' 'ǆǆ'
+2048 929792 'ǆǆ' 'ǆǆ'
+2048 929791 'ǅǆ' 'ǆǆ'
+2048 929791 'ǅǆ' 'ǆǆ'
+2048 927744 'ǅǅ' 'ǅǅ'
+2048 False False False
+32 6264 'ÉÉ' 'É!'
+32 7256 'éé' 'é!'
+32 7256 'éé' 'é!'
+32 7224 'Éé' 'é!'
+32 7224 'Éé' 'é!'
+32 6264 'ÉÉ' 'É!'
+32 False True False
+129 8421 'AA' 'AA'
+128 12542 'aa' 'aa'
+129 12549 'aa' 'aa'
+128 12510 'Aa' 'aa'
+128 12510 'Aa' 'aa'
+129 8421 'AA' 'AA'
+128 False True False
+STRASSE école strasse True True True
+b'' b'' b'' b'' b'' False False
+b'aZ' b'AZ' b'az' b'Az' b'Az' False False
+b'\xc3\xa9cole' b'\xc3\xa9COLE' b'\xc3\xa9cole' b'\xc3\xa9COLE' b'\xc3\xa9cole' False True
+b'\xc3\x89COLE' b'\xc3\x89COLE' b'\xc3\x89cole' b'\xc3\x89cole' b'\xc3\x89cole' True False
+b'\xdf' b'\xdf' b'\xdf' b'\xdf' b'\xdf' False False
+b'\xe9 \xc9' b'\xe9 \xc9' b'\xe9 \xc9' b'\xe9 \xc9' b'\xe9 \xc9' False False
+b'\xff' b'\xff' b'\xff' b'\xff' b'\xff' False False
+[exit 0]

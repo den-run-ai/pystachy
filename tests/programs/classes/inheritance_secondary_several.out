@@ -1,0 +1,6 @@
+['square', 'circle', 'square'] [4.0, 0.0, 9.0]
+8.0
+SQUARE 1.5! SQUARE 2.0!
+[square 2.0] <shape>
+True False True False
+[exit 0]
