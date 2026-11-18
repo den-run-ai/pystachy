@@ -1,0 +1,14 @@
+  pow V
+  pow V
+  pow int
+  pow int
+  rpow 2
+  rpow 3
+9 V(8) V(32) V(8) V(32) V(9)
+  pow int
+V(8)
+  pow V
+V(64)
+  pow int
+TypeError: unsupported operand type(s) for ** or pow(): 'int' and 'NoneType'
+[exit 0]

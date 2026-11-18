@@ -76,6 +76,10 @@ class Reduce:
         self.facc = ""
         self.isf = ""
         self.phase = ""  # dynamic sum: in-range int, compensated float, or generic addition
+        # a sum of objects (Gen.sum_object_item): start its start's slot, first whether no item
+        # was added yet, acc the sum so far, of type sumt, which the first addition gives
+        self.start = ""
+        self.sumt = ""
 
 
 class SetArg:
