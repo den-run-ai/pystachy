@@ -4,16 +4,18 @@ from src.pystachy_compiler.analysis import local_names, numeric_statement
 from src.pystachy_compiler.bigints import converts
 from src.pystachy_compiler.diagnostics import dynamic_program, shown, where
 from src.pystachy_compiler.generators import fresh_yield_context
-from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val, tmpname
+from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
+from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.reflection import VARS_USES, refl_attr_fields, refl_formatter
-from src.pystachy_compiler.specs import BFILE, BIG, COMPLEXC, DISPATCH_INLINE, EXCEPTIONS, GLUE, HASATTR, MODATTRS, OBJECTC, PYBUILTINS, RANGEC
+from src.pystachy_compiler.specs import BFILE, BIG, BYTEARRAYC, BYTEARRAYS, COMPLEXC, DISPATCH_INLINE, EXCEPTIONS, GLUE, HASATTR, MODATTRS, OBJECTC, PYBUILTINS, RANGEC
 from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.unions import field_value, float_open, float_returns, float_site, float_takes
 from src.pystachy_compiler.utils import (
     is_clsval,
     clsof,
+    lib_source,
     opaque_class,
     atomic_dict,
     identity_abi,
@@ -395,6 +397,10 @@ def gen_class_new(self, c: str, args: list[Node], want: str, resultsoft: bool = 
         made = [Val("", c)]
         self.init_result(self.call_fn(self.classes[c].methods["__init__"], made, args, want, resultsoft=resultsoft, typeargs=typeargs))
         return made[0]
+    if c == BYTEARRAYC and len(args) > 0 and BYTEARRAYS + "$_new" in self.funcs:
+        # bytearray(source, ...): lib/_pystachy_bytearray.py's _new, a function of its
+        # arguments' types (the class's own __init__ takes none: its objects are of one class)
+        return self.call_fn(self.funcs[BYTEARRAYS + "$_new"], [], args, want, resultsoft=resultsoft)
     o = self.new_obj(c)
     self.init_result(self.call_fn(self.classes[c].methods["__init__"], [o], args, direct=True))
     return o
@@ -1513,6 +1519,10 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         self.err(f"{f.name}() is @export, so Pystachy code may not call it (under CPython each call goes through the export's checks and conversions): call a private function that both use")
     if f.bad != "":
         self.err(f.bad)  # (before its arguments, whose types may be placeholders')
+    if f.name == "importlib$import_module" and lib_source(f.node.line, self.libdir, "importlib/__init__.py"):
+        # (the loader writes the import statement of a call that binds a variable to the module a
+        # string constant names: loader.import_module_calls. Any other call reaches lib's function)
+        self.err("importlib.import_module() is supported where a string constant names the module and the call binds one variable or stands alone (mod = import_module(\"a.b\")), outside a class body, through a name that only imports of importlib bind and one has bound before the call: a program's modules are compiled with it, so none is imported by a name it computes, and a module is no value")
     if identity_abi(f) and len(f.node.kids) == 3:
         self.numeric_proof(f, f.node.kids[2].kids)
     if f.cls in self.classes and self.classes[f.cls].tag > 0 and f.deco == "" and len(pre) > 0:
@@ -1879,6 +1889,8 @@ def gen_tests(self, ns: list[Node], p: str) -> bool:
             return True
         if n.kind == "call" and n.kids[0].kind == "name" and ((n.kids[0].s == "getattr" and len(n.kids) == 4) or (n.kids[0].s == "type" and len(n.kids) == 2)) and n.kids[1].kind == "name" and n.kids[1].s == p:
             return True  # (getattr(p, name, default) and type(p): reflection.py)
+        if n.kind == "call" and n.kids[0].kind == "name" and n.kids[0].s == "__pys_ordering" and len(n.kids) == 4 and n.kids[2].kind == "name" and n.kids[2].s == p:
+            return True  # (a method the loader wrote for @total_ordering passes p to the class's own one: ordering)
         x = nonetest(n)
         if x >= 0 and n.kids[x].kind == "name" and n.kids[x].s == p:
             return True

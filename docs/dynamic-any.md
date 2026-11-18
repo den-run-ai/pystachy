@@ -205,8 +205,10 @@ contextual inference. An untyped empty item, as in `([], 3)`, takes its type fro
 preceding items. A nested display whose own items provide a type participates in
 the normal common-type decision: examples include `({"a": [1], "b": []}, 1)` and
 `[list([1]), []]`. Functions following a `Callable` item use that item's callable
-type. These cases are covered by `dynany_display_empty.py`,
-`dynany_display_empty_nested.py` and `dynany_callables.py`.
+type. An item that reads a name a `:=` of the display binds, as `z` in `[z := x, z]`,
+takes no part in that decision, which comes before any item runs; the items then run in
+order. These cases are covered by `dynany_display_empty.py`,
+`dynany_display_empty_nested.py`, `dynany_callables.py` and `dynany_walrus_display.py`.
 
 [Inferred unions](language/typing.md#inferred-unions) remain distinct from dynamic
 displays. A variable or result receiving an `int` and a `float` is `int | float`;
@@ -845,7 +847,7 @@ value through `Any`. This is an explicit rejection, not a comparison fallback.
 fields are unassigned. Peer classes imported from ordinary typed modules are eligible
 when a dynamic caller boxes them; their existing fields and methods keep their types
 (`dynany_cmp_missing_write_import.py`). After one of these fields is created, these dictionary consumers
-raise an explicit `TypeError` until runtime insertion order is supported (#486), including
+raise an explicit `TypeError` until runtime insertion order is supported (#489), including
 deferred text conversion; `hasattr` and `dir` use the normal assignment flags. Iteration
 already in progress retains its dictionary-size mutation check. This boundary is recorded
 in `tests/deviations/dynany_cmp_field_reflection.py`.
@@ -1055,7 +1057,7 @@ can still need an explicit `list[Any]` destination.
   class does not have raises `AttributeError` (the native layout remains fixed).
   `vars()` and `__dict__` after a comparison-created field raise explicit `TypeError`
   (`tests/deviations/dynany_cmp_field_reflection.py`); general late-field insertion order
-  remains unsupported (#486).
+  remains unsupported (#489).
 
 - `set`, `bytes` and exception objects cannot become `Any` values yet. Concrete
   mutable-container layouts remain unsupported except for the native `list[int]`

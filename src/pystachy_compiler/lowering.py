@@ -1,13 +1,16 @@
 """Lowering component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail, int_program
-from src.pystachy_compiler.ir import Blk, ClassInfo, IFn, Ins, Val, slot_register, tmpname, one_num
+from src.pystachy_compiler.ir import Blk, IFn, Ins, Val, slot_register, tmpname, one_num
+from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.lower_module import const_slot, struct_types
 from src.pystachy_compiler.specs import CHECKED, COMPLEXC, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
 from src.pystachy_compiler.utils import atomic_dict, atomic_list, gelem, generator_identity, generator_slots, identity_abi, numeric_identity, is_dict, is_tuple, lt, selem, takes_self, targs, tslots
 
 
 def gen_lower(self, fn: IFn) -> None:
+    # (first its layout reads become machine ops, machine_ir.py: lower_ins prints none of them)
+    self.machine_ir(fn)
     o = self.out
     chunk_start = len(o)
     f = fn.f
@@ -354,8 +357,6 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         v = i.a[0]
         c = f"bitcast i64 {v.v} to double" if i.t == "float" else f"trunc i64 {v.v} to i1" if i.t == "bool" else f"bitcast i64 {v.v} to i64" if i.t == "int" else f"inttoptr i64 {v.v} to ptr"
         o.append(f"  {tmpname(i.r[0])} = {c}")
-    elif op == "union.tag":
-        o.append(f"  {tmpname(i.r[0])} = load i64, ptr {i.a[0].v}")
     elif op == "num.cast":
         v = i.a[0]
         c = f"zext i1 {v.v} to i64" if i.t == "int" else f"uitofp i1 {v.v} to double" if v.t == "bool" else f"sitofp i64 {v.v} to double"
@@ -368,11 +369,6 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         o.append(f"  {tmpname(i.r[0])} = icmp u{ICMP[i.s][1:]} i64 {i.a[0].v}, {i.a[1].v}")
     elif op == "ptr.cmp":
         o.append(f"  {tmpname(i.r[0])} = icmp {ICMP[i.s]} ptr {i.a[0].v}, {i.a[1].v}")
-    elif op == "union.payload" or op == "union.raw" or op == "dyn.payload" or op == "dyn.raw":
-        o.append(f"  {tmpname(i.r[0])} = getelementptr i64, ptr {i.a[0].v}, i64 1")
-        o.append(f"  {tmpname(i.r[1])} = load i64, ptr {tmpname(i.r[0])}")
-    elif op == "dyn.type":
-        o.append(f"  {tmpname(i.r[0])} = load ptr, ptr {i.a[0].v}")
     elif op == "big.make":
         o.append(f"  {tmpname(i.r[0])} = insertvalue {{i64, ptr}} undef, i64 {i.a[0].v}, 0")
         o.append(f"  {tmpname(i.r[1])} = insertvalue {{i64, ptr}} {tmpname(i.r[0])}, ptr {i.a[1].v}, 1")
@@ -492,8 +488,6 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         kind = self.key_kind(targs(t)[0] if is_dict(t) else selem(t), is_dict(t), True) if t != "" else "0"
         o.append(f"  {tmpname(i.r[0])} = getelementptr i64, ptr {i.a[0].v}, i64 1")
         o.append(f"  store i64 {kind}, ptr {tmpname(i.r[0])}")
-    elif op == "list.len":
-        o.append(f"  {tmpname(i.r[0])} = load i64, ptr {i.a[0].v}")
     elif op == "list.load":
         # the item of a list at an index within its length (listget): l->a[index], as runtime.c
         # lays a List out ({len, cap, a}), in the 8-byte slot pys_list_get would have returned

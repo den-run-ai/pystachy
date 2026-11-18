@@ -237,7 +237,7 @@ class AdapterTests(SnapshotFixture):
                          {"@f.item": 1, "@f.last": 1, "@f.pair": 2, "@f.ends": 2, "@f.tail3": 4,
                           "@f.class_lookup": 2, "@f.total": 1, "@f.odd_lengths": 1, "@f.ranked": 1,
                           "@f.counted": 3, "@f.global_lookup": 1, "@f.smoothed": 4, "@f.pairs": 4, "@f.shifted": 2,
-                          "@m.Cache.lookup": 1})
+                          "@f.rows": 2, "@m.Cache.lookup": 1})
 
     def test_selection_and_snapshot_header_are_checked(self):
         with self.assertRaisesRegex(ValueError, "exactly one function"):
@@ -293,8 +293,8 @@ class ProvedCheckerTests(SnapshotFixture):
     def test_every_access_of_the_example_is_proved(self):
         fields, code = check_all(self.snapshot, CHECKER)
         self.assertEqual((fields["status"], code), ("accepted", 0), fields)
-        self.assertEqual(fields["totals"]["proved_accesses"], 30)
-        self.assertEqual(fields["totals"]["accesses"], 30)
+        self.assertEqual(fields["totals"]["proved_accesses"], 32)
+        self.assertEqual(fields["totals"]["accesses"], 32)
 
     def test_negated_guards_prove_only_the_safe_branch(self):
         for kind in ("list", "dict"):
@@ -513,6 +513,38 @@ class ProvedCheckerTests(SnapshotFixture):
             for corrupt in (further, lowered, shortened):
                 self.assertFalse(self.verdict(corrupt(symbol), symbol), (symbol, corrupt.__name__))
 
+    def test_a_base_copy_is_proved_and_each_corruption_of_its_tests_rejects(self):
+        # (listguard with a base: the copy's unchecked reads of data[bi + d] and data[bj + d] hold
+        # where the tests before the loop find each base at least 0 and the stop plus it at most
+        # the length, and the copy's plain sums of a base and d fit)
+        self.assertTrue(self.verdict(copy.deepcopy(self.snapshot), "@f.rows"))
+
+        def tests_of(function, registers):
+            # (the tests before the loop: a literal at most a base, or a sum at most a length)
+            return [(block, operation) for block in function["blocks"] for operation in block["operations"]
+                    if operation["op"] == "scalar.cmp" and operation["text"] == "sle"
+                    and operation["operands"][0]["value"].startswith("%") == registers]
+
+        def lowered():
+            # (each base is tested against -1: bi + 0 may be negative)
+            snapshot, function = self.selected("@f.rows")
+            for _, test in tests_of(function, False):
+                self.assertEqual(test["operands"][0]["value"], "0")
+                test["operands"][0]["value"] = "-1"
+            return snapshot
+
+        def swapped():
+            # (the copy runs where a length test fails, and the loop as compiled where it passes)
+            snapshot, function = self.selected("@f.rows")
+            for block, _ in tests_of(function, True):
+                branch = block["operations"][-1]
+                self.assertEqual(branch["op"], "cbr")
+                branch["targets"].reverse()
+            return snapshot
+
+        for corrupt in (lowered, swapped):
+            self.assertFalse(self.verdict(corrupt(), "@f.rows"), corrupt.__name__)
+
     def test_a_global_write_between_reloads_rejects(self):
         # (TABLE = {} after the lookup and before its reload: the entry belongs to another dict)
         snapshot, function = self.selected("@f.global_lookup")
@@ -548,7 +580,7 @@ class ProvedCheckerTests(SnapshotFixture):
         code, report = run("--snapshot", str(self.snapshot_path), "--function", "@f.total")
         self.assertEqual((code, report["status"], report["checked"]), (0, "accepted", True))
         code, report = run("--snapshot", str(self.snapshot_path), "--all")
-        self.assertEqual((code, report["status"], report["totals"]["proved_accesses"]), (0, "accepted", 30))
+        self.assertEqual((code, report["status"], report["totals"]["proved_accesses"]), (0, "accepted", 32))
         with tempfile.TemporaryDirectory() as temporary:
             emitted = Path(temporary) / "candidate.json"
             code, report = run("--snapshot", str(self.snapshot_path), "--function", "@f.item", "--emit", str(emitted))
@@ -566,6 +598,118 @@ class ProvedCheckerTests(SnapshotFixture):
             code, report = run("--snapshot", str(self.snapshot_path), "--function", "@f.item",
                                "--checker", str(Path(temporary) / "missing"))
             self.assertEqual((code, report["status"]), (3, "error"))
+
+
+
+def base_loop(low=0, checked=True, inclusive=False, stored=False, offset=0, stop="s", added=None):
+    """listguard's copy of `for i in range(stop): ... xs[b + i + offset] ...` as normalized nodes
+    (PystachyAccess.baseLoop, baseConstLoop): tests before the loop that b >= low and that the
+    checked sum t = stop + b (or b + added, for a constant stop) is at most the length, then the
+    loop's own test, i < stop (or i <= stop), and a plain sum j = b + i; stored: the loop stores b
+    (a havoc) in place of its increment's check."""
+    if isinstance(stop, int):
+        total = {"op": "add_checked", "dst": "t", "src": "b", "k": stop if added is None else added,
+                 "next": 3, "overflow": 13}
+    elif checked:
+        total = {"op": "add_checked_reg", "dst": "t", "x": stop, "y": "b", "next": 3, "overflow": 13}
+    else:
+        total = {"op": "add_reg", "dst": "t", "x": stop, "y": "b", "next": 3}
+    nodes = [
+        {"op": "length", "dst": "n", "list": "xs", "next": 1},
+        {"op": "test", "cond": {"cmp": "sle", "a": low, "b": "b"}, "yes": 2, "no": 13},
+        total,
+        {"op": "test", "cond": {"cmp": "sle", "a": "t", "b": "n"}, "yes": 4, "no": 13},
+        {"op": "lit", "dst": "h", "value": 0, "next": 5},
+        {"op": "jump", "next": 6},
+        {"op": "copy", "dst": "i", "src": "h", "next": 7},
+        {"op": "test", "cond": {"cmp": "sle" if inclusive else "slt", "a": "i", "b": stop}, "yes": 8, "no": 13},
+        {"op": "add_reg", "dst": "j", "x": "b", "y": "i", "next": 9},
+        ({"op": "load", "list": "xs", "index": "j", "next": 10} if offset == 0 else
+         {"op": "add_checked", "dst": "k", "src": "j", "k": offset, "next": 14, "overflow": 13}),
+        ({"op": "havoc", "dst": "b", "next": 11} if stored else
+         {"op": "add_checked", "dst": "u", "src": "i", "k": 1, "next": 11, "overflow": 13}),
+        {"op": "copy", "dst": "h", "src": "i" if stored else "u", "next": 12},
+        {"op": "jump", "next": 6},
+        {"op": "stop"},
+    ]
+    if offset != 0:
+        nodes.append({"op": "load", "list": "xs", "index": "k", "next": 10})
+    return nodes
+
+
+class RegisterSumMirrorTests(unittest.TestCase):
+    """The Python mirror of PystachyAccess's facts about sums of two values."""
+
+    def test_a_checked_sum_gives_its_fact_only_where_it_fits(self):
+        node = {"op": "add_checked_reg", "dst": "t", "x": "s", "y": "b", "next": 1, "overflow": 2}
+        self.assertEqual(access.generated([], node, 0), [("sum", "t", "s", "b")])
+        self.assertEqual(access.generated([], node, 1), [])
+        self.assertEqual(access.generated([], dict(node, dst="b"), 0), [])  # (b is the new value)
+
+    def test_a_plain_sum_needs_its_bound_below_a_checked_one(self):
+        node = {"op": "add_reg", "dst": "j", "x": "b", "y": "i", "next": 1}
+        facts = [("sum", "t", "s", "b"), ("lt", "i", "s"), ("ge", "i", 0), ("ge", "b", 0)]
+        self.assertEqual(access.generated(facts, node, 0), [("sum", "j", "b", "i")])
+        self.assertEqual(sorted(access.generation_premises(facts, node, ("sum", "j", "b", "i"))), sorted(facts))
+        for missing in facts:
+            known = [f for f in facts if f != missing]
+            self.assertEqual(access.generated(known, node, 0), [], missing)
+        # (lower bounds whose sum is below the least 64-bit value do not show it fits)
+        low = [("sum", "t", "s", "b"), ("lt", "i", "s"), ("ge", "i", -2 ** 63), ("ge", "b", -1)]
+        self.assertEqual(access.generated(low, node, 0), [])
+
+    def test_a_constant_stop_bounds_a_sum_below_its_offset(self):
+        node = {"op": "add_reg", "dst": "j", "x": "b", "y": "i", "next": 1}
+        facts = [("off", "t", "b", 4), ("atMost", "i", 3), ("ge", "i", 0), ("ge", "b", 0)]
+        self.assertEqual(access.generated(facts, node, 0), [("sum", "j", "b", "i")])
+        self.assertEqual(access.generated([("off", "t", "b", 3)] + facts[1:], node, 0), [])
+        known = facts + [("sum", "j", "b", "i")]
+        self.assertTrue(access.rule(known, ("lt", "j", "t")))
+        self.assertFalse(access.rule([("off", "t", "b", 3)] + known[1:], ("lt", "j", "t")))
+        derived, _ = access.closure(known, [("sum", "j", "b", "i")], {"j", "t", "b", "i"})
+        self.assertIn(("lt", "j", "t"), derived)
+
+    def test_adding_a_value_keeps_order_and_lower_bounds_add_up(self):
+        known = [("sum", "j", "b", "i"), ("sum", "t", "s", "b"), ("lt", "i", "s"), ("ge", "i", 2), ("ge", "b", 3)]
+        self.assertTrue(access.rule(known, ("lt", "j", "t")))
+        self.assertTrue(access.rule(known, ("ge", "j", 5)))
+        self.assertFalse(access.rule(known, ("ge", "j", 6)))
+        self.assertFalse(access.rule([f for f in known if f != ("lt", "i", "s")], ("lt", "j", "t")))
+        self.assertFalse(access.rule(known, ("lt", "t", "j")))
+        derived, _ = access.closure(known, known, {"j", "t", "b", "i", "s"})
+        self.assertIn(("lt", "j", "t"), derived)
+        self.assertIn(("ge", "j", 5), derived)
+
+
+@unittest.skipUnless(CHECKER.is_file() or os.environ.get("LEAN_BOUNDARY_REQUIRED") == "1",
+                     "build tools/lean_boundary to run the Lean checker")
+class RegisterSumCheckerTests(unittest.TestCase):
+    """A base's sum with a loop's index, as listguard copies it, is proved, and each corruption of
+    its tests rejected, by Lean and by the mirror alike."""
+
+    def verdict(self, nodes):
+        certificate, _ = access.infer_certificate(nodes, 0)
+        candidate = {"schema_version": 1, "program": {"entry": 0, "nodes": nodes}, "certificate": certificate}
+        completed = subprocess.run([str(CHECKER)], input=json.dumps(candidate), capture_output=True, text=True,
+                                   timeout=60)
+        self.assertIn(completed.returncode, (0, 1), completed.stdout + completed.stderr)
+        accepted = json.loads(completed.stdout)["accepted"]
+        self.assertEqual(explain(candidate) is None, accepted, explain(candidate))
+        return accepted
+
+    def test_a_base_loop_is_proved(self):
+        self.assertTrue(self.verdict(base_loop()))
+        self.assertTrue(self.verdict(base_loop(stop=4)))  # (a constant stop: t = b + 4)
+
+    def test_each_corruption_of_a_base_loop_rejects(self):
+        for name, nodes in [("the base may be negative", base_loop(low=-1)),
+                            ("the stop's sum with the base may wrap", base_loop(checked=False)),
+                            ("the loop runs to its stop inclusive", base_loop(inclusive=True)),
+                            ("the loop stores its base", base_loop(stored=True)),
+                            ("the read is one past the tested sum", base_loop(offset=1)),
+                            ("the test adds 3 where the loop runs to 4", base_loop(stop=4, added=3)),
+                            ("a constant-stop loop runs to its stop inclusive", base_loop(stop=4, inclusive=True))]:
+            self.assertFalse(self.verdict(nodes), name)
 
 
 if __name__ == "__main__":

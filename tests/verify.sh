@@ -103,7 +103,8 @@
 #   jit-dead-code  tools/jitprobe.py: unused functions never reach the JIT runner (lljit.c) or lli,
 #                  and a small helper reaches them inlined (not with PYSTACHY_JIT_INLINE=0); live code
 #                  and runtime callbacks still execute as in CPython, with both compilers, both
-#                  runners and both levels of code generation; jitfdprobe.py preserves inherited
+#                  runners, both levels of code generation and LLVM's -O2 pipeline in place of the
+#                  cleanup (PYSTACHY_JIT_OPT=2, under GC stress); jitfdprobe.py preserves inherited
 #                  pipes, CPython's descriptor tables and SIGINT dispositions across both runners,
 #                  shared/object runtime, -O0 code generation, embedding, cached and AOT launches;
 #                  tools/test_lljit.py: the runner is built and cached once, falls back to lli where
@@ -116,8 +117,8 @@
 #                  keep their allocations and those objects through collections, with outputs
 #                  matching CPython; and PYSTACHY_GC_MIN sets the allocation window between
 #                  collections
-#   unicode-audit  tools/unicode_audit.py: optional byte-boundary checks in JIT/AOT, cache
-#                  reuse, ASCII/Unicode controls and GC-stress exception paths, both compilers;
+#   unicode-audit  tools/unicode_audit.py: str operations on text that is not ASCII and every code
+#                  point's classification, repr() and case against CPython, JIT/AOT, both compilers;
 #                  unicodeprobe checks code-point cache/locality, mutation and GC invalidation
 #                  bytescanprobe checks bounded delimiter scans, guard pages and bulk-work counts
 #                  floatprobe checks float-parser allocations and exact-terminator guard pages
@@ -254,7 +255,7 @@ export PYSTACHY_HOME="$ROOT"
 # The steps set the knobs they test themselves: one left in the caller's environment would weaken a
 # step (PYSTACHY_GC=off: gc-stress collects nothing) or fail it falsely (PYSTACHY_OPT=-all), so they
 # are dropped, and the report lists them (PYSTACHY_LLVM and PYSTACHY_JOBS are kept)
-ign=$(env | sed -nE 's/^(PYSTACHY_(PATH|CFLAGS|AOT_OPT|RUNTIME_C_CACHE|GC|GC_MIN|GC_STRESS|GC_STRESS_PROGRAM|IRCHECK|IRFX|TIMING|OPT|JIT_INLINE|JIT_CODEGEN|JIT_LAUNCHER|PROGRAM_CACHE|PROGRAM_CACHE_TRACE|PROGRAM_CACHE_INPUTS|PROGRAM_CACHE_LOCK|UNICODE_AUDIT|DEBUG_LINES|ARGV0|CASE_TIMES))=.*$/\1/p' | sort -u)
+ign=$(env | sed -nE 's/^(PYSTACHY_(PATH|CFLAGS|AOT_OPT|PROFILE_GENERATE|PROFILE_USE|RUNTIME_C_CACHE|GC|GC_MIN|GC_STRESS|GC_STRESS_PROGRAM|IRCHECK|IRFX|TIMING|OPT|JIT_INLINE|JIT_OPT|JIT_CODEGEN|JIT_LAUNCHER|PROGRAM_CACHE|PROGRAM_CACHE_TRACE|PROGRAM_CACHE_INPUTS|PROGRAM_CACHE_LOCK|DEBUG_LINES|ARGV0|CASE_TIMES))=.*$/\1/p' | sort -u)
 for e in $ign; do echo "verify: ignoring $e=$(printenv "$e")"; unset "$e"; done
 LLVM=${PYSTACHY_LLVM:+${PYSTACHY_LLVM%/}/}
 
@@ -1076,7 +1077,7 @@ fi
 }
 
 contracts_b() {
-# ---- Unicode audit: opt-in checks, code-point cache/locality and mutation/GC invalidation
+# ---- Unicode audit: str operations against CPython, code-point cache/locality and mutation/GC invalidation
 if want unicode-audit; then
 L=$V/unicode-audit.log; s=$(now); r=fail
 { $PY tools/unicode_audit.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" &&

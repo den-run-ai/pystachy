@@ -4,7 +4,9 @@ from src.pystachy_compiler.analysis import none_display, walrus_names
 from src.pystachy_compiler.bigints import big_tree, held, narrow_type
 from src.pystachy_compiler.conversions import ends_in_id
 from src.pystachy_compiler.diagnostics import dynamic_program, int_lists, shown
-from src.pystachy_compiler.ir import ClassInfo, Ins, IterArg, SetArg, Val
+from src.pystachy_compiler.frames import IterArg, SetArg
+from src.pystachy_compiler.ir import Ins, Val
+from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import BIG, BIGOPT, EMPTYFS, ITERS, NONE_ITEM, NONEVAR, OBJECTC, OPTTYPES, TYPEMODS, VTUPLE_ITEMS
 from src.pystachy_compiler.syntax import Node, made_var, mentions, mk
@@ -819,6 +821,31 @@ def gen_affix_any(self, tup: Val, m: str, av: list[str], base: str = "str") -> V
     # is None raises when it is reached. av: the call's arguments, the item's place left empty
     lend = self.label()
     ph = Ins("phi", "bool", "")
+    if is_vtuple(tup.t):
+        # (a tuple whose length the run decides: the same loop, over the items it holds)
+        size = Val(self.mload("int", tup.v), "int")
+        index = self.alloca("int", "")
+        self.mstore("int", "0", index)
+        cond = self.label()
+        body = self.label()
+        step = self.label()
+        self.br(cond)
+        self.place(cond)
+        vi = self.mload("int", index)
+        self.incoming(ph, "false", self.cur)
+        self.cbr(self.num_cmp("<", Val(vi, "int"), size).v, body, lend)
+        self.place(body)
+        item = self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {tup.v}", f"i64 {vi}"]), targs(tup.t)[0])
+        if is_opt(item.t):
+            self.guard(self.ptr_cmp('==', item, Val('null', 'None')).v, f"TypeError: tuple for {m} must only contain str, not NoneType" if base == "str" else "TypeError: a bytes-like object is required, not 'NoneType'")
+        c = self.rres(self.rt(f"pys_{base}_{m}", "i64", [av[0], f"ptr {item.v}"] + av[2:]), "bool")
+        self.incoming(ph, "true", self.cur)
+        self.cbr(c.v, lend, step)
+        self.place(step)
+        self.mstore("int", self.scalar("add", [Val(vi, "int"), Val("1", "int")]), index)
+        self.br(cond)
+        self.place(lend)
+        return Val(self.phi(ph), "bool")
     for i in range(len(targs(tup.t))):
         item = self.tget(tup, i)
         if is_opt(item.t):

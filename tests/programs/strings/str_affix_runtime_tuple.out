@@ -1,0 +1,14 @@
+True False True False
+False False False
+True False True False
+True True False True
+True True False True False
+True True False
+True True False
+True
+TypeError tuple for endswith must only contain str, not NoneType
+TypeError tuple for endswith must only contain str, not NoneType
+TypeError startswith first arg must be str or a tuple of str, not NoneType
+True ['tuple', 'start', 'end']
+['w0.txt', 'w2']
+[exit 0]

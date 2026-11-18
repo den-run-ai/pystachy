@@ -1,0 +1,6 @@
+no thread
+RuntimeError: deadlock: result() would wait for ever, as Pystachy runs no other thread to finish the future
+RuntimeError: deadlock: exception() would wait for ever, as Pystachy runs no other thread to finish the future
+RuntimeError: deadlock: wait() would wait for ever, as Pystachy runs no other thread to finish the future
+RuntimeError: deadlock: as_completed() would wait for ever, as Pystachy runs no other thread to finish the future
+[exit 0]

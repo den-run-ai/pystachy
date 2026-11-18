@@ -1,0 +1,44 @@
+3 'out\n' 'err\n'
+CompletedProcess(args=['sh', '-c', 'echo out; echo err >&2; exit 3'], returncode=3, stdout='out\n', stderr='err\n')
+['OUT'] out
+!
+'a\nb\nc\n' None
+b'a\r\nb\rc\n'
+''
+None
+'café €\n'
+'café\n'
+b'caf\xe9\n'
+''
+b'ok \xff\xfe end\n'
+UnicodeDecodeError 'utf-8' codec can't decode byte 0xff in position 3: invalid start byte
+'ok �� end\n'
+'ok  end\n'
+'ok \\xff\\xfe end\n'
+'ok ÿþ end\n'
+'plain\n'
+spaced
+TEXT
+'both\nstreams\n'
+b'given\n'
+'given\n'
+b'end\n'
+'end\n'
+CompletedProcess(args=['sh', '-c', 'cat; echo e >&2'], returncode=0, stdout=b'sent\r\n', stderr=b'e\n') CompletedProcess(args=['sh', '-c', 'cat; echo e >&2'], returncode=0, stdout='sent\r\n', stderr='')
+[(b'x', b''), (b'', b'x')] [0, 0]
+None 0
+'header\nto the file\nand its error\nby descriptor\n'
+to the file
+
+'err\nfrom Popen\n'
+0 b'inherited\n'
+True b''
+(3, 'out\nerr')
+(0, 'no newline') (0, '\n')
+'a b\nc' ''
+(-15, '')
+(0, 'café')
+�x
+"a b" c d\"e f\g h\\\\\"i "" j\
+-1 -2 -3
+[exit 0]

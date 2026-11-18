@@ -1,0 +1,4 @@
+a module of a namespace package
+NotImplementedError importlib.resources.files() of the namespace package 'devmods' is not supported: a package needs an __init__.py
+devmods
+[exit 0]
