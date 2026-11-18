@@ -513,7 +513,7 @@ format.
 - An unsigned 8-byte value from 2\*\*63 on (`Q`, and the native `L`, `N` and `P`) raises
   `OverflowError: integer result does not fit in 64 bits` as it is unpacked, since Pystachy's ints
   are 64-bit ([deviation](../tests/deviations/lib_struct_unsigned64.py)).
-- Buffers are `bytes`: Pystachy has no `bytearray`, `memoryview` or `array`, and `pack_into()`,
+- Buffers are `bytes`: these functions take no `bytearray`, and Pystachy has no `memoryview` or `array`, and `pack_into()`,
   which writes into one, raises `NotImplementedError`.
 - A format of more than nine values gives a tuple of more than nine items, which can be unpacked
   into names and indexed, but not printed, compared or hashed
@@ -536,7 +536,7 @@ messages): `hexlify` and `b2a_hex` with `sep` and `bytes_per_sep`, `unhexlify` a
 `b2a_qp` and `a2b_qp` (with `quotetabs`, `istext` and `header`), `crc32` and `crc_hqx`.
 `binascii.Incomplete` exists, as in CPython, where no function raises it.
 
-- Binary data is `bytes`, as Pystachy has no `bytearray`, `memoryview` or `array`. The `a2b_*()`
+- Binary data is `bytes`: these functions take no `bytearray`, and Pystachy has no `memoryview` or `array`. The `a2b_*()`
   functions also take a `str` of ASCII characters, as CPython's do. Another type of argument
   is a compile-time error, where CPython raises `TypeError`.
 - `hexlify(data, None)` and `b2a_hex(data, None, n)` separate nothing, as without a `sep`, where
@@ -569,7 +569,7 @@ edited module passes the 40 tests of `test_base64`; a
 [checksum over pseudo-random inputs](../tests/programs/library/lib_base64_random.py) covers every
 codec.
 
-- Binary data is `bytes`, as Pystachy has no `bytearray`, `memoryview` or `array`. The decoders
+- Binary data is `bytes`: these functions take no `bytearray`, and Pystachy has no `memoryview` or `array`. The decoders
   also take a `str` of ASCII characters, as CPython's do. Another type of argument is a
   compile-time error, where CPython raises `TypeError`
   (error tests: [a str to encode](../tests/errors/library/lib_base64_encode_str.py),
@@ -1471,8 +1471,8 @@ CPython's `ValueError` for every method but `close()` (`iter()` returns it, and 
 raises). Positions and sizes count bytes, as in CPython.
 
 - `getbuffer()` (a `memoryview` of the buffer), `readinto()` and `readinto1()` (into a writable
-  buffer, such as a `bytearray`) are unavailable, as Pystachy has no `memoryview`, `bytearray`
-  or `array`; so are `detach()` and `fileno()` (which raise `io.UnsupportedOperation`) and
+  buffer, such as a `bytearray`) are unavailable, as Pystachy has no `memoryview` or `array`
+  and these methods take no `bytearray`; so are `detach()` and `fileno()` (which raise `io.UnsupportedOperation`) and
   pickling. A call of any is a compile-time error.
 - Invalid argument types such as `BytesIO("x")`, `write("x")` (and so `print(..., file=)` to a
   `BytesIO`) are compile-time errors, as are attributes of the program's own on one.

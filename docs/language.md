@@ -339,7 +339,7 @@ can avoid compiling unused branches that contain one. The main gaps:
 - **Object model:** multiple inheritance beyond [method-only secondary bases](language/typing.md#method-only-secondary-bases), subclasses of builtin types, general metaclasses and
   class decorators, dynamic attribute hooks, and attribute values looked up by names only the
   run time knows (their text and `hasattr()` are supported).
-- **Values:** `bytearray`, `memoryview`, slice objects and
+- **Values:** `memoryview`, slice objects and
   general object unions; arbitrary-precision ints and dynamic `Any` values outside their opt-in
   prototypes ([promoting ints](python-int.md), [dynamic `Any`](dynamic-any.md)).
 - **Syntax and calls:** mapping patterns, class patterns beyond dataclass fields, `async` /

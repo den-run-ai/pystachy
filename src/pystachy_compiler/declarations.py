@@ -13,6 +13,8 @@ from src.pystachy_compiler.specs import (
     ANYUSE,
     BIG,
     BIGOPT,
+    BYTEARRAYC,
+    BYTEARRAYS,
     CLASSVAR,
     CTYPES,
     EXCATTRS,
@@ -3456,6 +3458,10 @@ def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
     if o.t == RANGEC and self.curfn.mod != RANGES and name not in ci.ftypes:
         # (CPython's range has no other attributes, and its methods cannot be assigned)
         self.err(f"'range' object attribute '{name}' is read-only" if store and name in ci.methods else f"'range' object has no attribute '{name}'" + (" and no __dict__ for setting new attributes" if store else ""))
+    if o.t == BYTEARRAYC and self.curfn.mod != BYTEARRAYS and (store or name in ci.ftypes):
+        # (CPython's bytearray has its methods and no attribute of its own: lib's class keeps its
+        # buffer and length in fields that only its module reaches)
+        self.err(f"'bytearray' object attribute '{name}' is read-only" if store and name in ci.methods else f"'bytearray' object has no attribute '{name}'" + (" and no __dict__ for setting new attributes" if store else ""))
     if o.t == COMPLEXC and self.curfn.mod != COMPLEXS and (store or (name not in ci.ftypes and name not in ci.methods)):
         # (CPython's complex has real, imag and its methods, all read-only)
         self.err("readonly attribute" if name in ci.ftypes else f"'complex' object attribute '{name}' is read-only" if name in ci.methods else f"'complex' object has no attribute '{name}'")

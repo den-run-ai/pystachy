@@ -439,6 +439,7 @@ from src.pystachy_compiler.builtins import (
     gen_iter_ as builtins_iter_,
     gen_iter_obj as builtins_iter_obj,
     gen_range_fields as builtins_range_fields,
+    gen_ba_prim as builtins_ba_prim,
     gen_complex_new as builtins_complex_new,
     gen_range_prim as builtins_range_prim,
     gen_walk as builtins_walk,
@@ -1008,6 +1009,7 @@ from src.pystachy_compiler.expressions import (
     gen_str_format as expressions_str_format,
     gen_probe_type as expressions_probe_type,
     gen_protocol as expressions_protocol,
+    gen_slice_written as expressions_slice_written,
     gen_puretype as expressions_puretype,
     gen_richcmp as expressions_richcmp,
     gen_slice_bound as expressions_slice_bound,
@@ -3698,8 +3700,8 @@ class Gen:
     def assign(self, t: Node, v: Val) -> None:
         return variables_assign(self, t, v)
 
-    def slice_target(self, t: Node, bnd: list[str], nosub: str, raw: list[str] | None = None, values: list[Val] | None = None) -> Val:
-        return variables_slice_target(self, t, bnd, nosub, raw, values)
+    def slice_target(self, t: Node, bnd: list[str], nosub: str, raw: list[str] | None = None, values: list[Val] | None = None, written: list[Val] | None = None) -> Val:
+        return variables_slice_target(self, t, bnd, nosub, raw, values, written)
 
     def slice_check(self, step: str) -> None:
         return variables_slice_check(self, step)
@@ -4969,6 +4971,9 @@ class Gen:
     def protocol(self, o: Val, m: str, args: list[Val]) -> Val:
         return expressions_protocol(self, o, m, args)
 
+    def slice_written(self, bounds: list[Node]) -> list[Val]:
+        return expressions_slice_written(self, bounds)
+
     def obj_iter(self, v: Val, none: str, missing: str, name: str = "__iter__") -> Val:
         return expressions_obj_iter(self, v, none, missing, name)
 
@@ -5685,6 +5690,9 @@ class Gen:
 
     def walk(self, name: str, args: list[Node]) -> Val:
         return builtins_walk(self, name, args)
+
+    def ba_prim(self, name: str, args: list[Node]) -> Val:
+        return builtins_ba_prim(self, name, args)
 
     def range_prim(self, name: str, args: list[Node]) -> Val:
         return builtins_range_prim(self, name, args)

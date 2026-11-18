@@ -83,6 +83,7 @@ from src.pystachy_compiler.specs import (
     PYBUILTINS,
     COMPLEXS,
     OBJECTS,
+    BYTEARRAYS,
     RANGES,
     STANDINS,
     TYPESMOD,
@@ -1443,6 +1444,21 @@ def binary_opens(n: Node) -> None:
     n.kids = n.kids[:at] + [Parser(Lexer(src, first).file()).module().kids[0]] + n.kids[at:]
 
 
+def bytearray_import(n: Node) -> None:
+    # module body n whose code may read the builtin name bytearray (analysis.module_reads: nothing
+    # at the module's top level binds it): the class is lib/_pystachy_bytearray.py's, which the
+    # module imports after its docstring and __future__ imports, as if it had written the import.
+    # A function's own bytearray hides it there, as it hides the builtin
+    if not module_reads(n, "bytearray"):
+        return
+    at = 1 if len(n.kids) > 0 and n.kids[0].kind == "expr" and n.kids[0].kids[0].kind == "str" else 0
+    while at < len(n.kids) and n.kids[at].kind == "import" and n.kids[at].s == "from" and all([a.kind == "alias" and len(a.kids) == 2 and a.kids[0].s.startswith("__future__.") for a in n.kids[at].kids]):
+        at += 1
+    line = n.kids[at].line if at < len(n.kids) else n.line
+    src = "from " + BYTEARRAYS + " import bytearray\n"
+    n.kids = n.kids[:at] + [Parser(Lexer(src, line).file()).module().kids[0]] + n.kids[at:]
+
+
 def import_family(n: Node, fam: dict[str, bool]) -> bool:
     # the names in code n that may name a subclass of ImportError (#1504), added to fam (which holds
     # ImportError, ModuleNotFoundError and the names found so far): a class one of whose bases is
@@ -1621,6 +1637,8 @@ class Loader:
         m.body = self.parse_source(src, 1)
         tb_import(m.body)
         binary_opens(m.body)
+        if not self.rtmode and len(self.dirs) > 0:
+            bytearray_import(m.body)
         import_module_calls(m.body, "")
         cm_methods(m.body, cm_names(m.body))
         functools_classes(m.body, functools_names(m.body))
@@ -2009,6 +2027,8 @@ class Loader:
                     cm_private_fields(st)
         tb_import(self.parsed[key])
         binary_opens(self.parsed[key])
+        if not self.rtmode and len(self.dirs) > 0:
+            bytearray_import(self.parsed[key])
         import_module_calls(self.parsed[key], pkg)
         cm_methods(self.parsed[key], cm_names(self.parsed[key]))
         functools_classes(self.parsed[key], functools_names(self.parsed[key]))

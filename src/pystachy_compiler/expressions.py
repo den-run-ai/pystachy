@@ -33,6 +33,8 @@ from src.pystachy_compiler.specs import (
     OBJECTC,
     ORDOP,
     PYBUILTINS,
+    BYTEARRAYC,
+    BYTEARRAYS,
     RANGEC,
     RANGES,
     REFL,
@@ -393,6 +395,8 @@ def gen_has(self, t: str, a: str) -> int:
         return -1 if r == 1 else 0  # (unless it is None)
     if t in self.classes:
         ci = self.classes[t]
+        if t == BYTEARRAYC and self.curfn.mod != BYTEARRAYS and a.startswith("_") and not (a.startswith("__") and a.endswith("__")):
+            return 0  # (CPython's bytearray has no such attribute: lib's class's fields and helpers are its own)
         if a == " enum int" and self.enum_intlike(t):
             return 0  # (the compiler's immutable payload is no Python attribute)
         if a == " enum str" and self.enum_builtin(t) == "str":
@@ -1284,6 +1288,13 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 bv = self.expr(bx, "int") if bx.kind != "omit" else Val("null", "None")
                 bs.append(self.vnode(self.as_int(bv) if bv.t == "bool" else bv))
             return self.call_fn(self.funcs[RANGES + "$_slice"], [], bs)
+        if unopt(o.t) == BYTEARRAYC:
+            # a bytearray's slice: lib/_pystachy_bytearray.py's _getslice, of the bounds as written,
+            # once they are evaluated, of an object that is not None (a class's value may be)
+            bounds = self.slice_written(n.kids[1:])
+            o = self.unwrap(o, "TypeError: 'NoneType' object is not subscriptable")
+            self.notnone(o, "TypeError: 'NoneType' object is not subscriptable")
+            return self.protocol(o, "_getslice", bounds)
         if o.t == "dyn":
             return self.dyn_slice(o, n.kids[1:])  # (by its box's type, of the bounds as Any values: dynamic.py)
         fold = is_tuple(unopt(o.t)) or o.t in self.nts  # (constant bounds: the items' types)
@@ -3430,6 +3441,20 @@ def gen_argtype(self, t: str, m: str, j: int, missing: str) -> str:
     if ms[m].bad != "":
         self.err(ms[m].bad)  # (an imported module's method that cannot be compiled)
     return ms[m].ptypes[j] if j < len(ms[m].ptypes) else ""
+
+def gen_slice_written(self, bounds: list[Node]) -> list[Val]:
+    # the bounds of a slice as they are written, for a class of lib's that takes them so (a
+    # bytearray's _getslice, _setslice and _delslice): start, stop and step, each an int (a bool
+    # or a promoting int as one), or None where it is left out
+    vs: list[Val] = []
+    for bx in bounds + [mk("omit", "", self.line, [])] * (3 - len(bounds)):
+        bv = self.expr(bx, "int") if bx.kind != "omit" else Val("null", "None")
+        if bv.t == "bool" or bv.t == BIG:
+            bv = self.as_int(bv)  # (a promoting int is narrowed: past 64 bits, OverflowError)
+        if bv.t != "int" and bv.t != "None" and unopt(bv.t) != "int":
+            self.err("slice indices must be integers or None or have an __index__ method")
+        vs.append(bv)
+    return vs
 
 def gen_protocol(self, o: Val, m: str, args: list[Val]) -> Val:
     # the call of the special method m of o's class that an operator makes (o[k] calls
@@ -6528,8 +6553,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             return self.num_cmp('!=' if op == '==' else '==', Val(r, "int"), Val('0', "int"))
         r = self.rt("pys_cmpop", "i64", [f"i64 {sa}", f"i64 {sb}", d, f"i64 {ORDOP[op]}"])
         return self.num_cmp('!=', Val(r, "int"), Val('0', "int"))
-    x = "an exception" if a.t == "exc" else "object" if a.t == OBJECTC else "int" if a.t == BIG else a.t
-    y = "an exception" if b.t == "exc" else "object" if b.t == OBJECTC else "int" if b.t == BIG else b.t
+    x = "an exception" if a.t == "exc" else "object" if a.t == OBJECTC else "int" if a.t == BIG else "bytearray" if a.t == BYTEARRAYC else a.t
+    y = "an exception" if b.t == "exc" else "object" if b.t == OBJECTC else "int" if b.t == BIG else "bytearray" if b.t == BYTEARRAYC else b.t
     self.err(f"cannot compare {x} {op} {y}")
     return a
 

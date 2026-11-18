@@ -8,7 +8,7 @@ from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.reflection import VARS_USES, refl_attr_fields, refl_formatter
-from src.pystachy_compiler.specs import BFILE, BIG, COMPLEXC, DISPATCH_INLINE, EXCEPTIONS, GLUE, HASATTR, MODATTRS, OBJECTC, PYBUILTINS, RANGEC
+from src.pystachy_compiler.specs import BFILE, BIG, BYTEARRAYC, BYTEARRAYS, COMPLEXC, DISPATCH_INLINE, EXCEPTIONS, GLUE, HASATTR, MODATTRS, OBJECTC, PYBUILTINS, RANGEC
 from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import (
@@ -396,6 +396,10 @@ def gen_class_new(self, c: str, args: list[Node], want: str, resultsoft: bool = 
         made = [Val("", c)]
         self.init_result(self.call_fn(self.classes[c].methods["__init__"], made, args, want, resultsoft=resultsoft, typeargs=typeargs))
         return made[0]
+    if c == BYTEARRAYC and len(args) > 0 and BYTEARRAYS + "$_new" in self.funcs:
+        # bytearray(source, ...): lib/_pystachy_bytearray.py's _new, a function of its
+        # arguments' types (the class's own __init__ takes none: its objects are of one class)
+        return self.call_fn(self.funcs[BYTEARRAYS + "$_new"], [], args, want, resultsoft=resultsoft)
     o = self.new_obj(c)
     self.init_result(self.call_fn(self.classes[c].methods["__init__"], [o], args, direct=True))
     return o

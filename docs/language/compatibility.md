@@ -37,6 +37,17 @@ counts stay checked. With an exact, nonnegative opposite operand,
 raises only after the whole expression is evaluated
 ([deviation](../../tests/deviations/int_masked_overflow.py)).
 
+**bytearray:** a class of the subset (`lib/_pystachy_bytearray.py`) whose buffer no other code
+holds: `bytes(b)`, a slice and a method's result are copies, and two names of one bytearray share
+its changes. It has CPython's constructor forms, items, slices (read, assigned and deleted, with
+steps), `append`, `extend`, `insert`, `pop`, `remove`, `reverse`, `+`, `+=`, `*`, comparisons with
+`bytes` and bytearrays on either side, and the methods `bytes` has here. Rejected as the program
+compiles: `bytes + bytearray` and `int * bytearray` (reflected operators),
+`bytes | bytearray` annotations, `%` formatting, `title()`, `istitle()` and `expandtabs()` (which
+`bytes` lacks too), a `range(...)` passed to `extend()` (pass `list(range(...))`), and a bytearray
+given to `struct`, a file or another library function, which take `bytes(b)`. There is no
+`memoryview`.
+
 ### Text and file positions
 
 #### Unicode
@@ -722,7 +733,7 @@ See [user exception classes](semantics.md#user-exception-classes) and
 - **Dict methods:** `update` with different key/value types, pair iterables beyond lists of
   matching tuples, or keyword arguments for nonstring keys; `fromkeys` with generators or
   implicit `None` values without a contextual type.
-- **Bytes:** `bytearray`, `memoryview`, `expandtabs`, `title`, `istitle`, `%`
+- **Bytes:** `memoryview`, `expandtabs`, `title`, `istitle`, `%`
   formatting, integer search arguments, method keywords except `hex` / `translate`, and
   equality with strings.
 - **Formatting:** format strings beyond literals or uniquely bound module literals whose
