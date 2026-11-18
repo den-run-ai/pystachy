@@ -1,0 +1,18 @@
+2 1 0 0
+True False ['y', 'z'] ['q']
+1 x 1 0 True False ['x'] []
+0 - 0 0 False False ['x'] []
+1 y 1 0 True False ['x', 'y'] []
+2 x 0 1 False True ['y'] ['x']
+3 z 1 1 True True ['y', 'z'] ['x', "z'"]
+0 - 0 0 False False ['y', 'z'] ['x', "z'"]
+2 y' 0 1 False True ['y', 'z'] ['x', "y'", "z'"]
+2 z' 0 1 False True ['y', 'z'] ['x', "y'", "z'"]
+0 0 False False True True True ['y', 'z'] ['y', 'z'] [] True True True
+3 True False [1, 2, 3] 6 [2, 4, 6] True False False True
+[1, 2, 3, 99] [1, 2, 3] 3 {99, 1, 2, 3} True True
+2 False True [10, 20] 30 [20, 40] False True True False
+[10, 20, 99] [10, 20] 2 {10, 99, 20} True True
+['f', 'm'] [2, 1] True False
+[(0, 0), (1, 0), (0, 1)]
+[exit 0]

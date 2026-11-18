@@ -2936,14 +2936,13 @@ static int eqv(I a, I b, const char *d) {
     }
     return 1;
   }
-  case 'V': {
-    VTuple *x = (VTuple *)a, *y = (VTuple *)b;
+  case 'V': {   /* as CPython's tuplerichcompare: the items both have, then the lengths (lists
+                   test lengths first; tuples do not, so an object item's __eq__ runs anyway) */
+    VTuple *x = (VTuple *)a, *y = (VTuple *)b; I i = 0;
     if (x == y) return 1;
     if (!x || !y) return x == y;
-    if (x->len != y->len) return 0;
-    for (I i = 0; i < x->len; i++)
-      if (!(x->ids && y->ids && x->ids[i + 1] && x->ids[i + 1] == y->ids[i + 1]) && !eqitem(x->a[i], y->a[i], d + 1)) return 0;
-    return 1;
+    while (i < x->len && i < y->len && ((x->ids && y->ids && x->ids[i + 1] && x->ids[i + 1] == y->ids[i + 1]) || eqitem(x->a[i], y->a[i], d + 1))) i++;
+    return i >= x->len && i >= y->len;
   }
   case 'S': case 'F': return pys_set_cmp((Set *)a, (Set *)b, 4);   /* (a set equals a frozenset of its elements) */
   case 'O': case 'H': return a == b || pys_obj_eq(ocls(d + 1), a, b);   /* identity first, like CPython */
@@ -4299,6 +4298,7 @@ static uint64_t hstrd(Str *s) {                      /* a str key's hash */
 }
 static I ohash(I k, const char *d) { return pys_obj_eq(-1 - ocls(d + 1), k, 0); }   /* hash(k) of an H<id> */
 static I hitem(I k, const char *d);
+static I hfset(Set *s);
 static uint64_t dmask(Dict *d) { return (uint64_t)(d->kind & KTAG ? d->size : d->size * 2) - 1; }   /* idx's slots, less one */
 static int khash(I kind) { return (kind & KTAG) || (kind > 1 && (*kraw(kind) == '!' || strchr(kdesc(kind), 'H') || strchr(kdesc(kind), 'A'))); }   /* keys hashed by CPython's hash */
 /* a tuple or object key's hash (or its item's), by its descriptor d, never 0; 0 where d holds an
@@ -4324,6 +4324,12 @@ static uint64_t hval(I k, const char *d) {
     h = (h ^ (uint64_t)t->len) * 0x100000001B3ULL;
     h ^= h >> 29;
     return h ? h : 1;
+  }
+  if (*d == 'F') {   /* (of the hashes its table keeps: no code runs) */
+    /* where its elements' hashes are CPython's (an H<id> or A in its descriptor), so is its own,
+       in a table that keeps CPython's hashes (khash), 0 too: hcls takes it, as for a tuple's */
+    for (const char *c = d, *z = skip(d); c < z; c++) if (*c == 'H' || *c == 'A') return 0;
+    uint64_t h = (uint64_t)hfset((Set *)k); return h ? h : 1;
   }
   if (*d != 'T') { Dict t = {.kind = *d == 's'}; return hsh(&t, k); }   /* (a P<id>'s: its address's) */
   uint64_t h = 0x27D4EB2F165667C5ULL; const char *e = d + 2;
@@ -4982,6 +4988,19 @@ static I htuple(I *t, I n, const char *e, int each) {   /* tuplehash of n items,
   acc += (uint64_t)n ^ (2870177450012600261ULL ^ 3527539ULL);
   return acc == (uint64_t)-1 ? 1546275796 : (I)acc;
 }
+/* frozenset_hash: of the hashes of a frozenset's elements, which its table keeps (hs, -1 where a
+   slot holds none), in any order, as CPython's xors each shuffled one and then adds its size */
+static I hfset(Set *s) {
+  uint64_t h = 0;
+  for (uint64_t j = 0; j <= (uint64_t)s->mask; j++) {
+    uint64_t x = (uint64_t)s->hs[j];
+    if (s->hs[j] != -1) h ^= ((x ^ 89869747ULL) ^ (x << 16)) * 3644798167ULL;
+  }
+  h ^= ((uint64_t)s->len + 1) * 1927868237ULL;
+  h ^= (h >> 11) ^ (h >> 25);
+  h = h * 69069U + 907133923ULL;
+  return h == (uint64_t)-1 ? 590923713 : (I)h;
+}
 static I hitem(I k, const char *d) {                 /* the hash of a value k (a set's element, a tuple's item), by its descriptor */
   if (*d == '?' || *d == 's' || *d == 'P' || *d == 'H') {   /* (an object's static type may hold None) */
     if (!k) return NONE_HASH;                        /* (None: also a looked-up key's, see hval) */
@@ -4993,6 +5012,7 @@ static I hitem(I k, const char *d) {                 /* the hash of a value k (a
   case 's': return hstr((Str *)k);
   case 'f': return hdbl(dbl(k));
   case 'T': return htuple((I *)k, d[1] - '0', d + 2, 1);
+  case 'F': return hfset((Set *)k);
   case 'V': return htuple(((VTuple *)k)->a, ((VTuple *)k)->len, d + 1, 0);
   case 'P': case 'C': case 'Y': return hptr(k);   /* (class objects: by identity, as object's) */
   case 'U': if (!k) return NONE_HASH; d = umember(&k, d); return hitem(k, d);   /* (a union of classes: the object its box holds, #1452) */
@@ -6410,6 +6430,23 @@ Big pys_set_big_pop(Set *s) {                        /* s.pop() of a set of ints
 void pys_set_clear(Set *s) { stable(s, 8); s->len = 0; }
 /* set(o), s.copy() and frozenset(o) of a set o: o merged into a new set */
 Set *pys_set_copy(Set *s) { Set *r = pys_set_new(s->kind); smerge(r, s); return r; }
+/* frozenset o of Any values as a frozenset of t's, which a frozenset[T] or an AbstractSet[T] takes
+   (Gen.coerce): a new set of kind kind, whose elements are o's payloads. Each is checked as a typed
+   variable's is (pys_dyn_unbox: TypeError), all of them before the set is made. They keep o's
+   hashes of them, which a set of that kind has too, and, in a table without dummies, o's slots: the
+   set is iterated as o is, CPython's being o itself, and no __hash__ or __eq__ runs */
+Set *pys_set_unbox(Set *o, const DynType *t, I kind) {
+  for (I i = 0; i <= o->mask; i++) if (o->hs[i] != -1) pys_dyn_unbox((Dyn *)o->keys[i], t);
+  Set *s = pys_set_new(kind);
+  if (!o->len) return s;
+  if (o->mask != s->mask) stable(s, o->mask + 1);
+  s->fill = s->len = o->len;
+  for (I i = 0; i <= o->mask; i++) if (o->hs[i] != -1) {
+    I k = pys_dyn_unbox((Dyn *)o->keys[i], t);
+    if (o->fill == o->len) { s->keys[i] = k; s->hs[i] = o->hs[i]; } else sclean(s, k, o->hs[i]);
+  }
+  return s;
+}
 /* s.update(o) (s |= o) of a set o; of a list (any other iterable's items), one insertion per item;
    of a dict, one resize for all its keys, then theirs in order */
 void pys_set_update(Set *s, Set *o) { smerge(s, o); }

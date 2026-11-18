@@ -968,11 +968,13 @@ report-gate tests and recording checks use the pinned CPython and require no com
 When Lean validation is selected, Lint builds and audits the pinned checker first;
 `make check-fast` then runs all boundary test groups once with missing checkers treated as
 errors. Ordinary local `make check-fast` retains its existing optional Lean behavior.
-The verification-harness and compiler-state control suites overlap as two isolated
-unittest processes. Lint waits for both, prints their logs separately and fails if
-either suite fails; the same coverage runs for documentation PRs, main and manual runs.
-The coordinator preserves normal SIGINT handling, cancels both process groups and
-reaps the suite processes before returning from SIGINT or SIGTERM cancellation.
+`make check-fast lint` and the verification-harness and compiler-state control suites
+overlap as three isolated processes, which keeps Lint well inside its 15 minutes
+([#1525](https://github.com/den-run-ai/pystachy/issues/1525)). Lint waits for all three,
+prints their logs separately in that order and fails if any suite fails; the same
+coverage runs for documentation PRs, main and manual runs. The coordinator preserves
+normal SIGINT handling, cancels every process group and reaps the suite processes
+before returning from SIGINT or SIGTERM cancellation.
 
 Generated-user and generated-runtime ASan controls run in the existing x86-64
 `safety-1` worker on code PRs and `gc-jit-0` on main pushes and manual runs, using

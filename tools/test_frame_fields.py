@@ -63,7 +63,7 @@ PROGRAM = """
     xmods xsigs xctors xtypes exctree eh opts reds lazy lazyat wake called gflag ocls ocmp hcls one
     xobj impg wide nokey nonereads noneglobalpending attrvals attrown hints newhints final xnot newx xwant newwant ncand retseen
     template_instances template_retained retainers unsupported hierarchies deferred_hierarchies cnodes hooks chooks flagged unraised
-    noneglobals intglobals rangeused objectused declflag complexused intat strglobals strtuples abstracts abcmeta
+    noneglobals intglobals rangeused objectused abcsets declflag complexused intat strglobals globanns strtuples abstracts abcmeta
     constflags late ext libdir prefix moddirs csyms csymline cdirect extvars rtmode rtdefs
     rtcache externs deps comp flowctx closures clokeys adapters adrets ncv dispatchers cacheforms decorated
     decoexprs cvos ngenexp vowned gendrops gproto excread causeread coros tbaa tbaacls vrets vconst vcalls
@@ -72,7 +72,8 @@ PROGRAM = """
     pep695 taliases recursive reflrecs reflstores refllate refltexts rtdatas dyntypes dynclasses
     dynfns dynkeys dynlines dynsig dynfuncs dynfnt dynboxes dynwide dynrets dynrline dynseen gidbox
     idoff idfull idevent idsplit idtry idhint gendrops_counted genplain rdpass entries resumes_counted
-    genbase genargs earlycopies
+    genargs earlycopies sentinelglobals globvalues globowners globalts pseq pcall pstamps plogk plogv pdry
+    implicitgen iterabc clsany clsused clsbodies clsannfiles clsann
 """.split()
 # Gen's fields that hold a module's state, one lowering's, or one operation's, which the operation
 # sets and then restores or clears: a nested compile that starts inside the operation sees them.
@@ -123,6 +124,9 @@ SCOPED = {
     "resolving": "aliases that alias_ann expands: a cycle check, pushed and popped",
     "unaliased": "the node count of the annotation unalias expands: reset per expansion",
     "convedge": "the block convert_at's conversion ends in: set there, read right after as the phi's edge",
+    "guessing": "module constants whose values guess() is typing: a recursion guard, set and cleared around it",
+    "globguess": "the types guess() gave constants' values within one outermost guess of one: cleared as that starts",
+    "guesscuts": "how often guess() cut a constant's recursion: compared before and after each guess of a value",
 }
 # those of SCOPED that a nested compile wrongly sees or changes today, each with its reproducer: a
 # fix saves and resets each as Frame and gen_enter do, and moves it out of SCOPED (as #822's
