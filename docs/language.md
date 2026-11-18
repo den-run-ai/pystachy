@@ -96,7 +96,7 @@ Measure compilation and execution separately
 | Objects | User classes, dataclasses and class-style `NamedTuple` |
 | Closed scalar unions | `int \| float \| bool \| str`, optionally including `None` |
 | Mixed container unions | Scalar members plus explicit `list[T]` / `dict[K, V]` members, with narrowing |
-| Native reference unions | Up to four non-overlapping class/file types, such as `TextIO \| StringIO` |
+| Native reference unions | Up to four non-overlapping class/file types, such as `TextIO \| StringIO`, and scalar members beside them, such as `int \| Decimal` |
 | Optional values | `T \| None`, `Optional[T]`, `Union[T, None]` |
 | Functions | Typed `Callable[[A, B], R]`, functions, lambdas, closures and bound methods |
 | Generics | Function templates and `Generic` or PEP 695 (`class Box[T]`) classes with inferred or explicit type arguments; module-level type aliases |

@@ -21,6 +21,17 @@ def gen_uboxes(self, a: str, b: str) -> bool:
 def gen_reference_union(self, t: str) -> bool:
     return is_union(unopt(t)) and all([m == "file" or m in self.classes for m in umembers(unopt(t))])
 
+def gen_object_union(self, t: str) -> bool:
+    # a union (or one | None) of a class's objects or files and of scalars (int | Decimal,
+    # str | TextIO): one box, null for None as a class's value is, whose arithmetic, comparisons,
+    # truth, str() and builtin calls select the member's by the tag, as a scalar union's do;
+    # a method call or an attribute needs the member, as a reference union's. A complex number
+    # is not one of its objects: beside scalars it is a scalar member (cx_union), and beside
+    # objects and files alone a reference member (complex | C), as optional() and union_type say
+    ms = umembers(unopt(t)) if is_union(unopt(t)) else []
+    refs = [m for m in ms if m == "file" or (m in self.classes and m != COMPLEXC)]
+    return 0 < len(refs) < len(ms) and all([m in refs or m in ["int", "float", "bool", "str"] for m in ms])
+
 def gen_scalar_union(self, t: str) -> bool:
     return is_union(unopt(t)) and all([m in ["int", "float", "bool", "str"] for m in umembers(unopt(t))])
 
@@ -58,7 +69,8 @@ def gen_uop(self, v: Val, op: str) -> Val:
     if not self.value_union(v.t) and op == "str" and self.reference_union(v.t):
         return self.refl_union_str(v, "__str__")  # (each class's: reflection.py)
     calls = op == "truth" and is_union(unopt(v.t)) and all([m in ["int", "float", "bool", "str"] or is_list(m) or is_dict(m) or is_callable(m) for m in umembers(unopt(v.t))])
-    if not self.value_union(v.t) and not calls:
+    objects = self.object_union(v.t) and op != "len"  # (each member's own, an object's by its methods; repr() too)
+    if not self.value_union(v.t) and not calls and not objects:
         if len([m for m in umembers(unopt(v.t)) if is_callable(m)]) > 0:
             self.err("a union that holds a Callable requires narrowing with isinstance() or callable() first")
         self.err("closed reference union operations require narrowing with isinstance() first")
@@ -67,7 +79,7 @@ def gen_uop(self, v: Val, op: str) -> Val:
         self.notnone(v, "TypeError: object of type 'NoneType' has no len()")
     end = self.label()
     ph = Ins("phi", t, "")
-    if is_opt(v.t) and op != "len":
+    if (is_opt(v.t) or (objects and v.v not in self.nn)) and op != "len":
         arm = self.label()
         self.incoming(ph, "false" if op == "truth" else self.sconst("None"), self.cur)
         self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, end, arm)
@@ -86,14 +98,27 @@ def gen_uop(self, v: Val, op: str) -> Val:
             if nxt != "":
                 self.place(nxt)
             continue
-        item = self.uget(Val(v.v, unopt(v.t)), members[i])
-        result = Val(self.truth(item), "bool") if op == "truth" else self.builtin("len", [self.vnode(item)], "") if op == "len" else self.to_str(item)
+        if op == "repr" and members[i] not in self.classes:
+            result = self.repr(self.scalar_view(v))  # (the runtime reads the box's own tag)
+        else:
+            item = self.uget(Val(v.v, unopt(v.t)), members[i])
+            result = Val(self.truth(item), "bool") if op == "truth" else self.builtin("len", [self.vnode(item)], "") if op == "len" else self.repr(item) if op == "repr" else self.to_str(item)
         self.incoming(ph, result.v, self.cur)
         self.br(end)
         if nxt != "":
             self.place(nxt)
     self.place(end)
     return Val(self.phi(ph), t)
+
+def gen_scalar_view(self, v: Val) -> Val:
+    # The box of a union of objects and scalars, where its tag is one of the scalars', as a
+    # union of scalars alone: the same pointer, since a union's box is also one of a union of
+    # more types (utag). The runtime then formats it by its tag, as it does a scalar union's:
+    # no payload is read here, so none goes untyped to a descriptor's slot (docs/typed-ir.md).
+    scalars = [m for m in umembers(unopt(v.t)) if m == "int" or m == "float" or m == "bool" or m == "str"]
+    if len(scalars) == 1:
+        scalars.append("int" if scalars[0] == "str" else "str")  # (a tag the box never has)
+    return Val(v.v, self.union_type(scalars))
 
 def gen_uequal(self, op: str, a: Val, b: Val) -> Val:
     # Both operands are already evaluated. Boxes of a narrower union keep their
@@ -166,9 +191,14 @@ def gen_union_type(self, ts: list[str]) -> str:
         # member beside only objects and files: complex | C)
         refs.remove(COMPLEXC)
     if len(refs) > 0:
-        if len(refs) != len(ms):
-            return "!reference unions cannot mix native references with scalar or container members"
-        if len(ms) > 4:
+        # (scalars may be members beside them, each under its own tag: object_union; but not a
+        # complex number as well, which is a scalar member beside scalars, see above)
+        others = [m for m in ms if m not in refs and m not in ["int", "float", "bool", "str"]]
+        if len([m for m in others if m != COMPLEXC]) > 0:
+            return "!reference unions cannot mix native references with container members"
+        if len(others) > 0:
+            return "!reference unions cannot mix native references with complex and scalar members"
+        if len(refs) > 4:
             return "!reference unions support at most four members"
         for a in refs:
             for b in refs:
@@ -653,7 +683,7 @@ def gen_path_again(self, n: Node, key: str, v: Val) -> Val:
     if v.t in self.classes:
         return self.narrow_val(v, nt)  # (the same pointer, of the class its test proved)
     if is_union(unopt(v.t)) and nt != "None" and not is_opt(nt) and not is_union(nt):
-        ok = self.utest(v, [nt], is_opt(v.t) or self.reference_union(v.t))
+        ok = self.utest(v, [nt], is_opt(v.t) or self.reference_union(v.t) or self.object_union(v.t))
     elif is_opt(v.t) and not is_union(unopt(v.t)) and nt == unopt(v.t):
         ok = self.ptr_cmp('!=', v, Val('null', 'None')).v
     else:

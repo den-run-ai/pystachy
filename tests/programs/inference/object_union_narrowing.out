@@ -1,0 +1,21 @@
+2 3 8 18 15
+1 3
+Q Money(3)
+number number bool str s money label l money
+none money int
+True True
+True False
+int 5 money
+to stdout
+ab True
+1 money 7 s 2.5 2.5
+6254 6 2 1
+a int 1
+b money 2
+c money 3
+8 Money
+5 int
+True True
+6 True True False
+True False False none none
+[exit 0]

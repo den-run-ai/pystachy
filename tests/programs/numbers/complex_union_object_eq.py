@@ -19,8 +19,9 @@ def optional(v: complex | None) -> None:
 
 
 def numbers(v: int | complex) -> None:
-    # (with v on the left, or a Plain on the left, int's member is rejected, as 1 == Equal() and
-    # Plain() == 1 are: tests/errors/numbers/complex_union_object_cmp.py)
+    # (with v on the left: complex_union_object_left_eq.py; an int member and a Plain on either
+    # side are rejected, as 1 == Plain() and Plain() == 1 are:
+    # tests/errors/numbers/complex_union_object_cmp.py)
     e = Equal()
     print(e == v, e != v)
 
