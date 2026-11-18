@@ -557,8 +557,8 @@ See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
   class or a different receiver.
 - **Methods and hooks:** assigning `cls`; static/class decorators on special
   methods; `C.__init__(o)` outside ordinary inheritance; decorators beyond staticmethod, classmethod,
-  property/setter/deleter, abstractmethod, contextmanager, functools.cached_property, dataclass
-  and overload. Defining or inheriting `__new__` (but in an
+  property/setter/deleter, abstractmethod, contextmanager, functools.cached_property,
+  functools.total_ordering, dataclass and overload. Defining or inheriting `__new__` (but in an
   [enum class](../../lib/compatibility.md#enum), in the form CPython's documentation gives),
   `__getattr__`, `__getattribute__`, `__setattr__` or `__delattr__`, or a base defining
   `__init_subclass__`, is rejected.

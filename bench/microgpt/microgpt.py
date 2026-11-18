@@ -32,7 +32,8 @@ print(f"vocab size: {vocab_size}")
 class Value:
     __slots__ = ('data', 'grad', '_children', '_local_grads') # Python optimization for memory usage
 
-    # Pystachy port: concrete floats; tuple[Value, ...] needs list storage.
+    # Pystachy port: concrete floats; list storage for children, kept until the paired
+    # benchmark is rerun with tuples (see README.md).
     def __init__(self, data: float, children: list[Value] | None = None, local_grads: tuple[float, ...] = ()) -> None:
         self.data = data                # scalar value of this node calculated during forward pass
         self.grad = 0.0                   # derivative of the loss w.r.t. this node, calculated in backward pass
@@ -76,8 +77,9 @@ class Value:
             for child, local_grad in zip(v._children, v._local_grads):
                 child.grad += local_grad * v.grad
 
-# Pystachy port: builtin sum rejects Value; preserve its first reflected add
-# as first_value + zero, followed by accumulator + each remaining value.
+# Pystachy port: value_sum, kept from before sum() added objects until the paired benchmark
+# is rerun (see README.md); it preserves sum()'s first reflected add as first_value + zero,
+# followed by accumulator + each remaining value.
 def value_sum(values) -> Value:
     total: Value | None = None
     for value in values:
