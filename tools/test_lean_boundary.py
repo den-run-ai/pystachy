@@ -7,8 +7,11 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
+from unittest import mock
 
+import check_lean_boundary
 from check_lean_boundary import Unsupported, check_all, normalize_snapshot
 
 
@@ -101,6 +104,27 @@ print(function(*items))
 '''
 
 
+GENERIC_FAMILY = '''# pystachy: dynamic-any
+from typing import Any, Generic, TypeVar
+
+T = TypeVar("T")
+
+
+class Box(Generic[T]):
+    def __init__(self, value: T) -> None:
+        self.value = value
+
+
+def family_read(value: Any) -> Any:
+    if isinstance(value, Box):
+        return value.value
+    return None
+
+
+print(family_read(None), family_read(Box(1)), family_read(Box("text")))
+'''
+
+
 def store(address, value, typ):
     return {"op": "mem.store", "type": "", "text": "", "immediate": 0, "descriptor": "",
             "results": [], "targets": [],
@@ -173,7 +197,7 @@ class AdapterTests(SnapshotFixture):
         original = copy.deepcopy(self.snapshot)
         candidate = self.normalized()
         self.assertEqual(self.snapshot, original)
-        self.assertEqual(candidate["schema_version"], 2)
+        self.assertEqual(candidate["schema_version"], 3)
         self.assertTrue(any(node["op"] == "payload" for node in candidate["program"]["nodes"]))
         self.assertEqual(len(candidate["program"]["nodes"]), len(candidate["certificate"]))
         self.assertEqual(candidate["certificate"][candidate["program"]["entry"]], [])
@@ -298,6 +322,41 @@ class AdapterTests(SnapshotFixture):
             self.normalized(snapshot)
         self.assertNotIsInstance(raised.exception, Unsupported)
 
+    def test_payload_unpack_must_match_the_guarded_projection(self):
+        snapshot, function = self.selected()
+        _, _, unpack = self.operation(function, "slot.unpack")
+        unpack["type"] = "int"
+        with self.assertRaisesRegex(ValueError, "invalid slot.unpack shape"):
+            self.normalized(snapshot)
+
+    def test_payload_bits_cannot_escape_through_opaque_transport(self):
+        # A forged operand annotation must not hide the projection's raw slot.
+        for kind in ("call", "select", "phi", "mem.store", "scalar.cast"):
+            with self.subTest(kind=kind):
+                snapshot, function = self.selected()
+                block, index, payload = self.operation(function, "dyn.payload")
+                bits = f"%t{payload['results'][1]}"
+                block["operations"].insert(index + 1, instruction(
+                    kind, "int", text="opaque", results=[9030], operands=[(bits, "int")]))
+                with self.assertRaisesRegex(Unsupported, "direct slot.unpack"):
+                    self.normalized(snapshot)
+
+    def test_payload_internal_address_cannot_escape(self):
+        snapshot, function = self.selected()
+        block, index, payload = self.operation(function, "dyn.payload")
+        address = f"%t{payload['results'][0]}"
+        block["operations"].insert(index + 1, instruction(
+            "mach.load", "int", results=[9030], operands=[(address, "%ptr")]))
+        with self.assertRaisesRegex(ValueError, "internal address cannot be used"):
+            self.normalized(snapshot)
+
+    def test_payload_unpack_cannot_launder_its_operand_type(self):
+        snapshot, function = self.selected()
+        _, _, unpack = self.operation(function, "slot.unpack")
+        unpack["operands"][0]["type"] = "int"
+        with self.assertRaisesRegex(ValueError, "unpack requires a slot operand"):
+            self.normalized(snapshot)
+
     def test_unreachable_and_unlabeled_blocks_are_omitted(self):
         snapshot, function = self.selected()
         _, _, payload = self.operation(function, "dyn.payload")
@@ -354,6 +413,62 @@ class AdapterTests(SnapshotFixture):
         )
         self.assertEqual(completed.returncode, 3, completed.stdout + completed.stderr)
         self.assertEqual(json.loads(completed.stdout)["status"], "error")
+
+
+class CheckerServerTests(unittest.TestCase):
+    """check_lean_boundary.checker_result replaces a long-lived checker process after any
+    failure, so a later candidate never reads an earlier one's late or extra output."""
+
+    def fake(self, body):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        path = Path(directory.name) / "checker"
+        path.write_text("#!/bin/sh\n" + body + "\n")
+        path.chmod(0o755)
+        return path
+
+    def test_failed_checker_is_stopped_and_replaced(self):
+        for body, error in (("read line; exec sleep 30", subprocess.TimeoutExpired),
+                            ("read line; exit 0", ValueError),
+                            ("read line; printf '{}\\n{}\\n'; exec sleep 30", ValueError)):
+            fake = self.fake(body)
+            for attempt in range(2):
+                with self.assertRaises(error, msg=body):
+                    check_lean_boundary.checker_result(fake, "{}\n", 0.5)
+                process = check_lean_boundary._started[-1].process
+                self.assertEqual(process.args, [str(fake.resolve()), "--batch"])
+                self.assertIsNotNone(process.poll(), body)
+            self.assertNotIn(str(fake.resolve()), check_lean_boundary._servers.by_path)
+
+    def test_candidate_must_be_one_line(self):
+        for encoded in ("{}", "{}\n{}\n"):
+            with self.assertRaisesRegex(ValueError, "one line"):
+                check_lean_boundary.checker_result(self.fake("exit 1"), encoded, 1)
+
+    def test_timeout_includes_writing_a_candidate_larger_than_the_pipe(self):
+        fake = self.fake("exec sleep 30")  # never reads stdin
+        server = check_lean_boundary.Server(str(fake.resolve()))
+        # Independent cleanup also bounds the broken implementation: its blocking write
+        # otherwise ignores the requested timeout and waits for the sleeper to exit.
+        watchdog = threading.Timer(3, server.process.kill)
+        watchdog.start()
+        try:
+            with mock.patch.object(check_lean_boundary, "Server", return_value=server), \
+                    self.assertRaises(subprocess.TimeoutExpired):
+                check_lean_boundary.checker_result(fake, json.dumps("x" * 1048576) + "\n", 0.1)
+            self.assertIsNotNone(server.process.poll())
+            self.assertNotIn(str(fake.resolve()), check_lean_boundary._servers.by_path)
+        finally:
+            watchdog.cancel()
+            server.process.kill()
+            server.close()
+
+    def test_large_candidate_is_written_completely(self):
+        fake = self.fake("while IFS= read -r line; do printf '%s\\n' \"$line\"; done")
+        expected = {"value": "x" * 1048576}
+        encoded = json.dumps(expected) + "\n"
+        # The fake writes its answer only after reading the full candidate, just as Lean does.
+        self.assertEqual(check_lean_boundary.checker_result(fake, encoded, 10), expected)
 
 
 @unittest.skipUnless(CHECKER.is_file(), "build tools/lean_boundary to run the proved checker")
@@ -430,6 +545,8 @@ class ProvedCheckerTests(SnapshotFixture):
         def wrong_tag(function):
             _, _, payload = self.operation(function, "dyn.payload")
             payload["text"] = "bool"
+            _, _, unpack = self.operation(function, "slot.unpack")
+            unpack["type"] = "bool"
         self.rejected_mutation(wrong_tag)
 
     def test_missing_guard_and_reversed_edges_reject(self):
@@ -567,6 +684,24 @@ class ProvedCheckerTests(SnapshotFixture):
             self.assertEqual(completed.returncode, 2, completed.stdout + completed.stderr)
             self.assertFalse(json.loads(completed.stdout)["accepted"])
 
+    def test_batch_mode_answers_each_line_as_a_single_run_does(self):
+        # (one --batch process checks a corpus's candidates: each line's result is the result
+        # of a run on that line alone, whatever came before it)
+        accepted = self.normalized()
+        rejected = copy.deepcopy(accepted)
+        rejected["certificate"][rejected["program"]["entry"]] = [["%a0", ["@pys_dyntype_float"]]]
+        lines = [json.dumps(candidate, sort_keys=True, separators=(",", ":")) + "\n"
+                 for candidate in (accepted, rejected, {}, accepted)]
+        batch = subprocess.run([str(CHECKER), "--batch"], input="".join(lines),
+                               capture_output=True, text=True, timeout=10)
+        self.assertEqual(batch.returncode, 0, batch.stdout + batch.stderr)
+        single = [subprocess.run([str(CHECKER)], input=line, capture_output=True, text=True, timeout=10)
+                  for line in lines]
+        self.assertEqual([run.returncode for run in single], [0, 1, 2, 0])
+        self.assertEqual(batch.stdout, "".join(run.stdout for run in single))
+        self.assertEqual([check_lean_boundary.checker_result(CHECKER, line, 10)["accepted"] for line in lines],
+                         [True, False, False, True])
+
     def test_full_cli_reports_actual_checker_result_and_input_hash(self):
         completed = subprocess.run(
             [sys.executable, str(TOOL), "--snapshot", str(self.snapshot_path),
@@ -637,6 +772,8 @@ class StateGuardTests(SnapshotFixture):
                 snapshot, function = self.selected(name)
                 _, _, payload = self.operation(function, "dyn.payload")
                 payload["text"] = wrong_tag
+                _, _, unpack = self.operation(function, "slot.unpack")
+                unpack["type"] = wrong_tag
                 self.assertFalse(self.check(self.normalized(snapshot, name)))
 
 
@@ -736,6 +873,8 @@ class ClassAndIntTests(SnapshotFixture):
         def read_subclass(snapshot, function):
             _, _, payload = self.operation(function, "dyn.payload")
             payload["text"] = "Sub"
+            _, _, unpack = self.operation(function, "slot.unpack")
+            unpack["type"] = "Sub"
         self.assertFalse(self.mutated("boundary_class", read_subclass))
 
     def test_int_read_accepts_bool_but_not_another_tag(self):
@@ -748,9 +887,36 @@ class ClassAndIntTests(SnapshotFixture):
         self.assertFalse(self.mutated("boundary_int", float_instead_of_bool))
 
         def read_as_bool(snapshot, function):
-            _, _, payload = self.operation(function, "dyn.payload")
-            payload["text"] = "bool"
+            block, index, payload = self.operation(function, "dyn.payload")
+            # Add a well-shaped bool projection under the existing int-or-bool
+            # guard. Even an unused read must satisfy its exact tag obligation.
+            block["operations"].insert(index, {**copy.deepcopy(payload),
+                                              "text": "bool", "results": [9030, 9031]})
         self.assertFalse(self.mutated("boundary_int", read_as_bool))
+
+    def test_int_payload_cannot_be_reannotated_as_a_pointer(self):
+        snapshot, function = self.selected("boundary_int")
+        _, _, payload = self.operation(function, "dyn.payload")
+        bits = f"%t{payload['results'][1]}"
+        use = next(operand for block in function["blocks"] for op in block["operations"]
+                   for operand in op["operands"] if operand["value"] == bits)
+        use["type"] = "%ptr"
+        with self.assertRaisesRegex(ValueError, "int bits require an int operand"):
+            self.normalized(snapshot, "boundary_int")
+
+    def test_int_payload_allows_only_the_runtime_box_slot_argument(self):
+        for kind, prefix in (("box", []), ("ubox", [("1", "int")])):
+            with self.subTest(constructor=kind):
+                snapshot, function = self.selected("boundary_int")
+                block, index, payload = self.operation(function, "dyn.payload")
+                bits = f"%t{payload['results'][1]}"
+                constructor = instruction("rt", "%ptr", text=kind, results=[9030],
+                                          operands=prefix + [(bits, "*T")])
+                block["operations"].insert(index + 1, constructor)
+                self.assertTrue(self.check(self.normalized(snapshot, "boundary_int")))
+                constructor["text"] = "opaque"
+                with self.assertRaisesRegex(ValueError, "int bits require an int operand"):
+                    self.normalized(snapshot, "boundary_int")
 
     def test_dispatch_cases_select_their_own_class(self):
         def swap_cases(snapshot, function):
@@ -766,7 +932,8 @@ class ClassAndIntTests(SnapshotFixture):
         def renumber_subclass(snapshot, function):
             # (the class number the case names now belongs to no descriptor)
             next(t for t in snapshot["dynamic_types"] if t["symbol"] == "@dt.Sub")["cls"] = 7
-        self.assertFalse(self.mutated("dyn.call.label.0", renumber_subclass))
+        with self.assertRaisesRegex(ValueError, "descriptor and class layout disagree"):
+            self.mutated("dyn.call.label.0", renumber_subclass)
 
     def test_descriptor_table_is_required_and_validated(self):
         snapshot, function = self.selected("dyn.call.label.0")
@@ -781,6 +948,43 @@ class ClassAndIntTests(SnapshotFixture):
             corrupt(snapshot["dynamic_types"])
             with self.subTest(table=snapshot["dynamic_types"]), self.assertRaises(ValueError):
                 self.normalized(snapshot, function["symbol"])
+
+
+@unittest.skipUnless(CHECKER.is_file(), "build tools/lean_boundary to run the proved checker")
+class GenericFamilyTests(SnapshotFixture):
+    function_filter = ""
+    check = ProvedCheckerTests.check
+
+    @classmethod
+    def setUpClass(cls):
+        source = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(source.cleanup)
+        cls.example = Path(source.name) / "generic_family.py"
+        cls.example.write_text(GENERIC_FAMILY)
+        super().setUpClass()
+
+    def test_family_membership_preserves_separate_payload_guards(self):
+        report, status = check_all(self.snapshot, CHECKER)
+        self.assertEqual(status, 0, report)
+        self.assertGreater(report["totals"]["reads"], 0)
+        for name in ("family_read", "dyn.isinstance.Box"):
+            candidate, metadata = normalize_snapshot(self.snapshot, name)
+            self.assertEqual(metadata["payloads"], 0)
+            self.assertTrue(self.check(candidate))
+
+    def test_family_guard_cannot_justify_a_concrete_specialization_read(self):
+        payloads = [entry["payload"] for entry in self.snapshot["dynamic_types"]
+                    if entry["kind"] == 8 and entry["payload"].startswith("Box-")]
+        self.assertEqual(len(payloads), 2)
+        for payload_type in payloads:
+            with self.subTest(payload=payload_type):
+                snapshot, function = self.selected("family_read")
+                _, _, branch = self.operation(function, "cbr")
+                success = self.block(function, branch["targets"][0])
+                success["operations"].insert(0, instruction(
+                    "dyn.payload", "%slot", text=payload_type, results=[9030, 9031],
+                    operands=[("%a0", "dyn")]))
+                self.assertFalse(self.check(self.normalized(snapshot, "family_read")))
 
 
 class LibraryFunctionTests(SnapshotFixture):

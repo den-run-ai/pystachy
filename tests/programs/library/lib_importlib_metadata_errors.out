@@ -1,0 +1,53 @@
+No package metadata was found for does-not-exist | does-not-exist | PackageNotFoundError('does-not-exist')
+No package metadata was found for does-not-exist | does-not-exist
+PackageNotFoundError No package metadata was found for does-not-exist
+PackageNotFoundError No package metadata was found for does-not-exist True
+No package metadata was found for p | p | PackageNotFoundError('p')
+No package metadata was found for p | p
+PackageNotFoundError No package metadata was found for p
+PackageNotFoundError No package metadata was found for p True
+No package metadata was found for pkg | pkg | PackageNotFoundError('pkg')
+No package metadata was found for pkg | pkg
+PackageNotFoundError No package metadata was found for pkg
+PackageNotFoundError No package metadata was found for pkg True
+No package metadata was found for pkg. | pkg. | PackageNotFoundError('pkg.')
+No package metadata was found for pkg. | pkg.
+PackageNotFoundError No package metadata was found for pkg.
+PackageNotFoundError No package metadata was found for pkg. True
+No package metadata was found for demo | demo | PackageNotFoundError('demo')
+No package metadata was found for demo | demo
+PackageNotFoundError No package metadata was found for demo
+PackageNotFoundError No package metadata was found for demo True
+No package metadata was found for demo-pkg-extra | demo-pkg-extra | PackageNotFoundError('demo-pkg-extra')
+No package metadata was found for demo-pkg-extra | demo-pkg-extra
+PackageNotFoundError No package metadata was found for demo-pkg-extra
+PackageNotFoundError No package metadata was found for demo-pkg-extra True
+No package metadata was found for multi-part | multi-part | PackageNotFoundError('multi-part')
+No package metadata was found for multi-part | multi-part
+PackageNotFoundError No package metadata was found for multi-part
+PackageNotFoundError No package metadata was found for multi-part True
+No package metadata was found for not-a-dist | not-a-dist | PackageNotFoundError('not-a-dist')
+No package metadata was found for not-a-dist | not-a-dist
+PackageNotFoundError No package metadata was found for not-a-dist
+PackageNotFoundError No package metadata was found for not-a-dist True
+No package metadata was found for not | not | PackageNotFoundError('not')
+No package metadata was found for not | not
+PackageNotFoundError No package metadata was found for not
+PackageNotFoundError No package metadata was found for not True
+No package metadata was found for Distinfo Pkg | Distinfo Pkg | PackageNotFoundError('Distinfo Pkg')
+No package metadata was found for Distinfo Pkg | Distinfo Pkg
+PackageNotFoundError No package metadata was found for Distinfo Pkg
+PackageNotFoundError No package metadata was found for Distinfo Pkg True
+No package metadata was found for  demo-pkg |  demo-pkg | PackageNotFoundError(' demo-pkg')
+No package metadata was found for  demo-pkg |  demo-pkg
+PackageNotFoundError No package metadata was found for  demo-pkg
+PackageNotFoundError No package metadata was found for  demo-pkg True
+ValueError A distribution name is required.
+ValueError A distribution name is required.
+ValueError A distribution name is required.
+A distribution name is required.
+PackageNotFoundError No package metadata was found for some-name
+other True
+True True
+PackageNotFoundError
+[exit 0]

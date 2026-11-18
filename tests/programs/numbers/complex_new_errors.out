@@ -1,0 +1,10 @@
+TypeError complex() can't take second arg if first is a string
+TypeError complex() second arg can't be a string
+TypeError complex() can't take second arg if first is a string
+TypeError complex() second arg can't be a string
+TypeError complex() can't take second arg if first is a string
+TypeError complex() can't take second arg if first is a string
+TypeError complex() second arg can't be a string
+['3', 'x', '4', 'y']
+(1+2j) 2j (3+4j) 3.5j
+[exit 0]

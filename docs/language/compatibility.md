@@ -23,6 +23,8 @@ These programs can compile and run with different results, errors or timing of e
 | Ordinary `int` | Signed 64-bit. Oversized results, intermediates and `int()` conversions raise `OverflowError`. Use explicit [`mpz`](../mpz.md) or opt in to [promoting ints](#promoting-ints-opt-in-prototype). |
 | `int ** negative int` | `ValueError`; `0 ** -1` still raises `ZeroDivisionError`. |
 | Negative float to a fractional power | `ValueError`; CPython returns a complex number. |
+| `complex` identity | Each imaginary literal, operation and `complex()` of a number makes a new object; CPython shares a module's equal constants, so `x = 1j; y = 1j; x is y` is true there ([deviation](../../tests/deviations/complex_identity.py)). A NaN part hashes as a NaN does (below). |
+| `None` as `complex` in a union | A `complex` that holds `None`, stored where a union without `None` is declared, raises `TypeError`; CPython stores `None`, which mypy rejects ([deviation](../../tests/deviations/complex_union_none.py)). |
 | NaN identity | Unboxed NaNs have no identity, including inside scalar union boxes: `nan in [nan]` is false. Container equality and sorting treat a shared NaN as distinct values. `hash(nan)` is 0, rather than an identity hash. |
 | Empty `list[float]` | `sum(xs)` returns `0.0`, `sum(xs, 1)` returns `1.0`, and `math.prod(xs)` returns `1.0`; CPython preserves the integer start. |
 | Native JSON | Typed `JSONValue` rejects integers outside 64 bits; dynamic `Any` decoding promotes them. Nesting is limited by recursion depth and a 2,000-container cap. See [JSON limits](../../lib/compatibility.md#json). |
@@ -151,6 +153,8 @@ no effect. The shared runtime cache is independent of this setting.
 - **Tuple conversions:** fixed-shape to runtime-length tuples, or scalar to
   optional-element tuples, create new objects. Empty runtime-length tuples are
   not interned. `tuple(t)` preserves identity only when its representation fits.
+  In graphs with dynamic `Any`, numeric runtime-tuple items retain their identity
+  when widened to optional items; the outer tuple can still be a new object.
 - **Callables:** `is` compares the function and its environment/bound object, as
   `==` does. Two reads of `o.m` converted to `Callable` compare identical; CPython
   creates separate bound-method objects.
@@ -160,6 +164,12 @@ no effect. The shared runtime cache is independent of this setting.
 - **Operators on `None`:** an optional left operand whose class defines an
   arithmetic/bitwise operator raises `TypeError` when it is `None`, even if
   CPython would call the right operand's reflected method.
+- **Tuple search over objects:** a tuple's `in`, `count()` and `index()` call
+  `__eq__` for each pair of classes that objects of a union, or of a class with
+  subclasses, may be of. A method whose parameter annotation does not take the
+  other operand, or a template whose body does not compile for it, declines that
+  pair, which then compares unequal unless identical. CPython calls the method,
+  which may return true or raise.
 - **Direct dataclass comparisons:** generated `__eq__`/ordering methods called
   directly compare fields or raise `TypeError` for another class; `__eq__(None)`
   is false. CPython returns `NotImplemented`. Operator syntax declines such
@@ -251,13 +261,34 @@ or generator/async initializers retain eager formatting
   errors. See [import-time scope](modules.md#unsupported-code-in-imported-modules).
 - **Optional imports** can take the fallback where CPython finds an installed
   module or API. A failed module retains globals already assigned; a later import
-  reruns its code over them. See [optional imports](modules.md#optional-imports).
+  reruns its code over them. A subclass of `ImportError` ends the program instead of
+  reaching the handler when an imported module's code raises it, or when the statements
+  after resolved imports raise it but cannot keep the `except` clauses. See
+  [optional imports](modules.md#optional-imports).
 - **Unbound globals** read as `m.x` raise `AttributeError` without CPython's
   circular-import/renaming hints. `from m import x` raises `ImportError`, using the
   file path from compilation rather than a runtime installation.
+- **Builtin names bound on a path that does not run**, such as `len = mylen` in an `except`
+  clause or an untaken `if` branch at module level, raise `NameError` when read; CPython
+  finds the builtin ([#1512](https://github.com/den-run-ai/pystachy/issues/1512)).
+- **Star imports** see `__all__` only as the module's top-level statements bind and extend it.
+  Where only an `if` branch, a `try` statement or a loop binds it, the import takes every public
+  name; where the top level binds it, a change in such a statement, as
+  `if flag: __all__ += ["b"]`, is not seen. CPython takes the `__all__` that the module's code
+  leaves ([#1513](https://github.com/den-run-ai/pystachy/issues/1513)).
+- **`except E as name` at module level**, where an import bound `name`, leaves the module
+  bound after a handler that ran; CPython unbinds `name`, so a later read raises `NameError`
+  ([#1514](https://github.com/den-run-ai/pystachy/issues/1514)).
 - **Module `__doc__`:** without a docstring, if its first mention is in a `def` or
   `class` and module code later assigns it, an earlier read raises `NameError`
   instead of returning `None`.
+- **Module `__file__`:** the absolute path of the source file the module was compiled
+  from. An executable built ahead of time keeps that path wherever it runs, also once
+  the source has moved. A `lib/` module names Pystachy's file, not CPython's. A builtin
+  module (`os`, `sys`, `math`) has no `__file__`, where CPython's `os` and extension
+  modules have one, and neither has a namespace package, whose `__file__` is `None` in
+  CPython: both are rejected
+  ([error test](../../tests/errors/io/file_name.py)).
 
 | Runtime value | Difference |
 |---|---|
@@ -364,7 +395,7 @@ See [context-manager semantics](semantics.md#context-managers) and
 - `with` values outside files and program classes defining both `__enter__` and `__exit__`,
   including unions of such classes; `with suppress(...) as x`; `nullcontext(None)`.
 - Exception class-object attributes other than `__name__`, `__qualname__` and `__module__`.
-- Unported `ExitStack`, `redirect_stdout`, `redirect_stderr`, `chdir`, `aclosing`,
+- Unported `redirect_stdout`, `redirect_stderr`, `chdir`, `aclosing`,
   `asynccontextmanager` and `AsyncExitStack`.
 
 ### Names and scopes
@@ -377,7 +408,8 @@ See [context-manager semantics](semantics.md#context-managers) and
   variable from-imports, immediate `C = C()` rebinding and module-level definitions replacing
   imports under the [module-scope rules](modules.md#module-scope).
 - **Class scope:** defaults referring to earlier class attributes, even builtin-like names or
-  `__name__`; class-body `__doc__`; `:=`, including in a lambda default evaluated there.
+  `__name__`, except constants an ordinary class binds once; class-body `__doc__`; `:=`,
+  including in a lambda default evaluated there.
 - **Local scope:** reads textually before the first assignment, or where only discarded code
   binds the local. `del`, `def`, `class`, `:=`, match captures and `type` also establish locals.
   Declare the type before an early read: `x: int`.
@@ -405,7 +437,8 @@ See [module initialization](modules.md#finding-and-running-modules),
   aliases used before assignment, including cyclic from-import aliases. Function and
   module-attribute alias reads use runtime guards; `A = m.C` still uses a conservative
   early-read check.
-- **Optional imports:** a possible `ImportError` other than a definite module-top-level raise;
+- **Optional imports:** a possible `ImportError` or `ModuleNotFoundError` raised under that name,
+  other than a definite module-top-level raise;
   a possibly unbound from-import; handlers using `as e`, re-raising, or potentially ending
   the program when the module is missing; a failing module importing its caller back.
   Optional from-imports also require a definite binding, excluding conditional, deleted,
@@ -480,9 +513,12 @@ See [object protocols](semantics.md#object-protocols) and
 - **Iterator operations:** `iter(callable, sentinel)`; `iter()` of `enumerate`, `zip`, `map`,
   `filter` or `reversed`; `next(it, default)` without a common item/default type; iterator
   classes lacking `__iter__` in comprehensions or `str.join`; inheritance-hierarchy
-  constructors calling `iter()` or accepting `Iterator[T]` / `Iterable[T]`.
+  constructors storing an iterator whose concrete class depends on their arguments.
+  Fixed-field constructors may consume `Iterator[T]` / `Iterable[T]`.
 - **Fallbacks and power:** `__getitem__`-only iteration/membership; `__len__` / `__getitem__`
-  fallback for `reversed`; reflected arithmetic; `NotImplemented`; object or optional
+  fallback for `reversed`; reflected arithmetic between two objects, `__rdivmod__` and `__rpow__`;
+  `int(o)` through `__trunc__`; `NotImplemented` outside a
+  [comparison method's `return`](semantics.md#object-protocols); object or optional
   numeric power exponents; three-argument object `pow`. Before `**=`, narrow a base-typed
   receiver if only its subclass defines `__ipow__`.
 - **Comparisons:** equality between unrelated ordinary classes outside inheritance
@@ -510,17 +546,21 @@ See [object protocols](semantics.md#object-protocols) and
 See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
 [single inheritance](typing.md#single-inheritance).
 
-- **Inheritance:** multiple bases outside the [method-only secondary base](typing.md#a-method-only-secondary-base) subset; ordinary hierarchies involving templates, `Generic`,
-  NamedTuple or builtins; mixed dataclass/ordinary hierarchies; decorated subclasses except
+- **Inheritance:** multiple bases outside the [method-only secondary base](typing.md#a-method-only-secondary-base) subset; ordinary hierarchies involving layout-specialized templates,
+  NamedTuple or builtins; generic inheritance outside the [visitor subset](typing.md#explicit-generic-classes)
+  (bases whose constructor binds type variables or subclasses passing through their own type
+  variables); mixed dataclass/ordinary hierarchies; decorated subclasses except
   dataclass-from-dataclass; changing method kind; incompatible virtual call signatures or
-  results; overridden static/class methods called through base-typed objects.
+  results; overridden static/class methods called through base-typed objects. Independent
+  classes and ordinary hierarchies with fixed concrete fields may specialize constructor
+  arguments without specializing their layouts ([class templates](typing.md#class-templates-and-generic-classes)).
 - **Inherited members:** assigning inherited class attributes through subclasses without their
   own defaults; changing field types; derived-only fields without supported narrowing;
   inherited `cls`-using classmethods through base-typed objects, across modules or with
   nonconstant defaults; `super` outside supported instance-method contexts, with an unrelated
   class or a different receiver.
 - **Methods and hooks:** using or assigning `cls` as a value; static/class decorators on special
-  methods; `C.m(o)` outside ordinary inheritance; decorators beyond staticmethod, classmethod,
+  methods; `C.__init__(o)` outside ordinary inheritance; decorators beyond staticmethod, classmethod,
   property/setter/deleter, dataclass and overload. Defining or inheriting `__new__`,
   `__getattr__`, `__getattribute__`, `__setattr__` or `__delattr__`, or a base defining
   `__init_subclass__`, is rejected.
@@ -570,7 +610,9 @@ See [optional operations and narrowing](typing.md#optional-values-and-narrowing)
 
 - Nullable keys/elements except user objects; tuple keys containing unsupported members
   such as floats, lists or NamedTuples; NamedTuple, exception or frozenset keys/elements;
-  hashing these types except NamedTuples; classes with nonmethod `__hash__` / `__eq__`.
+  hashing these types except NamedTuples; classes with nonmethod `__hash__` / `__eq__`;
+  unions of classes as keys/elements where a member's classes define `__hash__` or `__eq__`,
+  and such unions as tuple-key items or as the keys of dicts compared with `==`.
 - Bool stored as int, including set elements, dict keys, tuple-key members, `setdefault` and
   displays. Bool-key lookup, `pop` and `del` work; augmented assignment requires an RHS that
   runs no user code and mutates no dict. Only `get` and `in` also accept optional bool keys.
@@ -582,13 +624,15 @@ See [optional operations and narrowing](typing.md#optional-values-and-narrowing)
 See [annotations](typing.md#annotations), [aliases](typing.md#type-aliases) and
 [generic classes](typing.md#explicit-generic-classes).
 
-- **Type variables:** `ClassVar`; `PathLike` outside a union with `str`; `TypeVar` outside template parameters
+- **Type variables:** `ClassVar`, except `x: ClassVar[T] = value` in an ordinary module-level
+  class; `PathLike` outside a union with `str`; `TypeVar` outside template parameters
   and returns, except bound class type variables; constraints or nonstring bounds;
   `TypeVarTuple` outside unpacking in tuple, Callable or `*args`; unbound class type variables.
 - **Generic classes:** `Generic[...]` alongside another base; PEP 695 classes with bases,
   `ParamSpec` or multiple `TypeVarTuple`s; explicit `C[X]` with a `TypeVarTuple` or unannotated /
   variadic constructor parameters.
-- **Declarations:** bare `Final` outside assignments (class assignments must be constant);
+- **Declarations:** bare `Final` outside assignments (a class's needs `Final[T]` or a value
+  typed as in an unannotated class attribute, and a constant in a dataclass or `NamedTuple`);
   missing imports for typing names even in local annotations; overload stubs not followed in
   the same block by their implementation with only intervening `def`s, or nonconstant
   stub defaults. Imported missing/late implementations fail when called.
@@ -647,6 +691,13 @@ See [user exception classes](semantics.md#user-exception-classes) and
 - **`super`:** outside exception methods, in parameterless static methods, without arguments
   in classmethods, with anything but the method's own class and `self`, or calling a base
   classmethod that uses `cls`.
+  When an explicit class call passes `None` as `self`, the temporary unbound super object's
+  own initializer evaluates arguments and validates supported class/receiver pairs. A
+  non-`None` replacement receiver requiring a runtime-selected non-exception class, dynamic
+  receiver, builtin class without a supported instance check, or overridden `__class__`
+  raises `NotImplementedError` in that null arm; this
+  does not restrict the base initializer call when the original receiver is non-null.
+  A replacement receiver of `None` remains valid after checking the first argument is a type.
 
 ### Builtins
 
@@ -657,7 +708,11 @@ See [user exception classes](semantics.md#user-exception-classes) and
 - **Sentinels:** `object()` arguments, attribute assignment, equality with user/exception
   objects, mixed-type variables/returns/`dict.get` defaults, or aliases / `type(x) is object` without any
   module calling `object()`. See [sentinels](semantics.md#sentinels).
-- **Reserved modules:** `_pystachy_iterators`, `_pystachy_range`, `_pystachy_object`.
+- **Complex numbers:** ordering, `//`, `%`, `divmod()`, `round()`, `int()`, `float()` and `math`
+  of one; an `int` or `float` where `complex` is declared; `sum()`; ordering, `hash()` or
+  container equality of unions that hold one; attribute assignment and subclasses. See
+  [complex numbers](semantics.md#complex-numbers).
+- **Reserved modules:** `_pystachy_iterators`, `_pystachy_range`, `_pystachy_object`, `_pystachy_complex`.
 - **Arguments:** unsupported keywords; optional `key=` when items lack a supported natural
   order; `open()` encoding constants beyond UTF-8 and Latin-1.
 - **Dict methods:** `update` with different key/value types, pair iterables beyond lists of

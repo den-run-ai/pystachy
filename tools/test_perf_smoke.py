@@ -384,5 +384,304 @@ class ReportTests(unittest.TestCase):
             self.assertEqual(json.loads(path.read_text()), complete)
 
 
+class WeeklyTests(unittest.TestCase):
+    """The weekly AOT suite (#1302): every port and microbenchmark, base skips, head errors."""
+    def record(self, stdout="42\n", seconds=0.5, wall=1.0):
+        return {"stdout": stdout, "stderr": f"seconds {seconds}\n", "wall_s": wall, "returncode": 0}
+
+    def test_cases_are_every_port_and_microbenchmark(self):
+        cases = perf.weekly_cases(perf.ROOT)
+        ports = {name: case for name, case in cases.items() if name.startswith("pyperformance/")}
+        self.assertEqual(set(ports), {"pyperformance/" + name for name in bench_pyperformance.BENCHMARKS})
+        for name, (path, arguments, metric) in ports.items():
+            port = name.split("/", 1)[1]
+            self.assertEqual(perf.ROOT / path, bench_pyperformance.port_path(port))
+            self.assertEqual((arguments, metric), (bench_pyperformance.BENCHMARKS[port][0], "aot_loop_s"))
+        micro = {name: case for name, case in cases.items() if name.startswith("bench/")}
+        self.assertEqual(set(micro), {"bench/" + path.stem for path in (perf.ROOT / "bench").glob("*.py")})
+        self.assertIn("bench/words", micro)
+        self.assertIn("pyperformance/float", ports)
+        self.assertTrue(all(case[1:] == ([], "aot_process_s") for case in micro.values()))
+        self.assertEqual(len(cases), len(ports) + len(micro))
+
+    def test_ten_percent_and_two_milliseconds(self):
+        weekly = (perf.WEEKLY_RATIO, perf.WEEKLY_FLOOR)
+        self.assertTrue(perf.compare([0.05] * 3, [0.055] * 3, *weekly)["candidate"])
+        self.assertTrue(perf.compare([0.02] * 3, [0.022] * 3, *weekly)["candidate"])
+        self.assertFalse(perf.compare([0.05] * 3, [0.0549] * 3, *weekly)["candidate"])
+        self.assertFalse(perf.compare([0.01] * 3, [0.0119] * 3, *weekly)["candidate"])
+        # (the default suite keeps its 20% and 5 ms)
+        self.assertFalse(perf.compare([0.05] * 3, [0.055] * 3)["candidate"])
+
+    def measure(self, source_exists=True, builds=None, runs=None, deadline=None):
+        directory = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(directory))
+        (directory / "base").mkdir()
+        (directory / "head").mkdir()
+        head = directory / "checkout"
+        (head / "bench").mkdir(parents=True)
+        if source_exists:
+            (head / "bench" / "work.py").write_text("print(42)\n")
+        with mock.patch.object(perf, "execute", side_effect=builds) as executed, \
+                mock.patch.object(bench_pyperformance, "execute", side_effect=runs):
+            result = perf.measure_weekly("bench/work", ("bench/work.py", [], "aot_process_s"),
+                                         {"base": "base-compiler", "head": "head-compiler"},
+                                         {"base": {}, "head": {}}, directory, head,
+                                         **({"deadline": deadline} if deadline is not None else {}))
+        return result, executed
+
+    def by_command(self, base_wall, head_wall, head_output="42\n", fail=None):
+        def execute(command, env, timeout):
+            if fail and fail in command[0] and "build" in command:
+                raise RuntimeError(f"{fail} cannot compile it\nmore detail")
+            if command[0].endswith("python3.13") or command[0] == sys.executable:
+                return self.record()
+            if "build" in command:
+                return self.record(wall=2.0)
+            side = "base" if "/base/" in command[0] else "head"
+            return self.record(stdout=head_output if side == "head" else "42\n",
+                               wall=(base_wall if side == "base" else head_wall).pop(0))
+        return execute
+
+    def test_unchanged_workload_is_ok_without_confirmation(self):
+        result, executed = self.measure(builds=self.by_command([0.050] * 4, [0.051] * 4))
+        self.assertEqual(result["status"], "ok")
+        self.assertIsNone(result["confirmation"])
+        self.assertEqual(result["samples"]["base"], [0.050] * 3)
+        self.assertEqual(executed.call_count, 1 + 2 * 2 + 6)  # oracle, two builds and warmups, three pairs
+        # (both builds before either warmup: a side warmed before the other's build runs colder)
+        steps = [("build" if "build" in call.args[0] else "base" if "/base/" in call.args[0][0] else "head")
+                 for call in executed.call_args_list[1:5]]
+        self.assertEqual(steps, ["build", "build", "base", "head"])
+
+    def test_confirmed_slowdown_warns(self):
+        result, _ = self.measure(builds=self.by_command([0.050] * 7, [0.060] * 7))
+        comparison = result["comparison"]["aot_process_s"]
+        self.assertEqual((result["status"], comparison["status"]), ("warning", "warning"))
+        self.assertEqual(len(result["confirmation"]["head"]), 3)
+        self.assertAlmostEqual(comparison["ratio"], 1.2)
+
+    def test_unconfirmed_slowdown_does_not_warn(self):
+        result, _ = self.measure(builds=self.by_command([0.050] * 7, [0.060] * 4 + [0.050] * 3))
+        self.assertEqual(result["status"], "unconfirmed")
+
+    def test_missing_workload_and_failing_base_are_skipped(self):
+        result, executed = self.measure(source_exists=False, builds=self.by_command([], []))
+        self.assertEqual((result["status"], result["reason"]), ("skipped", "not in the head revision"))
+        self.assertEqual(executed.call_count, 0)
+        result, executed = self.measure(builds=self.by_command([], [0.05] * 4, fail="base-compiler"))
+        self.assertEqual(result["status"], "skipped")
+        self.assertEqual(result["reason"], "the base fails it: base-compiler cannot compile it")
+        self.assertEqual(result["samples"]["head"], [0.05] * 3)
+        self.assertTrue(any(call.args[0][0] == "head-compiler" for call in executed.call_args_list))
+
+    def test_failing_head_and_wrong_head_output_are_errors(self):
+        result, _ = self.measure(builds=self.by_command([0.05] * 4, [], fail="head-compiler"))
+        self.assertEqual(result["status"], "error")
+        self.assertIn("head-compiler cannot compile it", result["error"])
+        result, _ = self.measure(builds=self.by_command([0.05] * 4, [0.05], head_output="41\n"))
+        self.assertEqual(result["status"], "error")
+        self.assertIn("output differs", result["error"])
+
+    def test_base_build_failure_does_not_hide_broken_head(self):
+        def execute(command, env, timeout):
+            if "build" in command:
+                raise RuntimeError(f"{command[0]} cannot compile it")
+            return self.record()
+        result, executed = self.measure(builds=execute)
+        self.assertEqual(result["status"], "error")
+        self.assertEqual(result["error"], "head-compiler cannot compile it")
+        self.assertEqual(set(result["failures"]), {"base", "head"})
+        self.assertEqual([call.args[0][0] for call in executed.call_args_list[1:]],
+                         ["base-compiler", "head-compiler"])
+
+    def test_base_warmup_failure_does_not_hide_broken_head(self):
+        def execute(command, env, timeout):
+            if "/base/" in command[0] or "/head/" in command[0]:
+                return self.record(stdout="wrong\n")
+            return self.record()
+        result, _ = self.measure(builds=execute)
+        self.assertEqual(result["status"], "error")
+        self.assertEqual({side: failure["phase"] for side, failure in result["failures"].items()},
+                         {"base": "warmup", "head": "warmup"})
+
+    def test_timed_and_confirmation_failures_keep_samples_and_check_other_side(self):
+        for side in ("base", "head"):
+            for phase, attempt in (("sample:1", 2), ("confirmation:1", 5)):
+                for error in (RuntimeError("timeout after 300s"), ValueError("wrong output"), OSError("missing executable")):
+                    with self.subTest(side=side, phase=phase, error=error):
+                        calls = {"base": 0, "head": 0}
+                        normal = self.by_command([0.05] * 7, [0.06] * 7)
+
+                        def execute(command, env, timeout, *, calls=calls, side=side, attempt=attempt,
+                                    error=error, normal=normal):
+                            for which in calls:
+                                if f"/{which}/" in command[0]:
+                                    calls[which] += 1
+                                    if which == side and calls[which] == attempt:
+                                        raise error
+                            return normal(command, env, timeout)
+
+                        result, _ = self.measure(builds=execute)
+                        self.assertEqual(result["status"], "skipped" if side == "base" else "error")
+                        self.assertEqual(result["failures"][side], {"phase": phase, "error": str(error)})
+                        other = "head" if side == "base" else "base"
+                        batch = result["confirmation"] if attempt == 5 else result["samples"]
+                        self.assertEqual(len(batch[other]), 3)
+                        self.assertEqual(batch[side], [])
+                        if attempt == 5:
+                            self.assertEqual([len(v) for v in result["samples"].values()], [3, 3])
+
+    def test_deadline_caps_oracle_build_warmup_samples_and_confirmation(self):
+        for deadline in (0.5, 1.5, 3.5, 5.5, 12.5):
+            with self.subTest(deadline=deadline):
+                clock = [0.0]
+                timeouts = []
+
+                def execute(command, env, timeout, *, deadline=deadline, clock=clock, timeouts=timeouts):
+                    self.assertLessEqual(timeout, deadline - clock[0])
+                    timeouts.append(timeout)
+                    if timeout < 1:
+                        clock[0] += timeout
+                        raise RuntimeError(f"timeout after {timeout}s: command")
+                    clock[0] += 1
+                    return self.record(wall=0.06 if "/head/" in command[0] else 0.05)
+
+                with mock.patch.object(perf.time, "monotonic", side_effect=lambda clock=clock: clock[0]):
+                    result, _ = self.measure(builds=execute, deadline=deadline)
+                self.assertEqual((result["status"], result["reason"]), ("skipped", "out of the time budget"))
+                self.assertTrue(result["budget_exhausted"])
+                self.assertEqual(result["failures"], {})
+                self.assertEqual(clock[0], deadline)
+                self.assertEqual(timeouts[-1], 0.5)
+                if deadline == 12.5:
+                    self.assertEqual([len(v) for v in result["samples"].values()], [3, 3])
+                    self.assertEqual([len(v) for v in result["confirmation"].values()], [0, 1])
+
+    def test_timed_port_receives_the_remaining_budget(self):
+        with mock.patch.object(perf.time, "monotonic", return_value=9.75), \
+                mock.patch.object(bench_pyperformance, "execute", return_value=self.record()) as execute:
+            perf.aot_sample("port", [], {}, "42\n", "aot_loop_s", deadline=10)
+        self.assertEqual(execute.call_args.args[2], 0.25)
+
+    def test_expired_deadline_does_not_start_a_command(self):
+        with mock.patch.object(perf.time, "monotonic", return_value=10), \
+                mock.patch.object(perf, "execute") as execute, self.assertRaises(perf.BudgetExhausted):
+            perf.aot_sample("port", [], {}, "42\n", "aot_process_s", deadline=10)
+        execute.assert_not_called()
+
+    def test_bootstrap_deadline_keeps_report_and_marks_unmeasured_workloads(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "report.json"
+            clock = [0.0]
+
+            def execute(command, env, timeout):
+                if "build" in command:
+                    self.assertEqual(timeout, 1.0)
+                    clock[0] += timeout
+                    raise RuntimeError(f"timeout after {timeout}s: compiler")
+                clock[0] += 1
+                return self.record(stdout="revision\n")
+
+            with mock.patch.object(sys, "argv", ["perf_smoke.py", "--suite", "weekly", "--budget", "2",
+                                                 "--only", "bench/fib,bench/words",
+                                                 "--base", directory, "--json", str(path)]), \
+                    mock.patch.object(perf.time, "monotonic", side_effect=lambda: clock[0]), \
+                    mock.patch.object(perf, "execute", side_effect=execute), \
+                    mock.patch.object(perf, "measure_weekly") as measured, \
+                    mock.patch.object(perf.os, "sched_getaffinity", return_value={0, 1}), \
+                    mock.patch.object(perf.os, "sched_setaffinity") as affinity, \
+                    contextlib.redirect_stdout(io.StringIO()):
+                perf.main()
+            report = json.loads(path.read_text())
+            self.assertEqual((report["status"], report["phase"]), ("incomplete", "bootstrap:base"))
+            self.assertTrue(report["budget_exhausted"])
+            self.assertEqual([result["name"] for result in report["results"]], ["bench/fib", "bench/words"])
+            self.assertTrue(all(result["budget_exhausted"] for result in report["results"]))
+            measured.assert_not_called()
+            self.assertEqual(affinity.call_args_list[-1], mock.call(0, [0, 1]))
+
+    def test_port_metric_is_the_timed_part(self):
+        directory = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(directory))
+        exe = str(directory / "work")
+        with mock.patch.object(bench_pyperformance, "execute", return_value=self.record(seconds=0.25, wall=3.0)):
+            self.assertEqual(perf.aot_sample(exe, [], {}, "42\n", "aot_loop_s"), 0.25)
+        with mock.patch.object(perf, "execute", return_value=self.record(seconds=0.25, wall=3.0)):
+            self.assertEqual(perf.aot_sample(exe, [], {}, "42\n", "aot_process_s"), 3.0)
+            with self.assertRaisesRegex(ValueError, "output differs"):
+                perf.aot_sample(exe, [], {}, "41\n", "aot_process_s")
+
+    def test_summary_lists_milliseconds_skips_and_errors(self):
+        compared = perf.compare([0.050] * 3, [0.060] * 3, perf.WEEKLY_RATIO, perf.WEEKLY_FLOOR)
+        compared.update(status="warning")
+        report = {"revisions": {"base": "b", "head": "h"}, "results": [
+            {"name": "bench/words", "status": "warning", "comparison": {"aot_process_s": compared}},
+            {"name": "pyperformance/go", "status": "skipped", "reason": "the base fails it: x"},
+            {"name": "bench/fib", "status": "error", "error": "exit 1: fib\ndetail"}]}
+        with contextlib.redirect_stdout(io.StringIO()) as printed:
+            text = perf.weekly_summary(report)
+        self.assertIn("| bench/words | aot_process_s | 50.00 ms | 60.00 ms | +20.0% | warning |", text)
+        self.assertIn("- pyperformance/go: skipped, the base fails it: x", text)
+        self.assertIn("- bench/fib: error, exit 1: fib", text)
+        self.assertIn("::warning::bench/words aot_process_s: confirmed >=10% slowdown", printed.getvalue())
+
+    def test_head_errors_fail_the_run_after_the_report(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "report.json"
+            record = {"stdout": "revision\n", "stderr": "", "wall_s": 1.0, "returncode": 0}
+            results = [{"name": "bench/b", "status": "error", "error": "exit 1"},
+                       {"name": "bench/a", "status": "ok", "comparison": {}}]
+            env = {key: value for key, value in os.environ.items() if key != "GITHUB_STEP_SUMMARY"}
+            with mock.patch.object(sys, "argv", ["perf_smoke.py", "--suite", "weekly", "--only", "bench/fib,bench/words",
+                                                 "--base", str(path.parent), "--json", str(path)]), \
+                    mock.patch.dict(os.environ, env, clear=True), \
+                    mock.patch.object(perf, "execute", return_value=record), \
+                    mock.patch.object(perf, "measure_weekly", side_effect=results) as measured, \
+                    mock.patch.object(perf.os, "sched_getaffinity", return_value={0, 1}), \
+                    mock.patch.object(perf.os, "sched_setaffinity"), \
+                    contextlib.redirect_stdout(io.StringIO()), \
+                    self.assertRaisesRegex(RuntimeError, "the head revision fails 1 workloads: bench/b"):
+                perf.main()
+            self.assertEqual([call.args[0] for call in measured.call_args_list], ["bench/fib", "bench/words"])
+            report = json.loads(path.read_text())
+            self.assertEqual((report["suite"], report["status"]), ("weekly", "error"))
+            self.assertEqual(report["thresholds"], {"ratio": perf.WEEKLY_RATIO, "floor_s": perf.WEEKLY_FLOOR})
+            self.assertEqual(report["results"], results)
+
+    def test_budget_skips_the_remaining_workloads_and_options_are_checked(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "report.json"
+            record = {"stdout": "revision\n", "stderr": "", "wall_s": 1.0, "returncode": 0}
+            env = {key: value for key, value in os.environ.items() if key != "GITHUB_STEP_SUMMARY"}
+            clock = [0.0]
+
+            def measure(*args):
+                clock[0] = 5.0
+                return {"name": "bench/fib", "status": "ok", "comparison": {}}
+
+            with mock.patch.object(sys, "argv", ["perf_smoke.py", "--suite", "weekly", "--budget", "2",
+                                                 "--only", "bench/fib,bench/words",
+                                                 "--base", str(path.parent), "--json", str(path)]), \
+                    mock.patch.dict(os.environ, env, clear=True), \
+                    mock.patch.object(perf.time, "monotonic", side_effect=lambda: clock[0]), \
+                    mock.patch.object(perf, "execute", return_value=record), \
+                    mock.patch.object(perf, "measure_weekly", side_effect=measure), \
+                    mock.patch.object(perf.os, "sched_getaffinity", return_value={0, 1}), \
+                    mock.patch.object(perf.os, "sched_setaffinity"), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                perf.main()
+            report = json.loads(path.read_text())
+            self.assertEqual(report["status"], "incomplete")
+            self.assertEqual(report["results"][1], {"name": "bench/words", "status": "skipped",
+                                                    "reason": "out of the time budget", "budget_exhausted": True})
+        for argv in (["--budget", "5"], ["--head", "/"], ["--suite", "weekly", "--only", "bench/none"],
+                     ["--suite", "weekly", "--budget", "-1"], ["--suite", "weekly", "--budget", "nan"],
+                     ["--suite", "weekly", "--budget", "inf"]):
+            with self.subTest(argv=argv), mock.patch.object(sys, "argv", ["perf_smoke.py", "--base", ".", *argv]), \
+                    contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                perf.main()
+
+
 if __name__ == "__main__":
     unittest.main()

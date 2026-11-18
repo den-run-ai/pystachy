@@ -1,0 +1,9 @@
+Name: egginfo-pkg
+Author: Steven Ma
+License: Unknown
+Version: 1.0.0
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Software Development :: Libraries
+Keywords: sample package
+Description: Once upon a time
+        There was an egginfo package

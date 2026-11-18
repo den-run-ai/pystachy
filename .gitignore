@@ -3,7 +3,9 @@ build/
 __pycache__/
 *.ll
 *.bc
-.claude/
+# Local Claude Code state; shared skills are symlinks into .agents/skills.
+.claude/*
+!.claude/skills/
 /core
 /dist/
 *.egg-info/

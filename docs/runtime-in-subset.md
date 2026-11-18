@@ -164,18 +164,22 @@ cannot discard a group that still has a renamed initializer referring to it.
 Raw `rt` output and ordinary builds retain their existing IR.
 On Linux, JIT normally loads a shared library built from the cached runtime object;
 other platforms and failed or unavailable shared-library loads use the object path.
-AOT links the runtime bitcode into the program. See the
-[JIT/AOT pipeline](internals.md#jit-aot-and-runtime-caching) for the fallback rules.
+AOT links a precompiled runtime made from the cached bitcode and optimizes each program
+against its interface. See the [JIT/AOT pipeline](internals.md#jit-aot-and-runtime-caching)
+for the fallback rules.
 
 Cache names have the form `build/runtime-py-<L>-<K>.bc`, `.o`, `.so` and `.target`;
-the shared library is used on Linux.
+the shared library is used on Linux. The AOT tier's precompiled runtime for `pys_plain`
+0 or 1 adds `.aot0.o`, `.aot0.bc` and `.aot0.late.bc` (or `.aot1.*`) beside them, or
+`.aot0.fail` (`.aot1.fail`) where it cannot be built.
 The small `.target` file preserves the runtime's target triple and data layout;
 JIT optimization applies them before folding object sizes and field offsets.
 The content key
 includes runtime and compiler bytes, C flags, disabled `PYSTACHY_OPT` passes and
 LLVM tool identities. Host CPU information is included for flags such as
 `-march=native`. The path/flag group `L` separates compiler and tool configurations.
-When a new runtime is published, old entries in its group are removed.
+When a new runtime is published, old entries in its group are removed, with their
+precompiled AOT runtimes.
 
 `runtime-py.hashes` memoizes file hashes with size, mtime and ctime. Recently
 modified files are hashed again to avoid coarse timestamp races. Builds use

@@ -13,8 +13,10 @@ from src.pystachy_compiler.syntax import Node
 
 
 ROOT = Path(__file__).resolve().parents[1]
-# Source-line metadata is emitted after LLVM lowering (see src/README.md).
-BACKENDS = {"lowering.py", "lower_module.py", "llvm_abi.py", "source_lines.py", "jit_helpers.py"}
+# Source-line metadata is emitted after LLVM lowering, aot_runtime.py rewrites the optimized
+# runtime module for AOT links, and jit_helpers.py copies its small functions for JIT code (see
+# src/README.md).
+BACKENDS = {"lowering.py", "lower_module.py", "llvm_abi.py", "source_lines.py", "aot_runtime.py", "jit_helpers.py"}
 
 
 class ModuleLoweringTests(unittest.TestCase):

@@ -886,5 +886,236 @@ class MultiModuleParity(TemporarySuite):
         self.check_suite(self.shared_helper_suite(), ["passed", "test-failed"], mode="jit")
 
 
+
+DIALECT = """
+import sys
+
+import pytest
+
+LOG: list[str] = []
+IS_LINUX = sys.platform.startswith("linux")
+
+
+@pytest.fixture
+def first():
+    LOG.append("first")
+    yield
+    LOG.append("first-down")
+
+
+@pytest.fixture
+def second():
+    LOG.append("second")
+    yield
+    LOG.append("second-down")
+
+
+@pytest.fixture
+def value():
+    LOG.append("value")
+    return 3
+
+
+@pytest.mark.usefixtures("first")
+@pytest.mark.usefixtures("second")
+def test_usefixtures_order(value):
+    assert LOG == ["second", "first", "value"]
+
+
+@pytest.mark.slow
+@pytest.mark.network(timeout=5)
+def test_labels():
+    assert LOG == ["second", "first", "value", "first-down", "second-down"]
+
+
+@pytest.mark.skipif(sys.version_info < (3, 0), reason="never skipped")
+@pytest.mark.skipif(IS_LINUX or not IS_LINUX, reason="always skipped")
+def test_runtime_skip():
+    assert False
+
+
+@pytest.mark.skipif(len(LOG) > 100, reason="runs")
+def test_runtime_run():
+    assert len(LOG) == 5
+
+
+@pytest.mark.parametrize("n", [1, 2])
+@pytest.mark.skipif(len(LOG) > 100, reason="not skipped")
+def test_param_skip(n):
+    assert n in (1, 2)
+
+
+if __name__ == "__main__":
+    pytest.main([__file__])
+"""
+
+OPERANDS = """
+log: list[str] = []
+
+
+def left() -> int:
+    log.append("left")
+    return 1
+
+
+def right() -> int:
+    log.append("right")
+    return 2
+
+
+def test_order_and_message():
+    try:
+        assert left() == right()
+    except AssertionError as error:
+        assert log == ["left", "right"]
+        assert "assert 1 == 2" in str(error)
+    else:
+        assert False
+
+
+def test_failure_detail():
+    numbers = [1, 2]
+    assert len(numbers) in (3, 4)
+"""
+
+
+@unittest.skipUnless(importlib.util.find_spec("pytest"), "real pytest required for independent oracle")
+class DiagnosticsAndSelection(TemporarySuite):
+    check_parity = OriginalPytestParity.check_parity
+
+    def cli(self, *arguments):
+        evidence = self.root / "evidence.json"
+        evidence.unlink(missing_ok=True)
+        with contextlib.redirect_stdout(io.StringIO()) as out, contextlib.redirect_stderr(io.StringIO()) as err:
+            status = runner.main([*map(str, arguments), "--root", str(self.root), "--work-dir", str(self.work),
+                                  "--json", str(evidence)])
+        report = json.loads(evidence.read_text()) if evidence.exists() else {}
+        return status, report, out.getvalue() + err.getvalue()
+
+    def test_failures_name_exceptions_and_comparison_operands(self):
+        path = self.source("""
+            def add(a: int, b: int) -> int:
+                return a + b
+
+            def test_operands():
+                result = add(2, 2)
+                assert result == add(2, 3)
+
+            def test_missing_key():
+                values: dict[str, int] = {}
+                assert values["missing"] == 1
+        """)
+        status, report, output = self.cli(path, "--mode", "python")
+        details = {event["nodeid"]: event["detail"] for result in report["results"]
+                   for event in result["events"] if event["phase"] == "call"}
+        self.assertEqual(status, 1, output)
+        self.assertEqual(report["qualification"], "pytest-matched")
+        self.assertIn("assert result == add(2, 3)\nassert 4 == 5", details["test_suite.py::test_operands"])
+        self.assertEqual(details["test_suite.py::test_missing_key"], "KeyError: 'missing'")
+        self.assertIn("pytest (CPython) report:", output)
+        self.assertIn("2 failed in", output)
+
+    def test_operands_are_evaluated_once_in_order(self):
+        actual = self.check_parity(OPERANDS, "test-failed")
+        detail = [event["detail"] for event in actual.events if event["phase"] == "call" and event["outcome"] == "failed"]
+        self.assertEqual(len(detail), 1)
+        self.assertTrue(detail[0].endswith("assert len(numbers) in (3, 4)\nassert 2 in (3, 4)"), detail)
+
+    def test_mismatches_name_each_test_and_outcome(self):
+        path = self.source("""
+            import sys
+
+            def test_runner_argv():
+                assert sys.argv[0].endswith("__main__.py")
+        """)
+        status, report, output = self.cli(path, "--mode", "python")
+        self.assertEqual(status, 2)
+        self.assertEqual(report["mismatches"], ["test_suite.py::test_runner_argv [call]: pytest passed, native failed"])
+        self.assertIn("MISMATCH test_suite.py::test_runner_argv [call]", output)
+
+    def test_collection_errors_do_not_run_pytest(self):
+        path = self.source("class TestUnsupported:\n    def test_one(self):\n        pass\n")
+        status, report, output = self.cli(path, "--mode", "python")
+        self.assertEqual(status, 2)
+        self.assertIsNone(report["oracle"])
+        self.assertEqual(report["qualification"], "not-compared")
+        self.assertNotIn("differ from pytest", output)
+
+    def test_node_ids_select_cases_in_order_once(self):
+        path = self.source("""
+            import pytest
+
+            def test_a():
+                pass
+
+            def test_b():
+                pass
+
+            @pytest.mark.parametrize("x", [1, 2, 3])
+            def test_p(x):
+                pass
+        """)
+        status, report, output = self.cli(f"{path}::test_b", f"{path}::test_p[2]", f"{path}::test_b", "--mode", "python")
+        self.assertEqual(status, 0, output)
+        self.assertEqual(report["results"][0]["cases"], ["test_suite.py::test_b", "test_suite.py::test_p[2]"])
+        self.assertEqual(report["oracle"]["cases"], report["results"][0]["cases"])
+        for arguments, message in (([f"{path}::test_missing"], "not found: test_suite.py::test_missing"),
+                                   ([f"{path}::test_a", str(path)], "give node IDs"),):
+            with self.subTest(arguments=arguments):
+                status, _, output = self.cli(*arguments, "--mode", "python")
+                self.assertEqual(status, 2)
+                self.assertIn(message, output)
+        other = self.source("def test_c():\n    pass\n", "test_other.py")
+        status, _, output = self.cli(f"{path}::test_a", f"{other}::test_c", f"{path}::test_b", "--mode", "python")
+        self.assertEqual(status, 2)
+        self.assertIn("must be given together", output)
+
+    def test_missing_pytest_is_named(self):
+        path = self.source("def test_a():\n    pass\n")
+        fake = self.root / "python-without-pytest"
+        fake.write_text("#!/bin/sh\necho 'python: No module named pytest' >&2\nexit 1\n")
+        fake.chmod(0o755)
+        reference = runner.oracle([path], self.root, self.work, str(fake), 30)
+        self.assertIn("pytest is not installed for", reference["error"])
+
+    def test_script_guard_labels_usefixtures_and_runtime_skipif(self):
+        self.check_parity(DIALECT)
+
+    def test_generated_names_keep_module_identity_and_free_suite(self):
+        self.source("VALUE = 1\n", "suite.py")
+        self.check_parity("""
+            import suite
+
+            class Record:
+                pass
+
+            def test_module_identity():
+                assert Record.__module__ == "test_suite"
+                assert suite.VALUE == 1
+        """)
+
+    @unittest.skipUnless(os.environ.get("PYSTACHY_PYTEST_NATIVE_COMPILER"), "native compiler opt-in required")
+    def test_native_operands_dialect_and_identity(self):
+        actual = self.check_parity(OPERANDS, "test-failed", mode="jit")
+        self.assertTrue(actual.assertion_operands)
+        self.assertTrue(any(event["detail"].endswith("assert 2 in (3, 4)") for event in actual.events))
+        self.check_parity(DIALECT, mode="jit")
+
+    @unittest.skipUnless(os.environ.get("PYSTACHY_PYTEST_NATIVE_COMPILER"), "native compiler opt-in required")
+    def test_native_operand_build_failure_runs_plain_assertions_once(self):
+        source = "def test_type():\n    x = 5\n    assert type(x) == int\n"
+        for mode in ("jit", "aot"):
+            with self.subTest(mode=mode):
+                self.work = self.root / f"build-{mode}"
+                actual = self.check_parity(source, mode=mode)
+                self.assertFalse(actual.assertion_operands)
+                self.assertTrue(actual.operand_build_error)
+                # The plain choice is kept for the unchanged instrumented code.
+                self.assertTrue(any(self.work.glob("*/plain-assertions")))
+                again = self.check_parity(source, mode=mode)
+                self.assertFalse(again.assertion_operands)
+                self.assertEqual(again.operand_build_error, "")
+
+
 if __name__ == "__main__":
     unittest.main()

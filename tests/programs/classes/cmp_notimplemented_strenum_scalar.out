@@ -1,0 +1,82 @@
+value a
+word eq
+word eq
+word ne
+word ne
+True True False False
+word eq
+word eq
+True True
+word lt
+word lt
+False False
+value b
+word eq
+word eq
+word ne
+word ne
+False False True True
+word eq
+word eq
+False False
+word lt
+word lt
+True True
+value a
+word eq
+word eq
+word ne
+word ne
+True True False False
+word eq
+word eq
+True True
+word lt
+word lt
+False False
+value None
+word eq
+word eq
+word ne
+word ne
+False False True True
+word eq
+word eq
+False False
+word lt
+ordering error
+value a
+word eq
+word eq
+word ne
+word ne
+True True False False
+word eq
+word eq
+True True
+word lt
+word lt
+False False
+value z
+word eq
+word eq
+word ne
+word ne
+False False True True
+word eq
+word eq
+False False
+word lt
+word lt
+True True
+False
+eq only
+eq only
+True True False False
+eq only
+eq only
+False False True True
+eq only
+eq only
+True True False False
+[exit 0]

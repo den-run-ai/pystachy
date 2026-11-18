@@ -12,8 +12,8 @@ review and validation history.
 Use two clean checkouts with freshly built native `./pystachy` compilers. Build
 them separately before timing, and keep other builds and heavy tests off the
 host during the measurement. The recorded run uses CPython 3.13.16 and LLVM
-18.1.3 on Linux x86-64. `PYSTACHY_LLVM` is mandatory so both builds and runs use
-the intended matching toolchain.
+18.1.3 on Linux x86-64; its CPU model was not recorded. `PYSTACHY_LLVM` is
+mandatory so both builds and runs use the intended matching toolchain.
 
 From the candidate checkout, after building both checkouts:
 

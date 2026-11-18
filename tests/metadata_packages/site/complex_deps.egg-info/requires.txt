@@ -1,0 +1,13 @@
+
+dep1
+dep2
+
+[:python_version < "3"]
+dep3
+
+[extra1]
+dep4
+dep6@ git+https://example.com/python/dep.git@v1.0.0
+
+[extra2:python_version < "3"]
+dep5

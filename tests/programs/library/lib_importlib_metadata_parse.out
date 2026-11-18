@@ -1,0 +1,56 @@
+crlf-pkg 4
+    'Name' 'crlf-pkg'
+    'Version' '1.0'
+    'Summary' '       first\nsecond'
+    'Description' 'Body line 1\nBody line 2\n'
+cr-pkg 4
+    'Name' 'cr-pkg'
+    'Version' '1.0'
+    'Summary' '       first\nsecond'
+    'Description' 'Body line 1\nBody line 2\n'
+nosep-pkg 3
+    'Name' 'nosep-pkg'
+    'Version' '1.0'
+    'Description' 'this line has no colon\nKey: in the body\n'
+odd-pkg 9
+    'Name' 'odd-pkg'
+    'Version' '1.0'
+    'X-Mixed' 'one'
+    'x-mixed' 'two'
+    'No-Value' ''
+    'Tabbed' 'value\twith tabs\t'
+    'Colon' 'a: b: c'
+    'Folded' '        continued value\n\tand a tab'
+    'Description' 'Spaced : not a header\nAfter: the body began\n'
+from-pkg 3
+    'Name' 'from-pkg'
+    'Version' '1.0'
+    'Description' 'From the end\nBody after the separator\n'
+onlyfrom 0
+nometa 0
+noversion 1
+    'Name' 'noversion'
+multi 2
+    'Name' 'multi-part'
+    'Version' '7.0'
+upper-pkg 2
+    'Name' 'UPPER-PKG'
+    'Version' '1.0'
+sep-pkg 5
+    'Name' 'sep-pkg'
+    'Version' '1.0'
+    'Summary' 'form\x0cfeed and\u2028separator stay'
+    'Note' 'x\x85y\x1cz'
+    'Description' 'Body\x0cmore\u2029text\n'
+fold-pkg 8
+    'Name' 'fold-pkg'
+    'Version' '1.0'
+    'A' '        one\n\t  deep\n\t shallow'
+    'B' '      one\n  four\ntwo\n    six'
+    'C' '    one\n\nafter blank'
+    'D' '     first on next line\nsecond'
+    'E' '        one\n \tmixed\n\t mixed'
+    'F' 'one\neight\n    twelve'
+['one', 'two'] one True False False
+['Name', 'Version', 'X-Mixed', 'x-mixed', 'No-Value', 'Tabbed', 'Colon', 'Folded', 'Description']
+[exit 0]

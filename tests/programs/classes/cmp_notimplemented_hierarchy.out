@@ -1,0 +1,76 @@
+Base.__eq__ Base Base
+Base.__eq__ Base Base
+Base.__lt__ Base Base
+False True True
+Sub.__eq__ Sub Base
+Base.__eq__ Base Sub
+Sub.__eq__ Sub Base
+Base.__eq__ Base Sub
+Sub.__gt__ Sub Base
+Base.__lt__ Base Sub
+True False False
+Sub.__eq__ Sub Base
+Base.__eq__ Base Sub
+Sub.__eq__ Sub Base
+Base.__eq__ Base Sub
+Base.__lt__ Sub Base
+True False False
+Sub.__eq__ Sub Sub
+Base.__eq__ Sub Sub
+Sub.__eq__ Sub Sub
+Base.__eq__ Sub Sub
+Base.__lt__ Sub Sub
+False True True
+Sub.__gt__ Sub Base
+Base.__lt__ Base Sub
+Sub.__gt__ Sub Base
+Base.__lt__ Base Sub
+Sub.__gt__ Sub Sub
+True True False
+Base.__eq__ Base Other
+Other.__eq__ Base
+Other.__eq__ Base
+Base.__eq__ Base Other
+Other.__eq__ Base
+Base.__lt__ Base Other
+Other.__gt__ Base
+Sub.__eq__ Sub Other
+Other.__eq__ Sub
+True True False False True
+Other.__eq__ Other
+Other.__eq__ Other
+Other.__eq__ Other
+Other.__eq__ Other
+False True
+Other.__gt__ Other
+TypeError '>' not supported between instances of 'Other' and 'Other'
+TypeError '<' not supported between instances of 'Other' and 'Base'
+Base.__eq__ Base NoneType
+Base.__eq__ Base NoneType
+False True
+Base.__lt__ Base NoneType
+TypeError '<' not supported between instances of 'Base' and 'NoneType'
+Base.__eq__ Base NoneType
+Base.__eq__ Base NoneType
+False True
+TypeError '<' not supported between instances of 'NoneType' and 'Base'
+True False
+TypeError '<' not supported between instances of 'NoneType' and 'NoneType'
+Sub.__eq__ Sub Base
+Base.__eq__ Base Sub
+Sub.__eq__ Sub Base
+Base.__eq__ Base Sub
+False True
+Base.__lt__ Sub Base
+True
+Base.__eq__ Base Base
+Sub.__eq__ Sub Sub
+Base.__eq__ Sub Sub
+Sub.__eq__ Sub Base
+Base.__eq__ Base Sub
+one two True 3
+Sub.__gt__ Sub Base
+Base.__lt__ Base Sub
+Base.__lt__ Base Base
+0
+[exit 0]

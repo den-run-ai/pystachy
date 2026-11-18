@@ -1,0 +1,4 @@
+defaultdict(<class 'list'>, {'b': [2, 3], 'a': [1], 'absent': []}) [] 3
+0 0 ['b', 'a'] 1 1
+True Counter OrderedDict
+[exit 0]

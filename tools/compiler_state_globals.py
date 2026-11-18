@@ -24,11 +24,12 @@ driver.COMPILER_SOURCES driver.CPUID driver.LLJIT_LLVM driver.RTPARTS
 jit_helpers.BARRED jit_helpers.BRANCHES jit_helpers.COLD jit_helpers.LINKAGE jit_helpers.SCALARS
 dynamic.XCMP dynamic.XOPS dynamic.BINOPS dynamic.UNOPS dynamic.CMPOPS
 dynamic.BINDUNDERS dynamic.BUILTIN dynamic_proof.BUILTIN_KINDS dynamic_proof.BUILTIN_PAYLOADS
-dynamic_proof.BOX_TAGS expressions.ORDERS
+dynamic_proof.BOX_TAGS expressions.ORDERS expressions.CMPDUNDERS
 ir.NONUMS ir.NOVALS ir.NOLABELS ircheck.RESULT_NUMBERS
 lexer.KEYWORDS lexer.OPS lexer.ESCAPES lexer.PREFIXES lexer.NONPRINT lexer.NOTID
-loader.ENUM_NAMES loader.ENUM_BASES loader.ENUM_HOOKS
+loader.ENUM_NAMES loader.ENUM_BASES loader.ENUM_HOOKS loader.FUNCTOOLS_NAMES
 local_versions.UNVERSIONED optimizations.PASS_CONTRACTS parser.ATOMS patterns.SEQ_SCALARS
+pipeline.STAGE_PREDECESSORS
 reflection.BUILTIN_TYPES reflection.CLASS_BUILTINS reflection.SLOT_WRAPPERS reflection.OBJ_BUILTINS reflection.TYPE_BUILTINS reflection.PICKLING
 scalar_ir.SCALAR_INTS scalar_ir.SCALAR_BIN scalar_ir.SCALAR_FLOAT
 scalar_ir.SCALAR_ICMP scalar_ir.SCALAR_FCMP scalar_ir.SCALAR_CASTS scope.COMPNAMES
@@ -40,7 +41,7 @@ specs.CALLS specs.RTL specs.TBAA_SIZES specs.TBAA_NAMES specs.ERRNO specs.MODFUN
 specs.CTYPES specs.MODATTRS specs.OSCONST specs.FLOATINFO specs.VERSIONINFO
 specs.TYPING specs.TYPEARGS specs.ABCS specs.ABCSMORE specs.RANGE_TAKERS specs.RANGE_METHODS
 specs.FUTURE specs.DEFAULTS specs.EXCEPTIONS specs.EXCBASES specs.PLAIN_EXC_BASES specs.EXCATTRS specs.EXCINIT
-specs.EXCKW specs.HASATTR specs.NONEARG specs.OPTARG specs.NONERET specs.OPTCALLS
+specs.EXCKW specs.HASATTR specs.NONEARG specs.OPTARG specs.NONERET specs.OPTCALLS specs.PROTOCOL_MATH
 specs.NOREF specs.UNSUPPORTED specs.INERT_DECOS specs.INERT specs.PURE specs.RAISERS
 specs.CODECS specs.ARITY specs.METHODS specs.TEXT_OPS specs.UNICODE_AUDIT
 specs.FSETMETHODS specs.SETMETHODS specs.IROPS specs.OPTS specs.VALUE_AT specs.FX specs.LIST_READS specs.LIST_WRITES
@@ -99,7 +100,7 @@ WRITERS = {
     "diagnostics.INTFILES": {"loader.Loader.program", "loader.Loader.pragmas"},
     "diagnostics.INTSPANS": {"loader.Loader.program", "loader.Loader.int_spans"},
     "syntax.LAMBDAS": {"parser.Parser.test1", "driver.compile_program"},
-    "names.RENAMED": {"program.gen_program", "driver.compile_program"},
+    "names.RENAMED": {"program.gen_prepare_program", "pipeline.gen_lower_program", "driver.compile_program"},
     "names.ENUMCLASSES": {"loader.Loader.program", "loader.enum_classes"},
     "program_cache.ACTIVE": {"program_cache.start", "program_cache.stop"},
     "program_cache.VALID": {"program_cache.start", "program_cache._record", "program_cache.tracked_kind",

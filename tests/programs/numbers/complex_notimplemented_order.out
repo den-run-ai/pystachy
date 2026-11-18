@@ -1,0 +1,60 @@
+plain eq
+plain eq
+plain ne
+plain ne
+False False True True
+plain eq
+plain eq
+plain eq
+plain eq
+False False 0
+plain eq
+plain eq
+plain ne
+plain ne
+False False True True
+plain eq
+plain eq
+plain eq
+plain eq
+False False 0
+False False True True
+False False 0
+True True False False
+True True 2
+base eq
+base eq
+base eq
+base eq
+False False True True
+base eq
+base eq
+base eq
+base eq
+False False 0
+child eq
+child eq
+child eq
+child eq
+False False True True
+child eq
+child eq
+child eq
+child eq
+False False 0
+child eq
+child eq
+child eq
+child eq
+False False True True
+child eq
+child eq
+child eq
+child eq
+False False 0
+False False True True
+False False 0
+True True False False
+True True 2
+True False True
+[exit 0]

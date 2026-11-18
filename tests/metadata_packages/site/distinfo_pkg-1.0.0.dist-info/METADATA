@@ -1,0 +1,9 @@
+Name: distinfo-pkg
+Author: Steven Ma
+Version: 1.0.0
+Requires-Dist: wheel >= 1.0
+Requires-Dist: pytest; extra == 'test'
+Keywords: sample package
+
+Once upon a time
+There was a distinfo pkg

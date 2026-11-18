@@ -145,10 +145,13 @@ try:
     from fractions import Fraction
 except ImportError:
     pass
-try:
-    from decimal import Decimal
-except ImportError:
-    pass
+# Pystachy port: Decimal data is not accepted natively yet, so only CPython loads decimal here
+# (CPython: from decimal import Decimal). Natively the name stays unbound, as when decimal was
+# not shipped, and a program that imports statistics does not compile decimal. It is not spelled
+# as an import statement, so that tools that follow a program's imports by their text
+# (tools/check_lean_corpus.py) do not count decimal among a statistics program's modules.
+if sys.implementation.name == "cpython":
+    Decimal = __import__("decimal").Decimal
 try:
     from itertools import count, groupby, repeat
 except ImportError:
