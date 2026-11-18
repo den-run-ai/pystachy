@@ -1,0 +1,65 @@
+80 80 -1
+-5 11 -7
+store store 2 None
+True False False True
+False True True True
+['port', 'port', 'nope', 'extra', 'ready', 'nope', 'port', 'nope', 'extra', 'ready']
+AttributeError: no nope
+KeyError: 'boom'
+KeyError: 'boom'
+port, and no nope
+99 99 True
+55 55 True
+port 80 True
+depth 3 True
+zzz None False
+a1 False False
+a2 False False
+port True True
+depth True True
+nope False False
+kind True True
+extra False True
+ready False False
+asked True True
+data True True
+boom KeyError: 'boom'
+size True True
+__class__ True True
+__getattr__ True True
+['a1', 'a2', 'port', 'depth', 'nope', 'extra', 'ready', 'boom'] ['a1', 'a2', 'port', 'depth', 'nope', 'ready']
+a1 dflt None
+a1 AttributeError: no a1
+a2 dflt None
+a2 AttributeError: no a2
+port 80 80
+port 80
+port=80 80!
+depth 3 3
+depth 3
+depth=3 3!
+nope dflt None
+nope AttributeError: no nope
+kind store store
+kind store
+kind='store' store!
+extra dflt 11
+extra AttributeError: no extra
+ready dflt None
+ready AttributeError: no ready
+asked ['a1', 'a2', 'port', 'depth', 'nope', 'extra', 'ready', 'boom', 'a1', 'a1', 'a2', 'a2', 'port', 'port', 'depth', 'depth', 'nope', 'nope', 'extra', 'extra', 'ready', 'ready'] ['a1', 'a2', 'port', 'depth', 'nope', 'ready', 'a1', 'a2', 'port', 'port', 'port', 'depth', 'depth', 'depth', 'nope', 'ready']
+asked ['a1', 'a2', 'port', 'depth', 'nope', 'extra', 'ready', 'boom', 'a1', 'a1', 'a2', 'a2', 'port', 'port', 'depth', 'depth', 'nope', 'nope', 'extra', 'extra', 'ready', 'ready']
+asked=['a1', 'a2', 'port', 'depth', 'nope', 'ready', 'a1', 'a2', 'port', 'port', 'port', 'depth', 'depth', 'depth', 'nope', 'ready'] ['a1', 'a2', 'port', 'depth', 'nope', 'ready', 'a1', 'a2', 'port', 'port', 'port', 'depth', 'depth', 'depth', 'nope', 'ready']!
+data {'port': 80, 'depth': 3} {'port': 80, 'depth': 3}
+data {'port': 80, 'depth': 3}
+data={'port': 80, 'depth': 3} {'port': 80, 'depth': 3}!
+boom KeyError: 'boom'
+boom KeyError: 'boom'
+['a1', 'a2', 'port', 'depth', 'nope', 'extra', 'ready', 'boom', 'a1', 'a1', 'a2', 'a2', 'port', 'port', 'depth', 'depth', 'nope', 'nope', 'extra', 'extra', 'ready', 'ready', 'boom', 'boom']
+['a1', 'a2', 'port', 'depth', 'nope', 'ready', 'a1', 'a2', 'port', 'port', 'port', 'depth', 'depth', 'depth', 'nope', 'ready']
+has early 3
+True False
+has early 3
+True False
+5 3
+[exit 0]

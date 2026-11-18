@@ -1,6 +1,6 @@
 # Classes whose special methods CPython calls as their objects' attributes are read, assigned and
 # deleted, and exception classes that define or inherit one: each is an error only where the
-# program uses it (tests/errors/imports/import_*attr*.py)
+# program uses it (tests/errors/imports/import_*attr*.py); Lazy's __getattr__ is called (#1536)
 class Lazy:
     def __init__(self, full: bool) -> None:
         if full:

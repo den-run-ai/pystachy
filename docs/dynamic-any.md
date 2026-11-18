@@ -820,9 +820,12 @@ raise an explicit `TypeError` until runtime insertion order is supported (#486),
 deferred text conversion; `hasattr` and `dir` use the normal assignment flags. Iteration
 already in progress retains its dictionary-size mutation check. This boundary is recorded
 in `tests/deviations/dynany_cmp_field_reflection.py`.
-Custom `__getattr__`/`__getattribute__` methods remain explicit compile-time rejections,
-not new supported lookup paths. This matrix does not establish a complete comparison
-contract or implement the broader operation-table design in #803.
+A custom `__getattribute__` remains an explicit compile-time rejection, and so does an
+object of a class with `__getattr__` as an `Any` value: typed code calls that method
+([attribute fallback](language/semantics.md#attribute-fallback)), but the lookups of an
+`Any` value do not, so neither is a new supported lookup path here. This matrix does not
+establish a complete comparison contract or implement the broader operation-table design
+in #803.
 
 ### Comparison selection and failures
 

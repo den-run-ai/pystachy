@@ -525,10 +525,18 @@ def gen_fl_fields(self, ci: ClassInfo) -> None:
             fl.me = init.params[0]
             fl.sbase = self.classes[init.cls].base if init.cls in self.classes else ""
             # (outside a hierarchy, whose reads keep their flags' tests; the builtin hasattr)
-            fl.probes = ci.exc == "" and ci.tag == 0 and "hasattr" not in asg and "hasattr" not in init.params and not self.bound("hasattr")
+            fl.probes = ci.exc == "" and ci.tag == 0 and "hasattr" not in asg and "hasattr" not in init.params and not self.bound("hasattr") and "__getattr__" not in ci.methods
+            if ci.exc == "" and ci.tag > 0 and fl.sbase in self.classes and self.classes[fl.sbase].flowed:
+                # (in a hierarchy, where every field has a flag: super().__init__() surely assigns
+                # what the __init__ it calls surely does, for funset alone)
+                sb = self.classes[fl.sbase]
+                for f in sb.fields:
+                    if f in sb.fflag and f not in sb.funset and not f.startswith(" "):
+                        fl.sup.append(f)
             self.fl_stmts(fl, init.node.kids[2].kids)
         fl.exposed()
         ci.leak = fl.escaped
+    ci.funset = dict(fl.unsafe)  # (what a class's __getattr__ may be asked for in place of a field: reflection.py)
     for f in ci.fields:
         # A derived constructor can omit the base constructor, or call an override before
         # assigning its own fields. Keep assignment bits in the root layout so base-typed

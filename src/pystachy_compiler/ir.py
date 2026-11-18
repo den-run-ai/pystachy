@@ -612,6 +612,7 @@ class ClassInfo:
         self.fbox: dict[str, int] = {}  # numeric field -> its companion identity-box index
         self.nbox = 0  # own companion boxes after the assignment flags
         self.fsure: dict[str, bool] = {}  # the flagged fields that no read finds unassigned (hasattr tests them)
+        self.funset: dict[str, bool] = {}  # the fields an object of exactly this class may be read without (fl_fields)
         self.methods: dict[str, FnInfo] = {}
         self.mod = ""
         self.bad = ""  # why a class of an imported module cannot be compiled: an error where it is used

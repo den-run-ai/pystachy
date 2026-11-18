@@ -8,7 +8,7 @@ from src.pystachy_compiler.dynamic import boxed_list_items, comparison_container
 from src.pystachy_compiler.ir import ClassInfo, Data, FmtArgs, FnInfo, Ins, IterArg, Loop, Val, tmpname, one_num
 from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.patterns import pattern_expr, pattern_static
-from src.pystachy_compiler.reflection import VARS_USES, refl_annotated, refl_body, refl_fold, refl_reflective
+from src.pystachy_compiler.reflection import VARS_USES, has_hook, hook_missing, hook_of, hook_read, refl_annotated, refl_body, refl_fold, refl_reflective
 from src.pystachy_compiler.specs import (
     BIG,
     BIGOPT,
@@ -277,8 +277,8 @@ def gen_static(self, n: Node) -> int:
         t = self.static_type(n.kids[1], True)
         if t == "dyn" or (t in self.classes and self.classes[t].tag > 0):
             return -1  # the concrete class may add attributes beyond the static type
-        if t != "" and (self.refl_prop_in(t, n.kids[2].s) or self.reference_union(t)):
-            return -1  # (a property's getter, or the union's member, decides: reflection.py)
+        if t != "" and (self.refl_prop_in(t, n.kids[2].s) or hook_of(self, t) != 0 or self.reference_union(t)):
+            return -1  # (a property's getter, a class's __getattr__ or the union's member decides: reflection.py)
         h = self.has(t, n.kids[2].s) if t != "" else -1
         return 1 if h == -1 and self.knownobj(n.kids[1]) else max(h, -1)
     if k == "call" and n.kids[0].kind == "name" and n.kids[0].s == "isinstance" and not self.bound("isinstance") and len(n.kids) == 3:
@@ -1177,6 +1177,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if o.t == "file" and (n.s == "closed" or n.s == "name" or n.s == "mode"):
             r = self.rt(f"pys_file_{n.s}", "i64" if n.s == "closed" else "ptr", [f"ptr {o.v}"])
             return self.num_cmp('!=', Val(r, "int"), Val('0', "int")) if n.s == "closed" else Val(r, "str")
+        if has_hook(self, o.t) and hook_missing(self, o.t, n.s):
+            return hook_read(self, o, n.s)  # (its class's __getattr__: reflection.py)
         bm = self.method_value(o, n.s)
         if bm.t != "":
             return bm
