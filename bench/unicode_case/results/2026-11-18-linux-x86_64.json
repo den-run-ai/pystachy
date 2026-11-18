@@ -1,0 +1,1624 @@
+{
+  "date": "2026-11-18",
+  "parent_commit": "3cf23d20357be84bf731090112cdb89df0749cb4",
+  "candidate_commit": "03c32d8c6a32f4316b32459a0e3cec1282303718",
+  "sources": {
+    "bench/unicode_case/opbench.py": "8a99f89d71a4401208ada0869d8f07c5f92a64d67bccb1699ab7754ceda98488",
+    "bench/unicode_case/casebench.py": "8f8a1faa2c9074e804a08b13327812bbbb9c2c117112cb77840cfbcc291e7ae6",
+    "bench/words.py": "e17e9c90dbf278baf541801ad04800510e3df2b9dc16afa1f53040bc710e61b7"
+  },
+  "compiler": "CPython-hosted compiler of each commit (python3.13 pystachy.py build), PYSTACHY_PROGRAM_CACHE=0, a private PYSTACHY_CACHE for each commit",
+  "compile_mode": "AOT, default optimization, linked with the commit's cached runtime object",
+  "python": "CPython 3.13.16, built from source with GCC 13.3.0 at -O3, without profile-guided or link-time optimization",
+  "llvm": "18.1.3",
+  "valgrind": "3.22.0",
+  "platform": "x86_64 Linux, Intel Xeon 2.10 GHz, 4 virtual CPUs, shared host",
+  "oracle": "Every output compared with CPython's before counting or timing",
+  "instruction_counts": {
+    "metric": "callgrind Ir of the whole process; each count taken twice with the same result",
+    "command": "valgrind --tool=callgrind --callgrind-out-file=/dev/null EXECUTABLE ARGV",
+    "results": [
+      {
+        "case": "bench/words.py",
+        "argv": [],
+        "parent": 484646987,
+        "candidate": 480055524,
+        "change_percent": -0.95
+      },
+      {
+        "case": "casebench short",
+        "argv": [
+          "short",
+          "20000",
+          "The Quick Brown Fox Jumps Over The Lazy Dog and KEEPS running"
+        ],
+        "parent": 140753068,
+        "candidate": 140578643,
+        "change_percent": -0.12
+      },
+      {
+        "case": "casebench long",
+        "argv": [
+          "long",
+          "20",
+          "The Quick Brown Fox Jumps Over The Lazy Dog and KEEPS running"
+        ],
+        "parent": 139718914,
+        "candidate": 74718896,
+        "change_percent": -46.52
+      },
+      {
+        "case": "lower, long",
+        "argv": [
+          "lower",
+          "100",
+          "2000",
+          "The Quick Brown Fox Jumps Over The Lazy Dog and KEEPS running "
+        ],
+        "parent": 88664653,
+        "candidate": 22812332,
+        "change_percent": -74.27
+      },
+      {
+        "case": "upper, long",
+        "argv": [
+          "upper",
+          "100",
+          "2000",
+          "The Quick Brown Fox Jumps Over The Lazy Dog and KEEPS running "
+        ],
+        "parent": 88669153,
+        "candidate": 22816432,
+        "change_percent": -74.27
+      },
+      {
+        "case": "swapcase, long",
+        "argv": [
+          "swapcase",
+          "100",
+          "2000",
+          "The Quick Brown Fox Jumps Over The Lazy Dog and KEEPS running "
+        ],
+        "parent": 89703917,
+        "candidate": 23846832,
+        "change_percent": -73.42
+      },
+      {
+        "case": "casefold, long",
+        "argv": [
+          "casefold",
+          "100",
+          "2000",
+          "The Quick Brown Fox Jumps Over The Lazy Dog and KEEPS running "
+        ],
+        "parent": 88930017,
+        "candidate": 23072932,
+        "change_percent": -74.05
+      },
+      {
+        "case": "title, long",
+        "argv": [
+          "title",
+          "100",
+          "2000",
+          "The Quick Brown Fox Jumps Over The Lazy Dog and KEEPS running "
+        ],
+        "parent": 222836153,
+        "candidate": 227101900,
+        "change_percent": 1.91
+      },
+      {
+        "case": "capitalize, long",
+        "argv": [
+          "capitalize",
+          "100",
+          "2000",
+          "The Quick Brown Fox Jumps Over The Lazy Dog and KEEPS running "
+        ],
+        "parent": 88928817,
+        "candidate": 23069884,
+        "change_percent": -74.06
+      },
+      {
+        "case": "islower, long",
+        "argv": [
+          "islower",
+          "100",
+          "2000",
+          "the quick brown fox jumps over the lazy dog and keeps running "
+        ],
+        "parent": 137115088,
+        "candidate": 128976071,
+        "change_percent": -5.94
+      },
+      {
+        "case": "isupper, long",
+        "argv": [
+          "isupper",
+          "100",
+          "2000",
+          "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG AND KEEPS RUNNING "
+        ],
+        "parent": 137110888,
+        "candidate": 141371171,
+        "change_percent": 3.11
+      },
+      {
+        "case": "istitle, long",
+        "argv": [
+          "istitle",
+          "100",
+          "2000",
+          "The Quick Brown Fox Jumps Over The Lazy Dog And Keeps Running "
+        ],
+        "parent": 189520788,
+        "candidate": 177118171,
+        "change_percent": -6.54
+      },
+      {
+        "case": "isalpha, long",
+        "argv": [
+          "isalpha",
+          "100",
+          "2000",
+          "TheQuickBrownFoxJumpsOverTheLazyDogandKEEPSrunning"
+        ],
+        "parent": 170706830,
+        "candidate": 170702713,
+        "change_percent": -0.0
+      },
+      {
+        "case": "isalnum, long",
+        "argv": [
+          "isalnum",
+          "100",
+          "2000",
+          "TheQuickBrownFoxJumpsOverTheLazyDogandKEEPSrunning"
+        ],
+        "parent": 200711930,
+        "candidate": 200707813,
+        "change_percent": -0.0
+      },
+      {
+        "case": "repr, long",
+        "argv": [
+          "repr",
+          "100",
+          "2000",
+          "The Quick Brown Fox Jumps Over The Lazy Dog and KEEPS running "
+        ],
+        "parent": 175979542,
+        "candidate": 175975273,
+        "change_percent": -0.0
+      },
+      {
+        "case": "isupper, long lower-case text",
+        "argv": [
+          "isupper",
+          "100",
+          "2000",
+          "the quick brown fox jumps over the lazy dog and keeps running "
+        ],
+        "parent": 711237,
+        "candidate": 707420,
+        "change_percent": -0.54
+      }
+    ]
+  },
+  "instructions_per_call": {
+    "metric": "callgrind Ir of opbench.py METHOD 200000 1 TEXT less that of METHOD 0 1 TEXT, by 200000: a call and the benchmark's own loop",
+    "results": [
+      {
+        "method": "lower",
+        "text": "Hello",
+        "calls": 200000,
+        "parent": 176.5,
+        "candidate": 166.5,
+        "change": -10.0
+      },
+      {
+        "method": "upper",
+        "text": "Hello",
+        "calls": 200000,
+        "parent": 221.5,
+        "candidate": 208.5,
+        "change": -13.0
+      },
+      {
+        "method": "swapcase",
+        "text": "Hello",
+        "calls": 200000,
+        "parent": 197.5,
+        "candidate": 187.5,
+        "change": -10.0
+      },
+      {
+        "method": "casefold",
+        "text": "Hello",
+        "calls": 200000,
+        "parent": 229.5,
+        "candidate": 219.5,
+        "change": -10.0
+      },
+      {
+        "method": "title",
+        "text": "hello",
+        "calls": 200000,
+        "parent": 283.5,
+        "candidate": 299.5,
+        "change": 16.0
+      },
+      {
+        "method": "capitalize",
+        "text": "hello",
+        "calls": 200000,
+        "parent": 204.2,
+        "candidate": 204.3,
+        "change": 0.1
+      },
+      {
+        "method": "islower",
+        "text": "hello",
+        "calls": 200000,
+        "parent": 191.3,
+        "candidate": 203.2,
+        "change": 11.9
+      },
+      {
+        "method": "isupper",
+        "text": "HELLO",
+        "calls": 200000,
+        "parent": 149.3,
+        "candidate": 159.2,
+        "change": 9.9
+      },
+      {
+        "method": "istitle",
+        "text": "Hello",
+        "calls": 200000,
+        "parent": 269.3,
+        "candidate": 281.2,
+        "change": 11.9
+      },
+      {
+        "method": "isalpha",
+        "text": "hello",
+        "calls": 200000,
+        "parent": 346.3,
+        "candidate": 347.2,
+        "change": 0.9
+      },
+      {
+        "method": "isalnum",
+        "text": "hello",
+        "calls": 200000,
+        "parent": 412.3,
+        "candidate": 413.2,
+        "change": 0.9
+      },
+      {
+        "method": "repr",
+        "text": "hello",
+        "calls": 200000,
+        "parent": 686.2,
+        "candidate": 685.2,
+        "change": -1.0
+      }
+    ]
+  },
+  "wall_times": {
+    "metric": "seconds of the whole process under taskset -c 2; five samples, AOT and CPython alternating",
+    "programs": "bench/unicode_case/opbench.py: the candidate's executable and CPython",
+    "results": [
+      {
+        "text": "Russian",
+        "method": "lower",
+        "argv": [
+          "lower",
+          "2000",
+          "2000",
+          "Съешь же ещё этих мягких французских булок да выпей чаю "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.8389,
+          0.7997,
+          0.7903,
+          0.8363,
+          0.7879
+        ],
+        "cpython_seconds": [
+          0.7239,
+          0.7355,
+          0.7231,
+          0.7013,
+          0.6958
+        ],
+        "aot_median": 0.7997,
+        "cpython_median": 0.7231,
+        "aot_over_cpython": 1.11
+      },
+      {
+        "text": "Russian",
+        "method": "upper",
+        "argv": [
+          "upper",
+          "2000",
+          "2000",
+          "Съешь же ещё этих мягких французских булок да выпей чаю "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.9606,
+          0.9831,
+          1.129,
+          0.9446,
+          0.9769
+        ],
+        "cpython_seconds": [
+          0.7528,
+          0.8991,
+          0.7484,
+          0.7581,
+          0.7613
+        ],
+        "aot_median": 0.9769,
+        "cpython_median": 0.7581,
+        "aot_over_cpython": 1.29
+      },
+      {
+        "text": "Russian",
+        "method": "swapcase",
+        "argv": [
+          "swapcase",
+          "2000",
+          "2000",
+          "Съешь же ещё этих мягких французских булок да выпей чаю "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          1.0549,
+          1.1302,
+          1.1649,
+          1.1285,
+          1.0264
+        ],
+        "cpython_seconds": [
+          1.4666,
+          1.4437,
+          1.3941,
+          1.3889,
+          1.3889
+        ],
+        "aot_median": 1.1285,
+        "cpython_median": 1.3941,
+        "aot_over_cpython": 0.81
+      },
+      {
+        "text": "Russian",
+        "method": "casefold",
+        "argv": [
+          "casefold",
+          "2000",
+          "2000",
+          "Съешь же ещё этих мягких французских булок да выпей чаю "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.8186,
+          0.7841,
+          0.9114,
+          0.8179,
+          0.7787
+        ],
+        "cpython_seconds": [
+          0.8,
+          0.8006,
+          0.8481,
+          0.8211,
+          0.7972
+        ],
+        "aot_median": 0.8179,
+        "cpython_median": 0.8006,
+        "aot_over_cpython": 1.02
+      },
+      {
+        "text": "Russian",
+        "method": "title",
+        "argv": [
+          "title",
+          "2000",
+          "2000",
+          "Съешь же ещё этих мягких французских булок да выпей чаю "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          1.1873,
+          1.2431,
+          1.1831,
+          1.2752,
+          1.1876
+        ],
+        "cpython_seconds": [
+          1.6382,
+          1.5068,
+          1.6938,
+          1.571,
+          1.6034
+        ],
+        "aot_median": 1.1876,
+        "cpython_median": 1.6034,
+        "aot_over_cpython": 0.74
+      },
+      {
+        "text": "Russian",
+        "method": "capitalize",
+        "argv": [
+          "capitalize",
+          "2000",
+          "2000",
+          "Съешь же ещё этих мягких французских булок да выпей чаю "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.9476,
+          0.8379,
+          0.8392,
+          0.8752,
+          0.838
+        ],
+        "cpython_seconds": [
+          0.6602,
+          0.6544,
+          0.6482,
+          0.6509,
+          0.6537
+        ],
+        "aot_median": 0.8392,
+        "cpython_median": 0.6537,
+        "aot_over_cpython": 1.28
+      },
+      {
+        "text": "Russian",
+        "method": "islower",
+        "argv": [
+          "islower",
+          "2000",
+          "2000",
+          "съешь же ещё этих мягких французских булок да выпей чаю "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.426,
+          0.4201,
+          0.4155,
+          0.4162,
+          0.3988
+        ],
+        "cpython_seconds": [
+          0.7514,
+          0.773,
+          0.6902,
+          0.7091,
+          0.7073
+        ],
+        "aot_median": 0.4162,
+        "cpython_median": 0.7091,
+        "aot_over_cpython": 0.59
+      },
+      {
+        "text": "Russian",
+        "method": "isupper",
+        "argv": [
+          "isupper",
+          "2000",
+          "2000",
+          "СЪЕШЬ ЖЕ ЕЩЁ ЭТИХ МЯГКИХ ФРАНЦУЗСКИХ БУЛОК ДА ВЫПЕЙ ЧАЮ "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.4579,
+          0.3861,
+          0.3967,
+          0.3977,
+          0.3788
+        ],
+        "cpython_seconds": [
+          0.6027,
+          0.6835,
+          0.6301,
+          0.6379,
+          0.663
+        ],
+        "aot_median": 0.3967,
+        "cpython_median": 0.6379,
+        "aot_over_cpython": 0.62
+      },
+      {
+        "text": "Russian",
+        "method": "istitle",
+        "argv": [
+          "istitle",
+          "2000",
+          "2000",
+          "Съешь Же Ещё Этих Мягких Французских Булок Да Выпей Чаю "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.8474,
+          0.8859,
+          0.8927,
+          0.8182,
+          0.8324
+        ],
+        "cpython_seconds": [
+          0.9065,
+          0.906,
+          0.8588,
+          0.8551,
+          0.9361
+        ],
+        "aot_median": 0.8474,
+        "cpython_median": 0.906,
+        "aot_over_cpython": 0.94
+      },
+      {
+        "text": "Russian",
+        "method": "isalpha",
+        "argv": [
+          "isalpha",
+          "2000",
+          "2000",
+          "Съешьжеещёэтихмягкихфранцузскихбулокдавыпейчаю"
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.3743,
+          0.4039,
+          0.382,
+          0.4275,
+          0.3561
+        ],
+        "cpython_seconds": [
+          0.3203,
+          0.3152,
+          0.3215,
+          0.2565,
+          0.2616
+        ],
+        "aot_median": 0.382,
+        "cpython_median": 0.3152,
+        "aot_over_cpython": 1.21
+      },
+      {
+        "text": "Russian",
+        "method": "isalnum",
+        "argv": [
+          "isalnum",
+          "2000",
+          "2000",
+          "Съешьжеещёэтихмягкихфранцузскихбулокдавыпейчаю"
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.3718,
+          0.3826,
+          0.3913,
+          0.3762,
+          0.4044
+        ],
+        "cpython_seconds": [
+          0.2579,
+          0.2631,
+          0.2686,
+          0.327,
+          0.2657
+        ],
+        "aot_median": 0.3826,
+        "cpython_median": 0.2657,
+        "aot_over_cpython": 1.44
+      },
+      {
+        "text": "Russian",
+        "method": "repr",
+        "argv": [
+          "repr",
+          "2000",
+          "2000",
+          "Съешь же ещё этих мягких французских булок да выпей чаю "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.387,
+          0.3555,
+          0.3579,
+          0.3395,
+          0.4137
+        ],
+        "cpython_seconds": [
+          0.7501,
+          0.752,
+          0.6928,
+          0.6982,
+          0.7345
+        ],
+        "aot_median": 0.3579,
+        "cpython_median": 0.7345,
+        "aot_over_cpython": 0.49
+      },
+      {
+        "text": "Chinese",
+        "method": "lower",
+        "argv": [
+          "lower",
+          "2000",
+          "2000",
+          "天地玄黃宇宙洪荒日月盈昃辰宿列張寒來暑往秋收冬藏 "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.4306,
+          0.3675,
+          0.3684,
+          0.3679,
+          0.3597
+        ],
+        "cpython_seconds": [
+          0.3628,
+          0.3263,
+          0.3309,
+          0.3275,
+          0.3325
+        ],
+        "aot_median": 0.3679,
+        "cpython_median": 0.3309,
+        "aot_over_cpython": 1.11
+      },
+      {
+        "text": "Chinese",
+        "method": "upper",
+        "argv": [
+          "upper",
+          "2000",
+          "2000",
+          "天地玄黃宇宙洪荒日月盈昃辰宿列張寒來暑往秋收冬藏 "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.3838,
+          0.3614,
+          0.378,
+          0.3947,
+          0.3483
+        ],
+        "cpython_seconds": [
+          0.3119,
+          0.3369,
+          0.3521,
+          0.3332,
+          0.3194
+        ],
+        "aot_median": 0.378,
+        "cpython_median": 0.3332,
+        "aot_over_cpython": 1.13
+      },
+      {
+        "text": "Chinese",
+        "method": "swapcase",
+        "argv": [
+          "swapcase",
+          "2000",
+          "2000",
+          "天地玄黃宇宙洪荒日月盈昃辰宿列張寒來暑往秋收冬藏 "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.4424,
+          0.3847,
+          0.4103,
+          0.3822,
+          0.4078
+        ],
+        "cpython_seconds": [
+          0.3851,
+          0.4519,
+          0.406,
+          0.3906,
+          0.4135
+        ],
+        "aot_median": 0.4078,
+        "cpython_median": 0.406,
+        "aot_over_cpython": 1.0
+      },
+      {
+        "text": "Chinese",
+        "method": "casefold",
+        "argv": [
+          "casefold",
+          "2000",
+          "2000",
+          "天地玄黃宇宙洪荒日月盈昃辰宿列張寒來暑往秋收冬藏 "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.3806,
+          0.3873,
+          0.4124,
+          0.3789,
+          0.3867
+        ],
+        "cpython_seconds": [
+          0.3598,
+          0.3985,
+          0.3639,
+          0.3632,
+          0.377
+        ],
+        "aot_median": 0.3867,
+        "cpython_median": 0.3639,
+        "aot_over_cpython": 1.06
+      },
+      {
+        "text": "Chinese",
+        "method": "title",
+        "argv": [
+          "title",
+          "2000",
+          "2000",
+          "天地玄黃宇宙洪荒日月盈昃辰宿列張寒來暑往秋收冬藏 "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.6595,
+          0.6337,
+          0.6258,
+          0.6791,
+          0.6197
+        ],
+        "cpython_seconds": [
+          0.435,
+          0.4679,
+          0.5284,
+          0.5246,
+          0.5031
+        ],
+        "aot_median": 0.6337,
+        "cpython_median": 0.5031,
+        "aot_over_cpython": 1.26
+      },
+      {
+        "text": "Chinese",
+        "method": "capitalize",
+        "argv": [
+          "capitalize",
+          "2000",
+          "2000",
+          "天地玄黃宇宙洪荒日月盈昃辰宿列張寒來暑往秋收冬藏 "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.4855,
+          0.3831,
+          0.3806,
+          0.3689,
+          0.3927
+        ],
+        "cpython_seconds": [
+          0.3842,
+          0.3019,
+          0.2998,
+          0.3042,
+          0.2964
+        ],
+        "aot_median": 0.3831,
+        "cpython_median": 0.3019,
+        "aot_over_cpython": 1.27
+      },
+      {
+        "text": "Chinese",
+        "method": "islower",
+        "argv": [
+          "islower",
+          "2000",
+          "2000",
+          "天地玄黃宇宙洪荒日月盈昃辰宿列張寒來暑往秋收冬藏 "
+        ],
+        "output": "0",
+        "aot_seconds": [
+          0.2519,
+          0.2587,
+          0.2835,
+          0.2708,
+          0.2651
+        ],
+        "cpython_seconds": [
+          0.4587,
+          0.5674,
+          0.4762,
+          0.4685,
+          0.5099
+        ],
+        "aot_median": 0.2651,
+        "cpython_median": 0.4762,
+        "aot_over_cpython": 0.56
+      },
+      {
+        "text": "Chinese",
+        "method": "isupper",
+        "argv": [
+          "isupper",
+          "2000",
+          "2000",
+          "天地玄黃宇宙洪荒日月盈昃辰宿列張寒來暑往秋收冬藏 "
+        ],
+        "output": "0",
+        "aot_seconds": [
+          0.2997,
+          0.256,
+          0.2507,
+          0.2794,
+          0.2646
+        ],
+        "cpython_seconds": [
+          0.5162,
+          0.4395,
+          0.5316,
+          0.4756,
+          0.4632
+        ],
+        "aot_median": 0.2646,
+        "cpython_median": 0.4756,
+        "aot_over_cpython": 0.56
+      },
+      {
+        "text": "Chinese",
+        "method": "istitle",
+        "argv": [
+          "istitle",
+          "2000",
+          "2000",
+          "天地玄黃宇宙洪荒日月盈昃辰宿列張寒來暑往秋收冬藏 "
+        ],
+        "output": "0",
+        "aot_seconds": [
+          0.6323,
+          0.5996,
+          0.6067,
+          0.6134,
+          0.6115
+        ],
+        "cpython_seconds": [
+          0.4469,
+          0.4803,
+          0.4675,
+          0.4215,
+          0.4206
+        ],
+        "aot_median": 0.6115,
+        "cpython_median": 0.4469,
+        "aot_over_cpython": 1.37
+      },
+      {
+        "text": "Chinese",
+        "method": "isalpha",
+        "argv": [
+          "isalpha",
+          "2000",
+          "2000",
+          "天地玄黃宇宙洪荒日月盈昃辰宿列張寒來暑往秋收冬藏"
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.3214,
+          0.2757,
+          0.2837,
+          0.4004,
+          0.2751
+        ],
+        "cpython_seconds": [
+          0.1484,
+          0.149,
+          0.2033,
+          0.1735,
+          0.1523
+        ],
+        "aot_median": 0.2837,
+        "cpython_median": 0.1523,
+        "aot_over_cpython": 1.86
+      },
+      {
+        "text": "Chinese",
+        "method": "isalnum",
+        "argv": [
+          "isalnum",
+          "2000",
+          "2000",
+          "天地玄黃宇宙洪荒日月盈昃辰宿列張寒來暑往秋收冬藏"
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.2668,
+          0.2672,
+          0.2645,
+          0.273,
+          0.2802
+        ],
+        "cpython_seconds": [
+          0.1432,
+          0.1429,
+          0.148,
+          0.1425,
+          0.1532
+        ],
+        "aot_median": 0.2672,
+        "cpython_median": 0.1432,
+        "aot_over_cpython": 1.87
+      },
+      {
+        "text": "Chinese",
+        "method": "repr",
+        "argv": [
+          "repr",
+          "2000",
+          "2000",
+          "天地玄黃宇宙洪荒日月盈昃辰宿列張寒來暑往秋收冬藏 "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.4261,
+          0.3355,
+          0.3328,
+          0.3478,
+          0.3221
+        ],
+        "cpython_seconds": [
+          0.3373,
+          0.3554,
+          0.3434,
+          0.3371,
+          0.3276
+        ],
+        "aot_median": 0.3355,
+        "cpython_median": 0.3373,
+        "aot_over_cpython": 0.99
+      },
+      {
+        "text": "French",
+        "method": "lower",
+        "argv": [
+          "lower",
+          "2000",
+          "2000",
+          "Élan vital à l'école élémentaire où ça coûte très cher déjà "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.3279,
+          0.4207,
+          0.3197,
+          0.3203,
+          0.3245
+        ],
+        "cpython_seconds": [
+          0.6313,
+          0.6688,
+          0.5934,
+          0.5881,
+          0.6237
+        ],
+        "aot_median": 0.3245,
+        "cpython_median": 0.6237,
+        "aot_over_cpython": 0.52
+      },
+      {
+        "text": "French",
+        "method": "upper",
+        "argv": [
+          "upper",
+          "2000",
+          "2000",
+          "Élan vital à l'école élémentaire où ça coûte très cher déjà "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.4166,
+          0.3714,
+          0.519,
+          0.3478,
+          0.3527
+        ],
+        "cpython_seconds": [
+          0.6457,
+          0.6014,
+          0.6053,
+          0.6105,
+          0.7262
+        ],
+        "aot_median": 0.3714,
+        "cpython_median": 0.6105,
+        "aot_over_cpython": 0.61
+      },
+      {
+        "text": "French",
+        "method": "swapcase",
+        "argv": [
+          "swapcase",
+          "2000",
+          "2000",
+          "Élan vital à l'école élémentaire où ça coûte très cher déjà "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.3956,
+          0.3963,
+          0.3879,
+          0.3745,
+          0.3988
+        ],
+        "cpython_seconds": [
+          1.369,
+          1.363,
+          1.412,
+          1.4062,
+          1.4634
+        ],
+        "aot_median": 0.3956,
+        "cpython_median": 1.4062,
+        "aot_over_cpython": 0.28
+      },
+      {
+        "text": "French",
+        "method": "casefold",
+        "argv": [
+          "casefold",
+          "2000",
+          "2000",
+          "Élan vital à l'école élémentaire où ça coûte très cher déjà "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.3481,
+          0.349,
+          0.3702,
+          0.3423,
+          0.3475
+        ],
+        "cpython_seconds": [
+          0.7022,
+          0.7927,
+          0.6939,
+          0.7032,
+          0.7667
+        ],
+        "aot_median": 0.3481,
+        "cpython_median": 0.7032,
+        "aot_over_cpython": 0.49
+      },
+      {
+        "text": "French",
+        "method": "title",
+        "argv": [
+          "title",
+          "2000",
+          "2000",
+          "Élan vital à l'école élémentaire où ça coûte très cher déjà "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.7464,
+          0.7568,
+          0.758,
+          0.8023,
+          0.754
+        ],
+        "cpython_seconds": [
+          1.1519,
+          1.109,
+          1.0892,
+          1.0629,
+          1.0297
+        ],
+        "aot_median": 0.7568,
+        "cpython_median": 1.0892,
+        "aot_over_cpython": 0.69
+      },
+      {
+        "text": "French",
+        "method": "capitalize",
+        "argv": [
+          "capitalize",
+          "2000",
+          "2000",
+          "Élan vital à l'école élémentaire où ça coûte très cher déjà "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.4074,
+          0.3219,
+          0.3256,
+          0.3258,
+          0.3345
+        ],
+        "cpython_seconds": [
+          0.59,
+          0.5842,
+          0.6172,
+          0.6161,
+          0.6015
+        ],
+        "aot_median": 0.3258,
+        "cpython_median": 0.6015,
+        "aot_over_cpython": 0.54
+      },
+      {
+        "text": "French",
+        "method": "islower",
+        "argv": [
+          "islower",
+          "2000",
+          "2000",
+          "élan vital à l'école élémentaire où ça coûte très cher déjà "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.4349,
+          0.4327,
+          0.4881,
+          0.4257,
+          0.4358
+        ],
+        "cpython_seconds": [
+          0.7618,
+          0.7148,
+          0.7972,
+          0.7044,
+          0.7579
+        ],
+        "aot_median": 0.4349,
+        "cpython_median": 0.7579,
+        "aot_over_cpython": 0.57
+      },
+      {
+        "text": "French",
+        "method": "isupper",
+        "argv": [
+          "isupper",
+          "2000",
+          "2000",
+          "ÉLAN VITAL À L'ÉCOLE ÉLÉMENTAIRE OÙ ÇA COÛTE TRÈS CHER DÉJÀ "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.3963,
+          0.3996,
+          0.422,
+          0.3945,
+          0.4376
+        ],
+        "cpython_seconds": [
+          0.6853,
+          0.6864,
+          0.6934,
+          0.6938,
+          0.7596
+        ],
+        "aot_median": 0.3996,
+        "cpython_median": 0.6934,
+        "aot_over_cpython": 0.58
+      },
+      {
+        "text": "French",
+        "method": "istitle",
+        "argv": [
+          "istitle",
+          "2000",
+          "2000",
+          "Élan Vital À L'École Élémentaire Où Ça Coûte Très Cher Déjà "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.381,
+          0.3564,
+          0.3704,
+          0.3922,
+          0.3543
+        ],
+        "cpython_seconds": [
+          0.8831,
+          0.8448,
+          0.8676,
+          0.8608,
+          0.9247
+        ],
+        "aot_median": 0.3704,
+        "cpython_median": 0.8676,
+        "aot_over_cpython": 0.43
+      },
+      {
+        "text": "French",
+        "method": "isalpha",
+        "argv": [
+          "isalpha",
+          "2000",
+          "2000",
+          "Élanvitalàlécoleélémentaireoùçacoûtetrèscherdéjà"
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.2608,
+          0.2403,
+          0.2512,
+          0.262,
+          0.2333
+        ],
+        "cpython_seconds": [
+          0.295,
+          0.2841,
+          0.2783,
+          0.2852,
+          0.2758
+        ],
+        "aot_median": 0.2512,
+        "cpython_median": 0.2841,
+        "aot_over_cpython": 0.88
+      },
+      {
+        "text": "French",
+        "method": "isalnum",
+        "argv": [
+          "isalnum",
+          "2000",
+          "2000",
+          "Élanvitalàlécoleélémentaireoùçacoûtetrèscherdéjà"
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.2792,
+          0.2937,
+          0.264,
+          0.2608,
+          0.2623
+        ],
+        "cpython_seconds": [
+          0.376,
+          0.393,
+          0.3398,
+          0.3474,
+          0.3435
+        ],
+        "aot_median": 0.264,
+        "cpython_median": 0.3474,
+        "aot_over_cpython": 0.76
+      },
+      {
+        "text": "French",
+        "method": "repr",
+        "argv": [
+          "repr",
+          "2000",
+          "2000",
+          "Élan vital à l'école élémentaire où ça coûte très cher déjà "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.3377,
+          0.3808,
+          0.339,
+          0.3384,
+          0.3167
+        ],
+        "cpython_seconds": [
+          1.0622,
+          1.0135,
+          1.0786,
+          1.0303,
+          1.0173
+        ],
+        "aot_median": 0.3384,
+        "cpython_median": 1.0303,
+        "aot_over_cpython": 0.33
+      },
+      {
+        "text": "no repetitions",
+        "method": "lower",
+        "aot_seconds": [
+          0.0027,
+          0.0024,
+          0.0024,
+          0.0025,
+          0.0021
+        ],
+        "cpython_seconds": [
+          0.0132,
+          0.0144,
+          0.0129,
+          0.013,
+          0.0137
+        ],
+        "aot_median": 0.0024,
+        "cpython_median": 0.0132
+      }
+    ]
+  },
+  "parent_wall_times": {
+    "metric": "as wall_times, for the parent's executable: the methods that main has for text that is not ASCII",
+    "results": [
+      {
+        "text": "Russian",
+        "method": "isalpha",
+        "argv": [
+          "isalpha",
+          "2000",
+          "2000",
+          "Съешьжеещёэтихмягкихфранцузскихбулокдавыпейчаю"
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          2.4295,
+          2.4799,
+          2.4595,
+          2.5825,
+          2.5421
+        ],
+        "cpython_seconds": [
+          0.2381,
+          0.258,
+          0.2402,
+          0.2525,
+          0.2709
+        ],
+        "aot_median": 2.4799,
+        "cpython_median": 0.2525,
+        "aot_over_cpython": 9.82
+      },
+      {
+        "text": "Russian",
+        "method": "isalnum",
+        "argv": [
+          "isalnum",
+          "2000",
+          "2000",
+          "Съешьжеещёэтихмягкихфранцузскихбулокдавыпейчаю"
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          2.6019,
+          2.6345,
+          2.537,
+          2.5496,
+          2.5622
+        ],
+        "cpython_seconds": [
+          0.2676,
+          0.2704,
+          0.238,
+          0.312,
+          0.2554
+        ],
+        "aot_median": 2.5622,
+        "cpython_median": 0.2676,
+        "aot_over_cpython": 9.57
+      },
+      {
+        "text": "Russian",
+        "method": "repr",
+        "argv": [
+          "repr",
+          "2000",
+          "2000",
+          "Съешь же ещё этих мягких французских булок да выпей чаю "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          4.1363,
+          4.1676,
+          4.3324,
+          4.3173,
+          4.3101
+        ],
+        "cpython_seconds": [
+          0.7782,
+          0.6574,
+          0.6668,
+          0.6928,
+          0.6748
+        ],
+        "aot_median": 4.3101,
+        "cpython_median": 0.6748,
+        "aot_over_cpython": 6.39
+      },
+      {
+        "text": "Chinese",
+        "method": "isalpha",
+        "argv": [
+          "isalpha",
+          "2000",
+          "2000",
+          "天地玄黃宇宙洪荒日月盈昃辰宿列張寒來暑往秋收冬藏"
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          1.486,
+          1.5575,
+          1.5337,
+          1.5397,
+          1.5078
+        ],
+        "cpython_seconds": [
+          0.1467,
+          0.1455,
+          0.1517,
+          0.1365,
+          0.1419
+        ],
+        "aot_median": 1.5337,
+        "cpython_median": 0.1455,
+        "aot_over_cpython": 10.54
+      },
+      {
+        "text": "Chinese",
+        "method": "isalnum",
+        "argv": [
+          "isalnum",
+          "2000",
+          "2000",
+          "天地玄黃宇宙洪荒日月盈昃辰宿列張寒來暑往秋收冬藏"
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          1.5967,
+          1.6329,
+          1.5003,
+          1.6103,
+          1.5207
+        ],
+        "cpython_seconds": [
+          0.1473,
+          0.1464,
+          0.142,
+          0.1819,
+          0.1457
+        ],
+        "aot_median": 1.5967,
+        "cpython_median": 0.1464,
+        "aot_over_cpython": 10.91
+      },
+      {
+        "text": "Chinese",
+        "method": "repr",
+        "argv": [
+          "repr",
+          "2000",
+          "2000",
+          "天地玄黃宇宙洪荒日月盈昃辰宿列張寒來暑往秋收冬藏 "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          2.0417,
+          2.0528,
+          1.9976,
+          2.023,
+          1.9877
+        ],
+        "cpython_seconds": [
+          0.3504,
+          0.3329,
+          0.3238,
+          0.3159,
+          0.3212
+        ],
+        "aot_median": 2.023,
+        "cpython_median": 0.3238,
+        "aot_over_cpython": 6.25
+      },
+      {
+        "text": "French",
+        "method": "isalpha",
+        "argv": [
+          "isalpha",
+          "2000",
+          "2000",
+          "Élanvitalàlécoleélémentaireoùçacoûtetrèscherdéjà"
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.7729,
+          0.8283,
+          0.8607,
+          0.8469,
+          0.7928
+        ],
+        "cpython_seconds": [
+          0.2606,
+          0.2842,
+          0.3543,
+          0.2844,
+          0.2813
+        ],
+        "aot_median": 0.8283,
+        "cpython_median": 0.2842,
+        "aot_over_cpython": 2.91
+      },
+      {
+        "text": "French",
+        "method": "isalnum",
+        "argv": [
+          "isalnum",
+          "2000",
+          "2000",
+          "Élanvitalàlécoleélémentaireoùçacoûtetrèscherdéjà"
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          0.8767,
+          0.8442,
+          0.8309,
+          0.825,
+          0.8147
+        ],
+        "cpython_seconds": [
+          0.378,
+          0.341,
+          0.3537,
+          0.3409,
+          0.3506
+        ],
+        "aot_median": 0.8309,
+        "cpython_median": 0.3506,
+        "aot_over_cpython": 2.37
+      },
+      {
+        "text": "French",
+        "method": "repr",
+        "argv": [
+          "repr",
+          "2000",
+          "2000",
+          "Élan vital à l'école élémentaire où ça coûte très cher déjà "
+        ],
+        "output": "2000",
+        "aot_seconds": [
+          1.3495,
+          1.3709,
+          1.3344,
+          1.2768,
+          1.3171
+        ],
+        "cpython_seconds": [
+          1.0103,
+          1.036,
+          0.9921,
+          0.9831,
+          1.0299
+        ],
+        "aot_median": 1.3344,
+        "cpython_median": 1.0103,
+        "aot_over_cpython": 1.32
+      }
+    ]
+  },
+  "executable_bytes": {
+    "hello": {
+      "parent": 93976,
+      "candidate": 94160
+    },
+    "words": {
+      "parent": 164968,
+      "candidate": 186288
+    },
+    "opbench": {
+      "parent": 151552,
+      "candidate": 181584
+    },
+    "casebench": {
+      "parent": 134504,
+      "candidate": 164344
+    }
+  },
+  "limitations": [
+    "Shared host: a wall-time sample differs from its median by up to 41%",
+    "CPython without profile-guided optimization may be slower than a distribution's build",
+    "Whole-process times include startup (the row with no repetitions)",
+    "JIT, other architectures and other operating systems were not measured"
+  ]
+}
