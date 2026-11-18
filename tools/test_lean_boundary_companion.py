@@ -90,7 +90,7 @@ class RuntimeCompanionTests(unittest.TestCase):
                          "#define AT(l, i) (((Slot *)(l)->ids)[i + 1].v)")
 
     def test_scoped_macro_narrowing_is_checked_in_the_real_translation_unit(self):
-        declaration = "typedef struct { I len, cap; I *a, *ids; } List;"
+        declaration = "typedef struct List { I len, cap; I *a, *ids; } List;"
         with self.assertRaises(ValueError):
             self.changed(declaration, "#define I int32_t\n" + declaration + "\n#undef I")
 
@@ -135,14 +135,14 @@ class RuntimeCompanionTests(unittest.TestCase):
             self.changed("return l->ids && (l->ids[0] & 3) == BIGIDS && opt_in();", "return 1;")
 
     def test_growth_length_and_capacity_words_cannot_narrow(self):
-        declaration = "typedef struct { I len, cap; I *a, *ids; } List;"
-        for replacement in ("typedef struct { int32_t len; I cap; I *a, *ids; } List;",
-                            "typedef struct { I len; int32_t cap; I *a, *ids; } List;"):
+        declaration = "typedef struct List { I len, cap; I *a, *ids; } List;"
+        for replacement in ("typedef struct List { int32_t len; I cap; I *a, *ids; } List;",
+                            "typedef struct List { I len; int32_t cap; I *a, *ids; } List;"):
             with self.subTest(replacement=replacement), self.assertRaisesRegex(ValueError, "pointer/word ABI"):
                 self.changed(declaration, replacement)
 
     def test_header_fields_cannot_overlap_even_with_a_matching_static_assert(self):
-        declaration = "typedef struct { I len, cap; I *a, *ids; } List;"
+        declaration = "typedef struct List { I len, cap; I *a, *ids; } List;"
         start = self.source.index(declaration)
         end = self.source.index('"List ABI: raw prefix and identity companion");', start)
         end += len('"List ABI: raw prefix and identity companion");')
@@ -151,7 +151,7 @@ class RuntimeCompanionTests(unittest.TestCase):
         # certified the ids word, although every raw-array pointer store changed
         # the companion pointer too. The source's assertion is not an oracle.
         overlapping = header.replace(declaration,
-            "typedef struct { I len, cap; union { I *a; I *ids; }; } List;")
+            "typedef struct List { I len, cap; union { I *a; I *ids; }; } List;")
         overlapping = overlapping.replace("offsetof(List, ids) == 24 && sizeof(List) == 32",
                                           "offsetof(List, ids) == 16 && sizeof(List) == 24")
         with self.assertRaisesRegex(ValueError, "overlapping or invalid companion header fields"):
@@ -163,10 +163,10 @@ class RuntimeCompanionTests(unittest.TestCase):
             self.changed(start, "#define ids a\n" + start)
 
     def test_raw_slot_stride_offset_and_width_are_independent_layout_obligations(self):
-        declaration = "typedef struct { I v; } Slot;"
-        for replacement in ("typedef struct { I padding, v; } Slot;",
-                            "typedef struct { I v, padding; } Slot;",
-                            "typedef struct { int32_t v, padding; } Slot;"):
+        declaration = "typedef struct Slot { I v; } Slot;"
+        for replacement in ("typedef struct Slot { I padding, v; } Slot;",
+                            "typedef struct Slot { I v, padding; } Slot;",
+                            "typedef struct Slot { int32_t v, padding; } Slot;"):
             with self.subTest(replacement=replacement), self.assertRaisesRegex(ValueError, "raw list slot"):
                 self.changed(declaration, replacement)
 
