@@ -2044,8 +2044,11 @@ module at run time. `import_module()` of a constant name is an import statement,
   import statement, where the call is a statement of its own or the value a statement
   assigns to one variable: `mod = import_module("a.b")` is `import a.b as mod`, run where the
   call is, with its `ImportError` and the limits of an import statement in that place. A
-  relative name takes a constant package or `__package__`
-  ([test](../tests/programs/library/lib_importlib_import_module.py)). Nothing imports a
+  relative name takes a constant package or `__package__` and imports the submodule it
+  names, also where the package has an attribute of that name
+  ([test](../tests/programs/library/lib_importlib_import_module.py),
+  [attribute](../tests/programs/library/lib_importlib_import_module_attribute.py)); the main
+  program has no package. Nothing imports a
   module at run time, so a name the program computes, and a call whose module is used as a
   value (returned, passed on, or read inside a larger expression), is a compile-time error
   where the call is compiled: a module that calls it so in a function the program never

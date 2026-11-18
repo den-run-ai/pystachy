@@ -1107,16 +1107,17 @@ def importlib_names(n: Node, out: dict[str, bool]) -> None:
             importlib_names(st, out)
 
 
-def import_name(call: Node) -> str:
+def import_name(call: Node, pkg: str) -> str:
     # the import statement that import_module(...), call, is where a string constant names the
-    # module: "import a.b as", or for a name relative to a constant package, or to
-    # __package__, "from . import b as" (the name it binds follows); else ""
+    # module: "import a.b as" (the name it binds follows), also for a name relative to a constant
+    # package or to __package__, the module's package pkg (the module that the relative name
+    # resolves to, which `from . import b` would not import where the package has an attribute
+    # b); else ""
     args = call.kids[1:]
     if len(args) == 0 or len(args) > 2 or args[0].kind != "str" or args[0].s == "":
         return ""
     name = args[0].s
     package = ""
-    here = False
     if len(args) == 2:
         p = args[1].kids[0] if args[1].kind == "kw" and args[1].s == "package" else args[1]
         if args[1].kind == "kw" and args[1].s != "package":
@@ -1124,7 +1125,7 @@ def import_name(call: Node) -> str:
         if p.kind == "str":
             package = p.s
         elif p.kind == "name" and p.s == "__package__":
-            here = True
+            package = pkg  # (the module's own __package__; "" in the main program)
         elif p.kind != "None":
             return ""
     level = len(name) - len(name.lstrip("."))
@@ -1134,15 +1135,13 @@ def import_name(call: Node) -> str:
             return ""  # (no name an import statement can write)
     if level == 0:
         return f"import {name} as"
-    if here:
-        return f"from {'.' * level}{'.'.join(parts[:-1])} import {parts[-1]} as"
     base = package.split(".") if package != "" else []
     if len(base) < level:
         return ""  # (beyond the top-level package, or no package: CPython's ImportError or TypeError)
     return f"import {'.'.join(base[: len(base) - level + 1] + parts)} as"
 
 
-def import_calls(n: Node, names: dict[str, bool], made: list[int]) -> None:
+def import_calls(n: Node, names: dict[str, bool], made: list[int], pkg: str) -> None:
     # (importlib) importlib.import_module(NAME), where a string constant names the module and
     # the call is a statement of its own or the value a statement assigns to one variable (names:
     # as the module's import statements bind import_module), is the import statement of that
@@ -1164,21 +1163,29 @@ def import_calls(n: Node, names: dict[str, bool], made: list[int]) -> None:
             target = st.kids[0].s
         src = ""
         if call is not None and call.kind == "call" and dotted(call.kids[0]) in names:
-            src = import_name(call)
+            src = import_name(call, pkg)
         if src != "":
             made[0] += 1
             bound = target if target != "" else "_pys_import_" + str(made[0])
             n.kids[i] = Parser(Lexer(src + " " + bound + "\n", st.line).file()).module().kids[0]
         else:
-            import_calls(st, names, made)
+            import_calls(st, names, made, pkg)
 
 
-def import_module_calls(n: Node) -> None:
-    # (import_calls) of module body n
+def import_module_calls(n: Node, pkg: str) -> None:
+    # (import_calls) of module body n, whose package is pkg
     names: dict[str, bool] = {}
     importlib_names(n, names)
     if len(names) > 0:
-        import_calls(n, names, [0])
+        import_calls(n, names, [0], pkg)
+
+
+def module_package(name: str, path: str) -> str:
+    # the __package__ of module name, whose file is path: its own name for a package's
+    # __init__.py, else its parent package's ("" for a top-level module)
+    if path.endswith("/__init__.py") or path == "__init__.py":
+        return name
+    return name[: name.rfind(".")] if "." in name else ""
 
 
 def tb_import(n: Node) -> None:
@@ -1371,7 +1378,7 @@ class Loader:
         # attribute that qmod() found in the expression being qualified (Node.mchk)
         self.trysubs: dict[str, bool] = {}
         self.subchk: list[str] = []
-        self.parsed: dict[str, Node] = {}  # each module file, parsed once
+        self.parsed: dict[str, Node] = {}  # each module file, parsed once (by "<its package>:<path>")
         # and what its code binds, surely and maybe, as scan() finds it before it is loaded
         self.rawbound: dict[str, dict[str, bool]] = {}
         # and those of the code of the module whose code is being simplified, up to statement ownpos
@@ -1475,7 +1482,7 @@ class Loader:
         m.body = self.parse_source(src, 1)
         tb_import(m.body)
         binary_opens(m.body)
-        import_module_calls(m.body)
+        import_module_calls(m.body, "")
         cm_methods(m.body, cm_names(m.body))
         functools_classes(m.body, functools_names(m.body))
         enum_classes(m.body, enum_names(m.body))
@@ -1793,8 +1800,8 @@ class Loader:
     def load(self, name: str, path: str, pdir: str) -> Mod:
         m = Mod(name, path, pdir)
         self.mods[name] = m
-        m.body = self.parse(path)
-        del self.parsed[path]  # (m rewrites its tree: the file imported under another name is parsed again)
+        m.body = self.parse(path, name)
+        del self.parsed[module_package(name, path) + ":" + path]  # (m rewrites its tree: the file imported under another name is parsed again)
         if name in INT_HELPERS and self.in_lib(path):
             self.int_spans(m.body.kids, INT_HELPERS[name])
         self.prescan(m)
@@ -1838,10 +1845,14 @@ class Loader:
         path = path[2:] if path.startswith("./") else path
         return lib != "" and path.startswith(lib + "/")
 
-    def parse(self, path: str) -> Node:
-        # a module's file, parsed once for the looks before it is loaded (optional()) and the load
-        if path in self.parsed:
-            return self.parsed[path]
+    def parse(self, path: str, name: str) -> Node:
+        # module name's file, parsed once for the looks before it is loaded (optional()) and the
+        # load (once for each package it is imported in: import_module_calls resolves a name
+        # relative to it)
+        pkg = module_package(name, path)
+        key = pkg + ":" + path
+        if key in self.parsed:
+            return self.parsed[key]
         f = open(path, "r", encoding=RAW)
         src = f.read()
         f.close()
@@ -1849,20 +1860,20 @@ class Loader:
         k = len(FILES)
         FILES.append(path[2:] if path.startswith("./") else path)
         self.pragmas(src, k, k * LINES + 1)
-        self.parsed[path] = self.parse_source(src, k * LINES + 1, self.in_lib(path))
+        self.parsed[key] = self.parse_source(src, k * LINES + 1, self.in_lib(path))
         if self.in_lib(path) and path.endswith("/contextlib.py"):
-            for st in self.parsed[path].kids:
+            for st in self.parsed[key].kids:
                 if st.kind == "subclass" and st.s == "_GeneratorContextManager":
                     cm_private_fields(st)
-        tb_import(self.parsed[path])
-        binary_opens(self.parsed[path])
-        import_module_calls(self.parsed[path])
-        cm_methods(self.parsed[path], cm_names(self.parsed[path]))
-        functools_classes(self.parsed[path], functools_names(self.parsed[path]))
-        enum_classes(self.parsed[path], enum_names(self.parsed[path]))
-        self.argparse(self.parsed[path])
-        self.ctypes(self.parsed[path])
-        return self.parsed[path]
+        tb_import(self.parsed[key])
+        binary_opens(self.parsed[key])
+        import_module_calls(self.parsed[key], pkg)
+        cm_methods(self.parsed[key], cm_names(self.parsed[key]))
+        functools_classes(self.parsed[key], functools_names(self.parsed[key]))
+        enum_classes(self.parsed[key], enum_names(self.parsed[key]))
+        self.argparse(self.parsed[key])
+        self.ctypes(self.parsed[key])
+        return self.parsed[key]
 
     def argparse(self, body: Node) -> None:
         if any([parser_import(st) != "" for st in body.kids]) and len(self.dirs) > 0 and self.modpath("argparse") == self.dirs[-1] + "/argparse.py":
@@ -3272,7 +3283,7 @@ class Loader:
         # what module t's code binds, not loaded yet: surely (at its top level), and maybe
         self.rawbound[t.path] = {"*": True}  # (while it is scanned: a module that imports t back cannot tell)
         self.rawsure[t.path] = {}
-        t.body = self.parse(t.path)
+        t.body = self.parse(t.path, t.name)
         self.prescan(t)
         pos = self.pos
         fs = self.fs
@@ -3307,7 +3318,7 @@ class Loader:
         if not path.endswith(".py"):
             return False
         bound: dict[str, bool] = {}
-        for st in self.mods[p].body.kids if p in self.mods else self.parse(path).kids:
+        for st in self.mods[p].body.kids if p in self.mods else self.parse(path, p).kids:
             surely_binds(st, bound, bound)
         return x in bound
 
@@ -3320,7 +3331,7 @@ class Loader:
             # (a module whose code imports it back finds it half run; a namespace package has no code)
             return self.failc.get(name, "")
         t = Mod(name, p, p[:-12] if p.endswith("/__init__.py") else "")
-        t.body = self.parse(p)
+        t.body = self.parse(p, name)
         self.prescan(t)
         r: list[Node] = []
         pos = self.pos
