@@ -116,10 +116,73 @@ Experiments with mypy and mypyc illustrate two ways to choose that boundary.
 These are component prototypes. The supported ports and their test commands are
 listed in the [ports catalog](../ports/README.md).
 
+## Survey a program's rejections
+
+A compilation stops at its first rejection, so an unported module shows one restriction
+per compilation. `tools/rejection_survey.py` lists several in one run, without changing the
+compiler or the sources. It compiles, with `pystachy ir`, a scratch copy of the program and
+of the modules that it imports. After each rejection it replaces the body of the innermost
+function that holds the diagnostic's line with a stub and compiles again. A stub keeps the
+signature, the decorators and the number of every other line, so each diagnostic names an
+original line. The program is never run.
+
+```sh
+python3 tools/rejection_survey.py example.py
+python3 tools/rejection_survey.py --compiler ./pystachy --path upstream/src --json entry.py
+```
+
+`--compiler` defaults to the checkout's hosted compiler, which needs no build; a native
+compiler is faster. `--path` lists module directories as `PYSTACHY_PATH` does and
+defaults to it. `--max N` bounds the rejections (default 20), `--timeout S` each
+compilation (default 120 seconds), and `--keep DIR` saves the stubbed copy. For a program
+whose `Box.__init__` assigns `self.size = size + "px"`, whose `Box.area()` returns
+`self.size * 2` and whose `total()` adds `"1"` to the sum of a list of `int`s, the report
+is as follows; a last line, not shown, restates the first limit below.
+
+```text
+1. example.py:3: error: cannot infer the type of field 'size'; annotate it (self.size: T = ...)
+   in Box.__init__
+2. example.py:10: error: unsupported operand type(s) for +: 'int' and 'str' (compiling total(list[int]) for the call at example.py:13)
+   in total
+3. example.py:6: error: 'Box' object has no attribute 'size'
+   in Box.area; may follow from the stub of Box.__init__ (rejection 1)
+3 rejections in 4 compilations of example.py. With 3 functions stubbed, the copy compiles.
+```
+
+The third rejection comes of the stub of `__init__`, which no longer assigns `size`. Read a
+report with these limits in mind:
+
+- **Reach.** Only code that the entry reaches is compiled: not a module that nothing
+  imports, nor a function that nothing calls unless its parameters and result are all
+  annotated ([templates](language/typing.md#function-and-method-templates)), nor code that
+  only a stubbed body reached. A function reports at most one rejection. To survey a
+  library module, write an entry that calls each of its functions from a function of its own.
+- **Rejections that no stub removes.** The survey ends at a rejection outside any function
+  (at module level or in a class body), in a file outside the copy (the compiler's own
+  `lib/`) or in a file that CPython's `ast` cannot parse, and at one that recurs in a
+  stubbed function, as a rejected signature or decorator does. The summary line names it.
+- **Stubs change the program.** A stub raises `NotImplementedError`. A generator's stub
+  also holds a `yield`, and an unannotated method that must return a type, such as
+  `__len__` or `__eq__`, returns a constant of that type. A function that only raises has no
+  result type of its own, and a stubbed method no longer assigns its fields. A rejection is
+  marked as one that *may follow from* a stub when its function uses the stubbed function's
+  name or such a field, or the statement at a call site that its diagnostic names does,
+  directly or through a variable assigned from such a use. The mark goes by names only: it
+  can be missing, or present without cause.
+
+The exit status follows `tools/inspect_compiler.py`: 0 when the program compiles with no
+rejection, 1 when rejections were found, 2 for a usage error or a compiler failure without
+a diagnostic, and 124 when a compilation exceeds `--timeout`. `--json` gives each
+rejection's `file`, `line`, `definition` (or `null`), `scope`, `message`, `context` (the
+compiler's notes, outermost first), `call_sites`, whether it was `stubbed`, the indexes of
+the earlier rejections it `may_follow_from`, and why the survey `ended`.
+
 ## Checklist for extending a port
 
 1. Try upstream unchanged, then make small, explained adaptations. Keep the source
    valid Python. A compiler feature should serve more than one library.
+   [Survey its rejections](#survey-a-programs-rejections) to see several restrictions
+   in one run.
 2. Pin upstream source and tests together, record their hashes and license, and
    retain an exact, reviewed adaptation diff. Change pins deliberately.
 3. Run upstream tests against the edited source on CPython and verify which module
