@@ -1,0 +1,75 @@
+int 30 r c 3 121
+negative 40 s d 4 122
+true 20 q b 2 120
+false 10 p a 1 119
+index one
+index one
+index one
+index one
+index one
+object 20 q b 2 120
+index minus one
+index minus one
+index minus one
+index minus one
+index minus one
+last 40 s d 4 122
+index nine
+far IndexError: list index out of range
+bad index
+bad TypeError: __index__ returned non-int (type float)
+raising ValueError: index failed
+str list TypeError: list indices must be integers or slices, not str
+str str TypeError: string indices must be integers, not 'str'
+str tuple TypeError: tuple indices must be integers or slices, not str
+str bytes TypeError: byte indices must be integers or slices, not str
+float list TypeError: list indices must be integers or slices, not float
+float str TypeError: string indices must be integers, not 'float'
+float tuple TypeError: tuple indices must be integers or slices, not float
+float bytes TypeError: byte indices must be integers or slices, not float
+none list TypeError: list indices must be integers or slices, not NoneType
+none str TypeError: string indices must be integers, not 'NoneType'
+none tuple TypeError: tuple indices must be integers or slices, not NoneType
+none bytes TypeError: byte indices must be integers or slices, not NoneType
+plain list TypeError: list indices must be integers or slices, not Plain
+plain str TypeError: string indices must be integers, not 'Plain'
+plain tuple TypeError: tuple indices must be integers or slices, not Plain
+plain bytes TypeError: byte indices must be integers or slices, not Plain
+list list TypeError: list indices must be integers or slices, not list
+list str TypeError: string indices must be integers, not 'list'
+list tuple TypeError: tuple indices must be integers or slices, not list
+list bytes TypeError: byte indices must be integers or slices, not list
+index store
+[10, 21, 30, 40]
+index store
+index store
+[10, 22, 30, 40]
+[10, 27, 30, 40]
+index store
+[10, 30, 40]
+[10, 40]
+store TypeError: list indices must be integers or slices, not str
+augmented TypeError: list indices must be integers or slices, not str
+del TypeError: list indices must be integers or slices, not str
+store TypeError: list indices must be integers or slices, not float
+augmented TypeError: list indices must be integers or slices, not float
+del TypeError: list indices must be integers or slices, not float
+store TypeError: list indices must be integers or slices, not NoneType
+augmented TypeError: list indices must be integers or slices, not NoneType
+del TypeError: list indices must be integers or slices, not NoneType
+[10, 40]
+index stop
+index start
+index stop
+index start
+index stop
+index step
+[0, 1, 2, 3, 4, 5, 6] [1, 2, 3, 4, 5, 6] [1, 3, 5]
+index stop
+[1, 2, 3, 4, 5, 6]
+range TypeError: 'str' object cannot be interpreted as an integer
+range TypeError: 'float' object cannot be interpreted as an integer
+range TypeError: 'NoneType' object cannot be interpreted as an integer
+TypeError: 'NoneType' object is not subscriptable
+TypeError: 'NoneType' object does not support item assignment
+[exit 0]

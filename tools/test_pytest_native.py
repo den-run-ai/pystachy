@@ -1103,7 +1103,9 @@ class DiagnosticsAndSelection(TemporarySuite):
 
     @unittest.skipUnless(os.environ.get("PYSTACHY_PYTEST_NATIVE_COMPILER"), "native compiler opt-in required")
     def test_native_operand_build_failure_runs_plain_assertions_once(self):
-        source = "def test_type():\n    x = 5\n    assert type(x) == int\n"
+        # A comparison that compiles while its operands' reprs do not: printing a bound method
+        # is unsupported (type(x) == int served until class objects became values)
+        source = "def test_methods():\n    xs = [1]\n    assert xs.append != xs.pop\n"
         for mode in ("jit", "aot"):
             with self.subTest(mode=mode):
                 self.work = self.root / f"build-{mode}"

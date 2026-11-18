@@ -249,7 +249,8 @@ class RuntimeASan(unittest.TestCase):
                                         capture_output=True, text=True, timeout=30)
                     self.assertEqual(ir.returncode, 0, ir.stderr)
                     self.assertEqual("__asan_report_load" in body(ir.stdout, "pys_str_isascii"), instrument)
-                    self.assertEqual("__asan_report_store" in body(ir.stdout, "pys_str_upper"), instrument)
+                    # (capitalize fills its str in its own loop; upper's is in a helper it calls)
+                    self.assertEqual("__asan_report_store" in body(ir.stdout, "pys_str_capitalize"), instrument)
                     for stress in ("", "1"):
                         good = subprocess.run([str(executable)], env=dict(runenv, PYSTACHY_GC_STRESS=stress),
                                               capture_output=True, text=True, timeout=30)
