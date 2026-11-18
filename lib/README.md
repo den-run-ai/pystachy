@@ -144,6 +144,7 @@ which `threading` and `_thread` describe.
 
 | Module | Origin | Supported APIs | Main limitation |
 |---|---|---|---|
+| 🟡 `gc` | Subset port of CPython's C module (`_pystachy_gc`), on the collector's entry for `collect()` | `collect()`, `enable()`, `disable()`, `isenabled()`, `set_threshold()`, `get_threshold()`, `set_debug()`, `get_debug()`, `freeze()`, `unfreeze()` and the `DEBUG_*` flags | The settings are kept and reported, and change nothing: one collector reclaims all memory. `collect()` returns 0. No `get_objects()`, `get_stats()`, `callbacks` or `garbage`; see [limits](compatibility.md#gc) |
 | 🟡 `abc` | Subset implementation (`_pystachy_abc`) | `ABC`, `metaclass=ABCMeta`, `@abstractmethod` (also under `@property`, `@classmethod`, `@staticmethod`) and the deprecated `abstractproperty`, `abstractclassmethod`, `abstractstaticmethod`, with CPython's `TypeError` for a class with abstract methods; `get_cache_token` | No virtual subclasses (`register()`), `__subclasshook__` or `__abstractmethods__` |
 | 🟡 `importlib.metadata` | Subset implementation, with CPython's lookup and parsing rules | `version()`, `metadata()`, `requires()`, `distribution()` and `distributions()` of the `*.dist-info` and `*.egg-info` directories on the module path; `PackageNotFoundError`; a metadata message's `[]`, `in`, `len()`, iteration, `keys()`, `values()`, `items()`, `get()` and `get_all()`; `Distribution`'s `name`, `version`, `metadata`, `requires`, `read_text()` and `from_name()` | Searches the directories the program's modules come from, as compiled, not `sys.path`; no entry points, `files()`, `packages_distributions()` or `json`; nothing else of `importlib`: no module is imported at run time; see [limits](compatibility.md#importlibmetadata) |
 | 🧪 `logging` | Adapted CPython (`logging/__init__.py`), compiled with dynamic `Any` | Loggers and their hierarchy, levels, the module's functions, `basicConfig()`, `Formatter` (`%`, `{}` and `$` styles, `asctime`), `extra`, `exc_info`, filters, `StreamHandler`, `FileHandler`, `NullHandler`, the last resort handler and `handleError()` | No frames or tracebacks (the caller is unknown); arguments are `Any` values; no `logging.config`, `logging.handlers` or `LoggerAdapter`; see [limits](compatibility.md#logging) |
@@ -215,9 +216,9 @@ to the compiled paths listed here and in the compatibility reference.
 `_pystachy_binascii.py` is `binascii`, `_pystachy_codecs.py` is `_codecs`, `_pystachy_atexit.py` is
 `atexit`, `_pystachy_struct.py` is `_struct`, `_pystachy_thread.py` is `_thread`,
 `_pystachy_unicodedata.py` is `unicodedata`, `_pystachy_itertools.py` is `itertools`,
-`_pystachy__io.py` is `_io`, modules CPython builds into its interpreter: Pystachy loads those
+`_pystachy__io.py` is `_io`, `_pystachy_gc.py` is `gc`, modules CPython builds into its interpreter: Pystachy loads those
 files for `import binascii`, `import _codecs`, `import atexit`, `import _struct`, `import _thread`,
-`import unicodedata`, `import itertools` and `import _io`, where CPython imports its C modules.
+`import unicodedata`, `import itertools`, `import _io` and `import gc`, where CPython imports its C modules.
 `tools/unicodedata_tables.py` writes the tables of `unicodedata`, `_pystachy_unicodedata_db.py` and
 `_pystachy_unicodedata_names.py`, from CPython's own module.
 `_pystachy_abc.py` is `abc`, which CPython imports as it starts, so that a program's own `abc.py`
