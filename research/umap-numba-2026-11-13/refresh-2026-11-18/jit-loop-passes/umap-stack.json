@@ -1,0 +1,211 @@
+{
+ "rounds": 5,
+ "args": [
+  "10000",
+  "16",
+  "10",
+  "15",
+  "200",
+  "7"
+ ],
+ "runs": {
+  "stack-jit": [
+   {
+    "data": 0.034,
+    "knn": 1.542,
+    "graph": 0.092,
+    "layout": 4.184
+   },
+   {
+    "data": 0.035,
+    "knn": 1.593,
+    "graph": 0.094,
+    "layout": 4.024
+   },
+   {
+    "data": 0.035,
+    "knn": 1.609,
+    "graph": 0.098,
+    "layout": 4.102
+   },
+   {
+    "data": 0.035,
+    "knn": 1.611,
+    "graph": 0.096,
+    "layout": 4.102
+   },
+   {
+    "data": 0.041,
+    "knn": 1.755,
+    "graph": 0.099,
+    "layout": 4.179
+   }
+  ],
+  "stack-jit-loops": [
+   {
+    "data": 0.036,
+    "knn": 1.268,
+    "graph": 0.092,
+    "layout": 4.134
+   },
+   {
+    "data": 0.034,
+    "knn": 1.29,
+    "graph": 0.094,
+    "layout": 4.079
+   },
+   {
+    "data": 0.035,
+    "knn": 1.321,
+    "graph": 0.098,
+    "layout": 4.082
+   },
+   {
+    "data": 0.039,
+    "knn": 1.332,
+    "graph": 0.098,
+    "layout": 4.045
+   },
+   {
+    "data": 0.039,
+    "knn": 1.352,
+    "graph": 0.098,
+    "layout": 4.228
+   }
+  ],
+  "stack-jit-O2": [
+   {
+    "data": 0.034,
+    "knn": 1.254,
+    "graph": 0.097,
+    "layout": 3.889
+   },
+   {
+    "data": 0.035,
+    "knn": 1.271,
+    "graph": 0.1,
+    "layout": 4.049
+   },
+   {
+    "data": 0.034,
+    "knn": 1.157,
+    "graph": 0.134,
+    "layout": 4.123
+   },
+   {
+    "data": 0.033,
+    "knn": 1.142,
+    "graph": 0.095,
+    "layout": 3.896
+   },
+   {
+    "data": 0.034,
+    "knn": 1.064,
+    "graph": 0.11,
+    "layout": 4.064
+   }
+  ],
+  "stack-aot": [
+   {
+    "data": 0.044,
+    "knn": 0.926,
+    "graph": 0.101,
+    "layout": 4.019
+   },
+   {
+    "data": 0.031,
+    "knn": 0.854,
+    "graph": 0.098,
+    "layout": 3.976
+   },
+   {
+    "data": 0.039,
+    "knn": 1.092,
+    "graph": 0.096,
+    "layout": 4.239
+   },
+   {
+    "data": 0.031,
+    "knn": 0.889,
+    "graph": 0.15,
+    "layout": 3.984
+   },
+   {
+    "data": 0.031,
+    "knn": 0.926,
+    "graph": 0.092,
+    "layout": 4.163
+   }
+  ],
+  "numba-knn-strict": [
+   {
+    "mode": "strict",
+    "warm_s": 0.76,
+    "same_neighbours_as_probe": true
+   },
+   {
+    "mode": "strict",
+    "warm_s": 0.748,
+    "same_neighbours_as_probe": true
+   },
+   {
+    "mode": "strict",
+    "warm_s": 0.692,
+    "same_neighbours_as_probe": true
+   },
+   {
+    "mode": "strict",
+    "warm_s": 0.779,
+    "same_neighbours_as_probe": true
+   },
+   {
+    "mode": "strict",
+    "warm_s": 0.703,
+    "same_neighbours_as_probe": true
+   }
+  ],
+  "numba-layout-twin": [
+   {
+    "mode": "twin",
+    "first_call_s": 4.574,
+    "warm_s": 3.862,
+    "updates": 79432897,
+    "embedding_sum": 99917.6638756083,
+    "equals_probe_bits": true
+   },
+   {
+    "mode": "twin",
+    "first_call_s": 4.772,
+    "warm_s": 4.12,
+    "updates": 79432897,
+    "embedding_sum": 99917.6638756083,
+    "equals_probe_bits": true
+   },
+   {
+    "mode": "twin",
+    "first_call_s": 5.007,
+    "warm_s": 3.871,
+    "updates": 79432897,
+    "embedding_sum": 99917.6638756083,
+    "equals_probe_bits": true
+   },
+   {
+    "mode": "twin",
+    "first_call_s": 4.762,
+    "warm_s": 3.905,
+    "updates": 79432897,
+    "embedding_sum": 99917.6638756083,
+    "equals_probe_bits": true
+   },
+   {
+    "mode": "twin",
+    "first_call_s": 4.542,
+    "warm_s": 3.973,
+    "updates": 79432897,
+    "embedding_sum": 99917.6638756083,
+    "equals_probe_bits": true
+   }
+  ]
+ },
+ "pystachy_stdout": "points=10000 dim=16 k=15 epochs=200 edges=217408 updates=79432897\nsigma[0]=0.37477874755859375 rho[0]=3.3483842871874336 weight_sum=67185.18852121946\nembedding_sum=99917.66387560882 first=2.6631295461809947,-6.90382495993566\n"
+}

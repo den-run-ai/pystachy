@@ -44,3 +44,35 @@ and `pys_fpow`).
 - kNN (91 blocks): the distance loop's guarded copy has no checks; around it, per pair and per
   point, OverflowError checks of `i * dim` and `j * dim`, bounds checks of `best_d`/`best_i` in the
   insertion, a `math` import check per `math.sqrt` and the JIT's opt-in traps.
+
+## Follow-up: what each gap took (18 November, later)
+
+- **Default JIT pipeline: draft #1540** (stacked on #1456). The cleanup left kNN's inner loop at 13
+  instructions per element (`-O2`: 7): a range loop's step `sadd.with.overflow(i, 1)` exits the
+  loop on overflow, so its latch exits and `loop-rotate` refuses it; unrotated, LICM cannot hoist
+  the items pointer, and the loop reloads it and spilled values every iteration. Spliced into the
+  cleanup by `jit-loop-passes/opt-wrapper.sh` (`asmcheck.sh` prints the loop): `licm`,
+  `loop-rotate`, `indvars`, `gvn`, `loop-unroll`, `loop-vectorize` and the late `-O2` function
+  passes changed nothing; `correlated-propagation` (which proves the step from the header's
+  `i < stop`) plus a fold (`instcombine` or `sccp`; `instsimplify` and `early-cse` do not fold its
+  `extractvalue`) plus `simplifycfg`, `loop-rotate` and `licm` gives the 7-instruction loop. On
+  `imports.py`'s 63,000-line module that costs about 0.1 s (`-time-passes`: correlated propagation
+  31 ms, SCCP 22 ms, rotation 19 ms, LICM 15 ms), so the draft runs it only within the inlining
+  budget. `screening.json` (the `instcombine` form on every module) showed regex_effbot's timed
+  loop 0.84× but `opt` +0.1 to +0.16 s on the three modules over the budget: a later choice.
+  Final A/B, callgrind and timings: the draft's `bench/results/jit-loop-passes-2026-11-18.json`;
+  `umap-stack.json`: kNN 1.609 s → 1.321 s on the stack (paired 0.821), `-O2` 1.157 s, AOT 0.926
+  s, Numba strict 0.748 s; layout unchanged.
+- **Checks guards could hoist.** `listguard` copies only innermost loops (docs/typed-ir.md), and the
+  layout's edge loop holds the negative-sample loop; it also calls `tau_rand_int`, which stores
+  into a list. Copying outer loops and proving such calls keep list lengths is not a small change,
+  for 1 to 2% of a layout dominated by `pow`. Not attempted.
+- **JIT-only `opt_in()` traps.** They sit only on paths that opt-in values lead to, and JIT `-O2`
+  already matches AOT on the layout (4.04 s against 4.06 s). Nothing measurable to win. Dropped.
+- **SIMD across points.** LLVM's unroll-and-jam would need `data` and `best_d` (both `list[float]`
+  items, one TBAA type) proved apart; the VPlan outer-loop path does not take the kNN loop's
+  control flow. Not attempted.
+- **Drafts refreshed with main `3cf23d20`:** #1442 (`bacd349b`, and `c6cc7c93` naming its tagged
+  `List`/`Slot` in main's companion test), #1455 (`a9751229`), #1450 (`e01b4f54`), #1468
+  (`5bce6de8`), #1477 (`75b1fd54`); each built at a fixed point and passed its focused checks
+  locally.
