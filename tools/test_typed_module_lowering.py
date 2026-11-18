@@ -6,7 +6,8 @@ import unittest
 from unittest.mock import patch
 
 from src.pystachy_compiler.gen import Gen
-from src.pystachy_compiler.ir import Data, FnInfo, IFn, Ins, Val
+from src.pystachy_compiler.ir import Data, IFn, Ins, Val
+from src.pystachy_compiler.symbols import FnInfo
 from src.pystachy_compiler.loader import Loader
 from src.pystachy_compiler.lower_module import lower_data
 from src.pystachy_compiler.syntax import Node

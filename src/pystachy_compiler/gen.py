@@ -1045,26 +1045,9 @@ from src.pystachy_compiler.functions import (
     gen_materialize as functions_materialize,
     gen_untold as functions_untold,
 )
-from src.pystachy_compiler.ir import (
-    Blk,
-    ClassInfo,
-    Closure,
-    Data,
-    Exit,
-    FmtArgs,
-    FnInfo,
-    Frame,
-    IFn,
-    Ins,
-    IterArg,
-    Loop,
-    Reduce,
-    SeqStart,
-    SetArg,
-    StopCatch,
-    Val,
-    Values,
-)
+from src.pystachy_compiler.frames import Exit, FmtArgs, Frame, IterArg, Reduce, SeqStart, SetArg, StopCatch
+from src.pystachy_compiler.ir import Blk, Data, IFn, Ins, Loop, Val, Values
+from src.pystachy_compiler.symbols import ClassInfo, Closure, FnInfo
 from src.pystachy_compiler.ircheck import (
     EffectSummaries,
     gen_bad_ir as ircheck_bad_ir,

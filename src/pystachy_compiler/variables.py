@@ -24,7 +24,9 @@ from src.pystachy_compiler.analysis import (
 )
 from src.pystachy_compiler.diagnostics import FILES, LINES, MODDUNDERS, Rejoin, dynamic_program, where
 from src.pystachy_compiler.dynamic import XCMP, boxed_list_items, comparison_record_write, comparison_storage_key
-from src.pystachy_compiler.ir import Blk, Closure, FnInfo, Frame, Ins, IterArg, Val, tmpname, one_num
+from src.pystachy_compiler.frames import Frame, IterArg
+from src.pystachy_compiler.ir import Blk, Ins, Val, tmpname, one_num
+from src.pystachy_compiler.symbols import Closure, FnInfo
 from src.pystachy_compiler.names import ENUMCLASSES, owner, short
 from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, INERT_DECOS, NONE_ITEM, NONEVAR, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
 from src.pystachy_compiler.syntax import NOKIDS, Node, comp_names, made_var, mk, name_targets, starred_target

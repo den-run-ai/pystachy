@@ -4,7 +4,8 @@ import os
 import sys
 import time
 from src.pystachy_compiler.diagnostics import FILES, LINES, dynamic_program, fail, where
-from src.pystachy_compiler.ir import ClassInfo, Closure, FnInfo, Ins
+from src.pystachy_compiler.ir import Ins
+from src.pystachy_compiler.symbols import ClassInfo, Closure, FnInfo
 from src.pystachy_compiler.llvm_abi import llvm_decl
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import (

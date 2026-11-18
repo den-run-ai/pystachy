@@ -2,7 +2,8 @@
 from __future__ import annotations
 from src.pystachy_compiler.analysis import ann_target
 from src.pystachy_compiler.diagnostics import dynamic_program, int_lists
-from src.pystachy_compiler.ir import ClassInfo, FnInfo, Ins, Val, tmpname
+from src.pystachy_compiler.ir import Ins, Val, tmpname
+from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.names import owner
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, NONEVAR, OPTTYPES

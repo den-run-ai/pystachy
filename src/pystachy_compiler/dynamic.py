@@ -19,7 +19,9 @@ from __future__ import annotations
 from src.pystachy_compiler.analysis import bind_count, comp_vars, deleted, globals_in, lazy_block, lazy_sites, local_names, name_bits, nonlocal_decls, targets, walrus_names
 from src.pystachy_compiler.bigints import held
 from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES, LINES, NeedSliceEH, Rejoin, dynamic_file, dynamic_program, int_lists, int_program
-from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Reduce, Val, tmpname
+from src.pystachy_compiler.frames import Reduce
+from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
+from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, retoken, short
 from src.pystachy_compiler.specs import BIG, COMPLEXC, GLUE, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA

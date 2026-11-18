@@ -4,7 +4,9 @@ from src.pystachy_compiler.analysis import none_display, walrus_names
 from src.pystachy_compiler.bigints import big_tree, held, narrow_type
 from src.pystachy_compiler.conversions import ends_in_id
 from src.pystachy_compiler.diagnostics import dynamic_program, int_lists, shown
-from src.pystachy_compiler.ir import ClassInfo, Ins, IterArg, SetArg, Val
+from src.pystachy_compiler.frames import IterArg, SetArg
+from src.pystachy_compiler.ir import Ins, Val
+from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import BIG, BIGOPT, ITERS, NONE_ITEM, NONEVAR, OBJECTC, OPTTYPES, TYPEMODS
 from src.pystachy_compiler.syntax import Node, made_var, mentions, mk

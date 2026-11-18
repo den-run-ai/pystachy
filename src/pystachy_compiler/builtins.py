@@ -2,7 +2,8 @@
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.diagnostics import int_lists
-from src.pystachy_compiler.ir import Data, Ins, IterArg, Loop, Reduce, Val
+from src.pystachy_compiler.frames import IterArg, Reduce
+from src.pystachy_compiler.ir import Data, Ins, Loop, Val
 from src.pystachy_compiler.lexer import Lexer, codepoint, utf8len
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.parser import Parser

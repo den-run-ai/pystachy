@@ -2,7 +2,8 @@
 from __future__ import annotations
 from src.pystachy_compiler.analysis import globals_in, lambda_flags, local_names, nonlocal_decls, numeric_statement, numeric_return_names, str_appends, targets
 from src.pystachy_compiler.diagnostics import Rejoin, int_program
-from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Try, Val
+from src.pystachy_compiler.ir import Blk, IFn, Try, Val
+from src.pystachy_compiler.symbols import FnInfo
 from src.pystachy_compiler.local_versions import local_versions
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.optimizations import recursion_unsnapshot
