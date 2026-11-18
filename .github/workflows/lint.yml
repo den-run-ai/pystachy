@@ -2,7 +2,7 @@
 # tests; make lint adds shellcheck of the scripts as POSIX sh and clang's warnings on
 # runtime.c and tools/dictprobe.c, with the versions of tools/requirements-dev.txt; then make
 # check-recordings (tests/record.sh --check): the CPython of .python-version, which recorded the
-# tests' expected output (with the typing_extensions, mypy_extensions and librt of tools/requirements-dev.txt), still prints
+# tests' expected output (with the typing_extensions, mypy_extensions, librt and ast-serialize of tools/requirements-dev.txt), still prints
 # every recording, every deviation still deviates from it, lib/'s copies are its files, and no
 # *.rej, *.orig or core file lies in the tree. Runs beside CI's make verify on the same
 # events: pull requests (forks too, and documentation-only ones), pushes to main,
@@ -108,6 +108,7 @@ jobs:
           PYSTACHY_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p test_retained_ir.py
           PYSTACHY_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p test_runtime_rounding.py
           PYSTACHY_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p test_bootstrap_tier.py
+          PYSTACHY_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p test_profile_build.py
 
       - name: Compact CI sampling and variant controls
         run: |

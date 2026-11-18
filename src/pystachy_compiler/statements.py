@@ -249,7 +249,7 @@ def gen_early_default(self, f: FnInfo, j: int) -> None:
         f.dglob[j] = self.classes[f.cls].fglob[f.params[j]]
         return
     t = f.ptypes[j]
-    bad = self.default_problem(f.defaults[j], t) if f.mod != "" else ""
+    bad = self.default_problem(f.defaults[j], t) if f.mod != "" and not self.class_reads(f.defaults[j], FnInfo("", "", f.node, ""), t) else ""
     if bad != "":
         f.dglob[j] = "!" + bad
         return
@@ -288,7 +288,7 @@ def gen_hoist(self, f: FnInfo) -> None:
         if (f.dglob[j] == "" or early) and (not is_const(d) or (identity_default(d) and self.fn_identity(f))):
             t = f.ptypes[j] if f.bad == "" else ""  # (an unsupported annotation is no type)
             self.line = d.line
-            bad = self.default_problem(d, t) if f.mod != "" else ""
+            bad = self.default_problem(d, t) if f.mod != "" and not self.class_reads(d, FnInfo("", "", f.node, ""), t) else ""
             if bad != "":
                 # a function of an imported module: the default is an error only where a call
                 # needs it, if evaluating it when the def runs does nothing
@@ -359,7 +359,8 @@ def gen_hoist_class(self, ci: ClassInfo) -> None:
             self.err(f"enum class {short(ci.name)} is not supported: it derives from {short(ci.base)}, an enum class of another module (an enum class derives from Enum, IntEnum, StrEnum, Flag, IntFlag, str or int and Enum, or an enum class of its own module)")
     for st in ci.node.kids[0].kids if ci.mod != "" and ci.bad == "" else []:
         if st.kind == "annassign" and len(st.kids) == 3 and st.kids[0].kind == "name":
-            why = self.default_problem(st.kids[2], ci.ftypes[st.kids[0].s])
+            t = ci.ftypes[st.kids[0].s]
+            why = self.default_problem(st.kids[2], t) if not self.class_reads(st.kids[2], FnInfo("", "", ci.node, ""), t) else ""
             if why != "":
                 ci.bad = f"class {shown(ci.name)} is not supported: {why}"
     if ci.bad != "":
@@ -1011,7 +1012,11 @@ def gen_stmt_main(self, n: Node) -> None:
                 self.err("del of an attribute is only supported for a property (which calls its deleter)")
             if dt.kind == "slice":
                 bnd: list[str] = []
-                o = self.slice_target(dt, bnd, "TypeError: 'NoneType' object does not support item deletion")
+                gone: list[Val] = []
+                o = self.slice_target(dt, bnd, "TypeError: 'NoneType' object does not support item deletion", None, None, gone)
+                if len(gone) > 0:
+                    self.protocol(o, "_delslice", gone)  # (a bytearray's)
+                    continue
                 self.rt("pys_dyn_list_del_slice" if o.t == "dyn" else "pys_list_del_slice", "void", [f"ptr {o.v}", f"i64 {bnd[0]}", f"i64 {bnd[1]}", f"i64 {bnd[2]}"])
                 continue
             if dt.kind == "index" and dt.kids[0].kind == "attr" and self.dotted(dt.kids[0]) == "os.environ":
@@ -1391,7 +1396,12 @@ def gen_augassign(self, n: Node) -> None:
         bnd: list[str] = []
         raw: list[str] = []
         values: list[Val] = []
-        o = self.slice_target(t, bnd, "TypeError: 'NoneType' object is not subscriptable", raw, values)
+        taken: list[Val] = []
+        o = self.slice_target(t, bnd, "TypeError: 'NoneType' object is not subscriptable", raw, values, taken)
+        if len(taken) > 0:
+            # a bytearray's: the slice, a new bytearray that op changes, stored back by the same bounds
+            self.protocol(o, "_setslice", taken + [self.inplace(op, self.protocol(o, "_getslice", taken), n.kids[1])])
+            return
         if o.t == "dyn":
             cur = Val(self.rt("pys_dyn_list_slice", "ptr", [f"ptr {o.v}", f"i64 {bnd[0]}", f"i64 {bnd[1]}", f"i64 {bnd[2]}"]), "dyn")
             value = self.inplace(op, cur, n.kids[1])

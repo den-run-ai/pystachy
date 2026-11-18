@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from src.pystachy_compiler.ir import Ins, Val  # noqa: E402
 from src.pystachy_compiler.lowering import gen_lower_ins  # noqa: E402
+from src.pystachy_compiler.machine_ir import machine_ops  # noqa: E402
 
 CHECKER = ROOT / "tools/lean_boundary/.lake/build/bin/pystachy-alias"
 
@@ -117,10 +118,12 @@ const uint64_t alias_tag_size = sizeof(((Dyn *)0)->t);
 
 
 def payload_word():
+    # dyn.payload as Gen.lower prints it: machine lowering (machine_ir.py) first, then the printer
     generated = SimpleNamespace(out=[])
     payload = Ins("dyn.payload", "%slot", "list[int]")
     payload.r, payload.a = [1, 2], [Val("%box", "dyn")]
-    gen_lower_ins(generated, None, payload)
+    for machine in machine_ops(payload):
+        gen_lower_ins(generated, None, machine)
     lines = [line.strip() for line in generated.out]
     require(len(lines) == 2 and lines[1] == "%t2 = load i64, ptr %t1", "unsupported payload load lowering")
     match = re.fullmatch(r"%t1 = getelementptr i64, ptr %box, i64 (\d+)", lines[0])

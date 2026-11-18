@@ -168,7 +168,9 @@ Unannotated `__str__` and `__repr__` use their required `str` result type and `_
 uses `bool`; their bodies are checked against those contracts. An unannotated `__len__` or
 `__hash__` infers `int` or `bool`. Constructors keep their `None` result contract.
 There is no implicit `int` to `float`
-conversion in an assignment, argument or return: write `1.0`, or convert explicitly.
+conversion in an assignment or return: write `1.0`, or convert explicitly. An `int` argument
+for a `float` parameter is not converted either: the function is
+[compiled for the `int`](#int-arguments-for-float-parameters).
 Arithmetic and numeric list searches may mix integers and floats. Equality also compares
 closed builtin value trees with different layouts: numbers, strings, `None`, and lists, dicts
 or tuples of these, including optional and union members. Each operand keeps its own layout;
@@ -568,7 +570,10 @@ their items' types, and tuples of one length join item by item: the display
 [runtime-length tuple](#supported-types) of their items' one type, where it can hold them: a
 function that returns `(n,)` or `()` returns a `tuple[int, ...]`, and `[("a", ()), ("b", (1,))]`
 makes a `list[tuple[str, tuple[int, ...]]]` (each a new tuple, as
-[conversions](compatibility.md#deviations-from-cpython) make; `(1,)` and `("a", "b")` do not join). A list made by a call of a function without a return
+[conversions](compatibility.md#deviations-from-cpython) make; `(1,)` and `("a", "b")` do not join). A display whose items no inferred union holds, such as a
+list or an object among scalars, is an error that names the two remedies: an annotation with
+a [union that holds them](#mixed-scalar-and-container-unions), or the module's
+[dynamic `Any`](../dynamic-any.md) opt-in. A list made by a call of a function without a return
 annotation, assigned where a list of joined items is kept or returned by a function that
 returns one, makes that function return the joined list type, as a fresh result. So does a
 method called on a variable (`ops.scale(u, 0.5)`, `self.scale(...)`) whose class no other
@@ -862,6 +867,45 @@ infers only that channel; the other concrete types still apply. `Iterator[Any]` 
 cannot contain `Any`: annotate it with a concrete type that accepts `None`, such as
 `str | None`. Its native layout must be known when the generator is compiled, before
 future `send()` calls. A yielding `__iter__` method can also use `Iterator[Any]`.
+
+### `int` arguments for `float` parameters
+
+A parameter annotated `float` takes an `int` or `bool` argument as PEP 484 allows and as
+CPython passes it: unconverted. The function or method is compiled again for that argument,
+as if the parameter had no annotation, so its body reads the `int`:
+
+```python
+def half(x: float) -> float:
+    return x / 2
+
+
+def keep(x: float) -> float:
+    return x
+
+
+print(half(3), keep(3), keep(3.0))  # 1.5 3 3.0
+```
+
+Where the return annotation is `float`, that compilation infers its result from its returns,
+so `keep(3)` is the `int` `3`. It has a template's limits: an augmented or conditional store
+of a `float` to the parameter, a store of the `int` into `float` storage (a field, a
+`list[float]`) and a recursive call before a return statement that returns the `int` are
+errors, which name the call and the parameter. Pass a `float` to compile the function as
+annotated.
+
+The body then computes with `int` operations where CPython's does, and they follow the
+[`int` deviations](compatibility.md#numbers): a result past 64 bits raises `OverflowError`,
+unless the module opts in to [promoting ints](../python-int.md), and `int ** negative int`
+raises `ValueError`, where CPython returns the exact `int` or a `float`. Earlier releases
+rejected such calls at compile time
+([deviation](../../tests/deviations/int_for_float_int_ops.py)). A `float` argument, as in
+`10.0`, computes in floats.
+
+This applies to direct calls of module-level functions and of ordinary methods of classes
+outside inheritance hierarchies. Constructors and other special methods, properties, static
+and class methods, closures, generators, cached functions, `*args`, methods of generic
+classes and values called through a `Callable` keep the annotated type and reject the `int`,
+as annotated variables, fields and container items do.
 
 ### Variadic arguments
 
@@ -1270,6 +1314,16 @@ attribute holds (`size = len`) is read as itself, as in CPython, and so is a fun
 module that `lib/` stands in for a C module (`dec = codecs.utf_8_decode`), CPython's builtin. A
 Python function is not: CPython binds it to the object as a method there, and Pystachy rejects
 that read.
+
+A field or class attribute given a set display whose items all have one type takes that type
+(`KEYWORDS = {"if", "else"}` is a `set[str]`); a list display gives its first item's. One
+given a class attribute read through an ordinary class declared earlier, or through a
+subclass that inherits it (`self.kind = Branch.BOOL`, `DEFAULT = Color.RED`), has that
+attribute's declared or inferred type. An imported module's class bodies and parameter
+defaults (`def show(kind: int = Branch.BOOL)`) read such attributes too, alone or as the items
+of displays whose items have one type, where the value has the type annotated. A generic
+class's attribute, a NamedTuple's `_fields`, a method and a class declared further down type
+nothing: annotate the field.
 
 A `@dataclass` writes `__init__` (which calls `__post_init__`), `__repr__` and `__eq__` unless
 its `init`, `repr` or `eq` option is false, and with `order=True` the comparisons of the tuples

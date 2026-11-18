@@ -1,5 +1,6 @@
 """Builtins component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+import os
 from src.pystachy_compiler.builtin_bases import BITER
 from src.pystachy_compiler.utils import clsof, is_union, umembers
 from src.pystachy_compiler.diagnostics import int_lists
@@ -43,6 +44,7 @@ from src.pystachy_compiler.specs import (
     COMPLEXC,
     COMPLEXS,
     OBJECTC,
+    BYTEARRAYS,
     RANGEC,
     RANGES,
     TYPESMOD,
@@ -264,6 +266,26 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         secs = self.as_float(self.expr(args[1], "float"))
         utc = self.as_int(self.expr(args[2], "int"))
         return Val(self.rt("pys_strftime_at", "ptr", [f"ptr {fmt.v}", f"double {secs.v}", f"i64 {utc.v}"]), "str")
+    if name == "__pys_module_files":
+        # importlib.resources.files()'s table (lib/importlib/resources.py): the file of each module
+        # of the program, by its name, as the compiler read it: an absolute path, whose directory
+        # has its symbolic links resolved, as CPython's sys.path[0] has. A namespace package,
+        # which has no file, maps to "". The paths are those of the compilation: a built
+        # executable keeps them (as sys.prefix).
+        if (self.curfn.mod != "importlib.resources" or not lib_source(self.curfn.node.line, self.libdir, "importlib/resources.py") or
+                len(args) != 0):
+            self.err(f"name '{name}' is not defined")
+        mfkids: list[Node] = []
+        for mfname in self.mfile:
+            if mfname != "":
+                mfpath = self.mfile[mfname]
+                if mfpath != "":
+                    mfcut = mfpath.rfind("/")
+                    mfdir = mfpath[:mfcut] if mfcut > 0 else "/" if mfcut == 0 else "."
+                    mfpath = os.path.realpath(mfdir).rstrip("/") + "/" + mfpath[mfcut + 1 :]
+                mfkids.append(mk("str", mfname, self.line, []))
+                mfkids.append(mk("str", mfpath, self.line, []))
+        return self.expr(mk("dict", "", self.line, mfkids), "dict[str,str]")
     if name in FSPRIMS:
         # (lib/pathlib.py's and lib/shutil.py's file system calls: runtime.c's pys_stat_mode,
         # pys_touch, pys_copyfile, pys_copymode and pys_rmtree)
@@ -323,6 +345,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.err(f"name '{name}' is not defined")
     if name.startswith("__pys_range_"):
         return self.range_prim(name, args)
+    if name.startswith("__pys_ba_"):
+        return self.ba_prim(name, args)
     if name.startswith("__pys_bfile_"):
         # lib/_pystachy_bfile.py's binary files, in that module only: a file of a binary mode
         # (runtime.c's pys_bopen), its reads and writes of bytes, and io.UnsupportedOperation
@@ -371,6 +395,37 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         fs = [self.coerce(self.expr(a, "float"), "float", f"an argument of {name}") for a in args]
         ct = csigs[c].split(":")[0]
         return Val(self.rt(c, rtt(ct), [f"double {f.v}" for f in fs]), ct)
+    if name.startswith("__pys_proc_"):
+        # lib/subprocess.py's child processes, in that module only: what CPython's asks of
+        # _posixsubprocess.fork_exec(), os and select (runtime.c's pys_proc_*)
+        if self.curfn.mod != "subprocess" or not lib_source(self.curfn.node.line, self.libdir, "subprocess.py"):
+            self.err(f"name '{name}' is not defined")
+        psigs: dict[str, str] = {
+            "__pys_proc_pipe": "pys_proc_pipe:list[int]:", "__pys_proc_devnull": "pys_proc_devnull:int:",
+            "__pys_proc_fork_exec": "pys_proc_fork_exec:int:list[str],list[str],list[str],str,int,int,int,int",
+            "__pys_proc_wait": "pys_proc_wait:int:int,int", "__pys_proc_kill": "pys_proc_kill:None:int,int",
+            "__pys_proc_read": "pys_proc_read:bytes:int,int", "__pys_proc_write": "pys_proc_write:int:int,bytes,int,int",
+            "__pys_proc_close": "pys_proc_close:None:int", "__pys_proc_ready": "pys_proc_ready:int:int,int,int,float",
+            "__pys_proc_signame": "pys_proc_signame:str:int", "__pys_proc_encoding": "pys_io_defenc:str:",
+        }
+        if name not in psigs or any([a.kind in ["kw", "starred", "dstar"] for a in args]):
+            self.err(f"name '{name}' is not defined")
+        psig = psigs[name].split(":")
+        pts = psig[2].split(",") if psig[2] != "" else []
+        if len(args) != len(pts):
+            self.err(f"invalid arguments to private process primitive {name}")
+        pvs: list[str] = []
+        for j in range(len(args)):
+            v = self.expr(args[j], pts[j])
+            if pts[j] == "int":
+                v = self.as_int(v)
+            if v.t != pts[j]:
+                self.err(f"invalid argument to private process primitive {name}: expected {typestr(pts[j])}, got {typestr(v.t)}")
+            pvs.append(("i64 " if pts[j] == "int" else "double " if pts[j] == "float" else "ptr ") + v.v)
+        if psig[1] == "None":
+            self.rt(psig[0], "void", pvs)
+            return Val("null", "None")
+        return Val(self.rt(psig[0], rtt(psig[1]), pvs), psig[1])
     if name.startswith("__pys_mpz_"):
         # Only the shipped wrapper can create or consume these opaque pointers.
         # Using int for the handle would hide references from numeric containers.
@@ -2440,6 +2495,20 @@ def gen_bytes_(self, args: list[Node]) -> Val:
         return Val(self.rt("pys_bytes_zeros", "ptr", [f"i64 {self.as_int(v).v}"]), "bytes")
     if v.t == "None" or is_opt(v.t):
         v = self.unwrap(v, "TypeError: cannot convert 'NoneType' object to bytes")
+    if v.t in self.classes and "__bytes__" in self.classes[v.t].methods:
+        # an object's __bytes__(), which CPython calls before it would iterate over the object, and
+        # whose result must be bytes: CPython's TypeError as the program runs (a class's value may
+        # be None, as may the result where its type says so)
+        self.notnone(v, "TypeError: cannot convert 'NoneType' object to bytes")
+        r = self.protocol(v, "__bytes__", [])
+        if r.t == "bytes":
+            return r
+        if unopt(r.t) == "bytes":
+            return self.unwrap(r, "TypeError: __bytes__ returned non-bytes (type NoneType)")
+        if r.t == "dyn":
+            return self.coerce(r, "bytes")
+        self.guard("true", f"TypeError: __bytes__ returned non-bytes (type {tname(r.t)})")
+        return Val(self.bconst(""), "bytes")  # (not reached)
     if is_tuple(v.t) or is_vtuple(v.t) or v.t in self.classes or is_set(v.t) or is_dict(v.t) or is_gen(v.t):
         v = self.as_list(v, "bytes")
     if not is_list(v.t) or (elem(v.t) != "int" and elem(v.t) != "bool"):
@@ -2738,6 +2807,27 @@ def gen_range_prim(self, name: str, args: list[Node]) -> Val:
         return Val(self.scalar('add', [Val(ns[0], 'int'), Val(k, 'int')]), "int")
     self.err(f"name '{name}' is not defined")
     return Val("", "")
+
+def gen_ba_prim(self, name: str, args: list[Node]) -> Val:
+    # the compiler primitives lib/_pystachy_bytearray.py calls, in that module only: runtime.py's
+    # own of a str's bytes (Gen.primitive, each with its checks), of the bytes that is a
+    # bytearray's buffer, which the module alone holds: __pys_ba_new(n), n zero bytes;
+    # __pys_ba_get(b, i), the byte at i; __pys_ba_put(b, i, x), which stores x there, or raises
+    # ValueError where x is no byte; __pys_ba_copy(dst, at, src, lo, n), dst[at:at + n] =
+    # src[lo:lo + n], which may overlap; __pys_ba_same(a, i, b, j, n), whether a[i:i + n] is
+    # b[j:j + n]; __pys_ba_find_byte(b, x, lo, hi) and __pys_ba_find(b, sub, lo, hi), the first
+    # index of byte x or of sub's bytes in b[lo:hi], or -1. An index outside the bytes raises
+    # IndexError
+    ops = {"__pys_ba_new": "str_new", "__pys_ba_get": "byte", "__pys_ba_put": "str_put", "__pys_ba_copy": "copy",
+           "__pys_ba_same": "same", "__pys_ba_find_byte": "find_byte", "__pys_ba_find": "find_sub"}
+    if self.curfn.mod != BYTEARRAYS or name not in ops or len([a for a in args if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar"]) > 0:
+        self.err(f"name '{name}' is not defined")
+    vals: list[Val] = []
+    for a in args:
+        v = self.expr(a, "")
+        vals.append(Val(v.v, "str") if v.t == "bytes" else self.as_int(v))  # (a bool, or a promoting int: narrowed)
+    r = self.primitive(ops[name], vals)
+    return Val(r.v, "bytes") if r.t == "str" else r
 
 def gen_complex_new(self, args: list[Node]) -> Val:
     # complex(real=0, imag=0), as complex_new_impl: each argument evaluated in turn, then a string

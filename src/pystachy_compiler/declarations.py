@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.analysis import READS_ONLY_FNS, attr_fills, attr_values, called_only, calls_init, local_names, nonexpr, only_reads_items, stmt_walrus
-from src.pystachy_compiler.bigints import PROMOTES, callable_ints, narrowed
+from src.pystachy_compiler.bigints import PROMOTES, callable_ints, narrow_type, narrowed
 from src.pystachy_compiler.builtin_bases import BWORDS
 from src.pystachy_compiler.diagnostics import Rejoin, int_lists, shown, where
 from src.pystachy_compiler.dynamic import comparison_record_write, comparison_storage_key
@@ -14,6 +14,8 @@ from src.pystachy_compiler.specs import (
     ANYUSE,
     BIG,
     BIGOPT,
+    BYTEARRAYC,
+    BYTEARRAYS,
     CLASSVAR,
     CTYPES,
     EXCATTRS,
@@ -2894,6 +2896,15 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
                     names.append(kw_names(t)[j])
                     types.append(kw_types(t)[j])
         return "kw[" + ",".join([names[j] + ":" + types[j] for j in range(len(names))]) + "]"
+    if k == "attr" and e.kids[0].kind == "name" and e.kids[0].s in self.classes and e.kids[0].s not in f.params and e.kids[0].s not in self.tmpl and e.kids[0].s not in self.nts:
+        # C.k of a class C: the type of the class attribute k that its body, or a base's, binds
+        # (class_attr reads it), unless a local of the method, or a name of the class body whose
+        # attribute this types, has the class's name
+        ci = self.classes[e.kids[0].s]
+        asg = {}
+        local_names(guess_scope(f), asg)
+        if e.kids[0].s not in asg and ci.bad == "" and e.s in ci.fdefault and e.s not in ci.methods and "?" not in ci.ftypes.get(e.s, "?"):
+            return ci.ftypes[e.s]
     if k == "call" and e.kids[0].kind == "attr" and e.kids[0].kids[0].kind == "name" and e.kids[0].kids[0].s == me:
         ms = self.classes[f.cls].methods
         m = e.kids[0].s
@@ -3048,6 +3059,18 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         if len(bad) > 0:
             return bad[0]
         return self.ctype("tuple", ts) if "" not in ts and len(ts) == len(e.kids) else ""
+    if k == "set" and len(e.kids) > 0 and len([x for x in e.kids if x.kind == "starred"]) == 0:
+        # {a, b, ...}: a set of its items' type, where they all have one (set_display compiles
+        # them as items of the first's: items of other types type nothing, so that a class the
+        # program does not use is left out as it was, not compiled into an error). A promoting
+        # int is an item as a 64-bit int is (ctype narrows it: -3 beside 1, bigints.py)
+        t = self.guess(e.kids[0], f)
+        if t == "" or t.startswith("!"):
+            return t
+        for x in e.kids[1:]:
+            if narrow_type(self.guess(x, f)) != narrow_type(t):
+                return ""
+        return self.ctype("set", [t]) if "?" not in t and t != "None" and self.elem_problem(t) == "" else ""
     if k == "dict" and len(e.kids) > 0 and len(e.kids) % 2 == 0:
         kt = self.guess(e.kids[0], f)
         vt = self.guess(e.kids[1], f)
@@ -3100,6 +3123,34 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         if e.s == "*" and (is_list(b) or b == "str") and a in ["int", "bool", BIG]:
             return b
     return ""
+
+def gen_class_reads(self, e: Node, f: FnInfo, t: str) -> bool:
+    # is e, a class-body or parameter default of an imported module, made only of constants and
+    # of class attributes read through their classes (C.k, as class_attr reads it), alone or in
+    # displays whose items guess types alike, and of the type t expected ("": any)? Such a value
+    # compiles as guess types it, so default_problem need not refuse it for the class's name (a
+    # class is no value, but C.k names none), and its class or function is compiled, not left out
+    g = self.guess(e, f) if reads_only(self, e, f) else ""
+    return g != "" and not g.startswith("!") and "?" not in g and (t == "" or g == t)
+
+def reads_only(self, e: Node, f: FnInfo) -> bool:
+    # (class_reads) a constant but None, C.k of a class attribute k that class C's body or a
+    # base's binds, a tuple of such values, or a list, set or dict display of them whose items
+    # (a dict's keys, and its values) all have the type guess gives the first
+    if e.kind == "attr":
+        c = e.kids[0]
+        return c.kind == "name" and c.s in self.classes and c.s not in self.nts and c.s not in self.tmpl and e.s in self.classes[c.s].fdefault and e.s not in self.classes[c.s].methods
+    if e.kind != "tuple" and e.kind != "list" and e.kind != "set" and e.kind != "dict":
+        return is_const(e) and e.kind != "None" and e.kind != "noann"
+    if len(e.kids) == 0:
+        return False
+    for i in range(len(e.kids)):
+        if not reads_only(self, e.kids[i], f):
+            return False
+        j = i % 2 if e.kind == "dict" else 0
+        if e.kind != "tuple" and i > j and self.guess(e.kids[i], f) != self.guess(e.kids[j], f):
+            return False
+    return True
 
 def gen_guess_iter(self, a: Node, f: FnInfo) -> str:
     # the type of iter(a) (guess, see iter_): a file itself, an object's iterator object, or the
@@ -3416,6 +3467,10 @@ def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
     if o.t == RANGEC and self.curfn.mod != RANGES and name not in ci.ftypes:
         # (CPython's range has no other attributes, and its methods cannot be assigned)
         self.err(f"'range' object attribute '{name}' is read-only" if store and name in ci.methods else f"'range' object has no attribute '{name}'" + (" and no __dict__ for setting new attributes" if store else ""))
+    if o.t == BYTEARRAYC and self.curfn.mod != BYTEARRAYS and (store or name in ci.ftypes):
+        # (CPython's bytearray has its methods and no attribute of its own: lib's class keeps its
+        # buffer and length in fields that only its module reaches)
+        self.err(f"'bytearray' object attribute '{name}' is read-only" if store and name in ci.methods else f"'bytearray' object has no attribute '{name}'" + (" and no __dict__ for setting new attributes" if store else ""))
     if o.t == COMPLEXC and self.curfn.mod != COMPLEXS and (store or (name not in ci.ftypes and name not in ci.methods)):
         # (CPython's complex has real, imag and its methods, all read-only)
         self.err("readonly attribute" if name in ci.ftypes else f"'complex' object attribute '{name}' is read-only" if name in ci.methods else f"'complex' object has no attribute '{name}'")

@@ -22,8 +22,8 @@ the [module guide](README.md#module-guide) summarizes what each module supports.
 | [Numbers and randomness](#numbers-and-randomness) | [`random`](#random), [`statistics`](#statistics), [`mpz`](#mpz) |
 | [Dates and times](#dates-and-times) | [`datetime`](#datetime) |
 | [Files, OS and command line](#files-os-and-command-line) | [`io`](#io), [Binary files](#binary-files), [Path modules](#path-modules), [`pathlib`](#pathlib), [`glob`](#glob), [`shutil`](#shutil), [`sysconfig`](#sysconfig), [`argparse`](#argparse), [`getopt`](#getopt), [`platform`](#platform) |
-| [Processes and threads](#processes-and-threads) | [`_thread`](#_thread), [`threading`](#threading), [`concurrent.futures`](#concurrentfutures), [`atexit`](#atexit) |
-| [Runtime services](#runtime-services) | [`abc`](#abc), [`types`](#types), [`warnings`](#warnings), [`logging`](#logging), [`traceback`](#traceback), [`weakref` and `_weakref` (prototype)](#weakref-and-_weakref-prototype) |
+| [Processes and threads](#processes-and-threads) | [`subprocess`](#subprocess), [`_thread`](#_thread), [`threading`](#threading), [`concurrent.futures`](#concurrentfutures), [`atexit`](#atexit) |
+| [Runtime services](#runtime-services) | [`abc`](#abc), [`importlib`](#importlib), [`types`](#types), [`inspect`](#inspect), [`warnings`](#warnings), [`logging`](#logging), [`traceback`](#traceback), [`weakref` and `_weakref` (prototype)](#weakref-and-_weakref-prototype) |
 | [Native interoperability](#native-interoperability) | [`ctypes`](#ctypes) |
 | [Removed modules](#removed-modules) | `_imp`, `_ast`, `opcode` |
 
@@ -513,7 +513,7 @@ format.
 - An unsigned 8-byte value from 2\*\*63 on (`Q`, and the native `L`, `N` and `P`) raises
   `OverflowError: integer result does not fit in 64 bits` as it is unpacked, since Pystachy's ints
   are 64-bit ([deviation](../tests/deviations/lib_struct_unsigned64.py)).
-- Buffers are `bytes`: Pystachy has no `bytearray`, `memoryview` or `array`, and `pack_into()`,
+- Buffers are `bytes`: these functions take no `bytearray`, and Pystachy has no `memoryview` or `array`, and `pack_into()`,
   which writes into one, raises `NotImplementedError`.
 - A format of more than nine values gives a tuple of more than nine items, which can be unpacked
   into names and indexed, but not printed, compared or hashed
@@ -536,7 +536,7 @@ messages): `hexlify` and `b2a_hex` with `sep` and `bytes_per_sep`, `unhexlify` a
 `b2a_qp` and `a2b_qp` (with `quotetabs`, `istext` and `header`), `crc32` and `crc_hqx`.
 `binascii.Incomplete` exists, as in CPython, where no function raises it.
 
-- Binary data is `bytes`, as Pystachy has no `bytearray`, `memoryview` or `array`. The `a2b_*()`
+- Binary data is `bytes`: these functions take no `bytearray`, and Pystachy has no `memoryview` or `array`. The `a2b_*()`
   functions also take a `str` of ASCII characters, as CPython's do. Another type of argument
   is a compile-time error, where CPython raises `TypeError`.
 - `hexlify(data, None)` and `b2a_hex(data, None, n)` separate nothing, as without a `sep`, where
@@ -569,7 +569,7 @@ edited module passes the 40 tests of `test_base64`; a
 [checksum over pseudo-random inputs](../tests/programs/library/lib_base64_random.py) covers every
 codec.
 
-- Binary data is `bytes`, as Pystachy has no `bytearray`, `memoryview` or `array`. The decoders
+- Binary data is `bytes`: these functions take no `bytearray`, and Pystachy has no `memoryview` or `array`. The decoders
   also take a `str` of ASCII characters, as CPython's do. Another type of argument is a
   compile-time error, where CPython raises `TypeError`
   (error tests: [a str to encode](../tests/errors/library/lib_base64_encode_str.py),
@@ -1471,8 +1471,8 @@ CPython's `ValueError` for every method but `close()` (`iter()` returns it, and 
 raises). Positions and sizes count bytes, as in CPython.
 
 - `getbuffer()` (a `memoryview` of the buffer), `readinto()` and `readinto1()` (into a writable
-  buffer, such as a `bytearray`) are unavailable, as Pystachy has no `memoryview`, `bytearray`
-  or `array`; so are `detach()` and `fileno()` (which raise `io.UnsupportedOperation`) and
+  buffer, such as a `bytearray`) are unavailable, as Pystachy has no `memoryview` or `array`
+  and these methods take no `bytearray`; so are `detach()` and `fileno()` (which raise `io.UnsupportedOperation`) and
   pickling. A call of any is a compile-time error.
 - Invalid argument types such as `BytesIO("x")`, `write("x")` (and so `print(..., file=)` to a
   `BytesIO`) are compile-time errors, as are attributes of the program's own on one.
@@ -1799,6 +1799,56 @@ build (`python_build()`, `python_compiler()`, `python_branch()`, `python_revisio
 
 <a id="thread"></a>
 
+### `subprocess`
+
+A subset implementation of CPython's `subprocess` for POSIX, written over private runtime
+primitives that do what CPython's asks of `_posixsubprocess.fork_exec()`, `os` and `select`
+([tests](../tests/programs/library/lib_subprocess_run.py)): `run()`, `call()`, `check_call()`,
+`check_output()`, `getoutput()`, `getstatusoutput()`, `Popen`, `CompletedProcess`,
+`CalledProcessError`, `TimeoutExpired`, `SubprocessError`, `PIPE`, `STDOUT` and `DEVNULL`.
+A child starts as CPython starts it: found in `PATH` (that of `env`, if it has one), in `cwd`,
+with `env`, in a new session for `start_new_session`, with only its three standard descriptors
+(`close_fds`), and with the default actions of the signals that the runtime ignores. A program
+that cannot start raises the `OSError` of its `errno`, with its name
+([test](../tests/programs/library/lib_subprocess_errors.py)).
+
+- **Text mode is decided when a call is compiled.** `run()` and `check_output()` return `str`
+  where the call passes `text`, `universal_newlines`, `encoding` or `errors`, and `bytes`
+  where it passes none of them; a `CompletedProcess` is generic in that type
+  (`CompletedProcess[str]`), and one variable holds results of one of the two
+  ([test](../tests/programs/library/lib_subprocess_text.py),
+  [error test](../tests/errors/library/lib_subprocess_two_modes.py)). CPython decides from the
+  values as it runs. A call that passes `text=False`, or another of the four as a false value
+  alone, is compiled to return `str` and raises `ValueError`
+  ([deviation](../tests/deviations/lib_subprocess_text_false.py)); an `encoding` or `errors`
+  that may be `None` is rejected
+  ([error test](../tests/errors/library/lib_subprocess_optional_encoding.py)). `input` is `bytes`,
+  and a `str` in text mode ([error test](../tests/errors/library/lib_subprocess_input_str.py)).
+- **`CalledProcessError` holds bytes.** Its `output` and `stderr` are `bytes` or `None`, also
+  for a call in text mode, whose are the bytes before they are decoded; CPython's are then the
+  `str` ([deviation](../tests/deviations/lib_subprocess_text_error.py)). CPython's
+  `TimeoutExpired` holds bytes in text mode too, as here.
+- **`Popen` is of one type**, so that an annotation names it (`Popen`, `Popen[bytes]`) and a
+  field holds it ([test](../tests/programs/library/lib_subprocess_mypy.py)). Its pipes carry
+  bytes, through `communicate()`: it has no `stdin`, `stdout` and `stderr` files and no text
+  mode ([error tests](../tests/errors/library/lib_subprocess_popen_stdout.py)). Its streams are
+  `None` or an `int`; `run()`, `call()` and `check_output()` also take an open file, whose
+  `fileno()` they pass. `poll()`, `wait()`, `communicate()`, `send_signal()`, `terminate()`,
+  `kill()`, `pid`, `returncode`, `args` and the context manager are CPython's
+  ([test](../tests/programs/library/lib_subprocess_popen.py)).
+- `args` is a `str` or a `list[str]`. The parameters past `bufsize` are keyword-only, and
+  `executable`, `preexec_fn`, `pass_fds`, `user`, `group`, `extra_groups`, `umask`, `pipesize`,
+  `process_group`, `startupinfo` and `creationflags` are not parameters
+  ([error test](../tests/errors/library/lib_subprocess_executable.py)); `check_output()` has
+  no `stdout` and `check`, which CPython refuses with `ValueError`.
+- A timeout kills the child, as CPython's does, not what the child started: a program ends
+  those through the child's session (`start_new_session`) itself. Ctrl-C ends a Pystachy
+  program at once, so `run()` does not kill a child that the terminal's signal did not reach.
+  A `Popen` that the program never waits for leaves its child unreaped until the program
+  ends; CPython reaps it when a later `Popen` is made.
+- There is no `signal` module: `send_signal()` takes the signal's number, and a
+  `CalledProcessError`'s message names the signal that ended a child from the system's table.
+
 ### `_thread`
 
 `_thread` is `_pystachy_thread`, a port of the C module `_thread` (`Modules/_threadmodule.c`)
@@ -1997,6 +2047,79 @@ implementation for abstract methods 'a', 'b'`. Abstract methods can have bodies,
   base is not supported).
 - `update_abstractmethods()` is not supported: class decorators are not compiled.
 
+### `importlib`
+
+Pystachy resolves a program's imports while it compiles the program, so nothing imports a
+module at run time. `import_module()` of a constant name is an import statement, and
+`lib/importlib/` has the parts of CPython's package that need no importer:
+
+- `importlib.import_module()` of a module that a string constant names is that module's
+  import statement, where the call is a statement of its own or the value a statement
+  assigns to one variable: `mod = import_module("a.b")` is `import a.b as mod`, run where the
+  call is, with its `ImportError` and the limits of an import statement in that place. A
+  relative name takes a constant package or `__package__` and imports the submodule it
+  names, also where the package has an attribute of that name
+  ([test](../tests/programs/library/lib_importlib_import_module.py),
+  [attribute](../tests/programs/library/lib_importlib_import_module_attribute.py)); the main
+  program has no package.
+- The call's name (`import_module`, or `il` of `il.import_module`) must reach importlib's
+  function as CPython resolves it: imports of importlib are its only bindings in the scope it
+  resolves to, and in the call's own function or module one of them runs before the call. A
+  parameter or other variable of that name is called as what it holds
+  ([test](../tests/programs/library/lib_importlib_import_module_shadowed.py)); a call that
+  may read the name before its import, or that is in a class body, is a compile-time error
+  ([error test](../tests/errors/library/lib_importlib_import_module_unbound.py)).
+- Nothing imports a module at run time, so a name the program computes, and a call whose
+  module is used as a value (returned, passed on, or read inside a larger expression), is a
+  compile-time error where the call is compiled: a module that calls it so in a function the
+  program never calls still compiles
+  ([test](../tests/programs/library/lib_importlib_import_module_uncalled.py)).
+- `importlib.resources.files(name)` gives the directory of a module that the program imports,
+  a `pathlib.Path`, as CPython gives for a module it loads from a file: a package's own
+  directory, or the directory that holds a module's file
+  ([test](../tests/programs/library/lib_importlib_resources.py)). The path's `/`, `joinpath()`,
+  `read_text()`, `iterdir()` and tests are [`pathlib`'s](#pathlib). A name that the program has
+  no module of raises CPython's `ModuleNotFoundError`, an empty name its `ValueError` and a
+  relative name its `TypeError`.
+- `as_file()` gives the path itself, and `read_text()`, `open_text()`, `read_binary()`,
+  `open_binary()`, `is_resource()` and `path()` take a module's name and path names, as
+  CPython 3.13's do ([test](../tests/programs/library/lib_importlib_resources_functional.py)).
+- `importlib.util.resolve_name()` is CPython's function
+  ([test](../tests/programs/library/lib_importlib_util.py),
+  [upstream test](../tests/programs/upstream/upstream_importlib_util.py)).
+- `importlib.machinery` has `SOURCE_SUFFIXES`, `BYTECODE_SUFFIXES`, `EXTENSION_SUFFIXES` and
+  `all_suffixes()` ([test](../tests/programs/library/lib_importlib_machinery.py)).
+
+Differences from CPython:
+
+- `files()` finds the modules that the compiler read for the program, by a table the compiler
+  writes into it. CPython imports the module that the name gives: the name of a module that no
+  import statement of the program loads raises `ModuleNotFoundError` here
+  ([deviation](../tests/deviations/lib_importlib_resources_unimported.py)), as does the name
+  of a module the compiler provides itself, such as `sys` or `os`. A standard-library module
+  has the directory of its file in Pystachy's `lib/`, whose layout is not CPython's.
+- The paths are those the compiler read: absolute, with the symbolic links of a module's
+  directory resolved, where CPython keeps the spelling of a `PYTHONPATH` entry. An executable
+  that `pystachy build` makes keeps them, as it keeps `sys.prefix`: a package's data files are
+  read where they were when the program was compiled, wherever the executable is moved.
+- A namespace package raises `NotImplementedError`, where CPython gives a `MultiplexedPath` of
+  its directories ([deviation](../tests/deviations/lib_importlib_resources_namespace.py)).
+- `files()` takes a module's name: a module object, or no argument for the caller's package,
+  is a compile-time error ([error tests](../tests/errors/library/lib_importlib_resources_module.py)).
+- `read_text()` and `open_text()` take `errors='strict'` only
+  ([deviation](../tests/deviations/lib_importlib_resources_errors.py)), and their
+  `encoding=None` means the default, `'utf-8'`.
+- `BYTECODE_SUFFIXES` and `EXTENSION_SUFFIXES` are empty: Pystachy compiles source modules and
+  loads neither bytecode nor extension modules. CPython's lists name its `.pyc` files and the
+  extension modules of its build ([deviation](../tests/deviations/lib_importlib_machinery_suffixes.py)).
+
+Not supported, as compile-time errors where used: `reload()`, `invalidate_caches()` and
+`__import__()`; the other functions of `importlib.util`, such as `find_spec()` and
+`module_from_spec()`; the finders, loaders and `ModuleSpec` of `importlib.machinery`;
+`importlib.resources.contents()`, `Traversable` and `ResourceReader`; `importlib.abc`
+([error tests](../tests/errors/library/lib_importlib_invalidate_caches.py)).
+[`importlib.metadata`](#importlibmetadata) reads installed distributions' metadata.
+
 ### `types`
 
 `types` is Pystachy's own module for CPython's `Lib/types.py`, of which it has `TracebackType`,
@@ -2096,8 +2219,86 @@ Differences from CPython:
   provided: using one is a compile-time error
   ([error tests](../tests/errors/library/lib_importlib_metadata_entry_points.py)).
   `distributions()` takes no arguments.
-- The rest of `importlib` is not provided. Nothing imports a module at run time:
-  `import_module()`, `reload()` and `__import__()` are compile-time errors.
+- Of the rest of `importlib`, [`import_module()` of a constant name and the parts that need
+  no importer](#importlib) are provided: `reload()` and `__import__()` are compile-time errors.
+
+### `inspect`
+
+`inspect` is a subset (`lib/inspect.py`) of CPython 3.13.16's module, with its code: `Parameter`
+and `Signature` as objects that a program makes itself, the kinds (`_ParameterKind`, whose
+members are `Parameter.POSITIONAL_ONLY` to `Parameter.VAR_KEYWORD` and the module's
+`_POSITIONAL_ONLY` to `_VAR_KEYWORD`), the marker `Parameter.empty`, `formatannotation()` and
+`cleandoc()`. What CPython's module finds out about live objects is not provided, as a compiled
+program has no code objects, frames, class dictionaries or source files to ask: `signature()`,
+`Signature.from_callable()`, `bind()`, `bind_partial()` and `BoundArguments`, `getmembers()`, the
+`is...()` tests, `getsource()`, `getdoc()`, `get_annotations()`, `unwrap()`, `stack()` and the
+others. A name the module lacks is a compile-time error
+([error tests](../tests/errors/library/lib_inspect_signature_function.py)).
+
+- `Parameter(name, kind, *, default=empty, annotation=empty)` checks its arguments as CPython's
+  does, with its errors and messages; `name`, `kind`, `default`, `annotation`, `replace()`,
+  `str()`, `repr()`, `==` and `hash()` are CPython's
+  ([test](../tests/programs/library/lib_inspect_parameter.py),
+  [replace](../tests/programs/library/lib_inspect_replace.py),
+  [equality](../tests/programs/library/lib_inspect_eq.py)). A kind is a member of an `IntEnum`
+  class, numbered from 0, with a `description` and its name as its `str()`
+  ([test](../tests/programs/library/lib_inspect_kind.py)).
+- `Signature(parameters=None, *, return_annotation=empty)` checks the order of its parameters'
+  kinds, their defaults and their names as CPython's does; `parameters`, `return_annotation`,
+  `replace()`, `str()`, `format()` with `max_width`, `repr()`, `==` and `hash()` are CPython's
+  ([test](../tests/programs/library/lib_inspect_signature.py)).
+- The module is compiled with [dynamic `Any`](../docs/dynamic-any.md), so that a default, an
+  annotation and a return annotation hold a value of any type that
+  [can become an `Any` value](../docs/dynamic-any.md#the-typeddynamic-contract). A module that
+  does not opt in passes numbers, strs, bools, `None`, tuples, values of a union type, list and
+  dict displays, a `list[int]`, objects of its classes, enum members and functions, and reads
+  them back with their types and identity
+  ([test](../tests/programs/library/lib_inspect_defaults.py)), also in the shapes of mypyc's
+  `get_text_signature()` ([test](../tests/programs/library/lib_inspect_consumer.py)). Bytes, sets,
+  other existing lists and dicts of typed items and `IntEnum` members, a kind among them, are
+  compile-time errors ([error tests](../tests/errors/library/lib_inspect_default_bytes.py)). One
+  variable that holds the marker and then a default of another type, as mypyc's
+  `default: object` does, needs a module that opts in, where it is an `Any` variable
+  ([test](../tests/programs/library/lib_inspect_any.py),
+  [error test](../tests/errors/library/lib_inspect_default_object.py)). A program whose module
+  that does not opt in makes a `Parameter` is compiled with every module
+  [tracking numeric identity](../docs/dynamic-any.md#identity-scope), as its objects cross
+  into that module.
+- **The marker is an object.** `Parameter.empty`, `Signature.empty` and `inspect._empty` are one
+  object of a private class, where CPython's is a class, as a class is no value here. `is` tells
+  it from every default, `None` included, and its `repr()` is that of CPython's class
+  ([test](../tests/programs/library/lib_inspect_empty.py)); its type is not `type`
+  ([deviation](../tests/deviations/lib_inspect_empty_marker.py)), and calling it is a
+  compile-time error ([error test](../tests/errors/library/lib_inspect_empty_call.py)).
+- **A kind is a member, not an int.** `Parameter("x", 1)` is a compile-time error, where CPython
+  looks the member up ([error test](../tests/errors/library/lib_inspect_kind_int.py)), and the
+  [limits of `IntEnum` members](#enum) apply: a parameter held as an `Any` value does not give
+  its `kind`, which `isinstance(value, inspect.Parameter)` or a typed variable does
+  ([error test](../tests/errors/library/lib_inspect_any_kind.py)).
+- **Parameters are a list.** `Signature()` and `Signature.replace()` take a `list[Parameter]` or
+  `None`, where CPython takes any iterable
+  ([error test](../tests/errors/library/lib_inspect_parameters_tuple.py)). `parameters` is a
+  [`MappingProxyType`](#types) of a dict in the parameters' order, where CPython's is of an
+  `OrderedDict`, which its `repr()` shows
+  ([deviation](../tests/deviations/lib_inspect_parameters_repr.py)).
+- **Names are tested over ASCII.** `str.isidentifier()` is not supported, and the module has no
+  tables of the other characters that identifiers hold: a name that only such characters could
+  make an identifier raises `NotImplementedError`, where CPython accepts `café`
+  ([deviation](../tests/deviations/lib_inspect_name_not_ascii.py)).
+- **Annotations that are classes.** `formatannotation()` writes a builtin class as CPython does
+  ([test](../tests/programs/library/lib_inspect_annotation.py)), and a class of the program where
+  it is a value, in a module that opts in. An enum class is an object of `EnumType` here, which
+  does not know its module: formatting it raises `NotImplementedError`
+  ([deviation](../tests/deviations/lib_inspect_enum_annotation.py)). Typing forms and generic
+  aliases (`list[int]`) are no values, so CPython's formatting of them is left out, as is
+  `formatannotationrelativeto()`.
+- **Copies are made by name.** A class of the program can derive from `Parameter` or `Signature`
+  ([test](../tests/programs/library/lib_inspect_subclass.py)), but `replace()` of its object
+  raises `NotImplementedError`, where CPython calls `type(self)`
+  ([deviation](../tests/deviations/lib_inspect_subclass_replace.py)). `__replace__()`,
+  `__reduce__()` and `__setstate__()` are not provided.
+- `hash()` of a parameter or a signature agrees with `==`, but its value is not CPython's, as a
+  str's is not.
 
 ### `warnings`
 
