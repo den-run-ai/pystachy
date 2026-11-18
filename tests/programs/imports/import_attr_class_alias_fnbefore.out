@@ -1,0 +1,5 @@
+mods: init mods
+mods.shapes: init mods.shapes
+NameError: name 'B' is not defined
+Box
+[exit 0]

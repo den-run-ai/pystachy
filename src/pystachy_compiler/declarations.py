@@ -1,7 +1,7 @@
 """Declarations component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
-from src.pystachy_compiler.analysis import attr_fills, attr_values, calls_init, local_names, nonexpr, stmt_walrus
+from src.pystachy_compiler.analysis import READS_ONLY_FNS, attr_fills, attr_values, called_only, calls_init, local_names, nonexpr, only_reads_items, stmt_walrus
 from src.pystachy_compiler.bigints import PROMOTES, callable_ints, narrowed
 from src.pystachy_compiler.diagnostics import Rejoin, int_lists, shown, where
 from src.pystachy_compiler.dynamic import comparison_record_write, comparison_storage_key
@@ -18,6 +18,7 @@ from src.pystachy_compiler.specs import (
     EXCFIELDS,
     EXCINIT,
     FINAL_FIELD,
+    FLEXIBLE_ALIAS,
     FROZENERR,
     GLUE,
     IOPS,
@@ -45,9 +46,13 @@ from src.pystachy_compiler.specs import (
     UNCALLED,
     exc_derives,
     is_excname,
+    VTUPLE_ITEMS,
 )
 from src.pystachy_compiler.syntax import Node, has_kind, has_value_return, mentions, mk, other_return
 from src.pystachy_compiler.utils import (
+    holds_no_object,
+    is_clsval,
+    clsof,
     opaque_class,
     lib_source,
     clone,
@@ -59,6 +64,7 @@ from src.pystachy_compiler.utils import (
     is_callable,
     is_const,
     is_dict,
+    is_aset,
     is_fset,
     is_gen,
     is_list,
@@ -178,6 +184,8 @@ def gen_ann(self, n: Node) -> str:
             return BIG  # (a promoting int: bigints.py)
         if s == "int" or s == "float" or s == "bool" or s == "str" or s == "bytes" or s in self.classes:
             return s
+        if s == "type":
+            return "type[object]"  # (the class object of any ordinary class: class_values.py)
         if s == "range" and RANGEC in self.classes:
             return RANGEC  # (the class of range objects, lib/_pystachy_range.py)
         if s == "complex" and COMPLEXC in self.classes:
@@ -229,6 +237,13 @@ def gen_ann(self, n: Node) -> str:
         # type[BaseException], as __exit__ takes the class of the exception: exctype, which is the
         # exception itself (its class is what it shows)
         return "exctype"
+    elif k == "index" and n.kids[0].kind == "name" and n.kids[0].s == "type" and n.kids[1].kind == "name" and n.kids[1].s == "object" and "object" not in self.classes:
+        # type[object] (and type alone): the class object of any ordinary class of the program
+        return "type[object]"
+    elif k == "index" and n.kids[0].kind == "name" and n.kids[0].s == "type" and n.kids[1].kind == "name" and self.class_value_named(n.kids[1].s):
+        # type[C] of an ordinary class C of the program: its class object, or that of a class
+        # deriving from it (class_values.py)
+        return "type[" + n.kids[1].s + "]"
     elif k == "index" and n.kids[0].kind == "name" and n.kids[0].s in self.taliases:
         return self.alias_ann(n)
     elif k == "index" and n.kids[0].kind == "name" and n.kids[0].s in self.tparams:
@@ -282,8 +297,8 @@ def gen_ann(self, n: Node) -> str:
             return self.path_union(a)
         if base == "tuple" and len(a) == 2 and a[1].kind == "ellipsis":
             t = narrowed([self.ann(a[0])])[0]
-            if unopt(t) not in ["int", "float", "bool", "str", "dyn"]:
-                return "!runtime-length tuple elements must be int, float, bool, str or their optional types"
+            if unopt(t) == BIG or not self.vtuple_holds(t):
+                return "!" + VTUPLE_ITEMS
             return self.ctype("vtuple", [t])
         # (a tuple holds promoting ints, tslots, and so does an int | None: Optional[int], Union[int, None])
         ts = self.ann_items(a) if base == "tuple" else [self.ann(x) for x in a] if base == "optional" or base == "union" else narrowed([self.ann(x) for x in a])
@@ -294,7 +309,7 @@ def gen_ann(self, n: Node) -> str:
             return self.ctype("list", [ts[0]])
         if base == "dict" and len(ts) == 2:
             return self.ctype("dict", ts) if self.key_problem(ts[0]) == "" else "!" + self.key_problem(ts[0])
-        if (base == "set" or base == "frozenset") and len(ts) == 1:
+        if (base == "set" or base == "frozenset" or base == "aset") and len(ts) == 1:
             return self.ctype(base, ts) if self.elem_problem(ts[0]) == "" else "!" + self.elem_problem(ts[0])
         if base == "tuple" and (len(ts) > 0 or n.kids[1].kind == "tuple" or n.kids[1].kind == "starred"):
             return self.ctype("tuple", ts)  # (tuple[()] is the empty tuple's, as tuple[*Ts] of no types is)
@@ -342,13 +357,24 @@ def gen_ann_base(self, b: Node) -> str:
     # typing's name in lower case (callable, optional, union, ...), with Mapping a dict, Sequence
     # a list and MutableSet a set; or "!" and why not
     base = b.s
+    abcset = False  # (collections.abc's Set, not typing's, which is the builtin set)
     if b.kind == "attr":
         base = self.typing_attr(b).lower()  # typing.List[int]
+        abcset = base == "set" and self.dotted(b) != "" and self.imported(self.dotted(b)).startswith("collections.abc.")
     elif base != "list" and base != "dict" and base != "tuple" and base != "set" and base != "frozenset":
+        abcset = self.imported(base) == "collections.abc.Set"
         base = self.typing_name(base)
         if base.startswith("!"):
             return base
         base = base.lower()
+    if base == "abstractset":
+        return "aset"  # (typing.AbstractSet[T]: a set or a frozenset, utils.is_aset)
+    if abcset:
+        # collections.abc.Set[T] is a set[T], as its annotation has always been taken, until the
+        # program gives one a frozenset: it is then compiled again with each an AbstractSet's
+        # type (coerce's hint), which programs that compile without one never see
+        self.abcsets = True
+        return "aset" if "abstract-sets" in self.hints else "set"
     if base == "mapping" or base == "mutablemapping":
         return "dict"  # (collections.abc's and typing's: what a dict is)
     if base == "sequence" or base == "mutablesequence":
@@ -463,6 +489,18 @@ def gen_path_union(self, ms: list[Node]) -> str:
             none = none or t != "str"
     return ("opt[str]" if none else "str") if s else "!" + PATHLIKE
 
+def bad_attr(n: Node) -> Node | None:
+    # the first read in expression n, as CPython evaluates it, of a module attribute that does
+    # not exist (Loader.qexpr's badattr: CPython's AttributeError), or that a module Pystachy
+    # provides does not offer; else None. A module as a value, or its __dict__, is no such read
+    if n.kind == "badattr" and (" has no attribute " in n.s or " is not offered by " in n.s):
+        return n
+    for k in n.kids:
+        r = bad_attr(k)
+        if r is not None:
+            return r
+    return None
+
 def gen_typevar_def(self, st: Node) -> bool:
     # is st T = TypeVar("T") or Ts = TypeVarTuple("Ts") (typing's or typing_extensions'): T is
     # then a name only annotations use
@@ -476,11 +514,29 @@ def gen_typevar_def(self, st: Node) -> bool:
     self.line = st.line
     if len(c.kids) < 2 or c.kids[1].kind != "str":
         self.err(f"{kind}() needs the type variable's name, a string, as its first argument")
+    constraints = 0
+    bound = False
     for a in c.kids[2:]:
-        if a.kind != "kw" or not is_const(a.kids[0]):
-            self.err("a TypeVar's constraints, and a bound other than a string, are not supported")
-        if a.s == "default":
+        # (constraints and a bound only restrict what binds the variable, which the arguments'
+        # types do; Loader.deftime has read them as annotations, which run no code)
+        if a.kind != "kw" and kind == "TypeVar":
+            constraints += 1
+        elif a.kind == "kw" and a.s == "bound" and kind == "TypeVar":
+            bound = True
+        elif a.kind != "kw" or not is_const(a.kids[0]):
+            self.err(f"a {kind}'s arguments other than its name{', constraints and bound' if kind == 'TypeVar' else ''} must be constants")
+        b = bad_attr(a.kids[0] if a.kind == "kw" else a) if kind == "TypeVar" and (a.kind != "kw" or a.s == "bound") else None
+        if b is not None:
+            # (an attribute that its module does not bind, which Loader.qexpr leaves as badattr:
+            # CPython raises AttributeError there, though it checks no bound or constraint)
+            self.line = b.line
+            self.err(f"{b.s} (CPython evaluates a TypeVar's constraints and bound when the assignment runs)")
+        if a.kind == "kw" and a.s == "default":
             self.tvdefaults[st.kids[0].s] = True
+    if constraints == 1:
+        self.err("A single constraint is not allowed (CPython raises this TypeError when the assignment runs)")
+    if constraints > 0 and bound:
+        self.err("Constraints cannot be combined with bound=... (CPython raises this TypeError when the assignment runs)")
     if kind == "TypeVarTuple":
         self.tvtuples[st.kids[0].s] = True
     return True
@@ -568,6 +624,13 @@ def gen_class_params(self, st: Node) -> str:
             self.tvdefaults[names[i]] = True
     return ""
 
+def gen_sentinel_param(self, p: Node) -> bool:
+    # is parameter p annotated with a type that cannot hold the sentinel that its default names, a
+    # module's object() (sentinelglobals): then only that sentinel is an object() p can be given
+    if p.kind != "param" or p.kids[0].kind == "noann" or p.kids[1].kind != "name" or p.kids[1].s not in self.sentinelglobals:
+        return False
+    return holds_no_object(self.vtype(p.kids[0]))
+
 def gen_alias_value(self, name: str) -> Node:
     # the value of type alias name: a type statement's, or that an assignment binds (of
     # N = NewType("N", T), T: Loader.newtype)
@@ -627,6 +690,8 @@ def gen_alias_problem(self, e: Node) -> str:
         if nm == "Optional":
             return "typing.Optional requires a single type"
         return f"{nm} accepts only a single type" if nm in ["Required", "NotRequired", "ReadOnly"] else f"{p} accepts only single type"
+    if b.kind == "name" and b.s == FLEXIBLE_ALIAS and (n != 2 or starred):
+        return "!mypy_extensions.FlexibleAlias takes two type arguments here, FlexibleAlias[T, X]: the alias's type variables, then the type it stands for"
     if starred:
         return ""  # (*Ts: as many as it unpacks)
     if b.kind == "name" and b.s in self.taliases:
@@ -716,18 +781,42 @@ def gen_newtype_name(self, name: str) -> bool:
     # whose calls return their argument
     return name in self.taliases and self.taliases[name].kind == "assign" and self.taliases[name].kids[1].kind == "call"
 
-def gen_newtype_reads(self, e: Node) -> None:
-    # N = NewType("N", T) runs (statement newtype): CPython evaluates T first, where a class or
-    # NewType that T names may not be bound yet, as one read through its module (a.C) during a
-    # circular import, or one that an import which raised was to bind: their errors, as
-    # isinstance's argument has them (isinst_reads). (A string in T is not evaluated)
+def gen_ann_reads(self, e: Node) -> None:
+    # CPython evaluates e, an assigned type alias's value, the T of N = NewType("N", T) or an
+    # annotation of module code or a class body (def_ann_reads, an annotated assignment's), where
+    # its statement runs (aliasvalue, newtype): an attribute it reads through a module (a.C),
+    # which Loader.reads marks (Node.chk), may not be bound yet, as during a circular import, or
+    # the import it needs may have raised: their errors, as isinstance's argument has them
+    # (isinst_reads). A name alone is bound then (Loader.reads rejects one that may not be); the
+    # names of a string, a forward reference, which CPython does not evaluate, are not marked
+    # (Loader.qann parses it later)
     if e.kind == "name":
-        self.modchk(e)
-        if (e.s in self.classes or self.newtype_name(e.s)) and (e.chk or self.foreign(e.s)) and e.s in self.gflag:
-            self.guard(self.scalar('xor', [Val(self.mload('bool', f'@g.{e.s}.def'), 'bool'), Val('true', 'bool')]), self.unbound(e.s))
+        if e.chk:
+            self.modchk(e)
+            if (e.s in self.classes or self.newtype_name(e.s)) and e.s in self.gflag:
+                self.guard(self.scalar('xor', [Val(self.mload('bool', f'@g.{e.s}.def'), 'bool'), Val('true', 'bool')]), self.unbound(e.s))
         return
-    for k in e.kids if e.kind != "str" else []:
-        self.newtype_reads(k)
+    for k in e.kids:
+        self.ann_reads(k)
+
+def gen_def_ann_reads(self, d: Node) -> None:
+    # def statement d runs in module code or a class body: CPython evaluates its annotations
+    # there (unless its module imports annotations from __future__, where Loader.ann marks none),
+    # after its defaults, in the order its compiler visits them: the parameters after the
+    # positional-only ones, those, *args, the keyword-only ones, **kwargs, then the return's
+    # (each as ann_reads checks a type alias's value)
+    ps = d.kids[0].kids
+    lim = d.kids[0].s.split(",")
+    posonly = int(lim[0])
+    kwonly = int(lim[1])
+    order: list[Node] = [ps[i] for i in range(len(ps)) if ps[i].kind == "param" and i >= posonly and (kwonly < 0 or i < kwonly)]
+    order.extend(ps[:posonly])
+    order.extend([p for p in ps if p.kind == "starparam"])
+    order.extend([ps[i] for i in range(len(ps)) if ps[i].kind == "param" and kwonly >= 0 and i >= kwonly])
+    order.extend([p for p in ps if p.kind == "dstarparam"])
+    for p in order:
+        self.ann_reads(p.kids[0])
+    self.ann_reads(d.kids[1])
 
 def gen_alias_kept(self, name: str) -> bool:
     # does the assignment that binds type alias name stay in the module's code: Pos = int binds
@@ -795,7 +884,7 @@ def gen_unalias(self, a: Node, seen: list[str]) -> Node:
     if self.unaliased > TYPE_SIZE:
         self.err(f"the type aliases this annotation names expand to more than {TYPE_SIZE} nodes (not supported: simplify them)")
     if k == "name" and a.s in self.taliases and a.s not in seen and (self.taliases[a.s].kind == "assign" or self.taliases[a.s].kids[0].s == ""):
-        return self.unalias(clone(self.alias_value(a.s)), seen + [a.s])
+        return self.unalias(flexible_value(clone(self.alias_value(a.s))), seen + [a.s])
     if k == "index" and a.kids[0].kind == "name" and a.kids[0].s in self.taliases and a.kids[0].s not in seen:
         name = a.kids[0].s
         tps = self.alias_params(name)
@@ -805,10 +894,18 @@ def gen_unalias(self, a: Node, seen: list[str]) -> Node:
         # (the type arguments replace the type parameters first: in type Pair[Row] = ..., Row is
         # the parameter, not the module's alias Row)
         v = self.subst_ann(clone(self.alias_value(name)), tps, [self.unalias(x, seen) for x in xs])
-        return self.unalias(v, seen + [name])
+        return self.unalias(flexible_value(v), seen + [name])
     for i in range(len(a.kids)):
         a.kids[i] = self.unalias(a.kids[i], seen)
     return a
+
+def flexible_value(v: Node) -> Node:
+    # (unalias) type alias value v, or X where v is mypy_extensions' FlexibleAlias[T, X]: mypy
+    # expands such an alias to its last type argument, so mypy's Bogus = FlexibleAlias[T, T] makes
+    # Bogus[list[int]] a list[int] (alias_problem rejects other numbers of type arguments)
+    if v.kind == "index" and v.kids[0].kind == "name" and v.kids[0].s == FLEXIBLE_ALIAS and v.kids[1].kind == "tuple" and len(v.kids[1].kids) == 2:
+        return v.kids[1].kids[1]
+    return v
 
 def gen_subst_ann(self, n: Node, tps: list[str], args: list[Node]) -> Node:
     # annotation n (a copy) with type parameters tps replaced by annotations args
@@ -1075,7 +1172,7 @@ def gen_optional(self, t: str) -> str:
         # number beside scalars or containers is a scalar member, whose union is optional as an
         # int's is, and beside only objects and files a reference member: complex | C)
         return t if self.reference_union(t) or len([m for m in umembers(t) if m in self.classes and m != COMPLEXC]) > 0 else self.ctype("opt", [t])
-    if (t == "str" or t == "bytes" or t == "exc" or t == "exctype" or self.isnum(t) or is_list(t) or is_dict(t) or is_set(t) or is_tuple(t) or is_vtuple(t) or is_callable(t) or is_gen(t)) and "?" not in t:
+    if (t == "str" or t == "bytes" or t == "exc" or t == "exctype" or is_clsval(t) or self.isnum(t) or is_list(t) or is_dict(t) or is_set(t) or is_tuple(t) or is_vtuple(t) or is_callable(t) or is_gen(t)) and "?" not in t:
         return self.ctype("opt", [t])
     return ""
 
@@ -1112,6 +1209,20 @@ def gen_join(self, a: str, b: str) -> str:
             if self.derives(b, c):
                 return c
             c = self.classes[c].base
+    if is_clsval(a) and is_clsval(b):
+        # class objects: of the nearest base class that both classes derive from
+        j = self.join(clsof(a), clsof(b)) if clsof(a) in self.classes and clsof(b) in self.classes else ""
+        if j in self.classes:
+            return "type[" + j + "]"
+        # (classes without a common base: any class's, type[object]; a module that opts in to
+        # dynamic Any keeps the Any values it makes of them, whose calls run their
+        # constructors, unless one is typed so)
+        return "type[object]" if clsof(a) == "object" or clsof(b) == "object" or not self.dyn_policy(self.line) else ""
+    if (is_clsval(a) or self.refl_builtin_class(a) != "") and (is_clsval(b) or self.refl_builtin_class(b) != ""):
+        # (builtin classes named, int and str, or one and an ordinary class's class object: any
+        # class's. A module that opts in to dynamic Any keeps the Any values it makes of them
+        # unless a class object is typed so)
+        return "type[object]" if a == "type[object]" or b == "type[object]" or not self.dyn_policy(self.line) else ""
     if a == "None" or b == "None":
         return self.optional(b if a == "None" else a)
     if is_opt(a) or is_opt(b):
@@ -1120,7 +1231,34 @@ def gen_join(self, a: str, b: str) -> str:
     if is_tuple(a) and is_tuple(b) and len(targs(a)) == len(targs(b)):
         js = [self.join(targs(a)[i], targs(b)[i]) for i in range(len(targs(a)))]  # (item by item)
         return self.ctype("tuple", js) if "" not in js else ""
+    if (is_tuple(a) or is_vtuple(a)) and (is_tuple(b) or is_vtuple(b)):
+        # tuples of other lengths (or one of a runtime length): a runtime-length tuple of their
+        # items' join, where one can hold them (tuple[()] and tuple[C]: tuple[C, ...])
+        xs = targs(a) + targs(b)
+        j = xs[0] if len(xs) > 0 else ""
+        for x in xs[1:]:
+            j = self.join(j, x) if j != "" else ""
+        return self.ctype("vtuple", [j]) if j != "" and "?" not in j and unopt(j) != BIG and self.vtuple_holds(j) else ""
     return ""
+
+def gen_class_join(self, a: str, b: str, want: str) -> str:
+    # the nearest common base of classes a and b where a value is an object of either (an
+    # if-else's arms, or's operands, a display's items), or "" where that is not new: unless
+    # a and b are classes of the program in one hierarchy and an a cannot already hold a b (b
+    # derives from a: a value of a's type holds both), and want, what the value is expected to
+    # be, is none or a class (or one or None) that the base is or derives from. Exception
+    # classes keep their own rules
+    if a == b or a not in self.classes or b not in self.classes or self.derives(b, a):
+        return ""
+    if self.classes[a].exc != "" or self.classes[b].exc != "":
+        return ""
+    j = self.join(a, b)
+    if j not in self.classes:
+        return ""
+    w = unopt(want)
+    if want != "" and not (w in self.classes and self.derives(j, w)):
+        return ""
+    return j
 
 def gen_wider(self, a: str, b: str) -> str:
     # the type of values of types a and b as they are, where they differ only in what may be
@@ -1129,6 +1267,8 @@ def gen_wider(self, a: str, b: str) -> str:
     if self.rec_type(a) == self.rec_type(b):
         return b
     if a in self.classes and b in self.classes:
+        return self.join(a, b)
+    if is_clsval(a) and is_clsval(b):
         return self.join(a, b)
     if self.isnum(a) or self.isnum(b):
         return ""
@@ -1146,9 +1286,9 @@ def gen_wider(self, a: str, b: str) -> str:
         k = self.wider(targs(a)[0], targs(b)[0])  # (tuple keys whose items may be None)
         w = self.wider(targs(a)[1], targs(b)[1])
         return self.ctype("dict", [k, w]) if k != "" and w != "" else ""
-    if is_set(a) and is_set(b) and is_fset(a) == is_fset(b):
+    if is_set(a) and is_set(b) and (is_fset(a) == is_fset(b) or is_aset(a) or is_aset(b)):
         w = self.wider(selem(a), selem(b))  # (tuple elements whose items may be None)
-        return self.ctype("frozenset" if is_fset(a) else "set", [w]) if w != "" else ""
+        return self.ctype("aset" if is_aset(a) or is_aset(b) else "frozenset" if is_fset(a) else "set", [w]) if w != "" else ""
     if not is_tuple(a) or not is_tuple(b) or len(targs(a)) != len(targs(b)):
         return ""
     bs = targs(b)
@@ -1217,8 +1357,13 @@ def gen_widens(self, a: str, b: str) -> bool:
         return a == "None" or (not is_sopt(b) and self.widens(unopt(a), unopt(b))) or (b == BIGOPT and a == "opt[int]")
     if is_gen(a) and is_gen(b) and gsend(b) == "None" and gelem(a) == gelem(b):
         return True  # (a generator that takes S from send() as one that next() alone resumes)
+    if is_aset(b):
+        return is_set(a) and selem(a) == selem(b)  # (a set or a frozenset as an AbstractSet of its elements: the same object)
     if b in self.classes:
         return a == "None" or (a in self.classes and self.derives(a, b))
+    if is_clsval(b):
+        # (the class object of a class is one of its base classes' too)
+        return is_clsval(a) and (clsof(b) == "object" or self.derives(clsof(a), clsof(b)))
     if is_union(b):
         # (its box: the tags are the program's, the same in every union)
         if a == "None":
@@ -1237,6 +1382,17 @@ def gen_widens(self, a: str, b: str) -> bool:
             return False
         i += 1
     return True
+
+def gen_seq_default(self, p: Node, d: Node) -> bool:
+    # is p of function d a parameter annotated Sequence[T] whose default is the empty tuple, which
+    # d's body only reads the items of (only_reads_items): its default is then an empty list, the
+    # list[T] that Sequence[T] compiles to, which no code of d can tell from () or keep
+    a = self.parse_expr(p.kids[0].s) if p.kids[0].kind == "str" else p.kids[0]
+    if p.kind != "param" or p.kids[1].kind != "tuple" or len(p.kids[1].kids) > 0 or a.kind != "index" or self.typing_ref(a.kids[0]) != "Sequence":
+        return False
+    params = [q.s for q in d.kids[0].kids]
+    fns = [x for x in READS_ONLY_FNS if not self.bound(x) and x not in params and called_only(d.kids[2], x)]
+    return only_reads_items(d.kids[2], p.s, fns)
 
 def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
     # a function or method. A module-level function with a parameter that has no annotation
@@ -1386,7 +1542,7 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         # a method's are too, as M2 makes them (but its self or cls; see template_ok), and a
         # class template's __init__; an annotation that names a class template types nothing
         own = cls != "" and i == 0 and f.deco != "staticmethod"
-        if (cls == "" or ((template_ok(d.s) or init) and not own)) and ((ps[i].kind == "param" and (ps[i].kids[0].kind == "noann" or self.tmpl_ann(ps[i].kids[0]))) or ps[i].kind == "starparam" or ps[i].kind == "dstarparam"):
+        if (cls == "" or ((template_ok(d.s) or init) and not own)) and ((ps[i].kind == "param" and (ps[i].kids[0].kind == "noann" or self.tmpl_ann(ps[i].kids[0]) or self.sentinel_param(ps[i]))) or ps[i].kind == "starparam" or ps[i].kind == "dstarparam"):
             f.generic = True
     if (cls == "" or template_ok(d.s)) and d.kids[1].kind != "noann" and self.tmpl_ann(d.kids[1]) and not (cls in self.classes and self.classes[cls].origin != ""):
         f.generic = True  # (-> Box: what it returns is one of the class's specializations)
@@ -1446,6 +1602,8 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
             bad = "**kwargs is not supported" if p.kind == "dstarparam" else "*args, **kwargs are not supported"
             continue
         f.params.append(p.s)
+        if self.seq_default(p, d):
+            p.kids[1] = mk("list", "", p.kids[1].line, [])  # (see seq_default)
         f.defaults.append(p.kids[1])
         f.dglob.append("")
         f.dtypes.append("")
@@ -1460,6 +1618,13 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
             f.ptypes.append("")  # (it names a class template: any of its specializations, see tmpl_ann)
             if self.callable_pat(p.kids[0]) != "":
                 f.pats[len(f.params) - 1] = p.kids[0]
+        elif self.sentinel_param(p) and f.generic and (cls == "" or template_ok(d.s) or init):
+            # p: T = S of a module's sentinel S = object(), as mypy's Bogus[...] = _dummy: a template
+            # parameter that is a T (call_fn coerces a given argument to it) or S itself, where a
+            # call leaves it out; p is S decides each specialization's branch (static)
+            f.ptypes.append("")
+            f.sentinels[p.s] = p.kids[1].s
+            f.sentann[p.s] = self.vtype(p.kids[0])
         elif self.lib and self.ann_problem(p.kids[0], False) != "":
             bad = f"{cls + '.' if cls != '' else ''}{d.s}() is not supported: parameter '{p.s}': {self.ann_problem(p.kids[0], False)}"
             f.ptypes.append("")  # (any type: the def statement evaluates its default, see hoist)
@@ -1581,14 +1746,32 @@ def gen_tv_plan(self, f: FnInfo, ps: list[Node], ret: Node, tvs: list[str]) -> N
 def gen_tv_bound(self, f: FnInfo, ts: list[str]) -> str:
     # what an instance of template f (tv_plan) returns for arguments of types ts: X, where the
     # class of an argument for a parameter annotated G[..., T, ...] derives from G[..., X, ...]
-    # (class V(G[X]): generic_subclass), else "" (its returns decide, as for any template)
+    # (class V(G[X]): generic_subclass; also through generic bases that pass their type variables
+    # on, tv_through), else "" (its returns decide, as for any template)
     for i in range(len(f.tvbparams)):
         j = f.tvbparams[i]
         c = unopt(ts[j]) if j < len(ts) else ""
         while c in self.classes:
-            if self.genbase.get(c, "") == f.tvbclass[i] and f.tvbpos[i] < len(self.genargs[c]):
-                return self.genargs[c][f.tvbpos[i]]
+            x = self.tv_through(c, f.tvbclass[i], f.tvbpos[i])
+            if x != "" and not x.startswith("~"):
+                return x
             c = self.classes[c].base
+    return ""
+
+def gen_tv_through(self, c: str, g: str, k: int) -> str:
+    # what class c's subscripted generic bases (generic_subclass) bind type variable k of generic
+    # class g to, also through theirs: a type, "~T" where they pass c's own type variable T on
+    # (class N(Generic[T], G[T])), or "" where they do not bind it
+    bases = self.genargs.get(c, {})
+    if g in bases:
+        return bases[g][k] if k < len(bases[g]) else ""
+    for b in bases:
+        x = self.tv_through(b, g, k)
+        if x.startswith("~"):
+            ps = self.tparams.get(b, [])
+            return bases[b][ps.index(x[1:])] if x[1:] in ps and ps.index(x[1:]) < len(bases[b]) else ""
+        if x != "":
+            return x
     return ""
 
 def gen_iter_ann(self, n: Node) -> str:
@@ -1784,7 +1967,9 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
                 if ci.mod == "":
                     self.err(why)
                 ci.bad = ci.bad if ci.bad != "" else f"class {shown(ci.name)} is not supported: {why}"
-    if ci.role != "" and "__slots__" in ci.fdefault:
+    if len(ci.roles) > 0 and "__slots__" in ci.fdefault and len([r for r in ci.roles if not self.slotted_trait(ci.name, r)]) > 0:
+        # (a secondary base without __slots__ gives CPython's objects a __dict__; a trait whose
+        # classes all declare __slots__ = () does not: slotted_trait)
         self.line = ci.node.line
         self.bad_class(ci, "__slots__ in a hierarchy with a secondary base is not supported")
     if ci.base in self.classes:
@@ -1907,6 +2092,29 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
         elif st.kind != "def" and st.kind != "pass" and not (st.kind == "expr" and (st.kids[0].kind == "str" or st.kids[0].kind == "ellipsis")):
             what = "an assignment to anything but one name (x = v)" if st.kind == "assign" else "an expression statement" if st.kind == "expr" else f"a{'n' if st.kind[0] in 'aeiou' else ''} {st.kind} statement"
             self.err(f"a class body may only contain fields, methods, a docstring, pass and ..., not {what}")
+    inherited = self.classes[ci.base].roles if ci.base in self.classes else []
+    for r in ci.roles:
+        # the attributes its own secondary bases declare by annotation (role_attrs): its fields,
+        # as its class body's are, which a value of the base's type reads by the object's class
+        # (role_field). One that the class or its primary chain declares keeps that declaration,
+        # which must be of the same type
+        role = self.classes[r]
+        if r in inherited or (role.base != "" and len(self.role_chain(ci.base, r)) == 0):
+            continue  # (a trait's fields are those of the primary chain's class it derives from)
+        self.declare_fields(role)
+        if not role.fields_ready and any(d.kind == "annassign" and len(d.kids) == 2 for d in role.node.kids[0].kids):
+            self.line = ci.node.line
+            self.bad_class(ci, f"the attributes secondary base {short(r)} declares are not known yet where '{short(ci.name)}' is declared (not supported)")
+        for x in role.fields:
+            if x.startswith(" ") or x in role.fdefault:
+                continue
+            self.line = ci.node.line
+            if x in ci.methods:
+                self.bad_class(ci, f"attribute '{x}' that secondary base {short(r)} declares is a method or property of '{short(ci.name)}' (not supported)")
+            elif x in ci.ftypes and (ci.ftypes[x] != role.ftypes[x] or x in ci.fdefault):
+                self.bad_class(ci, f"attribute '{x}' that secondary base {short(r)} declares as {typestr(role.ftypes[x])} is {'a class attribute' if x in ci.fdefault else typestr(ci.ftypes[x])} in '{short(ci.name)}' (not supported)")
+            elif x not in ci.ftypes:
+                self.add_field(ci, x, role.ftypes[x])
     for fl in ci.fields if dc and "no-init" not in ci.dcopts else []:
         # the positional parameters of the __init__ @dataclass writes, the base's fields first
         if fl in ci.fopts and "no-init" not in ci.fopts[fl] and "kw_only" not in ci.fopts[fl]:
@@ -2494,8 +2702,9 @@ def gen_guess_varargs(self, init: FnInfo, args: list[Node], f: FnInfo) -> list[s
 
 def guess_scope(f: FnInfo) -> list[Node]:
     # the statements whose bindings hide a function from gen_guess: those of the function f, or
-    # of the class body whose attribute declare_fields types (f.node is then the class's node)
-    return f.node.kids[0].kids if f.node.kind == "class" else f.node.kids[2].kids
+    # of the class body whose attribute declare_fields types (f.node is then the class's node),
+    # or of a module's code (the block, for a global's value: see gen_guess)
+    return f.node.kids[0].kids if f.node.kind == "class" else f.node.kids if f.node.kind == "block" else f.node.kids[2].kids
 
 
 def attr_root(e: Node) -> Node:
@@ -2541,6 +2750,25 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         if t == "" and takes_self(f) and e.s == f.params[0] and self.classes[f.cls].tag != 0:
             return f.cls  # field inference precedes specialization of the concrete receiver
         return t if t != "" or f.bad == "" else "!" + f.bad  # (a parameter whose annotation failed)
+    if k == "name" and e.s in self.globanns:
+        # a module global that one annotated assignment binds (x: T = v, also x: Final[T] = v:
+        # analysis.module_anns), unless a local of the function has its name: T
+        shadows: dict[str, bool] = {}
+        if f.name != "<module>":
+            local_names(guess_scope(f), shadows)  # (a module's own names are its globals)
+        decl = self.globanns[e.s]
+        decl = decl.kids[1] if decl.kind == "index" and self.typing_ref(decl.kids[0]) == "Final" else decl
+        t = self.ann(decl) if e.s not in shadows and self.ann_problem(decl, False) == "" else ""
+        if t != "" and not t.startswith("!"):
+            return t  # (else as for any other name, with no error here: TABLE: TypeAlias = ...)
+    if k == "index":
+        # x[i] of a dict, a list or a str x: a value of the dict, an item of the list, a str
+        t = self.guess(e.kids[0], f)
+        if is_dict(t):
+            return targs(t)[1]
+        if is_list(t):
+            return targs(t)[0]
+        return "str" if t == "str" else ""  # (else unknown, as before: no new error here)
     if k == "name" and (e.s in self.funcs or (e.s in PYBUILTINS and e.s[0].islower() and not self.bound(e.s))):
         # a function, which the field then holds (unless a local of the method has its name)
         asg: dict[str, bool] = {}
@@ -2553,6 +2781,12 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         local_names(guess_scope(f), asg)
         if e.s not in asg:
             return "exctype"
+    if k == "name" and self.class_value_named(e.s) and (not self.dyn_policy(e.line) or self.class_value_static(e.s, f.mod, e.line)):
+        # an ordinary class: its class object (unless a local of the method has its name)
+        asg = {}
+        local_names(guess_scope(f), asg)
+        if e.s not in asg:
+            return "type[" + e.s + "]"
     p = self.imported_ref(e) if k == "name" or k == "attr" else ""
     if p in MODFUNCS:
         # a builtin module's function (math.sqrt, or sqrt from-imported), unless a local of the
@@ -2564,6 +2798,47 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         local_names(guess_scope(f), asg)
         if root.s not in asg:
             return f"fn[b:{p}]"
+    if k == "name" and e.s in self.globvalues and e.s not in f.params and e.s not in self.guessing:
+        # a module global that one assignment binds (a constant: analysis.module_values), or one
+        # in each branch that binds it, unless a local of the function has its name: the type of
+        # its value (of each, where they agree), typed in its own module's code. Not where that
+        # module's ints promote or its values may be Any's, whose types the value's spelling does
+        # not give
+        asg = {}
+        if f.name != "<module>":
+            local_names(guess_scope(f), asg)  # (a module's own names are its globals)
+        v = self.globvalues[e.s]
+        vs = [v]
+        if e.s in self.globalts:
+            vs = vs + self.globalts[e.s]
+        if e.s not in asg and len([x for x in vs if self.int_policy(x.line) or self.dyn_policy(x.line)]) == 0:
+            if len(self.guessing) == 0:
+                self.globguess = {}  # (each guess of a constant's value starts afresh: see below)
+            if e.s in self.globguess:
+                return self.globguess[e.s]
+            home = self.globowners[e.s]
+            init = FnInfo("<module>", "", home.body, "")
+            init.mod = home.name
+            self.guessing[e.s] = True  # (a value that reads the global itself: not again)
+            cuts = self.guesscuts
+            t = ""
+            try:
+                t = self.guess(v, init)
+                for x in vs[1:]:
+                    # (bindings in other branches: their type where they agree, else none, but the
+                    # error of one that guess finds a call it cannot compile in)
+                    tx = self.guess(x, init) if not t.startswith("!") else t
+                    t = tx if tx.startswith("!") else t if tx == t else ""
+            finally:
+                del self.guessing[e.s]  # (also where an error unwinds to the next pass: Rejoin)
+            if self.guesscuts == cuts:
+                # (its type wherever the same guess reads it again, as A1 = A0 + A0 reads A0: once
+                # per constant, not once per path to it; but not where a recursion was cut, whose
+                # type depends on what was being guessed)
+                self.globguess[e.s] = t
+            return t
+    if k == "name" and e.s in self.guessing:
+        self.guesscuts += 1  # (a constant whose value reads itself: typed as any other name below)
     # self.k, self.m(...) and self(...) before the names below: self shadows a function, class,
     # import or builtin of its name
     me = f.params[0] if takes_self(f) else ""
@@ -2787,6 +3062,13 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
             return "list[int]"
         t = self.guess(arg, f)
         return t if is_list(t) or t.startswith("!") else "list[int]" if t == RANGEC else ""
+    if k == "call" and e.kids[0].kind == "name" and e.kids[0].s == "tuple" and len(e.kids) == 2 and e.kids[1].kind not in ["kw", "starred", "dstar"] and not self.bound("tuple"):
+        # tuple(xs) of a list: a runtime-length tuple of its items, as tuple() makes it (of a
+        # string, of its characters; a tuple is itself)
+        t = self.guess(e.kids[1], f)
+        if t == "str" or (is_list(t) and unopt(elem(t)) != BIG and self.vtuple_holds(elem(t))):
+            return self.ctype("vtuple", [elem(t) if is_list(t) else "str"])
+        return t if is_vtuple(t) or is_tuple(t) or t.startswith("!") else ""
     if k == "binop":
         a = self.guess(e.kids[0], f)
         b = self.guess(e.kids[1], f)
@@ -3101,6 +3383,8 @@ def gen_none_field_store(self, o: Val, name: str, v: Val) -> None:
     self.refine_field(ci, name, t)
 
 def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
+    if is_clsval(unopt(o.t)):
+        self.err(f"the attributes of a class object ({typestr(o.t)}) other than its names and its class's attributes, the names the class body binds, are not supported (.{name})")
     if o.t == "exctype":
         self.err(f"the attributes of the class of an exception (type[BaseException]) other than __name__ are not supported (.{name})")
     if name == "__class__" and (o.t == "exc" or (o.t in self.classes and self.classes[o.t].exc != "")):
@@ -3147,6 +3431,10 @@ def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
             self.err(f"reading the __doc__ of NamedTuple {short(o.t)} is not supported (Pystachy keeps no docstrings of classes)")
         self.err(f"'{shown(o.t)}' object has no attribute '{name}'")
     extra = " and no __dict__ for setting new attributes" if store else ""
+    if self.rolex != o.v and self.role_field(o.t, name):
+        # (the object may be a combining class's, whose layout holds the attribute elsewhere:
+        # o.name and its stores go by the exact class first)
+        self.err(f"attribute '{name}', which secondary base {short(o.t)} declares, is read and stored as o.{name} alone through that base (not supported here: use the combining class's type)")
     self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{name}'{extra}")
     if name in ci.fextra and ci.tag != 0:
         overrides = [sub for sub in self.classes.values() if sub.name != ci.name and self.derives(sub.name, ci.name) and (name in sub.methods or (name in sub.ftypes and name not in sub.fextra))]
@@ -3343,6 +3631,16 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
     return v
 
 def gen_setfield(self, o: Val, p: Val, name: str, v: Val) -> None:
+    # (its stores are of attribute name, which voids the facts of narrowed paths through an
+    # attribute of that name and no others: unions.py's path_event)
+    was = self.pfield
+    self.pfield = name
+    try:
+        self.setfield_store(o, p, name, v)
+    finally:
+        self.pfield = was
+
+def gen_setfield_store(self, o: Val, p: Val, name: str, v: Val) -> None:
     ci = self.classes[o.t]
     if name in ci.fextra and self.drying == 0 and v.t != "dyn":
         # Only newly reserved storage may widen here. Keep each concrete value
