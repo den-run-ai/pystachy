@@ -1,16 +1,17 @@
-# Metadata only: checkout trusted base/default code, never a PR's head.
+# Checks issue and PR titles and bodies; builds and tests nothing. Pull requests use
+# pull_request, as CI and Lint do: a fork's run gets a read-only token, so this job's own
+# check is the PR's result. GitHub blocks pull_request_target by default in public repositories.
 name: Submission format
 
 on:
   issues:
     types: [opened, edited, reopened]
-  pull_request_target:
+  pull_request:
     types: [opened, edited, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
-  issues: write
-  statuses: write
+  issues: write  # Issue labels; the PR path only reads.
 
 concurrency:
   group: submission-${{ github.event.issue.number || github.event.pull_request.number }}
@@ -18,7 +19,8 @@ concurrency:
 
 jobs:
   description:
-    name: Check title and description
+    # Branch protection requires this check name (tools/check_submission.py's CHECK).
+    name: Submission format
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     steps:

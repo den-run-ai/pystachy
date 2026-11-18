@@ -1,4 +1,8 @@
-"""Cap PRs below 20 jobs, AOT at four shards, other groups at two, and jobs at 15 minutes."""
+"""Cap PRs below 20 jobs, AOT at four shards, other groups at two, and jobs at 15 minutes.
+
+Also keep pull_request_target out of every workflow: GitHub blocks it by default in public
+repositories from 2 December 2026, so a check that such a workflow reports never arrives.
+"""
 
 import ast
 from collections import Counter
@@ -216,7 +220,7 @@ class BudgetTests(unittest.TestCase):
 
     def test_budget_sums_workflows_and_both_pr_event_types(self):
         found = self.workflow()
-        found["target.yml"] = {"on": "pull_request_target", "jobs": {"dco": {}}}
+        found["target.yml"] = {"on": "pull_request_target", "jobs": {"metadata": {}}}
         self.assertEqual(sum(require_pr_budget(found).values()), 2)
         found["target.yml"]["on"] = list(PR_EVENTS)
         self.assertEqual(sum(require_pr_budget(found).values()), 3)
@@ -298,6 +302,13 @@ class LimitTests(unittest.TestCase):
 
     def test_worst_case_pr_job_and_worker_budget(self):
         self.assertTrue(require_pr_budget(workflows()))
+
+    def test_no_workflow_uses_pull_request_target(self):
+        # Brownout runs of the trigger ended in startup_failure without running a job (#1190).
+        found = workflows()
+        self.assertIn("submissions.yml", found)
+        self.assertEqual(sorted(name for name, workflow in found.items()
+                                if "pull_request_target" in workflow.get("on", [])), [])
 
     def test_gc_identity_and_jit_jobs_are_separate_only_in_full_verification(self):
         job = workflows()["ci.yml"]["jobs"]["verification"]

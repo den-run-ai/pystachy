@@ -402,10 +402,9 @@ The [CI workflow](../.github/workflows/ci.yml) runs on pull requests (including 
 to `main` and manual dispatch. Pull requests test the branch merged with the then-current
 `main`. A newer PR push cancels its previous run; commits on `main` run to completion.
 Markdown/docs-only PRs run Lint and submission format checks plus a lightweight
-`Verification` check. The legacy DCO job always skips pending branch settings. The x86-64
-bootstrap worker classifies the tested merge commit's changes against its base. The
-documentation plan skips toolchain setup, builds and verification/variant workers.
-The full-only qualification job skips on every PR. Renaming a source file into `docs/`
+`Verification` check. The x86-64 bootstrap worker classifies the tested merge commit's
+changes against its base. The documentation plan skips toolchain setup, builds and
+verification/variant workers. The full-only qualification job skips on every PR. Renaming a source file into `docs/`
 still selects code verification.
 Classification verifies the immutable event merge SHA and its PR-head parent. If
 GitHub generated that merge against a newer base than the event payload records,
@@ -564,10 +563,9 @@ for setup, reporting and artifact upload. A budget-limited report is marked inco
 
 ### PR budget
 
-A code PR can create **19 workflow job rows**, including the skipped full-only qualification
-and legacy DCO jobs, plus the submission format job. Its separate `Submission format` commit
-status uses no runner. Lint enforces at most **19 jobs across all PR workflows**, **four native
-AOT shards and two workers per other task group**, and **15 minutes per job**
+A code PR can create **18 workflow job rows**, including the skipped full-only qualification
+job, plus the submission format job. Lint enforces at most **19 jobs across all PR workflows**,
+**four native AOT shards and two workers per other task group**, and **15 minutes per job**
 (`tools/test_workflow_limits.py`). Path filters cannot hide a matrix
 from the budget. Each test runner uses at most four processes within its worker.
 
@@ -584,7 +582,7 @@ from the budget. Each test runner uses at most four processes within its worker.
 | Benchmarks and scaling | 1 | Correctness, scaling's first half, BLAS and large upstream regex. |
 | Full-only qualification | 1 skipped | O1 bootstrap comparison and native archive smoke run on main/manual CI. |
 | `Verification` | 1 | Confirms the selected plan. For code PRs, checks reports, profiles, selection manifests, counts and job results. |
-| Lint, legacy check and submission format | 3 | Lint includes CPython port preservation and selected Lean kernel/checker controls. DCO always skips; submission format validates metadata and sends an acknowledgment reminder. |
+| Lint and submission format | 2 | Lint includes CPython port preservation and selected Lean kernel/checker controls. Submission format validates the title and description. |
 
 `VERIFY_PROFILE=pr tests/verify.sh GROUP` selects this plan; plain `make verify` stays exhaustive.
 `tools/ci_sample.py` selects deterministic representatives and changed/new cases, including
@@ -656,8 +654,7 @@ A failed group leaves the others running. The aggregate checks are
 `make verify (Linux ARM64, LLVM 18, Python 3.13)`. For pull requests, maintainers
 verify `Verification` and `make lint (ruff, shellcheck, clang -Wall -Wextra)` on the
 current revision before merging. Branch protection requires both checks, including
-for administrators. Remove the retired DCO check in GitHub settings; until then it
-remains as an always-skipped compatibility job.
+for administrators.
 [Issue #766](https://github.com/den-run-ai/pystachy/issues/766) records the enforcement
 work; [CONTRIBUTING.md](../CONTRIBUTING.md#ai-assistance-and-review) describes the
 review and submission requirements.
@@ -1106,11 +1103,12 @@ existing PR budget or run in the full matrix; keep the job and time ceilings unc
 Lint also runs the optional [communication buffer/completion probe](../examples/comm/README.md)
 with the hosted compiler, JIT/AOT, GC stress and a sanitized standalone C probe.
 
-Contributions use the [contribution-rights policy](../CONTRIBUTING.md#contribution-rights)
-without DCO certification. The existing submission bot sends a one-time,
-non-blocking rights/guidelines/AI acknowledgment reminder on new PRs. The legacy
-DCO workflow always skips; remove it after deleting its required status in
-GitHub branch protection settings.
+Contributions use the [contribution-rights policy](../CONTRIBUTING.md#contribution-rights);
+no workflow certifies or records them. No workflow uses `pull_request_target`, which
+GitHub [blocks by default](https://github.blog/changelog/2026-11-02-pull_request_target-blocked-by-default-december-2/)
+in public repositories from 2 December 2026 (`test_workflow_limits.py` keeps it out).
+The [submission workflow](../.github/workflows/submissions.yml) runs on `pull_request`, so
+a fork's run has a read-only token; its job's `Submission format` check is the result.
 
 ## Lessons from reviewed changes
 

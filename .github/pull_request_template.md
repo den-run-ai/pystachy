@@ -1,5 +1,6 @@
 <!-- Title <=64 characters. Whole body <=200 words, including code/tables.
-Read CONTRIBUTING.md. Link code, results and background instead of copying them. -->
+Read CONTRIBUTING.md: opening a PR confirms you may submit this work under its licenses.
+Link code, results and background instead of copying them. -->
 
 ## Problem
 
