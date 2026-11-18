@@ -480,7 +480,7 @@ A program within the threshold also gets loop passes after the cleanup (the driv
 it: correlated propagation removes that exit, SCCP and `simplifycfg` fold what it leaves,
 `loop-rotate` then rotates the loop, and LICM hoists what each iteration reloaded, such as a list's
 items pointer. `PYSTACHY_JIT_OPT=0` skips them. A larger program skips them too: on a module of
-50,000 to 60,000 lines they took about 0.1 s more at each launch.
+63,000 lines they took about 0.1 s more at each launch.
 
 ### The JIT runner
 

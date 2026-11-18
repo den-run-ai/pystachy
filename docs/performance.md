@@ -264,6 +264,15 @@ executable without compiling (richards 0.73×, regex_v8 0.82×, the UMAP probe u
 the runtime remain calls, which AOT builds optimize with the program. These are paired medians on
 one x86-64 core ([results](../bench/results/jit-opt2-2026-11-13.json)).
 
+By default the JIT follows its cleanup with loop passes where a program is within the inlining
+budget ([internals](internals.md#jit-aot-and-runtime-caching)); `PYSTACHY_JIT_OPT=0` skips them. Against the
+cleanup alone, they cut the instructions pyperformance's richards executes by 6.1%, json_loads' by
+4.0%, scimark's and hexiom's by 2.3% and json_dumps' by 2.0%, others' by up to 1% (fannkuch's rose
+0.3%); the timed loops of richards and nbody ran 0.88× and 0.90×. Optimizing took up to 26 ms more
+per launch (json_loads, 12,800 lines of IR). A program over the budget, such as regex_v8, runs the
+same code. These are callgrind counts and paired medians on one x86-64 core
+([results](../bench/results/jit-loop-passes-2026-11-18.json)).
+
 A program that builds `list(range(4194305))` peaks at **34.2 MiB RSS in v0.4.0-alpha.3's AOT
 executable, against 171.2 MiB in CPython 3.13.18**, a 5.0× reduction. The JIT's processes,
 which include LLVM's, peak at 91.1 MiB. These are medians of five runs per mode,
