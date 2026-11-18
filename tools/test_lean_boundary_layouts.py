@@ -14,6 +14,7 @@ import check_lean_boundary as bridge
 import test_lean_boundary as fixtures
 from src.pystachy_compiler.ir import Ins, Val
 from src.pystachy_compiler.lowering import gen_lower_ins
+from src.pystachy_compiler.machine_ir import machine_ops
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -292,7 +293,8 @@ class DynamicABI(unittest.TestCase):
         generated = SimpleNamespace(out=[])
         payload = Ins("dyn.payload", "%slot", "float")
         payload.r, payload.a = [1, 2], [Val("%box", "dyn")]
-        gen_lower_ins(generated, None, payload)
+        for machine in machine_ops(payload):  # (as Gen.lower prints it: machine_ir.py, then the printer)
+            gen_lower_ins(generated, None, machine)
         word = re.search(r"getelementptr i64, ptr %box, i64 (\d+)", "\n".join(generated.out))
         self.assertIsNotNone(word)
         self.assertEqual(int(word[1]) * 8, offsets["box_payload"])

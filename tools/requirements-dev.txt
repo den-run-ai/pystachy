@@ -1,11 +1,14 @@
 # make lint/typecheck's tools, make coverage's coverage.py, and the packages outside the standard library that
 # CPython imports when tests/record.sh records the tests (and make check-recordings checks them):
 # typing_extensions, which tests/programs/generics/typevar_templates.py and tests/mods/generic.py
-# import, and mypy's dependencies mypy_extensions and librt (Pystachy's own are lib/mypy_extensions.py
-# and lib/librt/), which tests/programs/classes/class_identity_decorators.py and
-# tests/programs/library/lib_librt_internal.py import, and tools/librt_check.py compares with. For
-# development and CI only (Pystachy needs none of them to build or run):
+# import, and mypy's dependencies mypy_extensions, librt and ast-serialize (Pystachy's own are
+# lib/mypy_extensions.py, lib/librt/ and lib/ast_serialize/), which
+# tests/programs/classes/class_identity_decorators.py, tests/programs/library/lib_librt_internal.py
+# and tests/programs/library/lib_ast_serialize_*.py import, and tools/librt_check.py and
+# tools/ast_serialize_check.py compare with. For development and CI only (Pystachy needs none of
+# them to build or run):
 #   python3 -m pip install -r tools/requirements-dev.txt
+ast-serialize==0.13.1
 coverage==7.17.1
 librt==0.16.0
 PyYAML==6.0.3

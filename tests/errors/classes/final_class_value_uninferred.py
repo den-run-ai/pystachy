@@ -3,7 +3,7 @@ from typing import Final
 
 
 class Table:
-    KEYS: Final = {1, 2}
+    KEYS: Final = {1, "a"}
 
 
 print(Table.KEYS)

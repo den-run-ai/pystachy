@@ -1,0 +1,12 @@
+True True True
+<class 'inspect._empty'> <class 'inspect._empty'> <class 'inspect._empty'> <class 'inspect._empty'> [<class 'inspect._empty'>] (<class 'inspect._empty'>, 1)
+True True False False True
+x True False True True False False True True
+x: None = None False True False False True True False False
+x: '' = 0 False True False False True False False False
+x: False = False False True False False True False False False
+x True False True True False False True True
+True True False
+[False, True, True, True, False] x: required x: optional, None x: optional, 0
+(*, x) -> None False True (*, x) True True True
+[exit 0]

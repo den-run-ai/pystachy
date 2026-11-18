@@ -8,12 +8,13 @@ from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.reflection import VARS_USES, has_hook, hook_missing, hook_prop, hook_read, refl_attr_fields, refl_formatter
-from src.pystachy_compiler.specs import BFILE, BIG, COMPLEXC, DISPATCH_INLINE, EXCEPTIONS, GLUE, HASATTR, MODATTRS, OBJECTC, PYBUILTINS, RANGEC
+from src.pystachy_compiler.specs import BFILE, BIG, BYTEARRAYC, BYTEARRAYS, COMPLEXC, DISPATCH_INLINE, EXCEPTIONS, GLUE, HASATTR, MODATTRS, OBJECTC, PYBUILTINS, RANGEC
 from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import (
     is_clsval,
     clsof,
+    lib_source,
     opaque_class,
     atomic_dict,
     identity_abi,
@@ -395,6 +396,10 @@ def gen_class_new(self, c: str, args: list[Node], want: str, resultsoft: bool = 
         made = [Val("", c)]
         self.init_result(self.call_fn(self.classes[c].methods["__init__"], made, args, want, resultsoft=resultsoft, typeargs=typeargs))
         return made[0]
+    if c == BYTEARRAYC and len(args) > 0 and BYTEARRAYS + "$_new" in self.funcs:
+        # bytearray(source, ...): lib/_pystachy_bytearray.py's _new, a function of its
+        # arguments' types (the class's own __init__ takes none: its objects are of one class)
+        return self.call_fn(self.funcs[BYTEARRAYS + "$_new"], [], args, want, resultsoft=resultsoft)
     o = self.new_obj(c)
     self.init_result(self.call_fn(self.classes[c].methods["__init__"], [o], args, direct=True))
     return o
@@ -1483,6 +1488,17 @@ def gen_scalar_call_types(self, f: FnInfo, args: list[Node]) -> list[str]:
     return ts if all(numeric_statement(n, names, blocked, {}, True, True) for n in body) else []
 
 
+def int_for_float(f: FnInfo, j: int, t: str) -> bool:
+    # does an argument of type t compile f again, for a float parameter j that takes an int (a
+    # promoting one too) or a bool: a function's or an ordinary method's, whose body then reads
+    # the int, as CPython's does
+    if (t != "int" and t != "bool" and t != BIG) or f.ptypes[j] != "float" or j == f.vararg or j == f.kwarg or len(f.node.kids) < 3:
+        return False
+    if f.gen or f.extern or f.export or f.pyexport or f.clo >= 0 or f.prop or f.acc != "" or f.deco != "":
+        return False
+    return f.cls == "" or not (f.name.startswith("__") and f.name.endswith("__"))
+
+
 def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "", none: str = "", cache: Val | None = None, direct: bool = False, resultsoft: bool = False, typeargs: str = "", unbound: bool = False, got: list[FnInfo] | None = None) -> Val:
     # f(pre + args); none: the error where pre[0], an object called (o(args)), is None; got: of
     # a comparison, which reads whether its method returned NotImplemented (concrete_cmp), and
@@ -1492,6 +1508,10 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         self.err(f"{f.name}() is @export, so Pystachy code may not call it (under CPython each call goes through the export's checks and conversions): call a private function that both use")
     if f.bad != "":
         self.err(f.bad)  # (before its arguments, whose types may be placeholders')
+    if f.name == "importlib$import_module" and lib_source(f.node.line, self.libdir, "importlib/__init__.py"):
+        # (the loader writes the import statement of a call that binds a variable to the module a
+        # string constant names: loader.import_module_calls. Any other call reaches lib's function)
+        self.err("importlib.import_module() is supported where a string constant names the module and the call binds one variable or stands alone (mod = import_module(\"a.b\")), outside a class body, through a name that only imports of importlib bind and one has bound before the call: a program's modules are compiled with it, so none is imported by a name it computes, and a module is no value")
     if identity_abi(f) and len(f.node.kids) == 3:
         self.numeric_proof(f, f.node.kids[2].kids)
     if f.cls in self.classes and self.classes[f.cls].tag > 0 and f.deco == "" and len(pre) > 0:
@@ -1525,6 +1545,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
     kwn: list[str] = []
     kwv: list[Val] = []
     offs: dict[int, Val] = {}  # (the index of each list that an @extern call takes as ffi.at(xs, k))
+    late = False  # (an argument that compiles f for its own type: see int_for_float)
     for a in args:
         j = pos
         e = a
@@ -1570,7 +1591,13 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         passing = self.fn.idpass
         self.fn.idpass = self.id_move(e)
         try:
-            vals[j] = self.pcoerce(arg, pt, f, j)
+            if cache is None and not self.rtmode and int_for_float(f, j, arg.t) and (f.cls == "" or (f.cls in self.classes and self.classes[f.cls].tag == 0 and self.classes[f.cls].origin == "" and f.cls not in self.tmpl)):
+                # an int for a float parameter (PEP 484 accepts it, and CPython passes the int
+                # on): the function compiles for it, as a template's does (see instance)
+                vals[j] = self.pcoerce(arg, "", f, j)
+                late = True
+            else:
+                vals[j] = self.pcoerce(arg, pt, f, j)
         finally:
             self.fn.idpass = passing
         if self.curfn.cmpops and self.term and vals[j].v == "undef":
@@ -1674,7 +1701,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         pre[0] = vals[0]
         f = self.classes[sc].methods["__init__"]
     nullable_self = unbound and len(pre) > 0 and pre[0].v not in self.nn
-    if f.generic or nullable_self or (not resultsoft and fresh_yield_context(f, want)):
+    if f.generic or nullable_self or late or (not resultsoft and fresh_yield_context(f, want)):
         nnp: list[str] = []
         for j in range(np):
             if vals[j].t in self.classes and vals[j].v in self.nn and self.dispatches(f, f.params[j]):
