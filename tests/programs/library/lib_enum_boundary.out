@@ -1,0 +1,13 @@
+<P.A|D: 9> <P.A|B: 3> <P: 0> <P.A|B|D: 11> <P.A|B|D: 11> True
+<P.B|D: 10> <P.A|B|D: 11> True True True [<P.A: 1>, <P.B: 2>, <P.D: 8>] 3
+<Q.A|B|4: 7> Q(12) <Q.B: 2> <Q.A|B: 3> <Q.A|B: 3> A|4 [<Q.A: 1>, <Q.B: 2>]
+ValueError <flag 'R'> invalid value 4
+    given 0b0 0100
+  allowed 0b0 1011
+ValueError <flag 'R'> invalid value 17
+    given 0b0 10001
+  allowed 0b0 01011
+<R.X|Y: 3> <R.Y|Z: 10> <R.X|Y|Z: 11> 3 True False
+<T.X|Y: 3> <T.X: 1> <T.Y: 2> 3 0
+<Sub.ONE|TWO|4: 7> <Sub.TWO: 2> Plain.RED [<Plain.RED: 1>]
+[exit 0]
