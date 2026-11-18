@@ -6374,8 +6374,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             return self.num_cmp('!=' if op == '==' else '==', Val(r, "int"), Val('0', "int"))
         r = self.rt("pys_cmpop", "i64", [f"i64 {sa}", f"i64 {sb}", d, f"i64 {ORDOP[op]}"])
         return self.num_cmp('!=', Val(r, "int"), Val('0', "int"))
-    x = "an exception" if a.t == "exc" else "object" if a.t == OBJECTC else "int" if a.t == BIG else a.t
-    y = "an exception" if b.t == "exc" else "object" if b.t == OBJECTC else "int" if b.t == BIG else b.t
+    x = "an exception" if a.t == "exc" else "object" if a.t == OBJECTC else "int" if a.t == BIG else "bytearray" if a.t == BYTEARRAYC else a.t
+    y = "an exception" if b.t == "exc" else "object" if b.t == OBJECTC else "int" if b.t == BIG else "bytearray" if b.t == BYTEARRAYC else b.t
     self.err(f"cannot compare {x} {op} {y}")
     return a
 
