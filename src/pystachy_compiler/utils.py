@@ -11,6 +11,7 @@ from src.pystachy_compiler.specs import (
     BIG,
     BIGOPT,
     CODECS,
+    EMPTYFS,
     FSETMETHODS,
     FX,
     FXALL,
@@ -24,6 +25,7 @@ from src.pystachy_compiler.specs import (
     METHODS,
     NONE_ITEM,
     NONEVAR,
+    OBJECTC,
     OPTS,
     OPAQUE,
     RUNTIME,
@@ -246,6 +248,10 @@ def tname(t: str) -> str:
         return "TextIOWrapper"
     if is_vtuple(t):
         return "tuple"
+    if is_aset(t):
+        return "AbstractSet"  # (a set or a frozenset: the type does not tell)
+    if t == EMPTYFS:
+        return "frozenset"
     if t.startswith("opt["):
         return tname(t[4:-1]) + " | None"
     if is_union(t) or t.startswith("rec["):
@@ -254,7 +260,7 @@ def tname(t: str) -> str:
         return "BaseException"
     if t == "dyn":
         return "Any"  # (whose type is its value's: dynamic.py)
-    if t == "exctype":
+    if t == "exctype" or is_clsval(t):
         return "type"
     if is_gen(t):
         return "generator"
@@ -399,8 +405,9 @@ def is_dict(t: str) -> bool:
 
 
 def is_set(t: str) -> bool:
-    # set[T] or frozenset[T] (runtime.c's sets): a frozenset is a set that no method changes
-    return t.startswith("set[") or t.startswith("frozenset[")
+    # set[T] or frozenset[T] (runtime.c's sets): a frozenset is a set that no method changes; and
+    # aset[T], AbstractSet[T], a value that is one or the other (is_aset)
+    return t.startswith("set[") or t.startswith("frozenset[") or t.startswith("aset[")
 
 
 def empty_ann(t: str) -> str:
@@ -409,7 +416,21 @@ def empty_ann(t: str) -> str:
 
 
 def is_fset(t: str) -> bool:
-    return t.startswith("frozenset[")
+    # a set that the code holding it does not change: a frozenset, or an AbstractSet's value
+    return t.startswith("frozenset[") or t.startswith("aset[")
+
+
+def is_aset(t: str) -> bool:
+    # aset[T]: AbstractSet[T], a set[T] or a frozenset[T] as code that only reads it holds it.
+    # Its elements are T's, in a table of T's kind, so len(), in, a loop, a comparison and the
+    # other operand of a set's operators and methods take it as a frozenset; which of the two it
+    # is, the type does not tell: repr(), isinstance() and type() of one are compile errors
+    return t.startswith("aset[")
+
+
+def set_base(t: str) -> str:
+    # the constructor of set type t: set, frozenset, or aset
+    return t[: t.find("[")]
 
 
 def selem(t: str) -> str:
@@ -478,6 +499,12 @@ def is_opt(t: str) -> bool:
     return t.startswith("opt[")
 
 
+def holds_no_object(t: str) -> bool:
+    # can no value of type t be an object() (lib's object class, OBJECTC): a known type that is
+    # not dynamic (Any's dyn, which holds any object) and does not include object
+    return t != "" and not t.startswith("!") and t != "dyn" and "dyn[" not in t and OBJECTC not in t and "object" != unopt(t)
+
+
 def unopt(t: str) -> str:
     # the type an optional value has when it is not None
     return t[4:-1] if t.startswith("opt[") else t
@@ -535,6 +562,18 @@ def is_callable(t: str) -> bool:
     # env and the arguments (Gen.call_callable). A function value becomes one where a Callable is
     # expected (Gen.to_callable), so one variable, field or list may hold different functions
     return t.startswith("callable[")
+
+
+def is_clsval(t: str) -> bool:
+    # type[C]: the class object of ordinary class C of the program, or of a class deriving from it
+    # (or NoneType's, which type(x) gives of an x that is None): a pointer to that class's
+    # reflection record, a constant, which is the class's one class object (class_values.py)
+    return t.startswith("type[")
+
+
+def clsof(t: str) -> str:
+    # the class C of class object type type[C]
+    return t[5:-1]
 
 
 def callable_shown(t: str) -> str:
@@ -657,7 +696,7 @@ def typestr(t: str) -> str:
     w = ""
     for c in t + ",":
         if c == "[" or c == "]" or c == ",":
-            out.append("BaseException" if w == "exc" else "type[BaseException]" if w == "exctype" else "Any" if w == "dyn" else "Generator" if w == "gen" and c == "[" else SPECSHOW[w] if w in SPECSHOW else short(w))
+            out.append("BaseException" if w == "exc" else "type[BaseException]" if w == "exctype" else "Any" if w == "dyn" else "Generator" if w == "gen" and c == "[" else "AbstractSet" if w == "aset" and c == "[" else "frozenset" if w == EMPTYFS else SPECSHOW[w] if w in SPECSHOW else short(w))
             out.append(c)
             w = ""
         else:
@@ -795,9 +834,9 @@ def empty_default(n: Node, name: str, kind: str) -> bool:
 
 def key_problem(t: str) -> str:
     # why t cannot be a dict's key type, or "": ints, strs, fixed or runtime-length tuples of
-    # hashable items, and objects (Gen.key_problem); None and these types | None (none_key)
-    if t == "int" or t == "str" or t == "bytes" or t == "exctype" or (is_tuple(t) and key_items(t)):
-        return ""  # (an exception class's class object is hashed and compared by identity)
+    # hashable items, class objects and objects (Gen.key_problem); None and these types | None (none_key)
+    if t == "int" or t == "str" or t == "bytes" or t == "exctype" or is_clsval(t) or (is_tuple(t) and key_items(t)):
+        return ""  # (a class object is hashed and compared by identity)
     if is_vtuple(t) and key_items("tuple[" + targs(t)[0] + "]"):
         return ""  # (a runtime-length tuple of such items: runtime.c's hval walks its items)
     if t == "None" or (is_opt(t) and t != NONEVAR and t != NONE_ITEM and key_problem(unopt(t)) == ""):
@@ -851,7 +890,7 @@ def bool_for_int(a: str, b: str) -> bool:
 def key_items(t: str) -> bool:
     for x in targs(t):
         u = unopt(x)
-        if x != "int" and x != "bool" and u != "str" and u != "bytes" and x != "exctype" and not (is_tuple(u) and key_items(u)):
+        if x != "int" and x != "bool" and u != "str" and u != "bytes" and x != "exctype" and not is_clsval(x) and not (is_tuple(u) and key_items(u)):
             return False
     return True
 

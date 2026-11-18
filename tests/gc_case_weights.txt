@@ -78,7 +78,6 @@ default rejection 398
 114708 tests/deviations/lib_datetime.py
 64627 tests/deviations/lib_fnmatch_byte_boundaries.py
 1429 tests/deviations/lib_functools_partial_attrs.py
-609131 tests/deviations/lib_html_parser_names.py
 4489 tests/deviations/lib_io_newline_decoder_object.py
 4539 tests/deviations/lib_io_newline_decoder_tuple.py
 7842 tests/deviations/lib_io_textiowrapper.py
@@ -3390,6 +3389,7 @@ default rejection 398
 520462 tests/programs/library/lib_html.py
 519494 tests/programs/library/lib_html_entities.py
 686405 tests/programs/library/lib_html_parser.py
+609131 tests/programs/library/lib_html_parser_names.py
 608266 tests/programs/library/lib_html_parser_positions.py
 8701 tests/programs/library/lib_io.py
 14477 tests/programs/library/lib_io_bytesio.py

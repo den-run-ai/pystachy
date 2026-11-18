@@ -1,0 +1,29 @@
+2u 1003u 2u 3 2u 3u
+2u 4 3u 1003u -1u 1u 3u 6 3u 0.5 1.0
+-1u -2 1u 2
+1008u
+7
+True True True True True True False True True False
+True True True True False True True
+True False False False True False False
+True True False False False False False
+True True True False True True
+1u 2 1u|2 Amount(1) 2 's' 1.5 2u
+<1> 2 Amount(1) <001> 002 1u <1> 2 <1> 2
+1u 2 1u, 2
+True True False False True
+unset
+set
+set
+3 4 3.5 4.0 3 4 5 2 4
+3u 4 (3, 1)
+True None None None None False True False False True True
+TypeError: unsupported operand type(s) for +: 'NoneType' and 'int'
+TypeError: unsupported operand type(s) for +: 'int' and 'NoneType'
+TypeError: '<' not supported between instances of 'NoneType' and 'int'
+TypeError: '>' not supported between instances of 'NoneType' and 'NoneType'
+TypeError: int() argument must be a string, a bytes-like object or a real number, not 'NoneType'
+TypeError: unsupported format string passed to NoneType.__format__
+TypeError: bad operand type for unary -: 'NoneType'
+TypeError: bad operand type for abs(): 'NoneType'
+[exit 0]

@@ -1,0 +1,11 @@
+True True False False
+False False True True
+False False True True
+False False True True
+True True False False
+False False True False
+True True False True
+True
+TypeError: '<' not supported between instances of 'int' and 'NoneType'
+True True False False
+[exit 0]

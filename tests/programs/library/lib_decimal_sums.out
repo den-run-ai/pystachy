@@ -1,0 +1,20 @@
+6.60 Decimal('6.60') 0 0
+6.60 6.6 0.00 16.60
+13.20 5.50 6.5 7
+5.30 0 2.20 0 6 3.0
+7.60 13.20 2.20 6.00 7.60 -6.60 6.60 True True True True False
+6.6 0.0 Decimal('6.60') 6.60 000 6.60 6.6 6 6.6 0 1 True
+1.50 True Decimal('-0E+3') NaN123 -Infinity 1 0
+TypeError: conversion from NoneType to Decimal is not supported
+DivisionByZero True True False False False True
+Overflow True False True True False True
+Underflow True False True True False True
+FloatOperation True False False False True True
+DivisionUndefined True True False False False True
+InvalidOperation True False False False False True
+DecimalException DivisionByZero True
+second base DivisionByZero
+DecimalException Overflow True True
+second base Overflow
+3
+[exit 0]

@@ -1,0 +1,4 @@
+mods: init mods
+mods.shapes: init mods.shapes
+['b', 'c'] None B,C
+[exit 0]
