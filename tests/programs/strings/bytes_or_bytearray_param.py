@@ -85,6 +85,7 @@ def main() -> None:
     maybe: bytes | None = b"\x07abc" if len(b) > 1 else None
     if maybe is not None:
         print(total(maybe), first(maybe, 1))
+    print(isinstance(b, bytes | bytearray), isinstance(b"", bytes | bytearray), isinstance(3, bytes | bytearray))
     b.clear()
     try:
         first(b)

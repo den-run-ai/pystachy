@@ -1,0 +1,4 @@
+AttributeError: 'bytearray' object has no attribute '_n'
+AttributeError: 'bytearray' object has no attribute '_getslice'
+bytearray(b'ABC') 3
+[exit 0]

@@ -1248,6 +1248,7 @@ from src.pystachy_compiler.structs import (
     gen_struct_nodes as structs_struct_nodes,
     gen_struct_pack as structs_struct_pack,
     gen_struct_store as structs_struct_store,
+    gen_ba_helper as structs_ba_helper,
 )
 from src.pystachy_compiler.templates import (
     gen_bind as templates_bind,
@@ -5280,8 +5281,11 @@ class Gen:
     def struct_helper(self, f: str, args: list[Node]) -> Node:
         return structs_struct_helper(self, f, args)
 
-    def struct_nodes(self, sf: StructFmt, bn: Node, base: Node | None) -> list[Node]:
-        return structs_struct_nodes(self, sf, bn, base)
+    def struct_nodes(self, sf: StructFmt, bn: Node, base: Node | None, ba: bool) -> list[Node]:
+        return structs_struct_nodes(self, sf, bn, base, ba)
+
+    def ba_helper(self, f: str, args: list[Node]) -> Node:
+        return structs_ba_helper(self, f, args)
 
     def struct_pack(self, sf: StructFmt, args: list[Node], into: Val | None, offset: Val | None) -> Val:
         return structs_struct_pack(self, sf, args, into, offset)

@@ -3,7 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.specs import ABCS, ABCSMORE, CALLS, CTYPES, ERRNO, FUTURE, MODATTRS, MODFUNCS, MODULES, NOREF, RANGE_METHODS, RANGE_TAKERS, TYPING
 from src.pystachy_compiler.syntax import NOKIDS, Node, comp_names, has_kind, mentions, mk, names_in, starred_target
-from src.pystachy_compiler.utils import int_fits
+from src.pystachy_compiler.utils import int_fits, template_ok
 
 
 def numeric_value(n: Node, names: dict[str, bool], blocked: dict[str, bool], own: dict[str, str]) -> bool:
@@ -958,19 +958,118 @@ def reads_builtin(n: Node, name: str, hidden: bool, mods: dict[str, bool]) -> bo
     return False
 
 
-def bytearray_values(n: Node) -> bool:
-    # may code n name the builtin bytearray but as a member of the annotation bytes | bytearray,
-    # in either order? A module that names it only so reads the bytes of either without the
-    # class, which only the modules that make or name bytearrays import (Loader.bytearray_import,
-    # Gen.buffer_ann)
+def buffer_union(n: Node) -> bool:
+    # is n bytes | bytearray, in either order, by the builtins' names
+    return n.kind == "binop" and n.s == "|" and n.kids[0].kind == "name" and n.kids[1].kind == "name" and sorted([n.kids[0].s, n.kids[1].s]) == ["bytearray", "bytes"]
+
+
+def buffer_params(d: Node, in_class: bool) -> list[int]:
+    # the parameters of def d (in a class body where in_class) annotated bytes | bytearray that the
+    # compiler types at each call (Gen.declare_fn, Gen.buffer_ann): of a function, or of a method
+    # that may be a template but __init__, with no decorator but staticmethod or classmethod, and
+    # not a method's first
+    decos = [x.s for x in d.kids[3:] if x.kind == "deco"]
+    if (in_class and (d.s == "__init__" or not template_ok(d.s))) or any(x != "staticmethod" and x != "classmethod" for x in decos):
+        return []
+    ps = d.kids[0].kids
+    return [j for j in range(len(ps)) if ps[j].kind == "param" and len(ps[j].kids) > 0 and buffer_union(ps[j].kids[0]) and not (in_class and j == 0 and "staticmethod" not in decos)]
+
+
+def bytearray_values(n: Node, in_class: bool) -> bool:
+    # may code n (in a class body where in_class) name the builtin bytearray but in an annotation
+    # bytes | bytearray that the compiler takes as a parameter each call types (buffer_params), or as
+    # the return of a function with one? A module that names it only so reads the bytes of either
+    # without the class, which only the modules that make or name bytearrays import
+    # (Loader.bytearray_import)
     if n.kind == "name":
         return n.s == "bytearray"
-    if n.kind == "binop" and n.s == "|" and n.kids[0].kind == "name" and n.kids[1].kind == "name" and sorted([n.kids[0].s, n.kids[1].s]) == ["bytearray", "bytes"]:
-        return False
-    for k in n.kids:
-        if bytearray_values(k):
+    typed = buffer_params(n, in_class) if n.kind == "def" else []
+    for i in range(len(n.kids)):
+        k = n.kids[i]
+        if n.kind == "def" and i == 0:
+            for j in range(len(k.kids)):
+                p = k.kids[j]
+                for x in range(len(p.kids)):
+                    if not (x == 0 and j in typed) and bytearray_values(p.kids[x], False):
+                        return True
+        elif not (n.kind == "def" and i == 1 and len(typed) > 0 and buffer_union(k)) and bytearray_values(k, n.kind == "class" or (in_class and n.kind != "def")):
             return True
     return False
+
+
+def buffer_escape(body: Node) -> Node | None:
+    # the first read in lib/_pystachy_bytearray.py's module body of a buffer other than through
+    # the module's primitives (__pys_ba_*: Gen.ba_prim), or None. A buffer is a bytearray's _b, or
+    # a local that a function binds to __pys_ba_new(...) alone. Each may be a positional argument
+    # of a primitive or the value assigned to a _b field, and a local one the value a return
+    # returns (a new bytes that the function made and no longer writes). The compiler takes a
+    # bytes's bytes never to change (it reuses its reads), and a buffer's change: no other code
+    # may read one
+    return buffer_reads(body, {}, False)
+
+
+def buffer_reads(n: Node, locs: dict[str, bool], ok: bool) -> Node | None:
+    # buffer_escape's walk of n, read where ok is a place that may read a buffer; locs: the buffer
+    # locals of the function around n
+    k = n.kind
+    if k == "attr" and n.s == "_b":
+        return n if not ok else buffer_reads(n.kids[0], locs, False)
+    if k == "name":
+        return n if n.s in locs and not ok else None
+    if k == "def":
+        own: dict[str, bool] = {}
+        buffer_locals(n.kids[2], own)
+        for i in range(len(n.kids)):
+            r = buffer_reads(n.kids[i], own if i == 2 else locs, False)
+            if r is not None:
+                return r
+        return None
+    if k == "call" and buffer_prim(n.kids[0], "__pys_ba_"):
+        for a in n.kids[1:]:
+            r = buffer_reads(a, locs, a.kind == "attr" or a.kind == "name")
+            if r is not None:
+                return r
+        return None
+    if k == "assign":
+        fields = all(t.kind == "attr" and t.s == "_b" for t in n.kids[:-1])
+        for t in n.kids[:-1]:
+            r = buffer_reads(t.kids[0], locs, False) if t.kind == "attr" else None if t.kind == "name" and (t.s not in locs or buffer_new(n.kids[-1])) else t if t.kind == "name" else buffer_reads(t, locs, False)
+            if r is not None:
+                return r
+        v = n.kids[-1]
+        return buffer_reads(v, locs, fields and (v.kind == "attr" or v.kind == "name"))
+    if k == "return" and len(n.kids) == 1 and n.kids[0].kind == "name" and n.kids[0].s in locs:
+        return None  # (a new bytes that the function made)
+    for x in n.kids:
+        r = buffer_reads(x, locs, False)
+        if r is not None:
+            return r
+    return None
+
+
+def buffer_new(n: Node) -> bool:
+    # is n a call of __pys_ba_new
+    return n.kind == "call" and buffer_prim(n.kids[0], "__pys_ba_new(")
+
+
+def buffer_prim(f: Node, name: str) -> bool:
+    # is f a name of the primitives that name begins (__pys_ba_, or a whole one with its "("), as
+    # written or as a class body mangles it (_bytearray__pys_ba_get: Parser.private_name)
+    if f.kind != "name":
+        return False
+    s = f.s + "("
+    at = s.find("__pys_ba_")
+    return at >= 0 and (at == 0 or s[0] == "_") and s[at:].startswith(name)
+
+
+def buffer_locals(n: Node, out: dict[str, bool]) -> None:
+    # the names that statements n of a function's body (not of a def in it) assign __pys_ba_new(...)
+    if n.kind == "assign" and len(n.kids) == 2 and n.kids[0].kind == "name" and buffer_new(n.kids[1]):
+        out[n.kids[0].s] = True
+    if n.kind == "def" or n.kind == "class" or n.kind == "lambda":
+        return
+    for x in n.kids:
+        buffer_locals(x, out)
 
 
 def module_reads(body: Node, name: str) -> bool:

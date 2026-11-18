@@ -194,7 +194,7 @@ class bytearray:
 
     def append(self, item: int) -> None:
         n = self._n
-        if n == len(self._b):
+        if n == __pys_ba_cap(self._b):
             _reserve(self, n + 1)
         __pys_ba_put(self._b, n, item)
         self._n = n + 1
@@ -414,7 +414,7 @@ class bytearray:
 
 def _reserve(b: bytearray, need: int) -> None:
     # room for need bytes: a larger buffer, by half again at least, with the bytes moved to it
-    cap = len(b._b)
+    cap = __pys_ba_cap(b._b)
     if need <= cap:
         return
     grown = cap + (cap >> 1) + 16
@@ -582,10 +582,32 @@ def _span(n: int, lo: int | None, hi: int | None, st: int | None) -> tuple[int, 
     return (start, step, (start - stop - 1) // (-step) + 1 if stop < start else 0)
 
 
-def _raw(b: bytearray) -> bytes:
-    # b's buffer, of which the first len(b) bytes are b's: what the compiler reads a bytearray's
-    # bytes from in place, at offsets it has checked against len(b) (Gen.struct_call)
-    return b._b
+def _get_int(b: bytearray, at: int, size: int, signed: bool, little: bool) -> int:
+    # the integer of size bytes at b[at], which the caller has checked to be within b, as
+    # _struct._unpack_int reads one of a bytes: an unsigned 8-byte one from 2**63 on is no
+    # Pystachy int (struct's unpack functions of a bytearray, Gen.struct_nodes)
+    first = __pys_ba_get(b._b, at + size - 1 if little else at)
+    if not signed and size == 8 and first >= 128:
+        raise OverflowError("integer result does not fit in 64 bits")
+    v = first - 256 if signed and first >= 128 else first
+    for i in range(1, size):
+        v = v * 256 + __pys_ba_get(b._b, at + size - 1 - i if little else at + i)
+    return v
+
+
+def _get_bool(b: bytearray, at: int) -> bool:
+    # struct's "?" at b[at], within b
+    return __pys_ba_get(b._b, at) != 0
+
+
+def _get_pascal(b: bytearray, at: int, n: int) -> bytes:
+    # struct's "p" of n bytes at b[at], within b: the bytes that its first byte counts, at most n - 1
+    if n == 0:
+        return b""
+    k = __pys_ba_get(b._b, at)
+    if k >= n:
+        k = n - 1
+    return _bytes(b, at + 1, k)
 
 
 def _store(b: bytearray, at: int, p: bytes) -> None:
@@ -596,9 +618,8 @@ def _store(b: bytearray, at: int, p: bytes) -> None:
 def _store_int(b: bytearray, at: int, v: int, size: int, little: bool) -> None:
     # the low size bytes of v at b[at], the low byte first where little, which the caller knows to
     # be within b: an integer that struct.pack_into() stores with no bytes object between
-    buf = b._b
     for i in range(size):
-        __pys_ba_put(buf, at + i if little else at + size - 1 - i, v & 255)
+        __pys_ba_put(b._b, at + i if little else at + size - 1 - i, v & 255)
         v >>= 8
 
 

@@ -50,7 +50,8 @@ A parameter annotated `bytes | bytearray` takes either. The function is compiled
 type it is called with, as one with an unannotated parameter is: it has the caller's own object,
 reads its bytes in place, and `isinstance()` of it is decided as the program compiles. An argument
 of another type is taken as an annotated `bytes` parameter takes it. The return may be annotated
-so too; a variable, a field or a container's items may not.
+so too; a variable, a field, a container's items and an ordinary class's `__init__` parameter may
+not (a generic class's may: each call types the class).
 
 ### Text and file positions
 

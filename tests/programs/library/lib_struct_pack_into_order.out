@@ -1,0 +1,10 @@
+value 1
+value 2
+IndexError: cannot fit 'int' into an index-sized integer
+value 3
+value 4
+IndexError: cannot fit 'int' into an index-sized integer
+value 5
+value 6
+bytearray(b'\x00\x05\x06\x00')
+[exit 0]

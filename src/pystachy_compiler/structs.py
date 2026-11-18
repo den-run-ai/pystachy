@@ -153,7 +153,7 @@ def gen_struct_call(self, name: str, args: list[Node], want: str) -> Val | None:
         o = self.expr(pos[2], "int")
         if o.t != "int" and o.t != "bool" and o.t != BIG:
             self.err(f"'{tname(o.t)}' object cannot be interpreted as an integer")
-        return self.struct_pack(sf, pos[3:], into, self.as_int(o))
+        return self.struct_pack(sf, pos[3:], into, o)  # (narrowed once the values are evaluated: _into's call)
     buf: Node | None = pos[1] if len(pos) > 1 else None
     off: Node | None = pos[2] if len(pos) > 2 else None
     for a in args:
@@ -169,25 +169,22 @@ def gen_struct_call(self, name: str, args: list[Node], want: str) -> Val | None:
     b = self.expr(buf, "bytes")
     if b.t != "bytes" and b.t != BYTEARRAYC:
         self.err(f"a bytes-like object is required, not '{tname(b.t)}'")
-    ln = self.vnode(b)  # (what the module's _need, _offset and _offsets measure)
-    bn = ln  # (the bytes that are read)
-    if b.t == BYTEARRAYC:
-        # a bytearray's bytes are read in place: its buffer's, within the length that was checked
-        bn = self.vnode(self.call_fn(self.funcs[BYTEARRAYS + "$_raw"], [], [ln]))
+    bn = self.vnode(b)
+    ba = b.t == BYTEARRAYC  # (its bytes are read in place by its module's readers: struct_nodes)
     sz = mk("int", str(sf.size), line, [])
     if fn == "unpack":
-        self.expr(self.struct_helper("_need", [ln, sz]), "")
-        return self.tuple_([self.expr(e, "") for e in self.struct_nodes(sf, bn, None)])
+        self.expr(self.struct_helper("_need", [bn, sz]), "")
+        return self.tuple_([self.expr(e, "") for e in self.struct_nodes(sf, bn, None, ba)])
     if fn == "unpack_from":
         o = self.expr(off, "int") if off is not None else Val("0", "int")
         if o.t != "int" and o.t != "bool" and o.t != BIG:
             self.err(f"'{tname(o.t)}' object cannot be interpreted as an integer")
-        at = self.expr(self.struct_helper("_offset", [ln, self.vnode(self.as_int(o)), sz]), "int")
-        return self.tuple_([self.expr(e, "") for e in self.struct_nodes(sf, bn, self.vnode(at))])
+        at = self.expr(self.struct_helper("_offset", [bn, self.vnode(self.as_int(o)), sz]), "int")
+        return self.tuple_([self.expr(e, "") for e in self.struct_nodes(sf, bn, self.vnode(at), ba)])
     # iter_unpack(): the list of the tuples, where CPython gives an iterator of them
-    starts = self.expr(self.struct_helper("_offsets", [ln, sz]), "list[int]")
+    starts = self.expr(self.struct_helper("_offsets", [bn, sz]), "list[int]")
     item = mk("name", "__offset", line, [])
-    return self.expr(mk("listcomp", "", line, [mk("tuple", "", line, self.struct_nodes(sf, bn, item)), item, self.vnode(starts)]), want)
+    return self.expr(mk("listcomp", "", line, [mk("tuple", "", line, self.struct_nodes(sf, bn, item, ba)), item, self.vnode(starts)]), want)
 
 
 def gen_struct_store(self, dst: Node, base: Node, k: int, p: Val) -> None:
@@ -202,9 +199,12 @@ def gen_struct_helper(self, f: str, args: list[Node]) -> Node:
     return mk("call", "", self.line, [mk("name", "_struct$" + f, self.line, [])] + args)
 
 
-def gen_struct_nodes(self, sf: StructFmt, bn: Node, base: Node | None) -> list[Node]:
+def gen_struct_nodes(self, sf: StructFmt, bn: Node, base: Node | None, ba: bool) -> list[Node]:
     # the calls that unpack the values of format sf from the bytes of bn, each at its offset (plus
-    # base, a node of an int, where given)
+    # base, a node of an int, where given). Of a bytearray (ba), lib/_pystachy_bytearray.py's
+    # readers, which read its buffer through the module's primitives, at offsets checked against
+    # its length: no other code reads the buffer, which the compiler takes a bytes's bytes never to
+    # change in (a float's bytes are copied, and read as a bytes's)
     line = self.line
     little = mk("True" if sf.little else "False", "", line, [])
     out: list[Node] = []
@@ -216,17 +216,29 @@ def gen_struct_nodes(self, sf: StructFmt, bn: Node, base: Node | None) -> list[N
             if base is not None:
                 at = mk("binop", "+", line, [base, at])
             if c == "s" or c == "c":
-                out.append(self.struct_helper("_unpack_bytes", [bn, at, mk("int", str(sf.counts[i]) if c == "s" else "1", line, [])]))
+                n = mk("int", str(sf.counts[i]) if c == "s" else "1", line, [])
+                out.append(self.ba_helper("_bytes", [bn, at, n]) if ba else self.struct_helper("_unpack_bytes", [bn, at, n]))
             elif c == "p":
-                out.append(self.struct_helper("_unpack_pascal", [bn, at, mk("int", str(sf.counts[i]), line, [])]))
+                n = mk("int", str(sf.counts[i]), line, [])
+                out.append(self.ba_helper("_get_pascal", [bn, at, n]) if ba else self.struct_helper("_unpack_pascal", [bn, at, n]))
             elif c == "?":
-                out.append(self.struct_helper("_unpack_bool", [bn, at]))
+                out.append(self.ba_helper("_get_bool", [bn, at]) if ba else self.struct_helper("_unpack_bool", [bn, at]))
             elif c == "e" or c == "f" or c == "d":
-                out.append(self.struct_helper("_unpack_float", [mk("str", c, line, []), bn, at, little]))
+                if ba:
+                    copied = self.ba_helper("_bytes", [bn, at, mk("int", str(k), line, [])])
+                    out.append(self.struct_helper("_unpack_float", [mk("str", c, line, []), copied, mk("int", "0", line, []), little]))
+                else:
+                    out.append(self.struct_helper("_unpack_float", [mk("str", c, line, []), bn, at, little]))
             else:
                 signed = mk("True" if c in "bhilqn" else "False", "", line, [])  # (P unpacks as unsigned)
-                out.append(self.struct_helper("_unpack_int", [bn, at, mk("int", str(k), line, []), signed, little]))
+                size = mk("int", str(k), line, [])
+                out.append(self.ba_helper("_get_int", [bn, at, size, signed, little]) if ba else self.struct_helper("_unpack_int", [bn, at, size, signed, little]))
     return out
+
+
+def gen_ba_helper(self, f: str, args: list[Node]) -> Node:
+    # a call of lib/_pystachy_bytearray.py's function f
+    return mk("call", "", self.line, [mk("name", BYTEARRAYS + "$" + f, self.line, [])] + args)
 
 
 def gen_struct_pack(self, sf: StructFmt, args: list[Node], into: Val | None, offset: Val | None) -> Val:
@@ -255,7 +267,11 @@ def gen_struct_pack(self, sf: StructFmt, args: list[Node], into: Val | None, off
     base: Node | None = None
     if into is not None and offset is not None:
         dst = self.vnode(into)
-        base = self.vnode(self.expr(self.struct_helper("_into", [dst, self.vnode(offset), mk("int", str(sf.size), line, [])]), "int"))
+        if offset.t == BIG:
+            # (CPython's PyNumber_AsSsize_t(offset, IndexError): an offset past 64 bits)
+            self.guard(self.scalar("xor", [Val(self.big_fits([offset]), "bool"), Val("true", "bool")]), "IndexError: cannot fit 'int' into an index-sized integer")
+        at = self.vnode(self.as_int(offset))  # (a bool as the int it is)
+        base = self.vnode(self.expr(self.struct_helper("_into", [dst, at, mk("int", str(sf.size), line, [])]), "int"))
         if sf.size > 0:
             self.struct_store(dst, base, 0, Val(self.bconst("\x00" * sf.size), "bytes"))
     parts: list[Val] = []

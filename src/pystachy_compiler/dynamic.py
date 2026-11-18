@@ -22,7 +22,7 @@ from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Reduce, Val, tmpname
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, retoken, short
-from src.pystachy_compiler.specs import BIG, COMPLEXC, GLUE, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
+from src.pystachy_compiler.specs import BIG, BYTEARRAYC, COMPLEXC, GLUE, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
 from src.pystachy_compiler.syntax import Node, has_kind, made_var, mk
 from src.pystachy_compiler.utils import ListLayout, builtin_key, closure_default_slots, disjoint_sets, elem, fbits, float_slot, gelem, holds_dyn, identity_abi, identity_default, int_fits, int_lit, is_callable, is_const, is_dict, is_fn, is_gen, is_kw, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, kw_names, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
 
@@ -3421,6 +3421,12 @@ def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
     if key.endswith(".promote"):
         key = key[:-8]
     ci = self.classes[c]
+    if c == BYTEARRAYC and (key.startswith("get.") or key.startswith("set.") or key.startswith("call.") or key.startswith("has.")):
+        # (CPython's bytearray has its methods and no attribute of its own: lib's class's fields
+        # and helper methods, which start with one "_", are not its attributes, Gen.field)
+        a = key[4:] if key.startswith("get.") or key.startswith("set.") else key[key.find(".") + 1 : key.rfind(".")]
+        if a.startswith("_") and not (a.startswith("__") and a.endswith("__")):
+            return False
     if key.startswith("cmp."):
         own = self.dynfns[key].ptypes[1]
         # Same-hierarchy comparisons already use the typed helper, not @o.x.
