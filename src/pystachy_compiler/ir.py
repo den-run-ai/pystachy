@@ -32,6 +32,113 @@ class Val:
         return self
 
 
+# What an operand's value (Val.v) may be, by kind (operand_kind): a value an instruction of the
+# function defines (%t<n>), a parameter (%a<n>, its numeric identity companion %aid<n>, or the
+# identity result %idret), a slot's register (slot_register: %<name>.<n>), a symbol of the module
+# (@<name>), a constant (an int, a decimal float, true, false, null or undef), or one of three
+# constant expressions over a symbol or a float's bits (constant_expression). The set is closed:
+# the IR check rejects any other spelling, so an operand holds no instruction text. The
+# spellings are still LLVM's, which lowering prints as they are.
+OPERAND_VALUE = 0
+OPERAND_PARAM = 1
+OPERAND_SLOT = 2
+OPERAND_GLOBAL = 3
+OPERAND_CONST = 4
+OPERAND_EXPR = 5
+OPERAND_KINDS: list[str] = ["value", "param", "slot", "global", "const", "expr"]
+
+
+def digits(v: str, lo: int, hi: int) -> bool:
+    # v[lo:hi] is one decimal digit or more
+    if lo >= hi:
+        return False
+    for j in range(lo, hi):
+        c = ord(v[j])
+        if c < 48 or c > 57:
+            return False
+    return True
+
+
+def symbol_end(v: str, lo: int) -> int:
+    # where the symbol @<name> that starts at v[lo] ends, or -1: its name is letters, digits
+    # and _ . $ -
+    if lo >= len(v) or v[lo] != "@":
+        return -1
+    j = lo + 1
+    while j < len(v):
+        c = ord(v[j])
+        if not ((48 <= c <= 57) or (65 <= c <= 90) or (97 <= c <= 122) or c == 95 or c == 46 or c == 36 or c == 45 or c >= 128):
+            break
+        j += 1
+    return j if j > lo + 1 else -1
+
+
+def integer_end(v: str, lo: int) -> int:
+    # where the decimal integer that starts at v[lo] ends, or -1
+    j = lo + 1 if lo < len(v) and v[lo] == "-" else lo
+    k = j
+    while k < len(v) and 48 <= ord(v[k]) <= 57:
+        k += 1
+    return k if k > j else -1
+
+
+def constant_expression(v: str) -> bool:
+    # ptrtoint (ptr @G to i64), ptrtoint (ptr getelementptr (i8, ptr @G, i64 N) to i64): a
+    # constant's address, or an address inside it, as a container slot's bits; and
+    # bitcast (i64 N to double): a float that has no decimal spelling, by its bits
+    if v.startswith("bitcast (i64 "):
+        j = integer_end(v, 13)
+        return j > 0 and v[j:] == " to double)"
+    if v.startswith("ptrtoint (ptr getelementptr (i8, ptr "):
+        j = symbol_end(v, 37)
+        if j < 0 or not v.startswith(", i64 ", j):
+            return False
+        j = integer_end(v, j + 6)
+        return j > 0 and v[j:] == ") to i64)"
+    if v.startswith("ptrtoint (ptr "):
+        j = symbol_end(v, 14)
+        return j > 0 and v[j:] == " to i64)"
+    return False
+
+
+def operand_kind(v: str) -> int:
+    # the kind of an operand's value (OPERAND_KINDS), or -1 if it has none
+    n = len(v)
+    if n == 0:
+        return -1
+    c = ord(v[0])
+    if c == 37:
+        if n > 2 and v[1] == "t" and digits(v, 2, n):
+            return OPERAND_VALUE
+        if (n > 2 and v[1] == "a" and digits(v, 2, n)) or (v.startswith("%aid") and digits(v, 4, n)) or v == "%idret":
+            return OPERAND_PARAM
+        j = n
+        while j > 0 and 48 <= ord(v[j - 1]) <= 57:
+            j -= 1
+        return OPERAND_SLOT if j < n and j >= 3 and v[j - 1] == "." else -1
+    if c == 64:
+        return OPERAND_GLOBAL if symbol_end(v, 0) == n else -1
+    if v == "true" or v == "false" or v == "null" or v == "undef":
+        return OPERAND_CONST
+    j = integer_end(v, 0)
+    if j == n:
+        return OPERAND_CONST
+    if j > 0 and v[j] == "." and j + 1 < n:
+        # a decimal float: digits, a point, digits, and an exponent if it has one
+        k = j + 1
+        while k < n and 48 <= ord(v[k]) <= 57:
+            k += 1
+        if k == j + 1:
+            return -1
+        if k == n:
+            return OPERAND_CONST
+        if v[k] == "e" and k + 1 < n:
+            k += 2 if v[k + 1] == "+" or v[k + 1] == "-" else 1
+            return OPERAND_CONST if digits(v, k, n) else -1
+        return -1
+    return OPERAND_EXPR if constant_expression(v) else -1
+
+
 class Data:
     # Immutable module data: string bytes, callable/exception references, constant tuple slots
     # (whose type its text is), or pointer-free scalar slots copied into fresh lists.

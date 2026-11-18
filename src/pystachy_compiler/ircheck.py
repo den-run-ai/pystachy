@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import dynamic_program, fail, int_lists, int_program
 from src.pystachy_compiler.dynamic_proof import DynamicProof, DynTypes
-from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, tmpname
+from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, operand_kind, tmpname
 from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
 from src.pystachy_compiler.specs import BIG, FX, FXALL, FXBIT, ICMP, IROPS, LIST_READS, LIST_WRITES, NONEVAR, RAWR, RAWW, RUNTIME
 from src.pystachy_compiler.specs import OPS, OP_ENTRY, OP_FIELDS, OP_INVOKE, OP_K, OP_LABELS, OP_MAX, OP_MIN, OP_PER_OPERAND, OP_S, OP_T, OP_X, RESULT_NUMBERS
@@ -418,6 +418,9 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
             shape = op_shape_error(i, False)
             if shape != "":
                 self.bad_ir(fn, b, shape)
+            for a in i.a:
+                if operand_kind(a.v) < 0:
+                    self.bad_ir(fn, b, f"{i.op} operand {a.v} is no value, parameter, slot, symbol or constant")
             n = self.nums(i)
             if len(i.r) != n:
                 self.bad_ir(fn, b, f"{i.op} {i.s} with {len(i.r)} numbers, where its lowering prints {n}")
