@@ -3,7 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.bigints import TSLOT_BIG, big_tree, big_viewable, held, narrow_type, narrows, search_type
 from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
-from src.pystachy_compiler.diagnostics import LINES, dynamic_program, int_lists, shown, where
+from src.pystachy_compiler.diagnostics import DYNPRAGMA, LINES, dynamic_program, int_lists, shown, where
 from src.pystachy_compiler.dynamic import boxed_list_items, comparison_container_pair, comparison_invalid, comparison_property_type
 from src.pystachy_compiler.frames import FmtArgs, IterArg
 from src.pystachy_compiler.ir import Data, Ins, Loop, Val, tmpname, one_num
@@ -101,6 +101,11 @@ from src.pystachy_compiler.utils import (
     typestr,
     unopt,
 )
+
+
+# What an error says of a list or dict display whose items no one type holds, nor a union the
+# compiler infers, in a module that does not compile Any as a dynamic type ({}: its items or values)
+MIXED = "this {} have no one type: annotate the display with a union of their types where one holds them, or add '" + DYNPRAGMA + "' before the module's code to hold them as Any values"
 
 
 def gen_narrows(self, n: Node, truth: bool, out: dict[str, str]) -> None:
@@ -1371,7 +1376,15 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         lty = self.ctype("list", [et])
         if lty == "list[dyn]":
             et = "dyn"  # (where the items are Any values or containers: ctype)
-        items = [self.list_hold(kept[i] if i in kept else items[i], et) for i in range(len(items))]
+        # (functions aside: each is a type of its own, which the error they get says)
+        mixed = not given and jt == "-" and et != "dyn" and not self.dyn_policy(n.line) and len([v for v in items if is_fn(v.t) or is_callable(unopt(v.t))]) == 0
+        if mixed:
+            self.making.append(MIXED.replace("{}", "list display's items"))  # (an item that et does not hold: say what would)
+        try:
+            items = [self.list_hold(kept[i] if i in kept else items[i], et) for i in range(len(items))]
+        finally:
+            if mixed:
+                self.making.pop()
         if len(items) >= 32:
             constant = self.list_const(n, items, lty)
             if constant.v != "":
@@ -1457,7 +1470,14 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         ks = [self.key_coerce(kkept[i] if i in kkept else ks[i], kv[0]) for i in range(len(ks))]
         if kv[1] == BIG:
             kv[1] = "int"  # (a dict of ints, which holds promoting ints where the program's dicts do: dict_store)
-        vs = [self.list_hold(vkept[i] if i in vkept else vs[i], kv[1]) for i in range(len(vs))]
+        mixed = not given and jt == "-" and kv[1] != "dyn" and not self.dyn_policy(n.line) and len([b for b in vs if is_fn(b.t) or is_callable(unopt(b.t))]) == 0
+        if mixed:
+            self.making.append(MIXED.replace("{}", "dict display's values"))  # (a value that kv[1] does not hold: say what would)
+        try:
+            vs = [self.list_hold(vkept[i] if i in vkept else vs[i], kv[1]) for i in range(len(vs))]
+        finally:
+            if mixed:
+                self.making.pop()
         if self.key_problem(kv[0]) != "":
             self.err(self.key_problem(kv[0]))
         r = self.rt("pys_dict_new_atomic" if atomic_dict(self.ctype("dict", kv)) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0], True)}", f"i64 {len(ks)}"])
