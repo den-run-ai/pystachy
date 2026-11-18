@@ -517,7 +517,14 @@ def normalize_snapshot(snapshot, function, max_blocks=1024, max_instructions=MAX
         if types[holder]["kind"] == DK_OBJ:
             # Every admitted concrete descriptor must support this projection.
             # An ancestry edge or a secondary-role flag is not itself evidence.
-            tags = derived[holder] | roles[holder]
+            # A class that takes the holder as its role is admitted only where its
+            # layout starts with the holder's: a role that declares attributes keeps
+            # them at offsets of its own, so a box of such a class must not reach
+            # the read, and the guard proof fails where one can.
+            # (A missing layout still fails the inventory check below.)
+            tags = derived[holder] | {tag for tag in roles[holder]
+                                      if tag not in layouts or holder not in layouts
+                                      or layouts[tag][:len(layouts[holder])] == layouts[holder]}
             for tag in sorted(tags):
                 require(tag in layouts, "class payload descriptor has no layout")
                 referenced_layouts[tag] = layouts[tag]

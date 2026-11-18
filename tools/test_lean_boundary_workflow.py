@@ -126,10 +126,11 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
         self.assertEqual(build["if"], "steps.lean-boundary.outputs.run == 'true'")
         self.assertIn("cd tools/lean_boundary\n", build["run"])
         self.assertNotIn("continue-on-error", build)
-        checks = [step for step in steps if "make check-fast" in step.get("run", "")]
+        checks = [step for step in steps if "check-fast" in step.get("run", "")]
         self.assertEqual(len(checks), 1)
         check = checks[0]
-        self.assertEqual(check["run"], "make check-fast lint")
+        # Lint runs check-fast beside its two control suites (#1525).
+        self.assertIn("python3 tools/lint_controls.py --make 'check-fast lint' ", check["run"])
         self.assertNotIn("if", check)
         self.assertNotIn("continue-on-error", check)
         self.assertLess(steps.index(build), steps.index(check))

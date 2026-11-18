@@ -1,0 +1,31 @@
+straße STRASSE Straße Straße STRASSE False True False
+STRASSE STRASSE Strasse Strasse strasse True False False
+Straße STRASSE Straße Straße sTRASSE False False True
+ÉCOLE ÉCOLE École École école True False False
+école ÉCOLE École École ÉCOLE False True False
+École ÉCOLE École École éCOLE False False True
+ΟΔΟΣ ΟΔΟΣ Οδος Οδος οδος True False False
+οδός ΟΔΌΣ Οδός Οδός ΟΔΌΣ False True False
+Οδός ΟΔΌΣ Οδός Οδός οΔΌΣ False False True
+ΟΔΌΣ ΟΔΌΣ Οδός Οδός οδός True False False
+мир МИР Мир Мир МИР False True False
+МИР МИР Мир Мир мир True False False
+Мир МИР Мир Мир мИР False False True
+İstanbul İSTANBUL İstanbul İstanbul i̇STANBUL False False True
+istanbul ISTANBUL Istanbul Istanbul ISTANBUL False True False
+ISTANBUL ISTANBUL Istanbul Istanbul istanbul True False False
+ﬁn FIN Fin Fin FIN False True False
+FIN FIN Fin Fin fin True False False
+ǅungla ǄUNGLA ǅungla ǅungla ǅUNGLA False False True
+ǄUNGLA ǄUNGLA ǅungla ǅungla ǆungla True False False
+日本語 日本語 日本語 日本語 日本語 False False False
+abc ABC Abc Abc ABC False True False
+ABC ABC Abc Abc abc True False False
+Abc ABC Abc Abc aBC False False True
+123 123 123 123 123 False False False
+ça ÇA Ça Ça ÇA False True False
+ÇA ÇA Ça Ça ça True False False
+[('123', 1), ('abc', 3), ('fin', 2), ('istanbul', 2), ('i̇stanbul', 1), ('strasse', 3), ('ça', 2), ('école', 3), ('ǆungla', 2), ('οδοσ', 1), ('οδόσ', 3), ('мир', 3), ('日本語', 1)]
+[('123', ['123']), ('abc', ['abc', 'ABC', 'Abc']), ('fin', ['FIN']), ('istanbul', ['istanbul', 'ISTANBUL']), ('i̇stanbul', ['İstanbul']), ('strasse', ['STRASSE']), ('straße', ['straße', 'Straße']), ('ça', ['ça', 'ÇA']), ('école', ['ÉCOLE', 'école', 'École']), ('ǆungla', ['ǅungla', 'ǄUNGLA']), ('οδος', ['ΟΔΟΣ']), ('οδός', ['οδός', 'Οδός', 'ΟΔΌΣ']), ('мир', ['мир', 'МИР', 'Мир']), ('日本語', ['日本語']), ('ﬁn', ['ﬁn'])]
+13 15 True True True
+[exit 0]
