@@ -683,7 +683,7 @@ def gen_path_again(self, n: Node, key: str, v: Val) -> Val:
     if v.t in self.classes:
         return self.narrow_val(v, nt)  # (the same pointer, of the class its test proved)
     if is_union(unopt(v.t)) and nt != "None" and not is_opt(nt) and not is_union(nt):
-        ok = self.utest(v, [nt], is_opt(v.t) or self.reference_union(v.t))
+        ok = self.utest(v, [nt], is_opt(v.t) or self.reference_union(v.t) or self.object_union(v.t))
     elif is_opt(v.t) and not is_union(unopt(v.t)) and nt == unopt(v.t):
         ok = self.ptr_cmp('!=', v, Val('null', 'None')).v
     else:

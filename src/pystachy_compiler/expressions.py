@@ -5764,8 +5764,9 @@ def gen_union_same(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str
         for j in range(2):
             x = item if j == 0 else a
             if is_union(unopt(x.t)):
-                # (a class's union is a null box where it is None, as a union | None's is)
-                held = self.utest(x, [pair[j]], (is_opt(x.t) or self.reference_union(x.t)) and x.v not in self.nn)
+                # (a class's union is a null box where it is None, as a union | None's is, and so
+                # is a union of objects and scalars: object_union)
+                held = self.utest(x, [pair[j]], (is_opt(x.t) or self.reference_union(x.t) or self.object_union(x.t)) and x.v not in self.nn)
                 test = held if test == "true" else self.scalar('and', [Val(test, 'bool'), Val(held, 'bool')])
         same = self.label()
         nx = self.label()
@@ -6598,6 +6599,10 @@ def gen_comparable(self, t: str, u: str) -> bool:
         # (an Any value may be any value that a box can hold: dynamic.py)
         o = u if t == "dyn" else t
         return o == "dyn" or self.dyn_boxable(self.rec_type(o)) == ""
+    if self.object_union(t) or self.object_union(u):
+        # (a union of objects and scalars, which may be None: == compares the member that its tag
+        # selects, ucmp, where an object's __eq__ may take a value of any type)
+        return True
     sides = [(["None"] if is_opt(x) else []) + (umembers(unopt(x)) if is_union(unopt(x)) else [unopt(x)]) for x in [t, u]]
     if any(COMPLEXC in side for side in sides) and (len(sides[0]) > 1 or len(sides[1]) > 1):
         # (a union holding complex numbers, or a complex number and a union: complex_ueq compares
