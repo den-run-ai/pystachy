@@ -898,6 +898,8 @@ see [architecture](internals.md#errors-and-cleanup) for the runtime overview.
 
 - `make check-ir` verifies generated IR and checks IR probes, including calls, function attributes
   and effect summaries.
+- `tools/typed_ir_ops.py --check` fails when the [operation reference](#operation-reference)
+  differs from `OPS`.
 - `make check-runtime` checks runtime signature/effect declarations.
 - `make irsame` and `make irsame-py` compare a refactor's IR, diagnostics and exit status with a
   reference compiler. Behavior changes need their own explicit tests, not a byte-identical promise.
@@ -906,6 +908,33 @@ see [architecture](internals.md#errors-and-cleanup) for the runtime overview.
 
 See the [testing guide](testing.md) for the full workflow. Historical corpus sizes and
 self-compile timings in the design log are not current test totals or performance claims.
+
+## Text form
+
+`tools/typed_ir_text.py` prints a function's IR as text and parses it back. One instruction
+is one line: its result numbers, the operation, the fields it sets, its typed operands, its
+labels and its result type.
+
+```text
+L7:
+  %10 = mach.load(%ptr %h.5) : int
+  %11 = list.len(list[float] %t4) : int
+  %12 = num.cmp s=< (int %t10, int %t11) : bool
+  cbr(bool %t12) -> L13, L9
+L13:
+  %14 = rt s=list.get (list[float] %t4, int %t10) : *float
+```
+
+Printing and parsing are inverse: a printed function parses to the record it was printed
+from, and a text that is not in the printed form is rejected. The record holds a function's
+symbol, parameters, return type, effects, slots, blocks, check targets and loops, as the
+[inspection snapshots](compiler-inspection.md) do. `to_ifn` builds the compiler's own `IFn`
+from it, so a test writes IR as text, runs the verifier or one pass and compares the printed
+result: [`tools/test_typed_ir_text.py`](../tools/test_typed_ir_text.py) runs `listget` on
+[a fixture](../tools/fixtures/typed_ir/score_samples.listget.before.tir) that way, and
+checks that the fixture is what the compiler emits. The text holds no module data, class
+layouts or runtime declarations, so a function that needs those is tested from source. It
+is a test and review form of the hosted compiler, not an interchange format.
 
 <a id="73-a-webassembly-gc-backend"></a>
 <a id="74-the-cpython-extension-mode-4-4"></a>
