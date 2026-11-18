@@ -4,7 +4,8 @@ from src.pystachy_compiler.analysis import local_names, numeric_statement
 from src.pystachy_compiler.bigints import converts
 from src.pystachy_compiler.diagnostics import dynamic_program, shown, where
 from src.pystachy_compiler.generators import fresh_yield_context
-from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val, tmpname
+from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
+from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.reflection import VARS_USES, refl_attr_fields, refl_formatter
 from src.pystachy_compiler.specs import BFILE, BIG, COMPLEXC, DISPATCH_INLINE, EXCEPTIONS, GLUE, HASATTR, MODATTRS, OBJECTC, PYBUILTINS, RANGEC

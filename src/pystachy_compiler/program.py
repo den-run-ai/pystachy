@@ -5,7 +5,8 @@ from src.pystachy_compiler.analysis import all_imports, chk_names, collect, cons
 from src.pystachy_compiler.diagnostics import NeedHierarchy, Rejoin, dynamic_program, fail, shown
 from src.pystachy_compiler.dynamic import comparison_properties, comparison_storage
 from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_protocol
-from src.pystachy_compiler.ir import Val, ClassInfo, FnInfo
+from src.pystachy_compiler.ir import Val
+from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import RENAMED, owner, short
 from src.pystachy_compiler.pipeline import PreparedProgram

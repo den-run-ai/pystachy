@@ -1,7 +1,8 @@
 """Lowering component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail, int_program
-from src.pystachy_compiler.ir import Blk, ClassInfo, IFn, Ins, Val, slot_register, tmpname, one_num
+from src.pystachy_compiler.ir import Blk, IFn, Ins, Val, slot_register, tmpname, one_num
+from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.lower_module import const_slot, struct_types
 from src.pystachy_compiler.specs import CHECKED, COMPLEXC, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
 from src.pystachy_compiler.utils import atomic_dict, atomic_list, gelem, generator_identity, generator_slots, identity_abi, numeric_identity, is_dict, is_tuple, lt, selem, takes_self, targs, tslots

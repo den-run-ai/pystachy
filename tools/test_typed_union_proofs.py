@@ -12,7 +12,8 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler import ircheck, union_proof
-from src.pystachy_compiler.ir import Blk, ClassInfo, FnInfo, IFn, Ins, NOLABELS, Val, slot_register
+from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, Val, slot_register
+from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.syntax import Node
 from src.pystachy_compiler.specs import IROPS
 from src.pystachy_compiler.union_state import UnionState

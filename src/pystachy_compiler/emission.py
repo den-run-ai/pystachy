@@ -4,7 +4,8 @@ from src.pystachy_compiler.utils import is_union, unionnames
 from src.pystachy_compiler.bigints import narrows
 from src.pystachy_compiler.diagnostics import ClassBoxes, Rejoin, fail, int_lists
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.ir import Blk, Data, Frame, Ins, Val, tmpname, one_num
+from src.pystachy_compiler.frames import Frame
+from src.pystachy_compiler.ir import Blk, Data, Ins, Val, tmpname, one_num
 from src.pystachy_compiler.specs import BIGOPT, CHECKED, EMPTYFS, LIST_READS, LIST_WRITES, NARROWED, PATH_OPS, RTL, RTSYM, STR_HEADER_SIZE, TEXT_OPS
 from src.pystachy_compiler.utils import (
     RtFn,

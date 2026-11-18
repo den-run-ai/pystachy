@@ -9,7 +9,7 @@ from unittest.mock import patch
 from compiler_state_probe import ROOT, Snapshot
 from src.pystachy_compiler import driver
 from src.pystachy_compiler.diagnostics import NeedHierarchy, Rejoin
-from src.pystachy_compiler.ir import ClassInfo, FnInfo
+from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.syntax import Node
 

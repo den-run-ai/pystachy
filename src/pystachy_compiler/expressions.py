@@ -5,7 +5,9 @@ from src.pystachy_compiler.bigints import TSLOT_BIG, big_tree, big_viewable, hel
 from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
 from src.pystachy_compiler.diagnostics import LINES, dynamic_program, int_lists, shown, where
 from src.pystachy_compiler.dynamic import boxed_list_items, comparison_container_pair, comparison_invalid, comparison_property_type
-from src.pystachy_compiler.ir import ClassInfo, Data, FmtArgs, FnInfo, Ins, IterArg, Loop, Val, tmpname, one_num
+from src.pystachy_compiler.frames import FmtArgs, IterArg
+from src.pystachy_compiler.ir import Data, Ins, Loop, Val, tmpname, one_num
+from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.patterns import pattern_expr, pattern_static
 from src.pystachy_compiler.reflection import VARS_USES, refl_annotated, refl_body, refl_fold, refl_reflective
