@@ -23,7 +23,7 @@ the [module guide](README.md#module-guide) summarizes what each module supports.
 | [Dates and times](#dates-and-times) | [`datetime`](#datetime) |
 | [Files, OS and command line](#files-os-and-command-line) | [`io`](#io), [Binary files](#binary-files), [Path modules](#path-modules), [`pathlib`](#pathlib), [`glob`](#glob), [`shutil`](#shutil), [`sysconfig`](#sysconfig), [`argparse`](#argparse), [`getopt`](#getopt), [`platform`](#platform) |
 | [Processes and threads](#processes-and-threads) | [`subprocess`](#subprocess), [`_thread`](#_thread), [`threading`](#threading), [`concurrent.futures`](#concurrentfutures), [`atexit`](#atexit) |
-| [Runtime services](#runtime-services) | [`abc`](#abc), [`types`](#types), [`inspect`](#inspect), [`warnings`](#warnings), [`logging`](#logging), [`traceback`](#traceback), [`weakref` and `_weakref` (prototype)](#weakref-and-_weakref-prototype) |
+| [Runtime services](#runtime-services) | [`abc`](#abc), [`importlib`](#importlib), [`types`](#types), [`inspect`](#inspect), [`warnings`](#warnings), [`logging`](#logging), [`traceback`](#traceback), [`weakref` and `_weakref` (prototype)](#weakref-and-_weakref-prototype) |
 | [Native interoperability](#native-interoperability) | [`ctypes`](#ctypes) |
 | [Removed modules](#removed-modules) | `_imp`, `_ast`, `opcode` |
 
@@ -2034,6 +2034,57 @@ implementation for abstract methods 'a', 'b'`. Abstract methods can have bodies,
   base is not supported).
 - `update_abstractmethods()` is not supported: class decorators are not compiled.
 
+### `importlib`
+
+Pystachy resolves a program's imports while it compiles the program, so nothing imports a
+module at run time. `lib/importlib/` has the parts of CPython's package that need no importer:
+
+- `importlib.resources.files(name)` gives the directory of a module that the program imports,
+  a `pathlib.Path`, as CPython gives for a module it loads from a file: a package's own
+  directory, or the directory that holds a module's file
+  ([test](../tests/programs/library/lib_importlib_resources.py)). The path's `/`, `joinpath()`,
+  `read_text()`, `iterdir()` and tests are [`pathlib`'s](#pathlib). A name that the program has
+  no module of raises CPython's `ModuleNotFoundError`, an empty name its `ValueError` and a
+  relative name its `TypeError`.
+- `as_file()` gives the path itself, and `read_text()`, `open_text()`, `read_binary()`,
+  `open_binary()`, `is_resource()` and `path()` take a module's name and path names, as
+  CPython 3.13's do ([test](../tests/programs/library/lib_importlib_resources_functional.py)).
+- `importlib.util.resolve_name()` is CPython's function
+  ([test](../tests/programs/library/lib_importlib_util.py),
+  [upstream test](../tests/programs/upstream/upstream_importlib_util.py)).
+- `importlib.machinery` has `SOURCE_SUFFIXES`, `BYTECODE_SUFFIXES`, `EXTENSION_SUFFIXES` and
+  `all_suffixes()` ([test](../tests/programs/library/lib_importlib_machinery.py)).
+
+Differences from CPython:
+
+- `files()` finds the modules that the compiler read for the program, by a table the compiler
+  writes into it. CPython imports the module that the name gives: the name of a module that no
+  import statement of the program loads raises `ModuleNotFoundError` here
+  ([deviation](../tests/deviations/lib_importlib_resources_unimported.py)), as does the name
+  of a module the compiler provides itself, such as `sys` or `os`. A standard-library module
+  has the directory of its file in Pystachy's `lib/`, whose layout is not CPython's.
+- The paths are those the compiler read: absolute, with the symbolic links of a module's
+  directory resolved, where CPython keeps the spelling of a `PYTHONPATH` entry. An executable
+  that `pystachy build` makes keeps them, as it keeps `sys.prefix`: a package's data files are
+  read where they were when the program was compiled, wherever the executable is moved.
+- A namespace package raises `NotImplementedError`, where CPython gives a `MultiplexedPath` of
+  its directories ([deviation](../tests/deviations/lib_importlib_resources_namespace.py)).
+- `files()` takes a module's name: a module object, or no argument for the caller's package,
+  is a compile-time error ([error tests](../tests/errors/library/lib_importlib_resources_module.py)).
+- `read_text()` and `open_text()` take `errors='strict'` only
+  ([deviation](../tests/deviations/lib_importlib_resources_errors.py)), and their
+  `encoding=None` means the default, `'utf-8'`.
+- `BYTECODE_SUFFIXES` and `EXTENSION_SUFFIXES` are empty: Pystachy compiles source modules and
+  loads neither bytecode nor extension modules. CPython's lists name its `.pyc` files and the
+  extension modules of its build ([deviation](../tests/deviations/lib_importlib_machinery_suffixes.py)).
+
+Not supported, as compile-time errors where used: `importlib.import_module()`, `reload()`,
+`invalidate_caches()` and `__import__()`; the other functions of `importlib.util`, such as
+`find_spec()` and `module_from_spec()`; the finders, loaders and `ModuleSpec` of
+`importlib.machinery`; `importlib.resources.contents()`, `Traversable` and `ResourceReader`;
+`importlib.abc` ([error tests](../tests/errors/library/lib_importlib_import_module.py)).
+[`importlib.metadata`](#importlibmetadata) reads installed distributions' metadata.
+
 ### `types`
 
 `types` is Pystachy's own module for CPython's `Lib/types.py`, of which it has `TracebackType`,
@@ -2133,8 +2184,9 @@ Differences from CPython:
   provided: using one is a compile-time error
   ([error tests](../tests/errors/library/lib_importlib_metadata_entry_points.py)).
   `distributions()` takes no arguments.
-- The rest of `importlib` is not provided. Nothing imports a module at run time:
-  `import_module()`, `reload()` and `__import__()` are compile-time errors.
+- Of the rest of `importlib`, only the [parts that need no importer](#importlib) are provided.
+  Nothing imports a module at run time: `import_module()`, `reload()` and `__import__()` are
+  compile-time errors.
 
 ### `inspect`
 

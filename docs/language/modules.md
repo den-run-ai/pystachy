@@ -62,7 +62,8 @@ CPython's (see the [library reference](../../lib/compatibility.md)).
 itself. A builtin module and a namespace package have none, and an executable built ahead of
 time keeps the path it was built from
 ([deviations](compatibility.md#modules-and-libraries)). `__spec__` and CPython's other module
-metadata are unsupported.
+metadata are unsupported; [`importlib.resources.files()`](../../lib/compatibility.md#importlib)
+gives the directory of a module's file.
 An imported module cannot bind `__name__`.
 
 ## Module scope
