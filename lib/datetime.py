@@ -1216,8 +1216,8 @@ class timedelta:
                              self._microseconds + other._microseconds)
         raise _unsupported("+", self, other)
 
-    # Pystachy port: a method for __radd__ = __add__, annotated; Pystachy does not call the
-    # reflected methods (CPython does)
+    # Pystachy port: a method for __radd__ = __add__, annotated; Pystachy calls a reflected
+    # method only for a builtin number on the left (CPython, for any operand that declines)
     def __radd__(self, other: 'timedelta') -> 'timedelta':
         return self.__add__(other)
 

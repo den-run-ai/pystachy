@@ -1,0 +1,13 @@
+template argument
+template body True
+3
+template argument
+template read 3
+template error 'NoneType' object has no attribute 'value'
+template argument
+template body False
+3
+template argument
+template read 3
+17
+[exit 0]

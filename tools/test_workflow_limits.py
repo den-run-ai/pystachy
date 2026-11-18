@@ -508,7 +508,7 @@ class LimitTests(unittest.TestCase):
         self.assertNotIn("continue-on-error", job)
         for event in ("pull_request", "push", "workflow_dispatch"):
             with self.subTest(event=event):
-                group = "opt-in" if event == "pull_request" else "hosted"
+                group = "opt-in" if event == "pull_request" else "gc-aot-2"
                 self.assertEqual(selected_rows(job, probe["if"], event),
                                  [{"machine": "x86_64", "group": group}])
         oracles = [step for step in steps if "/^pytest==/p" in step.get("run", "")]
@@ -518,7 +518,7 @@ class LimitTests(unittest.TestCase):
         self.assertNotIn("continue-on-error", workloads[0])
         for event in ("pull_request", "push", "workflow_dispatch"):
             machines = ["x86_64"] if event == "pull_request" else ["x86_64", "aarch64"]
-            group = "opt-in" if event == "pull_request" else "hosted"
+            group = "opt-in" if event == "pull_request" else "gc-aot-2"
             self.assertCountEqual(selected_rows(job, workloads[0]["if"], event),
                                   [{"machine": machine, "group": group} for machine in machines])
             self.assertCountEqual(selected_rows(job, oracles[0]["if"], event),

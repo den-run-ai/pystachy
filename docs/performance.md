@@ -158,8 +158,9 @@ Repeat `--ir LABEL=FILE` to compare raw, JIT, and AOT optimized modules in one
 report. Labels are supplied by the caller; record the source revision, toolchain
 versions, flags, and commands beside the report. Keep the exact module used by
 each compilation stage. `opt` on raw program IR cannot inline C helper bodies
-that are only declarations. AOT's driver links the needed runtime bitcode before
-running Clang's optimizer; a GCC object sidecar is a different experiment. The
+that are only declarations. AOT's driver links the interface of its precompiled runtime,
+whose small and dispatching functions keep their bodies, before running Clang's
+optimizer; a GCC object sidecar is a different experiment. The
 `runtime_symbols` entries expose headers and referenced attribute groups so this
 distinction can be checked for the helpers under investigation.
 
@@ -241,7 +242,7 @@ This inventory does not implement source-line annotations or explain missed pass
 `PYSTACHY_OPT=-all` disables the typed-IR passes, and the runtime's copies for JIT loops. JIT
 inlining has a separate control: `PYSTACHY_JIT_INLINE=N` changes the size limit, for the program's
 functions and those copies alike; the rest of the separately compiled runtime stays calls, where
-AOT optimizes the program and the whole runtime together. The measured tradeoffs are recorded in
+AOT optimizes the program with the bodies of the runtime functions it may inline. The measured tradeoffs are recorded in
 [#333](https://github.com/den-run-ai/pystachy/pull/333); the pipeline is described in
 [compiler internals](internals.md).
 

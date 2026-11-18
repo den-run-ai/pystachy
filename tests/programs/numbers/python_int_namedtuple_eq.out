@@ -1,0 +1,78 @@
+given True True False True True True
+given False False True True True True
+maybe True True False False
+maybe False False True True
+maybe False False True True
+maybe False False True True
+tuple True True False False
+tuple False False True True
+nested True True True True True
+nested False False False False False
+mixed True True False
+mixed False False True
+mixed False False True
+field True True False
+field False False True
+given True True False True True True
+given False False True True True True
+maybe True True False False
+maybe False False True True
+maybe False False True True
+maybe False False True True
+tuple True True False False
+tuple False False True True
+nested True True True True True
+nested False False False False False
+mixed True True False
+mixed False False True
+mixed False False True
+field True True False
+field False False True
+given True True False True True True
+given False False True True True True
+maybe True True False False
+maybe False False True True
+maybe False False True True
+maybe False False True True
+tuple True True False False
+tuple False False True True
+nested True True True True True
+nested False False False False False
+mixed True True False
+mixed False False True
+mixed False False True
+field True True False
+field False False True
+given True True False True True True
+given False False True True True True
+maybe True True False False
+maybe False False True True
+maybe False False True True
+maybe False False True True
+tuple True True False False
+tuple False False True True
+nested True True True True True
+nested False False False False False
+mixed True True False
+mixed False False True
+mixed False False True
+field True True False
+field False False True
+given True True False True True True
+given False False True True True True
+maybe True True False False
+maybe False False True True
+maybe False False True True
+maybe False False True True
+tuple True True False False
+tuple False False True True
+nested True True True True True
+nested False False False False False
+mixed True True False
+mixed False False True
+mixed False False True
+field True True False
+field False False True
+maybe True True False False
+True True
+[exit 0]

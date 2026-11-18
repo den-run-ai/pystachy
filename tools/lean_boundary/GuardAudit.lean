@@ -6,7 +6,8 @@ open Lean in
 run_cmd do
   let allowed := #[``propext, ``Classical.choice, ``Quot.sound]
   for theoremName in #[``PystachyGuards.removed_check_nonnull,
-      ``PystachyGuards.union_member_matches, ``PystachyGuards.union_read_nonnull] do
+      ``PystachyGuards.union_member_matches, ``PystachyGuards.union_read_nonnull,
+      ``PystachyGuards.field_assigned] do
     let axioms ← collectAxioms theoremName
     for axiomName in axioms do
       unless allowed.contains axiomName do

@@ -16,7 +16,7 @@ import sys
 
 import check_lean_boundary as bridge
 import check_lean_int as arithmetic
-from src.pystachy_compiler.utils import is_tuple, targs, tslots, unopt
+from src.pystachy_compiler.utils import is_kw, is_opt, is_tuple, kw_types, targs, tslots, unopt
 
 DEFAULT_CHECKER = bridge.DEFAULT_CHECKER
 Unsupported = bridge.Unsupported
@@ -26,10 +26,19 @@ LIMITATIONS = [
     "Snapshot fidelity, normalization, canonical integer encoding, immutable tuple views, "
     "runtime paired-word contracts and declared parameter layouts remain trusted.",
     "Arithmetic fit claims are checked by the separate Lean integer checker.",
+    "Keyword-record tuple views use declared parameter or typed memory-read contracts; "
+    "general keyword-record joins and transport are not modeled.",
     "Stack tuple copies trust the call ABI: an on-stack tuple has all slots of "
     "its exact specialization layout; only complete same-index copies are supported.",
 ]
 MIN = "-9223372036854775808"
+# A set's slot holds its element where the element fits, unless it is at most this (TSLOT_BIG,
+# or runtime.c's ssent): then the set's digits give it (gen_big_slot's two).
+SET_SENTINEL = "-9223372036854775807"
+# Reads of a promoting int container's raw slot word (int_containers), by how the container
+# (the read's first operand) holds the int: as an item, a value, a key or an element.
+CONTAINER_READS = {"list.load": "item", "list.get": "item", "dict.val": "value", "dict.key": "key",
+                   "set.key": "element"}
 # Argument offsets at which runtime helpers accept one canonical (lo, digits) pair.
 PAIRS = {
     "big.op": (0, 2), "big.cmp": (0, 2), "big.truediv": (0, 2),
@@ -105,6 +114,7 @@ class Normalize:
                        fn.get("representation_metadata", {}).get("sources", [])}
         self.slots = set()
         self.slot_layout = {}
+        self.parameter_layout = {f"%a{j}": p["representation"] for j, p in enumerate(fn["parameters"])}
         for slot in fn.get("slots", []):
             n = slot["results"][0]
             if slot["immediate"] == 2:
@@ -132,6 +142,7 @@ class Normalize:
                     self.layout.setdefault(result(o), o["type"])
         self.validate_ssa()
         self.stack_copy_loads, self.stack_copy_stores = self.stack_copies()
+        self.container_words = self.container_reads()
         self.stack_copy_sources = {copy[0] for copy in self.stack_copy_loads.values()}
         # Escaped slots are not private and cannot retain fit facts across calls.
         for b in self.blocks:
@@ -277,9 +288,72 @@ class Normalize:
         op = self.defs.get(value)
         if op and op["op"] in {"slot.unpack", "slot.pack"}:
             return self.tuple_path(args(op)[0], depth + 1)
-        if op and op["op"] == "tuple.load" and is_tuple(op["text"]):
+        if op and op["op"] == "tuple.load" and is_tuple(unopt(op["text"])):
             return self.tuple_path(args(op)[0], depth + 1) + "/" + str(op["immediate"])
         return value
+
+    def container_reads(self):
+        """Raw slot words of the program's promoting int containers (int_containers), and phis of
+        them: an int list's item, an int-valued dict's value, an int-keyed dict's key and an int
+        set's element. gen_big_slot decodes each: the word is the int unless it is the marker
+        (MIN; for a set, at most SET_SENTINEL), where the container's digits give the int. A word
+        may only be tested for the marker, made the int with null digits (big.make, which only a
+        phi may take, on an edge where the word is not the marker: build's container-decode) or,
+        for a set, kept where its digits are null (select); else the function is unsupported."""
+        if not self.fn["representation_metadata"]["int_containers"]:
+            return {}
+        words = {}
+        uses = {}
+        for b in self.blocks:
+            for o in b["operations"]:
+                for j, a in enumerate(o["operands"]):
+                    uses.setdefault(a["value"], []).append((o, j))
+        for b in self.blocks:
+            for o in b["operations"]:
+                kind = CONTAINER_READS.get(o["op"] if o["op"] == "list.load" else o["text"] if o["op"] == "rt" else "")
+                if not kind or not o["results"] or not o["operands"]:
+                    continue
+                word = f"%t{o['results'][0]}"
+                receiver = o["operands"][0]
+                typ = receiver["type"] if receiver["type"] not in {"S", ""} else self.layout_type(receiver["value"])
+                typ = unopt(typ) if typ else typ
+                holds = None
+                if typ and kind == "item" and typ.startswith("list["):
+                    holds = targs(typ)[0] == "int"
+                elif typ and kind in {"value", "key"} and typ.startswith("dict["):
+                    holds = targs(typ)[1 if kind == "value" else 0] == "int"
+                elif typ and kind == "element" and typ.startswith(("set[", "frozenset[")):
+                    holds = targs(typ)[0] == "int"
+                if holds is None:
+                    # (a receiver whose type the snapshot does not name: one decoded as an int's)
+                    holds = any(u["op"] == "big.make" and j == 0 for u, j in uses.get(word, []))
+                if holds:
+                    words[word] = kind
+        changed = True
+        while changed:
+            changed = False
+            for b in self.blocks:
+                for o in b["operations"]:
+                    if o["op"] == "phi" and result(o) not in words:
+                        kinds = {words[a] for a in args(o) if a in words}
+                        if kinds:
+                            require(len(kinds) == 1, "phi joins different container words")
+                            words[result(o)] = kinds.pop()
+                            changed = True
+        for word, kind in words.items():
+            sentinel = ("sle", SET_SENTINEL) if kind == "element" else ("eq", MIN)
+            for o, j in uses.get(word, []):
+                a = args(o)
+                if o["op"] == "phi" or (o["op"] == "scalar.cmp" and j == 0 and (o["text"], a[1]) == sentinel):
+                    continue
+                if o["op"] == "big.make" and j == 0 and a[1] == "null":
+                    if any(u["op"] != "phi" or u["type"] != "int+" for u, _ in uses.get(result(o), [])):
+                        raise Unsupported("a container word's int is used before its marker test")
+                    continue
+                if o["op"] == "select" and j == 1 and kind == "element":
+                    continue
+                raise Unsupported("promoting container word used outside its decode")
+        return words
 
     def layout_type(self, value, depth=0):
         if value not in self.layout_cache:
@@ -299,12 +373,19 @@ class Normalize:
                 return slot
         if op and op["op"] in {"slot.unpack", "slot.pack"}:
             inherited = self.layout_type(args(op)[0], depth + 1)
-            if inherited and is_tuple(inherited):
+            if inherited and is_tuple(unopt(inherited)):
                 return inherited
         if op and op["op"] == "tuple.load":
             parent = self.layout_type(args(op)[0], depth + 1)
+            parent = unopt(parent) if parent else parent
             if parent and is_tuple(parent) and op["immediate"] < len(targs(parent)):
                 return targs(parent)[op["immediate"]]
+        # gen_kw_record/kw_tuple store keyword values in their ordered tuple
+        # layout. Recover it only from a parameter or typed read, never a use's
+        # tuple view or an unchecked kw-valued phi/select/call result.
+        representation = op["type"] if op and op["op"] == "mem.load" else self.parameter_layout.get(value)
+        if representation and is_kw(representation):
+            return "tuple[" + ",".join(kw_types(representation)) + "]"
         return self.layout.get(value)
 
     def tuple_word(self, value):
@@ -366,8 +447,12 @@ class Normalize:
                 elif aa[index] == "int" and bb[index] == "int+":
                     self.counts["boundaries"] += 1
                     following = self.payload("marker:" + cell, "ordinary", following, "promoting-view", value)
-                elif is_tuple(aa[index]) and is_tuple(bb[index]):
-                    following = compare(aa[index], bb[index], key + "/" + str(index), following)
+                elif (is_tuple(unopt(aa[index])) and is_tuple(unopt(bb[index])) and
+                      (not is_opt(aa[index]) or is_opt(bb[index]))):
+                    # Optional children retain their nullable pointer layout;
+                    # a nonnull child may also gain optionality. Never remove
+                    # optionality or skip the present integer width checks.
+                    following = compare(unopt(aa[index]), unopt(bb[index]), key + "/" + str(index), following)
                 else:
                     raise Unsupported("tuple boundary changes a non-integer representation")
             return following
@@ -423,6 +508,19 @@ class Normalize:
             return f"marker:{self.tuple_path(base)}:{index}"
         return "marker:" + value
 
+    def absent_tuple(self, typ, path, following):
+        # Optional cell facts mean absent OR the item has this encoding:
+        # fit for narrowing, non-marker for a promoting view. They describe
+        # actual item words only on nonnull paths that decode the tuple.
+        for index, item in enumerate(targs(unopt(typ))):
+            if item == "int+":
+                following = self.fact(f"fit-cell:{path}:{index}", ["fit"], following)
+            elif item == "int":
+                following = self.fact(f"marker:{path}:{index}", ["ordinary"], following)
+            elif is_tuple(unopt(item)):
+                following = self.absent_tuple(item, path + "/" + str(index), following)
+        return following
+
     def zero(self, value, yes, no, depth=0):
         if depth > 64:
             raise Unsupported("integer guard expression exceeds depth limit")
@@ -451,16 +549,7 @@ class Normalize:
                                  "tags": ["null"], "yes": yes, "no": no})
         layout = self.layout_type(value)
         if layout and layout.startswith("opt[") and is_tuple(unopt(layout)):
-            def absent(typ, path, following):
-                for index, item in enumerate(targs(typ)):
-                    if item == "int+":
-                        following = self.fact(f"fit-cell:{path}:{index}", ["fit"], following)
-                    elif is_tuple(item):
-                        following = absent(item, path + "/" + str(index), following)
-                return following
-            # Optional fit-cell means absent OR item fits; it is an actual
-            # numeric fit fact only on the nonnull paths that decode an item.
-            yes = absent(unopt(layout), self.tuple_path(value), yes)
+            yes = self.absent_tuple(layout, self.tuple_path(value), yes)
         return self.add({"op": "guard", "value": "zero:" + value, "tags": ["null"],
                          "yes": yes, "no": no})
 
@@ -479,6 +568,12 @@ class Normalize:
                     return self.condition(a[0], yes, self.condition(a[1], yes, no, depth + 1), depth + 1)
                 if op["text"] == "xor" and "true" in a:
                     return self.condition(a[1] if a[0] == "true" else a[0], no, yes, depth + 1)
+            if op["op"] == "scalar.cmp" and op["text"] == "sle" and len(a) == 2 and a[1] == SET_SENTINEL \
+                    and self.container_words.get(a[0]) == "element":
+                # (a set's slot at most SET_SENTINEL: its digits give the element)
+                test = self.add({"op": "guard", "value": self.marker(a[0]), "tags": ["marker"], "yes": yes, "no": no})
+                return self.add({"op": "guard", "value": self.marker(a[0]), "tags": ["marker", "ordinary"],
+                                 "yes": test, "no": 0})
             stack_test = op["op"] == "num.cmp" and any(
                 self.defs.get(v, {}).get("op") == "rt" and self.defs[v]["text"] == "on_stack" for v in a)
             if (op["op"] in {"scalar.cmp", "ptr.cmp"} or stack_test) and op["text"] in {"eq", "ne", "==", "!="}:
@@ -698,8 +793,13 @@ class Normalize:
                 k, a = op["op"], args(op)
                 if k in {"br", "landing", "gen.start", "gen.yield"}:
                     nxt = self.edge(op["targets"][0], label)
-                    if k == "gen.yield" and not (len(a) == 2 and self.pair(*a)):
-                        for v in reversed(a):
+                    if k == "gen.yield":
+                        # Yield transports a canonical low/digits pair. A tracked
+                        # identity is an independent operand, not part of that pair.
+                        shape = [operand["type"] for operand in op["operands"]]
+                        paired = (shape in (["%slot", "%ptr"], ["%slot", "%ptr", "dyn"])
+                                  and self.pair(a[0], a[1]))
+                        for v in reversed(a[2:] if paired else a):
                             nxt = self.needed(v, nxt)
                 elif k == "cbr":
                     nxt = self.condition(a[0], self.edge(op["targets"][0], label),
@@ -730,6 +830,10 @@ class Normalize:
                 elif k == "phi":
                     pass  # parallel assignments are put on incoming edges below
                 else:
+                    for value in (f"%t{n}" for n in op["results"]):
+                        if value in self.container_words:
+                            # (a new word: no marker test of an earlier one, as in a loop, holds for it)
+                            nxt = self.add({"op": "havoc", "dst": self.marker(value), "next": nxt})
                     if op["targets"]:
                         require(len(op["targets"]) == 2, "unknown operation control-flow targets")
                         nxt = self.add({"op": "choice", "yes": self.edge(op["targets"][0], label),
@@ -769,6 +873,16 @@ class Normalize:
                         if index < len(targs(typ)) and is_tuple(unopt(targs(typ)[index])):
                             packed = self.defs.get(a[1])
                             if packed and packed["op"] == "slot.pack":
+                                child = targs(typ)[index]
+                                path = self.tuple_path(tuple_value) + "/" + str(index)
+                                if args(packed)[0] == "null" and is_opt(child):
+                                    nxt = self.absent_tuple(child, path, nxt)
+                                # A new child invalidates every fact about the
+                                # previous child, including literal absence.
+                                reset = len(self.nodes)
+                                self.nodes.append({"op": "jump", "next": nxt})
+                                self.tuple_resets.append((reset, path))
+                                nxt = reset
                                 nxt = self.boundary(args(packed)[0], targs(typ)[index], nxt)
                             else:
                                 raise Unsupported("nested tuple store lacks typed slot.pack source")
@@ -833,6 +947,7 @@ class Normalize:
             phis = [o for o in next(b for b in self.blocks if b["label"] == label)["operations"] if o["op"] == "phi"]
             assignments = []
             edge_checks = []
+            resets = []  # (the marker cells of the container words the phis define here)
             for op in phis:
                 require(len(op["targets"]) == len(op["operands"]), "malformed phi")
                 incoming = [a["value"] for p, a in zip(op["targets"], op["operands"], strict=True) if p == previous]
@@ -855,9 +970,17 @@ class Normalize:
                         index = args(op).index(incoming[0])
                         tag = "ordinary" if index == 0 else "marker"
                         edge_checks.append(("decode", "marker:" + destination[len("fit-cell:"):], tag))
+                    made = self.defs.get(incoming[0])
+                    if made and made["op"] == "big.make" and args(made)[0] in self.container_words:
+                        # (a container word taken as the int itself: only where it is not the marker)
+                        edge_checks.append(("container-decode", self.marker(args(made)[0]), "ordinary"))
                     assignments.append((destination, self.fit(incoming[0])))
                 else:
                     edge_checks.append(("needed", incoming[0], ""))
+                if result(op) in self.container_words:
+                    resets.append(self.marker(result(op)))
+            for cell in reversed(resets):
+                target = self.add({"op": "havoc", "dst": cell, "next": target})
             # Two passes preserve simultaneous phi semantics even on backedges.
             for j, (dst, _) in reversed(list(enumerate(assignments))):
                 target = self.add({"op": "copy", "dst": dst, "src": f"phi:{n}:{j}", "next": target})
@@ -868,6 +991,8 @@ class Normalize:
                     target = self.boundary(value, typ, target)
                 elif kind == "decode":
                     target = self.payload(value, typ, target, "tuple-decode", value)
+                elif kind == "container-decode":
+                    target = self.payload(value, typ, target, "container-decode", value)
                 else:
                     target = self.needed(value, target)
             self.nodes[n]["next"] = target

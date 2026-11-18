@@ -8,8 +8,8 @@ from unittest.mock import patch
 
 from compiler_state_probe import ROOT, Snapshot
 from src.pystachy_compiler import driver
-from src.pystachy_compiler.diagnostics import Rejoin
-from src.pystachy_compiler.ir import FnInfo
+from src.pystachy_compiler.diagnostics import NeedHierarchy, Rejoin
+from src.pystachy_compiler.ir import ClassInfo, FnInfo
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.syntax import Node
 
@@ -64,6 +64,7 @@ class StateProbeTests(unittest.TestCase):
             def __init__(self):
                 self.newhints = {}
                 self.newx = {}
+                self.newwant = {}
                 self.gtypes = {}
                 self.idevent = ""
                 self.idhint = {}
@@ -83,9 +84,11 @@ class StateProbeTests(unittest.TestCase):
                     self.gtypes["xs"] = "list[int]"
                     self.newhints["join"] = "union[int,str]"
                     self.newx["A.__eq__"] = True
+                    self.newwant["narrow:f:1:x:union[A,B]"] = True
                     raise Rejoin()
                 test.assertEqual(self.hints, {"join": "union[int,str]"})
                 test.assertEqual(self.xnot, {"A.__eq__": True})
+                test.assertEqual(self.xwant, {"narrow:f:1:x:union[A,B]": True})
                 return "clean pass"
 
         try:
@@ -105,6 +108,182 @@ class StateProbeTests(unittest.TestCase):
                 else:
                     target.clear()
                     target.update(value)
+
+    def test_hierarchy_retries_keep_only_names_and_do_not_spend_join_budget(self):
+        generations = []
+        test = self
+
+        class FakeLoader:
+            def __init__(self, dirs):
+                pass
+
+            def program(self, path, source):
+                return source
+
+        class FakeGen:
+            def __init__(self):
+                self.gtypes = {}
+                generations.append(self)
+
+            def program(self, source):
+                test.assertEqual(self.gtypes, {})
+                test.assertFalse(self.final)
+                test.assertEqual(self.hints, {})
+                test.assertEqual(self.xnot, {})
+                count = len(self.hierarchies)
+                if count < 12:
+                    self.gtypes["tentative"] = "list[int]"
+                    self.hints["old-layout"] = "helper$Base#1"
+                    self.xnot["protocol:old-layout"] = True
+                    self.hierarchies[f"helper$Child{count}"] = True
+                    raise NeedHierarchy()
+                return str(count)
+
+        with patch.dict(driver.compile_program.__globals__, Gen=FakeGen, Loader=FakeLoader):
+            self.assertEqual(driver.compile_program("hierarchy.py", "", [], ""), "12")
+            self.assertEqual(driver.compile_program("other.py", "", [], ""), "12")
+        self.assertEqual(len(generations), 26)
+        self.assertEqual(len({id(g) for g in generations}), 26)
+        self.assertIsNot(generations[0].hierarchies, generations[13].hierarchies)
+
+    def test_fixed_layout_restores_prospective_class_and_template_registries(self):
+        generator = Gen()
+        templates = {"Base": True, "Unrelated": True}
+        generator.tmpl = templates
+        classes = {"Unrelated": ClassInfo("Unrelated", Node("class", "Unrelated", 2))}
+        generator.classes = classes
+        node = Node("class", "Base", 1)
+        for error in (None, NeedHierarchy(), SystemExit(1)):
+            def interrupted(gen, st, error=error):
+                self.assertEqual(gen.tmpl, {"Unrelated": True})
+                self.assertEqual(set(gen.classes), {"Base", "Unrelated"})
+                self.assertIs(gen.classes["Base"].node, node)
+                self.assertIs(gen.classes["Unrelated"], classes["Unrelated"])
+                if error is not None:
+                    raise error
+                return True
+
+            with self.subTest(error=type(error).__name__):
+                with patch.object(Gen, "fixed_layout_body", interrupted):
+                    if error is None:
+                        self.assertTrue(generator.fixed_layout(node))
+                    else:
+                        with self.assertRaises(type(error)):
+                            generator.fixed_layout(node)
+                self.assertIs(generator.classes, classes)
+                self.assertEqual(set(classes), {"Unrelated"})
+                self.assertIs(generator.tmpl, templates)
+                self.assertEqual(templates, {"Base": True, "Unrelated": True})
+
+    def test_local_fixed_hierarchies_batch_declaration_retries(self):
+        source = "class Base:\n    def __init__(self, values):\n        self.value: int = len(values)\n"
+        source += "".join(f"class Child{i}(Base):\n    pass\n" for i in range(25))
+        source += "print(Child0([1, 2]).value)\n"
+        original = Gen.program
+        attempts = []
+
+        def counted(gen, mods):
+            attempts.append(gen)
+            return original(gen, mods)
+
+        with patch.object(Gen, "program", counted):
+            ir = driver.compile_program("hierarchy-batch.py", source, [], "")
+        self.assertIn("@main", ir)
+        self.assertEqual(len(attempts), 2)
+
+    def test_imported_hierarchy_discovers_only_used_constructor_dependencies(self):
+        path = ROOT / "tests/programs/classes/constructor_dependency_imported.py"
+        original = Gen.program
+        attempts = []
+        final = []
+
+        def counted(gen, mods):
+            attempts.append(tuple(gen.hierarchies))
+            result = original(gen, mods)
+            final.append(gen)
+            return result
+
+        with patch.object(Gen, "program", counted):
+            ir = driver.compile_program(str(path), path.read_text(),
+                                        [str(ROOT / "tests"), str(ROOT / "lib")], "")
+        self.assertIn("@main", ir)
+        self.assertEqual(len(attempts), 3)
+        generator = final[0]
+        prefix = "mods$constructor_dependency$"
+        self.assertEqual(set(generator.hierarchies),
+                         {prefix + "Root", prefix + "Errors", prefix + "Child"})
+        self.assertEqual(generator.classes[prefix + "Errors"].tag, 0)
+        self.assertNotIn(prefix + "Errors", generator.tmpl)
+        self.assertIn(prefix + "UnusedErrors", generator.tmpl)
+        self.assertNotIn(prefix + "UnusedChild", generator.classes)
+        self.assertNotIn(prefix + "NestedChild", generator.classes)
+
+    def test_standalone_constructor_retry_keeps_only_needed_dependencies(self):
+        prefix = "mods$constructor_dependency$"
+        program, specialize = Gen.program, Gen.specialize
+        for calls in (1, 32):
+            attempts, scopes = [], []
+            source = "from mods.constructor_dependency import NestedErrors, Options\n"
+            source += "errors = NestedErrors(Options(True))\n" * calls
+            source += "print(errors.options.strict, errors.count())\n"
+
+            def counted(gen, mods, attempts=attempts):
+                attempts.append(gen)
+                return program(gen, mods)
+
+            def checked(gen, *args, scopes=scopes):
+                before = (gen.selfcls, gen.line, gen.lib,
+                          list(gen.making), dict(gen.specing))
+                try:
+                    return specialize(gen, *args)
+                finally:
+                    after = (gen.selfcls, gen.line, gen.lib,
+                             list(gen.making), dict(gen.specing))
+                    scopes.append((before, after))
+                    self.assertEqual(after, before)
+
+            with self.subTest(calls=calls), patch.object(Gen, "program", counted), \
+                    patch.object(Gen, "specialize", checked):
+                ir = driver.compile_program("constructor_preuse.py", source,
+                                            [str(ROOT / "tests"), str(ROOT / "lib")], "")
+                self.assertIn("@main", ir)
+                self.assertEqual(len(attempts), 2)
+                self.assertIsNot(attempts[0].classes, attempts[1].classes)
+                self.assertIsNot(attempts[0].specdone, attempts[1].specdone)
+                self.assertTrue(scopes)
+                self.assertTrue(all(gen.specing == {} for gen in attempts))
+                generator = attempts[-1]
+                self.assertEqual(set(generator.hierarchies), {prefix + "Options"})
+                self.assertEqual(generator.classes[prefix + "Options"].tag, 0)
+                self.assertNotIn(prefix + "Options", generator.tmpl)
+                self.assertIn(prefix + "UnusedErrors", generator.tmpl)
+                self.assertNotIn(prefix + "UnusedChild", generator.classes)
+                self.assertNotIn(prefix + "NestedChild", generator.classes)
+
+    def test_speculative_constructor_does_not_admit_dependencies(self):
+        path = ROOT / "tests/programs/classes/constructor_dependency_preuse_speculative.py"
+        program, request = Gen.program, Gen.request_hierarchy
+        attempts, requests = [], []
+
+        def counted(gen, mods):
+            attempts.append(gen)
+            return program(gen, mods)
+
+        def requested(gen, name):
+            requests.append((name, gen.xtry))
+            return request(gen, name)
+
+        with patch.object(Gen, "program", counted), \
+                patch.object(Gen, "request_hierarchy", requested):
+            ir = driver.compile_program(str(path), path.read_text(),
+                                        [str(ROOT / "tests"), str(ROOT / "lib")], "")
+        self.assertIn("@main", ir)
+        self.assertEqual(len(attempts), 2)
+        self.assertTrue(all(gen.hierarchies == {} for gen in attempts))
+        self.assertTrue(all(gen.specing == {} for gen in attempts))
+        self.assertIn(("mods$constructor_dependency$NestedErrors", "protocol:constructor:Dormant"),
+                      requests)
+        self.assertIn("protocol:constructor:Dormant", attempts[-1].xnot)
 
     def test_restart_rewinds_known_globals_and_uses_fresh_gen(self):
         self.restart_contract(driver.compile_program)
@@ -185,6 +364,7 @@ class StateProbeTests(unittest.TestCase):
             def __init__(self):
                 self.newhints = {}
                 self.newx = {}
+                self.newwant = {}
                 self.idevent = ""
                 self.idhint = {}
                 generations.append(self)
@@ -194,11 +374,13 @@ class StateProbeTests(unittest.TestCase):
                     test.assertFalse(self.idfull)
                     self.newhints["join"] = "union[int,str]"
                     self.newx["A.__eq__"] = True
+                    self.newwant["narrow:f:1:x:union[A,B]"] = True
                     self.idevent = "number as an Any value"
                     raise Rejoin()
                 test.assertTrue(self.idfull)
                 test.assertEqual(self.hints, {})
                 test.assertEqual(self.xnot, {})
+                test.assertEqual(self.xwant, {})
                 test.assertFalse(self.final)
                 return "tracking pass"
 
@@ -230,6 +412,7 @@ class StateProbeTests(unittest.TestCase):
             def __init__(self):
                 self.newhints = {}
                 self.newx = {}
+                self.newwant = {}
                 self.idevent = ""
                 self.idhint = {}
                 generations.append(self)

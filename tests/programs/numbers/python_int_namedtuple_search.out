@@ -1,0 +1,62 @@
+given True True True True 2 0 tuple.index(x): x not in tuple
+given False False False False 1 1 tuple.index(x): x not in tuple
+maybe True True False 2 2 0
+maybe False False True 1 1 1
+maybe False False True 1 1 1
+maybe False False True 1 1 1
+fresh True True 2 0
+fresh False False 0 1
+fresh False False 0 1
+tuple True True 2 2
+tuple False False 1 1
+same True 2
+given True True True True 2 0 tuple.index(x): x not in tuple
+given False False False False 1 1 tuple.index(x): x not in tuple
+maybe True True False 2 2 0
+maybe False False True 1 1 1
+maybe False False True 1 1 1
+maybe False False True 1 1 1
+fresh True True 2 0
+fresh False False 0 1
+fresh False False 0 1
+tuple True True 2 2
+tuple False False 1 1
+same True 2
+given True True True True 2 0 tuple.index(x): x not in tuple
+given False False False False 1 1 tuple.index(x): x not in tuple
+maybe True True False 2 2 0
+maybe False False True 1 1 1
+maybe False False True 1 1 1
+maybe False False True 1 1 1
+fresh True True 2 0
+fresh False False 0 1
+fresh False False 0 1
+tuple True True 2 2
+tuple False False 1 1
+same True 2
+given True True True True 2 0 tuple.index(x): x not in tuple
+given False False False False 1 1 tuple.index(x): x not in tuple
+maybe True True False 2 2 0
+maybe False False True 1 1 1
+maybe False False True 1 1 1
+maybe False False True 1 1 1
+fresh True True 2 0
+fresh False False 0 1
+fresh False False 0 1
+tuple True True 2 2
+tuple False False 1 1
+same True 2
+given True True True True 2 0 tuple.index(x): x not in tuple
+given False False False False 1 1 tuple.index(x): x not in tuple
+maybe True True False 2 2 0
+maybe False False True 1 1 1
+maybe False False True 1 1 1
+maybe False False True 1 1 1
+fresh True True 2 0
+fresh False False 0 1
+fresh False False 0 1
+tuple True True 2 2
+tuple False False 1 1
+same True 2
+maybe True True False 2 2 0
+[exit 0]

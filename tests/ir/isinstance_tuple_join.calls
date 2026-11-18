@@ -1,0 +1,9 @@
+@m.Base.__init__.1:
+@m.Base.__init__.2:
+@m.Base.__init__.3:
+@main.init: pys_new pys_new pys_new pys_write pys_write pys_write pys_write pys_write pys_write
+@f.g: pys_str_add pys_str_add pys_raise pys_ubox pys_ubox pys_str_upper pys_str_int pys_str_add pys_str_int pys_str_int pys_str_add pys_raise pys_raise
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@main: pys_init pys_finish

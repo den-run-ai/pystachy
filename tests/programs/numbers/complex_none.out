@@ -1,0 +1,10 @@
+add TypeError: unsupported operand type(s) for +: 'NoneType' and 'int'
+radd TypeError: unsupported operand type(s) for -: 'float' and 'NoneType'
+mul TypeError: unsupported operand type(s) for *: 'NoneType' and 'complex'
+pow TypeError: unsupported operand type(s) for ** or pow(): 'NoneType' and 'NoneType'
+iadd TypeError: unsupported operand type(s) for +: 'complex' and 'NoneType'
+eq (False, True, False, True, False, True)
+complex TypeError: complex() first argument must be a string or a number, not 'NoneType'
+complex2 TypeError: complex() second argument must be a number, not 'NoneType'
+values ((1+1j), True, False, 1j, None)
+[exit 0]
