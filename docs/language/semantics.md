@@ -506,7 +506,10 @@ constant, typed by the method's return annotation
 ([test](../../tests/programs/reflection/getattr_hook.py)). The read's value can be used as any
 other: in arithmetic, called (the method runs before the call's arguments are evaluated), in an
 f-string, or inside the class's own methods as `self.name`. A defined attribute never reaches
-the method, and an `AttributeError` it raises is the read's.
+the method, and an `AttributeError` it raises is the read's. A class object (`type[C]`,
+`type(o)`, `o.__class__`) reads its class's attributes, which no `__getattr__` answers, and
+makes objects that read as `C()`'s
+([test](../../tests/programs/reflection/getattr_hook_class_values.py)).
 
 ```python
 class Conf:
