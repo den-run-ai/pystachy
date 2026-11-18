@@ -1758,10 +1758,10 @@ def gen_percent(self, fmt: str, rhs: Node, lit: bool) -> Val:
         if is_tuple(v.t):
             for i in range(len(targs(v.t))):
                 items.append(self.tget(v, i))
-        elif (is_dict(v.t) or (v.t in self.classes and "__getitem__" in self.classes[v.t].methods)) and ("%(" in fmt or "%" not in fmt.replace("%%", "")):
+        elif (is_dict(v.t) or (v.t in self.classes and "__getitem__" in self.classes[v.t].methods)) and ("%(" in fmt.replace("%%", "") or "%" not in fmt.replace("%%", "")):
             # (a mapping: its conversions name keys; one that none uses is no error, as in CPython)
             return self.percent_map(fmt, v)
-        elif is_dict(unopt(v.t)) and "%(" in fmt:
+        elif is_dict(unopt(v.t)) and "%(" in fmt.replace("%%", ""):
             self.err("% formatting with a mapping (%(name)s) is not supported for a mapping that may be None")
         else:
             items.append(v)
@@ -1799,6 +1799,9 @@ def gen_percent_map(self, fmt: str, v: Val) -> Val:
             self.err("ValueError: incomplete format key")
         lazy.append(mk("index", "", self.line, [self.vnode(v), mk("str", fmt[i + 1 : j - 1], self.line, [])]))
         i = j
+        if i < len(fmt) and fmt[i] == "%":
+            # (a key with no conversion: CPython takes the next % for its conversion type)
+            self.err(f"ValueError: unsupported format character '%' (0x25) at index {i}")
     return self.pformat("".join(out), [], False, lazy)
 
 def gen_percent_opt(self, fmt: str, v: Val) -> Val:
