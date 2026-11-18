@@ -8,7 +8,7 @@ from src.pystachy_compiler.dynamic import boxed_list_items, comparison_container
 from src.pystachy_compiler.ir import ClassInfo, Data, FmtArgs, FnInfo, Ins, IterArg, Loop, Val, tmpname, one_num
 from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.patterns import pattern_expr, pattern_static
-from src.pystachy_compiler.reflection import VARS_USES, has_hook, hook_missing, hook_of, hook_read, refl_annotated, refl_body, refl_fold, refl_reflective
+from src.pystachy_compiler.reflection import VARS_USES, has_hook, hook_missing, hook_of, hook_read, hook_reads, refl_annotated, refl_body, refl_fold, refl_reflective
 from src.pystachy_compiler.specs import (
     BIG,
     BIGOPT,
@@ -1252,6 +1252,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             self.fn_attr_read(o, n.s)
         self.glue_field(o, n.s)
         self.fieldcmp = n is self.cmpnode  # (o.f is None: see none_field)
+        if hook_reads(self, o.t, n.s):
+            pk = ""  # (a read that may call __getattr__: a call, as a property's is, and no path)
         plive = pk != "" and pk in self.narrowed and self.path_type(pk, {}, "") != ""
         pcall = self.pcall
         pmark = self.path_mark()

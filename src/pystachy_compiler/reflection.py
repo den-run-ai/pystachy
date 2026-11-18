@@ -97,6 +97,16 @@ def has_hook(self, t: str) -> bool:
     return t in self.classes and "__getattr__" in self.classes[t].methods
 
 
+def hook_reads(self, t: str, name: str) -> bool:
+    # may the read of field name of an object of static type t call its class's __getattr__
+    # (getfield's hook_field: a field with a flag, which a class variable outside a hierarchy is
+    # not tested by): a call, as a property's read is, which no attribute path follows (unions.py)
+    if not has_hook(self, t):
+        return False
+    ci = self.classes[t]
+    return name in ci.fflag and name not in ci.fsure and not (t + "." + name in self.cvars and ci.tag == 0)
+
+
 def hook_of(self, t: str) -> int:
     # which objects of static type t have such a __getattr__: 1 each (has_hook), 2 only those of
     # a class derived from t, 0 none

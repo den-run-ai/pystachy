@@ -524,7 +524,7 @@ The method is also called where ordinary lookup fails for a name the class has, 
 
 | Lookup | Behavior |
 |---|---|
-| A field that `__init__` may leave unassigned, or that the class body only annotates | Its "is assigned" flag is tested; an unassigned field calls `__getattr__`. The value must be one of the field's type, so a return type that the field does not take is a compile-time error. |
+| A field that `__init__` may leave unassigned, or that the class body only annotates | Its "is assigned" flag is tested; an unassigned field calls `__getattr__`. The value must be one of the field's type, so a return type that the field does not take is a compile-time error. Such a read is a call, as a property's is: a test of it narrows no later read of it, and it ends what tests of other attributes narrowed ([test](../../tests/programs/reflection/getattr_hook_narrowing.py)). |
 | A property whose getter raises `AttributeError` | The getter runs in a `try` block of its own, and its `AttributeError` calls `__getattr__`. The read has the common type of both return types; where they differ it is their union, which `isinstance()` narrows. |
 | `getattr(o, "name", default)`, `hasattr(o, "name")` | The lookup above; an `AttributeError` from `__getattr__` gives the default or `False`, and any other exception propagates. |
 | `hasattr(o, name)` and the text of `getattr(o, name[, default])` with a [run-time name](#names-only-the-run-time-knows) | The class's name table first, then `__getattr__(name)` ([test](../../tests/programs/reflection/getattr_hook_lookup.py)). |
