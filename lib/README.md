@@ -128,11 +128,13 @@ which a file's `fileno()` gives; other `select` APIs remain unsupported.
 
 ### Processes and threads
 
-`multiprocessing`, `subprocess` and `asyncio` are not shipped; a program runs on one thread,
-which `threading` and `_thread` describe and on which `concurrent.futures` runs its calls.
+`subprocess` starts and waits for child processes. `multiprocessing` and `asyncio` are not
+shipped; a program runs on one thread, which `threading` and `_thread` describe and on which
+`concurrent.futures` runs its calls.
 
 | Module | Origin | Supported APIs | Main limitation |
 |---|---|---|---|
+| 🟡 `subprocess` | Subset implementation of CPython's module, for POSIX, over runtime primitives | `run()`, `call()`, `check_call()`, `check_output()`, `getoutput()`, `getstatusoutput()`, `Popen` (`poll()`, `wait()`, `communicate()`, `send_signal()`, `terminate()`, `kill()`), `CompletedProcess`, `CalledProcessError`, `TimeoutExpired`, `PIPE`, `STDOUT`, `DEVNULL`; `cwd`, `env`, `shell`, `input`, `capture_output`, `timeout`, `check`, `start_new_session`, text mode | Text mode is decided at compile time; `Popen` carries bytes and has no stream files; `CalledProcessError` holds bytes; see [limits](compatibility.md#subprocess) |
 | 🟡 `_thread` | Subset port of CPython's C module for one thread (`_pystachy_thread`) | `allocate_lock`, `LockType`, `RLock` (with `_is_owned`, `_release_save`, `_acquire_restore`), `get_ident`, `get_native_id`, `stack_size`, `interrupt_main`, `exit`, `TIMEOUT_MAX`, `error`, `_local` as a base class | One thread: `start_new_thread()` raises `NotImplementedError`, and an acquire that would wait for ever raises `RuntimeError` |
 | 🟡 `threading` | Adapted CPython on the one-thread `_thread`, compiled with [dynamic `Any`](../docs/dynamic-any.md) | Locks, reentrant locks, `Condition`, semaphores, `Event`, `Barrier`, `Timer`, `local`, `current_thread()`, `main_thread()`, `enumerate()` and `Thread` objects and subclasses, as in CPython where no other thread runs | `Thread.start()` raises `NotImplementedError`; see [limits](compatibility.md#threading) |
 | 🟡 `concurrent.futures` | Adapted CPython (`concurrent/futures/_base.py` and `thread.py`), for the one thread | `ThreadPoolExecutor` (`submit`, `map`, `shutdown`, also in `with`), `Future` and its methods, `wait`, `as_completed`, `FIRST_COMPLETED`, `FIRST_EXCEPTION`, `ALL_COMPLETED`, `CancelledError`, `TimeoutError`, `InvalidStateError`, `BrokenExecutor` | `submit()` runs the call before it returns; `Future` is generic in its result's type; no `ProcessPoolExecutor` or `initializer`; see [limits](compatibility.md#concurrentfutures) |

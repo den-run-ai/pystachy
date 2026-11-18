@@ -310,6 +310,12 @@ lib/platform.py is Pystachy's own code, written after CPython 3.13.16's Lib/plat
 (lib/provenance.md); it keeps the docstrings and the function _unknown_as_blank() it copies
 from it. It is derived from Python and is used under the same license and copyright notice.
 
+lib/subprocess.py is Pystachy's subset of CPython 3.13.16's Lib/subprocess.py (lib/provenance.md),
+whose copyright notice of Peter Astrand it keeps, with the functions, docstrings and comments it
+copies; each change is marked in the source. The part of runtime.c that starts its child processes
+follows child_exec() of that release's Modules/_posixsubprocess.c. They are derived from Python and
+are used under the same license and copyright notice.
+
 lib/random.py is CPython 3.13.16's Lib/random.py with the edits lib/README.md lists, each
 marked in the source. lib/_pyrandom.py
 is Pystachy's own _random.Random for it, written after Modules/_randommodule.c and the float hash
