@@ -3041,12 +3041,12 @@ def gen_argtype(self, t: str, m: str, j: int, missing: str) -> str:
 def gen_slice_written(self, bounds: list[Node]) -> list[Val]:
     # the bounds of a slice as they are written, for a class of lib's that takes them so (a
     # bytearray's _getslice, _setslice and _delslice): start, stop and step, each an int (a bool
-    # as one), or None where it is left out
+    # or a promoting int as one), or None where it is left out
     vs: list[Val] = []
     for bx in bounds + [mk("omit", "", self.line, [])] * (3 - len(bounds)):
         bv = self.expr(bx, "int") if bx.kind != "omit" else Val("null", "None")
-        if bv.t == "bool":
-            bv = self.as_int(bv)
+        if bv.t == "bool" or bv.t == BIG:
+            bv = self.as_int(bv)  # (a promoting int is narrowed: past 64 bits, OverflowError)
         if bv.t != "int" and bv.t != "None" and unopt(bv.t) != "int":
             self.err("slice indices must be integers or None or have an __index__ method")
         vs.append(bv)

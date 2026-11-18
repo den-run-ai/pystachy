@@ -2503,7 +2503,7 @@ def gen_ba_prim(self, name: str, args: list[Node]) -> Val:
     vals: list[Val] = []
     for a in args:
         v = self.expr(a, "")
-        vals.append(Val(v.v, "str") if v.t == "bytes" else self.as_int(v) if v.t == "bool" else v)
+        vals.append(Val(v.v, "str") if v.t == "bytes" else self.as_int(v))  # (a bool, or a promoting int: narrowed)
     r = self.primitive(ops[name], vals)
     return Val(r.v, "bytes") if r.t == "str" else r
 
