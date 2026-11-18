@@ -60,7 +60,7 @@ stages in order, for both ordinary programs and `runtime.py`:
 | `analyze_program()` | Callback versions and the function index are complete. Effect summaries and the recursion policy precede requested typed-IR verification. |
 | `optimize_program()` | Enabled typed-IR passes run under their existing prerequisites, preserved facts and invalidation contracts. Exception regions remain in pre-lowering form. |
 | `finalize_program()` | Required exception edges and tuple-return ABI decisions are ready for the backend. Runtime-module and CPython-export admission checks have passed. Function bodies, ABI plans and representation tables remain available for inspection. |
-| `lower_program()` | Function, adapter and module lowering serialize LLVM. Function bodies are consumed; summaries remain available. |
+| `lower_program()` | Each function's layout reads first become machine operations (`Gen.machine_ir`, see [machine lowering](#machine-lowering)). Function, adapter and module lowering serialize LLVM. Function bodies are consumed; summaries remain available. |
 
 `Gen.typed_program(modules)` runs through finalization without calling
 `lower_program`. This is an internal, attempt-local boundary for tools that need
@@ -792,6 +792,23 @@ verifier checks unwind edges and rejects leftover unprotected may-raise calls in
 The runtime uses table-driven native unwinding, rather than the error-flag scheme considered
 in the original design. `finally` and `with` cleanup are part of the shipped implementation;
 see [architecture](internals.md#errors-and-cleanup) for the runtime overview.
+
+## Machine lowering
+
+`Gen.lower` begins with `Gen.machine_ir`, the last typed-IR stage. Until then a read of a
+runtime layout keeps its meaning: `list.len`, `union.tag`, `union.payload`, `union.raw`,
+`dyn.type`, `dyn.payload` and `dyn.raw` carry their receiver's type, effects and guard proofs
+through the passes, the verifier and the inspection snapshots. The stage rewrites each into the
+`mach.addr` and `mach.load` operations that other header reads already use, from one table of
+word offsets (`WORD_READS` in `machine_ir.py`). The LLVM printer has no case for a layout read
+and rejects one that reaches it.
+
+The rewrite keeps every value number, label and source line, so the emitted LLVM is unchanged.
+With `PYSTACHY_IRCHECK=1`, `Gen.verify_machine` then checks that no layout read is left and
+that machine memory operations keep their shape; only there may a `mach.load` give a payload's
+opaque `%slot`. Other layout-dependent operations are still printed directly. Inline list
+items need a struct address and TBAA tags that `mach.addr` cannot express, and `tupleret`
+decides a fixed tuple's slots while its function is printed.
 
 <a id="13-defects-found-on-the-way"></a>
 <a id="6-migration-plan"></a>

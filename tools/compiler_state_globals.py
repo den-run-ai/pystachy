@@ -27,7 +27,7 @@ dynamic_proof.BOX_TAGS expressions.ORDERS expressions.CMPDUNDERS
 ir.NONUMS ir.NOVALS ir.NOLABELS ircheck.RESULT_NUMBERS
 lexer.KEYWORDS lexer.OPS lexer.ESCAPES lexer.PREFIXES lexer.NONPRINT lexer.NOTID
 loader.ENUM_NAMES loader.ENUM_BASES loader.ENUM_HOOKS loader.FUNCTOOLS_NAMES loader.ORDERINGS
-local_versions.UNVERSIONED optimizations.PASS_CONTRACTS parser.ATOMS patterns.SEQ_SCALARS program.BOUND_FORMS program.TV_TYPES
+local_versions.UNVERSIONED machine_ir.WORD_READS optimizations.PASS_CONTRACTS parser.ATOMS patterns.SEQ_SCALARS program.BOUND_FORMS program.TV_TYPES
 pipeline.STAGE_PREDECESSORS
 reflection.BUILTIN_TYPES reflection.CLASS_BUILTINS reflection.SLOT_WRAPPERS reflection.OBJ_BUILTINS reflection.TYPE_BUILTINS reflection.PICKLING
 scalar_ir.SCALAR_INTS scalar_ir.SCALAR_BIN scalar_ir.SCALAR_FLOAT
