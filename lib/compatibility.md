@@ -2048,11 +2048,18 @@ module at run time. `import_module()` of a constant name is an import statement,
   names, also where the package has an attribute of that name
   ([test](../tests/programs/library/lib_importlib_import_module.py),
   [attribute](../tests/programs/library/lib_importlib_import_module_attribute.py)); the main
-  program has no package. Nothing imports a
-  module at run time, so a name the program computes, and a call whose module is used as a
-  value (returned, passed on, or read inside a larger expression), is a compile-time error
-  where the call is compiled: a module that calls it so in a function the program never
-  calls still compiles
+  program has no package.
+- The call's name (`import_module`, or `il` of `il.import_module`) must reach importlib's
+  function as CPython resolves it: imports of importlib are its only bindings in the scope it
+  resolves to, and in the call's own function or module one of them runs before the call. A
+  parameter or other variable of that name is called as what it holds
+  ([test](../tests/programs/library/lib_importlib_import_module_shadowed.py)); a call that
+  may read the name before its import, or that is in a class body, is a compile-time error
+  ([error test](../tests/errors/library/lib_importlib_import_module_unbound.py)).
+- Nothing imports a module at run time, so a name the program computes, and a call whose
+  module is used as a value (returned, passed on, or read inside a larger expression), is a
+  compile-time error where the call is compiled: a module that calls it so in a function the
+  program never calls still compiles
   ([test](../tests/programs/library/lib_importlib_import_module_uncalled.py)).
 - `importlib.resources.files(name)` gives the directory of a module that the program imports,
   a `pathlib.Path`, as CPython gives for a module it loads from a file: a package's own

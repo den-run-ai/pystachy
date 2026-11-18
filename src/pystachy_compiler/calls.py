@@ -1491,8 +1491,8 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         self.err(f.bad)  # (before its arguments, whose types may be placeholders')
     if f.name == "importlib$import_module" and lib_source(f.node.line, self.libdir, "importlib/__init__.py"):
         # (the loader writes the import statement of a call that binds a variable to the module a
-        # string constant names: Loader.import_calls. Any other call reaches lib's function)
-        self.err("importlib.import_module() is supported where a string constant names the module and the call binds one variable or stands alone (mod = import_module(\"a.b\")): a program's modules are compiled with it, so none is imported by a name it computes, and a module is no value")
+        # string constant names: loader.import_module_calls. Any other call reaches lib's function)
+        self.err("importlib.import_module() is supported where a string constant names the module and the call binds one variable or stands alone (mod = import_module(\"a.b\")), outside a class body, through a name that only imports of importlib bind and one has bound before the call: a program's modules are compiled with it, so none is imported by a name it computes, and a module is no value")
     if identity_abi(f) and len(f.node.kids) == 3:
         self.numeric_proof(f, f.node.kids[2].kids)
     if f.cls in self.classes and self.classes[f.cls].tag > 0 and f.deco == "" and len(pre) > 0:

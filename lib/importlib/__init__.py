@@ -14,8 +14,9 @@ def import_module(name, package=None):
 
     """
     # Pystachy port: the compiler writes the import statement of a call that a string constant
-    # names the module of (mod = import_module("a.b"): Loader.import_calls), and the call is
-    # then not here. A call compiled here names its module some other way, or is no statement
-    # that binds a variable, and is the compiler's error (call_fn). (__all__ is left out:
-    # a module imports the function by name.)
+    # names the module of (mod = import_module("a.b"): import_module_calls in the compiler's
+    # loader.py), and the call is then not here. A call compiled here names its module some
+    # other way, is no statement that binds a variable, or reaches the function otherwise than
+    # through a name that imports bind to it, and is the compiler's error (call_fn). (__all__
+    # is left out: a module imports the function by name.)
     return name

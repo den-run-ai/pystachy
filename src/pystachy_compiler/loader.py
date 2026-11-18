@@ -1093,21 +1093,99 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
     n.kids = top
 
 
-def importlib_names(n: Node, out: dict[str, bool]) -> None:
-    # the names that the import statements in n bind importlib's import_module as, wherever
-    # they are (from importlib import import_module, or as another name; import importlib, or
-    # as il: il.import_module)
-    for st in n.kids:
-        for a in st.kids if st.kind == "import" else []:
-            if a.kind == "alias" and len(a.kids) == 2 and st.s == "from" and a.kids[0].s == "importlib.import_module":
-                out[a.s] = True
-            elif a.kind == "alias" and len(a.kids) == 2 and st.s != "from" and (a.kids[0].s == "importlib" or (a.s == "importlib" and a.kids[0].s.startswith("importlib."))):
-                out[a.s + ".import_module"] = True
-        if st.kind != "import":
-            importlib_names(st, out)
+def importlib_binds(body: list[Node], out: dict[str, str], decl: dict[str, str]) -> None:
+    # (scope_binds) the names that the import statements of the statements body of one scope bind,
+    # not in the functions and classes in them: "m" for the module importlib (import importlib, or
+    # as il; import importlib.x binds importlib too), "f" for its import_module (from importlib
+    # import import_module, or as another name), "x" for anything else (a star import binds "*");
+    # and in decl, the names its global ("g") and nonlocal ("n") statements declare
+    for st in body:
+        if st.kind == "import":
+            for a in st.kids:
+                k = "x"
+                if a.kind == "alias" and len(a.kids) == 2 and st.s == "from" and a.kids[0].s == "importlib.import_module":
+                    k = "f"
+                elif a.kind == "alias" and len(a.kids) == 2 and st.s == "" and a.kids[0].s == "importlib":
+                    k = "m"
+                bind_kind(out, a.s, k)
+        elif st.kind == "global" or st.kind == "nonlocal":
+            for x in st.kids:
+                decl[x.s] = "g" if st.kind == "global" else "n"
+        elif st.kind != "def" and st.kind != "class" and st.kind != "subclass":
+            for kid in st.kids:
+                if kid.kind == "block":
+                    importlib_binds(kid.kids, out, decl)
+                elif kid.kind == "except":
+                    importlib_binds(kid.kids[1].kids, out, decl)
 
 
-def import_name(call: Node, pkg: str) -> str:
+def bind_kind(out: dict[str, str], nm: str, k: str) -> None:
+    # (importlib_binds) one more binding of nm, of kind k: the kind of all of them, or "x"
+    out[nm] = k if nm not in out or out[nm] == k else "x"
+
+
+def scope_binds(body: list[Node], params: list[Node], out: dict[str, str], decl: dict[str, str]) -> None:
+    # the names that the module, function or class whose statements are body binds, with a
+    # function's parameters, each with the kind of its bindings (importlib_binds), and the names
+    # it declares global or nonlocal (decl)
+    importlib_binds(body, out, decl)
+    other: dict[str, bool] = {}
+    collect(body, other)  # (assignments, for and with targets, except ... as)
+    deleted(body, other, True)  # (del, def and class)
+    for st in body:
+        bound_in(st, other)  # (:=, also in comprehensions; match captures; type statements)
+    for p in params:
+        other[p.s] = True
+    for nm in other:
+        bind_kind(out, nm, "x")
+
+
+def outer_binds(body: list[Node], top: dict[str, str], nonloc: dict[str, bool]) -> None:
+    # (import_module_calls) what the functions in the statements body bind in other scopes: a
+    # name a global statement declares, the module's (top), and one a nonlocal statement does
+    # (nonloc), whose bindings in the functions around them are not followed
+    for st in body:
+        c = st.kids[0] if st.kind == "subclass" else st
+        own: dict[str, str] = {}
+        decl: dict[str, str] = {}
+        if c.kind == "def":
+            scope_binds(c.kids[2].kids, c.kids[0].kids, own, decl)
+        elif c.kind == "class":
+            scope_binds(c.kids[0].kids, NOKIDS, own, decl)
+        for nm in decl:
+            if nm in own and decl[nm] == "g":
+                bind_kind(top, nm, own[nm])
+            elif nm in own:
+                nonloc[nm] = True
+        if c.kind == "def":
+            outer_binds(c.kids[2].kids, top, nonloc)
+        elif c.kind == "class":
+            outer_binds(c.kids[0].kids, top, nonloc)
+        else:
+            for kid in st.kids:
+                if kid.kind == "block":
+                    outer_binds(kid.kids, top, nonloc)
+                elif kid.kind == "except":
+                    outer_binds(kid.kids[1].kids, top, nonloc)
+
+
+def binding_scope(nm: str, scopes: list[dict[str, str]], kinds: list[str], decls: list[dict[str, str]]) -> int:
+    # the index in scopes (the module's, then those of the functions and classes around some
+    # code, its own last) of the scope whose binding of nm that code reads, as CPython resolves
+    # the name: its own, an enclosing function's (not a class's: the functions in a class do not
+    # see its names), or the module's; -1 where none binds it (a builtin, or a NameError)
+    i = len(scopes) - 1
+    while i > 0:
+        d = decls[i].get(nm, "")
+        if d == "g":
+            break
+        if d == "" and nm in scopes[i] and (kinds[i] == "def" or i == len(scopes) - 1):
+            return i
+        i -= 1
+    return 0 if nm in scopes[0] or "*" in scopes[0] else -1
+
+
+def import_name(call: Node, pkg: str, scopes: list[dict[str, str]], kinds: list[str], decls: list[dict[str, str]]) -> str:
     # the import statement that import_module(...), call, is where a string constant names the
     # module: "import a.b as" (the name it binds follows), also for a name relative to a constant
     # package or to __package__, the module's package pkg (the module that the relative name
@@ -1124,8 +1202,8 @@ def import_name(call: Node, pkg: str) -> str:
             return ""
         if p.kind == "str":
             package = p.s
-        elif p.kind == "name" and p.s == "__package__":
-            package = pkg  # (the module's own __package__; "" in the main program)
+        elif p.kind == "name" and p.s == "__package__" and binding_scope(p.s, scopes, kinds, decls) < 0:
+            package = pkg  # (the module's own __package__, which nothing rebinds; "" in the main program)
         elif p.kind != "None":
             return ""
     level = len(name) - len(name.lstrip("."))
@@ -1141,16 +1219,12 @@ def import_name(call: Node, pkg: str) -> str:
     return f"import {'.'.join(base[: len(base) - level + 1] + parts)} as"
 
 
-def import_calls(n: Node, names: dict[str, bool], made: list[int], pkg: str) -> None:
-    # (importlib) importlib.import_module(NAME), where a string constant names the module and
-    # the call is a statement of its own or the value a statement assigns to one variable (names:
-    # as the module's import statements bind import_module), is the import statement of that
-    # module, which binds the variable: mod = import_module("a.b") is import a.b as mod. It
-    # runs where the call would, and raises its ImportError there. Pystachy resolves a
-    # program's imports while it compiles the program, so a call that names the module any
-    # other way stays a call of lib/importlib's function, which Gen.call_fn rejects.
-    for i in range(len(n.kids)):
-        st = n.kids[i]
+def import_calls(body: list[Node], scopes: list[dict[str, str]], kinds: list[str], decls: list[dict[str, str]], sure: dict[str, bool], nonloc: dict[str, bool], pkg: str, made: list[int]) -> None:
+    # (import_module_calls) the statements body of one scope (the last of scopes, with kinds and
+    # decls: binding_scope), in the order they run, sure holding the names that an import of
+    # importlib or of its import_module in that scope has bound before them, surely
+    for i in range(len(body)):
+        st = body[i]
         call: Node | None = None
         target = ""
         if st.kind == "expr" and len(st.kids) == 1:
@@ -1162,22 +1236,80 @@ def import_calls(n: Node, names: dict[str, bool], made: list[int], pkg: str) -> 
             call = st.kids[2]
             target = st.kids[0].s
         src = ""
-        if call is not None and call.kind == "call" and dotted(call.kids[0]) in names:
-            src = import_name(call, pkg)
+        if call is not None and call.kind == "call" and kinds[len(kinds) - 1] != "class":
+            # (a class body holds no import statement: its call stays one, which call_fn rejects)
+            # import_module(...) of a name that binds the function, or il.import_module(...) of
+            # one that binds the module importlib: in every place that binds it in the scope it
+            # resolves to, and in the call's own scope by an import that surely ran before it
+            f = call.kids[0]
+            root = ""
+            want = ""
+            if f.kind == "name":
+                root = f.s
+                want = "f"
+            elif f.kind == "attr" and f.s == "import_module" and len(f.kids) == 1 and f.kids[0].kind == "name":
+                root = f.kids[0].s
+                want = "m"
+            j = binding_scope(root, scopes, kinds, decls) if root != "" else -1
+            if j >= 0 and "*" not in scopes[j] and scopes[j].get(root, "") == want and not (j > 0 and root in nonloc) and (j < len(scopes) - 1 or root in sure):
+                src = import_name(call, pkg, scopes, kinds, decls)
         if src != "":
             made[0] += 1
             bound = target if target != "" else "_pys_import_" + str(made[0])
-            n.kids[i] = Parser(Lexer(src + " " + bound + "\n", st.line).file()).module().kids[0]
-        else:
-            import_calls(st, names, made, pkg)
+            body[i] = Parser(Lexer(src + " " + bound + "\n", st.line).file()).module().kids[0]
+            continue
+        c = st.kids[0] if st.kind == "subclass" else st
+        if c.kind == "def" or c.kind == "class":
+            own: dict[str, str] = {}
+            decl: dict[str, str] = {}
+            if c.kind == "def":
+                scope_binds(c.kids[2].kids, c.kids[0].kids, own, decl)
+            else:
+                scope_binds(c.kids[0].kids, NOKIDS, own, decl)
+            blk = c.kids[2] if c.kind == "def" else c.kids[0]
+            import_calls(blk.kids, scopes + [own], kinds + [c.kind], decls + [decl], {}, nonloc, pkg, made)
+            continue
+        for kid in st.kids:
+            if kid.kind == "block":
+                import_calls(kid.kids, scopes, kinds, decls, dict(sure), nonloc, pkg, made)
+            elif kid.kind == "except":
+                import_calls(kid.kids[1].kids, scopes, kinds, decls, dict(sure), nonloc, pkg, made)
+        if st.kind == "import":
+            for a in st.kids:
+                sure[a.s] = True
 
 
 def import_module_calls(n: Node, pkg: str) -> None:
-    # (import_calls) of module body n, whose package is pkg
-    names: dict[str, bool] = {}
-    importlib_names(n, names)
-    if len(names) > 0:
-        import_calls(n, names, [0], pkg)
+    # importlib.import_module(NAME), where a string constant names the module and the call is a
+    # statement of its own or the value a statement assigns to one variable, in module body n
+    # (whose package is pkg), is the import statement of that module, which binds the variable:
+    # mod = import_module("a.b") is import a.b as mod. It runs where the call would, and raises
+    # its ImportError there. The callee is one only where CPython would find importlib's function
+    # through it: its name binds importlib or its import_module in the scope it resolves to, there
+    # only so, and in the call's own scope it is surely bound before the call. Pystachy resolves
+    # a program's imports while it compiles the program, so a call that names the module any
+    # other way stays a call of lib/importlib's function, which Gen.call_fn rejects.
+    if not imports_importlib(n):
+        return
+    top: dict[str, str] = {}
+    decl: dict[str, str] = {}
+    scope_binds(n.kids, NOKIDS, top, decl)
+    nonloc: dict[str, bool] = {}
+    outer_binds(n.kids, top, nonloc)
+    import_calls(n.kids, [top], ["module"], [decl], {}, nonloc, pkg, [0])
+
+
+def imports_importlib(n: Node) -> bool:
+    # (import_module_calls) does an import statement in n, also in the functions and classes in
+    # it, bind importlib or its import_module
+    for st in n.kids:
+        if st.kind == "import":
+            for a in st.kids:
+                if a.kind == "alias" and len(a.kids) == 2 and ((st.s == "from" and a.kids[0].s == "importlib.import_module") or (st.s == "" and a.kids[0].s == "importlib")):
+                    return True
+        elif imports_importlib(st):
+            return True
+    return False
 
 
 def module_package(name: str, path: str) -> str:
