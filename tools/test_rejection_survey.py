@@ -270,6 +270,21 @@ class CopyTests(unittest.TestCase):
             with self.assertRaisesRegex(survey.Unparsable, "MemoryError|RecursionError"):
                 copied.source(copied.entry)
 
+    def test_only_files_inside_the_copies_are_owned(self):
+        # (a diagnostic's path is resolved before the survey writes a stub to it)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "app").mkdir()
+            (root / "app/main.py").write_text("x = 1\n")
+            (root / "app/other.py").write_text("y = 2\n")
+            copied = survey.Survey(str(root / "scratch"), str(root / "app/main.py"), [])
+            copy = copied.copies[0]
+            self.assertTrue(copied.owned(copied.entry))
+            self.assertFalse(copied.owned(str(root / "app/main.py")))
+            self.assertFalse(copied.owned(os.path.join(copy, "..", "..", "app", "other.py")))
+            os.symlink(root / "app", os.path.join(copy, "linked"))
+            self.assertFalse(copied.owned(os.path.join(copy, "linked", "other.py")))
+
     def test_cpythons_warnings_about_a_source_are_not_printed(self):
         # (an invalid escape: a SyntaxWarning, before Python 3.12 a DeprecationWarning)
         with tempfile.TemporaryDirectory() as temporary, warnings.catch_warnings(record=True) as caught:

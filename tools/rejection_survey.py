@@ -338,7 +338,10 @@ class Survey:
         return dict(os.environ, PYSTACHY_PATH=":".join(self.copies[1:] + originals))
 
     def owned(self, path: str) -> bool:
-        return any(path.startswith(copy + os.sep) for copy in self.copies)
+        # Resolved first: a path that climbs out of a copy ("..") or leaves it through a symbolic
+        # link is not the copy's. Only files inside the copies are ever written.
+        real = os.path.realpath(path)
+        return any(real.startswith(os.path.realpath(copy) + os.sep) for copy in self.copies)
 
     def shown(self, text: str) -> str:
         """TEXT with each path of the copies as the path of the file it copies."""
