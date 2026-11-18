@@ -3383,8 +3383,8 @@ def gen_prod_item(self, s: Val, item: Val) -> Val:
     # type; unsupported type-changing reflected methods are diagnosed explicitly.
     if is_opt(item.t) or is_union(unopt(item.t)):
         members = umembers(unopt(item.t)) if is_union(unopt(item.t)) else [unopt(item.t)]
-        if is_opt(item.t):
-            members = ["None"] + members
+        if is_opt(item.t) or ((self.object_union(item.t) or self.reference_union(item.t)) and item.v not in self.nn):
+            members = ["None"] + members  # (a union that holds objects is a null box where it is None)
         end = self.label()
         ph = Ins("phi", s.t, "")
         for i in range(len(members)):
