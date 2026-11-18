@@ -64,6 +64,20 @@ def gen_unumeric_case(self, op: str, a: Val, b: Val, shown: str, unary: bool) ->
     v = a if left or unary else b
     if not is_union(unopt(v.t)) and not is_opt(v.t):
         if a.t == "None" or (not unary and b.t == "None"):
+            if not unary and op in DUNDER:
+                # (None beside an object: the method CPython calls, a.__iop__(None) for x op= y,
+                # else a.__op__(None), or b.__rop__(None), where it takes None, since None's own
+                # methods decline; one that cannot take None keeps the TypeError below)
+                if b.t == "None" and a.t in self.classes and a.t != COMPLEXC:
+                    for m in (["__i" + DUNDER[op][2:]] if shown == op + "=" else []) + [DUNDER[op]]:
+                        if m in self.classes[a.t].methods:
+                            if self.cmp_method(a.t, m, "None") != "":
+                                return self.call_fn(self.classes[a.t].methods[m], [a, b], [])
+                            break
+                elif a.t == "None" and b.t in self.classes and b.t != COMPLEXC:
+                    rm = "__r" + DUNDER[op][2:]
+                    if self.cmp_method(b.t, rm, "None") != "":
+                        return self.call_fn(self.classes[b.t].methods[rm], [b, a], [])
             message = f"bad operand type for unary {op}: 'NoneType'" if unary else f"unsupported operand type(s) for {shown if shown != '' else op}: '{tname(a.t)}' and '{tname(b.t)}'"
             self.raise_("TypeError", self.sconst(message))
             return Val("null", "None")
