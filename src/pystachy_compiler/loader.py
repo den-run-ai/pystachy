@@ -3542,9 +3542,11 @@ class Loader:
         incls = self.incls
         self.fs = Mod("", "", "")  # (t's code is not in the function or class body simplify() may be in)
         self.incls = False
+        # (name stays marked as being scanned until import_missing() has run for it: a package
+        # whose code imports its own submodule, whose import of a missing module fails, finds
+        # the package half run, as CPython does, rather than scanning it again for ever)
         self.scanning[name] = True
         self.init_raise(t, t.body.kids, r, True)
-        del self.scanning[name]
         self.pos = pos
         self.fs = fs
         self.incls = incls
@@ -3553,6 +3555,7 @@ class Loader:
             self.failc[name] = "ModuleNotFoundError"
         else:
             self.failc[name] = import_error(r[0].kids[0]) if len(r) > 0 else ""
+        del self.scanning[name]
         return self.failc[name]
 
     def import_missing(self, m: Mod, st: Node) -> str:
@@ -3648,7 +3651,7 @@ class Loader:
             if st.kind == "raise" and len(st.kids) > 0 and import_error(st.kids[0]) != "":
                 out.append(st)
                 return True
-            if top and st.kind == "import" and "ModuleNotFoundError" not in m.rebound and self.import_missing(m, st) != "":
+            if top and st.kind == "import" and "ModuleNotFoundError" not in m.rebound and "*" not in m.rebound and self.import_missing(m, st) != "":
                 # (an import of a module that is not found raises as surely: missing_import(),
                 # whose raise names the builtin exception, which the module must not rebind)
                 out.append(st)
