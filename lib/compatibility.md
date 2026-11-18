@@ -908,8 +908,9 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   that value has created a pseudo-member ([test](../tests/programs/library/lib_enum_flag_bits.py)).
   Such bits with out-of-order single-bit members or a custom (including inherited)
   `_iter_member_()` remain a compile-time error, as do a
-  `boundary=` keyword, a flag class's own `_missing_()`, and an int on the left of a flag's `|`, `&` or `^`, as reflected operator methods are not
-  supported.
+  `boundary=` keyword, a flag class's own `_missing_()`, and an int on the left of a `Flag`
+  member's `|`, `&` or `^`, which CPython rejects with `TypeError` (an `IntFlag` member's
+  computes, above).
 - These are compile-time errors: `ReprEnum` as a base; other mixin types
   (`class C(float, Enum)`) and keywords; members of other values or types, `_ignore_`, `_order_`
   and private names; a `__new__` of another form (`*args`, a `_value_` the compiler cannot
