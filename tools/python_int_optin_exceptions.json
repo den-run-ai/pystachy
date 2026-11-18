@@ -736,6 +736,38 @@
       "diagnostic": "tests/programs/containers/tuple_runtime_joins.py:24: error: pick() returns both tuple[int,int] and tuple[int] (each function has one return type) (compiling pick(int+) for the call at tests/programs/containers/tuple_runtime_joins.py:36)",
       "reason": "Runtime-length tuples hold 64-bit ints, not promoting ints: tuples of promoting ints of other lengths do not join into one, so pick() returning (n, n), (n,) and () stays rejected.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/object_union_inplace.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/object_union_inplace.py:61: error: unsupported operand types for +=: the results of Acc | int's members (Acc, int) have no union (a promoting int joins no other result: docs/python-int.md); narrow it with isinstance() first",
+      "reason": "An in-place += on an int | Acc variable joins the object's result with a promoting int in a closed union; only scalar int-or-None promotion is supported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/object_union_inplace.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/object_union_inplace.py:61: error: unsupported operand types for +=: the results of Acc | int's members (Acc, int) have no union (a promoting int joins no other result: docs/python-int.md); narrow it with isinstance() first",
+      "reason": "An in-place += on an int | Acc variable joins the object's result with a promoting int in a closed union; only scalar int-or-None promotion is supported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/object_union_none_operand.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/object_union_none_operand.py:29: error: unsupported operand types for +=: the results of M | int's members (M, int) have no union (a promoting int joins no other result: docs/python-int.md); narrow it with isinstance() first",
+      "reason": "An in-place += on an int | M variable joins the object's result with a promoting int in a closed union; only scalar int-or-None promotion is supported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/object_union_none_operand.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/object_union_none_operand.py:29: error: unsupported operand types for +=: the results of M | int's members (M, int) have no union (a promoting int joins no other result: docs/python-int.md); narrow it with isinstance() first",
+      "reason": "An in-place += on an int | M variable joins the object's result with a promoting int in a closed union; only scalar int-or-None promotion is supported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     }
   ]
 }

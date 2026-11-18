@@ -140,6 +140,20 @@
       "diagnostic": "tests/programs/classes/isinstance_class_tuples_eq.py:29: error: 'Base' object has no method 'label'",
       "reason": "isinstance() with a tuple of classes narrows to their union only where no module opts in to dynamic Any, whose attempts end the narrowing's; there x keeps its class Base, as on main.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/1325"
+    },
+    {
+      "case": "tests/programs/classes/class_value_complex.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/classes/class_value_complex.py:8: error: isinstance() is only supported with the builtin types and classes as its second argument",
+      "reason": "With the pragma the entry module opts in to dynamic Any, where type(x) gives a class box, an Any value, as it did before class objects were typed, and isinstance() takes no Any value as its second argument; the unchanged program passes.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/9"
+    },
+    {
+      "case": "tests/programs/classes/class_value_complex.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/classes/class_value_complex.py:8: error: isinstance() is only supported with the builtin types and classes as its second argument",
+      "reason": "With the pragma the entry module opts in to dynamic Any, where type(x) gives a class box, an Any value, as it did before class objects were typed, and isinstance() takes no Any value as its second argument; the unchanged program passes.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/9"
     }
   ]
 }
