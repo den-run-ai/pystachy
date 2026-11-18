@@ -26,7 +26,7 @@ from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, retoken, short
 from src.pystachy_compiler.specs import BIG, COMPLEXC, GLUE, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
 from src.pystachy_compiler.syntax import Node, has_kind, made_var, mk
-from src.pystachy_compiler.utils import ListLayout, builtin_key, closure_default_slots, disjoint_sets, elem, fbits, float_slot, gelem, holds_dyn, identity_abi, identity_default, int_fits, int_lit, is_callable, is_const, is_dict, is_fn, is_gen, is_kw, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, kw_names, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
+from src.pystachy_compiler.utils import ListLayout, builtin_key, closure_default_slots, disjoint_sets, elem, fbits, float_slot, gelem, holds_dyn, identity_abi, identity_default, int_fits, int_lit, is_callable, is_clsval, is_const, is_dict, is_fn, is_gen, is_kw, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, kw_names, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
 
 DYN = "dyn"
 # what isinstance(x, int) narrows a dyn local to: still the box (a bool passes the test too),
@@ -303,6 +303,8 @@ def gen_dyn_boxable(self, t: str) -> str:
     # of these, and dyn
     if t == DYN or dyn_builtin_type(t) != "" or t == BIG or t == NONEVAR or self.refl_builtin_class(t) != "":
         return ""
+    if is_clsval(t):
+        return ""  # (an ordinary class's class object: its class box, class_values.py)
     if t in self.classes and t not in self.tmpl:
         if self.classes[t].exc != "":
             return f"an exception object ({typestr(t)}) as Any is not supported yet"
@@ -417,9 +419,15 @@ def gen_dyn_class_type(self, c: str) -> str:
     # Hooks are attached once an operation needs them (dyn_dispatchers), so
     # merely boxing an object does not compile its unused protocol bodies.
     dt.refs = [self.sconst(d), self.sconst(short(c)), base, "null", "null", "null"]
-    if ci.role != "":
+    if len(ci.roles) > 1:
+        # (pys_dyn_role_isa tests one secondary base: an Any box's isinstance() would miss the others)
+        self.err(f"an object of class {short(c)}, with several secondary bases, as an Any value is not supported")
+    if len(ci.roles) == 1 and self.classes[ci.roles[0]].isiface and self.classes[ci.roles[0]].base != "":
+        # (pys_dyn_role_isa tests the secondary base itself, not the classes it derives from)
+        self.err(f"an object of class {short(c)}, whose secondary base {short(ci.roles[0])} derives from another class, as an Any value is not supported")
+    if len(ci.roles) == 1:
         flags |= DF_ROLE
-        dt.refs.append(self.dyn_class_type(ci.role))
+        dt.refs.append(self.dyn_class_type(ci.roles[0]))
     dt.items = [Val(str(DK_OBJ), "int"), Val(str(self.ocls[c]), "int"), Val(str(flags), "int")]
     self.consts.append(dt)
     self.dynclasses.append(c)
@@ -1462,6 +1470,8 @@ def gen_dyn_box(self, v: Val) -> Val:
     builtin_class = self.refl_builtin_class(t)
     if builtin_class != "":
         return self.refl_class_value(builtin_class)
+    if is_clsval(unopt(t)):
+        return self.class_value_box(v)
     if len(self.idoff) > 0:
         self.identity_box(v, t)  # (where a module's code does not track numeric identity)
     if t == "None" or t == NONEVAR or (is_opt(t) and v.v == "null"):
@@ -2379,6 +2389,8 @@ def gen_dyn_unbox(self, v: Val, t: str, what: str = "") -> Val:
         if numeric_identity(t):
             result.idfrom = v.v
         return result
+    if is_clsval(t):
+        return self.class_value_unbox(v, t)
     if dyn_builtin_type(t) != "":
         r = self.rt("pys_dyn_unbox", "i64", [f"ptr {v.v}", f"ptr {self.dyn_type(t)}"])
         x = self.from_slot(self.to_slot(Val(r, "int")), t) if t != "int" else Val(r, "int")
@@ -2415,7 +2427,7 @@ def gen_dyn_check(self, v: Val, ts: list[str], shown: str) -> None:
 def gen_dyn_unboxable(self, t: str) -> bool:
     # Can dyn_unbox prove t's physical layout? A native integer list requires its exact
     # descriptor; checking the current items of an unrestricted boxed list proves nothing.
-    if t == DYN or t == "None" or t == BIG or dyn_builtin_type(t) != "":
+    if t == DYN or t == "None" or t == BIG or dyn_builtin_type(t) != "" or is_clsval(t):
         return True
     if is_opt(t) and t != NONEVAR:
         return self.dyn_unboxable(unopt(t))
@@ -2441,6 +2453,8 @@ def gen_dyn_isa(self, v: Val, t: str) -> str:
         return "" if r == "" else self.scalar("or", [Val(self.dyn_test(v, ["None"]), "bool"), Val(r, "bool")])
     if t == BIG or dyn_builtin_type(t) != "":
         return self.dyn_test(v, [t])
+    if is_clsval(t):
+        return self.class_value_isa(v, t)
     if t in self.classes and t not in self.tmpl and self.classes[t].exc == "":
         # (an object of t or a subclass, or None, as pys_dyn_unbox walks the box's bases: also of
         # a subclass that the program boxes after this test is compiled)
@@ -3031,6 +3045,48 @@ def index_value(self, v: Val) -> Val:
     # Keep non-index values unchanged: the consumer supplies its own error, and a
     # dict or user-defined __getitem__ must receive the original key instead.
     return self.dyn_call(self.dyn_dispatcher("index", [DYN], DYN, "__index__"), [v])
+
+
+def gen_dyn_index(self, v: Val, none: str) -> Val:
+    # an Any value where a typed sequence's subscript or range() takes an index: an int's value,
+    # a bool's 0 or 1 and an object's __index__(), as CPython's index protocol gives them (no
+    # annotation is checked here); any other value raises CPython's TypeError, none's ("Kind:
+    # text", the one for None) with the value's type where that names NoneType
+    unbox = self.label()
+    convert = self.label()
+    isbool = self.label()
+    other = self.label()
+    bad = self.label()
+    end = self.label()
+    box = Ins("phi", DYN, "")
+    self.incoming(box, v.v, self.cur)
+    self.cbr(self.dyn_test(v, ["int"]), unbox, convert)
+    self.place(convert)
+    c = index_value(self, v)
+    self.cbr(self.dyn_test(c, ["bool"]), isbool, other)
+    self.place(isbool)
+    flag = self.as_int(self.dyn_payload(c, "bool"))
+    flagged = self.cur
+    self.br(end)
+    self.place(other)
+    self.incoming(box, c.v, self.cur)
+    self.cbr(self.dyn_test(c, ["int"]), unbox, bad)
+    self.place(bad)
+    text = none[none.find(": ") + 2 :]
+    cut = text.find("NoneType")
+    if cut < 0:
+        self.raise_(none[: none.find(":")], self.sconst(text))
+    else:
+        self.raise_(none[: none.find(":")], self.concat([Val(self.sconst(text[:cut]), "str"), self.dyn_type_name(v), Val(self.sconst(text[cut + 8 :]), "str")]).v)
+    self.place(unbox)
+    number = self.dyn_unbox(Val(self.phi(box), DYN), "int")
+    numbered = self.cur
+    self.br(end)
+    self.place(end)
+    ph = Ins("phi", "int", "")
+    self.incoming(ph, number.v, numbered)
+    self.incoming(ph, flag.v, flagged)
+    return Val(self.phi(ph), "int")
 
 
 def numeric_result(self, r: Val, method: str, owner: str) -> Val:
@@ -4088,7 +4144,7 @@ def dyn_factory_candidate(self, c: str) -> bool:
     ci = self.classes[c]
     if c in self.tmpl or ci.origin != "" or ci.bad != "" or ci.hook != "" or ci.exc != "" or ci.mod in GLUE or ci.node.line in ENUMCLASSES or c in self.nts or self.is_dc(c):
         return False
-    if ci.base != "" or ci.role != "" or ci.isrole or ci.tag != 0 or any(m != "__init__" for m in ci.methods):
+    if ci.base != "" or len(ci.roles) > 0 or ci.isrole or ci.tag != 0 or any(m != "__init__" for m in ci.methods):
         return False
     if any(a.startswith("__") and a.endswith("__") and a != "__slots__" for a in ci.ftypes):
         return False

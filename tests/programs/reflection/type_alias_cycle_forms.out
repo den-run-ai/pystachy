@@ -1,0 +1,6 @@
+mods: init mods
+mods.shapes: init mods.shapes
+dict[str, a.C] | None: AttributeError
+strings: not evaluated
+bound: 2
+[exit 0]

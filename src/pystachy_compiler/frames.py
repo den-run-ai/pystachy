@@ -38,6 +38,10 @@ class Reduce:
         self.facc = ""
         self.isf = ""
         self.phase = ""  # dynamic sum: in-range int, compensated float, or generic addition
+        # a sum of objects (Gen.sum_object_item): start its start's slot, first whether no item
+        # was added yet, acc the sum so far, of type sumt, which the first addition gives
+        self.start = ""
+        self.sumt = ""
 
 
 class SetArg:
@@ -145,6 +149,13 @@ class Frame:
         self.nonesites: dict[str, list[Node]] = {}
         self.nonepending: dict[str, bool] = {}
         self.narrowed: dict[str, str] = {}
+        self.preadn: list[Node] = []
+        self.preadv: list[Val] = []
+        self.preads: list[int] = []
+        self.preadb: list[str] = []
+        self.pdoms: dict[str, bool] = {}
+        self.psess: list[int] = []
+        self.pfield = ""
         self.lkk: dict[str, str] = {}
         self.branch = 0
         self.modlevel = False
@@ -157,6 +168,7 @@ class Frame:
         self.carried = Val("", "")
         self.nonecmp = False
         self.fieldcmp = False
+        self.rolex = ""
         self.cmpnode = Node("", "", 0)
         self.stkkey = Node("", "", 0)
         self.reflcopies = 1

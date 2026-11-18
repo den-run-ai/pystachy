@@ -1,0 +1,14 @@
+Animal [True, False, False, False]
+Dog [True, True, False, False]
+Puppy [True, True, True, False]
+Cat [True, False, False, True]
+Animal [True, False, False, False] False True False
+Dog [True, True, False, False] True True False
+Puppy [True, True, True, False] True True True
+Cat [True, False, False, True] False True False
+True False True False
+['Dog', 'Puppy'] ['Animal', 'Dog', 'Cat']
+(False, False, False) (True, False, False, True) (True, False, False, True)
+[True, False] [False, False] [False, False] [False, True]
+False False False
+[exit 0]

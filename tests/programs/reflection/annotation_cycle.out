@@ -1,0 +1,12 @@
+mods: init mods
+mods.shapes: init mods.shapes
+def: Other
+decorated def: Later
+method: Later
+class body: Later
+value
+annotated assignment: Later
+lazy: None 0
+future: None 0
+bound: 1 True
+[exit 0]

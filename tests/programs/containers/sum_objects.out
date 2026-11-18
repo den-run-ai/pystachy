@@ -1,0 +1,31 @@
+Value 6.0
+int 0
+  radd 1.0 0
+  add 1.0 2.0
+  add 3.0 3.0
+Value(3.0) 0 Value(6.0)
+106.0 True 5.0
+Value(3.0) 13.0
+item 0
+  add 10.0 0.0
+item 1
+  add 10.0 1.0
+item 2
+  add 11.0 2.0
+13.0
+item 0
+  radd 0.0 0
+item 1
+  add 0.0 1.0
+Value(1.0)
+iterable
+start
+3.5
+Value(3.0) 4.0 Value(5.0) 5.0
+Value(8.0) 6.0 Value(6.0) 6.0
+Value(3.0) 4.0 3.0
+13 4.0
+2.0 0.0
+Value(4.0) Value(4.0) Value(4.0) True False True
+TypeError: unsupported operand type(s) for +: 'float' and 'NoneType'
+[exit 0]

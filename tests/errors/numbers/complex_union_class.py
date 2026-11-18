@@ -1,4 +1,4 @@
-# error: reference unions cannot mix native references with scalar or container members
+# error: reference unions cannot mix native references with complex and scalar members
 class Sentinel:
     pass
 

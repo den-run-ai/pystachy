@@ -1,0 +1,4 @@
+[True, True, True, True, True, True, False, False] b not b not b
+[True, True, True, True, True, True, False, False] [True, True, True, True, True, True, True, True] [False, True, False, True, True, True, False, False]
+[True, True, True, True] [True, False, True, False] [True, True, True, True] [False, False, False, False] [True, True, True, True] [False, False, False, False]
+[exit 0]
