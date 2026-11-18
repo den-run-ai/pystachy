@@ -9,8 +9,9 @@ returning i1 that LLVM 18 to 21 define. Generators call the older two-argument f
 which each release upgrades to its own signature as it reads it.
 
 The text checks need no LLVM; with the driver's toolchain (PYSTACHY_LLVM, else its discovery),
-opt must also read each float spelling back as the same bits and lower a generator, and the
-driver's late passes must inline the allocator's fast path, which LLVM 23's forceattrs changed.
+opt must also read each float spelling back as the same bits and lower a generator, the
+driver's late passes must inline the allocator's fast path, which LLVM 23's forceattrs changed,
+and the JIT tier's loop passes must rotate a range loop and hoist its items pointer.
 """
 import math
 import os
@@ -56,6 +57,38 @@ define ptr @user() {{
   %p = call ptr @{name}(i64 56)
   ret ptr %p
 }}
+"""
+# a range loop as lowering emits one: its step exits on overflow, and each iteration reloads the
+# list's items pointer (a List is {len, cap, a})
+RANGE_LOOP = """declare {i64, i1} @llvm.sadd.with.overflow.i64(i64, i64)
+define double @total(ptr %l, i64 %n) {
+entry:
+  %ctr = alloca i64
+  %acc = alloca double
+  store i64 0, ptr %ctr
+  store double 0.0, ptr %acc
+  br label %head
+head:
+  %i = load i64, ptr %ctr
+  %more = icmp slt i64 %i, %n
+  br i1 %more, label %body, label %done
+body:
+  %ap = getelementptr inbounds i8, ptr %l, i64 16
+  %items = load ptr, ptr %ap
+  %at = getelementptr double, ptr %items, i64 %i
+  %x = load double, ptr %at
+  %s = load double, ptr %acc
+  %t = fadd double %s, %x
+  store double %t, ptr %acc
+  %step = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %i, i64 1)
+  %next = extractvalue {i64, i1} %step, 0
+  %over = extractvalue {i64, i1} %step, 1
+  store i64 %next, ptr %ctr
+  br i1 %over, label %done, label %head
+done:
+  %r = load double, ptr %acc
+  ret double %r
+}
 """
 GENERATOR = ("def count(n: int):\n"
              "    i = 0\n"
@@ -183,6 +216,21 @@ class LlvmReadsItTests(unittest.TestCase):
                 self.assertEqual(run.returncode, 0, run.stderr)
                 self.assertNotIn(f"call ptr @{name}(", run.stdout)
                 self.assertIn("call ptr @pys_gc_slow(i64 56, i64 0)", run.stdout)
+
+    def test_jit_loop_passes_rotate_a_range_loop_and_hoist_its_items_pointer(self):
+        # PYSTACHY_JIT_OPT=1's JIT_LOOPS after the cleanup: correlated propagation drops the step's
+        # overflow exit (the header's i < n bounds i), loop-rotate rotates the loop, and LICM moves
+        # the items pointer's load out of the block that reads each item; the cleanup alone keeps both
+        cleanup = "function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)"
+        for passes, optimized in [(cleanup, False), (f"{cleanup},{driver.JIT_LOOPS}", True)]:
+            with self.subTest(optimized=optimized):
+                run = opt(RANGE_LOOP, passes)
+                self.assertEqual(run.returncode, 0, run.stderr)
+                blocks = re.split(r"\n(?=[\w.]+:)", run.stdout[run.stdout.index("define double @total"):])
+                reads = [b for b in blocks if "load double" in b]
+                self.assertEqual(len(reads), 1, run.stdout)
+                self.assertEqual("load ptr" in reads[0], not optimized, run.stdout)
+                self.assertEqual("call { i64, i1 } @llvm.sadd.with.overflow" in run.stdout, not optimized, run.stdout)
 
 
 if __name__ == "__main__":
