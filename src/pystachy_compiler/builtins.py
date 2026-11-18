@@ -1287,6 +1287,13 @@ def gen_callable_type(self, t: str) -> int:
         return -1
     if is_opt(t) and (is_callable(unopt(t)) or unopt(t) == "exctype"):
         return -2
+    if self.object_union(t):
+        # (a union of objects and scalars: no number, str, file or None is callable, and an object
+        # is where its class defines __call__, as a reference union's may: not supported there)
+        ms = [m for m in umembers(unopt(t)) if m in self.classes]
+        if len([d for d in self.classes.values() if "__call__" in d.methods and len([m for m in ms if self.derives(d.name, m)]) > 0]) > 0:
+            self.err(f"callable() of a {typestr(t)} is not supported")
+        return 0
     cs = [t] if t in self.classes else umembers(unopt(t)) if self.reference_union(t) else []
     calls = [c for c in cs if c in self.classes and "__call__" in self.classes[c].methods]
     if len(calls) > 0 and (len(cs) > 1 or self.classes[t].exc != "" or t in self.nts):

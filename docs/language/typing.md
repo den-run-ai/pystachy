@@ -756,7 +756,8 @@ that the tag selects performs it:
 A `None` value raises CPython's `TypeError` there, or is `None`'s own text and truth. A `str`
 member has no arithmetic to select, and members whose results have no union (two differently
 typed tuples from `divmod()`) are rejected: narrow first. So are a method call, an attribute,
-`is` between two such values, `hash()`, and use as a set element, a dict key or in `sorted()`.
+`is` between two such values, `hash()`, `callable()` where a member's class or one derived from
+it defines `__call__`, and use as a set element, a dict key or in `sorted()`.
 A comparison method whose parameter is such a union (`other: Money | int`) takes each member.
 No union with a class member is [inferred](#inferred-unions): annotate the variable, as in
 `total: int | Money = 0`. [`sum()` of objects](semantics.md#sums-of-objects) returns one.
