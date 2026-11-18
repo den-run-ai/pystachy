@@ -1,0 +1,36 @@
+True False 2
+0
+False True 0
+absent
+False True 0
+absent
+True False 2
+0
+True False 2
+0
+False True 0
+absent
+False True 0
+absent
+True True 1 1
+0 0
+False False 0 0
+True True 1 1
+0 0
+True True 1 1
+0 0
+False False 0 0
+True True 1 1
+0 0
+False False 0 0
+True False 2
+0
+False True 0
+True False 2
+0
+False True 0
+False True 0
+True True 1 1
+0 0
+False False 0 0
+[exit 0]

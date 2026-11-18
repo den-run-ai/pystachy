@@ -1,0 +1,5 @@
+mods: init mods
+mods.shapes: init mods.shapes
+base child base
+remote s local k
+[exit 0]

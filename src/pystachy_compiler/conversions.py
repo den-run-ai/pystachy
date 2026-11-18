@@ -4,7 +4,7 @@ from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.ir import Ins, Val, tmpname
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import BIG, BIGOPT, DUNDER, NONEVAR, ORDOP, REFL
+from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, DUNDER, NONEVAR, ORDOP, REFL
 from src.pystachy_compiler.bigints import big_viewable, held
 from src.pystachy_compiler.utils import (
     elem,
@@ -170,7 +170,7 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         v = self.big_narrow(v)  # (into 64-bit storage, or as an int: bigints.py)
         if v.t == t:
             return v
-    if is_tuple(v.t) and BIG in v.t and t != "" and BIG not in t:
+    if is_tuple(unopt(v.t)) and BIG in v.t and t != "" and BIG not in t:
         if is_tuple(t) and self.join_hint(t, v.t):
             return Val("undef", t)  # (as an int location becomes a promoting int)
         v = self.big_tuple_narrow(v)  # (a tuple of promoting ints into 64-bit storage: the same tuple, bigints.py)
@@ -227,6 +227,8 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
             self.err(f"{what} may be None ({typestr(v.t)}), and a test does not narrow a global or a field (a call may change it): copy it to a local variable, and test that")
         self.err(f"{what} may be None ({typestr(v.t)}); test it with 'is not None' first")
     hint = " (write a float literal like 1.0, or use float())" if t == "float" and v.t == "int" else ""
+    if t == COMPLEXC and v.t in ["int", "float", "bool", BIG]:
+        hint = " (write a complex literal like 2+0j, or use complex())"
     if is_fn(t) and is_fn(v.t):
         hint = " (each function is a type of its own: a variable, a list's items or a dict's values hold one function)"
     if hint == "" and self.curfn.ll in self.guessed:
@@ -240,6 +242,19 @@ def gen_desc(self, t: str, use: str) -> str:
     return gen_plain_desc(self, t, use)
 
 
+DIGITS = "0123456789"
+
+
+def ends_in_id(d: str) -> bool:
+    # does descriptor d end in a class's id, O<id> (or P<id>, H<id>), whose digits runtime.c's skip()
+    # reads up to the first non-digit? (An empty tuple's T0 also ends in a digit, its count, which
+    # skip() reads as one character.)
+    j = len(d)
+    while j > 0 and d[j - 1] in DIGITS:
+        j -= 1
+    return j > 0 and len(d) - j >= 3 and d[j - 1] in "OPH"
+
+
 def gen_plain_desc(self, t: str, use: str) -> str:
     # (t's own constructor is no recursive alias's, though its parts may hold one: see gen_rec_desc)
     if is_union(unopt(t)):
@@ -248,8 +263,11 @@ def gen_plain_desc(self, t: str, use: str) -> str:
             self.err("closed union operations require narrowing with isinstance() first")
         members = umembers(unopt(t))
         d = "U" + str(len(members)) + ":"
-        for m in members:
-            d += str(self.utag(m)) + ":" + self.desc(m, use)
+        for i in range(len(members)):
+            md = self.desc(members[i], use)
+            # (a class's O<id> runs to the first non-digit, so a '.' ends one that would run into
+            # the next member's tag, also within a container's descriptor: LO000.2:i)
+            d += str(self.utag(members[i])) + ":" + md + ("." if i + 1 < len(members) and ends_in_id(md) else "")
         return ("?" if is_opt(t) else "") + d
     # type descriptor for the runtime's generic repr (use "repr"), equality ("==") or ordering
     # ("<", ">", ...; a list or tuple compares its items with == first)
@@ -269,8 +287,8 @@ def gen_plain_desc(self, t: str, use: str) -> str:
         return "y" if use == "repr" else "s"  # (a bytes compares, orders and hashes as a str of its bytes)
     if is_opt(t) and t != NONEVAR:
         return "?" + self.desc(unopt(t), use)  # None or the value
-    if t == "None":
-        return "?s"  # (always None: a tuple's item)
+    if t == "None" or t == NONEVAR:
+        return "?s"  # (always None: a tuple's item, a set's element; a local that holds only None so far)
     sub = use if use == "repr" or use == "==" else "== " + use
     if is_list(t):
         return "L" + self.desc(held(elem(t)), sub)  # (a tuple of ints as a list holds it: bigints.held)
@@ -374,9 +392,10 @@ def gen_rec_desc_body(self, t: str, use: str, active: dict[str, int], offset: in
             self.err("closed union operations require narrowing with isinstance() first")
         ms = umembers(t)
         out = "U" + str(len(ms)) + ":"
-        for m in ms:
-            out += str(self.utag(m)) + ":"
-            out += gen_rec_desc(self, m, use, active, offset + len(out))
+        for i in range(len(ms)):
+            out += str(self.utag(ms[i])) + ":"
+            md = gen_rec_desc(self, ms[i], use, active, offset + len(out))
+            out += md + ("." if i + 1 < len(ms) and ends_in_id(md) else "")  # (as gen_plain_desc's)
         return out
     if is_list(t):
         return "L" + gen_rec_desc(self, held(elem(t)), use, active, offset + 1)

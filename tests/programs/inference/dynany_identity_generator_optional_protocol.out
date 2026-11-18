@@ -1,0 +1,17 @@
+next True
+sent again
+send True
+throw True
+closed
+sent None
+typed send True
+closed
+typed retained True True True
+none True True
+closed
+widened next True
+scalar sent again
+widened send True
+widened throw True
+scalar closed
+[exit 0]

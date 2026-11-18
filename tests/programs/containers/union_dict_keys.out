@@ -1,0 +1,7 @@
+3 3 2 4 True False True
+2 None -1
+4 2 False
+KeyError
+1 [True]
+2 True False
+[exit 0]

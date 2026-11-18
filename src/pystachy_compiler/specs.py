@@ -26,7 +26,7 @@ for _k in (MODDUNDERS + " __name__ __debug__ __cached__ __import__ __build_class
     MODNAMES[_k] = True
 # what an annotation that CPython evaluates may hold (Loader.not_type): these nodes, '|' of the
 # first five, subscripts of the first two
-ANNKINDS: list[str] = ["name", "attr", "index", "binop", "None", "str", "True", "False", "int", "float", "ellipsis", "tuple", "list", "unary", "noann", "starred"]
+ANNKINDS: list[str] = ["name", "attr", "index", "binop", "None", "str", "True", "False", "int", "float", "ellipsis", "tuple", "list", "unary", "noann", "starred", "bytes"]
 GENERICS: list[str] = ["list", "dict", "tuple", "set", "frozenset", "type"]
 
 
@@ -111,6 +111,8 @@ DUNDER: dict[str, str] = {"+": "__add__", "-": "__sub__", "*": "__mul__", "/": "
                           "@": "__matmul__", "&": "__and__", "|": "__or__", "^": "__xor__", "<<": "__lshift__", ">>": "__rshift__",
                           "==": "__eq__", "!=": "__ne__", "<": "__lt__", "<=": "__le__", ">": "__gt__", ">=": "__ge__"}
 UNARY: dict[str, str] = {"-": "__neg__", "+": "__pos__", "~": "__invert__"}
+# math functions that call a special method of an object (int(), float(), round(), abs() and divmod() do too)
+PROTOCOL_MATH: dict[str, str] = {"math.floor": "__floor__", "math.ceil": "__ceil__", "math.trunc": "__trunc__"}
 # builtin and module functions that are one runtime call: "name(argtypes)": "C function:result type"
 CALLS: dict[str, str] = {
     "ord(str)": "pys_ord:int", "chr(int)": "pys_chr:str", "int(float)": "pys_f2i:int", "int(str,int)": "pys_int_str:int",
@@ -359,6 +361,8 @@ RANGES = "_pystachy_range"  # lib's module of the class of range objects, range(
 RANGEC = "_pystachy_range$range"  # (that class)
 OBJECTS = "_pystachy_object"  # lib's module of the class of the objects object() makes, sentinels (Loader.program)
 OBJECTC = "_pystachy_object$object"  # (that class)
+COMPLEXS = "_pystachy_complex"  # lib's module of the class of complex numbers (Loader.program)
+COMPLEXC = "_pystachy_complex$complex"  # (that class)
 # lib's module of json.loads() and json.dumps() of Any values, for the modules that compile Any as
 # dynamic values (Loader.program, Gen.json_any: #779)
 JSONANY = "_pystachy_json_any"
@@ -375,6 +379,7 @@ OPTTYPES = "class types, str, bytes, int, float, bool, list, dict and tuple"
 TYPEVAR = " is only supported in the annotations of a module-level function's parameters and return, which make the function a template, and of a generic class (Generic[T]) with an __init__, whose objects bind it"
 ANYUSE = "typing.Any is only supported in the parameter and return annotations of a function, or of a method that may be a template, in a class template's __init__ parameters, in iterator protocol returns, and in initialized module/local variables, which are inferred as if unannotated; annotate a concrete type here"
 STUB = "an @overload stub of 'NAME' must be followed by the def that implements it (calling a stub raises NotImplementedError)"
+FINAL_FIELD = "a field annotated Final without a type needs a constant value (int, float, str or bool): annotate it Final[T]"
 PATHLIKE = "os.PathLike is only supported in a union with str (str | os.PathLike[str] is a str: Pystachy has no other path type)"
 FUTURE: dict[str, bool] = {}
 for _k in "annotations division absolute_import print_function generators nested_scopes with_statement unicode_literals generator_stop".split():
@@ -756,6 +761,11 @@ TEMPLATE_INSTANCES = 4096
 # a rejection fits tools/compilelimits.py's 256 MiB, hosted too (the corpus's largest total is
 # 4,736 bytes, tests/programs/apps/port_tomli_w_tables.py's 92 instances).
 TEMPLATE_RETAINED = 16777216
+# A method call through a base whose hierarchy has more concrete classes than this selects
+# the override in one shared function per receiver type, method and argument signature
+# (Gen.dispatch_call): each override's call, and LLVM's inlining of it, then exists once
+# rather than at every call site (a visitor's 100 classes at 100 sites took 251 s to build).
+DISPATCH_INLINE = 8
 # Effect letters: R may raise (in a program that has try or with, a raise allocates its exception, so a
 # collection may run before a handler takes it; if none does, the raise prints its message, flushes
 # stdout and exits); N never returns; A allocates on the way to returning (a collection may run, and
@@ -863,9 +873,10 @@ RUNTIME: dict[str, str] = {
     # the queue of the fire functions of references whose referents a collection found dead
     "weakref.new": "%ptr:%ptr,%ptr|A I|", "weakref.get": "%ptr:%ptr|I|", "weakref.fired": "%ptr:|I|",
     # homogeneous runtime-length tuples (immutable copied slots)
-    "vtuple.new": "%ptr:list[T]|R A rL|", "vtuple.from": "%ptr:%ptr,int|R A|",
-    "vtuple.get": "int:%ptr,int|R|", "vtuple.list": "list[T]:%ptr|R A|", "vtuple.box": "%ptr:%ptr|R A|",
-    "vtuple.slice": "%ptr:%ptr,int,int,int|R A|", "vtuple.concat": "%ptr:%ptr,%ptr|R A|",
+    "vtuple.new": "%ptr:list[T]|R A rL wL|", "vtuple.from": "%ptr:%ptr,int|R A|",
+    "vtuple.get_identity": "dyn:%ptr,int,int|R A rO wO|", "vtuple.set_identity": "None:%ptr,int,dyn,int|A rO wO|",
+    "vtuple.get": "int:%ptr,int|R|", "vtuple.list": "list[T]:%ptr|R A rO wO|", "vtuple.box": "%ptr:%ptr|R A rO wO|",
+    "vtuple.slice": "%ptr:%ptr,int,int,int|R A rO wO|", "vtuple.concat": "%ptr:%ptr,%ptr|R A rO wO|",
     "vtuple.index": "int:%ptr,*T,#,int,int|R rL rD U?|", "vtuple.count": "int:%ptr,*T,#|R? rL rD U?|",
     # lists
     "list.new": "list[T]:int|A|", "list.new_atomic": "list[T]:int|A|", "list.get": "*T:S,int|R rL|", "list.set": "None:S,int,*T|R rL wL|",
@@ -1030,6 +1041,9 @@ RUNTIME: dict[str, str] = {
     "m.isfinite": "bool:float||", "m.isinf": "bool:float||", "m.isnan": "bool:float||", "m.asinh": "float:float|R|",
     "m.acosh": "float:float|R|", "m.atanh": "float:float|R|", "m.erf": "float:float|R|", "m.erfc": "float:float|R|",
     "m.ldexp": "float:float,int|R|", "m.frexp": "tuple[float,int]:float|A|", "m.modf": "tuple[float,float]:float|A|",
+    # complex numbers (lib/_pystachy_complex.py): CPython's division, power, absolute value and hash
+    "complex.quot": "tuple[float,float]:float,float,float,float|R A|", "complex.pow": "tuple[float,float]:float,float,float,float|R A|",
+    "complex.abs": "float:float,float|R|", "complex.hash": "int:float,float||",
     "m.nextafter": "float:float,float||", "m.ulp": "float:float||", "m.remainder": "float:float,float|R|",
     "m.fma": "float:float,float,float|R|", "m.fsum": "float:list[float]|R A rL|", "m.prod_int": "int:list[T],int|R rL|",
     "m.prod_float": "float:list[float],float|rL|", "m.floats": "list[float]:list[T]|A rL|", "m.ufloats": "list[float]:list[T],#|A rL|",
@@ -1045,7 +1059,7 @@ RUNTIME: dict[str, str] = {
     "repr_leave": "None:%ptr|I|", "alloc": "%ptr:int|A|", "new": "%ptr:int|A|", "gc_slow": "%ptr:int,int|A|", "on_stack": "int:%ptr|I|", "box": "%ptr:*T|A|", "ubox": "%ptr:int,*T|A|", "ubox_opt": "%ptr:int,%ptr,int|A|", "unpack_check": "None:int,int|R|", "unpack_ex_check": "None:int,int|R|",
     # errors and the process
     "raise": "None:str,str|R N|", "exit": "None:int|R N I|", "exit_msg": "None:str|R N I|", "argv": "list[str]:|I|", "warnoptions": "list[str]:|A I|",
-    "platform": "str:|A|", "errno": "int:str|R A|", "system": "int:str|R I|", "execv": "None:str,list[str]|R N A I rL|", "getpid": "int:|I|", "getcwd": "str:|R A I|", "exists": "bool:str|I|",
+    "platform": "str:|A|", "errno": "int:str|R A|", "system": "int:str|R I|", "execv": "None:str,list[str]|R N A I rL|", "getpid": "int:|I|", "getcwd": "str:|R A I|", "uname": "str:int|R A I|", "exists": "bool:str|I|",
     "path_join": "str:str,str|A|", "path_basename": "str:str|A|", "path_dirname": "str:str|A|", "path_split": "tuple[str,str]:str|A|",
     "path_splitext": "tuple[str,str]:str|A|", "path_isabs": "bool:str||", "path_normpath": "str:str|R A|",
     "path_abspath": "str:str|R A I|", "path_relpath": "str:str,str|R A I|", "path_expanduser": "str:str|R A I|",

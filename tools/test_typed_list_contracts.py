@@ -71,6 +71,7 @@ class ListLayoutTests(unittest.TestCase):
 
     def test_reference_payloads_and_numeric_identity_are_independent(self):
         for element, atomic, identity in (("float", True, 2), ("bool", True, 0),
+                                          ("opt[int]", False, 9), ("opt[float]", False, 10),
                                           ("str", False, 0), ("dyn", False, 0),
                                           ("list[int]", False, 0)):
             with self.subTest(element=element):
@@ -224,6 +225,22 @@ class ListWriteContractTests(unittest.TestCase):
         i.a[-1].t = "bool"
         self.assert_rejected(i, "needs int")
 
+    def test_optional_identity_requires_its_pointer_slot_and_kind(self):
+        for element, kind in (("opt[int]", "9"), ("opt[float]", "10")):
+            for operation in ("list.append_identity", "list.set_identity", "list.insert_identity"):
+                with self.subTest(element=element, operation=operation):
+                    i = list_write(operation, element)
+                    i.a[-1].v = kind
+                    self.assertEqual(list_write_error(i, False), "")
+                    g = Gen()
+                    g.list_write(i.s, i.a)
+                    g.verify(function_with(g.fn.blocks[0].code[0]), False)
+                    i.a[-1].v = str(int(kind) & 3)
+                    self.assert_rejected(i, "numeric identity kind")
+                    i.a[-1].v = kind
+                    i.a[-3].t = "*" + element[4:-1]
+                    self.assert_rejected(i, "needs *" + element)
+
     def test_verifier_rejects_postconstruction_result_and_metadata_corruption(self):
         for field, value in (("t", "int"), ("r", [1]), ("x", "int"), ("k", 1), ("b", ["entry"])):
             i = list_write()
@@ -306,6 +323,15 @@ class ListReadContractTests(unittest.TestCase):
             i.a[-1].v = "2" if element == "int" else "1"
             self.assert_rejected(i, "numeric identity kind")
         self.assert_rejected(list_read(element="dyn", identity=True), "numeric identity kind")
+
+    def test_optional_identity_reads_require_the_optional_kind(self):
+        for element, kind in (("opt[int]", "9"), ("opt[float]", "10")):
+            i = list_read(element=element, identity=True)
+            i.a[-1].v = kind
+            self.assertEqual(list_read_error(i), "")
+            self.verify(i)
+            i.a[-1].v = str(int(kind) & 3)
+            self.assert_rejected(i, "numeric identity kind")
 
     def test_read_builder_reuses_declared_signature_and_refuses_erasure(self):
         g = Gen()

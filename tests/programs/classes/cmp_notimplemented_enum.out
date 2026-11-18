@@ -1,0 +1,3 @@
+False True LOW LOW True
+TypeError '<' not supported between instances of 'Level' and 'Color'
+[exit 0]

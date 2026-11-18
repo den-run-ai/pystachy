@@ -1,0 +1,16 @@
+('posix_prefix',) posix_prefix
+data True ''
+include True '/include'
+platinclude True '/include'
+platlib True '/lib/site-packages'
+platstdlib True '/lib'
+purelib True '/lib/site-packages'
+scripts True '/bin'
+stdlib True '/lib'
+{installed_base}/{platlibdir} {base}/lib/site-packages
+ValueError 'home' returned 'posix_home', which is not a valid scheme on this platform
+ValueError 'user' returned 'posix_user', which is not a valid scheme on this platform
+KeyError 'posix_home'
+KeyError 'posix_user'
+KeyError 'venv'
+[exit 0]

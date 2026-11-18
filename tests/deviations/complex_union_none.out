@@ -1,0 +1,3 @@
+1j 0 2j
+TypeError: a value used as complex | int is None; annotate it complex | int | None
+[exit 0]

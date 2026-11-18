@@ -1,7 +1,7 @@
 """Lexer component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler import diagnostics
-from src.pystachy_compiler.diagnostics import LINES, fail
+from src.pystachy_compiler.diagnostics import LINES, RAW, fail
 from src.pystachy_compiler.utils import codec, normcodec
 
 
@@ -22,6 +22,20 @@ def utf8(c: int) -> str:
     if c < 65536:
         return chr(224 | (c >> 12)) + chr(128 | ((c >> 6) & 63)) + chr(128 | (c & 63))
     return chr(240 | (c >> 18)) + chr(128 | ((c >> 12) & 63)) + chr(128 | ((c >> 6) & 63)) + chr(128 | (c & 63))
+
+
+def host_text(s: str) -> str:
+    # text the compiler takes from the host (os.path.realpath(), os.getcwd(), the module path) as a
+    # str of its own: the host's is decoded, a character per code point, where the compiler's str
+    # holds bytes, a character per byte (RAW), which it writes into programs as they are (#1517).
+    # A byte that does not decode, kept as a lone surrogate (surrogateescape), is that byte again.
+    if RAW != "latin-1":
+        return s
+    out: list[str] = []
+    for c in s:
+        o = ord(c)
+        out.append(chr(o - 0xDC00) if o >= 0xDC80 and o <= 0xDCFF else utf8(o))
+    return "".join(out)
 
 
 def utf8len(s: str, i: int, surrogatepass: bool = False) -> int:

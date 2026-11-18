@@ -1,21 +1,19 @@
 """Program component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-import os
-import sys
-from src.pystachy_compiler.callbacks import specialize_callbacks
 from src.pystachy_compiler.reflection import refl_needs_eh, refl_props
 from src.pystachy_compiler.analysis import all_imports, collect, defines, module_ints, module_reads, module_strs, needs_eh, none_assigns, reads_builtin
-from src.pystachy_compiler.diagnostics import Rejoin, dynamic_program, fail, shown
+from src.pystachy_compiler.diagnostics import NeedHierarchy, Rejoin, dynamic_program, fail, shown
 from src.pystachy_compiler.dynamic import comparison_properties, comparison_storage
 from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_protocol
-from src.pystachy_compiler.ir import Val, ClassInfo, FnInfo, NOLABELS, NONUMS, NOVALS, one_nums_intact
+from src.pystachy_compiler.ir import Val, ClassInfo, FnInfo
 from src.pystachy_compiler.module import Mod
-from src.pystachy_compiler.names import RENAMED, short
-from src.pystachy_compiler.optimizations import call_counts
+from src.pystachy_compiler.names import RENAMED, owner, short
+from src.pystachy_compiler.pipeline import PreparedProgram
 from src.pystachy_compiler.specs import (
     ABSTRACT_DECOS,
     EXCBASES,
     EXCEPTIONS,
+    FINAL_FIELD,
     PLAIN_EXC_BASES,
     exc_derives,
     GALIAS,
@@ -28,6 +26,7 @@ from src.pystachy_compiler.specs import (
     PURE,
     PYBUILTINS,
     RAISERS,
+    COMPLEXS,
     RANGES,
     RTSYM,
     TYPING,
@@ -38,7 +37,6 @@ from src.pystachy_compiler.utils import (
     RtFn,
     clone,
     elem,
-    fxs,
     hpop,
     hpush,
     int_lit,
@@ -132,7 +130,7 @@ def gen_subclass_problem(self, st: Node) -> str:
             return "inheritance from a NamedTuple is not supported"
         if self.is_dc(base_ci.name) and not dc:
             return "inheritance from a dataclass is only supported by a @dataclass class"
-        if base_ci.name in self.tparams or self.init_template(base_ci.node) or self.init_template(st.kids[0]):
+        if self.init_template(base_ci.node, True) or self.init_template(st.kids[0], True) or (st.s not in self.hierarchies and self.fixed_hierarchy(base_ci.name)):
             return "inheritance with generic class templates is not supported: " + self.template_fix([base_ci.node, st.kids[0]])
         if dc and not self.is_dc(base_ci.name):
             return "a @dataclass class whose base is not a dataclass is not supported"
@@ -148,6 +146,26 @@ def gen_subclass_problem(self, st: Node) -> str:
         return f"deriving from {b} is not supported"  # (u: a UnicodeError whose five arguments make its message)
     if len(st.kids[0].kids) > 1:
         return f"an exception class with a decorator (@{st.kids[0].kids[1].s}) is not supported"
+    return ""
+
+def gen_generic_subclass(self, st: Node) -> str:
+    # class V(Visitor[str]): a base that subscripts a generic class without an __init__ of its
+    # own, which binds nothing (Visitor[str] is Visitor, see generic_ann), is that class, whose
+    # methods' parameters that name its type variables take each call's types. Its type
+    # arguments are checked as the annotation Visitor[str] checks them, and the statement then
+    # names the class itself, as the rest of declaration reads its base (#962). "" or why not
+    b = st.kids[1] if len(st.kids) == 2 else st
+    if b.kind != "index" or b.kids[0].kind != "name" or b.kids[0].s not in self.tparams or b.kids[0].s not in self.classes:
+        return ""
+    g = b.kids[0].s
+    if self.init_template(self.classes[g].node):
+        return f"a subclass of {shown(g)}[...] is not supported: the __init__ of {shown(g)} binds its type variables, as its calls' arguments do"
+    t = self.generic_ann(g, b.kids[1])
+    if t.startswith("!"):
+        return t[1:]
+    self.genbase[st.s] = g  # (the types that bind its TypeVars for the methods of st's objects)
+    self.genargs[st.s] = [self.ann(x) for x in (b.kids[1].kids if b.kids[1].kind == "tuple" else [b.kids[1]])]
+    st.kids[1] = b.kids[0]
     return ""
 
 def gen_exc_base(self, b: Node) -> str:
@@ -191,6 +209,13 @@ def gen_inherit(self, ci: ClassInfo) -> None:
             # even when no inherited method is called.
             d = Node(f.orig.kind, f.orig.s, f.orig.line, [f.orig.kids[i] if i == 2 else clone(f.orig.kids[i]) for i in range(len(f.orig.kids))])
             g = self.declare_fn(d, ci.name, True)
+            if g.tvret == "":
+                # (f.orig was cloned after its declaration erased the TypeVar annotations: their
+                # binding plan, over the same parameters, carries over: tv_plan)
+                g.tvret = f.tvret
+                g.tvbparams = list(f.tvbparams)
+                g.tvbclass = list(f.tvbclass)
+                g.tvbpos = list(f.tvbpos)
             g.orig = f.orig
             g.clsuse = True
             g.pending = True
@@ -298,11 +323,15 @@ def gen_derives(self, c: str, base: str) -> bool:
         c = info.base
     return c in EXCBASES and exc_derives(c, base)
 
-def gen_init_template(self, st: Node) -> bool:
+def gen_init_generic(self, st: Node, hier: bool = False) -> bool:
     # is class statement st a class template: no decorator (a dataclass's fields are annotated)
     # and an __init__ of its own with a parameter but self that has no annotation, mentions Any,
     # is object, or names a class template; each object belongs to a specialization, whose fields
-    # are typed by the arguments of the call that makes it (see specialize)
+    # are typed by the arguments of the call that makes it (see specialize). hier: st takes part
+    # in an inheritance hierarchy, where a template is an error: a class-template object that
+    # __init__ stores into an annotated field then types nothing (init_makes_tmpl). Elsewhere it
+    # still does, as before: a template compiles only once used, so an unused class's other
+    # fields are never inferred
     if len(st.kids) > 1 or (st.s in self.nts and st.s not in self.cnts):
         return False
     for d in st.kids[0].kids:
@@ -316,8 +345,308 @@ def gen_init_template(self, st: Node) -> bool:
                     return True  # (also *args or **kwargs without an annotation, or with Any, which only a template takes)
                 if st.s in self.tparams and self.names_tv(ps[i].kids[0], self.tparams[st.s]):
                     return True  # (a generic class whose objects bind its type variables, see bind)
-            if self.makes_tmpl(d.kids[2]):
+            fixed: dict[str, bool] = {}
+            for b in st.kids[0].kids:
+                if b.kind == "annassign" and b.kids[0].kind == "name" and self.fixed_template_field_ann(b.kids[1]):
+                    fixed[b.kids[0].s] = True
+            if self.init_makes_tmpl(d.kids[2], ps[0].s if len(ps) > 0 else "", fixed) if hier else self.makes_tmpl(d.kids[2]):
                 return True  # (a field may hold an object of a class template: typed where the object is made)
+    return False
+
+def fixed_ann_shape(a: Node, classes: dict[str, ClassInfo]) -> bool:
+    if a.kind == "str" or a.kind == "noann":
+        return False
+    if a.kind == "index" and a.kids[0].kind == "name" and a.kids[0].s in classes:
+        return False
+    return all([fixed_ann_shape(k, classes) for k in a.kids])
+
+def gen_fixed_ann(self, a: Node) -> bool:
+    # A layout annotation that can be checked without making a class specialization or
+    # parsing a deferred string. Those paths retain their existing lazy template handling.
+    if not fixed_ann_shape(a, self.classes) or self.any_in([a]) or self.tmpl_ann(a):
+        return False
+    return self.ann_problem(a, False) == ""
+
+def gen_fixed_stores(self, n: Node, receiver: str, fields: dict[str, str]) -> bool:
+    # Every attribute initialized on self must have one independent storage annotation.
+    # scan_fields sees stores in source order. An annotation must establish storage before
+    # an unannotated store; a later annotation cannot prevent argument-dependent inference.
+    if n.kind in ["assign", "augassign"] and not fixed_assignments(n, receiver, fields):
+        return False
+    if n.kind == "annassign" and n.kids[0].kind == "attr" and n.kids[0].kids[0].kind == "name" and n.kids[0].kids[0].s == receiver:
+        if not self.fixed_ann(n.kids[1]):
+            return False
+        name = n.kids[0].s
+        t = self.ann(n.kids[1])
+        if name in fields and fields[name] != t:
+            return False
+        fields[name] = t
+    for k in n.kids:
+        if not self.fixed_stores(k, receiver, fields):
+            return False
+    return True
+
+def fixed_targets(n: Node, receiver: str, fields: dict[str, str]) -> bool:
+    if n.kind == "attr" and n.kids[0].kind == "name" and n.kids[0].s == receiver:
+        return n.s in fields
+    return all([fixed_targets(k, receiver, fields) for k in n.kids])
+
+def fixed_assignments(n: Node, receiver: str, fields: dict[str, str]) -> bool:
+    if n.kind in ["assign", "annassign", "augassign"]:
+        targets = n.kids[:-1] if n.kind == "assign" else n.kids[:1]
+        for target in targets:
+            if not fixed_targets(target, receiver, fields):
+                return False
+    return all([fixed_assignments(k, receiver, fields) for k in n.kids])
+
+def fixed_properties(st: Node, fields: dict[str, str]) -> bool:
+    # The annotation of a property assignment says nothing about the storage its
+    # setter writes. Leave that layout to the existing specialization analysis.
+    for d in st.kids[0].kids:
+        if d.kind == "def" and d.s in fields and len(d.kids) == 4:
+            deco = d.kids[3].s
+            if deco == "property" or deco.endswith(".setter") or deco.endswith(".deleter"):
+                return False
+    return True
+
+def fixed_receiver(n: Node, receiver: str, fields: dict[str, str]) -> bool:
+    # A field list from this body does not describe initialization delegated through
+    # self's methods, an alias or a helper. Such calls can reach a subclass's fields.
+    if n.kind == "call" and n.kids[0].kind == "attr":
+        target = n.kids[0].kids[0]
+        if target.kind == "name" and target.s == receiver:
+            return False
+    if n.kind == "attr" and n.kids[0].kind == "name" and n.kids[0].s == receiver:
+        return n.s in fields  # extracting a bound method can delegate initialization too
+    if n.kind == "name" and n.s == receiver:
+        return False
+    return all([fixed_receiver(k, receiver, fields) for k in n.kids])
+
+def gen_fixed_init(self, st: Node) -> bool:
+    # An unused imported subclass stays excluded until a real use needs its hierarchy.
+    # A retry admits only that class and its ancestors, keeping unused sibling overrides
+    # out of closed-world dispatch. No constructor-dependent layout survives the retry.
+    if st.s not in self.hierarchies:
+        for n in self.cnodes.values():
+            if n.kind == "subclass":
+                if n.s == st.s:
+                    return False
+                for b in n.kids[1:]:
+                    base = b.kids[0] if b.kind == "index" else b
+                    if base.kind == "name" and base.s == st.s:
+                        return False
+    return self.fixed_layout(st)
+
+
+def gen_fixed_hierarchy(self, name: str) -> bool:
+    # An activated generic initializer anywhere in this primary chain changed the
+    # formerly excluded descendants' admission. Other ordinary hierarchies stay unchanged.
+    while name in self.classes:
+        ci = self.classes[name]
+        if name in self.hierarchies and self.init_generic(ci.node):
+            return True
+        name = ci.base
+    return False
+
+
+def gen_hierarchy_chain(self, name: str, chain: list[str], seen: list[str]) -> bool:
+    # A requested declaration, its ordinary bases and constructor-type dependencies.
+    # A dependency may use annotated template-valued fields under the existing hierarchy
+    # rule; generic parameters still need an independent fixed-layout proof. Only syntax,
+    # never tentative inferred fields, justifies retaining a name across the retry.
+    if name in chain:
+        return True
+    if name in seen:
+        return False
+    seen.append(name)
+    node = self.nokey
+    for n in self.cnodes.values():
+        if n.s == name:
+            node = n
+    if node is self.nokey:
+        return False
+    st = node.kids[0] if node.kind == "subclass" else node
+    if name in self.tparams or name in self.nts or len(st.kids) != 1:
+        return False
+    if node.kind == "subclass":
+        for base in node.kids[1:]:
+            if base.kind != "name" or not self.hierarchy_chain(base.s, chain, seen):
+                return False
+    if self.init_generic(st, True) and not self.fixed_layout(st):
+        # Imported descendants may be deferred before acquiring a tag. Discover
+        # dependencies only when this layout needs their annotations to become nominal.
+        # A constructor with an already fixed layout can still specialize for a
+        # variable-layout parameter without activating that parameter's class.
+        named: dict[str, bool] = {}
+        self.init_param_classes(st, named)
+        for c in named:
+            if c != name and c in self.tmpl and not self.hierarchy_chain(c, chain, seen):
+                return False
+        return False  # recheck after a fresh pass, with only verified dependencies retained
+    chain.append(name)
+    return True
+
+
+def gen_request_hierarchy(self, name: str) -> None:
+    if self.xtry != "":
+        return  # a speculative adapter may decline without ever using this class
+    if len(self.newhints) > 0 and not self.final:
+        raise Rejoin()
+    chain: list[str] = []
+    if name in self.hierarchies:
+        return
+    self.hierarchy_chain(name, chain, [])
+    # A constructor parameter or field may name its still-templated base or dependency.
+    # Admit verified names first, then re-evaluate the child's annotation in a fresh Gen.
+    # Incomplete chains retain no unverified child; retries must add a new name.
+    if any(c not in self.hierarchies for c in chain):
+        for c in chain:
+            self.hierarchies[c] = True
+        # Main-module declarations already require eager validity. Batch their safe
+        # chains, without inspecting references in unused imported bodies or branches.
+        # Imported subclasses still activate only on a compiled use.
+        for n in self.cnodes.values():
+            if n.kind == "subclass" and owner(n.s) == "" and n.s not in self.hierarchies:
+                local_chain: list[str] = []
+                if self.hierarchy_chain(n.s, local_chain, []):
+                    for c in local_chain:
+                        self.hierarchies[c] = True
+        raise NeedHierarchy()
+
+
+def gen_retry_hierarchy(self, msg: str) -> None:
+    # Deferred annotation failures may be kept on a lazy function/class until its first
+    # use. Retry only when that exact stored class diagnostic would become terminal.
+    for name in self.deferred_hierarchies:
+        if name in self.unsupported and self.unsupported[name] in msg:
+            self.request_hierarchy(name)
+
+
+def gen_fixed_layout(self, st: Node) -> bool:
+    # A self-reference annotates this prospective nominal layout, even if an earlier
+    # pass classified the class as a template or a subclass has not been registered yet.
+    # Only syntax-safe field annotations are read below; no fields or specializations
+    # are inferred. Restore both registries even on an error or retry.
+    if st.s in self.classes and st.s not in self.tmpl:
+        return self.fixed_layout_body(st)
+    classes = self.classes
+    templates = self.tmpl
+    if st.s not in classes:
+        self.classes = dict(classes)
+        self.classes[st.s] = ClassInfo(st.s, st)
+    if st.s in templates:
+        self.tmpl = dict(templates)
+        del self.tmpl[st.s]
+    try:
+        return self.fixed_layout_body(st)
+    finally:
+        self.classes = classes
+        self.tmpl = templates
+
+
+def gen_fixed_layout_body(self, st: Node) -> bool:
+    # Constructor arguments may specialize code without specializing storage. Keep the
+    # source class itself when all its instance fields have concrete annotations; an
+    # Iterable field, inferred field, explicit generic class or deferred annotation still
+    # needs the existing class-template path.
+    if len(st.kids) != 1 or st.s in self.tparams or st.s in self.nts:
+        return False
+    fields: dict[str, str] = {}
+    init = st
+    for d in st.kids[0].kids:
+        if d.kind == "annassign" and d.kids[0].kind == "name":
+            if not self.fixed_ann(d.kids[1]):
+                return False
+            fields[d.kids[0].s] = self.ann(d.kids[1])
+        elif d.kind == "def" and d.s == "__init__" and len(d.kids) == 3:
+            init = d
+    if init is st or len(init.kids[0].kids) == 0 or has_kind(init.kids[2], "def") or has_kind(init.kids[2], "class"):
+        return False
+    if reads_builtin(init.kids[2], "callable", False, {}):
+        # scan_fields can choose different fields and field order after callable type
+        # guards. Retain those layouts, including their observable vars() order.
+        return False
+    receiver = init.kids[0].kids[0].s
+    if not self.fixed_stores(init.kids[2], receiver, fields) or not fixed_receiver(init.kids[2], receiver, fields):
+        return False
+    if not fixed_properties(st, fields) or not self.fixed_base_properties(st.s, fields, []):
+        return False
+    return fixed_assignments(init.kids[2], receiver, fields)
+
+def gen_fixed_base_properties(self, name: str, fields: dict[str, str], seen: list[str]) -> bool:
+    # A subclass's annotated assignment may still call an inherited property's setter.
+    # Its annotation then establishes no storage, just as for a property declared here.
+    if name in seen:
+        return True
+    seen.append(name)
+    for n in self.cnodes.values():
+        if n.s == name and n.kind == "subclass":
+            for b in n.kids[1:]:
+                if b.kind != "name":
+                    return False
+                for parent in self.cnodes.values():
+                    if parent.s == b.s:
+                        st = parent.kids[0] if parent.kind == "subclass" else parent
+                        if not fixed_properties(st, fields) or not self.fixed_base_properties(b.s, fields, seen):
+                            return False
+    return True
+
+
+def gen_init_template(self, st: Node, hier: bool = False) -> bool:
+    return self.init_generic(st, hier) and not self.fixed_init(st)
+
+def gen_init_param_classes(self, st: Node, out: dict[str, bool]) -> None:
+    # the program's classes that, were one a class template, would make class statement st one
+    # by a parameter of its own __init__ (init_template's rule, which this follows: no decorator,
+    # a parameter that is not *args or **kwargs, and a name where tmpl_ann looks for a template:
+    # Box, Box | None, list[Box]; a string's where its text is such an expression of names as the
+    # program's classes have them). A class that any other annotation names stays as it was: a
+    # template or not, that annotation compiled
+    if len(st.kids) > 1 or (st.s in self.nts and st.s not in self.cnts):
+        return
+    for d in st.kids[0].kids:
+        if d.kind == "def" and d.s == "__init__" and len(d.kids) == 3:
+            for p in d.kids[0].kids[1:]:
+                if p.kind == "param":
+                    self.ann_classes(p.kids[0], out)
+
+def gen_ann_classes(self, a: Node, out: dict[str, bool]) -> None:
+    # (as tmpl_ann reads annotation a: of a generic class's subscript, the arguments only)
+    if a.kind == "str":
+        if a.s.replace("_", "a").replace(".", "a").replace("[", "a").replace("]", "a").replace(",", "a").replace("|", "a").replace(" ", "a").isalnum():
+            self.ann_classes(self.parse_expr(a.s), out)
+        return
+    if a.kind == "name":
+        if a.s in self.classes:
+            out[a.s] = True
+        return
+    if a.kind == "index" and a.kids[0].kind == "name" and a.kids[0].s in self.tparams:
+        self.ann_classes(a.kids[1], out)
+        return
+    for k in a.kids:
+        self.ann_classes(k, out)
+
+def gen_fixed_template_field_ann(self, a: Node) -> bool:
+    # does annotation a give a field a type of its own: no Any, object or class template (whose
+    # specializations are types of their own, see tmpl_ann), as init_template requires of the
+    # annotations of __init__'s parameters
+    if a.kind == "str":
+        a = self.parse_expr(a.s)
+    return a.kind != "noann" and not self.any_in([a]) and not (a.kind == "name" and a.s == "object") and not self.tmpl_ann(a)
+
+def gen_init_makes_tmpl(self, n: Node, me: str, fixed: dict[str, bool]) -> bool:
+    # makes_tmpl for __init__'s statements n, me its first parameter, but for the value it stores into
+    # a field of me that the class body, or the store itself, annotates with a type of its own
+    # (fixed_template_field_ann, fixed): the field takes the object as that type, as a store by another method does
+    if (n.kind == "assign" or n.kind == "annassign") and len(n.kids) == (2 if n.kind == "assign" else 3):
+        t = n.kids[0]
+        if t.kind == "attr" and t.kids[0].kind == "name" and t.kids[0].s == me and (t.s in fixed or (n.kind == "annassign" and self.fixed_template_field_ann(n.kids[1]))):
+            return False
+    if n.kind == "call" and n.kids[0].kind == "name" and (n.kids[0].s in self.tmpl or (n.kids[0].s == "iter" and len(n.kids) == 2 and ITERS + "$list_iterator" in self.classes)):
+        return True
+    for k in n.kids:
+        if self.init_makes_tmpl(k, me, fixed):
+            return True
     return False
 
 def gen_template_fix(self, cs: list[Node]) -> str:
@@ -398,7 +727,7 @@ def gen_class_problem(self, m: Mod, st: Node, exc: bool) -> str:
                 return f"method {b.s}() has a decorator"  # (an @overload stub's calls are the error: see declare_fn)
             if len(ps) == 0 and not static:
                 return f"method {b.s}() has no {'cls' if deco != '' else 'self'} parameter"
-            for i in range(len(ps) if not template_ok(b.s) and not (b.s == "__init__" and not exc and self.init_template(st)) else 0):
+            for i in range(len(ps) if not template_ok(b.s) and not (b.s == "__init__" and (not exc or st.s in self.hierarchies) and self.init_generic(st)) else 0):
                 if ps[i].kind != "param":
                     return f"method {b.s}() takes *args or **kwargs"
                 if (i > 0 or static) and ps[i].kids[0].kind == "noann":
@@ -612,7 +941,6 @@ def gen_hook(self, st: Node) -> None:
         if nm in own:
             h = f"{short(st.s)}.{nm}"
     self.hooks[st.s] = h
-    self.cnodes[st.line] = st
 
 def gen_path_of(self, n: Node) -> str:
     # the dotted name an attribute chain spells (its first name qualified), or ""
@@ -803,14 +1131,15 @@ def gen_abc_class(self, c: str) -> bool:
         c = self.classes[c].base
     return False
 
-def gen_program(self, mods: list[Mod]) -> str:
+def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
+    self.pipeline.begin("prepare")
     started = timing_start()
     phase = "runtime" if self.rtmode else "program"
     self.opts = optimizations()
     self.identity_modules(mods)  # (which modules' code tracks numeric identity: dynamic.py)
-    # (lib's modules of range objects and of object()'s bind no global of another module: the
+    # (lib's modules of range objects, of object()'s and of complex numbers bind no global of another module: the
     # names they bind do not keep a global of the program from being constant)
-    own = [m for m in mods if m.name != RANGES and m.name != OBJECTS]
+    own = [m for m in mods if m.name != RANGES and m.name != OBJECTS and m.name != COMPLEXS]
     if "moduleints" in self.opts:
         self.intglobals = module_ints(own, self.intat)
     self.strglobals = module_strs(own, self.strtuples)
@@ -846,7 +1175,7 @@ def gen_program(self, mods: list[Mod]) -> str:
     for m in mods:
         self.generic_aliases(m.body.kids)
     for m in mods:
-        m.body.kids = self.typing_forms(m, m.body.kids, False)
+        m.body.kids = self.typing_forms(m, m.body.kids, False, False, True)
         for i in range(len(m.body.kids)):
             st = m.body.kids[i]
             if st.kind == "subclass" and len(st.kids) == 2 and self.nt_base(st.kids[1]):
@@ -873,14 +1202,18 @@ def gen_program(self, mods: list[Mod]) -> str:
             elif st.kind == "typealias" and st.s in self.taliases:
                 m.body.kids[i] = mk("pass", "", st.line, [])  # (a type alias, which only annotations name)
             elif st.kind == "assign" and st.kids[0].kind == "name" and st.kids[0].s in self.taliases and self.taliases[st.kids[0].s] is st and not self.alias_kept(st.kids[0].s):
-                m.body.kids[i] = mk("pass", "", st.line, [])
+                # (N = NewType("N", T) binds N where it runs, as a def does: a call N(x) that may come
+                # first checks it, see call)
+                m.body.kids[i] = mk("newtype", st.kids[0].s, st.line, []) if self.newtype_name(st.kids[0].s) else mk("pass", "", st.line, [])
     for q in self.taliases:
         # (CPython evaluates an assigned alias's value where it assigns it, a type statement's
         # only where its __value__ is read)
-        why = self.alias_problem(self.taliases[q].kids[1]) if self.taliases[q].kind == "assign" else ""
+        # (of N = NewType("N", T), T: alias_value)
+        why = self.alias_problem(self.alias_value(q)) if self.taliases[q].kind == "assign" else ""
         if why != "":
             self.line = self.taliases[q].line
-            self.err(why[1:] if why.startswith("!") else f"{why} (CPython evaluates this type alias's value when the assignment runs)")
+            what = "this NewType's type" if self.newtype_name(q) else "this type alias's value"
+            self.err(why[1:] if why.startswith("!") else f"{why} (CPython evaluates {what} when the assignment runs)")
     if len(self.taliases) > 0:
         self.recursive_aliases()
         # an annotation that names a type alias is its value (unalias)
@@ -888,9 +1221,11 @@ def gen_program(self, mods: list[Mod]) -> str:
             self.unalias_all(m.body)
     class_counts: dict[str, int] = {}
     for m in mods:
-        for st in m.body.kids if m.name != "" else []:
+        for st in m.body.kids:
             if st.kind == "class" or st.kind == "subclass":
-                class_counts[st.s] = class_counts.get(st.s, 0) + 1
+                self.cnodes[st.line] = st
+                if m.name != "":
+                    class_counts[st.s] = class_counts.get(st.s, 0) + 1
     for m in mods:
         for st in m.body.kids:
             self.line = st.line
@@ -903,12 +1238,26 @@ def gen_program(self, mods: list[Mod]) -> str:
                 # keeping the earlier ClassInfo would silently construct the stale class.
                 why = f"redefinition of class '{st.s}' is not supported"
             elif st.kind == "subclass":
-                why = self.subclass_problem(st)
+                why = self.generic_subclass(st)
+                if why == "":
+                    why = self.subclass_problem(st)
                 if why == "" and m.name != "":
                     why = self.class_problem(m, st.kids[0], True)
             elif st.kind == "class" and m.name != "":
                 why = self.class_problem(m, st, False)
+            deferred = st.kind == "subclass" and (why.startswith("inheritance with generic class templates") or any(b.kind == "name" and b.s in self.deferred_hierarchies for b in st.kids[1:]))
+            if deferred:
+                self.deferred_hierarchies[st.s] = True
+            for x in (st.kids[0] if st.kind == "subclass" else st).kids[0].kids if why != "" else []:
+                if x.kind == "assign" and x.s == "Final":
+                    # (x: Final = v, which typing_forms made a class attribute: rejected where it
+                    # is, as before, in a class that is not compiled, whose creation may read its
+                    # annotations, as a NamedTuple's or a TypedDict's does)
+                    self.line = x.line
+                    self.err(FINAL_FIELD)
             if why != "" and m.name == "":
+                if deferred:
+                    self.request_hierarchy(st.s)
                 self.err(why)
             if why != "":
                 # a class of an imported module that Pystachy cannot compile: an error only
@@ -964,16 +1313,39 @@ def gen_program(self, mods: list[Mod]) -> str:
             tag += 1
             ci.tag = tag
     self.cm_exits()  # (decided while the class templates are classes too: see cm_exits)
+    # The classes for which a template is an error, as init_template's hier takes them: those of
+    # a hierarchy, and the classes that the __init__ of one of these takes as a parameter
+    # (Checker(errors: Errors)), which a template would make a template in turn. A program with
+    # such a parameter was rejected while its class stayed a template, so only programs that did
+    # not compile see the class compiled as an ordinary one, used or not
+    # Activated dependencies may have no class tag: their requesting imported child
+    # was still deferred when declarations were collected on this pass.
+    fixedcls: dict[str, bool] = dict(self.hierarchies)
+    for ci in self.classes.values():
+        if ci.tag > 0:
+            fixedcls[ci.name] = True
+    grow = True
+    while grow:
+        grow = False
+        for ci in list(self.classes.values()):
+            if ci.name in fixedcls:
+                named: dict[str, bool] = {}
+                self.init_param_classes(ci.node, named)
+                for c in named:
+                    if c not in fixedcls and self.classes[c].exc == "":
+                        fixedcls[c] = True
+                        grow = True
     grow = True
     while grow:
         # the class templates: an __init__ parameter without an annotation, or with one that
         # names a class template (Holder(b: Box)), which then types nothing either
         grow = False
         for ci in self.classes.values():
-            if ci.name not in self.tmpl and ci.exc == "" and self.init_template(ci.node):
+            if ci.name not in self.tmpl and ci.exc == "" and self.init_template(ci.node, ci.name in fixedcls):
                 self.tmpl[ci.name] = True
                 grow = True
     for ci in self.classes.values():
+        ci.init_only = ci.exc == "" and ci.name not in self.tmpl and self.init_generic(ci.node)
         if ci.tag != 0 and ci.name in self.tmpl:
             self.line = ci.node.line
             self.err("inheritance with generic class templates is not supported: " + self.template_fix([ci.node]))
@@ -1074,7 +1446,7 @@ def gen_program(self, mods: list[Mod]) -> str:
     for i in range(len(mods)):
         self.flow_program(tops[i], mods[i].name, mfns[mods[i].name], mcls[mods[i].name], i == 0)
     for nm in self.gflag:
-        if nm in self.funcs or nm in self.classes:
+        if nm in self.funcs or nm in self.classes or self.newtype_name(nm):
             self.global_var(f"@g.{nm}.def", "bool")
     for m in mods:
         # a module global that module code only sets to None (an optional accelerator's
@@ -1100,6 +1472,7 @@ def gen_program(self, mods: list[Mod]) -> str:
         for st in m.body.kids if m.name != "" else []:
             if st.kind == "assign" and st.s == "docinit":
                 docinfer[st.kids[0].s] = True
+    early: dict[str, str] = {}  # (the types of the constants typed before any module code compiles)
     for m in mods:
         for st in m.body.kids if m.name != "" else []:
             # The loader's implicit __doc__ value exists before a circular import can read
@@ -1112,12 +1485,39 @@ def gen_program(self, mods: list[Mod]) -> str:
                 k = st.kids[1].kids[0].kind if st.kids[1].kind == "unary" and is_const(st.kids[1]) else st.kids[1].kind  # (-1, -2.5)
                 if k == "int" or k == "float" or k == "str":
                     self.declare(st.kids[0].s, k)
+                    early[st.kids[0].s] = k
                 elif k == "True" or k == "False":
                     self.declare(st.kids[0].s, "bool")
+                    early[st.kids[0].s] = "bool"
+    grown = True
+    while grown:
+        # and so is a module's copy of such a constant of another module (from m import K, also as
+        # mypy's types.py re-exports type_visitor's ANY_STRATEGY), or of such a copy: typed where a
+        # circular import reads it (earlycopies, Gen.load_name), as the import binds it before its
+        # module imports any module after it, and a read before then raises ImportError, as for
+        # the constant itself
+        grown = False
+        for m in mods:
+            for st in m.body.kids if m.name != "" else []:
+                if st.kind == "assign" and st.s == "from" and len(st.kids) == 2 and st.kids[0].kind == "name" and st.kids[1].kind == "name" and st.kids[1].s in early and st.kids[0].s not in early and st.kids[0].s not in self.gtypes and st.kids[0].s not in self.noneglobals:
+                    early[st.kids[0].s] = early[st.kids[1].s]
+                    self.earlycopies[st.kids[0].s] = early[st.kids[1].s]
+                    grown = True
     for m in mods:
         self.mfile[m.name] = m.path[2:] if m.path.startswith("./") else m.path
     timing_end(phase + ".prepare", started)
+    self.pipeline.complete("prepare")
+    return PreparedProgram(self.pipeline, mods, tops)
+
+
+def gen_discover_program(self, prepared: PreparedProgram) -> None:
+    if prepared.owner is not self.pipeline:
+        fail("internal error: prepared program belongs to another compiler attempt", 0)
+    self.pipeline.begin("discover")
     started = timing_start()
+    phase = "runtime" if self.rtmode else "program"
+    mods = prepared.modules
+    tops = prepared.tops
     self.compiling = True
     self.modlevel = True
     for m in mods:
@@ -1132,9 +1532,9 @@ def gen_program(self, mods: list[Mod]) -> str:
                     self.err(f"cannot infer the initial optional type of '{short(name)}'; annotate its later assignment")
                 self.declare(name, t)
     for i in range(len(mods)):
-        if mods[i].name != ITERS and mods[i].name != RANGES and mods[i].name != OBJECTS:
-            # (lib's modules of iter()'s classes, of range's and of object's run no code: nothing
-            # imports them, see Loader.program)
+        if mods[i].name != ITERS and mods[i].name != RANGES and mods[i].name != OBJECTS and mods[i].name != COMPLEXS:
+            # (lib's modules of iter()'s classes, of range's, of object's and of complex's run no
+            # code: nothing imports them, see Loader.program)
             self.function(self.inits[mods[i].name], tops[i])
         self.inited[mods[i].name] = True
     self.modlevel = False
@@ -1159,7 +1559,7 @@ def gen_program(self, mods: list[Mod]) -> str:
                 if rt_subset(RTSYM[f.ll[1:]], [f.ret] + f.ptypes) != "":
                     self.err(f"{f.name}() is declared as {typestr(f.ret)}({', '.join([typestr(t) for t in f.ptypes])}), but the compiler calls it as {rt_subset(RTSYM[f.ll[1:]], [f.ret] + f.ptypes)} (RUNTIME's {RTSYM[f.ll[1:]]})")
                 self.runtime(f.ll[1:])
-                self.externs[f.ll] = ""
+                self.extern_decl(f, True)
             else:
                 self.untold(f, [f.ret] + f.ptypes, "declared")
                 self.extern_decl(f)
@@ -1169,7 +1569,7 @@ def gen_program(self, mods: list[Mod]) -> str:
         for f in ci.methods.values():
             if f.cls != ci.name or (ci.name in self.tmpl and f.deco == ""):
                 continue  # (an exception class's base's; a class template's, but its static and class methods: its specializations')
-            if ci.mod != "" and f.ll not in self.lazy:
+            if (ci.mod != "" or ci.init_only) and f.ll not in self.lazy:
                 self.lazy[f.ll] = f
             elif f.ll not in self.lazy and f.ll not in self.compiled and not f.generic:
                 self.function(f, f.node.kids[2].kids)
@@ -1245,76 +1645,7 @@ def gen_program(self, mods: list[Mod]) -> str:
     # terminal). Finish these even if earlier fields used the ordinary join budget.
     if len(self.newhints) > 0 and (not self.final or any(k.startswith("cmpfield:") or k.startswith("cmpwrite:") for k in self.newhints)):
         raise Rejoin()  # (joins found wider types: the next pass compiles them, see join_hint)
-    started = timing_start()
-    # The completed adapter set makes candidate discovery independent of which
-    # caller first compiled a kernel. Versions add no frontend inference state.
-    if not self.rtmode and "callbacks" in self.opts:
-        specialize_callbacks(self.fns, self.adapters, self.cvos)
-    # the whole program is built: its functions are printed in the order they were completed
-    for j in range(len(self.fns)):
-        self.fll[self.fns[j].f.ll] = j
-    if len(NONUMS) + len(NOVALS) + len(NOLABELS) > 0:
-        fail("internal error: an op changed the lists all ops start with", 0)
-    chk = os.getenv("PYSTACHY_IRCHECK", "") == "1"
-    dump = os.getenv("PYSTACHY_IRFX", "") == "1" and not self.rtcache
-    on = self.opts
-    if self.eh or len(on) > 0 or chk or dump or not self.rtmode:
-        # the passes and eh_ir read the effect summaries (eh_ir: which calls may raise), and so
-        # does the native depth policy, which is no optimization; the IR check computes them
-        # too, so that the tests run effects even with every pass off
-        self.effects()
-    if not self.rtmode:
-        # which source functions count toward the recursion limit (docs/internals.md#native-recursion-depth):
-        # their guards' effects join the summaries before any pass or verification reads them
-        self.recursionscope()
-    if chk:
-        # Union proofs distinguish read-only callees from calls that can invalidate
-        # storage facts, so the first verification uses complete effect summaries too.
-        for fn in self.fns:
-            self.verify(fn, False)
-    timing_end(phase + ".analysis", started)
-    started = timing_start()
-    if len(on) > 0:
-        # (before eh_ir: a block that a try statement covers keeps its exception edge to the
-        # landing block, Blk.handler, which the passes count, see preds)
-        if "listguard" in on:
-            self.callsites = call_counts(self.fns)
-        changed = False
-        for fn in self.fns:
-            if self.optimize(fn, on) > 0:
-                changed = True  # optimize verifies each changed pass when checks are enabled
-        if changed and dump:
-            self.effects()  # (what the passes left: tests/ir/*.fx pin them)
-    timing_end(phase + ".optimize", started)
-    started = timing_start()
-    for fn in self.fns if self.eh else self.fns[:0]:
-        if len(fn.tries) > 0:
-            self.eh_ir(fn)
-            if chk:
-                self.verify(fn, True)
-    if dump:
-        for fn in self.fns:
-            print(f"{fn.f.ll}: {fxs(fn.fx)}".rstrip(), file=sys.stderr)
-    if "tupleret" in on:
-        self.tuple_rets()  # (which functions return their tuples' slots by value: lowering reads it)
-    timing_end(phase + ".finalize", started)
-    started = timing_start()
-    for fn in self.fns:
-        self.lower(fn)
-        # its LLVM text is all that is left to print: its IR goes (its summary, IFn.fx, stays)
-        fn.blocks = []
-        fn.slots = []
-        fn.loops = []
-        fn.cold = {}
-        fn.fa = {}
-    for op in ["eq", "cmp", "repr"] if not self.rtmode else []:
-        self.dispatch(op)  # (each program defines them: runtime.py calls them like runtime.c)
-    ir = self.lower_module()
-    timing_end(phase + ".lower", started)
-    if not one_nums_intact():
-        fail("internal error: an op changed the shared list of its number (one_num)", 0)
-    RENAMED.clear()  # (the program's classes': runtime.py, which the driver may compile next, has none)
-    return ir
+    self.pipeline.complete("discover")
 
 # ---- definite assignment, before code generation: CPython raises UnboundLocalError or
 # NameError when a read finds its variable unassigned. Reads that cannot are plain loads;

@@ -3,9 +3,8 @@
 Issues, pull requests, documentation, release notes and reports follow this guide,
 whether a person or a coding agent writes them. The
 [submission format](../CONTRIBUTING.md#issues-and-pull-requests) sets the sections and
-length of issues and pull requests, and
-[AGENTS.md](../AGENTS.md#state-compatibility-and-performance-precisely) sets how to state
-compatibility and performance claims.
+length of issues and pull requests, and the [evidence guide](evidence.md) sets how to
+support compatibility and performance claims.
 
 ## Write for the reader
 

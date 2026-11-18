@@ -141,7 +141,7 @@ jobs:
         run: python3 -m pip install "$(sed -n '/^typing_extensions==/p' tools/requirements-dev.txt)"
 
       - name: Workload pytest oracle dependency
-        if: matrix.group == 'benchmarks' || ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))
+        if: matrix.group == 'benchmarks' || ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'gc-aot-2'))
         run: python3 -m pip install "$(sed -n '/^pytest==/p' tools/requirements-dev.txt)"
 
       # No run-id or token: download-artifact can only select this workflow run here.
@@ -210,7 +210,7 @@ jobs:
           case "$VERIFY_GROUP" in
             contracts)
               PATH="$lean_bin:$PATH" \
-                make check-lean-guards LEAN_GUARD_FLAGS='--jobs 2 --report build/verify/lean-guards.json tools/lean_boundary/examples/null_guards.py tools/lean_boundary/examples/union_guards.py' ;;
+                make check-lean-guards LEAN_GUARD_FLAGS='--jobs 2 --report build/verify/lean-guards.json tools/lean_boundary/examples/null_guards.py tools/lean_boundary/examples/null_reloads.py tools/lean_boundary/examples/union_effects.py tools/lean_boundary/examples/union_guards.py tools/lean_boundary/examples/union_split.py tools/lean_boundary/examples/union_memory.py tools/lean_boundary/examples/union_defaults.py tools/lean_boundary/examples/gc_arrays.py tools/lean_boundary/examples/field_init.py' ;;
           esac
           case "$VERIFY_GROUP" in
             scaling)
@@ -274,14 +274,14 @@ jobs:
         run: make bench-match-check BENCH_COMPILER=build/verify/pystachy2
 
       - name: Shared pytest example assertions
-        if: ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))
+        if: ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'gc-aot-2'))
         env:
           PYSTACHY_HOME: ${{ github.workspace }}
         run: make test-pytest-workloads PYTEST_WORKLOAD_COMPILER=build/verify/pystachy2 PYTEST_WORKLOAD_ARGS='--group examples'
 
       # Retain the hosted compiler and original pytest oracle without using Lint's budget.
       - name: Generated native pytest runner parity
-        if: matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))
+        if: matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'gc-aot-2'))
         env:
           PYSTACHY_HOME: ${{ github.workspace }}
         run: make test-pytest-native PYTEST_NATIVE_COMPILER="$PWD/build/verify/pystachy2"

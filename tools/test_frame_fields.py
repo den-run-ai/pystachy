@@ -56,21 +56,23 @@ NOT_RESET = {
 # Gen's fields that hold the program's state (#767): each nested compile reads and extends them,
 # and the function it interrupts sees what it added. Only Gen.__init__ assigns them of the lists.
 # source_lines accumulates metadata across module lowering, outside AST/dry traversal.
+# pipeline belongs to the compilation attempt; nested functions never advance or restore it.
 PROGRAM = """
-    classes tmpl compiling utags specdone funcs aliases imports fglobals mvars gtypes globs gcroots
+    pipeline classes tmpl compiling utags specdone funcs aliases imports fglobals mvars gtypes globs gcroots
     consts fieldnames bconsts tconsts tconstdata lconsts strs bstrs strvals vnodes cmexit rtfns opfxs out source_lines fns fll callsites summaries xcls xvals
     xmods xsigs xctors xtypes exctree eh opts reds lazy lazyat wake called gflag ocls ocmp hcls one
-    xobj impg wide nokey nonereads noneglobalpending attrvals attrown hints newhints final xnot newx retseen
-    template_instances template_retained retainers unsupported cnodes hooks chooks flagged unraised
-    noneglobals intglobals rangeused objectused intat strglobals strtuples abstracts abcmeta
-    constflags late ext libdir prefix csyms csymline cdirect extvars unicode_audit rtmode rtdefs
-    rtcache externs deps comp flowctx closures clokeys adapters adrets ncv cacheforms decorated
+    xobj impg wide nokey nonereads noneglobalpending attrvals attrown hints newhints final xnot newx xwant newwant ncand retseen
+    template_instances template_retained retainers unsupported hierarchies deferred_hierarchies cnodes hooks chooks flagged unraised
+    noneglobals intglobals rangeused objectused declflag complexused intat strglobals strtuples abstracts abcmeta
+    constflags late ext libdir prefix moddirs csyms csymline cdirect extvars unicode_audit rtmode rtdefs
+    rtcache externs deps comp flowctx closures clokeys adapters adrets ncv dispatchers cacheforms decorated
     decoexprs cvos ngenexp vowned gendrops gproto excread causeread coros tbaa tbaacls listlen vrets vconst vcalls
     gkk holes twin_of twin_set origin inits mfile compiled pending qret qholes qused qforward qroot
     inited guessed galias nts cnts ntdflts hasfrozen cvars typevars tvtuples tvdefaults tparams
     pep695 taliases recursive reflrecs reflstores refllate refltexts rtdatas dyntypes dynclasses
     dynfns dynkeys dynlines dynsig dynfuncs dynfnt dynboxes dynwide dynrets dynrline dynseen gidbox
     idoff idfull idevent idsplit idtry idhint gendrops_counted genplain rdpass entries resumes_counted
+    genbase genargs earlycopies
 """.split()
 # Gen's fields that hold a module's state, one lowering's, or one operation's, which the operation
 # sets and then restores or clears: a nested compile that starts inside the operation sees them.
@@ -98,6 +100,8 @@ SCOPED = {
     "joinname": "its name, with joinkind",
     "jointype": "its type, with joinkind",
     "joinsrc": "the value being assigned: stmt saves, sets and restores it around the store",
+    "guessvars": "the variables of the comprehensions guess() is typing: set and restored around each element's guess",
+    "guessowner": "the function whose comprehension binds each of guessvars: set and restored with them",
     "making": "the nested compiles in progress (messages, the depth limit), which a nested compile must see",
     "template_bytes": "bytes of the active instances' signatures: a limit, which a nested compile must see",
     "lib": "declaring an imported module's function, whose errors wait for its calls: set around declare_fn",

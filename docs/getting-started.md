@@ -41,13 +41,14 @@ From a source checkout, use `./pystachy` after `make`, or replace `pystachy` wit
 
 ## Try an unsupported construct
 
-Fixed tuple and literal `match` patterns are supported. A list subject still needs
-an ordinary conditional. Insert this unsupported list pattern after the definition:
+Sequence, class and literal `match` patterns are supported. A mapping pattern still
+needs an ordinary conditional. Insert this unsupported mapping pattern after the
+definition:
 
 ```python
 def sum_squares(n: int) -> int:
-    match [n]:
-        case [0]:
+    match {"n": n}:
+        case {"n": 0}:
             return 0
     total = 0
     for i in range(n):
@@ -61,7 +62,7 @@ print(sum_squares(10))
 CPython still prints `285`. `pystachy run squares.py` rejects this program:
 
 ```text
-squares.py:3: error: sequence patterns require a fixed tuple subject, got list[int]
+squares.py:3: error: mapping patterns are not supported
 ```
 
 The diagnostic identifies the source file, line and unsupported construct. Replace

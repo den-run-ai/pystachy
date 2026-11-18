@@ -1,0 +1,3 @@
+['md5', 'sha1', 'sha224', 'sha256']
+ValueError: unsupported hash type sha512
+[exit 0]
