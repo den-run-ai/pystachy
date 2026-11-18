@@ -232,7 +232,7 @@ specialized classes are supplied by the frontend; the IR does not turn them into
 
 ## Instructions and control flow
 
-The exact operation table is `IROPS`; its current groups are:
+`OPS` in [specs](../src/pystachy_compiler/specs.py) defines every operation, one row each. Its groups are:
 
 | Purpose | Operations |
 |---|---|
@@ -258,6 +258,84 @@ The exact operation table is `IROPS`; its current groups are:
 | Optimized list reads and stores | `list.len`, `list.load`, `list.store` |
 | Exception handling | `landing`, `throw`, `exc.match` |
 | Generators (LLVM coroutines) | `gen.start`, `gen.yield`, `gen.ret`, `gen.promise`, `gen.resume`, `gen.drop` |
+
+### Operation reference
+
+Each row of `OPS` gives an operation's effects, how many operands, result numbers and labels
+it holds, which of the fields `t` (result type), `s` (text), `k` (integer) and `x` (descriptor)
+it may set, and which result number names its value for the passes. `IROPS`, the result
+counts and the value index are read from those rows. With `PYSTACHY_IRCHECK=1` the verifier
+holds every instruction to its row before the checks specific to its operation run.
+`tools/typed_ir_ops.py --write` writes this table from the rows, and `--check` fails when
+it is out of date.
+
+<!-- typed-ir-ops: begin (written by tools/typed_ir_ops.py --write) -->
+
+| Operation | Effects | Operands | Results | Labels | Fields | Value |
+|---|---|---|---|---|---|---|
+| `slot` | entry storage | 0 | 1 | 0 | `t`, `s`, `k` | none |
+| `rt` | per instruction | 0 or more | 0 or 1, by signature | 0, or 2 as an invoke | `t`, `s`, `k`, `x` | first |
+| `call` | per instruction | 0 or more | 0 or 1, by signature | 0, or 2 as an invoke | `t`, `s`, `x` | none |
+| `icall` | per instruction | 1 or more | 0 or 1, by signature | 0, or 2 as an invoke | `t` | none |
+| `init` | per instruction | 0 | 0 | 0, or 2 as an invoke | `s` | none |
+| `br` | ends its block | 0 | 0 | 1 | none | none |
+| `cbr` | ends its block | 1 | 0 | 2 | none | none |
+| `switch` | ends its block | 2 or more | 0 | one per operand | none | none |
+| `check` | ends its block, `R` | 1 | 0 | 1 | `s`, `x` | none |
+| `ret` | ends its block | 0 to 1 | 0 | 0 | none | none |
+| `ret.none` | ends its block | 0 | 0 | 0 | none | none |
+| `raise` | ends its block, `R`, `N` | 2 | 0 | 0 | `s` | none |
+| `unreachable` | ends its block | 0 | 0 | 0 | none | none |
+| `phi` | none | 1 or more | 1 | one per operand | `t` | none |
+| `select` | none | 3 | 1 | 0 | `t` | first |
+| `ovf` | none | 2 | 3 | 0 | `t`, `s` | none |
+| `list.load` | `rL` | 2 | 4 | 0 | `t` | none |
+| `list.store` | `rL`, `wL` | 3 | 3 | 0 | none | none |
+| `list.len` | `rL` | 1 | 1 | 0 | `t` | first |
+| `alloc.fixed` | `A` | 0 | 1 | 0 | `t` | none |
+| `vtuple.make` | `A` | 0 or more | 1 | 0 | `t` | none |
+| `mem.load` | per instruction | 1 | 1 | 0 | `t` | first |
+| `mem.store` | per instruction | 2 | 0 | 0 | none | none |
+| `mach.load` | per instruction | 1 | 1 | 0 | `t`, `s` | first |
+| `mach.store` | per instruction | 2 | 0 | 0 | `s` | none |
+| `mach.addr` | none | 2 | 1 | 0 | `t`, `s`, `k` | first |
+| `tuple.load` | `rL`, `rD`, `rO` | 1 | 2 | 0 | `t`, `s`, `k` | each |
+| `tuple.store` | `wL`, `wD`, `wO` | 2 | 1 | 0 | `s`, `k` | each |
+| `field.addr` | none | 1 | 1 | 0 | `t`, `k` | first |
+| `slot.pack` | none | 1 | 1 | 0 | `t` | first |
+| `slot.unpack` | none | 1 | 1 | 0 | `t` | first |
+| `scalar.bin` | none | 1 to 2 | 1 | 0 | `t`, `s`, `x` | first |
+| `scalar.cast` | none | 1 | 1 | 0 | `t`, `s` | first |
+| `scalar.cmp` | none | 2 | 1 | 0 | `t`, `s` | first |
+| `num.cast` | none | 1 | 1 | 0 | `t` | first |
+| `num.cmp` | none | 2 | 1 | 0 | `t`, `s` | first |
+| `int.ucmp` | none | 2 | 1 | 0 | `t`, `s` | first |
+| `ptr.cmp` | none | 2 | 1 | 0 | `t`, `s` | first |
+| `empty.kind` | `wD` | 1 | 1 | 0 | `k` | none |
+| `union.tag` | `rL`, `rD`, `rO` | 1 | 1 | 0 | `t` | none |
+| `union.payload` | `rL`, `rD`, `rO` | 1 | 2 | 0 | `t`, `s` | second |
+| `union.raw` | `rL`, `rD`, `rO` | 1 | 2 | 0 | `t` | second |
+| `dyn.type` | none | 1 | 1 | 0 | `t` | first |
+| `dyn.payload` | none | 1 | 2 | 0 | `t`, `s` | second |
+| `dyn.raw` | none | 1 | 2 | 0 | `t` | second |
+| `big.make` | none | 2 | 2 | 0 | `t` | second |
+| `big.lo` | none | 1 | 1 | 0 | `t` | first |
+| `big.hi` | none | 1 | 1 | 0 | `t` | first |
+| `landing` | ends its block | 1 | 2 | 1 | `t` | none |
+| `throw` | ends its block, `R`, `N` | 1 | 0 | 0 | none | none |
+| `exc.match` | none | 2 | 2 | 0 | `t` | none |
+| `gen.start` | ends its block, `A` | 1 | 0 | 1 | none | none |
+| `gen.yield` | ends its block, `U` | 1 to 3 | 2 | 1 | `k` | none |
+| `gen.ret` | ends its block | 0 to 2 | 2 | 0 | none | none |
+| `gen.promise` | none | 0 to 1 | 1 | 0 | `t` | none |
+| `gen.resume` | `U` | 1 | 0 | 0, or 2 as an invoke | none | none |
+| `gen.drop` | `A`, `I`, `rL`, `wL`, `rD`, `wD`, `rO`, `wO`, `rG`, `wG`, `rF`, `wF` | 1 | 0 | 0 | none | none |
+
+<!-- typed-ir-ops: end -->
+
+"Per instruction" effects are a call's (its runtime entry's or its callee's summary) or a
+memory operation's (its address's): see [effects](#effects). An invoke is a call that an
+exception edge has made end its block.
 
 The operation registry is closed: unknown operations, including `raw`, are rejected.
 Operations carry typed operands and finite operators, predicates, flags and metadata;
