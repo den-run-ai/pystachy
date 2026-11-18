@@ -126,7 +126,7 @@ plus the template and pattern attributes, are available.
 
 Template subclasses are unsupported. Keyword values of different types, as in
 `substitute(name="Ann", count=3)`, are looked up as values of their union type.
-`Template.flags` is an int, and `capwords` capitalizes ASCII letters only.
+`Template.flags` is an int.
 
 `Formatter` supports `format`, `vformat`, `parse`, `get_field`, `get_value`,
 `check_unused_args`, `format_field` and `convert_field`, and subclasses that
@@ -163,8 +163,9 @@ keyword arguments; the upstream generator and grouping algorithm are unchanged.
 `tests/programs/upstream/upstream_difflib_context.py` checks selected CPython output-format
 assertions and empty, insertion, deletion, replacement, grouping and Unicode cases.
 `ndiff()` and `Differ.compare()` still fail because their recursive `_fancy_helper()`
-generator yields a type the compiler cannot infer; `HtmlDiff`'s class attribute types
-also remain unsupported.
+generator yields a type the compiler cannot infer. `HtmlDiff`'s class attributes now take
+their module constants' types, but `make_table()` still fails: `_make_prefix()` sets a field
+(`self._prefix`) that `__init__` does not.
 
 ### `gettext`
 
@@ -388,8 +389,7 @@ data, comment, declaration, processing-instruction and reference callbacks.
 `scripting` are exercised by the probe tests, including RAWTEXT and RCDATA.
 Attribute records use `list[tuple[str, str | None]]`; missing values remain None.
 
-Column offsets count Unicode code points. Tag/attribute name case conversion uses
-ASCII-only `str.lower`, so non-ASCII uppercase names can differ from CPython. User subclass
+Column offsets count Unicode code points. User subclass
 constructors and callback signatures need compatible annotations. Multiple inheritance
 and dynamic attributes remain unavailable.
 
@@ -767,6 +767,31 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
 - Members are objects of the class, with `name`, `value`, `_name_` and `_value_`, CPython's
   `repr()`, `str()`, `format()` and `hash()`, identity equality, and copies that are the member
   itself; the class's methods, properties and class methods work on them as on other objects.
+  An `__init__` of the class gives them attributes: it is called for each member, which has its
+  name and value by then, with the items of the value (a tuple's, else the value), and for an
+  alias before its object is dropped, as `EnumType` calls it, and what it returns is dropped; a
+  parameter without an annotation takes the type of its item, or of its default value where no
+  item reaches it ([test](../tests/programs/library/lib_enum_init.py),
+  [test](../tests/programs/library/lib_enum_init_forms.py)). A member is initialized where the
+  class body binds it, not once the body has run: a default value that a member's value leaves
+  out is a literal where the members precede the `def` statement
+  ([test](../tests/programs/library/lib_enum_init_defaults.py)); another default is a
+  compile-time error there, and is evaluated by the `def` statement where `__init__` comes first.
+- A `__new__` of the class, in the form CPython's documentation gives one, makes the members of
+  their values' items: it makes the member with `object.__new__(cls)` (`int.__new__(cls, v)` in
+  an `IntEnum`, `str.__new__(cls, v)` in a `StrEnum`), may assign `_value_` and attributes, and
+  returns the member in its last statement. The compiler computes each member's `_value_` from
+  the value's items, `len(cls.__members__)` and literals, with `int`'s and `str`'s operators,
+  so a member's value may differ from the value written (`inspect`'s `_ParameterKind`, `http`'s
+  `HTTPStatus`); the rest of the body runs for each member, aliases included. An enum class
+  without members hands its `__new__` to the classes deriving from it (the documentation's
+  `AutoNumber`) ([test](../tests/programs/library/lib_enum_new.py)).
+- `@_simple_enum(etype)` makes an enum class of a class statement without bases, as one
+  deriving from `etype` ([test](../tests/programs/library/lib_enum_simple.py)). As in CPython,
+  a name bound to `auto()` in such a body has no value that a later member can read.
+  `@global_enum` binds each member's name in the module and makes `repr()` the module's name
+  and the member's, and an `Enum`'s `str()` the member's name
+  ([test](../tests/programs/library/lib_enum_global.py)).
 - The class as a value is an object of `EnumType`: `C(value)` finds the member with that value
   (or returns a member it is given, also one held through a base class's type, such as `Enum` or
   `Flag`: [test](../tests/programs/library/lib_enum_base_lookup.py),
@@ -785,8 +810,11 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   ([test](../tests/programs/library/lib_enum_reflected.py)). A number on the left of an
   `IntEnum` or `IntFlag` member computes as CPython's `int` does (`1 + member`, `n += member`,
   `4 | flag`, which keeps the flag's class), through the member's reflected method
-  ([test](../tests/programs/library/lib_enum_int_left.py)). One cannot be passed where an `int`
-  or `str` is typed, `int(member)` is not supported, and these are compile-time errors, as
+  ([test](../tests/programs/library/lib_enum_int_left.py)). An `IntEnum` or `IntFlag` member is
+  an index where CPython asks for one: a subscript, a slice bound, `range()`, a repetition count,
+  `hex()` and `%d` use its value ([test](../tests/programs/library/lib_enum_index.py)). One
+  cannot be passed where an `int` or `str` is typed, `int(member)` is not supported, and these
+  are compile-time errors, as
   CPython's member is an `int` or a `str`: `isinstance()` of one and `int` or `str`, also of a
   value of a base class, such as `Enum`, that may hold one
   ([test](../tests/errors/library/lib_enum_isinstance_base.py)), and a member as an `Any` value,
@@ -843,14 +871,19 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   supported.
 - These are compile-time errors: `ReprEnum` as a base; other mixin types
   (`class C(float, Enum)`) and keywords; members of other values or types, `_ignore_`, `_order_`
-  and private names; `__new__`, `__init__` and `_generate_next_value_`; an enum
+  and private names; a `__new__` of another form (`*args`, a `_value_` the compiler cannot
+  compute, an `IntEnum` member made of another int than its `_value_`), with an `__init__`, in a
+  flag class or under `@_simple_enum(Enum)`; `_generate_next_value_`; `__init__` in a flag class or in
+  an enum class without members, or with arguments its members' values do not give;
+  `@_simple_enum` with `boundary=` or `use_args=`, `auto()` in a flag class it makes and
+  `@global_enum` of a flag class; an enum
   class that derives from an enum class of another module, or from one with members (CPython's
   `TypeError`); a class statement in an `if` or `try` statement, or whose base is imported in
   one ([test](../tests/errors/library/lib_enum_conditional.py),
   [test](../tests/errors/library/lib_enum_try_import.py)); the functional API (`Enum("Color", "RED GREEN")`); reassigning a member
   (CPython's `AttributeError`); `reversed()` of an enum class, and an enum class without
-  members as a value. `enum.property`, `member`, `nonmember`, `verify`, `global_enum` and the
-  other helpers are not provided.
+  members as a value. `enum.property`, `member`, `nonmember`, `verify` and the other helpers
+  are not provided.
 
 ### `heapq`
 
@@ -912,10 +945,10 @@ functions are templates: each call's argument types make its code
   gives items of their union ([test](../tests/programs/library/lib_itertools_zip_longest_fillvalue.py)).
 - `batched()`, `permutations()`, `combinations()`, `combinations_with_replacement()` and
   `product(..., repeat=n)` yield tuples whose length the program knows only as it runs, whose
-  items must be ints, floats, bools, strs or their optional types
-  ([tuples](../docs/language/typing.md)): of tuples, lists or objects, they are compile-time
-  errors ([error test](../tests/errors/library/lib_itertools_combinations_objects.py),
-  [another](../tests/errors/library/lib_itertools_batched_tuples.py)), and `product()` with `repeat`
+  items must be ints, floats, bools, strs, their optional types or objects
+  ([tuples](../docs/language/typing.md), [test](../tests/programs/library/lib_itertools_combinations_objects.py)):
+  of tuples or lists, they are compile-time errors
+  ([error test](../tests/errors/library/lib_itertools_batched_tuples.py)), and `product()` with `repeat`
   needs one item type across its iterables
   ([error test](../tests/errors/library/lib_itertools_product_repeat_mixed.py)). `product()` without
   `repeat` and `zip_longest()` yield a tuple with an item of each iterable, of its type.
@@ -1240,17 +1273,26 @@ constructed and rounded to the current context by arithmetic, with CPython's res
 hashes and messages for the supported API
 ([API walk](../tests/programs/library/lib_decimal.py),
 [operand grid](../tests/programs/library/lib_decimal_grid.py),
-[typed program data](../tests/programs/library/lib_decimal_records.py)).
+[typed program data](../tests/programs/library/lib_decimal_records.py),
+[functions](../tests/programs/library/lib_decimal_functions.py),
+[methods](../tests/programs/library/lib_decimal_methods.py),
+[sums and exceptions](../tests/programs/library/lib_decimal_sums.py)).
 
-Supported: construction from `str`, `int` and `float`; `+ - * / // %`, `divmod()`, integer
-`**`, unary operators and `abs()`, with a `Decimal` or an `int` on either side; comparison with
-a `Decimal`, `int` or `float`; equality with a `complex` number (comparing its real part's
-exact float value when the imaginary part is zero); `hash()`, `int()`, `float()`, `round()`, `math.floor()`,
-`math.ceil()`, `math.trunc()`, `bool()`, `str()`, `repr()` and `format()`; `quantize()`,
-`to_integral_value()`, `normalize()`, `sqrt()`, `fma()`, `remainder_near()`, `scaleb()`,
-`compare()`, `max()`, `min()`, the `is_*()`, `copy_*()` and `as_*()` methods; `Context`,
-`getcontext()`, `setcontext()`, `localcontext()` and the three predefined contexts; all eight
-rounding modes; NaNs, infinities and signed zeros.
+Supported: construction from `str`, `int`, `bool`, `float` and `Decimal`; `+ - * / // % **`,
+`divmod()`, unary operators and `abs()`, with a `Decimal` or an `int` on either side;
+comparison with a `Decimal`, `int` or `float`; equality with a `complex` number (comparing its
+real part's exact float value when the imaginary part is zero); `hash()`, `int()`, `float()`,
+`round()`, `math.floor()`, `math.ceil()`, `math.trunc()`, `bool()`, `str()`, `repr()` and
+`format()`; [`sum()`](../docs/language/semantics.md#sums-of-objects); `quantize()`,
+`to_integral_value()`, `normalize()`, `sqrt()`, `exp()`, `ln()`, `log10()`, a `Decimal`
+exponent, `fma()`, `remainder_near()`, `scaleb()`, `logb()`, `next_minus()`, `next_plus()`,
+`next_toward()`, `compare()`, `compare_signal()`, `compare_total()`, `compare_total_mag()`,
+`max()`, `min()`, `max_mag()`, `min_mag()`, the logical operations, `rotate()`, `shift()`, the
+`is_*()`, `copy_*()` and `as_*()` methods, each taking an `int` where it takes another number;
+`Context` with the same operations as methods on Decimals or ints, `getcontext()`,
+`setcontext()`, `localcontext()`, `DefaultContext` as the prototype of new contexts and the
+two other predefined contexts; all eight rounding modes; NaNs, infinities and signed zeros.
+`exp()`, `ln()`, `log10()` and powers are correctly rounded as CPython's C module rounds them.
 
 Comparisons decline operands outside these numeric types so that their reflected
 comparison methods run, including in tuple searches. Direct comparison-method calls
@@ -1260,23 +1302,22 @@ that could return `NotImplemented` retain the compiler's
 - **Signals.** Flags are not recorded and traps are fixed at the default:
   `InvalidOperation`, `DivisionByZero` and `Overflow` always raise, and the other signals
   never do. `Context` has no `flags` or `traps`, and its `repr()` shows none set.
-- **Exception classes.** A class has one exception base here: `DivisionByZero` derives from
-  `ZeroDivisionError` but not from `DecimalException`; `Overflow` and `Underflow` derive from
-  `Inexact` but not from `Rounded` (or `Subnormal`); `FloatOperation` is not a `TypeError`.
-- **Constructor.** `Decimal(d)` of a `Decimal`, `Decimal(True)` and
-  `Decimal((sign, digits, exponent))` are compile-time errors: use the value itself, or `+d`
-  to round it to the context.
-- **Powers and logarithms.** The exponent of `**` is an `int`; `exp()`, `ln()`, `log10()`,
-  `logb()`, the logical and shifting operations, `next_minus()`, `next_plus()`,
-  `next_toward()`, `compare_total()` and `compare_signal()` are not provided, and
-  `int ** Decimal` is not supported.
+- **Exception classes.** The classes derive as CPython's do (`DivisionByZero` is a
+  `DecimalException` and a `ZeroDivisionError`, `Overflow` an `Inexact` and a `Rounded`), but
+  for `Underflow`, which is not a `Subnormal`: a class has two exception bases at most.
+- **Constructor.** `Decimal(d)` of a `Decimal` is a new, equal object where CPython returns
+  `d` itself, and `Decimal((sign, digits, exponent))` is a compile-time error.
+- **Powers.** `pow()` takes no third argument.
 - **Integers beyond 64 bits.** `int()`, `round()`, `math.floor()` and `as_integer_ratio()`
   return large integers to a module that opts in to promoting ints
   ([test](../tests/programs/library/lib_decimal_python_int.py)) and raise `OverflowError` in
-  one that does not. An `int` given to the constructor or to an operator is a 64-bit value:
-  pass a larger one as text.
-- **Typing.** `sum()` of Decimals is not supported: add them in a loop. `Decimal` cannot be
-  subclassed. A NaN hashes to 0, and one context is shared by all threads.
+  one that does not. An `int` given to the constructor, an operator or a method is a 64-bit
+  value, and a larger one raises `OverflowError`: pass it as text.
+- **Typing.** `sum(values)` is an `int | Decimal`, as CPython's is the `int` 0 for no values:
+  it prints, formats, compares and adds as it is, and a method call on it needs
+  `isinstance()` first or a start, `sum(values, Decimal(0))`; so does its arithmetic in a
+  module that opts in to promoting ints. `Decimal` cannot be subclassed.
+  A NaN hashes to 0, and one context is shared by all threads.
 - **Formatting.** The `n` type uses the C locale's format, and a value whose coefficient has
   more than 4,300 digits cannot be converted to text.
 

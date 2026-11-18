@@ -1,0 +1,6 @@
+True True True False True
+True True True range builtins
+<class 'object'> True object
+<class 'range'> True range
+True <class 'object'> list_iterator
+[exit 0]

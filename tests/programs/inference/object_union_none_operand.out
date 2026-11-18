@@ -1,0 +1,4 @@
+2 2 2
+11
+TypeError unsupported operand type(s) for +=: 'NoneType' and 'int'
+[exit 0]

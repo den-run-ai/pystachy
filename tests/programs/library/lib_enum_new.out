@@ -1,0 +1,23 @@
+new planet 3.303e+23
+new planet 5.976e+24
+new planet 5.976e+24
+POSITIONAL_ONLY <Kind.POSITIONAL_ONLY: 0> 0 positional-only 1 True POSITIONAL_ONLY
+POSITIONAL_OR_KEYWORD <Kind.POSITIONAL_OR_KEYWORD: 1> 1 positional or keyword 2 True POSITIONAL_OR_KEYWORD
+VAR_POSITIONAL <Kind.VAR_POSITIONAL: 2> 2 variadic positional 3 True VAR_POSITIONAL
+POSITIONAL_OR_KEYWORD variadic positional True 3
+100 <Status.CONTINUE: 100> 100 Continue False False 100
+200 <Status.OK: 200> 200 OK False True 200
+103 <Status.EARLY_HINTS: 103> 103 Early Hints True False 103
+404 <Status.NOT_FOUND: 404> 404 Not Found False False 404
+OK 404 True True OK
+['CONTINUE', 'OK', 'EARLY_HINTS', 'NOT_FOUND', 'FINE', 'MISSING'] 200 404  True
+GET <Method.GET: 'GET'> GET Retrieve the target. True get
+POST <Method.POST: 'POST'> POST Perform target-specific processing. False post
+Perform target-specific processing. GET GET! 4
+Planet.MERCURY (3.303e+23, 2439700.0) 0 3.7
+Planet.EARTH (5.976e+24, 6378140.0) 1 9.8
+True Planet.MERCURY 1
+[<Color.RED: 1>, <Color.GREEN: 2>, <Color.BLUE: 3>] 2 Color.BLUE Color.RED [<Swatch.DARK: 1>, <Swatch.LIGHT: 2>] 2
+[<Scaled.A: 11>, <Scaled.B: 25>, <Scaled.C: 30>] 2 Scaled.B 30 11
+ValueError: 999 is not a valid Status
+[exit 0]

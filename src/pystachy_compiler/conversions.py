@@ -4,13 +4,16 @@ from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.ir import Ins, Val, tmpname
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, DUNDER, NONEVAR, ORDOP, REFL
+from src.pystachy_compiler.syntax import made_var, mk
+from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, DUNDER, EMPTYFS, NONEVAR, ORDOP, REFL
 from src.pystachy_compiler.bigints import big_viewable, held
 from src.pystachy_compiler.utils import (
+    is_clsval,
     elem,
     is_callable,
     is_dict,
     is_fn,
+    is_aset,
     is_fset,
     is_kw,
     is_list,
@@ -74,6 +77,44 @@ def gen_as_int(self, v: Val) -> Val:
     if v.t == BIG:
         return self.big_narrow(v)  # (a promoting int, where a 64-bit int is needed: bigints.py)
     return v
+
+def gen_index_of(self, v: Val, none: str) -> Val:
+    # operator.index() of an object, where CPython asks a subscript, a slice bound, a
+    # repetition count or an argument of range(), hex(), oct(), bin() and %x for an integer:
+    # its class's __index__(), which must return an int. Every operand is evaluated before it
+    # is called, and None raises none ("Kind: text"). Numbers pass unchanged. An Any value is
+    # asked as the program runs (dyn_index)
+    if v.t == "dyn":
+        return self.dyn_index(v, none)
+    if v.t not in self.classes or "__index__" not in self.classes[v.t].methods:
+        return v
+    self.notnone(v, none)
+    r = self.protocol(v, "__index__", [])
+    if r.t != "int" and r.t != "bool" and r.t != BIG:
+        self.err(f"__index__ returned non-int (type {tname(r.t)})")
+    return r
+
+def gen_method_index(self, v: Val, dflt: str, none: str) -> Val:
+    # an int argument of a builtin method (xs.pop(i), s.find(sub, start)) that is an Any value or
+    # an object with __index__: its index, as CPython's index protocol gives it (index_of), where
+    # annotating the value as an int would reject a bool and the object. An Any value that is
+    # None stands for dflt where the method takes None for a default (a str method's start, end)
+    if v.t != "dyn" or dflt == "":
+        return self.coerce(self.as_int(self.index_of(v, none)), "int")
+    absent = self.label()
+    given = self.label()
+    end = self.label()
+    ph = Ins("phi", "int", "")
+    self.cbr(self.dyn_test(v, ["None"]), absent, given)
+    self.place(absent)
+    self.incoming(ph, dflt, self.cur)
+    self.br(end)
+    self.place(given)
+    r = self.coerce(self.as_int(self.index_of(v, none)), "int")
+    self.incoming(ph, r.v, self.cur)
+    self.br(end)
+    self.place(end)
+    return Val(self.phi(ph), "int")
 
 def gen_as_float(self, v: Val) -> Val:
     if v.t == "int" or v.t == "bool":
@@ -198,6 +239,13 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
             # A fresh immutable tuple of boxes; an existing list or tuple's
             # numeric storage must never be reinterpreted as pointer slots.
             return Val(self.rt("pys_vtuple_box", "ptr", [f"ptr {v.v}"]), t)
+        if is_union(et) and self.vtuple_holds(et) and self.uboxes(targs(v.t)[0], et):
+            # a tuple[A, ...] where a tuple[A | B, ...] is wanted: a new tuple of the items' union
+            # boxes (its slots hold A's objects, which a union's slots cannot be read as), as a
+            # display converts a list of another item type (containers.py)
+            item = made_var("__pys_item", self.line)
+            boxes = self.listcomp(mk("listcomp", "", self.line, [item, item, self.vnode(v)]), self.ctype("list", [et]))
+            return Val(self.rt("pys_vtuple_new", "ptr", [f"ptr {boxes.v}"]), t)
     if v.t == "None" and t in self.classes:
         return Val("null", t)
     if v.t in self.classes and t in self.classes and self.derives(v.t, t):
@@ -208,12 +256,26 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         self.err(f"expected an object of {short(t)}, got a builtin exception, which is not converted to a class of the program (catch it as one: except {short(t)} as e)")
     if self.widens(v.t, t):
         return Val(v.v, t).identity(v)
+    if unopt(t) == "type[object]" and self.refl_builtin_class(v.t) != "":
+        return Val(self.class_value_builtin(v).v, t)  # (a builtin class named: its class object, class_values.py)
     if is_union(unopt(t)) and v.t != "None":
         return self.to_union(v, t, what)
     if is_fn(v.t) and is_callable(unopt(t)):
         return Val(self.to_callable(v, unopt(t)).v, t)  # (a function where a Callable is expected)
     if is_sopt(t) and v.t == unopt(t):
         return Val(self.rt("pys_box", "ptr", ["i64 " + self.to_slot(v)]), t).identity(v)  # representation-only boxing
+    if v.t == "frozenset[dyn]" and is_fset(unopt(t)) and self.fset_unboxes(selem(unopt(t))):
+        # a frozenset of Any values where a frozenset[T] or an AbstractSet[T] is expected: no code
+        # changes it, so it crosses as a tuple does, a new frozenset of its elements, each checked
+        # as a T where it is unboxed (docs/dynamic-any.md; runtime.c's pys_set_unbox). A set of
+        # Any values does not: a copy would not see what its other holders add
+        et = selem(unopt(t))
+        dt = self.dyn_class_type(et) if et in self.classes else self.dyn_type(et)
+        return Val(self.rt("pys_set_unbox", "ptr", [f"ptr {v.v}", f"ptr {dt}", f"i64 {self.key_kind(et)}"]), t)
+    if v.t == EMPTYFS and is_fset(unopt(t)):
+        # frozenset() that nothing typed, where a frozenset[T] or an AbstractSet[T] is expected:
+        # an empty one of T's (a new object: CPython's is one object, which only `is` tells)
+        return Val(self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(selem(unopt(t)))}"]), t)
     if self.reboxes(v.t, t):
         # a tuple with an int where t holds an int | None (also deeper): a new tuple, of boxes
         return self.tuple_([self.coerce(self.tget(v, i), targs(t)[i], what) for i in range(len(targs(t)))])
@@ -224,17 +286,33 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         if what == "":
             what = "a value used as " + typestr(t)
         if self.curfn.ll + v.v in self.wide:
-            self.err(f"{what} may be None ({typestr(v.t)}), and a test does not narrow a global or a field (a call may change it): copy it to a local variable, and test that")
+            self.err(f"{what} may be None ({typestr(v.t)}), and a test does not narrow a global, nor a field past a call or a store that may change it: copy it to a local variable, and test that")
         self.err(f"{what} may be None ({typestr(v.t)}); test it with 'is not None' first")
+    if (is_fset(unopt(v.t)) or v.t == EMPTYFS or (is_tuple(v.t) and ("frozenset[" in v.t or EMPTYFS in v.t))) and self.abcsets and "abstract-sets" not in self.hints and not self.final and not self.rtmode and len(self.newhints) == 0 and self.xtry == "" and self.drying == 0:
+        # a frozenset where a set is expected, in a program that annotates collections.abc.Set,
+        # a set until now: the next pass compiles each as an AbstractSet's type, which takes a
+        # frozenset (ann_base); if that is not what expects a set here, this error is its too.
+        # Only where this error ends the pass: one that another hint or a declined comparison
+        # retries (err) may not be the program's, and must not change what its annotations mean
+        self.newhints["abstract-sets"] = "1"
     hint = " (write a float literal like 1.0, or use float())" if t == "float" and v.t == "int" else ""
     if t == COMPLEXC and v.t in ["int", "float", "bool", BIG]:
         hint = " (write a complex literal like 2+0j, or use complex())"
+    if is_aset(unopt(v.t)) and is_set(unopt(t)):
+        hint = " (an AbstractSet value is a set or a frozenset: make one of it, set(x) or frozenset(x))"
     if is_fn(t) and is_fn(v.t):
         hint = " (each function is a type of its own: a variable, a list's items or a dict's values hold one function)"
     if hint == "" and self.curfn.ll in self.guessed:
         hint = f" (perhaps because {self.guessed[self.curfn.ll]})"
     self.err(f"expected {typestr(t)}, got {typestr(v.t)}{hint}")
     return v
+
+def gen_fset_unboxes(self, et: str) -> bool:
+    # can a frozenset of Any values become one of et's (coerce): et's values are a box's payload
+    # as a set holds them, of one DynType (an int of 64 bits, a str, an object of a class)
+    if et == "int" or et == "str":
+        return True
+    return et in self.classes and et not in self.tmpl and self.classes[et].exc == ""
 
 def gen_desc(self, t: str, use: str) -> str:
     if "rec[" in t:
@@ -297,6 +375,10 @@ def gen_plain_desc(self, t: str, use: str) -> str:
     if is_dict(t):
         a = targs(t)
         return "D" + self.desc(held(a[0]), use) + self.desc(held(a[1]), use if use == "repr" else "==")  # (a tuple of ints as the dict holds it: bigints.held)
+    if t == EMPTYFS:
+        return "Fi"  # (frozenset() that nothing typed: empty, and so printed and compared)
+    if is_aset(t) and use == "repr":
+        self.err("printing an AbstractSet value is not supported: it is a set or a frozenset, which print differently; print set(x) or frozenset(x)")
     if is_set(t):
         # (S<e> a set, F<e> a frozenset: equal, or ordered as subsets, by their elements)
         return ("F" if is_fset(t) else "S") + self.desc(held(selem(t)), "repr" if use == "repr" else "==")  # (a tuple of ints as the set holds it: bigints.held)
@@ -310,6 +392,8 @@ def gen_plain_desc(self, t: str, use: str) -> str:
         return "E"  # (repr: pys_exc_repr; equality: identity)
     if t == "exctype":
         return "C"  # (an exception class's class object: repr pys_exc_type; equality and hash: identity)
+    if is_clsval(t):
+        return "Y"  # (an ordinary class's class object, its reflection record: repr <class 'M.Q'>; equality and hash: identity)
     if t in self.classes:
         # O<id>: the runtime calls back into pys_obj_eq/cmp/repr, which dispatch on the id, and
         # so the methods of use (a < b: __lt__, else the reflected __gt__) with objects of

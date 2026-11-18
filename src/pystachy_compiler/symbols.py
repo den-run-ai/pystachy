@@ -30,6 +30,8 @@ class FnInfo:
         self.void_default = False  # newly inferred concrete signature: recursion may retain its old None contract
         self.insts: dict[str, FnInfo] = {}
         self.dtypes: list[str] = []  # the type of each default value evaluated at def time
+        self.sentinels: dict[str, str] = {}  # a parameter p: T = S of a module's sentinel S = object(): S, by parameter (declare_fn)
+        self.sentann: dict[str, str] = {}  # and T, the type that a given argument takes
         self.bad = ""  # why a template cannot be compiled (it is an error only if a call needs it)
         self.infer = False  # a template's function: its first return statement decides its return type
         self.rctx = ""  # a caller's result context, only for fresh return displays and forwarding calls
@@ -167,8 +169,11 @@ class ClassInfo:
         # its single base (a class of the program or a builtin exception class), and the
         # builtin exception class it derives from through it ("" for an ordinary class)
         self.base = ""
-        self.role = ""  # a fieldless secondary base, inherited along the primary chain
+        # its fieldless secondary bases: those of its primary chain, then its own, in the order
+        # CPython's method resolution order takes them
+        self.roles: list[str] = []
         self.isrole = False  # some class names this root as its secondary base
+        self.isiface = False  # ... and it is no trait of that class: an object typed by it may have that class's layout (role_field)
         self.overlaps: list[str] = []  # unrelated bases with a common concrete subclass
         self.exc = ""
         self.excsecond = ""  # additional builtin exception ancestry; no fields or methods

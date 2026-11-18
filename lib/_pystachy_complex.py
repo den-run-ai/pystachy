@@ -127,6 +127,18 @@ def _part(x: float) -> str:
     return r
 
 
+def _spec_number(spec: str, start: int, end: int) -> int:
+    # get_integer(): the value of spec's decimal digits from start to end, whose ValueError a
+    # value past sys.maxsize raises (as int, float and str specs do), not int()'s OverflowError
+    value = 0
+    for k in range(start, end):
+        digit = int(spec[k])
+        if value > (9223372036854775807 - digit) // 10:
+            raise ValueError("Too many decimal digits in format string")
+        value = value * 10 + digit
+    return value
+
+
 def _format(re: float, im: float, spec: str) -> str:
     # format(c, spec) of a nonempty spec: parse_internal_render_format_spec (default alignment >),
     # then format_complex_internal: each part as a float of the type and precision ("" is repr's
@@ -164,7 +176,7 @@ def _format(re: float, im: float, spec: str) -> str:
     start = pos
     while pos < n and spec[pos].isdecimal():
         pos += 1
-    width = int(spec[start:pos]) if pos > start else -1
+    width = _spec_number(spec, start, pos) if pos > start else -1
     group = ""
     if pos < n and spec[pos] == ",":
         group = ","
@@ -184,7 +196,7 @@ def _format(re: float, im: float, spec: str) -> str:
             pos += 1
         if pos == start:
             raise ValueError("Format specifier missing precision")
-        precision = int(spec[start:pos])
+        precision = _spec_number(spec, start, pos)
     if n - pos > 1:
         raise ValueError(f"Invalid format specifier '{spec}' for object of type 'complex'")
     kind = spec[pos] if n - pos == 1 else ""
