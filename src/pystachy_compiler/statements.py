@@ -2026,7 +2026,7 @@ def gen_for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], s
             ok = self.int_ucmp('<', Val(j, "int"), Val(self.list_len(s) if is_list(s.t) else st[k], "int")).v
         else:
             j = i
-            ok = self.num_cmp('<', Val(i, "int"), Val(self.list_len(s) if is_list(s.t) else self.mload('int', s.v) if not is_tuple(s.t) else st[k], "int")).v
+            ok = self.num_cmp('<', Val(i, "int"), Val(self.list_len(s) if is_list(s.t) else self.mload('int', s.v, "length.range" if s.t == "bytes" else "") if not is_tuple(s.t) else st[k], "int")).v
         go = self.label()
         self.cbr(ok, go, le)
         self.place(go)
@@ -2094,7 +2094,7 @@ def gen_seq_item(self, s: Val, j: str, mode: str) -> list[Val]:
             return [Val(self.rt("pys_bytes_get", "i64", [f"ptr {s.v}", f"i64 {j}"]), "int")]
         # (for_seq has tested j against the length, which a bytes never changes: an inline load)
         p = self.maddr('%byte', s.v, self.scalar('add', [Val(j, 'int'), Val(str(STR_HEADER_SIZE), 'int')]))
-        return [Val(self.scalar_cast('zext', Val(self.mload('%byte', p), '%byte'), 'int'), "int")]
+        return [Val(self.scalar_cast('zext', Val(self.mload('%byte', p, "bytes"), '%byte'), 'int'), "int")]
     if s.t == "file":
         return [Val(j, "str")]
     if s.t == "dyniter":
@@ -2138,7 +2138,7 @@ def gen_seq_start(self, s: Val, mode: str, made: SeqStart) -> None:
         made.st.append("")
         made.used.append("")
         return
-    n0 = self.list_len(s) if is_list(s.t) else self.mload('int', s.v) if not is_tuple(s.t) else str(len(targs(s.t)))
+    n0 = self.list_len(s) if is_list(s.t) else self.mload('int', s.v, "length.range" if s.t == "bytes" else "") if not is_tuple(s.t) else str(len(targs(s.t)))
     made.used.append(n0)
     if s.t == "str" and not self.rtmode:
         pos = self.alloca("int", "")

@@ -215,7 +215,7 @@ def gen_tbaa_nodes(self) -> list[str]:
         c = key[: key.rfind(" ")]
         if c not in node:
             node[c] = len(node)
-            tys[c] = ["i64", "i64", "ptr", "ptr"] if c == "@list" else ["i64"] if c == "@slot" else struct_types(self.classes[c])
+            tys[c] = ["i64", "i64", "ptr", "ptr"] if c == "@list" else ["i64"] if c == "@slot" else ["i64", "i64", "i64", "i8"] if c == "@str" else struct_types(self.classes[c])
             offs[c] = []
             at = 0
             for t in tys[c]:
@@ -789,6 +789,8 @@ def gen_lower_module(self) -> str:
         hdr.append(lower_data(d))
     hdr.extend(self.out)
     hdr.extend(self.tbaa_nodes())  # (what the functions' loads and stores of fields name)
+    if self.lenrange and not self.rtmode:
+        hdr.append(f"!{STRLEN_RANGE} = !{{i64 0, i64 9223372036854775791}}")  # (a program's: runtime mode's below)
     for k in self.rtfns:
         if not (self.rtmode and self.rtfns[k].sym in self.rtdefs):
             hdr.append(runtime_decl(k))  # (runtime mode: what runtime.py defines is not declared)

@@ -9,7 +9,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.pystachy_compiler.gen import Gen
-from src.pystachy_compiler.ir import FnInfo, IFn, Ins, Val, Values
+from src.pystachy_compiler.ir import ClassInfo, FnInfo, IFn, Ins, Val, Values
 from src.pystachy_compiler.loader import Loader
 from src.pystachy_compiler.specs import RAWR, RAWW
 from src.pystachy_compiler.syntax import Node
@@ -62,21 +62,74 @@ class TypedMachineMemoryTests(unittest.TestCase):
                                              else f"  store {ll} %a1, ptr %a0"])
 
     def test_finite_metadata_preserves_tbaa_and_range(self):
-        for op, t, metadata, suffix in (("mach.load", "int", "length.range", ", !tbaa !3, !range !5"),
-                                        ("mach.load", "int", "length", ", !tbaa !3"),
-                                        ("mach.store", "int", "length", ", !tbaa !3"),
-                                        ("mach.load", "%byte", "bytes", ", !tbaa !4"),
-                                        ("mach.store", "%byte", "bytes", ", !tbaa !4")):
-            i = memory(op, t, metadata)
-            g = Gen()
-            g.verify(function(i), False)
-            g.lower_ins(function(i), i)
-            self.assertTrue(g.out[0].endswith(suffix), g.out)
+        # runtime.py's module names its own tags (!3, !4); a program's, the "@str" members under
+        # fieldtbaa's root, numbered from TBAA_FIELDS (16 in a fresh Gen), and none without fieldtbaa.
+        # A length load is bounded in each (!5)
+        for op, t, metadata, runtime, program, plain in (
+                ("mach.load", "int", "length.range", ", !tbaa !3, !range !5", ", !tbaa !16, !range !5", ", !range !5"),
+                ("mach.load", "int", "length", ", !tbaa !3", ", !tbaa !16", ""),
+                ("mach.store", "int", "length", ", !tbaa !3", ", !tbaa !16", ""),
+                ("mach.load", "%byte", "bytes", ", !tbaa !4", ", !tbaa !16", ""),
+                ("mach.store", "%byte", "bytes", ", !tbaa !4", ", !tbaa !16", "")):
+            for mode, suffix in (("runtime", runtime), ("program", program), ("plain", plain)):
+                with self.subTest(op=op, metadata=metadata, mode=mode):
+                    i = memory(op, t, metadata)
+                    g = Gen()
+                    g.rtmode = mode == "runtime"
+                    g.opts = {"fieldtbaa": True} if mode == "program" else {}
+                    g.verify(function(i), False)
+                    g.lower_ins(function(i), i)
+                    self.assertTrue(g.out[0].endswith(suffix) and (suffix != "" or "!" not in g.out[0]), g.out)
+                    self.assertEqual(g.tbaa, {} if mode != "program" else {"@str 0" if t == "int" else "@str 3": 16})
+                    self.assertEqual(g.lenrange, metadata == "length.range")  # (a program's module defines !5)
         for op, t, metadata in (("mach.load", "int", "!tbaa !3"),
                                 ("mach.store", "int", "length.range"),
                                 ("mach.load", "float", "length"),
                                 ("mach.store", "%ptr", "bytes")):
             self.assert_bad(memory(op, t, metadata))
+
+    def test_reads_reach_across_writes_of_other_memory(self):
+        # Gen.memclass: a program's field, a str's length and its bytes (a bytearray buffer's too)
+        # are memories that a write of another never changes, as their TBAA says to LLVM; a write
+        # of the same class, an untagged one and any in runtime.py's module stop the reuse
+        def reaches(write, first_read, second_read, runtime=False):
+            g = Gen()
+            g.rtmode = runtime
+            ci = ClassInfo("Box", Node("class", "Box", 1))
+            ci.fields = ["x", "y"]
+            ci.ftypes = {"x": "int", "y": "int"}
+            g.classes["Box"] = ci
+            first = first_read(g)
+            write(g)
+            second = second_read(g)
+            g.fn.n = g.n
+            vs = Values(g.fn, {"entry": []})
+            return g.canon(vs, second) == g.canon(vs, first)
+
+        def field(g):
+            return g.mem_load(Val(g.fgep(Val("%a0", "Box"), 0), "*int")).v
+
+        def length(g):
+            return g.mload("int", "%a1", "length.range")
+
+        def byte_at(index):
+            return lambda g: g.mload("%byte", g.maddr("%byte", "%a1", index), "bytes")
+
+        def store(kind, index="%a2"):
+            return lambda g: g.mstore("%byte", "7", g.maddr("%byte", "%a1", index), kind)
+
+        def field_store(g):
+            g.mem_store(Val(g.fgep(Val("%a0", "Box"), 1), "*int"), Val("5", "int"))
+
+        self.assertTrue(reaches(store("bytes"), field, field))  # (a buffer's byte: no field)
+        self.assertTrue(reaches(store("bytes"), length, length))  # (nor a length)
+        self.assertTrue(reaches(field_store, byte_at("%a3"), byte_at("%a3")))  # (a field: no byte)
+        self.assertTrue(reaches(field_store, length, length))
+        self.assertFalse(reaches(store("bytes"), byte_at("%a3"), byte_at("%a3")))  # (a byte may be any byte)
+        self.assertFalse(reaches(store(""), field, field))  # (an untagged write may be any memory)
+        self.assertFalse(reaches(store(""), length, length))
+        self.assertFalse(reaches(store("bytes"), field, field, runtime=True))  # (runtime.py's: as before)
+        self.assertFalse(reaches(store("bytes"), length, length, runtime=True))
 
     def test_storage_rejects_malformed_operands_types_results_and_metadata(self):
         for op in ("mach.load", "mach.store"):

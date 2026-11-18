@@ -1,0 +1,18 @@
+@init._pystachy_bytearray: load:recursion depth+0 store:recursion depth+0
+@main.init:
+@f.scan: load:Cursor+8 load:Cursor+0 load:@str+0 load:Cursor+0 load:Cursor+8 load:@str+0 load:@str+24 load:Cursor+8 store:Cursor+8
+@f.total: load:@str+0 load:@str+0 load:@str+24
+@f.copy_into: load:@str+0 load:@str+0 load:@str+24
+@f._pystachy_bytearray$_new.1: store:_pystachy_bytearray$bytearray+8
+@f.main:
+@m.Cursor.__init__: store:Cursor+0 store:Cursor+8
+@f._pystachy_bytearray$_reserve: load:_pystachy_bytearray$bytearray+0 load:@str+0 store:@str+0 load:_pystachy_bytearray$bytearray+0 load:_pystachy_bytearray$bytearray+8 load:@str+0 load:@str+0 store:_pystachy_bytearray$bytearray+0
+@m._pystachy_bytearray$bytearray.__init__: store:_pystachy_bytearray$bytearray+0 store:_pystachy_bytearray$bytearray+8
+@m._pystachy_bytearray$bytearray.__len__: load:_pystachy_bytearray$bytearray+8
+@m._pystachy_bytearray$bytearray.__getitem__: load:_pystachy_bytearray$bytearray+8 load:_pystachy_bytearray$bytearray+0 load:@str+0 load:@str+24
+@m._pystachy_bytearray$bytearray.__setitem__: load:_pystachy_bytearray$bytearray+8 load:_pystachy_bytearray$bytearray+0 load:@str+0 store:@str+24
+@m._pystachy_bytearray$bytearray.append: load:_pystachy_bytearray$bytearray+8 load:_pystachy_bytearray$bytearray+0 load:@str+0 load:_pystachy_bytearray$bytearray+0 load:@str+0 store:@str+24 store:_pystachy_bytearray$bytearray+8
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@main:

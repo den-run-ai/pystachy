@@ -1159,7 +1159,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         if is_list(t):
             return Val(self.list_len(v), "int")
         if t == "str" or t == "bytes" or is_dict(t) or is_set(t) or is_vtuple(t):
-            return Val(self.mload('int', v.v), "int")
+            return Val(self.mload('int', v.v, "length.range" if t == "bytes" else ""), "int")
         if is_tuple(t):
             return Val(str(len(targs(t))), "int")
     elif name == "str":
@@ -2590,7 +2590,7 @@ def gen_ba_prim(self, name: str, args: list[Node]) -> Val:
         b = self.expr(args[0], "")
         if b.t != "bytes":
             self.err(f"__pys_ba_cap() takes a buffer (bytes), not {typestr(b.t)}")
-        return Val(self.mload('int', b.v, ""), "int")
+        return Val(self.mload('int', b.v, "length.range"), "int")
     vals: list[Val] = []
     for a in args:
         v = self.expr(a, "")

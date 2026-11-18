@@ -1081,6 +1081,7 @@ from src.pystachy_compiler.lowering import (
     gen_eh_ir as lowering_eh_ir,
     gen_field_tag as lowering_field_tag,
     gen_list_tag as lowering_list_tag,
+    gen_str_tag as lowering_str_tag,
     gen_invoke as lowering_invoke,
     gen_lower as lowering_lower,
     gen_lower_ins as lowering_lower_ins,
@@ -1104,6 +1105,7 @@ from src.pystachy_compiler.optimizations import (
     gen_canon as optimizations_canon,
     gen_dictfuse as optimizations_dictfuse,
     gen_disjoint as optimizations_disjoint,
+    gen_memclass as optimizations_memclass,
     gen_listget as optimizations_listget,
     gen_listguard as optimizations_listguard,
     gen_nullcheck as optimizations_nullcheck,
@@ -1655,6 +1657,7 @@ class Gen:
         self.ftags: dict[str, str] = {}
         self.tbaa: dict[str, int] = {}
         self.tbaacls: dict[str, bool] = {}
+        self.lenrange = False  # (a load of a str's length carries STRLEN_RANGE, which a program's module defines: lower_module)
         # tupleret (Gen.tuple_rets): the functions lowered to return their tuple's slots by value,
         # by symbol, with how many slots, and the calls that take them so, by "<caller's symbol>
         # %tN"; while a function is lowered, the tuples it returns so, the slots its tuple.stores
@@ -3739,6 +3742,9 @@ class Gen:
     def list_tag(self, what: str) -> str:
         return lowering_list_tag(self, what)
 
+    def str_tag(self, kind: str) -> str:
+        return lowering_str_tag(self, kind)
+
     def tbaa_nodes(self) -> list[str]:
         return lower_module_tbaa_nodes(self)
 
@@ -3828,6 +3834,9 @@ class Gen:
 
     def reaching(self, vs: Values, a: str, j: int, x: int) -> str:
         return optimizations_reaching(self, vs, a, j, x)
+
+    def memclass(self, vs: Values, i: Ins, a: str) -> str:
+        return optimizations_memclass(self, vs, i, a)
 
     def disjoint(self, vs: Values, a: str, b: str) -> bool:
         return optimizations_disjoint(self, vs, a, b)
