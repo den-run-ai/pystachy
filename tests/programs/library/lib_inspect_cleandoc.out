@@ -1,0 +1,25 @@
+''
+'one line'
+'leading'
+'first\nsecond\n  third\nfourth'
+'after blank lines\n  indented\n\nend'
+'first\nsecond tab\n        third tab'
+'first\n two\none\n  three'
+'   '
+'a\n\n\nb'
+'trailing spaces   \nx  '
+'tabs    in      first\neight\none tab'
+'first\nno margin\n    indented'
+''
+'x\n    \ny'
+'café\nnaïve\n  日本'
+Hello
+  world
+Summary line.
+
+    Indented further.
+Back at the margin.
+True Get useful information from live Python objects.
+
+Th
+[exit 0]

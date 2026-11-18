@@ -42,7 +42,10 @@ def builtin_backed(c: str) -> bool:
     # is c one of lib's classes whose objects are a builtin class's: object()'s, range's,
     # complex's and the builtin containers' iterators'. reflection.py's refl_type_name gives
     # them the builtin class's names, and refl_record its record where a module opts in to
-    # dynamic Any: keep this list as theirs
+    # dynamic Any: keep this list as theirs. (Not lib's bytearray, which reflection names so too:
+    # left out, its class object stays a typed class value in a module that opts in to dynamic Any
+    # too, which a call makes objects of (class_new), where a builtin record there is an Any value,
+    # whose call raises NotImplementedError, as any class's held as an Any value does)
     return c == OBJECTC or c == RANGEC or c == COMPLEXC or c.startswith(ITERS + "$")
 
 
