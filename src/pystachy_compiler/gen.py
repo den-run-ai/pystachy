@@ -1232,6 +1232,8 @@ from src.pystachy_compiler.program import (
     gen_raisers as program_raisers,
     gen_subclass_problem as program_subclass_problem,
     gen_on_chain as program_on_chain,
+    gen_ordered_class as program_ordered_class,
+    gen_ordering_ops as program_ordering_ops,
     gen_trait_root as program_trait_root,
     gen_role_field as program_role_field,
     gen_role_chain as program_role_chain,
@@ -4041,6 +4043,12 @@ class Gen:
 
     def on_chain(self, c: str, a: str) -> bool:
         return program_on_chain(self, c, a)
+
+    def ordered_class(self, ci: ClassInfo) -> None:
+        return program_ordered_class(self, ci)
+
+    def ordering_ops(self, c: str, seen: list[str]) -> list[str]:
+        return program_ordering_ops(self, c, seen)
 
     def trait_root(self, primary: str, secondary: str) -> str:
         return program_trait_root(self, primary, secondary)

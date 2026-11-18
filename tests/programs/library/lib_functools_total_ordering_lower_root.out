@@ -1,0 +1,24 @@
+A.__lt__
+True
+A.__lt__
+True
+Base.__gt__
+False
+A.__lt__
+False
+Base.__gt__
+Base.__gt__
+False True
+C.__le__
+True
+C.__le__
+True
+C.__le__
+False
+Base2.__ge__
+False
+C.__le__
+C.__le__
+C.__le__
+False False 1
+[exit 0]

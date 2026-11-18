@@ -1118,15 +1118,23 @@ callable object, a `partial`) leaves the wrapper its own, as in CPython. `__wrap
 `__doc__`, `__module__` and `__dict__` are not a function's attributes in Pystachy, and
 `wraps(f)` as a value, not a decorator, is a compile-time error.
 
-`@total_ordering` on a class statement adds the ordering methods its body lacks, each computed
-as CPython's from the one it takes of `__lt__`, `__le__`, `__gt__` and `__ge__`, with that
-method's parameters. A method added calls the object's own class's method, and returns
-`NotImplemented` where that does, so the other operand's reflected method runs next
+`@total_ordering` on a class statement adds the ordering methods the class lacks, each computed
+as CPython's from the greatest of `__lt__`, `__le__`, `__gt__` and `__ge__` that it has (in that
+order), with that method's parameters. As in CPython, the methods a class inherits count: a
+NamedTuple, an `IntEnum`, `StrEnum` or `IntFlag`, a dataclass with `order=True` and a subclass
+of a class the decorator completed have all four, so it adds none
+([test](../tests/programs/library/lib_functools_total_ordering_bases.py)), and an inherited
+method below the greatest of the body's stays the class's
+([test](../tests/programs/library/lib_functools_total_ordering_lower_root.py)). A method added
+calls the object's own class's method, and returns `NotImplemented` where that does, so the
+other operand's reflected method runs next
 ([test](../tests/programs/library/lib_functools_total_ordering_declines.py)). The compiler
-writes the methods, where CPython's decorator sets them on the class: the class's own body must
-define one of the four (an inherited one is not read), a class without one is the decorator's
-`ValueError` at compile time, and `total_ordering(C)` as a call is a compile-time error. The
-methods return `bool`: a method that returns another type for an ordering has its truth here.
+writes the methods, where CPython's decorator sets them on the class, from a method of the
+class's body only: a class whose greatest method is inherited, while it lacks one, is a
+compile-time error ([error test](../tests/errors/library/lib_functools_total_ordering_inherited_root.py)),
+a class without one is the decorator's `ValueError` at compile time, and `total_ordering(C)` as
+a call is a compile-time error. The methods return `bool`: a method that returns another type
+for an ordering has its truth here.
 
 `@cached_property` on a method that takes the object alone makes the attribute a value the
 object keeps: the method runs on the first read, an assignment replaces the value without
