@@ -1968,7 +1968,9 @@ for CPython's C module, has what of that interface means something for it ([test
   `set_debug()` and `get_debug()` keep CPython's settings, with its initial values, and report
   them. `freeze()` and `unfreeze()` do nothing. None of these changes when the collector runs:
   it reclaims what CPython's reference counts would, which those settings do not stop there
-  either. `set_debug()` prints nothing.
+  either. `set_debug()` prints nothing. `set_threshold()` and `set_debug()` take their arguments
+  by position only, and a keyword or another number of arguments raises CPython's `TypeError` as
+  the call runs ([test](../tests/programs/library/lib_gc_positional.py)).
 
 Not supported, as compile-time errors where used: `get_objects()`, `get_referrers()`,
 `get_referents()`, `is_tracked()`, `is_finalized()`, `get_stats()`, `get_count()`,
