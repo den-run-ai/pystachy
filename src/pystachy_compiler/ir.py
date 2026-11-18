@@ -155,6 +155,13 @@ class FnInfo:
         self.cmpfields = ""  # a structural comparison adapter's canonical field types; missing reads raise at their source position
         self.ikey = ""  # (an instance: its key in its template's insts, which joins' keys name it by: Gen.fnkey)
         self.lastikey = ""  # (a template: the key of the instance its last call compiled to)
+        # a template that returns its own TypeVar (def accept(self, v: Visitor[T]) -> T): that
+        # TypeVar, and the parameters whose annotation G[..., T, ...] names it (their indexes, G,
+        # and T's position), which an argument of a class deriving from G[X, ...] binds (tv_bound)
+        self.tvret = ""
+        self.tvbparams: list[int] = []
+        self.tvbclass: list[str] = []
+        self.tvbpos: list[int] = []
         self.vararg = -1  # the index of a template's *args parameter (a tuple of the extra arguments), or -1
         self.varelem = ""  # its annotation (the type of each extra argument), or ""
         self.kwarg = -1  # the position of its **kwargs parameter, which a template's call gives a record of the extra keyword arguments (kw[...])
@@ -171,6 +178,7 @@ class FnInfo:
         self.iters = False  # an __iter__ that returns an Iterator[T]: ret is the list[T] it steps through (see iter_ret)
         self.synthetic = False  # a dataclass's method that the compiler writes (Gen.synth), not the program
         self.deco = ""  # a method's @staticmethod or @classmethod (whose cls names the class), or "": it takes self
+        self.nullable_self = False  # explicit C.m(o, ...): o may be None; checks belong to the body
         self.prop = False  # a @property getter: an attribute read calls this instance method
         # a property's @name.setter or @name.deleter ("setter", "deleter"; its methods key is
         # name.setter): an assignment or del of the attribute calls it; accof: what the decorator
@@ -183,6 +191,12 @@ class FnInfo:
         # a template's function: the parameters whose arguments are objects known not to be None
         # (a new object, self), which its isinstance(), hasattr() and "is None" tests read as such
         self.nnp: dict[str, bool] = {}
+        # a comparison method (__eq__, __lt__, ...) that returns NotImplemented (Gen.decline): mayd
+        # is whether its body may (-1 not read yet, see may_decline), declines whether compiled
+        # code of it does, and plain where a call that takes its result as it is was compiled
+        self.mayd = -1
+        self.declines = False
+        self.plain = ""
         # the parameters annotated Callable[[A, B], C] with C a class template: an argument that is
         # a function is that Callable of the specialization it returns (see pat_arg)
         self.pats: dict[int, Node] = {}
@@ -584,6 +598,7 @@ class ClassInfo:
         self.fields: list[str] = []
         self.fields_ready = False  # declare_fields prepared this declaration; specializations copy its fields
         self.fields_preparing = False  # recursive class-attribute annotations retain their provisional path
+        self.init_only = False  # only constructor code specializes; annotated fields keep one class layout
         self.fpos: dict[str, int] = {}  # field -> its index in fields (and in the struct)
         self.ftypes: dict[str, str] = {}
         self.fdefault: dict[str, Node] = {}

@@ -1,0 +1,3 @@
+['lib'] bytes_ops.c 0 {} False True
+['vecs'] v 3 {'x': 1} False True
+[exit 0]

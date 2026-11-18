@@ -266,6 +266,29 @@ Coverage: `dynany_native_int_list.py`, `dynany_native_int_list_callbacks.py`,
 `dynany_native_int_list_promote.py`, `lib_copy_native_any.py` and
 `lib_copy_native_any_promote.py`.
 
+### Class templates and generics
+
+`isinstance(value, Box)` accepts every specialization of the class template
+`Box`, as typed code does. This includes generic classes, imported aliases,
+tuples of classes and class unions. Unrelated classes with the same name remain
+distinct; `None` does not pass a template test.
+
+The test identifies the Python class, not a concrete field layout. The value
+stays dynamic after a successful test, and attribute access and methods dispatch
+using its actual specialization. One shared predicate per tested template is
+refreshed when dynamic dispatch discovers more boxed specializations. It reads
+descriptor metadata without unboxing the instance or instantiating an unused
+template. Concrete annotations still require their own compatible layout.
+
+`type(value) is Box` and comparisons between two `type(value)` results use the
+same Python class identity in ordinary helpers receiving boxed arguments from
+opt-in modules. Distinct specializations of `Box` compare equal; an unrelated
+class with the same name does not. These exact-type tests preserve operand
+evaluation order and do not narrow a box to one specialization's field layout.
+
+Coverage: `tests/programs/generics/dynany_template_isinstance.py`,
+`dynany_template_type_import.py` and `dynany_template_type_order.py`.
+
 ### Other containers and fresh results
 
 Other mutable containers of typed items cannot become `Any` values. Reinterpreting
@@ -288,6 +311,33 @@ second item. Conversion in the other direction checks and unboxes dynamic items
 (`tests/programs/inference/dynany_tuple_items.py`).
 
 ### Generator channels
+
+Scalar and optional `int` and `float` yields preserve the original numeric object through
+`next()` (including its default), iteration, unpacking, `send()`, `throw()` and
+`yield from`. In identity-tracking code, the promise retains the numeric representation and
+one scanned nullable box companion. Existing source aliases keep their canonical
+box; fresh computed yields pass a null companion and box only when an observer
+requires their identity. Optional channels retain their existing nullable representation
+box independently; a fresh optional yield needs no additional dynamic box. A typed loop can transfer that fresh value to its lone
+local target without boxing. Named-source yields, defaults and multi-target
+unpacking remain conservative and may materialize boxes.
+
+Consumers copy the companion into their own result slot before another resume,
+so later yields or closing the generator cannot overwrite a previous result's
+identity. Promoting integers retain their existing raw high pointer alongside the
+companion. Isolated nontracking modules retain their old raw slots and frame size.
+A generator crossing into tracking code triggers the existing recompilation
+fallback before representations can mix, including erasure to `Any` and nested
+generators. `yield from` can widen a scalar numeric channel to its optional type,
+preserving the delegated object's identity. Optional integer channels retain their
+checked 64-bit boundary, including in promoting-int modules. Generator returns
+and general numeric union yield channels retain their existing identity limits.
+
+Coverage: `dynany_identity_generator.py`, `dynany_identity_generator_fresh.py`,
+`dynany_identity_generator_protocol.py`, `dynany_identity_generator_scope.py` and
+`python_int_generator_identity.py`, the `dynany_identity_generator_optional*`
+cases and `python_int_generator_optional_identity.py`. The [scoring workload](../bench/generator_identity/README.md)
+separates typed consumption, actual dynamic observation and repeated aliases.
 
 `yield from` boxes compatible typed yields into an `Any` yield channel, and checks
 and unboxes dynamic yields into a compatible concrete channel. Object and dynamic
@@ -352,6 +402,23 @@ storage. Class objects retain identity and identity hashing, report metatype
 `type`, and expose `__name__`, `__qualname__` and `__module__`. An instance's
 `__eq__` or `__hash__` does not become the class object's operation; reflected
 instance equality still runs when a class is compared with an instance.
+
+A stored ordinary class also gives what its class body binds. A class attribute
+reads as `C.name` does, and a static or class method is called as `C.name(...)`
+is, with `cls` bound to the stored class; a class deriving from another gives its
+own override. The lookup comes before the arguments, as in CPython, and a name
+the class lacks raises `AttributeError: type object 'C' has no attribute 'name'`,
+which `getattr()`'s default form takes
+(`tests/programs/inference/dynany_class_members.py`). Classes of modules that do
+not opt in work too: a method that no typed call compiles is compiled on demand
+(`tests/programs/inference/dynany_class_members_imported.py`). A static or class
+method called on an `Any` value's object likewise runs the method of the
+object's own class
+(`tests/programs/inference/dynany_class_members_objects.py`).
+
+Each such case is optional. If a use cannot be compiled (a parameter or result
+layout that no `Any` value holds, an object of a class nothing else boxes), the
+program still compiles and that use raises `NotImplementedError` when selected.
 
 Stored class values can reconstruct ordinary user classes whose boxed instance
 adapters and matching initializers have already been compiled by the program:
@@ -654,7 +721,9 @@ unrelated class among them, compare as CPython's rich comparison runs them: the 
 method, else the right operand's reflected one (a builtin type's own method declines an object),
 else identity for `==` and `!=` and `TypeError` for an ordering; `!=` without `__ne__` is not
 `__eq__`. The program's `@o.x.<class>` helper runs the class's method with the other value as an
-`Any` argument (`tests/programs/inference/dynany_eq_other.py`). A comparison method whose parameter is
+`Any` argument (`tests/programs/inference/dynany_eq_other.py`), and a method that returns
+`NotImplemented` declines as one that is absent does
+(`tests/programs/inference/dynany_cmp_notimplemented.py`). A comparison method whose parameter is
 `Any` takes any operand, also between typed objects of its class
 (`tests/programs/inference/dynany_eq_any_param.py`).
 
@@ -854,14 +923,17 @@ rejects: no method can return `NotImplemented`, so the first one that runs gives
 
 An int or float of typed code that no variable's box slot holds is a new object where
 it becomes an `Any` value, where CPython's names, containers and classes hold one
-object. This affects numeric items of typed tuples, dicts and sets, including typed
-variadic argument tuples; typed lists with optional or union item types
-(`list[float | None]`, `list[int | float]`); and typed numeric generator yields
-(`Iterator[float]`, for example).
+object. This affects numeric items of fixed typed tuples, dicts and sets, including
+variadic argument tuples represented as fixed shapes; typed lists and runtime-length
+tuples with numeric union item types (`list[int | float]`); and general numeric union generator
+yields. Scalar and optional `int` and `float` generator yields retain their source objects.
 
-Yielding into dynamic item storage (`Iterator[Any]`) retains the source box. The
-typed-tuple case remains in `tests/deviations/dynany_identity_boundary.py`; fresh
-displays with dynamic item destinations avoid that typed storage boundary. Typed
+Yielding into dynamic item storage (`Iterator[Any]`) also retains the source box.
+Numeric and optional-numeric runtime-length tuple items retain their source boxes
+as described below. Fixed tuple to runtime-length tuple conversions
+can still lose numeric identity; fresh literal displays retain their module
+constants. Fresh displays with dynamic item destinations avoid that fixed typed
+storage boundary. Typed
 numeric lists retain their item objects as described under
 [Typed numeric list items](#typed-numeric-list-items).
 
@@ -914,7 +986,20 @@ can still need an explicit `list[Any]` destination.
   [bounded reconstruction contract](#class-values-and-type-keyed-registries)
   raise `NotImplementedError`, although `callable()` reports true. This includes
   classes with additional methods and no existing boxed adapter, uncompiled
-  initializers and `__init__` stored as class data.
+  initializers and `__init__` stored as class data. An imported class whose
+  constructor dependencies are discovered on demand reaches this error when called
+  through `Any` before a static call compiles its initializer, where
+  v0.5.0-alpha.3 rejected the program at compile time.
+
+- A stored class gives its class attributes, static methods and class methods. A
+  method of its objects, a property, a static or class method read without a
+  call, and a member whose use cannot be compiled raise `NotImplementedError`,
+  where CPython gives a function, a property object or the value; they do not
+  raise the `AttributeError` of a missing name. Assigning a class attribute
+  through a stored class, enum and NamedTuple classes' members, and the names
+  every class object has of `type` (`__doc__`, `__dict__`, `mro`) keep the
+  dynamic lookup's `AttributeError`
+  (`tests/deviations/dynany_class_member_unsupported.py`).
 
 - Stored `type()` of an erased `Callable` held in `Any` raises
   `NotImplementedError`; its existing supported calls still work. Restoring the
@@ -931,7 +1016,7 @@ can still need an explicit `list[Any]` destination.
   iteration raise `TypeError`, and an object of another NamedTuple class compares with it by
   identity (an ordering raises `TypeError`), where CPython compares their fields.
 
-- A static or class method read through an `Any` value without a call raises `AttributeError`
+- A static or class method read through an object held in `Any` without a call raises `AttributeError`
   (typed code rejects a static method as a value at compile time), and so does a call of a
   property's value (`x.p(...)`). A field's value is called as a function value is.
 
@@ -1172,6 +1257,48 @@ Coverage: [dynany_identity_fields.py](../tests/programs/inference/dynany_identit
 [dynany_identity_field_locals.py](../tests/programs/inference/dynany_identity_field_locals.py),
 [dynany_field_locals.py](../tests/ir/dynany_field_locals.py).
 
+### Numeric runtime-length tuple items
+
+In identity-tracking code, runtime-length tuples of `int`, `float`, `int | None`
+and `float | None` retain their
+item objects through direct construction, typed-list construction, indexing,
+iteration, unpacking, slicing, concatenation and conversion back to a list.
+Source lists and tuples own separate companion arrays; mutating the list cannot
+change the tuple. Count/index searches and supported tuple comparisons test shared
+numeric identity before equality, including NaNs. Checked/promoting callers keep
+fitting integers' boxes; runtime-length integer tuples still reject values beyond
+their signed 64-bit storage range.
+
+The shared runtime tuple header now holds a nullable companion pointer after its
+length, adding eight bytes even in programs without dynamic Any. Raw item slots
+remain unboxed. Tracking constructors allocate a scanned array of `length + 1`
+words: one kind word and one nullable box pointer per item. Existing aliases keep
+their source box; fresh computations may remain null until observed. Copies must
+materialize pending identities before sharing items, so copying can allocate
+numeric boxes even when the program performs no later Any read. Proven scalar
+indexed arithmetic reads need no boxes. Ordinary programs allocate no companion.
+
+Optional tuples keep their existing nullable representation slots and store the
+same item identities in scanned companions. Widening a numeric tuple to optional
+items allocates fresh representation boxes and an independent companion array;
+the source and destination still share each Python item object. Typed reads reuse
+the representation boxes already in the tuple. `None` uses the canonical dynamic
+None box, never a null dynamic payload.
+
+This supports item crossings through Any; boxing the entire native numeric tuple
+as Any remains rejected. Fixed-length tuple sources and numeric union item storage
+remain separate identity gaps. In
+particular, converting an imported fixed tuple does not recover its item objects;
+annotated runtime-length tuple constants preserve them.
+Runtime-length tuple repetition and membership remain unsupported operations.
+
+Coverage: [dynany_identity_vtuples.py](../tests/programs/inference/dynany_identity_vtuples.py),
+[dynany_identity_vtuple_effects.py](../tests/programs/inference/dynany_identity_vtuple_effects.py),
+[python_int_vtuple_identity.py](../tests/programs/numbers/python_int_vtuple_identity.py),
+[dynany_identity_optional_vtuples.py](../tests/programs/inference/dynany_identity_optional_vtuples.py).
+`make listprobe` checks companion ownership, scan kinds, lazy-copy identity and
+collection with an intentionally atomic companion as its negative control.
+
 ### Calls, defaults and return values
 
 Typed numeric parameters, definition-time defaults and numeric returns preserve
@@ -1208,7 +1335,7 @@ Coverage: [dynany_identity_call_moves.py](../tests/programs/inference/dynany_ide
 
 ### Typed numeric list items
 
-Typed `list[int]` and `list[float]` preserve item objects through stores, reads,
+Typed lists of `int`, `float`, `int | None` and `float | None` preserve item objects through stores, reads,
 iteration, copies, slices, repetition and reordering. Their raw numeric array is
 unchanged; a separate scanned companion array holds item boxes. Copies share
 boxes, and replacing an item changes only that slot's object.
@@ -1230,12 +1357,25 @@ Foreign C list calls follow the CPython FFI twin's copy-back contract: the list
 remains the same object, but every numeric item is replaced after C returns,
 including read-only calls and calls through `ffi.at()`.
 
+Optional numeric lists retain their scanned nullable slots: null means `None`,
+and each non-null slot points to the existing numeric representation box. The
+companion kind distinguishes this from an unboxed scalar array. Copies, clear
+and refill, slices and mutations keep that distinction. Ordinary typed graphs
+without dynamic `Any` still allocate no identity companions; tracked typed reads
+reuse representation boxes. Optional integer items keep their checked 64-bit
+limit even in a promoting-int caller. This preserves item crossings and does not
+admit the entire optional list as an `Any` value.
+
 Coverage: [dynany_identity_list_items.py](../tests/programs/inference/dynany_identity_list_items.py),
 [dynany_identity_list_mutations.py](../tests/programs/inference/dynany_identity_list_mutations.py),
 [dynany_identity_list_transfers.py](../tests/programs/inference/dynany_identity_list_transfers.py),
 [dynany_identity_list_queries.py](../tests/programs/inference/dynany_identity_list_queries.py),
 [dynany_identity_list_selectors.py](../tests/programs/inference/dynany_identity_list_selectors.py),
 [dynany_identity_list_callbacks.py](../tests/programs/inference/dynany_identity_list_callbacks.py),
+[dynany_identity_optional_lists.py](../tests/programs/inference/dynany_identity_optional_lists.py),
+[dynany_identity_optional_container_effects.py](../tests/programs/inference/dynany_identity_optional_container_effects.py),
+[dynany_identity_optional_container_imports.py](../tests/programs/inference/dynany_identity_optional_container_imports.py),
+[python_int_optional_container_identity.py](../tests/programs/numbers/python_int_optional_container_identity.py),
 [c_list_identity.py](../tests/ffi/c_list_identity.py).
 
 ### Constant folding and comprehensions
@@ -1301,9 +1441,13 @@ The optional
 reads of every builtin, class, function and generator type, including int/bool
 sharing and class inheritance, in normalized functions exported from actual
 typed IR; CI requires it to accept every such read of the dynamic-`Any` test
-programs. It rejects unsupported forms and does not establish adapter
-fidelity, the descriptor table, payload layouts, identity/GC preservation or
-LLVM correctness. It is separate from the built-in closed-union proof and does not
+programs. A separate bounded reference-transfer theorem checks the live reference
+boxer's stores, scanned allocation and payload offsets, proving that a non-null
+round trip preserves its address, heap writes through aliases and abstract trace
+edge. Native list/companion retention is tested with an atomic-box negative
+control; downstream edges and the concrete collector remain outside that proof.
+The checks reject unsupported forms and do not establish adapter fidelity, general
+identity/GC preservation or LLVM correctness. They are separate from the built-in closed-union proof and do not
 justify removing `Any` or identity bookkeeping. These box reads are effect-free because boxes are
 immutable. Runtime calls with an `A` descriptor receive every effect, as `O` calls
 do: the box may contain an object whose equality, hashing or repr runs program code.
@@ -1439,8 +1583,8 @@ every mode once for the AOT build and for CPython 3.13.16, alternating and pinne
   and the graph's copy 22.8 instead of 31.0 ms; `typed` is unchanged. A million boxes no longer
   fill the collector's 32 MiB window, so `union`, `dyn` and `graph` run without a collection.
 - **Proven payloads**: after `isinstance(x, int)` the scan reads the payload with no dispatch or
-  new box, 3.2 ms, as the union's tag test does. Before that path the scan took 26.2 ms, 8.4×
-  as long (the same program built by the compiler at `48e31e33`, median of 7 runs interleaved
+  new box, 3.2 ms, as the union's tag test does. Before that path the scan took 26.2 ms, about
+  8× as long (the same program built by the compiler at `48e31e33`, median of 7 runs interleaved
   with this build's).
 - **Generic arithmetic**, a dispatch and a new box per addition, is 16× the typed sum
   (17.8 ms against 1.1 ms) and 0.6× CPython's processing time.
@@ -1485,8 +1629,10 @@ lines.
   closure's cell and a generator's frame, which would need their users compiled again too.
 - **Broader typed-container crossings**: the flow analysis that selects `list[Any]` storage at the
   allocation of every alias of a container that may flow into `Any` storage.
-- **Calls**: an `Any` value unpacked into a call's arguments, through a generic binding entry;
-  builtin functions as values; `type(x)` as a class object.
+- **Calls**: an `Any` value unpacked into the arguments of a typed function's call
+  (`f(*args)` with `args: Any`), through a generic binding entry; a callable held in `Any`
+  already takes [runtime-sized arguments](#runtime-argument-unpacking). Builtin functions as
+  values; `type(x)` as a class object.
 - **Protocols**: legacy sequence iteration through `__getitem__`, reverse iteration through
   `__len__`/`__getitem__`, `__length_hint__`, and the
   builtins listed under [deviations](#deviations) that do not take `Any` values yet.

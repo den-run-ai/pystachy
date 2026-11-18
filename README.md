@@ -108,7 +108,7 @@ and shows how to measure compilation and execution separately.
 | [`memo.py`](https://github.com/den-run-ai/pystachy/blob/main/bench/memo.py): recursion with `functools.cache` | 0.455 s | 0.189 s | 0.095 s | 4.8× |
 | [`words.py`](https://github.com/den-run-ai/pystachy/blob/main/bench/words.py): strings and dicts | 0.224 s | 0.141 s | 0.094 s | 2.4× |
 
-These are whole-process wall times for v0.4.0-alpha.3, measured on 11 November 2026:
+These are whole-process wall times of commit [`f07472a5`](https://github.com/den-run-ai/pystachy/commit/f07472a535f165f939fdda774b1fcd4813e5c66d), measured on 11 November 2026:
 medians of five runs on one CPU of a shared 4-vCPU Intel Xeon 2.10 GHz VM, with
 CPython 3.13.18 and LLVM 18.1.3. JIT times include compilation, AOT times exclude
 the build, and every output matched CPython's. The raw samples cover the
@@ -150,7 +150,7 @@ behavioral differences are listed as [deviations from CPython](https://github.co
 
 | Area | Supported | Not supported |
 |---|---|---|
-| Values | `int`, `float`, `bool`, `str`, `bytes`, `list`, `dict`, `set`, `frozenset`, `tuple`, `bytearray` | `complex`, `memoryview` |
+| Values | `int`, `float`, `complex`, `bool`, `str`, `bytes`, `list`, `dict`, `set`, `frozenset`, `tuple`, `bytearray` | `memoryview` |
 | Functions | Closures, lambdas, decorators, `*args` and `**kwargs`, generators | `async` and `await` |
 | Classes | Single inheritance, dataclasses, `NamedTuple`, properties, operator methods | General multiple inheritance, metaclasses, subclasses of builtin types |
 | Typing | Inferred locals and returns, generics, closed unions, `T \| None` narrowing | General object unions |

@@ -162,8 +162,8 @@ Local validation with the pinned CPython 3.13.16 and LLVM 18.1.3 passed:
   all preflight and timed-batch result/copy-counter checks passed.
 
 The full `make verify` matrix, the full GC groups, and other operating systems or
-architectures were not run locally. This research prototype is submitted as a
-draft; required CI and review remain prerequisites for any promotion.
+architectures were not run locally. This research prototype shipped in
+v0.3.0-alpha.2.
 
 This prototype has no multidimensional imports, foreign/device-memory ownership,
 async completion, shared-memory IPC, exporter-side DLPack or Arrow support. The

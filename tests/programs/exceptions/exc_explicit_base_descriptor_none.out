@@ -1,0 +1,21 @@
+argument
+TypeError descriptor '__init__' requires a 'Exception' object but received a 'NoneType'
+TypeError descriptor '__str__' requires a 'BaseException' object but received a 'NoneType'
+TypeError descriptor '__repr__' requires a 'BaseException' object but received a 'NoneType'
+argument
+hello Child('hello')
+descriptor '__str__' requires a 'KeyError' object but received a 'NoneType'
+descriptor '__str__' requires a 'OSError' object but received a 'NoneType'
+descriptor '__str__' requires a 'AttributeError' object but received a 'NoneType'
+descriptor '__str__' requires a 'ImportError' object but received a 'NoneType'
+descriptor '__str__' requires a 'NameError' object but received a 'NoneType'
+argument
+custom init True hello
+custom none repr none
+custom init False created
+argument
+custom init False hello
+custom object repr object
+argument
+descriptor '__init__' requires a 'Exception' object but received a 'NoneType'
+[exit 0]

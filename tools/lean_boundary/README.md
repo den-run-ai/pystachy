@@ -6,21 +6,60 @@ the model does not establish that the exporter or runtime implements that model.
 
 | Area | Enforced property | Current boundary |
 |---|---|---|
-| Dynamic `Any` | Payload reads have matching type guards | Runtime tag/layout contracts |
+| Compiler stages | Completed stages form an ordered prefix; unfinished stages block new starts; lowering follows finalization and is terminal; successful inspection reports bind the snapshot to the terminal attempt ([PIPELINE.md](PIPELINE.md)) | Python state/exporter correspondence, stage body semantics and artifact authenticity |
+| Dynamic `Any` | Payload reads have matching type guards and compatible class layout prefixes | Exported layouts, runtime tag/boxing contracts and LLVM offsets |
+| Reference boxing | A non-null reference round trip preserves its address, mutable aliases and abstract tracing edge | Bounded C-AST adapter, physical layout correspondence and allocator/collector semantics |
+| Numeric-list identity | Initialized companions preserve identity readback and tracing after stores, reserve growth and contiguous slice/copy | Bounded C-AST adapter, valid nonoverflowing lengths, allocation-time liveness and collector semantics |
 | Lists, dictionaries and sets | Unchecked accesses have bounds/live-entry facts | Runtime effects and container contracts |
 | Closure cells and calls | Captured-container facts survive only valid reads; visible callee writes invalidate facts | Independent Python body-effect scan and cell ABI |
 | Promoting integers | Selected result-fit claims and actual checked `+`, `-`, `*` reconstruction paths | Other inline arithmetic, LLVM and integer runtime |
 | Integer storage | Low-word, tuple-tail, narrowing and complete stack-copy obligations | Exported representations, fresh allocation and stack ABI |
-| Null-check removal | Removed checks are redundant in the captured before-pass graph | Whole-pass equivalence and broader heap correlations |
-| Closed unions | Inventoried tag/payload reads have nonnull/member guards | Raw transport, dynamic reconstruction and unsupported forms |
+| Null-check removal | Removed checks are redundant in the captured before-pass graph, including through fields, globals, closure cells and box payloads | Whole-pass equivalence, box immutability across calls, runtime effect contracts and the classes table |
+| Closed unions | Inventoried tag/payload reads have nonnull/member guards, across writes and calls where no compiled code may write a union box, through joins; fields, globals, container items, parameters and results hold members of their declared unions, each write proved (an unassigned word only where field initialization, a definition check or call order does not exclude it); payload bits are read, boxed and stored in split locals only as their box's member | Reconstruction from other tag sources, closure cells, split slot records, IR operand/item types, runtime callbacks' arguments, the adapter's dominance and call-graph analyses and box immutability's typed-memory and runtime ABI |
+| Field initialization | Each field a class's code reads without an "is assigned" flag test is assigned before that code can see an object under construction, through `__init__`, other calls and closures called directly or through their `Callable` (whose cells stay private until an environment escapes) by inferred contracts | Class layouts and the closure layout, that only compiled allocations make objects of the program's classes and set flags after fields, and raw accesses of objects under construction (escapes) |
+| Collector scanning | No list, dict or set whose item, value or key array may be atomic (unscanned) reaches a use, argument, return or store whose type lets that array hold pointers, and words that may be pointers are written only into scanned arrays, from the allocator, type hole, key kind and `empty.kind` that made it, with each memory word typed once for the program ([GC.md](GC.md)) | Runtime array kinds through copies, columns and writes, exported holes and key descriptors, declared and item types, every function of a program accepted; strings and buffers, roots and lifetime are not covered |
 
 All accepted certificates are checked by Lean. Mutation controls exercise the
 Python adapters, including lost inventories, exceptional edges and forged facts.
-Parsing, inference, specialization, GC/lifetime, general optimization equivalence,
-exception semantics and LLVM lowering remain unproved.
+Parsing, inference, specialization, collector roots and lifetime, general optimization
+equivalence, exception semantics and LLVM lowering remain unproved.
+
+[REPORT.md](REPORT.md) gives every check's current counts over the whole test corpus and
+lists each function left unproved. `make lean-report` compiles each differential test program
+and deviation once, runs every check on it and rewrites that report; it took about 11
+minutes with four processes. No CI job runs it. Run it after a change to typed IR, to a pass
+a check covers or to a checker, and commit the report when its counts change;
+`python3.13 tools/lean_report.py --status` says which of its inputs (compiler, checkers,
+corpus) changed since. It keeps each program's result in `build/lean-report.jsonl` as it
+finishes, and `--resume` continues an interrupted run only when both the recorded inputs
+and the current checkout are clean and unchanged. Experimental runs with uncommitted
+inputs need `--output`; their records cannot be resumed, even after restoring the clean
+checkout. Older records without clean provenance also need a fresh run. `--status`
+rejects both kinds of records as evidence for a clean checkout. `--render` always
+requires another `--output`, keeping historical or experimental records' original
+input provenance and labels. Generate the committed report through a full run or
+a validated `--resume`, which checks the whole corpus and execution identities.
+The corpus's import paths can include the repository root. Clean evidence therefore
+requires all repository Python sources and `.path` sidecars to be tracked and
+unchanged, including helpers outside `tests/`. Ignored Python sources, such as
+`build/ref` copies, need an experimental `--output` or a separate clean worktree;
+ordinary `__pycache__` bytecode files are harmless. External `.path` directories
+and source/package symlinks leaving the checkout cannot certify clean evidence.
+Tracked internal symlinks require indexed intermediate links and inventoried `.py` or
+`.path` targets. Nested Git checkouts, submodules and existing import directories outside
+the indexed tree cannot certify clean evidence; use a separate worktree or experimental
+output. The audit compares actual input bytes with Git blobs, so change-suppression flags
+and clean filters cannot conceal changed working source.
+Import lookups also account for namespace directories, including an empty directory
+that activates an optional import; untracked namespace candidates cannot certify clean
+evidence. The compiler identity includes `sys.platform`, which it folds before typed
+IR is generated, so a report from another host platform cannot be reused as current evidence.
+The dated sweeps in each check's document explain the rejections it lists.
 
 [GUARDS.md](GUARDS.md) describes the bounded null/union CI examples and the strict
-full-corpus inventory command; full-corpus acceptance is not claimed.
+full-corpus inventory command; full-corpus acceptance is not claimed. Removed null
+checks are proved with the [access model](ACCESS.md)'s field, global and effect rules
+where the finite-tag model lacks them.
 Broader null/union correlations and unsupported forms are tracked in
 [#1270](https://github.com/den-run-ai/pystachy/issues/1270).
 
@@ -58,8 +97,9 @@ audit; that historical comparison found no copied implementation. The shared log
 and dependency review, not a formal proof of authorship.
 
 Current Lean imports are limited to `Std`, `Lean` and the local `PystachyBoundary`,
-`PystachyAccess`, `PystachyInt`, `PystachyInline`, `PystachyStorage` and
-`PystachyGuards` modules; `lake-manifest.json`
+`PystachyLayout`, `PystachyAlias`, `PystachyCompanion`, `PystachyAccess`, `PystachyInt`,
+`PystachyInline`, `PystachyStorage`, `PystachyGuards` and `PystachyPipeline` modules;
+`lake-manifest.json`
 contains no external packages. The pinned Lean
 toolchain is an external development dependency with its own
 [Apache-2.0 license](https://github.com/leanprover/lean4/blob/v4.35.0/LICENSE).
@@ -116,6 +156,13 @@ code are the worst function's: an error, then a rejection, then an unsupported
 form. A read in a block that nothing reaches cannot run; it counts as proved
 with its function. The snapshot must be a completed typed-after inspection even
 when no function reads a payload.
+
+`pystachy-boundary` and `pystachy-access` also take `--batch`: one candidate per
+input line and one result line per candidate, in order, until the input ends. Lean
+checks each line exactly as a run on that line alone checks it. The Python adapters
+keep one such process per thread and checker, replaced after a timeout or a
+malformed answer. A run's runtime start-up costs about 40 ms, where checking a
+typical candidate takes a few milliseconds.
 
 `tools/check_lean_corpus.py`, which `make check-lean-corpus` runs after building
 the checker, does that for the dynamic-`Any` corpus: each differential test
@@ -178,6 +225,123 @@ dependencies of the public theorems, rejecting admitted proofs, extra axioms and
 native-computation assumptions. The allowed axioms are Lean's standard
 `propext`, `Classical.choice` and `Quot.sound`.
 
+## Class layouts and boxing correspondence
+
+`PystachyLayout.accepted_layout_projection` connects an accepted payload guard
+with independently checked layout obligations: every admitted concrete descriptor
+must have the requested class's complete member prefix. A member records both
+its source representation and LLVM storage type; two pointer fields with different
+source representations are not interchangeable. Assignment flags and numeric
+identity companions are members too.
+
+The inspector exports `dynamic_layouts` from the class registry and the ordered
+members used by `lower_module.struct_types`, independently of `dynamic_types`'s
+DynType constants. The adapter cross-checks their payload names, class numbers,
+bases, roles and inventory. Schema 3 candidates distinguish `class_payload`
+from ordinary payload nodes. Each class read names its expected layout, and the
+native front end constructs a prefix obligation for every tag that read admits.
+Deleting a layout entry, clearing the table or downgrading the candidate to
+schema 2 cannot discard those obligations. Schema 2 remains supported for the
+other guard-based proof adapters. Old inspection snapshots with classes must be
+regenerated to include the layout inventory.
+
+Mutation tests change a subclass's member representation, LLVM type, order or
+extent, and independently change descriptor metadata. They compare exported
+layouts with emitted `%C.*` struct declarations and compile the real C Dyn/DynType
+declarations to check named offsets against payload lowering. `make boxprobe`
+tests the actual runtime's integer and float payload bits (including negative
+zero and NaN), reference addresses and null boxing, alongside its existing GC
+controls. These are ABI/runtime tests, not Lean boxing or alias-preservation
+theorems. Snapshot fidelity, the adapter's classification of reads, LLVM's layout
+rules and the runtime implementation remain trusted.
+
+## Reference aliases and tracing roots
+
+`PystachyAlias.accepted_reference_roundtrip` proves that a non-null reference
+boxed by an accepted transfer and read back has exactly its original address.
+`accepted_alias_write` proves equality of the entire heap update through either
+alias, for an arbitrary initial heap and stored value. Copying a mutable object
+does not satisfy this contract. `accepted_traces_reference` proves that the
+reference occupies a traced word of the box. `accepted_root_chain` composes that
+edge with an **assumed** downstream edge in an explicit reachability model; it
+does not prove the downstream edge or concrete collector behavior.
+
+`tools/check_lean_alias.py` derives the transfer from Clang's AST for the live
+`pys_dyn_ref` and `gc_box` bodies. It inventories every statement of the bounded
+non-null path, resolves the scanned versus atomic allocator, and extracts every
+field store in execution order. It independently compiles the runtime's `Dyn`
+declaration for named byte offsets and widths, then obtains the read offset by
+running the actual `dyn.payload` lowerer. Lean checks the extent, scanned storage
+and final symbolic word read. Overwritten or omitted reference stores, changed
+field order, wrong read offsets and atomic allocations fail. Unknown C shapes,
+pointer arithmetic, narrowing casts and changed result bindings fail closed in
+the adapter. The native JSON front end refuses missing/extra fields and unknown
+sources. Run `python3.13 tools/check_lean_alias.py` after building the checker;
+`make check-lean-boundary` includes the live-runtime check, mutation controls and
+the theorem's axiom audit.
+
+`make boxprobe` separately tests bidirectional typed/Any mutations through one
+native integer list, then keeps its list and numeric companion alive through
+only a rooted reference box. An otherwise identical atomic box must fail to
+retain the list. This negative control checks the need for the actual trace edge;
+the list/companion chain is runtime-tested, not formally established by the
+reference-transfer theorem.
+
+### Numeric-list companion stores and copies
+
+`PystachyCompanion.accepted_identity_roundtrip` proves that an identity store and
+load recover the exact box address for arbitrary other memory cells.
+`accepted_traces_identity` proves the stored box occupies a traced array word
+for **every** valid index below capacity. `accepted_root_chain` establishes the
+list-header → companion-array → identity-box chain, and
+`accepted_boxed_root_chain` composes it with the preceding reference-box theorem.
+These theorems replace the assumed downstream edge for this bounded list case;
+they retain the assumption that the concrete collector follows scanned words.
+
+`accepted_copy_identity` proves that reserve growth and contiguous slice/copy
+retain each original item address, for arbitrary source/destination contents and
+every live index. Reserve copies the kind header and all live identity words;
+slicing copies the selected identities after the destination's own kind header.
+`accepted_copy_traces_identity` puts every copied identity inside the new scanned
+extent, and `accepted_copied_root_chain` establishes its header/array trace chain.
+Reserve keeps the original list header, so its existing aliases see the attached
+replacement array. A slice gets a fresh header and array while sharing item identities.
+
+`tools/check_lean_companion.py` obtains the real `List` field offsets and widths
+by compiling constants in the runtime's translation unit. Length, capacity,
+raw-data and companion fields must occupy distinct full words inside the header;
+an anonymous union is rejected even if the runtime's own assertions allow it.
+The raw `Slot` must contain exactly one full word at offset zero, so padding cannot
+change the setter's stride or address. Member-name macros are undefined before
+independent layout extraction. Clang AST comparisons
+check the complete bounded constructor, companion allocation/materialization,
+clean-companion fast path, identity setter/getter, reserve and contiguous
+slice/copy bodies. Header and companion allocations must use scanned storage.
+The adapter derives the copy's source/destination offsets, extra header words
+and scanned extent; Lean checks their relationships. The pointer attachment,
+setter and getter must retain the same addresses and `i + 1` word. Unknown
+statements, narrowing length/capacity fields, changed copy sources, truncated
+extents and missing/overwritten attachments fail closed. The reference spells
+out the raw-data store independently of `AT` and undefines callable macros before
+parsing, so those macros cannot rewrite both the code and its reference. Schema 2
+requires both copy contracts; the native parser rejects omissions, schema
+downgrades, extra fields and oversized offsets. Run
+`python3.13 tools/check_lean_companion.py`; its tests and theorem axiom audit are
+also included by `make check-lean-boundary`.
+
+The companion theorem starts with a stable, initialized companion and a valid
+live index. Store and copy results assume successful operations, valid
+length/capacity relationships and nonoverflowing C extents. The copy model assumes
+fresh destination storage and standard `memcpy` behavior. It does **not** prove
+materialization's numeric value, those invariants, promotion, iteration, stepped
+copies, other list mutations, tuple/generator companions or a whole program's
+roots. In particular, a final trace chain is not a proof of source liveness
+while allocations or collections execute. Kind masks' numeric semantics remain
+outside the model. The C-to-model adapter, layout extraction, pointer/word ABI,
+called helper semantics, allocator slack/size classes and collector implementation
+remain trusted. The null reference-box branch is structurally checked but excluded
+from its theorem. These results do not justify removing roots, companions or guards.
+
 ## How actual IR reaches the model
 
 `tools/check_lean_boundary.py` reads the existing inspection schema, validates
@@ -193,6 +357,15 @@ explicit role:
   accepts its own descriptor, those whose bases lead to it (subclasses share its
   layout) and those naming it as their secondary role. A function's or
   generator's read accepts its one descriptor. Other payload types are refused.
+  Before constructing the proof, the adapter also checks how the projection's
+  bits are consumed: `slot.unpack` must use the declared payload type, and only
+  an `int` payload may be used directly as an integer or copied unchanged into
+  the runtime's `box`/`ubox` slot argument. The internal address may
+  not escape, and other raw-slot transports are unsupported. Producer identity
+  comes from result numbers, not a consumer's operand annotation. This is a
+  structural check in the trusted Python bridge. Class projections additionally
+  receive the checked layout-prefix obligations above; `slot.unpack` lowering
+  remains outside the theorem.
 - Guards come from tests of a box's tag: comparisons of its DynType with a
   descriptor; runtime.c's `pys_dyn_isa` and `pys_dyn_role_isa`, whose accepted
   descriptors the table determines (a class's subclasses and None, or both int
@@ -254,7 +427,9 @@ checks of the trusted Python bridge in addition to the kernel-checked model
 examples; they do not prove its fidelity.
 
 Generator functions, stores into boxes or descriptors and unknown operations
-are explicitly refused. No selected function is silently skipped. The Python
+are explicitly refused here; the union, field and collector checks model a
+generator's suspensions themselves ([GUARDS.md](GUARDS.md#field-initialization),
+[GC.md](GC.md)). No selected function is silently skipped. The Python
 bridge allows at most 4,096 instructions, 1,024 blocks, 16,384 normalized nodes,
 65,536 certificate facts holding 262,144 tags, 4 MiB candidate JSON, a 4 MiB
 snapshot (512 MiB with `--all`) and 200,000 inference iterations; the native
@@ -271,8 +446,9 @@ this needed: slice bounds of an `Any` value and `sum()` of `Any` values read int
 payloads that no tag test guarded (their compiler guards are
 [#1227](https://github.com/den-run-ai/pystachy/pull/1227)), and two length-hint
 and iterator helpers kept the names of landing blocks that lowering dropped.
-CI runs the same check on every code change, so a compiler change that leaves a
-payload read unproved fails.
+Main and manual CI runs the same check (the x86-64 `gc-jit-1` group), so a compiler
+change that leaves a payload read unproved fails there; [REPORT.md](REPORT.md) has the
+current counts.
 
 ## Trust and coverage limits
 
@@ -285,13 +461,17 @@ not proved by this version:
 - The descriptor table: that it lists every DynType the program emits. (runtime.c's
   iterator descriptors have no base, class number or kind that an interpreted test
   admits.) The class numbers that dispatchers switch on must identify the program's
-  classes. The bridge's copies of runtime.c's builtin kinds, role flag, class number
+  classes; the bridge cross-checks them against the separate class registry
+  export. The bridge's copies of runtime.c's builtin kinds, role flag, class number
   word and builtin payload tags are tested against runtime.c
   ([test_typed_dynamic_tables.py](../test_typed_dynamic_tables.py)), not proved.
-- Payload layout: that a subclass's, a secondary role's, a bool's and a native
-  int list's payloads have the layouts their accepted reads assume.
+- The correspondence of exported class members to physical LLVM offsets. Lean
+  checks each admitted class/role prefix, but the exporter and LLVM layout rules
+  remain trusted. Builtin bool and native int-list payload contracts are tested,
+  not proved.
 - Object initialization, null/unbound behavior (a null dynamic value has no tag,
-  so it must never pass a guard), GC, aliases in mutable containers, or the
+  so it must never pass a guard), general GC/alias correctness beyond the bounded
+  reference-transfer theorem above, or the
   implementation of runtime tag operations.
 - Source-language or LLVM equivalence, generic specialization, identity-slot
   elision, absence of dynamic operations, or necessity/removal of `Any`.
@@ -314,10 +494,10 @@ build/workflow files or development tool pins; it also runs on every main push
 and manual dispatch. PR selection uses the cumulative merge diff and runs
 conservatively if its history is missing. Five workflow tests exercise the
 actual selector against temporary Git histories. `make check-lean-corpus` runs in
-the x86_64 verification group `opt-in` of every PR that changes code, and in
-`runtime-cache` on main and manual runs; a sixth test keeps both jobs on one
-Lean archive; that target first runs the corpus tool's own tests
-(`tools/test_lean_corpus.py`). Both jobs download the pinned, SHA-256-checked
+the x86-64 verification group `gc-jit-1` on main and manual runs, and code PRs check
+the bounded examples in `contracts` ([GUARDS.md](GUARDS.md)); a sixth test keeps Lint
+and verification on one Lean archive; that target first runs the corpus tool's own
+tests (`tools/test_lean_corpus.py`). Both download the pinned, SHA-256-checked
 Linux Lean release; no PR job is added. Lean is not a compiler, runtime or
 installation dependency.
 

@@ -1,0 +1,7 @@
+null
+TypeError: super() argument 1 must be type, not None
+bound
+base False True
+base True True
+done
+[exit 0]

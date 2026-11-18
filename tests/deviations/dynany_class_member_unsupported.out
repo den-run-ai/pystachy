@@ -1,0 +1,11 @@
+show NotImplementedError: Widget.show of a class held as an Any value is not supported: it is a method of the class's objects
+showcall NotImplementedError: Widget.show of a class held as an Any value is not supported: it is a method of the class's objects
+area NotImplementedError: Widget.area of a class held as an Any value is not supported: it is a property, which an object of the class reads
+kind NotImplementedError: Widget.kind of a class held as an Any value is not supported as a value: it is a method (call it)
+words NotImplementedError: Widget.words of a class held as an Any value is not supported: its value, list[str], has no layout as an Any value here
+build NotImplementedError: Widget.build() of a class held as an Any value is not supported: a parameter or its result has no layout as an Any value here
+typed NotImplementedError: Widget.typed() of a class held as an Any value is not supported: a parameter or its result has no layout as an Any value here
+doc AttributeError: 'type' object has no attribute '__doc__'
+default NotImplementedError: Widget.show of a class held as an Any value is not supported: it is a method of the class's objects
+3 widget 3 absent
+[exit 0]

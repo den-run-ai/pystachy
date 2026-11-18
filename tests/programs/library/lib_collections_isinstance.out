@@ -1,0 +1,9 @@
+True True True
+True True True
+False False False
+False False False False
+True True True
+True False False
+x is a dict: ['v']
+c is a dict: 2
+[exit 0]

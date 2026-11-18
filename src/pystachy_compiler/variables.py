@@ -26,7 +26,7 @@ from src.pystachy_compiler.diagnostics import FILES, LINES, MODDUNDERS, Rejoin, 
 from src.pystachy_compiler.dynamic import XCMP, boxed_list_items, comparison_record_write, comparison_storage_key
 from src.pystachy_compiler.ir import Blk, Closure, FnInfo, Frame, Ins, IterArg, Val, tmpname, one_num
 from src.pystachy_compiler.names import ENUMCLASSES, owner, short
-from src.pystachy_compiler.specs import BIG, BIGOPT, BYTEARRAYC, INERT_DECOS, NONE_ITEM, NONEVAR, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
+from src.pystachy_compiler.specs import BIG, BIGOPT, BYTEARRAYC, COMPLEXC, INERT_DECOS, NONEVAR, NONE_ITEM, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
 from src.pystachy_compiler.syntax import NOKIDS, Node, comp_names, made_var, mk, name_targets, starred_target
 from src.pystachy_compiler.utils import (
     elem,
@@ -121,7 +121,9 @@ def gen_load_name(self, name: str) -> Val:
         if name in self.owned and not self.appending:
             self.mem_store(Val(self.owned[name], "*int"), Val("0", "int"))  # (what reads it may keep it: str_append)
         r = self.mem_load(Val(self.lreg[name], "*" + t)).v
-        if name == self.selfname and name not in self.compvars:
+        if (name == self.selfname or (name in self.curfn.nnp and self.may_decline(self.curfn))) and name not in self.compvars:
+            # (and, in a comparison method that may return NotImplemented, a parameter whose
+            # object is known not to be None, which it may pass on: to super().__eq__(other))
             self.nn[r] = True
         val = Val(r, t)
         if name in self.idbox and numeric_identity(t):
@@ -659,6 +661,11 @@ def gen_none_global(self, name: str) -> str:
 def gen_none_global_resolve(self, name: str, t: str) -> None:
     # Unlike a local's pending slot, this read can belong to any function compiled earlier.
     # Keep its hint separate from union joins, which may override a declaration's type.
+    if self.xtry.startswith("narrow:") and self.holds_union(t, []):
+        # (a union isinstance(x, (A, B)) narrowed x to would type the global for code outside
+        # the attempt, also as a container's items ([x]), whether a store gives it its type or a
+        # read's lookahead finds it (if items is None: items = [x]): declined, see narrows)
+        self.err(f"'{short(name)}' would take a union that a narrowing made")
     if self.gtypes[name] == NONEVAR and t != NONEVAR and name in self.noneglobalpending:
         if self.final or self.rtmode:
             self.err(f"cannot infer the type of '{short(name)}' from None here; annotate it{self.where_def(name)} ({short(name)}: T | None = None)")
@@ -841,6 +848,11 @@ def gen_gtype(self, name: str) -> str:
     # has not been compiled yet (see ahead and early), or ""
     if name not in self.gtypes and name in self.mvars and name not in self.noneglobals and not self.copying and self.globread(name) and self.ahead(name) == "":
         self.early(name)
+    if name not in self.gtypes and name in self.earlycopies and owner(name) != self.curfn.mod and owner(name) not in self.inited:
+        # (a module's copy of another module's constant, from m import K, read while its module
+        # is still being imported: typed as that constant is, program.py; declared before
+        # gen_read's check that the import has bound it, which a read before then fails)
+        self.declare(name, self.earlycopies[name])
     return self.gtypes.get(name, "")
 
 def gen_ahead(self, name: str) -> str:
@@ -866,7 +878,7 @@ def gen_ahead(self, name: str) -> str:
     copying = self.copying
     self.copying = st.s == "from" and self.foreign(e.s)  # (see copying)
     if st.kind == "annassign" and st.kids[0].kind == "name":
-        self.new_global(name, self.vtype(st.kids[1]))
+        self.new_global(name, self.mapping_ann(self.vtype(st.kids[1]), st.kids[2]) if len(st.kids) == 3 else self.vtype(st.kids[1]))
     elif st.kind == "assign" and assigns(st, name) and self.empty_of(e) != "":
         self.new_global(name, "dict[?,?]" if e.kind == "dict" else f"{self.empty_of(e)}[?]")
         self.lookahead(name, True)
@@ -1198,6 +1210,10 @@ def gen_refine(self, name: str, t: str, glob: bool = False) -> None:
         if "?" in self.ret and name in self.qret.get(self.curfn.ll, "").split():
             self.adopt(t)  # the function returned it: so it returns t
     else:
+        if self.xtry.startswith("narrow:") and self.holds_union(t, []):
+            # (a union isinstance(x, (A, B)) narrowed x to would type the global's items for code
+            # outside the attempt: declined, see narrows)
+            self.err(f"'{short(name)}' would take a union that a narrowing made")
         for nm in [name] + self.twins(name):
             if nm == name or "?" in self.gtypes[nm]:
                 self.gtypes[nm] = t
@@ -1522,7 +1538,7 @@ def gen_typed_now(self, e: Node, own: str = "") -> bool:
             if i != 1 and not self.typed_now(e.kids[i], own if i == 2 else inner):
                 return False
         return True
-    if e.kind == "lambda" or e.kind in UNSUPPORTED:
+    if e.kind == "lambda" or (e.kind in UNSUPPORTED and not (e.kind == "complex" and COMPLEXC in self.classes)):
         return False
     for k in e.kids:  # (x := v as v: typing it assigns nothing, see walrus)
         if not self.typed_now(k, own):
@@ -1668,6 +1684,11 @@ def gen_default_want(self, r: Node, m: str, args: list[Node], vt: str) -> str:
     return ""
 
 def gen_new_global(self, name: str, t: str) -> None:
+    if self.xtry.startswith("narrow:") and self.holds_union(t, []):
+        # (a union isinstance(x, (A, B)) narrowed x to would type a global that a function's
+        # store creates (global items; items = x) for code outside the attempt: declined, as
+        # none_global_resolve declines one that only None was given so far)
+        self.err(f"'{short(name)}' would take a union that a narrowing made")
     if len(self.hints) > 0 and "global:" + name in self.hints:
         t = self.hints["global:" + name]  # (a join's type: as if annotated, see join_hint)
     elif t == NONEVAR:

@@ -31,9 +31,25 @@ def gen_err(self, msg: str) -> None:
         # iteration protocol instead gets an explicit runtime-error arm; unused
         # methods must not make an otherwise accepted program fail to compile.
         self.newx[self.xtry] = True
+        if self.xtry.startswith("narrow:"):
+            # (nor may a declined narrowing's union type storage on the next pass: this pass's
+            # joins are found again where they are not its, see narrows)
+            self.newhints = {}
         raise Rejoin()
     if len(self.newhints) > 0 and not self.final:
         raise Rejoin()  # (an error after a join may come of the narrower type it widens: see Rejoin)
+    self.retry_hierarchy(msg)
+    if len(self.ncand) > 0 and self.curfn is not None:
+        # (an error that no join or hierarchy explains, in a function whose isinstance() tests of
+        # class tuples narrowed nothing (see narrows): the next pass narrows them, as the error
+        # may come of x's base type there; an error in that pass declines them, above, and this
+        # pass's error is reported then)
+        key = f"narrow:{self.fnkey(self.curfn)}:"
+        want = [c for c in self.ncand if c.startswith(key) and c not in self.xwant and c not in self.xnot]
+        if len(want) > 0:
+            for c in want:
+                self.newwant[c] = True
+            raise Rejoin()
     if len(self.making) > 0:
         # an error in a template's function: say which call made it compile
         for i in range(len(self.making) - 1, -1, -1):

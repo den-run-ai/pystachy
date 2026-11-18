@@ -1,0 +1,17 @@
+0.6666 True
+4 ROUND_DOWN 0 50 False
+1e+30
+4 4 1 0
+6 0
+9 ROUND_HALF_EVEN 50
+4 0
+0.142 3 Context(prec=5, rounding=ROUND_DOWN, Emin=-999999, Emax=50, capitals=1, clamp=0, flags=[], traps=[InvalidOperation, DivisionByZero, Overflow])
+' 1.23 ' InvalidOperation [<class 'decimal.ConversionSyntax'>]
+'1_000' InvalidOperation [<class 'decimal.ConversionSyntax'>]
+'1.23' Decimal('1.23') Decimal('1.23')
+'5\n' InvalidOperation [<class 'decimal.ConversionSyntax'>]
+'+1.5E+2' Decimal('1.5E+2') Decimal('1.5E+2')
+'1.23456789' Decimal('1.2345') Decimal('1.23456789')
+'' InvalidOperation [<class 'decimal.ConversionSyntax'>]
+Decimal('7') Decimal('1.5') Decimal('0')
+[exit 0]

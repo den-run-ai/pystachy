@@ -1,0 +1,5 @@
+mods: init mods
+mods.shapes: init mods.shapes
+True True 0
+False 1 1
+[exit 0]

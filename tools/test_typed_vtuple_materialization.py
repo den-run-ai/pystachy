@@ -159,6 +159,50 @@ print(concat((1, 2), None), compare(("a", "b")))
         self.assertTrue(any(i.op == "alloc.fixed" and i.t == "tuple[Leaf,Leaf]"
                             for i in captured["compare"]))
 
+    def test_numeric_companions_follow_scope_and_scalar_reads(self):
+        source = """
+def make(x: float) -> tuple[float, ...]:
+    return (x, x + 1.0)
+def scalar(values: tuple[float, ...]) -> float:
+    return values[0] + values[1]
+def expose(values: tuple[float, ...]) -> float:
+    return values[0]
+def iterate(values: tuple[float, ...]) -> float:
+    total = 0.0
+    for item in values:
+        total += item
+    return total
+print(scalar(make(2.0)), expose(make(3.0)), iterate(make(4.0)))
+"""
+        plain, _ = compile_source(source)
+        tracked, _ = compile_source("# pystachy: dynamic-any\n" + source)
+        for code in plain.values():
+            self.assertFalse(any(i.op == "rt" and i.s.endswith("_identity") for i in code))
+        calls = [i.s for i in tracked["make"] if i.op == "rt"]
+        self.assertEqual(calls.count("vtuple.set_identity"), 2)
+        self.assertFalse(any(i.op == "rt" and i.s == "vtuple.get_identity" for i in tracked["scalar"]))
+        self.assertTrue(any(i.op == "rt" and i.s == "vtuple.get_identity" for i in tracked["expose"]))
+        # Bounds are already established by the immutable tuple iteration loop.
+        # Ordinary typed iteration must stay an inline load, without a runtime
+        # getter or an identity allocation; tracked items keep their boxes.
+        self.assertFalse(any(i.op == "rt" and i.s.startswith("vtuple.get") for i in plain["iterate"]))
+        self.assertTrue(any(i.op == "rt" and i.s == "vtuple.get_identity" for i in tracked["iterate"]))
+
+    def test_reference_and_untracked_optional_iteration_keeps_inline_loads(self):
+        for et, value in (("str", '("a", "b")'), ("bool", "(True, False)"),
+                          ("float | None", "(1.5, None)"), ("str | None", '("a", None)')):
+            for prefix in ("", "# pystachy: dynamic-any\n"):
+                with self.subTest(element=et, tracked=bool(prefix)):
+                    captured, _ = compile_source(prefix + f"""
+def copied(values: tuple[{et}, ...]) -> list[{et}]:
+    return [item for item in values]
+print(copied({value}))
+""")
+                    tracks_optional = et == "float | None" and bool(prefix)
+                    self.assertEqual(any(i.op == "rt" and i.s == "vtuple.get_identity" for i in captured["copied"]), tracks_optional)
+                    if not tracks_optional:
+                        self.assertFalse(any(i.op == "rt" and i.s.startswith("vtuple.get") for i in captured["copied"]))
+
     def test_native_operands_have_one_result_and_allocation_effect(self):
         g = Gen()
         g.runtime("pys_alloc")
@@ -197,12 +241,12 @@ print(concat((1, 2), None), compare(("a", "b")))
         i = make_tuple("vtuple[bool]", [Val("%a0", "bool"), Val("%a1", "bool")])
         g.lower_ins(function_with(i), i)
         self.assertEqual(g.out, [
-            "  %t1 = call ptr @pys_alloc(i64 24)",
+            "  %t1 = call ptr @pys_alloc(i64 32)",
             "  store i64 2, ptr %t1",
-            "  %vt.1.0 = getelementptr i64, ptr %t1, i64 1",
+            "  %vt.1.0 = getelementptr i64, ptr %t1, i64 2",
             "  %vt.1.0.value = zext i1 %a0 to i64",
             "  store i64 %vt.1.0.value, ptr %vt.1.0",
-            "  %vt.1.1 = getelementptr i64, ptr %t1, i64 2",
+            "  %vt.1.1 = getelementptr i64, ptr %t1, i64 3",
             "  %vt.1.1.value = zext i1 %a1 to i64",
             "  store i64 %vt.1.1.value, ptr %vt.1.1",
         ])
@@ -212,7 +256,7 @@ print(concat((1, 2), None), compare(("a", "b")))
         g = Gen()
         i = make_tuple("vtuple[str]", [Val("%a0", "str"), Val("%a1", "str")])
         g.lower_ins(function_with(i), i)
-        self.assertEqual(g.out[0], "  %t1 = call ptr @pys_alloc(i64 24)")
+        self.assertEqual(g.out[0], "  %t1 = call ptr @pys_alloc(i64 32)")
         self.assertIn("  store ptr %a0, ptr %vt.1.0", g.out)
         self.assertIn("  store ptr %a1, ptr %vt.1.1", g.out)
         self.assertEqual([a.t for a in i.a], ["str", "str"])

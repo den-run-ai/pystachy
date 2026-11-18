@@ -1,0 +1,16 @@
+mods: init mods
+mods.shapes: init mods.shapes
+<super: <class 'Error'>, NULL> <super: <class 'Error'>, NULL>
+<super: <class 'Child'>, NULL> <super: <class 'Child'>, NULL>
+<super: <class 'Child'>, NULL> <super: <class 'Child'>, NULL>
+<super: <class 'Imported'>, NULL> <super: <class 'Imported'>, NULL>
+message Error('message')
+base str
+base repr
+text representation
+base str
+base repr
+text representation
+imported Imported('imported')
+<super: <class 'Child'>, NULL>
+[exit 0]

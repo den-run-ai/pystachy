@@ -4,10 +4,10 @@ from src.pystachy_compiler.analysis import local_names, numeric_statement
 from src.pystachy_compiler.bigints import converts
 from src.pystachy_compiler.diagnostics import dynamic_program, shown, where
 from src.pystachy_compiler.generators import fresh_yield_context
-from src.pystachy_compiler.ir import Data, FnInfo, Ins, Val, tmpname
+from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val, tmpname
 from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.reflection import VARS_USES, refl_attr_fields, refl_formatter
-from src.pystachy_compiler.specs import BFILE, BIG, BYTEARRAYC, BYTEARRAYS, EXCEPTIONS, GLUE, HASATTR, MODATTRS, PYBUILTINS, RANGEC
+from src.pystachy_compiler.specs import BFILE, BIG, BYTEARRAYC, BYTEARRAYS, COMPLEXC, DISPATCH_INLINE, EXCEPTIONS, GLUE, HASATTR, MODATTRS, PYBUILTINS, RANGEC
 from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import (
@@ -51,6 +51,8 @@ from src.pystachy_compiler.utils import (
 def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str = "") -> Val:
     f = n.kids[0]
     args = n.kids[1:]
+    if f.kind == "supercallee":
+        return self.super_call(f.kids[0], f.s, args, captured=self.expr(f.kids[1], ""))
     if f.kind == "name":
         self.modchk(f)  # resolve the callable's binding before specialized or unpacked arguments
     if self.getattr_name(f) != "":
@@ -59,6 +61,16 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
         n = mk("call", n.s, n.line, [f] + args)
     if f.kind == "badattr":
         self.err(f.s)
+    if f.kind == "name" and f.s not in self.ltype and not self.unbound_local(f.s) and self.newtype_name(f.s):
+        # N(x) of N = NewType("N", T) (Loader.newtype): x itself, as CPython's NewType returns
+        # its argument unchanged; where the call may run before that statement binds N (flow),
+        # CPython's NameError. (A local N that the function assigns later is not it: read_ahead)
+        if (f.chk or self.foreign(f.s)) and f.s in self.gflag:
+            bad = self.scalar('xor', [Val(self.mload('bool', f'@g.{f.s}.def'), 'bool'), Val('true', 'bool')])
+            self.guard(bad, self.unbound(f.s))
+        if len(args) != 1 or args[0].kind == "kw" or args[0].kind == "starred" or args[0].kind == "dstar":
+            self.err(f"NewType '{short(f.s)}' takes exactly one positional argument")
+        return self.expr(args[0], want)
     if refl_formatter(f) and len(args) >= 1 and args[0].kind == "str" and refl_attr_fields(args[0].s) and "string$Formatter" in self.classes and len([a for a in args if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar"]) == 0:
         # string.Formatter().format("...", args) of a constant template: str.format() of it, which
         # the base Formatter's methods do (#486: its attribute fields, {0.x}, need no run-time names)
@@ -87,6 +99,8 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
         if r is not None:
             return r
     if len([a for a in args if a.kind == "starred" or a.kind == "dstar"]) > 0:
+        if f.kind == "attr" and f.s == "__init__" and f.kids[0].kind == "call" and f.kids[0].kids[0].kind == "name" and f.kids[0].kids[0].s == "super" and not self.bound("super"):
+            return self.super_call(f.kids[0], f.s, args)
         return self.star_call(n, want, resultsoft, typeargs)
     if f.kind == "name" and f.s not in self.ltype:
         self.read_ahead(f.s)
@@ -370,6 +384,8 @@ def gen_static_callee(self, f: Node) -> bool:
     # does evaluating callee f (or the object of o.m) read nothing a call's arguments may change:
     # a def, class, builtin or module's function, super(), or a variable's empty container that
     # the call fills (whose name types it)
+    if f.kind == "supercallee":
+        return True  # an internal super initializer whose receiver is already captured
     if f.kind == "attr":
         o = f.kids[0]
         if self.dotted(f) != "" or (o.kind == "call" and o.kids[0].kind == "name" and o.kids[0].s == "super" and not self.bound("super")):
@@ -845,13 +861,14 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
         o = self.unwrap(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
     if is_union(o.t):
         return self.umethod(o, m, args)
-    if (o.t in ["int", "bool", BIG] or o.t in self.nts or self.literal_class(o.t)) and m == "__init__":
-        # p.__init__(args) of an int, NamedTuple or operator getter: object.__init__,
-        # as tuple.__new__ set the fields. It takes any arguments where the class has a __new__
-        # of its own, and does nothing, also on None. The __init__ that makes the object is the
-        # compiler's (see nt_class), which only construction and _replace() call. Operator's
-        # C getters likewise initialize through __new__; reinitialization must not mutate
-        # fields whose literal values the compiler has specialized.
+    if (o.t in ["int", "bool", BIG, COMPLEXC] or o.t in self.nts or self.literal_class(o.t)) and m == "__init__":
+        # p.__init__(args) of an int, complex number, NamedTuple or operator getter:
+        # object.__init__, as tuple.__new__ (complex_new) set the fields. It takes any arguments
+        # where the class has a __new__ of its own, and does nothing, also on None. The __init__
+        # that makes the object is the compiler's (see nt_class, and complex_value for a complex
+        # number), which only construction and _replace() call. Operator's C getters
+        # likewise initialize through __new__; reinitialization must not mutate fields whose
+        # literal values the compiler has specialized (nor a complex number, a dict key's).
         for a in args:
             x = a.kids[0] if a.kind == "kw" else a
             if not pure_arg(x):
@@ -1247,17 +1264,20 @@ def gen_pcoerce(self, v: Val, t: str, f: FnInfo, j: int) -> Val:
         return result
     return value
 
-def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: str, none: str, resultsoft: bool = False) -> Val:
+def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: str, none: str, resultsoft: bool = False, got: list[FnInfo] | None = None) -> Val:
     # Closed-world dispatch, before argument binding: an override owns its defaults. Each
     # selected body is a normal method-template instance, specialized for the concrete self.
     o = pre[0]
     cs = [c for c in self.classes.values() if c.tag > 0 and self.derives(c.name, o.t)]
     if len(cs) == 1:
-        return self.call_fn(cs[0].methods[f.name], pre, args, want, none, direct=True, resultsoft=resultsoft)
+        return self.call_fn(cs[0].methods[f.name], pre, args, want, none, direct=True, resultsoft=resultsoft, got=got)
+    shared = self.shared_dispatch(f, cs, pre, args)
     # Evaluate explicit arguments once, before reading the receiver tag (also for a None
     # callable). Defaults remain inside the selected branch. Overrides have the same typed
     # parameter interface; an unannotated argument is specialized from its value.
     bound: list[Node] = []
+    values: list[Val] = []
+    names: list[str] = []
     pos = len(pre)
     for a in args:
         j = f.params.index(a.s) if a.kind == "kw" and a.s in f.params else pos
@@ -1269,9 +1289,13 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
             value = captured
         argnode = self.vnode(value)
         bound.append(mk("kw", a.s, a.line, [argnode]) if a.kind == "kw" else argnode)
+        values.append(value)
+        names.append(a.s if a.kind == "kw" else "")
         if a.kind != "kw":
             pos += 1
     self.notnone(o, none if none != "" else f"AttributeError: 'NoneType' object has no attribute '{f.name}'")
+    if shared != "":
+        return self.dispatch_call(f, o, values, names, shared)
     tag = self.mload('int', o.v)
     end = self.label()
     vals: list[Val] = []
@@ -1285,7 +1309,7 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
             self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(c.tag), "int")).v, arm, nxt)
             self.place(arm)
         self.narrowed = dict(narrow)
-        v = self.call_fn(c.methods[f.name], [Val(o.v, c.name)] + pre[1:], bound, want, direct=True, resultsoft=resultsoft)
+        v = self.call_fn(c.methods[f.name], [Val(o.v, c.name)] + pre[1:], bound, want, direct=True, resultsoft=resultsoft, got=got)
         if not self.term:
             if self.idhere() and numeric_identity(v.t):
                 v.idfrom = self.dyn_id_box(v).v
@@ -1322,6 +1346,72 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
         result.idversion = "0"
     return result
 
+def gen_shared_dispatch(self, f: FnInfo, cs: list[ClassInfo], pre: list[Val], args: list[Node]) -> str:
+    # The result type of o.m(args), o of a hierarchy of the concrete classes cs, where the call
+    # selects m's override in a function it shares with every such call (dispatch_call), else
+    # "": the arms stay at the call site, where LLVM may inline each override, for at most
+    # DISPATCH_INLINE classes. Each arm's value must be its override's declared result,
+    # whatever the call's context wants, so a generator, an inferred or never-returning
+    # result, a method Pystachy cannot compile, an incompatible join (virtual_call reports
+    # it), star arguments, a dunder method that an operation calls (o.m() of one may compile
+    # to that operation: gen_method), an exception's, a dynamic program's numeric identity
+    # and a comparison helper keep their arms.
+    if len(cs) <= DISPATCH_INLINE or len(pre) != 1 or dynamic_program() or self.curfn.name == "<dispatch>" or self.curfn.cmpops:
+        return ""
+    if (f.name.startswith("__") and f.name.endswith("__")) or self.classes[pre[0].t].exc != "":
+        return ""
+    if any(a.kind == "starred" or a.kind == "dstar" for a in args):
+        return ""
+    t = ""
+    for c in cs:
+        m = c.methods[f.name]
+        if m.ret == "" or "?" in m.ret or m.gen or m.noret or m.iters or m.prop or m.deco != "" or m.bad != "" or m.pyexport:
+            return ""
+        t = m.ret if t == "" else self.join(t, m.ret)
+        if t == "":
+            return ""
+    return t
+
+def gen_dispatch_call(self, f: FnInfo, o: Val, values: list[Val], names: list[str], ret: str) -> Val:
+    # o.m(...) of the evaluated arguments values (keyword names: "" for a positional one), o checked
+    # not None, as virtual_call has done: a call of def <dispatch>(_o, _a0, ...): return _o.m(_a0, ...),
+    # compiled once for o's type, m and the arguments' types and keywords. Its own call keeps
+    # virtual_call's arm for each class, which reads the tag and runs the override as it would here.
+    key = o.t + "." + f.name + "(" + ",".join([(names[j] + "=" if names[j] != "" else "") + values[j].t for j in range(len(values))]) + ")"
+    if key not in self.dispatchers:
+        line = self.line
+        g = FnInfo("<dispatch>", f"@vd.{len(self.dispatchers)}", mk("def", "<dispatch>", line, []), "")
+        g.params = ["_o"] + [f"_a{j}" for j in range(len(values))]
+        g.ptypes = [o.t] + [v.t for v in values]
+        for _ in g.params:
+            g.defaults.append(mk("noann", "", line, []))
+            g.dglob.append("")
+            g.dtypes.append("")
+        g.ret = ret  # (known before its body compiles: an override's own call of m through it, recursion, reads it)
+        g.mod = self.curfn.mod
+        g.home = self.fn_home(self.curfn)
+        argnodes = [mk("kw", names[j], line, [mk("name", f"_a{j}", line, [])]) if names[j] != "" else mk("name", f"_a{j}", line, []) for j in range(len(values))]
+        call = mk("call", "", line, [mk("attr", f.name, line, [mk("name", "_o", line, [])])] + argnodes)
+        body = [mk("return", "", line, [call])] if ret != "None" else [mk("expr", "", line, [call])]
+        g.node.kids = [mk("params", "-1,-1", line, []), mk("noann", "", line, []), mk("block", "", line, body)]
+        self.dispatchers[key] = g
+        fr = self.save()
+        self.modlevel = False
+        self.lenient = False
+        self.function(g, body)
+        self.restore(fr)
+        self.line = line
+    g = self.dispatchers[key]
+    c = Ins("call", g.ret, g.ll)
+    c.a = [Val(o.v, o.t)] + [v for v in values if v.t != "None"]  # (an argument that is None is not passed)
+    if g.ret == "None":
+        self.add(c)
+        return Val("null", "None")
+    if g.ll in self.guessed:
+        self.guessed[self.curfn.ll] = self.guessed[g.ll]  # (what it returns may hold a guess)
+    self.put(c, 1)
+    return Val(tmpname(c.r[0]), g.ret)
+
 def gen_scalar_call_types(self, f: FnInfo, args: list[Node]) -> list[str]:
     # A complete, inert numeric call can specialize before evaluating its arguments.
     # That lets the scalar None-body proof discard their boxes before pcoerce snapshots
@@ -1353,8 +1443,11 @@ def gen_scalar_call_types(self, f: FnInfo, args: list[Node]) -> list[str]:
     return ts if all(numeric_statement(n, names, blocked, {}, True, True) for n in body) else []
 
 
-def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "", none: str = "", cache: Val | None = None, direct: bool = False, resultsoft: bool = False, typeargs: str = "") -> Val:
-    # f(pre + args); none: the error where pre[0], an object called (o(args)), is None
+def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "", none: str = "", cache: Val | None = None, direct: bool = False, resultsoft: bool = False, typeargs: str = "", unbound: bool = False, got: list[FnInfo] | None = None) -> Val:
+    # f(pre + args); none: the error where pre[0], an object called (o(args)), is None; got: of
+    # a comparison, which reads whether its method returned NotImplemented (concrete_cmp), and
+    # takes the functions called. Any other call takes the result as it is, so that a method
+    # which may return NotImplemented to it is rejected (here, or by decline where compiled later)
     if f.pyexport:
         self.err(f"{f.name}() is @export, so Pystachy code may not call it (under CPython each call goes through the export's checks and conversions): call a private function that both use")
     if f.bad != "":
@@ -1365,7 +1458,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         if pre[0].t not in self.classes or not self.derives(pre[0].t, f.cls):
             self.err(f"{short(f.cls)}.{f.name}() needs an instance of {short(f.cls)}")
         if not direct:
-            return self.virtual_call(f, pre, args, want, none, resultsoft)
+            return self.virtual_call(f, pre, args, want, none, resultsoft, got)
     if f.ll not in self.called and f.ll in self.lazyat:
         hpush(self.wake, self.lazyat[f.ll])
     self.called[f.ll] = True
@@ -1533,14 +1626,22 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         vals[0] = self.new_obj(sc)
         pre[0] = vals[0]
         f = self.classes[sc].methods["__init__"]
-    if f.generic or (not resultsoft and fresh_yield_context(f, want)):
+    nullable_self = unbound and len(pre) > 0 and pre[0].v not in self.nn
+    if f.generic or nullable_self or (not resultsoft and fresh_yield_context(f, want)):
         nnp: list[str] = []
         for j in range(np):
             if vals[j].t in self.classes and vals[j].v in self.nn and self.dispatches(f, f.params[j]):
                 nnp.append(f.params[j])
         # A direct return-call keeps the open-result marker for an empty callee,
         # while forwarding the caller's separate fresh-display context.
-        f = self.instance(f, [v.t for v in vals], nnp, self.curfn.rctx if want == "?" else want, self.curfn.rsoft if want == "?" else resultsoft)
+        f = self.instance(f, [v.t for v in vals], nnp, self.curfn.rctx if want == "?" else want, self.curfn.rsoft if want == "?" else resultsoft, nullable_self=nullable_self)
+    if got is not None or self.curfn.ll.startswith("@o.x."):
+        if got is not None:
+            got.append(f)  # (and a class's helper for Any operands reads it too: xdecline)
+    elif f.declines:
+        self.err(f"{short(f.cls)}.{f.name}() returns NotImplemented for these operands, which only a comparison of objects (==, <, ...) reads: calling it directly is not supported")
+    elif f.cls in self.classes and self.may_decline(f):
+        f.plain = where(self.line)
     c = Ins("call", f.ret, f.ll)
     c.a = [v for v in vals if v.t != "None"]  # (an argument that is None is not passed)
     idresult = ""

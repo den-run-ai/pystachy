@@ -1,0 +1,6 @@
+list evaluation True True False True True
+tuple evaluation True True False True True
+list bounds 1 True False
+tuple bounds 1 True False
+callback True 2 9.0
+[exit 0]
