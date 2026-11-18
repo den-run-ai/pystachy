@@ -6770,13 +6770,17 @@ def gen_dict_view(self, n: Node) -> str:
 def gen_dict_view_has(self, op: str, view: str, a: Val, n: Node) -> Val:
     # x in d.keys() looks x up in dict n, as CPython's dictkeys_contains does, where x has
     # the dict's key type; (k, v) in d.items() looks k up once and compares the value found
-    # with v (found == v), as dictitems_contains does, where k and v have the dict's types.
-    # Else the view is made and searched as a list
+    # with v (found == v), as dictitems_contains does, where k and v have the dict's types. A
+    # dict that holds promoting ints as its values (dict_int) is read as one, and v may be a
+    # promoting int: pair_item_eq compares them, as dict_view_cmp's items do. Keys held as
+    # promoting ints (dict_bigkey) have their own lookup. Else the view is made and searched
+    # as a list
     d = self.expr(n, "")
     kt = targs(d.t)[0] if is_dict(d.t) else ""
     if view == "keys" and kt != "" and (a.t == kt or (is_opt(a.t) and unopt(a.t) == kt) or (a.t == "bool" and kt == "int") or (a.t == BIG and kt == "int")):
         return self.cmp2(op, a, d)
-    if view == "keys" or kt == "" or a.t != self.ctype("tuple", targs(d.t)) or BIG in a.t or held(d.t) != d.t or self.dict_int(d.t):
+    pair = kt != "" and (a.t == self.ctype("tuple", targs(d.t)) or (self.dict_int(d.t) and a.t == self.ctype("tuple", [kt, BIG])))
+    if view == "keys" or not pair or BIG in kt or held(d.t) != d.t or self.dict_bigkey(d.t):
         return self.cmp2(op, a, self.method(d, view, [], resultsoft=True))
     k = self.tget(a, 0)
     v = self.tget(a, 1)
