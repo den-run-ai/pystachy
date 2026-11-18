@@ -9,6 +9,7 @@ import PystachyInt
 import PystachyInline
 import PystachyStorage
 import PystachyPipeline
+import PystachyShape
 
 /- Fail the build if the public guarantees depend on an admitted proof, a
 custom assumption, or native computation trusted by the kernel. The three
@@ -54,7 +55,11 @@ run_cmd do
       ``PystachyPipeline.accepted_terminal_target,
       ``PystachyPipeline.accepted_report_target,
       ``PystachyPipeline.accepted_terminal_consumed,
-      ``PystachyPipeline.accepted_report_attempts] do
+      ``PystachyPipeline.accepted_report_attempts,
+      ``PystachyShape.checkBlock_sound, ``PystachyShape.distinct_sound,
+      ``PystachyShape.covers_sound, ``PystachyShape.accepted_wellFormed,
+      ``PystachyShape.accepted_single_definition,
+      ``PystachyShape.accepted_terminator_last] do
     let axioms ← collectAxioms theoremName
     for axiomName in axioms do
       unless allowed.contains axiomName do
