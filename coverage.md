@@ -5,37 +5,14 @@ The statements and branches of `src/pystachy_compiler/`, run by CPython; not `ru
 
 | Suite | Runs | Checks | Processes | Time | Statements | Branches |
 |---|---|---|---:|---:|---:|---:|
-| corpus | `tests/run.sh`, JIT and AOT (10 shards) | 8400 passed, 0 failed | 8410 | 4356 s | 92.7% | 88.8% |
-| ffi | `tests/ffi/run.sh`, JIT and AOT | 194 passed, 0 failed; skipped: py_coerce (the CPython-hosted compiler's own locale coercion reaches the program) | 175 | 202 s | 47.1% | 39.6% |
-| cache | `tests/cache.sh` | 98 passed, 0 failed | 52 | 298 s | 32.5% | 23.5% |
-| unit | `tools/test_typed*.py`, `tools/test_function_summaries.py`, the native program cache's, `--emit-ir`'s, the C runtime cache's, `ctypes_schema.py`'s and `source_lines.py`'s | 553 tests, OK | 9 | 68 s | 50.2% | 43.0% |
-| ir | `tools/check_ir.sh`: `pystachy.py`, `runtime.py`, `bench/`, the `tests/ir/` contracts | the IR check and llvm-as accept the IR of 104 programs | 104 | 268 s | 57.7% | 51.0% |
+| corpus | `tests/run.sh`, JIT and AOT (10 shards) | 8400 passed, 0 failed | 8410 | 4219 s | 92.7% | 88.8% |
+| ffi | `tests/ffi/run.sh`, JIT and AOT | 194 passed, 0 failed; skipped: py_coerce (the CPython-hosted compiler's own locale coercion reaches the program) | 175 | 179 s | 47.1% | 39.6% |
+| cache | `tests/cache.sh` | 98 passed, 0 failed | 52 | 301 s | 32.5% | 23.5% |
+| unit | `tools/test_typed*.py`, `tools/test_function_summaries.py`, the native program cache's, `--emit-ir`'s, the C runtime cache's, `ctypes_schema.py`'s and `source_lines.py`'s | 553 tests, OK | 9 | 67 s | 50.2% | 43.0% |
+| ir | `tools/check_ir.sh`: `pystachy.py`, `runtime.py`, `bench/`, the `tests/ir/` contracts | the IR check and llvm-as accept the IR of 104 programs | 104 | 218 s | 57.7% | 51.0% |
 | **all** | | | **8750** | | **95.7%** | **92.1%** |
 
 The other suites run 1654 statements and 1016 branches that the corpus does not.
-
-### Changed since 3cf23d20357be84bf731090112cdb89df0749cb4 (merge base `3cf23d20357b`)
-
-Changed statements: 3112 of 3274 run (95.1%); their branches: 1723 of 1908 taken (90.3%).
-
-| File | Statements not run | Branches not taken |
-|---|---|---|
-| `src/pystachy_compiler/analysis.py` | 423, 437, 467, 469, 472, 491, 505 | 422->423, 436->437, 466->467, 468->469, 471->472, 490->491, 504->505 |
-| `src/pystachy_compiler/builtins.py` | 686, 756, 2145, 2158, 2164, 2179, 2182 | 685->686, 753->756, 2143->2145, 2153->2162, 2154->2157, 2157->2158, 2163->2164, 2167->2172, 2178->2179, 2181->2182 |
-| `src/pystachy_compiler/calls.py` | - | 540->539 |
-| `src/pystachy_compiler/class_values.py` | 58, 61, 67, 71, 126, 157, 254, 270, 273, 283, 317, 340, 372, 403, 434, 461, 503, 521-522, 524, 539, 573, 622, 686, 701, 735 | 57->58, 60->61, 66->67, 70->71, 125->126, 156->157, 197->195, 253->254, 268->270, 272->273, 281->283, 316->317, 339->340, 371->372, 402->403, 433->434, 460->461, 499->503, 501->499, 520->521, 523->524, 538->539, 572->573, 621->622, 685->686, 700->701, 734->735, 752->759 |
-| `src/pystachy_compiler/containers.py` | 445, 486, 1418 | 444->445, 484->486, 1417->1418 |
-| `src/pystachy_compiler/declarations.py` | 1773-1774, 2106-2107, 2786-2789, 2818, 2841, 3437 | 1770->1773, 1773->1768, 1773->1774, 2105->2106, 2757->2759, 2762->2764, 2784->2786, 2788->2789, 2788->2790, 2817->2818, 2834->2839, 2840->2841, 3434->3437 |
-| `src/pystachy_compiler/dynamic.py` | 2455 | 2454->2455 |
-| `src/pystachy_compiler/expressions.py` | 191, 193, 1167, 2237, 2239, 3756, 5575, 5579, 5986, 5990 | 190->191, 192->193, 1166->1167, 2233->2241, 2236->2237, 2238->2239, 2339->2348, 2358->2361, 3755->3756, 5574->5575, 5578->5579, 5984->5986, 5989->5990 |
-| `src/pystachy_compiler/loader.py` | 544, 590, 595, 597, 607, 611, 636, 641-642, 653, 656-657, 679, 767, 887, 895, 913, 2493, 2500, 2557, 2567, 2574, 2579, 2588, 2853, 2855, 2861, 4495, 4499, 4511, 4514 | 543->544, 589->590, 594->595, 596->597, 606->607, 610->611, 635->636, 638->641, 641->633, 641->642, 647->668, 652->653, 654->656, 656->647, 656->657, 664->666, 666->663, 678->679, 766->767, 859->860, 886->887, 894->895, 912->913, 959->950, 2492->2493, 2499->2500, 2556->2557, 2566->2567, 2573->2574, 2578->2579, 2580->2588, 2852->2853, 2854->2855, 2860->2861, 4473->4475, 4494->4495, 4498->4499, 4510->4511, 4513->4514 |
-| `src/pystachy_compiler/program.py` | 102, 115, 145, 153, 164, 167, 169, 180, 309, 316-319, 339, 355, 359, 481-482, 635, 658, 687, 696, 1583, 1590, 1601, 1621, 1640, 1643, 1647, 1655, 1661, 1665, 1668, 1672 | 86->89, 87->86, 101->102, 114->115, 144->145, 152->153, 163->164, 166->167, 168->169, 179->180, 211->212, 308->309, 313->316, 317->318, 317->319, 338->339, 354->355, 358->359, 480->481, 515->514, 634->635, 654->658, 686->687, 693->696, 1582->1583, 1589->1590, 1600->1601, 1620->1621, 1638->1640, 1642->1643, 1646->1647, 1654->1655, 1660->1661, 1664->1665, 1667->1668, 1671->1672, 1873->1872 |
-| `src/pystachy_compiler/reflection.py` | 179, 185, 187, 568, 3142 | 178->179, 184->185, 186->187, 567->568, 3141->3142 |
-| `src/pystachy_compiler/statements.py` | 1566 | 1565->1566, 1880->1882 |
-| `src/pystachy_compiler/union_arithmetic.py` | 24-29, 76, 137-138, 281-282 | 22->24, 24->25, 24->26, 26->27, 26->29, 72->81, 73->72, 74->76, 90->93, 133->137, 280->281 |
-| `src/pystachy_compiler/unions.py` | 595, 597, 627, 679, 690, 714, 720, 746, 912 | 74->76, 98->100, 594->595, 596->597, 626->627, 678->679, 687->690, 713->714, 719->720, 745->746, 910->912 |
-| `src/pystachy_compiler/utils.py` | 252, 254 | 251->252, 253->254, 263->264 |
-| `src/pystachy_compiler/variables.py` | 1584-1587 | 1583->1584 |
 
 | Module | Statements | Missed | Statements % | Branches | Missed | Branches % | Total | Corpus alone |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
