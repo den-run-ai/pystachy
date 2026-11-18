@@ -2383,11 +2383,7 @@ def gen_discover_program(self, prepared: PreparedProgram) -> None:
     timing_end(phase + ".discover", started)
     # Finite comparison field discoveries only grow (incompatible joins are
     # terminal). Finish these even if earlier fields used the ordinary join budget.
-    for k in self.bnew:
-        # (what a class deriving from a bare builtin base holds, found on this pass, whose code
-        # before the fill made its objects without that type: the next pass has it from the start)
-        self.newhints[k] = self.bnew[k]
-    if len(self.newhints) > 0 and (not self.final or len(self.bnew) > 0 or any(k.startswith("cmpfield:") or k.startswith("cmpwrite:") for k in self.newhints)):
+    if len(self.newhints) > 0 and (not self.final or any(k.startswith("cmpfield:") or k.startswith("cmpwrite:") for k in self.newhints)):
         raise Rejoin()  # (joins found wider types: the next pass compiles them, see join_hint)
     self.pipeline.complete("discover")
 

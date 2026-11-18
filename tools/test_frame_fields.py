@@ -57,6 +57,9 @@ NOT_RESET = {
 # and the function it interrupts sees what it added. Only Gen.__init__ assigns them of the lists.
 # source_lines accumulates metadata across module lowering, outside AST/dry traversal.
 # pipeline belongs to the compilation attempt; nested functions never advance or restore it.
+# bsubn and bsub are each builtin subclass's base and its type (builtin_bases.py): a nested compile
+# or dry() that finds a bare base's type by a first fill leaves it for the function it interrupts,
+# which needs it; the next pass starts from the hint that the find leaves in newhints.
 PROGRAM = """
     pipeline classes tmpl compiling utags specdone funcs aliases imports fglobals mvars gtypes globs gcroots
     consts fieldnames bconsts tconsts tconstdata lconsts strs bstrs strvals vnodes cmexit rtfns opfxs out source_lines fns fll callsites summaries xcls xvals
@@ -73,7 +76,7 @@ PROGRAM = """
     dynfns dynkeys dynlines dynsig dynfuncs dynfnt dynboxes dynwide dynrets dynrline dynseen gidbox
     idoff idfull idevent idsplit idtry idhint gendrops_counted genplain rdpass entries resumes_counted
     genargs earlycopies sentinelglobals globvalues globowners globalts pseq pcall pstamps plogk plogv pdry
-    implicitgen iterabc clsany clsused clsbodies clsannfiles clsann
+    implicitgen iterabc clsany clsused clsbodies clsannfiles clsann bsubn bsub
 """.split()
 # Gen's fields that hold a module's state, one lowering's, or one operation's, which the operation
 # sets and then restores or clears: a nested compile that starts inside the operation sees them.

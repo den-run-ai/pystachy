@@ -1868,14 +1868,16 @@ class Gen:
         self.iterabc: dict[str, bool] = {}  # the classes whose base was collections.abc's Iterator or Iterable (program.iter_abc)
         self.pep695: dict[str, bool] = {}  # the generic classes of PEP 695's syntax, class C[T] (reflection: __type_params__)
         # the classes that derive from a builtin container (builtin_bases.py), class C(list): each
-        # one's base as its class statement names it; the builtin type its objects begin as, once
-        # asked for (bbase: list[T], or list[?] where a bare base's items have no type yet); and
-        # the types that fills showed on this pass, by hint key, which end it (bfound). Program
-        # state, as nts is: a frame saves none of it, dry() may type a base (the items an
-        # expression stores are what they are), and a Rejoin's fresh Gen starts from the hints
+        # one's base as its class statement names it, and the builtin type its objects begin as,
+        # once asked for (bbase: list[T], or list[?] where a bare base's items have no type yet,
+        # until a first fill shows them: bfound). Program state, as classes and nts are, which no
+        # frame saves: a nested compile (bearly's early one, a template's instance) and dry() may
+        # find a bare base's type, which the function they interrupt then needs and keeps (the
+        # items a fill stores have the type that dry() computes). A Rejoin's fresh Gen starts from
+        # the hint bfound leaves in newhints, or without it where a declined attempt restored
+        # newhints as it raised Rejoin (dynamic.py's optional cases, a declined narrowing)
         self.bsubn: dict[str, Node] = {}
         self.bsub: dict[str, str] = {}
-        self.bnew: dict[str, str] = {}
         # the type aliases, by qualified name: the statement that binds each (Mod.taliases), and
         # those whose annotation alias_ann is making the type of
         self.taliases: dict[str, Node] = {}

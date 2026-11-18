@@ -166,7 +166,7 @@ def gen_bfound(self, t: str, b: str) -> None:
     # the objects of class t, whose bare base names no item type, hold what builtin type b
     # does, which a first fill showed: so for the rest of this pass, whose code so far made
     # them without that type, and the next pass compiles the program with it from the start
-    # (as a join's hint, see Rejoin; program() ends this pass even if a retry dropped newhints)
+    # (as a join's hint, see Rejoin: a newhints entry ends the pass, at an error or at its end)
     c = self.classes[t].origin if self.classes[t].origin != "" else t
     kind = self.bkind(t)
     if "?" in b or "None" in targs(b):
@@ -174,7 +174,6 @@ def gen_bfound(self, t: str, b: str) -> None:
     if self.final or self.rtmode:
         self.err(f"cannot infer what '{short(c)}' objects hold: name it in the base (class {short(c)}({bnamed(kind)}))")
     self.bsub[c] = b
-    self.bnew["base:" + c] = b
     self.newhints["base:" + c] = b
 
 
