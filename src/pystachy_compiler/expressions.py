@@ -5565,6 +5565,24 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str, 
     # lenient comparison compares them, which no method that cannot take the other makes an error
     if item.t != "dyn" and a.t != "dyn" and (self.reference_union(item.t) or self.reference_union(a.t)):
         return self.titem_union(item, a, hit, ph, value)
+    if item.t != "dyn" and a.t != "dyn" and not is_union(unopt(item.t)) and not is_union(unopt(a.t)):
+        # a class object and a builtin class named beside one, as in type(x) in (int, float),
+        # whose items are the builtin functions' values: its class object, and then identity,
+        # as == compares them (class_values.py), unless an object's class asks with __eq__
+        if is_clsval(unopt(a.t)) and self.refl_builtin_class(item.t) != "":
+            item = self.class_value_builtin(item)
+        elif is_clsval(unopt(item.t)) and self.refl_builtin_class(a.t) != "":
+            a = self.class_value_builtin(a)
+        if (is_clsval(unopt(item.t)) or is_clsval(unopt(a.t))) and not self.class_value_asks("==", item, a):
+            c = self.class_value_cmp("==", item, a)
+            if c.v == "false":
+                return False
+            nx = self.label()
+            if ph is not None:
+                self.incoming(ph, value, self.cur)
+            self.cbr(c.v, hit, nx)
+            self.place(nx)
+            return True
     u = unopt(item.t)
     if lenient and (item.t == "file" or a.t == "file"):
         # (a file compares by identity, as CPython's do; where the other is an object of a class,
