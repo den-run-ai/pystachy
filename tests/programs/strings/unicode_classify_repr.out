@@ -1,0 +1,253 @@
+'\xe9' True True False False False False
+'\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9' True True False False False False
+'a\xe9' True True False False False False
+'\xe91' False True False False False False
+'\u0436' True True False False False False
+'\u0436\u0436\u0436\u0436\u0436\u0436\u0436\u0436\u0436' True True False False False False
+'a\u0436' True True False False False False
+'\u04361' False True False False False False
+'\u064a' True True False False False False
+'\u064a\u064a\u064a\u064a\u064a\u064a\u064a\u064a\u064a' True True False False False False
+'a\u064a' True True False False False False
+'\u064a1' False True False False False False
+'\ufb01' True True False False False False
+'\ufb01\ufb01\ufb01\ufb01\ufb01\ufb01\ufb01\ufb01\ufb01' True True False False False False
+'a\ufb01' True True False False False False
+'\ufb011' False True False False False False
+'\u5929' True True False False False False
+'\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929' True True False False False False
+'a\u5929' True True False False False False
+'\u59291' False True False False False False
+'\u10e5' True True False False False False
+'\u10e5\u10e5\u10e5\u10e5\u10e5\u10e5\u10e5\u10e5\u10e5' True True False False False False
+'a\u10e5' True True False False False False
+'\u10e51' False True False False False False
+'\u24d0' False False False False False False
+'\u24d0\u24d0\u24d0\u24d0\u24d0\u24d0\u24d0\u24d0\u24d0' False False False False False False
+'a\u24d0' False False False False False False
+'\u24d01' False False False False False False
+'\U00010400' True True False False False False
+'\U00010400\U00010400\U00010400\U00010400\U00010400\U00010400\U00010400\U00010400\U00010400' True True False False False False
+'a\U00010400' True True False False False False
+'\U000104001' False True False False False False
+'\U0001e922' True True False False False False
+'\U0001e922\U0001e922\U0001e922\U0001e922\U0001e922\U0001e922\U0001e922\U0001e922\U0001e922' True True False False False False
+'a\U0001e922' True True False False False False
+'\U0001e9221' False True False False False False
+'\U0001f600' False False False False False False
+'\U0001f600\U0001f600\U0001f600\U0001f600\U0001f600\U0001f600\U0001f600\U0001f600\U0001f600' False False False False False False
+'a\U0001f600' False False False False False False
+'\U0001f6001' False False False False False False
+'\u0663' False True True True True False
+'\u0663\u0663\u0663\u0663\u0663\u0663\u0663\u0663\u0663' False True True True True False
+'a\u0663' False True False False False False
+'\u06631' False True True True True False
+'\u0969' False True True True True False
+'\u0969\u0969\u0969\u0969\u0969\u0969\u0969\u0969\u0969' False True True True True False
+'a\u0969' False True False False False False
+'\u09691' False True True True True False
+'\u0e53' False True True True True False
+'\u0e53\u0e53\u0e53\u0e53\u0e53\u0e53\u0e53\u0e53\u0e53' False True True True True False
+'a\u0e53' False True False False False False
+'\u0e531' False True True True True False
+'\uff10' False True True True True False
+'\uff10\uff10\uff10\uff10\uff10\uff10\uff10\uff10\uff10' False True True True True False
+'a\uff10' False True False False False False
+'\uff101' False True True True True False
+'\U0001d7d8' False True True True True False
+'\U0001d7d8\U0001d7d8\U0001d7d8\U0001d7d8\U0001d7d8\U0001d7d8\U0001d7d8\U0001d7d8\U0001d7d8' False True True True True False
+'a\U0001d7d8' False True False False False False
+'\U0001d7d81' False True True True True False
+'\xb2' False True False True True False
+'\xb2\xb2\xb2\xb2\xb2\xb2\xb2\xb2\xb2' False True False True True False
+'a\xb2' False True False False False False
+'\xb21' False True False True True False
+'\xbd' False True False False True False
+'\xbd\xbd\xbd\xbd\xbd\xbd\xbd\xbd\xbd' False True False False True False
+'a\xbd' False True False False False False
+'\xbd1' False True False False True False
+'\u2167' False True False False True False
+'\u2167\u2167\u2167\u2167\u2167\u2167\u2167\u2167\u2167' False True False False True False
+'a\u2167' False True False False False False
+'\u21671' False True False False True False
+'\u3007' False True False False True False
+'\u3007\u3007\u3007\u3007\u3007\u3007\u3007\u3007\u3007' False True False False True False
+'a\u3007' False True False False False False
+'\u30071' False True False False True False
+'\u3280' False True False False True False
+'\u3280\u3280\u3280\u3280\u3280\u3280\u3280\u3280\u3280' False True False False True False
+'a\u3280' False True False False False False
+'\u32801' False True False False True False
+'\xa0' False False False False False True
+'\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0' False False False False False True
+'a\xa0' False False False False False False
+'\xa01' False False False False False False
+'\u2003' False False False False False True
+'\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003' False False False False False True
+'a\u2003' False False False False False False
+'\u20031' False False False False False False
+'\u3000' False False False False False True
+'\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000' False False False False False True
+'a\u3000' False False False False False False
+'\u30001' False False False False False False
+'\u200b' False False False False False False
+'\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b' False False False False False False
+'a\u200b' False False False False False False
+'\u200b1' False False False False False False
+'\u0301' False False False False False False
+'\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301' False False False False False False
+'a\u0301' False False False False False False
+'\u03011' False False False False False False
+'\u0345' False False False False False False
+'\u0345\u0345\u0345\u0345\u0345\u0345\u0345\u0345\u0345' False False False False False False
+'a\u0345' False False False False False False
+'\u03451' False False False False False False
+'\ud7ff' False False False False False False
+'\ud7ff\ud7ff\ud7ff\ud7ff\ud7ff\ud7ff\ud7ff\ud7ff\ud7ff' False False False False False False
+'a\ud7ff' False False False False False False
+'\ud7ff1' False False False False False False
+'\ue000' False False False False False False
+'\ue000\ue000\ue000\ue000\ue000\ue000\ue000\ue000\ue000' False False False False False False
+'a\ue000' False False False False False False
+'\ue0001' False False False False False False
+'\ufffd' False False False False False False
+'\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd' False False False False False False
+'a\ufffd' False False False False False False
+'\ufffd1' False False False False False False
+'\U0001f600' False False False False False False
+'\U0001f600\U0001f600\U0001f600\U0001f600\U0001f600\U0001f600\U0001f600\U0001f600\U0001f600' False False False False False False
+'a\U0001f600' False False False False False False
+'\U0001f6001' False False False False False False
+'\U000e0001' False False False False False False
+'\U000e0001\U000e0001\U000e0001\U000e0001\U000e0001\U000e0001\U000e0001\U000e0001\U000e0001' False False False False False False
+'a\U000e0001' False False False False False False
+'\U000e00011' False False False False False False
+'\U000e0100' False False False False False False
+'\U000e0100\U000e0100\U000e0100\U000e0100\U000e0100\U000e0100\U000e0100\U000e0100\U000e0100' False False False False False False
+'a\U000e0100' False False False False False False
+'\U000e01001' False False False False False False
+'\U0010ffff' False False False False False False
+'\U0010ffff\U0010ffff\U0010ffff\U0010ffff\U0010ffff\U0010ffff\U0010ffff\U0010ffff\U0010ffff' False False False False False False
+'a\U0010ffff' False False False False False False
+'\U0010ffff1' False False False False False False
+'\x7f' False False False False False False
+'\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f' False False False False False False
+'a\x7f' False False False False False False
+'\x7f1' False False False False False False
+'\x80' False False False False False False
+'\x80\x80\x80\x80\x80\x80\x80\x80\x80' False False False False False False
+'a\x80' False False False False False False
+'\x801' False False False False False False
+'\xad' False False False False False False
+'\xad\xad\xad\xad\xad\xad\xad\xad\xad' False False False False False False
+'a\xad' False False False False False False
+'\xad1' False False False False False False
+'\u0441\u044a\u0435\u0448\u044c\u0436\u0435\u0435\u0449\u0451\u044d\u0442\u0438\u0445\u043c\u044f\u0433\u043a\u0438\u0445\u0444\u0440\u0430\u043d\u0446\u0443\u0437\u0441\u043a\u0438\u0445\u0431\u0443\u043b\u043e\u043a' True True False False False False
+'\u0441\u044a\u0435\u0448\u044c\u0436\u0435\u0435\u0449\u0451\u044d\u0442\u0438\u0445\u043c\u044f\u0433\u043a\u0438\u0445\u0444\u0440\u0430\u043d\u0446\u0443\u0437\u0441\u043a\u0438\u0445\u0431\u0443\u043b\u043e\u043a ' False False False False False False
+'\u0441\u044a\u0435\u0448\u044c\u0436\u0435\u0435\u0449\u0451\u044d\u0442\u0438\u0445\u043c\u044f\u0433\u043a\u0438\u0445\u0444\u0440\u0430\u043d\u0446\u0443\u0437\u0441\u043a\u0438\u0445\u0431\u0443\u043b\u043e\u043a\u0301' False False False False False False
+'\u5929\u5730\u7384\u9ec3\u5b87\u5b99\u6d2a\u8352\u65e5\u6708\u76c8\u6603\u8fb0\u5bbf\u5217\u5f35\u5bd2\u4f86\u6691\u5f80' True True False False False False
+'\u5929\u5730\u7384\u9ec3\u5b87\u5b99\u6d2a\u8352\u65e5\u6708\u76c8\u6603\u8fb0\u5bbf\u5217\u5f35\u5bd2\u4f86\u6691\u5f80 ' False False False False False False
+'\u5929\u5730\u7384\u9ec3\u5b87\u5b99\u6d2a\u8352\u65e5\u6708\u76c8\u6603\u8fb0\u5bbf\u5217\u5f35\u5bd2\u4f86\u6691\u5f80\u0301' False False False False False False
+'\xc9lanvital\xe0l\xe9cole\xe9l\xe9mentaire' True True False False False False
+'\xc9lanvital\xe0l\xe9cole\xe9l\xe9mentaire ' False False False False False False
+'\xc9lanvital\xe0l\xe9cole\xe9l\xe9mentaire\u0301' False False False False False False
+'\u0660\u0661\u0662\u0663\u0664\u0665\u0666\u0667\u0668\u0669\u0966\u0967\u0968\u0969\u096a\u096b\u096c\u096d\u096e\u096f\uff10\uff11\uff12\uff13' False True True True True False
+'\u0660\u0661\u0662\u0663\u0664\u0665\u0666\u0667\u0668\u0669\u0966\u0967\u0968\u0969\u096a\u096b\u096c\u096d\u096e\u096f\uff10\uff11\uff12\uff13 ' False False False False False False
+'\u0660\u0661\u0662\u0663\u0664\u0665\u0666\u0667\u0668\u0669\u0966\u0967\u0968\u0969\u096a\u096b\u096c\u096d\u096e\u096f\uff10\uff11\uff12\uff13\u0301' False False False False False False
+'abc\u0661\u0662\u0663def\u096a\u096b\u096cghi\uff17\uff18\uff19' False True False False False False
+'abc\u0661\u0662\u0663def\u096a\u096b\u096cghi\uff17\uff18\uff19 ' False False False False False False
+'abc\u0661\u0662\u0663def\u096a\u096b\u096cghi\uff17\uff18\uff19\u0301' False False False False False False
+'\xb2\xb3\xb9\xbd\xbc\xbe\u2160\u2161\u2162' False True False False True False
+'\xb2\xb3\xb9\xbd\xbc\xbe\u2160\u2161\u2162 ' False False False False False False
+'\xb2\xb3\xb9\xbd\xbc\xbe\u2160\u2161\u2162\u0301' False False False False False False
+'\U0001d7d8\U0001d7d9\U0001d7da\U0001d7db\U0001d7dc\U0001d7dd\U0001d7de\U0001d7df\U0001d7e0\U0001d7e1' False True True True True False
+'\U0001d7d8\U0001d7d9\U0001d7da\U0001d7db\U0001d7dc\U0001d7dd\U0001d7de\U0001d7df\U0001d7e0\U0001d7e1 ' False False False False False False
+'\U0001d7d8\U0001d7d9\U0001d7da\U0001d7db\U0001d7dc\U0001d7dd\U0001d7de\U0001d7df\U0001d7e0\U0001d7e1\u0301' False False False False False False
+'\U00010400\U00010401\U00010402\U00010428\U00010429\U0001042a\U0001e900\U0001e901\U0001e922\U0001e923' True True False False False False
+'\U00010400\U00010401\U00010402\U00010428\U00010429\U0001042a\U0001e900\U0001e901\U0001e922\U0001e923 ' False False False False False False
+'\U00010400\U00010401\U00010402\U00010428\U00010429\U0001042a\U0001e900\U0001e901\U0001e922\U0001e923\u0301' False False False False False False
+'съешь же ещё'
+['съешь же ещё', 'съешь же ещё'] {'съешь же ещё': 'съешь же ещё'}
+'\u0441\u044a\u0435\u0448\u044c \u0436\u0435 \u0435\u0449\u0451' 14
+'съешь же ещё'|'\u0441\u044a\u0435\u0448\u044c \u0436\u0435 \u0435\u0449\u0451'
+'天地玄黃 宇宙洪荒'
+['天地玄黃 宇宙洪荒', '天地玄黃 宇宙洪荒'] {'天地玄黃 宇宙洪荒': '天地玄黃 宇宙洪荒'}
+'\u5929\u5730\u7384\u9ec3 \u5b87\u5b99\u6d2a\u8352' 11
+'天地玄黃 宇宙洪荒'|'\u5929\u5730\u7384\u9ec3 \u5b87\u5b99\u6d2a\u8352'
+"Élan vital à l'école"
+["Élan vital à l'école", "Élan vital à l'école"] {"Élan vital à l'école": "Élan vital à l'école"}
+"\xc9lan vital \xe0 l'\xe9cole" 22
+"Élan vital à l'école"|"\xc9lan vital \xe0 l'\xe9cole"
+'😀 𐐀𐐨 𞤀𞤢'
+['😀 𐐀𐐨 𞤀𞤢', '😀 𐐀𐐨 𞤀𞤢'] {'😀 𐐀𐐨 𞤀𞤢': '😀 𐐀𐐨 𞤀𞤢'}
+'\U0001f600 \U00010400\U00010428 \U0001e900\U0001e922' 9
+ '😀 𐐀𐐨 𞤀𞤢'|'\U0001f600 \U00010400\U00010428 \U0001e900\U0001e922'
+'tab\there'
+['tab\there', 'tab\there'] {'tab\there': 'tab\there'}
+'tab\there' 11
+'tab\there'|'tab\there'
+'both \' and "'
+['both \' and "', 'both \' and "'] {'both \' and "': 'both \' and "'}
+'both \' and "' 15
+'both \' and "'|'both \' and "'
+'é\u200bé'
+['é\u200bé', 'é\u200bé'] {'é\u200bé': 'é\u200bé'}
+'\xe9\u200b\xe9' 10
+'é\u200bé'|'\xe9\u200b\xe9'
+'天\u3000地'
+['天\u3000地', '天\u3000地'] {'天\u3000地': '天\u3000地'}
+'\u5929\u3000\u5730' 10
+'天\u3000地'|'\u5929\u3000\u5730'
+'a\xa0b\xadc'
+['a\xa0b\xadc', 'a\xa0b\xadc'] {'a\xa0b\xadc': 'a\xa0b\xadc'}
+'a\xa0b\xadc' 13
+'a\xa0b\xadc'|'a\xa0b\xadc'
+'́ͅ'
+['́ͅ', '́ͅ'] {'́ͅ': '́ͅ'}
+'\u0301\u0345' 4
+      '́ͅ'|'\u0301\u0345'
+'x\ue000y\uf8ffz'
+['x\ue000y\uf8ffz', 'x\ue000y\uf8ffz'] {'x\ue000y\uf8ffz': 'x\ue000y\uf8ffz'}
+'x\ue000y\uf8ffz' 17
+'x\ue000y\uf8ffz'|'x\ue000y\uf8ffz'
+'ж\u2028ж\u2029ж'
+['ж\u2028ж\u2029ж', 'ж\u2028ж\u2029ж'] {'ж\u2028ж\u2029ж': 'ж\u2028ж\u2029ж'}
+'\u0436\u2028\u0436\u2029\u0436' 17
+'ж\u2028ж\u2029ж'|'\u0436\u2028\u0436\u2029\u0436'
+'\ud7ff�\uffff'
+['\ud7ff�\uffff', '\ud7ff�\uffff'] {'\ud7ff�\uffff': '\ud7ff�\uffff'}
+'\ud7ff\ufffd\uffff' 15
+'\ud7ff�\uffff'|'\ud7ff\ufffd\uffff'
+'😀\U000e0001󠄀\U0010ffff'
+['😀\U000e0001󠄀\U0010ffff', '😀\U000e0001󠄀\U0010ffff'] {'😀\U000e0001󠄀\U0010ffff': '😀\U000e0001󠄀\U0010ffff'}
+'\U0001f600\U000e0001\U000e0100\U0010ffff' 24
+'😀\U000e0001󠄀\U0010ffff'|'\U0001f600\U000e0001\U000e0100\U0010ffff'
+'é\\ж\'天"😀'
+['é\\ж\'天"😀', 'é\\ж\'天"😀'] {'é\\ж\'天"😀': 'é\\ж\'天"😀'}
+'\xe9\\\u0436\'\u5929"\U0001f600' 11
+'é\\ж\'天"😀'|'\xe9\\\u0436\'\u5929"\U0001f600'
+'\x7f\x80\x9f\xa0¡'
+['\x7f\x80\x9f\xa0¡', '\x7f\x80\x9f\xa0¡'] {'\x7f\x80\x9f\xa0¡': '\x7f\x80\x9f\xa0¡'}
+'\x7f\x80\x9f\xa0\xa1' 19
+'\x7f\x80\x9f\xa0¡'|'\x7f\x80\x9f\xa0\xa1'
+'ΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣ\u200bοδοςοδοςοδοςοδοςοδοςοδοςοδοςοδοςοδος'
+['ΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣ\u200bοδοςοδοςοδοςοδοςοδοςοδοςοδοςοδοςοδος', 'ΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣ\u200bοδοςοδοςοδοςοδοςοδοςοδοςοδοςοδοςοδος'] {'ΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣ\u200bοδοςοδοςοδοςοδοςοδοςοδοςοδοςοδοςοδος': 'ΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣ\u200bοδοςοδοςοδοςοδοςοδοςοδοςοδοςοδοςοδος'}
+'\u039f\u0394\u039f\u03a3\u039f\u0394\u039f\u03a3\u039f\u0394\u039f\u03a3\u039f\u0394\u039f\u03a3\u039f\u0394\u039f\u03a3\u039f\u0394\u039f\u03a3\u039f\u0394\u039f\u03a3\u039f\u0394\u039f\u03a3\u039f\u0394\u039f\u03a3\u200b\u03bf\u03b4\u03bf\u03c2\u03bf\u03b4\u03bf\u03c2\u03bf\u03b4\u03bf\u03c2\u03bf\u03b4\u03bf\u03c2\u03bf\u03b4\u03bf\u03c2\u03bf\u03b4\u03bf\u03c2\u03bf\u03b4\u03bf\u03c2\u03bf\u03b4\u03bf\u03c2\u03bf\u03b4\u03bf\u03c2' 80
+'ΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣΟΔΟΣ\u200bοδοςοδοςοδοςοδοςοδοςοδοςοδοςοδοςοδος'|'\u039f\u0394\u039f\u03a3\u039f\u0394\u039f\u03a3\u039f\u0394\u039f\u03a3\u039f\u0394\u039f\u03a3\u039f\u0394\u039f\u03a3\u039f\u0394\u039f\u03a3\u039f\u0394\u039f\u03a3\u039f\u0394\u039f\u03a3\u039f\u0394\u039f\u03a3\u200b\u03bf\u03b4\u03bf\u03c2\u03bf\u03b4\u03bf\u03c2\u03bf\u03b4\u03bf\u03c2\u03bf\u03b4\u03bf\u03c2\u03bf\u03b4\u03bf\u03c2\u03bf\u03b4\u03bf\u03c2\u03bf\u03b4\u03bf\u03c2\u03bf\u03b4\u03bf\u03c2\u03bf\u03b4\u03bf\u03c2'
+'天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天\x00地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地'
+['天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天\x00地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地', '天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天\x00地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地'] {'天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天\x00地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地': '天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天\x00地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地'}
+'\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\x00\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730' 86
+'天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天天\x00地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地地'|'\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\u5929\x00\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730\u5730'
+'ééééééééééééééé'
+['ééééééééééééééé', 'ééééééééééééééé'] {'ééééééééééééééé': 'ééééééééééééééé'}
+'\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9' 17
+'ééééééééééééééé'|'\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9'
+'éééééééééééééééé'
+['éééééééééééééééé', 'éééééééééééééééé'] {'éééééééééééééééé': 'éééééééééééééééé'}
+'\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9' 18
+'éééééééééééééééé'|'\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9'
+'ééééééééééééééééé'
+['ééééééééééééééééé', 'ééééééééééééééééé'] {'ééééééééééééééééé': 'ééééééééééééééééé'}
+'\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9' 19
+'ééééééééééééééééé'|'\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9'
+[exit 0]

@@ -23,11 +23,12 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path[:0] = [os.path.join(ROOT, "tools", "rt_cpython"), ROOT]
 import runtime as rt  # noqa: E402
-from unicode_classification_tables import case_flags, case_map, check as check_unicode_table, flags as unicode_flags  # noqa: E402
+from unicode_classification_tables import case_flags, case_ignorable, case_map, check as check_unicode_table, flags as unicode_flags  # noqa: E402
 
 rt.pys_unicode_flags = unicode_flags
 rt.pys_unicode_case_flags = case_flags
 rt.pys_unicode_case_map = case_map
+rt.pys_unicode_case_ignorable = case_ignorable
 
 N = int(sys.argv[1]) if len(sys.argv) > 1 else 5000
 R = random.Random(int(sys.argv[2]) if len(sys.argv) > 2 else 1)
@@ -555,7 +556,7 @@ def fuzz_replace():
 # decodes such bytes with surrogateescape to one lone surrogate each, as its stdin does in UTF-8
 # mode. No encoded surrogate (ED A0..BF): Pystachy reads those as one character, CPython as three
 PIECES = [b"a", b"Z", b" ", b"\t", b"0", "é".encode(), "€".encode(), "𝄞".encode(), b"\x80", b"\xbf", b"\xc1\xbf",
-          b"\xc0\xaf", b"\xe2\x82", b"\xf0\x9f\x98", b"\xe0\x80\xaf", b"\xf4\x90\x80\x80", b"\xf5", b"\xff", "퟿".encode()]
+          b"\xc0\xaf", b"\xe2\x82", b"\xf0\x9f\x98", b"\xe0\x80\xaf", b"\xf4\x90\x80\x80", b"\xf5", b"\xff", "\ud7ff".encode()]
 
 
 CASE_PIECES = [x.encode() for x in "\u03a3 \u03c3 \u00df \u00e9 \u00c9 \u01c5 \u0130 \ufb03 \u0301 A b '".split(" ")] + [b" "]

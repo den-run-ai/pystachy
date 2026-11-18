@@ -106,14 +106,16 @@ def main():
                             "SS οδος\n"
                             "0 True True\n").encode()
         errors = "".join(f"Unicode audit: {name} on non-ASCII str uses byte/ASCII semantics\n" for name, _ in OPS).encode()
-        # Exact comparison of five predicate bits for every code point, emitted in bounded
-        # chunks. Focused corpus cases additionally cover mixed strings and GC stress.
+        # Exact comparison of five predicate bits for every code point, and of whether repr()
+        # shows it as it is (printable), emitted in bounded chunks. Focused corpus cases
+        # additionally cover mixed strings and GC stress.
         classification = temp / "classification.py"
         classification.write_text("""for start in range(0, 0x110000, 4096):
     result = ""
     for cp in range(start, start + 4096):
         s = chr(cp)
         bits = int(s.isalpha()) + int(s.isalnum()) * 2 + int(s.isdecimal()) * 4 + int(s.isdigit()) * 8 + int(s.isnumeric()) * 16
+        bits += int(len(repr(s)) == 3) * 32
         result += chr(bits + 32)
     print(result)
 """)
@@ -197,8 +199,8 @@ def main():
             invoke(cmd + ["build", str(classification), "-o", str(classification_binary)], audit)
             for call in (cmd + ["run", str(classification)], [str(classification_binary)]):
                 if invoke(call, audit) != classification_expected:
-                    raise RuntimeError(f"{label}: Unicode classification differs from CPython")
-                checked += 5 * 0x110000
+                    raise RuntimeError(f"{label}: Unicode classification or repr() differs from CPython")
+                checked += 6 * 0x110000
             case_binary = temp / "case"
             invoke(cmd + ["build", str(case), "-o", str(case_binary)], audit)
             for call in (cmd + ["run", str(case)], [str(case_binary)]):
@@ -206,7 +208,7 @@ def main():
                     raise RuntimeError(f"{label}: Unicode case mapping or case tests differ from CPython")
                 checked += 13 * 0x110000
             print(f"{label}: normal/audit/normal JIT + AOT + GC stress passed; runtime IR identical; "
-                  "all 1,114,112 code points classify, map and test their case identically")
+                  "all 1,114,112 code points classify, print, map and test their case identically")
     print(f"{checked} operation/control checks passed")
 
 
