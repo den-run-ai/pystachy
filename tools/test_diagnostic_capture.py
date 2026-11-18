@@ -83,7 +83,8 @@ class DiagnosticCaptureTests(unittest.TestCase):
                          ["compiling outer(int)", "compiling helper.inner(int)"])
 
     def generator(self, **changes):
-        values = dict(retry_hierarchy=lambda msg: None, xtry="", newx={}, newhints={}, final=False, making=[], recursive=[], line=4)
+        values = dict(retry_hierarchy=lambda msg: None, xtry="", newx={}, newhints={}, final=False, making=[], recursive=[], line=4,
+                      ncand={}, xwant={}, xnot={}, newwant={}, curfn=None, fnkey=lambda f: f)
         values.update(changes)
         return SimpleNamespace(**values)
 
@@ -97,6 +98,26 @@ class DiagnosticCaptureTests(unittest.TestCase):
                 self.assertEqual(output.getvalue(), "")
                 self.assertEqual(diagnostics.CAPTURED, [])
         self.assertEqual(generator.newhints, {"local": "int | str"})
+
+    def test_error_asks_for_the_function_s_narrowings(self):
+        # an error in a function whose isinstance() tests of class tuples narrowed nothing asks
+        # for those narrowings (Gen.xwant), not another function's or one already declined
+        diagnostics.CAPTURE = True
+        mine = "narrow:f:3:x:union[A,B]"
+        generator = self.generator(curfn="f", ncand={mine: True, "narrow:g:5:y:union[A,B]": True, "narrow:f:7:z:union[A,B]": True},
+                                   xnot={"narrow:f:7:z:union[A,B]": True})
+        with redirect_stderr(StringIO()) as output:
+            with self.assertRaises(diagnostics.Rejoin):
+                gen_err(generator, "'Base' object has no method 'label'")
+        self.assertEqual(output.getvalue(), "")
+        self.assertEqual(diagnostics.CAPTURED, [])
+        self.assertEqual(generator.newwant, {mine: True})
+        # (an error that a join may explain restarts for the join first, asking for nothing)
+        generator = self.generator(curfn="f", ncand={mine: True}, newhints={"local": "int | str"})
+        with redirect_stderr(StringIO()):
+            with self.assertRaises(diagnostics.Rejoin):
+                gen_err(generator, "'Base' object has no method 'label'")
+        self.assertEqual(generator.newwant, {})
 
     def test_terminal_specialization_context_matches_legacy_message(self):
         diagnostics.CAPTURE = True

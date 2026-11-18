@@ -52,9 +52,9 @@ exceptions, mutation order and floating-point accumulation order.
 ## Compiler implementation results
 
 [Source `9e4ae462`](https://github.com/den-run-ai/pystachy/commit/9e4ae4624f4bcd8ac37dcdd73344ac856e43a222),
-LLVM 18.1.3, CPython 3.13.16, x86-64 Linux: seven alternating pairs pinned to one
-CPU. Every measured result matches CPython. Ratios are paired medians, generic
-time divided by guarded time; values above 1 favor specialization.
+LLVM 18.1.3, CPython 3.13.16, x86-64 Linux on an AMD EPYC 9V74: seven alternating
+pairs pinned to one CPU. Every measured result matches CPython. Ratios are paired
+medians, generic time divided by guarded time; values above 1 favor specialization.
 
 | Workload | AOT kernel | JIT kernel | Complete JIT command |
 |---|---:|---:|---:|
@@ -94,7 +94,7 @@ cases with the pass enabled, disabled, all optimizations disabled and forced GC.
 The 4,243-case IR/diagnostic comparison has five intentional kernel changes and
 no new diagnostics or exit-status changes after removing checkout-path noise by
 using verified identical library/runtime inputs. Full local `make verify` was
-not run; the PR remains draft pending the required CI matrix.
+not run; the change shipped in v0.3.0-alpha.2.
 
 The historical manual-guard data below is separate evidence.
 

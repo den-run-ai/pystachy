@@ -17,6 +17,9 @@ If none has either, the directories named `NAME`, also through symbolic links, a
 of a namespace package, as in CPython. Any other file named `NAME`, such as a text file without
 the `.py` suffix, is not a module.
 
+[`importlib.metadata`](../../lib/compatibility.md#importlibmetadata) searches the same directories
+for the metadata of installed distributions.
+
 Builtin modules such as `sys`, `os` and `math` are handled by the compiler. A program's own
 `ffi.py` takes precedence over the builtin `ffi` module. A file named like a module built into
 CPython, such as `_weakref.py` or `itertools.py`, is never imported, as CPython imports its own.
@@ -53,7 +56,12 @@ or `class`, a read before the module binds `__doc__` raises `NameError`. Deletin
 `__doc__`, assigning another module's, and reading `__doc__` in a class body (but in its
 lambdas and comprehensions) are not supported. Some `lib/` modules' docstrings differ from
 CPython's (see the [library reference](../../lib/compatibility.md)).
-`__file__`, `__spec__` and CPython's other module metadata are unsupported.
+`__file__` is the absolute path of the module's source file, in the module's own code and as
+`m.__file__` ([test](../../tests/programs/imports/module_file.py)); a module may bind the name
+itself. A builtin module and a namespace package have none, and an executable built ahead of
+time keeps the path it was built from
+([deviations](compatibility.md#modules-and-libraries)). `__spec__` and CPython's other module
+metadata are unsupported.
 An imported module cannot bind `__name__`.
 
 ## Module scope

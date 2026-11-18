@@ -40,8 +40,9 @@
 # - testWithCondition, testWithSemaphore, testWithBoundedSemaphore: no threading module
 # - test_typo_enter, test_typo_exit, test_contextdecorator_as_mixin: a class without __enter__ or
 #   __exit__ in a with statement is rejected as the program compiles
-# - TestBaseExitStack, TestExitStack, TestRedirectStream, TestRedirectStdout, TestRedirectStderr,
-#   TestChdir, the async tests: not in lib/contextlib.py
+# - TestExitStack: in upstream_contextlib_exitstack.py
+# - TestRedirectStream, TestRedirectStdout, TestRedirectStderr, TestChdir, the async tests: not
+#   in lib/contextlib.py
 # - TestSuppress's test_no_result_from_enter (with suppress(...) as x is rejected),
 #   test_cm_is_reentrant (a suppress object outside a with statement's item is rejected),
 #   test_exception_groups (no exception groups)

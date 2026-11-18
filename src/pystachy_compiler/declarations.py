@@ -2345,11 +2345,81 @@ def gen_scan_fields(self, ci: ClassInfo, f: FnInfo, body: list[Node], known: dic
                 self.scan_fields(ci, g, g.node.kids[2].kids, {})
                 del self.scanning[ci.name + "." + name]
                 self.line = st.line
+        if k == "assign" and len(st.kids) == 2 and (st.kids[0].kind == "tuple" or st.kids[0].kind == "list") and self_target(st.kids[0], f.params[0]):
+            # self.a, self.b = v: fields typed by the items of v, all of whose types come first
+            # (CPython evaluates v before it assigns the targets)
+            xs: list[Node] = []
+            ts: list[str] = []
+            self.target_types(f, st.kids[0], st.kids[1], "", xs, ts)
+            for i in range(len(xs)):
+                self.scan_target(ci, f, xs[i], ts[i])
         for kid in st.kids:
             if kid.kind == "block":
                 self.scan_fields(ci, f, kid.kids, known)
             elif kid.kind == "except":
                 self.scan_fields(ci, f, kid.kids[1].kids, known)
+
+def self_target(x: Node, me: str) -> bool:
+    # is assignment target x, or a target of tuple or list target x, an attribute of me
+    if x.kind == "attr":
+        return x.kids[0].kind == "name" and x.kids[0].s == me
+    return (x.kind == "tuple" or x.kind == "list") and len([y for y in x.kids if self_target(y, me)]) > 0
+
+def gen_target_types(self, f: FnInfo, x: Node, v: Node | None, t: str, out: list[Node], types: list[str]) -> None:
+    # the targets in assignment target x, a tuple or list target, also nested, that take an item
+    # of value v (or, where v is None, of a value of type t), and the types of their items as
+    # guess infers them ("" where it cannot): a display's items one by one, a tuple's items by
+    # their positions, another iterable's all alike; none for a starred target
+    if x.kind != "tuple" and x.kind != "list":
+        out.append(x)
+        types.append(self.guess(v, f) if v is not None and x.kind == "attr" else t if v is None else "")
+        return
+    if len([y for y in x.kids if y.kind == "starred"]) > 0:
+        return
+    if v is not None and (v.kind == "tuple" or v.kind == "list") and len(v.kids) == len(x.kids) and len([y for y in v.kids if y.kind == "starred"]) == 0:
+        for i in range(len(x.kids)):
+            self.target_types(f, x.kids[i], v.kids[i], "", out, types)
+        return
+    t = self.guess(v, f) if v is not None else t
+    ts = targs(t) if is_tuple(t) else []
+    et = "int" if t == RANGEC else self.iter_elem(t)
+    for i in range(len(x.kids)):
+        self.target_types(f, x.kids[i], None, (ts[i] if len(ts) == len(x.kids) else "") if is_tuple(t) else et, out, types)
+
+def plain_binds(body: list[Node], me: str, name: str) -> bool:
+    # does a statement of body, or of a block in it as scan_fields reads them, assign me.name
+    # alone (me.name = v, me.name: T = v, me.name: T), not as an item of a tuple or list target
+    for st in body:
+        if (st.kind == "assign" or st.kind == "annassign") and st.kids[0].kind == "attr" and st.kids[0].s == name and st.kids[0].kids[0].kind == "name" and st.kids[0].kids[0].s == me:
+            return True
+        for kid in st.kids:
+            if kid.kind == "block" and plain_binds(kid.kids, me, name):
+                return True
+            if kid.kind == "except" and plain_binds(kid.kids[1].kids, me, name):
+                return True
+    return False
+
+def gen_scan_target(self, ci: ClassInfo, f: FnInfo, x: Node, t: str) -> None:
+    # a target x = self.k of a tuple or list target in __init__ (scan_fields), whose item has
+    # type t (target_types): a field k of type t, unless an earlier statement gave k its type,
+    # or a statement of a method of the class assigns self.k alone, whose value then types k
+    # wherever it is, as before tuple targets typed fields: an A first and a base class's object later keep
+    # the field the base's type, a named function first and a Callable later the Callable's.
+    # Where t is unknown (None, or an item guess cannot type), k is left to a later self.k = v,
+    # with no error here, as it was
+    ms = self.classes[ci.origin].methods if ci.origin != "" else ci.methods
+    if x.kind != "attr" or x.kids[0].kind != "name" or x.kids[0].s != f.params[0] or x.s in ci.ftypes or (x.s in ms and ms[x.s].prop):
+        return
+    for g in list(ms.values()) + [f]:
+        # (a statement of any method of the class: __init__ may run a property's setter that
+        # assigns the field alone, or the tuple target be in that setter, scan_fields)
+        if g.node is not None and g.node.kind == "def" and len(g.params) > 0 and plain_binds(g.node.kids[2].kids, g.params[0], x.s):
+            return
+    jh = self.hints.get(f"field:{self.stable(ci.name)}.{x.s}", "") if len(self.hints) > 0 else ""
+    t = jh if jh != "" else t  # (a join's type: as if annotated, see join_hint)
+    if t != "" and t != "None" and t != NONEVAR and not t.startswith("!") and "?" not in t and ci.origin not in self.cnts:
+        ci.fguess[x.s] = True  # (inferred, as join_hint may widen it)
+        self.add_field(ci, x.s, t)
 
 def gen_guess_args(self, init: FnInfo, args: list[Node], f: FnInfo) -> list[str]:
     # the types of the arguments (but self) that the call of class template __init__ init with
@@ -2699,6 +2769,17 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         if kt.startswith("!") or vt.startswith("!"):
             return kt if kt.startswith("!") else vt
         return self.ctype("dict", [kt, vt]) if kt != "" and vt != "" and self.key_problem(kt) == "" else ""
+    if k == "call" and e.kids[0].kind == "name" and (e.kids[0].s == "set" or e.kids[0].s == "frozenset") and len(e.kids) == 2 and e.kids[1].kind not in ["kw", "starred", "dstar"] and not self.bound(e.kids[0].s):
+        # set(xs), frozenset(xs): a set of the items of a list, tuple, set, string or range, or of
+        # a dict's keys, of the type set_new gives it
+        arg = e.kids[1]
+        rng = arg.kind == "call" and arg.kids[0].kind == "name" and arg.kids[0].s == "range" and not self.bound("range")
+        t = "list[int]" if rng else self.guess(arg, f)
+        et = "int" if t == RANGEC else self.iter_elem(t)
+        if t.startswith("!") or et == "":
+            return t if t.startswith("!") else ""
+        et = self.none_items(et)
+        return self.ctype(e.kids[0].s, [et]) if "?" not in et and self.elem_problem(et) == "" else ""
     if k == "call" and e.kids[0].kind == "name" and (e.kids[0].s == "list" or e.kids[0].s == "sorted") and len(e.kids) == 2 and not self.bound(e.kids[0].s):
         # list(range(n)), list(xs), sorted(xs): a list of the items
         arg = e.kids[1]
@@ -2774,11 +2855,45 @@ def gen_field_root(self, ci: ClassInfo, name: str) -> ClassInfo:
         ci = self.classes[ci.base]
     return ci
 
+def type_words(t: str) -> list[str]:
+    # the words of type t, its constructors' and classes' names (list, Box-1), split at its
+    # brackets, commas, bars and spaces
+    out: list[str] = []
+    w = ""
+    for ch in t:
+        if ch == "[" or ch == "]" or ch == "," or ch == "|" or ch == " ":
+            if w != "":
+                out.append(w)
+            w = ""
+        else:
+            w += ch
+    if w != "":
+        out.append(w)
+    return out
+
+def gen_holds_union(self, t: str, seen: list[str]) -> bool:
+    # does type t hold a union anywhere: itself or its parts, or a field of a class template's
+    # specialization it names (Box-1, whose value field a call Box(x) of narrowed x types A | B)
+    if "union[" in t:
+        return True
+    for c in type_words(t):
+        if c in self.classes and self.classes[c].origin != "" and c not in seen:
+            seen.append(c)
+            for ft in self.classes[c].ftypes.values():
+                if self.holds_union(ft, seen):
+                    return True
+    return False
+
 def gen_refine_field(self, ci: ClassInfo, name: str, t: str) -> None:
     # field name of class ci, which only None has been given so far (NONEVAR), holds a t from
     # here on: so does the field of the class that declares it and of each class deriving from
     # that one, whose objects begin with its fields. Its stores of None compiled so far store a
     # null pointer, which t's None is too (see optional)
+    if self.xtry.startswith("narrow:") and self.holds_union(t, []):
+        # (a union isinstance(x, (A, B)) narrowed x to would type the field for code outside
+        # the attempt, also as a container's items ([x]), whether a store gives it its type or a
+        # read's lookahead finds it (if self.x is None: self.x = [x]): declined, see narrows)
+        self.err(f"field '{name}' would take a union that a narrowing made")
     if t == "dyn":
         # (an Any value's None is a box: those stores, and the tests of the field by is None
         # compiled so far, see a null pointer, dynamic.py)

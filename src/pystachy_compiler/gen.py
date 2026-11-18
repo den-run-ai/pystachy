@@ -271,6 +271,7 @@ from src.pystachy_compiler.unions import (
     gen_utest as unions_utest,
     gen_to_union as unions_to_union,
     gen_narrow_val as unions_narrow_val,
+    gen_class_union as unions_class_union,
     gen_unarrowed as unions_unarrowed,
     gen_uisinst as unions_uisinst,
     gen_now_type as unions_now_type,
@@ -613,6 +614,7 @@ from src.pystachy_compiler.declarations import (
     gen_none_field as declarations_none_field,
     gen_none_field_store as declarations_none_field_store,
     gen_refine_field as declarations_refine_field,
+    gen_holds_union as declarations_holds_union,
     gen_set_elsewhere as declarations_set_elsewhere,
     gen_frozen as declarations_frozen,
     gen_frozen_store as declarations_frozen_store,
@@ -646,6 +648,8 @@ from src.pystachy_compiler.declarations import (
     gen_path_union as declarations_path_union,
     gen_pathlike as declarations_pathlike,
     gen_scan_fields as declarations_scan_fields,
+    gen_scan_target as declarations_scan_target,
+    gen_target_types as declarations_target_types,
     gen_guess_varargs as declarations_guess_varargs,
     gen_self_type as declarations_self_type,
     gen_setfield as declarations_setfield,
@@ -833,6 +837,8 @@ from src.pystachy_compiler.expressions import (
     gen_enum_compare as expressions_enum_compare,
     gen_inherit_cmp as expressions_inherit_cmp,
     gen_cmp_alts as expressions_cmp_alts,
+    gen_class_members as expressions_class_members,
+    gen_cmp_object as expressions_cmp_object,
     gen_cmp_try as expressions_cmp_try,
     gen_cmp_key as expressions_cmp_key,
     gen_cmp_arm as expressions_cmp_arm,
@@ -1529,6 +1535,9 @@ class Gen:
         # finds; the method whose call with one is being compiled (then an error restarts: gen_err)
         self.xnot: dict[str, bool] = {}
         self.newx: dict[str, bool] = {}
+        self.xwant: dict[str, bool] = {}  # narrowings of class tuples that a function needs (narrows, err)
+        self.newwant: dict[str, bool] = {}  # and those this pass found it needs
+        self.ncand: dict[str, bool] = {}  # the narrowings this pass did not make (narrows)
         self.xtry = ""
         self.joinkind = ""  # the location being stored to, which a join may widen: "local", "global", "field"
         self.joinname = ""  # (its name: the variable's, or the field's key, see field_key)
@@ -1575,6 +1584,7 @@ class Gen:
         self.ext = ""  # pystachy ext: the name of the CPython extension module the program becomes
         self.libdir = ""  # the lib/ beside the compiler, the last directory of the module path (lib_fn)
         self.prefix = ""  # the directory that holds it, absolute: sys.prefix (gen_modattr)
+        self.moddirs: list[str] = []  # the module path, absolute: where imports are found, in order (importlib.metadata)
         self.csyms: dict[str, ExternDecl] = {}  # @ffi.extern: each C symbol's ABI plan (one signature per program)
         self.csymline: dict[str, int] = {}  # and the line that declared it
         self.cdirect: dict[str, bool] = {}  # the C symbols a GLUE module (lib/pyobj.py) calls directly, declared once
@@ -3149,6 +3159,12 @@ class Gen:
     def scan_fields(self, ci: ClassInfo, f: FnInfo, body: list[Node], known: dict[str, bool]) -> None:
         return declarations_scan_fields(self, ci, f, body, known)
 
+    def scan_target(self, ci: ClassInfo, f: FnInfo, x: Node, t: str) -> None:
+        return declarations_scan_target(self, ci, f, x, t)
+
+    def target_types(self, f: FnInfo, x: Node, v: Node | None, t: str, out: list[Node], types: list[str]) -> None:
+        return declarations_target_types(self, f, x, v, t, out, types)
+
     def guess_args(self, init: FnInfo, args: list[Node], f: FnInfo) -> list[str]:
         return declarations_guess_args(self, init, args, f)
 
@@ -3166,6 +3182,9 @@ class Gen:
 
     def refine_field(self, ci: ClassInfo, name: str, t: str) -> None:
         return declarations_refine_field(self, ci, name, t)
+
+    def holds_union(self, t: str, seen: list[str]) -> bool:
+        return declarations_holds_union(self, t, seen)
 
     def none_field(self, cls: str, name: str, cmp: bool) -> str:
         return declarations_none_field(self, cls, name, cmp)
@@ -4786,6 +4805,12 @@ class Gen:
     def cmp_alts(self, v: Val) -> list[Val]:
         return expressions_cmp_alts(self, v)
 
+    def class_members(self, t: str) -> list[str]:
+        return expressions_class_members(self, t)
+
+    def cmp_object(self, v: Val) -> Val:
+        return expressions_cmp_object(self, v)
+
     def cmp_widen(self, op: str, x: Val, y: Val, at: str, bt: str, stage: int = 0) -> list[Val]:
         return expressions_cmp_widen(self, op, x, y, at, bt, stage)
 
@@ -5515,6 +5540,9 @@ class Gen:
 
     def to_union(self, v: Val, t: str, what: str) -> Val:
         return unions_to_union(self, v, t, what)
+
+    def class_union(self, v: Val, nt: str) -> Val:
+        return unions_class_union(self, v, nt)
 
     def narrow_val(self, v: Val, nt: str) -> Val:
         return unions_narrow_val(self, v, nt)

@@ -1,0 +1,14 @@
+  leading continuation
+: no name
+Name: odd-pkg
+Version: 1.0
+X-Mixed: one
+x-mixed: two
+No-Value:
+Tabbed:	value	with tabs	
+Colon: a: b: c
+Folded:
+ continued value
+	and a tab
+Spaced : not a header
+After: the body began

@@ -21,7 +21,7 @@ the [module guide](README.md#module-guide) summarizes what each module supports.
 | [Collections and functional tools](#collections-and-functional-tools) | [`collections`](#collections), [`copy`](#copy), [`enum`](#enum), [`heapq`](#heapq), [`itertools`](#itertools), [`functools`](#functools), [`operator`](#operator), [`contextlib`](#contextlib) |
 | [Numbers and randomness](#numbers-and-randomness) | [`random`](#random), [`statistics`](#statistics), [`mpz`](#mpz) |
 | [Dates and times](#dates-and-times) | [`datetime`](#datetime) |
-| [Files, OS and command line](#files-os-and-command-line) | [`io`](#io), [Binary files](#binary-files), [Path modules](#path-modules), [`pathlib`](#pathlib), [`glob`](#glob), [`shutil`](#shutil), [`sysconfig`](#sysconfig), [`argparse`](#argparse), [`getopt`](#getopt) |
+| [Files, OS and command line](#files-os-and-command-line) | [`io`](#io), [Binary files](#binary-files), [Path modules](#path-modules), [`pathlib`](#pathlib), [`glob`](#glob), [`shutil`](#shutil), [`sysconfig`](#sysconfig), [`argparse`](#argparse), [`getopt`](#getopt), [`platform`](#platform) |
 | [Processes and threads](#processes-and-threads) | [`_thread`](#_thread), [`threading`](#threading), [`atexit`](#atexit) |
 | [Runtime services](#runtime-services) | [`abc`](#abc), [`types`](#types), [`warnings`](#warnings), [`logging`](#logging), [`traceback`](#traceback), [`weakref` and `_weakref` (prototype)](#weakref-and-_weakref-prototype) |
 | [Native interoperability](#native-interoperability) | [`ctypes`](#ctypes) |
@@ -1044,6 +1044,19 @@ callable object, a `partial`) leaves the wrapper its own, as in CPython. `__wrap
 `wraps(f)` as a value, not a decorator, is a compile-time error. `total_ordering` remains
 unsupported: class decorators are not compiled.
 
+`@cached_property` on a method that takes the object alone makes the attribute a value the
+object keeps: the method runs on the first read, an assignment replaces the value without
+calling it, and `del` forgets it, so that the next read calls the method again
+([test](../tests/programs/library/lib_functools_cached_property_set.py)). The value is a field
+of the object, where CPython keeps it in the object's `__dict__`, so the method needs a return
+annotation, which gives the field's type. `dir()` and `hasattr()` see the names the compiler
+adds for the method `NAME`: the method `_pys_cpget_NAME` and the fields `_pys_cpset_NAME` and
+`_pys_cpval_NAME`, which keep its value
+([deviation](../tests/deviations/lib_functools_cached_property_names.py)). A dataclass's
+method, a method with other parameters, `cached_property(f)` as a call, and the decorator in
+an enum class or with a value of a generic class's type variable are compile-time errors.
+`from functools import *` does not bind the name.
+
 ### `operator`
 
 Arithmetic, comparison, logical, sequence and bitwise operator functions compile
@@ -1078,8 +1091,17 @@ didn't yield", "generator didn't stop" and "generator didn't stop after throw()"
 suppressed where the generator swallows it, and a `StopIteration` or `GeneratorExit` of the block,
 or a `RuntimeError` that PEP 479 or the generator made of the `StopIteration`, goes on as itself.
 A manager it makes also decorates a function (`@cm()`, `ContextDecorator`), and both take keyword
-arguments. `closing(thing)`, `nullcontext()`, `nullcontext(value)`, `suppress(A, B)` and
-`AbstractContextManager` (to derive from) are the others.
+arguments. `closing(thing)`, `nullcontext()`, `nullcontext(value)`, `suppress(A, B)`,
+`ExitStack` and `AbstractContextManager` (to derive from) are the others.
+
+`ExitStack` enters managers of different classes (`enter_context()`), registers callbacks
+with their arguments (`callback()`) and exit functions, callable objects and managers
+(`push()`), and unwinds them in reverse order at the end of its `with` block or in `close()`;
+`pop_all()` moves them to a new stack. An exit that returns true suppresses the exception for
+the exits after it, and one that raises replaces it, as in CPython
+([test](../tests/programs/library/lib_contextlib_exitstack.py),
+[upstream cases](../tests/programs/upstream/upstream_contextlib_exitstack.py)). Each registered
+exit is a closure in a list, where CPython keeps bound methods and wrappers in a deque.
 
 - `@contextmanager` (or `@contextlib.contextmanager`, as the module imports it) on a method, its
   only decorator, makes the generator method `_pys_cm_NAME` and a method `NAME(self, /, *args,
@@ -1092,6 +1114,17 @@ arguments. `closing(thing)`, `nullcontext()`, `nullcontext(value)`, `suppress(A,
   when its body runs. Where an override is in
   another module than the method it overrides, a call through a value of the base class is
   rejected as the program compiles (the managers' types differ).
+- With `@abstractmethod` beside it, in either order, the method's body may only raise (no
+  `yield` or `return`, a `raise` last), its annotation yield `None` (`Iterator[None]`) and its
+  defaults be literals: a call of the abstract method raises there, as CPython's helper does when
+  it calls the function, and overrides are generators
+  ([test](../tests/programs/classes/contextmanager_abstract.py)). Its body is a method of its own,
+  `_pys_cm_abs_NAME_` and the line of the `def`, so `super().NAME()` of a subclass that declares
+  the method again runs the base class's
+  ([test](../tests/programs/classes/contextmanager_abstract_super.py)). An abstract method that
+  could return, yields another type or has another default is rejected
+  ([error test](../tests/errors/classes/contextmanager_abstract_returns.py)), and so is
+  `with super().NAME():` of the abstract method, whose call raises.
 - A method manager's `func` retains the port's bound-generator representation, and `args` omits
   that bound receiver. Recreation observes same-type replacements of `args` and `kwds`.
   Assigning `func`, even to itself, restores the port's ordinary bound-method dispatch: it
@@ -1114,10 +1147,16 @@ arguments. `closing(thing)`, `nullcontext()`, `nullcontext(value)`, `suppress(A,
   exception).
 - A function that a manager decorates and that calls itself is rejected (the decorator's `inner()`
   calls itself before its return type is inferred): use the manager inside it instead.
-- `ExitStack`, `redirect_stdout`, `redirect_stderr`, `chdir` and the async managers
+- `ExitStack.enter_context()` of an object whose class lacks `__enter__()` or `__exit__()` is a
+  compile-time error, where CPython raises `TypeError`
+  ([error test](../tests/errors/library/lib_contextlib_exitstack_no_exit.py)). `push()` of an
+  object whose class defines both `__call__()` and `__exit__()` registers the call; CPython
+  registers its `__exit__()` ([deviation](../tests/deviations/lib_contextlib_exitstack_push.py)).
+  An exit gets no traceback, and the exception that leaves the stack has no `__context__` to
+  repair. No class derives from `ExitStack`, whose `pop_all()` makes an `ExitStack`.
+- `redirect_stdout`, `redirect_stderr`, `chdir` and the async managers
   (`asynccontextmanager`, `aclosing`, `AsyncExitStack`, `AbstractAsyncContextManager`) are not
-  ported: the subset has no list of managers of different classes, no assignable `sys.stdout`,
-  no `os.getcwd()` and no `async def`.
+  ported: the subset has no assignable `sys.stdout`, no `os.getcwd()` and no `async def`.
 
 ## Numbers and randomness
 
@@ -1629,6 +1668,28 @@ prefixes, GNU option interleaving, a leading `+`, and `POSIXLY_CORRECT` through
 `longopts` must be `list[str]`; CPython also accepts one string. Messages are
 untranslated. Error messages and parsing otherwise follow the upstream code.
 
+### `platform`
+
+A subset implementation of CPython's `platform` ([test](../tests/programs/library/lib_platform.py)).
+
+- `uname()` gives the fields of the system's `uname(2)`, which CPython reads through
+  `os.uname()`: `system`, `node`, `release`, `version` and `machine`, a field that is
+  `unknown` as `''`. `system()`, `node()`, `release()`, `version()` and `machine()` are its
+  fields. Its result is a NamedTuple of those five; CPython's has a sixth item, `processor`,
+  which it reads from the command `uname -p`
+  ([deviation](../tests/deviations/lib_platform_uname_items.py)).
+- `python_implementation()` is `'Pystachy'`
+  ([deviation](../tests/deviations/lib_platform_implementation.py)): a program that tests it for
+  `'CPython'` or `'PyPy'` takes its other branch. `python_version()` and
+  `python_version_tuple()` give the version of the Python language that Pystachy compiles,
+  `sys.version_info`'s.
+
+Not supported, as compile-time errors where used: `platform()`, `processor()`,
+`architecture()`, `libc_ver()`, `freedesktop_os_release()`, `system_alias()`, the functions
+of other systems (`win32_ver()`, `mac_ver()` and the like) and those that describe CPython's
+build (`python_build()`, `python_compiler()`, `python_branch()`, `python_revision()`)
+([error test](../tests/errors/library/lib_platform_platform.py)).
+
 ## Processes and threads
 
 <a id="thread"></a>
@@ -1780,6 +1841,58 @@ reading or assigning a field is a compile-time error, where CPython raises `Attr
   CPython, also in an optional import, but any use of one is a compile-time error
   ([error test](../tests/errors/reflection/types_unsupported_name.py)): Pystachy has no such objects, or
   none that behave exactly as CPython's.
+
+### `importlib.metadata`
+
+`importlib.metadata` is Pystachy's own subset (`lib/importlib/metadata.py`) of CPython 3.13.16's
+package. It reads the metadata of installed distributions as CPython does:
+
+- `version()`, `metadata()`, `requires()` and `distribution()` take a distribution's name and
+  find its `*.dist-info` or `*.egg-info` directory, or its `*.egg-info` file, with CPython's
+  rules: the name a directory gives is its own name up to the first `-`, and names compare
+  without regard to case or to how runs of `-`, `_` and `.` are written
+  ([test](../tests/programs/library/lib_importlib_metadata_search.py)). A name that nothing
+  matches raises `PackageNotFoundError`, a `ModuleNotFoundError` whose `name` is the name
+  asked for, and an empty name `ValueError`
+  ([test](../tests/programs/library/lib_importlib_metadata_errors.py)).
+- A metadata message holds the headers of `METADATA`, or of `PKG-INFO` where that is missing
+  or empty, parsed as CPython's `email` parser reads them: folded lines, the body as the
+  header `Description`, lines that are no headers and `From ` lines
+  ([test](../tests/programs/library/lib_importlib_metadata_parse.py)). It answers `[]`, `in`,
+  `len()`, iteration, `keys()`, `values()`, `items()`, `get()` and `get_all()`, by header
+  names in any case ([test](../tests/programs/library/lib_importlib_metadata.py)).
+- A `Distribution` has `name`, `version`, `metadata`, `requires` and `read_text()`, and
+  `Distribution.from_name()`. `requires` gives the `Requires-Dist` headers, or the lines of an
+  egg-info `requires.txt` with their sections' extras and markers.
+- `distributions()` gives a list of every distribution found.
+
+Sixteen methods of CPython's `test_api.py` run on its own fixture distributions
+([upstream test](../tests/programs/upstream/upstream_importlib_metadata.py)).
+
+Differences from CPython:
+
+- CPython searches `sys.path` as the program runs. Pystachy resolves imports while it compiles
+  a program, so the directories searched are the [module path](../docs/language/modules.md#finding-and-running-modules):
+  the main program's directory, `PYSTACHY_PATH` and `lib/`, in that order. A distribution
+  installed elsewhere, such as in a CPython environment's `site-packages`, is found only when
+  that directory is on `PYSTACHY_PATH`. The directories are read as the program runs, by
+  their absolute paths at compilation: an executable that `pystachy build` makes keeps them,
+  as it keeps `sys.prefix`.
+- A message's `[]` raises `KeyError` for a header it does not have, and `version()` does for
+  metadata without `Version`. CPython 3.13 returns `None` with a `DeprecationWarning` that
+  announces the `KeyError`
+  ([deviation](../tests/deviations/lib_importlib_metadata_missing_key.py)).
+- `PackageNotFoundError` takes the name alone, and has no `args`.
+- A message is not an `email.message.Message`: it has the methods above and no `json`. A
+  `Content-Type` header does not change how the body is read.
+- Zip files and `.egg` directories on the path are not searched.
+- `entry_points()`, `files()`, `packages_distributions()`, `Distribution.discover()`, `at()`,
+  `files`, `entry_points`, `origin` and `locate_file()`, and `DistributionFinder`, are not
+  provided: using one is a compile-time error
+  ([error tests](../tests/errors/library/lib_importlib_metadata_entry_points.py)).
+  `distributions()` takes no arguments.
+- The rest of `importlib` is not provided. Nothing imports a module at run time:
+  `import_module()`, `reload()` and `__import__()` are compile-time errors.
 
 ### `warnings`
 

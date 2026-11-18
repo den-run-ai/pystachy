@@ -2,17 +2,14 @@
 from __future__ import annotations
 import os
 from src.pystachy_compiler import diagnostics
-from src.pystachy_compiler.diagnostics import LINES, RAW, shown
-from src.pystachy_compiler.lexer import utf8
+from src.pystachy_compiler.diagnostics import LINES, shown
+from src.pystachy_compiler.lexer import host_text
 from src.pystachy_compiler.llvm_abi import llstr
 
 
 def file_quote(s: str) -> str:
-    # Filesystem paths are Unicode in hosted Python and UTF-8 bytes in the native
-    # compiler. LLVM metadata strings contain bytes in both bootstraps.
-    if RAW == "latin-1":
-        s = "".join([utf8(ord(c)) for c in s])
-    return llstr(s).replace("!", "\\21")
+    # a file system path (host_text) in an LLVM metadata string, which holds its UTF-8 bytes
+    return llstr(host_text(s)).replace("!", "\\21")
 
 
 def remap_refs(text: str, offset: int) -> str:

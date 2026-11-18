@@ -1,5 +1,6 @@
 """Loader component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+import os
 from src.pystachy_compiler import program_cache
 from src.pystachy_compiler.analysis import (
     accel_try,
@@ -55,7 +56,7 @@ from src.pystachy_compiler.analysis import (
 from src.pystachy_compiler.argparse_schema import lower_argparse, parser_import
 from src.pystachy_compiler.ctypes_schema import ctypes_import, lower_ctypes
 from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, IDPRAGMA, INTFILES, INTSPANS, LINES, MODDUNDERS, RAW, NeedHandlers, dynamic_pragma, fail, int_pragma, leading_pragma
-from src.pystachy_compiler.lexer import KEYWORDS, Lexer
+from src.pystachy_compiler.lexer import KEYWORDS, Lexer, host_text
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, short
 from src.pystachy_compiler.parser import Parser
@@ -106,6 +107,21 @@ def cm_names(body: Node) -> list[str]:
     return out
 
 
+def abstract_cm_body(b: Node) -> bool:
+    # can function body b, of an abstract @contextmanager method, only raise: it has no yield
+    # and no return, and ends in a raise statement (after a docstring, as mypy's interfaces write
+    # them). CPython's helper then calls a function, not a generator function, which raises
+    return len(b.kids) > 0 and b.kids[-1].kind == "raise" and not has_kind(b, "yield") and not has_kind(b, "return") and not has_kind(b, "def") and not has_kind(b, "lambda")
+
+def cm_yields_none(a: Node) -> bool:
+    # is return annotation a Iterator[None] or Generator[None, None, None] (also qualified): the
+    # type of the generator that stands for an abstract method's, whose one yield yields None
+    if a.kind != "index" or len(a.kids) != 2:
+        return False
+    base = a.kids[0].s if a.kids[0].kind in ["name", "attr"] else ""
+    args = a.kids[1].kids if a.kids[1].kind == "tuple" else [a.kids[1]]
+    return base in ["Iterator", "Generator"] and len(args) in [1, 3] and len([x for x in args if x.kind != "None"]) == 0
+
 def cm_root(c: str, name: str, bases: dict[str, list[str]], cms: list[str]) -> str:
     # the first class from c up its bases (classes of the module, by name) that defines the
     # @contextmanager method name, the furthest up it; "" when none does
@@ -150,7 +166,68 @@ def cm_methods(n: Node, names: list[str]) -> None:
             generic = st.kind == "subclass" and len([x for x in st.kids[1:] if x.kind == "typeparams"]) > 0
             kept: list[Node] = []
             for d in b.kids:
-                if d.kind == "def" and len(d.kids) == 4 and d.kids[3].kind == "deco" and len(d.kids[3].kids) == 0 and d.kids[3].s in names and len(d.kids[0].kids) > 0 and d.kids[0].kids[0].kind == "param":
+                # (@abstractmethod with it, in either order, on a method that cannot yield: its
+                # body raises where CPython's helper calls it, below)
+                abstract = ""
+                if d.kind == "def" and len(d.kids) == 5 and not generic and d.kids[3].kind == "deco" and d.kids[4].kind == "deco" and len(d.kids[3].kids) + len(d.kids[4].kids) == 0:
+                    other = d.kids[4].s if d.kids[3].s in names else d.kids[3].s if d.kids[4].s in names else ""
+                    # (its parameters are those of two methods below: defaults that are literals,
+                    # which evaluating twice does not show)
+                    if other in ["abstractmethod", "abc.abstractmethod"] and abstract_cm_body(d.kids[2]) and cm_yields_none(d.kids[1]) and len([x for x in d.kids[0].kids if not is_const(x.kids[1])]) == 0:
+                        abstract = other
+                if d.kind == "def" and abstract != "" and len(d.kids[0].kids) > 0 and d.kids[0].kids[0].kind == "param":
+                    # def NAME(self, ...): raise E, abstract and a context manager: CPython's helper
+                    # calls it for the generator, where it raises. _pys_cm_abs_NAME_LINE is that
+                    # function, which NAME calls first; _pys_cm_NAME is the generator the
+                    # overrides' managers are typed with, which nothing then makes. NAME is
+                    # otherwise the wrapper of the branch below, abstract
+                    me = d.kids[0].kids[0].s
+                    cms.append(st.s + "." + d.s)
+                    root = cm_root(st.s, d.s, bases, cms)
+                    reads = [st.s, root, "_pys_cm_GCM"]
+                    a = "_pys_cm_args" if "args" in reads else "args"
+                    while a in reads:
+                        a += "_"
+                    k = "_pys_cm_kwds" if "kwds" in reads else "kwds"
+                    while k in reads + [a]:
+                        k += "_"
+                    factory = "_pys_cm_factory"
+                    while factory in reads + [a, k]:
+                        factory += "_"
+                    held = "_pys_cm_self"
+                    while held in reads + [a, k, factory]:
+                        held += "_"
+                    if me in reads + [a, k, factory, held]:
+                        me = "_pys_cm_me"
+                        while me in reads + [a, k, factory, held]:
+                            me += "_"
+                    if not imported:
+                        top.append(Parser(Lexer("from contextlib import _GeneratorContextManager as _pys_cm_GCM\n", st.line).file()).module().kids[0])
+                        imported = True
+                    # (this def's body, whatever class the object is of: the method's name has the
+                    # def's line, which no other def of the program has, so super().NAME() of a
+                    # subclass that declares the method again, also in another module, runs this one)
+                    helper = f"_pys_cm_abs_{d.s}_{d.line}"
+                    own = f"{st.s}._pys_cm_{d.s}({me}, *{a}, **{k})"
+                    src = (f"@{abstract}\ndef {d.s}({me}, /, *{a}, **{k}):\n    {me}.{helper}(*{a}, **{k})\n    {factory} = lambda {a}, {k}: {own}\n"
+                           f"    {held}: {root} = {me}\n    return _pys_cm_GCM({held}._pys_cm_{d.s}, {a}, {k}, {factory}({a}, {k}), {factory})\n")
+                    w = Parser(Lexer(src, d.line).file()).module().kids[0]
+                    assignment = w.kids[2].kids[1]
+                    assignment.kids[1] = mk("cmfactory", "", d.line, [assignment.kids[1], mk("name", a, d.line, []), mk("name", k, d.line, [])])
+                    call = w.kids[2].kids[-1].kids[0]
+                    call.kids[1].kind = "cmref"  # metadata binding, not an attribute lookup on self
+                    raises = clone(d)
+                    raises.s = helper
+                    raises.kids = [raises.kids[0], mk("noann", "", d.line, []), raises.kids[2]]
+                    if d.pyname == "":
+                        d.pyname = d.s  # the generator's source name, before its hidden binding
+                    d.s = "_pys_cm_" + d.s
+                    d.kids = d.kids[:3]
+                    d.kids[2].kids.append(Parser(Lexer("def _pys_cm_yield():\n    yield\n", d.line).file()).module().kids[0].kids[2].kids[0])
+                    kept.append(raises)
+                    kept.append(d)
+                    kept.append(w)
+                elif d.kind == "def" and len(d.kids) == 4 and d.kids[3].kind == "deco" and len(d.kids[3].kids) == 0 and d.kids[3].s in names and len(d.kids[0].kids) > 0 and d.kids[0].kids[0].kind == "param":
                     me = d.kids[0].kids[0].s
                     cms.append(st.s + "." + d.s)
                     root = cm_root(st.s, d.s, bases, cms)
@@ -196,6 +273,88 @@ def cm_methods(n: Node, names: list[str]) -> None:
             b.kids = kept
         top.append(st)
     n.kids = top
+
+
+# functools' names that the methods of a module's class statements may be decorated with
+FUNCTOOLS_NAMES = ["cached_property"]
+
+
+def functools_names(body: Node) -> dict[str, str]:
+    # the names module body binds functools' cached_property as (from functools import
+    # cached_property, or as another name; import functools, or as f: f.cached_property), each
+    # to its name in functools
+    out: dict[str, str] = {}
+    for st in body.kids:
+        for a in st.kids if st.kind == "import" else []:
+            if a.kind == "alias" and len(a.kids) == 2 and st.s == "from" and a.kids[0].s.startswith("functools.") and a.kids[0].s[10:] in FUNCTOOLS_NAMES:
+                out[a.s] = a.kids[0].s[10:]
+            elif a.kind == "alias" and len(a.kids) == 2 and a.kids[0].s == "functools" and st.s != "from":
+                for k in FUNCTOOLS_NAMES:
+                    out[a.s + "." + k] = k
+    return out
+
+
+def functools_calls(n: Node, names: dict[str, str]) -> None:
+    # (functools_classes) a call of one of functools' names that the compiler applies as a
+    # decorator, anywhere in n, is rejected: cached_property(f) makes an object that no class
+    # statement's method is
+    for kid in n.kids:
+        if kid.kind == "call" and dotted(kid.kids[0]) in names:
+            fail(f"{names[dotted(kid.kids[0])]}(...) as a call is not supported: the compiler applies it where it decorates a method of a class statement (@{dotted(kid.kids[0])})", kid.line)
+        functools_calls(kid, names)
+
+
+def functools_classes(n: Node, names: dict[str, str]) -> None:
+    # (functools) what functools' cached_property (names: as the module imports it) makes of
+    # the methods of the class statements of module body n, as source: the subset has no
+    # descriptors. A method decorated @cached_property is the method _pys_cpget_NAME, and NAME a
+    # property that calls it once for an object and keeps what it returns in a field of the
+    # object, whose type the method's return annotation gives; CPython keeps it in the
+    # object's __dict__
+    if len(names) == 0:
+        return
+    functools_calls(n, names)
+    for st in n.kids:
+        if st.kind != "class" and st.kind != "subclass":
+            continue
+        c = st.kids[0] if st.kind == "subclass" else st
+        b = c.kids[0]
+        decos = c.kids[1:]
+        kept: list[Node] = []
+        for d in b.kids:
+            if d.kind == "def" and len(d.kids) == 4 and d.kids[3].kind == "deco" and len(d.kids[3].kids) == 0 and names.get(d.kids[3].s, "") == "cached_property":
+                if len(d.kids[0].kids) != 1 or d.kids[0].kids[0].kind != "param":
+                    fail(f"@cached_property method {st.s}.{d.s}() takes the object alone", d.line)
+                if d.kids[1].kind == "noann":
+                    fail(f"@cached_property method {st.s}.{d.s}() needs a return annotation: the type of the value it keeps", d.line)
+                if len([x for x in decos if x.s == "dataclass" or x.s.endswith(".dataclass")]) > 0:
+                    fail(f"@cached_property method {st.s}.{d.s}() of a dataclass is not supported", d.line)
+                me = d.kids[0].kids[0].s
+                flag = Parser(Lexer(f"_pys_cpset_{d.s}: bool = False\n", d.line).file()).module().kids[0]
+                val = Parser(Lexer(f"_pys_cpval_{d.s}: bool\n", d.line).file()).module().kids[0]
+                val.kids[1] = clone(d.kids[1])
+                src = f"@property\ndef {d.s}({me}):\n    if not {me}._pys_cpset_{d.s}:\n        {me}._pys_cpval_{d.s} = {me}._pys_cpget_{d.s}()\n        {me}._pys_cpset_{d.s} = True\n    return {me}._pys_cpval_{d.s}\n"
+                prop = Parser(Lexer(src, d.line).file()).module().kids[0]
+                prop.kids[1] = clone(d.kids[1])
+                # (an assignment replaces what the object keeps, and del forgets it, so that the
+                # next read calls the method again: CPython's is no data descriptor, and these
+                # write and delete the entry of the object's __dict__)
+                src = f"@{d.s}.setter\ndef {d.s}({me}, _pys_cp_value: bool) -> None:\n    {me}._pys_cpval_{d.s} = _pys_cp_value\n    {me}._pys_cpset_{d.s} = True\n"
+                setter = Parser(Lexer(src, d.line).file()).module().kids[0]
+                setter.kids[0].kids[1].kids[0] = clone(d.kids[1])
+                src = f"@{d.s}.deleter\ndef {d.s}({me}) -> None:\n    if not {me}._pys_cpset_{d.s}:\n        raise AttributeError(\"'\" + type({me}).__name__ + \"' object has no attribute '{d.s}'\")\n    {me}._pys_cpset_{d.s} = False\n"
+                deleter = Parser(Lexer(src, d.line).file()).module().kids[0]
+                d.s = "_pys_cpget_" + d.s
+                d.kids = d.kids[:3]
+                kept.append(flag)
+                kept.append(val)
+                kept.append(d)
+                kept.append(prop)
+                kept.append(setter)
+                kept.append(deleter)
+            else:
+                kept.append(d)
+        b.kids = kept
 
 
 # lib/enum.py's names a module may import, and the classes of them an enum class derives from
@@ -812,6 +971,7 @@ class Loader:
         # unlike any other). A key prefixed by a space maps an original private spelling to its
         # lexical name, only for quoted annotations; qexpr never consults these aliases.
         self.qren: dict[str, str] = {}
+        self.sigtps: list[str] = []  # the type parameters of the def whose signature is being qualified, which qren names only in its body
         # the function simplify() is in (own_specials()), and the names that its own imports which
         # special_import() recognizes have surely bound where simplify() is
         self.fs = Mod("", "", "")
@@ -851,6 +1011,7 @@ class Loader:
         tb_import(m.body)
         binary_opens(m.body)
         cm_methods(m.body, cm_names(m.body))
+        functools_classes(m.body, functools_names(m.body))
         enum_classes(m.body, enum_names(m.body))
         self.argparse(m.body)
         self.ctypes(m.body)
@@ -1230,6 +1391,7 @@ class Loader:
         tb_import(self.parsed[path])
         binary_opens(self.parsed[path])
         cm_methods(self.parsed[path], cm_names(self.parsed[path]))
+        functools_classes(self.parsed[path], functools_names(self.parsed[path]))
         enum_classes(self.parsed[path], enum_names(self.parsed[path]))
         self.argparse(self.parsed[path])
         self.ctypes(self.parsed[path])
@@ -3593,6 +3755,11 @@ class Loader:
         if n.s == "__doc__" and "__doc__" not in t.kinds:
             self.moddoc(n, t)
             return ""
+        if n.s == "__file__" and "__file__" not in t.kinds and t.path != "":
+            n.kind = "str"  # (module t's source file: see qexpr)
+            n.s = host_text(os.path.abspath(t.path))
+            n.kids = []
+            return ""
         k = t.kinds.get(n.s, "")
         key = f"{base}  {n.s}"
         if key in self.fragile:
@@ -3629,6 +3796,13 @@ class Loader:
                     fail(f"module '{m.name if m.name != '' else self.ext}' binds __name__, which is not supported in an imported module", n.line)
                 n.kind = "str"
                 n.s = m.name if m.name != "" else self.ext
+                return
+            if k == "name" and n.s == "__file__" and n.s not in loc and n.s not in self.qren and n.s not in self.sigtps and n.s not in m.rebound and self.kind(m, n.s) == "" and m.path != "":
+                # (its source file, as CPython names it: an absolute path, which an executable
+                # built ahead of time keeps from where it was built; not a type parameter of that
+                # name, which a generic def's signature and body, and a generic class, may read)
+                n.kind = "str"
+                n.s = host_text(os.path.abspath(m.path))
                 return
             if k == "name" and n.s == "__debug__":
                 n.kind = "True"  # (CPython runs without -O; nothing can bind __debug__)
@@ -3893,10 +4067,13 @@ class Loader:
                 # (a def in a function: CPython evaluates its annotations where the function runs
                 # it, which deftime() does not check)
                 late = m.lazyann or not self.qdef
+                outertps = self.sigtps
+                self.sigtps = st.kids[2].s.split()
                 for p in st.kids[0].kids:
                     self.qann(m, p.kids[0], loc, late)
                     self.qexpr(m, p.kids[1], loc)
                 self.qann(m, st.kids[1], loc, late)
+                self.sigtps = outertps
                 # (a def in a function sees that function's names too: those it does not bind itself
                 # are the enclosing function's, which a closure reads)
                 own: dict[str, bool] = {}

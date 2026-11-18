@@ -39,8 +39,9 @@ Restrictions on nested iterator-like expressions, snapshots and mutation are lis
 ### Structural patterns
 
 `match` supports literal values (`None`, booleans, integers, floats, strings and bytes),
-wildcards, captures, `as`, alternatives (`|`), guards, fixed tuple patterns and plain fields
-of statically known dataclasses. The subject is evaluated once. Cases and alternatives run
+wildcards, captures, `as`, alternatives (`|`), guards, sequence patterns of tuples and lists,
+with or without a starred subpattern, and plain fields of statically known dataclasses. The
+subject is evaluated once. Cases and alternatives run
 in source order. Captured values are staged until the whole pattern succeeds, then bound
 before its guard runs. A failed later subpattern leaves existing user bindings unchanged;
 a successful pattern followed by a false guard keeps its captures. A capture that never
@@ -65,15 +66,21 @@ uses ordinary assignments and branches, without a runtime pattern matcher. Where
 test is true its captures are bound, so its guard and body read them without an
 unbound-local check.
 
-Mapping patterns, starred sequence patterns, list or other general sequence subjects,
-complex literals, arbitrary class patterns, dataclass hierarchies, custom `__match_args__`
-and attribute hooks remain unsupported; the error names the statement's first such pattern.
+Mapping patterns, complex literals, arbitrary class patterns, dataclass hierarchies, custom
+`__match_args__` and attribute hooks remain unsupported; the error names the statement's first
+such pattern.
 A class body rejects a `match` statement as it rejects an `if` statement there. Dataclass
 patterns require a concrete subject type; dynamic `Any` and union subjects are rejected
 rather than treated as mismatches.
-Sequence patterns require a concrete fixed tuple; known scalar subjects, including
-promoting integers, fall through. Optional, union and dynamic sequence subjects need
-explicit narrowing before matching.
+A sequence pattern decides a fixed tuple's length during compilation and tests a list's, a
+runtime-length tuple's or a `range`'s where the match runs. `*rest` captures a new list of the items between
+those before and after it, and `*_` captures nothing. A dict, set, string, bytes or scalar subject,
+including a promoting integer, matches no sequence pattern. As in CPython, a list's items are
+taken before any subpattern runs, or each just before its subpattern after a `*_`; a nested
+sequence or class pattern of a list subject therefore needs `*_`. A starred capture of no items
+of a fixed tuple is an empty list of the type its items have in common, or is rejected if they
+have none. Optional, union and dynamic sequence subjects
+need explicit narrowing before matching ([#1305](https://github.com/den-run-ai/pystachy/issues/1305)).
 Literal and capture patterns can still consume dynamic `Any`. Boolean singleton patterns require concrete
 `bool` or dynamic `Any` when the subject could hold more than one scalar type. Existing
 equality and inference restrictions apply to value patterns and capture joins.
