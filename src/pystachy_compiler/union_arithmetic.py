@@ -76,6 +76,13 @@ def gen_unumeric_case(self, op: str, a: Val, b: Val, shown: str, unary: bool) ->
             if rm in self.classes[b.t].methods:
                 self.notnone(b, f"TypeError: unsupported operand type(s) for {shown}: '{tname(a.t)}' and 'NoneType'")
                 return self.call_fn(self.classes[b.t].methods[rm], [b, a], [])
+        if not unary and shown == op + "=" and a.t in self.classes and a.t != COMPLEXC and op in DUNDER:
+            # (an object that the union's variable holds, on the left of x op= y: its class's
+            # in-place method where it defines one, as gen_inplace calls it for a variable of the
+            # class's type, since CPython's x += y tries x.__iadd__(y) before x.__add__(y))
+            im = "__i" + DUNDER[op][2:]
+            if im in self.classes[a.t].methods:
+                return self.call_fn(self.classes[a.t].methods[im], [a, b], [])
         return self.unary(mk("unary", op, 0, [self.vnode(a)])) if unary else self.arith(op, a, b, shown)
     members = umembers(unopt(v.t)) if is_union(unopt(v.t)) else [unopt(v.t)]
     if is_opt(v.t) or (self.object_union(v.t) and v.v not in self.nn):
