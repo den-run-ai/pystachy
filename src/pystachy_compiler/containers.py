@@ -9,6 +9,7 @@ from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import BIG, BIGOPT, EMPTYFS, ITERS, NONE_ITEM, NONEVAR, OBJECTC, OPTTYPES, TYPEMODS, VTUPLE_ITEMS
 from src.pystachy_compiler.syntax import Node, made_var, mentions, mk
 from src.pystachy_compiler.utils import (
+    is_clsval,
     ListLayout,
     atomic_list,
     bool_for_int,
@@ -227,6 +228,10 @@ def gen_set_display(self, n: Node, want: str, folded: bool, returnctx: bool = Fa
         et = jt  # (None among the elements, {None, "a"}: T | None; {None}: a set whose elements are None, set[None])
     if not given and self.class_join(et, jt, "") != "":
         et = jt  # (objects of classes of one hierarchy: of their nearest common base)
+    if not given and is_clsval(jt):
+        et = jt  # (class objects: of a base class their classes have in common)
+    if not given and len(items) > 0 and all(self.refl_builtin_class(v.t) != "" or is_clsval(v.t) for v in items) and len([v for v in items if self.refl_builtin_class(v.t) != ""]) > 0:
+        et = "type[object]"  # (builtin classes named, beside class objects or not: their class objects)
     if self.elem_problem(et) != "":
         self.err(self.elem_problem(et))
     if const:
@@ -872,7 +877,7 @@ def gen_key_items(self, t: str) -> bool:
     # objects too)
     for x in targs(t):
         u = unopt(x)
-        if x != "int" and x != "bool" and u != "str" and u != "bytes" and x != "exctype" and not self.key_class(u) and not (is_tuple(u) and self.key_items(u)):
+        if x != "int" and x != "bool" and u != "str" and u != "bytes" and x != "exctype" and not is_clsval(x) and not self.key_class(u) and not (is_tuple(u) and self.key_items(u)):
             return False
     return True
 
@@ -1197,6 +1202,8 @@ def gen_none_arg(self, m: str, k: int) -> str:
 def gen_to_str(self, v: Val) -> Val:
     if self.dyn_policy(self.line) and self.refl_builtin_class(v.t) != "":
         return self.dyn_str(self.dyn_box(v))
+    if self.refl_builtin_class(v.t) != "":
+        v = self.class_value_builtin(v)  # (a builtin class named: its class object, <class 'int'>)
     t = v.t
     if t == "dyn":
         return self.dyn_str(v)  # (by its box's type: dynamic.py)
@@ -1224,6 +1231,9 @@ def gen_to_str(self, v: Val) -> Val:
         return Val(self.rt("pys_exc_str", "ptr", [f"ptr {v.v}"]), "str")
     if t == "exctype":
         return Val(self.rt("pys_exc_type", "ptr", [f"ptr {v.v}"]), "str")
+    if is_clsval(unopt(t)):
+        # (an ordinary class's class object, or None: runtime.c's repr of its record, <class 'M.Q'>)
+        return Val(self.rt("pys_repr", "ptr", ["i64 " + self.to_slot(v), f"ptr {self.sconst(self.desc(t, 'repr'))}"]), "str")
     if t == "opt[exc]" or t == "opt[exctype]":
         # (an __exit__'s exception, or its class: str(e), or "None")
         ln = self.label()
@@ -1395,7 +1405,7 @@ def gen_hashable(self, t: str) -> bool:
     # object, a frozenset (runtime.c's hfset, of the hashes its table keeps) or a tuple of such
     # items, or one of these that may be None
     u = unopt(t)
-    if u == "int" or u == BIG or u == "bool" or u == "float" or u == "str" or u == "bytes" or u == "None" or u == "exctype" or self.key_class(u):
+    if u == "int" or u == BIG or u == "bool" or u == "float" or u == "str" or u == "bytes" or u == "None" or u == "exctype" or is_clsval(u) or self.key_class(u):
         return True
     if is_fset(u):
         return self.elem_problem(selem(u)) == ""
@@ -1404,6 +1414,8 @@ def gen_hashable(self, t: str) -> bool:
 def gen_repr(self, v: Val) -> Val:
     if self.dyn_policy(self.line) and self.refl_builtin_class(v.t) != "":
         return self.dyn_repr(self.dyn_box(v))
+    if self.refl_builtin_class(v.t) != "":
+        v = self.class_value_builtin(v)  # (a builtin class named: its class object, <class 'int'>)
     if is_kw(v.t):
         return self.kw_repr(v)
     if v.t == BIG:
@@ -1427,6 +1439,6 @@ def gen_repr(self, v: Val) -> Val:
         self.err(f"cannot convert {v.t} to str")
     if v.t == "exc":
         return Val(self.rt("pys_exc_repr", "ptr", [f"ptr {v.v}"]), "str")
-    if unopt(v.t) == "exctype":
+    if unopt(v.t) == "exctype" or is_clsval(unopt(v.t)):
         return self.to_str(v)  # (a class's repr is its str)
     return Val(self.rt("pys_repr", "ptr", ["i64 " + self.to_slot(v), f"ptr {self.sconst(self.desc(v.t, 'repr'))}"]), "str")

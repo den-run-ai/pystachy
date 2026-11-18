@@ -45,6 +45,8 @@ from src.pystachy_compiler.syntax import Node, comp_names, made_var, mk, names_i
 from src.pystachy_compiler.union_arithmetic import unarith
 from src.pystachy_compiler.utils import (
     holds_no_object,
+    is_clsval,
+    clsof,
     opaque_class,
     atomic_dict,
     atomic_list,
@@ -570,8 +572,8 @@ def gen_isinst(self, t: str, c: Node) -> int:
         return 1 if c.s == "frozenset" else 0
     if c.s == "list" or c.s == "dict" or c.s == "tuple" or c.s == "set" or c.s == "frozenset":
         return 1 if t.startswith(c.s + "[") else 0
-    if c.s == "type" and t == "exctype":
-        return 1  # (an exception class's class object is a type)
+    if c.s == "type" and (t == "exctype" or is_clsval(t)):
+        return 1  # (a class object is a type)
     if is_excname(c.s) and t != "exc" and not (t in self.classes and self.classes[t].exc != ""):
         return 0  # (a value that is no exception, such as a class object, is no instance of one)
     if c.s == "type" and t.startswith("fn[b:"):
@@ -1111,7 +1113,9 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if c in self.classes and n.s == "__members__" and self.classes[c].node.line in ENUMCLASSES:
             self.class_ready(n.kids[0])
             return self.expr(mk("call", "", n.line, [mk("attr", "_members_view_", n.line, [self.enum_view(c, n.line)])]), "")  # (its EnumType object's)
-        metadata = c in self.classes and self.classes[c].exc == "" and self.dyn_policy(n.line) and n.s in ["__qualname__", "__module__"]
+        # (C.__qualname__ and C.__module__: where a module opts in to dynamic Any, and those of a
+        # class whose class object is a value, class_values.py)
+        metadata = c in self.classes and self.classes[c].exc == "" and n.s in ["__qualname__", "__module__"] and (self.dyn_policy(n.line) or self.class_value_problem(c) == "")
         inherited_meta = metadata and n.s in self.classes[c].fdefault and self.default_home(self.classes[c], n.s) is not self.classes[c]
         if c in self.classes and ((c in self.nts and (n.s == "_fields" or n.s == "_field_defaults")) or (c not in self.nts and n.s in self.classes[c].fdefault and not inherited_meta)):
             return self.class_attr(n.kids[0], n.s)
@@ -1159,8 +1163,10 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                     # static base does not. The existing boxed-class dispatcher
                     # preserves that exact lookup and the receiver's identity.
                     return self.dyn_getattr(self.dyn_box(o), n.s)
+                if self.class_value_typed(o, self.knownobj(n.kids[0])):
+                    return self.class_value_of(o, self.knownobj(n.kids[0]))  # (as in other modules)
                 return self.refl_type_value(o)
-        builtin_class = self.refl_builtin_class(o.t) if self.dyn_policy(n.line) else ""
+        builtin_class = self.refl_builtin_class(o.t)
         if builtin_class != "" and n.s in ["__name__", "__qualname__", "__module__"]:
             return Val(self.sconst(self.refl_type_name(builtin_class, n.s)), "str")
         if is_fn(o.t) and (n.s == "__name__" or n.s == "__qualname__"):
@@ -1226,6 +1232,14 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             o = self.unwrap(o, f"AttributeError: 'NoneType' object has no attribute '{n.s}'")
             fn = "pys_exc_module" if n.s == "__module__" else "pys_exc_name"  # (no class is nested: its __qualname__ is its __name__)
             return Val(self.rt(fn, "ptr", [f"ptr {o.v}"]), "str")
+        if is_clsval(unopt(o.t)) and (n.s == "__name__" or n.s == "__qualname__" or n.s == "__module__"):
+            return self.class_value_name(o, n.s)  # (an ordinary class's class object: class_values.py)
+        if is_clsval(unopt(o.t)) and clsof(unopt(o.t)) in self.classes and clsof(unopt(o.t)) not in self.nts and n.s in self.classes[clsof(unopt(o.t))].fdefault and n.s not in self.classes[clsof(unopt(o.t))].methods:
+            return self.class_value_attr(o, n.s)  # (a class attribute, through the class object)
+        if is_clsval(unopt(o.t)) and clsof(unopt(o.t)) == "object" and len(self.class_value_having(n.s, False)) > 0:
+            return self.class_value_attr(o, n.s)  # (through any class's class object: of the classes that bind it)
+        if n.s == "__class__" and self.class_value_named(o.t) and not self.dyn_policy(self.line) and "__class__" not in self.classes[o.t].ftypes and "__class__" not in self.classes[o.t].methods:
+            return self.class_value_of(o, self.knownobj(n.kids[0]))  # (an object's class: its class object)
         if o.t == "file" and (n.s == "closed" or n.s == "name" or n.s == "mode"):
             r = self.rt(f"pys_file_{n.s}", "i64" if n.s == "closed" else "ptr", [f"ptr {o.v}"])
             return self.num_cmp('!=', Val(r, "int"), Val('0', "int")) if n.s == "closed" else Val(r, "str")
@@ -1323,8 +1337,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             for v in items:
                 if et == "" and v.t != "None":
                     et = v.t
-        if not given and (is_opt(jt) or is_tuple(jt)):
-            et = jt  # None among strings (or T | None among T): T | None (also as tuple items)
+        if not given and (is_opt(jt) or is_tuple(jt) or is_clsval(jt)):
+            et = jt  # None among strings (or T | None among T): T | None (also as tuple items); class objects: of a base class in common
         if not given and self.class_join(et, jt, "") != "":
             et = jt  # (objects of classes of one hierarchy: of their nearest common base)
         if not given and jt == "-" and self.dyn_policy(n.line) and not self.dyn_callables([v.t for v in items]):
@@ -1411,10 +1425,14 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             for v in vs:
                 if kv[1] == "" and v.t != "None":
                     kv[1] = v.t
-        if not given and (is_opt(jt) or is_tuple(jt) or is_vtuple(jt)):
-            kv[1] = jt  # None among strings (or T | None among T): T | None (also as tuple items; tuples of other lengths: tuple[T, ...])
+        if not given and (is_opt(jt) or is_tuple(jt) or is_vtuple(jt) or is_clsval(jt)):
+            kv[1] = jt  # None among strings (or T | None among T): T | None (also as tuple items; tuples of other lengths: tuple[T, ...]); class objects: of a base class in common
         if not given and self.class_join(kv[1], jt, "") != "":
             kv[1] = jt  # (objects of classes of one hierarchy: of their nearest common base)
+        if not kgiven and is_clsval(kj):
+            kv[0] = kj  # (class objects as keys: of a base class their classes have in common)
+        if not kgiven and self.refl_builtin_class(kj) != "":
+            kv[0] = "type[object]"  # (a builtin class named as the key: its class object)
         if not given and jt == "-" and not self.term:
             vh = vs[0].t
             for b in vs[1:]:
@@ -2259,6 +2277,8 @@ def gen_format_(self, v: Val, spec: Node) -> Val:
     # format()'s argument
     if self.dyn_policy(self.line) and self.refl_builtin_class(v.t) != "":
         v = self.dyn_box(v)
+    elif self.refl_builtin_class(v.t) != "":
+        v = self.class_value_builtin(v)  # (a builtin class named: its class object)
     empty = spec.kind == "str" and spec.s == ""
     if v.t == "dyn":
         # by its box's type (dynamic.py): a boxed class's __format__, else str() for an empty spec
@@ -3728,6 +3748,12 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False, kept: list[str
     t = b.t if e1 == "" or (a.t == "None" and e2 != "") else a.t
     if e1 != "" and e2 != "" and a.t != b.t and (want == "" or is_opt(want)) and is_opt(self.join(a.t, b.t)):
         t = self.join(a.t, b.t)  # x if c else None: T | None
+    aclass = is_clsval(a.t) or self.refl_builtin_class(a.t) != ""
+    bclass = is_clsval(b.t) or self.refl_builtin_class(b.t) != ""
+    if e1 != "" and e2 != "" and a.t != b.t and aclass and bclass and is_clsval(self.join(a.t, b.t)):
+        t = self.join(a.t, b.t)  # (class objects: of the nearest base class their classes have in common, or any class's)
+    elif e1 != "" and e2 != "" and a.t != b.t and aclass and bclass and (unopt(want) == "type[object]" or self.refl_builtin_class(a.t) != "" or self.refl_builtin_class(b.t) != ""):
+        t = "type[object]"  # (of classes without one, where any class's class object is wanted, or a builtin class is named)
     if e1 != "" and e2 != "" and a.t != b.t and self.join(a.t, b.t) == "dyn":
         t = "dyn"  # (an arm's dynamic value: the other's value boxed in its arm, dynamic.py)
     if e1 != "" and e2 != "" and a.t != b.t and self.join(a.t, b.t) == BIG:
@@ -5937,6 +5963,17 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             b = self.coerce(b, unopt(a.t))
         elif is_tuple(a.t) and is_vtuple(unopt(b.t)):
             a = self.coerce(a, unopt(b.t))
+    if (a.t == "dyn" and is_clsval(unopt(b.t))) or (b.t == "dyn" and is_clsval(unopt(a.t))):
+        # (a class object and an Any value, where a module opts in to dynamic Any: as class boxes)
+        a, b = self.dyn_box(a), self.dyn_box(b)
+    if is_clsval(unopt(a.t)) and self.refl_builtin_class(b.t) != "":
+        b = self.class_value_builtin(b)  # (a builtin class named beside a class object: its class object)
+    elif is_clsval(unopt(b.t)) and self.refl_builtin_class(a.t) != "":
+        a = self.class_value_builtin(a)
+    if (op == "==" or op == "!=" or op == "is" or op == "is not") and (is_clsval(unopt(a.t)) or is_clsval(unopt(b.t))) and not self.class_value_asks(op, a, b):
+        # (class objects of ordinary classes, by identity: class_values.py; before the objects'
+        # comparisons, which only an object whose class defines __eq__ or __ne__ decides)
+        return self.class_value_cmp(op, a, b)
     if op in ICMP and self.lenient and self.curfn.ll.startswith("@o."):
         # The generic object helpers must not treat a declared method as absent
         # just because its annotation or declaration cannot take this operand.

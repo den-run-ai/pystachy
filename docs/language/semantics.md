@@ -517,12 +517,75 @@ The compiler's side is described in [internals](../internals.md#reflection).
 `str`, `bytes`, `list`, `NoneType`, ... for builtin values, and `builtins` as their module. Inside an
 expression, `type(a) is C`, `type(a) == type(b)`, their negations and `x.__class__ is C` compare
 the exact classes (`type(True) is bool`, `type(True) is int` is false). `str()` and `repr()` of a
-reference union print each object as its own class prints it. Stored `type(x)` values
-and class-keyed dictionaries are supported in the
-[dynamic-Any prototype](../dynamic-any.md#class-values-and-type-keyed-registries),
-including bounded reconstruction through existing boxed instance adapters and
-compiled initializers. Without the opt-in, class values are limited to
-[exception classes](#exception-classes-as-values).
+reference union print each object as its own class prints it. `type(x)` of an object of the
+program's classes is a [value](#classes-as-values), as [exception classes](#exception-classes-as-values)
+are, and so is `type(x)` of any other value: its builtin class's class object. Calls of a
+builtin class held as a value and bounded reconstruction through boxed instance adapters need
+the [dynamic-Any prototype](../dynamic-any.md#class-values-and-type-keyed-registries).
+
+### Classes as values
+
+A class of the program is a value: `k = Button`, a default (`kind=Widget`), an argument, a field,
+an item of a list, tuple or set, a dict's key or value (`{Leaf: 1}`). `type[C]`, with `| None`,
+annotates it: the class object of `C` or of a class deriving from `C`. Class objects of
+different classes in a conditional expression or a display have the type of the nearest base
+class those classes share, or `type[object]` where they share none. `type(x)` and `x.__class__` of an object are its class's class
+object, so `type(self)(...)` makes an object of the object's own class; `cls` in a class method
+is the class it was called on. Each class has one class object: `is`, `==` and `hash()` compare
+and hash it by identity ([test](../../tests/programs/classes/class_values.py)).
+
+- `str()`, `repr()` and formatting give CPython's text (`<class '__main__.Leaf'>`); `__name__`,
+  `__qualname__` and `__module__` are its names, also through the class's name
+  (`Leaf.__module__`). Ordering raises CPython's `TypeError`; `callable(k)` and
+  `isinstance(k, type)` are true.
+- A call makes an object of the class the value is, with that class's constructor
+  ([test](../../tests/programs/classes/class_value_calls.py)). The class object is evaluated
+  first, then each argument once. A value that is `None`, or an abstract class's class object,
+  raises CPython's `TypeError`. Every class the value may be (`C` and the classes deriving from
+  it) must take the call's arguments: another signature is a compile error.
+- `k.attr` reads a class attribute, a name the class body binds, of the class `k` is, and
+  `k.m(args)` calls that class's class method or static method, as `type(x).attr` and
+  `x.__class__.m()` do through an object's class; a class method's `cls` is that class
+  ([test](../../tests/programs/classes/class_value_attrs.py)). The calls through each class
+  `k` may be share one result type.
+- `type[object]`, also written `type`, is the class object of any ordinary class of the
+  program: a registry of unrelated classes, a dict keyed by `type(node)`, and `type(x)` of an
+  object of a union of classes. It is compared, hashed, named and printed as any class object,
+  and `isinstance(x, k)` and `issubclass(k, C)` test it
+  ([test](../../tests/programs/classes/class_value_any.py)). `k.attr` and `k.m(args)` read
+  the class attribute, or call the class method or static method, of the class it is, where
+  the classes that have the name agree on one type; the class object of a class without it
+  raises CPython's `AttributeError`, before a call's arguments are evaluated
+  ([test](../../tests/programs/classes/class_value_any_attrs.py)). A name that a builtin class
+  has itself (`from_bytes`, `join`, `mro`) is a compile error there, as the value may be that
+  class's class object. Its class is not known where
+  the program is compiled, so a call of it is a compile error: hold a `type[C]` of a base class
+  for that. Exception classes and enum classes are no such values.
+- A builtin class is such a value too: `int`, `str`, `list` and the others, `type(x)` of a
+  value that is no object of the program, and `type(None)`
+  ([test](../../tests/programs/classes/class_value_builtin.py)). A location typed `type` takes
+  one, and a list, dict, set or conditional expression of several builtin classes, or of one
+  beside a class object, holds them as `type[object]`; one as a dict key or a set element is
+  its class object. A builtin class named alone stays the function a call of it compiles
+  (`f = int; f("3")`), which prints, compares and hashes as its class object.
+- `isinstance(x, k)` and `issubclass(k, b)` take a class object `k`; `b` is a class object,
+  names a class, or is a tuple of them ([test](../../tests/programs/classes/class_value_tests.py)).
+  A value of another type is an instance of no class of the program. Where `k` is any class's
+  (`type[object]`), a value is an instance of its builtin class's class object, a `bool` of
+  `int`'s too, `None` of `NoneType`'s and every value of `object`'s
+  ([test](../../tests/programs/classes/class_value_builtin_isinstance.py)).
+- `type(x)` of an `x` that is `None` is `NoneType`'s class object, `type(None)`: a call of it
+  without arguments returns `None`, and one with arguments raises CPython's `TypeError`
+  ([test](../../tests/programs/classes/class_value_type_of.py)).
+- A class is unbound until its class statement runs: reading it as a value before raises
+  `NameError` ([test](../../tests/programs/classes/class_value_unbound.py)). A name assigned
+  another module's class that a function rebinds, or reads before the assignment, is a variable
+  holding the class object ([test](../../tests/programs/imports/import_attr_class_alias_fnbefore.py)).
+
+The [rejected forms](compatibility.md#reflection) include class objects of unrelated classes in
+one variable, instance methods called through a class object and calls of a builtin class held as a value. In a module
+that opts in to dynamic `Any`, a class object stored as `Any` is that prototype's
+[class value](../dynamic-any.md#class-values-and-type-keyed-registries).
 
 ### Attribute names the compiler knows
 

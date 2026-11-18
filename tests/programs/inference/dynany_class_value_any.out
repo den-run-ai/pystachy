@@ -1,0 +1,4 @@
+[<class '__main__.A'>, <class '__main__.C'>] <class '__main__.C'> <class '__main__.A'> <class '__main__.C'> A C True
+[<class '__main__.A'>, 5, 'x'] True True False
+c a 2
+[exit 0]

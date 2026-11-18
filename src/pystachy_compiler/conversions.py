@@ -8,6 +8,7 @@ from src.pystachy_compiler.syntax import made_var, mk
 from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, DUNDER, EMPTYFS, NONEVAR, ORDOP, REFL
 from src.pystachy_compiler.bigints import big_viewable, held
 from src.pystachy_compiler.utils import (
+    is_clsval,
     elem,
     is_callable,
     is_dict,
@@ -255,6 +256,8 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         self.err(f"expected an object of {short(t)}, got a builtin exception, which is not converted to a class of the program (catch it as one: except {short(t)} as e)")
     if self.widens(v.t, t):
         return Val(v.v, t).identity(v)
+    if unopt(t) == "type[object]" and self.refl_builtin_class(v.t) != "":
+        return Val(self.class_value_builtin(v).v, t)  # (a builtin class named: its class object, class_values.py)
     if is_union(unopt(t)) and v.t != "None":
         return self.to_union(v, t, what)
     if is_fn(v.t) and is_callable(unopt(t)):
@@ -389,6 +392,8 @@ def gen_plain_desc(self, t: str, use: str) -> str:
         return "E"  # (repr: pys_exc_repr; equality: identity)
     if t == "exctype":
         return "C"  # (an exception class's class object: repr pys_exc_type; equality and hash: identity)
+    if is_clsval(t):
+        return "Y"  # (an ordinary class's class object, its reflection record: repr <class 'M.Q'>; equality and hash: identity)
     if t in self.classes:
         # O<id>: the runtime calls back into pys_obj_eq/cmp/repr, which dispatch on the id, and
         # so the methods of use (a < b: __lt__, else the reflected __gt__) with objects of

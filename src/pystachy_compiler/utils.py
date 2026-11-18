@@ -260,7 +260,7 @@ def tname(t: str) -> str:
         return "BaseException"
     if t == "dyn":
         return "Any"  # (whose type is its value's: dynamic.py)
-    if t == "exctype":
+    if t == "exctype" or is_clsval(t):
         return "type"
     if is_gen(t):
         return "generator"
@@ -564,6 +564,18 @@ def is_callable(t: str) -> bool:
     return t.startswith("callable[")
 
 
+def is_clsval(t: str) -> bool:
+    # type[C]: the class object of ordinary class C of the program, or of a class deriving from it
+    # (or NoneType's, which type(x) gives of an x that is None): a pointer to that class's
+    # reflection record, a constant, which is the class's one class object (class_values.py)
+    return t.startswith("type[")
+
+
+def clsof(t: str) -> str:
+    # the class C of class object type type[C]
+    return t[5:-1]
+
+
 def callable_shown(t: str) -> str:
     # callable[R,A,B] as typing writes it: Callable[[A, B], R] (its types still to be shown)
     ts = targs(t)
@@ -822,9 +834,9 @@ def empty_default(n: Node, name: str, kind: str) -> bool:
 
 def key_problem(t: str) -> str:
     # why t cannot be a dict's key type, or "": ints, strs, fixed or runtime-length tuples of
-    # hashable items, and objects (Gen.key_problem); None and these types | None (none_key)
-    if t == "int" or t == "str" or t == "bytes" or t == "exctype" or (is_tuple(t) and key_items(t)):
-        return ""  # (an exception class's class object is hashed and compared by identity)
+    # hashable items, class objects and objects (Gen.key_problem); None and these types | None (none_key)
+    if t == "int" or t == "str" or t == "bytes" or t == "exctype" or is_clsval(t) or (is_tuple(t) and key_items(t)):
+        return ""  # (a class object is hashed and compared by identity)
     if is_vtuple(t) and key_items("tuple[" + targs(t)[0] + "]"):
         return ""  # (a runtime-length tuple of such items: runtime.c's hval walks its items)
     if t == "None" or (is_opt(t) and t != NONEVAR and t != NONE_ITEM and key_problem(unopt(t)) == ""):
@@ -878,7 +890,7 @@ def bool_for_int(a: str, b: str) -> bool:
 def key_items(t: str) -> bool:
     for x in targs(t):
         u = unopt(x)
-        if x != "int" and x != "bool" and u != "str" and u != "bytes" and x != "exctype" and not (is_tuple(u) and key_items(u)):
+        if x != "int" and x != "bool" and u != "str" and u != "bytes" and x != "exctype" and not is_clsval(x) and not (is_tuple(u) and key_items(u)):
             return False
     return True
 
