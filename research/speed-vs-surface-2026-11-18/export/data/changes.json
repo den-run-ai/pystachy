@@ -1,0 +1,90 @@
+[
+{
+"rank": 1,
+"benchmark": "micro_words",
+"from_date": "2026-10-17",
+"to_date": "2026-10-18",
+"before_ms": 56.2,
+"after_ms": 73.1,
+"time_ratio": 1.301,
+"change": "Slower: Unicode code-point strings, stage 1 (#667)",
+"evidence": "bisected to a355c83f"
+},
+{
+"rank": 2,
+"benchmark": "regex_dna",
+"from_date": "2026-10-18",
+"to_date": "2026-10-19",
+"before_ms": 1511.1,
+"after_ms": 187.6,
+"time_ratio": 0.124,
+"change": "Faster: lib/re matcher work (#676, #680, #682, #683, #685)",
+"evidence": "32 merges; not bisected"
+},
+{
+"rank": 3,
+"benchmark": "regex_effbot",
+"from_date": "2026-10-18",
+"to_date": "2026-10-19",
+"before_ms": 978.7,
+"after_ms": 168.1,
+"time_ratio": 0.172,
+"change": "Faster: same lib/re work",
+"evidence": "same interval"
+},
+{
+"rank": 4,
+"benchmark": "regex_v8",
+"from_date": "2026-10-18",
+"to_date": "2026-10-19",
+"before_ms": 972.5,
+"after_ms": 218.5,
+"time_ratio": 0.225,
+"change": "Faster: same lib/re work",
+"evidence": "same interval"
+},
+{
+"rank": 5,
+"benchmark": "scimark",
+"from_date": "2026-10-18",
+"to_date": "2026-10-19",
+"before_ms": 21.1,
+"after_ms": 9.6,
+"time_ratio": 0.455,
+"change": "Faster: likely field TBAA (#724) or tuple returns by value (#727)",
+"evidence": "same interval"
+},
+{
+"rank": 6,
+"benchmark": "barnes_hut",
+"from_date": "2026-10-18",
+"to_date": "2026-10-19",
+"before_ms": 28.1,
+"after_ms": 14.1,
+"time_ratio": 0.501,
+"change": "Faster: likely the same two changes",
+"evidence": "same interval"
+},
+{
+"rank": 7,
+"benchmark": "float",
+"from_date": "2026-11-11",
+"to_date": "2026-11-11",
+"before_ms": 33.8,
+"after_ms": 43.8,
+"time_ratio": 1.297,
+"change": "Slower: listguard bounds-check hoisting with Lean checks (#1268)",
+"evidence": "bisected to b40ee875"
+},
+{
+"rank": 8,
+"benchmark": "float",
+"from_date": "2026-11-12",
+"to_date": "2026-11-12",
+"before_ms": 44.3,
+"after_ms": 35.3,
+"time_ratio": 0.796,
+"change": "Faster: listguard keeps sole calls inlinable in loop copies (#1336)",
+"evidence": "#1389, v0.4.0-rc.1; closes #1300"
+}
+]

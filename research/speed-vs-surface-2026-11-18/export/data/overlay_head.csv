@@ -1,0 +1,14 @@
+order,group,outcome,methods
+1,all methods,passing with Pystachy's own library,638
+2,all methods,passing with CPython's pure-Python stdlib added,629
+2.5,all methods,passing with every test opted in to dynamic Any,638
+3,blocked by a missing library piece,total,2400
+4,blocked by a missing library piece,pass once CPython's stdlib is added,0
+5,now rejected inside CPython's library code,a module or name still missing,160
+6,now rejected inside CPython's library code,"dynamic model (generic bases, redefinitions, class-body statements)",220
+7,now rejected inside CPython's library code,other,332
+8,still rejected in the test itself,a module or name still missing,1327
+9,still rejected in the test itself,"dynamic model (generic bases, redefinitions, class-body statements)",323
+10,still rejected in the test itself,static typing (type not inferred),21
+11,still rejected in the test itself,unimplemented syntax,7
+12,still rejected in the test itself,other,10

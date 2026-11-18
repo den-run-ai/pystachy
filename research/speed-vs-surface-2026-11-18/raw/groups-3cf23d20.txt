@@ -1,0 +1,18 @@
+library   1140  language   11  files  30  other missing modules (configparser, decimal, _pyio, locale, ...)
+library    885  language    0  files   1  enum.member / enum.verify / STRICT
+compile    444  language  208  files  21  field / class-attribute types not inferred
+compile    368  language  208  files  51  local classes (class inside a function)
+reflect    247  language  226  files  28  pickle / copyreg / marshal
+compile    179  language  173  files   8  builtin base classes (set/frozenset/bytes...)
+compile    171  language   44  files   9  class-body statements (nested class, augassign...)
+compile    153  language  114  files  29  empty containers not inferred
+library    142  language   98  files   8  gc module (collect, is_tracked, thresholds)
+compile     91  language   28  files   8  inheritance from generic class templates
+reflect     79  language    9  files   9  modules or classes as values
+reflect     59  language   55  files  18  eval / exec / compile, ast, dis
+library     54  language   50  files   6  inspect module (mostly cleandoc)
+compile     52  language   52  files   1  match patterns (mapping, starred, class, non-tuple subjects, complex)
+reflect     49  language   49  files   6  exception attributes (__context__, __traceback__, args)
+reflect     49  language   45  files   4  str.format of a computed format string
+compile     42  language   11  files   4  multiple inheritance
+{'library': 2221, 'compile': 1500, 'reflect': 483} of 5242 rejected; unassigned 1038

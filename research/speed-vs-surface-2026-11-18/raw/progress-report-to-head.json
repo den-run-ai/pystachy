@@ -1,0 +1,206 @@
+{
+ "old": "/tmp/claude-0/-home-user-pystachy/878ad953-6ea7-597d-82db-1ba899e22ec2/scratchpad/results/methods-1111-1943_8434a911.json",
+ "new": "/tmp/claude-0/-home-user-pystachy/878ad953-6ea7-597d-82db-1ba899e22ec2/scratchpad/results/methods-1117-1034_3cf23d20.json",
+ "pass_old": 492,
+ "pass_new": 638,
+ "gained": 146,
+ "gained_language": 144,
+ "lost": 0,
+ "gained_by_file": [
+  [
+   "Lib/test/test_set.py",
+   101
+  ],
+  [
+   "Lib/test/test_patma.py",
+   39
+  ],
+  [
+   "Lib/test/test_csv.py",
+   2
+  ],
+  [
+   "Lib/test/test_unary.py",
+   2
+  ],
+  [
+   "Lib/test/test_bool.py",
+   1
+  ],
+  [
+   "Lib/test/test_format.py",
+   1
+  ]
+ ],
+ "gained_by_old_blocker": [
+  [
+   "compile: field / class-attribute types not inferred",
+   100
+  ],
+  [
+   "compile: match patterns (mapping, starred, class, non-tuple subjects, complex)",
+   38
+  ],
+  [
+   "unassigned (syntax)",
+   4
+  ],
+  [
+   "unassigned (other)",
+   2
+  ],
+  [
+   "unassigned (library)",
+   1
+  ],
+  [
+   "unassigned (typing)",
+   1
+  ]
+ ],
+ "gained_old_first_errors": [
+  [
+   "error: cannot infer the type of field 'set'; annotate it (self.set: T = ...)",
+   97
+  ],
+  [
+   "error: starred sequence patterns are not supported; use a fixed tuple pattern",
+   31
+  ],
+  [
+   "error: sequence patterns require a fixed tuple subject, got list[int]",
+   5
+  ],
+  [
+   "error: complex numbers are not supported",
+   4
+  ],
+  [
+   "error: cannot infer the type of field 'a'; annotate it (self.a: T = ...)",
+   3
+  ],
+  [
+   "error: DictWriter.writerow() is a method of its objects: calling it through the class is not supported; call i",
+   2
+  ],
+  [
+   "error: unsupported call complex(bool)",
+   1
+  ],
+  [
+   "error: sequence patterns require a fixed tuple subject, got set[int]",
+   1
+  ],
+  [
+   "error: sequence patterns require a fixed tuple subject, got dict[int,bool]",
+   1
+  ],
+  [
+   "error: set elements must be int or str, objects, or tuples of int, bool, str, str | None and objects, not None",
+   1
+  ]
+ ],
+ "lost_detail": [],
+ "transitions": [
+  [
+   "rejected",
+   "pass",
+   146
+  ],
+  [
+   "rejected",
+   "differs",
+   1
+  ]
+ ],
+ "rejected_new_by_need": [
+  [
+   "library: other missing modules (configparser, decimal, _pyio, locale, ...)",
+   1140
+  ],
+  [
+   "library: enum.member / enum.verify / STRICT",
+   885
+  ],
+  [
+   "compile: field / class-attribute types not inferred",
+   444
+  ],
+  [
+   "unassigned (library)",
+   376
+  ],
+  [
+   "compile: local classes (class inside a function)",
+   368
+  ],
+  [
+   "unassigned (typing)",
+   346
+  ],
+  [
+   "reflect: pickle / copyreg / marshal",
+   247
+  ],
+  [
+   "compile: builtin base classes (set/frozenset/bytes...)",
+   179
+  ],
+  [
+   "compile: class-body statements (nested class, augassign...)",
+   171
+  ],
+  [
+   "unassigned (other)",
+   158
+  ],
+  [
+   "compile: empty containers not inferred",
+   153
+  ],
+  [
+   "library: gc module (collect, is_tracked, thresholds)",
+   142
+  ],
+  [
+   "unassigned (dynamic)",
+   102
+  ],
+  [
+   "compile: inheritance from generic class templates",
+   91
+  ],
+  [
+   "reflect: modules or classes as values",
+   79
+  ],
+  [
+   "reflect: eval / exec / compile, ast, dis",
+   59
+  ],
+  [
+   "unassigned (syntax)",
+   56
+  ],
+  [
+   "library: inspect module (mostly cleandoc)",
+   54
+  ],
+  [
+   "compile: match patterns (mapping, starred, class, non-tuple subjects, complex)",
+   52
+  ],
+  [
+   "reflect: exception attributes (__context__, __traceback__, args)",
+   49
+  ],
+  [
+   "reflect: str.format of a computed format string",
+   49
+  ],
+  [
+   "compile: multiple inheritance",
+   42
+  ]
+ ]
+}

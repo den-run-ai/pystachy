@@ -1,0 +1,81 @@
+{
+ "7-19 Oct": {
+  "total": 611174,
+  "share": {
+   "docs": 0.3221,
+   "tests": 0.3005,
+   "compiler": 0.1596,
+   "library": 0.0808,
+   "ports": 0.0467,
+   "tools/CI": 0.0358,
+   "bench/examples": 0.0337,
+   "runtime": 0.0188,
+   "other": 0.002
+  },
+  "lines": {
+   "docs": 196871,
+   "compiler": 97540,
+   "tests": 183673,
+   "library": 49355,
+   "tools/CI": 21871,
+   "runtime": 11484,
+   "other": 1239,
+   "bench/examples": 20587,
+   "ports": 28554
+  }
+ },
+ "20 Oct-11 Nov (to 8434a911)": {
+  "total": 667218,
+  "share": {
+   "bench/examples": 0.3048,
+   "docs": 0.2835,
+   "tests": 0.166,
+   "tools/CI": 0.1178,
+   "compiler": 0.0481,
+   "library": 0.0257,
+   "lean proofs": 0.0239,
+   "ports": 0.0147,
+   "runtime": 0.0115,
+   "other": 0.004
+  },
+  "lines": {
+   "tools/CI": 78574,
+   "docs": 189154,
+   "other": 2682,
+   "bench/examples": 203345,
+   "library": 17159,
+   "compiler": 32104,
+   "tests": 110785,
+   "lean proofs": 15916,
+   "runtime": 7659,
+   "ports": 9840
+  }
+ },
+ "12-17 Nov (after 8434a911)": {
+  "total": 61291,
+  "share": {
+   "tests": 0.3876,
+   "lean proofs": 0.2399,
+   "tools/CI": 0.1082,
+   "compiler": 0.1026,
+   "library": 0.0776,
+   "docs": 0.0662,
+   "bench/examples": 0.0118,
+   "runtime": 0.0045,
+   "other": 0.001,
+   "ports": 0.0005
+  },
+  "lines": {
+   "other": 62,
+   "docs": 4060,
+   "library": 4755,
+   "ports": 33,
+   "runtime": 278,
+   "compiler": 6291,
+   "tests": 23757,
+   "tools/CI": 6630,
+   "lean proofs": 14701,
+   "bench/examples": 724
+  }
+ }
+}
