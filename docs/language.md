@@ -35,8 +35,8 @@ their own contracts; [interoperability](ffi.md) covers C, embedded CPython and e
 | Area | Status | Supported | 🔴 Major gaps | 🟠 Minor gaps |
 |---|---|---|---|---|
 | [Numbers](language/compatibility.md#numbers) | 🟢 Native<br>🧪 Big ints | Checked 64-bit `int`, `float` and `bool`; [`complex`](language/semantics.md#complex-numbers); unbounded `int` with [promoting ints](python-int.md) or explicit [`mpz`](mpz.md) | — | `int` overflow raises `OverflowError` unless the module opts in; numeric identity follows the [typed/dynamic boundary](dynamic-any.md#the-typeddynamic-contract) |
-| [Text and bytes](language/compatibility.md#text-and-file-positions) | 🟡 Bounded | `str` with code-point lengths, indexing and slicing; `bytes`; f-strings, `%` and `str.format()`; UTF-8, Latin-1 and ASCII codecs; [binary files](../lib/compatibility.md#binary-files) | `bytearray`, `memoryview` | Incomplete Unicode case mapping; `%` and `str.format()` need a constant format; no `\N{...}` escapes |
-| [Containers](language/semantics.md#operators-and-containers) | 🟢 Native<br>🟡 Union items | `list`, `dict`, `set`, `frozenset`, fixed-shape and runtime-length `tuple`; displays, comprehensions, slices with steps, unpacking | Slice objects | Keys and set elements are ints, strs, bytes, objects or tuples (no floats); fixed tuples hold up to nine items; dict views are snapshots |
+| [Text and bytes](language/compatibility.md#text-and-file-positions) | 🟡 Bounded | `str` with code-point lengths, indexing and slicing; `bytes`; f-strings, `%` and `str.format()`; UTF-8, Latin-1 and ASCII codecs; [binary files](../lib/compatibility.md#binary-files) | `bytearray`, `memoryview` | `%` and `str.format()` need a constant format; no `\N{...}` escapes |
+| [Containers](language/semantics.md#operators-and-containers) | 🟢 Native<br>🟡 Union items | `list`, `dict`, `set`, `frozenset`, fixed-shape and runtime-length `tuple`; displays, comprehensions, slices with steps, unpacking | Slice objects | Keys and set elements are ints, strs, bytes, objects, frozensets or tuples (no floats); fixed tuples hold up to nine items; dict views are snapshots |
 | [Static typing](language/typing.md) | 🟢 Native<br>🟡 Unions | Inferred locals, returns and per-call specializations; closed unions; `T \| None` narrowing; `Callable`; generic functions and classes, including PEP 695; type aliases | General object unions | Mutable containers are invariant; empty containers need a type; recursive value aliases are a prototype |
 | [`Any` values](dynamic-any.md) | 🟢 Native<br>🧪 Dynamic | `Any` annotations specialize to concrete types; with `# pystachy: dynamic-any`, runtime-typed values with lazy iteration, comparisons and numeric protocols | Runtime-typed values in modules that do not opt in | Unsupported cross-type comparison bodies raise `TypeError`; some typed boundaries lose numeric identity |
 | [Functions](language/typing.md#functions-callables-and-closures) | 🟢 Native | Every parameter kind and default; lambdas, closures and `nonlocal`; function decorators; `*args` and `**kwargs` per call shape; `Callable` values and bound methods | — | `f(*xs)` of a list and run-time `**` expansion; `Callable[..., R]`; keyword calls through a `Callable` |
@@ -96,7 +96,7 @@ Measure compilation and execution separately
 | Objects | User classes, dataclasses and class-style `NamedTuple` |
 | Closed scalar unions | `int \| float \| bool \| str`, optionally including `None` |
 | Mixed container unions | Scalar members plus explicit `list[T]` / `dict[K, V]` members, with narrowing |
-| Native reference unions | Up to four non-overlapping class/file types, such as `TextIO \| StringIO` |
+| Native reference unions | Up to four non-overlapping class/file types, such as `TextIO \| StringIO`, and scalar members beside them, such as `int \| Decimal` |
 | Optional values | `T \| None`, `Optional[T]`, `Union[T, None]` |
 | Functions | Typed `Callable[[A, B], R]`, functions, lambdas, closures and bound methods |
 | Generics | Function templates and `Generic` or PEP 695 (`class Box[T]`) classes with inferred or explicit type arguments; module-level type aliases |
@@ -115,7 +115,7 @@ Measure compilation and execution separately
 - **Fixed-shape tuples** have at most nine items; a constant index gives the item's own type,
   and a variable index the union of the item types. **Runtime-length** `tuple[T, ...]` values
   check integer indexes at run time; their elements are `int`, `float`, `bool` or `str`,
-  optionally with `None`.
+  optionally with `None`, or objects of the program's classes.
 - **Unions:** explicit closed scalar unions such as `int | str`, bounded native reference
   unions and optional unions are supported. A variable, field or return given values of
   several scalar types holds their union.
@@ -336,7 +336,7 @@ separately in [FFI](ffi.md).
 A program that needs an unsupported feature gets a compile-time error. Supported templates
 can avoid compiling unused branches that contain one. The main gaps:
 
-- **Object model:** multiple inheritance beyond [one method-only secondary base](language/typing.md#a-method-only-secondary-base), subclasses of builtin types, general metaclasses and
+- **Object model:** multiple inheritance beyond [method-only secondary bases](language/typing.md#method-only-secondary-bases), subclasses of builtin types, general metaclasses and
   class decorators, dynamic attribute hooks, and attribute values looked up by names only the
   run time knows (their text and `hasattr()` are supported).
 - **Values:** `bytearray`, `memoryview`, slice objects and
@@ -365,7 +365,7 @@ The most important differences for supported programs are:
 | Area | Difference |
 |---|---|
 | Integers | Overflow raises `OverflowError` instead of growing to arbitrary precision, unless the module opts in to promoting ints |
-| Strings | Code-point length, indexing, slicing and search; Unicode case mapping and some other operations remain incomplete |
+| Strings | Code-point length, indexing, slicing, search and case mapping; invalid UTF-8, surrogates and some other operations differ |
 | Containers | Dictionary views are snapshots; string-set order differs from CPython |
 | Exceptions | Uncaught errors omit the full traceback; native resource failures bypass handlers |
 | Recursion | `sys.setrecursionlimit()` counts only calls that can recur, so the failing depth differs from CPython's; recursion that the native stack cannot hold raises `RecursionError`, even below a raised limit |

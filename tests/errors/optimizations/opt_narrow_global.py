@@ -1,4 +1,4 @@
-# error: argument 1 of show() may be None (str | None), and a test does not narrow a global or a field (a call may change it): copy it to a local variable, and test that
+# error: argument 1 of show() may be None (str | None), and a test does not narrow a global, nor a field past a call or a store that may change it: copy it to a local variable, and test that
 current: str | None = "a"
 
 

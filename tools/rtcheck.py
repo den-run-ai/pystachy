@@ -4,7 +4,7 @@
 runtime.py is ordinary Python, so CPython runs it, with tools/rt_cpython/_rt.py standing in for
 the compiler's primitives: each pys_* function is called directly and compared with what CPython
 computes, on random inputs, with no compilation. Strs are ASCII here (where Pystachy behaves exactly
-as CPython) plus UTF-8 text for character classification, the width methods and replace("", x); a
+as CPython) plus UTF-8 text for character classification, case, the width methods and replace("", x); a
 Pystachy str is given as its bytes, one character per byte. 64-bit overflow is not tested here
 (CPython's ints grow): the differential tests compile the same code and check it.
 
@@ -23,9 +23,11 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path[:0] = [os.path.join(ROOT, "tools", "rt_cpython"), ROOT]
 import runtime as rt  # noqa: E402
-from unicode_classification_tables import check as check_unicode_table, flags as unicode_flags  # noqa: E402
+from unicode_classification_tables import case_flags, case_map, check as check_unicode_table, flags as unicode_flags  # noqa: E402
 
 rt.pys_unicode_flags = unicode_flags
+rt.pys_unicode_case_flags = case_flags
+rt.pys_unicode_case_map = case_map
 
 N = int(sys.argv[1]) if len(sys.argv) > 1 else 5000
 R = random.Random(int(sys.argv[2]) if len(sys.argv) > 2 else 1)
@@ -173,6 +175,41 @@ def fuzz_unicode_classification():
         raw = s.encode("utf-8", "surrogatepass").decode("latin-1")
         for name in "isalpha isalnum isdecimal isdigit isnumeric".split():
             same(name, outcome(getattr(rt, "pys_str_" + name), raw), outcome(getattr(s, name)), (s,))
+
+
+CASE_METHODS = "upper lower swapcase capitalize title casefold".split()
+CASE_TESTS = "isupper islower istitle".split()
+
+
+def fuzz_unicode_case():
+    # str's case methods on text that is not ASCII: runtime.py's traversal, its Final_Sigma
+    # context and its sizes, with CPython's own mappings standing in for runtime.c's lookups
+    # (the table check above compares those with every code point; unicode_audit.py the native
+    # ones). Characters whose mappings are longer or shorter than they are, in characters and
+    # in bytes; cased, titlecase and case-ignorable ones around sigmas; and any code point
+    pool = ("aZ0 '.:\u00ad\u0301\u02b0\u2019\u00e9\u00c9\u00df\u1e9e\u0149\u01c4\u01c5\u01c6\u0130\u0131\u017f"
+            "\ufb01\ufb03\u0390\u1f88\u1fb3\u2126\u212a\u023a\u2c65\u13a0\uab70\u10d0\u1c90\U00010400\U00010428"
+            "\u754c\U0001f600\ud800\udfff\x00")
+    sigmas = "\u03a3\u03c3\u03c2aA '.\u0301\u02b0\u01c51\u754c"
+    for _ in range(N):
+        k = R.randrange(3)
+        s = text(pool) if k == 0 else text(sigmas, 8) if k == 1 else "".join(chr(R.randrange(0x110000)) for _ in range(R.randrange(8)))
+        raw = s.encode("utf-8", "surrogatepass").decode("latin-1")
+        for name in CASE_METHODS:
+            same(name, outcome(getattr(rt, "pys_str_" + name), raw),
+                 ("ok", getattr(s, name)().encode("utf-8", "surrogatepass").decode("latin-1")), (s,))
+        for name in CASE_TESTS:
+            same(name, outcome(getattr(rt, "pys_str_" + name), raw), outcome(getattr(s, name)), (s,))
+    # bytes that begin no character are kept and are no letters, as the lone surrogates are
+    # that CPython's surrogateescape reads them as
+    for _ in range(N):
+        r = b"".join(R.choice(PIECES + CASE_PIECES) for _ in range(R.randrange(9)))
+        s = r.decode("latin-1")
+        c = esc(r)
+        for name in CASE_METHODS:
+            same(name, outcome(getattr(rt, "pys_str_" + name), s), ref_raw(getattr(c, name)), (r,))
+        for name in CASE_TESTS:
+            same(name, outcome(getattr(rt, "pys_str_" + name), s), outcome(getattr(c, name)), (r,))
 
 
 def fuzz_bytes():
@@ -521,6 +558,9 @@ PIECES = [b"a", b"Z", b" ", b"\t", b"0", "é".encode(), "€".encode(), "𝄞".e
           b"\xc0\xaf", b"\xe2\x82", b"\xf0\x9f\x98", b"\xe0\x80\xaf", b"\xf4\x90\x80\x80", b"\xf5", b"\xff", "퟿".encode()]
 
 
+CASE_PIECES = [x.encode() for x in "\u03a3 \u03c3 \u00df \u00e9 \u00c9 \u01c5 \u0130 \ufb03 \u0301 A b '".split(" ")] + [b" "]
+
+
 def raw(n=8):
     return b"".join(R.choice(PIECES) for _ in range(R.randrange(n + 1)))
 
@@ -634,6 +674,7 @@ def fuzz_path():
 fuzz_str()
 fuzz_path()
 fuzz_unicode_classification()
+fuzz_unicode_case()
 fuzz_replace()
 fuzz_bytes()
 fuzz_search()

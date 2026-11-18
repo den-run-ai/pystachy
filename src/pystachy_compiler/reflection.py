@@ -9,14 +9,16 @@ internal constant global (Data "classrec", lowered in lower_module.py) emitted o
 that reach such a site, which LLVM's globaldce and llvm-link --only-needed drop otherwise.
 """
 from __future__ import annotations
-from src.pystachy_compiler.diagnostics import dynamic_program, int_program, shown
+from src.pystachy_compiler.diagnostics import LINES, dynamic_program, int_program, shown
 from src.pystachy_compiler.analysis import clean_doc, local_names
 from src.pystachy_compiler.ir import Data, Ins, Loop, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.names import ENUMCLASSES, short
-from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, RANGEC, TYPEMODS, is_excname
+from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, EMPTYFS, GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, RANGEC, TYPEMODS, is_excname
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
+    is_const,
+    is_clsval,
     lib_file,
     lib_source,
     opaque_class,
@@ -174,12 +176,18 @@ def gen_refl_type_name(self, c: str, what: str) -> str:
     # or "" where Pystachy does not know it
     if c.startswith("%class:"):
         return "builtins" if what == "__module__" else c[7:]
-    if dynamic_program() and self.refl_builtin_class(c) != "":
-        return "builtins" if what == "__module__" else "type"
+    if self.refl_builtin_class(c) != "":
+        return "builtins" if what == "__module__" else "type"  # (a builtin class named: its class is type)
     if dynamic_program() and (is_fn(c) or is_gen(c)):
         return "builtins" if what == "__module__" else tname(c)
     if c == BIG:
         c = "int"  # (a promoting int's class is int: bigints.py)
+    if c.startswith("aset["):
+        self.err("type() of an AbstractSet value is not supported: it is a set or a frozenset, which its type does not tell")
+    if c == EMPTYFS:
+        return "builtins" if what == "__module__" else "frozenset"
+    if is_clsval(c):
+        return "builtins" if what == "__module__" else "type"  # (an ordinary class's class object: class_values.py)
     if c == "None" or c in BUILTIN_TYPES or is_list(c) or is_dict(c) or is_tuple(c) or is_vtuple(c) or is_set(c) or is_kw(c):
         b = "NoneType" if c == "None" else "list" if is_list(c) else "dict" if is_dict(c) or is_kw(c) else "tuple" if is_tuple(c) or is_vtuple(c) else c[: c.find("[")] if is_set(c) else c
         return "builtins" if what == "__module__" else b
@@ -554,8 +562,11 @@ def gen_refl_type_cmp(self, n: Node) -> Val | None:
         else:
             # (a value: an exception class's class object, or else not supported)
             v = self.expr(k, "")
-            if unopt(v.t) != "exctype":
-                self.err("a comparison of type(x) is supported with type(y), y.__class__, a class or a builtin type's name (#486); class objects as values are not (#7)")
+            if is_clsval(unopt(v.t)):
+                # (an ordinary class's class object held as a value: its record, or null for None)
+                v = Val(v.v, "%ptr")
+            elif unopt(v.t) != "exctype":
+                self.err("a comparison of type(x) is supported with type(y), y.__class__, a class or a builtin type's name (#486), or a class object of the program's classes (#7)")
             sides.append(v)
     neg = n.s == "is not" or n.s == "!="
     if (unopt(sides[0].t) == "exctype") != (unopt(sides[1].t) == "exctype"):
@@ -747,7 +758,11 @@ def gen_refl_getattr(self, args: list[Node], want: str, split: bool = False) -> 
             blocks.append(self.cur)
             self.br(end)
             self.place(yes)
-        v = d if h == "n" else self.expr(mk("attr", a, self.line, [self.vnode(lf.v)]), "")
+        self.rolex = lf.v.v if self.role_field(lf.c, a) else ""  # (exactly lf.c here)
+        try:
+            v = d if h == "n" else self.expr(mk("attr", a, self.line, [self.vnode(lf.v)]), "")
+        finally:
+            self.rolex = ""  # (also where the read does not compile: the name may be another value's later)
         if not self.term:
             vals.append(v)
             blocks.append(self.cur)
@@ -1079,6 +1094,8 @@ def gen_refl_supported(self, c: str, what: str) -> None:
         why = "a range"
     elif c == COMPLEXC:
         why = "a complex number"
+    elif self.iterabc_derived(c):
+        why = "a class deriving from collections.abc's Iterator or Iterable, which ABCMeta gives attributes of its own"
     elif ci.mod in GLUE and self.curfn.mod != ci.mod:
         self.err(f"{what} of a {ci.mod}.{short(c)} object is not supported: its fields are Pystachy's {ci.mod} module's own (its twin's are others), and a program may use only its methods")
     elif opaque_class(ci, self.libdir) and self.curfn.mod != ci.mod:
@@ -3100,14 +3117,49 @@ def gen_enum_member(self, n: Node, want: str) -> Val:
         self.mem_store(Val(self.fgep(o, ci.fpos[" enum int"]), "*int"), self.coerce(v, "int"))
     elif self.derives(c, "enum$StrEnum"):
         self.mem_store(Val(self.fgep(o, ci.fpos[" enum str"]), "*str"), self.coerce(v, "str"))
+    if len(n.kids) > 1:
+        gen_enum_init(self, o, n.kids[2] if len(n.kids) > 2 else n.kids[0], n.kids[3:])
     return o
+
+
+def gen_enum_init(self, o: Val, v: Node, count: list[Node]) -> None:
+    # the __init__ of member o's enum class, called as EnumType calls it once the member has its
+    # _name_ and _value_: with the items of its value v where that is a tuple, else with v. One
+    # that the Loader made of the class's __new__ (enum_new_init) takes the value as written,
+    # which the _value_ may differ from, after the number of names before it (count) where its
+    # body asks for that. It is a call of the method, whose result is dropped: no constructor
+    # checks that it is None
+    f = self.classes[o.t].methods["__init__"]
+    items = count + (v.kids if v.kind == "tuple" else [v])
+    args = [x for x in items]
+    if f.node.line // LINES == v.line // LINES and f.node.line > v.line:
+        # EnumType calls __init__ once the class body has run. Here the member is initialized
+        # where the body binds it, before the def statement below it has evaluated its
+        # defaults: a parameter that the value's items leave out is given its default value,
+        # a literal, with the call (not one of a base class in another module, whose def ran)
+        for j in range(len(items) + 1, len(f.params)):
+            d = f.defaults[j]
+            if j == f.vararg or j == f.kwarg or d.kind == "noann":
+                continue
+            if not is_const(d):
+                self.err(f"enum class {short(o.t)}'s __init__(): the default value of parameter '{f.params[j]}' is not supported where the members precede the def statement, which evaluates it after they are initialized here: use a literal, or define __init__ first")
+            args.append(clone_node(d) if j < f.npos else mk("kw", f.params[j], v.line, [clone_node(d)]))
+    self.call_fn(f, [o], args, direct=True)
 
 
 def gen_enum_alias(self, n: Node, want: str) -> Val:
     # an enum member's alias (Loader's enum_classes), as its class attribute's default: the member
     # n.s, whose class attribute the class statement has bound before (body order), read from its
-    # global, as the class's own name is not bound until the statement ends
+    # global, as the class's own name is not bound until the statement ends. Where the class has
+    # an __init__ (n's kids: the alias's value and name), CPython first makes and initializes a
+    # member of the alias's own name, which it drops for the member of that value
     ci = self.classes[unopt(want)]
+    if len(n.kids) > 1:
+        v = self.coerce(self.expr(n.kids[0], ci.ftypes["_value_"]), ci.ftypes["_value_"])
+        o = self.new_obj(ci.name)
+        self.setfield(o, self.field(o, "_name_"), "_name_", Val(self.sconst(n.kids[1].s), "str"))
+        self.setfield(o, self.field(o, "_value_"), "_value_", v)
+        gen_enum_init(self, o, n.kids[2] if len(n.kids) > 2 else n.kids[0], n.kids[3:])
     self.class_default(ci, n.s)
     t = ci.ftypes[n.s]
     return Val(self.mload(t, ci.fglob[n.s]), t)

@@ -62,6 +62,13 @@ def gen_enter(self, f: FnInfo, body: list[Node]) -> None:
     self.nonesites = {}
     self.nonepending = {}
     self.narrowed = {}
+    self.preadn = []
+    self.preadv = []
+    self.preads = []
+    self.preadb = []
+    self.pdoms = {}
+    self.psess = [0]
+    self.pfield = ""
     self.lkk = {}
     self.branch = 0
     self.cells = {}
@@ -71,6 +78,7 @@ def gen_enter(self, f: FnInfo, body: list[Node]) -> None:
     self.carried = Val("", "")
     self.nonecmp = False
     self.fieldcmp = False
+    self.rolex = ""
     self.cmpnode = self.nokey
     self.stkkey = self.nokey
     self.reflcopies = 1

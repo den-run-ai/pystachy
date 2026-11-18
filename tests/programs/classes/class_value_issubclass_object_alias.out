@@ -1,0 +1,4 @@
+True True False
+True True False
+TypeError: issubclass() arg 1 must be a class
+[exit 0]
