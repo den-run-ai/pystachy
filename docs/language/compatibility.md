@@ -40,8 +40,8 @@ raises only after the whole expression is evaluated
 holds: `bytes(b)`, a slice and a method's result are copies, and two names of one bytearray share
 its changes. It has CPython's constructor forms, items, slices (read, assigned and deleted, with
 steps), `append`, `extend`, `insert`, `pop`, `remove`, `reverse`, `+`, `+=`, `*`, comparisons with
-`bytes` and bytearrays, and the methods `bytes` has here. Rejected as the program compiles:
-`bytes + bytearray`, `bytes == bytearray` and `int * bytearray` (reflected operators),
+`bytes` and bytearrays on either side, and the methods `bytes` has here. Rejected as the program
+compiles: `bytes + bytearray` and `int * bytearray` (reflected operators),
 `bytes | bytearray` annotations, `%` formatting, `title()`, `istitle()` and `expandtabs()` (which
 `bytes` lacks too), a `range(...)` passed to `extend()` (pass `list(range(...))`), and a bytearray
 given to `struct`, a file or another library function, which take `bytes(b)`. There is no

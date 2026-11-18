@@ -34,7 +34,11 @@ class bytearray:
         return self._n
 
     def __repr__(self) -> str:
-        return "bytearray(" + repr(_bytes(self, 0, self._n)) + ")"
+        # bytes's repr, but a ' escaped whatever quotes enclose it, as CPython's bytearray_repr does
+        r = repr(_bytes(self, 0, self._n))
+        if r.startswith('b"'):
+            r = 'b"' + r[2:-1].replace("'", "\\'") + '"'
+        return "bytearray(" + r + ")"
 
     def __bytes__(self) -> bytes:
         return _bytes(self, 0, self._n)
@@ -47,10 +51,11 @@ class bytearray:
             i += 1
 
     def __reversed__(self) -> Iterator[int]:
+        # (each item read as it is reached, as CPython's reversed() reads b[i]: it ends where i is no
+        # longer within b, once b is shorter)
         i = self._n - 1
-        while i >= 0:
-            if i < self._n:
-                yield __pys_ba_get(self._b, i)
+        while i >= 0 and i < self._n:
+            yield __pys_ba_get(self._b, i)
             i -= 1
 
     def __getitem__(self, i: int) -> int:
@@ -62,6 +67,8 @@ class bytearray:
         return __pys_ba_get(self._b, i)
 
     def __setitem__(self, i: int, value: int) -> None:
+        if value < 0 or value > 255:
+            raise ValueError("byte must be in range(0, 256)")  # (before the index, as CPython checks)
         n = self._n
         if i < 0:
             i += n
@@ -105,6 +112,9 @@ class bytearray:
             __pys_ba_copy(self._b, start, src, 0, m)
             self._n = start + m + tail
             return
+        if m == 0:
+            self._delslice(lo, hi, st)  # (an extended slice given no bytes loses them, as in CPython)
+            return
         if m != count:
             raise ValueError(f"attempt to assign bytes of size {m} to extended slice of size {count}")
         for k in range(count):
@@ -136,14 +146,19 @@ class bytearray:
         self._n = n - count
 
     def __eq__(self, other) -> bool:
+        # (another operand's own __eq__ decides where this one returns NotImplemented, as in CPython)
         if isinstance(other, bytearray):
             return self._n == other._n and __pys_ba_same(self._b, 0, other._b, 0, self._n)
         if isinstance(other, bytes):
             return self._n == len(other) and __pys_ba_same(self._b, 0, other, 0, self._n)
-        return False
+        return NotImplemented
 
     def __ne__(self, other) -> bool:
-        return not self.__eq__(other)
+        if isinstance(other, bytearray):
+            return not (self._n == other._n and __pys_ba_same(self._b, 0, other._b, 0, self._n))
+        if isinstance(other, bytes):
+            return not (self._n == len(other) and __pys_ba_same(self._b, 0, other, 0, self._n))
+        return NotImplemented
 
     def __lt__(self, other) -> bool:
         return _bytes(self, 0, self._n) < _ordered(other, "<")
