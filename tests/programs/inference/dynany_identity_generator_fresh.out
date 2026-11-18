@@ -1,0 +1,15 @@
+pair True True
+pair False False
+pair True True
+pair False True
+pair True True
+pair True True
+pair False True
+pair True True
+pair False False
+values 1002.0 1003.0
+pair False True
+pair True True
+empty result 1000.0
+consumer ()
+[exit 0]

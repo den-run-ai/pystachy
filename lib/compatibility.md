@@ -17,11 +17,11 @@ the [module guide](README.md#module-guide) summarizes what each module supports.
 | [Text](#text) | [`textwrap`](#textwrap), [`unicodedata`](#unicodedata), [`shlex`](#shlex), [`keyword`](#keyword), [`curses.ascii`](#cursesascii), [`string`](#string), [`difflib`](#difflib), [`gettext`](#gettext) |
 | [Regular expressions](#regular-expressions) | [`re`](#re), [`fnmatch`](#fnmatch) |
 | [Data formats and markup](#data-formats-and-markup) | [`json`](#json), [`tomllib`](#tomllib), [`csv`](#csv), [`html` and `html.parser`](#html-and-htmlparser), [`urllib.parse`](#urllibparse) |
-| [Binary data and encodings](#binary-data-and-encodings) | [`struct`](#struct), [`binascii`](#binascii), [`codecs`](#codecs) |
+| [Binary data and encodings](#binary-data-and-encodings) | [`struct`](#struct), [`binascii`](#binascii), [`base64`](#base64), [`hashlib`](#hashlib), [`hmac`](#hmac), [`codecs`](#codecs) |
 | [Collections and functional tools](#collections-and-functional-tools) | [`collections`](#collections), [`copy`](#copy), [`enum`](#enum), [`heapq`](#heapq), [`itertools`](#itertools), [`functools`](#functools), [`operator`](#operator), [`contextlib`](#contextlib) |
 | [Numbers and randomness](#numbers-and-randomness) | [`random`](#random), [`statistics`](#statistics), [`mpz`](#mpz) |
 | [Dates and times](#dates-and-times) | [`datetime`](#datetime) |
-| [Files, OS and command line](#files-os-and-command-line) | [`io`](#io), [Binary files](#binary-files), [Path modules](#path-modules), [`pathlib`](#pathlib), [`glob`](#glob), [`shutil`](#shutil), [`argparse`](#argparse), [`getopt`](#getopt) |
+| [Files, OS and command line](#files-os-and-command-line) | [`io`](#io), [Binary files](#binary-files), [Path modules](#path-modules), [`pathlib`](#pathlib), [`glob`](#glob), [`shutil`](#shutil), [`sysconfig`](#sysconfig), [`argparse`](#argparse), [`getopt`](#getopt), [`platform`](#platform) |
 | [Processes and threads](#processes-and-threads) | [`_thread`](#_thread), [`threading`](#threading), [`atexit`](#atexit) |
 | [Runtime services](#runtime-services) | [`abc`](#abc), [`types`](#types), [`warnings`](#warnings), [`logging`](#logging), [`traceback`](#traceback), [`weakref` and `_weakref` (prototype)](#weakref-and-_weakref-prototype) |
 | [Native interoperability](#native-interoperability) | [`ctypes`](#ctypes) |
@@ -36,7 +36,7 @@ Ports keep code that only CPython can run, as CPython's sources have it, under
 `sys.implementation.name` is `"pystachy"`, and drops the block (see
 [compile-time branches](../docs/language/modules.md#compile-time-branches)): `urllib.parse`'s
 imports of `warnings` and `ipaddress`, its docstrings of the result fields and its
-byte tables, and `statistics`' import of `random` and table of kernels.
+byte tables, and `statistics`' loading of `random` and `decimal` and table of kernels.
 
 ### Pure-Python accelerators
 
@@ -503,6 +503,75 @@ messages): `hexlify` and `b2a_hex` with `sep` and `bytes_per_sep`, `unhexlify` a
   indentation of its option's description, which CPython 3.13 removes from a Python function's
   docstring.
 
+### `base64`
+
+`base64` is CPython 3.13.16's `Lib/base64.py` with marked edits, on `binascii`. Every function
+of `__all__` gives CPython's results, errors and messages:
+
+- `b64encode()` and `b64decode()` with `altchars` and `validate`, and the `standard_` and
+  `urlsafe_` functions ([test](../tests/programs/library/lib_base64_b64.py));
+- `b32encode()`, `b32hexencode()` and their decoders with `casefold` and `map01`
+  ([test](../tests/programs/library/lib_base64_b32.py)), `b16encode()` and `b16decode()`
+  ([test](../tests/programs/library/lib_base64_b16.py)), all on RFC 4648's vectors
+  ([test](../tests/programs/library/lib_base64_rfc4648.py));
+- `a85encode()` with `foldspaces`, `wrapcol`, `pad` and `adobe`, and `a85decode()` with
+  `ignorechars` ([test](../tests/programs/library/lib_base64_a85.py)); `b85encode()`,
+  `b85decode()`, `z85encode()` and `z85decode()` ([test](../tests/programs/library/lib_base64_b85.py));
+- `encode()` and `decode()` of binary files and `io.BytesIO` objects, `encodebytes()` and
+  `decodebytes()` ([test](../tests/programs/library/lib_base64_files.py)).
+
+The edits replace what the subset lacks: `int.from_bytes()` and `to_bytes()`, a `bytearray`
+result, a bytes pattern of `re`, and a `struct` format made at run time. Run under CPython, the
+edited module passes the 40 tests of `test_base64`; a
+[checksum over pseudo-random inputs](../tests/programs/library/lib_base64_random.py) covers every
+codec.
+
+- Binary data is `bytes`, as Pystachy has no `bytearray`, `memoryview` or `array`. The decoders
+  also take a `str` of ASCII characters, as CPython's do. Another type of argument is a
+  compile-time error, where CPython raises `TypeError`
+  (error tests: [a str to encode](../tests/errors/library/lib_base64_encode_str.py),
+  [str `altchars` to encode](../tests/errors/library/lib_base64_altchars_str.py),
+  [an int to decode](../tests/errors/library/lib_base64_decode_int.py)).
+- `main()`, the script that `python -m base64` runs, does not compile: calling it is a
+  compile-time error ([error test](../tests/errors/library/lib_base64_main.py)).
+- `bytes_types`, the tuple of the classes `bytes` and `bytearray`, is not there
+  ([error test](../tests/errors/library/lib_base64_bytes_types.py)).
+
+### `hashlib`
+
+`hashlib` is a subset implementation of CPython's module, whose hash objects are OpenSSL's there.
+MD5, SHA-1, SHA-224 and SHA-256 are written in the subset from their specifications (RFC 1321 and
+FIPS 180-4) and give CPython's digests. `md5()`, `sha1()`, `sha224()`, `sha256()` and `new(name)`
+return a hash object with `update()`, `digest()`, `hexdigest()`, `copy()`, `name`, `digest_size`
+and `block_size`; they take `usedforsecurity`, which changes nothing here.
+
+- Data is `bytes`. A `str` is a compile-time error, where CPython raises `TypeError`.
+- SHA-384 and SHA-512 (their words are 64-bit, and Pystachy's `int` arithmetic is checked), SHA-3,
+  SHAKE and BLAKE2 are not there, nor are `file_digest()`, `pbkdf2_hmac()` and `scrypt()`: a use
+  of one is a compile-time error. `new()` raises CPython's `ValueError` (`unsupported hash type`)
+  for their names, and `algorithms_guaranteed` and `algorithms_available` hold the four names
+  only ([deviation](../tests/deviations/lib_hashlib_algorithms.py)).
+- `new()` takes a name in any letter case. OpenSSL's other spellings of a name, such as
+  `"sha-1"`, are unsupported hash types.
+- The hash objects are of one class, `hashlib.HASH`, which CPython has as `_hashlib.HASH`; their
+  repr is an object's. The constructors are Python functions, not builtins.
+
+### `hmac`
+
+`hmac` is a subset implementation of CPython's module over [`hashlib`](#hashlib), written from
+RFC 2104. `new(key, msg, digestmod)` and `digest(key, msg, digest)` take the hash as its name
+(`"sha256"`) or as a `hashlib` constructor (`hashlib.sha256`), and `HMAC` objects have `update()`,
+`digest()`, `hexdigest()`, `copy()`, `name`, `digest_size` and `block_size`, with CPython's
+results ([test](../tests/programs/library/lib_hmac.py)). `compare_digest()` compares two `bytes`
+or two ASCII `str`s in time that depends on the second one's length only.
+
+- Keys and messages are `bytes`. A `str` is a compile-time error, where CPython raises
+  `TypeError`.
+- The hashes are `hashlib`'s four. Another name raises `hashlib.new()`'s `ValueError`, where
+  CPython computes the HMAC ([deviation](../tests/deviations/lib_hmac_sha512.py)).
+- The `HMAC` class takes the hash's name; a constructor goes through `new()` or `digest()`. A
+  module as `digestmod` (PEP 247) is not supported.
+
 ### `codecs`
 
 `codecs` is CPython 3.13.16's `Lib/codecs.py` with three marked edits, on `_pystachy_codecs`,
@@ -713,13 +782,23 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   whose results are ints and strs, and with CPython's `TypeError` for an operand of another
   type. Compared with an object of another class, a member lets that object's reflected method
   decide, or identity where it has none, as `int`'s and `str`'s methods return `NotImplemented`
-  ([test](../tests/programs/library/lib_enum_reflected.py)). One cannot be passed where an `int`
+  ([test](../tests/programs/library/lib_enum_reflected.py)). A number on the left of an
+  `IntEnum` or `IntFlag` member computes as CPython's `int` does (`1 + member`, `n += member`,
+  `4 | flag`, which keeps the flag's class), through the member's reflected method
+  ([test](../tests/programs/library/lib_enum_int_left.py)). One cannot be passed where an `int`
   or `str` is typed, `int(member)` is not supported, and these are compile-time errors, as
   CPython's member is an `int` or a `str`: `isinstance()` of one and `int` or `str`, also of a
   value of a base class, such as `Enum`, that may hold one
   ([test](../tests/errors/library/lib_enum_isinstance_base.py)), and a member as an `Any` value,
   whose `isinstance()` would find no `int` or `str`
   ([test](../tests/errors/library/lib_enum_any_strenum.py)): its `.value` can be one.
+- Comparisons of `IntEnum`, `IntFlag` and `StrEnum` members with builtin scalars preserve Python's
+  subclass priority and reflected fallback after a custom method returns `NotImplemented`
+  ([numbers](../tests/programs/classes/cmp_notimplemented_enum_scalar.py),
+  [strings](../tests/programs/classes/cmp_notimplemented_strenum_scalar.py)). The builtin
+  fallback uses the member's original scalar value. Reassigning `_value_` is qualified only
+  for these comparison paths; inherited hashing and other methods still use the changed
+  attribute and can differ from CPython after such a reassignment.
 - `sys.exit()` and `SystemExit` take the member of an `IntEnum` or `IntFlag` class, or of a class
   of `int` and `Enum`, as CPython takes its `int`: the value is the exit status, and nothing is
   written to stderr ([test](../tests/programs/exceptions/exit_enum_member_caught.py)).
@@ -966,6 +1045,19 @@ callable object, a `partial`) leaves the wrapper its own, as in CPython. `__wrap
 `wraps(f)` as a value, not a decorator, is a compile-time error. `total_ordering` remains
 unsupported: class decorators are not compiled.
 
+`@cached_property` on a method that takes the object alone makes the attribute a value the
+object keeps: the method runs on the first read, an assignment replaces the value without
+calling it, and `del` forgets it, so that the next read calls the method again
+([test](../tests/programs/library/lib_functools_cached_property_set.py)). The value is a field
+of the object, where CPython keeps it in the object's `__dict__`, so the method needs a return
+annotation, which gives the field's type. `dir()` and `hasattr()` see the names the compiler
+adds for the method `NAME`: the method `_pys_cpget_NAME` and the fields `_pys_cpset_NAME` and
+`_pys_cpval_NAME`, which keep its value
+([deviation](../tests/deviations/lib_functools_cached_property_names.py)). A dataclass's
+method, a method with other parameters, `cached_property(f)` as a call, and the decorator in
+an enum class or with a value of a generic class's type variable are compile-time errors.
+`from functools import *` does not bind the name.
+
 ### `operator`
 
 Arithmetic, comparison, logical, sequence and bitwise operator functions compile
@@ -1000,18 +1092,49 @@ didn't yield", "generator didn't stop" and "generator didn't stop after throw()"
 suppressed where the generator swallows it, and a `StopIteration` or `GeneratorExit` of the block,
 or a `RuntimeError` that PEP 479 or the generator made of the `StopIteration`, goes on as itself.
 A manager it makes also decorates a function (`@cm()`, `ContextDecorator`), and both take keyword
-arguments. `closing(thing)`, `nullcontext()`, `nullcontext(value)`, `suppress(A, B)` and
-`AbstractContextManager` (to derive from) are the others.
+arguments. `closing(thing)`, `nullcontext()`, `nullcontext(value)`, `suppress(A, B)`,
+`ExitStack` and `AbstractContextManager` (to derive from) are the others.
+
+`ExitStack` enters managers of different classes (`enter_context()`), registers callbacks
+with their arguments (`callback()`) and exit functions, callable objects and managers
+(`push()`), and unwinds them in reverse order at the end of its `with` block or in `close()`;
+`pop_all()` moves them to a new stack. An exit that returns true suppresses the exception for
+the exits after it, and one that raises replaces it, as in CPython
+([test](../tests/programs/library/lib_contextlib_exitstack.py),
+[upstream cases](../tests/programs/upstream/upstream_contextlib_exitstack.py)). Each registered
+exit is a closure in a list, where CPython keeps bound methods and wrappers in a deque.
 
 - `@contextmanager` (or `@contextlib.contextmanager`, as the module imports it) on a method, its
   only decorator, makes the generator method `_pys_cm_NAME` and a method `NAME(self, /, *args,
-  **kwds)` that returns what `contextmanager(self._pys_cm_NAME)(*args, **kwds)` returns (the
-  subset has no other decorated methods): `dir()` and `vars()` of the class show the first, and
+  **kwds)` that captures the receiver for the defining class's generator (the subset has no
+  other decorated methods): `dir()` and `vars()` of the class show the first, and
   those of the module `_pys_cm_GCM`, the name it imports `_GeneratorContextManager` as. Subclasses
-  inherit and override such a method, and `super().NAME()` runs the base class's generator, but a
-  manager that `super().NAME()` makes and that decorates a function makes its generator for each
-  call with the method of the object's class; an override of a method of a class of another module is
+  inherit and override such a method, also in another module, and `super().NAME()` runs the base
+  class's generator. Explicit class calls and decorator recreation keep that defining generator,
+  including when a class-typed receiver is `None`; the generator's own dereferences then raise
+  when its body runs. Where an override is in
+  another module than the method it overrides, a call through a value of the base class is
   rejected as the program compiles (the managers' types differ).
+- With `@abstractmethod` beside it, in either order, the method's body may only raise (no
+  `yield` or `return`, a `raise` last), its annotation yield `None` (`Iterator[None]`) and its
+  defaults be literals: a call of the abstract method raises there, as CPython's helper does when
+  it calls the function, and overrides are generators
+  ([test](../tests/programs/classes/contextmanager_abstract.py)). Its body is a method of its own,
+  `_pys_cm_abs_NAME_` and the line of the `def`, so `super().NAME()` of a subclass that declares
+  the method again runs the base class's
+  ([test](../tests/programs/classes/contextmanager_abstract_super.py)). An abstract method that
+  could return, yields another type or has another default is rejected
+  ([error test](../tests/errors/classes/contextmanager_abstract_returns.py)), and so is
+  `with super().NAME():` of the abstract method, whose call raises.
+- A method manager's `func` retains the port's bound-generator representation, and `args` omits
+  that bound receiver. Recreation observes same-type replacements of `args` and `kwds`.
+  Assigning `func`, even to itself, restores the port's ordinary bound-method dispatch: it
+  requires a non-null bound receiver and may select its override instead of an explicitly
+  named base implementation. Untouched managers retain the defining generator.
+  Inspecting `func.__name__` or `func.__qualname__` is safe with a `None` receiver, but uses
+  the hierarchy's canonical root method's static metadata: an explicit derived-class call
+  can therefore report the root's qualified name. CPython exposes the defining unbound
+  generator instead ([test](../tests/deviations/contextmanager_derived_none_metadata.py)).
 - `suppress()` as a `with` statement's item, with exception classes named, is compiled as an
   `except` clause that catches them; one kept as a value, or given exception classes held as
   values, is CPython's (its `__exit__` tests them with `issubclass()`). `with suppress(...) as x`
@@ -1025,10 +1148,16 @@ arguments. `closing(thing)`, `nullcontext()`, `nullcontext(value)`, `suppress(A,
   exception).
 - A function that a manager decorates and that calls itself is rejected (the decorator's `inner()`
   calls itself before its return type is inferred): use the manager inside it instead.
-- `ExitStack`, `redirect_stdout`, `redirect_stderr`, `chdir` and the async managers
+- `ExitStack.enter_context()` of an object whose class lacks `__enter__()` or `__exit__()` is a
+  compile-time error, where CPython raises `TypeError`
+  ([error test](../tests/errors/library/lib_contextlib_exitstack_no_exit.py)). `push()` of an
+  object whose class defines both `__call__()` and `__exit__()` registers the call; CPython
+  registers its `__exit__()` ([deviation](../tests/deviations/lib_contextlib_exitstack_push.py)).
+  An exit gets no traceback, and the exception that leaves the stack has no `__context__` to
+  repair. No class derives from `ExitStack`, whose `pop_all()` makes an `ExitStack`.
+- `redirect_stdout`, `redirect_stderr`, `chdir` and the async managers
   (`asynccontextmanager`, `aclosing`, `AsyncExitStack`, `AbstractAsyncContextManager`) are not
-  ported: the subset has no list of managers of different classes, no assignable `sys.stdout`,
-  no `os.getcwd()` and no `async def`.
+  ported: the subset has no assignable `sys.stdout`, no `os.getcwd()` and no `async def`.
 
 ## Numbers and randomness
 
@@ -1084,6 +1213,8 @@ CPython's `math.sumprod` algorithm; unsupported iterators are materialized first
   floats otherwise ([error test](../tests/errors/library/lib_statistics_quantiles_int.py)).
   `median_low` and `median_high` retain the item type. `median` of strings is unsupported.
 - `mode` and `multimode` cannot use float keys. String inputs iterate code points.
+- `Decimal` data is not accepted: natively the module does not load `decimal`, so a program
+  that imports `statistics` compiles none of it.
 - Integer products in weighted `fmean` and in `linear_regression(..., proportional=True)`
   can raise `OverflowError` beyond 64 bits; CPython's integers continue growing.
 - The port's `sumprod` returns a float, including `11.0` for integer inputs and
@@ -1100,6 +1231,54 @@ CPython runs the module's import of `random`, which `kde_random` and
 `NormalDist.samples` use ([CPython-only code](#cpython-only-code)). Bounded pattern
 matching now lowers `kde`'s kernel selection, but its distinct lambda values cannot
 share one inferred native function slot; function `__doc__` writes also remain unsupported.
+
+### `decimal`
+
+`decimal` is a subset implementation (`lib/decimal.py`) that opts in to
+[promoting ints](../docs/python-int.md) for its coefficients. `Decimal` values are exact when
+constructed and rounded to the current context by arithmetic, with CPython's results, text,
+hashes and messages for the supported API
+([API walk](../tests/programs/library/lib_decimal.py),
+[operand grid](../tests/programs/library/lib_decimal_grid.py),
+[typed program data](../tests/programs/library/lib_decimal_records.py)).
+
+Supported: construction from `str`, `int` and `float`; `+ - * / // %`, `divmod()`, integer
+`**`, unary operators and `abs()`, with a `Decimal` or an `int` on either side; comparison with
+a `Decimal`, `int` or `float`; equality with a `complex` number (comparing its real part's
+exact float value when the imaginary part is zero); `hash()`, `int()`, `float()`, `round()`, `math.floor()`,
+`math.ceil()`, `math.trunc()`, `bool()`, `str()`, `repr()` and `format()`; `quantize()`,
+`to_integral_value()`, `normalize()`, `sqrt()`, `fma()`, `remainder_near()`, `scaleb()`,
+`compare()`, `max()`, `min()`, the `is_*()`, `copy_*()` and `as_*()` methods; `Context`,
+`getcontext()`, `setcontext()`, `localcontext()` and the three predefined contexts; all eight
+rounding modes; NaNs, infinities and signed zeros.
+
+Comparisons decline operands outside these numeric types so that their reflected
+comparison methods run, including in tuple searches. Direct comparison-method calls
+that could return `NotImplemented` retain the compiler's
+[bounded comparison contract](../docs/language/semantics.md#object-protocols).
+
+- **Signals.** Flags are not recorded and traps are fixed at the default:
+  `InvalidOperation`, `DivisionByZero` and `Overflow` always raise, and the other signals
+  never do. `Context` has no `flags` or `traps`, and its `repr()` shows none set.
+- **Exception classes.** A class has one exception base here: `DivisionByZero` derives from
+  `ZeroDivisionError` but not from `DecimalException`; `Overflow` and `Underflow` derive from
+  `Inexact` but not from `Rounded` (or `Subnormal`); `FloatOperation` is not a `TypeError`.
+- **Constructor.** `Decimal(d)` of a `Decimal`, `Decimal(True)` and
+  `Decimal((sign, digits, exponent))` are compile-time errors: use the value itself, or `+d`
+  to round it to the context.
+- **Powers and logarithms.** The exponent of `**` is an `int`; `exp()`, `ln()`, `log10()`,
+  `logb()`, the logical and shifting operations, `next_minus()`, `next_plus()`,
+  `next_toward()`, `compare_total()` and `compare_signal()` are not provided, and
+  `int ** Decimal` is not supported.
+- **Integers beyond 64 bits.** `int()`, `round()`, `math.floor()` and `as_integer_ratio()`
+  return large integers to a module that opts in to promoting ints
+  ([test](../tests/programs/library/lib_decimal_python_int.py)) and raise `OverflowError` in
+  one that does not. An `int` given to the constructor or to an operator is a 64-bit value:
+  pass a larger one as text.
+- **Typing.** `sum()` of Decimals is not supported: add them in a loop. `Decimal` cannot be
+  subclassed. A NaN hashes to 0, and one context is shared by all threads.
+- **Formatting.** The `n` type uses the C locale's format, and a value whose coefficient has
+  more than 4,300 digits cannot be converted to text.
 
 ### `mpz`
 
@@ -1143,8 +1322,9 @@ can use the inherited `fromutc()`.
 - `timetuple()` returns a NamedTuple with `time.struct_time`'s nine fields and repr, without
   `tm_zone` and `tm_gmtoff`. `isocalendar()`'s result is a NamedTuple: index or unpack it, as
   `tuple()` of it is unsupported.
-- Reflected operators are unsupported: write `timedelta * 2` and `date + timedelta`, not
-  `2 * timedelta` or `timedelta + date`.
+- A number on the left calls the reflected method: `2 * timedelta` and `1.5 * timedelta` work.
+  Reflected operators between two objects are unsupported: write `date + timedelta`, not
+  `timedelta + date`.
 - `datetime.min` and `datetime.max` are typed `date` (a subclass's class attribute keeps its
   base's type). `fromisoformat()` and `fromtimestamp()` must be called through their class,
   not a `date` object.
@@ -1398,6 +1578,49 @@ file system copies it with `copy()` (CPython uses `copy2()`, which also copies i
 of a directory raises the rename's `OSError`. `copytree()`, `copy2()`, `copystat()`, `which()`,
 `disk_usage()`, `get_terminal_size()` and the archive functions are not provided.
 
+### `sysconfig`
+
+A subset implementation of CPython's `sysconfig` that answers for Pystachy
+([test](../tests/programs/library/lib_sysconfig.py)). CPython's reports the installation that
+runs the program: the variables of the Makefile and `pyconfig.h` it was built with, and the
+directories its installer writes.
+
+- **Variables.** `get_config_vars()` has the ones CPython computes as it starts: `prefix`,
+  `exec_prefix`, `base`, `platbase`, `installed_base` and `installed_platbase`, all the Pystachy
+  home ([`sys.prefix`](../docs/language/compatibility.md#modules-and-libraries)); `py_version`,
+  `py_version_short`, `py_version_nodot` and `py_version_nodot_plat`; `platlibdir` (`'lib'`);
+  `implementation` (`'Pystachy'`) and `implementation_lower`; `abiflags` and `abi_thread` (both
+  `''`). Of a build's variables it has the three that are true of every target: `SIZEOF_SIZE_T`
+  and `SIZEOF_VOID_P` (8) and `Py_GIL_DISABLED` (0). Any other, such as `EXT_SUFFIX`, `CC`,
+  `LIBDIR`, `projectbase`, `userbase` or `srcdir`, is not set: `get_config_var()` returns `None`
+  for it, as CPython does for a variable its build does not define
+  ([deviation](../tests/deviations/lib_sysconfig_vars.py)).
+- **A variable's type.** `get_config_var()` returns `int | str | None`. Convert the value with
+  `int()`, `str()` or `bool()`, or narrow it with `is None` and `isinstance()`, before using it
+  as one type ([test](../tests/programs/library/lib_sysconfig_mypyc.py),
+  [error test](../tests/errors/library/lib_sysconfig_var_unnarrowed.py)).
+  `get_config_vars()` takes no names: with names, CPython's returns a list instead of the dict
+  ([error test](../tests/errors/library/lib_sysconfig_config_vars_args.py)).
+- **One scheme.** `posix_prefix` is the layout of the Pystachy home: `stdlib` and `platstdlib`
+  are its `lib/`, `purelib` and `platlib` `lib/site-packages`, `include` and `platinclude`
+  `include`, `scripts` `bin`, and `data` the home. Only `lib/` is there: Pystachy installs
+  nothing in the others, and [no import searches them](../docs/language/modules.md#finding-and-running-modules).
+  CPython has nine schemes, and its paths name the implementation and version, as
+  `lib/python3.13`. `get_preferred_scheme()` of `'home'` or `'user'` raises CPython's
+  `ValueError` for a platform without that scheme, and `get_paths()` of another scheme raises
+  `KeyError` ([deviation](../tests/deviations/lib_sysconfig_scheme.py)).
+- **`vars`**, the caller's variables for `get_paths()` and `get_path()`, is a `dict[str, str]`
+  ([error test](../tests/errors/library/lib_sysconfig_paths_vars.py)). It is left as it was;
+  CPython adds every configuration variable to it.
+- An executable that `pystachy build` makes keeps the home it was compiled with, as it keeps
+  `sys.prefix`.
+
+Not supported, as compile-time errors where used: `get_platform()`, which needs `os.uname()`
+([error test](../tests/errors/library/lib_sysconfig_get_platform.py)); `get_makefile_filename()`,
+`get_config_h_filename()` and `parse_config_h()`, as there is no Makefile or `pyconfig.h`
+([error test](../tests/errors/library/lib_sysconfig_makefile.py)); and `is_python_build()`'s
+deprecated `check_home` argument.
+
 ### `argparse`
 
 Create a parser in the module body or a top-level function. Assign it to one
@@ -1445,6 +1668,28 @@ prefixes, GNU option interleaving, a leading `+`, and `POSIXLY_CORRECT` through
 
 `longopts` must be `list[str]`; CPython also accepts one string. Messages are
 untranslated. Error messages and parsing otherwise follow the upstream code.
+
+### `platform`
+
+A subset implementation of CPython's `platform` ([test](../tests/programs/library/lib_platform.py)).
+
+- `uname()` gives the fields of the system's `uname(2)`, which CPython reads through
+  `os.uname()`: `system`, `node`, `release`, `version` and `machine`, a field that is
+  `unknown` as `''`. `system()`, `node()`, `release()`, `version()` and `machine()` are its
+  fields. Its result is a NamedTuple of those five; CPython's has a sixth item, `processor`,
+  which it reads from the command `uname -p`
+  ([deviation](../tests/deviations/lib_platform_uname_items.py)).
+- `python_implementation()` is `'Pystachy'`
+  ([deviation](../tests/deviations/lib_platform_implementation.py)): a program that tests it for
+  `'CPython'` or `'PyPy'` takes its other branch. `python_version()` and
+  `python_version_tuple()` give the version of the Python language that Pystachy compiles,
+  `sys.version_info`'s.
+
+Not supported, as compile-time errors where used: `platform()`, `processor()`,
+`architecture()`, `libc_ver()`, `freedesktop_os_release()`, `system_alias()`, the functions
+of other systems (`win32_ver()`, `mac_ver()` and the like) and those that describe CPython's
+build (`python_build()`, `python_compiler()`, `python_branch()`, `python_revision()`)
+([error test](../tests/errors/library/lib_platform_platform.py)).
 
 ## Processes and threads
 
@@ -1597,6 +1842,58 @@ reading or assigning a field is a compile-time error, where CPython raises `Attr
   CPython, also in an optional import, but any use of one is a compile-time error
   ([error test](../tests/errors/reflection/types_unsupported_name.py)): Pystachy has no such objects, or
   none that behave exactly as CPython's.
+
+### `importlib.metadata`
+
+`importlib.metadata` is Pystachy's own subset (`lib/importlib/metadata.py`) of CPython 3.13.16's
+package. It reads the metadata of installed distributions as CPython does:
+
+- `version()`, `metadata()`, `requires()` and `distribution()` take a distribution's name and
+  find its `*.dist-info` or `*.egg-info` directory, or its `*.egg-info` file, with CPython's
+  rules: the name a directory gives is its own name up to the first `-`, and names compare
+  without regard to case or to how runs of `-`, `_` and `.` are written
+  ([test](../tests/programs/library/lib_importlib_metadata_search.py)). A name that nothing
+  matches raises `PackageNotFoundError`, a `ModuleNotFoundError` whose `name` is the name
+  asked for, and an empty name `ValueError`
+  ([test](../tests/programs/library/lib_importlib_metadata_errors.py)).
+- A metadata message holds the headers of `METADATA`, or of `PKG-INFO` where that is missing
+  or empty, parsed as CPython's `email` parser reads them: folded lines, the body as the
+  header `Description`, lines that are no headers and `From ` lines
+  ([test](../tests/programs/library/lib_importlib_metadata_parse.py)). It answers `[]`, `in`,
+  `len()`, iteration, `keys()`, `values()`, `items()`, `get()` and `get_all()`, by header
+  names in any case ([test](../tests/programs/library/lib_importlib_metadata.py)).
+- A `Distribution` has `name`, `version`, `metadata`, `requires` and `read_text()`, and
+  `Distribution.from_name()`. `requires` gives the `Requires-Dist` headers, or the lines of an
+  egg-info `requires.txt` with their sections' extras and markers.
+- `distributions()` gives a list of every distribution found.
+
+Sixteen methods of CPython's `test_api.py` run on its own fixture distributions
+([upstream test](../tests/programs/upstream/upstream_importlib_metadata.py)).
+
+Differences from CPython:
+
+- CPython searches `sys.path` as the program runs. Pystachy resolves imports while it compiles
+  a program, so the directories searched are the [module path](../docs/language/modules.md#finding-and-running-modules):
+  the main program's directory, `PYSTACHY_PATH` and `lib/`, in that order. A distribution
+  installed elsewhere, such as in a CPython environment's `site-packages`, is found only when
+  that directory is on `PYSTACHY_PATH`. The directories are read as the program runs, by
+  their absolute paths at compilation: an executable that `pystachy build` makes keeps them,
+  as it keeps `sys.prefix`.
+- A message's `[]` raises `KeyError` for a header it does not have, and `version()` does for
+  metadata without `Version`. CPython 3.13 returns `None` with a `DeprecationWarning` that
+  announces the `KeyError`
+  ([deviation](../tests/deviations/lib_importlib_metadata_missing_key.py)).
+- `PackageNotFoundError` takes the name alone, and has no `args`.
+- A message is not an `email.message.Message`: it has the methods above and no `json`. A
+  `Content-Type` header does not change how the body is read.
+- Zip files and `.egg` directories on the path are not searched.
+- `entry_points()`, `files()`, `packages_distributions()`, `Distribution.discover()`, `at()`,
+  `files`, `entry_points`, `origin` and `locate_file()`, and `DistributionFinder`, are not
+  provided: using one is a compile-time error
+  ([error tests](../tests/errors/library/lib_importlib_metadata_entry_points.py)).
+  `distributions()` takes no arguments.
+- The rest of `importlib` is not provided. Nothing imports a module at run time:
+  `import_module()`, `reload()` and `__import__()` are compile-time errors.
 
 ### `warnings`
 

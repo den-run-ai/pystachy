@@ -92,7 +92,7 @@ def compiler_identity() -> dict:
             "python": platform.python_version(), "platform": platform.platform()}
 
 
-def base_report(source: str, function: str, typed_after_only: bool = False) -> dict:
+def base_report(source: str, function: str, typed_after_only: bool = False, stop_after: str = "lower") -> dict:
     return {
         "schema_version": SCHEMA_VERSION, "status": "error",
         "compiler": compiler_identity(),
@@ -103,13 +103,14 @@ def base_report(source: str, function: str, typed_after_only: bool = False) -> d
                      | {"PYSTACHY_IRCHECK": "1"},
                      "function_filter": function, "command": "ir", "executes_program": False,
                      "forced_environment": {"PYSTACHY_IRCHECK": "1"},
+                     "stop_after": stop_after,
                      "captures": "typed-after" if typed_after_only else "all"},
         "diagnostics": [], "attempts": [], "passes": [], "pass_contracts": {}, "program_passes": [],
         "stages": [{"name": name, "status": "unavailable", "artifact": None}
                    for name in ("typed-before", "typed-after", "llvm")],
         "verification": {"requested": True, "calls": 0, "completed": False,
                          "scope": "Pystachy typed IR; LLVM assembly and execution are not performed"},
-        "artifacts": {},
+        "artifacts": {}, "artifact_sha256": {},
         "limitations": [
             "Function-level source locations only; typed instructions currently carry no source spans.",
             "The frontend combines semantic analysis, specialization and IR construction.",
@@ -142,9 +143,15 @@ class Observer:
         self.typed_after_only = typed_after_only
         self.guard_evidence = guard_evidence
         self.nullcheck_evidence: list[dict] = []
+        # The slots the unionslots pass split, by function object (kept alive with it, so that
+        # an id is never another function's): each pair's tag and payload slots and the type of
+        # the slot they replace, which the IR no longer names.
+        self.split_unions: dict[int, tuple] = {}
         self.before: list[dict] = []
         self.after: list[dict] = []
         self.captured_before = False
+        self.captured_after = False
+        self.after_metadata: dict = {}
         self.attempt: dict | None = None
         self.gen = None
         self.restores: list[tuple] = []
@@ -183,6 +190,7 @@ class Observer:
             "recursion": {"counted": fn.counted, "rdepth": fn.rdepth, "landed": fn.landed, "gdepth": fn.gdepth,
                           "generator": f.gen, "coroutine": fn.coro},
             "slots": [self.instruction(i) for i in fn.slots],
+            **({"split_unions": self.split_record(fn)} if self.guard_evidence else {}),
             # A check op raises from a separate block: its key (the op's descriptor, else its
             # text) -> that block's label.
             "check_targets": dict(fn.cold),
@@ -363,6 +371,23 @@ class Observer:
                 footprint = self.attempt["dynamic_boundary"]["footprints"]["before"]
                 footprint.update(status="partial", functions={fn.f.ll: self.boundary_function(gen, fn) for fn in gen.fns})
 
+    def capture_after(self, gen) -> None:
+        # Finalization is the whole-program boundary: capture every function and its
+        # representation tables before LLVM lowering can consume or mutate them.
+        self.after = [self.snapshot(fn) for fn in gen.fns if self.selected(fn)]
+        self.after_metadata = {"dynamic_types": self.dynamic_types(gen),
+                               "dynamic_layouts": self.dynamic_layouts(gen), "classes": self.classes(gen)}
+        if self.guard_evidence:
+            self.after_metadata.update(
+                class_layouts=self.class_layouts(gen), union_tags=dict(gen.utags), holes=list(gen.holes),
+                key_descriptors=self.key_descriptors(gen, self.after), nullcheck_evidence=self.nullcheck_evidence,
+                guard_inventory={"nullcheck_passes": len(self.nullcheck_evidence),
+                    "removed_checks": sum(r["reported_rewrites"] for r in self.nullcheck_evidence)})
+        self.captured_after = True
+        if self.attempt is not None:
+            footprint = self.attempt["dynamic_boundary"]["footprints"]["after"]
+            footprint.update(status="partial", functions={fn.f.ll: self.boundary_function(gen, fn) for fn in gen.fns})
+
     @staticmethod
     def dynamic_types(gen) -> list[dict]:
         # Every DynType the program emits (dynamic.py: dyn_class_type, dyn_fn_type and generator
@@ -382,6 +407,60 @@ class Observer:
                               "role": d.refs[6] if flags & DF_ROLE and len(d.refs) == 7 else "",
                               "payload": held.get(d.name, "")})
         return sorted(types, key=lambda t: t["symbol"])
+
+    @staticmethod
+    def dynamic_layouts(gen) -> list[dict]:
+        # Independent class metadata ties DynType numbers and ancestry to the
+        # same ordered members emitted as %C.<name>. Hidden assignment flags
+        # and numeric identity companions are part of that physical prefix.
+        from src.pystachy_compiler.lower_module import struct_types
+        result = []
+        for name, ci in gen.classes.items():
+            if name not in gen.dyntypes:
+                continue
+            members = [ci.ftypes[field] for field in ci.fields] + ["bool"] * ci.nflag + ["dyn"] * ci.nbox
+            result.append({"name": name, "descriptor": gen.dyntypes[name],
+                           "base": gen.dyntypes.get(ci.base, "") if ci.base in gen.classes and gen.classes[ci.base].exc == "" else "",
+                           "role": gen.dyntypes.get(ci.role, ""), "number": gen.ocls[name],
+                           "members": members, "llvm": struct_types(ci)})
+        return sorted(result, key=lambda entry: entry["name"])
+    @staticmethod
+    def classes(gen) -> dict:
+        # Each class of the program: its single base (a class of the program, a builtin
+        # exception class or none) and its fieldless secondary base, which Gen.derives follows;
+        # the unrelated classes whose objects it may also be (a primary chain's and a secondary
+        # base's common subclass); and whether its objects begin with the class tag. An object of
+        # one class is no object of a class related to it none of these ways: their fields are
+        # other memory (Gen.disjoint).
+        return {name: {"base": info.base, "role": info.role, "overlaps": sorted(info.overlaps),
+                       "tagged": info.tag != 0} for name, info in sorted(gen.classes.items())}
+
+    @staticmethod
+    def key_descriptors(gen, functions) -> dict:
+        # @s.N -> its text, for each string constant an operand of the snapshot passes as a key
+        # kind (ptrtoint of its address) to a runtime function that makes a dict or a set
+        found = {}
+        for fn in functions:
+            for block in fn["blocks"]:
+                for op in block["operations"]:
+                    for operand in op["operands"][:1]:
+                        value = operand["value"]
+                        if (op["op"] == "rt" and op["text"].startswith(("dict.", "set.")) and value.startswith("ptrtoint (ptr @s.")
+                                and value.endswith(" to i64)")):
+                            name = value[len("ptrtoint (ptr "):-len(" to i64)")]
+                            number = name[3:]
+                            if number.isdigit() and int(number) < len(gen.strvals):
+                                found[name] = gen.strvals[int(number)]
+        return dict(sorted(found.items()))
+
+    @staticmethod
+    def class_layouts(gen) -> dict:
+        # Each class's struct as field.addr indexes it: its fields (a name beginning with a
+        # space is hidden storage), then each "is assigned" flag (fl_fields) and identity box.
+        # A field read tests its flag unless it has none or no read finds it unassigned
+        # (fsure), which check_lean_fields.py's obligations rely on.
+        return {name: {"fields": list(info.fields), "flags": dict(info.fflag), "sure": sorted(info.fsure)}
+                for name, info in sorted(gen.classes.items())}
 
     @staticmethod
     def boundary_function(gen, fn) -> dict:
@@ -482,6 +561,8 @@ class Observer:
             self.before, self.after = [], []
             self.gen = gen
             self.captured_before = False
+            self.captured_after = False
+            self.after_metadata = {}
             self.attempt = {"index": len(self.report["attempts"]) + 1, "status": "failed",
                             "dynamic_boundary": {"policy_status": "unavailable", "modules": [],
                                 "fallback_reason": None, "source_provenance": "consistent",
@@ -490,7 +571,14 @@ class Observer:
             self.report["attempts"].append(self.attempt)
             self.diagnostics.PHASE = "semantic"
             try:
-                result = original(gen, *args, **kwargs)
+                if self.report["settings"]["stop_after"] == "finalize":
+                    # Use the driver's real attempt/retry orchestration and the
+                    # retained frontend API. The ir command prints this empty
+                    # result; it never receives a filename or invokes LLVM.
+                    gen.typed_program(*args, **kwargs)
+                    result = ""
+                else:
+                    result = original(gen, *args, **kwargs)
             except Rejoin as retry:
                 reason = ("dynamic slice iterator acquisition requires exception handling" if isinstance(retry, NeedSliceEH)
                           else "compiler requested a fresh semantic attempt")
@@ -502,6 +590,7 @@ class Observer:
                 self.attempt["status"] = "completed"
                 return result
             finally:
+                self.attempt["pipeline"] = self.pipeline_state(gen)
                 boundary = self.attempt["dynamic_boundary"]
                 boundary["fallback_reason"] = gen.idevent or None
                 for footprint in boundary["footprints"].values():
@@ -523,6 +612,19 @@ class Observer:
                     selected[identity]["request_keys"].append(key)
                 self.attempt["class_specializations"] = selected
         return wrapped
+
+    def pipeline_state(self, gen) -> dict:
+        # Report actual completed transitions, not inferred semantic subpasses. A
+        # retained prefix of a failed/retried attempt is evidence of partial work.
+        from src.pystachy_compiler.pipeline import STAGE_PREDECESSORS
+        completed = list(gen.pipeline.history)
+        successful = self.attempt is not None and self.attempt["status"] == "completed"
+        return {"stage": gen.pipeline.stage, "active_stage": gen.pipeline.active or None,
+                "completed_stages": completed, "source_provenance": "consistent",
+                "status": "completed" if successful else "partial",
+                "stages": [{"name": name, "status": "completed" if successful and name in completed
+                            else "partial" if name in completed or name == gen.pipeline.active else "unavailable"}
+                           for name in STAGE_PREDECESSORS]}
 
     def effects_wrapper(self, original):
         def wrapped(gen, *args, **kwargs):
@@ -553,6 +655,8 @@ class Observer:
                     if self.guard_evidence and name == "nullcheck":
                         self.nullcheck_evidence.append({"before": before, "after": after,
                                                         "reported_rewrites": result})
+                if before is not None and not self.typed_after_only:
+                    # (typed-after-only records no pass records or diffs: only guard evidence)
                     # Function metadata is not itself a typed operation rewrite.
                     previous, current = self.render(before), self.render(after)
                     changed = previous != current
@@ -648,17 +752,47 @@ class Observer:
             return wrapped
         return decorate
 
-    def lower_wrapper(self, original):
+    def split_record(self, fn) -> list:
+        """The split union slot pairs of fn that unionslots made and fn still holds."""
+        kept, entries = self.split_unions.get(id(fn), (None, []))
+        if kept is not fn:
+            return []
+        present = {f"%{s.s or 'h'}.{s.r[0]}" for s in fn.slots if len(s.r) == 1 and s.k == 0}
+        return [entry for entry in entries if entry["tag"] in present and entry["payload"] in present]
+
+    def unionslots_wrapper(self, original):
         def wrapped(gen, fn, *args, **kwargs):
+            # optimizations.gen_unionslots replaces each slot it splits, in slot order, by a tag
+            # slot and a payload slot it appends in that order: pair them by that order and name
+            before = [(s.s, s.r[0], s.t) for s in fn.slots if s.k == 0 and len(s.r) == 1]
+            known = {id(s) for s in fn.slots}
+            result = original(gen, fn, *args, **kwargs)
+            remaining = {(s.s, s.r[0]) for s in fn.slots if s.k == 0 and len(s.r) == 1}  # (a flag keeps its number)
+            removed = [entry for entry in before if (entry[0], entry[1]) not in remaining]
+            created = [s for s in fn.slots if id(s) not in known]
+            entries = []
+            if len(created) == 2 * len(removed):
+                for index, (name, _, typ) in enumerate(removed):
+                    tag, payload = created[2 * index], created[2 * index + 1]
+                    base = name or "h"
+                    if (tag.s, payload.s) != (base + ".tag", base + ".pay") or tag.t != "int" or payload.t != "int":
+                        entries = []
+                        break
+                    entries.append({"tag": f"%{tag.s}.{tag.r[0]}", "payload": f"%{payload.s}.{payload.r[0]}",
+                                    "type": typ})
+            # (a record that does not pair up is left out: the adapter then refuses those slots)
+            if entries:
+                kept, recorded = self.split_unions.get(id(fn), (fn, []))
+                self.split_unions[id(fn)] = (fn, (recorded if kept is fn else []) + entries)
+            return result
+        return wrapped
+
+    def finalize_wrapper(self, original):
+        def wrapped(gen, *args, **kwargs):
+            result = original(gen, *args, **kwargs)
             self.capture_before(gen)
-            if self.attempt is not None:
-                footprint = self.attempt["dynamic_boundary"]["footprints"]["after"]
-                footprint["status"] = "partial"
-                footprint["functions"][fn.f.ll] = self.boundary_function(gen, fn)
-            if self.selected(fn):
-                self.after.append(self.snapshot(fn))
-            self.diagnostics.PHASE = "lower"
-            return original(gen, fn, *args, **kwargs)
+            self.capture_after(gen)
+            return result
         return wrapped
 
     def install(self) -> None:
@@ -687,10 +821,13 @@ class Observer:
                 for key in ("requires", "analyses", "preserves", "invalidates", "rerun")
             }
             self.wrap(Gen, contract.name, self.pass_wrapper(contract.name))
+        if self.guard_evidence:
+            self.wrap(Gen, "unionslots", self.unionslots_wrapper)
         for name in PROGRAM_PASS_UNITS:
             self.wrap(Gen, name, self.program_pass_wrapper(name))
         self.wrap(Gen, "eh_ir", self.pass_wrapper("exceptions"))
-        self.wrap(Gen, "lower", self.lower_wrapper)
+        self.wrap(Gen, "finalize_program", self.finalize_wrapper)
+        self.wrap(Gen, "lower_program", self.phase_wrapper("lower"))
         self.wrap(Gen, "lower_module", self.phase_wrapper("lower"))
 
     def restore(self) -> None:
@@ -700,6 +837,11 @@ class Observer:
     def save(self) -> None:
         if self.report["input"]["changed_during_compilation"]:
             for attempt in self.report["attempts"]:
+                pipeline = attempt["pipeline"]
+                pipeline.update(source_provenance="inconsistent", status="partial")
+                for stage in pipeline["stages"]:
+                    if stage["status"] == "completed":
+                        stage["status"] = "partial"
                 boundary = attempt["dynamic_boundary"]
                 boundary["source_provenance"] = "inconsistent"
                 for footprint in boundary["footprints"].values():
@@ -707,21 +849,17 @@ class Observer:
                         footprint["status"] = "partial"
         # Partial snapshots remain explicitly partial, never a completed pipeline.
         for name, functions, available in (("typed-before", self.before, self.captured_before and not self.typed_after_only),
-                                           ("typed-after", self.after, bool(self.after) or self.report["status"] == "ok")):
+                                           ("typed-after", self.after, self.captured_after)):
             if available:
                 artifact = name + ".json"
                 state = "completed" if self.report["status"] == "ok" else "partial"
                 snapshot = {"schema_version": SCHEMA_VERSION, "stage": name, "status": state,
                             "attempt": self.attempt["index"] if self.attempt else 0, "functions": functions}
-                if name == "typed-after" and self.gen is not None:
-                    snapshot["dynamic_types"] = self.dynamic_types(self.gen)
-                    if self.guard_evidence:
-                        snapshot["union_tags"] = dict(self.gen.utags)
-                        snapshot["nullcheck_evidence"] = self.nullcheck_evidence
-                        snapshot["guard_inventory"] = {"nullcheck_passes": len(self.nullcheck_evidence),
-                            "removed_checks": sum(r["reported_rewrites"] for r in self.nullcheck_evidence)}
+                if name == "typed-after":
+                    snapshot.update(self.after_metadata)
                 write_json(self.output / artifact, snapshot)
                 self.report["artifacts"][name] = artifact
+                self.report["artifact_sha256"][name] = digest(self.output / artifact)
                 for stage in self.report["stages"]:
                     if stage["name"] == name:
                         stage.update(status=state, artifact=artifact)
@@ -732,9 +870,13 @@ def worker(args) -> int:
     from src.pystachy_compiler import diagnostics, driver
     output = Path(args.output)
     typed_after_only = getattr(args, "typed_after_only", False)
-    report = base_report(args.source, args.function, typed_after_only)
+    stop_after = getattr(args, "stop_after", "lower")
+    report = base_report(args.source, args.function, typed_after_only, stop_after)
     if typed_after_only:
         report["stages"][0]["status"] = "skipped"
+    if stop_after == "finalize":
+        report["stages"][-1]["status"] = "skipped"
+        report["verification"]["scope"] = "Pystachy finalized typed IR; LLVM lowering, assembly and execution are not performed"
     observer = Observer(report, output, args.function, typed_after_only, getattr(args, "guard_evidence", False))
     diagnostics.CAPTURE = True
     diagnostics.CAPTURED.clear()
@@ -744,7 +886,9 @@ def worker(args) -> int:
     old_argv = sys.argv
     exitcode = 2
     try:
-        sys.argv = [str(ROOT / "pystachy.py"), "ir", args.source, "-o", str(output / "llvm.ll")]
+        sys.argv = [str(ROOT / "pystachy.py"), "ir", args.source]
+        if stop_after == "lower":
+            sys.argv.extend(["-o", str(output / "llvm.ll")])
         with (output / "compiler.stderr").open("w", encoding="utf-8") as stderr, \
              (output / "compiler.stdout").open("w", encoding="utf-8") as stdout, \
              redirect_stderr(stderr), redirect_stdout(stdout):
@@ -765,8 +909,9 @@ def worker(args) -> int:
             else:
                 report["status"] = "ok"
                 report["verification"]["completed"] = True
-                report["artifacts"]["llvm"] = "llvm.ll"
-                report["stages"][-1].update(status="completed", artifact="llvm.ll")
+                if stop_after == "lower":
+                    report["artifacts"]["llvm"] = "llvm.ll"
+                    report["stages"][-1].update(status="completed", artifact="llvm.ll")
                 exitcode = 0
     finally:
         sys.argv = old_argv
@@ -813,15 +958,16 @@ def run_worker(args, output: Path) -> int:
     env = os.environ.copy()
     env["PYSTACHY_IRCHECK"] = "1"
     typed_after_only = getattr(args, "typed_after_only", False)
+    stop_after = getattr(args, "stop_after", "lower")
     command = [sys.executable, str(Path(__file__).resolve()), args.source, "--output", str(output),
-               "--function", args.function, "--_worker"] + (["--typed-after-only"] if typed_after_only else []) + (["--guard-evidence"] if getattr(args, "guard_evidence", False) else [])
+               "--function", args.function, "--stop-after", stop_after, "--_worker"] + (["--typed-after-only"] if typed_after_only else []) + (["--guard-evidence"] if getattr(args, "guard_evidence", False) else [])
     start = time.monotonic()
     try:
         with (output / "worker.stderr").open("w", encoding="utf-8") as errors:
             run = subprocess.run(command, env=env, stdout=subprocess.DEVNULL, stderr=errors, timeout=args.timeout)
         exitcode = run.returncode
     except (subprocess.TimeoutExpired, OSError) as error:
-        report = base_report(args.source, args.function, typed_after_only)
+        report = base_report(args.source, args.function, typed_after_only, stop_after)
         timeout = isinstance(error, subprocess.TimeoutExpired)
         report["status"] = "timeout" if timeout else "error"
         report["diagnostics"].append(tool_diagnostic("PYS9002" if timeout else "PYS9001", "worker",
@@ -830,7 +976,7 @@ def run_worker(args, output: Path) -> int:
         write_json(output / "report.json", report)
         exitcode = 124 if timeout else 2
     if not (output / "report.json").exists():
-        report = base_report(args.source, args.function, typed_after_only)
+        report = base_report(args.source, args.function, typed_after_only, stop_after)
         report["diagnostics"].append(tool_diagnostic("PYS9001", "worker",
             f"Compilation worker exited {exitcode} without a report; see worker.stderr", args.source))
         report["elapsed_seconds"] = time.monotonic() - start
@@ -847,6 +993,8 @@ def main() -> int:
     parser.add_argument("--timeout", type=positive_timeout, default=120.0, help="worker deadline in seconds (default: 120)")
     parser.add_argument("--typed-after-only", action="store_true",
                         help="record only the typed-after snapshot: no typed-before snapshot, pass records or diffs")
+    parser.add_argument("--stop-after", choices=("finalize", "lower"), default="lower",
+                        help="stop with retained typed IR, or include LLVM serialization (default: lower)")
     parser.add_argument("--guard-evidence", action="store_true",
                         help="retain union tags and nullcheck pass inputs/outputs for independent checking")
     parser.add_argument("--_worker", action="store_true", help=argparse.SUPPRESS)

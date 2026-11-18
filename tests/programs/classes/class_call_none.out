@@ -1,0 +1,46 @@
+receiver False
+argument first
+argument second
+body True
+result 11
+receiver False
+argument raises
+argument error raises
+receiver False
+argument read
+read body 4
+read error 'NoneType' object has no attribute 'value'
+receiver False
+argument write
+write body 5
+write error 'NoneType' object has no attribute 'value' and no __dict__ for setting new attributes
+receiver False
+lookup error 'NoneType' object has no attribute 'ignore'
+receiver True
+argument first
+argument second
+body False
+result 11
+receiver True
+argument raises
+argument error raises
+receiver True
+argument read
+read body 4
+read 7
+receiver True
+argument write
+write body 5
+receiver True
+argument bound
+body False
+bound 5
+body False
+base implementation 3
+argument plain
+plain body True
+plain result 5
+argument plain read
+plain read 10
+plain error 'NoneType' object has no attribute 'value'
+[exit 0]

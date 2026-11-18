@@ -1,0 +1,34 @@
+OnlyEq.__eq__ 1
+OnlyEq.__eq__ 1
+False True
+OnlyEq.__eq__ -1
+OnlyEq.__eq__ -1
+OnlyEq.__eq__ -1
+OnlyEq.__eq__ -1
+True False
+OnlyEq.__eq__ -1
+OnlyEq.__eq__ -1
+OnlyEq.__eq__ -1
+OnlyEq.__eq__ -1
+False True
+OnlyEq.__eq__ 1
+OnlyEq.__eq__ -1
+OnlyEq.__eq__ 1
+True True
+Both.__ne__ 1
+Both.__eq__ 1
+True False
+Both.__ne__ -1
+Both.__ne__ -1
+Both.__ne__ -1
+Both.__ne__ -1
+Both.__eq__ -1
+True False True
+Both.__ne__ 1
+OnlyEq.__eq__ 1
+OnlyEq.__eq__ 1
+Both.__ne__ 1
+Both.__eq__ 1
+OnlyEq.__eq__ 1
+True True False
+[exit 0]

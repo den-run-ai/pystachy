@@ -2,11 +2,12 @@
 
 # Typed intermediate representation
 
-Pystachy's typed IR sits between the type checker and LLVM lowering. It gives control flow,
+Pystachy's typed IR sits between frontend discovery and LLVM lowering. It gives control flow,
 runtime calls, effects and exception handling explicit representations shared by JIT and AOT.
 The implementation lives in the [compiler components](../src/README.md):
 [IR records](../src/pystachy_compiler/ir.py),
 [verification and effects](../src/pystachy_compiler/ircheck.py),
+[stage orchestration](../src/pystachy_compiler/pipeline.py),
 [optimizations](../src/pystachy_compiler/optimizations.py) and
 [LLVM lowering](../src/pystachy_compiler/lowering.py).
 The original proposal and measurements are retained in the [historical design](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/archive/typed-ir-design.md).
@@ -49,21 +50,58 @@ the current backend; WebAssembly remains future work, and dynamic `Any` values a
 
 ## Pipeline
 
-1. The loader prepares qualified modules; `Flow` marks potentially uninitialized reads.
-2. `Gen` collects declarations and builds an `IFn` for each compiled function, including
-   template instances, module initializers and generated helpers.
-3. Empty-container holes are resolved as their element/key/value types become known.
-4. `Gen.effects` computes summaries across the call graph.
-5. IR optimization passes run before exception lowering.
-6. `Gen.eh_ir` makes exceptional edges explicit where required.
-7. `Gen.lower` prints LLVM text; `Gen.program` then releases the function's temporary IR data.
+The loader produces qualified modules. `Gen.program` then runs these explicit
+stages in order, for both ordinary programs and `runtime.py`:
+
+| Method | Input and completed contract |
+|---|---|
+| `prepare_program(modules)` | Qualified modules become a `PreparedProgram` with declarations, class records, normalized aliases and flow-marked top-level statements. |
+| `discover_program(prepared)` | Reachable functions, module initializers, specializations and helpers produce typed `IFn` bodies. C declarations become validated ABI plans with their dependencies registered. Empty-container holes resolve as types become known; a pending inference retry prevents completion. |
+| `analyze_program()` | Callback versions and the function index are complete. Effect summaries and the recursion policy precede requested typed-IR verification. |
+| `optimize_program()` | Enabled typed-IR passes run under their existing prerequisites, preserved facts and invalidation contracts. Exception regions remain in pre-lowering form. |
+| `finalize_program()` | Required exception edges and tuple-return ABI decisions are ready for the backend. Runtime-module and CPython-export admission checks have passed. Function bodies, ABI plans and representation tables remain available for inspection. |
+| `lower_program()` | Function, adapter and module lowering serialize LLVM. Function bodies are consumed; summaries remain available. |
+
+`Gen.typed_program(modules)` runs through finalization without calling
+`lower_program`. This is an internal, attempt-local boundary for tools that need
+the whole finalized typed program before function/module LLVM lowering. `Gen.program`
+preserves the ordinary complete-compilation entry point by calling both.
+
+`PipelineState` enforces the stage order. It rejects premature or repeated
+lowering, repeated stages, and attempts to continue a stage that failed or
+requested an inference retry. `PreparedProgram` borrows mutable ASTs and is owned
+by the generator that prepared it; another generator cannot discover it. The
+driver retains a fresh loader and generator for every retry. These guards do not
+make a generator reusable, concurrent or independent of process-global state.
+Consumers must not mutate retained IR or configuration between stages.
+
+The stage names describe real orchestration boundaries, not a sequence of
+independent semantic passes. Preparation and discovery still combine resolution,
+typing, representation selection and specialization, and can compile required
+declarations lazily. The retained program contains native ABI decisions, symbol
+names and target-specific constant expressions; it is not a portable semantic IR
+or a standalone compatibility-checking API. C adapter instructions and external
+declarations are serialized only during lowering. Their attempt-owned plans copy
+the admitted signatures and conversion policy, so serialization does not revisit
+ASTs, register dependencies or read changing dynamic/integer policy.
 
 `PYSTACHY_IRCHECK=1` verifies IR before the passes and after transformations. Function effect
 summaries remain available after the rest of the function's IR is released.
 
 The hosted [inspection prototype](compiler-inspection.md) captures those live
 stages, function signatures/effects and per-pass diffs in one compilation. Its
-JSON report also retains terminal diagnostic locations and specialization notes.
+JSON report also retains terminal diagnostic locations, specialization notes and
+each attempt's stage completion sequence. Finalized snapshots and representation
+tables are copied before lowering consumes their source records. Existing
+[Lean checks](../tools/lean_boundary/README.md) check selected guard and storage
+properties of those snapshots; stage ordering does not establish semantic
+equivalence, alias lifetime, collector correctness or LLVM correctness.
+
+For a consumer that needs only those retained functions, inspection supports
+`--stop-after finalize`. It uses the ordinary driver's fresh-attempt retry rules,
+marks LLVM output as skipped and publishes the same finalized snapshot as a full
+inspection. `--typed-after-only` independently controls how many snapshots and
+pass records are collected.
 
 Module declarations follow the same boundary. Globals retain native types in `Val`
 records; `Data` records retain string bytes, constant tuples' slots, callable
@@ -246,8 +284,9 @@ call barriers, so the representation change preserves dictionary lookup fusion.
 
 `alloc.fixed` allocates a declared class (including specialized classes and custom
 exceptions) or a fixed tuple. Its result retains the native type; LLVM lowering alone
-chooses the class layout's byte size or the tuple's eight-byte slot count. It uses the
-existing zeroed, GC-scanned `pys_alloc` allocation and keeps its `A` effect. Object
+chooses the class layout's byte size or the tuple's eight-byte slot count, and the call: the
+existing zeroed, GC-scanned `pys_alloc` allocation, or `pys_new` where the `allocelide`
+optimization below takes a layout that holds no reference. It keeps its `A` effect. Object
 initialization, field and tuple stores, stack tuple promotion, and the runtime ABI
 retain their existing behavior. The verifier checks the layout type, one result,
 runtime declaration and absence of unused operands or metadata. Variable-sized
@@ -258,7 +297,7 @@ coerced homogeneous elements. Its result is `vtuple[T]` and every operand has na
 type `T`; it owns one semantic result and an allocation effect. A fresh tuple display
 can use it directly, while conversion from an existing fixed tuple first reads that
 tuple without changing its storage. Literal constant displays keep their existing
-constant path. Lowering allocates the existing scanned layout (length followed by
+constant path. Lowering allocates the existing scanned layout (length, nullable numeric-identity companion pointer, then
 eight-byte elements), retaining native references across that allocation; address
 and bool-widening temporaries are local to the emitter. This removes intermediate
 fixed tuples and the copy through `vtuple.from` without a new runtime API, allocator
@@ -314,14 +353,17 @@ A raw copy does not establish a type for interpreting the bits. The verifier fol
 provenance through slots, phis and selects; interpreting it requires the matching member,
 and rebuilding a box requires its tag and payload to agree. A raw copy alone is valid.
 Domains come from definitions, parameter and storage declarations, not narrowed use-site
-annotations. Tests cover missing/wrong guards, different boxes, joins, loop backedges,
+annotations. A box read through an indexed machine slot of a tuple whose items are all of one
+union type (a loop over a `tuple[U, U]` or `tuple[U, ...]`, also one that may be `None`, where
+it is not) has that union's members, as a list item read has its list's declared element type:
+container typing is its own contract. Tests cover missing/wrong guards, different boxes, joins, loop backedges,
 nullable values, aliasing stores, calls and exception edges. Writes discard mutable storage
 facts; previously loaded immutable boxes retain their facts. Non-escaping local slots and
 provably disjoint fresh storage retain facts across unrelated writes.
 
 Standalone tag reads and box construction also require these proofs. An integer
 machine load whose defined source is a union is checked as a tag read, including its
-nonnull requirement. Simple guards of immutable, nonnullable union parameters can
+nonnull requirement; one from a `tuple[T, ...] | None` reads its length word, no tag. Simple guards of immutable, nonnullable union parameters can
 be proved by a bounded predecessor walk without allocating dataflow states. Mutable
 slots, nullable sources, raw payload transport and unsupported control-flow shapes
 fall back to the general solver.
@@ -382,12 +424,21 @@ The generator operations mark an LLVM switched-resume coroutine's structure (see
 [generators](internals.md#generators)). `gen.start` ends the entry block of a generator function
 (`IFn.coro`, printed `presplitcoroutine`) and holds its name; `gen.yield` (a `%slot` value and a
 flag: whether closing the generator there runs its code) and `gen.ret` (an optional `%slot`)
-end blocks where it suspends (lowering alone sizes the promise, five words or seven with `send()`
-and `throw()` in the program, and gives a generator that has not started its state); `gen.promise` without an operand is its own promise's address,
+end blocks where it suspends (lowering alone sizes the promise, five words, seven with `send()`
+and `throw()` in the program, or nine where a module opts in to promoting ints, and gives a
+generator that has not started its state); `gen.promise` without an operand is its own promise's address,
 and with a generator operand that generator's. `gen.resume` runs a generator to its next
 suspend and has every effect (user code); the exception passes make it an `invoke` like a
 call. `gen.drop` closes and destroys a generator a loop owns and never raises. The verifier
 checks their places, operands and metadata; lowering alone emits the `llvm.coro.*` calls.
+In identity-tracking code, scalar and optional numeric `gen.yield` has three operands: its raw
+`%slot`, a `%ptr` high word (null unless the channel holds promoting ints), and a
+nullable `dyn` identity companion. The verifier requires that shape for those
+channels and rejects a nonnull placeholder when no high word exists. Lowering
+stores the companion immediately after the existing five/seven/nine-word promise;
+it never writes the high placeholder outside that frame. A consumer copies the
+companion into its private result slot before another resume. Isolated ordinary
+modules keep their raw layout; crossing checks prevent mixing representations.
 
 Each block ends with one terminator. Branch labels stay within the function, and phi
 predecessors must branch to their join. `switch` branches on an `int` to the label of the

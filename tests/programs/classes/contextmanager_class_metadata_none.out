@@ -1,0 +1,10 @@
+scope
+Base.scope
+scope Base.scope
+scope
+Base.scope
+1
+scope
+1
+scope Child.scope
+[exit 0]

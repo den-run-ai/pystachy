@@ -122,6 +122,9 @@ uv tool install "$PYSTACHY_SOURCE"
 pystachy --version
 ```
 
+A pip or uv installation carries no Git metadata, so `pystachy --version` reports its
+version with `commit unknown`; native archives and Docker images report the release commit.
+
 If uv's command directory is missing from `PATH`, run `uv tool update-shell`
 and open a new shell. To change the installed revision, rerun the first block
 with the new tag or commit. Repeat the install command with `--force-reinstall`
@@ -147,7 +150,7 @@ make install
 
 ## macOS
 
-On macOS 14 or later, install [Homebrew](https://brew.sh) and the Xcode Command Line Tools first
+On macOS 15 or later, install [Homebrew](https://brew.sh) and the Xcode Command Line Tools first
 (`xcode-select --install` if they are missing). Then:
 
 ```sh

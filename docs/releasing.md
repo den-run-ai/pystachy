@@ -59,12 +59,33 @@ attestations. Native archives and Docker publication do not run in this mode.
 The workflow retains the source SHA and distribution checksums with its artifact.
 Changed package contents require a new version; existing PyPI files are not replaced.
 
+## Release stages
+
+A minor version reaches its stable release through at most three alphas and two release
+candidates:
+
+| Stage | Takes | At most |
+|---|---|---|
+| Alpha (`-alpha.N`) | New features and the fixes they need; features stabilize over the alphas. | Three |
+| Release candidate (`-rc.N`) | Fixes, documentation and release tooling only; the feature set is frozen at the last alpha. | Two |
+
+Publish the stable version once no major bug from the alpha merges remains open, whether an
+issue reports it or an open pull request shows or fixes it. A major bug is a regression from
+the previous stable release, a silent wrong result, a crash or a memory-safety failure.
+Documented deviations, gaps that predate the alphas, and performance or CI work do not block
+it. A fix found after the second candidate ships in the stable release, which passes the
+same gates. New features wait for the next minor version's alphas.
+
 ## Publish a version
 
 1. Set [VERSION](../VERSION) to the intended semantic version and add its notes as
    `docs/releases/VERSION.md`, written as the [writing guide](writing.md#release-notes)
    describes, such as [v0.4.0-alpha.6](releases/v0.4.0-alpha.6.md). Then merge the
-   version bump, intended fixes and packaging changes into `main`.
+   version bump, intended fixes and packaging changes into `main`. Before merging a
+   release branch, run **CI** manually on it: a run that is not for a pull request
+   executes the full profile, while PR CI runs the dynamic-`Any` and promoting-int sweeps
+   over sampled programs only. That gap let
+   [#1502](https://github.com/den-run-ai/pystachy/issues/1502) first fail on `main`.
 2. Wait for **CI**, **Installation**, **Lint** and **Packages** to succeed on the exact
    `main` commit. CI on a `main` push includes the complete Linux x86-64 and Linux ARM64
    verification matrices; a success on only one architecture does not satisfy this gate.

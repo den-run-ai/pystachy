@@ -37,6 +37,24 @@ def unsupported(reason: str) -> None:
     raise UnsupportedOperation(reason)
 
 
+def condition(value) -> bool:
+    """A skipif condition's truth, where the decorator evaluated an expression."""
+    if isinstance(value, str):
+        # pytest evaluates a string condition as code in the test module.
+        unsupported("string skipif conditions are unsupported; use an expression")
+    return bool(value)
+
+
+def describe(error: BaseException) -> str:
+    """pytest's short text of a failure: the exception's class name and str()."""
+    if isinstance(error, Failed):
+        return "Failed: " + str(error)
+    text = str(error)
+    if text:
+        return type(error).__name__ + ": " + text
+    return type(error).__name__
+
+
 def fail(reason: str = "") -> None:
     raise Failed(reason)
 

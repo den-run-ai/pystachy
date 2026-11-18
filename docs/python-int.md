@@ -117,11 +117,11 @@ its item types and annotated boundaries.
 |---|---|
 | Fixed-shape tuples | Returns, unpacking, constant or variable indexing, literal slices, concatenation, literal repetition, iteration, membership, `index()`, `count()`, comparisons, hashing and formatting. `divmod()` returns promoting ints in its tuple. |
 | `list[int]` | Displays, comprehensions, append/insert, item and slice assignment, extend/`+=`, indexing, iteration, unpacking, `pop()`, searches, comparisons, sorting with or without a key, reductions, copies, slices, `+`, `*`, reverse and repr. Searches and comparisons against floats are exact. |
-| Lists of tuples containing ints | Includes mixed and nested tuples such as `list[tuple[int, str]]` and `list[tuple[tuple[int, int], int]]`. Supports displays, comprehensions, append/insert, item assignment, extend/`+=`, reads, `pop()`, sorting, searches, comparisons and repr. Tuple sort keys and comparisons against float tuples work; search keys may be optional tuples. |
+| Lists of tuples containing ints | Includes mixed and nested tuples such as `list[tuple[int, str]]` and `list[tuple[tuple[int, int], int]]`, and optional tuple items. Supports displays, comprehensions, append/insert, item assignment, extend/`+=`, reads, `pop()`, sorting, searches, comparisons and repr. Tuple sort keys and comparisons against float tuples work; search keys may be optional tuples. |
 | Dict integer keys | Construction, comprehensions, assignment, augmented assignment, update, copies, `fromkeys()` and `setdefault()` preserve the keys. Lookup, membership, deletion, `get()` and `pop()` compare exactly, including `int \| None` lookup keys. |
 | Dict integer values | Assignment, augmented assignment, construction, comprehensions, update, `setdefault()` and copies preserve values. Indexing, `get()`, `pop()`, `setdefault()`, `popitem()` and value/item iteration return them. Repr and equality preserve the values. |
 | Dict tuple values | Tuples containing ints retain large values through construction, stores, updates, `fromkeys()`, copies and method defaults, as well as reads, sorting, searches, repr and equality. Optional tuple results have a [boundary](#storage-boundaries). |
-| Tuple dict keys and set/frozenset elements | Includes mixed and nested tuples. Hashing, lookup, stores, deletion, copies, comparisons and set algebra preserve the ints. Lookup tuples may be optional or use a bool for an integer item. |
+| Tuple dict keys and set/frozenset elements | Includes mixed, nested and optional tuples. Hashing, lookup, stores, deletion, copies, comparisons and set algebra preserve the ints, including when a set of tuples widens to admit `None`. Lookup tuples may be optional or use a bool for an integer item. |
 | Integer sets and frozensets | Construction, comprehensions, updates and set algebra preserve values; searches, removal, iteration, `pop()`, sorting, reductions, copies, comparisons and repr use them. Hashes and iteration/`pop()` order follow CPython. |
 
 The normal mutability rules still apply: `add()`, `discard()`, `remove()` and
@@ -230,9 +230,10 @@ Some of these boundaries reject values CPython accepts. The
 | Unsupported list items, dict keys/values and set elements | Int storage promotes only in the supported integer and tuple forms above. An `int \| None` inside a list or tuple remains 64-bit, including nested tuple items. |
 | Optional tuple results | Dict `get()`/`pop()` results that may be `None`, such as `d.get(k)` for tuple values, retain the 64-bit tuple boundary. |
 | Runtime-length tuples | `tuple[int, ...]` items, including a tuple sliced by a variable, stay 64-bit. |
-| Optional NamedTuple operations | Hashing, comparison, search, `%` formatting and argument unpacking use the 64-bit tuple-or-None representation. |
+| Optional NamedTuple operations | Hashing and argument unpacking of a NamedTuple that may be `None`, such as a parameter's, use the 64-bit tuple-or-None representation. Comparison, tuple search and `%` formatting test it for `None` first and keep its promoting ints. |
 | `dataclasses.astuple()` | Has the same optional-tuple boundary. |
 | Generator input | Values passed to `send()` stay 64-bit; yielded and returned ints can promote. |
+| Optional generator yields | `Iterator[int \| None]` keeps a nullable 64-bit value; both direct yields and `yield from` check this boundary. [Regression](../tests/deviations/python_int_optional_generator_width.py). |
 
 `dataclasses.asdict()` preserves promoting scalar and fixed-tuple fields when
 they share a supported dictionary value type. Heterogeneous fields needing a
