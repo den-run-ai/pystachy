@@ -519,6 +519,7 @@ from src.pystachy_compiler.class_values import (
     gen_class_value_bases as class_values_class_value_bases,
     gen_class_value_holds as class_values_class_value_holds,
     gen_class_value_of as class_values_class_value_of,
+    gen_class_value_objects as class_values_class_value_objects,
     gen_class_value_name as class_values_class_value_name,
     gen_class_value_asks as class_values_class_value_asks,
     gen_class_value_cmp as class_values_class_value_cmp,
@@ -5241,6 +5242,9 @@ class Gen:
 
     def class_value_holds(self, t: str) -> bool:
         return class_values_class_value_holds(self, t)
+
+    def class_value_objects(self, t: str) -> bool:
+        return class_values_class_value_objects(self, t)
 
     def class_value_of(self, v: Val, known: bool) -> Val:
         return class_values_class_value_of(self, v, known)
