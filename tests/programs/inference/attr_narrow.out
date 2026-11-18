@@ -1,0 +1,15 @@
+['builtins.int', 'not a type', 'not a type', 'not a type', 'not a type']
+['int<int>', 'other 1', 'other 1', 'other 1', 'other 1']
+['info builtins.int', 'var str', 'none', 'var untyped', 'node']
+builtins.int no no
+['int', 'node', 'none', 'node', 'node']
+[1, 4, 1, 1, 1] [10, -1, -1, -1, -1] ['X', '(none)', '(none)', '(none)', '(none)']
+builtins.int builtins.int!
+['-', 'str 3', '-', '-', '-']
+builtins.int 1 builtins.int 1 builtins.int
+flag <int> builtins.int/<int> ?
+['int', 'builtins.int'] 3 0
+builtins.int False
+True
+False True
+[exit 0]

@@ -1,0 +1,4 @@
+['node', 'expr', 'int', 'expr'] [False, True, True, True]
+12 Pos(line=3, column=200) 6 300 2 True
+CheckError bad
+[exit 0]

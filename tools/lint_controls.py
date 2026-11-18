@@ -1,4 +1,7 @@
-"""Run exactly two independent hosted Lint suites from the repository root."""
+"""Run Lint's two hosted control suites, and optionally make targets, at once from the repository root.
+
+Each suite is mostly one CPython process; three of them fit the runner's four CPUs (#1525).
+"""
 
 import argparse
 from contextlib import ExitStack
@@ -34,9 +37,16 @@ def stop(processes):
         process.wait(timeout=5)
 
 
-def run_controls(patterns):
+def suite_commands(patterns, make_targets=()):
     if len(patterns) != 2:
         raise ValueError("Lint requires exactly two hosted control suites")
+    commands = [["make", *make_targets]] if make_targets else []
+    return commands + [[sys.executable, "-m", "unittest", "discover", "-s", "tools", "-p", pattern]
+                       for pattern in patterns]
+
+
+def run_controls(patterns, make_targets=()):
+    commands = suite_commands(patterns, make_targets)
     cancelled = 0
 
     def cancel(signum, _frame):
@@ -51,15 +61,14 @@ def run_controls(patterns):
         with tempfile.TemporaryDirectory(prefix="lint-controls-") as directory, ExitStack() as stack:
             processes, logs = [], []
             try:
-                for index, pattern in enumerate(patterns):
+                for index, command in enumerate(commands):
                     if cancelled:
                         break
                     path = Path(directory) / f"{index}.log"
                     output = stack.enter_context(path.open("w"))
                     logs.append(path)
                     process = subprocess.Popen(
-                        [sys.executable, "-m", "unittest", "discover", "-s", "tools", "-p", pattern],
-                        stdin=subprocess.DEVNULL, stdout=output, stderr=subprocess.STDOUT,
+                        command, stdin=subprocess.DEVNULL, stdout=output, stderr=subprocess.STDOUT,
                         start_new_session=True,
                     )
                     # Signal handlers must not raise between launch and registration.
@@ -80,8 +89,11 @@ def run_controls(patterns):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--make", default="", metavar="TARGETS",
+                        help="space-separated make targets to run beside the two suites")
     parser.add_argument("patterns", nargs=2)
-    return run_controls(parser.parse_args().patterns)
+    arguments = parser.parse_args()
+    return run_controls(arguments.patterns, arguments.make.split())
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ stable. It keeps one state per block, not a product of whole-function execution 
 from __future__ import annotations
 from src.pystachy_compiler.ir import Data, IFn, Ins, Val, slot_register
 from src.pystachy_compiler.specs import BIG
-from src.pystachy_compiler.union_state import UnionState, intersect_tags, union_join
+from src.pystachy_compiler.union_state import UnionState, intersect_tags, union_join, union_tags
 from src.pystachy_compiler.utils import gelem, is_gen, is_opt, is_union, targs, umembers
 
 
@@ -363,9 +363,17 @@ class UnionProof:
             for i in b.code:
                 if (i.op == "rt" and len(i.r) == 1) or i.op == "list.load":
                     self.native["%t" + str(i.r[0])] = self.runtime_type(i, i.t)
+                if i.op == "rt" and i.s == "vtuple.get" and len(i.r) == 1 and len(i.a) == 2:
+                    # A tuple[U, ...]'s item at an index, which pys_vtuple_get checks against its
+                    # length: a box of that union, as an item slot's (below) or a list's (list.get)
+                    owner = self.declared(i.a[0].v)
+                    owner = owner[4:-1] if is_opt(owner) else owner
+                    item = targs(owner)[0] if owner.startswith("vtuple[") else ""
+                    if is_union(item[4:-1] if is_opt(item) else item):
+                        self.typebase("U:%t" + str(i.r[0]), item)
                 if i.op == "mach.addr" and len(i.r) == 1 and len(i.a) == 2:
                     # An item slot of a tuple whose items are all of one union type (a fixed
-                    # tuple's, or a tuple[U, ...]'s past its length) holds a box of that union:
+                    # tuple's, or a tuple[U, ...]'s past its header) holds a box of that union:
                     # container typing is its own contract, as for a list's items (list.get), so
                     # an item read from the slot has its members. A length read is no union read.
                     # (Also of a tuple that may be None, read where it is not: a field's.)
@@ -510,7 +518,7 @@ class UnionProof:
             return targs(receiver)[0]
         if receiver.startswith("dict[") and (t == "*K" or t == "*V"):
             return targs(receiver)[0 if t == "*K" else 1]
-        if (receiver.startswith("list[") or receiver.startswith("set[") or receiver.startswith("frozenset[")) and t == "*T":
+        if (receiver.startswith("list[") or receiver.startswith("set[") or receiver.startswith("frozenset[") or receiver.startswith("aset[")) and t == "*T":
             return targs(receiver)[0]
         return t
 
@@ -543,9 +551,10 @@ class UnionProof:
 
     def item_slot(self, i: Ins, vtuple: bool, n: int) -> bool:
         # Does mach.addr i address an item's slot, as gen_seq_item's addresses do: words, at
-        # an index of a fixed tuple's n items, or past a runtime-length tuple's length word
-        # (index + 1)? Not its length word, nor bytes. Whether the item index is below the
-        # length is the loop's test (Loop.idx), as a list.load's index is its caller's.
+        # an index of a fixed tuple's n items, or past a runtime-length tuple's length word and
+        # identity companion pointer (index + 2: runtime.c's VTuple)? Not either header word, nor
+        # bytes. Whether the item index is below the length is the loop's test (Loop.idx), as a
+        # list.load's index is its caller's.
         if i.s != "int":
             return False
         k = i.a[1].v
@@ -554,7 +563,7 @@ class UnionProof:
         d = self.defs[k] if k in self.defs else None
         if d is None or d.op != "scalar.bin" or d.s != "add" or d.t != "int" or len(d.a) != 2:
             return False
-        x = d.a[0].v if d.a[1].v == "1" else d.a[1].v if d.a[0].v == "1" else ""
+        x = d.a[0].v if d.a[1].v == "2" else d.a[1].v if d.a[0].v == "2" else ""
         return x.startswith("%") or proof_number(x, 0, 1 << 62) >= 0
 
     def length_read(self, v: str) -> bool:
@@ -596,6 +605,19 @@ class UnionProof:
                 t = x if x != "?" else t
             return t
         return self.native.get(v, "")
+
+    def box_select(self, i: Ins) -> bool:
+        # Is select i a machine pointer chosen between None and boxes made here (Gen.ubox's,
+        # for an object that may be None: null, else its box)? Its result is one of them, so
+        # it has their members and None though its own type names no union. Any other
+        # operand, a pointer of unknown provenance, leaves the result unknown as before.
+        if i.t != "%ptr":
+            return False
+        for a in i.a[1:]:
+            d = self.defs[a.v] if a.v in self.defs else None
+            if a.v != "null" and (d is None or d.op != "rt" or (d.s != "ubox" and d.s != "ubox_opt")):
+                return False
+        return True
 
     def box(self, s: UnionState, v: str) -> str:
         k = "U:" + v
@@ -821,6 +843,10 @@ class UnionProof:
                 else:
                     xt.cond(y, True)
                     s.boolean(r, xt, union_join(xf, yf))
+        elif op == "select" and self.box_select(i):
+            # Either operand: the condition is an object's own None test, and a class type's
+            # domain has no None for it to select. A later read needs its own None test.
+            s.set("U:" + r, union_tags(s.dom(self.box(s, a[1].v)), s.dom(self.box(s, a[2].v))))
         elif op == "select":
             yes = s.conditional(a[0].v, True)
             no = s.conditional(a[0].v, False)

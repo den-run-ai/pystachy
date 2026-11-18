@@ -1,0 +1,34 @@
+same True
+eq K1 K1
+eq K2 K2
+eq K3 K3
+equal True
+eq K1 K1
+eq K2 K2
+eq K3 K4
+differ False
+eq K1 K1
+eq K2 K2
+longer True
+eq K1 K1
+shorter False
+eq K1 K1
+eq K2 K2
+eq K3 K4
+lt K3 K4
+lt True
+eq K1 K1
+eq K2 K2
+le prefix True
+eq K1 K2
+eq K2 K2
+index 1
+eq K1 K3
+eq K2 K3
+eq K3 K3
+count 1
+never eq
+identity True False
+items True
+ValueError: no comparison
+[exit 0]

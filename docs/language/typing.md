@@ -14,12 +14,14 @@ unsupported forms, see [compatibility](compatibility.md).
 | `list[T]`, `dict[K, V]` | One static element type, or one key and value type |
 | `set[T]`, `frozenset[T]` | Elements must use the supported dict key types |
 | `tuple[A, B]` | Fixed shape, up to nine items; a constant index gives the item's type, a variable one the union of the items'; slicing requires integer constants (items of one runtime-length element type also slice by run-time bounds, into a `tuple[T, ...]`) |
-| `tuple[T, ...]` | Runtime length; `T` is `int`, `float`, `bool`, `str`, or one of these with `None`; integer indexing checked at runtime, and slicing |
+| `tuple[T, ...]` | Runtime length; `T` is `int`, `float`, `bool`, `str`, or one of these with `None`, or a class of the program (also a union of classes); integer indexing checked at runtime, and slicing |
 | Classes, dataclasses, `NamedTuple` | Fields have static types |
 | `Callable[[A, B], R]` | Fixed positional signature; also supports zero arguments |
-| `A \| B` | Explicit scalar unions, or up to four non-overlapping native class/file members |
+| `A \| B` | Explicit scalar unions, or up to four non-overlapping native class/file members, with or without scalar members beside them |
 | `T \| None` | Optional values, including containers, `Callable`, generators (`Generator[Y, None, None] \| None`) and exceptions (`BaseException \| None`) |
 | `type[E]`, `type[E] \| None` | The class of an exception (`E` an exception class), as a context manager's `__exit__` takes it; see [context managers](semantics.md#context-managers) |
+| `type[C]`, `type[C] \| None` | The class object of `C`, a class of the program, or of a class deriving from it; see [classes as values](semantics.md#classes-as-values) |
+| `type[object]`, `type` | The class object of any class: an ordinary class of the program or a builtin class |
 | `TextIO` | Text files |
 | `Generator[Y, S, R]`; `Iterator[T]` or `Iterable[T]` as a generator function's return | Generator objects that yield `Y` (any generator function's) and take `S` from `send()`; see [generators](semantics.md#generators). Elsewhere `Iterator[T]` and `Iterable[T]` type nothing ([iterators](semantics.md#iterators)) |
 
@@ -44,14 +46,23 @@ handlers. Their errors are CPython's `UnicodeDecodeError` and `UnicodeEncodeErro
 messages.
 
 `tuple(xs)` copies a supported homogeneous list or a string into an immutable
-runtime-length tuple; later list mutation does not change it. A string converts to a tuple of
+runtime-length tuple; later list mutation does not change it, and a field that `__init__`
+stores from it (`self.items = tuple(items)`) has that tuple's type. A string converts to a tuple of
 its code points ([text](compatibility.md#text-and-file-positions)). `tuple(t)` returns an
 existing tuple unchanged unless an annotation requests a representation conversion
 ([identity limitations](compatibility.md#functions-and-object-identity)). A fixed tuple literal can initialize `tuple[T, ...]`,
 including `()`, and a tuple display with a starred list makes one (`(*xs, 0)`). Supported
 operations are `len`, truth tests, integer indexing, slicing, iteration (also `enumerate`,
 `zip`, and `reversed`), unpacking, `list(t)`, representation and same-element-type equality
-and ordering. Bounds errors raise `IndexError` at runtime.
+and ordering. Bounds errors raise `IndexError` at runtime. Items that are objects (not exceptions or
+NamedTuples) compare as in CPython's tuples: with their `__eq__` (an item equals itself without
+it) over the items both tuples have, also where their lengths differ, then by length, and with
+the ordering method at the first unequal pair; `hash()` hashes each with its class's `__hash__`,
+by identity where the class defines neither `__eq__` nor `__hash__`. A tuple of a subclass's
+objects is one of its base class's. Objects of a [union](#native-reference-unions) of classes
+are items too (`tuple[Capsule | SourceDep, ...]`), which narrow with `isinstance()` as a loop
+reads them; such a tuple does not compare or `repr()` yet. A `tuple[A, ...]` where a
+`tuple[A | B, ...]` is wanted converts to a new tuple of the items' union boxes.
 Optional scalar elements use boxes when needed; widening an immutable tuple to
 optional elements copies its slots rather than reinterpreting numeric bits as pointers.
 
@@ -62,13 +73,13 @@ of that type or `None` (`nums + (None,)`). They do not
 support repetition or membership yet, but are dict keys and set elements (below). Their annotation is distinct
 from the fixed shape used by `*args`; `tuple()` takes a list, string, tuple, generator
 expression or `range`/`map`/`filter`/`reversed` call whose items are `int`, `float`,
-`bool`, `str` or optional versions of those types, the objects of iterator classes and
+`bool`, `str` or optional versions of those types, or objects, the objects of iterator classes and
 generators. Direct `enumerate` and `zip` produce tuple-valued items, which runtime-length tuples cannot
 hold. Project a scalar first, for example `tuple(value for index, value in enumerate("ab"))`
 or `tuple(left + right for left, right in zip([1, 2], [3, 4]))`. This enables the existing `re.Match.groups()` implementation
 without rewriting its capture loop or knowing the pattern's capture count at compile time.
 
-Dict keys are `int`, `str`, `bytes`, objects of the program's classes, or tuples containing `int`,
+Dict keys are `int`, `str`, `bytes`, objects of the program's classes, frozensets of supported elements, or tuples containing `int`,
 `bool`, `str`, `str | None`, objects and nested tuples of these. `None` is a key type too, and
 so is any of these types that may be `None`: `set[None]`, `set[str | None]` and
 `dict[int | None, V]` hold `None` as CPython does, found by `hash(None)` and identity. `{None}`
@@ -81,9 +92,9 @@ lookup, and for each key of the same hash). A class that defines `__eq__` withou
 unhashable, as in CPython: adding or looking up its object raises `TypeError: unhashable type`.
 A union of classes (`TypeInfo | TypeAlias`) is a key type where no class its objects may be of
 defines `__eq__` or `__hash__`: they hash and compare by identity, whichever member's they are,
-typed by their class or the union. An object key may be `None`. Floats, frozensets, NamedTuples and exception objects cannot be
-keys or set elements. `hash()` gives CPython's results for ints, floats, `None`, objects with
-`__hash__` and tuples and NamedTuples of these; a str's and an object's identity hash differ from CPython's,
+typed by their class or the union. An object key may be `None`. Floats, NamedTuples and exception objects cannot be keys or set
+elements. `hash()` gives CPython's results for ints, floats, `None`, objects with `__hash__`,
+frozensets and tuples and NamedTuples of these; a str's and an object's identity hash differ from CPython's,
 which change from run to run, but are equal for equal strs and for the same object.
 
 `Optional[T]`, `None | T` and `Union[T, None]` are equivalent. Repeated members of
@@ -110,10 +121,32 @@ The supported `collections.abc` annotations use concrete container types:
 | `Mapping[K, V]`, `MutableMapping[K, V]` | `dict[K, V]` |
 | `Sequence[T]`, `MutableSequence[T]` | `list[T]` |
 | `MutableSet[T]` | `set[T]` |
+| `Set[T]` | `set[T]`, or an abstract set (below) once the program gives one a frozenset |
 | `Callable[[A, B], R]` | The same `Callable` as `typing` |
 
 These types are invariant. A tuple or string is not a `Sequence`, and `isinstance()`
-tests of these annotations are decided using the compiled type.
+tests of these annotations are decided using the compiled type. A `Sequence[T]` parameter's
+empty tuple default, `= ()`, is an empty list where the function only reads the parameter's
+items: it loops over it, tests membership (last in a chain) or truth, or passes it as the
+iterable that `len()`, `sorted()`, `sum()` and similar builtins read, but never indexes, compares,
+stores, returns, changes or rebinds it, so nothing can tell the list from `()`
+([test](../../tests/programs/generics/sequence_tuple_default.py)).
+
+`typing.AbstractSet[T]` is an abstract set: a value that is a `set[T]` or a `frozenset[T]`,
+taken without a copy. Code reads it with `len()`, `in`, loops, comparisons and the set
+operators and methods that change nothing, whose results are abstract sets too, and passes
+it as the other operand of a set's own operators and methods (`s -= other`). What depends on
+which of the two it is, is a compile error: printing it, `isinstance()` against `set` or
+`frozenset`, `type()`, the methods and in-place operators that change a set, and using it
+where a `set[T]` is annotated; `set(x)` and `frozenset(x)` make one of it.
+`collections.abc.Set[T]` stays a `set[T]`, which a program may change and print, while the
+program gives it only sets. Once a frozenset is given where one is annotated, every
+`collections.abc.Set[T]` of the program is an abstract set.
+
+`frozenset()` that nothing types is empty for good: it is a `frozenset[T]` or an abstract set
+of any `T` where one is expected, as in `_EMPTY: tuple[frozenset[Any], frozenset[Any]] =
+(frozenset(), frozenset())` returned as a `tuple[AbstractSet[T], AbstractSet[T]]`. Each such
+use makes a new empty frozenset, which only `is` tells from CPython's single one.
 `str | os.PathLike[str]` simplifies to `str`, because paths must be strings;
 `os.fspath()` returns its string argument. Other `PathLike` annotations are unsupported.
 
@@ -156,7 +189,9 @@ string in it is a value, not a forward reference.
 Parameter, return, class-body and module-level annotations follow CPython 3.13's evaluation
 timing. They are checked even in unused imported definitions. A name must be bound when its
 annotation is evaluated; use `"Node"` for a forward reference or
-`from __future__ import annotations` to defer evaluation.
+`from __future__ import annotations` to defer evaluation. A class that an evaluated annotation
+reads through a module that has not bound it yet, as during a circular import, raises
+`AttributeError` there ([test](../../tests/programs/reflection/annotation_cycle.py)).
 
 Evaluated annotations may name classes, supported typing forms, builtin generics, unions,
 type variables and [type aliases](#type-aliases). Aliases of supported classes can name
@@ -192,14 +227,17 @@ too. An annotation that names an alias uses its value, also in another module (`
 Row`, `m.Row`, `import *`).
 
 An assignment evaluates its value when it runs, so the names in it must be bound by then, and
-an annotation that CPython evaluates can name the alias only after the assignment. Its
+an annotation that CPython evaluates can name the alias only after the assignment. A class it
+reads through a module that has not bound it yet, as during a circular import, raises
+`AttributeError` there ([test](../../tests/programs/reflection/type_alias_cycle.py)). Its
 subscripts are checked there as CPython's `typing` checks them, even if no annotation names
 the alias: `Box[int, str]` for a class with one type parameter, `Iterable[int, str]` or
 `Union[()]` is an error. A subscript of a typing name other than its generic aliases
 (`List`, `Iterable`, `Generator`, ...), `Optional`, `Union`, `Callable`, `Tuple`, `Literal`,
 `Annotated` and the single-type forms (`ClassVar`, `Final`, ...) is unsupported there. A
 `type` statement's value is evaluated lazily and may name classes defined further down; so
-may a string value, `Label: TypeAlias = "Text"`.
+may a string value, `Label: TypeAlias = "Text"`, and a string in one, `list["Text"]`, which
+CPython does not evaluate either.
 
 Generic aliases take type arguments: `type Pair[T] = tuple[T, T]`, or an assignment whose
 value mentions `TypeVar`s, `Pair = tuple[T, T]`, whose parameters are those variables in the
@@ -213,10 +251,16 @@ arguments for a `TypeVarTuple` or `ParamSpec` parameter are unsupported.
 ([test](../../tests/programs/generics/newtype.py)). Its type is read when the assignment runs,
 as a type alias's value is: a class it reads through a module that has not bound it yet, as
 during a circular import, raises `AttributeError`
-([test](../../tests/programs/generics/newtype_cycle.py)). A function that imports `N` binds a
-local, which a call where the import may not have run checks, as for an imported function; a
-nested `def` that reads it is rejected. `N` is no generic alias, also where `T` names a TypeVar:
-`N[int]` is CPython's `TypeError`, an error here. Other uses of `N` as a value are rejected.
+([test](../../tests/programs/generics/newtype_cycle.py)), and a string in it is not evaluated
+([test](../../tests/programs/generics/newtype_forward_ref.py)). A function that imports `N`
+binds a local, which a call where the import may not have run checks, as for an imported
+function; a nested `def` that reads it is rejected. `N` is no generic alias, also where `T`
+names a TypeVar: `N[int]` is CPython's `TypeError`, an error here. Other uses of `N` as a value
+are rejected.
+
+An alias whose whole value is `mypy_extensions`' `FlexibleAlias[T, X]` stands for `X`, as mypy
+expands it: mypy's `Bogus = FlexibleAlias[T, T]` makes `Bogus[list[int]]` a `list[int]`.
+`FlexibleAlias` takes exactly two type arguments there.
 
 Other code can use an alias of `int`, `float`, `str` or `bool` (`Pos = int`) as that class,
 to call it or pass it to `isinstance()`; using another alias as a value (`print(Row)`,
@@ -411,8 +455,28 @@ of `int`, as in Python: test `bool` first if the following integer branch needs 
 concrete type. Assignment updates the known type, and control-flow joins retain it
 only when every incoming path agrees.
 
-Globals, fields and cells assigned by a `nonlocal` closure are not narrowed across
-calls. Copy their value to an ordinary local before testing it. The copy remains
+A test also narrows an attribute of a local, and of such an attribute (`e.node`,
+`self.ref.node`), where each is a field:
+
+```python
+def describe(e: RefExpr) -> str:
+    if isinstance(e.node, TypeInfo):
+        return e.node.fullname
+    return "not a type"
+```
+
+`isinstance()`, `callable()`, tests against `None` and truth tests narrow it, for optional
+values, unions and objects of a class hierarchy, in the branches, `and`/`or` operands,
+conditional expressions, assertions and exiting guards that narrow a local. CPython reads
+the attribute again each time, so the narrowing lasts only while nothing can have stored it.
+It ends at a call of the program's code (also an operator, conversion or iteration that runs
+a method, a property's read, a generator's resume or `yield`), at a store to an attribute of
+that name on any object or to a global, at an assignment to the local, at the start and the
+end of a loop, and in an `except` or `finally` block. From there the attribute has its declared
+type again: test it again, or copy it to a local first.
+
+Globals, properties and cells assigned by a `nonlocal` closure are not narrowed. Copy their
+value to an ordinary local before testing it. The copy remains
 valid when the original storage is changed because the tagged box is immutable.
 Container types stay invariant: `list[int]` cannot become `list[int | str]`.
 
@@ -501,7 +565,11 @@ returns an `int | float`. The members are `int`, `float`, `bool` and `str`, with
 ([optional values](#optional-values-and-narrowing)). Lists, and dicts of one key type, join
 their items' types, and tuples of one length join item by item: the display
 `[1, 2.5]` makes a `list[int | float]`, and `[("a", 1), ("b", 2.5)]` a
-`list[tuple[str, int | float]]`. A display whose items no inferred union holds, such as a
+`list[tuple[str, int | float]]`. Tuples of other lengths join into a
+[runtime-length tuple](#supported-types) of their items' one type, where it can hold them: a
+function that returns `(n,)` or `()` returns a `tuple[int, ...]`, and `[("a", ()), ("b", (1,))]`
+makes a `list[tuple[str, tuple[int, ...]]]` (each a new tuple, as
+[conversions](compatibility.md#deviations-from-cpython) make; `(1,)` and `("a", "b")` do not join). A display whose items no inferred union holds, such as a
 list or an object among scalars, is an error that names the two remedies: an annotation with
 a [union that holds them](#mixed-scalar-and-container-unions), or the module's
 [dynamic `Any`](../dynamic-any.md) opt-in. A list made by a call of a function without a return
@@ -565,7 +633,7 @@ These ordinary unions describe finite-depth JSON-shaped data. The
 `type Value = None | int | str | list[Value] | dict[str, Value]` with data depth
 chosen at runtime. General `Any` is a [prototype](../dynamic-any.md) that a module opts in to.
 Native class/file members
-retain the separate reference-union restrictions below.
+retain the separate reference-union restrictions below, and combine with scalar members only.
 
 Truth tests, `bool()`, `str()`, `repr()`, printing and f-strings support these mixed
 unions without narrowing, including nested containers and different list/dict
@@ -590,6 +658,22 @@ JSON-shaped dictionaries use hashed lookup. User objects, files, functions and s
 inside mixed-value equality remain unsupported. Narrow before ordering, container
 methods on a union receiver or indexing; there is no generic method dispatch.
 Container members are not [inferred](#inferred-unions).
+
+A union may hold one `Callable[[...], R]` beside scalars, lists and dictionaries, for a
+parameter that takes a value or a function that decides it:
+
+```python
+def passes(rule: bool | Callable[[str], bool], name: str) -> bool:
+    if isinstance(rule, bool):
+        return rule
+    return rule(name)
+```
+
+A function, lambda or bound method becomes that member as it becomes a `Callable` variable's
+value. `callable()` tells it from the other members and narrows as `isinstance()` does; a call
+needs the narrowed value. A truth test takes any member, and a function is true. Printing and
+`==` need narrowing first. `callable()` cannot tell two `Callable` types apart, so a union
+holds one, and none beside classes or files.
 
 ## Native reference unions
 
@@ -622,7 +706,8 @@ whose type holds its objects: `Base | Child` and `datetime | date` are the base 
 a whole declared member is supported, while narrowing a base member to a subclass is not yet
 implemented.
 
-Reference unions cannot mix with scalar or container members or exception types.
+Reference unions cannot mix with container members or exception types; scalar members
+may join them, as [below](#objects-beside-scalars).
 Callable fields, bound-method extraction and unpacked method arguments
 are unsupported. Use a typed local for an empty-container argument that needs an
 expected type. Field and property reads and stores dispatch on the member. A read of
@@ -640,6 +725,52 @@ searches, compare member by member: complex numbers by value, an object by its c
 invariant, and no reference union is [inferred](#inferred-unions). This adds deterministic
 native execution, without profiles, an interpreter, runtime compilation or speculative
 assumptions; boxing and dispatch have costs, so no performance improvement is claimed.
+
+### Objects beside scalars
+
+A union may hold `int`, `float`, `bool` and `str` members beside its class or file members,
+as `int | Decimal`, `str | Path` and `TextIO | str` do. The four-member limit counts the
+class and file members only. A `complex` member joins scalars in a
+[closed scalar union](#closed-scalar-unions) or objects alone (`complex | C`), not both:
+`int | complex | C` is rejected. The box, its tags and `isinstance()` narrowing are those of the
+unions above, and such a union may hold `None` as any union with a class member may: after
+`isinstance(value, Money)` is excluded, an `int | Money` is an `int | None`, so test the
+scalar member (`isinstance(value, int)`) where an `int` is needed.
+
+```python
+def cents(value: int | Money) -> int:
+    if isinstance(value, Money):
+        return value.cents
+    if isinstance(value, int):
+        return value
+    raise TypeError("no value")
+```
+
+Where every member has the operation, the value is used without narrowing, and the member
+that the tag selects performs it:
+
+- binary and unary arithmetic, an object's by its methods and by its reflected method for a
+  number on its left; the result is the union of the members' results (`int | Money` plus a
+  `Money` is a `Money` where both additions return one);
+- `==`, `!=` and the orderings, an object's by its methods, with `None` for the other operand
+  too, and a tuple's `in`, `count()` and `index()` by `==`; a number or `str` and an object
+  whose class defines no `__eq__` are never equal;
+- truth tests, `str()`, `repr()`, printing, f-strings and `format()`, an object's by its
+  `__bool__`, `__str__`, `__repr__` and `__format__`;
+- `int()`, `float()`, `abs()`, `round()`, `math.floor()` and the other builtin calls that
+  take each member.
+
+A `None` value raises CPython's `TypeError` there, or is `None`'s own text and truth. A `str`
+member has no arithmetic to select, and members whose results have no union (two differently
+typed tuples from `divmod()`) are rejected: narrow first. So are a method call, an attribute,
+`is` between two such values, `hash()`, `callable()` where a member's class or one derived from
+it defines `__call__`, and use as a set element, a dict key or in `sorted()`.
+A comparison method whose parameter is such a union (`other: Money | int`) takes each member.
+No union with a class member is [inferred](#inferred-unions): annotate the variable, as in
+`total: int | Money = 0`. [`sum()` of objects](semantics.md#sums-of-objects) returns one.
+In a module that opts in to [promoting ints](../python-int.md#storage-boundaries), arithmetic
+whose result would join an object with a promoting int is rejected, as its other closed unions
+with one are; `sum()` of objects is not affected.
 
 ## Function and method templates
 
@@ -698,6 +829,13 @@ established type, and comparison methods must return `bool`.
 Function annotations mentioning a module-level `TypeVar` or `TypeVarTuple` (also one
 from-imported from another module), or a PEP 695 function type parameter
 (`def identity[T](value: T) -> T`), make those parts of the signature inferred. Generic classes bind their type variables differently, as described below.
+A `TypeVar`'s bound and constraints (`TypeVar("F", bound=FunctionLike)`,
+`TypeVar("S", int, str)`) are not checked: the arguments' types bind the variable. CPython
+evaluates them when the assignment runs, and Pystachy, which does not, accepts only what surely
+evaluates without error there: classes, type aliases, other TypeVars, typing's types, their
+subscripts and `|` of them, `None`, constants and strings (a string bound is a forward
+reference). The names they read must be bound by then. A variable or a class's attribute there is
+rejected, as are the errors CPython raises: `List[Union]`, `Set[int, str]`, a tuple as a bound.
 A PEP 695 function's `**P` and `*Ts` are such type parameters too, also in its nested defs:
 `def logged[**P, R](fn: Callable[P, R]) -> Callable[P, R]` may return a nested
 `def wrapper(*args: P.args, **kwargs: P.kwargs) -> R` that forwards them (also with
@@ -1024,7 +1162,8 @@ The inferred union uses the existing tagged boxes; per-argument unboxed generic
 fields are separate work, and operations outside the supported union surface
 still require narrowing.
 
-`Generic[...]` must be the class's only base, and a PEP 695 class has no base; its type
+`Generic[...]` must be the class's only base, apart from generic bases that it passes its type
+variables on to (below), and a PEP 695 class has no base; its type
 parameters cannot be a `ParamSpec` (`**P`) or more than one `TypeVarTuple`. Use the bare
 class name or `Self` inside its methods and fields, or an explicit specialization such as
 `"Pair[V, K]"`. A method's separate type variables (a module-level `TypeVar`, or its own,
@@ -1042,7 +1181,24 @@ compiles, so a visitor's methods may call `accept()` again, and a field stored f
 the base holds any visitor, whose methods then dispatch to every visitor class and need one
 return type ([error test](../../tests/errors/classes/generic_visitor_base_variable.py)). A class
 cannot yet derive from a generic class whose `__init__` binds its type variables
-(`class IntBox(Box[int])`), nor pass on one of its own (`class Sub(RTypeVisitor[T])`).
+(`class IntBox(Box[int])`).
+
+A generic class may pass its own type variables on to generic bases, as mypy's visitors do:
+`class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T])` derives from
+`ExpressionVisitor` and takes `StatementVisitor` as a
+[method-only secondary base](#method-only-secondary-bases). For
+`class Printer(NodeVisitor[str])`, `def accept(self, visitor: StatementVisitor[T]) -> T` returns
+`str`: `T` is bound through each generic base in turn
+([test](../../tests/programs/classes/generic_traits.py),
+[chain](../../tests/programs/classes/generic_traits_chain.py)). Each type argument of such a base
+is a type or one of the class's own type variables, not a type that contains one
+(`Visitor[list[T]]`, [error test](../../tests/errors/generics/generic_traits_nested_arg.py)).
+Without `Generic[...]`, a class whose bases pass type variables on is generic in them, in the
+order they first appear, as PEP 484 says: mypy's `class TypeQuery(SyntheticTypeVisitor[T])`
+([test](../../tests/programs/generics/generic_implicit_bases.py)). Such a class binds nothing,
+also with an `__init__` of its own that names none of its type variables; one whose `__init__`
+names them is a class template
+([error test](../../tests/errors/generics/generic_implicit_init.py)).
 
 Function and class specializations share a limit of 4,096 per compilation. Additional
 nesting and size limits are listed in [compatibility](compatibility.md#templates-and-empty-containers).
@@ -1102,7 +1258,9 @@ Fields come from class-body annotations or assignments to `self` in `__init__`. 
 be inferred from parameters, literals, constructors, declared function or method results,
 function values, and supported container displays and operations, also through `and` and `or`
 when both operands have one type, or `a` without `None` has `b`'s or `b` is an empty list or
-dict display (`self.dirs = dirs or []`). They can also come from the fields and properties of a
+dict display (`self.dirs = dirs or []`), and from a module global that one annotated assignment
+binds (`TABLE: Final[dict[str, Kind]] = {...}`), also through an item of one (`TABLE[key]`, a
+dict's value or a list's item). They can also come from the fields and properties of a
 parameter's object, or `self`'s, read through attributes (`arg.variable.name`),
 `None if c else v`, and list comprehensions without conditions
 ([test](../../tests/programs/inference/field_comprehensions.py)). A tuple or list target in
@@ -1116,6 +1274,15 @@ positional arguments and omitted defaults have known types. This uses normal fun
 specialization and does not execute the helper or its defaults during inference. Keyword or
 unpacked arguments, local call targets, and helpers whose return is needed before class
 specialization still require an explicit field annotation.
+
+A field can also be stored from a module constant: a global that one module-level assignment
+binds (`WIDTH = 8`, `HAVE_IMMORTAL: Final = sys.version_info >= (3, 12)`, or a from-import of
+such a name), whose value types it as that value types it in its own module
+([test](../../tests/programs/inference/field_module_constants.py)). So can a global that
+several module-level assignments bind, also in the branches of `if` statements, to values of
+one type ([test](../../tests/programs/inference/field_global_branches.py)). A global that
+values of different types or another kind of statement bind, or a constant of a module whose
+ints promote or that opts in to dynamic `Any`, still needs the field annotated.
 
 Construction requires `__init__` to return `None`. A different result raises a catchable
 `TypeError` after the initializer runs, including for inherited initializers, exception
@@ -1210,6 +1377,14 @@ Converting a bound method to `Callable` also requires compatible parameter types
 annotated return types throughout that method's hierarchy, preserving method equality
 across base and derived views of the same receiver.
 
+A value that is an object of one of several classes of one hierarchy has their nearest common
+base as its type: the arms of `Circle(r) if c else Square(s)` (also a comprehension's item),
+the operands of `or` and `and`, and the items of a list or set display or a dict display's
+values. `[Circle(1.0), Square(2.0)]` is a `list[Shape]`, which takes another subclass's
+objects later. An expected type keeps its rules: where it is a class that this base is not, such
+as one of the classes, the error stays, and classes with no common base need an annotation, such
+as a [reference union](#native-reference-unions).
+
 `super().method(...)` starts at the base of the class defining the method, even when a further
 subclass inherits that method. `super(C, self)` may name that class or one of its ancestors;
 `Base.method(obj, ...)` explicitly selects the named base's implementation. These forms keep
@@ -1257,29 +1432,88 @@ inherited ones, and the comparisons it writes decline (return `NotImplemented` f
 of another class, so `Base(1) == Derived(1)` is false. `replace()` of a base-typed object
 makes an object of its own class.
 
+A class may also take identity decorators, which CPython applies to it unchanged:
+`typing.final` (also above `@dataclass`) and [`mypy_extensions`](../../lib/README.md#runtime-services)'
+`trait` and `mypyc_attr(...)` with constant arguments. The class is compiled as if
+undecorated; reading their names still raises `NameError` where their imports have not run,
+and `__final__` is not set (reading it is a compile-time error).
+
 Builtin subclasses, NamedTuple inheritance, inheritance between a
 dataclass and a class that is not one, other decorated subclasses, field/method name
 collisions, and overriding a method with another kind of method are unsupported. Inherited
 class methods using `cls` retain restrictions on default values, imports and calls through a
 base-typed object. Exception classes follow the [exception rules](semantics.md#user-exception-classes).
 
-### A method-only secondary base
+### Method-only secondary bases
 
-An ordinary class can also name one independent, fieldless base second, as in
-`class IRVisitor(ExpressionVisitor, StatementVisitor)`. Instance fields use the first
-base's layout. A call through either base uses the concrete receiver's implementation.
-Both views refer to the same object, including when boxed as `Any`. An `isinstance`
+An ordinary class can also name independent, fieldless bases after the first, as in
+`class IRVisitor(ExpressionVisitor, StatementVisitor)` or
+`class Square(Shape, Describable, Comparable)`, and a subclass of such a class can add more
+([test](../../tests/programs/classes/inheritance_secondary_several.py)). Instance fields use the
+first base's layout. A call through any base uses the concrete receiver's implementation.
+All views refer to the same object. Boxed as `Any`, an object of a class with one secondary
+base keeps them; one with several is rejected
+([error test](../../tests/errors/classes/dynany_secondary_several.py)). An `isinstance`
 test between the base types checks the receiver's class tag.
 
-The secondary base must be a plain root class with ordinary instance methods. Its
+A secondary base must be a plain root class, or derive from such classes alone (below), with
+ordinary instance methods, which may be
+marked `@abstractmethod` (without `abc.ABCMeta`) and may name the type variables of a generic
+base that binds nothing ([generic classes](#explicit-generic-classes)). Its
 methods may call another method declared on the same base, for example
 `self.write(data)`. These calls use the concrete receiver's override. Other uses
-of the receiver, including reading a field or capturing a bound method, are unsupported.
-The two bases must declare distinct method names. Overrides of secondary methods
-must keep their parameter and return types and may widen positional-only parameters
-to accept keywords. The primary hierarchy
-and the class that combines the bases cannot use `super()`. Generic and abstract
-base classes, `__slots__` in the combined hierarchy, a second secondary base along
-the same primary chain, and secondary bases with fields, properties, constructors
-or other special methods are outside
-this subset. Single inheritance from the combined class works.
+of the receiver, including reading a field the base does not declare (below) or capturing a
+bound method, are unsupported.
+A secondary base and the primary hierarchy must declare distinct method names; two secondary
+bases may declare one only where the class overrides it
+([error test](../../tests/errors/classes/inheritance_secondary_conflict.py)). Overrides of secondary
+methods must keep their parameter and return types (but those that name a generic base's type
+variables). They may return a class derived from the one that the base's method returns
+([test](../../tests/programs/classes/inheritance_traits_covariant.py)), and may widen
+positional-only parameters to accept keywords. The primary hierarchy
+and the class that combines the bases may call `super()` only for methods that no secondary
+base defines: CPython's method resolution order puts the secondary bases after the primary's,
+where such a call could find them. Abstract base classes (`abc.ABC`), `__slots__` in the
+combined hierarchy (but with traits, below), and secondary bases with class attributes,
+property setters, constructors or other special methods are outside this subset. Single
+inheritance from the combined class works, `super()` included.
+
+A secondary base may declare attributes by annotation alone, as mypy's plugin interfaces do
+(`options: Options`, `path: str`;
+[test](../../tests/programs/classes/inheritance_secondary_attrs.py)). Each is a field of the
+class that combines the base, typed by the annotation; that class's code and the base's own
+methods, its `@contextmanager` methods included, store and read it. A value of the base's type
+reads and stores `o.name` by the object's own class, which costs a test of its class tag, and
+an object that never stored the attribute raises CPython's `AttributeError`. Bases of one class
+may declare an attribute alike; one that the class meets with another type, a class attribute
+or a method is rejected
+([error test](../../tests/errors/classes/inheritance_secondary_attr_types.py)). `del`, class
+patterns and `vars()` do not reach such an attribute through the base's type, and a generic
+base's attribute cannot name its type variables.
+
+A secondary base may derive from another, as an interface that extends one does (mypy's
+`TypeCheckerSharedApi(CheckerPluginInterface)`;
+[test](../../tests/programs/classes/inheritance_secondary_chain.py)): the class is of both
+types, each class of that chain follows the rules above, and none of them is a class of the
+primary chain (that is a trait, below). A secondary base's `@property` getter, abstract or not,
+is a method like its others, which the class may override with a property
+([test](../../tests/programs/classes/inheritance_secondary_properties.py)). An object of a class
+whose secondary base derives from another cannot be an `Any` value
+([error test](../../tests/errors/classes/dynany_secondary_chain.py)).
+
+A secondary base may also be a trait, as mypyc compiles them: a direct subclass of a class on
+the primary base's chain, above the primary base itself, that adds no fields (at most
+`__slots__ = ()`, no class attributes, no `__init__` and no stores to the instance), such as
+mypy's `Statement(Node)` in
+`class FuncDef(FuncItem, SymbolNode, Statement)`
+([test](../../tests/programs/classes/inheritance_traits.py)). Objects of the combined class begin
+with the fields of the class they share, so a value of the trait's type reads them. A trait's
+methods may read the instance and be properties, class or static methods, abstract or not, but
+may not call `super()`. Methods resolve in CPython's C3 order: the first class there whose body
+defines a method, among the class, its primary chain and its traits (also those of its primary
+base), gives it, and a trait's property replaces an inherited property whole, with its setter
+and deleter. A class's traits, its primary base's included, derive from the same class, and a
+trait's class method that overrides one of that chain's may not use `cls`. A method that a trait
+and the primary chain define apart, which their shared class does not, gives bound methods that
+compare equal through either base but cannot become a `Callable`. `__slots__` in such a
+hierarchy needs every trait to declare `__slots__ = ()`.

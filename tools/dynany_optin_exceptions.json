@@ -86,6 +86,48 @@
       "issue": "https://github.com/den-run-ai/pystachy/issues/1325"
     },
     {
+      "case": "tests/programs/classes/class_const_module.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/classes/class_const_module.py:9: error: cannot infer the type of class attribute 'y'; annotate it (y: T = ...)",
+      "reason": "With the pragma the entry module opts in to dynamic Any, whose constants do not type fields or class attributes (field inference reads only constants of modules that opt in to neither dynamic Any nor promoting ints); the unchanged program passes.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/9"
+    },
+    {
+      "case": "tests/programs/classes/class_const_module.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/classes/class_const_module.py:9: error: cannot infer the type of class attribute 'y'; annotate it (y: T = ...)",
+      "reason": "With the pragma the entry module opts in to dynamic Any, whose constants do not type fields or class attributes (field inference reads only constants of modules that opt in to neither dynamic Any nor promoting ints); the unchanged program passes.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/9"
+    },
+    {
+      "case": "tests/programs/inference/field_module_constants.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/inference/field_module_constants.py:21: error: cannot infer the type of field 'local'; annotate it (self.local: T = ...)",
+      "reason": "With the pragma the entry module opts in to dynamic Any, whose constants do not type fields or class attributes (field inference reads only constants of modules that opt in to neither dynamic Any nor promoting ints); the unchanged program passes.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/9"
+    },
+    {
+      "case": "tests/programs/inference/field_module_constants.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/inference/field_module_constants.py:21: error: cannot infer the type of field 'local'; annotate it (self.local: T = ...)",
+      "reason": "With the pragma the entry module opts in to dynamic Any, whose constants do not type fields or class attributes (field inference reads only constants of modules that opt in to neither dynamic Any nor promoting ints); the unchanged program passes.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/9"
+    },
+    {
+      "case": "tests/programs/inference/field_global_branches.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/inference/field_global_branches.py:32: error: cannot infer the type of field 'types'; annotate it (self.types: T = ...)",
+      "reason": "With the pragma the entry module opts in to dynamic Any, whose constants do not type fields or class attributes (field inference reads only constants of modules that opt in to neither dynamic Any nor promoting ints); the unchanged program passes.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/9"
+    },
+    {
+      "case": "tests/programs/inference/field_global_branches.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/inference/field_global_branches.py:32: error: cannot infer the type of field 'types'; annotate it (self.types: T = ...)",
+      "reason": "With the pragma the entry module opts in to dynamic Any, whose constants do not type fields or class attributes (field inference reads only constants of modules that opt in to neither dynamic Any nor promoting ints); the unchanged program passes.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/9"
+    },
+    {
       "case": "tests/programs/classes/isinstance_class_tuples_eq.py",
       "mode": "jit",
       "diagnostic": "tests/programs/classes/isinstance_class_tuples_eq.py:29: error: 'Base' object has no method 'label'",
@@ -98,6 +140,20 @@
       "diagnostic": "tests/programs/classes/isinstance_class_tuples_eq.py:29: error: 'Base' object has no method 'label'",
       "reason": "isinstance() with a tuple of classes narrows to their union only where no module opts in to dynamic Any, whose attempts end the narrowing's; there x keeps its class Base, as on main.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/1325"
+    },
+    {
+      "case": "tests/programs/classes/class_value_complex.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/classes/class_value_complex.py:8: error: isinstance() is only supported with the builtin types and classes as its second argument",
+      "reason": "With the pragma the entry module opts in to dynamic Any, where type(x) gives a class box, an Any value, as it did before class objects were typed, and isinstance() takes no Any value as its second argument; the unchanged program passes.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/9"
+    },
+    {
+      "case": "tests/programs/classes/class_value_complex.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/classes/class_value_complex.py:8: error: isinstance() is only supported with the builtin types and classes as its second argument",
+      "reason": "With the pragma the entry module opts in to dynamic Any, where type(x) gives a class box, an Any value, as it did before class objects were typed, and isinstance() takes no Any value as its second argument; the unchanged program passes.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/9"
     }
   ]
 }

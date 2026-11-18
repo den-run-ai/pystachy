@@ -1,0 +1,5 @@
+  rpow 2
+  rpow 3
+32 9
+TypeError: unsupported operand type(s) for ** or pow(): 'int' and 'NoneType'
+[exit 0]
