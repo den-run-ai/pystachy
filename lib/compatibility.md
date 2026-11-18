@@ -470,8 +470,9 @@ format.
 - An unsigned 8-byte value from 2\*\*63 on (`Q`, and the native `L`, `N` and `P`) raises
   `OverflowError: integer result does not fit in 64 bits` as it is unpacked, since Pystachy's ints
   are 64-bit ([deviation](../tests/deviations/lib_struct_unsigned64.py)).
-- Buffers are `bytes`: these functions take no `bytearray`, and Pystachy has no `memoryview` or `array`, and `pack_into()`,
-  which writes into one, raises `NotImplementedError`.
+- The buffer that is unpacked is `bytes` or a `bytearray`, whose bytes are read in place, and
+  `pack_into()` writes into a `bytearray`; Pystachy has no `memoryview` or `array`. `iter_unpack()`
+  of a bytearray gives its tuples at once, as of `bytes`, so the bytearray is free to change after.
 - A format of more than nine values gives a tuple of more than nine items, which can be unpacked
   into names and indexed, but not printed, compared or hashed
   ([tuples](../docs/language/typing.md)).
@@ -545,7 +546,8 @@ FIPS 180-4) and give CPython's digests. `md5()`, `sha1()`, `sha224()`, `sha256()
 return a hash object with `update()`, `digest()`, `hexdigest()`, `copy()`, `name`, `digest_size`
 and `block_size`; they take `usedforsecurity`, which changes nothing here.
 
-- Data is `bytes`. A `str` is a compile-time error, where CPython raises `TypeError`.
+- Data is `bytes` or a `bytearray`, whose bytes are taken as they are at the call. A `str` is a
+  compile-time error, where CPython raises `TypeError`.
 - SHA-384 and SHA-512 (their words are 64-bit, and Pystachy's `int` arithmetic is checked), SHA-3,
   SHAKE and BLAKE2 are not there, nor are `file_digest()`, `pbkdf2_hmac()` and `scrypt()`: a use
   of one is a compile-time error. `new()` raises CPython's `ValueError` (`unsupported hash type`)

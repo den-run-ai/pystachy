@@ -1,7 +1,7 @@
 """Program component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.reflection import refl_needs_eh, refl_props
-from src.pystachy_compiler.analysis import all_imports, chk_names, collect, constant_writes, defines, module_anns, module_ints, module_reads, module_strs, module_values, name_nodes, needs_eh, none_assigns, reads_builtin
+from src.pystachy_compiler.analysis import all_imports, buffer_escape, chk_names, collect, constant_writes, defines, module_anns, module_ints, module_reads, module_strs, module_values, name_nodes, needs_eh, none_assigns, reads_builtin
 from src.pystachy_compiler.diagnostics import NeedHierarchy, Rejoin, dynamic_program, fail, shown
 from src.pystachy_compiler.dynamic import comparison_properties, comparison_storage
 from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_protocol
@@ -11,27 +11,28 @@ from src.pystachy_compiler.names import RENAMED, owner, short
 from src.pystachy_compiler.pipeline import PreparedProgram
 from src.pystachy_compiler.specs import (
     ABSTRACT_DECOS,
+    BYTEARRAYS,
+    COMPLEXS,
     EXCBASES,
     EXCEPTIONS,
     FINAL_FIELD,
-    PLAIN_EXC_BASES,
-    exc_derives,
     GALIAS,
     GENERICS,
     INERT,
     INERT_DECOS,
-    is_excname,
     ITERS,
     MODATTRS,
     OBJECTS,
+    PLAIN_EXC_BASES,
     PURE,
     PYBUILTINS,
     RAISERS,
-    COMPLEXS,
     RANGES,
     RTSYM,
     TYPING,
     UNSUPPORTED,
+    exc_derives,
+    is_excname,
 )
 from src.pystachy_compiler.syntax import NOKIDS, Node, dc_args, has_kind, mentions, mk, names_in
 from src.pystachy_compiler.utils import (
@@ -1691,6 +1692,13 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
     phase = "runtime" if self.rtmode else "program"
     self.opts = optimizations()
     self.identity_modules(mods)  # (which modules' code tracks numeric identity: dynamic.py)
+    for m in mods:
+        bad = buffer_escape(m.body) if m.name == BYTEARRAYS else None
+        if bad is not None:
+            # (the compiler reuses a bytes's reads, and a bytearray's buffer changes: lib's module
+            # reads its buffers through its primitives alone)
+            self.line = bad.line
+            self.err(f"{BYTEARRAYS}.py reads a bytearray's buffer other than through its primitives (__pys_ba_*)")
     self.clsbodies = [m.body for m in mods]  # (class_values.py's class_value_annotated)
     # (lib's modules of range objects, of object()'s and of complex numbers bind no global of another module: the
     # names they bind do not keep a global of the program from being constant)

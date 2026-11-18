@@ -1295,6 +1295,10 @@ def gen_pcoerce(self, v: Val, t: str, f: FnInfo, j: int) -> Val:
         v = captured
     if v.t == "bool" and t == BIG and self.bool_numeric(f, j):
         v = self.to_big(v)  # (a bool that f reads only as a number: the int it equals, see bool_numeric)
+    if t == "" and j < len(f.params) and f.params[j] in f.bufs:
+        # a bytes | bytearray parameter (declare_fn): a bytearray as it is; another argument as
+        # an annotated bytes parameter takes it (its None check, its Any value's, its error)
+        t = BYTEARRAYC if unopt(v.t) == BYTEARRAYC else "bytes"
     value = self.coerce(v, t, what) if t != "" else v
     if identity_abi(f) and self.idhere() and self.fn_identity(f) and numeric_identity(value.t) and (not f.scalar_args or f.params[j] in f.idnames) and not self.dyn_id_fresh(value):
         # Capture now, before a later argument can rebind the original local or cell.

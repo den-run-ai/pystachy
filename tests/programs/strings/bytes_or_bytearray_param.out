@@ -1,0 +1,11 @@
+6 1006 True b'x' 3 9
+False True bytearray(b'\x07\x02\x03\x07') 1019
+b'\x07\x02\x03\x07-' b'x\x07\x02\x03\x07' b'\x07\x02\x03\x07y' bytearray(b'\x07\x02') b'a' bytearray(b'wxy')
+11 [5, 6] [b'\x07\x02\x03', b'\x07'] [b'ab', b'cd', b'e']
+7 4
+[10, 1000] [2, 0] 7 8 7
+301 97
+True True False
+IndexError: bytearray index out of range
+IndexError: index out of range
+[exit 0]

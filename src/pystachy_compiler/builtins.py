@@ -2746,12 +2746,20 @@ def gen_ba_prim(self, name: str, args: list[Node]) -> Val:
     # ValueError where x is no byte; __pys_ba_copy(dst, at, src, lo, n), dst[at:at + n] =
     # src[lo:lo + n], which may overlap; __pys_ba_same(a, i, b, j, n), whether a[i:i + n] is
     # b[j:j + n]; __pys_ba_find_byte(b, x, lo, hi) and __pys_ba_find(b, sub, lo, hi), the first
-    # index of byte x or of sub's bytes in b[lo:hi], or -1. An index outside the bytes raises
-    # IndexError
+    # index of byte x or of sub's bytes in b[lo:hi], or -1; __pys_ba_cap(b), b's length, which
+    # a buffer keeps from __pys_ba_new on (its capacity). An index outside the bytes raises
+    # IndexError. The module reaches a buffer through these alone (analysis.buffer_escape)
     ops = {"__pys_ba_new": "str_new", "__pys_ba_get": "byte", "__pys_ba_put": "str_put", "__pys_ba_copy": "copy",
-           "__pys_ba_same": "same", "__pys_ba_find_byte": "find_byte", "__pys_ba_find": "find_sub"}
+           "__pys_ba_same": "same", "__pys_ba_find_byte": "find_byte", "__pys_ba_find": "find_sub", "__pys_ba_cap": ""}
     if self.curfn.mod != BYTEARRAYS or name not in ops or len([a for a in args if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar"]) > 0:
         self.err(f"name '{name}' is not defined")
+    if name == "__pys_ba_cap":
+        if len(args) != 1:
+            self.err("__pys_ba_cap() takes one buffer")
+        b = self.expr(args[0], "")
+        if b.t != "bytes":
+            self.err(f"__pys_ba_cap() takes a buffer (bytes), not {typestr(b.t)}")
+        return Val(self.mload('int', b.v, ""), "int")
     vals: list[Val] = []
     for a in args:
         v = self.expr(a, "")
