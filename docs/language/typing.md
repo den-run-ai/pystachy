@@ -957,6 +957,14 @@ parameter. Pass a `float` to compile the function as annotated. An `int | float`
 as a `float` field that was [given an `int`](#int-values-in-float-locations) is, compiles
 the function for the union in the same way.
 
+The body then computes with `int` operations where CPython's does, and they follow the
+[`int` deviations](compatibility.md#numbers): a result past 64 bits raises `OverflowError`,
+unless the module opts in to [promoting ints](../python-int.md), and `int ** negative int`
+raises `ValueError`, where CPython returns the exact `int` or a `float`. Earlier releases
+rejected such calls at compile time
+([deviation](../../tests/deviations/int_for_float_int_ops.py)). A `float` argument, as in
+`10.0`, computes in floats.
+
 This applies to direct calls of module-level functions, of ordinary methods of classes
 outside inheritance hierarchies and of hand-written constructors (but an exception class's),
 whose fields then hold the `int` too. Other special methods, properties, static and class
