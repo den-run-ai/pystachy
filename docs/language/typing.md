@@ -893,6 +893,14 @@ of a `float` to the parameter, a store of the `int` into `float` storage (a fiel
 errors, which name the call and the parameter. Pass a `float` to compile the function as
 annotated.
 
+The body then computes with `int` operations where CPython's does, and they follow the
+[`int` deviations](compatibility.md#numbers): a result past 64 bits raises `OverflowError`,
+unless the module opts in to [promoting ints](../python-int.md), and `int ** negative int`
+raises `ValueError`, where CPython returns the exact `int` or a `float`. Earlier releases
+rejected such calls at compile time
+([deviation](../../tests/deviations/int_for_float_int_ops.py)). A `float` argument, as in
+`10.0`, computes in floats.
+
 This applies to direct calls of module-level functions and of ordinary methods of classes
 outside inheritance hierarchies. Constructors and other special methods, properties, static
 and class methods, closures, generators, cached functions, `*args`, methods of generic

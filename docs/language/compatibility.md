@@ -22,6 +22,7 @@ These programs can compile and run with different results, errors or timing of e
 |---|---|
 | Ordinary `int` | Signed 64-bit. Oversized results, intermediates and `int()` conversions raise `OverflowError`. Use explicit [`mpz`](../mpz.md) or opt in to [promoting ints](#promoting-ints-opt-in-prototype). |
 | `int ** negative int` | `ValueError`; `0 ** -1` still raises `ZeroDivisionError`. |
+| An `int` for a `float` parameter | The function is [compiled for the `int`](typing.md#int-arguments-for-float-parameters), so where CPython computes with the `int` its body follows the two rows above: `w * h` of `2**40` and `2**40` raises `OverflowError`, and `base ** exp` of `10` and `-3` raises `ValueError`. Earlier releases rejected these calls at compile time ([deviation](../../tests/deviations/int_for_float_int_ops.py)). |
 | Negative float to a fractional power | `ValueError`; CPython returns a complex number. |
 | `complex` identity | Each imaginary literal, operation and `complex()` of a number makes a new object; CPython shares a module's equal constants, so `x = 1j; y = 1j; x is y` is true there ([deviation](../../tests/deviations/complex_identity.py)). A NaN part hashes as a NaN does (below). |
 | `None` as `complex` in a union | A `complex` that holds `None`, stored where a union without `None` is declared, raises `TypeError`; CPython stores `None`, which mypy rejects ([deviation](../../tests/deviations/complex_union_none.py)). |
