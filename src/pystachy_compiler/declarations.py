@@ -3,6 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.analysis import attr_fills, attr_values, calls_init, local_names, nonexpr, stmt_walrus
 from src.pystachy_compiler.bigints import PROMOTES, callable_ints, narrowed
+from src.pystachy_compiler.builtin_bases import BWORDS
 from src.pystachy_compiler.diagnostics import Rejoin, int_lists, shown, where
 from src.pystachy_compiler.dynamic import comparison_record_write, comparison_storage_key
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val, tmpname
@@ -1798,6 +1799,11 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
                 ci.fopts[x] = b.fopts[x]  # (a dataclass's: its fields come first, as they are)
             if x in b.factory:
                 ci.factory[x] = b.factory[x]
+    elif self.bkind(ci.name) != "":
+        # the header of the builtin container it derives from (runtime.c's List), which only that
+        # container's code reads and writes: words that may hold references, by no name
+        for k in range(BWORDS[self.bkind(ci.name)]):
+            self.add_field(ci, f" {self.bkind(ci.name)}.{k}", "str")
     elif ci.tag != 0:
         self.add_field(ci, " class", "int")
     elif ci.exc != "":

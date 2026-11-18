@@ -18,6 +18,9 @@ LOOKUP = set("""
 analysis.BINDERS builtins.FSPRIMS
 ctypes_schema.SCALARS ctypes_schema.MARKERS
 bigints.BIGOPS bigints.BKEY bigints.PROMOTES bigints.NUMOPS bigints.NUMCALLS
+builtin_bases.BWORDS builtin_bases.BITER builtin_bases.BREV builtin_bases.BITEM builtin_bases.BSTORE
+builtin_bases.BDEL builtin_bases.BLEN builtin_bases.BTRUTH builtin_bases.BIN builtin_bases.BSHOW
+builtin_bases.BREPR builtin_bases.BARITH builtin_bases.BCMP builtin_bases.BITERATE
 cached_run.BUILD_ENV cached_run.CPU_FIELDS cached_run.KEYED_ENV
 cache_toolchain.SYSTEM_INPUTS
 driver.COMPILER_SOURCES driver.CPUID driver.LLJIT_LLVM driver.RTPARTS

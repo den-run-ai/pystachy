@@ -1,6 +1,7 @@
 """Program component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.reflection import refl_needs_eh, refl_props
+from src.pystachy_compiler.builtin_bases import builtin_base
 from src.pystachy_compiler.analysis import all_imports, collect, defines, module_ints, module_reads, module_strs, needs_eh, none_assigns, reads_builtin
 from src.pystachy_compiler.diagnostics import NeedHierarchy, Rejoin, dynamic_program, fail, shown
 from src.pystachy_compiler.dynamic import comparison_properties, comparison_storage
@@ -101,6 +102,8 @@ def gen_subclass_problem(self, st: Node) -> str:
         secondary = st.kids[2].s
         if primary not in self.classes or secondary not in self.classes or self.derives(primary, secondary):
             return why
+        if primary in self.bsubn or secondary in self.bsubn:
+            return "multiple inheritance with a class that derives from a builtin container is not supported"
         role = self.classes[secondary]
         if role.base != "" or len(role.node.kids) != 1 or secondary in self.tparams or secondary in self.nts:
             return why
@@ -126,6 +129,8 @@ def gen_subclass_problem(self, st: Node) -> str:
     if st.kids[1].kind == "name" and st.kids[1].s in self.classes and self.classes[st.kids[1].s].exc == "":
         base_ci = self.classes[st.kids[1].s]
         dc = len(st.kids[0].kids) == 2 and self.imported(st.kids[0].kids[1].s) == "dataclasses.dataclass"
+        if base_ci.name in self.bsubn:
+            return f"inheritance from {shown(base_ci.name)}, which derives from {builtin_base(self.bsubn[base_ci.name])}, is not supported: only a class that names the builtin type as its one base"
         if base_ci.name in self.nts:
             return "inheritance from a NamedTuple is not supported"
         if self.is_dc(base_ci.name) and not dc:
@@ -138,6 +143,11 @@ def gen_subclass_problem(self, st: Node) -> str:
             return "a class with inheritance and a decorator is not supported"
         return ""
     b = self.exc_base(st.kids[1])
+    if b == "" and len(st.kids) == 2 and builtin_base(st.kids[1]) != "" and not self.bound(builtin_base(st.kids[1])):
+        # class C(list), class C(list[T]): its objects begin as the builtin's do (builtin_bases.py)
+        if len(st.kids[0].kids) > 1:
+            return f"a class that derives from {builtin_base(st.kids[1])} with a decorator is not supported"
+        return ""
     if b == "" and len(st.kids) == 2 and st.kids[1].kind == "name" and short(st.kids[1].s) == "object":
         return UNSUPPORTED["subclass"] + " (the module may have rebound the name 'object' before this statement)"
     if b == "":
@@ -1271,7 +1281,9 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
                 ci.mod = m.name
                 ci.base = st.kids[1].s if st.kids[1].kind == "name" and st.kids[1].s in self.classes else self.exc_base(st.kids[1])
                 ci.exc = self.classes[ci.base].exc if ci.base in self.classes else ci.base
-                if ci.exc == "":
+                if ci.base == "" and len(st.kids) == 2 and builtin_base(st.kids[1]) != "":
+                    self.bsubn[st.s] = st.kids[1]  # (an ordinary class but for its objects' header: builtin_bases.py)
+                elif ci.exc == "":
                     ci.role = st.kids[2].s if len(st.kids) == 3 else self.classes[ci.base].role
                 elif len(st.kids) == 3:
                     ci.excsecond = self.exc_base(st.kids[2])
@@ -1643,7 +1655,11 @@ def gen_discover_program(self, prepared: PreparedProgram) -> None:
     timing_end(phase + ".discover", started)
     # Finite comparison field discoveries only grow (incompatible joins are
     # terminal). Finish these even if earlier fields used the ordinary join budget.
-    if len(self.newhints) > 0 and (not self.final or any(k.startswith("cmpfield:") or k.startswith("cmpwrite:") for k in self.newhints)):
+    for k in self.bnew:
+        # (what a class deriving from a bare builtin base holds, found on this pass, whose code
+        # before the fill made its objects without that type: the next pass has it from the start)
+        self.newhints[k] = self.bnew[k]
+    if len(self.newhints) > 0 and (not self.final or len(self.bnew) > 0 or any(k.startswith("cmpfield:") or k.startswith("cmpwrite:") for k in self.newhints)):
         raise Rejoin()  # (joins found wider types: the next pass compiles them, see join_hint)
     self.pipeline.complete("discover")
 

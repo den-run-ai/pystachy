@@ -1221,11 +1221,12 @@ inherited ones, and the comparisons it writes decline (return `NotImplemented` f
 of another class, so `Base(1) == Derived(1)` is false. `replace()` of a base-typed object
 makes an object of its own class.
 
-Builtin subclasses, NamedTuple inheritance, inheritance between a
-dataclass and a class that is not one, other decorated subclasses, field/method name
-collisions, and overriding a method with another kind of method are unsupported. Inherited
-class methods using `cls` retain restrictions on default values, imports and calls through a
-base-typed object. Exception classes follow the [exception rules](semantics.md#user-exception-classes).
+Subclasses of builtin types other than [`list`](#subclasses-of-list), NamedTuple inheritance,
+inheritance between a dataclass and a class that is not one, other decorated subclasses,
+field/method name collisions, and overriding a method with another kind of method are
+unsupported. Inherited class methods using `cls` retain restrictions on default values,
+imports and calls through a base-typed object. Exception classes follow the [exception
+rules](semantics.md#user-exception-classes).
 
 ### A method-only secondary base
 
@@ -1247,3 +1248,43 @@ base classes, `__slots__` in the combined hierarchy, a second secondary base alo
 the same primary chain, and secondary bases with fields, properties, constructors
 or other special methods are outside
 this subset. Single inheritance from the combined class works.
+
+### Subclasses of list
+
+A class may name `list` or `list[T]` as its one base, as `traceback.StackSummary`,
+`functools._HashedSeq` and the `email` package's `TokenList` do. Its objects are lists to
+every operation the class does not define: indexing, slices, item stores and deletion,
+`len()`, truth, iteration and the builtins that iterate, `in`, `repr()` and `str()`, the
+comparisons, `+`, `*`, `+=` and list's methods. An object begins with the list's header,
+followed by the class's own fields, so such an operation is list's own code on the same
+pointer: the same runtime calls and inline paths, with no class test (an object that may be
+`None` is tested for it first, as a `list[T] | None` is, and raises CPython's error). The
+class keeps its methods, fields set in `__init__`, class attributes, properties, `__slots__`,
+`__hash__` and any special method it defines; `type(x).__name__` is its name, and
+`isinstance(x, list)` is true.
+
+The class's `__init__` may call `super().__init__()` or `super().__init__(items)`, and its
+methods reach list's own methods through `super().m(...)` or `list.m(self, ...)`. A class
+without `__init__` is made by `C()` or `C(items)`, as `list()` makes a list. List's own
+operations call none of the class's methods, as in CPython: `C(items)`, `+=` and `extend()`
+fill the list as list does where the class defines `append()` or `extend()`. Each comparison
+operator is list's unless the class defines that operator's method, so a class that defines
+`__eq__` alone still compares `!=` as list does, and a right operand whose class defines the
+reflected method is asked first. A slice, `+`, `*` or `copy()` makes a plain list, as in
+CPython. Without `__eq__` and `__hash__` the objects are unhashable, as lists are.
+
+A bare `list` base takes its item type from the first item stored into one of its objects,
+as an empty list does: an item that `C(items)`, `super().__init__(items)`, `append()`,
+`insert()`, `extend()`, `+=` or a slice assignment stores, in any function. Name it in the base
+(`class C(list[str])`) where nothing stores an item or where items of different types are
+stored; all objects of the class, and of its specializations, hold one item type.
+
+An object keeps its class only in storage of its class: variables, fields, unannotated
+parameters (which specialize the function, as for any class) and containers such as
+`list[C]`. Storing it where a `list[T]` is expected (an annotated parameter, return or
+variable, or an item of `list[list[T]]`), as a dynamic `Any` value, or copying it with
+`copy.copy()` or `copy.deepcopy()` is rejected rather than losing its class; `list(x)` copies
+the items. Other builtin bases (`dict`, `set`, `str`, `int`, `tuple`), a class deriving from a
+list subclass, a list subclass in multiple inheritance or with a decorator, a `TypeVar` item
+type, `__new__`, special methods called through `super()` other than `__init__`, `__repr__`,
+`__str__` and `__len__`, and sequence patterns in `match` on such an object are unsupported.

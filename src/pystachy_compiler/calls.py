@@ -2,6 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.analysis import local_names, numeric_statement
 from src.pystachy_compiler.bigints import converts
+from src.pystachy_compiler.builtin_bases import BWORDS, has_def
 from src.pystachy_compiler.diagnostics import dynamic_program, shown, where
 from src.pystachy_compiler.generators import fresh_yield_context
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val, tmpname
@@ -175,6 +176,8 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
                 made = [Val("", f.s)]
                 self.init_result(self.call_fn(self.classes[f.s].methods["__init__"], made, args, want, resultsoft=resultsoft, typeargs=typeargs))
                 return made[0]
+            if self.bkind(f.s) != "" and not has_def(self.classes[f.s].node, "__init__"):
+                return self.bmake(f.s, args)  # (the builtin container's __init__: builtin_bases.py)
             o = self.new_obj(f.s)
             self.init_result(self.call_fn(self.classes[f.s].methods["__init__"], [o], args, direct=True))
             return o
@@ -847,6 +850,13 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
         if s.t != "str":
             self.err(f"fromhex() argument must be str, not {tname(s.t)}")
         return Val(self.rt("pys_bytes_fromhex", "ptr", [f"ptr {s.v}"]), "bytes")
+    if len(self.bsubn) > 0 and o.t.startswith("fn[b:") and o.t[5:-1] in BWORDS and len(args) > 0 and args[0].kind in ["name", "attr"] and self.bkind(unopt(self.target_type(args[0], True))) == o.t[5:-1]:
+        # list.m(o, args) of an object o of a class deriving from list, as its methods name it
+        # (list.append(self, x), list.__init__(self, xs)): list's own m (builtin_bases.py)
+        me = self.expr(args[0], "")
+        if self.bkind(me.t) == o.t[5:-1]:
+            return self.bsuper(me, m, args[1:])
+        args = [self.vnode(me)] + args[1:]
     if (o.t == "fn[b:str]" or o.t == "fn[b:list]" or o.t == "fn[b:dict]") and (has_method(o.t[5:-1], m) or (o.t == "fn[b:str]" and (m == "format" or m == "format_map"))):
         return self.unbound_call(o.t[5:-1], m, args, "" if resultsoft else want)
     if is_kw(o.t):
@@ -907,6 +917,11 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
             self.fn_attr_read(o, m)
             self.glue_field(o, m)
             return self.obj_call(self.getfield(o, self.field(o, m), m), args, want, resultsoft)  # (o.f(args) of a field f)
+        if m not in ci.methods and self.bkind(o.t) != "":
+            # a method that a class deriving from a builtin container does not define: the
+            # container's own, on the object as that container (builtin_bases.py)
+            self.bfill(o.t, m, args)
+            return self.method(self.bview(o), m, args, want, resultsoft)
         if m not in ci.methods and not ((m == "_replace" or m == "_asdict" or m == "_make" or m == "index" or m == "count") and o.t in self.nts):
             self.err(f"'{shown(o.t)}' object has no method '{m}'")  # (a specialization's is its class's)
         self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
@@ -1233,6 +1248,8 @@ def gen_new_obj(self, c: str) -> Val:
     self.nn[o.v] = True
     if self.classes[c].tag > 0:
         self.mstore('int', f'{self.classes[c].tag}', o.v)
+    if self.bkind(c) != "":
+        self.binit(o)  # (the header of the builtin container it derives from: builtin_bases.py)
     if not (self.is_dc(c) and "no-init" not in self.classes[c].dcopts and self.classes[c].methods["__init__"].node.kids[0].kind == "noann"):
         line = self.line
         self.class_defaults(o)

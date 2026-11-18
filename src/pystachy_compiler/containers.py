@@ -1,5 +1,6 @@
 """Containers component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+from src.pystachy_compiler.builtin_bases import BITER, BREPR, BSHOW
 from src.pystachy_compiler.analysis import none_display, walrus_names
 from src.pystachy_compiler.bigints import big_tree, held, narrow_type
 from src.pystachy_compiler.conversions import ends_in_id
@@ -258,7 +259,7 @@ def gen_star_items(self, x: Node) -> Val:
     if self.iterator_call(x) or self.is_mapcall(x) or (x.kind == "listcomp" and x.s == "gen"):
         return self.consume(x, "")
     none = "TypeError: Value after * must be an iterable, not NoneType"
-    v = self.unwrap(self.expr(x, ""), none)
+    v = self.unwrap(self.bdecay(self.expr(x, ""), BITER), none)  # (builtin_bases.py)
     if v.t in self.nts:
         self.notnone(v, none)
         v = self.ntup(v, True)
@@ -873,7 +874,8 @@ def gen_hash_kind(self, c: str) -> str:
     ms = self.classes[c].methods
     if "__hash__" in ms and ("__eq__" not in ms or self.derives(ms["__hash__"].cls, ms["__eq__"].cls)):
         return "user"
-    return "" if "__eq__" in ms else "id"
+    # (nor a class that derives from a builtin container, whose __eq__ and __hash__ = None it has)
+    return "" if "__eq__" in ms or self.bkind(c) != "" else "id"
 
 def gen_hash_classes(self, t: str) -> list[ClassInfo]:
     # the classes an object of static class t may be of (its own, and those derived from it),
@@ -1172,6 +1174,8 @@ def gen_to_str(self, v: Val) -> Val:
         return Val(self.select(v.v, Val(self.sconst("True"), "str"), Val(self.sconst("False"), "str")), "str")
     if t == "None" or t == NONEVAR:
         return Val(self.sconst("None"), "str")  # (also a local that only None has reached so far: none_read)
+    if self.bdecays(t, BSHOW):
+        return self.to_str(self.bview(v))  # (the builtin container's, which its class derives from: builtin_bases.py)
     if t in self.classes:
         return self.obj_str(v, "__str__")
     if t == "opt[str]":
@@ -1370,6 +1374,8 @@ def gen_repr(self, v: Val) -> Val:
         return self.big_tuple_repr(v)  # (of promoting ints, item by item: bigints.py)
     if self.reference_union(v.t):
         return self.refl_union_str(v, "__repr__")  # (each class's: reflection.py)
+    if self.bdecays(v.t, BREPR):
+        return self.repr(self.bview(v))  # (the builtin container's, which its class derives from: builtin_bases.py)
     if v.t in self.classes:
         return self.obj_str(v, "__repr__")
     if v.t == "None" or v.t == NONEVAR:

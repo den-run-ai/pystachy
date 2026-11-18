@@ -1,5 +1,6 @@
 """Variables component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+from src.pystachy_compiler.builtin_bases import BDEL, BITEM, BITER, BSTORE
 from src.pystachy_compiler.utils import identity_default, is_union, umembers
 import os
 from src.pystachy_compiler.analysis import (
@@ -1854,9 +1855,13 @@ def gen_target_type(self, n: Node, base: bool = False) -> str:
         return self.ltype.get(n.s, self.gtypes.get(n.s, "") if self.is_global(n.s) else "")
     if n.kind == "slice":
         t = unopt(self.target_type(n.kids[0], True))
+        if self.bdecays(t, BSTORE) and "?" not in self.bbase(t):
+            t = self.bbase(t)  # (builtin_bases.py)
         return t if is_list(t) or t == "dyn" else ""
     if n.kind == "attr" or n.kind == "index":
         t = self.target_type(n.kids[0], True)
+        if n.kind == "index" and self.bdecays(t, BSTORE) and "?" not in self.bbase(t):
+            t = self.bbase(t)  # (an item of the builtin container its class derives from: builtin_bases.py)
         if t == "dyn":
             return "dyn"  # (an Any value's item or attribute: a display stored there holds Any values, cont[k] = {})
         if n.kind == "attr" and self.is_prop(t, n.s):
@@ -1906,6 +1911,8 @@ def gen_target_type(self, n: Node, base: bool = False) -> str:
 
 def gen_assign(self, t: Node, v: Val) -> None:
     k = t.kind
+    if (k == "tuple" or k == "list") and self.bdecays(v.t, BITER):
+        v = self.bview(v)  # (a, b = o: the items of the builtin container its class derives from, builtin_bases.py)
     if k == "index" and t.kids[0].kind == "attr" and t.kids[1].kind != "slice" and self.dotted(t.kids[0]) == "os.environ":
         # os.environ[name] = value: the process's environment, as os.environ.__setitem__() sets it
         name = self.coerce(self.expr(t.kids[1], "str"), "str", "the name in os.environ[...]")
@@ -2023,6 +2030,9 @@ def gen_assign(self, t: Node, v: Val) -> None:
     elif k == "index":
         o = self.expr(t.kids[0], self.default_want(t.kids[0], "[]", [t.kids[1]], v.t))
         nosub = "TypeError: 'NoneType' object does not support item assignment"
+        if self.bdecays(o.t, BSTORE):
+            self.bstored(o.t, t.kids[1], v.t)
+            o = self.bview(o)  # (o[k] = v of the builtin container its class derives from: builtin_bases.py)
         if o.t == "dyn":
             self.dyn_setitem(o, self.expr(t.kids[1], "dyn"), v)  # (by its box's type: dynamic.py)
             return
@@ -2052,6 +2062,11 @@ def gen_assign(self, t: Node, v: Val) -> None:
             self.err(f"'{o.t}' does not support item assignment")
     elif k == "slice":
         bnd: list[str] = []
+        ot = unopt(self.target_type(t.kids[0], True)) if len(self.bsubn) > 0 else ""
+        if self.bkind(ot) != "" and "?" in self.bbase(ot):
+            # (o[a:b] = v, the first items of an object of a class deriving from a bare list: builtin_bases.py)
+            vt = self.bbase(v.t) if self.bdecays(v.t, BITER) else unopt(v.t)
+            self.bfound(ot, self.ctype("list", [self.iter_elem(vt) if self.iter_elem(vt) != "" else "?"]))
         o = self.slice_target(t, bnd, "TypeError: 'NoneType' object does not support item assignment")
         self.slice_store(o, bnd, v)
     elif (k == "tuple" or k == "list") and v.t == "dyn" and not starred_target(t):
@@ -2121,7 +2136,7 @@ def gen_slice_target(self, t: Node, bnd: list[str], nosub: str, raw: list[str] |
     # nosub. A dynamic augmented assignment also keeps the evaluated bounds in raw/values:
     # CPython converts them again at the store, after the RHS has run. Strs and tuples cannot
     # change, and Pystachy has no slice objects for __setitem__
-    o = self.expr(t.kids[0], "")
+    o = self.bdecay(self.expr(t.kids[0], ""), BSTORE if "assignment" in nosub else BDEL if "deletion" in nosub else BITEM)  # (builtin_bases.py)
     dvs: list[Val] = []
     if o.t == "dyn":
         for j in range(3):

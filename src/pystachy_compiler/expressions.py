@@ -1,5 +1,6 @@
 """Expressions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+from src.pystachy_compiler.builtin_bases import BARITH, BCMP, BIN, BITEM, BITER, BREV, BTRUTH
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.bigints import TSLOT_BIG, big_tree, big_viewable, held, narrow_type, narrows, search_type
 from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
@@ -477,6 +478,8 @@ def gen_isinst(self, t: str, c: Node) -> int:
             return 1 if is_dict(t) else -2 if self.dict_object(t) else 0
         if is_list(t) or (abc == "Sequence" and (t == "str" or t == "bytes" or is_tuple(t) or is_vtuple(t))):
             return 1
+        if self.bkind(t) == "list":
+            return -2  # (an object of a class deriving from list, unless it is None: builtin_bases.py)
         return -2 if abc == "Sequence" and (t in self.nts or t == RANGEC) else 0  # (a range is a Sequence too)
     if c.kind != "name":
         return -1
@@ -524,6 +527,8 @@ def gen_isinst(self, t: str, c: Node) -> int:
         return 1
     if c.s == "dict" and self.dict_object(t):
         return -2  # (unless it is None)
+    if self.bkind(t) != "" and self.bkind(t) == c.s:
+        return -2  # (an object of a class deriving from it, unless it is None: builtin_bases.py)
     if c.s == "list" or c.s == "dict" or c.s == "tuple" or c.s == "set" or c.s == "frozenset":
         return 1 if t.startswith(c.s + "[") else 0
     if c.s == "type" and t == "exctype":
@@ -642,6 +647,8 @@ def gen_cond(self, n: Node) -> str:
 def gen_truth(self, v: Val) -> str:
     if v.t == "dyn":
         return self.dyn_truth(v)  # (dynamic.py)
+    if self.bdecays(v.t, BTRUTH):
+        v = self.bview(v, True)  # (None, or the builtin container it derives from: builtin_bases.py)
     if is_union(unopt(v.t)):
         return self.uop(v, "truth").v
     t = v.t
@@ -1190,7 +1197,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     if k == "index":
         return self.index(n, want)
     if k == "slice":
-        o = self.expr(n.kids[0], "")
+        o = self.bdecay(self.expr(n.kids[0], ""), BITEM)  # (a list subclass's slice is a list's: builtin_bases.py)
         if o.t == RANGEC:
             # a range object's slice: the range of those items (lib/_pystachy_range.py's _slice,
             # of the bounds given, a bool as an int, else None)
@@ -1228,6 +1235,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     if (k == "list" or k == "tuple") and len([x for x in n.kids if x.kind == "starred"]) > 0:
         return self.star_display(n, want)  # ([a, *xs], (a, *xs))
     if k == "list":
+        if self.bkind(unopt(want)) == "list" and "?" not in self.bbase(unopt(want)):
+            want = self.bbase(unopt(want))  # (a display is a list, typed as the list that the class expected there derives from: builtin_bases.py)
         et = elem(want) if is_list(want) and "?" not in want else ""
         soft = n is self.soft  # (an operand of ==: as its items are, see compare)
         if et == "" and not soft and self.dyn_policy(n.line) and self.dyn_mixed(n.kids):
@@ -3011,6 +3020,8 @@ def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
                 self.raise_("TypeError", self.sconst(error))
                 return Val("undef", "int")
             n = mk("index", "", n.line, [self.vnode(o), self.vnode(index)])
+    if self.bdecays(o.t, BITEM):
+        o = self.bview(o)  # (o[i] of a class deriving from a builtin container, as the container's: builtin_bases.py)
     t = unopt(o.t)
     sub = "TypeError: 'NoneType' object is not subscriptable"  # (once the index is evaluated)
     if t == "dyn":
@@ -3227,6 +3238,10 @@ def gen_obj_iterator(self, v: Val, none: str, missing: str, name: str = "__iter_
     # name "__reversed__", reversed(v): only the list its __reversed__ returns the iterator of. v
     # None raises none ("Kind: text"); missing is the error where v's class does not define
     # __iter__ (CPython iterates by __getitem__ then, which is not supported)
+    if self.bdecays(v.t, BITER if name == "__iter__" else BREV):
+        # (an object of a class deriving from a builtin container, which leaves iteration to
+        # it: the container itself, as its items are read where it stands: builtin_bases.py)
+        return self.as_list(self.unwrap(self.bview(v), none), "iter") if not is_list(self.bbase(v.t)) else self.unwrap(self.bview(v), none)
     ms = self.classes[v.t].methods
     if name not in ms and "__getitem__" in ms:
         self.err(f"iterating over {short(v.t)} by its __getitem__ is not supported (CPython calls __getitem__(0), __getitem__(1), ... until IndexError): define __iter__")
@@ -4921,6 +4936,10 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
         if error != "" and a.infer_from == "" and b.infer_from == "":
             self.raise_("TypeError", self.sconst(error))
             return Val("undef", "int")
+    if len(self.bsubn) > 0 and (op == "+" or op == "*"):
+        # (xs + ys and xs * n of a list subclass's object make a plain list: builtin_bases.py)
+        a = self.bdecay(a, BARITH)
+        b = self.bdecay(b, BARITH)
     if a.t == "int" and b.t == "int" and a.lit and b.lit and dynamic_program():
         folded = folded_int(op, a.v, b.v)
         if folded != "":
@@ -5198,6 +5217,10 @@ def gen_compare(self, n: Node) -> Val:
         # [] == xs, {} in ds, [None] == xs: an empty display, or one of None, takes its type
         # from the other side (it has nothing to evaluate first)
         b = self.expr(n.kids[1], "")
+        if ops[0] == "in" or ops[0] == "not in" or ops[0] in BCMP:
+            # (an object of a class deriving from a builtin container, compared or searched as
+            # that container where its class leaves it the method: builtin_bases.py)
+            b = self.bdecay(b, BIN if ops[0] == "in" or ops[0] == "not in" else [BCMP[ops[0]][1]])
         w = b.t
         if ops[0] == "in" or ops[0] == "not in":
             w = elem(b.t) if is_list(b.t) else targs(b.t)[0] if is_dict(b.t) else ""
@@ -5251,6 +5274,8 @@ def gen_compare(self, n: Node) -> Val:
         return self.num_cmp('!=' if ops[0] == 'in' else '==', Val(hit, "int"), Val('0', "int"))
     if len(ops) == 1:
         w = a.t
+        if (ops[0] == "==" or ops[0] == "!=") and self.bdecays(a.t, [BCMP[ops[0]][0]]):
+            w = unopt(self.bview(a).t)  # (o == []: the display is the builtin container's: builtin_bases.py)
         rhs = n.kids[1]
         if (ops[0] == "in" or ops[0] == "not in") and unopt(a.t) == "str" and rhs.kind == "list" and 0 < len(rhs.kids) <= 8 and all(e.kind == "str" or e.kind == "None" for e in rhs.kids):
             # A short list of string/None literals cannot escape or run user code.
@@ -5585,6 +5610,15 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         if error != "" and a.infer_from == "" and b.infer_from == "":
             self.raise_("TypeError", self.sconst(error))
             return Val("undef", "bool")
+    if len(self.bsubn) > 0 and op != "is" and op != "is not":
+        # (an object of a class deriving from a builtin container compares, and is searched,
+        # as that container where the class defines no method for it: builtin_bases.py)
+        if op == "in" or op == "not in":
+            b = self.bdecay(b, BIN)
+        else:
+            ab = self.bcompared(op, a, b)
+            a = ab[0]
+            b = ab[1]
     if a.t == "dyn" or b.t == "dyn":
         dc = self.dyn_cmp2(op, a, b)  # (a dynamic value's: dynamic.py)
         if dc.t != "":

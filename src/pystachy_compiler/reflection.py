@@ -2918,6 +2918,9 @@ def gen_copy_prim(self, name: str, args: list[Node]) -> Val:
         return self.bmethod(x, "copy", [])
     if name == "__pys_copy_is_own" or name == "__pys_deepcopy_is_own":
         deep = name == "__pys_deepcopy_is_own"
+        if self.bkind(t) != "":
+            # (its slots begin with the container's header, whose copy would share the items: builtin_bases.py)
+            self.err(f"{'copy.deepcopy()' if deep else 'copy.copy()'} of an object of {short(t)}, a class that derives from {self.bkind(t)}, is not supported yet")
         own = self.copy_own(x.t, deep)
         if own == 2:
             what = "copy.deepcopy()" if deep else "copy.copy()"

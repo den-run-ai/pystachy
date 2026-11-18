@@ -1414,6 +1414,12 @@ def gen_super_call(self, sc: Node, m: str, args: list[Node], based: bool = False
     # (super(C, self), in a method of class C, is super(): C as the loader qualifies it, m$C in
     # module m, and read as the module's name, not a local's)
     same = len(sc.kids) == 3 and sc.kids[1].kind == "name" and sc.kids[1].s == cls and self.globread(cls) and sc.kids[2].kind == "name" and sc.kids[2].s == me0
+    if cls != "" and self.bkind(cls) != "":
+        # super().m(args) in a method of a class deriving from a builtin container: the
+        # container's own m, on the object as that container (builtin_bases.py)
+        if (len(sc.kids) > 1 and not same) or me0 == "" or read:
+            self.err(f"super() in a class that derives from {self.bkind(cls)} is only supported as super().method(...) in an instance method (super({short(cls)}, self) is super())")
+        return self.bsuper(self.expr(mk("name", me0, sc.line, []), "") if captured is None else captured, m, args)
     ordinary = cls in self.classes and self.classes[cls].tag > 0
     if ordinary and len(sc.kids) == 3 and sc.kids[1].kind == "name" and sc.kids[1].s in self.classes and self.derives(cls, sc.kids[1].s) and self.globread(sc.kids[1].s) and sc.kids[2].kind == "name" and sc.kids[2].s == me0:
         same = True

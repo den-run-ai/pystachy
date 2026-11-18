@@ -1237,6 +1237,23 @@ from src.pystachy_compiler.statements import (
     gen_while_ as statements_while_,
 )
 from src.pystachy_compiler.syntax import Node, mk
+from src.pystachy_compiler.builtin_bases import (
+    gen_bbase as builtin_bases_bbase,
+    gen_bbuiltin as builtin_bases_bbuiltin,
+    gen_bcompared as builtin_bases_bcompared,
+    gen_bdecay as builtin_bases_bdecay,
+    gen_bearly as builtin_bases_bearly,
+    gen_bdecays as builtin_bases_bdecays,
+    gen_bfill as builtin_bases_bfill,
+    gen_bfound as builtin_bases_bfound,
+    gen_binit as builtin_bases_binit,
+    gen_bitems as builtin_bases_bitems,
+    gen_bkind as builtin_bases_bkind,
+    gen_bmake as builtin_bases_bmake,
+    gen_bstored as builtin_bases_bstored,
+    gen_bsuper as builtin_bases_bsuper,
+    gen_bview as builtin_bases_bview,
+)
 from src.pystachy_compiler.structs import (
     StructFmt,
     gen_struct_call as structs_struct_call,
@@ -1721,6 +1738,15 @@ class Gen:
         self.genbase: dict[str, str] = {}
         self.genargs: dict[str, list[str]] = {}
         self.pep695: dict[str, bool] = {}  # the generic classes of PEP 695's syntax, class C[T] (reflection: __type_params__)
+        # the classes that derive from a builtin container (builtin_bases.py), class C(list): each
+        # one's base as its class statement names it; the builtin type its objects begin as, once
+        # asked for (bbase: list[T], or list[?] where a bare base's items have no type yet); and
+        # the types that fills showed on this pass, by hint key, which end it (bfound). Program
+        # state, as nts is: a frame saves none of it, dry() may type a base (the items an
+        # expression stores are what they are), and a Rejoin's fresh Gen starts from the hints
+        self.bsubn: dict[str, Node] = {}
+        self.bsub: dict[str, str] = {}
+        self.bnew: dict[str, str] = {}
         # the type aliases, by qualified name: the statement that binds each (Mod.taliases), and
         # those whose annotation alias_ann is making the type of
         self.taliases: dict[str, Node] = {}
@@ -5260,6 +5286,51 @@ class Gen:
 
     def bytes_method(self, o: Val, m: str, args: list[Node]) -> Val:
         return builtins_bytes_method(self, o, m, args)
+
+    def bkind(self, t: str) -> str:
+        return builtin_bases_bkind(self, t)
+
+    def bbase(self, t: str) -> str:
+        return builtin_bases_bbase(self, t)
+
+    def bdecays(self, t: str, own: list[str]) -> bool:
+        return builtin_bases_bdecays(self, t, own)
+
+    def bview(self, v: Val, sized: bool = False) -> Val:
+        return builtin_bases_bview(self, v, sized)
+
+    def bdecay(self, v: Val, own: list[str], sized: bool = False) -> Val:
+        return builtin_bases_bdecay(self, v, own, sized)
+
+    def bbuiltin(self, name: str, v: Val, n: int) -> Val:
+        return builtin_bases_bbuiltin(self, name, v, n)
+
+    def bcompared(self, op: str, a: Val, b: Val) -> list[Val]:
+        return builtin_bases_bcompared(self, op, a, b)
+
+    def bstored(self, t: str, key: Node, vt: str) -> None:
+        builtin_bases_bstored(self, t, key, vt)
+
+    def bsuper(self, me: Val, m: str, args: list[Node]) -> Val:
+        return builtin_bases_bsuper(self, me, m, args)
+
+    def bearly(self, t: str) -> None:
+        builtin_bases_bearly(self, t)
+
+    def bfound(self, t: str, b: str) -> None:
+        builtin_bases_bfound(self, t, b)
+
+    def bfill(self, t: str, m: str, args: list[Node]) -> None:
+        builtin_bases_bfill(self, t, m, args)
+
+    def bitems(self, a: Node) -> str:
+        return builtin_bases_bitems(self, a)
+
+    def binit(self, o: Val) -> None:
+        builtin_bases_binit(self, o)
+
+    def bmake(self, c: str, args: list[Node]) -> Val:
+        return builtin_bases_bmake(self, c, args)
 
     def struct_call(self, name: str, args: list[Node], want: str) -> Val | None:
         return structs_struct_call(self, name, args, want)

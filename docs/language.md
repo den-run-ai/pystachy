@@ -40,7 +40,7 @@ their own contracts; [interoperability](ffi.md) covers C, embedded CPython and e
 | [Static typing](language/typing.md) | 🟢 Native<br>🟡 Unions | Inferred locals, returns and per-call specializations; closed unions; `T \| None` narrowing; `Callable`; generic functions and classes, including PEP 695; type aliases | General object unions | Mutable containers are invariant; empty containers need a type; recursive value aliases are a prototype |
 | [`Any` values](dynamic-any.md) | 🟢 Native<br>🧪 Dynamic | `Any` annotations specialize to concrete types; with `# pystachy: dynamic-any`, runtime-typed values with lazy iteration, comparisons and numeric protocols | Runtime-typed values in modules that do not opt in | Unsupported cross-type comparison bodies raise `TypeError`; some typed boundaries lose numeric identity |
 | [Functions](language/typing.md#functions-callables-and-closures) | 🟢 Native | Every parameter kind and default; lambdas, closures and `nonlocal`; function decorators; `*args` and `**kwargs` per call shape; `Callable` values and bound methods | — | `f(*xs)` of a list and run-time `**` expansion; `Callable[..., R]`; keyword calls through a `Callable` |
-| [Classes](language/typing.md#single-inheritance) | 🟢 Native<br>🟡 Hierarchies | Fields, methods, properties, static and class methods, operator methods, dataclasses, `NamedTuple`, single inheritance with overrides and `super()`, one method-only secondary base, two plain builtin exception bases, `__slots__`, `abc` | General multiple inheritance; subclasses of builtin types; general metaclasses and class decorators; `__getattr__`-style hooks | No reflected arithmetic (`__radd__`) or `NotImplemented` results |
+| [Classes](language/typing.md#single-inheritance) | 🟢 Native<br>🟡 Hierarchies | Fields, methods, properties, static and class methods, operator methods, dataclasses, `NamedTuple`, single inheritance with overrides and `super()`, one method-only secondary base, two plain builtin exception bases, [`list` as a base](language/typing.md#subclasses-of-list), `__slots__`, `abc` | General multiple inheritance; subclasses of builtin types other than `list`; general metaclasses and class decorators; `__getattr__`-style hooks | No reflected arithmetic (`__radd__`) or `NotImplemented` results |
 | [Reflection](language/semantics.md#reflection) | 🟡 Bounded | `getattr`, `setattr`, `hasattr`, `vars`, `dir` and `type(x).__name__` on classes the compiler knows | `eval`, `exec`; values of attributes named at run time | A run-time name works where only its text or a test is needed |
 | [Statements](language/semantics.md#statements) | 🟡 Bounded | Assignment and unpacking, `:=`, `if`, loops with `else`, `with`, `assert`, `del`, `global`, `nonlocal`; [bounded `match`](language/semantics.md#structural-patterns) | Mapping and general sequence/class patterns; `async` and `await` | Deleting a global from a function |
 | [Generators and iterators](language/semantics.md#generators) | 🟢 Direct<br>🟡 Suspended | `yield`, `yield from`, `send()`, `throw()` and `close()`; generator expressions; iterator classes; lazy `itertools` | — | A dropped suspended generator is never closed; some consumers materialize their input |
@@ -214,15 +214,18 @@ Classes support fields, methods, class attributes, `@property` with `@x.setter` 
   annotated parameters, and class templates, NamedTuples, builtin types and mixed
   dataclass/ordinary hierarchies cannot take part
   ([single inheritance](language/typing.md#single-inheritance)).
+- **`list` as a base:** `class C(list)` and `class C(list[T])` make objects that are lists to
+  every operation the class does not define, compiled as list's own operations, with the
+  class's methods, attributes and `__slots__` ([subclasses of list](language/typing.md#subclasses-of-list)).
 - **Generic classes** declare `Generic[...]` or PEP 695 type parameters (`class Box[T]`) and
   have no other base. Exception classes have their own [inheritance rules](#exceptions).
 - **Reflection** (`getattr`, `setattr`, `hasattr`, `vars`, `dir`, `type(x).__name__`) works on
   objects whose classes the compiler knows; an attribute name computed at run time is
   supported where only its text or a test is needed ([reflection](language/semantics.md#reflection)).
 
-Multiple inheritance, subclasses of builtin types, dynamic attribute hooks, general
-metaclasses and general class or method decorators remain outside the supported subset.
-See [object protocols](language/semantics.md#object-protocols) and the
+Multiple inheritance, subclasses of builtin types other than `list`, dynamic attribute
+hooks, general metaclasses and general class or method decorators remain outside the
+supported subset. See [object protocols](language/semantics.md#object-protocols) and the
 [class restrictions](language/compatibility.md#classes-dataclasses-and-namedtuples).
 
 ## Statements
@@ -336,7 +339,7 @@ separately in [FFI](ffi.md).
 A program that needs an unsupported feature gets a compile-time error. Supported templates
 can avoid compiling unused branches that contain one. The main gaps:
 
-- **Object model:** multiple inheritance beyond [one method-only secondary base](language/typing.md#a-method-only-secondary-base), subclasses of builtin types, general metaclasses and
+- **Object model:** multiple inheritance beyond [one method-only secondary base](language/typing.md#a-method-only-secondary-base), subclasses of builtin types other than `list`, general metaclasses and
   class decorators, dynamic attribute hooks, and attribute values looked up by names only the
   run time knows (their text and `hasattr()` are supported).
 - **Values:** `bytearray`, `memoryview`, slice objects and

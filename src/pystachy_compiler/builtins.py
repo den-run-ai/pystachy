@@ -1,5 +1,6 @@
 """Builtins component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+from src.pystachy_compiler.builtin_bases import BITER
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.diagnostics import int_lists
 from src.pystachy_compiler.ir import Data, Ins, IterArg, Loop, Reduce, Val
@@ -870,6 +871,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     else:
         vals = [self.expr(a, w, resultsoft=resultsoft) for a in args if a.kind != "kw"]
         kvals = [self.expr(a.kids[0], "") for a in kws]
+    if len(self.bsubn) > 0 and len(vals) > 0:
+        vals[0] = self.bbuiltin(name, vals[0], len(vals))  # (of a class deriving from a builtin container: builtin_bases.py)
     rev = "0"
     keyv = Val("", "")
     for j in range(len(kws)):
@@ -2090,7 +2093,9 @@ def gen_consume(self, n: Node, want: str, arg: IterArg | None = None, resultsoft
     if n.kind == "listcomp":
         return self.listcomp(n, want, "", "", arg, resultsoft=resultsoft)
     if not self.iterator_call(n):
-        return self.expr(n, want, resultsoft=resultsoft)
+        # (an object of a class deriving from a builtin container, which leaves iteration to it:
+        # the container, None too, whose error each caller raises as for an optional one: builtin_bases.py)
+        return self.bdecay(self.expr(n, want, resultsoft=resultsoft), BITER)
     if n.kids[0].s == "range":
         # The runtime backing is pointer-free: keep list[int] regardless of want.
         # Optional/union item storage needs a fresh scanned allocation, never retyping.
