@@ -18,7 +18,9 @@ of a namespace package, as in CPython. Any other file named `NAME`, such as a te
 the `.py` suffix, is not a module.
 
 [`importlib.metadata`](../../lib/compatibility.md#importlibmetadata) searches the same directories
-for the metadata of installed distributions.
+for the metadata of installed distributions. `importlib.import_module("a.b")` of a constant
+name is the import statement of that module; a computed name is a compile-time error, as the
+program's modules are compiled with it.
 
 Builtin modules such as `sys`, `os` and `math` are handled by the compiler. A program's own
 `ffi.py` takes precedence over the builtin `ffi` module. A file named like a module built into
