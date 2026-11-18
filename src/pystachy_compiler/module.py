@@ -18,6 +18,7 @@ class Mod:
         # its type aliases, by qualified name: the statement that binds each, a top-level type
         # statement or name = <a type> (Loader.type_value)
         self.taliases: dict[str, Node] = {}
+        self.finals: list[str] = []  # the classes whose @final the loader dropped (Loader.identity_decos), which Gen checks for __final__
         self.fnglobal: dict[str, bool] = {}  # the names a function's global statement binds
         self.fnonly: dict[str, bool] = {}  # those its top-level code does not
         self.rebound: dict[str, bool] = {}  # the names it binds other than as os, sys, TYPE_CHECKING (rebound())
@@ -42,6 +43,7 @@ class Mod:
         # the names only name = f(...) statements bind, with each f: a TypeVar if every f is typing's
         self.tvars: dict[str, list[Node]] = {}
         self.cbases: dict[str, Node] = {}
+        self.cmulti: dict[str, list[Node]] = {}  # (and those of its classes with several bases)
         # its classes whose body binds __class_getitem__ = classmethod(X), with each X: subscripts of
         # them are types where X is types.GenericAlias (Loader.generic_class)
         self.cgetitem: dict[str, Node] = {}

@@ -78,6 +78,9 @@ HEX = "0123456789ABCDEF"
 # the type of a local that only None has been assigned so far (see none_type): a pointer, which
 # only comparisons with None may read until a binding of another value types it
 NONEVAR = "opt[None]"
+EMPTYFS = "emptyfs"  # frozenset() where nothing types its elements: it is empty, a frozenset[T] or an AbstractSet[T] for any T (Gen.coerce)
+# why a runtime-length tuple cannot hold items of a type (Gen.vtuple_holds)
+VTUPLE_ITEMS = "runtime-length tuple elements must be int, float, bool, str or their optional types, or objects of the program's classes (not exceptions or NamedTuples)"
 NONE_ITEM = "opt[?]"  # the item type of a container that holds only None so far (Gen.none_container)
 # the type of an int in a module that opts in to promoting ints (# pystachy: python-int): two words,
 # an LLVM {i64, ptr} (bigints.py). Its "+" keeps it apart from every class name
@@ -568,6 +571,14 @@ UNSUPPORTED: dict[str, str] = {
 INERT_DECOS: dict[str, str] = {"typing.overload": "f", "typing.final": "fco", "typing.no_type_check": "fco", "typing.override": "fco",
                                "staticmethod": "f", "classmethod": "f", "property": "f", "dataclasses.dataclass": "c",
                                "typing.runtime_checkable": "c", "object.__new__": "c", "ffi.extern": "f", "ffi.export": "f"}
+# class decorators that CPython applies as the identity, which the loader drops where they
+# decorate the class itself (Loader.identity_decos): typing's final (whose __final__ = True
+# Pystachy does not set), and lib/mypy_extensions.py's trait and mypyc_attr ("()": called with
+# constant arguments, mypyc's options, for a function that returns the identity)
+IDENTITY_DECOS: dict[str, str] = {"typing.final": "", "mypy_extensions$trait": "", "mypy_extensions$mypyc_attr": "()"}
+# lib/mypy_extensions.py's FlexibleAlias, a generic class (as typeshed's stub declares it): a type
+# alias whose value is FlexibleAlias[T, X] is X, as mypy expands it (Gen.unalias(), flexible_value())
+FLEXIBLE_ALIAS = "mypy_extensions$FlexibleAlias"
 # node kinds that evaluate without effects
 INERT: dict[str, bool] = {}
 for _k in "int float str bytes complex None True False ellipsis noann omit".split():
@@ -646,7 +657,7 @@ TEXT_OPS: dict[str, str] = {
 # Byte-oriented boundaries audited only in user/library code, not inside runtime.py.
 # These are conservative: a call on any non-ASCII str is a porting audit hit, even where its
 # result is right.
-UNICODE_AUDIT: list[str] = ("upper lower swapcase capitalize title casefold isupper islower istitle expandtabs").split()
+UNICODE_AUDIT: list[str] = ["expandtabs"]
 
 # the methods of frozenset (those that change nothing) and of set, which Gen.smethod compiles
 FSETMETHODS: list[str] = "copy difference intersection isdisjoint issubset issuperset symmetric_difference union".split()
@@ -680,6 +691,10 @@ IROPS: dict[str, str] = {
     "gen.start": "T A", "gen.yield": "T U", "gen.ret": "T", "gen.promise": "", "gen.resume": "U",
     "gen.drop": "A I rL wL rD wD rO wO rG wG rF wF",
 }
+# the ops that may change what an attribute's read gives, for the facts of narrowed attribute
+# paths (unions.py's path_event): 1 runs code of the program (a generator's resume runs its body,
+# and its yield lets its caller run), 2 a runtime function, by its effects, 3 a store
+PATH_OPS: dict[str, int] = {"call": 1, "icall": 1, "init": 1, "gen.resume": 1, "gen.yield": 1, "gen.drop": 1, "rt": 2, "mem.store": 3, "mach.store": 3}
 # Native list reads whose receiver and encoded result survive in IR.
 LIST_READS: list[str] = ["list.get", "list.get_identity"]
 
@@ -957,7 +972,7 @@ RUNTIME: dict[str, str] = {
     # set's memory counts as a dict's (rD wD: what changes a set may change a dict); what an
     # operation makes, it alone has seen
     "set.new": "set[T]:int|A|", "set.add": "None:S,*T|R? A rD wD U?|", "set.has": "bool:S,*T|R? rD U?|", "set.discard": "None:S,*T|R? rD wD U?|",
-    "set.remove": "None:S,*T|R A I rD wD U?|", "set.pop": "*T:S|R rD wD|", "set.clear": "None:S|A wD|", "set.copy": "S:S|A rD|",
+    "set.remove": "None:S,*T|R A I rD wD U?|", "set.pop": "*T:S|R rD wD|", "set.clear": "None:S|A wD|", "set.copy": "S:S|A rD|", "set.unbox": "set[T]:S,%ptr,int|R A rD|",
     "set.int_find_any": "int:S,%ptr|R A I rD wD U|", "set.slot_del": "None:S,int|rD wD|",
     "set.update": "None:S,S|R? A rD wD U?|", "set.update_list": "None:S,list[T]|R? A rL rD wD U?|", "set.update_dict": "None:S,dict[T,V]|R? A rD wD U?|",
     "set.union_more": "None:S,S,S|R? A rD wD U?|", "set.or": "S:S,S|R? A rD U?|", "set.and": "S:S,S|R? A rD U?|", "set.and_list": "S:S,list[T]|R? A rL rD U?|",

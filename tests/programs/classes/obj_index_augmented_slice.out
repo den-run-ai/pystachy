@@ -1,0 +1,10 @@
+index 1
+rhs
+index 2
+[0, 1, 1, 2, 3, 9]
+index 1
+index 2
+index 3
+index 4
+[0, 1, 2, 1, 1, 4, 5]
+[exit 0]

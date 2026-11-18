@@ -1,0 +1,9 @@
+ValueError Too many decimal digits in format string
+ValueError Too many decimal digits in format string
+ValueError Too many decimal digits in format string
+ValueError Too many decimal digits in format string
+ValueError Too many decimal digits in format string
+ValueError Too many decimal digits in format string
+f-string ValueError Too many decimal digits in format string
+1.200-3.500j             1.20e+00-3.50e+00j (1.2-3.5j)                     1.2-3.5j        |
+[exit 0]

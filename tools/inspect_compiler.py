@@ -421,18 +421,18 @@ class Observer:
             members = [ci.ftypes[field] for field in ci.fields] + ["bool"] * ci.nflag + ["dyn"] * ci.nbox
             result.append({"name": name, "descriptor": gen.dyntypes[name],
                            "base": gen.dyntypes.get(ci.base, "") if ci.base in gen.classes and gen.classes[ci.base].exc == "" else "",
-                           "role": gen.dyntypes.get(ci.role, ""), "number": gen.ocls[name],
+                           "role": gen.dyntypes.get(ci.roles[0], "") if len(ci.roles) == 1 else "", "number": gen.ocls[name],
                            "members": members, "llvm": struct_types(ci)})
         return sorted(result, key=lambda entry: entry["name"])
     @staticmethod
     def classes(gen) -> dict:
         # Each class of the program: its single base (a class of the program, a builtin
-        # exception class or none) and its fieldless secondary base, which Gen.derives follows;
+        # exception class or none) and its fieldless secondary bases, which Gen.derives follows;
         # the unrelated classes whose objects it may also be (a primary chain's and a secondary
         # base's common subclass); and whether its objects begin with the class tag. An object of
         # one class is no object of a class related to it none of these ways: their fields are
         # other memory (Gen.disjoint).
-        return {name: {"base": info.base, "role": info.role, "overlaps": sorted(info.overlaps),
+        return {name: {"base": info.base, "roles": list(info.roles), "overlaps": sorted(info.overlaps),
                        "tagged": info.tag != 0} for name, info in sorted(gen.classes.items())}
 
     @staticmethod

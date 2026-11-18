@@ -1,0 +1,7 @@
+mods: init mods
+mods.shapes: init mods.shapes
+3:a,seen 9:seen 5 10
+4 10 4 10
+[6, 11] [{'a': 1, 'seen': 3}, {'seen': 9}]
+['a', 'seen', 'z'] 10
+[exit 0]
