@@ -1,39 +1,26 @@
 ## Hosted compiler coverage
 
-Commit `8259611ec88d5aa6af82d0098afb9dd621eb5617`: statements **95.7%** (55096 of 57575) and branches **92.2%** (28682 of 31124); 94.5% together, coverage.py's total. 5 suites, 9127 processes measured.
+Commit `d35417c967f25ac699bb713f4c796dfaf2c57fac`: statements **95.7%** (55152 of 57642) and branches **92.1%** (28708 of 31156); 94.4% together, coverage.py's total. 5 suites, 9136 processes measured.
 The statements and branches of `src/pystachy_compiler/`, run by CPython; not `runtime.c`, `runtime.py`, `lib/` or the compiled programs, which run as native code ([native runtime coverage](https://github.com/den-run-ai/pystachy/blob/badges/runtime-coverage.md)).
 
 | Suite | Runs | Checks | Processes | Time | Statements | Branches |
 |---|---|---|---:|---:|---:|---:|
-| corpus | `tests/run.sh`, JIT and AOT (10 shards) | 8776 passed, 0 failed | 8786 | 6060 s | 92.8% | 88.8% |
-| ffi | `tests/ffi/run.sh`, JIT and AOT | 194 passed, 0 failed; skipped: py_coerce (the CPython-hosted compiler's own locale coercion reaches the program) | 175 | 171 s | 46.8% | 39.2% |
-| cache | `tests/cache.sh` | 98 passed, 0 failed | 52 | 454 s | 32.4% | 23.4% |
-| unit | `tools/test_typed*.py`, `tools/test_function_summaries.py`, the native program cache's, `--emit-ir`'s, the C runtime cache's, `ctypes_schema.py`'s and `source_lines.py`'s | 618 tests, OK | 9 | 107 s | 50.4% | 43.3% |
-| ir | `tools/check_ir.sh`: `pystachy.py`, `runtime.py`, `bench/`, the `tests/ir/` contracts | the IR check and llvm-as accept the IR of 105 programs | 105 | 224 s | 57.5% | 50.7% |
-| **all** | | | **9127** | | **95.7%** | **92.2%** |
+| corpus | `tests/run.sh`, JIT and AOT (10 shards) | 8784 passed, 0 failed | 8794 | 4890 s | 92.8% | 88.8% |
+| ffi | `tests/ffi/run.sh`, JIT and AOT | 194 passed, 0 failed; skipped: py_coerce (the CPython-hosted compiler's own locale coercion reaches the program) | 175 | 251 s | 46.8% | 39.2% |
+| cache | `tests/cache.sh` | 99 passed, 0 failed | 53 | 319 s | 32.3% | 23.3% |
+| unit | `tools/test_typed*.py`, `tools/test_function_summaries.py`, the native program cache's, `--emit-ir`'s, the C runtime cache's, `ctypes_schema.py`'s and `source_lines.py`'s | 618 tests, OK | 9 | 73 s | 50.3% | 43.3% |
+| ir | `tools/check_ir.sh`: `pystachy.py`, `runtime.py`, `bench/`, the `tests/ir/` contracts | the IR check and llvm-as accept the IR of 105 programs | 105 | 337 s | 57.4% | 50.6% |
+| **all** | | | **9136** | | **95.7%** | **92.1%** |
 
 The other suites run 1670 statements and 1032 branches that the corpus does not.
 
-### Changed since e2b97bb452ac2042a346e915eb9017f6e8f97328 (merge base `e2b97bb452ac`)
+### Changed since 8259611ec88d5aa6af82d0098afb9dd621eb5617 (merge base `8259611ec88d`)
 
-Changed statements: 1796 of 1848 run (97.2%); their branches: 745 of 804 taken (92.7%).
+Changed statements: 62 of 73 run (84.9%); their branches: 28 of 34 taken (82.4%).
 
 | File | Statements not run | Branches not taken |
 |---|---|---|
-| `src/pystachy_compiler/builtins.py` | 317, 411, 415, 422, 2502, 2504, 2819 | 316->317, 410->411, 414->415, 421->422, 2501->2502, 2503->2504, 2818->2819 |
-| `src/pystachy_compiler/calls.py` | 1495 | 1494->1495 |
-| `src/pystachy_compiler/dataflow.py` | - | 62->72, 68->62 |
-| `src/pystachy_compiler/declarations.py` | 3143 | 3142->3143 |
-| `src/pystachy_compiler/driver.py` | 561, 563, 565-567, 808, 1503 | 560->561, 562->563, 564->565, 565->566, 565->567, 807->808, 1499->1503 |
-| `src/pystachy_compiler/dynamic_proof.py` | - | 410->exit |
-| `src/pystachy_compiler/expressions.py` | 1776, 3455, 4387, 5154, 5170, 5618 | 1775->1776, 3454->3455, 4386->4387, 5153->5154, 5168->5170, 5616->5618 |
-| `src/pystachy_compiler/ir.py` | 95, 132 | 94->95, 131->132 |
-| `src/pystachy_compiler/lexer.py` | 345-346 | 344->345 |
-| `src/pystachy_compiler/loader.py` | 403, 1118-1119, 1162-1165, 1187, 1208, 1214, 1219, 1456 | 402->403, 1117->1118, 1118->1108, 1118->1119, 1161->1162, 1162->1163, 1162->1164, 1164->1161, 1164->1165, 1186->1187, 1207->1208, 1213->1214, 1218->1219, 1455->1456, 2030->2032 |
-| `src/pystachy_compiler/lower_module.py` | 88-93 | 89->90, 89->93, 90->91, 90->92 |
-| `src/pystachy_compiler/optimizations.py` | 666, 670, 885, 1020-1021 | 665->666, 669->670, 865->864, 884->885, 1019->1020, 1119->1125 |
-| `src/pystachy_compiler/program.py` | 622-623, 626 | 621->622, 622->621, 622->623, 625->626, 644->643 |
-| `src/pystachy_compiler/union_proof.py` | - | 916->exit |
+| `src/pystachy_compiler/statements.py` | 1672, 1689, 1692-1700 | 1670->1662, 1671->1672, 1688->1689, 1691->1692, 1693->1694, 1693->1695 |
 
 | Module | Statements | Missed | Statements % | Branches | Missed | Branches % | Total | Corpus alone |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -62,13 +49,13 @@ Changed statements: 1796 of 1848 run (97.2%); their branches: 745 of 804 taken (
 | `src/pystachy_compiler/flow.py` | 833 | 4 | 99.5% | 582 | 9 | 98.5% | 99.1% | 98.4% |
 | `src/pystachy_compiler/frames.py` | 129 | 0 | 100.0% | 0 | 0 | - | 100.0% | 100.0% |
 | `src/pystachy_compiler/functions.py` | 425 | 21 | 95.1% | 230 | 16 | 93.0% | 94.4% | 80.5% |
-| `src/pystachy_compiler/gen.py` | 3106 | 3 | 99.9% | 2 | 0 | 100.0% | 99.9% | 99.7% |
+| `src/pystachy_compiler/gen.py` | 3108 | 3 | 99.9% | 2 | 0 | 100.0% | 99.9% | 99.7% |
 | `src/pystachy_compiler/generators.py` | 1050 | 35 | 96.7% | 412 | 39 | 90.5% | 94.9% | 94.9% |
 | `src/pystachy_compiler/ir.py` | 256 | 5 | 98.0% | 80 | 5 | 93.8% | 97.0% | 92.3% |
 | `src/pystachy_compiler/ircheck.py` | 486 | 31 | 93.6% | 396 | 31 | 92.2% | 93.0% | 78.3% |
-| `src/pystachy_compiler/lexer.py` | 655 | 27 | 95.9% | 362 | 26 | 92.8% | 94.8% | 94.8% |
+| `src/pystachy_compiler/lexer.py` | 651 | 27 | 95.9% | 360 | 26 | 92.8% | 94.8% | 94.8% |
 | `src/pystachy_compiler/llvm_abi.py` | 12 | 0 | 100.0% | 4 | 0 | 100.0% | 100.0% | 100.0% |
-| `src/pystachy_compiler/loader.py` | 4057 | 173 | 95.7% | 2510 | 194 | 92.3% | 94.4% | 94.3% |
+| `src/pystachy_compiler/loader.py` | 4059 | 173 | 95.7% | 2512 | 194 | 92.3% | 94.4% | 94.3% |
 | `src/pystachy_compiler/local_versions.py` | 60 | 0 | 100.0% | 40 | 0 | 100.0% | 100.0% | 100.0% |
 | `src/pystachy_compiler/lower_module.py` | 517 | 17 | 96.7% | 278 | 11 | 96.0% | 96.5% | 55.3% |
 | `src/pystachy_compiler/lowering.py` | 529 | 2 | 99.6% | 302 | 4 | 98.7% | 99.3% | 98.9% |
@@ -87,12 +74,12 @@ Changed statements: 1796 of 1848 run (97.2%); their branches: 745 of 804 taken (
 | `src/pystachy_compiler/scope.py` | 534 | 4 | 99.3% | 294 | 7 | 97.6% | 98.7% | 98.7% |
 | `src/pystachy_compiler/source_lines.py` | 126 | 1 | 99.2% | 58 | 3 | 94.8% | 97.8% | 18.5% |
 | `src/pystachy_compiler/specs.py` | 313 | 0 | 100.0% | 96 | 0 | 100.0% | 100.0% | 100.0% |
-| `src/pystachy_compiler/statements.py` | 1856 | 64 | 96.6% | 1024 | 71 | 93.1% | 95.3% | 95.2% |
+| `src/pystachy_compiler/statements.py` | 1920 | 75 | 96.1% | 1054 | 77 | 92.7% | 94.9% | 94.8% |
 | `src/pystachy_compiler/structs.py` | 225 | 27 | 88.0% | 128 | 23 | 82.0% | 85.8% | 85.8% |
 | `src/pystachy_compiler/symbols.py` | 144 | 0 | 100.0% | 0 | 0 | - | 100.0% | 100.0% |
 | `src/pystachy_compiler/syntax.py` | 154 | 4 | 97.4% | 100 | 5 | 95.0% | 96.5% | 96.5% |
 | `src/pystachy_compiler/templates.py` | 846 | 34 | 96.0% | 508 | 41 | 91.9% | 94.5% | 94.5% |
-| `src/pystachy_compiler/union_arithmetic.py` | 219 | 14 | 93.6% | 122 | 13 | 89.3% | 92.1% | 92.1% |
+| `src/pystachy_compiler/union_arithmetic.py` | 222 | 14 | 93.7% | 124 | 13 | 89.5% | 92.2% | 92.2% |
 | `src/pystachy_compiler/union_proof.py` | 794 | 13 | 98.4% | 562 | 20 | 96.4% | 97.6% | 92.0% |
 | `src/pystachy_compiler/union_state.py` | 210 | 2 | 99.0% | 112 | 2 | 98.2% | 98.8% | 96.6% |
 | `src/pystachy_compiler/unions.py` | 721 | 31 | 95.7% | 390 | 32 | 91.8% | 94.3% | 94.3% |
