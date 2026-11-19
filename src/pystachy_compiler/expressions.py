@@ -3,9 +3,11 @@ from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.bigints import TSLOT_BIG, big_tree, big_viewable, held, narrow_type, narrows, search_type
 from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
-from src.pystachy_compiler.diagnostics import LINES, dynamic_program, int_lists, shown, where
+from src.pystachy_compiler.diagnostics import DYNPRAGMA, LINES, dynamic_program, int_lists, shown, where
 from src.pystachy_compiler.dynamic import boxed_list_items, comparison_container_pair, comparison_invalid, comparison_property_type
-from src.pystachy_compiler.ir import ClassInfo, Data, FmtArgs, FnInfo, Ins, IterArg, Loop, Val, tmpname, one_num
+from src.pystachy_compiler.frames import FmtArgs, IterArg
+from src.pystachy_compiler.ir import Data, Ins, Loop, Val, tmpname, one_num
+from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.patterns import pattern_expr, pattern_static
 from src.pystachy_compiler.reflection import VARS_USES, refl_annotated, refl_body, refl_fold, refl_reflective
@@ -31,6 +33,8 @@ from src.pystachy_compiler.specs import (
     OBJECTC,
     ORDOP,
     PYBUILTINS,
+    BYTEARRAYC,
+    BYTEARRAYS,
     RANGEC,
     RANGES,
     REFL,
@@ -99,6 +103,11 @@ from src.pystachy_compiler.utils import (
     typestr,
     unopt,
 )
+
+
+# What an error says of a list or dict display whose items no one type holds, nor a union the
+# compiler infers, in a module that does not compile Any as a dynamic type ({}: its items or values)
+MIXED = "this {} have no one type: annotate the display with a union of their types where one holds them, or add '" + DYNPRAGMA + "' before the module's code to hold them as Any values"
 
 
 def gen_narrows(self, n: Node, truth: bool, out: dict[str, str]) -> None:
@@ -386,6 +395,8 @@ def gen_has(self, t: str, a: str) -> int:
         return -1 if r == 1 else 0  # (unless it is None)
     if t in self.classes:
         ci = self.classes[t]
+        if t == BYTEARRAYC and self.curfn.mod != BYTEARRAYS and a.startswith("_") and not (a.startswith("__") and a.endswith("__")):
+            return 0  # (CPython's bytearray has no such attribute: lib's class's fields and helpers are its own)
         if a == " enum int" and self.enum_intlike(t):
             return 0  # (the compiler's immutable payload is no Python attribute)
         if a == " enum str" and self.enum_builtin(t) == "str":
@@ -1277,6 +1288,13 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 bv = self.expr(bx, "int") if bx.kind != "omit" else Val("null", "None")
                 bs.append(self.vnode(self.as_int(bv) if bv.t == "bool" else bv))
             return self.call_fn(self.funcs[RANGES + "$_slice"], [], bs)
+        if unopt(o.t) == BYTEARRAYC:
+            # a bytearray's slice: lib/_pystachy_bytearray.py's _getslice, of the bounds as written,
+            # once they are evaluated, of an object that is not None (a class's value may be)
+            bounds = self.slice_written(n.kids[1:])
+            o = self.unwrap(o, "TypeError: 'NoneType' object is not subscriptable")
+            self.notnone(o, "TypeError: 'NoneType' object is not subscriptable")
+            return self.protocol(o, "_getslice", bounds)
         if o.t == "dyn":
             return self.dyn_slice(o, n.kids[1:])  # (by its box's type, of the bounds as Any values: dynamic.py)
         fold = is_tuple(unopt(o.t)) or o.t in self.nts  # (constant bounds: the items' types)
@@ -1308,7 +1326,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     if k == "list":
         et = elem(want) if is_list(want) and "?" not in want else ""
         soft = n is self.soft  # (an operand of ==: as its items are, see compare)
-        if et == "" and not soft and self.dyn_policy(n.line) and self.dyn_mixed(n.kids):
+        if et == "" and not soft and self.dyn_policy(n.line) and self.dyn_mixed(n.kids, n.kids):
             et = "dyn"  # (items of no one type: dynamic values, and the displays among them hold them too)
         items: list[Val] = []
         kept: dict[int, Val] = {}  # (tuples of promoting ints, which the list holds as they are: held)
@@ -1369,7 +1387,15 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         lty = self.ctype("list", [et])
         if lty == "list[dyn]":
             et = "dyn"  # (where the items are Any values or containers: ctype)
-        items = [self.list_hold(kept[i] if i in kept else items[i], et) for i in range(len(items))]
+        # (functions aside: each is a type of its own, which the error they get says)
+        mixed = not given and jt == "-" and et != "dyn" and not self.dyn_policy(n.line) and len([v for v in items if is_fn(v.t) or is_callable(unopt(v.t))]) == 0
+        if mixed:
+            self.making.append(MIXED.replace("{}", "list display's items"))  # (an item that et does not hold: say what would)
+        try:
+            items = [self.list_hold(kept[i] if i in kept else items[i], et) for i in range(len(items))]
+        finally:
+            if mixed:
+                self.making.pop()
         if len(items) >= 32:
             constant = self.list_const(n, items, lty)
             if constant.v != "":
@@ -1381,7 +1407,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     if k == "dict":
         kv = targs(want) if is_dict(want) and "?" not in want else ["", ""]
         soft = n is self.soft
-        if kv[1] == "" and not soft and self.dyn_policy(n.line) and (self.dyn_mixed([n.kids[i] for i in range(0, len(n.kids), 2)]) or self.dyn_mixed([n.kids[i] for i in range(1, len(n.kids), 2)])):
+        if kv[1] == "" and not soft and self.dyn_policy(n.line) and (self.dyn_mixed([n.kids[i] for i in range(0, len(n.kids), 2)], n.kids) or self.dyn_mixed([n.kids[i] for i in range(1, len(n.kids), 2)], n.kids)):
             kv = ["dyn", "dyn"]  # (keys or values of no one type: dynamic.py)
         ks: list[Val] = []
         vs: list[Val] = []
@@ -1455,7 +1481,14 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         ks = [self.key_coerce(kkept[i] if i in kkept else ks[i], kv[0]) for i in range(len(ks))]
         if kv[1] == BIG:
             kv[1] = "int"  # (a dict of ints, which holds promoting ints where the program's dicts do: dict_store)
-        vs = [self.list_hold(vkept[i] if i in vkept else vs[i], kv[1]) for i in range(len(vs))]
+        mixed = not given and jt == "-" and kv[1] != "dyn" and not self.dyn_policy(n.line) and len([b for b in vs if is_fn(b.t) or is_callable(unopt(b.t))]) == 0
+        if mixed:
+            self.making.append(MIXED.replace("{}", "dict display's values"))  # (a value that kv[1] does not hold: say what would)
+        try:
+            vs = [self.list_hold(vkept[i] if i in vkept else vs[i], kv[1]) for i in range(len(vs))]
+        finally:
+            if mixed:
+                self.making.pop()
         if self.key_problem(kv[0]) != "":
             self.err(self.key_problem(kv[0]))
         r = self.rt("pys_dict_new_atomic" if atomic_dict(self.ctype("dict", kv)) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0], True)}", f"i64 {len(ks)}"])
@@ -1736,11 +1769,51 @@ def gen_percent(self, fmt: str, rhs: Node, lit: bool) -> Val:
         if is_tuple(v.t):
             for i in range(len(targs(v.t))):
                 items.append(self.tget(v, i))
-        elif is_dict(unopt(v.t)) and "%(" in fmt:
-            self.err("% formatting with a mapping (%(name)s) is not supported")
+        elif (is_dict(v.t) or (v.t in self.classes and "__getitem__" in self.classes[v.t].methods)) and ("%(" in fmt.replace("%%", "") or "%" not in fmt.replace("%%", "")):
+            # (a mapping: its conversions name keys; one that none uses is no error, as in CPython)
+            return self.percent_map(fmt, v)
+        elif is_dict(unopt(v.t)) and "%(" in fmt.replace("%%", ""):
+            self.err("% formatting with a mapping (%(name)s) is not supported for a mapping that may be None")
         else:
             items.append(v)
     return self.pformat(fmt, items, False, [])
+
+def gen_percent_map(self, fmt: str, v: Val) -> Val:
+    # "format" % mapping with a constant format whose conversions name keys, %(key)s: each
+    # takes mapping[key], looked up as its conversion comes, so a missing key raises CPython's
+    # KeyError after the lookups before it; the rest of a conversion is pformat's. A key runs
+    # to its closing parenthesis, parentheses inside it counted, as CPython reads it
+    out: list[str] = []
+    lazy: list[Node] = []
+    i = 0
+    while i < len(fmt):
+        c = fmt[i]
+        i += 1
+        out.append(c)
+        if c != "%":
+            continue
+        if i < len(fmt) and fmt[i] == "%":
+            out.append("%")
+            i += 1
+            continue
+        if i >= len(fmt) or fmt[i] != "(":
+            self.err("% formatting with a mapping is only supported where every conversion names a key (%(name)s)")
+        depth = 1
+        j = i + 1
+        while j < len(fmt) and depth > 0:
+            if fmt[j] == "(":
+                depth += 1
+            elif fmt[j] == ")":
+                depth -= 1
+            j += 1
+        if depth > 0:
+            self.err("ValueError: incomplete format key")
+        lazy.append(mk("index", "", self.line, [self.vnode(v), mk("str", fmt[i + 1 : j - 1], self.line, [])]))
+        i = j
+        if i < len(fmt) and fmt[i] == "%":
+            # (a key with no conversion: CPython takes the next % for its conversion type)
+            self.err(f"ValueError: unsupported format character '%' (0x25) at index {i}")
+    return self.pformat("".join(out), [], False, lazy)
 
 def gen_percent_opt(self, fmt: str, v: Val) -> Val:
     # "format" % t, t a tuple or None: the tuple's items are the arguments, None is one argument;
@@ -3369,6 +3442,20 @@ def gen_argtype(self, t: str, m: str, j: int, missing: str) -> str:
         self.err(ms[m].bad)  # (an imported module's method that cannot be compiled)
     return ms[m].ptypes[j] if j < len(ms[m].ptypes) else ""
 
+def gen_slice_written(self, bounds: list[Node]) -> list[Val]:
+    # the bounds of a slice as they are written, for a class of lib's that takes them so (a
+    # bytearray's _getslice, _setslice and _delslice): start, stop and step, each an int (a bool
+    # or a promoting int as one), or None where it is left out
+    vs: list[Val] = []
+    for bx in bounds + [mk("omit", "", self.line, [])] * (3 - len(bounds)):
+        bv = self.expr(bx, "int") if bx.kind != "omit" else Val("null", "None")
+        if bv.t == "bool" or bv.t == BIG:
+            bv = self.as_int(bv)  # (a promoting int is narrowed: past 64 bits, OverflowError)
+        if bv.t != "int" and bv.t != "None" and unopt(bv.t) != "int":
+            self.err("slice indices must be integers or None or have an __index__ method")
+        vs.append(bv)
+    return vs
+
 def gen_protocol(self, o: Val, m: str, args: list[Val]) -> Val:
     # the call of the special method m of o's class that an operator makes (o[k] calls
     # __getitem__), with the arguments it has evaluated; o is known not to be None
@@ -4240,6 +4327,8 @@ def declines_in(ns: list[Node]) -> bool:
             continue
         if n.kind == "return" and len(n.kids) == 1 and n.kids[0].kind == "name" and n.kids[0].s == "NotImplemented":
             return True
+        if n.kind == "call" and n.kids[0].kind == "name" and n.kids[0].s == "__pys_ordering":
+            return True  # (a method the loader wrote for @total_ordering: ordering)
         if declines_in(n.kids):
             return True
     return False
@@ -4282,6 +4371,35 @@ def gen_declining_call(self, f: FnInfo, me: Val, arg: Val, direct: bool, decl: l
         clear.line = self.line
     blk.code.insert(at, clear)
     decl.append(True)
+    return r
+
+def gen_ordering(self, args: list[Node]) -> Val:
+    # __pys_ordering(self, other, "__lt__") of a method the loader wrote for @total_ordering
+    # (functools_classes), which a class's own code cannot name (__pys... is private to its
+    # class there): type(self).__lt__(self, other), as CPython's functools calls the class's
+    # own ordering method. Where that returned NotImplemented the method written returns it too:
+    # it returns False here, with decl_flag's variable as its callee left it (decline). A call
+    # that takes this method's result as it is (call_fn's plain), compiled before it was known to
+    # decline, as where the class's own method calls it while this one is compiled, would read
+    # that False: it is rejected, as decline rejects it. Else this is what the callee returned,
+    # a bool
+    if self.curfn.cls not in self.classes or self.curfn.name not in ["__lt__", "__le__", "__gt__", "__ge__"] or len(args) != 3 or args[2].kind != "str" or self.ret != "bool" or len(self.exits) > 0:
+        self.err("name '__pys_ordering' is not defined")
+    me = self.expr(args[0], "")
+    other = self.expr(args[1], "")
+    decl: list[bool] = []
+    r = self.declining_call(self.classes[me.t].methods[args[2].s], me, other, False, decl)
+    if len(decl) == 0:
+        return r
+    if self.curfn.plain != "":
+        self.err(f"{short(self.curfn.cls)}.{self.curfn.name}() returns NotImplemented, which only a comparison of objects (==, <, ...) reads: the call at {self.curfn.plain}, which takes its result as it is, is not supported")
+    self.curfn.declines = True
+    lret = self.label()
+    lgo = self.label()
+    self.cbr(self.mload('bool', self.decl_flag()), lret, lgo)
+    self.place(lret)
+    self.ret_(Val("false", "bool"))
+    self.place(lgo)
     return r
 
 def gen_cmp_cands(self, op: str, at: str, bt: str) -> list[list[str]]:
@@ -4998,6 +5116,9 @@ def gen_eqcall(self, f: FnInfo, iseq: bool, a: Val, b: Val) -> Val:
     self.place(lend)
     return Val(self.phi(ph), "bool")
 
+LOW32_NODES = 256  # the nodes of a masked expression that gen_low32_tree looks at
+
+
 def wraps(e: Node) -> bool:
     # an int tree whose result's low 64 bits depend only on its operands' low 64 bits: +, -, * and
     # << (by an exact count), which wrapping 64-bit arithmetic gets right in those bits, under &, |
@@ -5007,6 +5128,65 @@ def wraps(e: Node) -> bool:
     if e.s == "+" or e.s == "-" or e.s == "*" or e.s == "<<":
         return True
     return (e.s == "&" or e.s == "|" or e.s == "^") and (wraps(e.kids[0]) or wraps(e.kids[1]))
+
+
+def gen_low32_const(self, e: Node) -> str:
+    # the value of e where it is an int constant from 0 to 2**32 - 1, a literal or the read of a
+    # module's int constant (moduleints: gen_read gives the literal after its checks), else ""
+    s = ""
+    if e.kind == "int":
+        s = e.s
+    elif e.kind == "name":
+        self.gtype(e.s)
+        if e.s in self.intglobals and self.globread(e.s) and self.gtypes.get(e.s, "") == "int":
+            s = self.intglobals[e.s]
+    return s if s.isdigit() and len(s) <= 10 and int(s) <= 4294967295 else ""
+
+
+def gen_low32_tree(self, e: Node, room: list[int]) -> bool:
+    # can gen_low32 compute the low 32 bits of e: int literals, the reads that cannot fail of int
+    # variables and the reads of modules' int constants, under +, -, *, &, | and ^ (whose low 32
+    # bits are those of their operands' low 32 bits), << by a literal count below 32 (the same),
+    # and >> by a literal count below 64 of such a variable. room[0] bounds the nodes looked at:
+    # the test is made at each & that masks, of every depth
+    room[0] -= 1
+    if room[0] < 0:
+        return False
+    if e.kind == "int":
+        return e.s.isdigit() and int_fits(e.s)
+    if e.kind == "name":
+        return self.static_type(e) == "int" or self.low32_const(e) != ""
+    if e.kind != "binop":
+        return False
+    if e.s == "<<" or e.s == ">>":
+        c = e.kids[1]
+        if c.kind != "int" or not c.s.isdigit() or len(c.s) > 2 or int(c.s) > (31 if e.s == "<<" else 63):
+            return False
+        if e.s == ">>":
+            return e.kids[0].kind == "name" and self.static_type(e.kids[0]) == "int"
+        return self.low32_tree(e.kids[0], room)
+    if e.s in CHECKED or e.s in IOPS:
+        return self.low32_tree(e.kids[0], room) and self.low32_tree(e.kids[1], room)
+    return False
+
+
+def gen_low32(self, e: Node) -> Val:
+    # the low 32 bits of int expression e (low32_tree), an %i32, its operands read in order: a
+    # variable's truncated, and x >> c's those of the 64-bit shift. Of a rotation written
+    # (x << c) | (x >> (32 - c)) LLVM then makes one of x's low 32 bits where it sees that x is
+    # below 2**32, as a masked value is: of the 64-bit shifts it does not, in a sum
+    if e.kind == "int":
+        return Val(str(int(e.s) % 4294967296), "%i32")
+    if e.kind == "name":
+        return Val(self.scalar_cast("trunc", Val(self.expr(e, "int").v, "int"), "%i32"), "%i32")
+    if e.s == ">>":
+        x = Val(self.expr(e.kids[0], "int").v, "int")
+        return Val(self.scalar_cast("trunc", Val(self.scalar("ashr", [x, Val(e.kids[1].s, "int")]), "int"), "%i32"), "%i32")
+    a = self.low32(e.kids[0])
+    if e.s == "<<":
+        return Val(self.scalar("shl", [a, Val(e.kids[1].s, "%i32")]), "%i32")
+    b = self.low32(e.kids[1])
+    return Val(self.scalar(IOPS[e.s] if e.s in IOPS else "add" if e.s == "+" else "sub" if e.s == "-" else "mul", [a, b]), "%i32")
 
 
 def gen_wflag(self, op: str, a: Val, b: Val) -> Val:
@@ -5030,6 +5210,11 @@ def gen_masked(self, n: Node, want: str, resultsoft: bool) -> Val:
     # other bits where the other side is exact and not negative, so CPython's result fits and is
     # the low bits'. Otherwise a step's overflow raises OverflowError, as it does in checked
     # arithmetic, but after the whole expression has been evaluated.
+    if not dynamic_program() and (self.low32_const(n.kids[0]) != "" or self.low32_const(n.kids[1]) != "") and self.low32_tree(n, [LOW32_NODES]):
+        # masked to 32 bits or fewer by a constant, of ints alone: the result is its sides' low 32
+        # bits' (no step's overflow can raise, the mask being exact and not negative), computed
+        # as 32-bit values
+        return Val(self.scalar_cast("zext", self.low32(n), "int"), "int")
     ka: list[str] = []
     a = self.wexpr(n.kids[0], want, resultsoft, "&", ka)
     x = a[0]
@@ -5421,6 +5606,16 @@ def gen_compare(self, n: Node) -> Val:
             if point_at is not None:
                 return self.num_cmp(n.s, point_at, Val(str(ord(literal.s)), "int"))
     ops = n.s.split(",")
+    if len(ops) == 1 and ops[0] in ICMP and self.dict_view(n.kids[0]) != "" and self.dict_view(n.kids[0]) == self.dict_view(n.kids[1]):
+        # d.keys() == e.keys(), d.items() <= e.items(): set comparisons (dict_view_cmp) where
+        # the dicts' types allow them. A dict's view has no effect of its own, and reads the
+        # dict as it is when compared: both dicts run first
+        view = self.dict_view(n.kids[0])
+        left = self.expr(n.kids[0].kids[0].kids[0], "")
+        right = self.expr(n.kids[1].kids[0].kids[0], "")
+        if is_dict(left.t) and is_dict(right.t) and targs(left.t)[0] == targs(right.t)[0] and (view == "keys" or left.t == right.t):
+            return self.dict_view_cmp(ops[0], view == "items", left, right)
+        return self.cmp2(ops[0], self.method(left, view, []), self.method(right, view, [], resultsoft=True))
     if len(ops) == 1 and (n.kids[0].kind == "list" or n.kids[0].kind == "dict") and (len(n.kids[0].kids) == 0 or nones(n.kids[0])):
         # [] == xs, {} in ds, [None] == xs: an empty display, or one of None, takes its type
         # from the other side (it has nothing to evaluate first)
@@ -5476,6 +5671,9 @@ def gen_compare(self, n: Node) -> Val:
         if nn != "":
             hit = self.select(nn, Val(hit, "int"), Val("0", "int"))
         return self.num_cmp('!=' if ops[0] == 'in' else '==', Val(hit, "int"), Val('0', "int"))
+    if len(ops) == 1 and (ops[0] == "in" or ops[0] == "not in") and self.dict_view(n.kids[1]) != "":
+        # x in d.keys(), (k, v) in d.items(): a lookup in d, as CPython's views make it
+        return self.dict_view_has(ops[0], self.dict_view(n.kids[1]), a, n.kids[1].kids[0].kids[0])
     if len(ops) == 1:
         w = a.t
         rhs = n.kids[1]
@@ -6355,8 +6553,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             return self.num_cmp('!=' if op == '==' else '==', Val(r, "int"), Val('0', "int"))
         r = self.rt("pys_cmpop", "i64", [f"i64 {sa}", f"i64 {sb}", d, f"i64 {ORDOP[op]}"])
         return self.num_cmp('!=', Val(r, "int"), Val('0', "int"))
-    x = "an exception" if a.t == "exc" else "object" if a.t == OBJECTC else "int" if a.t == BIG else a.t
-    y = "an exception" if b.t == "exc" else "object" if b.t == OBJECTC else "int" if b.t == BIG else b.t
+    x = "an exception" if a.t == "exc" else "object" if a.t == OBJECTC else "int" if a.t == BIG else "bytearray" if a.t == BYTEARRAYC else a.t
+    y = "an exception" if b.t == "exc" else "object" if b.t == OBJECTC else "int" if b.t == BIG else "bytearray" if b.t == BYTEARRAYC else b.t
     self.err(f"cannot compare {x} {op} {y}")
     return a
 
@@ -6556,6 +6754,115 @@ def gen_dict_pair_eq(self, op: str, a: Val, b: Val) -> Val:
     self.place(end)
     value = Val(self.phi(result), "bool")
     return value if op == "==" else Val(self.scalar("xor", [value, Val("true", "bool")]), "bool")
+
+
+def gen_dict_view(self, n: Node) -> str:
+    # "keys" or "items" where n is d.keys() or d.items() of a dict display or of a variable
+    # or field d whose static type is a dict (not one that may be None): else "". Those views
+    # stay lists elsewhere (docs/language/compatibility.md); here they test and compare as
+    # CPython's views do. Making the view later than d runs changes nothing: it has no effect
+    if n.kind != "call" or len(n.kids) != 1 or n.kids[0].kind != "attr" or (n.kids[0].s != "keys" and n.kids[0].s != "items"):
+        return ""
+    d = n.kids[0].kids[0]
+    return n.kids[0].s if (d.kind == "dict" and len(d.kids) > 0) or d.kind == "dictcomp" or is_dict(self.probe_type(d)) else ""
+
+
+def gen_dict_view_has(self, op: str, view: str, a: Val, n: Node) -> Val:
+    # x in d.keys() looks x up in dict n, as CPython's dictkeys_contains does, where x has
+    # the dict's key type; (k, v) in d.items() looks k up once and compares the value found
+    # with v (found == v), as dictitems_contains does, where k and v have the dict's types. A
+    # dict that holds promoting ints as its values (dict_int) is read as one, and v may be a
+    # promoting int: pair_item_eq compares them, as dict_view_cmp's items do. Keys held as
+    # promoting ints (dict_bigkey) have their own lookup. Else the view is made and searched
+    # as a list
+    d = self.expr(n, "")
+    kt = targs(d.t)[0] if is_dict(d.t) else ""
+    if view == "keys" and kt != "" and (a.t == kt or (is_opt(a.t) and unopt(a.t) == kt) or (a.t == "bool" and kt == "int") or (a.t == BIG and kt == "int")):
+        return self.cmp2(op, a, d)
+    pair = kt != "" and (a.t == self.ctype("tuple", targs(d.t)) or (self.dict_int(d.t) and a.t == self.ctype("tuple", [kt, BIG])))
+    if view == "keys" or not pair or BIG in kt or held(d.t) != d.t or self.dict_bigkey(d.t):
+        return self.cmp2(op, a, self.method(d, view, [], resultsoft=True))
+    k = self.tget(a, 0)
+    v = self.tget(a, 1)
+    e = Val(self.rt("pys_dict_find", "i64", [f"ptr {d.v}", f"i64 {self.to_slot(self.dkey(k, kt))}"], self.key_fx(kt)), "int")
+    found = self.label()
+    hit = self.label()
+    end = self.label()
+    result = Ins("phi", "bool", "")
+    self.incoming(result, "false", self.cur)
+    self.cbr(self.num_cmp(">=", e, Val("0", "int")).v, found, end)
+    self.place(found)
+    self.pair_item_eq(self.dict_value(d, e.v, True), v, hit)
+    self.incoming(result, "false", self.cur)
+    self.br(end)
+    self.place(hit)
+    self.incoming(result, "true", self.cur)
+    self.br(end)
+    self.place(end)
+    value = Val(self.phi(result), "bool")
+    return value if op == "in" else Val(self.scalar("xor", [value, Val("true", "bool")]), "bool")
+
+
+def gen_dict_view_cmp(self, op: str, items: bool, a: Val, b: Val) -> Val:
+    # Two keys() (or two items()) views of dicts a and b, compared as CPython's
+    # dictview_richcompare compares them, as sets: by their lengths, then whether every key
+    # (key and value) of one is in the other. a < b needs fewer, a > b more, and then b's
+    # must be in a. As CPython, the one is iterated (a size change raises its RuntimeError)
+    # and each key looked up in the other: a key of a class that hashes it is hashed again,
+    # a builtin key found by its stored hash (as dict_pair_eq). A value compares as the value
+    # found == its own (dictitems_contains). The source value is read before the lookup,
+    # whose callbacks may remove it
+    src = b if op == ">" or op == ">=" else a
+    dst = a if op == ">" or op == ">=" else b
+    la = Val(self.mload("int", a.v), "int")
+    lb = Val(self.mload("int", b.v), "int")
+    used = lb if op == ">" or op == ">=" else la
+    sizes = self.num_cmp("==" if op == "!=" else op, la, lb)
+    index = self.alloca("int", "")
+    self.mstore("int", "0", index)
+    count = self.alloca("int", "")
+    self.mstore("int", "0", count)
+    head = self.label()
+    item = self.label()
+    step = self.label()
+    miss = self.label()
+    finish = self.label()
+    end = self.label()
+    result = Ins("phi", "bool", "")
+    self.incoming(result, "false", self.cur)
+    self.cbr(sizes.v, head, end)
+    self.place(head)
+    e = Val(self.rt("pys_dict_next", "i64", [f"ptr {src.v}", f"i64 {self.mload('int', index)}", f"i64 {used.v}", f"i64 {self.mload('int', count)}"]), "int")
+    self.cbr(self.num_cmp(">=", e, Val("0", "int")).v, item, finish)
+    self.place(item)
+    own = self.dict_value(src, e.v, True) if items else Val("", "")
+    kt = targs(src.t)[0]
+    if kt != "dyn" and self.key_fx(kt) != "":
+        key = self.from_slot(self.rt("pys_dict_key", "i64", [f"ptr {src.v}", f"i64 {e.v}"]), kt)
+        match = Val(self.rt("pys_dict_find", "i64", [f"ptr {dst.v}", f"i64 {self.to_slot(key)}"], self.key_fx(kt)), "int")
+    else:
+        match = Val(self.rt("pys_dict_eq_find", "i64", [f"ptr {dst.v}", f"ptr {src.v}", f"i64 {e.v}"], self.key_fx(kt)), "int")
+    if items:
+        compare = self.label()
+        self.cbr(self.num_cmp(">=", match, Val("0", "int")).v, compare, miss)
+        self.place(compare)
+        self.pair_item_eq(self.dict_value(dst, match.v, True), own, step)
+        self.br(miss)
+    else:
+        self.cbr(self.num_cmp(">=", match, Val("0", "int")).v, step, miss)
+    self.place(step)
+    self.mstore("int", self.scalar("add", [e, Val("1", "int")]), index)
+    self.mstore("int", self.scalar("add", [Val(self.mload("int", count), "int"), Val("1", "int")]), count)
+    self.br(head)
+    self.place(miss)
+    self.incoming(result, "false", self.cur)
+    self.br(end)
+    self.place(finish)
+    self.incoming(result, "true", self.cur)
+    self.br(end)
+    self.place(end)
+    value = Val(self.phi(result), "bool")
+    return value if op != "!=" else Val(self.scalar("xor", [value, Val("true", "bool")]), "bool")
 
 
 def gen_tuple_order(self, op: str, a: Val, b: Val) -> Val:

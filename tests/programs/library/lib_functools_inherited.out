@@ -1,0 +1,71 @@
+Size.__lt__
+Reversed.__lt__
+Size.__lt__
+Reversed.__lt__
+Size.__lt__
+Reversed.__lt__
+Size.__lt__
+Reversed.__lt__
+Size.__lt__
+Reversed.__lt__
+Size.__lt__
+Reversed.__lt__
+Size.__lt__
+Reversed.__lt__
+Size.__lt__
+Reversed.__lt__
+[False, True, True, False] [True, False, False, True] [False, False, False, True] [True, True, True, False]
+Reversed.__lt__
+Reversed.__lt__
+Reversed.__lt__
+Reversed.__lt__
+Reversed.__lt__
+Reversed.__lt__
+Reversed.__lt__
+Reversed.__lt__
+Reversed.__lt__
+Reversed.__lt__
+Reversed.__lt__
+Reversed.__lt__
+Reversed.__lt__
+Reversed.__lt__
+Reversed.__lt__
+Reversed.__lt__
+[False, False, False, False] [True, True, True, True] [True, False, True, True] [False, True, False, False]
+Size.__lt__
+Size.__lt__
+Size.__lt__
+Size.__lt__
+Size.__lt__
+Size.__lt__
+Size.__lt__
+Size.__lt__
+Size.__lt__
+Size.__lt__
+Size.__lt__
+Size.__lt__
+Size.__lt__
+Size.__lt__
+Size.__lt__
+Size.__lt__
+[False, False, False, True] [True, True, True, False] [True, True, False, False] [False, False, True, True]
+Reversed.__lt__
+Reversed.__lt__
+Reversed.__lt__
+Reversed.__lt__
+Reversed.__lt__
+Reversed.__lt__
+Reversed.__lt__
+Reversed.__lt__
+Reversed.__lt__
+Reversed.__lt__
+Reversed.__lt__
+Reversed.__lt__
+Reversed.__lt__
+Reversed.__lt__
+Reversed.__lt__
+Reversed.__lt__
+[True, True, True, False] [False, False, False, True] [False, False, False, False] [True, True, True, True]
+18 9 18 2
+[6, 9] [1, 2]
+[exit 0]

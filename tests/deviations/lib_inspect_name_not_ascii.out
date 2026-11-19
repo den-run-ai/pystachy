@@ -1,0 +1,4 @@
+ValueError: 'é b' is not a valid parameter name
+NotImplementedError: inspect: a parameter name with characters outside ASCII is not supported: 'café'
+NotImplementedError: inspect: a parameter name with characters outside ASCII is not supported: 'x²'
+[exit 0]

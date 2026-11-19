@@ -148,7 +148,12 @@ class NativeTests(unittest.TestCase):
             self.assertEqual(report["differential"]["after"]["status"], "matched")
             self.assertGreater(report["controls"]["wrong_mask"]["mismatches"], 0)
             self.assertEqual(report["controls"]["malformed_ir"]["status"], "detected")
-            self.assertIn("llvm.sadd.with.overflow.i64", (destination / "before.ll").read_text())
+            # (the lowering as emitted, before LLVM's passes: a sum under a 16-bit mask is one of
+            # 32-bit values, gen_low32, where it was a checked 64-bit addition)
+            before = (destination / "before.ll").read_text()
+            self.assertIn(" = add i32 ", before)
+            self.assertIn(" = and i32 ", before)
+            self.assertNotIn("llvm.sadd.with.overflow.i64", before)
             self.assertEqual(json.loads((destination / "report.json").read_text()), json.loads(json.dumps(report)))
             self.assertTrue(report["compiler_sources"])
             for name, digest in report["artifacts"].items():

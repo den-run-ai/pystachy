@@ -12,7 +12,9 @@ from src.pystachy_compiler.analysis import (
     reads,
 )
 from src.pystachy_compiler.diagnostics import dynamic_program, shown
-from src.pystachy_compiler.ir import Data, Exit, FnInfo, Ins, Try, Val, tmpname
+from src.pystachy_compiler.frames import Exit
+from src.pystachy_compiler.ir import Data, Ins, Try, Val, tmpname
+from src.pystachy_compiler.symbols import FnInfo
 from src.pystachy_compiler.names import owner, short
 from src.pystachy_compiler.specs import (
     BIG,

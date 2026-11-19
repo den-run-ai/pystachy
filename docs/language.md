@@ -40,18 +40,18 @@ their own contracts; [interoperability](ffi.md) covers C, embedded CPython and e
 | [Static typing](language/typing.md) | 🟢 Native<br>🟡 Unions | Inferred locals, returns and per-call specializations; closed unions; `T \| None` narrowing; `Callable`; generic functions and classes, including PEP 695; type aliases | General object unions | Mutable containers are invariant; empty containers need a type; recursive value aliases are a prototype |
 | [`Any` values](dynamic-any.md) | 🟢 Native<br>🧪 Dynamic | `Any` annotations specialize to concrete types; with `# pystachy: dynamic-any`, runtime-typed values with lazy iteration, comparisons and numeric protocols | Runtime-typed values in modules that do not opt in | Unsupported cross-type comparison bodies raise `TypeError`; some typed boundaries lose numeric identity |
 | [Functions](language/typing.md#functions-callables-and-closures) | 🟢 Native | Every parameter kind and default; lambdas, closures and `nonlocal`; function decorators; `*args` and `**kwargs` per call shape; `Callable` values and bound methods | — | `f(*xs)` of a list and run-time `**` expansion; `Callable[..., R]`; keyword calls through a `Callable` |
-| [Classes](language/typing.md#single-inheritance) | 🟢 Native<br>🟡 Hierarchies | Fields, methods, properties, static and class methods, operator methods, dataclasses, `NamedTuple`, single inheritance with overrides and `super()`, one method-only secondary base, two plain builtin exception bases, `__slots__`, `abc` | General multiple inheritance; subclasses of builtin types; general metaclasses and class decorators; `__getattr__`-style hooks | No reflected arithmetic (`__radd__`) or `NotImplemented` results |
+| [Classes](language/typing.md#single-inheritance) | 🟢 Native<br>🟡 Hierarchies | Fields, methods, properties, static and class methods, operator methods, dataclasses, `NamedTuple`, single inheritance with overrides and `super()`, method-only secondary bases and traits, classes as values (`type[C]`), two plain builtin exception bases, `__slots__`, `abc` | General multiple inheritance; subclasses of builtin types; general metaclasses and class decorators; `__getattr__`-style hooks | Reflected arithmetic only with an `int`, `float` or `bool` on the left; `NotImplemented` only from comparison methods |
 | [Reflection](language/semantics.md#reflection) | 🟡 Bounded | `getattr`, `setattr`, `hasattr`, `vars`, `dir` and `type(x).__name__` on classes the compiler knows | `eval`, `exec`; values of attributes named at run time | A run-time name works where only its text or a test is needed |
-| [Statements](language/semantics.md#statements) | 🟡 Bounded | Assignment and unpacking, `:=`, `if`, loops with `else`, `with`, `assert`, `del`, `global`, `nonlocal`; [bounded `match`](language/semantics.md#structural-patterns) | Mapping and general sequence/class patterns; `async` and `await` | Deleting a global from a function |
+| [Statements](language/semantics.md#statements) | 🟡 Bounded | Assignment and unpacking, `:=`, `if`, loops with `else`, `with`, `assert`, `del`, `global`, `nonlocal`; [bounded `match`](language/semantics.md#structural-patterns) | Mapping patterns and class patterns beyond dataclass fields; `async` and `await` | Deleting a global from a function |
 | [Generators and iterators](language/semantics.md#generators) | 🟢 Direct<br>🟡 Suspended | `yield`, `yield from`, `send()`, `throw()` and `close()`; generator expressions; iterator classes; lazy `itertools` | — | A dropped suspended generator is never closed; some consumers materialize their input |
 | [Exceptions](language/semantics.md#exceptions) | 🟡 Bounded | CPython 3.13's builtin hierarchy; user exception classes; `raise ... from`; `try` / `except` / `else` / `finally`; catchable `RecursionError` | `except*` and exception groups | No `e.args` or traceback objects; uncaught errors print only the last line; `MemoryError` and Ctrl-C end the program |
-| [Modules](language/modules.md) | 🟡 Bounded | Modules and packages; relative, circular and optional imports; compile-time `__main__`, platform and version branches | CPython C extensions; imports chosen at run time (`importlib`, `__import__`) | A builtin module's import binds program-wide; a module whose code raises keeps its partial globals |
-| [Standard library](stdlib.md#library-support-at-a-glance) | 🟡 Bounded | [Common builtins](language/modules.md#builtins); `sys`, `os`, `math`, `time`, `errno`, `tempfile`, `select`; shipped `re`, `json`, `collections`, `itertools`, `functools`, `datetime`, `tomllib`, `logging` and more | Starting threads (`threading` runs one), `asyncio`, `subprocess`, `socket`, `multiprocessing` and other unshipped modules | Each module supports its own API subset |
+| [Modules](language/modules.md) | 🟡 Bounded | Modules and packages; relative, circular and optional imports; compile-time `__main__`, platform and version branches | CPython C extensions; imports chosen at run time (`importlib.import_module()`, `__import__`) | A builtin module's import binds program-wide; a module whose code raises keeps its partial globals |
+| [Standard library](stdlib.md#library-support-at-a-glance) | 🟡 Bounded | [Common builtins](language/modules.md#builtins); `sys`, `os`, `math`, `time`, `errno`, `tempfile`, `select`; shipped `re`, `json`, `collections`, `itertools`, `functools`, `datetime`, `tomllib`, `logging` and more | Starting threads (`threading` runs one), `asyncio`, `socket`, `multiprocessing` and other unshipped modules | Each module supports its own API subset |
 | [Memory and lifetime](language/compatibility.md#memory-and-resource-lifetime) | 🟡 Bounded | Automatic memory through a conservative, batched collector; `with` closes files; experimental `weakref.ref` | Finalizers: `__del__` never runs | A dropped file closes at a later collection; no weak containers |
 | [Interop and concurrency](ffi.md) | 🧪 Experimental | C calls (`ffi`); CPython embedded through `pyobj`; extension modules that CPython imports, also in [process pools](concurrency.md) | Native threads; `async` | `pyobj` converts scalars only; an extension runs only on the thread that imported it |
 
-The table describes the current source tree; the [alpha.4 release notes](releases/v0.1.0-alpha.4.md)
-record that release's changes since alpha.3. [Unsupported features](#unsupported-features) and
+The table describes the current source tree; the [release notes](releases/) record what changed
+between releases. [Unsupported features](#unsupported-features) and
 [deviations](#deviations-from-cpython) summarize the gaps below, and the
 [compatibility reference](language/compatibility.md) lists every known case.
 
@@ -339,11 +339,11 @@ can avoid compiling unused branches that contain one. The main gaps:
 - **Object model:** multiple inheritance beyond [method-only secondary bases](language/typing.md#method-only-secondary-bases), subclasses of builtin types, general metaclasses and
   class decorators, dynamic attribute hooks, and attribute values looked up by names only the
   run time knows (their text and `hasattr()` are supported).
-- **Values:** `bytearray`, `memoryview`, slice objects and
+- **Values:** `memoryview`, slice objects and
   general object unions; arbitrary-precision ints and dynamic `Any` values outside their opt-in
   prototypes ([promoting ints](python-int.md), [dynamic `Any`](dynamic-any.md)).
-- **Syntax and calls:** mapping and general sequence/class patterns, `async` / `await`, `except*` and unrestricted argument
-  expansion.
+- **Syntax and calls:** mapping patterns, class patterns beyond dataclass fields, `async` /
+  `await`, `except*` and unrestricted argument expansion.
 - **Run-time code:** `eval`, `exec` and imports chosen at run time.
 - **Concurrency:** native threads and `asyncio`; CPython can run compiled extension modules in
   [process pools](concurrency.md) instead.
@@ -365,7 +365,7 @@ The most important differences for supported programs are:
 | Area | Difference |
 |---|---|
 | Integers | Overflow raises `OverflowError` instead of growing to arbitrary precision, unless the module opts in to promoting ints |
-| Strings | Code-point length, indexing, slicing, search and case mapping; invalid UTF-8, surrogates and some other operations differ |
+| Strings | Length, indexing, slicing, search and case mapping work on code points, as in CPython; invalid UTF-8, surrogates and some other operations differ |
 | Containers | Dictionary views are snapshots; string-set order differs from CPython |
 | Exceptions | Uncaught errors omit the full traceback; native resource failures bypass handlers |
 | Recursion | `sys.setrecursionlimit()` counts only calls that can recur, so the failing depth differs from CPython's; recursion that the native stack cannot hold raises `RecursionError`, even below a raised limit |

@@ -22,6 +22,7 @@ These programs can compile and run with different results, errors or timing of e
 |---|---|
 | Ordinary `int` | Signed 64-bit. Oversized results, intermediates and `int()` conversions raise `OverflowError`. Use explicit [`mpz`](../mpz.md) or opt in to [promoting ints](#promoting-ints-opt-in-prototype). |
 | `int ** negative int` | `ValueError`; `0 ** -1` still raises `ZeroDivisionError`. |
+| An `int` for a `float` parameter | The function is [compiled for the `int`](typing.md#int-arguments-for-float-parameters), so where CPython computes with the `int` its body follows the two rows above: `w * h` of `2**40` and `2**40` raises `OverflowError`, and `base ** exp` of `10` and `-3` raises `ValueError`. Earlier releases rejected these calls at compile time ([deviation](../../tests/deviations/int_for_float_int_ops.py)). |
 | Negative float to a fractional power | `ValueError`; CPython returns a complex number. |
 | `complex` identity | Each imaginary literal, operation and `complex()` of a number makes a new object; CPython shares a module's equal constants, so `x = 1j; y = 1j; x is y` is true there ([deviation](../../tests/deviations/complex_identity.py)). A NaN part hashes as a NaN does (below). |
 | `None` as `complex` in a union | A `complex` that holds `None`, stored where a union without `None` is declared, raises `TypeError`; CPython stores `None`, which mypy rejects ([deviation](../../tests/deviations/complex_union_none.py)). |
@@ -36,14 +37,25 @@ counts stay checked. With an exact, nonnegative opposite operand,
 raises only after the whole expression is evaluated
 ([deviation](../../tests/deviations/int_masked_overflow.py)).
 
+**bytearray:** a class of the subset (`lib/_pystachy_bytearray.py`) whose buffer no other code
+holds: `bytes(b)`, a slice and a method's result are copies, and two names of one bytearray share
+its changes. It has CPython's constructor forms, items, slices (read, assigned and deleted, with
+steps), `append`, `extend`, `insert`, `pop`, `remove`, `reverse`, `+`, `+=`, `*`, comparisons with
+`bytes` and bytearrays on either side, and the methods `bytes` has here. Rejected as the program
+compiles: `bytes + bytearray` and `int * bytearray` (reflected operators),
+`bytes | bytearray` annotations, `%` formatting, `title()`, `istitle()` and `expandtabs()` (which
+`bytes` lacks too), a `range(...)` passed to `extend()` (pass `list(range(...))`), and a bytearray
+given to `struct`, a file or another library function, which take `bytes(b)`. There is no
+`memoryview`.
+
 ### Text and file positions
 
 #### Unicode
 
 `str` uses UTF-8 storage. Length, indexing, slicing, iteration, search offsets,
-replacement, padding, formatting and text `read(n)` count **code points**, not
-visible characters: combining marks count separately. `chr()`, escapes, `ord()`
-and `repr()` use the same code points. Whitespace stripping/splitting, `splitlines()`
+replacement, padding, formatting, tab expansion and text `read(n)` count **code
+points**, not visible characters: combining marks count separately. `chr()`, escapes,
+`ord()` and `repr()` use the same code points. Whitespace stripping/splitting, `splitlines()`
 and `isspace()` recognize CPython's Unicode whitespace and line breaks.
 `isalpha()`, `isalnum()`, `isdecimal()`, `isdigit()` and `isnumeric()` use Unicode
 15.1.0 properties, matching the pinned CPython. Decimal digits, digits and numeric
@@ -101,25 +113,6 @@ applies. Bytes case methods remain ASCII-only.
 - Non-ASCII decimal digits in a format specification, such as `f"{x:٣}"`, raise
   `ValueError`; CPython reads them as numbers.
 
-#### Unicode audit
-
-Enable checks **when compiling**, including for imported library code:
-
-```sh
-PYSTACHY_UNICODE_AUDIT=1 ./pystachy run app.py
-PYSTACHY_UNICODE_AUDIT=1 ./pystachy build app.py -o app
-```
-
-The checks raise `NotImplementedError: Unicode audit: ...` for non-ASCII input to
-`expandtabs()`, even when the result would match CPython. Case mapping, case tests,
-character classification, code-point operations, printing, equality,
-concatenation and Unicode whitespace operations remain usable. File write counts, invalid UTF-8 decoding and
-other unlisted boundaries are **not audited**.
-
-Each check scans to the first non-ASCII byte; default builds omit it. An AOT
-executable keeps its compiled checks: changing the variable when running it has
-no effect. The shared runtime cache is independent of this setting.
-
 ### Containers and evaluation order
 
 - **Dict views are snapshots.** `keys()`, `values()` and `items()` produce lists
@@ -127,6 +120,9 @@ no effect. The shared runtime cache is independent of this setting.
   those in later call arguments. `enumerate`, `zip`, `reversed`, and `in`/`min`/`max`
   over values can therefore miss size changes that CPython detects. Plain `for`
   loops and `iter()` over `d.items()` traverse the dict and detect size changes.
+  Written directly in a test, `d.keys()` or `d.items()` of a dict variable, field or
+  display is looked up by `in` and compared with another such view as a set, as
+  CPython does: `{1: 0, 2: 0}.keys() == {2: 0, 1: 0}.keys()` is true.
 - **Set order differs.** String hashes are not CPython's randomized hashes;
   constant displays do not reuse CPython's frozenset constants or `.pyc` layouts.
   Identity-hashed objects depend on addresses in both runtimes. Use `sorted()`
@@ -269,10 +265,11 @@ or generator/async initializers retain eager formatting
   not created, and uncalled templates are not type-checked. Syntax errors remain
   errors. See [import-time scope](modules.md#unsupported-code-in-imported-modules).
 - **Optional imports** can take the fallback where CPython finds an installed
-  module or API. A failed module retains globals already assigned; a later import
-  reruns its code over them. A subclass of `ImportError` ends the program instead of
-  reaching the handler when an imported module's code raises it, or when the statements
-  after resolved imports raise it but cannot keep the `except` clauses. See
+  module or API, also where a module that the imported module needs is missing here
+  (CPython's `ssl` without `_ssl`). A failed module retains globals already assigned;
+  a later import reruns its code over them. A subclass of `ImportError` ends the program
+  instead of reaching the handler when an imported module's code raises it, or when the
+  statements after resolved imports raise it but cannot keep the `except` clauses. See
   [optional imports](modules.md#optional-imports).
 - **Unbound globals** read as `m.x` raise `AttributeError` without CPython's
   circular-import/renaming hints. `from m import x` raises `ImportError`, using the
@@ -453,7 +450,8 @@ See [module initialization](modules.md#finding-and-running-modules),
 - **Optional imports:** a possible `ImportError` or `ModuleNotFoundError` raised under that name,
   other than a definite module-top-level raise;
   a possibly unbound from-import; handlers using `as e`, re-raising, or potentially ending
-  the program when the module is missing; a failing module importing its caller back.
+  the program when the module, or one it needs, is missing; a failing module importing its
+  caller back; an import that is not optional of a module that needs a missing one.
   Optional from-imports also require a definite binding, excluding conditional, deleted,
   annotation-only, function-created or star-imported names.
 - **Module structure:** imported modules binding `__name__`; syntax errors even in imports
@@ -563,8 +561,8 @@ See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
 
 - **Inheritance:** multiple bases outside the [method-only secondary bases](typing.md#method-only-secondary-bases) subset; ordinary hierarchies involving layout-specialized templates,
   NamedTuple or builtins; generic inheritance outside the [visitor subset](typing.md#explicit-generic-classes)
-  (bases whose constructor binds type variables or subclasses passing through their own type
-  variables); mixed dataclass/ordinary hierarchies; decorated subclasses except
+  (bases whose constructor binds type variables, or a type variable inside a base's type
+  argument: `Visitor[list[T]]`); mixed dataclass/ordinary hierarchies; decorated subclasses except
   dataclass-from-dataclass and [identity decorators](typing.md#single-inheritance); changing method kind; incompatible virtual call signatures or
   results; overridden static/class methods called through base-typed objects. Independent
   classes and ordinary hierarchies with fixed concrete fields may specialize constructor
@@ -576,7 +574,9 @@ See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
   class or a different receiver.
 - **Methods and hooks:** assigning `cls`; static/class decorators on special
   methods; `C.__init__(o)` outside ordinary inheritance; decorators beyond staticmethod, classmethod,
-  property/setter/deleter, dataclass and overload. Defining or inheriting `__new__`,
+  property/setter/deleter, abstractmethod, contextmanager, functools.cached_property,
+  functools.total_ordering, dataclass and overload. Defining or inheriting `__new__` (but in an
+  [enum class](../../lib/compatibility.md#enum), in the form CPython's documentation gives),
   `__getattr__`, `__getattribute__`, `__setattr__` or `__delattr__`, or a base defining
   `__init_subclass__`, is rejected.
 - **Properties and attributes:** getter decorators, duplicate/misnamed setters or deleters,
@@ -643,9 +643,9 @@ See [annotations](typing.md#annotations), [aliases](typing.md#type-aliases) and
   class; `PathLike` outside a union with `str`; `TypeVar` outside template parameters
   and returns, except bound class type variables; `TypeVarTuple` outside unpacking in tuple,
   Callable or `*args`; unbound class type variables.
-- **Generic classes:** `Generic[...]` alongside another base; PEP 695 classes with bases,
-  `ParamSpec` or multiple `TypeVarTuple`s; explicit `C[X]` with a `TypeVarTuple` or unannotated /
-  variadic constructor parameters.
+- **Generic classes:** `Generic[...]` alongside a base other than a generic base that takes its
+  type variables; PEP 695 classes with bases, `ParamSpec` or multiple `TypeVarTuple`s; explicit
+  `C[X]` with a `TypeVarTuple` or unannotated / variadic constructor parameters.
 - **Declarations:** bare `Final` outside assignments (a class's needs `Final[T]` or a value
   typed as in an unannotated class attribute, and a constant in a dataclass or `NamedTuple`);
   missing imports for typing names even in local annotations; overload stubs not followed in
@@ -733,7 +733,7 @@ See [user exception classes](semantics.md#user-exception-classes) and
 - **Dict methods:** `update` with different key/value types, pair iterables beyond lists of
   matching tuples, or keyword arguments for nonstring keys; `fromkeys` with generators or
   implicit `None` values without a contextual type.
-- **Bytes:** `bytearray`, `memoryview`, `expandtabs`, `title`, `istitle`, `%`
+- **Bytes:** `memoryview`, `expandtabs`, `title`, `istitle`, `%`
   formatting, integer search arguments, method keywords except `hex` / `translate`, and
   equality with strings.
 - **Formatting:** format strings beyond literals or uniquely bound module literals whose
@@ -779,8 +779,8 @@ See [reflection rules](semantics.md#reflection).
 
 ### Source text
 
-- Named Unicode escapes (`\N{...}`, including f-strings), non-ASCII identifiers, indentation
-  tabs, and source encodings outside UTF-8, Latin-1 and ASCII.
+- Named Unicode escapes (`\N{...}`, including f-strings), non-ASCII identifiers, and source
+  encodings outside UTF-8, Latin-1 and ASCII.
 - Nesting over 5,000 source levels (`**` and `lambda` count twice), or the 6,000-level CPython
   parser-stack budget. Grammar weights follow CPython 3.13: brackets 24–33, f-string fields
   33, blocks 7 and comparison operands 3. The check can stop a few dozen levels earlier.

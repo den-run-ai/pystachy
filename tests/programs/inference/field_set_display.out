@@ -1,0 +1,6 @@
+[7, 9] ['n'] [('a', 1), ('b', 2)] [b'x', b'y']
+['else', 'if', 'while'] [1, 2, 3] ['p', 'q'] 0
+[8] ['m', 'self'] ['else', 'if'] [1, 2] ['p']
+True False True False
+[1] [8]
+[exit 0]

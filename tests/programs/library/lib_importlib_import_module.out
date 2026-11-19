@@ -1,0 +1,9 @@
+start
+impmod_plug imported
+alpha 2
+40
+impmod_plug.sub imported
+impmod_plug.sub.deep 2 alpha
+missing
+[1, "a"]
+[exit 0]

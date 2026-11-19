@@ -292,7 +292,7 @@ jitprobe: pystachy
 aotprobe: pystachy
 	$(PY) tools/aotprobe.py
 
-# Opt-in Unicode porting checks, including cache reuse and GC-stress exception paths.
+# str operations on text that is not ASCII, and every code point, against CPython in JIT and AOT.
 unicode-audit: pystachy
 	$(PY) tools/unicode_audit.py
 

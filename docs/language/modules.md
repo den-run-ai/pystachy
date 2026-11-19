@@ -18,7 +18,9 @@ of a namespace package, as in CPython. Any other file named `NAME`, such as a te
 the `.py` suffix, is not a module.
 
 [`importlib.metadata`](../../lib/compatibility.md#importlibmetadata) searches the same directories
-for the metadata of installed distributions.
+for the metadata of installed distributions. `importlib.import_module("a.b")` of a constant
+name is the import statement of that module; a computed name is a compile-time error, as the
+program's modules are compiled with it.
 
 Builtin modules such as `sys`, `os` and `math` are handled by the compiler. A program's own
 `ffi.py` takes precedence over the builtin `ffi` module. A file named like a module built into
@@ -30,6 +32,7 @@ Pystachy loads its ports of those C modules, `lib/_pystachy_binascii.py`,
 ([library reference](../../lib/compatibility.md#binascii)), and the
 end of the program runs `atexit`'s callbacks. For `abc`, which CPython imports as it starts, it
 loads `lib/_pystachy_abc.py` ([abc](../../lib/compatibility.md#abc)).
+`gc` loads `lib/_pystachy_gc.py` ([gc](../../lib/compatibility.md#gc)).
 `_weakref` loads `lib/_pystachy_weakref.py`,
 [collector-backed references](../weakref.md) to ordinary class instances, with
 callbacks that run after the collection that finds a referent dead; as in CPython, a reference
@@ -61,7 +64,8 @@ CPython's (see the [library reference](../../lib/compatibility.md)).
 itself. A builtin module and a namespace package have none, and an executable built ahead of
 time keeps the path it was built from
 ([deviations](compatibility.md#modules-and-libraries)). `__spec__` and CPython's other module
-metadata are unsupported.
+metadata are unsupported; [`importlib.resources.files()`](../../lib/compatibility.md#importlib)
+gives the directory of a module's file.
 An imported module cannot bind `__name__`.
 
 ## Module scope
@@ -187,6 +191,9 @@ including the standard library's optional C accelerators. The imports run in ord
 - Pystachy cannot find the module.
 - The module's top-level code definitely reaches `raise ImportError(...)`, possibly after
   a compile-time platform test.
+- The module's top-level code reaches its own import of a module that Pystachy cannot
+  find, or of a module that fails in this way. CPython raises `ModuleNotFoundError` there,
+  so the statements after that import never run and are not compiled.
 - A from-import requests a name that the module has not bound yet and does not provide as
   a submodule. For a builtin module, this includes names Pystachy does not implement.
 
@@ -210,6 +217,14 @@ an imported module's own code as it runs also ends the program.
 
 An import in another kind of `try` statement, such as one with `finally` or other exception
 clauses, follows normal import rules: a missing module is a compile-time error.
+Only an optional import decides that a module fails because a module it imports is missing.
+Any other import of that module, before or after the optional one, is the compile-time error
+of the missing module's import; a function's import is an error where the function is compiled.
+A handler that may end the program makes the module required, as for a module that is not
+found itself.
+A module that binds the name `ModuleNotFoundError` itself, and modules that import each
+other on the way to the missing import, are not decided this way: the missing import stays a
+compile-time error, or the optional import is rejected.
 Pystachy also rejects optional imports whose outcome or exception handling it cannot resolve;
 see [rejected programs](../language.md#rejected-rather-than-miscompiled).
 
@@ -313,7 +328,7 @@ multiple iterable arguments where CPython's do.
 The common `str`, `list`, `dict` and `tuple` methods are implemented, including:
 
 - `find`, `index` and `count` with start and end bounds, including `None`.
-- `startswith` and `endswith`, including a tuple of strings.
+- `startswith` and `endswith`, including a tuple of strings of fixed or run-time length (`tuple[str, ...]`).
 - `split`, `rsplit`, `partition`, `rpartition`, `splitlines`, `removeprefix` and `removesuffix`.
 - `replace` with a count, also given as `count=`.
 - `center`, `ljust` and `rjust` with a fill character; `zfill`, `expandtabs`, `capitalize`,
@@ -349,10 +364,10 @@ arguments. Supported iteration contexts and other restrictions are in the
 
 | Module | Supported surface |
 |---|---|
-| `sys` | `argv`, `warnoptions`, `exit`, `stdin`/`stdout`/`stderr` (files), `maxsize`, `platform`, `implementation.name` (`"pystachy"`), `prefix`/`base_prefix`/`exec_prefix`/`base_exec_prefix`; see [runtime values](compatibility.md#modules-and-libraries). `setrecursionlimit`/`getrecursionlimit` enforce [native recursion limits](compatibility.md#recursion). |
+| `sys` | `argv`, `warnoptions`, `exit`, `stdin`/`stdout`/`stderr` (files), `maxsize`, `maxunicode`, `platform`, `implementation.name` (`"pystachy"`), `prefix`/`base_prefix`/`exec_prefix`/`base_exec_prefix`; see [runtime values](compatibility.md#modules-and-libraries). `setrecursionlimit`/`getrecursionlimit` enforce [native recursion limits](compatibility.md#recursion). |
 | `sys.version_info` | CPython 3.13.16's items and `major`, `minor`, `micro`, `releaselevel`, `serial`; see [representation differences](compatibility.md#modules-and-libraries). |
 | `sys.float_info` | `max`, `max_exp`, `max_10_exp`, `min`, `min_exp`, `min_10_exp`, `dig`, `mant_dig`, `epsilon`, `radix`, `rounds`, matching CPython for IEEE 754 doubles. `sys.float_info` itself is not a value. |
-| `os` | `system`, `execv`, `set_inheritable`, `getpid`, `getcwd`, `getenv`, `remove`, `unlink`, `rmdir`, `mkdir`, `makedirs` (`mode` and `exist_ok` by position or by name, in that order), `listdir`, `rename`, `replace`, `fspath`; `name`, `sep`, `curdir`, `pardir`, `extsep`, `pathsep`, `linesep`, `devnull`. |
+| `os` | `system`, `execv`, `set_inheritable`, `dup`, `dup2` (two descriptors), `close`, `getpid`, `getcwd`, `chdir` (a `str` path), `getenv`, `remove`, `unlink`, `rmdir`, `mkdir`, `makedirs` (`mode` and `exist_ok` by position or by name, in that order), `listdir`, `rename`, `replace`, `fspath`; `name`, `sep`, `curdir`, `pardir`, `extsep`, `pathsep`, `linesep`, `devnull`. |
 | `os.environ` | `os.environ[name]` reads (`KeyError` for a name that is not set), assignments and `del`; `name in os.environ`; `get(name)` and `get(name, default)`; direct `__setitem__(name, value)` and `pop(name, default)` calls, with `str` arguments. They read and update the process environment and `os.getenv()` together; `pop` requires an explicit `str` default. The mapping itself (iteration, `items()`, a value passed on) and saved bound methods are unsupported. |
 | `os.path` | `exists`, `lexists`, `isdir`, `isfile`, `islink`, `samefile`, `realpath`, `join`, `normcase`, `getsize`, `getmtime`, `getctime`; of `str` paths, `basename`, `dirname`, `split`, `splitext`, `isabs`, `normpath`, `abspath`, `relpath`, `expanduser` and `commonprefix` (of a `list[str]`); `sep`, `curdir`, `pardir`, `extsep`, `pathsep`, `devnull`. |
 | `time` | `time`, `time_ns`, `monotonic`, `perf_counter`, `process_time`, their `_ns` forms, and `sleep`. |
