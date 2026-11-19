@@ -246,7 +246,12 @@ item), and an AOT build ran a CSR product in 0.53×; AOT builds already vectoriz
 extends gets a copy too, as no list gets shorter while it runs: the default JIT ran
 `[a[i] * b[i] for i in range(n)]` in 0.49× the time and an `out.append(a[i] - a[i - 1])` loop in
 0.45×; AOT builds, whose time goes to the appends, ran them about as before
-([results](../bench/results/listguard-grow-2026-11-19.json)).
+([results](../bench/results/listguard-grow-2026-11-19.json)). A loop that counts down gets a copy
+too: over 4,000 items, the default JIT ran `y[i] = x[i] * 2.0 + y[i]` over
+`range(len(x) - 1, -1, -1)` in 0.17× the time and a recurrence from the end,
+`c[i] = c[i] * 0.5 + c[i + 1] * 0.25 + 1.0`, in 0.78×; an AOT build ran the recurrence in 0.31×
+and the first loop, which LLVM already versioned, as before
+([results](../bench/results/listguard-down-2026-11-19.json)).
 
 `PYSTACHY_OPT=-all` disables the typed-IR passes. JIT inlining has a separate control:
 `PYSTACHY_JIT_INLINE=N` changes the size limit. It excludes the separately compiled runtime;

@@ -1,0 +1,42 @@
+{
+ "notes": "listguard copies of range loops that count down (this branch, claude/dreamy-shannon-bb3cu1-listguard-down, stacked on #1570) against #1570 (claude/dreamy-shannon-bb3cu1-listguard-grow at 0a6a9146), both based on main 8259611e; default JIT and AOT. ab.py: 7 rounds, rotating order, each run pinned to CPU 1 with taskset, PYSTACHY_PROGRAM_CACHE=0; every run's stdout equals CPython 3.13's. rev times y[i] = x[i] * 2.0 + y[i] over range(len(x) - 1, -1, -1), suffix c[i] = c[i] * 0.5 + c[i + 1] * 0.25 + 1.0 over range(len(c) - 2, -1, -1) (the + 1.0 keeps the floats from decaying to subnormal values, whose arithmetic an earlier run without it measured instead), 4,000 items, 20,000 calls each; paired is the median of per-round new/base ratios. x86-64 (Intel Xeon @ 2.10GHz, 4 CPUs, shared host), LLVM 18.1.3.",
+ "args": [
+  "down.py",
+  "4000",
+  "20000"
+ ],
+ "rounds": 7,
+ "results": {
+  "jit rev": {
+   "base_median": 0.3247,
+   "new_median": 0.0504,
+   "paired": 0.174
+  },
+  "jit suffix": {
+   "base_median": 0.4683,
+   "new_median": 0.3496,
+   "paired": 0.778
+  },
+  "jit wall": {
+   "base_median": 0.8554,
+   "new_median": 0.4558,
+   "paired": 0.565
+  },
+  "aot rev": {
+   "base_median": 0.017,
+   "new_median": 0.0171,
+   "paired": 1.018
+  },
+  "aot suffix": {
+   "base_median": 0.7353,
+   "new_median": 0.2237,
+   "paired": 0.313
+  },
+  "aot wall": {
+   "base_median": 0.7556,
+   "new_median": 0.2437,
+   "paired": 0.331
+  }
+ },
+ "source": "import sys\nimport time\n\n\ndef fill(n: int, seed: int) -> list[float]:\n    out = [0.0] * n\n    x = seed\n    for i in range(n):\n        x = (x * 1103515245 + 12345) % 2147483648\n        out[i] = (x % 1000) / 250.0 + 0.5\n    return out\n\n\ndef rev(x: list[float], y: list[float]) -> None:\n    # (an elementwise loop that counts down)\n    for i in range(len(x) - 1, -1, -1):\n        y[i] = x[i] * 2.0 + y[i]\n\n\ndef suffix(c: list[float]) -> None:\n    # (a recurrence from the end: each item reads the one after it; + 1.0 keeps it from decaying to\n    # subnormal floats, whose arithmetic would dominate)\n    for i in range(len(c) - 2, -1, -1):\n        c[i] = c[i] * 0.5 + c[i + 1] * 0.25 + 1.0\n\n\ndef main() -> None:\n    n = int(sys.argv[1])\n    reps = int(sys.argv[2])\n    x = fill(n, 1)\n    y = fill(n, 2)\n    t0 = time.perf_counter()\n    for r in range(reps):\n        rev(x, y)\n    t1 = time.perf_counter()\n    for r in range(reps):\n        suffix(y)\n    t2 = time.perf_counter()\n    print(sum(y))\n    print(\"rev=%.4f suffix=%.4f\" % (t1 - t0, t2 - t1), file=sys.stderr)\n\n\nmain()\n"
+}
