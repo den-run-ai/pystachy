@@ -1,0 +1,148 @@
+{
+ "spec": {
+  "variants": [
+   [
+    "c-generic",
+    [
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/allx.LiEe/tree/pystachy",
+     "run",
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/probe/umap_core.py",
+     "10000",
+     "16",
+     "10",
+     "15",
+     "200",
+     "7"
+    ],
+    {
+     "PYSTACHY_JIT_CPU": "generic",
+     "PYSTACHY_PROGRAM_CACHE": "1",
+     "PYSTACHY_CACHE": "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/allx.LiEe/pc-generic"
+    }
+   ],
+   [
+    "c-native",
+    [
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/allx.LiEe/tree/pystachy",
+     "run",
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/probe/umap_core.py",
+     "10000",
+     "16",
+     "10",
+     "15",
+     "200",
+     "7"
+    ],
+    {
+     "PYSTACHY_PROGRAM_CACHE": "1",
+     "PYSTACHY_CACHE": "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/allx.LiEe/pc-native"
+    }
+   ]
+  ]
+ },
+ "rounds": 7,
+ "runs": {
+  "c-generic": [
+   {
+    "wall": 5.872081797999954,
+    "prepare_run": 0.043133143,
+    "knn": 1.553,
+    "layout": 4.145,
+    "run": 5.828948654999953
+   },
+   {
+    "wall": 5.77461313699996,
+    "prepare_run": 0.044232145,
+    "knn": 1.231,
+    "layout": 4.36,
+    "run": 5.730380991999961
+   },
+   {
+    "wall": 6.237040478000154,
+    "prepare_run": 0.05838881,
+    "knn": 1.589,
+    "layout": 4.449,
+    "run": 6.178651668000153
+   },
+   {
+    "wall": 5.847466445000009,
+    "prepare_run": 0.050779968,
+    "knn": 1.341,
+    "layout": 4.312,
+    "run": 5.7966864770000095
+   },
+   {
+    "wall": 6.0636604849999,
+    "prepare_run": 0.052868955,
+    "knn": 1.337,
+    "layout": 4.504,
+    "run": 6.0107915299999
+   },
+   {
+    "wall": 5.6121101740000086,
+    "prepare_run": 0.041342781,
+    "knn": 1.25,
+    "layout": 4.19,
+    "run": 5.570767393000009
+   },
+   {
+    "wall": 5.844774068000106,
+    "prepare_run": 0.061673139,
+    "knn": 1.33,
+    "layout": 4.295,
+    "run": 5.783100929000106
+   }
+  ],
+  "c-native": [
+   {
+    "wall": 5.479265345000158,
+    "prepare_run": 0.04138105,
+    "knn": 1.219,
+    "layout": 4.093,
+    "run": 5.437884295000158
+   },
+   {
+    "wall": 5.62102217000006,
+    "prepare_run": 0.041595465,
+    "knn": 1.156,
+    "layout": 4.27,
+    "run": 5.57942670500006
+   },
+   {
+    "wall": 5.749418199000047,
+    "prepare_run": 0.062896039,
+    "knn": 1.187,
+    "layout": 4.321,
+    "run": 5.686522160000047
+   },
+   {
+    "wall": 5.71784710299994,
+    "prepare_run": 0.054871286,
+    "knn": 1.131,
+    "layout": 4.403,
+    "run": 5.66297581699994
+   },
+   {
+    "wall": 5.755943678999984,
+    "prepare_run": 0.041152188,
+    "knn": 1.12,
+    "layout": 4.468,
+    "run": 5.714791490999984
+   },
+   {
+    "wall": 5.686200181000004,
+    "prepare_run": 0.040584871,
+    "knn": 1.144,
+    "layout": 4.369,
+    "run": 5.645615310000004
+   },
+   {
+    "wall": 5.594571444999929,
+    "prepare_run": 0.04693338,
+    "knn": 1.142,
+    "layout": 4.267,
+    "run": 5.547638064999929
+   }
+  ]
+ }
+}

@@ -1,0 +1,135 @@
+{
+ "spec": {
+  "variants": [
+   [
+    "generic",
+    [
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/pr-jitcpu/pystachy",
+     "run",
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/k/saxpy.py",
+     "1000",
+     "400000"
+    ],
+    {
+     "PYSTACHY_JIT_CPU": "generic"
+    }
+   ],
+   [
+    "native",
+    [
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/pr-jitcpu/pystachy",
+     "run",
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/k/saxpy.py",
+     "1000",
+     "400000"
+    ],
+    {}
+   ]
+  ]
+ },
+ "rounds": 7,
+ "runs": {
+  "generic": [
+   {
+    "wall": 0.1485897719994682,
+    "jit_optimize": 0.025561506,
+    "prepare_run": 0.029865905,
+    "jit_codegen": 0.015885193,
+    "run": 0.10283867399946822
+   },
+   {
+    "wall": 0.1283180030004587,
+    "jit_optimize": 0.018116159,
+    "prepare_run": 0.021317149,
+    "jit_codegen": 0.011018585,
+    "run": 0.0959822690004587
+   },
+   {
+    "wall": 0.14496145300017815,
+    "jit_optimize": 0.022625255,
+    "prepare_run": 0.025653616,
+    "jit_codegen": 0.01147422,
+    "run": 0.10783361700017816
+   },
+   {
+    "wall": 0.1325095969996255,
+    "jit_optimize": 0.018053001,
+    "prepare_run": 0.021055577,
+    "jit_codegen": 0.011635815,
+    "run": 0.09981820499962551
+   },
+   {
+    "wall": 0.13450543100043433,
+    "jit_optimize": 0.02019317,
+    "prepare_run": 0.023548044,
+    "jit_codegen": 0.011118393,
+    "run": 0.09983899400043432
+   },
+   {
+    "wall": 0.1255855919998794,
+    "jit_optimize": 0.016610119,
+    "prepare_run": 0.019484461,
+    "jit_codegen": 0.012124782,
+    "run": 0.09397634899987939
+   },
+   {
+    "wall": 0.12824162899960356,
+    "jit_optimize": 0.017196728,
+    "prepare_run": 0.02007294,
+    "jit_codegen": 0.010281805,
+    "run": 0.09788688399960356
+   }
+  ],
+  "native": [
+   {
+    "wall": 0.1071137050003017,
+    "jit_optimize": 0.019043167,
+    "prepare_run": 0.021972282,
+    "jit_codegen": 0.012576174,
+    "run": 0.07256524900030172
+   },
+   {
+    "wall": 0.10585011600051075,
+    "jit_optimize": 0.019070208,
+    "prepare_run": 0.022021125,
+    "jit_codegen": 0.012266724,
+    "run": 0.07156226700051074
+   },
+   {
+    "wall": 0.10852678700030083,
+    "jit_optimize": 0.020046144,
+    "prepare_run": 0.023229233,
+    "jit_codegen": 0.012348213,
+    "run": 0.07294934100030083
+   },
+   {
+    "wall": 0.10591822799960937,
+    "jit_optimize": 0.018301631,
+    "prepare_run": 0.021351605,
+    "jit_codegen": 0.012301683,
+    "run": 0.07226493999960937
+   },
+   {
+    "wall": 0.10613056399961351,
+    "jit_optimize": 0.018725694,
+    "prepare_run": 0.022475095,
+    "jit_codegen": 0.012459405,
+    "run": 0.07119606399961351
+   },
+   {
+    "wall": 0.10384377299942571,
+    "jit_optimize": 0.018031811,
+    "prepare_run": 0.020942058,
+    "jit_codegen": 0.012576738,
+    "run": 0.0703249769994257
+   },
+   {
+    "wall": 0.10158744700038369,
+    "jit_optimize": 0.017734528,
+    "prepare_run": 0.020604829,
+    "jit_codegen": 0.011879346,
+    "run": 0.06910327200038369
+   }
+  ]
+ }
+}

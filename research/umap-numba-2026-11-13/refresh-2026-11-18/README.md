@@ -201,3 +201,22 @@ conflicts took both sides. Built to a fixed point; every run printed the recorde
   left-to-right sum does not allow that, so no default can.
 - For scale, earlier today main (alpha.3) with the listguard drafts and no JIT drafts, JIT: kNN 2.49
   s, layout 5.17 s (`gaps-2026-11-19/var-outer-umap.json`).
+
+## Refreshes, and the host-CPU slowdown fixed (19 November, late)
+
+- **#1442, #1468 and #1477 refreshed on main `d35417c9` (rc.1).** #1442's `list.len` lowering moved into
+  main's machine IR: a list's length is now a `mach.load` of kind `list.length`, printed with the
+  `@list` tag and `!range`. #1468's and #1477's conflicts kept both sides (main's `PYSTACHY_JIT_OPT=2`
+  next to the helpers). Each built at a fixed point and passed its checks (PR bodies).
+- **#1575's kNN slowdown is the tuning, not the instruction set.** `llc -O2` of the all-drafts module
+  (`reloads.py`): the loop around kNN's distance copy reloads 10 values with no named CPU (LLVM's
+  default tuning, i586's) and 16 with any named tuning (generic, x86-64-v3, -v4, sapphirerapids), with
+  or without AVX. The runner now takes `-default-tuning`, which drops `target-cpu` and keeps
+  `target-features` (`opt-wrapper.sh` simulated it first: `strip-*.json`). All drafts, 7 rounds
+  (`fix-umap*.json`): runner kNN 1.19× before, 1.07× after (0.97 to 1.13 per round; the code differs
+  from generic's only in VEX encodings), whole run 1.01×; cached executables kNN 0.89×, whole run
+  0.97×. The branch alone (`branch-*.json`): kNN 1.00× and 1.01×, saxpy 0.71×, scale 0.81×.
+- **An older gap this exposed.** The program cache's executables, which clang compiles with x86-64's
+  generic tuning, run kNN in 1.32 to 1.34 s against the runner's 0.95 to 0.97 s on the same IR
+  (`cache-umap.json`, generic CPU): the cached path, the native CLI's default, is the slower one.
+  Not addressed.

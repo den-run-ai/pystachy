@@ -1,0 +1,112 @@
+{
+ "spec": {
+  "variants": [
+   [
+    "c-generic",
+    [
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/allx.LiEe/tree/pystachy",
+     "run",
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/k/stencil.py",
+     "4000",
+     "5000"
+    ],
+    {
+     "PYSTACHY_JIT_CPU": "generic",
+     "PYSTACHY_PROGRAM_CACHE": "1",
+     "PYSTACHY_CACHE": "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/allx.LiEe/pc-generic"
+    }
+   ],
+   [
+    "c-native",
+    [
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/allx.LiEe/tree/pystachy",
+     "run",
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/k/stencil.py",
+     "4000",
+     "5000"
+    ],
+    {
+     "PYSTACHY_PROGRAM_CACHE": "1",
+     "PYSTACHY_CACHE": "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/allx.LiEe/pc-native"
+    }
+   ]
+  ]
+ },
+ "rounds": 7,
+ "runs": {
+  "c-generic": [
+   {
+    "wall": 0.4559781230000226,
+    "prepare_run": 0.058825122,
+    "run": 0.3971530010000226
+   },
+   {
+    "wall": 0.42820643400000336,
+    "prepare_run": 0.042016114,
+    "run": 0.38619032000000336
+   },
+   {
+    "wall": 0.42162958700009767,
+    "prepare_run": 0.040219375,
+    "run": 0.38141021200009767
+   },
+   {
+    "wall": 0.42671131499992043,
+    "prepare_run": 0.041016991,
+    "run": 0.38569432399992043
+   },
+   {
+    "wall": 0.4666758790001495,
+    "prepare_run": 0.057188542,
+    "run": 0.4094873370001495
+   },
+   {
+    "wall": 0.4279158720000851,
+    "prepare_run": 0.042198648,
+    "run": 0.38571722400008507
+   },
+   {
+    "wall": 0.43375011300008737,
+    "prepare_run": 0.040092233,
+    "run": 0.3936578800000874
+   }
+  ],
+  "c-native": [
+   {
+    "wall": 0.2388887730000988,
+    "prepare_run": 0.042915571,
+    "run": 0.19597320200009882
+   },
+   {
+    "wall": 0.23875772699989284,
+    "prepare_run": 0.0416393,
+    "run": 0.19711842699989285
+   },
+   {
+    "wall": 0.2621102450000308,
+    "prepare_run": 0.053294593,
+    "run": 0.20881565200003077
+   },
+   {
+    "wall": 0.24084076100007223,
+    "prepare_run": 0.040790212,
+    "run": 0.20005054900007224
+   },
+   {
+    "wall": 0.23863237099999424,
+    "prepare_run": 0.040545053,
+    "run": 0.19808731799999424
+   },
+   {
+    "wall": 0.24061552099988148,
+    "prepare_run": 0.039838734,
+    "run": 0.2007767869998815
+   },
+   {
+    "wall": 0.23948912299988478,
+    "prepare_run": 0.040276352,
+    "run": 0.19921277099988477
+   }
+  ]
+ }
+}
