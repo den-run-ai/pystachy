@@ -2927,13 +2927,16 @@ static const char *repr_depth(Buf *b, I v, const char *d, I depth) {
   case 'S': case 'F': {                             /* set() or {1, 2}; frozenset() or frozenset({1, 2}) */
     Set *s = (Set *)v; int f = d[-1] == 'F';
     if (!s->len) { put(b, f ? "frozenset()" : "set()", f ? 11 : 5); return skip(d); }
+    /* (one being printed already, through an element's __repr__, is set(...), as CPython's set_repr
+       prints it: #1586) */
+    if (!pys_repr_enter(s)) { put(b, f ? "frozenset(...)" : "set(...)", f ? 14 : 8); return skip(d); }
     put(b, f ? "frozenset({" : "{", f ? 11 : 1);
     for (I i = 0, n = 0; i <= s->mask; i++) if (s->hs[i] != -1) {
       if (n++) put(b, ", ", 2);
       Mpz *m = sbig(s, i);   /* (an int past 64 bits: kb) */
       if (m) { Str *t = mpz_digits(m); if (!t) digits_deep(); put(b, t->s, t->len); } else repr_depth(b, s->keys[i], d, depth);
     }
-    put(b, f ? "})" : "}", f ? 2 : 1); return skip(d);
+    put(b, f ? "})" : "}", f ? 2 : 1); pys_repr_leave(s); return skip(d);
   }
   case 'T': {
     if (!v) { put(b, "None", 4); return skip(d - 1); }
@@ -4547,6 +4550,19 @@ __attribute__((noinline)) static int dkeyeq(Dict *d, I e, I x, I k) {
   int32_t *ix = d->idx; int eq = keyeq(x, k, kdesc(d->kind));
   return d->idx != ix || d->keys[e] != x ? -1 : eq;
 }
+/* The idx slot of entry e, whose key an __eq__ found equal while it moved the entry out of the
+   slot the probe read: it removed the entry and stored its key again (popitem(), then d[x] = v),
+   which gives the key the same entry and another slot, so dkeyeq's test holds. CPython's lookdict
+   returns the entry there, and its callers find the slot by the entry's position
+   (lookdict_index), as this does: starting again would call __eq__ once more. -1: the entry is
+   a hole (a None key's word is 0, as a hole's is), after which the lookup starts again (#1580) */
+__attribute__((noinline)) static I dmoved(Dict *d, I e) {
+  if (!dlive(d, e)) return -1;
+  uint64_t m = dmask(d), p = d->hs[e], i = p & m;
+  DICT_PROBE();
+  while (d->idx[i] != e + 1) { p >>= 5; i = (i * 5 + p + 1) & m; DICT_PROBE(); }
+  return (I)i;
+}
 static I dfindc(Dict *d, I k, uint64_t h, I *free);
 static I dfinds(Dict *d, I k, uint64_t h, I *free, uint64_t m);
 static I dempty(Dict *d, uint64_t h);
@@ -4576,7 +4592,10 @@ static inline __attribute__((always_inline)) I dlook(Dict *d, I k, uint64_t h, I
       if (objs && objs != 3 && d->kind > 1) {
         const char *s = kdesc(d->kind);
         int eq = *s == 'T' ? keq(x, k, s, 1) : *s == 'A' && !s[1] ? dyn_keyeq((Dyn *)x, (Dyn *)k) : 2;
-        if (eq == 2) { eq = dkeyeq(d, e - 1, x, k); ran = 1; }
+        if (eq == 2) {
+          eq = dkeyeq(d, e - 1, x, k); ran = 1;
+          if (eq > 0 && d->idx[i] != e) { I j = dmoved(d, e - 1); if (j >= 0) return j; eq = -1; }
+        }
         if (eq < 0) return dfind(d, k, h, free);
         if (eq) return i;
       }

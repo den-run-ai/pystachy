@@ -1,0 +1,57 @@
+set moved {x: 4702111234474983745} 1 [4702111234474983745] 1 True
+99
+get moved {x: 99} 1 [99] 1 True
+True
+in moved {x: 99} 1 [99] 1 True
+del moved {} 0 [] 1 True
+99
+pop moved {} 0 [] 1 True
+99
+popdefault moved {} 0 [] 1 True
+99
+getdefault moved {x: 99} 1 [99] 1 True
+99
+setdefault moved {x: 99} 1 [99] 1 True
+iadd moved {x: 100} 1 [100] 2 True
+set unequal {x: 99, k: 4702111234474983745} 2 [99, 4702111234474983745] 1 True
+KeyError k
+get unequal {x: 99} 1 [99] 1 True
+False
+in unequal {x: 99} 1 [99] 1 True
+KeyError k
+del unequal {x: 99} 1 [99] 1 True
+KeyError k
+pop unequal {x: 99} 1 [99] 1 True
+-1
+popdefault unequal {x: 99} 1 [99] 1 True
+-1
+getdefault unequal {x: 99} 1 [99] 1 True
+5
+setdefault unequal {x: 99, k: 5} 2 [99, 5] 1 True
+KeyError k
+iadd unequal {x: 99} 1 [99] 1 True
+set gone {k: 4702111234474983745} 1 [4702111234474983745] 1 True
+KeyError k
+get gone {} 0 [] 1 True
+False
+in gone {} 0 [] 1 True
+KeyError k
+del gone {} 0 [] 1 True
+KeyError k
+pop gone {} 0 [] 1 True
+-1
+popdefault gone {} 0 [] 1 True
+-1
+getdefault gone {} 0 [] 1 True
+5
+setdefault gone {k: 5} 1 [5] 1 True
+KeyError k
+iadd gone {} 0 [] 1 True
+set {kn: 7} 1 1
+-1
+get {} 0 1
+False
+in {} 0 1
+-1
+pop {} 0 1
+[exit 0]
