@@ -257,7 +257,11 @@ vectorizer of [#1540](https://github.com/den-run-ai/pystachy/pull/1540) and
 [#1571](https://github.com/den-run-ai/pystachy/pull/1571), `b[i] = (a[i - 1] + a[i] + a[i + 1]) * 0.25`
 over 4,000 items ran in 0.46× the time with SSE2's vectors and 0.24× with the host's (AVX-512,
 kept to 256 bits), where the copy with the checks gained nothing from the host's CPU
-([results](../bench/results/listguard-offsets-2026-11-19.json)).
+([results](../bench/results/listguard-offsets-2026-11-19.json)). A loop that calls a function
+that only assigns items, such as a random number generator's `state[0] = ...`, gets a copy too: a
+sum of `xs[i] * ys[i] + bump(state, i % 3)` over 4,000 items ran in 0.83× the time under the
+default JIT and 0.91× in an AOT build, where `bump` keeps its own checks
+([results](../bench/results/listguard-calls-2026-11-19.json)).
 
 `PYSTACHY_OPT=-all` disables the typed-IR passes. JIT inlining has a separate control:
 `PYSTACHY_JIT_INLINE=N` changes the size limit. It excludes the separately compiled runtime;
