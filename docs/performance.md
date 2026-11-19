@@ -281,7 +281,9 @@ index's overflow check (`a[i - 1]`), stays scalar.
 Where the vectorizer runs, the tier compiles for the host's CPU (`PYSTACHY_JIT_CPU`): on an AVX-512 host, whose vectors LLVM
 keeps to 256 bits, the same copies over 1,000 items ran in 0.73× and 0.81× of the time of SSE2's
 code, launch excluded. Code generation took up to 12% longer, and six pyperformance programs ran
-in 0.99× to 1.05× of the wall time
+in 0.99× to 1.05× of the wall time. The JIT runner keeps its default tuning, under which a large
+inlined function, UMAP's nearest-neighbour search, ran at 1.07× (1.19× with the host's tuning);
+the program cache's executables, whose default is x86-64's generic tuning, ran it at 0.89×
 ([results](../bench/results/jit-host-cpu-2026-11-19.json)).
 
 A program that builds `list(range(4194305))` peaks at **34.2 MiB RSS in v0.4.0-alpha.3's AOT

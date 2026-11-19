@@ -534,10 +534,15 @@ induction variable from scalar evolution: a loop without exits, such as `listgua
 of 63,000 lines the loop passes took about 0.1 s more at each launch.
 Where the vectorizer runs (or LLVM's `-O2` pipeline, `PYSTACHY_JIT_OPT=2`), the tier optimizes and
 compiles the program for the host's CPU (the driver's `JIT_CPU`): `opt -mcpu=native` names the CPU
-and its features on each function, which the vectorizer's cost model and the runner's code
-generation follow, so that a vector holds four doubles where the host has AVX2 rather than SSE2's
-two. A larger program, such as the compiler itself, keeps the target's default CPU, where the
-host's would only lengthen code generation. That changes no result: the frontend's IR carries no fast-math flag
+and its features on each function, which the vectorizer's cost model follows, so that a vector
+holds four doubles where the host has AVX2 rather than SSE2's two. The program cache's executable
+is compiled for both. The runner, given `-default-tuning`, keeps each function's features but not
+its CPU, and so the tuning that its code has without one, LLVM's default: the host's tuning changed
+the register allocation of a large inlined function, which made UMAP's nearest-neighbour search
+take 1.19× its time in the runner (1.07× without the CPU's tuning, 0.89× in the cache's
+executables, which are otherwise tuned for x86-64's generic CPU). `lli`, which takes no such
+option, compiles for the CPU each function names. A larger program, such as the compiler itself,
+keeps the target's default CPU, where the host's would only lengthen code generation. That changes no result: the frontend's IR carries no fast-math flag
 and no `llvm.fmuladd`, so nothing is fused or reassociated, and the program cache keys an
 executable by the host's CPU. `PYSTACHY_JIT_CPU=generic` compiles for the module target's default
 CPU instead.
@@ -971,7 +976,7 @@ are required before promotion. `make verify` keeps the standard tier.
 | `PYSTACHY_OPT` | Disable named optimizations with `-name`, comma-separated, or all with `-all`; see [IR passes](typed-ir.md#optimizations) |
 | `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT user-function inlining, including the recursion entry helper; `0` disables it (the scalar recursion helpers remain inlined) |
 | `PYSTACHY_JIT_OPT=0\|1\|2` | `1` (default) runs the JIT tier's cleanup over the program, then loop passes and the loop vectorizer where the program is within the `PYSTACHY_JIT_INLINE` threshold; `0` runs the cleanup alone; `2` runs LLVM's `-O2` pipeline in its place, which takes longer at each launch (no `PYSTACHY_JIT_INLINE` budget applies) |
-| `PYSTACHY_JIT_CPU=native\|generic` | `native` (default) has the JIT tier optimize and compile a program for the host's CPU where a loop vectorizer runs, within the `PYSTACHY_JIT_INLINE` threshold or with `PYSTACHY_JIT_OPT=2` (`opt -mcpu=native` names it and its features on each function: AVX2's or AVX-512's vectors where the host has them); `generic` for the default CPU of the module's target (SSE2 on x86-64). Results are the same: the program's module asks for no fused or reassociated float operation, and the program cache keys an executable by the host's CPU |
+| `PYSTACHY_JIT_CPU=native\|generic` | `native` (default) has the JIT tier optimize and compile a program for the host's CPU where a loop vectorizer runs, within the `PYSTACHY_JIT_INLINE` threshold or with `PYSTACHY_JIT_OPT=2` (`opt -mcpu=native` names it and its features on each function: AVX2's or AVX-512's vectors where the host has them; the JIT runner keeps the features with the default tuning); `generic` for the default CPU of the module's target (SSE2 on x86-64). Results are the same: the program's module asks for no fused or reassociated float operation, and the program cache keys an executable by the host's CPU |
 | `PYSTACHY_JIT_CODEGEN=0\|2` | `0` generates the program's code at `-O0`: the JIT runner's `-O0`, or `llc -O0` for `lli`'s ORC to link; `2` (default) keeps ORC's level |
 | `PYSTACHY_JIT_LAUNCHER=auto\|lli` | What runs `pystachy run`'s programs: `auto` (default), Pystachy's [JIT runner](#the-jit-runner) where it can be built, else `lli`; `lli` always `lli` |
 | `PYSTACHY_PROGRAM_CACHE=0` | Disable the default Linux native [program cache](program-cache.md); unset, empty or `1` enables it where supported. Its [settings](program-cache.md#settings) section lists the variables that key or bypass it |
