@@ -727,7 +727,8 @@ See [user exception classes](semantics.md#user-exception-classes) and
   of one; an `int` or `float` where `complex` is declared; `sum()`; ordering, `hash()` or
   container equality of unions that hold one; attribute assignment and subclasses. See
   [complex numbers](semantics.md#complex-numbers).
-- **Reserved modules:** `_pystachy_iterators`, `_pystachy_range`, `_pystachy_object`, `_pystachy_complex`.
+- **Reserved modules:** `_pystachy_iterators`, `_pystachy_range`, `_pystachy_object`,
+  `_pystachy_complex`, `_pystachy_json_any`.
 - **Arguments:** unsupported keywords; optional `key=` when items lack a supported natural
   order; `open()` encoding constants beyond UTF-8 and Latin-1.
 - **Dict methods:** `update` with different key/value types, pair iterables beyond lists of
