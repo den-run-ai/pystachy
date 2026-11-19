@@ -18,6 +18,17 @@ from src.pystachy_compiler.specs import IROPS, RUNTIME  # noqa: E402
 from src.pystachy_compiler.utils import is_tuple, targs, tslots  # noqa: E402
 
 WRITES = frozenset({"wL", "wD", "wO", "wG"})
+# A write that may make a list shorter (sL), which every unknown write may; and the runtime list
+# writes that make none (check_lean_access's FRESH_LIST_WRITES, ITEM_WRITES and GROW_WRITES): a
+# summary whose body and callees write lists, as this scan sees, but make none shorter and run no
+# unknown code says so (gL), which makes a call of it a grow node of the access model, not a lists
+# node
+SHRINKS = "sL"
+GROWS_ONLY = "gL"
+ANY_WRITE = WRITES | {SHRINKS}
+UNSHRINKING = frozenset({"list.slice", "list.set", "list.append", "list.append_big", "list.append_identity",
+                         "list.insert", "list.insert_big", "list.insert_identity", "list.extend",
+                         "list.set_big", "list.set_identity"})
 # runtime.c's allocators (pys_alloc, pys_alloc_atomic, pys_new: malloc, returns_nonnull), sized by
 # their one operand n: gc_alloc's size classes and big_new hold at least n + 1 bytes (a closure
 # cell requests 15 or 23 for its 16- or 24-byte slot, functions.py).
@@ -122,23 +133,26 @@ def fresh_store(op, fresh):
 
 
 def writes(tokens):
-    """The four mutable states tracked by the access model."""
-    return set(WRITES if "U" in tokens or "U?" in tokens else WRITES.intersection(tokens))
+    """The four mutable states tracked by the access model (and, for unknown code, SHRINKS)."""
+    return set(ANY_WRITE if "U" in tokens or "U?" in tokens else WRITES.intersection(tokens))
 
 
 def runtime_writes(operation):
     contract = RUNTIME.get(operation["text"])
     if contract is None:
-        return set(WRITES)
+        return set(ANY_WRITE)
     tokens = set(contract.split("|")[1].split())
     if "U?" in tokens:
         # Use the adapter's conservative descriptor rule, not Gen.opfx or its
         # inferred call summary. Exception classes and identity-key errors may
         # invoke user code, so preserve those possibilities too.
         if any(letter in operation["descriptor"] for letter in "OHPEA"):
-            return set(WRITES)
+            return set(ANY_WRITE)
         tokens.remove("U?")
-    return writes(tokens)
+    result = writes(tokens)
+    if "wL" in result and operation["text"] not in UNSHRINKING:
+        result.add(SHRINKS)
+    return result
 
 
 def slot_names(function):
@@ -197,12 +211,15 @@ def local_writes(function, identity_slot=False, tagged=lambda cls: False):
             else:
                 # Unlike the compiler's raw-memory summary, the adapter has no
                 # checked guarantee that an unknown address cannot alias a global.
-                result.update(WRITES)
+                result.update(ANY_WRITE)
         elif kind in {"mem.load", "mach.load"}:
             pass
         else:
             tokens = set(IROPS.get(kind, "*").split())
-            result.update(WRITES if "*" in tokens else writes(tokens))
+            effect = set(ANY_WRITE) if "*" in tokens else writes(tokens)
+            if "wL" in effect and kind != "list.store":
+                effect.add(SHRINKS)  # (listguard's list.store assigns an item: no length changes)
+            result.update(effect)
     return result, callees
 
 
@@ -256,24 +273,33 @@ cycle cannot conceal a write reachable elsewhere in the cycle.
     exempt = returners - unverified
     tagged = tagged_classes(snapshot)
     inferred, declared, callers = {}, {}, {symbol: set() for symbol in by_symbol}
+    scanned = {}  # (the bodies' own tokens, without the compiler's declared summaries)
     for symbol, function in by_symbol.items():
         body, callees = local_writes(function, symbol in exempt, tagged)
         tokens = function.get("effects")
         declared[symbol] = set(tokens.split()) if isinstance(tokens, str) else {"U"}
         inferred[symbol] = body | writes(declared[symbol])
+        scanned[symbol] = set(body)
         for callee in callees:
             if callee in by_symbol:
                 callers[callee].add(symbol)
             else:
-                inferred[symbol].update(WRITES)
+                inferred[symbol].update(ANY_WRITE)
     pending, queued = deque(inferred), set(inferred)
     while pending:
         callee = pending.popleft()
         queued.remove(callee)
         for caller in callers[callee]:
-            before = len(inferred[caller])
+            before = len(inferred[caller]) + len(scanned[caller])
             inferred[caller].update(inferred[callee])
-            if len(inferred[caller]) != before and caller not in queued:
+            scanned[caller].update(scanned[callee])
+            if len(inferred[caller]) + len(scanned[caller]) != before and caller not in queued:
                 pending.append(caller)
                 queued.add(caller)
-    return Summaries({symbol: declared[symbol] | inferred[symbol] for symbol in by_symbol}, returners, exempt)
+    final = {symbol: declared[symbol] | inferred[symbol] for symbol in by_symbol}
+    for symbol, tokens in final.items():
+        # (only list writes the scan itself saw, each of which shortens no list: a list write that
+        # only the compiler's summary declares may be any)
+        if "wL" in scanned[symbol] and not tokens & {SHRINKS, "U", "U?"}:
+            tokens.add(GROWS_ONLY)
+    return Summaries(final, returners, exempt)

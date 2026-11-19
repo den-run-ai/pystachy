@@ -172,8 +172,11 @@ The adapter reads the typed-after snapshot and emits a node for each operation:
   the new list it returns, and an append, an insertion, an extension or an identity or big
   item assignment (`GROW_WRITES`) only adds items: a `grow` node, after which no length is
   smaller and a length read before it is a lower bound (`lenGe`) on which an index's bound can
-  rest, as in a `listguard` copy of a loop that appends; a dict write every dict's entries; an
-  object write every field. The
+  rest, as in a `listguard` copy of a loop that appends. A direct call whose callee, as the scan
+  sees its body and transitive callees, writes lists but makes none shorter (no list write but
+  those above or `listguard`'s item stores, no unknown store, callee or user code: `gL`) is a
+  `grow` node too, as in a copy of a loop that calls a random number generator's
+  `state[0] = ...`. A dict write changes every dict's entries; an object write every field. The
   body scan does not count a store to the function's own stack slots, to memory it allocated
   itself (an `alloc.fixed` object's fields, a fixed tuple's words, a literal-sized runtime
   allocation's words within the n + 1 bytes `pys_alloc(n)` provides) or through `%idret` where every direct call in the

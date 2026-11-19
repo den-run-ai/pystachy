@@ -12,7 +12,7 @@ from src.pystachy_compiler.diagnostics import fail
 from src.pystachy_compiler.ir import NOLABELS, NONUMS, NOVALS, one_nums_intact
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import RENAMED
-from src.pystachy_compiler.optimizations import call_counts
+from src.pystachy_compiler.optimizations import call_counts, list_shrinkers
 from src.pystachy_compiler.syntax import Node
 from src.pystachy_compiler.utils import fxs, timing_end, timing_start
 
@@ -126,6 +126,7 @@ def gen_optimize_program(self) -> None:
         # landing block, Blk.handler, which the passes count, see preds)
         if "listguard" in on:
             self.callsites = call_counts(self.fns)
+            self.shrinkers = list_shrinkers(self)
         changed = False
         for fn in self.fns:
             if self.optimize(fn, on) > 0:
