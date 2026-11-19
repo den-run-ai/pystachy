@@ -1498,6 +1498,9 @@ class Gen:
         # listguard (gen_listguard): how many calls of each function the program's IR makes, by
         # symbol, once the program is built and before any pass copies one (call_counts)
         self.callsites: dict[str, int] = {}
+        # and the functions that may make a list shorter or run user code, by the symbol a call or an
+        # init names (list_shrinkers)
+        self.shrinkers: dict[str, bool] = {}
         self.summaries = EffectSummaries()
         self.ltype: dict[str, str] = {}
         self.lreg: dict[str, str] = {}

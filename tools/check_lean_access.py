@@ -29,7 +29,7 @@ import sys
 from check_lean_boundary import (INVOKES, MAX_PROGRAM_BYTES, OP_KEYS, OUTCOMES, SEVERITY,
                                  TERMINATORS, Unsupported, check_header, checker_result, name,
                                  read_snapshot, require)
-from check_lean_effects import WORD, fresh_addresses, fresh_store, summaries, tagged_classes
+from check_lean_effects import GROWS_ONLY, WORD, fresh_addresses, fresh_store, summaries, tagged_classes
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -1737,7 +1737,12 @@ def normalize_program(snapshot, function, effects_of=None, derefs=None, record=N
             checked = getattr(effects_of, "identity_argument", None)
             if checked is not None and not checked(op, symbol, set(slots)):
                 return kill_nodes(True, True, True, True), havocs(op)
-            return kill_nodes(*kills(effects_of.get(op["text"]))), havocs(op)
+            effects = effects_of.get(op["text"])
+            lists, dicts, globals_, fields_ = kills(effects)
+            # (a callee that writes lists but makes none shorter, check_lean_effects' gL: it assigns
+            # items or adds them, a grow node, as listguard's guard_shrinks finds such a call)
+            grows = lists and effects is not None and GROWS_ONLY in effects
+            return kill_nodes(lists and not grows, dicts, globals_, fields_) + ([{"op": "grow"}] if grows else []), havocs(op)
         if kind in ("icall", "init", "gen.resume", "gen.drop"):
             return kill_nodes(True, True, True, True), havocs(op)
         if kind == "tuple.store":

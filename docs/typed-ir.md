@@ -782,8 +782,10 @@ and `hi = stop` where it counts up, and where it counts down (a negative constan
 `lo = stop + 1` and `hi = start + 1`, which the tests compute, checked; below, `start` and `stop`
 stand for `lo` and `hi`. No op of the loop may make a list shorter or run user code
 (`U`): one that writes lists (`wL`) must assign an item or add items (`append`, `insert`,
-`extend`), after which every length the tests read stays a lower bound, and a call counts as its
-callee's effects, in which an item assignment is a list write; a coroutine, a loop that a `try`
+`extend`), after which every length the tests read stays a lower bound, and a call of a compiled
+function may not reach such an op, directly or through the functions it calls (`list_shrinkers`,
+found once before the passes: a callee that only assigns items, such as a random number
+generator's `state[0] = ...`, keeps the copy; an unknown or indirect callee does not); a coroutine, a loop that a `try`
 statement covers,
 one holding another loop and one of more than 400 ops keep their checks. In the copy, each read
 or assignment of an item of a list that the loop does not rebind (a value it does not define,

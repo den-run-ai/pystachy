@@ -1,7 +1,7 @@
 @main.init:
 @f.doubled: load:@list+16 load:@slot+0
 @f.bump: load:@list+16 load:@slot+0 load:@list+16 load:@slot+0
-@f.rng:
+@f.rng: load:@list+16 load:@slot+0
 @f.drop:
 @f.popping: load:@list+16 load:@slot+0
 @pys_obj_eq:

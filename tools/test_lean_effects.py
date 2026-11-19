@@ -60,6 +60,28 @@ class EffectSummaryTests(unittest.TestCase):
         self.assertIn("wL", found["@cycle"])
         self.assert_verdict(snapshot, False)
 
+    def test_a_callee_that_only_assigns_items_keeps_a_length_test_as_a_lower_bound(self):
+        # (listguard's copy calls a function that assigns an item, state[0] = 1: a grow node, after
+        # which the length the test read stays a lower bound, directly, through another function
+        # or a cycle of calls; one that may also pop, or call an unknown function, does not)
+        store = op("rt", [("%a0", "list[int]"), ("0", "int"), ("1", "int")], text="list.set", typ="None")
+        pop = op("rt", [("%a0", "list[int]")], [1], text="list.pop", typ="int")
+        self.assert_verdict(self.guarded("list", [store], "wL"), True)
+        self.assert_verdict(self.guarded("list", [store], "wL", intermediate=True), True)
+        self.assertIn(effects.GROWS_ONLY, effects.summaries(self.guarded("list", [store], "wL"))["@mutate"])
+        self.assert_verdict(self.guarded("list", [store, pop], "wL"), False)
+        self.assertNotIn(effects.GROWS_ONLY, effects.summaries(self.guarded("list", [store, pop], "wL"))["@mutate"])
+        snapshot = self.guarded("list", [store, op("call", text="@cycle", typ="None")], "wL")
+        snapshot["functions"].append(function("@cycle", [op("call", text="@mutate", typ="None")], "wL"))
+        self.assert_verdict(snapshot, True)
+        snapshot["functions"][-1]["blocks"][0]["operations"].insert(0, pop)
+        self.assert_verdict(snapshot, False)
+        self.assert_verdict(self.guarded("list", [store, op("call", text="@not_exported", typ="None")], "wL"), False)
+        self.assert_verdict(self.guarded("list", [store, op("icall", typ="None")], "wL"), False)
+
+    def test_the_writes_that_shorten_no_list_are_the_access_models(self):
+        self.assertEqual(effects.UNSHRINKING, access.FRESH_LIST_WRITES | access.ITEM_WRITES | access.GROW_WRITES)
+
     def test_init_and_missing_callees_are_included(self):
         snapshot = self.guarded("list", [op("init", text="module")])
         snapshot["functions"].append(function("@init.module", [

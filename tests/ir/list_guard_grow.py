@@ -1,7 +1,7 @@
-# listguard where a loop appends to a list: no list gets shorter while it runs, so the tests before
-# it stay true and it runs a copy whose inline item reads carry TBAA tags (.tbaa); loops that call
-# a function that writes a list, an item (rng) or its length (popping), keep their checks and get no
-# copy
+# listguard where a loop appends to a list, or calls a function that only assigns an item (rng): no
+# list gets shorter while it runs, so the tests before it stay true and it runs a copy whose inline
+# item reads carry TBAA tags (.tbaa); a loop that calls a function that may shorten a list (popping)
+# keeps its checks and gets no copy
 def doubled(a: list[float]) -> list[float]:
     out: list[float] = []
     for i in range(len(a)):

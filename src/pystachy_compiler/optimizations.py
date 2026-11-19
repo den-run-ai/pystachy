@@ -776,10 +776,68 @@ def call_counts(fns: list[IFn]) -> dict[str, int]:
     return n
 
 
+def guard_callee(self, i: Ins) -> str:
+    # the symbol of the compiled function that op i calls (a call's, or an init's "@init.M"), or ""
+    c = i.s if i.op == "call" else "@init." + i.s if i.op == "init" else ""
+    return c if c in self.fll else ""
+
+
+def list_shrinkers(self) -> dict[str, bool]:
+    # the compiled functions (by the symbol a call or an init names) that may make a list shorter or
+    # run user code (Gen.shrinkers, for listguard): one with an op that may (guard_op_shrinks), or
+    # that calls one, directly or through others, found backward from the first ones, so that a cycle
+    # of calls none of whose functions has such an op adds none. A call of no compiled function, or
+    # of a Callable, may (FXALL)
+    named: dict[int, list[str]] = {}
+    for name in self.fll:
+        if self.fll[name] not in named:
+            named[self.fll[name]] = []
+        named[self.fll[name]].append(name)
+    callers: dict[str, list[int]] = {}
+    pending: list[int] = []
+    for j in range(len(self.fns)):
+        fn = self.fns[j]
+        shrinks = False
+        for b in fn.blocks:
+            for i in b.code:
+                c = guard_callee(self, i)
+                if c != "":
+                    if c not in callers:
+                        callers[c] = []
+                    callers[c].append(j)
+                elif not shrinks and guard_op_shrinks(self, i, fn.fa):
+                    shrinks = True
+        if shrinks:
+            pending.append(j)
+    out: dict[str, bool] = {}
+    done: dict[int, bool] = {}
+    while len(pending) > 0:
+        j = pending.pop()
+        if j in done:
+            continue
+        done[j] = True
+        for name in named.get(j, []):
+            out[name] = True
+            for k in callers.get(name, []):
+                if k not in done:
+                    pending.append(k)
+    return out
+
+
 def guard_shrinks(self, i: Ins, fa: dict[str, bool]) -> bool:
-    # may op i make a list shorter or run user code (listguard): an op that may run user code (U),
-    # or that writes lists (wL) but for LIST_GROWS' and list.store, which assign items or add them;
-    # a call's effects are its callee's summary, in which an item assignment counts as wL
+    # may op i make a list shorter or run user code (listguard): a call of a compiled function where
+    # list_shrinkers finds that it may, so that a callee that only assigns items or adds them
+    # (tau_rand_int's state[0] = ...) keeps the copy; any other op as guard_op_shrinks finds
+    c = guard_callee(self, i)
+    if c != "":
+        return c in self.shrinkers
+    return guard_op_shrinks(self, i, fa)
+
+
+def guard_op_shrinks(self, i: Ins, fa: dict[str, bool]) -> bool:
+    # an op that may run user code (U), or that writes lists (wL) but for LIST_GROWS' and list.store,
+    # which assign items or add them; a call's effects are its callee's summary, in which an item
+    # assignment counts as wL
     fx = self.opfx(i, fa)
     if fx & FXBIT["U"] != 0:
         return True
