@@ -296,7 +296,9 @@ L1:
         for pattern in (r"with \d+ operands, where", r"with \d+ labels, where", r"sets a field outside",
                         r"in a block, where entry storage", r"operand \d+ needs [a-z%]+, got",
                         r"operand \d+ needs a ", r"operand \d+ needs .* \(\$\w+ is ", r"needs \*\$T, \$T ",
-                        r"result needs ", r"the function's return type"):
+                        r"result needs ", r"the function's return type", r"reads %\S+ as \S+, but it is ",
+                        r"reads the address %\S+ as a packed slot", r"a packed slot, as an address",
+                        r"reads %\S+ as \S+, where .* reads it as "):
             with self.subTest(pattern=pattern):
                 self.assertTrue(any(re.search(pattern, m) for m in expected), pattern)
         self.assertEqual(len(text.parse_functions(source)), len(text.expectations(source)))

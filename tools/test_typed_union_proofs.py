@@ -967,14 +967,18 @@ class UnionProofTests(unittest.TestCase):
                     c.op("rt", "%ptr", "ubox", [(str(c.g.utags[tag]), "int"), (loaded, "*T")])
                     c.ret()
                     valid = source in ("generic", "specialized") and tag == "int"
-                    # The malformed float store still carries float provenance.
-                    valid = valid or (source == "float" and tag == "float")
-                    with redirect_stderr(StringIO()):
+                    # The malformed float store still carries float provenance, which the union
+                    # proof follows; the value check then rejects the float's slot read as an int.
+                    malformed = source == "float" and tag == "float"
+                    errors = StringIO()
+                    with redirect_stderr(errors):
                         if valid:
                             c.g.verify(c.fn, False)
                         else:
                             with self.assertRaises(SystemExit):
                                 c.g.verify(c.fn, False)
+                    if malformed:
+                        self.assertIn(f"mem.store operand 1 reads {value} as int, but it is *float", errors.getvalue())
 
     def test_homogeneous_tuple_machine_load_retains_element_contract(self):
         for elements in ("int,int", "float,float", "int,float"):

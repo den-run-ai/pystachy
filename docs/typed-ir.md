@@ -296,9 +296,22 @@ follows one of its names (`$T:native`); `select` is `bool, $T:scalar, $T -> $T`.
 operand's entry holds for any further operands the count admits, so `switch` is `int, int`.
 A runtime call's types are its `RUNTIME` signature's and a compiled call's its callee's, and
 both are checked where the call is built. The column constrains each instruction's own
-operand types. An operand's type is how that instruction reads the value, and nothing
-requires it to match the type its definition gives: a `%slot` result can be read as `int`
-without an explicit cast.
+operand types.
+
+An operand's type is how its instruction reads the value. In MLIR a value has one type, which
+every use shares, and an op converts it. With `PYSTACHY_IRCHECK=1`, after each operation's own
+checks, the verifier requires an operand that names a result, a parameter or a slot's register
+to read it at the type its definition gives, or by one of the views of the third table
+(`TYPE_VIEWS`): readings of the same bits that no op writes yet, such as a `%slot` result read
+as `int` or a runtime call's `list[T]` read as `list[int]`. Any other difference is an error:
+an `int` read as a `float`, a `list[int]` as a `list[str]`, a class as an unrelated class.
+`*T` names two things, and the verifier keeps them apart: an address where a slot's register,
+`field.addr`, a `*T` parameter or a phi of addresses defines it, which a memory op's address,
+a compiled call or such a phi reads, and a packed slot everywhere else. A value whose
+definition gives only a machine type, a runtime type variable or a placeholder is read at
+related types by every operand that names its own. The views that narrow (`bits`, `opt[U]`
+read as `U`, a derived class, other union members) take the frontend's word for a test before
+them: they are the casts that MLIR would write as ops.
 
 Some result numbers only name an intermediate LLVM value of their operation's lowering:
 `ovf`'s `{i64, i1}` pair, the three addresses of `list.load`, the address of a `tuple.load`.
@@ -387,6 +400,19 @@ one, whatever block defines it.
 | `dictset` | a dict or a set |
 | `gen` | a generator |
 | `return` | the function's return type, or T where it is opt[T] of a reference T |
+
+| Type view | An operand of type U reads a value of definition type D where |
+|---|---|
+| `machine` | U is D's machine type: %ptr for a reference, an address or None (null), %slot for a packed slot or an int, %addr for a slot's address |
+| `bits` | D is %ptr, read as a reference or, where an address is read, as an address; or D is %slot, read as an int, a packed slot or an rt op's bool |
+| `instance` | D or U holds an empty container's placeholder (list[?], or opt[None] for a local first assigned None) or a runtime type variable (T K V S), in an rt op's result or operand or where no class has its name: each stands for one type |
+| `alias` | one object by two types: a str and a bytes, an exc and its exctype, a recursive alias rec[A] and A's definition, a set, a frozenset and an AbstractSet, a fixed tuple and a keyword record (kw[...]), a generator with and without its return type; inside brackets an int and an int+, and inside a tuple's a bool read as an int |
+| `int slot` | an int read as a packed slot of an int, which holds its value, and back |
+| `optional` | D read as opt[D] of a reference D, None as any reference or opt[...], or opt[U] as U |
+| `class` | a class read as a class derived from it, as one of its bases or as a class derived from a base that has a common derived class with it; a closed union read as one with a common member |
+| `runtime bool` | an rt op's bool result, which the runtime ABI passes as an int, read as an int; an int read as an rt op's bool operand |
+| `method` | a bound method fn[m:C.f] or fn[d:f:C] read as its receiver C, and back; a closure fn[c:...] read as its env |
+| `opaque` | in lib/_pystachy_copy.py, whose private primitives keep any reference in the deep-copy memo as a str: a reference read as a str, and back |
 
 <!-- typed-ir-ops: end -->
 
@@ -962,8 +988,9 @@ decides a fixed tuple's slots while its function is printed.
 
 ## Validation
 
-- `make check-ir` verifies generated IR and checks IR probes, including calls, function attributes
-  and effect summaries.
+- `make check-ir` verifies generated IR, each operand's type against its value's
+  [definition](#operation-reference) among the checks, and checks IR probes, including calls,
+  function attributes and effect summaries.
 - `tools/typed_ir_ops.py --check` fails when the [operation reference](#operation-reference)
   differs from `OPS`.
 - `tools/typed_ir_text.py verify tools/fixtures/typed_ir/invalid.tir` holds the verifier to
@@ -1042,7 +1069,10 @@ value number that an operand reads. It proves no dominance, typing or lowering p
 
 Typed instruction coverage is complete for the LLVM backend. Further backend neutrality
 needs shared compiler/runtime layout definitions and a clearer separation of frontend
-elaboration from machine contracts. WebAssembly GC, more general check elimination and a
+elaboration from machine contracts. Operands still read values through the views of
+`TYPE_VIEWS`: precise result types for runtime calls and empty containers, separate address
+and packed-slot types, and conversion ops for the views that narrow would leave each value one
+type, as MLIR's are. WebAssembly GC, more general check elimination and a
 Python-object representation backend are design possibilities, not supported modes.
 
 CPython extension modules **are supported** through `pystachy ext` and boundary wrappers.

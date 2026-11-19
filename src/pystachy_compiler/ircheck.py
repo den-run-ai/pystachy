@@ -2,11 +2,11 @@
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import dynamic_program, fail, int_lists, int_program
 from src.pystachy_compiler.dynamic_proof import DynamicProof, DynTypes
-from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, operand_kind, tmpname
+from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, operand_kind, slot_register, tmpname
 from src.pystachy_compiler.scalar_ir import SCALAR_INTS
 from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
-from src.pystachy_compiler.specs import BIG, FX, FXALL, FXBIT, ICMP, IROPS, LIST_READS, LIST_WRITES, NONEVAR, RAWR, RAWW, RUNTIME, TYPE_CLASSES
+from src.pystachy_compiler.specs import BIG, EMPTYFS, FX, FXALL, FXBIT, ICMP, IROPS, LIST_READS, LIST_WRITES, NONEVAR, RAWR, RAWW, RUNTIME, TYPE_CLASSES
 from src.pystachy_compiler.specs import OPS, OP_ENTRY, OP_FIELDS, OP_INVOKE, OP_K, OP_LABELS, OP_MAX, OP_MIN, OP_OPERAND_TYPES, OP_PER_OPERAND, OP_RESULT_TYPE, OP_S, OP_T, OP_TEMPS, OP_X, RESULT_NUMBERS
 from src.pystachy_compiler.utils import gelem, generator_identity, is_dict, is_gen, is_opt, is_set, is_tuple, is_union, list_read_error, list_receiver_error, list_write_error, lt, same_kind, targs, tslots, umembers, unopt
 
@@ -303,6 +303,256 @@ def op_type_error(check: OpTypes, i: Ins) -> str:
     return ""
 
 
+# the type variables of RUNTIME's signatures, which an rt op's operand and result types may hold
+RT_VARS: list[str] = ["T", "K", "V", "S"]
+
+
+def rt_generic(t: str) -> bool:
+    # does type t name a runtime type variable (RT_VARS)
+    start = 0
+    for j in range(len(t) + 1):
+        if j == len(t) or t[j] == "[" or t[j] == "]" or t[j] == "," or t[j] == "*" or t[j] == ":":
+            if t[start:j] in RT_VARS:
+                return True
+            start = j + 1
+    return False
+
+
+def ref_type(t: str) -> bool:
+    # is t a type whose value is a pointer: no machine type, packed slot or None
+    return t != "" and not t.startswith("%") and not t.startswith("*") and lt(t) == "ptr"
+
+
+def held_none(t: str) -> bool:
+    # may a local first assigned None, whose slot keeps NONEVAR once inference has typed it,
+    # hold a t: a pointer, null for None, but a union's or a dyn's box
+    return ref_type(t) and t != "dyn" and not t.startswith("union[") and not t.startswith("opt[dyn")
+
+
+def type_view(self, a: str, b: str, generic: bool, parent: str) -> str:
+    # The view of specs.TYPE_VIEWS that reads type a as type b, both of them perhaps inside a
+    # type's brackets, or "": same, instance (a placeholder, or a runtime type variable that names no
+    # class or, where generic, any, stands for any one type), alias, optional or class. generic:
+    # an rt op defines the value or reads it, so the types may be its signature's; parent: the
+    # name of the type whose brackets hold them, "" for none
+    if a == b:
+        return "same"
+    if a == "?" or b == "?" or (a in RT_VARS and (generic or a not in self.classes)) or (b in RT_VARS and (generic or b not in self.classes)):
+        return "instance"
+    if (a == NONEVAR and held_none(b)) or (b == NONEVAR and held_none(a)):
+        return "instance"
+    if (a == "str" and b == "bytes") or (a == "bytes" and b == "str") or (a == "exc" and b == "exctype") or (a == "exctype" and b == "exc"):
+        return "alias"
+    if (a.startswith("rec[") and a[4:-1] in self.recursive and self.recursive[a[4:-1]] == b) or (b.startswith("rec[") and b[4:-1] in self.recursive and self.recursive[b[4:-1]] == a):
+        return "alias"
+    if parent != "" and ((a == "int" and b == BIG) or (a == BIG and b == "int")):
+        return "alias"
+    if parent == "tuple" and a == "bool" and b == "int":
+        return "alias"
+    if (a == EMPTYFS and is_set(b)) or (b == EMPTYFS and is_set(a)):
+        return "alias"
+    if a.startswith("*") and b.startswith("*"):
+        return type_view(self, a[1:], b[1:], generic, parent)
+    if a == "None" and (is_opt(b) or ref_type(b)):
+        return "optional"
+    if is_opt(b) and not is_opt(a) and ref_type(a) and type_view(self, a, unopt(b), generic, parent) != "":
+        return "optional"
+    if is_opt(a) and not is_opt(b) and ref_type(b) and type_view(self, unopt(a), b, generic, parent) != "":
+        return "optional"
+    if related(self, a, b):
+        return "class"
+    if is_union(a) and is_union(b):
+        ms = umembers(b)
+        for m in umembers(a):
+            if m in ms:
+                return "class"
+    ha = a.find("[")
+    hb = b.find("[")
+    if ha <= 0 or hb <= 0 or not a.endswith("]") or not b.endswith("]") or a.startswith("fn[") or b.startswith("fn["):
+        return ""
+    na = a[:ha]
+    nb = b[:hb]
+    keyed = parent == "" and ((na == "tuple" and nb == "kw") or (na == "kw" and nb == "tuple"))
+    if na != nb and not keyed and not (is_set(a) and is_set(b)):
+        return ""
+    xs = targs(a)
+    ys = targs(b)
+    if na == "gen" and nb == "gen" and len(xs) > 0 and len(ys) > 0:
+        # (a generator, typed by what it yields and perhaps by what it returns)
+        xs = xs[:1]
+        ys = ys[:1]
+    if len(xs) != len(ys):
+        return ""
+    view = "same" if na == nb else "alias"
+    for j in range(len(xs)):
+        # (a keyword record's item is name:type)
+        x = xs[j][xs[j].find(":") + 1 :] if keyed and na == "kw" else xs[j]
+        y = ys[j][ys[j].find(":") + 1 :] if keyed and nb == "kw" else ys[j]
+        v = type_view(self, x, y, generic, na)
+        if v == "":
+            return ""
+        if view == "same":
+            view = v
+    return view
+
+
+def related(self, x: str, y: str) -> bool:
+    # is one of classes x and y derived from the other or from a class that has a common derived
+    # class with the other (ClassInfo.overlaps: dispatch on an object of x that isinstance() found
+    # to be of such a base reads it as each class derived from that base); every class derives
+    # from object
+    if x in self.classes and (y == "object" or self.derives(x, y)):
+        return True
+    if y in self.classes and (x == "object" or self.derives(y, x)):
+        return True
+    if x in self.classes and y in self.classes:
+        for z in self.classes[x].overlaps:
+            if self.derives(y, z):
+                return True
+        for z in self.classes[y].overlaps:
+            if self.derives(x, z):
+                return True
+    return False
+
+
+def receiver(f: str) -> str:
+    # the receiver type of a bound method's type f (fn[m:C.name], fn[d:name:C]), env for a
+    # closure's (fn[c:...]), else ""
+    if f.startswith("fn[m:") and "." in f:
+        return f[5 : f.find(".")]
+    if f.startswith("fn[d:") and f.endswith("]"):
+        return f[f.rfind(":") + 1 : -1]
+    return "env" if f.startswith("fn[c:") else ""
+
+
+def value_view(self, d: str, u: str, rt_result: bool, rt_operand: bool, opaque: bool) -> str:
+    # The view of specs.TYPE_VIEWS by which an operand of type u reads a value whose definition
+    # gives it type d, or "" for none; value_types decides the machine and bits views, which
+    # depend on addresses. rt_result: an rt op defines the value; rt_operand: one reads it;
+    # opaque: the op belongs to lib/_pystachy_copy.py
+    generic = rt_result or rt_operand
+    view = type_view(self, d, u, generic, "")
+    if view != "":
+        return view
+    if (d == "int" and u.startswith("*") and type_view(self, u[1:], "int", generic, "") != "") or (u == "int" and d.startswith("*") and type_view(self, d[1:], "int", generic, "") != ""):
+        return "int slot"
+    if (rt_result and d == "bool" and u == "int") or (rt_operand and d == "int" and u == "bool"):
+        return "runtime bool"
+    x = receiver(d)
+    y = receiver(u)
+    if (x != "" and type_view(self, x, unopt(u), generic, "") != "") or (y != "" and type_view(self, unopt(d), y, generic, "") != ""):
+        return "method"
+    if opaque and ((d == "str" and ref_type(u)) or (u == "str" and ref_type(d))):
+        return "opaque"
+    return ""
+
+
+def related_reads(self, a: str, b: str) -> bool:
+    # may two operands read one value, whose definition gives it only a machine type, a runtime
+    # type variable or a placeholder, as types a and b: by a view between them, or as a closed
+    # union of classes and one of its members, which a test of its tag narrows to
+    x = unopt(a)
+    y = unopt(b)
+    if x == y or type_view(self, a, b, False, "") != "" or type_view(self, b, a, False, "") != "":
+        return True
+    return (is_union(x) and y in umembers(x) and y in self.classes) or (is_union(y) and x in umembers(y) and x in self.classes)
+
+
+def value_types(self, fn: IFn) -> None:
+    # Each operand reads its value at the type the value's definition gives it, or by a view of
+    # specs.TYPE_VIEWS, as an MLIR operand has its value's one type. A value is a result of an op
+    # (but its lowering's temporaries; ovf's second is its bool flag), a parameter (its identity
+    # companion a dyn, and the identity result's address a *dyn), or a slot's register (the
+    # address *T of its slot of T; a stack tuple's register is its value). A *T is an address
+    # where a slot's register, a *T parameter, field.addr, or a phi or select of an address or of
+    # %ptr bits gives it, and where a memory op's address, a compiled function's *T parameter (the
+    # identity result's) or a phi or select of an address reads it; it is a packed slot elsewhere.
+    # Symbols and constants have no definition here.
+    types: dict[str, str] = {}
+    makers: dict[str, str] = {}
+    addresses: dict[str, bool] = {}
+    for i in fn.slots:
+        reg = slot_register(i)
+        types[reg] = i.t if i.k == 2 else "*" + i.t
+        makers[reg] = "slot"
+        if i.k != 2:
+            addresses[reg] = True
+    for j in range(len(fn.f.ptypes)):
+        types["%a" + str(j)] = fn.f.ptypes[j]
+        types["%aid" + str(j)] = "dyn"
+        if fn.f.ptypes[j].startswith("*"):
+            addresses["%a" + str(j)] = True
+    types["%idret"] = "*dyn"
+    addresses["%idret"] = True
+    for b in fn.blocks:
+        for i in b.code:
+            k = 0
+            for j in range(len(i.r)):
+                if i.op in OP_TEMPS and j in OP_TEMPS[i.op]:
+                    continue
+                name = tmpname(i.r[j])
+                types[name] = "bool" if i.op == "ovf" and k == 1 else i.t
+                makers[name] = i.op
+                if i.op == "field.addr":
+                    addresses[name] = True
+                k += 1
+    # (the phis and selects of addresses, to a fixed point: a phi may read one it precedes)
+    grew = True
+    while grew:
+        grew = False
+        for b in fn.blocks:
+            for i in b.code:
+                if (i.op == "phi" or i.op == "select") and i.t.startswith("*") and len(i.r) == 1 and tmpname(i.r[0]) not in addresses:
+                    for j in range(1 if i.op == "select" else 0, len(i.a)):
+                        v = i.a[j].v
+                        if v in addresses or (v in types and types[v] == "%ptr"):
+                            addresses[tmpname(i.r[0])] = True
+                            grew = True
+    # (a value whose definition gives it only a machine type, a runtime type variable or a
+    # placeholder: the first type an operand of an op but rt reads it at, and where)
+    read: dict[str, str] = {}
+    first: dict[str, str] = {}
+    opaque = fn.f.mod == "_pystachy_copy"
+    for b in fn.blocks:
+        for i in b.code:
+            joined = (i.op == "phi" or i.op == "select") and len(i.r) == 1 and tmpname(i.r[0]) in addresses
+            for j in range(len(i.a)):
+                v = i.a[j].v
+                if v not in types:
+                    continue
+                d = types[v]
+                u = i.a[j].t
+                address = ((i.op == "mem.load" or i.op == "mem.store") and j == 0) or ((i.op == "call" or i.op == "icall") and u.startswith("*")) or (joined and (i.op == "phi" or j > 0))
+                held = v in addresses
+                if d.startswith("*") and u.startswith("*") and held != address:
+                    self.bad_ir(fn, b, f"{i.op} operand {j} reads {v}, a packed slot, as an address" if address else f"{i.op} operand {j} reads the address {v} as a packed slot")
+                ok = d == u
+                if ok:
+                    pass
+                elif u == "%ptr":
+                    ok = held or ref_type(d) or d == "None"
+                elif u == "%slot":
+                    ok = (d.startswith("*") and not held) or d == "int"
+                elif u == "%addr":
+                    ok = held
+                elif d == "%ptr":
+                    ok = u.startswith("*") if address else ref_type(u)
+                elif d == "%slot":
+                    # (an int, a packed slot, or a runtime function's bool, which its ABI passes as an int)
+                    ok = not address and (u == "int" or u.startswith("*") or (i.op == "rt" and u == "bool"))
+                else:
+                    ok = value_view(self, d, u, v in makers and makers[v] == "rt", i.op == "rt", opaque) != ""
+                if not ok:
+                    self.bad_ir(fn, b, f"{i.op} operand {j} reads {v} as {u}, but it is {d}")
+                loose = d == "%ptr" or d == "%slot" or "?" in d or NONEVAR in d or rt_generic(d)
+                if loose and i.op != "rt" and not u.startswith("%") and "?" not in u and NONEVAR not in u:
+                    if v not in read:
+                        read[v] = u
+                        first[v] = f"{i.op} operand {j}"
+                    elif not related_reads(self, read[v], u):
+                        self.bad_ir(fn, b, f"{i.op} operand {j} reads {v} as {u}, where {first[v]} reads it as {read[v]}")
+
+
 def verify_dynamic_raw(self, fn: IFn) -> None:
     # Raw dynamic payload bits are only an identity-comparison input. Collect all
     # producers before uses: block order and an operand's annotation cannot hide
@@ -541,6 +791,8 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
         proof.run()
         for j in range(len(proof.bad)):
             self.bad_ir(fn, fn.blocks[at[proof.badblocks[j]]], proof.bad[j])
+    # (after the proofs above, whose findings name what a reading breaks more closely)
+    value_types(self, fn)
 
 def gen_verify_gen(self, fn: IFn, b: Blk, i: Ins, j: int) -> None:
     # a generator op (docs/internals.md#generators), past its row's shape and types: gen.start

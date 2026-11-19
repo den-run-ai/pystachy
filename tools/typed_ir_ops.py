@@ -2,9 +2,9 @@
 """Views of the typed IR's operation table (OPS, src/pystachy_compiler/specs.py).
 
 The table is the one definition of each operation's shape and types. This tool writes the
-reference tables of docs/typed-ir.md from it (--write), fails when they are out of date
-(--check), and prints the rows as JSON for other tools (--json): the Lean shape checker reads
-them.
+reference tables of docs/typed-ir.md from it and from the type classes and views
+(TYPE_CLASSES, TYPE_VIEWS) (--write), fails when they are out of date (--check), and prints the
+rows as JSON for other tools (--json): the Lean shape checker reads them.
 
     python3 tools/typed_ir_ops.py --check
     python3 tools/typed_ir_ops.py --write
@@ -18,7 +18,7 @@ import sys
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from src.pystachy_compiler.specs import FX, OPS, TYPE_CLASSES, type_list  # noqa: E402
+from src.pystachy_compiler.specs import FX, OPS, TYPE_CLASSES, TYPE_VIEWS, type_list  # noqa: E402
 
 DOC = ROOT / "docs/typed-ir.md"
 BEGIN = "<!-- typed-ir-ops: begin (written by tools/typed_ir_ops.py --write) -->"
@@ -138,6 +138,8 @@ def reference():
         lines.append(f"| `{row['name']}` | {effects} | {operands} | {results} | {words.get(row['labels'], row['labels'])} | {fields} | {value} | {types} |")
     lines.extend(["", "| Type class | Admits |", "|---|---|"])
     lines.extend(f"| `{name}` | {admits} |" for name, admits in TYPE_CLASSES.items())
+    lines.extend(["", "| Type view | An operand of type U reads a value of definition type D where |", "|---|---|"])
+    lines.extend(f"| `{name}` | {where} |" for name, where in TYPE_VIEWS.items())
     return "\n".join([*lines, "", END])
 
 

@@ -759,6 +759,30 @@ TYPE_CLASSES: dict[str, str] = {
     "return": "the function's return type, or T where it is opt[T] of a reference T",
 }
 
+# How an operand may read its value at a type other than the one the value's definition gives it
+# (the definition's type D, the operand's U), each a reading of the same bits that no op of the IR
+# writes (ircheck.value_types). The IR check rejects any other difference. In MLIR a value has one
+# type, which its uses share, and an op converts it; these are the readings that no op makes
+# explicit yet. Those that narrow (bits, opt[U] as U, a derived class, other union members) rely on
+# what the frontend knows, such as a test before them, which the check does not see. instance,
+# alias, optional and class hold inside a type's brackets as well (list[opt[str]] as list[str]).
+# A value whose definition gives only a machine type (%ptr, %slot), a runtime type variable or a
+# placeholder is read at related types by every operand that names a type of its own (an rt op's
+# operands name their runtime signature's): by a view between them, or as a closed union of
+# classes and one of its members.
+TYPE_VIEWS: dict[str, str] = {
+    "machine": "U is D's machine type: %ptr for a reference, an address or None (null), %slot for a packed slot or an int, %addr for a slot's address",
+    "bits": "D is %ptr, read as a reference or, where an address is read, as an address; or D is %slot, read as an int, a packed slot or an rt op's bool",
+    "instance": "D or U holds an empty container's placeholder (list[?], or opt[None] for a local first assigned None) or a runtime type variable (T K V S), in an rt op's result or operand or where no class has its name: each stands for one type",
+    "alias": "one object by two types: a str and a bytes, an exc and its exctype, a recursive alias rec[A] and A's definition, a set, a frozenset and an AbstractSet, a fixed tuple and a keyword record (kw[...]), a generator with and without its return type; inside brackets an int and an int+, and inside a tuple's a bool read as an int",
+    "int slot": "an int read as a packed slot of an int, which holds its value, and back",
+    "optional": "D read as opt[D] of a reference D, None as any reference or opt[...], or opt[U] as U",
+    "class": "a class read as a class derived from it, as one of its bases or as a class derived from a base that has a common derived class with it; a closed union read as one with a common member",
+    "runtime bool": "an rt op's bool result, which the runtime ABI passes as an int, read as an int; an int read as an rt op's bool operand",
+    "method": "a bound method fn[m:C.f] or fn[d:f:C] read as its receiver C, and back; a closure fn[c:...] read as its env",
+    "opaque": "in lib/_pystachy_copy.py, whose private primitives keep any reference in the deep-copy memo as a str: a reference read as a str, and back",
+}
+
 
 def type_list(s: str) -> list[str]:
     # the comma-separated constraints of s, split only where no bracket is open, without spaces
