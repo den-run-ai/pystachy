@@ -1,0 +1,18 @@
+int False False True True TypeError TypeError
+str False False True True TypeError TypeError
+list False False True True TypeError TypeError
+tuple False False True True TypeError TypeError
+NoneType False False True True TypeError TypeError
+float False False True True TypeError TypeError
+bool False False True True TypeError TypeError
+complex False False True True TypeError TypeError
+dict False False True True TypeError TypeError
+bytearray False False True True TypeError TypeError
+True True False False False False True True True False
+Same.__eq__
+Same.__eq__
+Same.__eq__
+Same.__eq__
+True True False False
+True 4 1 True False
+[exit 0]

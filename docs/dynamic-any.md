@@ -758,6 +758,15 @@ else identity for `==` and `!=` and `TypeError` for an ordering; `!=` without `_
 `Any` takes any operand, also between typed objects of its class
 (`tests/programs/inference/dynany_eq_any_param.py`).
 
+The library's `deque`, `bytearray`, `defaultdict`, `OrderedDict` and `Counter` decline a value
+of another kind, as CPython's methods return `NotImplemented` for it: a deque takes deques, a
+bytearray takes bytearrays, and each mapping takes dicts and these mappings
+(`dynany_deque_eq_other.py`, `dynany_bytearray_eq_other.py`, `dynany_counter_eq_other.py`,
+`dynany_ordereddict_eq_other.py`, `dynany_defaultdict_eq_other.py` and
+`dynany_container_eq_mixed.py` in `tests/programs/inference/`). A mapping compared with a dict,
+or with one of these mappings of another kind or item type, still raises the unsupported-body
+`TypeError`, a limit that #803 tracks.
+
 One whose parameter has no annotation, or
 `object`, is compiled for an `Any` operand there; where its body does not compile for one (a typed
 list compared with an `Any` value's field), the compiler also tries the body against the

@@ -24,9 +24,9 @@ from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, retoken, short
-from src.pystachy_compiler.specs import BIG, COMPLEXC, GLUE, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
+from src.pystachy_compiler.specs import BIG, BYTEARRAYC, COMPLEXC, GLUE, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
 from src.pystachy_compiler.syntax import Node, has_kind, made_var, mentions, mk
-from src.pystachy_compiler.utils import ListLayout, builtin_key, closure_default_slots, disjoint_sets, elem, fbits, float_slot, gelem, holds_dyn, identity_abi, identity_default, int_fits, int_lit, is_callable, is_clsval, is_const, is_dict, is_fn, is_gen, is_kw, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, kw_names, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
+from src.pystachy_compiler.utils import ListLayout, builtin_key, closure_default_slots, disjoint_sets, elem, fbits, float_slot, gelem, holds_dyn, identity_abi, identity_default, int_fits, int_lit, is_callable, is_clsval, is_const, is_dict, is_fn, is_gen, is_kw, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, kw_names, lib_source, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
 
 DYN = "dyn"
 # what isinstance(x, int) narrows a dyn local to: still the box (a bool passes the test too),
@@ -1322,6 +1322,25 @@ def gen_xdecline(self, method: FnInfo, after: bool) -> None:
     self.place(answered)
 
 
+def dyn_xown(self, c: str) -> list[str]:
+    # the static types whose boxes the comparison methods of library class c take, or [] for
+    # a class whose methods take any value. CPython's deque compares with deques, its bytearray
+    # with bytearrays and bytes (which no box holds yet), and its dict subclasses, which are
+    # lib/collections' mappings here (dict_class), with dicts and one another, as their _dict_eq
+    # tests: each returns NotImplemented for any other value. lib's bodies are written for those
+    # operands: for another one they read a field it lacks, or do not compile for an Any value
+    if c == BYTEARRAYC:
+        return [BYTEARRAYC, "bytes"]
+    if c not in self.classes:
+        return []
+    o = self.classes[c].origin if self.classes[c].origin != "" else c
+    if o == "collections$deque" and lib_source(self.classes[o].node.line, self.libdir, "collections/__init__.py"):
+        return [o]
+    if self.dict_class(c):
+        return ["dict[dyn,dyn]", "collections$defaultdict", "collections$OrderedDict", "collections$Counter"]
+    return []
+
+
 def gen_dyn_xbody(self, c: str) -> None:
     # the body of @o.x.<class> (dyn_xhelper): c's own method, which takes b as its parameter's type
     # takes an Any value; != is not == where c has no __ne__, as object.__ne__ inverts __eq__. A
@@ -1348,6 +1367,16 @@ def gen_dyn_xbody(self, c: str) -> None:
         self.place(cdecline)
         self.ret_(Val("2", "int"))
         self.place(cgo)
+    own = dyn_xown(self, c)
+    if len(own) > 0:
+        # (lib's containers compare with their own kinds, dyn_xown: CPython's return
+        # NotImplemented for any other value, as complex's does above)
+        ogo = self.label()
+        odecline = self.label()
+        self.cbr(self.dyn_test(b, own), ogo, odecline)
+        self.place(odecline)
+        self.ret_(Val("2", "int"))
+        self.place(ogo)
     for k in range(len(XCMP)):
         m = XCMP[k]
         inv = False
