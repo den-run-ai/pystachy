@@ -1637,9 +1637,10 @@ def gen_inplace_subclasses(self, op: str, cur: Val, b: Val) -> Val | None:
     # whose subclasses have one (#1538): CPython calls the in-place method of the object's own
     # class, so the class is selected by its tag, as virtual_call selects an override: a
     # subclass's in-place method where it has one, else cur op b. The results join (wider).
-    # None where no subclass has one: cur op b, as before
+    # None where no subclass has one, or b is an Any, whose dynamic operation calls the method
+    # of the object's class itself (dyn_arith): cur op b, as before
     im = "__i" + DUNDER[op][2:] if op in DUNDER else ""
-    if im == "" or cur.t not in self.classes or self.classes[cur.t].tag == 0 or im in self.classes[cur.t].methods:
+    if im == "" or b.t == "dyn" or cur.t not in self.classes or self.classes[cur.t].tag == 0 or im in self.classes[cur.t].methods:
         return None
     cs = [c for c in self.classes.values() if c.tag > 0 and c.name != cur.t and self.derives(c.name, cur.t) and im in c.methods]
     if len(cs) == 0:
