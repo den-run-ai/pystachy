@@ -47,7 +47,7 @@ list's length to at most 2^62 items, which no memory holds.
 
 Facts relate values: equality, signed and unsigned order, a lower and an upper bound by a
 constant, a difference bound `a + k ≤ b`, `0 ≤ i < n`, an exact offset, an exact sum of two
-values, inequality to a constant, a list's length, a dict lookup's result or live entry, a field's value, and a fact
+values, inequality to a constant, a list's length or a lower bound of it, a dict lookup's result or live entry, a field's value, and a fact
 that marks a point no execution reaches. The certificate is an
 untrusted list of facts at each point. Each fact must survive the node before it or follow from
 the facts there, and from the facts listed before it, by one of fixed rules, each proved sound:
@@ -68,7 +68,10 @@ Where the stop is a constant, the loop's test bounds `i` above, the test before 
 length below, and the first must lie under the second. Where the start is a variable `s`, a test
 before the loop, `-c <= s`, gives `s ≥ -c`, which the loop's first index copies and each step by a
 positive constant keeps; a variable step's test, `1 <= step`, makes the step's sum keep it too
-(lower bounds add up), and the copy branches on `i < stop` alone.
+(lower bounds add up), and the copy branches on `i < stop` alone. Where the loop appends,
+inserts or extends (a `grow` node, which shortens no list), the length the test read stays a lower
+bound of the list's length (`lenGe`) on every iteration, which bounds the index as the exact
+length did.
 Sums prove copies whose index adds a base `b` that no iteration changes (`data[bi + d]`). The
 tests before the loop give `b ≥ -start - c` and, through `t = stop + b`, a checked sum, `t + c ≤ n`;
 the copy's `j = b + i` is a plain sum, which gives the fact `j = b + i` only where `i < stop`,
@@ -82,7 +85,7 @@ constants and negative offsets. Thus a loop starting at 1 and advancing by 2 kee
 is checked by the existing Lean rule; an invalid start or descending induction
 still fails the access proof.
 
-The build checks 51 examples by kernel reduction: 16 shapes the compiler emits and 35
+The build checks 54 examples by kernel reduction: 17 shapes the compiler emits and 37
 corruptions that must fail: a signed test of a possibly negative index, a list write between a
 test and its read or in a range loop's body, a missing or weaker unpacking check, a starred
 tail's read at the length or past an offset that may wrap, a lookup's missing-key branch or an
@@ -90,7 +93,8 @@ iteration's end, a dict write before an entry's reuse, an entry of one dict used
 reload across a write of another class's field or of the same field of any object, an unrelated
 write that lists a class other than the reloaded one or its own class, an unguarded join, facts
 assumed at entry or around a loop, a guarded range loop's read past the test's offset, after a
-list write, or where the test failed, and a base copy without its test of the base, with an
+list write, or where the test failed, a loop that appends kept proved across a write that may
+shorten a list or with an exact length after its growth, and a base copy without its test of the base, with an
 unchecked sum of the stop and the base, with a loop that runs to its stop inclusive or stores its
 base, reached where the length test failed, or adding to the base less than the loop's constant
 stop. `Audit.lean` checks the theorem's axioms as
@@ -146,7 +150,11 @@ The adapter reads the typed-after snapshot and emits a node for each operation:
   summary from the snapshot, strengthened by an independent scan of every visible function
   body and transitive direct callees; anything for an indirect call, an `init` or a generator resumption.
   A list write or user code may change every list's length, except that `list.slice` writes only
-  the new list it returns; a dict write every dict's entries; an object write every field. The
+  the new list it returns, and an append, an insertion, an extension or an identity or big
+  item assignment (`GROW_WRITES`) only adds items: a `grow` node, after which no length is
+  smaller and a length read before it is a lower bound (`lenGe`) on which an index's bound can
+  rest, as in a `listguard` copy of a loop that appends; a dict write every dict's entries; an
+  object write every field. The
   body scan does not count a store to the function's own stack slots, to memory it allocated
   itself (an `alloc.fixed` object's fields, a fixed tuple's words, a literal-sized runtime
   allocation's words within the n + 1 bytes `pys_alloc(n)` provides) or through `%idret` where every direct call in the

@@ -14,7 +14,8 @@ path to it.
 
 Values are 64-bit integers named by SSA results and private slots. Lists have
 lengths and dicts have live entries, both indexed by address, and both may
-change arbitrarily where the program may write lists or dicts. The facts relate
+change arbitrarily where the program may write lists or dicts; where it only
+adds items to lists, no list's length decreases. The facts relate
 values to each other and to those lengths and entries. The certificate is an
 untrusted list of facts at each program point. Every fact is justified from its
 predecessors' facts by a fixed set of rules, each proved sound below; the
@@ -83,6 +84,9 @@ inductive Fact where
   | ne (a : Name) (k : Int)
   /-- `n` is the current length of the list `list` points to. -/
   | len (n list : Name)
+  /-- `n` is at most the current length of the list `list` points to: a length read before
+  operations that only add items to lists. -/
+  | lenGe (n list : Name)
   /-- `e` is -1 or a live entry of the dict `dict` points to. -/
   | found (e dict : Name)
   /-- `e` is a live entry of the dict `dict` points to. -/
@@ -113,6 +117,9 @@ inductive Node where
   | length (dst list : Name) (next : Nat)
   /-- Any list's length may change. -/
   | lists (next : Nat)
+  /-- Any list may gain items (an append, an insertion, an extension): no list's length
+  decreases. -/
+  | grow (next : Nat)
   /-- Any dict's live entries may change. -/
   | dicts (next : Nat)
   /-- `dst :=` -1 or a live entry of `dict`. -/
@@ -152,7 +159,7 @@ def factsAt (certificate : Certificate) (pc : Nat) : Facts :=
 /-! ## The checker -/
 
 def Fact.mentions (name : Name) : Fact → Bool
-  | .eq a b | .lt a b | .ult a b | .below a b | .len a b | .found a b | .entry a b =>
+  | .eq a b | .lt a b | .ult a b | .below a b | .len a b | .lenGe a b | .found a b | .entry a b =>
       a == name || b == name
   | .off a b _ | .le a b _ => a == name || b == name
   | .ge a _ | .ne a _ | .atMost a _ => a == name
@@ -161,6 +168,11 @@ def Fact.mentions (name : Name) : Fact → Bool
   | .absurd => false
 
 def Fact.onLists : Fact → Bool
+  | .len .. | .lenGe .. => true
+  | _ => false
+
+/-- A fact that a list's growth may falsify: an exact length. -/
+def Fact.exactLength : Fact → Bool
   | .len .. => true
   | _ => false
 
@@ -186,6 +198,7 @@ def Fact.rename (x y : Name) : Fact → Fact
   | .atMost a k => .atMost (renamed x y a) k
   | .ne a k => .ne (renamed x y a) k
   | .len a b => .len (renamed x y a) (renamed x y b)
+  | .lenGe a b => .lenGe (renamed x y a) (renamed x y b)
   | .found a b => .found (renamed x y a) (renamed x y b)
   | .entry a b => .entry (renamed x y a) (renamed x y b)
   | .cell a c i b => .cell (renamed x y a) c i (renamed x y b)
@@ -200,6 +213,7 @@ def survives : Node → Fact → Bool
   | .length dst _ _, f | .find dst _ _, f | .entry dst _ _, f | .readField dst _ _ _ _, f =>
       !f.mentions dst
   | .lists _, f => !f.onLists
+  | .grow _, f => !f.exactLength
   | .dicts _, f => !f.onDicts
   | .writeField _ cls index _ unrelated _, f => match f with
       | .cell _ c i _ => (c == cls && i != index) || unrelated.contains c
@@ -386,6 +400,8 @@ def ruleStep (facts : Facts) : Fact → Bool
         | _ => false) || substituted facts (.ne b k)
   | .entry e d => (facts.contains (.found e d) && facts.contains (.ne e (-1))) ||
       substituted facts (.entry e d)
+  -- (a length is at most itself)
+  | .lenGe n l => facts.contains (.len n l) || substituted facts (.lenGe n l)
   | f => substituted facts f
 
 /-- One step of reasoning about sums: adding one value to both sides keeps an order, and lower
@@ -426,10 +442,10 @@ def justified : Facts → Facts → Bool
 /-- What an access needs to be safe. -/
 def accessFacts (facts : Facts) : Node → Bool
   | .load l (.reg i) _ => facts.any fun f => match f with
-      | .below i' n => i' == i && facts.contains (.len n l)
+      | .below i' n => i' == i && (facts.contains (.len n l) || facts.contains (.lenGe n l))
       | _ => false
   | .load l (.lit c) _ => decide (0 ≤ c) && facts.any fun f => match f with
-      | .len n l' => l' == l && facts.any fun g => match g with
+      | .len n l' | .lenGe n l' => l' == l && facts.any fun g => match g with
           | .ge n' k => n' == n && decide (c < k)
           | _ => false
       | _ => false
@@ -444,7 +460,7 @@ def safeFacts (facts : Facts) (node : Node) : Bool :=
 /-- Each successor with the number of its edge. -/
 def edges : Node → List (Nat × Nat)
   | .havoc _ n | .copy _ _ n | .lit _ _ n | .add _ _ _ n | .addReg _ _ _ n | .length _ _ n | .lists n
-  | .dicts n | .find _ _ n | .entry _ _ n | .jump n | .load _ _ n | .value _ _ n
+  | .grow n | .dicts n | .find _ _ n | .entry _ _ n | .jump n | .load _ _ n | .value _ _ n
   | .deref _ n | .readField _ _ _ _ n | .writeField _ _ _ _ _ n | .heap n => [(n, 0)]
   | .addChecked _ _ _ n o | .addRegChecked _ _ _ n o => [(n, 0), (o, 1)]
   | .test _ y n | .choice y n => [(y, 0), (n, 1)]
@@ -511,6 +527,7 @@ def Fact.Holds (m : Mem) : Fact → Prop
   | .atMost a k => m.val a ≤ k
   | .ne a k => m.val a ≠ k
   | .len n l => m.val n = m.len (m.val l)
+  | .lenGe n l => m.val n ≤ m.len (m.val l)
   | .found e d => m.val e = -1 ∨ m.live (m.val d) (m.val e)
   | .entry e d => m.live (m.val d) (m.val e)
   | .cell o c i v => m.cell (m.val o) c i = m.val v
@@ -546,6 +563,8 @@ inductive Move : Node → Mem → Nat → Mem → Prop where
       Move (.length dst l next) m next (m.set dst (m.len (m.val l)))
   | lists {next : Nat} {m : Mem} {len : Int → Int} :
       (∀ a, 0 ≤ len a ∧ len a ≤ maxLen) → Move (.lists next) m next { m with len := len }
+  | grow {next : Nat} {m : Mem} {len : Int → Int} :
+      (∀ a, m.len a ≤ len a ∧ len a ≤ maxLen) → Move (.grow next) m next { m with len := len }
   | dicts {next : Nat} {m : Mem} {live : Int → Int → Prop} :
       (∀ d e, live d e → 0 ≤ e ∧ e < entryBound) → Move (.dicts next) m next { m with live := live }
   | find {dst d : Name} {next : Nat} {m : Mem} {e : Int} :
@@ -621,6 +640,18 @@ theorem holds_set {m : Mem} {dst : Name} {v : Int} {f : Fact} (fresh : f.mention
 theorem holds_lists {m : Mem} {len : Int → Int} {f : Fact} (other : f.onLists = false) :
     f.Holds { m with len := len } ↔ f.Holds m := by
   cases f <;> simp_all [Fact.onLists, Fact.Holds]
+
+/-- A fact other than an exact length survives growth: a length read before it is at most the
+length after it. -/
+theorem holds_grow {m : Mem} {len : Int → Int} {f : Fact} (grows : ∀ a, m.len a ≤ len a ∧ len a ≤ maxLen)
+    (other : f.exactLength = false) (holds : f.Holds m) : f.Holds { m with len := len } := by
+  cases f with
+  | len n l => simp [Fact.exactLength] at other
+  | lenGe n l =>
+      simp only [Fact.Holds] at holds ⊢
+      have := (grows (m.val l)).1
+      omega
+  | _ => exact (holds_lists rfl).mpr holds
 
 theorem holds_dicts {m : Mem} {live : Int → Int → Prop} {f : Fact} (other : f.onDicts = false) :
     f.Holds { m with live := live } ↔ f.Holds m := by
@@ -1046,6 +1077,13 @@ theorem step_sound {m : Mem} {facts : Facts} {goal : Fact} (wf : WF m)
   | lt a b => exact substituted_sound known (by simpa [ruleStep] using derived)
   | ult a b => exact substituted_sound known (by simpa [ruleStep] using derived)
   | len n l => exact substituted_sound known (by simpa [ruleStep] using derived)
+  | lenGe n l =>
+      simp only [ruleStep, Bool.or_eq_true, List.contains_iff_mem] at derived
+      rcases derived with h | h
+      · have holds := known _ h
+        simp only [Fact.Holds] at holds ⊢
+        omega
+      · exact substituted_sound known h
   | found e d => exact substituted_sound known (by simpa [ruleStep] using derived)
   | cell o f v => exact substituted_sound known (by simpa [ruleStep] using derived)
   | sum a b c => exact substituted_sound known (by simpa [ruleStep] using derived)
@@ -1342,6 +1380,14 @@ theorem move_sound {node : Node} {m : Mem} {target : Nat} {after : Mem} {facts :
       simp only [immediates, generated, List.append_nil] at member
       obtain ⟨inFacts, keeps⟩ := List.mem_filter.mp member
       exact (holds_lists (by simpa [survives] using keeps)).mpr (known f inFacts)
+  | @grow next _ len grows =>
+      have bounded : ∀ a, 0 ≤ len a ∧ len a ≤ maxLen := fun a =>
+        ⟨Int.le_trans (wf.2.1 a).1 (grows a).1, (grows a).2⟩
+      refine ⟨⟨wf.1, bounded, wf.2.2.1, wf.2.2.2⟩, 0, by simp [edges], ?_⟩
+      intro f member
+      simp only [immediates, generated, List.append_nil] at member
+      obtain ⟨inFacts, keeps⟩ := List.mem_filter.mp member
+      exact holds_grow grows (by simpa [survives] using keeps) (known f inFacts)
   | @dicts next _ live bounded =>
       refine ⟨⟨wf.1, wf.2.1, bounded, wf.2.2.2⟩, 0, by simp [edges], ?_⟩
       intro f member
@@ -1525,12 +1571,16 @@ theorem accessFacts_sound {m : Mem} {facts : Facts} {node : Node}
           have holds := known f member
           cases f with
           | below i' n =>
-              simp only [Bool.and_eq_true, beq_iff_eq, List.contains_iff_mem] at step
-              obtain ⟨rfl, lenMember⟩ := step
-              have lenHolds := known _ lenMember
-              simp only [Fact.Holds] at holds lenHolds
-              simp only [Safe, Operand.eval]
-              omega
+              simp only [Bool.and_eq_true, Bool.or_eq_true, beq_iff_eq, List.contains_iff_mem] at step
+              obtain ⟨rfl, lenMember | lenMember⟩ := step
+              · have lenHolds := known _ lenMember
+                simp only [Fact.Holds] at holds lenHolds
+                simp only [Safe, Operand.eval]
+                omega
+              · have lenHolds := known _ lenMember
+                simp only [Fact.Holds] at holds lenHolds
+                simp only [Safe, Operand.eval]
+                omega
           | _ => simp at step
       | lit c =>
           simp only [accessFacts, Bool.and_eq_true, decide_eq_true_eq, List.any_eq_true] at ok
@@ -1538,6 +1588,18 @@ theorem accessFacts_sound {m : Mem} {facts : Facts} {node : Node}
           have holds := known f member
           cases f with
           | len n l' =>
+              simp only [Bool.and_eq_true, beq_iff_eq, List.any_eq_true] at step
+              obtain ⟨rfl, g, gMember, gStep⟩ := step
+              have gHolds := known g gMember
+              cases g with
+              | ge n' k =>
+                  simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at gStep
+                  obtain ⟨rfl, ck⟩ := gStep
+                  simp only [Fact.Holds] at holds gHolds
+                  simp only [Safe, Operand.eval]
+                  omega
+              | _ => simp at gStep
+          | lenGe n l' =>
               simp only [Bool.and_eq_true, beq_iff_eq, List.any_eq_true] at step
               obtain ⟨rfl, g, gMember, gStep⟩ := step
               have gHolds := known g gMember
@@ -1748,6 +1810,45 @@ example : check ⟨guardedLoop.nodes.set 8 (.lists 11) ++ [.addChecked "t" "i" 1
 /- The copy reached where the test failed: nothing bounds the stop. -/
 example : check ⟨guardedLoop.nodes.set 2 (.test (.sle (.reg "s") (.reg "m")) 10 3), 0⟩
     guardedLoopCertificate = false := by decide
+
+/-- The same copy of a loop that also appends to a list (`grow`): the length that the test read
+before the loop is a lower bound (`lenGe`) on every iteration, which bounds the index as the
+exact length did. -/
+def growingLoop : Program := ⟨[
+  .length "n" "xs" 1,
+  .add "m" "n" (-1) 2,
+  .test (.sle (.reg "s") (.reg "m")) 3 11,
+  .lit "h" 0 4,
+  .copy "i" "h" 5,
+  .test (.slt (.reg "i") (.reg "s")) 6 11,
+  .addChecked "j" "i" 1 7 11,
+  .load "xs" (.reg "j") 8,
+  .grow 9,
+  .addChecked "t" "i" 1 10 11,
+  .copy "h" "t" 4,
+  .stop], 0⟩
+
+def growingLoopCertificate : Certificate := [
+  [],
+  [.len "n" "xs", .ge "n" 0],
+  [.len "n" "xs", .lenGe "n" "xs", .off "m" "n" (-1)],
+  [.lenGe "n" "xs", .off "m" "n" (-1), .le "s" "m" 0, .le "s" "n" 1],
+  [.lenGe "n" "xs", .le "s" "n" 1, .ge "h" 0],
+  [.lenGe "n" "xs", .le "s" "n" 1, .ge "i" 0],
+  [.lenGe "n" "xs", .le "s" "n" 1, .ge "i" 0, .lt "i" "s", .le "i" "n" 2],
+  [.lenGe "n" "xs", .le "s" "n" 1, .ge "i" 0, .le "i" "n" 2, .off "j" "i" 1, .le "j" "n" 1,
+    .ge "j" 1, .below "j" "n"],
+  [.lenGe "n" "xs", .le "s" "n" 1, .ge "i" 0],
+  [.lenGe "n" "xs", .le "s" "n" 1, .ge "i" 0],
+  [.lenGe "n" "xs", .le "s" "n" 1, .off "t" "i" 1, .ge "t" 0],
+  []]
+
+example : check growingLoop growingLoopCertificate = true := by decide
+/- A write that may shorten a list (`lists`) keeps no lower bound of a length. -/
+example : check ⟨growingLoop.nodes.set 8 (.lists 9), 0⟩ growingLoopCertificate = false := by decide
+/- Growth does not keep an exact length. -/
+example : check growingLoop (growingLoopCertificate.set 9
+    [.len "n" "xs", .le "s" "n" 1, .ge "i" 0]) = false := by decide
 
 /-- listguard's copy of `for i in range(s): ... xs[b + i] ...` with a base `b` that no iteration
 changes: tests before the loop that `b >= 0` and that `t = s + b`, a checked sum, is at most the

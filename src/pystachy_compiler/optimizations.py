@@ -4,7 +4,7 @@ import os
 from src.pystachy_compiler.diagnostics import dynamic_program, fail, int_lists, int_program
 from src.pystachy_compiler.ir import Blk, IFn, Ins, Lookup, Loop, Val, Values, tmpname, one_num
 from src.pystachy_compiler.ircheck import EffectSummaries
-from src.pystachy_compiler.specs import CANON_DEPTH, FXALL, FXBIT, LOOKUPS, NONEVAR, RAWW, REACH
+from src.pystachy_compiler.specs import CANON_DEPTH, FXALL, FXBIT, LIST_GROWS, LOOKUPS, NONEVAR, RAWW, REACH
 from src.pystachy_compiler.utils import is_list, is_opt, is_tuple, is_union, umembers
 
 
@@ -763,6 +763,16 @@ def call_counts(fns: list[IFn]) -> dict[str, int]:
     return n
 
 
+def guard_shrinks(self, i: Ins, fa: dict[str, bool]) -> bool:
+    # may op i make a list shorter or run user code (listguard): an op that may run user code (U),
+    # or that writes lists (wL) but for LIST_GROWS' and list.store, which assign items or add them;
+    # a call's effects are its callee's summary, in which an item assignment counts as wL
+    fx = self.opfx(i, fa)
+    if fx & FXBIT["U"] != 0:
+        return True
+    return fx & FXBIT["wL"] != 0 and not (i.op == "rt" and i.s in LIST_GROWS) and i.op != "list.store"
+
+
 class GuardPlan:
     # what listguard does to one loop: its blocks (by label), the block before it, the lists the
     # test before it reads (the value, or "slot S" for a slot it loads in the loop and never stores)
@@ -860,7 +870,6 @@ def guard_plan(self, fn: IFn, lp: Loop, vs: Values, pl: dict[str, list[int]], at
                     return None
                 plan.inline.append(i)
     idx = self.canon(vs, lp.idx[0])
-    bad = FXBIT["wL"] | FXBIT["U"]
     defined: dict[str, bool] = {}
     stored: dict[str, bool] = {}
     for l in region:
@@ -894,7 +903,7 @@ def guard_plan(self, fn: IFn, lp: Loop, vs: Values, pl: dict[str, list[int]], at
             if i.op == "rt" and (i.s == "list.get" or i.s == "list.set"):
                 o = i.a[0]
                 if not is_list(o.t) or i.x != "" or len(i.r) > 1:
-                    continue  # (an access the copy keeps checked; it changes no list's length)
+                    continue  # (an access the copy keeps checked; it makes no list shorter)
                 if i.s == "list.set" and (int_lists() or dynamic_program()):
                     continue  # (an item assignment stays checked where a list may hold numeric identities)
                 found: list[Ins] = []
@@ -939,8 +948,8 @@ def guard_plan(self, fn: IFn, lp: Loop, vs: Values, pl: dict[str, list[int]], at
                     plan.reads.append(i)
                 else:
                     plan.stores.append(i)
-            elif self.opfx(i, fn.fa) & bad != 0:
-                return None  # (an op that may change a list's length, or run user code)
+            elif guard_shrinks(self, i, fn.fa):
+                return None  # (an op that may make a list shorter, or run user code)
     if len(plan.lists) == 0:
         return None
     # listfast's check of an index before its inline read: the copy goes to the read
@@ -973,8 +982,9 @@ def gen_listguard(self, fn: IFn) -> int:
     # Unchecked list accesses in range loops, behind tests before each loop. An innermost loop over
     # range(start, stop) or range(start, stop, step), with a positive constant step or a variable
     # one, which the tests check is positive (range evaluates its arguments once: no iteration
-    # changes them), whose ops change no list's length (no op with wL but its item assignments,
-    # which change none, and no user code, U), gets a copy. Each read or assignment of an item of a
+    # changes them), none of whose ops makes a list shorter (guard_shrinks: no op with wL but item
+    # assignments and ops that only add items, LIST_GROWS, and no user code, U), gets a copy. Each
+    # read or assignment of an item of a
     # list the loop does not rebind (a value it does not define, or a local slot it does not store),
     # at the loop's index i plus a constant c (xs[i], ys[i + 1], zs[i - 1] = v), is unchecked in the
     # copy (where start is a small literal, only those with start + c >= 0): a list.load, or a
@@ -983,7 +993,7 @@ def gen_listguard(self, fn: IFn) -> int:
     # keep their checks); and listfast's inline read is. The tests run the copy where start + c >= 0
     # for the smallest such c (where start is a register) and each such list, as the loop starts,
     # has stop <= len(xs) - c for its largest c: then 0 <= i + c < len(xs) for every i the loop
-    # takes, as no length changes while it runs. Otherwise the loop runs as compiled, raising
+    # takes, as no list gets shorter while it runs. Otherwise the loop runs as compiled, raising
     # IndexError where CPython raises it, after the same iterations. An index may also add a base b
     # that no iteration changes (guard_base: data[bi + d]), where start is a small literal; then the
     # tests check start + c + b >= 0 for b's smallest c, compute stop + b, checked, and need

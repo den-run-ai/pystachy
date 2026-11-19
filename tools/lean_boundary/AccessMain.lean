@@ -82,6 +82,9 @@ private def parseNode (json : Json) : Except String Node := do
   | "lists" =>
       fields json ["op", "next"]
       return .lists (← indexField json "next")
+  | "grow" =>
+      fields json ["op", "next"]
+      return .grow (← indexField json "next")
   | "dicts" =>
       fields json ["op", "next"]
       return .dicts (← indexField json "next")
@@ -147,6 +150,7 @@ private def parseFact (json : Json) : Except String Fact := do
   | "atMost" => arity 2; return .atMost (← arg 1) (← num 2)
   | "ne" => arity 2; return .ne (← arg 1) (← num 2)
   | "len" => arity 2; return .len (← arg 1) (← arg 2)
+  | "lenGe" => arity 2; return .lenGe (← arg 1) (← arg 2)
   | "found" => arity 2; return .found (← arg 1) (← arg 2)
   | "entry" => arity 2; return .entry (← arg 1) (← arg 2)
   | "cell" =>
