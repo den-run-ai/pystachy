@@ -828,13 +828,17 @@ def gen_foreign(self, name: str) -> bool:
 def gen_unbound(self, name: str, imp: bool = False) -> str:
     # what CPython raises for reading name unbound (as M.x from another module, or imp: by
     # from M import x, naming the file of M, as found when compiling)
+    s = short(name)
+    i = name.rfind("$") + 1
+    if "." in name[i:] and name in self.classes:
+        s = name[i : name.find(".", i)]  # (C.N of a nested class, read before C is bound: CPython's error names C)
     if self.foreign(name) and imp:
         f = self.mfile[owner(name)]
         where = os.path.realpath(f) if f.endswith(".py") else "unknown location"
-        return f"ImportError: cannot import name '{short(name)}' from '{owner(name)}' ({where})"
+        return f"ImportError: cannot import name '{s}' from '{owner(name)}' ({where})"
     if self.foreign(name):
-        return f"AttributeError: module '{owner(name)}' has no attribute '{short(name)}'"
-    return f"NameError: name '{short(name)}' is not defined"
+        return f"AttributeError: module '{owner(name)}' has no attribute '{s}'"
+    return f"NameError: name '{s}' is not defined"
 
 def gen_qtype(self, name: str) -> str:
     # the type of variable name here, or ""

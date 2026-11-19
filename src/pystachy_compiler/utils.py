@@ -1201,6 +1201,7 @@ def clone(n: Node) -> Node:
     c.tpsource = n.tpsource
     c.chk = n.chk
     c.mchk = n.mchk
+    c.outer = n.outer
     c.depth = n.depth
     c.made = n.made
     c.src = n.src

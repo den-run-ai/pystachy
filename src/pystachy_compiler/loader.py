@@ -1325,9 +1325,25 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
             else:
                 top.append(Parser(Lexer(f"_pys_enum_ = _pys_EnumType({st.s!r}, [{ms}], {{{mm}}})\n", st.line).file()).module().kids[0])
             top[-1].kids[0].s = "_pys_enum_" + st.s  # (a nested class's, C.N: nested_classes)
+            own_refs(top[-1], st.s)
             for m in mnames if glob else []:
                 top.append(Parser(Lexer(f"{m} = {st.s}.{m}\n", st.line).file()).module().kids[0])
+                own_refs(top[-1], st.s)
     n.kids = top
+
+
+def own_refs(n: Node, cls: str) -> None:
+    # (enum_classes) code made for class cls, which reads it as cls, C.N of a nested class: as
+    # the class itself, which no check of C's binding guards (Loader.nested_ref's Node.outer):
+    # it runs with N's statement, before C's
+    if "." not in cls:
+        return
+    for i in range(len(n.kids)):
+        k = n.kids[i]
+        if k.kind == "attr" and dotted(k) == cls:
+            n.kids[i] = mk("name", cls, k.line, [])
+        else:
+            own_refs(k, cls)
 
 
 def importlib_binds(body: list[Node], out: dict[str, str], decl: dict[str, str]) -> None:
@@ -5000,6 +5016,7 @@ class Loader:
                 n.kind = "name"  # (C.N of a class C whose body nests class N: nested_classes)
                 n.s = nested
                 n.kids = []
+                n.outer = nested[: nested.find(".", nested.rfind("$") + 1)]  # (C, unbound until its statement ends)
                 return
             r = n
             while r.kind == "attr":
