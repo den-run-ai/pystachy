@@ -23,20 +23,20 @@ ROOT = Path(__file__).resolve().parent.parent
 FIXTURES = ROOT / "tools/fixtures/typed_ir"
 EXAMPLE = ROOT / "tools/inspection_examples/score_samples.py"
 WRITTEN = """function @written(left: int, names: dict[str,int]) -> None coroutine effects="R A" {
-  %1 = slot s=left : int
-  %1 = slot s=left k=1 : bool
-  %2 = slot : tuple[int,str]
+  %left.1 = slot left : int
+  %left.def.1 = slot left k=1 : bool
+  %stk.2 = slot k=2 : tuple[int,str]
 entry:
-  %3 = rt s=dict.find x=!s (dict[str,int] %a1, str @s.4, int "ptrtoint (ptr @s.4 to i64)") : int
-  %4 = num.cmp s=< (int %t3, int -1) : bool
-  check s="KeyError: 'k'" x="Kind: text" (bool %t4) -> L5
+  %t3 = rt dict.find x=!s (dict[str,int] %a1, str @s.4, int "ptrtoint (ptr @s.4 to i64)") : int
+  %t4 = num.cmp < (int %t3, int -1) : bool
+  check "KeyError: 'k'" x="Kind: text" (bool %t4) -> L5
 L5: handler=L9
-  %6 %7 = tuple.load s=int k=1 (tuple[int,str] %stk.2) : %slot
-  call s=@f.other x=inline (%slot %t7, float "bitcast (i64 9218868437227405312 to double)") -> L8, L9 : None
+  ~%t6 %t7 = tuple.load int k=1 (tuple[int,str] %stk.2) : %slot
+  call @f.other x=inline (%slot %t7, float "bitcast (i64 9218868437227405312 to double)") -> L8, L9 : None
 L8:
   ret.none
 L9:
-  %10 %11 = landing(*exc %left.1) -> "" : exc
+  ~%t10 ~%t11 = landing(*exc %left.1) -> "" : exc
 "":
   switch(int %t3, int 0, int 1) -> L8, L5, L8
 cold "Kind: text" -> L8
@@ -81,6 +81,15 @@ class AtomTests(unittest.TestCase):
         self.assertEqual(text.atom("a:b", ":"), '"a:b"')
         self.assertEqual(text.read_atom('"a:b":', 0, ":"), ("a:b", 5))
 
+    def test_an_ops_text_is_quoted_where_it_would_read_as_a_field_or_separator(self):
+        for value in ("<", "==", "+", "dict.find", "@f.add", "OverflowError", "k", "-"):
+            with self.subTest(value=value):
+                self.assertEqual(text.text_atom(value), value)
+        for value in ("->", ":", "k=1", "x=y", "a b", ""):
+            with self.subTest(value=value):
+                self.assertEqual(json.loads(text.text_atom(value)), value)
+                self.assertNotEqual(text.text_atom(value), value)
+
     def test_needless_quotes_are_rejected(self):
         for line, stops in (('"int"', ""), ('"L5"', ":")):
             with self.subTest(line=line), self.assertRaisesRegex(text.TextError, "must be written bare"):
@@ -96,7 +105,9 @@ class TextTests(unittest.TestCase):
         self.assertEqual(record["parameters"], [{"name": "left", "type": "int"}, {"name": "names", "type": "dict[str,int]"}])
         self.assertTrue(record["coroutine"])
         self.assertEqual(record["effects"], "R A")
-        self.assertEqual([s["immediate"] for s in record["slots"]], [0, 1, 0])
+        self.assertEqual([s["immediate"] for s in record["slots"]], [0, 1, 2])
+        self.assertEqual([s["results"] for s in record["slots"]], [[1], [1], [2]])
+        self.assertEqual(record["blocks"][1]["operations"][0]["results"], [6, 7])
         self.assertEqual([b["label"] for b in record["blocks"]], ["entry", "L5", "L8", "L9", ""])
         self.assertEqual(record["blocks"][1]["handler"], "L9")
         find = record["blocks"][0]["operations"][0]
@@ -124,18 +135,24 @@ class TextTests(unittest.TestCase):
     def test_malformed_text_is_rejected_with_its_line(self):
         for old, new, expected in (
                 ("  ret.none\n", "  ret.none \n", "line 13: trailing whitespace"),
-                ("  ret.none\n", "  ret.none extra\n", "line 13: unexpected text"),
+                ("  ret.none\n", "  ret.none(int %t1) extra\n", "line 13: unexpected text"),
                 ("  ret.none\n", "  Ret\n", "line 13: expected an operation name"),
                 ("  ret.none\n", "  ret.none k=0\n", "line 13: k= needs a nonzero integer"),
                 ("  ret.none\n", "  ret.none k=01\n", "line 13: k= needs a nonzero integer"),
-                ("  ret.none\n", '  ret.none s=""\n', "line 13: an empty text is omitted"),
+                ("  ret.none\n", '  ret.none ""\n', "line 13: an empty text is omitted"),
                 ("  ret.none\n", "  ret.none()\n", "line 13: expected an atom"),
                 ("  ret.none\n", "  ret.none(int)\n", "line 13: expected ' '"),
                 ("  ret.none\n", "  ret.none(int %t1,int %t2)\n", "line 13: expected ', '"),
                 ("  ret.none\n", '  ret.none(int "unterminated)\n', "line 13: invalid quoted atom"),
                 ("  ret.none\n", "  ret.none(list[int %t1)\n", "line 13: expected an atom"),
-                ("  ret.none\n", "  ret.none s=< (int %t1)\n".replace("s=< (", "s=<("), "line 13: unexpected text"),
-                ("  %1 = slot s=left : int\n", "  %1 = br -> L5\n", "line 2: an instruction before the first block must be a slot"),
+                ("  ret.none\n", "  ret.none <(int %t1)\n", "line 13: unexpected text"),
+                ("  %left.1 = slot left : int\n", "  %t1 = br -> L5\n", "line 2: an instruction before the first block must be a slot"),
+                ("  %left.1 = slot left", "  %x.1 = slot left", "line 2: results must be written %left.1"),
+                ("  %stk.2 = slot k=2", "  %h.2 = slot k=2", "line 4: results must be written %stk.2"),
+                ("  %t3 = rt dict.find", "  %3 = rt dict.find", "line 6: invalid result '%3'"),
+                ("  %t3 = rt dict.find", '  %t3 = rt "dict.find"', "line 6: text 'dict.find' must be written dict.find"),
+                ("  ~%t6 %t7 = tuple.load", "  %t6 %t7 = tuple.load", "line 10: results must be written ~%t6 %t7"),
+                ("  ~%t6 %t7 = tuple.load", "  ~%t6 ~%t7 = tuple.load", "line 10: results must be written ~%t6 %t7"),
                 ("L8:\n", "L8\n", "line 12: expected ':'"),
                 ("L8:\n", "L8: handler=\n", "line 12: expected an atom"),
                 ("L8:\n", "L8: handler=L9 x\n", "line 12: unexpected text after a block label"),
@@ -159,6 +176,7 @@ class TextTests(unittest.TestCase):
         for change, expected in ((lambda r: r["blocks"][2]["operations"][0].__setitem__("op", "Ret"), "invalid operation name"),
                                  (lambda r: r["blocks"][2]["operations"][0].__setitem__("immediate", True), "an immediate must be an integer"),
                                  (lambda r: r["blocks"][2]["operations"][0].__setitem__("results", ["1"]), "result numbers must be integers"),
+                                 (lambda r: r["slots"][0].__setitem__("results", [1, 2]), "a slot has one number"),
                                  (lambda r: r["loops"][0].__setitem__("sort", "x"), "unknown loop field"),
                                  (lambda r: r.__setitem__("coroutine", 1), "coroutine must be a boolean")):
             with self.subTest(expected=expected):

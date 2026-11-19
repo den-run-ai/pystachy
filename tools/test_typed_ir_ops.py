@@ -55,6 +55,7 @@ class OperationTableTests(unittest.TestCase):
                 self.assertEqual("*" in effects, row["varies"])
                 self.assertEqual([e for e in effects if e not in ("T", "*")], row["effects"])
                 self.assertEqual(specs.RESULT_NUMBERS.get(op, 0), row["results"] or 0)
+                self.assertEqual(specs.OP_TEMPS.get(op, []), row["temporaries"])
                 self.assertEqual(specs.VALUE_AT.get(op, 0), row["value"])
                 self.assertEqual(specs.OP_ENTRY[op], row["entry"])
                 self.assertEqual(specs.OP_MIN[op], row["min"])
@@ -65,10 +66,20 @@ class OperationTableTests(unittest.TestCase):
     def test_malformed_rows_are_rejected(self):
         for text in ("T|0|0|1|", "Q|0|0|0||0", "T T|0|0|0||0", "|1-0|0|0||0", "|01|0|0||0", "|0|-1|0||0",
                      "|0|0|b||0", "|0|0|0|s t|0", "|0|0|0|t t|0", "|0|1|0||2", "|0|0|0||4", "E T|0|1|0||0",
-                     "E|0|1|1||0"):
+                     "E|0|1|1||0", "|0|vv|0||0", "|0|v.x|0||0", "|0|..1|0||0", "|0||0||0"):
             with self.subTest(text=text), patch.dict(typed_ir_ops.OPS, {"probe": text}, clear=True):
                 with self.assertRaises(ValueError):
                     typed_ir_ops.rows()
+
+    def test_lowering_temporaries_are_the_ops_own_numbers(self):
+        # (each is a number its lowering names an intermediate LLVM value with: lowering.py)
+        self.assertEqual(specs.OP_TEMPS["ovf"], [0])
+        self.assertEqual(specs.OP_TEMPS["list.load"], [1, 2, 3])
+        self.assertEqual(specs.OP_TEMPS["list.store"], [0, 1, 2])
+        self.assertNotIn("list.len", specs.OP_TEMPS)
+        for op, temps in specs.OP_TEMPS.items():
+            with self.subTest(op=op):
+                self.assertTrue(all(0 <= j < specs.RESULT_NUMBERS[op] for j in temps))
 
     def test_documentation_reference_is_current(self):
         text = typed_ir_ops.DOC.read_text(encoding="utf-8")
@@ -124,6 +135,25 @@ class ShapeCheckTests(unittest.TestCase):
                 with redirect_stderr(errors), self.assertRaises(SystemExit):
                     Gen().verify(function(code), False)
                 self.assertIn(expected, errors.getvalue())
+
+    def test_verifier_rejects_an_operand_that_names_a_lowering_temporary(self):
+        for temporary, value in (("%t3", "%t4"), ("%t5", "%t4")):
+            with self.subTest(temporary=temporary):
+                read = ins("list.load", "*int", operands=2)
+                read.a = [Val("%a0", "list[int]"), Val("0", "int")]
+                read.r = [4, 3, 5, 6]
+                use = Ins("ret", "", "")
+                use.a = [Val(temporary, "int")]
+                fn = function([read, use])
+                fn.f.ret = "int"
+                fn.blocks.pop()
+                errors = StringIO()
+                with redirect_stderr(errors), self.assertRaises(SystemExit):
+                    Gen().verify(fn, False)
+                self.assertIn(f"ret operand {temporary} is a temporary of a list.load op's lowering, which no op may use",
+                              errors.getvalue())
+                use.a = [Val(value, "int")]
+                Gen().verify(fn, False)
 
     def test_verifier_holds_slots_to_the_table(self):
         fn = function([ins("br", labels=1)])

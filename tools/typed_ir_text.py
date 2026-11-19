@@ -14,10 +14,17 @@ pass on it and compare the printed result; `from_ifn` is its inverse.
 
 One instruction is one line:
 
-    [%N ... = ] op [s=TEXT] [k=INT] [x=DESCRIPTOR] [(TYPE VALUE, ...)] [-> LABEL, ...] [: TYPE]
+    [RESULT ... = ] op [TEXT] [k=INT] [x=DESCRIPTOR] [(TYPE VALUE, ...)] [-> LABEL, ...] [: TYPE]
 
-    %12 = num.cmp s=< (int %t10, int %t11) : bool
+    %t12 = num.cmp < (int %t10, int %t11) : bool
+    ~%t6 %t7 %t8 = ovf + (int %t4, int %t5) : int
+    %xs.2 = slot xs : list[int]
     cbr(bool %t12) -> L13, L9
+
+A result is written as operands name it: %tN, or a slot's register (ir.slot_register). A ~
+marks a temporary of the op's lowering (OP_TEMPS), which no operand names; printing and parsing
+read those, and slot registers, from the compiler. TEXT is the op's Ins.s: its operator, runtime
+entry, callee, error or variable.
 
 An atom (a type, a value, a label, a text) is written bare where that is unambiguous, else as
 a JSON string. The form is for tests and review. It is no stable interchange format, and it
@@ -118,24 +125,70 @@ def read_operands(text, at):
         at = expect(text, at, ", ")
 
 
+def text_atom(value):
+    """An op's text, after its name: an atom, quoted where it would read as a field or a separator."""
+    written = atom(value)
+    if written == value and (value in ("->", ":") or value.startswith(("k=", "x="))):
+        return json.dumps(value, ensure_ascii=False)
+    return written
+
+
+def read_text_atom(text, at):
+    """(the op's text at `at`, the position after it), written as text_atom writes it."""
+    if text.startswith('"', at):
+        try:
+            value, end = DECODER.raw_decode(text, at)
+        except json.JSONDecodeError as error:
+            raise TextError(f"invalid quoted atom: {error.msg}") from None
+        require(isinstance(value, str), "a quoted atom must be a string")
+    else:
+        end, depth = scan_bare(text, at)
+        require(end > at and depth == 0, f"expected an atom at column {at + 1}")
+        value = text[at:end]
+    require(text[at:end] == text_atom(value), f"text {value!r} must be written {text_atom(value)}")
+    return value, end
+
+
+def slot_name(text, immediate, number):
+    """A slot's register, which its uses name (ir.slot_register)."""
+    ir = compiler()[0]
+    slot = ir.Ins("slot", "", text)
+    slot.k = immediate
+    slot.r = [number]
+    return ir.slot_register(slot)
+
+
+def result_names(ins):
+    """An instruction's results as operands name them: a slot's register, else %tN, with a ~
+    before each lowering temporary (OP_TEMPS), which no operand may name."""
+    if ins["op"] == "slot":
+        require(len(ins["results"]) == 1, "a slot has one number")
+        return [slot_name(ins["text"], ins["immediate"], ins["results"][0])]
+    temps = compiler()[1].OP_TEMPS.get(ins["op"], [])
+    return [("~" if j in temps else "") + f"%t{r}" for j, r in enumerate(ins["results"])]
+
+
 def instruction_text(ins):
     require(isinstance(ins["immediate"], int) and not isinstance(ins["immediate"], bool), "an immediate must be an integer")
     require(re.fullmatch(r"[a-z]+(\.[a-z]+)?", ins["op"]) is not None, f"invalid operation name {ins['op']!r}")
     parts = []
     if ins["results"]:
         require(all(isinstance(r, int) and not isinstance(r, bool) for r in ins["results"]), "result numbers must be integers")
-        parts.append(" ".join(f"%{r}" for r in ins["results"]) + " = ")
+        parts.append(" ".join(result_names(ins)) + " = ")
     parts.append(ins["op"])
+    fielded = False
     if ins["text"] != "":
-        parts.append(" s=" + atom(ins["text"]))
+        parts.append(" " + text_atom(ins["text"]))
+        fielded = True
     if ins["immediate"] != 0:
         parts.append(f" k={ins['immediate']}")
+        fielded = True
     if ins["descriptor"] != "":
         parts.append(" x=" + atom(ins["descriptor"]))
+        fielded = True
     if ins["operands"]:
-        # (a space after a field, so that "s=<" does not run into the list)
-        parts.append((" (" if len(parts) > (2 if ins["results"] else 1) else "(")
-                     + ", ".join(operand_text(a) for a in ins["operands"]) + ")")
+        # (a space after a field, so that a text such as "<" does not run into the list)
+        parts.append((" (" if fielded else "(") + ", ".join(operand_text(a) for a in ins["operands"]) + ")")
     if ins["targets"]:
         parts.append(" -> " + ", ".join(atom(label) for label in ins["targets"]))
     if ins["type"] != "":
@@ -143,21 +196,29 @@ def instruction_text(ins):
     return "".join(parts)
 
 
+RESULT = re.compile(r"(~?)%t(-?\d+)|%(.+)\.(-?\d+)")
+
+
 def read_instruction(text):
     at = 0
     results = []
-    numbered = re.match(r"((?:%-?\d+ )+)= ", text)
+    names = []
+    numbered = re.match(r"((?:~?%[^\s=]+ )+)= ", text)
     if numbered:
-        results = [int(r[1:]) for r in numbered.group(1).split()]
+        names = numbered.group(1).split()
+        for name in names:
+            found = RESULT.fullmatch(name)
+            require(found is not None, f"invalid result {name!r}")
+            results.append(int(found.group(2) if found.group(2) is not None else found.group(4)))
         at = numbered.end()
-    name = re.compile(r"[a-z]+(\.[a-z]+)?").match(text, at)
-    require(name is not None, "expected an operation name")
-    op = name.group(0)
-    at = name.end()
+    found = re.compile(r"[a-z]+(\.[a-z]+)?").match(text, at)
+    require(found is not None, "expected an operation name")
+    op = found.group(0)
+    at = found.end()
     s = x = t = ""
     k = 0
-    if text.startswith(" s=", at):
-        s, at = read_atom(text, at + 3)
+    if text.startswith(" ", at) and not text.startswith((" k=", " x=", " (", " -> ", " : "), at):
+        s, at = read_text_atom(text, at + 1)
         require(s != "", "an empty text is omitted")
     if text.startswith(" k=", at):
         number = re.compile(r"-?\d+").match(text, at + 3)
@@ -184,8 +245,12 @@ def read_instruction(text):
         t, at = read_atom(text, at + 3)
         require(t != "", "an empty type is omitted")
     require(at == len(text), f"unexpected text at column {at + 1}: {text[at:]!r}")
-    return {"op": op, "type": t, "text": s, "immediate": k, "descriptor": x,
-            "results": results, "operands": operands, "targets": targets}
+    ins = {"op": op, "type": t, "text": s, "immediate": k, "descriptor": x,
+           "results": results, "operands": operands, "targets": targets}
+    if names:
+        expected = result_names(ins)
+        require(names == expected, f"results must be written {' '.join(expected)}")
+    return ins
 
 
 def loop_text(loop):
@@ -382,7 +447,7 @@ def from_snapshot(function):
 
 
 def compiler():
-    """The hosted compiler's modules, imported on first use: text handling needs none of them."""
+    """The hosted compiler's modules, imported on first use."""
     if str(ROOT) not in sys.path:
         sys.path.insert(0, str(ROOT))
     from src.pystachy_compiler import ir, specs, symbols, syntax, utils

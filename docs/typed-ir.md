@@ -288,6 +288,11 @@ holds every instruction to its row before the checks specific to its operation r
 `tools/typed_ir_ops.py --write` writes this table from the rows, and `--check` fails when
 it is out of date.
 
+Some result numbers only name an intermediate LLVM value of their operation's lowering:
+`ovf`'s `{i64, i1}` pair, the three addresses of `list.load`, the address of a `tuple.load`.
+A row lists those as temporaries (`OP_TEMPS`), and the verifier rejects an operand that names
+one, whatever block defines it.
+
 <!-- typed-ir-ops: begin (written by tools/typed_ir_ops.py --write) -->
 
 | Operation | Effects | Operands | Results | Labels | Fields | Value |
@@ -307,9 +312,9 @@ it is out of date.
 | `unreachable` | ends its block | 0 | 0 | 0 | none | none |
 | `phi` | none | 1 or more | 1 | one per operand | `t` | none |
 | `select` | none | 3 | 1 | 0 | `t` | first |
-| `ovf` | none | 2 | 3 | 0 | `t`, `s` | none |
-| `list.load` | `rL` | 2 | 4 | 0 | `t` | none |
-| `list.store` | `rL`, `wL` | 3 | 3 | 0 | none | none |
+| `ovf` | none | 2 | 3: temporary, value, value | 0 | `t`, `s` | none |
+| `list.load` | `rL` | 2 | 4: value, temporary, temporary, temporary | 0 | `t` | none |
+| `list.store` | `rL`, `wL` | 3 | 3: temporary, temporary, temporary | 0 | none | none |
 | `list.len` | `rL` | 1 | 1 | 0 | `t` | first |
 | `alloc.fixed` | `A` | 0 | 1 | 0 | `t` | none |
 | `vtuple.make` | `A` | 0 or more | 1 | 0 | `t` | none |
@@ -318,8 +323,8 @@ it is out of date.
 | `mach.load` | per instruction | 1 | 1 | 0 | `t`, `s` | first |
 | `mach.store` | per instruction | 2 | 0 | 0 | `s` | none |
 | `mach.addr` | none | 2 | 1 | 0 | `t`, `s`, `k` | first |
-| `tuple.load` | `rL`, `rD`, `rO` | 1 | 2 | 0 | `t`, `s`, `k` | each |
-| `tuple.store` | `wL`, `wD`, `wO` | 2 | 1 | 0 | `s`, `k` | each |
+| `tuple.load` | `rL`, `rD`, `rO` | 1 | 2: temporary, value | 0 | `t`, `s`, `k` | each |
+| `tuple.store` | `wL`, `wD`, `wO` | 2 | 1: temporary | 0 | `s`, `k` | each |
 | `field.addr` | none | 1 | 1 | 0 | `t`, `k` | first |
 | `slot.pack` | none | 1 | 1 | 0 | `t` | first |
 | `slot.unpack` | none | 1 | 1 | 0 | `t` | first |
@@ -332,20 +337,20 @@ it is out of date.
 | `ptr.cmp` | none | 2 | 1 | 0 | `t`, `s` | first |
 | `empty.kind` | `wD` | 1 | 1 | 0 | `k` | none |
 | `union.tag` | `rL`, `rD`, `rO` | 1 | 1 | 0 | `t` | none |
-| `union.payload` | `rL`, `rD`, `rO` | 1 | 2 | 0 | `t`, `s` | second |
-| `union.raw` | `rL`, `rD`, `rO` | 1 | 2 | 0 | `t` | second |
+| `union.payload` | `rL`, `rD`, `rO` | 1 | 2: temporary, value | 0 | `t`, `s` | second |
+| `union.raw` | `rL`, `rD`, `rO` | 1 | 2: temporary, value | 0 | `t` | second |
 | `dyn.type` | none | 1 | 1 | 0 | `t` | first |
-| `dyn.payload` | none | 1 | 2 | 0 | `t`, `s` | second |
-| `dyn.raw` | none | 1 | 2 | 0 | `t` | second |
-| `big.make` | none | 2 | 2 | 0 | `t` | second |
+| `dyn.payload` | none | 1 | 2: temporary, value | 0 | `t`, `s` | second |
+| `dyn.raw` | none | 1 | 2: temporary, value | 0 | `t` | second |
+| `big.make` | none | 2 | 2: temporary, value | 0 | `t` | second |
 | `big.lo` | none | 1 | 1 | 0 | `t` | first |
 | `big.hi` | none | 1 | 1 | 0 | `t` | first |
-| `landing` | ends its block | 1 | 2 | 1 | `t` | none |
+| `landing` | ends its block | 1 | 2: temporary, temporary | 1 | `t` | none |
 | `throw` | ends its block, `R`, `N` | 1 | 0 | 0 | none | none |
-| `exc.match` | none | 2 | 2 | 0 | `t` | none |
+| `exc.match` | none | 2 | 2: temporary, value | 0 | `t` | none |
 | `gen.start` | ends its block, `A` | 1 | 0 | 1 | none | none |
-| `gen.yield` | ends its block, `U` | 1 to 3 | 2 | 1 | `k` | none |
-| `gen.ret` | ends its block | 0 to 2 | 2 | 0 | none | none |
+| `gen.yield` | ends its block, `U` | 1 to 3 | 2: temporary, temporary | 1 | `k` | none |
+| `gen.ret` | ends its block | 0 to 2 | 2: temporary, temporary | 0 | none | none |
 | `gen.promise` | none | 0 to 1 | 1 | 0 | `t` | none |
 | `gen.resume` | `U` | 1 | 0 | 0, or 2 as an invoke | none | none |
 | `gen.drop` | `A`, `I`, `rL`, `wL`, `rD`, `wD`, `rO`, `wO`, `rG`, `wG`, `rF`, `wF` | 1 | 0 | 0 | none | none |
@@ -940,18 +945,32 @@ self-compile timings in the design log are not current test totals or performanc
 ## Text form
 
 `tools/typed_ir_text.py` prints a function's IR as text and parses it back. One instruction
-is one line: its result numbers, the operation, the fields it sets, its typed operands, its
-labels and its result type.
+is one line: its results, the operation, its text (`Ins.s`), its other fields, its typed
+operands, its labels and its result type.
 
 ```text
 L7:
-  %10 = mach.load(%ptr %h.5) : int
-  %11 = list.len(list[float] %t4) : int
-  %12 = num.cmp s=< (int %t10, int %t11) : bool
+  %t10 = mach.load(%ptr %h.5) : int
+  %t11 = list.len(list[float] %t4) : int
+  %t12 = num.cmp < (int %t10, int %t11) : bool
   cbr(bool %t12) -> L13, L9
 L13:
-  %14 = rt s=list.get (list[float] %t4, int %t10) : *float
+  %t14 ~%t28 ~%t29 ~%t30 = list.load(list[float] %t4, int %t10) : *float
+  %t15 = slot.unpack(%slot %t14) : float
 ```
+
+A result is written as operands name it: `%tN`, or a slot's register (`%samples.2 = slot
+samples : list[float]`, `%h.5` for an unnamed one). A `~` marks a temporary of the
+operation's lowering, which no operand names: in `~%t6 %t7 %t8 = ovf + (int %t4, int %t5)`,
+`%t6` is the `{i64, i1}` pair that the sum `%t7` and the overflow flag `%t8` are read from.
+The text follows the operation's name: an operator (`num.cmp <`, `scalar.bin fmul`), an `rt`
+op's runtime entry, a callee, a check's error, a slot's variable. It is quoted where it holds
+a space or would read as a field.
+
+Types are the compiler's canonical strings. Most are Python's (`int`, `list[float]`,
+`opt[int]`); `*X` is an eight-byte slot that holds an `X`, so `mem.load(*int %s.3)` reads the
+slot at `%s.3` and `list.load` returns a list item's slot; `%ptr`, `%byte`, `%i32` and `%slot`
+are machine types with no Python meaning.
 
 Printing and parsing are inverse: a printed function parses to the record it was printed
 from, and a text that is not in the printed form is rejected. The record holds a function's
