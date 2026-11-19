@@ -563,8 +563,9 @@ of `__all__` gives CPython's results, errors and messages:
 - `encode()` and `decode()` of binary files and `io.BytesIO` objects, `encodebytes()` and
   `decodebytes()` ([test](../tests/programs/library/lib_base64_files.py)).
 
-The edits replace what the subset lacks: `int.from_bytes()` and `to_bytes()`, a `bytearray`
-result, a bytes pattern of `re`, and a `struct` format made at run time. Run under CPython, the
+The edits replace what the subset lacks: `int.from_bytes()` and `to_bytes()`, a bytes
+pattern of `re` and a `struct` format made at run time; they also build results without a
+`bytearray`, which the subset lacked when they were made. Run under CPython, the
 edited module passes the 40 tests of `test_base64`; a
 [checksum over pseudo-random inputs](../tests/programs/library/lib_base64_random.py) covers every
 codec.
