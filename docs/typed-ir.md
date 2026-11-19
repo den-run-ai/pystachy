@@ -966,6 +966,8 @@ decides a fixed tuple's slots while its function is printed.
   and effect summaries.
 - `tools/typed_ir_ops.py --check` fails when the [operation reference](#operation-reference)
   differs from `OPS`.
+- `tools/typed_ir_text.py verify tools/fixtures/typed_ir/invalid.tir` holds the verifier to
+  the error each function of the file expects (see [text form](#text-form)).
 - `make check-runtime` checks runtime signature/effect declarations.
 - `make irsame` and `make irsame-py` compare a refactor's IR, diagnostics and exit status with a
   reference compiler. Behavior changes need their own explicit tests, not a byte-identical promise.
@@ -1015,6 +1017,14 @@ result: [`tools/test_typed_ir_text.py`](../tools/test_typed_ir_text.py) runs `li
 checks that the fixture is what the compiler emits. The text holds no module data, class
 layouts or runtime declarations, so a function that needs those is tested from source. It
 is a test and review form of the hosted compiler, not an interchange format.
+
+`verify` runs the verifier on each function of a text file, as MLIR's `-verify-diagnostics`
+does. A comment line `; expected-error {{MESSAGE}}` says that the function's verification
+fails with an error containing MESSAGE in the block that holds the line, and a function
+without one must verify. The verifier stops at its first error, so a function expects one
+at most. [`invalid.tir`](../tools/fixtures/typed_ir/invalid.tir) breaks one rule per
+function: each kind of shape and type rule of an operation's row, some operations' own
+checks, block structure, and the values operands name. Its last function verifies.
 
 The optional [Lean shape checker](../tools/lean_boundary/SHAPE.md) reads the same records
 and the operation table. For the functions it accepts it proves the table's counts and

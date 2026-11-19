@@ -11,6 +11,7 @@ pass on it and compare the printed result; `from_ifn` is its inverse.
     python3 tools/typed_ir_text.py print typed-after.json [--function NAME]
     python3 tools/typed_ir_text.py check FILE.tir          # parse, print again, compare
     python3 tools/typed_ir_text.py json FILE.tir           # the records, as JSON
+    python3 tools/typed_ir_text.py verify FILE.tir         # verify each function, as expected
 
 One instruction is one line:
 
@@ -29,8 +30,16 @@ entry, callee, error or variable.
 An atom (a type, a value, a label, a text) is written bare where that is unambiguous, else as
 a JSON string. The form is for tests and review. It is no stable interchange format, and it
 holds no module data, class layouts or runtime declarations.
+
+`verify` runs the compiler's verifier (PYSTACHY_IRCHECK=1's) on each function, as MLIR's
+-verify-diagnostics does. A comment line `; expected-error {{MESSAGE}}` in a function says that
+its verification must fail with an error that contains MESSAGE, in the block the line is in
+(before the first block: that block); a function without one must verify. The verifier stops
+at its first error, so a function expects one at most.
 """
 import argparse
+from contextlib import redirect_stderr
+from io import StringIO
 import json
 from pathlib import Path
 import re
@@ -559,6 +568,66 @@ def gen_for(fn):
     return g
 
 
+EXPECTED = re.compile(r"; expected-error \{\{(.+?)\}\}")
+REPORTED = re.compile(r"bad IR in (\S+), block (.*?): (.*)")
+
+
+def expectations(text):
+    """Each function's expected errors, in the order of the functions: {"message", "block",
+    "line"}, where block is the label of the block the annotation is in (None before the first)."""
+    found = []
+    expected = None
+    block = None
+    for number, line in enumerate(text.split("\n"), 1):
+        mark = EXPECTED.fullmatch(line.strip())
+        if expected is None:
+            require(mark is None, f"line {number}: an expected error outside a function")
+            if line.startswith("function "):
+                expected, block = [], None
+        elif line == "}":
+            found.append(expected)
+            expected = None
+        elif mark is not None:
+            expected.append({"message": mark.group(1), "block": block, "line": number})
+        elif line != "" and not line.startswith(("  ", ";", "cold ", "loop")):
+            block = read_atom(line, 0, ":")[0]
+    return found
+
+
+def verify_errors(text, eh=False):
+    """Why the functions of a text do not verify as their expected errors say, or []."""
+    records = parse_functions(text)
+    problems = []
+    for record, expected in zip(records, expectations(text), strict=True):
+        name = record["symbol"]
+        if len(expected) > 1:
+            problems.append(f"{name}: expects {len(expected)} errors, where the verifier reports its first alone")
+            continue
+        fn = to_ifn(record)
+        errors = StringIO()
+        try:
+            with redirect_stderr(errors):
+                gen_for(fn).verify(fn, eh)
+            reported = None
+        except SystemExit:
+            reported = REPORTED.search(errors.getvalue())
+            if reported is None:
+                problems.append(f"{name}: the verifier failed without a bad IR report: {errors.getvalue().strip()}")
+                continue
+        if not expected:
+            if reported is not None:
+                problems.append(f"{name}: unexpected error in block {reported.group(2)}: {reported.group(3)}")
+            continue
+        want = expected[0]
+        block = want["block"] if want["block"] is not None else record["blocks"][0]["label"]
+        if reported is None:
+            problems.append(f"{name}: line {want['line']}: expected error {{{{{want['message']}}}}} was not reported")
+        elif want["message"] not in reported.group(3) or reported.group(2) != block:
+            problems.append(f"{name}: line {want['line']}: expected error {{{{{want['message']}}}}} in block {block}, "
+                            f"got in block {reported.group(2)}: {reported.group(3)}")
+    return problems
+
+
 def roundtrip_errors(record):
     """Why a record does not survive print and parse, or []."""
     try:
@@ -575,7 +644,7 @@ def roundtrip_errors(record):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("mode", choices=("print", "check", "json"))
+    parser.add_argument("mode", choices=("print", "check", "json", "verify"))
     parser.add_argument("path", type=Path)
     parser.add_argument("--function", default="", help="print: only functions whose symbol contains this")
     args = parser.parse_args()
@@ -591,6 +660,13 @@ def main():
             sys.stdout.write("\n".join(format_function(r) for r in records))
             return 0
         records = parse_functions(source)
+        if args.mode == "verify":
+            problems = verify_errors(source)
+            if problems:
+                print("\n".join(problems), file=sys.stderr)
+                return 1
+            print(f"typed_ir_text: {len(records)} functions verify as expected")
+            return 0
         if args.mode == "json":
             print(json.dumps(records, indent=1))
             return 0
