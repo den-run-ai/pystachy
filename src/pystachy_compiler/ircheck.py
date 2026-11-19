@@ -177,17 +177,64 @@ def name_end(c: str, at: int) -> int:
     return at
 
 
+def constraint_parts(c: str) -> list[str]:
+    # constraint c of a types column by its parts: the text before its variable, the variable's
+    # name ("" for none), the class given after the name ("" for none) and the text after them
+    v = c.find("$")
+    if v < 0:
+        return [c, "", "", ""]
+    e = name_end(c, v + 1)
+    if e < len(c) and c[e] == ":":
+        k = name_end(c, e + 1)
+        return [c[:v], c[v + 1 : e], c[e + 1 : k], c[k:]]
+    return [c[:v], c[v + 1 : e], "", c[e:]]
+
+
+def read_constraints() -> dict[str, list[str]]:
+    # the parts of each constraint that the operation table's types columns hold (constraint_parts)
+    parts: dict[str, list[str]] = {}
+    for op in OP_OPERAND_TYPES:
+        for c in OP_OPERAND_TYPES[op] + [OP_RESULT_TYPE[op]]:
+            if c not in parts:
+                parts[c] = constraint_parts(c)
+    return parts
+
+
+def read_kinds() -> dict[str, dict[str, str]]:
+    # each op's variables' classes, given at any of the names its row has for them
+    kinds: dict[str, dict[str, str]] = {}
+    for op in OP_OPERAND_TYPES:
+        kinds[op] = {}
+        for c in OP_OPERAND_TYPES[op] + [OP_RESULT_TYPE[op]]:
+            p = CONSTRAINT_PARTS[c]
+            if p[2] != "":
+                kinds[op][p[1]] = p[2]
+    return kinds
+
+
+# The operation table's types columns, read once (op_type_error): each constraint's parts, and
+# each op's variables' classes
+CONSTRAINT_PARTS: dict[str, list[str]] = read_constraints()
+OP_KINDS: dict[str, dict[str, str]] = read_kinds()
+
+
+def placed(j: int) -> str:
+    # where a types column's variable was bound: operand j, or the result where j < 0
+    return "the result" if j < 0 else f"operand {j}"
+
+
 class OpTypes:
     # The types column's check of a function's ops (specs.OPS, op_type_error): its declared
     # classes, and the closed unions found so far, each validated once, whose members the union
-    # proofs read. Per op: each variable's class (kinds), its type (bound) and where that is.
+    # proofs read. Per op: each variable's class (kinds, OP_KINDS's), its type (bound) and where
+    # that is (an operand's position, -1 for the result).
     def __init__(self, fn: IFn, classes: dict[str, ClassInfo], unions: dict[str, list[str]]):
         self.fn = fn
         self.classes = classes
         self.unions = unions
         self.kinds: dict[str, str] = {}
         self.bound: dict[str, str] = {}
-        self.where: dict[str, str] = {}
+        self.where: dict[str, int] = {}
 
     def admits(self, name: str, t: str) -> bool:
         # whether type t is of the type class name (specs.TYPE_CLASSES)
@@ -247,23 +294,22 @@ class OpTypes:
         fail(f"internal error: the operation table names {name}, which is no type class", 0)
         return False
 
-    def need(self, c: str, t: str, place: str) -> str:
+    def need(self, c: str, t: str, place: int) -> str:
         # What constraint c of a types column asks for where type t is not that, or "". c is a
         # type, a type class, or a type around a variable ($T, *$T, list[$E]): the variable is
         # bound to its part of the first type it meets, which must be of its class, and later
-        # each must be what that makes it
-        v = c.find("$")
-        if v < 0:
+        # each must be what that makes it. place: t's operand, -1 for the result
+        p = CONSTRAINT_PARTS[c]
+        name = p[1]
+        if name == "":
             if c in TYPE_CLASSES:
                 return "" if self.admits(c, t) else TYPE_CLASSES[c]
             return "" if t == c else c
-        e = name_end(c, v + 1)
-        name = c[v + 1 : e]
-        prefix = c[:v]
-        suffix = c[name_end(c, e + 1) :] if e < len(c) and c[e] == ":" else c[e:]
+        prefix = p[0]
+        suffix = p[3]
         if name in self.bound:
             want = prefix + self.bound[name] + suffix
-            return "" if t == want else f"{want} (${name} is {self.bound[name]} at {self.where[name]})"
+            return "" if t == want else f"{want} (${name} is {self.bound[name]} at {placed(self.where[name])})"
         kind = self.kinds[name] if name in self.kinds else ""
         inner = ""
         if len(t) > len(prefix) + len(suffix) and t.startswith(prefix) and t.endswith(suffix):
@@ -284,20 +330,17 @@ def op_type_error(check: OpTypes, i: Ins) -> str:
         return ""
     cs = OP_OPERAND_TYPES[i.op]
     result = OP_RESULT_TYPE[i.op]
-    check.kinds = {}
-    check.bound = {}
-    check.where = {}
-    for c in cs + [result]:
-        v = c.find("$")
-        e = name_end(c, v + 1) if v >= 0 else 0
-        if v >= 0 and e < len(c) and c[e] == ":":
-            check.kinds[c[v + 1 : e]] = c[e + 1 : name_end(c, e + 1)]
+    check.kinds = OP_KINDS[i.op]
+    if len(check.bound) > 0:
+        # (the previous op's bindings; most ops bind none, and keep the empty ones)
+        check.bound = {}
+        check.where = {}
     for j in range(len(i.a) if len(cs) > 0 else 0):
-        need = check.need(cs[j] if j < len(cs) else cs[len(cs) - 1], i.a[j].t, f"operand {j}")
+        need = check.need(cs[j] if j < len(cs) else cs[len(cs) - 1], i.a[j].t, j)
         if need != "":
             return f"{i.op} operand {j} needs {need}, got {i.a[j].t or 'no type'}"
     if result != "":
-        need = check.need(result, i.t, "the result")
+        need = check.need(result, i.t, -1)
         if need != "":
             return f"{i.op} result needs {need}, got {i.t or 'no type'}"
     return ""
@@ -309,6 +352,8 @@ RT_VARS: list[str] = ["T", "K", "V", "S"]
 
 def rt_generic(t: str) -> bool:
     # does type t name a runtime type variable (RT_VARS)
+    if "T" not in t and "K" not in t and "V" not in t and "S" not in t:
+        return False
     start = 0
     for j in range(len(t) + 1):
         if j == len(t) or t[j] == "[" or t[j] == "]" or t[j] == "," or t[j] == "*" or t[j] == ":":
@@ -508,10 +553,17 @@ def value_types(self, fn: IFn) -> None:
                         if v in addresses or (v in types and types[v] == "%ptr"):
                             addresses[tmpname(i.r[0])] = True
                             grew = True
-    # (a value whose definition gives it only a machine type, a runtime type variable or a
-    # placeholder: the first type an operand of an op but rt reads it at, and where)
+    # (the values whose definition gives them only a machine type, a runtime type variable or a
+    # placeholder; the first type an operand of an op but rt reads each at, and where; and the
+    # views decided so far, as many operands read alike)
+    loose: dict[str, bool] = {}
+    for v in types:
+        d = types[v]
+        if d == "%ptr" or d == "%slot" or "?" in d or NONEVAR in d or rt_generic(d):
+            loose[v] = True
     read: dict[str, str] = {}
     first: dict[str, str] = {}
+    decided: dict[str, bool] = {}
     opaque = fn.f.mod == "_pystachy_copy"
     for b in fn.blocks:
         for i in b.code:
@@ -522,6 +574,8 @@ def value_types(self, fn: IFn) -> None:
                     continue
                 d = types[v]
                 u = i.a[j].t
+                if d == u and v not in loose and not d.startswith("*"):
+                    continue
                 address = ((i.op == "mem.load" or i.op == "mem.store") and j == 0) or ((i.op == "call" or i.op == "icall") and u.startswith("*")) or (joined and (i.op == "phi" or j > 0))
                 held = v in addresses
                 if d.startswith("*") and u.startswith("*") and held != address:
@@ -541,16 +595,23 @@ def value_types(self, fn: IFn) -> None:
                     # (an int, a packed slot, or a runtime function's bool, which its ABI passes as an int)
                     ok = not address and (u == "int" or u.startswith("*") or (i.op == "rt" and u == "bool"))
                 else:
-                    ok = value_view(self, d, u, v in makers and makers[v] == "rt", i.op == "rt", opaque) != ""
+                    rt = v in makers and makers[v] == "rt"
+                    key = d + "|" + u + ("|1" if rt else "|0") + ("1" if i.op == "rt" else "0")
+                    if key not in decided:
+                        decided[key] = value_view(self, d, u, rt, i.op == "rt", opaque) != ""
+                    ok = decided[key]
                 if not ok:
                     self.bad_ir(fn, b, f"{i.op} operand {j} reads {v} as {u}, but it is {d}")
-                loose = d == "%ptr" or d == "%slot" or "?" in d or NONEVAR in d or rt_generic(d)
-                if loose and i.op != "rt" and not u.startswith("%") and "?" not in u and NONEVAR not in u:
+                if v in loose and i.op != "rt" and not u.startswith("%") and "?" not in u and NONEVAR not in u:
                     if v not in read:
                         read[v] = u
                         first[v] = f"{i.op} operand {j}"
-                    elif not related_reads(self, read[v], u):
-                        self.bad_ir(fn, b, f"{i.op} operand {j} reads {v} as {u}, where {first[v]} reads it as {read[v]}")
+                    elif read[v] != u:
+                        key = read[v] + "|" + u + "|reads"
+                        if key not in decided:
+                            decided[key] = related_reads(self, read[v], u)
+                        if not decided[key]:
+                            self.bad_ir(fn, b, f"{i.op} operand {j} reads {v} as {u}, where {first[v]} reads it as {read[v]}")
 
 
 def verify_dynamic_raw(self, fn: IFn) -> None:
