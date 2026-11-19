@@ -531,7 +531,9 @@ See [object protocols](semantics.md#object-protocols) and
   `__trunc__`; `NotImplemented` outside a
   [comparison method's `return`](semantics.md#object-protocols); optional numeric power
   exponents; `__ipow__` with an object exponent; three-argument object `pow`. Before `**=`,
-  narrow a base-typed receiver if only its subclass defines `__ipow__`.
+  narrow a base-typed receiver if only its subclass defines `__ipow__`. The other in-place
+  operators call a subclass's method through a base-typed value only where its result and
+  the base class's operator's result have a common type.
 - **Comparisons:** equality between unrelated ordinary classes outside inheritance
   hierarchies when the left operand has no applicable comparison method; methods whose
   parameter type excludes a possible operand. The method restriction covers direct
