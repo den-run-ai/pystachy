@@ -851,11 +851,15 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
 - `NAME = member(value)` makes the member of that value and `NAME = nonmember(value)` a class
   attribute that holds it, which the class, its members and the members after it read
   (`C = B + 1`); `@nonmember` of a method leaves it a method, as CPython's class namespace unwraps
-  both ([test](../tests/programs/library/lib_enum_member.py)). A `nonmember()`'s value is a
+  both ([test](../tests/programs/library/lib_enum_member.py); with dynamic `Any`,
+  [test](../tests/programs/inference/dynany_enum_nonmember.py)). A `nonmember()`'s value is a
   literal other than `None`, or an int or str expression as members' values are; a function
   as a member's value (`@member`), a `nonmember()` of a `_sunder_`, `__dunder__` or private
-  method, and `member()` or `nonmember()` in a class that `@_simple_enum` makes (where CPython's
-  makes the wrapper object a member's value) are compile-time errors. `@enum.property` (or `@property` of
+  method, `member()` or `nonmember()` in a class that `@_simple_enum` makes (where CPython's
+  makes the wrapper object a member's value), and a `nonmember()` after a member and a method
+  whose default value, annotation or decorator reads its name (Pystachy binds a `nonmember()`
+  before the members; [error](../tests/errors/library/lib_enum_nonmember_read_before.py)) are
+  compile-time errors. `@enum.property` (or `@property` of
   `from enum import property`) of a method is a property of the members, whose name no member
   may have here (CPython's lets a member of that name be found on the class).
 - The module's constants and helpers are CPython's: `FlagBoundary` (`STRICT`, `CONFORM`,

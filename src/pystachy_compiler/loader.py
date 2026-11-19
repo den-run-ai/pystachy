@@ -1039,6 +1039,8 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
         for k in consts:
             env[k] = consts[k]
         nonmembers: dict[str, str] = {}  # (the class attributes that nonmember() makes: their values' texts)
+        membered = False  # (has the body defined a member yet)
+        after: list[Node] = []  # (the methods and dunder assignments after the first member)
         for s in body.kids:
             nm = s.kids[0].s if s.kind == "assign" and len(s.kids) == 2 and s.kids[0].kind == "name" else ""
             dunder = len(nm) > 4 and nm.startswith("__") and nm.endswith("__")
@@ -1072,6 +1074,8 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                 defs[s.s] = True
                 if s.s in env:
                     del env[s.s]  # (the body's name is the function's)
+                if membered:
+                    after.append(s)
                 out.append(s)
             elif nm != "" and not dunder:
                 if (nm.startswith("_") and nm.endswith("_")) or nm.startswith("__") or nm.startswith("_" + st.s.lstrip("_") + "__"):
@@ -1110,6 +1114,14 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                         env[nm] = held
                     elif nm in env:
                         del env[nm]
+                    for a in after:
+                        # (its assignment goes before the first member's, below: a default value,
+                        # annotation or decorator of a method between them, or a dunder assignment,
+                        # would read the class attribute where CPython's reads the name before it)
+                        parts = [a.kids[1]] if a.kind == "assign" else [a.kids[0], a.kids[1]] + a.kids[3:]
+                        for p in parts:
+                            if mentions(p, [nm]):
+                                fail(f"enum class {st.s}'s nonmember {nm} is not supported after a member and a statement that reads {nm} as the class body runs (a method's default value, annotation or decorator): Pystachy binds a nonmember() before the members", s.line)
                     out.append(mk("assign", "", s.line, [mk("name", nm, s.line, []), v]))
                     continue
                 # (in a class that @_simple_enum makes an enum class of, the body's name is an
@@ -1200,10 +1212,29 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                     canon[nm] = nm
                     init = mk("enummember", nm, s.line, [v])
                 out.append(mk("annassign", "", s.line, [mk("name", nm, s.line, []), mk("str", st.s, s.line, []), init]))
+                membered = True
             elif (s.kind == "assign" and dunder) or s.kind == "pass" or (s.kind == "expr" and s.kids[0].kind == "str"):
+                if membered and s.kind == "assign":
+                    after.append(s)
                 out.append(s)
             else:
                 fail(f"enum class {st.s}'s body is not supported: an enum class has members (NAME = value), methods and a docstring", s.line)
+        if len(nonmembers) > 0:
+            # CPython's class namespace holds a nonmember() before EnumType makes the members, which
+            # read it as a class attribute. The compiler makes each member's object where the body
+            # defines it, from the class's attributes as they are then (from their boxes, under
+            # dynamic Any): a nonmember's assignment goes before the first member's
+            first = -1
+            early: list[Node] = []
+            rest: list[Node] = []
+            for o in out:
+                if first < 0 and o.kind == "annassign":
+                    first = len(rest)
+                if first >= 0 and o.kind == "assign" and o.kids[0].kind == "name" and o.kids[0].s in nonmembers:
+                    early.append(o)
+                else:
+                    rest.append(o)
+            out = rest[:first] + early + rest[first:] if first >= 0 else rest
         if len(news) == 1 and len(mnames) == 0:
             # (a __new__ that the enum classes deriving from this one make their members with)
             basenew[st.s] = pristine
