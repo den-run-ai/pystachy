@@ -47,6 +47,14 @@ JIT_LOOPS = "function(correlated-propagation,sccp,simplifycfg,loop-mssa(loop-rot
 # which hides the induction variable from scalar evolution; a loop without exits, such as
 # listguard's copy of y[i] = a * x[i], then runs on vectors
 JIT_VECTORIZE = "function(instcombine<no-verify-fixpoint>,loop-vectorize,instcombine<no-verify-fixpoint>,simplifycfg)"
+# PYSTACHY_JIT_CPU=native (the default): the JIT tier optimizes and compiles a program for the host's
+# CPU, as it runs where it is compiled: opt's -mcpu=native gives each function of the module the
+# host's CPU and features (target-cpu, target-features), which its cost models and the runner's code
+# generation follow (AVX2's four doubles in a vector where the host has them). generic leaves them to
+# the module's target (x86-64's SSE2). Neither changes a result: the program's module asks for no
+# fused or reassociated float operation (no fast-math flag, no llvm.fmuladd), and the program cache
+# keys an executable by the host's CPU (cached_run.CPU_FIELDS) and by this setting
+JIT_CPU = " -mcpu=native"
 
 # Every hosted component contributes to runtime-cache identity and startup trust.
 COMPILER_SOURCES: list[str] = [
@@ -803,6 +811,7 @@ def main() -> None:
     jitflags = ""
     codegen = "2"
     jitopt = "1"
+    jitcpu = "native"
     runner = ""
     jitinline = JIT_INLINE
     if cmd == "run":
@@ -819,6 +828,10 @@ def main() -> None:
         jitopt = os.getenv("PYSTACHY_JIT_OPT", "1")
         if jitopt != "0" and jitopt != "1" and jitopt != "2":
             fail(f"PYSTACHY_JIT_OPT: {jitopt} is not 0 (the JIT's cleanup), 1 (with loop passes, the default) or 2 (LLVM's -O2 pipeline)", 0)
+        # PYSTACHY_JIT_CPU: the host's CPU (JIT_CPU) or the module target's default
+        jitcpu = os.getenv("PYSTACHY_JIT_CPU", "native")
+        if jitcpu != "native" and jitcpu != "generic":
+            fail(f"PYSTACHY_JIT_CPU: {jitcpu} is not native (the host's CPU, the default) or generic (the target's default CPU)", 0)
         # what runs the program (jit_launcher), read before the program cache, so that a hit rejects
         # what a run without it rejects
         runner = os.getenv("PYSTACHY_JIT_LAUNCHER", "auto")
@@ -1528,7 +1541,7 @@ def main() -> None:
         # last gives such successors predecessors of their own, and the landing pad its own copies,
         # whichever program generates the code at -O0 (the JIT runner, or llc)
         split = ",function(break-crit-edges)" if codegen == "0" else ""
-        fast = f"{llvm}opt -passes='{passes},function(early-cse,adce){late}{split}'" + (JITLATE if late != "" else "")
+        fast = f"{llvm}opt{JIT_CPU if jitcpu == 'native' else ''} -passes='{passes},function(early-cse,adce){late}{split}'" + (JITLATE if late != "" else "")
         if code == 0:
             # the cache's library may lie on a file system mounted noexec since it was made (or copied
             # there), from which lli could map nothing: the shell that runs opt first asks whether this
@@ -1576,8 +1589,8 @@ def main() -> None:
                 program_cache.stop()
             if llcobj:
                 # PYSTACHY_JIT_CODEGEN=0: llc's -O0 code generation, for the CPU lli's ORC compiles
-                # for (the module's triple with LLVM's default CPU: neither tool is given -mcpu, and
-                # no function names one), with lli's flag above, in position-independent code, which
+                # for (the one each function names, JIT_CPU, or with PYSTACHY_JIT_CPU=generic the
+                # module triple's default: neither tool is given -mcpu), with lli's flag above, in position-independent code, which
                 # ORC's JITLink links. ORC runs the constructors of IR modules alone, so lli's main
                 # module holds the program's target and the shared library's callbacks, if any
                 code = timed_sh("program.jit_codegen", f"{llvm}llc -O0 -filetype=obj -relocation-model=pic -profile-guided-section-prefix=false {q(bc)} -o {q(jobj)}")

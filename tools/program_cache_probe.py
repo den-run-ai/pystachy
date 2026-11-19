@@ -662,9 +662,11 @@ def check_settings(p: Probe) -> None:
     # (LLVM's -O2 pipeline in place of the JIT's cleanup: an entry of its own, which a default run
     # never reuses)
     p.pair(source, "JIT -O2 pipeline", reference=expected, changes={"PYSTACHY_JIT_OPT": "2"})
+    # (code for LLVM's default CPU of the target in place of the host's: an entry of its own too)
+    p.pair(source, "JIT generic CPU", reference=expected, changes={"PYSTACHY_JIT_CPU": "generic"})
     scratch = p.directory / "settings-tmp"
     scratch.mkdir()
-    for key in ("PYSTACHY_JIT_INLINE", "PYSTACHY_JIT_OPT", "PYSTACHY_RUNTIME_C_CACHE"):
+    for key in ("PYSTACHY_JIT_INLINE", "PYSTACHY_JIT_OPT", "PYSTACHY_JIT_CPU", "PYSTACHY_RUNTIME_C_CACHE"):
         changes = {key: "", "TMPDIR": str(scratch)}
         for attempt in range(2):
             uncached = p.run(f"empty {key} uncached {attempt}", source, changes={**changes, "PYSTACHY_PROGRAM_CACHE": "0"})

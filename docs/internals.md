@@ -530,9 +530,15 @@ it: correlated propagation removes that exit, SCCP and `simplifycfg` fold what i
 items pointer. Then the loop vectorizer runs (`JIT_VECTORIZE`), after `instcombine` folds the
 `extractvalue` of an `insertvalue` that correlated propagation leaves of the step, which hid the
 induction variable from scalar evolution: a loop without exits, such as `listguard`'s copy of
-`y[i] = a * x[i]`, runs on vectors of the module's target (SSE2's two doubles on x86-64, where the
-runtime names no CPU). `PYSTACHY_JIT_OPT=0` skips them. A larger program skips them too: on a module
+`y[i] = a * x[i]`, runs on vectors. `PYSTACHY_JIT_OPT=0` skips them. A larger program skips them too: on a module
 of 63,000 lines the loop passes took about 0.1 s more at each launch.
+The tier optimizes and compiles every program for the host's CPU (the driver's `JIT_CPU`): `opt
+-mcpu=native` names the CPU and its features on each function, which the vectorizer's cost model
+and the runner's code generation follow, so that a vector holds four doubles where the host has
+AVX2 rather than SSE2's two. That changes no result: the frontend's IR carries no fast-math flag
+and no `llvm.fmuladd`, so nothing is fused or reassociated, and the program cache keys an
+executable by the host's CPU. `PYSTACHY_JIT_CPU=generic` compiles for the module target's default
+CPU instead.
 
 ### The JIT runner
 
@@ -963,6 +969,7 @@ are required before promotion. `make verify` keeps the standard tier.
 | `PYSTACHY_OPT` | Disable named optimizations with `-name`, comma-separated, or all with `-all`; see [IR passes](typed-ir.md#optimizations) |
 | `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT user-function inlining, including the recursion entry helper; `0` disables it (the scalar recursion helpers remain inlined) |
 | `PYSTACHY_JIT_OPT=0\|1\|2` | `1` (default) runs the JIT tier's cleanup over the program, then loop passes and the loop vectorizer where the program is within the `PYSTACHY_JIT_INLINE` threshold; `0` runs the cleanup alone; `2` runs LLVM's `-O2` pipeline in its place, which takes longer at each launch (no `PYSTACHY_JIT_INLINE` budget applies) |
+| `PYSTACHY_JIT_CPU=native\|generic` | `native` (default) has the JIT tier optimize and compile a program for the host's CPU (`opt -mcpu=native` names it and its features on each function: AVX2's or AVX-512's vectors where the host has them); `generic` for the default CPU of the module's target (SSE2 on x86-64). Results are the same: the program's module asks for no fused or reassociated float operation, and the program cache keys an executable by the host's CPU |
 | `PYSTACHY_JIT_CODEGEN=0\|2` | `0` generates the program's code at `-O0`: the JIT runner's `-O0`, or `llc -O0` for `lli`'s ORC to link; `2` (default) keeps ORC's level |
 | `PYSTACHY_JIT_LAUNCHER=auto\|lli` | What runs `pystachy run`'s programs: `auto` (default), Pystachy's [JIT runner](#the-jit-runner) where it can be built, else `lli`; `lli` always `lli` |
 | `PYSTACHY_PROGRAM_CACHE=0` | Disable the default Linux native [program cache](program-cache.md); unset, empty or `1` enables it where supported. Its [settings](program-cache.md#settings) section lists the variables that key or bypass it |

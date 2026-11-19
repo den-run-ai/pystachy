@@ -16,7 +16,9 @@ pipeline in place of the JIT's cleanup, keeps the same behavior under GC stress,
 the runner executes shows -O2's GlobalOpt (main marked local_unnamed_addr, which the cleanup never
 does). The default's loop passes rotate a range loop (a *.lr.ph preheader) and vectorize a loop
 without exits (listguard's copy of an elementwise loop), which PYSTACHY_JIT_OPT=0, the cleanup
-alone, leaves as lowered.
+alone, leaves as lowered. Each function of the default's module names the host's CPU (llc's), and
+where its features include AVX that loop runs on vectors of four doubles or more;
+PYSTACHY_JIT_CPU=generic names none (SSE2's two doubles on x86-64).
 """
 import argparse
 import os
@@ -195,7 +197,13 @@ def main():
         env.pop("PYSTACHY_JIT_INLINE", None)  # (the default's inliner is what is checked first)
         env.pop("PYSTACHY_JIT_CODEGEN", None)
         env.pop("PYSTACHY_JIT_OPT", None)
+        env.pop("PYSTACHY_JIT_CPU", None)
         env.pop("PYSTACHY_TIMING", None)
+        # (the CPU LLVM detects here, which the default's functions name: JIT_CPU)
+        host = re.search(r"Host CPU: (\S+)", subprocess.run([real["llc"], "--version"], capture_output=True, text=True,
+                                                             check=True).stdout)
+        if host is None:
+            raise RuntimeError("llc --version names no host CPU")
         runners = {"lljit": env | {"PYSTACHY_LLVM": str(runnerdir), "PYSTACHY_JIT_LAUNCHER": "auto"},
                    "lli": env | {"PYSTACHY_LLVM": str(bindir), "PYSTACHY_JIT_LAUNCHER": "lli"}}
         arguments = ["space here", "'quoted$argument`"]
@@ -381,8 +389,24 @@ def main():
                 if re.search(r"fmul <[0-9]+ x double>", capture.read_text()):
                     raise RuntimeError(f"{where}: PYSTACHY_JIT_OPT=0 vectorized a loop: the default's check proves nothing")
                 print(f"{where}: the default pipeline rotates loop_feedback's loop and vectorizes doubled's; PYSTACHY_JIT_OPT=0 keeps them as lowered")
+                # The default compiles for the host's CPU: each function names it and its features,
+                # and where they include AVX a vector holds at least four doubles; with
+                # PYSTACHY_JIT_CPU=generic no function names a CPU, and SSE2's vectors hold two
+                if f'"target-cpu"="{host.group(1)}"' not in executed or re.search(r'"target-cpu"="(?!' + re.escape(host.group(1)) + '")', executed):
+                    raise RuntimeError(f"{where}: the default JIT pipeline did not compile for the host's CPU ({host.group(1)})")
+                avx = re.search(r'"target-features"="[^"]*\+avx[,"]', executed) is not None
+                if avx and not re.search(r"fmul <(?:4|8) x double>", executed):
+                    raise RuntimeError(f"{where}: the host has AVX, but doubled's loop runs on no wider vector than SSE2's")
+                capture.unlink(missing_ok=True)
+                if run(cmd + ["run", str(source), *arguments], chosen | {"PYSTACHY_JIT_CPU": "generic"}) != expected:
+                    raise RuntimeError(f"{where}: PYSTACHY_JIT_CPU=generic output/argv/callback exception differs")
+                generic = capture.read_text()
+                if '"target-cpu"=' in generic or ('"x86_64' in generic and not re.search(r"fmul <2 x double>", generic)):
+                    raise RuntimeError(f"{where}: PYSTACHY_JIT_CPU=generic compiled for a CPU of its own")
+                print(f"{where}: the default compiles for the host's CPU ({host.group(1)}{', wider vectors' if avx else ''}); PYSTACHY_JIT_CPU=generic for the target's")
             for setting, invalid in [("PYSTACHY_JIT_CODEGEN", value) for value in ("", "1", "-O0", "0;false")] + \
                                     [("PYSTACHY_JIT_OPT", value) for value in ("", "3", "O2", "0;1")] + \
+                                    [("PYSTACHY_JIT_CPU", value) for value in ("", "NATIVE", "x86-64", "native;generic")] + \
                                     [("PYSTACHY_JIT_LAUNCHER", value) for value in ("", "LLI", "lljit", "auto;lli")]:
                 invocation.unlink(missing_ok=True)
                 codegen.unlink(missing_ok=True)
@@ -391,7 +415,7 @@ def main():
                                           timeout=60, check=False)
                 if rejected.returncode == 0 or rejected.stdout or setting.encode() + b":" not in rejected.stderr or invocation.exists() or codegen.exists():
                     raise RuntimeError(f"{label}: invalid {setting}={invalid!r} was not rejected before the JIT")
-            print(f"{label}: invalid code generation, optimization and runner settings rejected")
+            print(f"{label}: invalid code generation, optimization, CPU and runner settings rejected")
     return 0
 
 
