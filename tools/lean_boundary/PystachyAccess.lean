@@ -345,6 +345,10 @@ def ruleStep (facts : Facts) : Fact → Bool
           (c == a && facts.any fun g => match g with
             | .ge b' i => b' == b && decide (k ≤ i - j)
             | _ => false)
+        -- (b < a and b ≥ j: a descending loop's index above its stop, which a test bounds)
+        | .lt b a' => a' == a && facts.any fun g => match g with
+            | .ge b' j => b' == b && decide (k ≤ j + 1)
+            | _ => false
         | _ => false) || substituted facts (.ge a k)
   | .below i n =>
       (facts.contains (.lt i n) && facts.any (nonneg i)) ||
@@ -393,6 +397,13 @@ def ruleStep (facts : Facts) : Fact → Bool
             | .le c' b' j => c' == c && b' == b && decide (k ≤ j - k₁)
             | _ => false
         | _ => false) || substituted facts (.le a b k)
+  | .lt a b =>
+      (facts.any fun f => match f with
+        -- (b = a + k with k ≥ 1: a descending loop's start under start + 1; or a = c + k with
+        -- k ≤ 0 and c < b: its next index under the same bound)
+        | .off x y k => (x == b && y == a && decide (1 ≤ k)) ||
+            (x == a && decide (k ≤ 0) && facts.contains (.lt y b))
+        | _ => false) || substituted facts (.lt a b)
   | .ne b k =>
       (facts.any fun f => match f with
         | .off a b' c => b' == b && facts.contains (.ne a (k + c))
@@ -402,6 +413,17 @@ def ruleStep (facts : Facts) : Fact → Bool
       substituted facts (.entry e d)
   -- (a length is at most itself)
   | .lenGe n l => facts.contains (.len n l) || substituted facts (.lenGe n l)
+  -- (no execution reaches facts that contradict each other: a < b where a = b + k with k ≥ 0 or
+  -- b = a + k with k ≤ 0, or a ≥ k where a ≤ j < k; such as the first iteration of an empty
+  -- range loop, whose facts certificate inference closes before a back edge weakens them)
+  | .absurd => (facts.any fun f => match f with
+      | .lt a b => facts.any fun g => match g with
+          | .off x y k => (x == a && y == b && decide (0 ≤ k)) || (x == b && y == a && decide (k ≤ 0))
+          | _ => false
+      | .ge a k => facts.any fun g => match g with
+          | .atMost a' j => a' == a && decide (j < k)
+          | _ => false
+      | _ => false) || substituted facts .absurd
   | f => substituted facts f
 
 /-- One step of reasoning about sums: adding one value to both sides keeps an order, and lower
@@ -892,6 +914,17 @@ theorem step_sound {m : Mem} {facts : Facts} {goal : Fact} (wf : WF m)
                   simp only [Fact.Holds] at holds gHolds ⊢
                   omega
               | _ => simp at gStep
+        | lt b a' =>
+            simp only [Bool.and_eq_true, beq_iff_eq, List.any_eq_true] at step
+            obtain ⟨rfl, g, gMember, gStep⟩ := step
+            have gHolds := known g gMember
+            cases g with
+            | ge b' j =>
+                simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at gStep
+                obtain ⟨rfl, kj⟩ := gStep
+                simp only [Fact.Holds] at holds gHolds ⊢
+                omega
+            | _ => simp at gStep
         | _ => simp at step
       · exact substituted_sound known h
   | below i n =>
@@ -1074,7 +1107,24 @@ theorem step_sound {m : Mem} {facts : Facts} {goal : Fact} (wf : WF m)
         · exact absurd h ne
         · exact h
       · exact substituted_sound known h
-  | lt a b => exact substituted_sound known (by simpa [ruleStep] using derived)
+  | lt a b =>
+      simp only [ruleStep, Bool.or_eq_true] at derived
+      rcases derived with h | h
+      · simp only [List.any_eq_true] at h
+        obtain ⟨f, member, step⟩ := h
+        have holds := known f member
+        cases f with
+        | off x y k =>
+            simp only [Bool.or_eq_true, Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq,
+              List.contains_iff_mem] at step
+            rcases step with ⟨⟨rfl, rfl⟩, k1⟩ | ⟨⟨rfl, k0⟩, ltMember⟩
+            · simp only [Fact.Holds] at holds ⊢
+              omega
+            · have ltHolds := known _ ltMember
+              simp only [Fact.Holds] at holds ltHolds ⊢
+              omega
+        | _ => simp at step
+      · exact substituted_sound known h
   | ult a b => exact substituted_sound known (by simpa [ruleStep] using derived)
   | len n l => exact substituted_sound known (by simpa [ruleStep] using derived)
   | lenGe n l =>
@@ -1087,7 +1137,39 @@ theorem step_sound {m : Mem} {facts : Facts} {goal : Fact} (wf : WF m)
   | found e d => exact substituted_sound known (by simpa [ruleStep] using derived)
   | cell o f v => exact substituted_sound known (by simpa [ruleStep] using derived)
   | sum a b c => exact substituted_sound known (by simpa [ruleStep] using derived)
-  | absurd => exact substituted_sound known (by simpa [ruleStep] using derived)
+  | absurd =>
+      simp only [ruleStep, Bool.or_eq_true] at derived
+      rcases derived with h | h
+      · simp only [List.any_eq_true] at h
+        obtain ⟨f, member, step⟩ := h
+        have holds := known f member
+        cases f with
+        | lt a b =>
+            simp only [List.any_eq_true] at step
+            obtain ⟨g, gMember, gStep⟩ := step
+            have gHolds := known g gMember
+            cases g with
+            | off x y k =>
+                simp only [Bool.or_eq_true, Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at gStep
+                rcases gStep with ⟨⟨rfl, rfl⟩, k0⟩ | ⟨⟨rfl, rfl⟩, k0⟩
+                · simp only [Fact.Holds] at holds gHolds ⊢
+                  omega
+                · simp only [Fact.Holds] at holds gHolds ⊢
+                  omega
+            | _ => simp at gStep
+        | ge a k =>
+            simp only [List.any_eq_true] at step
+            obtain ⟨g, gMember, gStep⟩ := step
+            have gHolds := known g gMember
+            cases g with
+            | atMost a' j =>
+                simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at gStep
+                obtain ⟨rfl, jk⟩ := gStep
+                simp only [Fact.Holds] at holds gHolds ⊢
+                omega
+            | _ => simp at gStep
+        | _ => simp at step
+      · exact substituted_sound known h
 
 theorem sumStep_sound {m : Mem} {facts : Facts} {goal : Fact}
     (known : Knows m facts) (derived : sumStep facts goal = true) : goal.Holds m := by
@@ -1894,6 +1976,64 @@ example : check ⟨baseLoop.nodes.set 2 (.addReg "t" "s" "b" 3), 0⟩ baseLoopCe
 example : check ⟨baseLoop.nodes.set 9 (.havoc "b" 12) ++ [.addChecked "u" "i" 1 10 11], 0⟩
     (baseLoopCertificate ++ [[.len "n" "xs", .ge "b" 0, .sum "t" "s" "b", .le "t" "n" 0, .ge "i" 0]]) = false := by
   decide
+
+/-- listguard's copy of a loop that counts down, `for i in range(a, s, -1): ... xs[i - 1] ...`:
+tests before it that `l = s + 1`, the smallest index, is at least 1 and that `e = a + 1`, one past
+the largest, is at most the length. The loop's own test `s < i` bounds the index below, and
+`i < e` holds on every iteration: `a < a + 1` at the start, and `i - 1 < e` after each step down
+because `i < e`. -/
+def downLoop : Program := ⟨[
+  .length "n" "xs" 1,
+  .addChecked "l" "s" 1 2 12,
+  .test (.sle (.lit 1) (.reg "l")) 3 12,
+  .addChecked "e" "a" 1 4 12,
+  .test (.sle (.reg "e") (.reg "n")) 5 12,
+  .copy "h" "a" 6,
+  .copy "i" "h" 7,
+  .test (.slt (.reg "s") (.reg "i")) 8 12,
+  .addChecked "j" "i" (-1) 9 12,
+  .load "xs" (.reg "j") 10,
+  .addChecked "t" "i" (-1) 11 12,
+  .copy "h" "t" 6,
+  .stop], 0⟩
+
+def downLoopCertificate : Certificate := [
+  [],
+  [.len "n" "xs"],
+  [.len "n" "xs", .off "l" "s" 1],
+  [.len "n" "xs", .ge "s" 0],
+  [.len "n" "xs", .ge "s" 0, .off "e" "a" 1],
+  [.len "n" "xs", .ge "s" 0, .le "e" "n" 0, .lt "a" "e"],
+  [.len "n" "xs", .ge "s" 0, .le "e" "n" 0, .lt "h" "e"],
+  [.len "n" "xs", .ge "s" 0, .le "e" "n" 0, .lt "i" "e"],
+  [.len "n" "xs", .ge "s" 0, .le "e" "n" 0, .lt "i" "e", .lt "s" "i", .ge "i" 1, .le "i" "n" 1],
+  [.len "n" "xs", .ge "s" 0, .le "e" "n" 0, .lt "i" "e", .off "j" "i" (-1), .ge "j" 0,
+    .le "j" "n" 2, .below "j" "n"],
+  [.len "n" "xs", .ge "s" 0, .le "e" "n" 0, .lt "i" "e"],
+  [.len "n" "xs", .ge "s" 0, .le "e" "n" 0, .off "t" "i" (-1), .lt "t" "e"],
+  []]
+
+example : check downLoop downLoopCertificate = true := by decide
+/- A test that lets the smallest index be 0: `xs[i - 1]` may read `xs[-1]`. -/
+example : check ⟨downLoop.nodes.set 2 (.test (.sle (.lit 0) (.reg "l")) 3 12), 0⟩
+    downLoopCertificate = false := by decide
+/- The largest index's bound without its `+ 1`: the first index may equal the length. -/
+example : check ⟨downLoop.nodes.set 3 (.addChecked "e" "a" 0 4 12), 0⟩ downLoopCertificate = false := by
+  decide
+/- A step up: the index leaves the bound the tests gave it. -/
+example : check ⟨downLoop.nodes.set 10 (.addChecked "t" "i" 1 11 12), 0⟩ downLoopCertificate = false := by
+  decide
+
+/-- Facts that contradict each other, `t = i + 0` and `t < i`, mean that no execution reaches the
+point, and an unchecked read there is safe whatever it reads: such as an empty range loop's
+first iteration, as certificate inference first meets it. -/
+example : check ⟨[.addChecked "t" "i" 0 1 3, .test (.slt (.reg "t") (.reg "i")) 2 3,
+    .load "xs" (.reg "t") 3, .stop], 0⟩
+    [[], [.off "t" "i" 0], [.off "t" "i" 0, .lt "t" "i", .absurd], []] = true := by decide
+/- `t ≤ i` contradicts nothing: the read is not proved. -/
+example : check ⟨[.addChecked "t" "i" 0 1 3, .test (.sle (.reg "t") (.reg "i")) 2 3,
+    .load "xs" (.reg "t") 3, .stop], 0⟩
+    [[], [.off "t" "i" 0], [.off "t" "i" 0, .le "t" "i" 0, .absurd], []] = false := by decide
 /- A loop that runs to its stop inclusive (`i <= s`): `b + i` may reach the length. -/
 example : check ⟨baseLoop.nodes.set 6 (.test (.sle (.reg "i") (.reg "s")) 7 11), 0⟩
     baseLoopCertificate = false := by decide

@@ -1,8 +1,9 @@
-# Range loops with a start, a stop or a step that a register gives, whose item reads and
-# assignments run unchecked after tests before the loop (listguard), the same loops where those
-# tests fail and the loop runs as compiled, and loops that count down or add a base to an index
-# from a variable start, which keep their checks: every result, every negative index that wraps
-# and every IndexError with the iterations before it, is CPython's
+# Range loops with a start, a stop or a step that a register gives, and loops that count down,
+# whose item reads and assignments run unchecked after tests before the loop (listguard), the same
+# loops where those tests fail and the loop runs as compiled (a start of sys.maxsize, whose bound
+# start + 1 overflows), and loops that add a base to an index from a variable start, which keep
+# their checks: every result, every negative index that wraps and every IndexError with the
+# iterations before it, is CPython's
 import sys
 
 
@@ -144,6 +145,10 @@ def main() -> None:
     print("based big", based(d, -big, big + 1, big + 6))
     top = 9223372036854775807
     print("based top", based(d, 3 - top, top - 2, top))
+    try:
+        between(c, top, top - 2)
+    except IndexError as e:
+        print("between at the top", e)
     print("based down", based_down(d, 2, 8, 0), based_down(d, 2, 3, 3), based_down(d, -4, 6, 1))
     bottom = -9223372036854775807 - 1
     print("based bottom", based_down(d, top, bottom + 3, bottom))

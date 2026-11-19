@@ -71,7 +71,13 @@ positive constant keeps; a variable step's test, `1 <= step`, makes the step's s
 (lower bounds add up), and the copy branches on `i < stop` alone. Where the loop appends,
 inserts or extends (a `grow` node, which shortens no list), the length the test read stays a lower
 bound of the list's length (`lenGe`) on every iteration, which bounds the index as the exact
-length did.
+length did. Where the loop counts down, the tests compute `l = stop + 1` and `e = start + 1`,
+checked, and test `-c <= l` and `e <= len(xs) - c`: an offset of at least 1 orders a value below
+its sum (`start < e`), an offset of at most 0 keeps a value below a bound its operand is below (`i
+- 1 < e` from `i < e`), so `i < e` holds on every iteration, and a value above another is above
+its lower bound (`i > stop` and `stop ≥ -c - 1` give `i ≥ -c`). Facts that contradict each other
+(`a < b` where `a = b + k` with `k ≥ 0`, or `a ≥ k` where `a ≤ j < k`) give `absurd`: no execution
+reaches them, as on the first iteration of an empty range loop, as inference first meets it.
 Sums prove copies whose index adds a base `b` that no iteration changes (`data[bi + d]`). The
 tests before the loop give `b ≥ -start - c` and, through `t = stop + b`, a checked sum, `t + c ≤ n`;
 the copy's `j = b + i` is a plain sum, which gives the fact `j = b + i` only where `i < stop`,
@@ -82,14 +88,17 @@ With a constant stop `k'`, the test computes `t = b + k'`, an offset, and the lo
 Certificate inference retains the finite positive lower bounds requested by initial
 constants and negative offsets. Thus a loop starting at 1 and advancing by 2 keeps
 `i >= 1` at the join of its initial and later iterations. Each proposed weakening
-is checked by the existing Lean rule; an invalid start or descending induction
-still fails the access proof. It lists a length as a lower bound of itself (`lenGe`)
+is checked by the existing Lean rule; an invalid start still fails the access
+proof. It lists a length as a lower bound of itself (`lenGe`)
 only at a `grow` node, which the bound survives, and at a join where a length reaches
-it on one edge and that bound on another. It derives no difference bound `a + k ≤ b`
-or upper bound weaker than one it knows: a cycle of an offset and an order (a copy of
-`range(i, i + 256)`) would otherwise derive weaker ones without end.
+it on one edge and that bound on another. It derives no difference bound `a + k ≤ b`,
+upper bound or lower bound weaker than one it knows, but for the lower bounds 0 and those
+joins intersect: a cycle of an offset and an order (a copy of `range(i, i + 256)`, or of a
+loop that reads `xs[i + 2]`) would otherwise derive weaker ones without end. Once it derives
+`absurd` it derives nothing more there; at a join, an edge whose facts hold `absurd`, which no
+execution takes, keeps the other edges' facts.
 
-The build checks 54 examples by kernel reduction: 17 shapes the compiler emits and 37
+The build checks 60 examples by kernel reduction: 19 shapes the compiler emits and 41
 corruptions that must fail: a signed test of a possibly negative index, a list write between a
 test and its read or in a range loop's body, a missing or weaker unpacking check, a starred
 tail's read at the length or past an offset that may wrap, a lookup's missing-key branch or an
@@ -101,7 +110,9 @@ list write, or where the test failed, a loop that appends kept proved across a w
 shorten a list or with an exact length after its growth, and a base copy without its test of the base, with an
 unchecked sum of the stop and the base, with a loop that runs to its stop inclusive or stores its
 base, reached where the length test failed, or adding to the base less than the loop's constant
-stop. `Audit.lean` checks the theorem's axioms as
+stop, a copy of a loop that counts down with a lower test that lets its index reach -1, a
+bound of its start without the `+ 1`, or a step up, and a read where facts that do not
+contradict each other are taken for a contradiction. `Audit.lean` checks the theorem's axioms as
 for the payload checker.
 
 ## How IR reaches the model

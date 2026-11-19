@@ -1,0 +1,9 @@
+@main.init:
+@f.back: load:@list+16 load:@slot+0
+@f.pairs: load:@list+16 load:@slot+0 load:@list+16 load:@slot+0 load:@list+16 load:@slot+0 load:@list+16 load:@slot+0
+@f.based: load:@list+16 load:@slot+0 load:@list+16 load:@slot+0
+@f.wraps: load:@list+16 load:@slot+0
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@main:
