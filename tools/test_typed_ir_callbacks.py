@@ -112,13 +112,14 @@ class CallbackSpecializationTests(unittest.TestCase):
         loop = Loop("range", "head", "body", "step", "exit")
         loop.mode, loop.ctr, loop.nonnegative = "enumerate", "%counter.1", True
         loop.stop = Val("%t8", "int")
+        loop.inc = Val("%t7", "int")
         loop.seqs = [Val("%a1", "list[float]")]
         loop.tests, loop.idx = ["body"], ["%t9"]
         fn.loops = [loop]
         cloned = callback_clone(fn, 0, "@target", "@code", "callable[float,float]", {}, 0).loops[0]
         # New facts must receive a nondefault witness here and a cloning rule.
         self.assertEqual(set(vars(loop)), {"kind", "head", "body", "step", "exit", "mode", "ctr",
-                                          "nonnegative", "stop", "seqs", "tests", "idx"})
+                                          "nonnegative", "stop", "inc", "seqs", "tests", "idx"})
         self.assertEqual(vars(cloned).keys(), vars(loop).keys())
         for field, value in vars(loop).items():
             other = getattr(cloned, field)
