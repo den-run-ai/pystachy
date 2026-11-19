@@ -2927,13 +2927,16 @@ static const char *repr_depth(Buf *b, I v, const char *d, I depth) {
   case 'S': case 'F': {                             /* set() or {1, 2}; frozenset() or frozenset({1, 2}) */
     Set *s = (Set *)v; int f = d[-1] == 'F';
     if (!s->len) { put(b, f ? "frozenset()" : "set()", f ? 11 : 5); return skip(d); }
+    /* (one being printed already, through an element's __repr__, is set(...), as CPython's set_repr
+       prints it: #1586) */
+    if (!pys_repr_enter(s)) { put(b, f ? "frozenset(...)" : "set(...)", f ? 14 : 8); return skip(d); }
     put(b, f ? "frozenset({" : "{", f ? 11 : 1);
     for (I i = 0, n = 0; i <= s->mask; i++) if (s->hs[i] != -1) {
       if (n++) put(b, ", ", 2);
       Mpz *m = sbig(s, i);   /* (an int past 64 bits: kb) */
       if (m) { Str *t = mpz_digits(m); if (!t) digits_deep(); put(b, t->s, t->len); } else repr_depth(b, s->keys[i], d, depth);
     }
-    put(b, f ? "})" : "}", f ? 2 : 1); return skip(d);
+    put(b, f ? "})" : "}", f ? 2 : 1); pys_repr_leave(s); return skip(d);
   }
   case 'T': {
     if (!v) { put(b, "None", 4); return skip(d - 1); }
