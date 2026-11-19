@@ -1,0 +1,26 @@
+rhs 2
+Sub.__iadd__ 2
+variable 201 201 True
+Sub.__iadd__ 3
+field 301 301 True
+item 5 1 False
+Sub.__iadd__ 4
+item 401 401 True
+Sub.__iadd__ 4
+item 401 401 True
+Other.__add__ 4
+item 4001 1 False
+dict -95 -95 True
+dict 4 5 False
+or 7 6 False
+Other.__add__ 2
+conditional 2005 5 False
+Sub.__iadd__ 2
+Other.__add__ 2
+display 201 201 True
+display 2005 5 False
+Sub.__iadd__ 7
+Sub.__iadd__ 7
+Other.__add__ 7
+[8, 701, 701, 7001]
+[exit 0]

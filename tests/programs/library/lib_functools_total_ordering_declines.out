@@ -1,0 +1,95 @@
+Version.__lt__
+Version.__lt__
+Version.__lt__
+Version.__lt__
+False True False True True False
+Version.__lt__
+Version.__lt__
+Version.__lt__
+Version.__lt__
+True True False False False True
+Version.__lt__
+Version.__lt__
+Version.__lt__
+Version.__lt__
+False False True True False True
+Version.__lt__
+Version.__lt__
+Version.__lt__
+Version.__lt__
+False True False True True False
+Version.__lt__
+Version.__lt__
+Version.__lt__
+Version.__lt__
+False False True True False True
+Version.__lt__
+Version.__lt__
+Version.__lt__
+Version.__lt__
+False True False True True False
+Version.__lt__
+Version.__lt__
+Version.__lt__
+Version.__lt__
+False False True True False True
+Version.__lt__
+Version.__lt__
+Version.__lt__
+Version.__lt__
+False False True True False True
+Version.__lt__
+Version.__lt__
+Version.__lt__
+Version.__lt__
+Version.__lt__
+Version.__lt__
+Version.__lt__
+Version.__lt__
+Version.__lt__
+Version.__lt__
+Version.__lt__
+Version.__lt__
+Version.__lt__
+['0.9', '1.2', '1.2', '1.10'] 10 9
+Version.__lt__
+Loose.__le__
+True
+Version.__lt__
+Loose.__gt__
+False
+Version.__lt__
+TypeError '<=' not supported between instances of 'Version' and 'Loose'
+Version.__lt__
+TypeError '>' not supported between instances of 'Version' and 'Loose'
+Version.__lt__
+Loose.__le__
+False
+Version.__lt__
+Loose.__gt__
+True
+Version.__lt__
+TypeError '<=' not supported between instances of 'Version' and 'Loose'
+Version.__lt__
+TypeError '>' not supported between instances of 'Version' and 'Loose'
+Version.__lt__
+True
+Version.__lt__
+True
+Version.__lt__
+False
+Version.__lt__
+False
+Version.__lt__
+TypeError '<' not supported between instances of 'Version' and 'NoneType'
+Version.__lt__
+TypeError '<=' not supported between instances of 'Version' and 'NoneType'
+Version.__lt__
+TypeError '>' not supported between instances of 'Version' and 'NoneType'
+Version.__lt__
+TypeError '>=' not supported between instances of 'Version' and 'NoneType'
+Version.__lt__
+TypeError '>=' not supported between instances of 'Version' and 'int'
+Version.__lt__
+TypeError '<=' not supported between instances of 'Version' and 'int'
+[exit 0]

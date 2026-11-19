@@ -1,0 +1,4 @@
+True
+RuntimeError: deadlock: acquire() would wait for ever, as Pystachy runs no other thread to release the lock
+['main']
+[exit 0]

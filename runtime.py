@@ -791,6 +791,32 @@ def uchar(s: str, i: int, n: int) -> int:
     return _rt.shl(v, 3) | k
 
 
+def utwo(s: str, i: int, c: int) -> int:
+    # the two-byte character (U+0080 to U+07FF) of s that begins with the byte c at i, as uchar
+    # reads it, else -1. utwo and uthree read most text that is not ASCII. Each calls nothing
+    # and reads only bytes that it has compared with the length, which leaves no check that
+    # could fail: they are small enough to become part of each loop that reads characters. Such
+    # a loop steps by the count of the reader that succeeded, not by a count taken from the
+    # bytes, so that the processor can begin the next character before this one is read
+    if c > 193 and c < 224 and i >= 0 and _rt.wrap_add(i, 1) < len(s):
+        b = _rt.byte(s, _rt.wrap_add(i, 1))
+        if b & 192 == 128:
+            return _rt.shl(c & 31, 6) | (b & 63)
+    return -1
+
+
+def uthree(s: str, i: int, c: int) -> int:
+    # (utwo's, for the three-byte character, U+0800 to U+FFFF)
+    if c > 223 and c < 240 and i >= 0 and _rt.wrap_add(i, 2) < len(s):
+        b = _rt.byte(s, _rt.wrap_add(i, 1))
+        d = _rt.byte(s, _rt.wrap_add(i, 2))
+        if b & 192 == 128 and d & 192 == 128:
+            v = _rt.shl(c & 15, 12) | _rt.shl(b & 63, 6) | (d & 63)
+            if v > 2047:
+                return v
+    return -1
+
+
 def pys_ascii(s: str) -> str:
     # ascii() receives repr's bytes: escape only its non-ASCII characters, with uchar's
     # one-byte fallback and surrogate handling. Count once, then fill one exact-size str.
@@ -951,7 +977,8 @@ def pys_unicode_flags(cp: int) -> int: ...
 
 def every(s: str, mask: int) -> int:
     # Every code point has a requested Unicode property, and there is at least one.
-    # ASCII stays a byte scan; the C table supplies alpha=1, digit=2, decimal=4, numeric=8.
+    # ASCII stays a byte scan; runtime.c's pys_unicode_flags supplies alpha=1, digit=2,
+    # decimal=4, numeric=8.
     n = len(s)
     if n == 0:
         return 0
@@ -963,27 +990,405 @@ def every(s: str, mask: int) -> int:
                 return 0
             i = _rt.wrap_add(i, 1)
         else:
-            ch = uchar(s, i, n)
-            if pys_unicode_flags(ch >> 3) & mask == 0:
+            k = 2
+            cp = utwo(s, i, c)
+            if cp < 0:
+                k = 3
+                cp = uthree(s, i, c)
+                if cp < 0:
+                    ch = uchar(s, i, n)
+                    k = ch & 7
+                    cp = _rt.lshr(ch, 3)
+            if pys_unicode_flags(cp) & mask == 0:
                 return 0
-            i = _rt.wrap_add(i, ch & 7)
+            i = _rt.wrap_add(i, k)
     return 1
 
 
-def cased(s: str, up: bool) -> int:
-    # isupper / islower
+def pys_unicode_case_flags(cp: int) -> int: ...
+
+
+def pys_unicode_case_map(cp: int, kind: int) -> int: ...
+
+
+def pys_unicode_case_ignorable(cp: int) -> int: ...
+
+
+def uprev(s: str, i: int, n: int) -> int:
+    # the character of s[:n] that ends before byte i (0 < i <= n), as uchar reads it going
+    # forward: the sequence that the nearest byte before i that continues none begins, if it
+    # ends at i; else the one byte before i, which begins no character
+    j = _rt.wrap_sub(i, 1)
+    while j > 0 and _rt.wrap_sub(i, j) < 4 and _rt.byte(s, j) & 192 == 128:
+        j = _rt.wrap_sub(j, 1)
+    u = uchar(s, j, n)
+    if u & 7 == _rt.wrap_sub(i, j):
+        return u
+    return _rt.byte(s, _rt.wrap_sub(i, 1)) * 8 + 1
+
+
+def ucontext(u: int) -> int:
+    # the character uchar read as u in the context of a capital sigma: 1 where it is cased, 2
+    # where it is case-ignorable (runtime.c's pys_unicode_case_ignorable). A byte that begins
+    # no character is neither
+    if u & 7 == 1 and u > 1023:
+        return 0
+    c = _rt.lshr(u, 3)
+    return (1 if pys_unicode_case_flags(c) != 0 else 0) | (2 if pys_unicode_case_ignorable(c) != 0 else 0)
+
+
+def final_sigma(s: str, i: int, n: int) -> bool:
+    # whether the capital sigma at byte i of s[:n] lowers to the final form, as CPython's
+    # handle_capital_sigma decides: a cased letter comes before it and none after it,
+    # case-ignorable characters aside
+    j = i
+    before = False
+    while j > 0:
+        u = uprev(s, j, n)
+        f = ucontext(u)
+        if f & 2 == 0:
+            before = f & 1 != 0
+            break
+        j = _rt.wrap_sub(j, u & 7)
+    if not before:
+        return False
+    j = _rt.wrap_add(i, 2)
+    while j < n:
+        u = uchar(s, j, n)
+        f = ucontext(u)
+        if f & 2 == 0:
+            return f & 1 == 0
+        j = _rt.wrap_add(j, u & 7)
+    return True
+
+
+def uput(r: str, at: int, c: int, k: int) -> None:
+    # code point c's k UTF-8 bytes (k > 1) into r from byte at
+    if k == 2:
+        _rt.str_put(r, at, 192 | _rt.lshr(c, 6))
+    else:
+        if k == 3:
+            _rt.str_put(r, at, 224 | _rt.lshr(c, 12))
+        else:
+            _rt.str_put(r, at, 240 | _rt.lshr(c, 18))
+            _rt.str_put(r, _rt.wrap_add(at, k - 3), 128 | (_rt.lshr(c, 12) & 63))
+        _rt.str_put(r, _rt.wrap_add(at, k - 2), 128 | (_rt.lshr(c, 6) & 63))
+    _rt.str_put(r, _rt.wrap_add(at, k - 1), 128 | (c & 63))
+
+
+def mapu(s: str, how: int, r: str, room: int) -> int:
+    # str's case methods as CPython maps each character (do_lower, do_upper, do_swapcase,
+    # do_capitalize, do_title, do_casefold: how 0 to 5), for a str with bytes that are not
+    # ASCII: the number of bytes of the result. It writes them into r while they fit its room
+    # bytes, and gives -1 once they do not; with no room (-1) it only counts them. A character
+    # that is not ASCII maps to one to three code points of 21 bits, the first lowest
+    # (runtime.c's pys_unicode_case_map: kind 0 lower, 1 upper, 2 title, 3 casefold): each
+    # character takes one mapping, which how chooses, and a capital sigma (U+03A3) lowers by
+    # its context (CPython's lower_ucs4). A byte that begins no character is kept, and is no
+    # letter
+    n = len(s)
+    i = 0
+    at = 0
+    prev = False  # (title: the character before is cased)
+    fixed = 1 if how == 1 else 3 if how == 5 else 0  # (lower, upper and casefold: one mapping)
+    while i < n:
+        c = _rt.byte(s, i)
+        k = 1
+        cp = -1  # (the character where it is not ASCII)
+        if c > 193:
+            k = 2
+            cp = utwo(s, i, c)
+            if cp < 0:
+                k = 3
+                cp = uthree(s, i, c)
+                if cp < 0:
+                    u = uchar(s, i, n)
+                    k = u & 7
+                    if k > 1:
+                        cp = _rt.lshr(u, 3)
+        if cp < 0:
+            # one byte: an ASCII character, mapped here, or a byte that begins no character
+            if c > 127:
+                prev = False
+            elif how == 1:
+                c = c & 223 if lowc(c) else c
+            elif how == 0 or how == 5:
+                c = c | 32 if upc(c) else c
+            elif how == 2:
+                c = c ^ 32 if lowc(c | 32) else c
+            elif how == 3:
+                c = (c & 223 if lowc(c) else c) if i == 0 else (c | 32 if upc(c) else c)
+            else:
+                letter = lowc(c | 32)
+                c = (c | 32 if upc(c) else c) if prev else (c & 223 if lowc(c) else c)
+                prev = letter
+            if room >= 0:
+                if at >= room:
+                    return -1
+                _rt.str_put(r, at, c)
+            at = _rt.wrap_add(at, 1)
+            i = _rt.wrap_add(i, 1)
+            continue
+        kind = fixed
+        if how == 2:
+            f = pys_unicode_case_flags(cp)
+            kind = 0 if f & 1 != 0 else 1 if f & 2 != 0 else -1
+        elif how == 3:
+            kind = 2 if i == 0 else 0
+        elif how == 4:
+            kind = 0 if prev else 2
+            prev = pys_unicode_case_flags(cp) != 0
+        m = cp
+        if kind == 0 and cp == 931:
+            m = 962 if final_sigma(s, i, n) else 963
+        elif kind >= 0:
+            m = pys_unicode_case_map(cp, kind)
+        if m == cp:
+            # unchanged, as most characters of most text are: its bytes as they are
+            if room >= 0:
+                if _rt.wrap_add(at, k) > room:
+                    return -1
+                for j in range(k):
+                    _rt.str_put(r, _rt.wrap_add(at, j), _rt.byte(s, _rt.wrap_add(i, j)))
+            at = _rt.wrap_add(at, k)
+        elif k == 2 and m > 127 and m < 2048:
+            # (a two-byte character to another, as most that change do)
+            if room >= 0:
+                if _rt.wrap_add(at, 2) > room:
+                    return -1
+                _rt.str_put(r, at, 192 | _rt.lshr(m, 6))
+                _rt.str_put(r, _rt.wrap_add(at, 1), 128 | (m & 63))
+            at = _rt.wrap_add(at, 2)
+        else:
+            while True:
+                c = m & 2097151
+                w = 1 if c < 128 else 2 if c < 2048 else 3 if c < 65536 else 4
+                if room >= 0:
+                    if _rt.wrap_add(at, w) > room:
+                        return -1
+                    if w == 1:
+                        _rt.str_put(r, at, c)
+                    else:
+                        uput(r, at, c, w)
+                at = _rt.wrap_add(at, w)
+                m = _rt.lshr(m, 21)
+                if m == 0:
+                    break
+        i = _rt.wrap_add(i, k)
+    return at
+
+
+def upatch(s: str, how: int, r: str) -> bool:
+    # The characters of s that are not ASCII, mapped in r, which holds s with its ASCII
+    # characters mapped as how tells (0 lower, 1 upper, 2 swapcase, 3 capitalize, 5 casefold:
+    # none of them maps an ASCII character by what is around it). A character that does not
+    # change needs nothing, and most others map to as many bytes, which take its place.
+    # False where a mapping has another count of bytes: r is then to be mapped anew (ucasemap)
+    n = len(s)
+    fixed = 1 if how == 1 else 3 if how == 5 else 0  # (lower, upper and casefold: one mapping)
+    i = 0
+    while i < n:
+        c = _rt.byte(s, i)
+        if c < 128:
+            i = _rt.wrap_add(i, 1)
+            continue
+        k = 2
+        cp = utwo(s, i, c)
+        if cp < 0:
+            k = 3
+            cp = uthree(s, i, c)
+            if cp < 0:
+                u = uchar(s, i, n)
+                k = u & 7
+                if k == 1:
+                    i = _rt.wrap_add(i, 1)
+                    continue
+                cp = _rt.lshr(u, 3)
+        kind = fixed
+        if how == 2:
+            f = pys_unicode_case_flags(cp)
+            kind = 0 if f & 1 != 0 else 1 if f & 2 != 0 else -1
+        elif how == 3:
+            kind = 2 if i == 0 else 0
+        m = cp
+        if kind == 0 and cp == 931:
+            m = 962 if final_sigma(s, i, n) else 963
+        elif kind >= 0:
+            m = pys_unicode_case_map(cp, kind)
+        if m != cp:
+            if k == 2 and m > 127 and m < 2048:
+                _rt.str_put(r, i, 192 | _rt.lshr(m, 6))
+                _rt.str_put(r, _rt.wrap_add(i, 1), 128 | (m & 63))
+            else:
+                w = 0
+                t = m
+                while t != 0:
+                    c = t & 2097151
+                    w = _rt.wrap_add(w, 1 if c < 128 else 2 if c < 2048 else 3 if c < 65536 else 4)
+                    t = _rt.lshr(t, 21)
+                if w != k:
+                    return False
+                at = i
+                while m != 0:
+                    c = m & 2097151
+                    w = 1 if c < 128 else 2 if c < 2048 else 3 if c < 65536 else 4
+                    if w == 1:
+                        _rt.str_put(r, at, c)
+                    else:
+                        uput(r, at, c, w)
+                    at = _rt.wrap_add(at, w)
+                    m = _rt.lshr(m, 21)
+        i = _rt.wrap_add(i, k)
+    return True
+
+
+def umapped(s: str, how: int, r: str) -> str:
+    # the result of a case method (upatch's how) for a str s with bytes that are not ASCII,
+    # given r as that method's ASCII loop filled it
+    if upatch(s, how, r):
+        return _rt.str_done(r)
+    return ucasemap(s, how, r)
+
+
+def ucasemap(s: str, how: int, r: str) -> str:
+    # mapu's result, given a new str r of s's size. Most mappings keep a character's size in
+    # bytes, so r is filled first: it is the result where that fits exactly, and is copied where
+    # the result is shorter. A longer result is counted, then filled. No character maps to more
+    # than three times its bytes (tools/unicode_classification_tables.py checks each), so a str
+    # whose result's size could not be counted is refused as an allocation of that size is
+    # (MemoryError)
+    n = len(s)
+    size = mapu(s, how, r, n)
+    if size == n:
+        return _rt.str_done(r)
+    if size < 0:
+        if n > 3074457345618258602:
+            _rt.str_new(-1)
+        size = mapu(s, how, s, -1)
+        r = _rt.str_new(size)
+        mapu(s, how, r, size)
+        return _rt.str_done(r)
+    t = _rt.str_new(size)
+    _rt.copy(t, 0, r, 0, size)
+    return _rt.str_done(t)
+
+
+def ucased(s: str, up: bool) -> int:
+    # isupper / islower of a str with bytes that are not ASCII, as CPython tests each
+    # character: none of the other case or titlecase, and one of this case
+    n = len(s)
     seen = 0
+    i = 0
+    while i < n:
+        c = _rt.byte(s, i)
+        f = 0  # (upper 1, lower 2, titlecase 4: ASCII by its letters' ranges, the rest from runtime.c)
+        k = 1
+        if c < 128:
+            if lowc(c | 32):
+                f = 2 if c & 32 != 0 else 1
+        else:
+            k = 2
+            cp = utwo(s, i, c)
+            if cp < 0:
+                k = 3
+                cp = uthree(s, i, c)
+                if cp < 0:
+                    u = uchar(s, i, n)
+                    k = u & 7
+                    cp = _rt.lshr(u, 3)
+            if k > 1:
+                f = pys_unicode_case_flags(cp)
+        if f & (6 if up else 5) != 0:
+            return 0
+        if f != 0:
+            seen = 1
+        i = _rt.wrap_add(i, k)
+    return seen
+
+
+def utitled(s: str) -> int:
+    # istitle of a str with bytes that are not ASCII, as CPython's: an uppercase or titlecase
+    # character only after an uncased one, a lowercase one only after a cased one, and one of
+    # them
+    n = len(s)
+    prev = False
+    seen = 0
+    i = 0
+    while i < n:
+        c = _rt.byte(s, i)
+        f = 0  # (ucased's)
+        k = 1
+        if c < 128:
+            if lowc(c | 32):
+                f = 2 if c & 32 != 0 else 1
+        else:
+            k = 2
+            cp = utwo(s, i, c)
+            if cp < 0:
+                k = 3
+                cp = uthree(s, i, c)
+                if cp < 0:
+                    u = uchar(s, i, n)
+                    k = u & 7
+                    cp = _rt.lshr(u, 3)
+            if k > 1:
+                f = pys_unicode_case_flags(cp)
+        if f & 5 != 0:
+            if prev:
+                return 0
+            prev = True
+            seen = 1
+        elif f != 0:
+            if not prev:
+                return 0
+            prev = True
+            seen = 1
+        else:
+            prev = False
+        i = _rt.wrap_add(i, k)
+    return seen
+
+
+def nonascii(s: str) -> bool:
+    # whether a byte of s is not ASCII (one reduction, which LLVM vectorizes)
+    hi = False
     for i in range(len(s)):
+        hi |= _rt.byte(s, i) > 127
+    return hi
+
+
+def cased(s: str, up: bool) -> int:
+    # isupper / islower of ASCII letters; -1 for a letter of the other case, which decides
+    # for any str, and 2 more where a byte is not ASCII. A str of fewer than 16 bytes, as most
+    # are, gathers its bytes' union in the loop; a long one keeps the loop to its tests and is
+    # scanned for such a byte only where it comes to an end (nonascii)
+    seen = 0
+    n = len(s)
+    if n < 16:
+        acc = 0
+        for i in range(n):
+            c = _rt.byte(s, i)
+            acc |= c
+            if lowc(c):
+                if up:
+                    return -1
+                seen = 1
+            if upc(c):
+                if not up:
+                    return -1
+                seen = 1
+        return seen | 2 if acc > 127 else seen
+    for i in range(n):
         c = _rt.byte(s, i)
         if lowc(c):
             if up:
-                return 0
+                return -1
             seen = 1
         if upc(c):
             if not up:
-                return 0
+                return -1
             seen = 1
-    return seen
+    return seen | 2 if nonascii(s) else seen
 
 
 def pys_str_isdigit(s: str) -> int:
@@ -1004,11 +1409,24 @@ def pys_str_isspace(s: str) -> int:
 
 
 def pys_str_isupper(s: str) -> int:
-    return cased(s, True)
+    # ASCII letters decide where one is of the other case, or every byte is ASCII; else the
+    # str's characters do, as CPython tests them (ucased): at once for a str that begins with
+    # one that is not ASCII, as text in most scripts does
+    if len(s) > 0 and _rt.byte(s, 0) > 127:
+        return ucased(s, True)
+    r = cased(s, True)
+    if r < 0:
+        return 0
+    return ucased(s, True) if r > 1 else r
 
 
 def pys_str_islower(s: str) -> int:
-    return cased(s, False)
+    if len(s) > 0 and _rt.byte(s, 0) > 127:
+        return ucased(s, False)
+    r = cased(s, False)
+    if r < 0:
+        return 0
+    return ucased(s, False) if r > 1 else r
 
 
 def pys_str_isdecimal(s: str) -> int:
@@ -1026,55 +1444,174 @@ def pys_str_isascii(s: str) -> int:
     return 1
 
 
+def tolow(c: int) -> int:
+    # The byte c, an ASCII upper-case letter lowered, with no test: bit 7 of c + 63 is set from
+    # 'A' on and that of c + 37 from '[' on, so the first without the second marks the letters,
+    # once the bytes above 127 are left out (c ^ 128); the letter's case is bit 5, two places
+    # below. Every operation keeps to the byte's eight bits, which lets LLVM map sixteen bytes
+    # in as many instructions, where a range test of the 64-bit value takes six times as many
+    return c | _rt.lshr(_rt.wrap_add(c, 63) & (_rt.wrap_add(c, 37) ^ 128) & (c ^ 128) & 128, 2)
+
+
+def toup(c: int) -> int:
+    # (tolow's, for 'a' to 'z': an ASCII lower-case letter raised)
+    return c ^ _rt.lshr(_rt.wrap_add(c, 31) & (_rt.wrap_add(c, 5) ^ 128) & (c ^ 128) & 128, 2)
+
+
+def toswap(c: int) -> int:
+    # (an ASCII letter of either case, which c | 32 makes a lower-case one: its case changed)
+    d = c | 32
+    return c ^ _rt.lshr(_rt.wrap_add(d, 31) & (_rt.wrap_add(d, 5) ^ 128) & (c ^ 128) & 128, 2)
+
+
 def mapcase(s: str, how: int) -> str:
     # 0 lower, 1 upper, 2 swap: ASCII letters only (one loop per case, which LLVM vectorizes)
     n = len(s)
     r = _rt.str_new(n)
     if how == 0:
         for i in range(n):
-            c = _rt.byte(s, i)
-            _rt.str_put(r, i, c | 32 if upc(c) else c)
+            _rt.str_put(r, i, tolow(_rt.byte(s, i)))
     elif how == 1:
         for i in range(n):
-            c = _rt.byte(s, i)
-            _rt.str_put(r, i, c & 223 if lowc(c) else c)
+            _rt.str_put(r, i, toup(_rt.byte(s, i)))
     else:
         for i in range(n):
+            _rt.str_put(r, i, toswap(_rt.byte(s, i)))
+    return _rt.str_done(r)
+
+
+def mapstr(s: str, how: int, text: int) -> str:
+    # mapcase for a long str: its loops, which also tell whether a byte is not ASCII. Such a str has
+    # characters that CPython maps by their Unicode case, or bytes that begin none: umapped
+    # (text: its how) maps those. LLVM still vectorizes each loop: it reads the length after the
+    # allocation, as its index checks do, which leaves one bound, and |= of a bool is one
+    # reduction of the bytes' width (or would branch)
+    r = _rt.str_new(len(s))
+    hi = False
+    if how == 0:
+        for i in range(len(s)):
             c = _rt.byte(s, i)
-            _rt.str_put(r, i, c ^ 32 if lowc(c | 32) else c)  # a letter of either case: one range test
+            hi |= c > 127
+            _rt.str_put(r, i, tolow(c))
+    elif how == 1:
+        for i in range(len(s)):
+            c = _rt.byte(s, i)
+            hi |= c > 127
+            _rt.str_put(r, i, toup(c))
+    else:
+        for i in range(len(s)):
+            c = _rt.byte(s, i)
+            hi |= c > 127
+            _rt.str_put(r, i, toswap(c))
+    if hi:
+        return umapped(s, text, r)
     return _rt.str_done(r)
 
 
 def pys_str_upper(s: str) -> str:
-    return mapcase(s, 1)
+    # A str of fewer than 16 bytes, as most are, is mapped here: a test of each byte, which
+    # costs such a str less than the call and the operations that mapstr's loops are
+    # vectorized for. The bytes' union tells whether one is not ASCII (umapped then)
+    n = len(s)
+    if n > 15:
+        return mapstr(s, 1, 1)
+    r = _rt.str_new(n)
+    acc = 0
+    for i in range(n):
+        c = _rt.byte(s, i)
+        acc |= c
+        _rt.str_put(r, i, c & 223 if lowc(c) else c)
+    return umapped(s, 1, r) if acc > 127 else _rt.str_done(r)
 
 
 def pys_str_lower(s: str) -> str:
-    return mapcase(s, 0)
+    n = len(s)
+    if n > 15:
+        return mapstr(s, 0, 0)
+    r = _rt.str_new(n)
+    acc = 0
+    for i in range(n):
+        c = _rt.byte(s, i)
+        acc |= c
+        _rt.str_put(r, i, c | 32 if upc(c) else c)
+    return umapped(s, 0, r) if acc > 127 else _rt.str_done(r)
 
 
 def pys_str_casefold(s: str) -> str:
-    return mapcase(s, 0)
+    n = len(s)
+    if n > 15:
+        return mapstr(s, 0, 5)
+    r = _rt.str_new(n)
+    acc = 0
+    for i in range(n):
+        c = _rt.byte(s, i)
+        acc |= c
+        _rt.str_put(r, i, c | 32 if upc(c) else c)
+    return umapped(s, 5, r) if acc > 127 else _rt.str_done(r)
 
 
 def pys_str_swapcase(s: str) -> str:
-    return mapcase(s, 2)
+    n = len(s)
+    if n > 15:
+        return mapstr(s, 2, 2)
+    r = _rt.str_new(n)
+    acc = 0
+    for i in range(n):
+        c = _rt.byte(s, i)
+        acc |= c
+        _rt.str_put(r, i, c ^ 32 if lowc(c | 32) else c)
+    return umapped(s, 2, r) if acc > 127 else _rt.str_done(r)
 
 
 def pys_str_capitalize(s: str) -> str:
+    # ASCII letters, the first raised and the others lowered; a str with any other byte by its
+    # characters (umapped). A short str by a test of each byte, as pys_str_upper's; a long one
+    # lowered as mapstr's loop does, then its first byte raised
+    n = len(s)
     r = _rt.str_new(len(s))
+    if n < 16:
+        acc = 0
+        for i in range(n):
+            c = _rt.byte(s, i)
+            acc |= c
+            if (i == 0 and lowc(c)) or (i > 0 and upc(c)):
+                c ^= 32
+            _rt.str_put(r, i, c)
+        return umapped(s, 3, r) if acc > 127 else _rt.str_done(r)
+    hi = False
     for i in range(len(s)):
         c = _rt.byte(s, i)
-        if (i == 0 and lowc(c)) or (i > 0 and upc(c)):
-            c ^= 32
-        _rt.str_put(r, i, c)
+        hi |= c > 127
+        _rt.str_put(r, i, tolow(c))
+    _rt.str_put(r, 0, toup(_rt.byte(s, 0)))
+    if hi:
+        return umapped(s, 3, r)
     return _rt.str_done(r)
 
 
 def pys_str_title(s: str) -> str:
-    # a letter after a letter is lowered, any other raised
+    # a letter after a letter is lowered, any other raised: ASCII letters, unless a byte is not
+    # ASCII, when CPython's characters tell (ucasemap): at once for a str that begins with such
+    # a byte, as text in most scripts does
+    n = len(s)
     r = _rt.str_new(len(s))
+    if n > 0 and _rt.byte(s, 0) > 127:
+        return ucasemap(s, 4, r)
     prev = False
+    if n < 16:
+        # (a short str, as most are: its bytes' union, gathered in the loop)
+        acc = 0
+        for i in range(n):
+            c = _rt.byte(s, i)
+            acc |= c
+            if (prev and upc(c)) or (not prev and lowc(c)):
+                _rt.str_put(r, i, c ^ 32)
+            else:
+                _rt.str_put(r, i, c)
+            prev = lowc(c) or upc(c)
+        return ucasemap(s, 4, r) if acc > 127 else _rt.str_done(r)
+    if nonascii(s):
+        return ucasemap(s, 4, r)
     for i in range(len(s)):
         c = _rt.byte(s, i)
         if (prev and upc(c)) or (not prev and lowc(c)):
@@ -1086,24 +1623,28 @@ def pys_str_title(s: str) -> str:
 
 
 def pys_str_istitle(s: str) -> int:
-    # CPython's istitle, over ASCII letters
+    # CPython's istitle, over ASCII letters. A byte that is not ASCII may be of a cased
+    # character, which the letters after it follow: the str's characters tell then (utitled)
     prev = False
     seen = 0
+    hi = False
     for i in range(len(s)):
         c = _rt.byte(s, i)
         if upc(c):
             if prev:
-                return 0
+                return utitled(s) if hi else 0
             prev = True
             seen = 1
         elif lowc(c):
             if not prev:
-                return 0
+                return utitled(s) if hi else 0
             prev = True
             seen = 1
         else:
             prev = False
-    return seen
+            if c > 127:
+                hi = True
+    return utitled(s) if hi else seen
 
 
 def pys_text_len(s: str) -> int: ...
@@ -2268,12 +2809,19 @@ def pys_bytes_fromhex(s: str) -> str:
 
 
 def pys_bytes_from_list(xs: list[int]) -> str:
-    # bytes(xs) of a list of ints
-    r = _rt.str_new(len(xs))
-    for i in range(len(xs)):
-        if xs[i] < 0 or xs[i] > 255:
-            raise ValueError("bytes must be in range(0, 256)")
-        _rt.str_put(r, i, xs[i])
+    # bytes(xs) of a list of ints. Each item's low byte is stored and the items' bits are
+    # gathered, so the range is tested once, after a loop that has no exit: an int below 0 or
+    # above 255 leaves a bit outside the low eight. The error is CPython's whichever item is
+    # the first out of range, and nothing sees the bytes of a list that has one
+    n = len(xs)
+    r = _rt.str_new(n)
+    bits = 0
+    for i in range(n):
+        x = xs[i]
+        bits |= x
+        _rt.str_put(r, i, x & 255)
+    if bits < 0 or bits > 255:
+        raise ValueError("bytes must be in range(0, 256)")
     return _rt.str_done(r)
 
 

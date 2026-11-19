@@ -9,7 +9,8 @@ that fits, so equal values have one representation. See docs/python-int.md.
 from __future__ import annotations
 from src.pystachy_compiler.analysis import first_use, local_names
 from src.pystachy_compiler.diagnostics import LINES, dynamic_program, int_file, int_lists, int_span
-from src.pystachy_compiler.ir import Data, FnInfo, Ins, Val, tmpname
+from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
+from src.pystachy_compiler.symbols import FnInfo
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.specs import BIG, BIGOPT, CHECKED, IOPS, IRT, RANGEC, READ_HELPERS
 from src.pystachy_compiler.utils import bool_for_int, elem, is_dict, is_gen, is_list, is_opt, is_set, is_sopt, is_tuple, is_vtuple, lookable, selem, targs, unopt

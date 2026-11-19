@@ -9,9 +9,8 @@
 # `seq = range(3)` is list(range(3)) (a range as a value is not supported). test_iter's loop over
 # a tuple, a list and a str (a list whose items differ) is written out for each.
 # EXCLUDED upstream cases:
-# - test_builtin_tuple's tuple() of a dict (rejected: "tuple() of dict[str,int] is not
-#   supported: use a list, string or tuple") and of a file (rejected: "tuple() of file is not
-#   supported"), its SequenceClass parts and TypeErrors; tuple([]) is of an annotated empty list
+# - test_builtin_tuple's tuple() of a file (rejected: "tuple() of file is not supported"), its
+#   SequenceClass parts and TypeErrors; tuple([]) is of an annotated empty list
 # - test_writelines: writelines() of a tuple, a dict or an object with __iter__ (rejected:
 #   "expected list[str], got tuple[str,str]", "expected list[str], got Whatever")
 # - test_builtin.py test_iter's TypeErrors (iter(), iter(42, 42)): compile-time errors here
@@ -51,6 +50,8 @@ def test_builtin_tuple() -> None:
     eq(tuple(e), ())
     eq(tuple(()), ())
     eq(tuple("abc"), ("a", "b", "c"))
+    d = {"one": 1, "two": 2, "three": 3}
+    eq(tuple(d), tuple(d.keys()))
 
 
 def test_iter() -> None:

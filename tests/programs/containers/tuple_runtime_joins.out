@@ -1,0 +1,10 @@
+(2, 2) (1,) ()
+(0, 1, 2) ()
+(Base(2), Base(3)) 2
+(Base(2), Base(3))
+{'none': (), 'one': (1,), 'two': (1, 2)} [0, 1, 2]
+4
+5
+4
+ValueError: not enough values to unpack (expected 2, got 1)
+[exit 0]

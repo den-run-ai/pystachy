@@ -1,0 +1,8 @@
+a=1 <Field "a=1"> A k: 'str' <Field "k: 'str'"> KEYWORD_ONLY True True False True Field
+True True True False False
+(a=1, *, k: 'str') -> None <Shape (a=1, *, k: 'str') -> None> 2 True True Shape
+True True True <Signature (a=1, *, k: 'str') -> None> 0 <Shape ()>
+ValueError: wrong parameter order: keyword-only parameter before positional or keyword parameter
+ValueError: '1' is not a valid parameter name
+['<Field "a=1">', '<Parameter "a=1">', '<Field "k: \'str\'">'] (a=1, *, k: 'str')
+[exit 0]

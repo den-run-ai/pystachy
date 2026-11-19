@@ -12,7 +12,9 @@ from src.pystachy_compiler.analysis import (
     reads,
 )
 from src.pystachy_compiler.diagnostics import dynamic_program, shown
-from src.pystachy_compiler.ir import Data, Exit, FnInfo, Ins, Try, Val, tmpname
+from src.pystachy_compiler.frames import Exit
+from src.pystachy_compiler.ir import Data, Ins, Try, Val, tmpname
+from src.pystachy_compiler.symbols import FnInfo
 from src.pystachy_compiler.names import owner, short
 from src.pystachy_compiler.specs import (
     BIG,
@@ -263,7 +265,9 @@ def gen_assert_fails(self, n: Node) -> None:
 
 def gen_unnarrowed(self, bodies: list[list[Node]]) -> dict[str, str]:
     # a copy of narrowed without the names that the code of bodies binds or deletes: what
-    # holds wherever an exception may come from in them
+    # holds wherever an exception may come from in them. No attribute path's fact does (its key
+    # has a "."): what stored the attribute before the raise may be in a branch that ends there,
+    # whose stores the code after that branch does not follow (unions.py's path_undo)
     out: dict[str, str] = {}
     if len(self.narrowed) > 0:
         names: dict[str, bool] = {}
@@ -271,7 +275,7 @@ def gen_unnarrowed(self, bodies: list[list[Node]]) -> dict[str, str]:
             collect(b, names)
             deleted(b, names)
         for nm in self.narrowed:
-            if nm not in names:
+            if nm not in names and "." not in nm:
                 out[nm] = self.narrowed[nm]
     return out
 
@@ -305,6 +309,14 @@ def gen_exc_classes(self, t: Node) -> bool:
             return False
     return True
 
+def gen_exc_overlap(self, a: str, b: str) -> bool:
+    # may an exception be of both classes a and b, of which neither derives from the other: a
+    # class of the program whose two exception bases reach both derives from both
+    for k in self.classes.values():
+        if k.exc != "" and self.derives(k.name, a) and self.derives(k.name, b):
+            return True
+    return False
+
 def gen_exc_isinst(self, v: Val, t: Node) -> Val:
     # isinstance(v, t) of an exception (or an exception object, which may be None), t naming
     # exception classes: decided by v's class where its type decides it, else by its ExcClass
@@ -314,7 +326,7 @@ def gen_exc_isinst(self, v: Val, t: Node) -> Val:
         maybe = False
         for c in names:
             yes = yes or self.derives(v.t, c.s)
-            maybe = maybe or self.derives(c.s, v.t)
+            maybe = maybe or self.derives(c.s, v.t) or self.exc_overlap(v.t, c.s)
         if yes or not maybe:
             return Val(self.ptr_cmp('!=', v, Val('null', 'None')).v if yes and v.v not in self.nn else "true" if yes else "false", "bool")
     sets = self.catch_set(t)

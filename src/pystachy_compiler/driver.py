@@ -5,11 +5,11 @@ import sys
 import tempfile
 import time
 from src.pystachy_compiler import aot_runtime, cached_run, diagnostics, jit_helpers, program_cache
-from src.pystachy_compiler.diagnostics import MAXNEST, RAW, NeedHandlers, NeedHierarchy, NeedSliceEH, Rejoin, fail
+from src.pystachy_compiler.diagnostics import MAXNEST, RAW, ClassBoxes, NeedHandlers, NeedHierarchy, NeedSliceEH, Rejoin, fail
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.lexer import Lexer, host_text
 from src.pystachy_compiler.loader import Loader
-from src.pystachy_compiler.lower_module import OBJHOOKS, OBJHOOKS_MAIN, address_runtime_ir, jit_alloc
+from src.pystachy_compiler.lower_module import OBJHOOKS, OBJHOOKS_MAIN, address_runtime_ir, jit_alloc, unprofiled_generators
 from src.pystachy_compiler.names import RENAMED
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.specs import JIT_INLINE, LIBS, LINKDL, MODULES, OPTS, PLATFORM
@@ -49,9 +49,11 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/builtins.py',
     'src/pystachy_compiler/calls.py',
     'src/pystachy_compiler/cached_run.py',
+    'src/pystachy_compiler/class_values.py',
     'src/pystachy_compiler/cache_toolchain.py',
     'src/pystachy_compiler/containers.py',
     'src/pystachy_compiler/conversions.py',
+    'src/pystachy_compiler/dataflow.py',
     'src/pystachy_compiler/declarations.py',
     'src/pystachy_compiler/diagnostics.py',
     'src/pystachy_compiler/driver.py',
@@ -61,6 +63,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/exceptions.py',
     'src/pystachy_compiler/expressions.py',
     'src/pystachy_compiler/flow.py',
+    'src/pystachy_compiler/frames.py',
     'src/pystachy_compiler/functions.py',
     'src/pystachy_compiler/callbacks.py',
     'src/pystachy_compiler/generators.py',
@@ -74,6 +77,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/local_versions.py',
     'src/pystachy_compiler/lower_module.py',
     'src/pystachy_compiler/lowering.py',
+    'src/pystachy_compiler/machine_ir.py',
     'src/pystachy_compiler/memory_ir.py',
     'src/pystachy_compiler/module.py',
     'src/pystachy_compiler/names.py',
@@ -90,6 +94,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/specs.py',
     'src/pystachy_compiler/statements.py',
     'src/pystachy_compiler/structs.py',
+    'src/pystachy_compiler/symbols.py',
     'src/pystachy_compiler/syntax.py',
     'src/pystachy_compiler/templates.py',
     'src/pystachy_compiler/union_arithmetic.py',
@@ -133,6 +138,11 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
     idtry = True
     slice_eh = False
     hierarchies: dict[str, bool] = {}
+    # The files of modules that opt in to dynamic Any whose classes are read as class boxes, not
+    # as typed class objects (Gen.class_value_static): each one whose typed reads a pass did not
+    # compile with (ClassBoxes), after which the program is compiled from the start, as if those
+    # reads had never been typed.
+    clsany: dict[int, bool] = {}
     while True:
         attempt = timing_start()
         g = Gen()
@@ -148,6 +158,7 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
         g.final = passes >= JOINS
         g.idfull = idfull
         g.idtry = idtry
+        g.clsany = clsany
         ld = Loader(dirs)
         ld.ext = ext
         ld.keeps = keeps
@@ -172,6 +183,17 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
                 xnot = {}
                 xwant = {}
                 passes = 0
+            elif isinstance(retry, ClassBoxes):
+                # (the monotone class-name registry survives, as the identity restart below keeps it)
+                for k in g.clsused:
+                    clsany[k] = True
+                hints = {}
+                xnot = {}
+                xwant = {}
+                passes = 0
+                idfull = False
+                idtry = True
+                slice_eh = False
             elif isinstance(retry, NeedSliceEH):
                 slice_eh = True
             elif g.idevent != "" and not idfull:
@@ -208,6 +230,7 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
             idtry = True
             slice_eh = False
             hierarchies = {}
+            clsany = {}
         finally:
             timing_end("program.attempt", attempt)
         # (as parsing and lowering found them: the next pass numbers lambdas and
@@ -524,6 +547,28 @@ def aot_optimization() -> str:
     return value
 
 
+def aot_profile() -> list[str]:
+    # Profile-guided builds of an executable: clang's flag for the step that optimizes the program's
+    # module (with the precompiled runtime's interface, or the part of the runtime it needs), and
+    # its flag for the link. PYSTACHY_PROFILE_GENERATE names the directory where the executable
+    # writes a raw profile each time it runs; PYSTACHY_PROFILE_USE names the indexed profile that
+    # llvm-profdata merge makes of them. The runtime's own build, and the precompiled runtime made
+    # of it, take neither flag: its modules, compiled apart, would each carry the module flag that
+    # the profile adds, and LLVM cannot link two of them. A generating build leaves generator
+    # functions out of the profile (lower_module's unprofiled_generators)
+    gen = os.getenv("PYSTACHY_PROFILE_GENERATE", "")
+    use = os.getenv("PYSTACHY_PROFILE_USE", "")
+    if gen != "" and use != "":
+        fail("PYSTACHY_PROFILE_GENERATE and PYSTACHY_PROFILE_USE cannot both be set", 0)
+    if gen != "":
+        return [" " + q("-fprofile-generate=" + gen), " " + q("-fprofile-generate=" + gen)]
+    if use != "":
+        if not os.path.isfile(use):
+            fail(f"PYSTACHY_PROFILE_USE: no profile at {use} (llvm-profdata merge makes one of the raw profiles)", 0)
+        return [" " + q("-fprofile-use=" + use), ""]
+    return ["", ""]
+
+
 # The LLVM versions whose C API lljit.c declares (two changes are gated at 21), for which the driver
 # builds Pystachy's JIT runner; another version runs lli. And what the runner's -self-check writes, at
 # each level of code generation it is checked at
@@ -743,8 +788,10 @@ def main() -> None:
         fail("file not found", 0)
     retained = retained_ir_path(cmd, diagnostics.SRC, argv[3:])
     aotopt = aot_optimization() if cmd == "build" else "2"
+    aotprofile = aot_profile() if cmd == "build" else ["", ""]
     jitflags = ""
     codegen = "2"
+    jitopt = "1"
     runner = ""
     jitinline = JIT_INLINE
     if cmd == "run":
@@ -754,6 +801,12 @@ def main() -> None:
         codegen = os.getenv("PYSTACHY_JIT_CODEGEN", "2")
         if codegen != "0" and codegen != "2":
             fail(f"PYSTACHY_JIT_CODEGEN: {codegen} is not 0 (-O0 code generation) or 2 (the default)", 0)
+        # PYSTACHY_JIT_OPT=2: LLVM's -O2 pipeline over the program's module in place of the JIT's
+        # cleanup, for a program whose loops run long enough to repay optimizing at each launch: a
+        # startup/execution tradeoff, opt-in as -O0 code generation is (#430)
+        jitopt = os.getenv("PYSTACHY_JIT_OPT", "1")
+        if jitopt != "1" and jitopt != "2":
+            fail(f"PYSTACHY_JIT_OPT: {jitopt} is not 1 (the JIT's cleanup, the default) or 2 (LLVM's -O2 pipeline)", 0)
         # what runs the program (jit_launcher), read before the program cache, so that a hit rejects
         # what a run without it rejects
         runner = os.getenv("PYSTACHY_JIT_LAUNCHER", "auto")
@@ -1073,7 +1126,7 @@ def main() -> None:
     partso = f"{rts}.{os.getpid()}.{own}"
     partj = f"{rtj}.{os.getpid()}.{own}"
     f = open(ll, "w", encoding=RAW)
-    f.write(address_runtime_ir(ir) if asan and cmd != "run" else ir)
+    f.write(address_runtime_ir(ir) if asan and cmd != "run" else unprofiled_generators(ir) if aotprofile[1] != "" else ir)
     # compiled code's objects that hold no reference from pys_new (allocelide, lowering's
     # alloc_call, which declares it only where it calls it): an AOT build or extension module is
     # optimized with pys_new out of line (runtime.c), so that LLVM deletes the allocations whose
@@ -1402,7 +1455,7 @@ def main() -> None:
             out = diagnostics.SRC[:-3] if diagnostics.SRC.endswith(".py") else diagnostics.SRC + ".exe"
         code = timed_sh("program.llvm_link", link)
         if code == 0 and newalloc:
-            code = timed_sh("program.llvm_optimize", f"{llvm}clang -O{aotopt} -c -emit-llvm {q(bc)} -o {q(obc)} -Wno-unused-command-line-argument{ccflags}")
+            code = timed_sh("program.llvm_optimize", f"{llvm}clang -O{aotopt} -c -emit-llvm {q(bc)} -o {q(obc)} -Wno-unused-command-line-argument{ccflags}{aotprofile[0]}")
         if code == 0 and newalloc:
             late = f"{llvm}opt -passes={LATE_PASSES} {LATE_INLINE} {q(obc)} -o {q(lbc)}"
             if aotrt[2] != "":
@@ -1411,11 +1464,12 @@ def main() -> None:
                 late = f"{llvm}llvm-link --only-needed {q(obc)} {q(aotrt[2])} -o {q(obc)} && {llvm}opt -passes={LATE_PASSES},elim-avail-extern,globaldce {LATE_INLINE} {q(obc)} -o {q(lbc)}"
             code = timed_sh("program.late_inline", late)
         if code == 0:
-            cc = f"{llvm}clang -O{aotopt} -c -Xclang -disable-llvm-passes {q(lbc)}" if newalloc else f"{llvm}clang -O{aotopt} -c {q(bc)}"
+            # (the profile flag goes to the one step that runs LLVM's passes over the module)
+            cc = f"{llvm}clang -O{aotopt} -c -Xclang -disable-llvm-passes {q(lbc)}" if newalloc else f"{llvm}clang -O{aotopt} -c {q(bc)}{aotprofile[0]}"
             code = timed_sh("program.codegen" if newalloc else "program.optimize_codegen", cc + f" -o {q(obj)} -Wno-unused-command-line-argument{ccflags}")
         if code == 0:
             rt = "" if aotrt[0] == "" else f" {q(aotrt[0])}" + (" -Wl,-dead_strip" if PLATFORM == "darwin" else " -Wl,--gc-sections")
-            code = timed_sh("program.link", f"{llvm}clang {q(obj)}{rt} -o {q(out)}{libs} -lm{cflags}")
+            code = timed_sh("program.link", f"{llvm}clang {q(obj)}{rt} -o {q(out)}{libs} -lm{cflags}{aotprofile[1]}")
     else:
         # Match the precompiled runtime's target before instcombine folds sizeof/GEP.
         # LLVM's default layout gives i64 only four-byte alignment; ORC later installs
@@ -1495,6 +1549,11 @@ def main() -> None:
             # coro-cleanup. A module without them keeps the pipeline above
             split = clean.replace("simplifycfg)", "simplifycfg,coro-elide),coro-split") if clean.startswith("cgscc(") else f"cgscc({clean},coro-split)"
             passes = f"coro-early,globaldce,always-inline,{split},coro-cleanup,globaldce"
+        if jitopt == "2":
+            # PYSTACHY_JIT_OPT=2: LLVM's -O2 pipeline, as an AOT build runs over the program, but for
+            # the runtime, which this tier still calls: it lowers coroutines itself, and its inliner
+            # takes no IR-line budget (PYSTACHY_JIT_INLINE). The steps below follow it unchanged
+            passes = "default<O2>"
         # SSA promotion can leave unused feedback cycles (including numeric identity
         # generations). Remove those after inlining and coroutine lowering are complete;
         # instcombine alone does not eliminate cycles with no externally used result.

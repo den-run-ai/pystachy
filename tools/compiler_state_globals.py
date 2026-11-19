@@ -15,7 +15,7 @@ PREFIX = "src.pystachy_compiler."
 # These are initialized when modules load, then reviewed as lookup tables. Adding
 # a container or a post-import writer requires an explicit ownership decision.
 LOOKUP = set("""
-analysis.BINDERS builtins.FSPRIMS
+analysis.BINDERS analysis.READS_ONLY_FNS builtins.FSPRIMS
 ctypes_schema.SCALARS ctypes_schema.MARKERS
 bigints.BIGOPS bigints.BKEY bigints.PROMOTES bigints.NUMOPS bigints.NUMCALLS
 cached_run.BUILD_ENV cached_run.CPU_FIELDS cached_run.KEYED_ENV
@@ -25,10 +25,10 @@ jit_helpers.BARRED jit_helpers.BRANCHES jit_helpers.COLD jit_helpers.LINKAGE jit
 dynamic.XCMP dynamic.XOPS dynamic.BINOPS dynamic.UNOPS dynamic.CMPOPS
 dynamic.BINDUNDERS dynamic.BUILTIN dynamic_proof.BUILTIN_KINDS dynamic_proof.BUILTIN_PAYLOADS
 dynamic_proof.BOX_TAGS expressions.ORDERS expressions.CMPDUNDERS
-ir.NONUMS ir.NOVALS ir.NOLABELS ircheck.RESULT_NUMBERS
+ir.NONUMS ir.NOVALS ir.NOLABELS ir.OPERAND_KINDS
 lexer.KEYWORDS lexer.OPS lexer.ESCAPES lexer.PREFIXES lexer.NONPRINT lexer.NOTID
-loader.ENUM_NAMES loader.ENUM_BASES loader.ENUM_HOOKS loader.FUNCTOOLS_NAMES
-local_versions.UNVERSIONED optimizations.PASS_CONTRACTS parser.ATOMS patterns.SEQ_SCALARS
+loader.ENUM_NAMES loader.ENUM_BASES loader.ENUM_HOOKS loader.FUNCTOOLS_NAMES loader.ORDERINGS
+local_versions.UNVERSIONED machine_ir.WORD_READS optimizations.PASS_CONTRACTS parser.ATOMS patterns.SEQ_SCALARS program.BOUND_FORMS program.ORDER_OPS program.TV_TYPES
 pipeline.STAGE_PREDECESSORS
 reflection.BUILTIN_TYPES reflection.CLASS_BUILTINS reflection.SLOT_WRAPPERS reflection.OBJ_BUILTINS reflection.TYPE_BUILTINS reflection.PICKLING
 scalar_ir.SCALAR_INTS scalar_ir.SCALAR_BIN scalar_ir.SCALAR_FLOAT
@@ -42,10 +42,11 @@ specs.CTYPES specs.MODATTRS specs.OSCONST specs.FLOATINFO specs.VERSIONINFO
 specs.TYPING specs.TYPEARGS specs.ABCS specs.ABCSMORE specs.RANGE_TAKERS specs.RANGE_METHODS
 specs.FUTURE specs.DEFAULTS specs.EXCEPTIONS specs.EXCBASES specs.PLAIN_EXC_BASES specs.EXCATTRS specs.EXCINIT
 specs.EXCKW specs.HASATTR specs.NONEARG specs.OPTARG specs.NONERET specs.OPTCALLS specs.PROTOCOL_MATH
-specs.NOREF specs.UNSUPPORTED specs.INERT_DECOS specs.INERT specs.PURE specs.RAISERS
-specs.CODECS specs.ARITY specs.METHODS specs.TEXT_OPS specs.UNICODE_AUDIT
-specs.FSETMETHODS specs.SETMETHODS specs.IROPS specs.OPTS specs.VALUE_AT specs.FX specs.LIST_READS specs.LIST_WRITES
-specs.FXBIT specs.RUNTIME specs.NARROWED specs.READ_HELPERS specs.INT_HELPERS specs.RTDATA specs.RTSYM
+specs.NOREF specs.UNSUPPORTED specs.INERT_DECOS specs.IDENTITY_DECOS specs.INERT specs.PURE specs.RAISERS
+specs.CODECS specs.ARITY specs.METHODS specs.TEXT_OPS
+specs.FSETMETHODS specs.SETMETHODS specs.OPS specs.IROPS specs.RESULT_NUMBERS specs.OPTS specs.VALUE_AT specs.FX specs.LIST_READS specs.LIST_WRITES
+specs.OP_ENTRY specs.OP_MIN specs.OP_MAX specs.OP_LABELS specs.OP_FIELDS
+specs.FXBIT specs.RUNTIME specs.NARROWED specs.PATH_OPS specs.READ_HELPERS specs.INT_HELPERS specs.RTDATA specs.RTSYM
 structs.STRUCT_FNS structs.NATIVE_SIZES structs.STANDARD_SIZES
 syntax.DCOPTS syntax.EXPRNAMES syntax.STARTS syntax.CMPOPS syntax.AUGOPS syntax.BINOPS syntax.NOKIDS
 utils.DECRUNS
@@ -66,6 +67,7 @@ RESET = {
     "diagnostics.INTFILES": "loader resets file-index python-int opt-ins with the file table",
     "diagnostics.INTSPANS": "loader resets the line spans of lib's promoting definitions with the file table",
     "names.ENUMCLASSES": "loader resets the enum classes it makes, by their statements' lines, with the file table",
+    "names.ORDERED": "loader resets the @total_ordering classes it records, by their statements' lines, with the file table",
 }
 RETAINED = {
     "diagnostics.CAPTURED": "opt-in observer records; inspection worker clears before its request and exits after it, not compiler restart state",
@@ -102,6 +104,7 @@ WRITERS = {
     "syntax.LAMBDAS": {"parser.Parser.test1", "driver.compile_program"},
     "names.RENAMED": {"program.gen_prepare_program", "pipeline.gen_lower_program", "driver.compile_program"},
     "names.ENUMCLASSES": {"loader.Loader.program", "loader.enum_classes"},
+    "names.ORDERED": {"loader.Loader.program", "loader.functools_classes"},
     "program_cache.ACTIVE": {"program_cache.start", "program_cache.stop"},
     "program_cache.VALID": {"program_cache.start", "program_cache._record", "program_cache.tracked_kind",
                             "program_cache.track_source", "program_cache.track_static", "program_cache.track_layout"},

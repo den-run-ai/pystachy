@@ -2,7 +2,8 @@
 from __future__ import annotations
 from src.pystachy_compiler.analysis import globals_in, lambda_flags, local_names, nonlocal_decls, numeric_statement, numeric_return_names, str_appends, targets
 from src.pystachy_compiler.diagnostics import Rejoin, int_program
-from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Try, Val
+from src.pystachy_compiler.ir import Blk, IFn, Try, Val
+from src.pystachy_compiler.symbols import FnInfo
 from src.pystachy_compiler.local_versions import local_versions
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.optimizations import recursion_unsnapshot
@@ -61,6 +62,13 @@ def gen_enter(self, f: FnInfo, body: list[Node]) -> None:
     self.nonesites = {}
     self.nonepending = {}
     self.narrowed = {}
+    self.preadn = []
+    self.preadv = []
+    self.preads = []
+    self.preadb = []
+    self.pdoms = {}
+    self.psess = [0]
+    self.pfield = ""
     self.lkk = {}
     self.branch = 0
     self.cells = {}
@@ -70,6 +78,7 @@ def gen_enter(self, f: FnInfo, body: list[Node]) -> None:
     self.carried = Val("", "")
     self.nonecmp = False
     self.fieldcmp = False
+    self.rolex = ""
     self.cmpnode = self.nokey
     self.stkkey = self.nokey
     self.reflcopies = 1

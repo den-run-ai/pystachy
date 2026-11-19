@@ -14,7 +14,7 @@ from src.pystachy_compiler import cached_run
 
 ROOT = Path(__file__).resolve().parent.parent
 # The settings a cached program's identity spells exactly (docs/program-cache.md).
-KEYED = ["PYSTACHY_OPT", "PYSTACHY_JIT_INLINE", "PYSTACHY_DEBUG_LINES", "PYSTACHY_RUNTIME_C_CACHE",
+KEYED = ["PYSTACHY_OPT", "PYSTACHY_JIT_INLINE", "PYSTACHY_JIT_OPT", "PYSTACHY_DEBUG_LINES", "PYSTACHY_RUNTIME_C_CACHE",
          "PYSTACHY_PATH", "PYSTACHY_PROGRAM_CACHE_INPUTS", "PATH", "HOME", "XDG_CONFIG_HOME"]
 
 
@@ -112,7 +112,6 @@ class EligibilityTests(unittest.TestCase):
         variants = [
             ("PYSTACHY_CFLAGS", "-fsanitize=address"), ("PYSTACHY_JIT_CODEGEN", "0"),
             ("PYSTACHY_IRCHECK", "1"), ("PYSTACHY_IRFX", "1"),
-            ("PYSTACHY_UNICODE_AUDIT", "1"),
         ] + [(key, "/external/input") for key in cached_run.BUILD_ENV]
         for key, value in variants:
             with self.subTest(key=key), patch.dict(os.environ, {key: value}):
@@ -174,7 +173,7 @@ class EligibilityTests(unittest.TestCase):
         self.cwd.return_value = "/other"
         self.assertNotEqual(baseline, self.prepare()[1])
         self.cwd.return_value = "/work"
-        for key, value in [("PYSTACHY_OPT", "-all"), ("PYSTACHY_JIT_INLINE", "0"),
+        for key, value in [("PYSTACHY_OPT", "-all"), ("PYSTACHY_JIT_INLINE", "0"), ("PYSTACHY_JIT_OPT", "2"),
                            ("PYSTACHY_DEBUG_LINES", "1"), ("PYSTACHY_RUNTIME_C_CACHE", "1"),
                            ("PYSTACHY_PROGRAM_CACHE_INPUTS", "/generated/config.json"),
                            ("PYSTACHY_PATH", "/new/imports"), ("PATH", "/different/tools"),

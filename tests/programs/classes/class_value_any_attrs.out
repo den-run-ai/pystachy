@@ -1,0 +1,42 @@
+AttributeError: type object 'Base' has no attribute 'tag'
+1
+AttributeError: type object 'Base' has no attribute 'make'
+AttributeError: type object 'Base' has no attribute 'kind'
+AttributeError: type object 'Base' has no attribute 'scale'
+A a
+3
+made A
+A-kind
+AttributeError: type object 'A' has no attribute 'scale'
+B b
+3
+made B
+A-kind
+AttributeError: type object 'B' has no attribute 'scale'
+P p
+AttributeError: type object 'P' has no attribute 'limit'
+P made P
+AttributeError: type object 'P' has no attribute 'kind'
+8
+AttributeError: type object 'Q' has no attribute 'tag'
+AttributeError: type object 'Q' has no attribute 'limit'
+AttributeError: type object 'Q' has no attribute 'make'
+AttributeError: type object 'Q' has no attribute 'kind'
+AttributeError: type object 'Q' has no attribute 'scale'
+AttributeError: type object 'int' has no attribute 'tag'
+AttributeError: type object 'int' has no attribute 'limit'
+AttributeError: type object 'int' has no attribute 'make'
+AttributeError: type object 'int' has no attribute 'kind'
+AttributeError: type object 'int' has no attribute 'scale'
+AttributeError: type object 'str' has no attribute 'tag'
+AttributeError: type object 'str' has no attribute 'limit'
+AttributeError: type object 'str' has no attribute 'make'
+AttributeError: type object 'str' has no attribute 'kind'
+AttributeError: type object 'str' has no attribute 'scale'
+AttributeError: type object 'NoneType' has no attribute 'tag'
+AttributeError: type object 'NoneType' has no attribute 'limit'
+AttributeError: type object 'NoneType' has no attribute 'make'
+AttributeError: type object 'NoneType' has no attribute 'kind'
+AttributeError: type object 'NoneType' has no attribute 'scale'
+a P made P ['a', 'p']
+[exit 0]

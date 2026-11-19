@@ -14,6 +14,7 @@ import check_lean_boundary as bridge
 import test_lean_boundary as fixtures
 from src.pystachy_compiler.ir import Ins, Val
 from src.pystachy_compiler.lowering import gen_lower_ins
+from src.pystachy_compiler.machine_ir import machine_ops
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -213,6 +214,58 @@ print(read_role(Child(1)), read_role(Role()))
         self.assertFalse(fixtures.ProvedCheckerTests.check(self, candidate))
 
 
+@unittest.skipUnless(fixtures.CHECKER.is_file(), "build tools/lean_boundary to check role layouts")
+class RoleFieldLayoutTests(fixtures.SnapshotFixture):
+    # A role that declares attributes (#1457) keeps them at offsets of its own: a box of the
+    # class that combines it has another layout, so an Any read of a field dispatches on the
+    # box's class, and its read in the role's layout takes only the role's own boxes
+    function_filter = ""
+
+    @classmethod
+    def setUpClass(cls):
+        temporary = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(temporary.cleanup)
+        cls.example = Path(temporary.name) / "role_fields.py"
+        cls.example.write_text("""# pystachy: dynamic-any
+from typing import Any
+class Api:
+    path: str
+    def show(self) -> str:
+        return self.path
+class Base:
+    def __init__(self) -> None:
+        self.a = 1
+class C(Base, Api):
+    def __init__(self) -> None:
+        super().__init__()
+        self.path = "p"
+def boxed(a: Api) -> Any:
+    return a
+def read(x: Any) -> str:
+    return x.path
+print(read(boxed(C())), read(C()))
+""")
+        super().setUpClass()
+
+    def test_role_field_reads_admit_only_layouts_that_start_with_the_roles(self):
+        candidate, _ = bridge.normalize_snapshot(self.snapshot, "dyn.get.path")
+        reads = [node for node in candidate["program"]["nodes"] if node["op"] == "class_payload"]
+        role = [node for node in reads if node["layout"] == "@dt.Api"]
+        self.assertEqual(len(role), 1)
+        self.assertEqual(role[0]["tags"], ["@dt.Api"])
+        self.assertTrue(fixtures.ProvedCheckerTests.check(self, candidate))
+
+    def test_a_combining_class_box_reaching_the_role_layout_is_rejected(self):
+        # The same reads, with the combining class admitted again as an ancestry edge or role
+        # flag alone would admit it: its layout does not start with the role's
+        candidate, _ = bridge.normalize_snapshot(self.snapshot, "dyn.get.path")
+        candidate = copy.deepcopy(candidate)
+        for node in candidate["program"]["nodes"]:
+            if node["op"] == "class_payload" and node["layout"] == "@dt.Api":
+                node["tags"] = ["@dt.Api", "@dt.C"]
+        self.assertFalse(fixtures.ProvedCheckerTests.check(self, candidate))
+
+
 @unittest.skipUnless(CLANG, "clang is required for dynamic box ABI correspondence")
 class DynamicABI(unittest.TestCase):
     @classmethod
@@ -240,7 +293,8 @@ class DynamicABI(unittest.TestCase):
         generated = SimpleNamespace(out=[])
         payload = Ins("dyn.payload", "%slot", "float")
         payload.r, payload.a = [1, 2], [Val("%box", "dyn")]
-        gen_lower_ins(generated, None, payload)
+        for machine in machine_ops(payload):  # (as Gen.lower prints it: machine_ir.py, then the printer)
+            gen_lower_ins(generated, None, machine)
         word = re.search(r"getelementptr i64, ptr %box, i64 (\d+)", "\n".join(generated.out))
         self.assertIsNotNone(word)
         self.assertEqual(int(word[1]) * 8, offsets["box_payload"])

@@ -2,23 +2,27 @@
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, unionnames
 from src.pystachy_compiler.bigints import narrows
-from src.pystachy_compiler.diagnostics import Rejoin, fail, int_lists
+from src.pystachy_compiler.diagnostics import ClassBoxes, Rejoin, fail, int_lists
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.ir import Blk, Data, Frame, Ins, Val, tmpname, one_num
-from src.pystachy_compiler.specs import BIGOPT, CHECKED, LIST_READS, LIST_WRITES, NARROWED, RTL, RTSYM, STR_HEADER_SIZE, TEXT_OPS, UNICODE_AUDIT
+from src.pystachy_compiler.frames import Frame
+from src.pystachy_compiler.ir import Blk, Data, Ins, Val, tmpname, one_num
+from src.pystachy_compiler.specs import BIGOPT, CHECKED, EMPTYFS, LIST_READS, LIST_WRITES, NARROWED, PATH_OPS, RTL, RTSYM, STR_HEADER_SIZE, TEXT_OPS
 from src.pystachy_compiler.utils import (
     RtFn,
     elem,
     identity_abi,
+    is_fset,
     is_opt,
     is_sopt,
     is_tuple,
+    is_vtuple,
     list_read_error,
     list_write_error,
     numeric_identity,
     optnames,
     runtime_decl,
     rtsym,
+    selem,
     targs,
     typestr,
     unopt,
@@ -38,6 +42,11 @@ def gen_err(self, msg: str) -> None:
         raise Rejoin()
     if len(self.newhints) > 0 and not self.final:
         raise Rejoin()  # (an error after a join may come of the narrower type it widens: see Rejoin)
+    if len(self.clsused) > 0:
+        # (it may come of a class read as a typed class object where a module that opts in to
+        # dynamic Any, and names no type[C], made a class box of it before: compiled again so,
+        # see ClassBoxes, which then retries a hierarchy or a narrowing below as before)
+        raise ClassBoxes()
     self.retry_hierarchy(msg)
     if len(self.ncand) > 0 and self.curfn is not None:
         # (an error that no join or hierarchy explains, in a function whose isinstance() tests of
@@ -97,6 +106,13 @@ def gen_save(self) -> Frame:
     fr.nonesites = self.nonesites
     fr.nonepending = self.nonepending
     fr.narrowed = self.narrowed
+    fr.preadn = self.preadn
+    fr.preadv = self.preadv
+    fr.preads = self.preads
+    fr.preadb = self.preadb
+    fr.pdoms = self.pdoms
+    fr.psess = self.psess
+    fr.pfield = self.pfield
     fr.lkk = self.lkk
     fr.branch = self.branch
     fr.modlevel = self.modlevel
@@ -105,6 +121,7 @@ def gen_save(self) -> Frame:
     fr.carried = self.carried
     fr.nonecmp = self.nonecmp
     fr.fieldcmp = self.fieldcmp
+    fr.rolex = self.rolex
     fr.cmpnode = self.cmpnode
     fr.stkkey = self.stkkey
     fr.reflcopies = self.reflcopies
@@ -153,6 +170,13 @@ def gen_restore(self, fr: Frame) -> None:
     self.nonesites = fr.nonesites
     self.nonepending = fr.nonepending
     self.narrowed = fr.narrowed
+    self.preadn = fr.preadn
+    self.preadv = fr.preadv
+    self.preads = fr.preads
+    self.preadb = fr.preadb
+    self.pdoms = fr.pdoms
+    self.psess = fr.psess
+    self.pfield = fr.pfield
     self.lkk = fr.lkk
     self.branch = fr.branch
     self.modlevel = fr.modlevel
@@ -161,6 +185,7 @@ def gen_restore(self, fr: Frame) -> None:
     self.carried = fr.carried
     self.nonecmp = fr.nonecmp
     self.fieldcmp = fr.fieldcmp
+    self.rolex = fr.rolex
     self.cmpnode = fr.cmpnode
     self.stkkey = fr.stkkey
     self.reflcopies = fr.reflcopies
@@ -187,6 +212,8 @@ def gen_add(self, i: Ins) -> None:
         self.place(self.label())
     if self.source_lines.enabled:
         i.line = self.line
+    if i.op in PATH_OPS:
+        self.path_event(i, PATH_OPS[i.op])  # (what a narrowed attribute path's facts do not outlast: unions.py)
     self.blk.code.append(i)
 
 def gen_put(self, i: Ins, k: int) -> None:
@@ -302,8 +329,6 @@ def gen_rt(self, name: str, ret: str, args: list[str], x: str = "") -> str:
             name = "pys_text_chr"
         elif name in TEXT_OPS:
             name = TEXT_OPS[name]
-    if self.unicode_audit and not self.rtmode and name.startswith("pys_str_") and name[8:] in UNICODE_AUDIT:
-        self.rt("pys_str_audit", "void", [args[0], f"ptr {self.sconst('str.' + name[8:])}"])
     if self.rtmode and "@" + name == self.curfn.ll:
         self.err(f"{name}() implements an operation that it uses: write it without that operation")
     k = self.runtime(name)
@@ -458,6 +483,11 @@ def gen_primitive(self, name: str, vals: list[Val]) -> Val:
     if ",".join([v.t for v in vals]) != sig[0]:
         self.err(f"_rt.{name}() takes ({sig[0].replace(',', ', ')}), not ({', '.join([typestr(v.t) for v in vals])})")
     a = [v.v for v in vals]
+    # (a str's length and bytes are tagged, and the length bounded, in runtime.py's module, which
+    # defines the metadata: lib/_pystachy_bytearray.py's module has the same operations untagged)
+    lenr = "length.range" if self.rtmode else ""
+    lenw = "length" if self.rtmode else ""
+    data = "bytes" if self.rtmode else ""
     if name == "wrap_add" or name == "wrap_sub" or name == "wrap_mul":
         return Val(self.scalar(name[5:], [Val(a[0], 'int'), Val(a[1], 'int')]), "int")
     if name == "udiv" or name == "urem":
@@ -474,8 +504,8 @@ def gen_primitive(self, name: str, vals: list[Val]) -> Val:
         return Val(self.scalar_cmp('eq', Val(a[0], '%ptr'), Val('null', '%ptr')), "bool")
     if name == "same":
         # same(a, i, b, j, n): within both, and n >= 0
-        n0 = self.mload('int', a[0], 'length.range')
-        n1 = self.mload('int', a[2], 'length.range')
+        n0 = self.mload('int', a[0], lenr)
+        n1 = self.mload('int', a[2], lenr)
         for p, lhs, rhs in [("<", a[4], "0"), (">", a[1], n0), (">", a[4], self.scalar('sub', [Val(n0, 'int'), Val(a[1], 'int')])),
                             (">", a[3], n1), (">", a[4], self.scalar('sub', [Val(n1, 'int'), Val(a[3], 'int')]))]:
             x = self.num_cmp(p, Val(lhs, "int"), Val(rhs, "int")) if p == "<" else self.int_ucmp(p, Val(lhs, "int"), Val(rhs, "int"))
@@ -485,7 +515,7 @@ def gen_primitive(self, name: str, vals: list[Val]) -> Val:
         return Val(self.scalar_cmp('eq', Val(self.rt('memcmp', 'i32', [f'ptr {p0}', f'ptr {p1}', f'i64 {a[4]}']), '%i32'), Val('0', '%i32')), "bool")
     if name == "find_byte":
         # find_byte(s, c, st, en): 0 <= st <= en <= len(s)
-        n0 = self.mload('int', a[0], 'length.range')
+        n0 = self.mload('int', a[0], lenr)
         for lhs, rhs in [(a[3], n0), (a[2], a[3])]:
             self.guard(self.int_ucmp(">", Val(lhs, "int"), Val(rhs, "int")).v, "IndexError: search out of range")
         self.guard(self.int_ucmp('>', Val(a[1], "int"), Val('255', "int")).v, "ValueError: byte must be in range(0, 256)")
@@ -495,12 +525,12 @@ def gen_primitive(self, name: str, vals: list[Val]) -> Val:
         return Val(self.select(self.scalar_cmp('eq', Val(f, '%ptr'), Val('null', '%ptr')), Val('-1', 'int'), Val(self.scalar('sub', [Val(d, 'int'), Val(str(STR_HEADER_SIZE), 'int')]), 'int')), "int")
     if name == "find_sub":
         # find_sub(h, n, st, en): 0 <= st <= en <= len(h)
-        n0 = self.mload('int', a[0], 'length.range')
+        n0 = self.mload('int', a[0], lenr)
         for lhs, rhs in [(a[3], n0), (a[2], a[3])]:
             self.guard(self.int_ucmp(">", Val(lhs, "int"), Val(rhs, "int")).v, "IndexError: search out of range")
         p0 = self.maddr('%byte', a[0], f"{self.scalar('add', [Val(a[2], 'int'), Val(str(STR_HEADER_SIZE), 'int')])}")
         p1 = self.maddr('%byte', a[1], str(STR_HEADER_SIZE))
-        m = self.mload('int', a[1], 'length.range')
+        m = self.mload('int', a[1], lenr)
         f = self.rt("memmem", "ptr", [f"ptr {p0}", f"i64 {self.scalar('sub', [Val(a[3], 'int'), Val(a[2], 'int')])}", f"ptr {p1}", f"i64 {m}"])
         d = self.scalar('sub', [Val(self.scalar_cast('ptrtoint', Val(f, '%ptr'), 'int'), 'int'), Val(self.scalar_cast('ptrtoint', Val(a[0], '%ptr'), 'int'), 'int')])
         return Val(self.select(self.scalar_cmp('eq', Val(f, '%ptr'), Val('null', '%ptr')), Val('-1', 'int'), Val(self.scalar('sub', [Val(d, 'int'), Val(str(STR_HEADER_SIZE), 'int')]), 'int')), "int")
@@ -515,13 +545,13 @@ def gen_primitive(self, name: str, vals: list[Val]) -> Val:
         # is CPython's MemoryError, as in runtime.c
         self.guard(self.int_ucmp('>', Val(a[0], "int"), Val(str(9223372036854775807 - STR_HEADER_SIZE - 1), "int")).v, "MemoryError: ")
         r = self.rt("pys_alloc_atomic", "ptr", [f"i64 {self.scalar('add', [Val(a[0], 'int'), Val(str(STR_HEADER_SIZE + 1), 'int')], 'nuw nsw')}"])  # zeroed: dict_hash, chars1 and NUL
-        self.mstore('int', a[0], r, 'length')
+        self.mstore('int', a[0], r, lenw)
         return Val(r, "str")
     # the others index a str: an unsigned compare with its length also rejects a negative index
-    n = self.mload('int', a[0], 'length.range')
+    n = self.mload('int', a[0], lenr)
     if name == "copy":
         # copy(dst, at, src, lo, n): dst[at:at + n] = src[lo:lo + n], within both
-        m = self.mload('int', a[2], 'length.range')
+        m = self.mload('int', a[2], lenr)
         for p, lhs, rhs in [("<", a[4], "0"), (">", a[1], n), (">", a[4], self.scalar('sub', [Val(n, 'int'), Val(a[1], 'int')])),
                             (">", a[3], m), (">", a[4], self.scalar('sub', [Val(m, 'int'), Val(a[3], 'int')]))]:
             x = self.num_cmp(p, Val(lhs, "int"), Val(rhs, "int")) if p == "<" else self.int_ucmp(p, Val(lhs, "int"), Val(rhs, "int"))
@@ -533,9 +563,9 @@ def gen_primitive(self, name: str, vals: list[Val]) -> Val:
     self.guard(self.int_ucmp('>=', Val(a[1], "int"), Val(n, "int")).v, "IndexError: string index out of range")
     p = self.maddr('%byte', a[0], f"{self.scalar('add', [Val(a[1], 'int'), Val(str(STR_HEADER_SIZE), 'int')])}")
     if name == "byte":
-        return Val(self.scalar_cast('zext', Val(self.mload('%byte', p, 'bytes'), '%byte'), 'int'), "int")
+        return Val(self.scalar_cast('zext', Val(self.mload('%byte', p, data), '%byte'), 'int'), "int")
     self.guard(self.int_ucmp('>', Val(a[2], "int"), Val('255', "int")).v, "ValueError: byte must be in range(0, 256)")
-    self.mstore('%byte', f"{self.scalar_cast('trunc', Val(a[2], 'int'), '%byte')}", p, 'bytes')
+    self.mstore('%byte', f"{self.scalar_cast('trunc', Val(a[2], 'int'), '%byte')}", p, data)
     return Val("null", "None")
 
 def gen_iop(self, op: str, a: str, b: str) -> str:
@@ -578,7 +608,9 @@ def gen_reboxes(self, a: str, b: str) -> bool:
             x = "int"  # (coerce narrows a promoting int item first, as 64-bit storage takes it: bigints.py)
         dyn = x != y and ((y == "dyn" and self.dyn_boxable(x) == "") or (x == "dyn" and self.dyn_boxable(y) == ""))
         big = y == "int+" and x == "int"  # (a promoting int holds it, bigints.py; the other way, coerce tests)
-        if not self.widens(x, y) and not (is_sopt(y) and x == unopt(y)) and not self.uboxes(x, y) and not self.reboxes(x, y) and not dyn and not big:
+        fs = x == EMPTYFS and is_fset(unopt(y))  # (frozenset() that nothing typed: an empty one of y's, coerce)
+        fs = fs or (x == "frozenset[dyn]" and x != y and is_fset(unopt(y)) and self.fset_unboxes(selem(unopt(y))))  # (one of Any values: a checked copy, coerce)
+        if not self.widens(x, y) and not (is_sopt(y) and x == unopt(y)) and not self.uboxes(x, y) and not self.reboxes(x, y) and not self.vtuple_fits(x, y) and not dyn and not big and not fs:
             return False
     return True
 
@@ -601,15 +633,26 @@ def gen_convert_at(self, v: Val, t: str, label: str) -> Val:
     return v
 
 def gen_converts(self, a: str, b: str) -> bool:
-    # does a value of type a take code to be one of type b (convert_in)
-    return self.boxes(a, b) or (is_sopt(a) and b == unopt(a)) or (b == "int+" and a == "int")
+    # does a value of type a take code to be one of type b (convert_in): also a runtime-length
+    # tuple whose items each become a box (coerce's pys_vtuple_box), which a join of tuples makes
+    return self.boxes(a, b) or (is_sopt(a) and b == unopt(a)) or (b == "int+" and a == "int") or (is_vtuple(a) and is_vtuple(unopt(b)) and is_sopt(targs(unopt(b))[0]) and targs(a)[0] == unopt(targs(unopt(b))[0]))
 
 def gen_boxes(self, a: str, b: str) -> bool:
     # is a value of type a one of type b once boxed: an int as an int | None, a member as a
-    # union, also as tuple items, and a value as a dynamic one (dynamic.py)
+    # union, also as tuple items, and a value as a dynamic one (dynamic.py); and a fixed tuple
+    # as a runtime-length one, a new tuple of its items (vtuple_fits)
     if b == "dyn":
         return a != "dyn" and self.dyn_boxable(a) == ""
-    return (is_sopt(b) and a == unopt(b)) or (b == BIGOPT and a == "int") or self.uboxes(a, b) or self.reboxes(a, b)
+    return (is_sopt(b) and a == unopt(b)) or (b == BIGOPT and a == "int") or self.uboxes(a, b) or self.reboxes(a, b) or self.vtuple_fits(a, b)
+
+def gen_vtuple_fits(self, a: str, b: str) -> bool:
+    # is fixed tuple type a one of runtime-length tuple type b (or b | None) once its items are
+    # copied into a new tuple (coerce's vtuple_make): items of b's item type, or that are one
+    # as they are or boxed; the empty tuple's too
+    if not is_tuple(a) or not is_vtuple(unopt(b)):
+        return False
+    et = targs(unopt(b))[0]
+    return all(x == et or self.widens(x, et) or self.boxes(x, et) for x in targs(a))
 
 def gen_convert_in(self, v: Val, t: str, blk: Blk) -> Val:
     # v as a t, at the end of block blk, which has ended (see convert_at): a test the conversion

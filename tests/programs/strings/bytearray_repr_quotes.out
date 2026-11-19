@@ -1,0 +1,7 @@
+bytearray(b"\'") b"'"
+bytearray(b'"') b'"'
+bytearray(b'\'"') b'\'"'
+bytearray(b"it\'s") b"it's"
+bytearray(b"\\\'") b"\\'"
+bytearray(b'a\nb\x00\xff') b'a\nb\x00\xff'
+[exit 0]

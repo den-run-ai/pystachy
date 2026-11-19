@@ -6,6 +6,7 @@ the model does not establish that the exporter or runtime implements that model.
 
 | Area | Enforced property | Current boundary |
 |---|---|---|
+| Typed-IR shape | Each instruction has the counts and fields of its row of the operation table, each block ends in its one terminator, labels name blocks, and each value number has one definition that every operand reading it names ([SHAPE.md](SHAPE.md)) | Python adapter and operation table, operand classification, dominance, types, effects and lowering |
 | Compiler stages | Completed stages form an ordered prefix; unfinished stages block new starts; lowering follows finalization and is terminal; successful inspection reports bind the snapshot to the terminal attempt ([PIPELINE.md](PIPELINE.md)) | Python state/exporter correspondence, stage body semantics and artifact authenticity |
 | Dynamic `Any` | Payload reads have matching type guards and compatible class layout prefixes | Exported layouts, runtime tag/boxing contracts and LLVM offsets |
 | Reference boxing | A non-null reference round trip preserves its address, mutable aliases and abstract tracing edge | Bounded C-AST adapter, physical layout correspondence and allocator/collector semantics |
@@ -98,7 +99,7 @@ and dependency review, not a formal proof of authorship.
 
 Current Lean imports are limited to `Std`, `Lean` and the local `PystachyBoundary`,
 `PystachyLayout`, `PystachyAlias`, `PystachyCompanion`, `PystachyAccess`, `PystachyInt`,
-`PystachyInline`, `PystachyStorage`, `PystachyGuards` and `PystachyPipeline` modules;
+`PystachyInline`, `PystachyStorage`, `PystachyGuards`, `PystachyPipeline` and `PystachyShape` modules;
 `lake-manifest.json`
 contains no external packages. The pinned Lean
 toolchain is an external development dependency with its own

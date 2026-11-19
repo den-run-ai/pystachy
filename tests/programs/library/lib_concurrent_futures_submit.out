@@ -1,0 +1,14 @@
+49 True False False False None
+a-b a+b x-y
+84
+7 6 -8 True
+y None
+None True ['w']
+5 5
+[1.5, 0.75]
+4 ABC
+49 49 None
+True True True False True
+<Future at   state=finished returned int>
+ state=finished returned NoneType> returned str> returned Point>
+[exit 0]

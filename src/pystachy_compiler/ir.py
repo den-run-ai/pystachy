@@ -1,6 +1,7 @@
-"""Ir component of the self-hosting Pystachy compiler."""
+"""Typed IR records of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.specs import FXALL, VALUE_AT
+from src.pystachy_compiler.symbols import FnInfo
 from src.pystachy_compiler.syntax import Node
 
 
@@ -31,6 +32,113 @@ class Val:
         return self
 
 
+# What an operand's value (Val.v) may be, by kind (operand_kind): a value an instruction of the
+# function defines (%t<n>), a parameter (%a<n>, its numeric identity companion %aid<n>, or the
+# identity result %idret), a slot's register (slot_register: %<name>.<n>), a symbol of the module
+# (@<name>), a constant (an int, a decimal float, true, false, null or undef), or one of three
+# constant expressions over a symbol or a float's bits (constant_expression). The set is closed:
+# the IR check rejects any other spelling, so an operand holds no instruction text. The
+# spellings are still LLVM's, which lowering prints as they are.
+OPERAND_VALUE = 0
+OPERAND_PARAM = 1
+OPERAND_SLOT = 2
+OPERAND_GLOBAL = 3
+OPERAND_CONST = 4
+OPERAND_EXPR = 5
+OPERAND_KINDS: list[str] = ["value", "param", "slot", "global", "const", "expr"]
+
+
+def digits(v: str, lo: int, hi: int) -> bool:
+    # v[lo:hi] is one decimal digit or more
+    if lo >= hi:
+        return False
+    for j in range(lo, hi):
+        c = ord(v[j])
+        if c < 48 or c > 57:
+            return False
+    return True
+
+
+def symbol_end(v: str, lo: int) -> int:
+    # where the symbol @<name> that starts at v[lo] ends, or -1: its name is letters, digits
+    # and _ . $ -
+    if lo >= len(v) or v[lo] != "@":
+        return -1
+    j = lo + 1
+    while j < len(v):
+        c = ord(v[j])
+        if not ((48 <= c <= 57) or (65 <= c <= 90) or (97 <= c <= 122) or c == 95 or c == 46 or c == 36 or c == 45 or c >= 128):
+            break
+        j += 1
+    return j if j > lo + 1 else -1
+
+
+def integer_end(v: str, lo: int) -> int:
+    # where the decimal integer that starts at v[lo] ends, or -1
+    j = lo + 1 if lo < len(v) and v[lo] == "-" else lo
+    k = j
+    while k < len(v) and 48 <= ord(v[k]) <= 57:
+        k += 1
+    return k if k > j else -1
+
+
+def constant_expression(v: str) -> bool:
+    # ptrtoint (ptr @G to i64), ptrtoint (ptr getelementptr (i8, ptr @G, i64 N) to i64): a
+    # constant's address, or an address inside it, as a container slot's bits; and
+    # bitcast (i64 N to double): a float that has no decimal spelling, by its bits
+    if v.startswith("bitcast (i64 "):
+        j = integer_end(v, 13)
+        return j > 0 and v[j:] == " to double)"
+    if v.startswith("ptrtoint (ptr getelementptr (i8, ptr "):
+        j = symbol_end(v, 37)
+        if j < 0 or not v.startswith(", i64 ", j):
+            return False
+        j = integer_end(v, j + 6)
+        return j > 0 and v[j:] == ") to i64)"
+    if v.startswith("ptrtoint (ptr "):
+        j = symbol_end(v, 14)
+        return j > 0 and v[j:] == " to i64)"
+    return False
+
+
+def operand_kind(v: str) -> int:
+    # the kind of an operand's value (OPERAND_KINDS), or -1 if it has none
+    n = len(v)
+    if n == 0:
+        return -1
+    c = ord(v[0])
+    if c == 37:
+        if n > 2 and v[1] == "t" and digits(v, 2, n):
+            return OPERAND_VALUE
+        if (n > 2 and v[1] == "a" and digits(v, 2, n)) or (v.startswith("%aid") and digits(v, 4, n)) or v == "%idret":
+            return OPERAND_PARAM
+        j = n
+        while j > 0 and 48 <= ord(v[j - 1]) <= 57:
+            j -= 1
+        return OPERAND_SLOT if j < n and j >= 3 and v[j - 1] == "." else -1
+    if c == 64:
+        return OPERAND_GLOBAL if symbol_end(v, 0) == n else -1
+    if v == "true" or v == "false" or v == "null" or v == "undef":
+        return OPERAND_CONST
+    j = integer_end(v, 0)
+    if j == n:
+        return OPERAND_CONST
+    if j > 0 and v[j] == "." and j + 1 < n:
+        # a decimal float: digits, a point, digits, and an exponent if it has one
+        k = j + 1
+        while k < n and 48 <= ord(v[k]) <= 57:
+            k += 1
+        if k == j + 1:
+            return -1
+        if k == n:
+            return OPERAND_CONST
+        if v[k] == "e" and k + 1 < n:
+            k += 2 if v[k + 1] == "+" or v[k + 1] == "-" else 1
+            return OPERAND_CONST if digits(v, k, n) else -1
+        return -1
+    return OPERAND_EXPR if constant_expression(v) else -1
+
+
 class Data:
     # Immutable module data: string bytes, callable/exception references, constant tuple slots
     # (whose type its text is), or pointer-free scalar slots copied into fresh lists.
@@ -41,207 +149,6 @@ class Data:
         self.text = ""
         self.refs: list[str] = []
         self.items: list[Val] = []  # typed constant slots; listdata permits only int/float/bool
-
-
-class IterArg:
-    # A consumer's next argument: evaluate it after its iterator is constructed, before traversal.
-    # Capture keeps the node's children as original values instead of storing them in a tuple,
-    # whose numeric slots do not retain the identity of a consumer's default argument.
-    # With split, a label, there is none: the code after the iterator is constructed goes on at
-    # split, and the traversal waits at trav for a branch to it (the consumer's turn to iterate).
-    def __init__(self, node: Node):
-        self.node = node
-        self.value = Val("", "")
-        self.capture = False
-        self.values: list[Val] = []
-        self.split = ""
-        self.trav = ""
-
-
-class Reduce:
-    # sum(), min() or max() of a generator, whose items are added or compared as they come
-    # (Gen.reduce): its accumulators are made as the item is compiled, once its type is known, and
-    # set at the IterArg's split, which runs after the iterator is made and before the traversal
-    def __init__(self, name: str, stt: str):
-        self.name = name
-        self.stt = stt  # sum's start: its type, or "" where none is given
-        self.t = ""  # the items' type
-        self.acc = ""  # the sum so far, or the item kept (or the list of the items, collect)
-        self.identity = ""  # min/max numeric selected item's box in a dynamic program graph
-        self.comp = ""  # a float sum's compensation, as runtime.c's fsum keeps it (Neumaier's)
-        self.first = ""  # no item yet: min and max, and a float sum from an int start
-        self.collect = False  # min() or max() of items runtime.c compares (pys_list_minmax)
-        # a sum of a union's numbers (Gen.sum_union_item): acc the int sum, facc the float sum,
-        # isf whether a float came (CPython's float phase, which comp compensates)
-        self.facc = ""
-        self.isf = ""
-        self.phase = ""  # dynamic sum: in-range int, compensated float, or generic addition
-
-
-class SetArg:
-    # An argument of a set method that takes several iterables, evaluated with the others before
-    # the method iterates any: v, the value of an iterable, or gen, a generator expression whose
-    # iterator was made then (arg split), whose traversal starts at arg.trav and comes back to back.
-    def __init__(self, v: Val, gen: Node):
-        self.v = v
-        self.gen = gen
-        self.arg = IterArg(gen)
-        self.back = ""
-
-
-class SeqStart:
-    # The state of a for loop's iterators (Gen.for_seq), each taken when the iterator is made, as
-    # CPython's records it: a sequence's length then (used), and the position it reads next (st):
-    # a dict's or a set's slot, a list's or a str's length for reversed() (else unused).
-    def __init__(self) -> None:
-        self.st: list[str] = []
-        self.used: list[str] = []
-
-
-class FmtArgs:
-    # The arguments of a str.format() call with a constant format (Gen.str_format), evaluated:
-    # the positional ones (pos), then a list of those that a list's * gives at run time (rest),
-    # the keywords by name (kwn, kwv) and a dict that ** gives (kd); format_map()'s mapping is
-    # kd, with mapping set. auto: CPython's AutoNumber, its state (0 none yet, 1 automatic,
-    # 2 manual) and the next automatic index.
-    def __init__(self, who: str) -> None:
-        self.who = who
-        self.pos: list[Val] = []
-        self.rest = Val("", "")
-        self.kwn: list[str] = []
-        self.kwv: list[Val] = []
-        self.kd = Val("", "")
-        self.mapping = False
-        self.auto: list[int] = [0, 0]
-
-
-class FnInfo:
-    def __init__(self, name: str, ll: str, node: Node, cls: str):
-        self.name = name
-        self.ll = ll
-        self.node = node
-        self.cls = cls
-        self.scalar_args = False  # closed body permits eliding unreturned parameter boxes
-        self.scalar_only = False  # numeric_proof: no identity observations except returned aliases
-        self.idnames: dict[str, bool] = {}  # numeric locals/parameters whose objects can leave
-        self.params: list[str] = []
-        self.ptypes: list[str] = []
-        self.defaults: list[Node] = []
-        self.dglob: list[str] = []  # global holding a default evaluated at def time, or ""
-        self.uflags: dict[str, bool] = {}  # locals some read may find unassigned
-        self.ret = "None"  # "" while a template's function is being compiled, before its first return
-        self.mod = ""  # the dotted name of its module ("" for the main program)
-        # the identity policy of a closure, generator expression or Callable adapter: that of the
-        # code that made it ("-": its module's or its class's, Gen.fn_home)
-        self.home = "-"
-        self.npos = -1  # how many parameters may be passed by position (-1: all; the rest are keyword-only)
-        self.posonly = 0  # how many may only be passed by position
-        # templates: a module-level function with an unannotated parameter, compiled per call for
-        # the argument types (ptypes "" where unannotated) into the functions in insts
-        self.generic = False
-        self.void_default = False  # newly inferred concrete signature: recursion may retain its old None contract
-        self.insts: dict[str, FnInfo] = {}
-        self.dtypes: list[str] = []  # the type of each default value evaluated at def time
-        self.bad = ""  # why a template cannot be compiled (it is an error only if a call needs it)
-        self.infer = False  # a template's function: its first return statement decides its return type
-        self.rctx = ""  # a caller's result context, only for fresh return displays and forwarding calls
-        self.rsoft = False  # a comparison hint retains the original result-inference policy
-        self.rlocals: list[str] = []  # proven straight-line aliases forwarding a fresh result
-        self.noret = False  # a template's function that has no return and cannot end (it raises, or loops)
-        self.inst = False  # a template's function, compiled for one list of argument types
-        self.cmprebind = ""  # native reference union for a comparison operand rebound across control flow
-        self.cmpops = False  # isolated comparison helpers raise guaranteed builtin TypeErrors at runtime
-        self.cmptypes: dict[str, str] = {}  # guarded comparison missing-read layouts, inherited by isolated helper specializations
-        self.cmpfields = ""  # a structural comparison adapter's canonical field types; missing reads raise at their source position
-        self.ikey = ""  # (an instance: its key in its template's insts, which joins' keys name it by: Gen.fnkey)
-        self.lastikey = ""  # (a template: the key of the instance its last call compiled to)
-        # a template that returns its own TypeVar (def accept(self, v: Visitor[T]) -> T): that
-        # TypeVar, and the parameters whose annotation G[..., T, ...] names it (their indexes, G,
-        # and T's position), which an argument of a class deriving from G[X, ...] binds (tv_bound)
-        self.tvret = ""
-        self.tvbparams: list[int] = []
-        self.tvbclass: list[str] = []
-        self.tvbpos: list[int] = []
-        self.vararg = -1  # the index of a template's *args parameter (a tuple of the extra arguments), or -1
-        self.varelem = ""  # its annotation (the type of each extra argument), or ""
-        self.kwarg = -1  # the position of its **kwargs parameter, which a template's call gives a record of the extra keyword arguments (kw[...])
-        self.kwelem = ""  # its annotation (the type of each extra keyword argument), or ""
-        self.vartup = ""  # *args: *Ts, of a specialization of a generic class: the tuple type args is (each call passes its items)
-        self.stk = -1  # 1: a call may make its *args tuple in the caller's frame (Gen.stack_ok); -1 not yet known
-        self.stknames: dict[str, bool] = {}  # then *args and the locals assigned it, which may hold that tuple
-        self.keyread = -1  # 1: it only reads its index key (Gen.key_read): o[i, j] may make that tuple in its frame; -1 not yet known
-        self.export = False  # runtime mode: a pys_* function defined under its C name, for runtime.c and programs
-        self.extern = False  # runtime mode: a function whose body is `...`, declared under its C name and defined in C
-        self.lib = ""  # @ffi.extern's library ("" the process's own)
-        self.csym = ""  # and its C symbol
-        self.pyexport = False  # @ffi.export: a function an extension module (pystachy ext) gives CPython
-        self.iters = False  # an __iter__ that returns an Iterator[T]: ret is the list[T] it steps through (see iter_ret)
-        self.synthetic = False  # a dataclass's method that the compiler writes (Gen.synth), not the program
-        self.deco = ""  # a method's @staticmethod or @classmethod (whose cls names the class), or "": it takes self
-        self.nullable_self = False  # explicit C.m(o, ...): o may be None; checks belong to the body
-        self.prop = False  # a @property getter: an attribute read calls this instance method
-        # a property's @name.setter or @name.deleter ("setter", "deleter"; its methods key is
-        # name.setter): an assignment or del of the attribute calls it; accof: what the decorator
-        # names the property by, name or Base.name
-        self.acc = ""
-        self.accof = ""
-        self.clsuse = False  # a class method that uses cls, which names the class that defines it (see cls_bound)
-        self.orig = node  # and then its immutable def before cls was renamed (shared by inherited methods)
-        self.pending = False  # inherited class method: node shares orig's body until materialize()
-        # a template's function: the parameters whose arguments are objects known not to be None
-        # (a new object, self), which its isinstance(), hasattr() and "is None" tests read as such
-        self.nnp: dict[str, bool] = {}
-        # a comparison method (__eq__, __lt__, ...) that returns NotImplemented (Gen.decline): mayd
-        # is whether its body may (-1 not read yet, see may_decline), declines whether compiled
-        # code of it does, and plain where a call that takes its result as it is was compiled
-        self.mayd = -1
-        self.declines = False
-        self.plain = ""
-        # the parameters annotated Callable[[A, B], C] with C a class template: an argument that is
-        # a function is that Callable of the specialization it returns (see pat_arg)
-        self.pats: dict[int, Node] = {}
-        self.anys: list[str] = []  # the parameters annotated typing.Any, "" its return: left unannotated (see declare_fn)
-        self.clo = -1  # a closure's function (a def or lambda inside a function): its Gen.closures position
-        # a generator function (a def whose own body yields): a call makes a generator object, an
-        # LLVM coroutine handle of type gen[Y] (ret; "" while a template's first yield decides Y),
-        # and runs none of the body (docs/internals.md#generators)
-        self.gen = False
-        self.gret = ""  # its return value's type (return v, which yield from gives): "" until a return decides it
-        self.gretinfer = False  # no return-value annotation, or Any in Generator[Y, S, R]'s R
-        self.gsend = "None"  # what send() sends it (Generator[Y, S, R]'s S): its yields' values are S | None
-        self.gclose = False  # closing it while it is suspended may run its code: a yield in try, with or yield from
-        self.gwith = False  # a yield inside a with block: its unwind actions are set aside while it is suspended
-        self.gtry = False  # a try statement: the exception being handled is its resumer's while it is suspended
-        # a generator expression's (Gen.genexp_value) whose first iterable is a generator that only it
-        # holds, which this function made: its loop over that iterable (.0) owns it
-        self.gfirst: FnInfo | None = None
-
-
-class Closure:
-    # a def or lambda inside a function, as one function (an instance) compiles it (Gen.closure). Its
-    # value, of type fn[c:<position in Gen.closures>:<qualified name>], points to an env: the cells of
-    # the variables it takes from the functions around it, which they keep those variables in, then
-    # the default values that are no constants, evaluated where it is defined
-    def __init__(self, f: FnInfo, name: str, qual: str):
-        self.f = f  # its function: a template whose first parameter (.env) is the env
-        self.name = name  # its __name__: the def's name, or <lambda>
-        self.qual = qual  # its __qualname__: outer.<locals>.name
-        # the __name__ and __qualname__ that functools.wraps() gives it ("": its own), or why
-        # they are not known as Pystachy compiles (wunknown), where reading them is an error;
-        # name and qual stay its code's, which messages and its closures' names show
-        self.wname = ""
-        self.wqual = ""
-        self.wunknown = ""
-        self.t = ""  # its type
-        self.caps: list[str] = []  # the variables it takes, in the env's order
-        self.ctypes: list[str] = []  # their types ("None": a parameter whose argument is None, held by no cell)
-        self.defs: list[int] = []  # the parameters whose defaults the env holds after the cells
-        # a lambda's: the names an import of the function around it binds in a try statement that it
-        # reads (lambda_flags), whose flags' cells the env holds after the defaults
-        self.iflags: list[str] = []
-        # the variables it takes that a closure assigns (nonlocal), which a test does not narrow: a
-        # call may change them
-        self.nlw: dict[str, bool] = {}
 
 
 NONUMS: list[int] = []
@@ -380,19 +287,6 @@ class Try:
         self.exit = ""  # where the normal path goes on: the copy of its finally block starts there
 
 
-class StopCatch:
-    # The handler of the StopIteration that a loop's __next__ calls (or next(it, default)'s)
-    # raise at the end of the items (Gen.stop_catch): the try's mark and the exception being
-    # handled, taken before the first call, the slot its landing block stores the exception in,
-    # that block's label, and its try's shape (whose body is the first call's block)
-    def __init__(self, mark: Val, old: str, slot: str, landing: str):
-        self.mark = mark
-        self.old = old
-        self.slot = slot
-        self.landing = landing
-        self.tr = Try("")
-
-
 class IFn:
     # one compiled function: a function, a method, a module's code, a helper or a template's function
     def __init__(self, f: FnInfo):
@@ -509,143 +403,3 @@ class Values:
                 elif how == 3:
                     for r in i.r:
                         self.at[r] = j * self.stride + x
-
-
-class Exit:
-    # what leaving a block through break, continue or return first does (Gen.exits)
-    def __init__(self, kind: str, v: str, handler: str):
-        # "with": close the file v; "handler": restore v as the exception being handled (and unbind
-        # name); "finally": run body, as where its try statement is: in nloops loops and nexcs
-        # except clauses. It runs under handler, the landing block around the construct
-        self.kind = kind
-        self.v = v
-        self.handler = handler
-        self.name = ""
-        self.body: list[Node] = []
-        self.nloops = 0
-        self.nexcs = 0
-        self.entry = ""  # a finally block compiled once (Gen.try_): where it starts, ""  if each way out has a copy
-        self.sel = ""  # the slot of the way out it goes on to, an index into conts
-        self.conts: list[str] = []
-
-
-class Frame:
-    # the code generator's state for one function, saved while it compiles another
-    def __init__(self, curfn: FnInfo, fn: IFn, blk: Blk):
-        self.fn = fn
-        self.blk = blk
-        self.ltype: dict[str, str] = {}
-        self.lreg: dict[str, str] = {}
-        self.gdecl: dict[str, bool] = {}
-        self.assigned: dict[str, bool] = {}
-        self.compvars: dict[str, int] = {}
-        self.loops: list[Loop] = []
-        self.exits: list[Exit] = []
-        self.wdepth: list[int] = []
-        self.handler = ""
-        self.excs: list[Val] = []
-        self.shadows: list[list[str]] = []
-        self.lcs: list[str] = []
-        self.lct: list[str] = []
-        self.lcsoft: list[bool] = []
-        self.ret = ""
-        self.retann = False
-        self.nn: dict[str, bool] = {}
-        self.dynints: dict[str, bool] = {}
-        self.selfname = ""
-        self.uflags: dict[str, bool] = {}
-        self.lflag: dict[str, str] = {}
-        self.iflag: dict[str, str] = {}
-        self.appends: dict[str, bool] = {}
-        self.owned: dict[str, str] = {}
-        self.idbox: dict[str, str] = {}
-        self.idstores: dict[str, int] = {}
-        self.cells: dict[str, str] = {}
-        self.nlw: dict[str, bool] = {}
-        self.nonevars: dict[str, int] = {}
-        self.nonesites: dict[str, list[Node]] = {}
-        self.nonepending: dict[str, bool] = {}
-        self.narrowed: dict[str, str] = {}
-        self.lkk: dict[str, str] = {}
-        self.branch = 0
-        self.modlevel = False
-        self.lenient = False
-        # the state of the operation that the function was compiling when it compiled another,
-        # which that function must neither see nor change (#822): dry()'s depth, a return's value
-        # while leave() compiles finally blocks, the comparison with None and the lookup key being
-        # compiled, the copies unrolled loops make and the expression statement
-        self.drying = 0
-        self.carried = Val("", "")
-        self.nonecmp = False
-        self.fieldcmp = False
-        self.cmpnode = Node("", "", 0)
-        self.stkkey = Node("", "", 0)
-        self.reflcopies = 1
-        self.stmtexpr: Node | None = None
-        self.dmemo: list[Node] = []
-        self.dmemot: list[str] = []
-        self.n = 0
-        self.cur = ""
-        self.term = False
-        self.line = 0
-        self.curfn = curfn
-
-
-class ClassInfo:
-    def __init__(self, name: str, node: Node):
-        self.name = name
-        self.node = node
-        self.fields: list[str] = []
-        self.fields_ready = False  # declare_fields prepared this declaration; specializations copy its fields
-        self.fields_preparing = False  # recursive class-attribute annotations retain their provisional path
-        self.init_only = False  # only constructor code specializes; annotated fields keep one class layout
-        self.fpos: dict[str, int] = {}  # field -> its index in fields (and in the struct)
-        self.ftypes: dict[str, str] = {}
-        self.fdefault: dict[str, Node] = {}
-        self.fnone: dict[str, Node] = {}  # field -> the value of __init__ that gave it its first value, None (Gen.none_field)
-        self.fguess: dict[str, bool] = {}  # the fields whose type __init__'s values gave them (not annotations: Gen.join_hint)
-        self.slots: list[str] = []  # literal __slots__, including inherited slots
-        self.slotlimit = False  # every ordinary base and this class omit an instance dict
-        self.fglob: dict[str, str] = {}
-        self.fextra: dict[str, bool] = {}  # statically reserved comparison writes, absent until assigned
-        self.fflag: dict[str, int] = {}  # field -> index of its "is assigned" flag in the struct
-        self.fbox: dict[str, int] = {}  # numeric field -> its companion identity-box index
-        self.nbox = 0  # own companion boxes after the assignment flags
-        self.fsure: dict[str, bool] = {}  # the flagged fields that no read finds unassigned (hasattr tests them)
-        self.methods: dict[str, FnInfo] = {}
-        self.mod = ""
-        self.bad = ""  # why a class of an imported module cannot be compiled: an error where it is used
-        self.hook = ""  # the same for a special method Pystachy never calls (UNCALLED): its class statement compiles
-        self.excluded = False  # bad_class: it has no objects, and dispatch on a base's class tag leaves it out
-        self.kwonly = False  # @dataclass(kw_only=True): its __init__ takes the fields by keyword only
-        self.dcopts: dict[str, bool] = {}  # @dataclass(...)'s other options that differ from their defaults (frozen, order, no-eq, ...: dc_args)
-        # dataclasses.field(...)'s options of each field that differ from their defaults
-        # (no-init, no-repr, no-compare, kw_only), and the default_factory of those that have one
-        self.fopts: dict[str, dict[str, bool]] = {}
-        self.factory: dict[str, Node] = {}
-        # its single base (a class of the program or a builtin exception class), and the
-        # builtin exception class it derives from through it ("" for an ordinary class)
-        self.base = ""
-        self.role = ""  # a fieldless secondary base, inherited along the primary chain
-        self.isrole = False  # some class names this root as its secondary base
-        self.overlaps: list[str] = []  # unrelated bases with a common concrete subclass
-        self.exc = ""
-        self.excsecond = ""  # additional builtin exception ancestry; no fields or methods
-        self.tag = 0  # ordinary inheritance: the object's concrete class; zero outside a hierarchy
-        self.nflag = 0  # the "is assigned" flags at the end of its struct (its own fields')
-        self.leak = False  # its __init__ lets self escape before it ends
-        self.flowed = False  # fl_fields has decided its flags
-        # a class template (an __init__ parameter without an annotation): its specializations,
-        # named by the types its fields get (see specialize); a specialization: its template
-        self.specs: dict[str, str] = {}
-        self.nspec = 0  # (the names it has given: one each, also to those found to be one already made)
-        self.origin = ""
-        self.speckey = ""  # (a specialization: the types of the call that made it, see Gen.stable)
-        # a specialization of a generic class (Gen.tparams): the types its type variables are bound
-        # to, by the call that made it (Gen.bind); a TypeVarTuple's is a tuple type of its types
-        self.tvars: dict[str, str] = {}
-        # a specialization of a class that specializes on literal arguments (Gen.literal_class):
-        # its __init__'s parameters given literals, and its fields that hold constants, as the
-        # literal nodes of their values (see Gen.const_of)
-        self.lits: dict[str, Node] = {}
-        self.fconst: dict[str, Node] = {}
