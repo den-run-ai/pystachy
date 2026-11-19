@@ -1,0 +1,24 @@
+== PYSTACHY_JIT_CPU=generic: listguard's copy of the distance loop (llc -O2 of the JIT's optimized module)
+.LBB6_118:                              # %L297.i
+                                        #   Parent Loop BB6_56 Depth=1
+                                        #     Parent Loop BB6_61 Depth=2
+                                        # =>    This Inner Loop Header: Depth=3
+	movsd	(%r10,%rbx,8), %xmm1            # xmm1 = mem[0],zero
+	subsd	(%r11,%rbx,8), %xmm1
+	mulsd	%xmm1, %xmm1
+	addsd	%xmm1, %xmm0
+	incq	%rbx
+	cmpq	%rdx, %rbx
+	jl	.LBB6_118
+== PYSTACHY_JIT_CPU=native: listguard's copy of the distance loop (llc -O2 of the JIT's optimized module)
+.LBB6_122:                              # %L297.i
+                                        #   Parent Loop BB6_59 Depth=1
+                                        #     Parent Loop BB6_64 Depth=2
+                                        # =>    This Inner Loop Header: Depth=3
+	vmovsd	(%r10,%rbx,8), %xmm1            # xmm1 = mem[0],zero
+	vsubsd	(%r11,%rbx,8), %xmm1, %xmm1
+	vmulsd	%xmm1, %xmm1, %xmm1
+	vaddsd	%xmm1, %xmm0, %xmm0
+	incq	%rbx
+	cmpq	112(%rsp), %rbx                 # 8-byte Folded Reload
+	jl	.LBB6_122

@@ -167,3 +167,37 @@ Five more drafts. Each JIT and listguard draft stacks on the one before it: #154
   `main` in the AOT build. UMAP's edge loop (461 ops) stays over the 400-op limit; with 800 the copy
   left its AOT layout unchanged (`var-umap-ops.json`: 0.997×), so the checks there cost little next
   to its `pow` calls and data-dependent reads.
+
+## All drafts together, against Numba (19 November, night)
+
+A local merge (`2af26404`, not pushed) of main `d35417c9` (v0.6.0-rc.1) with #1442, #1468, #1477,
+#1575 (with #1540 and #1571) and #1578 (with #1569, #1570, #1576 and #1577); not #1579. Two drafts
+conflict with this main: #1442's `list.len` lowering moved into main's machine IR (`a4c7d778`),
+ported here as `all-drafts-2026-11-19/list-tbaa-on-machine-ir.diff`; #1468's driver and jitprobe
+conflicts took both sides. Built to a fixed point; every run printed the recorded output.
+`bench_all.py 5`: same probe, input and Numba 0.68.1 twins as above, CPU 1 of a Sapphire Rapids VM.
+
+| Variant | kNN s | Layout s | kNN / Numba strict | Layout / Numba twin | Layout / umap-learn |
+|---|---:|---:|---:|---:|---:|
+| JIT (default: the host's CPU) | 1.111 | 4.125 | 1.57 | 1.060 | 0.964 |
+| JIT, `PYSTACHY_JIT_CPU=generic` | 0.951 | 4.174 | 1.41 | 1.069 | 0.969 |
+| JIT, `PYSTACHY_JIT_OPT=2` | 0.967 | 4.106 | 1.45 | 1.041 | 0.954 |
+| AOT | 0.856 | 3.989 | 1.29 | 1.025 | 0.933 |
+| AOT, `PYSTACHY_CFLAGS=-march=native` | 0.947 | 4.053 | 1.38 | 1.038 | 0.944 |
+| Numba, strict / fastmath | 0.689 / 0.314 | 3.904 (twin) | 1 | 1 | |
+| umap-learn's kernel (float32) | | 4.306 | | | 1 |
+
+- **#1575 slows this kNN in the JIT.** `jitab.py 7`: kNN 1.19× (0.99 to 1.23) with the host's CPU,
+  layout 1.01×, the whole process 1.03×. The optimized IR differs only in its CPU attributes;
+  `llc -O2` of both (`knn-loop-asm.txt`): with `sapphirerapids` the loop around the distance loop
+  reloads 16 values from the stack (generic: 10), one of them the guarded copy's bound, on each of
+  its iterations (`cmpq 112(%rsp)`). The AOT difference did not repeat (`aot4.py 5`: generic 0.954,
+  native 0.951, `-march=sapphirerapids -mtune=generic` 0.950, `-mtune=sapphirerapids` 0.904); the
+  same generic executable took 0.82 to 1.02 s across the two runs.
+- **What is left.** The layout is within 3 to 6% of Numba's twin and faster than umap-learn's own
+  kernel. kNN's guarded distance loop has no checks (JIT: 7 instructions per element, not unrolled;
+  AOT: 19 per 4); around it, per pair, overflow and bounds checks remain (`loop_exits.py`), which
+  Numba's code does not make. Numba's fastmath reassociates the sum to vectorize it (0.314 s); Python's
+  left-to-right sum does not allow that, so no default can.
+- For scale, earlier today main (alpha.3) with the listguard drafts and no JIT drafts, JIT: kNN 2.49
+  s, layout 5.17 s (`gaps-2026-11-19/var-outer-umap.json`).
