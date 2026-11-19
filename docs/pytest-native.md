@@ -447,8 +447,9 @@ PYTHONPATH=ports PYSTACHY_PATH=ports python3 tools/pytest_native.py \
 ```
 
 The target checks original pytest outcomes, negative controls, fixture lifecycle,
-shared module state, native JIT/AOT, GC stress and a mixed `Any` fixture. It runs
-inside the existing x86-64 `hosted` CI job on code PRs, main pushes and manual runs.
+shared module state, native JIT/AOT, GC stress and a mixed `Any` fixture. It runs in
+existing x86-64 CI jobs: `opt-in` on code PRs, and `gc-aot-2` on main pushes and manual
+runs.
 The examples' JIT run uses the hosted compiler; `PYTEST_NATIVE_COMPILER="$PWD/pystachy"`
 gives their AOT build and the runner's own tests and controls a bootstrapped
 compiler, as CI does.
@@ -551,7 +552,7 @@ changed source hash fails qualification. Generated CPython always runs before
 the native modes, distinguishing extraction errors from compiler/library gaps.
 
 ```sh
-# Bundled sources, also checked offline in the x86-64 hosted CI job:
+# Bundled sources, also checked offline by make test-pytest-native in CI:
 python3 tools/pytest_native_upstream.py --suite fnmatch --suite textwrap \
   --compiler ./pystachy --json build/pytest-upstream-bundled.json
 
