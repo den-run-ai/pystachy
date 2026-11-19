@@ -1338,10 +1338,11 @@ def gen_dyn_xbody(self, c: str) -> None:
     a = self.read(mk("name", "a", line, []))
     b = self.read(mk("name", "b", line, []))
     nt = c in self.nts
-    if c == COMPLEXC:
-        # (lib's complex compares with numbers only: CPython's returns NotImplemented for any other
-        # value, whose own method then answers, as 2 lets pys_dyn_eq's dobj(b, a) do)
-        mine = self.dyn_test(b, ["int", "float", "bool", COMPLEXC])
+    if c == COMPLEXC or c == RANGEC:
+        # (lib's complex compares with numbers only, and its range with ranges: CPython's return
+        # NotImplemented for any other value, whose own method then answers, as 2 lets
+        # pys_dyn_eq's dobj(b, a) do)
+        mine = self.dyn_test(b, ["int", "float", "bool", COMPLEXC] if c == COMPLEXC else [RANGEC])
         cgo = self.label()
         cdecline = self.label()
         self.cbr(mine, cgo, cdecline)
@@ -2581,6 +2582,9 @@ def gen_dyn_isinst_types(self, c: Node) -> list[str]:
     if c.s == "complex" and COMPLEXC in self.classes:
         self.dyn_class_type(COMPLEXC)  # (the class of complex numbers, lib/_pystachy_complex.py: boxed as its objects)
         return [COMPLEXC]
+    if c.s == "range" and RANGEC in self.classes:
+        self.dyn_class_type(RANGEC)  # (the class of range objects, lib/_pystachy_range.py: boxed as its objects)
+        return [RANGEC]
     m = {"int": ["int", "bool"], "bool": ["bool"], "float": ["float"], "str": ["str"], "list": ["list[dyn]", "list[int]"], "dict": ["dict[dyn,dyn]"],
          "tuple": ["vtuple[dyn]"], "object": ["*"], "type": ["%class:type"]}
     if c.s in m:

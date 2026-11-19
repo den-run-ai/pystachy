@@ -378,6 +378,8 @@ Coverage in `tests/programs/inference/`: `dynany_generator_context.py`,
 
 `isinstance()` narrows an `Any` local or parameter to a builtin type or program
 class. A list test keeps the layout-aware dynamic reference described above.
+A boxed range passes `isinstance(x, range)`, alone or in a tuple or union of types,
+and narrows to a range (`tests/programs/inference/dynany_isinstance_range.py`).
 `isinstance(x, int)` retains the box because a bool also passes that test, but
 proves an int or bool payload for arithmetic and comparisons. Bool `&`, `|` and
 `^` with another bool, and `**`, stay dynamic because their result rules differ
@@ -754,7 +756,8 @@ else identity for `==` and `!=` and `TypeError` for an ordering; `!=` without `_
 `__eq__`. The program's `@o.x.<class>` helper runs the class's method with the other value as an
 `Any` argument (`tests/programs/inference/dynany_eq_other.py`), and a method that returns
 `NotImplemented` declines as one that is absent does
-(`tests/programs/inference/dynany_cmp_notimplemented.py`). A comparison method whose parameter is
+(`tests/programs/inference/dynany_cmp_notimplemented.py`). A range declines every value that is
+no range, as CPython's does (`tests/programs/inference/dynany_range_eq_other.py`). A comparison method whose parameter is
 `Any` takes any operand, also between typed objects of its class
 (`tests/programs/inference/dynany_eq_any_param.py`).
 
