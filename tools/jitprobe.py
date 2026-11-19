@@ -17,8 +17,9 @@ the runner executes shows -O2's GlobalOpt (main marked local_unnamed_addr, which
 does).
 The runtime's small functions that a
 loop calls (a list[float]'s reads and assignments, float division, math.sqrt(), shifts and int %)
-reach the module the runner executes inlined (jit_helpers, #705), with no copy left of them, and as
-calls with PYSTACHY_OPT=-jithelpers, both as CPython prints, under GC stress too.
+reach the module the runner executes inlined (jit_helpers, #705), with no copy left of them, while
+those of a function called once stay calls, marked noinline (all inlined with PYSTACHY_OPT=-jitloops),
+and as calls with PYSTACHY_OPT=-jithelpers, all as CPython prints, under GC stress too.
 """
 import argparse
 import os
@@ -133,9 +134,13 @@ def kernel(xs: list[float], ys: list[float], n: int, k: int) -> float:
         s += float((i << 3) >> 2)
     return s
 
+def report(xs: list[float]) -> float:
+    return math.sqrt(xs[2]) / xs[1]
+
 xs = [float(i % 13) for i in range(100)]
 ys = [float(i % 7) for i in range(100)]
 print(kernel(xs, ys, 100, len(sys.argv)))
+print(report(xs))
 for case in range(3):
     try:
         if case == 0:
@@ -149,6 +154,7 @@ for case in range(3):
         print(type(error).__name__, error)
 """
 HELPERS = ["pys_list_get", "pys_list_set", "pys_m_sqrt", "pys_fdiv", "pys_shl", "pys_shr", "pys_mod"]
+REPORTED = ["pys_list_get", "pys_m_sqrt", "pys_fdiv"]  # (what report(), called once, calls)
 
 
 def run(command, env):
@@ -391,18 +397,25 @@ def main():
                 if run(cmd + ["run", str(handler)], optimized) != handler_expected:
                     raise RuntimeError(f"{where}: PYSTACHY_JIT_OPT=2 values reaching an except clause differ")
                 print(f"{where}: PYSTACHY_JIT_OPT=2 runs -O2 and preserves argv, callback exceptions, coroutines, except-clause values and callbacks under GC stress")
-                # the runtime's small functions: inlined, as calls with PYSTACHY_OPT=-jithelpers (#705)
-                for setting, inline in [({}, True), ({"PYSTACHY_OPT": "-jithelpers"}, False), ({"PYSTACHY_GC_STRESS_PROGRAM": "1"}, True)]:
+                # the runtime's small functions: inlined where a loop calls them, everywhere with
+                # PYSTACHY_OPT=-jitloops, as calls with PYSTACHY_OPT=-jithelpers (#705)
+                for setting, left in [({}, REPORTED), ({"PYSTACHY_OPT": "-jitloops"}, []), ({"PYSTACHY_OPT": "-jithelpers"}, HELPERS),
+                                      ({"PYSTACHY_GC_STRESS_PROGRAM": "1"}, REPORTED)]:
                     capture.unlink(missing_ok=True)
                     if run(cmd + ["run", str(helpers)], chosen | setting) != helpers_expected:
                         raise RuntimeError(f"{where}: {setting}: the runtime's small functions' results or errors differ from CPython")
                     executed = capture.read_text()
-                    calls = [h for h in HELPERS if re.search(rf"\b(?:call|invoke)\b[^\n]*@{h}\(", executed)]
-                    if inline and (calls or "available_externally" in executed):
-                        raise RuntimeError(f"{where}: {setting}: the loop still calls {calls}, or a copy reached the JIT")
-                    if not inline and calls != HELPERS:
-                        raise RuntimeError(f"{where}: PYSTACHY_OPT=-jithelpers inlined {sorted(set(HELPERS) - set(calls))}")
-                print(f"{where}: {len(HELPERS)} small runtime functions inlined into a loop, also under GC stress, and called with PYSTACHY_OPT=-jithelpers")
+                    sites = re.findall(r"^  [^\n]*\b(?:call|invoke)\b[^\n]*@(pys_\w+)\(([^\n]*)", executed, re.MULTILINE)
+                    calls = [h for h in HELPERS if h in [name for name, _ in sites]]
+                    if calls != left or "available_externally" in executed:
+                        raise RuntimeError(f"{where}: {setting}: the module calls {calls}, not {left}, or a copy reached the JIT")
+                    groups = dict(re.findall(r"^attributes (#\d+) = \{([^\n]*)\}$", executed, re.MULTILINE))
+                    for name, rest in sites:
+                        group = re.search(r"\) (#\d+)", rest)
+                        if setting.get("PYSTACHY_OPT") != "-jithelpers" and name in HELPERS and (group is None or "noinline" not in groups[group[1]]):
+                            raise RuntimeError(f"{where}: {setting}: a call of {name} that a loop makes was not inlined: {rest}")
+                print(f"{where}: {len(HELPERS)} small runtime functions inlined into a loop, those of a function called once left calls "
+                      "(inlined with PYSTACHY_OPT=-jitloops), also under GC stress, and called with PYSTACHY_OPT=-jithelpers")
             for setting, invalid in [("PYSTACHY_JIT_CODEGEN", value) for value in ("", "1", "-O0", "0;false")] + \
                                     [("PYSTACHY_JIT_OPT", value) for value in ("", "0", "3", "O2")] + \
                                     [("PYSTACHY_JIT_LAUNCHER", value) for value in ("", "LLI", "lljit", "auto;lli")]:
