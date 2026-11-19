@@ -763,9 +763,19 @@ of another kind, as CPython's methods return `NotImplemented` for it: a deque ta
 bytearray takes bytearrays, and each mapping takes dicts and these mappings
 (`dynany_deque_eq_other.py`, `dynany_bytearray_eq_other.py`, `dynany_counter_eq_other.py`,
 `dynany_ordereddict_eq_other.py`, `dynany_defaultdict_eq_other.py` and
-`dynany_container_eq_mixed.py` in `tests/programs/inference/`). A mapping compared with a dict,
-or with one of these mappings of another kind or item type, still raises the unsupported-body
-`TypeError`, a limit that #803 tracks.
+`dynany_container_eq_mixed.py` in `tests/programs/inference/`).
+
+Two of these containers of one kind compare their items, each read in its own layout: deques
+of different item types, and a mapping with a dict or with a mapping of another class or item
+type. Two `OrderedDict`s also compare the order of their keys, and two `Counter`s their counts,
+a missing count being zero (`dynany_deque_eq_items.py`, `dynany_deque_two_types.py`,
+`dynany_mapping_eq_dict.py`, `dynany_mapping_eq_mixed.py` and `dynany_mapping_any_items.py` in
+`tests/programs/inference/`). The compiler emits these cases itself, behind exact `DynType`
+guards: it does not compile the library methods' bodies for an `Any` operand, which would call
+the operand's typed storage through a dispatcher. Item layouts that `==` does not pair in a
+module that opts in, such as a mapping of typed lists and a dict of `Any` values, still raise
+the unsupported-comparison `TypeError`, a limit that #803 tracks
+(`tests/deviations/dynany_mapping_eq_nested.py`).
 
 One whose parameter has no annotation, or
 `object`, is compiled for an `Any` operand there; where its body does not compile for one (a typed
