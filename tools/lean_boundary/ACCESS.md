@@ -80,7 +80,9 @@ Certificate inference retains the finite positive lower bounds requested by init
 constants and negative offsets. Thus a loop starting at 1 and advancing by 2 keeps
 `i >= 1` at the join of its initial and later iterations. Each proposed weakening
 is checked by the existing Lean rule; an invalid start or descending induction
-still fails the access proof.
+still fails the access proof. It derives no difference bound `a + k ≤ b` or upper
+bound weaker than one it knows: a cycle of an offset and an order (a copy of
+`range(i, i + 256)`) would otherwise derive weaker ones without end.
 
 The build checks 51 examples by kernel reduction: 16 shapes the compiler emits and 35
 corruptions that must fail: a signed test of a possibly negative index, a list write between a
