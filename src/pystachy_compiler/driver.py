@@ -36,6 +36,13 @@ LATE_INLINE = ("-force-remove-attribute=pys_new:optnone -force-remove-attribute=
                " -force-attribute=pys_new:alwaysinline")
 LATE_PASSES = "forceattrs,forceattrs,always-inline"
 
+# PYSTACHY_JIT_OPT=1 (the default): loop passes after the JIT tier's cleanup, for a program within
+# the inlining budget (JIT_INLINE). A range loop's step exits on overflow, though its header's test
+# (i < stop) already bounds it: correlated propagation drops that exit (SCCP and simplifycfg fold
+# what it leaves), so that the latch exits nowhere and loop-rotate rotates the loop; LICM then
+# hoists out of the rotated loop what each iteration reloads, such as a list's items pointer
+JIT_LOOPS = "function(correlated-propagation,sccp,simplifycfg,loop-mssa(loop-rotate,licm))"
+
 # Every hosted component contributes to runtime-cache identity and startup trust.
 COMPILER_SOURCES: list[str] = [
     'lib/_pystachy_cache.py',
@@ -802,10 +809,11 @@ def main() -> None:
             fail(f"PYSTACHY_JIT_CODEGEN: {codegen} is not 0 (-O0 code generation) or 2 (the default)", 0)
         # PYSTACHY_JIT_OPT=2: LLVM's -O2 pipeline over the program's module in place of the JIT's
         # cleanup, for a program whose loops run long enough to repay optimizing at each launch: a
-        # startup/execution tradeoff, opt-in as -O0 code generation is (#430)
+        # startup/execution tradeoff, opt-in as -O0 code generation is (#430). 0 keeps the cleanup
+        # without the default's loop passes (JIT_LOOPS)
         jitopt = os.getenv("PYSTACHY_JIT_OPT", "1")
-        if jitopt != "1" and jitopt != "2":
-            fail(f"PYSTACHY_JIT_OPT: {jitopt} is not 1 (the JIT's cleanup, the default) or 2 (LLVM's -O2 pipeline)", 0)
+        if jitopt != "0" and jitopt != "1" and jitopt != "2":
+            fail(f"PYSTACHY_JIT_OPT: {jitopt} is not 0 (the JIT's cleanup), 1 (with loop passes, the default) or 2 (LLVM's -O2 pipeline)", 0)
         # what runs the program (jit_launcher), read before the program cache, so that a hit rejects
         # what a run without it rejects
         runner = os.getenv("PYSTACHY_JIT_LAUNCHER", "auto")
@@ -1480,9 +1488,11 @@ def main() -> None:
         # code generation. The frontend still checks their bodies; external pys_obj_* dispatch
         # callbacks stay visible to the precompiled runtime (which this tier never inlines). A
         # program of up to JIT_INLINE lines of IR has its own functions inlined into their callers
-        # first, bottom-up (cgscc), each then cleaned up as before
+        # first, bottom-up (cgscc), each then cleaned up as before, and then its loops optimized
+        # (JIT_LOOPS) unless PYSTACHY_JIT_OPT=0
         clean = "function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)"
-        if ir.split("; pystachy source locations\n")[0].count("\n") <= jitinline:
+        small = ir.split("; pystachy source locations\n")[0].count("\n") <= jitinline
+        if small:
             clean = f"cgscc(inline,{clean})"
         # Recursion accounting helpers belong to the program module, even when the
         # runtime is a separate library. Inline only those explicitly marked helpers
@@ -1496,6 +1506,8 @@ def main() -> None:
             # coro-cleanup. A module without them keeps the pipeline above
             split = clean.replace("simplifycfg)", "simplifycfg,coro-elide),coro-split") if clean.startswith("cgscc(") else f"cgscc({clean},coro-split)"
             passes = f"coro-early,globaldce,always-inline,{split},coro-cleanup,globaldce"
+        if jitopt == "1" and small:
+            passes += "," + JIT_LOOPS
         if jitopt == "2":
             # PYSTACHY_JIT_OPT=2: LLVM's -O2 pipeline, as an AOT build runs over the program, but for
             # the runtime, which this tier still calls: it lowers coroutines itself, and its inliner
