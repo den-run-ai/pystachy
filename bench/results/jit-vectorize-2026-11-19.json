@@ -1,0 +1,81 @@
+{
+ "notes": "The JIT's default loop passes (#1540's JIT_LOOPS) against the same followed by JIT_VECTORIZE (instcombine, loop-vectorize, instcombine, simplifycfg), appended by an opt wrapper to the pipeline of #1540's tree (claude/dreamy-shannon-bb3cu1-jit-loop-passes at b148b2dd, main 8259611e plus #1540); this branch's driver runs the same passes. variants.py: interleaved rounds, rotating order, each run pinned to CPU 1 with taskset, PYSTACHY_PROGRAM_CACHE=0; every run's stdout is the first variant's. Wall seconds include JIT optimization and code generation. saxpy and scale run listguard's copy of y[i] = a * x[i] + y[i] and y[i] = x[i] * 3.0 over 4,000 items (in cache); stencil's copy keeps the overflow check of its index i - 1, an exit, and stays scalar. opt_seconds: the pipeline over captured JIT input modules, best of five, pinned. x86-64 (Intel Xeon @ 2.10GHz, 4 CPUs, shared host), LLVM 18.1.3; vectors of the module's target, SSE2's two doubles.",
+ "kernels": {
+  "saxpy": {
+   "timer": "wall",
+   "rounds": 7,
+   "args": [
+    "k/saxpy.py",
+    "4000",
+    "40000"
+   ],
+   "variants": {
+    "loops": {
+     "median": 0.14359,
+     "paired": 1.0
+    },
+    "loops+vec": {
+     "median": 0.1037,
+     "paired": 0.725
+    }
+   }
+  },
+  "scale": {
+   "timer": "wall",
+   "rounds": 7,
+   "args": [
+    "k/scale.py",
+    "4000",
+    "40000"
+   ],
+   "variants": {
+    "loops": {
+     "median": 0.11786,
+     "paired": 1.0
+    },
+    "loops+vec": {
+     "median": 0.09139,
+     "paired": 0.783
+    }
+   }
+  },
+  "stencil": {
+   "timer": "wall",
+   "rounds": 7,
+   "args": [
+    "k/stencil.py",
+    "4000",
+    "20000"
+   ],
+   "variants": {
+    "loops": {
+     "median": 4.77766,
+     "paired": 1.0
+    },
+    "loops+vec": {
+     "median": 4.70038,
+     "paired": 0.981
+    }
+   }
+  }
+ },
+ "opt_seconds": {
+  "umap_probe_8482_lines": {
+   "loops": 0.1263,
+   "loops+vec": 0.1437
+  },
+  "json_loads_12965_lines": {
+   "loops": 0.1209,
+   "loops+vec": 0.1366
+  },
+  "stencil_kernel": {
+   "loops": 0.0213,
+   "loops+vec": 0.0202
+  }
+ },
+ "sources": {
+  "saxpy": "import sys\nimport math\n\n\ndef fill(n: int, seed: int) -> list[float]:\n    out = [0.0] * n\n    x = seed\n    for i in range(n):\n        x = (x * 1103515245 + 12345) % 2147483648\n        out[i] = (x % 1000) / 250.0 + 0.5\n    return out\n\n\ndef ifill(n: int, seed: int) -> list[int]:\n    out = [0] * n\n    x = seed\n    for i in range(n):\n        x = (x * 1103515245 + 12345) % 2147483648\n        out[i] = x % 1000\n    return out\n\n\ndef kernel(a: float, x: list[float], y: list[float]) -> None:\n    for i in range(len(x)):\n        y[i] = a * x[i] + y[i]\n\n\ndef main() -> None:\n    n = int(sys.argv[1])\n    reps = int(sys.argv[2])\n    x = fill(n, 1)\n    y = fill(n, 2)\n    for r in range(reps):\n        kernel(0.5, x, y)\n    print(sum(y))\n\n\nmain()\n",
+  "scale": "import sys\nimport math\n\n\ndef fill(n: int, seed: int) -> list[float]:\n    out = [0.0] * n\n    x = seed\n    for i in range(n):\n        x = (x * 1103515245 + 12345) % 2147483648\n        out[i] = (x % 1000) / 250.0 + 0.5\n    return out\n\n\ndef ifill(n: int, seed: int) -> list[int]:\n    out = [0] * n\n    x = seed\n    for i in range(n):\n        x = (x * 1103515245 + 12345) % 2147483648\n        out[i] = x % 1000\n    return out\n\n\ndef kernel(xs: list[float], ys: list[float]) -> None:\n    for i in range(len(xs)):\n        ys[i] = xs[i] * 3.0\n\n\ndef main() -> None:\n    n = int(sys.argv[1])\n    reps = int(sys.argv[2])\n    x = fill(n, 1)\n    y = [0.0] * n\n    for r in range(reps):\n        kernel(x, y)\n    print(sum(y))\n\n\nmain()\n",
+  "stencil": "import sys\nimport math\n\n\ndef fill(n: int, seed: int) -> list[float]:\n    out = [0.0] * n\n    x = seed\n    for i in range(n):\n        x = (x * 1103515245 + 12345) % 2147483648\n        out[i] = (x % 1000) / 250.0 + 0.5\n    return out\n\n\ndef ifill(n: int, seed: int) -> list[int]:\n    out = [0] * n\n    x = seed\n    for i in range(n):\n        x = (x * 1103515245 + 12345) % 2147483648\n        out[i] = x % 1000\n    return out\n\n\ndef kernel(a: list[float], b: list[float]) -> None:\n    for i in range(1, len(a) - 1):\n        b[i] = (a[i - 1] + a[i] + a[i + 1]) * 0.25\n\n\ndef main() -> None:\n    n = int(sys.argv[1])\n    reps = int(sys.argv[2])\n    a = fill(n, 1)\n    b = [0.0] * n\n    for r in range(reps):\n        kernel(a, b)\n        kernel(b, a)\n    print(sum(a))\n\n\nmain()\n"
+ }
+}

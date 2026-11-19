@@ -14,8 +14,9 @@ passes to an except clause (critical edges split for -O0), coroutine lowering, G
 status and the PYSTACHY_TIMING record that names the runner. PYSTACHY_JIT_OPT=2, LLVM's -O2
 pipeline in place of the JIT's cleanup, keeps the same behavior under GC stress, and the module
 the runner executes shows -O2's GlobalOpt (main marked local_unnamed_addr, which the cleanup never
-does). The default's loop passes rotate a range loop (a *.lr.ph preheader), which
-PYSTACHY_JIT_OPT=0, the cleanup alone, leaves as lowered.
+does). The default's loop passes rotate a range loop (a *.lr.ph preheader) and vectorize a loop
+without exits (listguard's copy of an elementwise loop), which PYSTACHY_JIT_OPT=0, the cleanup
+alone, leaves as lowered.
 """
 import argparse
 import os
@@ -65,6 +66,16 @@ def loop_feedback(n: int) -> int:
 # (7 with the probe's two arguments: a bound known only at run time keeps the loop's guard, which
 # the default's loop-rotate splits off as a *.lr.ph preheader)
 print(loop_feedback(len(sys.argv) + 4))
+
+def doubled(xs: list[float], ys: list[float]) -> None:
+    for i in range(len(xs)):
+        ys[i] = xs[i] * 2.0
+
+# (listguard's copy of doubled's loop has no exits: the default's loop vectorizer runs it on vectors)
+halves = [0.5 * k for k in range(len(sys.argv) + 9)]
+twice = [0.0] * len(halves)
+doubled(halves, twice)
+print(twice)
 
 class Item:
     def __init__(self, x: int):
@@ -245,6 +256,9 @@ def main():
                 # names the preheader that loop-rotate splits off *.lr.ph)
                 if not re.search(r"^[\w.]+\.lr\.ph:", executed, re.MULTILINE):
                     raise RuntimeError(f"{where}: the default JIT pipeline rotated no loop (JIT_LOOPS)")
+                # (and vectorizes listguard's copy of doubled's loop, JIT_VECTORIZE)
+                if not re.search(r"fmul <[0-9]+ x double>", executed):
+                    raise RuntimeError(f"{where}: the default JIT pipeline vectorized no loop (JIT_VECTORIZE)")
                 # (the object's allocation: pys_alloc's in the frontend's IR, since the object holds a
                 # list: only an object that holds no reference may come from pys_new's marked call,
                 # which LLVM may delete, lowering's alloc_call. The JIT tier inlines the fast path of
@@ -364,7 +378,9 @@ def main():
                     raise RuntimeError(f"{where}: PYSTACHY_JIT_OPT=0 output/argv/callback exception differs")
                 if re.search(r"^[\w.]+\.lr\.ph:", capture.read_text(), re.MULTILINE):
                     raise RuntimeError(f"{where}: PYSTACHY_JIT_OPT=0 rotated a loop: the default's check proves nothing")
-                print(f"{where}: the default pipeline rotates loop_feedback's loop; PYSTACHY_JIT_OPT=0 keeps it as lowered")
+                if re.search(r"fmul <[0-9]+ x double>", capture.read_text()):
+                    raise RuntimeError(f"{where}: PYSTACHY_JIT_OPT=0 vectorized a loop: the default's check proves nothing")
+                print(f"{where}: the default pipeline rotates loop_feedback's loop and vectorizes doubled's; PYSTACHY_JIT_OPT=0 keeps them as lowered")
             for setting, invalid in [("PYSTACHY_JIT_CODEGEN", value) for value in ("", "1", "-O0", "0;false")] + \
                                     [("PYSTACHY_JIT_OPT", value) for value in ("", "3", "O2", "0;1")] + \
                                     [("PYSTACHY_JIT_LAUNCHER", value) for value in ("", "LLI", "lljit", "auto;lli")]:
