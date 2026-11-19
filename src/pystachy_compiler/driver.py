@@ -5,7 +5,7 @@ import sys
 import tempfile
 import time
 from src.pystachy_compiler import aot_runtime, cached_run, diagnostics, program_cache
-from src.pystachy_compiler.diagnostics import MAXNEST, RAW, ClassBoxes, NeedHandlers, NeedHierarchy, NeedSliceEH, Rejoin, fail
+from src.pystachy_compiler.diagnostics import MAXNEST, RAW, ClassBoxes, NeedHandlers, NeedHierarchy, NeedSliceEH, Rejoin, TupleBoxes, fail
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.lexer import Lexer, host_text
 from src.pystachy_compiler.loader import Loader
@@ -136,6 +136,10 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
     idfull = False
     idtry = True
     slice_eh = False
+    # A NamedTuple's objects are boxed as Any values in a program whose isinstance(x, tuple) tests
+    # were compiled for a tuple's box alone (TupleBoxes): the tests then accept those objects too
+    # and leave x an Any value (Gen.ntboxes)
+    ntboxes = False
     hierarchies: dict[str, bool] = {}
     # The files of modules that opt in to dynamic Any whose classes are read as class boxes, not
     # as typed class objects (Gen.class_value_static): each one whose typed reads a pass did not
@@ -147,6 +151,7 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
         g = Gen()
         g.ext = ext
         g.eh = slice_eh
+        g.ntboxes = ntboxes
         g.libdir = dirs[-1] if len(dirs) > 0 else ""
         g.prefix = host_text(os.path.realpath(dirs[-1] + "/..")) if len(dirs) > 0 else ""
         g.moddirs = [host_text(os.path.realpath(d)) for d in dirs]
@@ -193,8 +198,11 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
                 idfull = False
                 idtry = True
                 slice_eh = False
+                ntboxes = False
             elif isinstance(retry, NeedSliceEH):
                 slice_eh = True
+            elif isinstance(retry, TupleBoxes):
+                ntboxes = True
             elif g.idevent != "" and not idfull:
                 if idtry and len(g.idhint) > 0:
                     idtry = False  # retry today's dependency closure before full tracking
@@ -228,6 +236,7 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
             idfull = False
             idtry = True
             slice_eh = False
+            ntboxes = False
             hierarchies = {}
             clsany = {}
         finally:
