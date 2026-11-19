@@ -413,6 +413,17 @@ def ruleStep (facts : Facts) : Fact → Bool
       substituted facts (.entry e d)
   -- (a length is at most itself)
   | .lenGe n l => facts.contains (.len n l) || substituted facts (.lenGe n l)
+  -- (no execution reaches facts that contradict each other: a < b where a = b + k with k ≥ 0 or
+  -- b = a + k with k ≤ 0, or a ≥ k where a ≤ j < k; such as the first iteration of an empty
+  -- range loop, whose facts certificate inference closes before a back edge weakens them)
+  | .absurd => (facts.any fun f => match f with
+      | .lt a b => facts.any fun g => match g with
+          | .off x y k => (x == a && y == b && decide (0 ≤ k)) || (x == b && y == a && decide (k ≤ 0))
+          | _ => false
+      | .ge a k => facts.any fun g => match g with
+          | .atMost a' j => a' == a && decide (j < k)
+          | _ => false
+      | _ => false) || substituted facts .absurd
   | f => substituted facts f
 
 /-- One step of reasoning about sums: adding one value to both sides keeps an order, and lower
@@ -1126,7 +1137,39 @@ theorem step_sound {m : Mem} {facts : Facts} {goal : Fact} (wf : WF m)
   | found e d => exact substituted_sound known (by simpa [ruleStep] using derived)
   | cell o f v => exact substituted_sound known (by simpa [ruleStep] using derived)
   | sum a b c => exact substituted_sound known (by simpa [ruleStep] using derived)
-  | absurd => exact substituted_sound known (by simpa [ruleStep] using derived)
+  | absurd =>
+      simp only [ruleStep, Bool.or_eq_true] at derived
+      rcases derived with h | h
+      · simp only [List.any_eq_true] at h
+        obtain ⟨f, member, step⟩ := h
+        have holds := known f member
+        cases f with
+        | lt a b =>
+            simp only [List.any_eq_true] at step
+            obtain ⟨g, gMember, gStep⟩ := step
+            have gHolds := known g gMember
+            cases g with
+            | off x y k =>
+                simp only [Bool.or_eq_true, Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at gStep
+                rcases gStep with ⟨⟨rfl, rfl⟩, k0⟩ | ⟨⟨rfl, rfl⟩, k0⟩
+                · simp only [Fact.Holds] at holds gHolds ⊢
+                  omega
+                · simp only [Fact.Holds] at holds gHolds ⊢
+                  omega
+            | _ => simp at gStep
+        | ge a k =>
+            simp only [List.any_eq_true] at step
+            obtain ⟨g, gMember, gStep⟩ := step
+            have gHolds := known g gMember
+            cases g with
+            | atMost a' j =>
+                simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at gStep
+                obtain ⟨rfl, jk⟩ := gStep
+                simp only [Fact.Holds] at holds gHolds ⊢
+                omega
+            | _ => simp at gStep
+        | _ => simp at step
+      · exact substituted_sound known h
 
 theorem sumStep_sound {m : Mem} {facts : Facts} {goal : Fact}
     (known : Knows m facts) (derived : sumStep facts goal = true) : goal.Holds m := by
@@ -1980,6 +2023,17 @@ example : check ⟨downLoop.nodes.set 3 (.addChecked "e" "a" 0 4 12), 0⟩ downL
 /- A step up: the index leaves the bound the tests gave it. -/
 example : check ⟨downLoop.nodes.set 10 (.addChecked "t" "i" 1 11 12), 0⟩ downLoopCertificate = false := by
   decide
+
+/-- Facts that contradict each other, `t = i + 0` and `t < i`, mean that no execution reaches the
+point, and an unchecked read there is safe whatever it reads: such as an empty range loop's
+first iteration, as certificate inference first meets it. -/
+example : check ⟨[.addChecked "t" "i" 0 1 3, .test (.slt (.reg "t") (.reg "i")) 2 3,
+    .load "xs" (.reg "t") 3, .stop], 0⟩
+    [[], [.off "t" "i" 0], [.off "t" "i" 0, .lt "t" "i", .absurd], []] = true := by decide
+/- `t ≤ i` contradicts nothing: the read is not proved. -/
+example : check ⟨[.addChecked "t" "i" 0 1 3, .test (.sle (.reg "t") (.reg "i")) 2 3,
+    .load "xs" (.reg "t") 3, .stop], 0⟩
+    [[], [.off "t" "i" 0], [.off "t" "i" 0, .le "t" "i" 0, .absurd], []] = false := by decide
 /- A loop that runs to its stop inclusive (`i <= s`): `b + i` may reach the length. -/
 example : check ⟨baseLoop.nodes.set 6 (.test (.sle (.reg "i") (.reg "s")) 7 11), 0⟩
     baseLoopCertificate = false := by decide

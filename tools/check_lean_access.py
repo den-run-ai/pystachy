@@ -538,8 +538,41 @@ def conclusions(fact, by_name, index, relevant, lower_bounds=()):
                 out.append((("below", i, n), [fact, other]))
     elif kind == "found" and ("ne", fact[1], -1) in index:
         out.append((("entry", fact[1], fact[2]), [fact, ("ne", fact[1], -1)]))
+    contradiction = contradicted(fact, by_name)
+    if contradiction is not None:
+        return [(("absurd",), contradiction)]
     out.extend(sum_conclusions(fact, by_name, index))
     return out
+
+
+def contradicted(fact, by_name):
+    """The known fact that fact contradicts (PystachyAccess.ruleStep's absurd), with fact, or
+    None: a < b where a = b + k with k >= 0 or b = a + k with k <= 0, or a >= k where a <= j < k.
+    No execution reaches them, as on the first iteration of an empty range loop, whose facts
+    inference closes before a back edge weakens them, and where rules could strengthen a bound
+    around them without end."""
+    kind = fact[0]
+    if kind == "lt":
+        a, b = fact[1], fact[2]
+        for other in by_name.get(a, ()):
+            if other[0] == "off" and ((other[1] == a and other[2] == b and other[3] >= 0) or
+                                      (other[1] == b and other[2] == a and other[3] <= 0)):
+                return [fact, other]
+    elif kind == "off":
+        x, y, k = fact[1], fact[2], fact[3]
+        for other in by_name.get(x, ()):
+            if other[0] == "lt" and ((other[1] == x and other[2] == y and k >= 0) or
+                                     (other[1] == y and other[2] == x and k <= 0)):
+                return [other, fact]
+    elif kind == "ge":
+        for other in by_name.get(fact[1], ()):
+            if other[0] == "atMost" and other[1] == fact[1] and other[2] < fact[2]:
+                return [fact, other]
+    elif kind == "atMost":
+        for other in by_name.get(fact[1], ()):
+            if other[0] == "ge" and other[1] == fact[1] and fact[2] < other[2]:
+                return [other, fact]
+    return None
 
 
 def sum_conclusions(fact, by_name, index):
@@ -626,8 +659,8 @@ def closure(start, new, relevant, lower_bounds=(), kinds=None):
     than new were closed where they were derived; only facts about relevant values are
     derived."""
     facts = list(start)
-    if not new:
-        return facts, {}
+    if not new or ("absurd",) in start:
+        return facts, {}  # (where no execution reaches, anything follows: PystachyAccess.rule)
     index = set(facts)
     by_name = {}
     for fact in facts:
@@ -676,6 +709,8 @@ def closure(start, new, relevant, lower_bounds=(), kinds=None):
             facts.append(derived)
             index.add(derived)
             premises[derived] = needs
+            if derived == ("absurd",):
+                return facts, premises  # (anything follows: PystachyAccess.rule)
             for part in mention_set(derived):
                 by_name.setdefault(part, []).append(derived)
             pending.append(derived)
@@ -853,6 +888,9 @@ def rule(known, goal):
         return substituted(known, goal)
     if kind == "lenGe":
         return ("len", goal[1], goal[2]) in known or substituted(known, goal)
+    if kind == "absurd":
+        return any(contradicted(f, {name: known for name in mention_set(f)}) is not None for f in known
+                   if f[0] in ("lt", "ge")) or substituted(known, goal)
     return substituted(known, goal)
 
 
@@ -1022,8 +1060,10 @@ def infer_certificate(nodes, entry=0, chain=0, kinds=None):
                 # lower bound of it on another, after a grow node, is that lower bound, which a
                 # length justifies)
                 incoming = prune(start, live[target], chain)
-                if known[target] is None:
+                if known[target] is None or (("absurd",) in known[target] and ("absurd",) not in incoming):
                     merged = incoming
+                elif ("absurd",) in incoming:
+                    merged = known[target]  # (no execution comes this way: the other edges' facts hold)
                 else:
                     arriving = set(incoming)
                     merged = []
@@ -1090,6 +1130,9 @@ def infer_certificate(nodes, entry=0, chain=0, kinds=None):
             want(index, ("ne", node["pointer"], 0))
     while work:
         index, fact = work.popleft()
+        if fact != ("absurd",) and ("absurd",) in (known[index] or ()):
+            want(index, ("absurd",))  # (no execution reaches it: anything follows)
+            continue
         incoming = predecessors[index]
         if len(incoming) > 1:
             for pad, _ in incoming:

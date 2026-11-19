@@ -564,6 +564,21 @@ class ProvedCheckerTests(SnapshotFixture):
         for corrupt in (lowered, raised, shifted):
             self.assertFalse(self.verdict(corrupt(), "@f.backward"), corrupt.__name__)
 
+    def test_contradictory_facts_close_to_absurd(self):
+        # (x = t + 0 and x < t, or x >= 3 and x <= 2, contradict each other: the closure derives
+        # absurd, from which anything follows, and stops, where rules could otherwise strengthen
+        # a bound around them without end; a closure that starts from absurd derives nothing)
+        facts, premises = access.closure([("off", "x", "t", 0), ("ge", "t", 3), ("lt", "x", "t")], [("lt", "x", "t")],
+                                         {"x", "t"})
+        self.assertEqual(facts[-1], ("absurd",))
+        self.assertEqual(sorted(premises[("absurd",)]), [("lt", "x", "t"), ("off", "x", "t", 0)])
+        facts, _ = access.closure([("ge", "x", 3), ("atMost", "x", 2)], [("atMost", "x", 2)], {"x"})
+        self.assertEqual(facts[-1], ("absurd",))
+        self.assertEqual(access.closure([("absurd",), ("lt", "x", "t")], [("ge", "x", 0)], {"x", "t"})[0],
+                         [("absurd",), ("lt", "x", "t")])
+        self.assertTrue(access.rule([("lt", "x", "t"), ("off", "t", "x", -1)], ("absurd",)))
+        self.assertFalse(access.rule([("lt", "x", "t"), ("off", "t", "x", 1)], ("absurd",)))
+
     def test_an_order_and_an_offset_derive_no_weaker_lower_bound_without_end(self):
         # (listguard's copy of a loop with xs[i + 2]: t = x + 2 and x < t, so x >= -21 from
         # t >= -19 gives t >= -20, weaker, then x >= -22, and so on without end, which exceeded the
@@ -782,6 +797,34 @@ class RegisterSumCheckerTests(unittest.TestCase):
         accepted = json.loads(completed.stdout)["accepted"]
         self.assertEqual(explain(candidate) is None, accepted, explain(candidate))
         return accepted
+
+    def test_contradictory_facts_reach_no_execution(self):
+        # (t = i + 0 and t < i: no execution reaches the read, whatever it reads; t <= i does)
+        def nodes(cmp):
+            return [{"op": "add_checked", "dst": "t", "src": "i", "k": 0, "next": 1, "overflow": 3},
+                    {"op": "test", "cond": {"cmp": cmp, "a": "t", "b": "i"}, "yes": 2, "no": 3},
+                    {"op": "load", "list": "xs", "index": "t", "next": 3},
+                    {"op": "stop"}]
+        self.assertTrue(self.verdict(nodes("slt")))
+        self.assertFalse(self.verdict(nodes("sle")))
+
+    def test_an_edge_no_execution_takes_keeps_a_joins_facts(self):
+        # (a range loop that never runs its body, i < -1 from i >= 0: the body's facts contradict
+        # each other, and its back edge, which no execution takes, keeps the entry's lower bound
+        # of the index at the loop's join; with a start of -5 the body runs and the read rejects)
+        def loop(start):
+            return [{"op": "length", "dst": "n", "list": "xs", "next": 1},
+                    {"op": "lit", "dst": "h", "value": start, "next": 2},
+                    {"op": "jump", "next": 3},
+                    {"op": "copy", "dst": "i", "src": "h", "next": 4},
+                    {"op": "test", "cond": {"cmp": "slt", "a": "i", "b": -1}, "yes": 5, "no": 9},
+                    {"op": "load", "list": "xs", "index": "i", "next": 6},
+                    {"op": "add_checked", "dst": "u", "src": "i", "k": 1, "next": 7, "overflow": 9},
+                    {"op": "copy", "dst": "h", "src": "u", "next": 8},
+                    {"op": "jump", "next": 3},
+                    {"op": "stop"}]
+        self.assertTrue(self.verdict(loop(0)))
+        self.assertFalse(self.verdict(loop(-5)))
 
     def test_a_base_loop_is_proved(self):
         self.assertTrue(self.verdict(base_loop()))
