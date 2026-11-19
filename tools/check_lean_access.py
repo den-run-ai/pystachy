@@ -66,6 +66,10 @@ FRESH_LIST_WRITES = {"list.slice"}
 # (runtime.c's pys_list_set raises IndexError or stores; listguard's copies keep them where a list
 # may hold numeric identities).
 ITEM_WRITES = {"list.set"}
+# Runtime list writes that only add items to a list or assign one (runtime.c): no list gets
+# shorter, which the model's grow node states (a length read before them stays a lower bound).
+GROW_WRITES = {"list.append", "list.append_big", "list.append_identity", "list.insert", "list.insert_big",
+               "list.insert_identity", "list.extend", "list.set_big", "list.set_identity"}
 LIMITATIONS = [
     "Only list.load bounds and the inventoried dict/set entry accesses in each normalized function are checked.",
     "Python normalization, snapshot fidelity, runtime effects (RUNTIME and the U? descriptor rule), "
@@ -186,6 +190,8 @@ def surviving(node, facts):
     if "dst" in node:
         return [fact for fact in facts if node["dst"] not in mentions(fact)]
     if op == "lists":
+        return [fact for fact in facts if fact[0] not in ("len", "lenGe")]
+    if op == "grow":
         return [fact for fact in facts if fact[0] != "len"]
     if op == "dicts":
         return [fact for fact in facts if fact[0] not in ("found", "entry")]
@@ -696,10 +702,11 @@ def safe(facts, node):
     if op == "load":
         index = node["index"]
         if isinstance(index, str):
-            return any(f[0] == "below" and f[1] == index and ("len", f[2], node["list"]) in facts for f in facts)
+            return any(f[0] == "below" and f[1] == index and (("len", f[2], node["list"]) in facts or
+                                                              ("lenGe", f[2], node["list"]) in facts) for f in facts)
         return index >= 0 and any(
-            f[0] == "len" and f[2] == node["list"] and any(g[0] == "ge" and g[1] == f[1] and index < g[2]
-                                                         for g in facts) for f in facts)
+            f[0] in ("len", "lenGe") and f[2] == node["list"] and any(g[0] == "ge" and g[1] == f[1] and index < g[2]
+                                                                    for g in facts) for f in facts)
     if op == "value":
         return ("entry", node["entry"], node["dict"]) in facts
     if op == "deref":
@@ -813,6 +820,8 @@ def rule(known, goal):
         if ("found", goal[1], goal[2]) in known and ("ne", goal[1], -1) in known:
             return True
         return substituted(known, goal)
+    if kind == "lenGe":
+        return ("len", goal[1], goal[2]) in known or substituted(known, goal)
     return substituted(known, goal)
 
 
@@ -978,17 +987,31 @@ def infer_certificate(nodes, entry=0, chain=0, kinds=None):
                 start = [fact for fact in start if fact[0] in kinds]
                 new = [fact for fact in new if fact[0] in kinds]
             if len(predecessors[target]) > 1:
-                # (a join of jumps: what every visited one knows)
+                # (a join of jumps: what every visited one knows; a length known on one and a
+                # lower bound of it on another, after a grow node, is that lower bound, which a
+                # length justifies)
                 incoming = prune(start, live[target], chain)
                 if known[target] is None:
                     merged = incoming
                 else:
                     arriving = set(incoming)
-                    merged = [f for f in known[target] if f in arriving]
+                    merged = []
+                    for f in known[target]:
+                        if f in arriving or (f[0] == "lenGe" and ("len", f[1], f[2]) in arriving):
+                            merged.append(f)
+                        elif f[0] == "len" and ("lenGe", f[1], f[2]) in arriving:
+                            merged.append(("lenGe", f[1], f[2]))
                 justification = ([], {})
             else:
                 relevant = (live[target] | set().union(*map(mentions, start))) if new else live[target]
                 facts, premises = closure(start, new, relevant, lower_bounds, kinds)
+                if nodes[target]["op"] == "grow":
+                    # (each length known where items may be added, as a lower bound too, which
+                    # survives the node: a length is a lower bound of itself)
+                    for f in list(facts):
+                        if f[0] == "len" and ("lenGe", f[1], f[2]) not in facts:
+                            facts.append(("lenGe", f[1], f[2]))
+                            premises[("lenGe", f[1], f[2])] = [f]
                 merged = prune(facts, live[target], chain)
                 justification = (facts, premises)
             if merged != known[target] or derived[target] is None:
@@ -1018,13 +1041,13 @@ def infer_certificate(nodes, entry=0, chain=0, kinds=None):
             ix, l = node["index"], node["list"]
             if isinstance(ix, str):
                 for f in known[index]:
-                    if f[0] == "below" and f[1] == ix and ("len", f[2], l) in facts:
+                    if f[0] == "below" and f[1] == ix and (("len", f[2], l) in facts or ("lenGe", f[2], l) in facts):
                         want(index, f)
-                        want(index, ("len", f[2], l))
+                        want(index, ("len", f[2], l) if ("len", f[2], l) in facts else ("lenGe", f[2], l))
                         break
             else:
                 for f in known[index]:
-                    if f[0] == "len" and f[2] == l:
+                    if f[0] in ("len", "lenGe") and f[2] == l:
                         bound = next((g for g in known[index] if g[0] == "ge" and g[1] == f[1] and ix < g[2]), None)
                         if bound is not None and ix >= 0:
                             want(index, f)
@@ -1039,7 +1062,10 @@ def infer_certificate(nodes, entry=0, chain=0, kinds=None):
         incoming = predecessors[index]
         if len(incoming) > 1:
             for pad, _ in incoming:
-                want(pad, fact)
+                if fact[0] == "lenGe" and fact not in (known[pad] or ()) and ("len", fact[1], fact[2]) in (known[pad] or ()):
+                    want(pad, ("len", fact[1], fact[2]))
+                else:
+                    want(pad, fact)
             continue
         if not incoming:
             continue
@@ -1615,7 +1641,9 @@ def normalize_program(snapshot, function, effects_of=None, derefs=None, record=N
             lists, dicts, globals_, fields_ = kills(effects_now)
             if (key in FRESH_LIST_WRITES or key in ITEM_WRITES) and effects_now is not None:
                 lists = "U" in effects_now
-            before = access_before + kill_nodes(lists, dicts, globals_, fields_)
+            grows = key in GROW_WRITES and effects_now is not None and "U" not in effects_now and lists
+            before = access_before + kill_nodes(lists and not grows, dicts, globals_, fields_) + (
+                [{"op": "grow"}] if grows else [])
             if key in FINDS and op["results"] and isinstance(operand_of(values[0]), str):
                 return before, [{"op": "find", "dst": f"%t{op['results'][0]}", "dict": values[0]}]
             if key in ENTRIES and op["results"] and isinstance(operand_of(values[0]), str):

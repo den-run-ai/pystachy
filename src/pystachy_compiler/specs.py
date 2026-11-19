@@ -761,6 +761,14 @@ PATH_OPS: dict[str, int] = {"call": 1, "icall": 1, "init": 1, "gen.resume": 1, "
 # Native list reads whose receiver and encoded result survive in IR.
 LIST_READS: list[str] = ["list.get", "list.get_identity"]
 
+# the list operations that never make a list shorter: they assign an item in place or add items
+# (listguard: a loop none of whose ops shortens a list keeps true the length tests before it,
+# guard_shrinks)
+LIST_GROWS: list[str] = [
+    "list.set", "list.set_big", "list.set_identity", "list.append", "list.append_big", "list.append_identity",
+    "list.insert", "list.insert_big", "list.insert_identity", "list.extend",
+]
+
 # Native list writes whose concrete receiver and packed item types survive in IR.
 # RUNTIME remains authoritative for their signatures, effects and LLVM symbols.
 # The variant selects the storage contract checked by builders and verifiers.

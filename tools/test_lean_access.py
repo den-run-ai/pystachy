@@ -513,6 +513,21 @@ class ProvedCheckerTests(SnapshotFixture):
             for corrupt in (further, lowered, shortened):
                 self.assertFalse(self.verdict(corrupt(symbol), symbol), (symbol, corrupt.__name__))
 
+    def test_a_guarded_copy_that_adds_items_keeps_its_proof(self):
+        # (an append, an insertion or an extension shortens no list, a grow node: the length the
+        # test before the loop read stays a lower bound, where list.clear forgets it)
+        for text in ("list.append", "list.insert", "list.extend", "list.append_identity"):
+            snapshot, function = self.selected("@f.smoothed")
+            block, index = [(block, index) for block in function["blocks"]
+                            for index, operation in enumerate(block["operations"])
+                            if operation["op"] == "list.load"][-1]
+            listed = block["operations"][index]["operands"][0]
+            block["operations"].insert(index, op("rt", [(listed["value"], listed["type"])], text=text))
+            nodes = normalize_snapshot(snapshot, "@f.smoothed")[0]["program"]["nodes"]
+            self.assertIn("grow", [node["op"] for node in nodes], text)
+            self.assertNotIn("lists", [node["op"] for node in nodes], text)
+            self.assertTrue(self.verdict(snapshot, "@f.smoothed"), text)
+
     def test_a_cycle_of_offsets_and_orders_stops_at_the_strongest_bound(self):
         # (listguard's copy of range(i, i + 256): t = x + 256, x < t and t <= n give x + 1 <= n,
         # and that with t = x + 256 gives t - 255 <= n, weaker than t <= n, and so on without

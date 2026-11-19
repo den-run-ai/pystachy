@@ -1,0 +1,32 @@
+{
+ "notes": "listguard copies of range loops that append (this branch, stacked on the variable-bounds draft) against that draft: base claude/dreamy-shannon-bb3cu1-listguard-bounds at 8f7f57e9, new claude/dreamy-shannon-bb3cu1-listguard-grow; both based on main 8259611e, default JIT (main's cleanup) and AOT. bench ab.py: 7 rounds, rotating order, each run pinned to CPU 1 with taskset, PYSTACHY_PROGRAM_CACHE=0; every run's stdout equals CPython 3.13's. comp times [a[i] * b[i] for i in range(n)], append times out.append(a[i] - a[i - 1]) over range(1, n), n = 1,000,000, 20 calls each; paired is the median of per-round new/base ratios. x86-64 (Intel Xeon @ 2.10GHz, 4 CPUs, shared host), LLVM 18.1.3.",
+ "args": [
+  "appends.py",
+  "1000000",
+  "20"
+ ],
+ "rounds": 7,
+ "results": {
+  "jit comp": {
+   "base_median": 0.1537,
+   "new_median": 0.0741,
+   "paired": 0.491
+  },
+  "jit append": {
+   "base_median": 0.1509,
+   "new_median": 0.0671,
+   "paired": 0.447
+  },
+  "aot comp": {
+   "base_median": 0.0591,
+   "new_median": 0.0562,
+   "paired": 0.949
+  },
+  "aot append": {
+   "base_median": 0.0503,
+   "new_median": 0.0526,
+   "paired": 1.008
+  }
+ },
+ "source": "import sys\nimport time\n\n\ndef products(a: list[float], b: list[float], n: int) -> list[float]:\n    return [a[i] * b[i] for i in range(n)]\n\n\ndef shifted(a: list[float], n: int) -> list[float]:\n    out: list[float] = []\n    for i in range(1, n):\n        out.append(a[i] - a[i - 1])\n    return out\n\n\ndef main() -> None:\n    n = int(sys.argv[1])\n    reps = int(sys.argv[2])\n    a = [((i * 37) % 101) / 50.0 for i in range(n)]\n    b = [((i * 53) % 97) / 40.0 for i in range(n)]\n    s = 0.0\n    t0 = time.perf_counter()\n    for r in range(reps):\n        p = products(a, b, n - r % 2)\n        s += p[len(p) - 1]\n    t1 = time.perf_counter()\n    for r in range(reps):\n        d = shifted(a, n - r % 2)\n        s += d[len(d) - 1]\n    t2 = time.perf_counter()\n    print(s)\n    print(\"comp=%.4f append=%.4f\" % (t1 - t0, t2 - t1), file=sys.stderr)\n\n\nmain()\n"
+}

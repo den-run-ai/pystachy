@@ -723,7 +723,7 @@ before the next pass. Normal compilation does not add these verification scans.
 |---|---|
 | `charslots` | For a private local assigned once in the IR from a string index, keep the indexed code point if the store dominates every read and each read only compares it to a one-byte ASCII string literal. Indexing and its exceptions stay at the assignment. |
 | `listget` | Replace a list read in a sequence loop or an invariant forward range loop with an unchecked load when the loop test proves the index valid and effects preserve the list's length; a loop over a `bytes`, which never changes in place, reads each byte inline as it is lowered |
-| `listguard` | Give an innermost range loop that counts up, whose ops change no list's length, a copy whose item reads and assignments, at the index plus a constant (and a base no iteration changes), of lists the loop does not rebind are unchecked (`list.load`, `list.store`), and run the copy where tests before the loop find every such list long enough; give inline list reads and stores TBAA tags |
+| `listguard` | Give an innermost range loop that counts up, none of whose ops makes a list shorter, a copy whose item reads and assignments, at the index plus a constant (and a base no iteration changes), of lists the loop does not rebind are unchecked (`list.load`, `list.store`), and run the copy where tests before the loop find every such list long enough; give inline list reads and stores TBAA tags |
 | `dictfuse` | Reuse a known dictionary entry across membership tests, reads and updates of the same dictionary/key, until a mutation or user-code effect invalidates it |
 | `tupleiter` | Traverse tuple slots directly instead of materializing a list |
 | `listfast` | Inline a checked fast path for arbitrary `list[int]` and `bytes` reads, retaining the runtime fallback for negative or out-of-range indices |
@@ -777,8 +777,11 @@ that counts up, such as `t += a[i] * b[i]`, `b[i] = (a[i - 1] + a[i] + a[i + 1])
 `zi[j] += xik * yk[j]`, LU's `a[k] -= f * b[k]` over `range(j + 1, n)` or a sparse row's
 `range(row[r], row[r + 1])`: its step is a positive constant or a variable that a test before the
 loop finds positive (range evaluates its arguments once, so no iteration changes them; a loop
-that counts down keeps its checks). No op of the loop may change a list's length (`wL`, except
-an item assignment) or run user code (`U`); a coroutine, a loop that a `try` statement covers,
+that counts down keeps its checks). No op of the loop may make a list shorter or run user code
+(`U`): one that writes lists (`wL`) must assign an item or add items (`append`, `insert`,
+`extend`), after which every length the tests read stays a lower bound, and a call counts as its
+callee's effects, in which an item assignment is a list write; a coroutine, a loop that a `try`
+statement covers,
 one holding another loop and one of more than 400 ops keep their checks. In the copy, each read
 or assignment of an item of a list that the loop does not rebind (a value it does not define,
 or a local slot it never stores), at the index plus a constant `c`, is unchecked: a `list.load`,
