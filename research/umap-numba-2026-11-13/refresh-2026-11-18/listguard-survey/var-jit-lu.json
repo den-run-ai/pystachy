@@ -1,0 +1,81 @@
+{
+ "spec": {
+  "variants": [
+   [
+    "loops",
+    [
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/pr-lggrow/pystachy",
+     "run",
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/k2/lu.py",
+     "300",
+     "6"
+    ],
+    {
+     "PYSTACHY_LLVM": "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/vecw",
+     "VEC_PRESET": "jl"
+    }
+   ],
+   [
+    "loops+vec",
+    [
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/pr-lggrow/pystachy",
+     "run",
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/k2/lu.py",
+     "300",
+     "6"
+    ],
+    {
+     "PYSTACHY_LLVM": "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/vecw",
+     "VEC_PRESET": "jlvec"
+    }
+   ]
+  ]
+ },
+ "rounds": 5,
+ "runs": {
+  "loops": [
+   {
+    "wall": 14.666776602000027,
+    "lu": 0.0277
+   },
+   {
+    "wall": 0.09820878600112337,
+    "lu": 0.0281
+   },
+   {
+    "wall": 0.11183967499891878,
+    "lu": 0.0303
+   },
+   {
+    "wall": 0.09905671500018798,
+    "lu": 0.0279
+   },
+   {
+    "wall": 0.10567525699843827,
+    "lu": 0.0282
+   }
+  ],
+  "loops+vec": [
+   {
+    "wall": 0.09455275400068786,
+    "lu": 0.0159
+   },
+   {
+    "wall": 0.0946139290008432,
+    "lu": 0.018
+   },
+   {
+    "wall": 0.09898066200003086,
+    "lu": 0.0164
+   },
+   {
+    "wall": 0.09296530799838365,
+    "lu": 0.0165
+   },
+   {
+    "wall": 0.09382963300049596,
+    "lu": 0.016
+   }
+  ]
+ }
+}

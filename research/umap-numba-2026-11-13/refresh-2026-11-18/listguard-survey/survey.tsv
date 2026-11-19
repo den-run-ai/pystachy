@@ -1,0 +1,2062 @@
+# bench/pyperformance/barnes_hut.py
+@f.create_deterministic_galaxy.1	range	True	acc=0	effect rt list.append wL
+@f.create_deterministic_galaxy.1	range	True	acc=0	if other is not lp and other.head in region:
+@f.create_deterministic_galaxy.1	range	True	acc=0	effect rt list.append wL
+@f.create_deterministic_galaxy.1	range	True	acc=0	effect rt list.append wL
+@f.create_deterministic_galaxy.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.calculate_system_energy.1	range	True	acc=2	if other is not lp and other.head in region:
+@f.calculate_system_energy.1	range	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.calculate_system_energy.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@m.QuadTree-1.subdivide.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.advance_system.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.advance_system.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.advance_system.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.bench_quadtree_nbody.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.bench_quadtree_nbody.1	range	True	acc=0	effect call @f.advance_system.1 wL
+# bench/pyperformance/bm_logging.py
+@f.warnings$_getaction.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.warnings$_getcategory.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_compile.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_compile.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.warnings$_setoption.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.warnings$_setoption.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.warnings$_processoptions.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.itertools$_count.1	while	False	acc=0	coroutine
+@f.logging$shutdown.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.logging$Logger.getEffectiveLevel.1	while	False	acc=0	no nonnegative range loop in fn: while
+@m.logging$Logger.getEffectiveLevel.2	while	False	acc=0	no nonnegative range loop in fn: while
+@m.logging$Filterer.filter.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.logging$Filterer.filter.2	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.logging$Filterer.filter.3	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.logging$Filterer.filter.4	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.logging$Filterer.filter.5	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.logging$Filterer.filter.6	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.logging$Filterer.filter.7	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.string$Formatter.get_field.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.string$Formatter._vformat.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_sre$_charset_table.1	range	True	acc=0	effect call @f.re$_sre$charset wL
+@f.re$_sre$_charset_table.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_charset_table.1	range	True	acc=0	effect rt list.append_identity wL
+@f.re$_sre$_mark_push.1	range	True	acc=0	effect rt list.get_identity wL
+@f.re$_sre$_span_rest.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_span_rest.1	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$_span.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_span.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_span.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_span.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_mark_pop.1	range	True	acc=0	effect rt list.get_identity wL
+@f.re$_sre$sre_match.1	while	False	acc=78	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=20	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_bits.1	while	False	acc=4	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_bits.1	range	True	acc=3	effect call @f.re$_sre$_charset.1 wL
+@f.re$_sre$_branch_masks.1	while	False	acc=5	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_masks.1	while	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_masks.1	range	True	acc=0	if len(plan.lists) == 0:
+@f.re$_sre$_branch_masks.1	range	True	acc=0	effect call @f.re$_sre$_branch_bits.1 wL
+@f.re$_sre$_branch_masks.1	range	True	acc=0	effect rt list.get_identity wL
+@f.re$_sre$_branch_masks.1	range	True	acc=0	effect rt list.append_identity wL
+@f.re$_sre$_branch_masks.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_prefilter.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_prefilter.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_sre$_branch_test.1	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_starts.1	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_starts.1	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_search.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_first_span.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_first_span.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@m.re$Pattern._new_match.1	range	True	acc=2	effect rt list.append_identity wL
+@m.re$Pattern._subst.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_charset_table.2	range	True	acc=0	effect call @f.re$_sre$charset wL
+@f.re$_sre$_charset_table.2	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_charset_table.2	range	True	acc=0	effect rt list.append_identity wL
+@f.re$_sre$_mark_push.2	range	True	acc=0	effect rt list.get_identity wL
+@f.re$_sre$_span_rest.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_span_rest.2	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$_span.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_span.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_span.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_span.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_mark_pop.2	range	True	acc=0	effect rt list.get_identity wL
+@f.re$_sre$sre_match.2	while	False	acc=86	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=22	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_bits.2	while	False	acc=4	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_bits.2	range	True	acc=3	effect call @f.re$_sre$_charset.2 wL
+@f.re$_sre$_branch_masks.2	while	False	acc=5	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_masks.2	while	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_masks.2	range	True	acc=0	if len(plan.lists) == 0:
+@f.re$_sre$_branch_masks.2	range	True	acc=0	effect call @f.re$_sre$_branch_bits.2 wL
+@f.re$_sre$_branch_masks.2	range	True	acc=0	effect rt list.get_identity wL
+@f.re$_sre$_branch_masks.2	range	True	acc=0	effect rt list.append_identity wL
+@f.re$_sre$_branch_masks.2	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_prefilter.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_prefilter.2	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_sre$_branch_test.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_starts.2	while	False	acc=4	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_starts.2	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_search.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_first_span.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_first_span.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@m.re$Pattern._new_match.2	range	True	acc=2	effect rt list.append_identity wL
+@m.re$Pattern._subst.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.traceback$_format_chain.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.traceback$_format_chain.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.traceback$_format_chain.1	range	False	acc=1	no nonnegative range loop in fn: range
+@f.traceback$_print_lines.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.traceback$_print_lines.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.traceback$_print_lines.2	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.logging$Logger.callHandlers.1	while	False	acc=0	no nonnegative range loop in fn: while
+@m.logging$Logger.callHandlers.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.logging$Logger.callHandlers.2	while	False	acc=0	no nonnegative range loop in fn: while
+@m.logging$Logger.callHandlers.2	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.bench_silent.1	range	False	acc=0	no nonnegative range loop in fn: range
+@f.bench_simple_output.1	range	False	acc=0	no nonnegative range loop in fn: range
+@f.bench_formatted_output.1	range	False	acc=0	no nonnegative range loop in fn: range
+@f.re$_sre$_mapped	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$charset	while	False	acc=10	no nonnegative range loop in fn: while
+@f.re$_sre$_charset_high	while	False	acc=4	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_charset_high	range	True	acc=1	effect rt list.append_identity wL
+@f.re$_sre$_after_marks	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_runs	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_positions	while	False	acc=3	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_positions	range	True	acc=2	effect rt list.append_identity wL
+@f.re$_sre$_walk	while	False	acc=11	no nonnegative range loop in fn: while
+@f.re$_sre$_walk	while	False	acc=4	no nonnegative range loop in fn: while
+@f.re$parse	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$escape	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f._pystachy_string$formatter_parser	while	False	acc=0	no nonnegative range loop in fn: while
+@f._pystachy_string$formatter_parser	while	False	acc=0	no nonnegative range loop in fn: while
+@f._pystachy_string$formatter_parser	while	False	acc=0	no nonnegative range loop in fn: while
+@f._pystachy_string$formatter_parser	while	False	acc=0	no nonnegative range loop in fn: while
+@f._pystachy_string$formatter_parser	while	False	acc=0	no nonnegative range loop in fn: while
+@f._pystachy_string$formatter_field_name_split	while	False	acc=0	no nonnegative range loop in fn: while
+@f._pystachy_string$formatter_field_name_split	while	False	acc=0	no nonnegative range loop in fn: while
+@f._pystachy_string$formatter_field_name_split	while	False	acc=0	no nonnegative range loop in fn: while
+@f._pystachy_string$formatter_field_name_split	while	False	acc=0	no nonnegative range loop in fn: while
+@f._weakref$_run_callbacks	while	False	acc=0	no nonnegative range loop in fn: while
+@f._pystachy_percent$percent_format	while	False	acc=0	no nonnegative range loop in fn: while
+@f._pystachy_percent$_parse_arg	while	False	acc=0	no nonnegative range loop in fn: while
+@f._pystachy_percent$_parse_arg	while	False	acc=0	no nonnegative range loop in fn: while
+@f._pystachy_percent$_parse_arg	while	False	acc=0	no nonnegative range loop in fn: while
+@f._pystachy_percent$_parse_arg	while	False	acc=0	no nonnegative range loop in fn: while
+@f.atexit$_run_exitfuncs	while	False	acc=1	no nonnegative range loop in fn: while
+@m.re$Pattern.__init__	range	True	acc=1	effect rt list.get_identity wL
+@m.re$Pattern.__init__	seq	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@m.re$Pattern.__repr__	range	True	acc=3	effect rt list.append wL
+@f.genericpath$_splitext.1	while	False	acc=0	no nonnegative range loop in fn: while
+@m.logging$LogRecord._attributes	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.logging$StrFormatStyle.validate.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.logging$StringTemplateStyle.validate.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.logging$Manager._fixupChildren.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.logging$Manager._fixupParents.1	while	False	acc=0	no nonnegative range loop in fn: while
+@m.logging$Manager._clear_cache	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_sre$_decode	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_decode	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_decode	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_decode	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_decode	range	True	acc=0	effect rt list.append_identity wL
+@f.re$_charat	range	True	acc=0	if len(plan.lists) == 0:
+@f.re$_codes	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_codes	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_codes	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_codes	while	False	acc=5	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_codes	range	True	acc=2	PLANNED reads=2 stores=0
+@f.re$_to_char	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_parse_sub	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_parse_sub	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_parse_sub	seq	False	acc=2	no nonnegative range loop in fn: seq
+@f.re$_parse_sub	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_parse_sub	seq	False	acc=2	no nonnegative range loop in fn: seq
+@f.re$_parse_sub	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_parse	while	False	acc=10	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=3	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	range	True	acc=1	effect rt list.append wL
+@f.re$_parse	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse_flags	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_parse_flags	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_compile_code	seq	False	acc=1	no nonnegative range loop in fn: seq
+@f.re$_compile_code	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_compile_code	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_compile_code	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_compile_charset	seq	False	acc=1	no nonnegative range loop in fn: seq
+@f.re$_compile_charset	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_optimize_charset	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	True	acc=0	effect rt list.append_identity wL
+@f.re$_optimize_charset	while	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	True	acc=1	if other is not lp and other.head in region:
+@f.re$_optimize_charset	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	True	acc=4	effect rt list.append_identity wL
+@f.re$_optimize_charset	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_mk_bitmap	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_mk_bitmap	range	True	acc=1	PLANNED reads=1 stores=0
+@f.re$_compile_info	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_compile_info	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_compile_info	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_cut	while	False	acc=0	no nonnegative range loop in fn: while
+@f._pystachy_string$_get_integer	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.re$SubPattern.getwidth	seq	False	acc=1	no nonnegative range loop in fn: seq
+@m.re$SubPattern.getwidth	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.re$Tokenizer.getuntil	while	False	acc=0	no nonnegative range loop in fn: while
+@m.re$Pattern._finditer.1	while	False	acc=0	no nonnegative range loop in fn: while
+@m.re$Pattern._finditer.2	while	False	acc=0	no nonnegative range loop in fn: while
+@m.re$Match.groupdict	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.threading$Condition.notify.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_inranges	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_same	range	True	acc=2	if len(plan.lists) == 0:
+@f.re$_same	range	True	acc=2	if len(plan.lists) == 0:
+@f.re$_uniq	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_isidentifier	range	True	acc=0	effect rt list.get_identity wL
+@f.re$_codes_of	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_isdecimal	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_fixes	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_fixes	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_setbits	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_generate_overlap_table	range	True	acc=2	if other is not lp and other.head in region:
+@f.re$_generate_overlap_table	while	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_get_literal_prefix	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_get_literal_prefix	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_get_charset_prefix	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_get_charset_prefix	seq	False	acc=1	no nonnegative range loop in fn: seq
+@f.re$_get_charset_prefix	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_get_charset_prefix	range	False	acc=0	no nonnegative range loop in fn: range
+@m.re$Tokenizer.getwhile	range	True	acc=0	if len(plan.lists) == 0:
+# bench/pyperformance/bpe_tokeniser.py
+@f.bpe_encode	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.bpe_encode	while	False	acc=2	no nonnegative range loop in fn: while
+@f.bpe_encode	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.bpe_encode	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.bpe_encode	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_compile.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_compile.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.collections$Counter-1.__reversed__	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.collections$Counter-1.most_common.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.collections$Counter-1.most_common.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.collections$Counter-1.__repr__	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.collections$Counter-1.__pos__	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.collections$Counter-1.__neg__	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.bpe_train	range	True	acc=0	effect rt list.append wL
+@f.bpe_train	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.bpe_train	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.bpe_train	while	False	acc=4	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.bpe_train	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.bpe_train	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.bpe_train	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.bpe_train	seq	False	acc=4	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.bpe_train	while	False	acc=3	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.bench_bpe_tokeniser	range	False	acc=0	no nonnegative range loop in fn: range
+@m.SimpleBytePairEncoding.__init__	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.SimpleBytePairEncoding.encode	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.SimpleBytePairEncoding.decode_bytes	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$parse	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.re$Pattern.__init__	range	True	acc=2	PLANNED reads=2 stores=0
+@m.re$Pattern.__init__	seq	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_charset_table.1	range	True	acc=0	effect call @f.re$_sre$charset wL
+@f.re$_sre$_charset_table.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_charset_table.1	range	True	acc=0	effect rt list.append wL
+@f.re$_sre$_mark_push.1	range	True	acc=1	effect rt list.append wL
+@f.re$_sre$_span_rest.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_span_rest.1	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$_span.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_span.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_span.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_span.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_mark_pop.1	range	True	acc=2	PLANNED reads=1 stores=1
+@f.re$_sre$sre_match.1	while	False	acc=96	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=21	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_bits.1	while	False	acc=4	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_bits.1	range	True	acc=3	effect call @f.re$_sre$_charset.1 wL
+@f.re$_sre$_branch_masks.1	while	False	acc=5	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_masks.1	while	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_masks.1	range	True	acc=0	if len(plan.lists) == 0:
+@f.re$_sre$_branch_masks.1	range	True	acc=0	effect call @f.re$_sre$_branch_bits.1 wL
+@f.re$_sre$_branch_masks.1	range	True	acc=1	effect call @f.re$_sre$_branch_wide wL
+@f.re$_sre$_branch_masks.1	range	True	acc=0	effect rt list.append wL
+@f.re$_sre$_branch_masks.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_prefilter.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_prefilter.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_sre$_branch_test.1	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_starts.1	while	False	acc=4	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_starts.1	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_search.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_first_span.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_first_span.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.1	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.1	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@m.re$Pattern._findall.1	while	False	acc=4	no nonnegative range loop in fn: while
+@f.re$_sre$_charset_table.2	range	True	acc=0	effect call @f.re$_sre$charset wL
+@f.re$_sre$_charset_table.2	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_charset_table.2	range	True	acc=0	effect rt list.append wL
+@f.re$_sre$_mark_push.2	range	True	acc=1	effect rt list.append wL
+@f.re$_sre$_span_rest.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_span_rest.2	while	False	acc=4	no nonnegative range loop in fn: while
+@f.re$_sre$_span.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$_span.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$_span.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$_span.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_mark_pop.2	range	True	acc=2	PLANNED reads=1 stores=1
+@f.re$_sre$sre_match.2	while	False	acc=118	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=6	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=25	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_bits.2	while	False	acc=4	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_bits.2	range	True	acc=3	effect call @f.re$_sre$_charset.2 wL
+@f.re$_sre$_branch_masks.2	while	False	acc=5	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_masks.2	while	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_masks.2	range	True	acc=0	if len(plan.lists) == 0:
+@f.re$_sre$_branch_masks.2	range	True	acc=0	effect call @f.re$_sre$_branch_bits.2 wL
+@f.re$_sre$_branch_masks.2	range	True	acc=1	effect call @f.re$_sre$_branch_wide wL
+@f.re$_sre$_branch_masks.2	range	True	acc=0	effect rt list.append wL
+@f.re$_sre$_branch_masks.2	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_prefilter.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_prefilter.2	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_sre$_branch_test.2	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_starts.2	while	False	acc=6	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_starts.2	while	False	acc=5	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_search.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$_first_span.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_first_span.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.2	while	False	acc=5	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.2	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=5	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@m.re$Pattern._findall.2	while	False	acc=4	no nonnegative range loop in fn: while
+@f.re$_sre$_mapped	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$charset	while	False	acc=13	no nonnegative range loop in fn: while
+@f.re$_sre$_charset_high	while	False	acc=9	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_charset_high	range	True	acc=1	effect rt list.append wL
+@f.re$_sre$_after_marks	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_runs	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_positions	while	False	acc=3	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_positions	range	True	acc=2	effect rt list.append wL
+@f.re$_sre$_walk	while	False	acc=14	no nonnegative range loop in fn: while
+@f.re$_sre$_walk	while	False	acc=6	no nonnegative range loop in fn: while
+@f.re$_charat	range	True	acc=0	if len(plan.lists) == 0:
+@f.re$_parse_sub	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_parse_sub	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_parse_sub	seq	False	acc=2	no nonnegative range loop in fn: seq
+@f.re$_parse_sub	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_parse_sub	seq	False	acc=2	no nonnegative range loop in fn: seq
+@f.re$_parse_sub	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_parse	while	False	acc=10	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=3	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	range	True	acc=1	effect rt list.append wL
+@f.re$_parse	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse_flags	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_parse_flags	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_compile_code	seq	False	acc=12	no nonnegative range loop in fn: seq
+@f.re$_compile_code	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_compile_code	seq	False	acc=1	no nonnegative range loop in fn: seq
+@f.re$_compile_code	seq	False	acc=1	no nonnegative range loop in fn: seq
+@f.re$_compile_charset	seq	False	acc=1	no nonnegative range loop in fn: seq
+@f.re$_compile_charset	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_optimize_charset	seq	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	while	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	True	acc=0	effect rt list.append wL
+@f.re$_optimize_charset	while	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	True	acc=2	if other is not lp and other.head in region:
+@f.re$_optimize_charset	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	True	acc=4	effect rt list.append wL
+@f.re$_optimize_charset	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_mk_bitmap	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_mk_bitmap	range	True	acc=1	PLANNED reads=1 stores=0
+@f.re$_compile_info	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_compile_info	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_compile_info	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.re$SubPattern.getwidth	seq	False	acc=1	no nonnegative range loop in fn: seq
+@m.re$SubPattern.getwidth	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.re$Tokenizer.getuntil	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_decode	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_decode	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_decode	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_decode	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_decode	range	True	acc=0	effect rt list.append wL
+@f.re$_codes	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_codes	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_codes	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_codes	while	False	acc=6	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_codes	range	True	acc=2	PLANNED reads=2 stores=0
+@f.re$_to_char	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_same	range	True	acc=2	if len(plan.lists) == 0:
+@f.re$_same	range	True	acc=2	if len(plan.lists) == 0:
+@f.re$_uniq	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_isidentifier	range	True	acc=2	effect call @f.re$_sre$uni_isidcontinue wL
+@f.re$_codes_of	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_isdecimal	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_fixes	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_fixes	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_setbits	seq	False	acc=1	no nonnegative range loop in fn: seq
+@f.re$_generate_overlap_table	range	True	acc=6	if other is not lp and other.head in region:
+@f.re$_generate_overlap_table	while	False	acc=5	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_get_literal_prefix	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_get_literal_prefix	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_get_charset_prefix	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_get_charset_prefix	seq	False	acc=1	no nonnegative range loop in fn: seq
+@f.re$_get_charset_prefix	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_get_charset_prefix	range	False	acc=0	no nonnegative range loop in fn: range
+@m.re$Tokenizer.getwhile	range	True	acc=0	if len(plan.lists) == 0:
+@f.re$_sre$_inranges	while	False	acc=1	no nonnegative range loop in fn: while
+# bench/pyperformance/chaos.py
+@m.Spline-1.__init__.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.Spline-1.GetIndex.1	range	False	acc=2	no nonnegative range loop in fn: range
+@m.Spline-1.__call__.1	range	True	acc=1	effect rt list.append wL
+@m.Spline-1.__call__.1	range	True	acc=5	if other is not lp and other.head in region:
+@m.Spline-1.__call__.1	range	False	acc=5	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@m.Spline-1.GetIndex.2	range	False	acc=2	no nonnegative range loop in fn: range
+@m.Spline-1.__call__.2	range	True	acc=1	effect rt list.append wL
+@m.Spline-1.__call__.2	range	True	acc=5	if other is not lp and other.head in region:
+@m.Spline-1.__call__.2	range	False	acc=5	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@m.Chaosgame-1.__init__.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@m.Chaosgame-1.__init__.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@m.Chaosgame-1.__init__.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@m.Chaosgame-1.__init__.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@m.Chaosgame-1.__init__.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@m.Chaosgame-1.__init__.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@m.Chaosgame-1.__init__.1	range	True	acc=0	effect call @m.Spline-1.__call__.2 wL
+@m.Chaosgame-1.get_random_trafo.1	range	True	acc=3	effect tuple.store int wL
+@m.Chaosgame-1.create_image_chaos.1	range	True	acc=0	effect rt list.append wL
+@m.Chaosgame-1.create_image_chaos.1	range	True	acc=2	effect call @m.Chaosgame-1.transform_point.1 wL
+@main.init	range	True	acc=0	effect call @m.Chaosgame-1.create_image_chaos.1 wL
+@main.init	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+# bench/pyperformance/comprehensions.py
+@f.make_some_widgets	range	True	acc=0	if ops > GUARD_OPS or b.handler != '':
+@f.make_some_widgets	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.make_some_widgets	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.make_some_widgets	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.make_some_widgets	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.bench_comprehensions	range	False	acc=0	no nonnegative range loop in fn: range
+@f.bench_comprehensions	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.WidgetTray._any_knobby.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.WidgetTray._add_widgets	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.WidgetTray._add_widgets	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.WidgetTray._add_widgets	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.WidgetTray._add_widgets	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.WidgetTray._add_widgets	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.WidgetTray._add_widgets	seq	False	acc=0	no nonnegative range loop in fn: seq
+# bench/pyperformance/fannkuch.py
+@f.fannkuch.1	while	False	acc=8	no nonnegative range loop in fn: while
+@f.fannkuch.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.fannkuch.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.fannkuch.1	while	False	acc=3	no nonnegative range loop in fn: while
+@main.init	range	True	acc=0	effect call @f.fannkuch.1 wL
+# bench/pyperformance/float.py
+@f.maximize.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.benchmark.1	range	True	acc=1	PLANNED reads=0 stores=1
+@f.benchmark.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@main.init	range	True	acc=0	effect call @f.benchmark.1 wL
+# bench/pyperformance/generators.py
+@f.bench_generators	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.bench_generators	range	False	acc=0	no nonnegative range loop in fn: range
+@f.bench_generators	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.bench_generators	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.Tree.__iter__	seq	False	acc=0	coroutine
+@m.Tree.__iter__	seq	False	acc=0	coroutine
+# bench/pyperformance/go.py
+@m.Board.useful_fast.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.Board.useful.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.EmptySet.random_choice.1	while	False	acc=2	no nonnegative range loop in fn: while
+@m.Board.useful_moves.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.Square.move.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.Board.replay.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.UCTNode.random_playout.1	range	True	acc=0	effect call @m.Board.random_move.1 wL
+@m.Board.score.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.Board.score.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.UCTNode.best_child.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.UCTNode.update_path.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.UCTNode.play.1	while	False	acc=2	no nonnegative range loop in fn: while
+@m.UCTNode.best_visited.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.computer_move.1	range	True	acc=0	effect call @m.Board.replay.1 wL
+@main.init	range	True	acc=0	effect call @f.versus_cpu.1 wL
+@m.Square.__init__	range	True	acc=0	effect rt list.append wL
+@m.Square.set_neighbours	seq	False	acc=1	no nonnegative range loop in fn: seq
+@m.Square.remove	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.ZobristHash.__init__	seq	False	acc=1	no nonnegative range loop in fn: seq
+@m.Board.__init__	range	True	acc=0	effect call @m.Square.__init__ wL
+@m.Board.__init__	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@m.Board.reset	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.Board.__repr__	range	True	acc=0	if other is not lp and other.head in region:
+@m.Board.__repr__	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@m.UCTNode.__init__	range	True	acc=0	effect rt list.append wL
+# bench/pyperformance/hexiom.py
+@m.Hex-1.__init__.1	range	True	acc=1	if other is not lp and other.head in region:
+@m.Hex-1.__init__.1	range	True	acc=1	effect tuple.store int wL
+@m.Hex-1.__init__.1	range	True	acc=1	if other is not lp and other.head in region:
+@m.Hex-1.__init__.1	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@m.Hex-1.link_nodes.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.Hex-1.link_nodes.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.Done.remove_all.1	range	True	acc=0	effect call @m.Done.remove.1 wL
+@m.Done.filter_tiles.1	range	True	acc=1	effect call @m.Done.remove_all.1 wL
+@f.read_file.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.read_file.1	range	True	acc=3	if other is not lp and other.head in region:
+@f.read_file.1	range	True	acc=2	effect tuple.store int wL
+@f.read_file.1	range	True	acc=3	if other is not lp and other.head in region:
+@f.read_file.1	range	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.check_valid.1	range	True	acc=3	PLANNED reads=2 stores=1
+@m.Done.clone.1	range	True	acc=1	effect rt list.slice wL
+@m.Done.remove_unfixed.1	range	True	acc=0	effect call @m.Done.remove.1 wL
+@f.constraint_pass.1	seq	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.constraint_pass.1	seq	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.constraint_pass.1	range	True	acc=0	effect call @m.Done.remove.1 wL
+@f.constraint_pass.1	seq	False	acc=3	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.constraint_pass.1	range	True	acc=4	if other is not lp and other.head in region:
+@f.constraint_pass.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.constraint_pass.1	range	True	acc=1	effect call @m.Done.set_done.1 wL
+@f.constraint_pass.1	seq	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.constraint_pass.1	seq	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.constraint_pass.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.constraint_pass.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@m.Done.next_cell_highest_value.1	range	True	acc=1	if other is not lp and other.head in region:
+@m.Done.next_cell_highest_value.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@m.Done.next_cell_min_choice.1	range	True	acc=2	if len(plan.lists) == 0:
+@m.Done.next_cell_max_choice.1	range	True	acc=2	if len(plan.lists) == 0:
+@m.Done.next_cell_first.1	range	True	acc=0	if len(plan.lists) == 0:
+@m.Done.next_cell_max_neighbors.1	range	True	acc=1	if other is not lp and other.head in region:
+@m.Done.next_cell_max_neighbors.1	seq	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@m.Done.next_cell_min_neighbors.1	range	True	acc=1	if other is not lp and other.head in region:
+@m.Done.next_cell_min_neighbors.1	seq	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.find_moves.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.find_moves.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.find_moves.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.print_pos.1	range	True	acc=2	if other is not lp and other.head in region:
+@f.print_pos.1	range	True	acc=2	effect tuple.store int wL
+@f.print_pos.1	range	True	acc=2	if other is not lp and other.head in region:
+@f.print_pos.1	range	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.solved.1	range	True	acc=5	if other is not lp and other.head in region:
+@f.solved.1	seq	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.constraint_pass.2	seq	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.constraint_pass.2	seq	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.constraint_pass.2	range	True	acc=0	effect call @m.Done.remove.1 wL
+@f.constraint_pass.2	seq	False	acc=3	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.constraint_pass.2	range	True	acc=4	if other is not lp and other.head in region:
+@f.constraint_pass.2	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.constraint_pass.2	range	True	acc=1	effect call @m.Done.set_done.1 wL
+@f.constraint_pass.2	seq	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.constraint_pass.2	seq	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.constraint_pass.2	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.constraint_pass.2	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.solve_step.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.solve_step.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.solve_step.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.main.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.main.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.Done.__init__	range	True	acc=0	effect rt list.append wL
+# bench/pyperformance/json_dumps.py
+@init.json	range	True	acc=0	if ops > GUARD_OPS or b.handler != '':
+@init.json	range	True	acc=1	if ops > GUARD_OPS or b.handler != '':
+@main.init	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@main.init	range	True	acc=0	effect call @f.bench_json_dumps wL U
+@main.init	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.bench_json_dumps	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.bench_json_dumps	range	False	acc=0	no nonnegative range loop in fn: range
+@m._pystachy_json_any$_Writer.write	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m._pystachy_json_any$_Writer.write	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m._pystachy_json_any$_Writer.write	while	False	acc=1	no nonnegative range loop in fn: while
+@m._pystachy_json_any$_Writer.write	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m._pystachy_json_any$_Writer.write	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m._pystachy_json_any$_Writer.write	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m._pystachy_json_any$_Writer.write	while	False	acc=0	no nonnegative range loop in fn: while
+@m._pystachy_json_any$_Writer.write	while	False	acc=0	no nonnegative range loop in fn: while
+@f.json$_quote	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.json$_escape_bytes	while	False	acc=0	no nonnegative range loop in fn: while
+@f.json$_escape_chars	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m._pystachy_json_any$_Writer.enter	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.json$_u8char	range	False	acc=0	no nonnegative range loop in fn: range
+# bench/pyperformance/json_loads.py
+@init.json	range	True	acc=0	if ops > GUARD_OPS or b.handler != '':
+@init.json	range	True	acc=1	if ops > GUARD_OPS or b.handler != '':
+@m._pyrandom$Random._init_genrand.1	range	True	acc=2	effect rt list.set_identity wL
+@m._pyrandom$Random._init_by_array.1	while	False	acc=4	no nonnegative range loop in fn: while
+@m._pyrandom$Random._init_by_array.1	while	False	acc=3	no nonnegative range loop in fn: while
+@m._pyrandom$Random._genrand_uint32.1	while	False	acc=3	no nonnegative range loop in fn: while
+@m._pyrandom$Random._genrand_uint32.1	while	False	acc=3	no nonnegative range loop in fn: while
+@f.mutate_dict.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.bench_json_loads.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@main.init	range	True	acc=0	effect call @f.mutate_dict.1 wL U
+@main.init	range	True	acc=0	effect call @f.bench_json_loads.1 wL
+@main.init	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f._pyrandom$_key_words	while	False	acc=0	no nonnegative range loop in fn: while
+@f._pyrandom$_hash_float	while	False	acc=0	no nonnegative range loop in fn: while
+@m.json$_Parser.skip	while	False	acc=0	no nonnegative range loop in fn: while
+@m._pystachy_json_any$_Writer.write	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m._pystachy_json_any$_Writer.write	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m._pystachy_json_any$_Writer.write	while	False	acc=1	no nonnegative range loop in fn: while
+@m._pystachy_json_any$_Writer.write	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m._pystachy_json_any$_Writer.write	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m._pystachy_json_any$_Writer.write	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m._pystachy_json_any$_Writer.write	while	False	acc=0	no nonnegative range loop in fn: while
+@m._pystachy_json_any$_Writer.write	while	False	acc=0	no nonnegative range loop in fn: while
+@f.json$_quote	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.json$_escape_bytes	while	False	acc=0	no nonnegative range loop in fn: while
+@f.json$_escape_chars	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.json$_Parser.char_index	while	False	acc=0	no nonnegative range loop in fn: while
+@m.json$_Parser.escaped	while	False	acc=0	no nonnegative range loop in fn: while
+@m.json$_Parser.number	while	False	acc=0	no nonnegative range loop in fn: while
+@m.json$_Parser.number	while	False	acc=0	no nonnegative range loop in fn: while
+@m.json$_Parser.number	while	False	acc=0	no nonnegative range loop in fn: while
+@m.json$_Parser.array	while	False	acc=0	no nonnegative range loop in fn: while
+@m.json$_Parser.object	while	False	acc=0	no nonnegative range loop in fn: while
+@m._pystachy_json_any$_Writer.enter	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.json$_u8char	range	False	acc=0	no nonnegative range loop in fn: range
+@f._pystachy_json_any$_array	while	False	acc=0	no nonnegative range loop in fn: while
+@f._pystachy_json_any$_object	while	False	acc=0	no nonnegative range loop in fn: while
+@m.json$_Parser.hex4	range	False	acc=0	no nonnegative range loop in fn: range
+@m.json$_Parser.plain_end	while	False	acc=0	no nonnegative range loop in fn: while
+@m.json$_Parser.plain_prefix	while	False	acc=0	no nonnegative range loop in fn: while
+# bench/pyperformance/meteor_contest.py
+@f.rotate.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.flip.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.permute.1	range	True	acc=1	effect call @f.rotate.1 wL
+@f.permute.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.convert.1	seq	False	acc=1	no nonnegative range loop in fn: seq
+@f.get_puzzle.1	range	True	acc=0	if other is not lp and other.head in region:
+@f.get_puzzle.1	range	True	acc=0	effect rt list.append wL
+@f.get_puzzle.1	range	True	acc=1	PLANNED reads=1 stores=0
+@f.get_puzzle.1	seq	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.get_puzzle.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.get_puzzle.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.get_footprints.1	range	True	acc=0	if other is not lp and other.head in region:
+@f.get_footprints.1	range	True	acc=0	effect rt list.append wL
+@f.get_footprints.1	seq	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.get_footprints.1	seq	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.get_footprints.1	seq	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.get_footprints.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.get_senh.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.get_senh.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.bisect$bisect_right.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.solve.1	seq	False	acc=3	no nonnegative range loop in fn: seq
+@f.solve.1	seq	False	acc=2	no nonnegative range loop in fn: seq
+@f.solve.1	seq	False	acc=1	no nonnegative range loop in fn: seq
+@f.solve.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.solve.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.bench_meteor_contest.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+# bench/pyperformance/nbody.py
+@f.combinations.1	range	True	acc=1	if other is not lp and other.head in region:
+@f.combinations.1	seq	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.offset_momentum.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.report_energy.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.report_energy.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.advance.1	range	True	acc=18	if other is not lp and other.head in region:
+@f.advance.1	seq	False	acc=12	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.advance.1	seq	False	acc=6	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.bench_nbody.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+# bench/pyperformance/nqueens.py
+@f.permutations.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.permutations.1	while	False	acc=9	no nonnegative range loop in fn: while
+@f.permutations.1	rrange	False	acc=9	no nonnegative range loop in fn: rrange
+@f.permutations.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.n_queens.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.n_queens.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.n_queens.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@main.init	range	True	acc=0	effect call @f.bench_n_queens.1 wL
+# bench/pyperformance/pidigits.py
+@f.itertools$_count.1	while	False	acc=0	coroutine
+@f.genexpr.1.1	seq	False	acc=0	coroutine
+@f.gen_pi_digits.1	while	False	acc=0	coroutine
+@f.gen_pi_digits.1	while	False	acc=0	coroutine
+@f.itertools$_islice.1	while	False	acc=0	coroutine
+@f.itertools$_islice.1	while	False	acc=0	coroutine
+@f.itertools$_islice.1	seq	False	acc=0	coroutine
+@f.itertools$_islice.1	seq	False	acc=0	coroutine
+@f.calc_ndigits.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@main.init	range	True	acc=0	effect call @f.calc_ndigits.1 wL U
+@main.init	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+# bench/pyperformance/raytrace.py
+@m.Canvas-1.__init__.1	range	True	acc=1	if len(plan.lists) == 0:
+@f.firstIntersection.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.Scene._lightIsVisible.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.Scene.visibleLights.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.SimpleSurface.colourAt.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.SimpleSurface.colourAt.2	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.Scene.rayColour.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.Scene.render.1	range	True	acc=0	if other is not lp and other.head in region:
+@m.Scene.render.1	range	True	acc=0	effect call @m.Scene.rayColour.1 wL
+@f.bench_raytrace.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.bench_raytrace.1	range	True	acc=0	effect mach.store  wL
+# bench/pyperformance/regex_dna.py
+@f.repeat_fasta.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.make_cumulative.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.bisect$bisect_right.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.random_fasta.1	while	False	acc=3	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.random_fasta.1	seq	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.random_fasta.1	range	True	acc=2	PLANNED reads=0 stores=1
+@f.random_fasta.2	while	False	acc=3	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.random_fasta.2	seq	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.random_fasta.2	range	True	acc=2	PLANNED reads=0 stores=1
+@f.re$_compile.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_compile.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_sre$_charset_table.1	range	True	acc=0	effect call @f.re$_sre$charset wL
+@f.re$_sre$_charset_table.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_charset_table.1	range	True	acc=0	effect rt list.append wL
+@f.re$_sre$_mark_push.1	range	True	acc=1	effect rt list.append wL
+@f.re$_sre$_span_rest.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_span_rest.1	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$_span.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_span.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_span.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_span.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_mark_pop.1	range	True	acc=2	PLANNED reads=1 stores=1
+@f.re$_sre$sre_match.1	while	False	acc=96	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=21	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_bits.1	while	False	acc=4	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_bits.1	range	True	acc=3	effect call @f.re$_sre$_charset.1 wL
+@f.re$_sre$_branch_masks.1	while	False	acc=5	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_masks.1	while	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_masks.1	range	True	acc=0	if len(plan.lists) == 0:
+@f.re$_sre$_branch_masks.1	range	True	acc=0	effect call @f.re$_sre$_branch_bits.1 wL
+@f.re$_sre$_branch_masks.1	range	True	acc=1	effect call @f.re$_sre$_branch_wide wL
+@f.re$_sre$_branch_masks.1	range	True	acc=0	effect rt list.append wL
+@f.re$_sre$_branch_masks.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_prefilter.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_prefilter.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_sre$_branch_test.1	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_starts.1	while	False	acc=4	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_starts.1	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_search.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_first_span.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_first_span.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.1	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.1	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@m.re$Pattern._new_match.1	range	True	acc=4	effect rt list.append wL
+@m.re$Pattern._subst.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_charset_table.2	range	True	acc=0	effect call @f.re$_sre$charset wL
+@f.re$_sre$_charset_table.2	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_charset_table.2	range	True	acc=0	effect rt list.append wL
+@f.re$_sre$_mark_push.2	range	True	acc=1	effect rt list.append wL
+@f.re$_sre$_span_rest.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_span_rest.2	while	False	acc=4	no nonnegative range loop in fn: while
+@f.re$_sre$_span.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$_span.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$_span.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$_span.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_mark_pop.2	range	True	acc=2	PLANNED reads=1 stores=1
+@f.re$_sre$sre_match.2	while	False	acc=118	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=6	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=25	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_bits.2	while	False	acc=4	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_bits.2	range	True	acc=3	effect call @f.re$_sre$_charset.2 wL
+@f.re$_sre$_branch_masks.2	while	False	acc=5	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_masks.2	while	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_masks.2	range	True	acc=0	if len(plan.lists) == 0:
+@f.re$_sre$_branch_masks.2	range	True	acc=0	effect call @f.re$_sre$_branch_bits.2 wL
+@f.re$_sre$_branch_masks.2	range	True	acc=1	effect call @f.re$_sre$_branch_wide wL
+@f.re$_sre$_branch_masks.2	range	True	acc=0	effect rt list.append wL
+@f.re$_sre$_branch_masks.2	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_prefilter.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_prefilter.2	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_sre$_branch_test.2	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_starts.2	while	False	acc=6	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_starts.2	while	False	acc=5	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_search.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$_first_span.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_first_span.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.2	while	False	acc=5	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.2	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=5	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@m.re$Pattern._new_match.2	range	True	acc=4	effect rt list.append wL
+@m.re$Pattern._subst.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.run_benchmarks.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.run_benchmarks.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.bench_regex_dna.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@main.init	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_sre$_mapped	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$charset	while	False	acc=13	no nonnegative range loop in fn: while
+@f.re$_sre$_charset_high	while	False	acc=9	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_charset_high	range	True	acc=1	effect rt list.append wL
+@f.re$_sre$_after_marks	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_runs	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_positions	while	False	acc=3	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_positions	range	True	acc=2	effect rt list.append wL
+@f.re$_sre$_walk	while	False	acc=14	no nonnegative range loop in fn: while
+@f.re$_sre$_walk	while	False	acc=6	no nonnegative range loop in fn: while
+@f.re$parse	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_compile_template	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_compile_template	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.re$Template.expand	range	True	acc=2	effect rt list.append wL
+@m.re$Pattern.__init__	range	True	acc=2	PLANNED reads=2 stores=0
+@m.re$Pattern.__init__	seq	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@m.re$Pattern._findall.1	while	False	acc=4	no nonnegative range loop in fn: while
+@m.re$Pattern._findall.2	while	False	acc=4	no nonnegative range loop in fn: while
+@f.re$_sre$_decode	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_decode	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_decode	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_decode	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_decode	range	True	acc=0	effect rt list.append wL
+@f.re$_charat	range	True	acc=0	if len(plan.lists) == 0:
+@f.re$_codes	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_codes	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_codes	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_codes	while	False	acc=6	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_codes	range	True	acc=2	PLANNED reads=2 stores=0
+@f.re$_to_char	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_parse_sub	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_parse_sub	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_parse_sub	seq	False	acc=2	no nonnegative range loop in fn: seq
+@f.re$_parse_sub	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_parse_sub	seq	False	acc=2	no nonnegative range loop in fn: seq
+@f.re$_parse_sub	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_parse	while	False	acc=10	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=3	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	range	True	acc=1	effect rt list.append wL
+@f.re$_parse	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse_flags	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_parse_flags	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$parse_template	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_compile_code	seq	False	acc=12	no nonnegative range loop in fn: seq
+@f.re$_compile_code	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_compile_code	seq	False	acc=1	no nonnegative range loop in fn: seq
+@f.re$_compile_code	seq	False	acc=1	no nonnegative range loop in fn: seq
+@f.re$_compile_charset	seq	False	acc=1	no nonnegative range loop in fn: seq
+@f.re$_compile_charset	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_optimize_charset	seq	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	while	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	True	acc=0	effect rt list.append wL
+@f.re$_optimize_charset	while	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	True	acc=2	if other is not lp and other.head in region:
+@f.re$_optimize_charset	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	True	acc=4	effect rt list.append wL
+@f.re$_optimize_charset	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_mk_bitmap	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_mk_bitmap	range	True	acc=1	PLANNED reads=1 stores=0
+@f.re$_compile_info	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_compile_info	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_compile_info	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.re$SubPattern.getwidth	seq	False	acc=1	no nonnegative range loop in fn: seq
+@m.re$SubPattern.getwidth	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.re$Tokenizer.getuntil	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_inranges	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_same	range	True	acc=2	if len(plan.lists) == 0:
+@f.re$_same	range	True	acc=2	if len(plan.lists) == 0:
+@f.re$_uniq	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_isidentifier	range	True	acc=2	effect call @f.re$_sre$uni_isidcontinue wL
+@f.re$_codes_of	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_isdecimal	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_fixes	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_fixes	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_setbits	seq	False	acc=1	no nonnegative range loop in fn: seq
+@f.re$_generate_overlap_table	range	True	acc=6	if other is not lp and other.head in region:
+@f.re$_generate_overlap_table	while	False	acc=5	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_get_literal_prefix	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_get_literal_prefix	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_get_charset_prefix	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_get_charset_prefix	seq	False	acc=1	no nonnegative range loop in fn: seq
+@f.re$_get_charset_prefix	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_get_charset_prefix	range	False	acc=0	no nonnegative range loop in fn: range
+@m.re$Tokenizer.getwhile	range	True	acc=0	if len(plan.lists) == 0:
+# bench/pyperformance/regex_effbot.py
+@f.re$_compile.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_compile.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.init_benchmarks.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.init_benchmarks.1	seq	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.init_benchmarks.1	range	True	acc=2	effect tuple.store re$Pattern wL
+@f.bench_regex_effbot.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.bench_regex_effbot.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.bench_regex_effbot.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$parse	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.re$Pattern.__init__	range	True	acc=2	PLANNED reads=2 stores=0
+@m.re$Pattern.__init__	seq	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_charset_table.1	range	True	acc=0	effect call @f.re$_sre$charset wL
+@f.re$_sre$_charset_table.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_charset_table.1	range	True	acc=0	effect rt list.append wL
+@f.re$_sre$_mark_push.1	range	True	acc=1	effect rt list.append wL
+@f.re$_sre$_span_rest.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_span_rest.1	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$_span.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_span.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_span.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_span.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_mark_pop.1	range	True	acc=2	PLANNED reads=1 stores=1
+@f.re$_sre$sre_match.1	while	False	acc=96	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=21	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_bits.1	while	False	acc=4	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_bits.1	range	True	acc=3	effect call @f.re$_sre$_charset.1 wL
+@f.re$_sre$_branch_masks.1	while	False	acc=5	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_masks.1	while	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_masks.1	range	True	acc=0	if len(plan.lists) == 0:
+@f.re$_sre$_branch_masks.1	range	True	acc=0	effect call @f.re$_sre$_branch_bits.1 wL
+@f.re$_sre$_branch_masks.1	range	True	acc=1	effect call @f.re$_sre$_branch_wide wL
+@f.re$_sre$_branch_masks.1	range	True	acc=0	effect rt list.append wL
+@f.re$_sre$_branch_masks.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_prefilter.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_prefilter.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_sre$_branch_test.1	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_starts.1	while	False	acc=4	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_starts.1	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_search.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_first_span.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_first_span.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.1	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.1	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@m.re$Pattern._new_match.1	range	True	acc=4	effect rt list.append wL
+@f.re$_sre$_charset_table.2	range	True	acc=0	effect call @f.re$_sre$charset wL
+@f.re$_sre$_charset_table.2	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_charset_table.2	range	True	acc=0	effect rt list.append wL
+@f.re$_sre$_mark_push.2	range	True	acc=1	effect rt list.append wL
+@f.re$_sre$_span_rest.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_span_rest.2	while	False	acc=4	no nonnegative range loop in fn: while
+@f.re$_sre$_span.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$_span.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$_span.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$_span.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_mark_pop.2	range	True	acc=2	PLANNED reads=1 stores=1
+@f.re$_sre$sre_match.2	while	False	acc=118	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=6	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=25	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_bits.2	while	False	acc=4	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_bits.2	range	True	acc=3	effect call @f.re$_sre$_charset.2 wL
+@f.re$_sre$_branch_masks.2	while	False	acc=5	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_masks.2	while	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_masks.2	range	True	acc=0	if len(plan.lists) == 0:
+@f.re$_sre$_branch_masks.2	range	True	acc=0	effect call @f.re$_sre$_branch_bits.2 wL
+@f.re$_sre$_branch_masks.2	range	True	acc=1	effect call @f.re$_sre$_branch_wide wL
+@f.re$_sre$_branch_masks.2	range	True	acc=0	effect rt list.append wL
+@f.re$_sre$_branch_masks.2	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_prefilter.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_prefilter.2	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_sre$_branch_test.2	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_starts.2	while	False	acc=6	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_starts.2	while	False	acc=5	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_search.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$_first_span.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_first_span.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.2	while	False	acc=5	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.2	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=5	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@m.re$Pattern._new_match.2	range	True	acc=4	effect rt list.append wL
+@f.re$_sre$_mapped	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$charset	while	False	acc=13	no nonnegative range loop in fn: while
+@f.re$_sre$_charset_high	while	False	acc=9	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_charset_high	range	True	acc=1	effect rt list.append wL
+@f.re$_sre$_after_marks	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_runs	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_positions	while	False	acc=3	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_positions	range	True	acc=2	effect rt list.append wL
+@f.re$_sre$_walk	while	False	acc=14	no nonnegative range loop in fn: while
+@f.re$_sre$_walk	while	False	acc=6	no nonnegative range loop in fn: while
+@f.re$_charat	range	True	acc=0	if len(plan.lists) == 0:
+@f.re$_parse_sub	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_parse_sub	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_parse_sub	seq	False	acc=2	no nonnegative range loop in fn: seq
+@f.re$_parse_sub	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_parse_sub	seq	False	acc=2	no nonnegative range loop in fn: seq
+@f.re$_parse_sub	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_parse	while	False	acc=10	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=3	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	range	True	acc=1	effect rt list.append wL
+@f.re$_parse	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse_flags	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_parse_flags	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_compile_code	seq	False	acc=12	no nonnegative range loop in fn: seq
+@f.re$_compile_code	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_compile_code	seq	False	acc=1	no nonnegative range loop in fn: seq
+@f.re$_compile_code	seq	False	acc=1	no nonnegative range loop in fn: seq
+@f.re$_compile_charset	seq	False	acc=1	no nonnegative range loop in fn: seq
+@f.re$_compile_charset	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_optimize_charset	seq	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	while	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	True	acc=0	effect rt list.append wL
+@f.re$_optimize_charset	while	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	True	acc=2	if other is not lp and other.head in region:
+@f.re$_optimize_charset	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	True	acc=4	effect rt list.append wL
+@f.re$_optimize_charset	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_mk_bitmap	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_mk_bitmap	range	True	acc=1	PLANNED reads=1 stores=0
+@f.re$_compile_info	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_compile_info	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_compile_info	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.re$SubPattern.getwidth	seq	False	acc=1	no nonnegative range loop in fn: seq
+@m.re$SubPattern.getwidth	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.re$Tokenizer.getuntil	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_decode	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_decode	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_decode	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_decode	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_decode	range	True	acc=0	effect rt list.append wL
+@f.re$_codes	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_codes	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_codes	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_codes	while	False	acc=6	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_codes	range	True	acc=2	PLANNED reads=2 stores=0
+@f.re$_to_char	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_same	range	True	acc=2	if len(plan.lists) == 0:
+@f.re$_same	range	True	acc=2	if len(plan.lists) == 0:
+@f.re$_uniq	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_isidentifier	range	True	acc=2	effect call @f.re$_sre$uni_isidcontinue wL
+@f.re$_codes_of	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_isdecimal	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_fixes	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_fixes	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_setbits	seq	False	acc=1	no nonnegative range loop in fn: seq
+@f.re$_generate_overlap_table	range	True	acc=6	if other is not lp and other.head in region:
+@f.re$_generate_overlap_table	while	False	acc=5	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_get_literal_prefix	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_get_literal_prefix	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_get_charset_prefix	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_get_charset_prefix	seq	False	acc=1	no nonnegative range loop in fn: seq
+@f.re$_get_charset_prefix	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_get_charset_prefix	range	False	acc=0	no nonnegative range loop in fn: range
+@m.re$Tokenizer.getwhile	range	True	acc=0	if len(plan.lists) == 0:
+@f.re$_sre$_inranges	while	False	acc=1	no nonnegative range loop in fn: while
+# bench/pyperformance/regex_v8.py
+@f.re$_compile.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_compile.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_sre$_charset_table.1	range	True	acc=0	effect call @f.re$_sre$charset wL
+@f.re$_sre$_charset_table.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_charset_table.1	range	True	acc=0	effect rt list.append wL
+@f.re$_sre$_mark_push.1	range	True	acc=1	effect rt list.append wL
+@f.re$_sre$_span_rest.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_span_rest.1	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$_span.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_span.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_span.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_span.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_mark_pop.1	range	True	acc=2	PLANNED reads=1 stores=1
+@f.re$_sre$sre_match.1	while	False	acc=96	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=21	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_bits.1	while	False	acc=4	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_bits.1	range	True	acc=3	effect call @f.re$_sre$_charset.1 wL
+@f.re$_sre$_branch_masks.1	while	False	acc=5	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_masks.1	while	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_masks.1	range	True	acc=0	if len(plan.lists) == 0:
+@f.re$_sre$_branch_masks.1	range	True	acc=0	effect call @f.re$_sre$_branch_bits.1 wL
+@f.re$_sre$_branch_masks.1	range	True	acc=1	effect call @f.re$_sre$_branch_wide wL
+@f.re$_sre$_branch_masks.1	range	True	acc=0	effect rt list.append wL
+@f.re$_sre$_branch_masks.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_prefilter.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_prefilter.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_sre$_branch_test.1	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_starts.1	while	False	acc=4	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_starts.1	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_search.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_first_span.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_first_span.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.1	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.1	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.1	while	False	acc=0	no nonnegative range loop in fn: while
+@m.re$Pattern._new_match.1	range	True	acc=4	effect rt list.append wL
+@m.re$Pattern._subst.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_charset_table.2	range	True	acc=0	effect call @f.re$_sre$charset wL
+@f.re$_sre$_charset_table.2	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_charset_table.2	range	True	acc=0	effect rt list.append wL
+@f.re$_sre$_mark_push.2	range	True	acc=1	effect rt list.append wL
+@f.re$_sre$_span_rest.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_span_rest.2	while	False	acc=4	no nonnegative range loop in fn: while
+@f.re$_sre$_span.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$_span.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$_span.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$_span.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_count.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_mark_pop.2	range	True	acc=2	PLANNED reads=1 stores=1
+@f.re$_sre$sre_match.2	while	False	acc=118	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=6	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=25	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$sre_match.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_bits.2	while	False	acc=4	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_bits.2	range	True	acc=3	effect call @f.re$_sre$_charset.2 wL
+@f.re$_sre$_branch_masks.2	while	False	acc=5	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_masks.2	while	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_masks.2	range	True	acc=0	if len(plan.lists) == 0:
+@f.re$_sre$_branch_masks.2	range	True	acc=0	effect call @f.re$_sre$_branch_bits.2 wL
+@f.re$_sre$_branch_masks.2	range	True	acc=1	effect call @f.re$_sre$_branch_wide wL
+@f.re$_sre$_branch_masks.2	range	True	acc=0	effect rt list.append wL
+@f.re$_sre$_branch_masks.2	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_prefilter.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_prefilter.2	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_sre$_branch_test.2	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_starts.2	while	False	acc=6	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_starts.2	while	False	acc=5	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_search.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$_first_span.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_first_span.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.2	while	False	acc=5	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$_literals_find.2	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=5	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$sre_search.2	while	False	acc=0	no nonnegative range loop in fn: while
+@m.re$Pattern._new_match.2	range	True	acc=4	effect rt list.append wL
+@m.re$Pattern._subst.2	while	False	acc=0	no nonnegative range loop in fn: while
+@f.checksum_text.1	range	True	acc=0	if len(plan.lists) == 0:
+@f.checksum_text.2	range	True	acc=0	if len(plan.lists) == 0:
+@f.bench_regex_v8.1	range	True	acc=0	if ops > GUARD_OPS:
+@f.bench_regex_v8.1	range	True	acc=3	if other is not lp and other.head in region:
+@f.bench_regex_v8.1	seq	False	acc=3	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.bench_regex_v8.1	seq	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.bench_regex_v8.1	seq	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.bench_regex_v8.1	range	True	acc=1	PLANNED reads=1 stores=0
+@main.init	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.block0	range	True	acc=1	effect call @m.re$Pattern.search wL
+@f.block0	range	True	acc=1	effect call @m.re$Pattern.search wL
+@f.block0	range	True	acc=2	effect call @m.re$Pattern.sub.1 wL
+@f.block0	range	True	acc=1	effect call @m.re$Pattern.search wL
+@f.block0	range	True	acc=1	effect call @m.re$Pattern.search wL
+@f.block0	range	True	acc=0	effect call @f.re$search.1 wL
+@f.block0	range	True	acc=1	effect call @m.re$Pattern.search wL
+@f.block0	range	True	acc=1	effect call @m.re$Pattern.search wL
+@f.block0	range	True	acc=2	effect call @m.re$Pattern.sub.1 wL
+@f.block0	range	True	acc=3	effect call @m.re$Pattern.sub.1 wL
+@f.block0	range	True	acc=2	effect call @m.re$Pattern.search wL
+@f.block0	range	True	acc=1	effect call @m.re$Pattern.search wL
+@f.block0	range	True	acc=5	effect call @m.re$Pattern.sub.1 wL
+@f.block0	range	True	acc=4	effect call @m.re$Pattern.sub.1 wL
+@f.block0	range	True	acc=2	effect call @m.re$Pattern.sub.1 wL
+@f.block0	range	True	acc=0	effect call @f.re$search.1 wL
+@f.block0	range	True	acc=3	effect call @m.re$Pattern.sub.1 wL
+@f.block0	range	True	acc=1	effect call @f.re$sub.1 wL
+@f.block0	range	True	acc=12	effect call @m.re$Pattern.sub.1 wL
+@f.block1	range	True	acc=1	effect call @m.re$Pattern.search wL
+@f.block1	range	True	acc=21	effect call @f.re$sub.1 wL
+@f.block1	range	True	acc=3	effect call @m.re$Pattern.sub.1 wL
+@f.block1	range	True	acc=2	effect call @m.re$Pattern.sub.1 wL
+@f.block1	range	True	acc=2	effect call @m.re$Pattern.search wL
+@f.block1	range	True	acc=1	effect call @m.re$Pattern.search wL
+@f.block1	range	True	acc=7	effect call @m.re$Pattern.sub.1 wL
+@f.block1	range	True	acc=5	effect call @m.re$Pattern.search wL
+@f.block1	range	True	acc=1	effect call @m.re$Pattern.search wL
+@f.block1	range	True	acc=3	effect call @m.re$Pattern.sub.1 wL
+@f.block2	range	True	acc=4	effect call @m.re$Pattern.sub.1 wL
+@f.block2	range	True	acc=6	effect call @f.re$sub.1 wL
+@f.block2	range	True	acc=3	effect call @m.re$Pattern.search wL
+@f.block2	range	True	acc=8	effect call @m.re$Pattern.sub.1 wL
+@f.block2	range	True	acc=7	effect call @m.re$Pattern.search wL
+@f.block2	range	True	acc=1	effect call @f.re$search.1 wL
+@f.block2	range	True	acc=7	effect call @m.re$Pattern.sub.1 wL
+@f.block2	range	True	acc=3	effect call @m.re$Pattern.sub.1 wL
+@f.block2	range	True	acc=2	effect call @m.re$Pattern.sub.1 wL
+@f.block2	range	True	acc=5	effect call @m.re$Pattern.sub.1 wL
+@f.block3	range	True	acc=0	effect call @f.re$sub.1 wL
+@f.block3	range	True	acc=4	effect call @m.re$Pattern.sub.1 wL
+@f.block3	range	True	acc=17	effect call @m.re$Pattern.sub.1 wL
+@f.block3	range	True	acc=3	effect call @m.re$Pattern.sub.1 wL
+@f.block3	range	True	acc=7	effect call @m.re$Pattern.sub.1 wL
+@f.block3	range	True	acc=1	effect call @m.re$Pattern.search wL
+@f.block3	range	True	acc=21	effect call @m.re$Pattern.split wL
+@f.block3	range	True	acc=91	if ops > GUARD_OPS or b.handler != '':
+@f.block4	range	True	acc=4	effect call @f.re$sub.1 wL
+@f.block4	range	True	acc=30	effect call @m.re$Pattern.split wL
+@f.block4	range	True	acc=35	effect call @m.re$Pattern.sub.1 wL
+@f.block5	range	True	acc=41	effect call @m.re$Pattern.sub.1 wL
+@f.block5	range	True	acc=38	effect call @f.re$sub.1 wL
+@f.block6	range	True	acc=51	if ops > GUARD_OPS or b.handler != '':
+@f.block6	range	True	acc=47	if ops > GUARD_OPS or b.handler != '':
+@f.block7	range	True	acc=28	effect call @m.re$Pattern.sub.1 wL
+@f.block7	range	True	acc=70	if ops > GUARD_OPS or b.handler != '':
+@f.block8	range	True	acc=64	if ops > GUARD_OPS or b.handler != '':
+@f.block8	range	True	acc=50	effect call @f.re$sub.1 wL
+@f.block9	range	True	acc=27	effect call @m.re$Pattern.split wL
+@f.block9	range	True	acc=229	if ops > GUARD_OPS or b.handler != '':
+@f.block10	range	True	acc=311	if ops > GUARD_OPS or b.handler != '':
+@f.block11	range	True	acc=749	if ops > GUARD_OPS or b.handler != '':
+@f.re$_sre$_mapped	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_sre$charset	while	False	acc=13	no nonnegative range loop in fn: while
+@f.re$_sre$_charset_high	while	False	acc=9	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_charset_high	range	True	acc=1	effect rt list.append wL
+@f.re$_sre$_after_marks	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_runs	while	False	acc=3	no nonnegative range loop in fn: while
+@f.re$_sre$_branch_positions	while	False	acc=3	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_branch_positions	range	True	acc=2	effect rt list.append wL
+@f.re$_sre$_walk	while	False	acc=14	no nonnegative range loop in fn: while
+@f.re$_sre$_walk	while	False	acc=6	no nonnegative range loop in fn: while
+@f.re$parse	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_compile_template	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_compile_template	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.re$Template.expand	range	True	acc=2	effect rt list.append wL
+@m.re$Pattern.__init__	range	True	acc=2	PLANNED reads=2 stores=0
+@m.re$Pattern.__init__	seq	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@m.re$Pattern._split.1	while	False	acc=4	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@m.re$Pattern._split.1	range	True	acc=4	effect rt list.append wL
+@m.re$Pattern._split.2	while	False	acc=4	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@m.re$Pattern._split.2	range	True	acc=4	effect rt list.append wL
+@f.re$_sre$_decode	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_decode	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_decode	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_decode	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_sre$_decode	range	True	acc=0	effect rt list.append wL
+@f.re$_charat	range	True	acc=0	if len(plan.lists) == 0:
+@f.re$_codes	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_codes	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_codes	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_codes	while	False	acc=6	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_codes	range	True	acc=2	PLANNED reads=2 stores=0
+@f.re$_to_char	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_parse_sub	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_parse_sub	while	False	acc=2	no nonnegative range loop in fn: while
+@f.re$_parse_sub	seq	False	acc=2	no nonnegative range loop in fn: seq
+@f.re$_parse_sub	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_parse_sub	seq	False	acc=2	no nonnegative range loop in fn: seq
+@f.re$_parse_sub	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_parse	while	False	acc=10	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	while	False	acc=3	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	range	True	acc=1	effect rt list.append wL
+@f.re$_parse	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_parse_flags	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_parse_flags	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$parse_template	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_compile_code	seq	False	acc=12	no nonnegative range loop in fn: seq
+@f.re$_compile_code	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_compile_code	seq	False	acc=1	no nonnegative range loop in fn: seq
+@f.re$_compile_code	seq	False	acc=1	no nonnegative range loop in fn: seq
+@f.re$_compile_charset	seq	False	acc=1	no nonnegative range loop in fn: seq
+@f.re$_compile_charset	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_optimize_charset	seq	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	while	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	True	acc=0	effect rt list.append wL
+@f.re$_optimize_charset	while	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	True	acc=2	if other is not lp and other.head in region:
+@f.re$_optimize_charset	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	range	True	acc=4	effect rt list.append wL
+@f.re$_optimize_charset	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_optimize_charset	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_mk_bitmap	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_mk_bitmap	range	True	acc=1	PLANNED reads=1 stores=0
+@f.re$_compile_info	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_compile_info	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_compile_info	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.re$SubPattern.getwidth	seq	False	acc=1	no nonnegative range loop in fn: seq
+@m.re$SubPattern.getwidth	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.re$Tokenizer.getuntil	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_sre$_inranges	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_same	range	True	acc=2	if len(plan.lists) == 0:
+@f.re$_same	range	True	acc=2	if len(plan.lists) == 0:
+@f.re$_uniq	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_isidentifier	range	True	acc=2	effect call @f.re$_sre$uni_isidcontinue wL
+@f.re$_codes_of	while	False	acc=0	no nonnegative range loop in fn: while
+@f.re$_isdecimal	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_fixes	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_fixes	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_setbits	seq	False	acc=1	no nonnegative range loop in fn: seq
+@f.re$_generate_overlap_table	range	True	acc=6	if other is not lp and other.head in region:
+@f.re$_generate_overlap_table	while	False	acc=5	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.re$_get_literal_prefix	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_get_literal_prefix	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_get_charset_prefix	while	False	acc=1	no nonnegative range loop in fn: while
+@f.re$_get_charset_prefix	seq	False	acc=1	no nonnegative range loop in fn: seq
+@f.re$_get_charset_prefix	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.re$_get_charset_prefix	range	False	acc=0	no nonnegative range loop in fn: range
+@m.re$Tokenizer.getwhile	range	True	acc=0	if len(plan.lists) == 0:
+# bench/pyperformance/richards.py
+@m.Richards.run.1	range	True	acc=0	if ops > GUARD_OPS:
+@main.init	range	True	acc=0	effect call @m.Richards.run.1 wL
+@m.Packet.append_to.1	while	False	acc=0	no nonnegative range loop in fn: while
+@m.WorkTask.fn.1	seq	False	acc=1	no nonnegative range loop in fn: seq
+@f.schedule	while	False	acc=0	no nonnegative range loop in fn: while
+# bench/pyperformance/richards_super.py
+@m.Richards.run.1	range	True	acc=0	if ops > GUARD_OPS:
+@main.init	range	True	acc=0	effect call @m.Richards.run.1 wL
+@m.Packet.append_to.1	while	False	acc=0	no nonnegative range loop in fn: while
+@m.WorkTask.fn.1	seq	False	acc=1	no nonnegative range loop in fn: seq
+@f.schedule	while	False	acc=0	no nonnegative range loop in fn: while
+# bench/pyperformance/scimark.py
+@m.Random-1.initialize.1	range	True	acc=1	if len(plan.lists) == 0:
+@m.Random-1.RandomVector.1	range	True	acc=0	effect call @m.Random-1.nextDouble.1 wL
+@f.int_log2.1	while	False	acc=0	no nonnegative range loop in fn: while
+@f.FFT_bitreverse.1	range	True	acc=8	if other is not lp and other.head in region:
+@f.FFT_bitreverse.1	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.FFT_transform_internal.1	while	False	acc=20	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.FFT_transform_internal.1	range	False	acc=10	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.FFT_transform_internal.1	range	True	acc=10	if other is not lp and other.head in region:
+@f.FFT_transform_internal.1	range	False	acc=10	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.FFT_inverse.1	range	True	acc=2	PLANNED reads=1 stores=1
+@f.bench_FFT.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.bench_FFT.1	range	True	acc=0	effect call @f.FFT_transform.1 wL
+@m.ArrayList-1.__init__.1	range	True	acc=0	effect rt list.append wL
+@m.ArrayList-1.indexes.1	range	True	acc=0	if other is not lp and other.head in region:
+@m.ArrayList-1.indexes.1	range	True	acc=0	effect tuple.store int wL
+@m.Random-1.RandomMatrix.1	seq	False	acc=2	no nonnegative range loop in fn: seq
+@m.ArrayList-1.copy_data_from.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.LU_factor.1	range	True	acc=11	if other is not lp and other.head in region:
+@f.LU_factor.1	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.LU_factor.1	range	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.LU_factor.1	range	False	acc=4	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.LU_factor.1	range	False	acc=4	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.bench_LU.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.bench_LU.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.MonteCarlo.1	range	True	acc=0	effect call @m.Random-1.nextDouble.1 wL
+@f.bench_MonteCarlo.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.SOR_execute.1	range	True	acc=0	if other is not lp and other.head in region:
+@f.SOR_execute.1	range	True	acc=0	if other is not lp and other.head in region:
+@f.SOR_execute.1	range	True	acc=0	effect tuple.store int wL
+@f.bench_SOR.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.SparseCompRow_matmult.1	seq	False	acc=6	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.SparseCompRow_matmult.1	range	True	acc=6	if other is not lp and other.head in region:
+@f.SparseCompRow_matmult.1	range	False	acc=3	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.bench_SparseMatMult.1	range	True	acc=3	if other is not lp and other.head in region:
+@f.bench_SparseMatMult.1	range	True	acc=1	PLANNED reads=0 stores=1
+# bench/pyperformance/spectral_norm.py
+@f.part_A_times_u.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.eval_times_u.1	range	True	acc=0	effect tuple.store int wL
+@f.part_At_times_u.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.eval_times_u.2	range	True	acc=0	effect tuple.store int wL
+@f.bench_spectral_norm.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.bench_spectral_norm.1	range	True	acc=0	effect call @f.eval_AtA_times_u.1 wL
+@f.bench_spectral_norm.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+# bench/pyperformance/unpack_sequence.py
+@f.do_unpacking.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.do_unpacking.2	seq	False	acc=0	no nonnegative range loop in fn: seq
+# bench/dictcount.py
+@f.words	range	True	acc=0	effect rt list.append wL
+@f.count	range	True	acc=0	if other is not lp and other.head in region:
+@f.count	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.known	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.bump	range	True	acc=0	if len(plan.lists) == 0:
+@f.bump	range	True	acc=0	if other is not lp and other.head in region:
+@f.bump	range	True	acc=0	if len(plan.lists) == 0:
+# bench/dictkeys.py
+@f.rounds.1	range	True	acc=1	PLANNED reads=1 stores=0
+@f.rounds.1	range	True	acc=1	PLANNED reads=1 stores=0
+@f.rounds.1	range	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.rounds.1	range	True	acc=1	PLANNED reads=1 stores=0
+@f.rounds.1	range	True	acc=2	PLANNED reads=2 stores=0
+@f.rounds.1	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.rounds.1	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.rounds.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.rounds.1	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.rounds.2	range	True	acc=1	PLANNED reads=1 stores=0
+@f.rounds.2	range	True	acc=1	PLANNED reads=1 stores=0
+@f.rounds.2	range	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.rounds.2	range	True	acc=1	PLANNED reads=1 stores=0
+@f.rounds.2	range	True	acc=2	PLANNED reads=2 stores=0
+@f.rounds.2	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.rounds.2	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.rounds.2	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.rounds.2	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@main.init	seq	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@main.init	range	True	acc=1	if ops > GUARD_OPS:
+@main.init	range	True	acc=1	if ops > GUARD_OPS:
+@f.int_keys	range	True	acc=0	effect rt list.append wL
+@f.str_keys	range	True	acc=0	if other is not lp and other.head in region:
+@f.str_keys	range	True	acc=0	effect rt list.append wL
+# bench/dictlookup.py
+@f.int_rounds	range	True	acc=0	if len(plan.lists) == 0:
+@f.int_rounds	range	True	acc=0	if other is not lp and other.head in region:
+@f.int_rounds	range	True	acc=0	if len(plan.lists) == 0:
+@f.int_rounds	range	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.str_rounds	range	True	acc=0	effect rt list.append wL
+@f.str_rounds	range	True	acc=1	PLANNED reads=1 stores=0
+@f.str_rounds	range	True	acc=0	if other is not lp and other.head in region:
+@f.str_rounds	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.str_rounds	range	True	acc=0	if len(plan.lists) == 0:
+# bench/fib.py
+# bench/itertools_loops.py
+@f.itertools$_product.1	seq	False	acc=0	coroutine
+@f.itertools$_product.1	seq	False	acc=0	coroutine
+@f.itertools$_product.1	seq	False	acc=0	coroutine
+@f.itertools$_combinations.1	while	False	acc=8	coroutine
+@f.itertools$_combinations.1	while	False	acc=0	coroutine
+@f.itertools$_combinations.1	range	False	acc=2	coroutine
+@f.itertools$_combinations.1	range	False	acc=3	coroutine
+@f.itertools$_groupby_step.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.itertools$_grouper.1	while	False	acc=0	coroutine
+@f.itertools$_groupby.1	seq	False	acc=0	coroutine
+@f.itertools$_groupby.1	while	False	acc=0	coroutine
+@f.itertools$_groupby.1	while	False	acc=0	coroutine
+@f.itertools$_chain.3	range	False	acc=0	coroutine
+@f.itertools$_chain.2	seq	False	acc=0	coroutine
+@f.itertools$_chain.1	seq	False	acc=0	coroutine
+@main.init	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@main.init	range	True	acc=0	effect rt list.append wL
+@main.init	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@main.init	range	True	acc=0	effect rt list.append wL
+@main.init	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@main.init	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@main.init	range	True	acc=0	if other is not lp and other.head in region:
+@main.init	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+# bench/json_records.py
+@init.json	range	True	acc=0	if ops > GUARD_OPS or b.handler != '':
+@init.json	range	True	acc=1	if ops > GUARD_OPS or b.handler != '':
+@f.details_score	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.process	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.rebuild	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.rebuild	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.digest	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.warm	while	False	acc=0	no nonnegative range loop in fn: while
+@f.run_predecoded	range	True	acc=0	if other is not lp and other.head in region:
+@f.run_predecoded	range	True	acc=0	if len(plan.lists) == 0:
+@f.run_predecoded	range	True	acc=0	effect call @f.rebuild wL
+@f.run_predecoded	range	True	acc=0	effect call @f.json$dumps wL
+@f.run	range	True	acc=0	if other is not lp and other.head in region:
+@f.run	range	True	acc=0	effect call @f.json$loads wL
+@f.run	range	True	acc=0	if len(plan.lists) == 0:
+@f.run	range	True	acc=0	effect call @f.json$loads wL
+@f.smoke	range	True	acc=0	effect call @f.json$loads wL
+@m.json$_Parser.skip	while	False	acc=0	no nonnegative range loop in fn: while
+@m.json$_Encoder.write	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.json$_Encoder.write	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.json$_Encoder.write	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.json$_Encoder.write	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.json$_quote	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.json$_escape_bytes	while	False	acc=0	no nonnegative range loop in fn: while
+@f.json$_escape_chars	seq	False	acc=0	no nonnegative range loop in fn: seq
+@m.json$_Parser.char_index	while	False	acc=0	no nonnegative range loop in fn: while
+@m.json$_Parser.escaped	while	False	acc=0	no nonnegative range loop in fn: while
+@m.json$_Parser.number	while	False	acc=0	no nonnegative range loop in fn: while
+@m.json$_Parser.number	while	False	acc=0	no nonnegative range loop in fn: while
+@m.json$_Parser.number	while	False	acc=0	no nonnegative range loop in fn: while
+@m.json$_Parser.array	while	False	acc=0	no nonnegative range loop in fn: while
+@m.json$_Parser.object	while	False	acc=0	no nonnegative range loop in fn: while
+@f.json$_u8char	range	False	acc=0	no nonnegative range loop in fn: range
+@m.json$_Parser.hex4	range	False	acc=0	no nonnegative range loop in fn: range
+@m.json$_Parser.plain_end	while	False	acc=0	no nonnegative range loop in fn: while
+@m.json$_Parser.plain_prefix	while	False	acc=0	no nonnegative range loop in fn: while
+# bench/list_reads.py
+@main.init	range	True	acc=0	effect rt list.append wL
+@main.init	range	True	acc=0	effect rt list.append wL
+@main.init	range	True	acc=0	effect rt list.append wL
+@main.init	range	True	acc=0	if len(plan.lists) == 0:
+@f.stride_sum	range	True	acc=0	if len(plan.lists) == 0:
+@f.dot_zip	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.sparse_gather	seq	False	acc=1	no nonnegative range loop in fn: seq
+# bench/listindex.py
+@main.init	range	True	acc=0	if len(plan.lists) == 0:
+@f.total	range	True	acc=1	PLANNED reads=1 stores=0
+# bench/mandel.py
+@main.init	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.mandel	range	True	acc=0	if other is not lp and other.head in region:
+@f.mandel	range	True	acc=0	if other is not lp and other.head in region:
+@f.mandel	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+# bench/memo.py
+@c.0.1	range	False	acc=3	no nonnegative range loop in fn: range
+@main.init	range	True	acc=0	effect rt list.append wL
+# bench/nbody.py
+@main.init	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.energy	range	True	acc=1	if other is not lp and other.head in region:
+@f.energy	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.advance	range	True	acc=2	if other is not lp and other.head in region:
+@f.advance	range	True	acc=2	if other is not lp and other.head in region:
+@f.advance	range	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.advance	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+# bench/optional_scalars.py
+@main.init	range	True	acc=0	if len(plan.lists) == 0:
+@f.direct_minimum	range	True	acc=0	if other is not lp and other.head in region:
+@f.direct_minimum	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.rank_minimum	range	True	acc=0	if other is not lp and other.head in region:
+@f.rank_minimum	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+# bench/setdisplay.py
+@f.vowels	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.loops	range	True	acc=0	if other is not lp and other.head in region:
+@f.loops	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.fresh	range	True	acc=0	if len(plan.lists) == 0:
+# bench/sieve.py
+@main.init	range	True	acc=0	effect call @f.sieve wL
+@f.sieve	while	False	acc=2	no nonnegative range loop in fn: while
+@f.sieve	range	False	acc=1	no nonnegative range loop in fn: range
+@f.sieve	seq	False	acc=0	no nonnegative range loop in fn: seq
+# bench/spectral.py
+@main.init	range	True	acc=0	effect call @f.mul_atav wL
+@main.init	range	True	acc=4	if len(plan.lists) == 0:
+@f.mul_av	range	True	acc=2	if other is not lp and other.head in region:
+@f.mul_av	range	True	acc=1	PLANNED reads=1 stores=0
+@f.mul_atv	range	True	acc=2	if other is not lp and other.head in region:
+@f.mul_atv	range	True	acc=1	PLANNED reads=1 stores=0
+# bench/words.py
+@main.init	seq	False	acc=0	no nonnegative range loop in fn: seq
+@main.init	seq	False	acc=0	no nonnegative range loop in fn: seq
+@main.init	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.make_text	range	True	acc=1	effect rt list.append wL
+# bench/extended/json_repair_spans.py
+# bench/extended/json_scan.py
+# bench/extended/kernels.py
+@f.object_dispatch	range	True	acc=0	effect rt list.append wL
+@f.object_dispatch	range	True	acc=0	if other is not lp and other.head in region:
+@f.object_dispatch	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.text_pipeline	range	True	acc=0	effect rt list.append wL
+@f.text_pipeline	range	True	acc=3	if other is not lp and other.head in region:
+@f.text_pipeline	seq	False	acc=3	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.text_pipeline	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.list_churn	range	True	acc=1	if other is not lp and other.head in region:
+@f.list_churn	range	True	acc=0	effect rt list.append wL
+@f.exception_local	range	True	acc=0	if ops > GUARD_OPS or b.handler != '':
+@f.exception_unwind	range	True	acc=0	if ops > GUARD_OPS or b.handler != '':
+@f.long_string_keys	range	True	acc=0	effect rt list.append wL
+@f.long_string_keys	range	True	acc=0	if other is not lp and other.head in region:
+@f.long_string_keys	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.sort_records	range	True	acc=1	if other is not lp and other.head in region:
+@f.sort_records	range	True	acc=0	effect rt list.append wL
+@f.sort_records	range	True	acc=1	PLANNED reads=1 stores=0
+# bench/integers/arith128.py
+@f.run	range	True	acc=0	if len(plan.lists) == 0:
+# bench/integers/arith128_mpz.py
+@f.run	range	True	acc=0	if len(plan.lists) == 0:
+# bench/integers/bigmul.py
+@f.run	range	True	acc=0	if len(plan.lists) == 0:
+# bench/integers/bigmul_mpz.py
+@f.power	while	False	acc=0	no nonnegative range loop in fn: while
+@f.run	range	True	acc=0	if len(plan.lists) == 0:
+# bench/integers/collatz.py
+@f.run	range	True	acc=0	if other is not lp and other.head in region:
+@f.run	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+# bench/integers/collatz_i64.py
+@f.run	range	True	acc=0	if other is not lp and other.head in region:
+@f.run	while	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+# bench/integers/containers.py
+@f.run	range	True	acc=0	effect rt list.append_big wL
+@f.run	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+# bench/integers/containers_mpz.py
+@f.run	range	True	acc=0	effect rt list.append wL
+@f.run	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.run	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+# bench/integers/cross64.py
+@f.run	range	True	acc=0	if len(plan.lists) == 0:
+# bench/integers/cross64_mpz.py
+@f.run	range	True	acc=0	if len(plan.lists) == 0:
+# bench/integers/dectext.py
+@f.run	range	True	acc=0	if len(plan.lists) == 0:
+# bench/integers/dectext_mpz.py
+@f.run	range	True	acc=0	if len(plan.lists) == 0:
+# bench/integers/factorial.py
+@f.run	range	True	acc=0	if other is not lp and other.head in region:
+@f.run	range	True	acc=0	if len(plan.lists) == 0:
+# bench/integers/factorial_mpz.py
+@f.run	range	True	acc=0	if other is not lp and other.head in region:
+@f.run	range	True	acc=0	if len(plan.lists) == 0:
+# bench/integers/fibadd.py
+@f.run	range	True	acc=0	if other is not lp and other.head in region:
+@f.run	range	True	acc=0	if len(plan.lists) == 0:
+# bench/integers/fibadd_mpz.py
+@f.run	range	True	acc=0	if other is not lp and other.head in region:
+@f.run	range	True	acc=0	if len(plan.lists) == 0:
+# bench/integers/lcg32.py
+@f.run	range	True	acc=0	if len(plan.lists) == 0:
+# bench/integers/lcg32_i64.py
+@f.run	range	True	acc=0	if len(plan.lists) == 0:
+# bench/integers/modpow.py
+@f.run	range	True	acc=0	if len(plan.lists) == 0:
+# bench/integers/modpow_mpz.py
+@f.modpow	while	False	acc=0	no nonnegative range loop in fn: while
+@f.run	range	True	acc=0	if len(plan.lists) == 0:
+# bench/integers/run.py
+# bench/allocator/chevron.py
+@f.main	range	True	acc=1	if other is not lp and other.head in region:
+@f.main	while	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+# bench/allocator/lists.py
+@f.main	range	True	acc=2	if other is not lp and other.head in region:
+@f.main	range	True	acc=0	effect rt list.append wL
+@f.main	range	True	acc=0	effect rt list.append wL
+@f.main	range	True	acc=0	if len(plan.lists) == 0:
+@f.main	seq	False	acc=1	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+# bench/allocator/nodes.py
+@f.main	range	True	acc=0	effect rt list.append wL
+@f.main	range	True	acc=3	if other is not lp and other.head in region:
+@f.main	range	True	acc=1	effect rt list.append wL
+# bench/allocator/peak.py
+@f.main	range	True	acc=0	effect rt list.append wL
+@f.main	range	True	acc=0	if len(plan.lists) == 0:
+# bench/allocator/run.py
+# bench/allocator/slice_tail.py
+@f.main	range	True	acc=0	if len(plan.lists) == 0:
+# bench/allocator/strbuild.py
+@f.main	range	True	acc=0	effect rt list.append wL
+@f.main	range	True	acc=0	if other is not lp and other.head in region:
+@f.main	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+# bench/allocator/vectors.py
+@f.main	range	True	acc=0	effect rt list.append wL
+# /tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/k/callrng.py
+@f.fill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.ifill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.kernel	range	True	acc=2	effect call @f.bump wL
+@f.main	range	True	acc=0	effect call @f.kernel wL
+# /tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/k/cmpcount.py
+@f.fill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.ifill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.kernel	range	True	acc=0	if len(plan.lists) == 0:
+@f.main	range	True	acc=0	if len(plan.lists) == 0:
+# /tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/k/comp.py
+@f.fill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.ifill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.kernel	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.main	range	True	acc=1	effect call @f.kernel wL
+# /tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/k/divide.py
+@f.fill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.ifill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.kernel	range	True	acc=3	PLANNED reads=2 stores=1
+@f.main	range	True	acc=0	effect call @f.kernel wL
+# /tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/k/dot.py
+@f.fill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.ifill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.kernel	range	True	acc=1	PLANNED reads=1 stores=0
+@f.main	range	True	acc=0	if len(plan.lists) == 0:
+# /tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/k/foreach.py
+@f.fill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.ifill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.kernel	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.main	range	True	acc=0	if len(plan.lists) == 0:
+# /tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/k/iscale.py
+@f.fill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.ifill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.kernel	range	True	acc=2	PLANNED reads=1 stores=1
+@f.main	range	True	acc=0	effect call @f.kernel wL
+# /tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/k/isum.py
+@f.fill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.ifill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.kernel	range	True	acc=1	PLANNED reads=1 stores=0
+@f.main	range	True	acc=0	if len(plan.lists) == 0:
+# /tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/k/knn.py
+@f.fill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.ifill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.kernel	range	True	acc=3	if other is not lp and other.head in region:
+@f.kernel	range	True	acc=2	if other is not lp and other.head in region:
+@f.kernel	range	True	acc=2	PLANNED reads=2 stores=0
+@f.main	range	True	acc=0	effect call @f.kernel wL
+# /tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/k/matmul.py
+@f.fill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.ifill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.kernel	range	True	acc=3	if other is not lp and other.head in region:
+@f.kernel	range	True	acc=3	if other is not lp and other.head in region:
+@f.kernel	range	True	acc=2	if len(plan.lists) == 0:
+@f.main	range	True	acc=0	effect call @f.kernel wL
+# /tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/k/outer.py
+@f.fill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.ifill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.kernel	range	True	acc=3	if other is not lp and other.head in region:
+@f.kernel	range	True	acc=0	if len(plan.lists) == 0:
+@f.main	range	True	acc=0	effect call @f.kernel wL
+# /tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/k/rev.py
+@f.fill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.ifill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.kernel	range	False	acc=3	no nonnegative range loop in fn: range
+@f.main	range	True	acc=0	effect call @f.kernel wL
+# /tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/k/saxpy.py
+@f.fill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.ifill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.kernel	range	True	acc=3	PLANNED reads=2 stores=1
+@f.main	range	True	acc=0	effect call @f.kernel wL
+# /tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/k/scale.py
+@f.fill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.ifill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.kernel	range	True	acc=2	PLANNED reads=1 stores=1
+@f.main	range	True	acc=0	effect call @f.kernel wL
+# /tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/k/sqrt.py
+@f.fill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.ifill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.kernel	range	True	acc=2	PLANNED reads=1 stores=1
+@f.main	range	True	acc=0	effect call @f.kernel wL
+# /tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/k/stencil.py
+@f.fill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.ifill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.kernel	range	True	acc=4	PLANNED reads=3 stores=1
+@f.main	range	True	acc=0	effect call @f.kernel wL
+# /tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/k/tri.py
+@f.fill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.ifill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.kernel	range	True	acc=2	if other is not lp and other.head in region:
+@f.kernel	range	False	acc=2	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.main	range	True	acc=0	if len(plan.lists) == 0:
+# /tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/k/while.py
+@f.fill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.ifill	range	True	acc=1	PLANNED reads=0 stores=1
+@f.kernel	while	False	acc=2	no nonnegative range loop in fn: while
+@f.main	range	True	acc=0	effect call @f.kernel wL
+# /home/user/pystachy/research/umap-numba-2026-11-13/umap_core.py
+@m._pyrandom$Random._init_genrand.1	range	True	acc=3	PLANNED reads=2 stores=1
+@m._pyrandom$Random._init_by_array.1	while	False	acc=7	no nonnegative range loop in fn: while
+@m._pyrandom$Random._init_by_array.1	while	False	acc=6	no nonnegative range loop in fn: while
+@m._pyrandom$Random._genrand_uint32.1	while	False	acc=4	no nonnegative range loop in fn: while
+@m._pyrandom$Random._genrand_uint32.1	while	False	acc=4	no nonnegative range loop in fn: while
+@f.make_blobs	range	True	acc=0	effect call @m.random$Random.uniform.1 wL
+@f.make_blobs	range	True	acc=1	if other is not lp and other.head in region:
+@f.make_blobs	range	True	acc=1	effect call @m.random$Random.gauss.1 wL
+@f.knn_exact	range	True	acc=14	if other is not lp and other.head in region:
+@f.knn_exact	range	True	acc=10	if other is not lp and other.head in region:
+@f.knn_exact	range	True	acc=2	PLANNED reads=2 stores=0
+@f.knn_exact	while	False	acc=4	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.knn_exact	range	True	acc=4	PLANNED reads=2 stores=0
+@f.smooth_knn_dist	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.smooth_knn_dist	range	True	acc=16	if other is not lp and other.head in region:
+@f.smooth_knn_dist	range	True	acc=1	effect rt list.append wL
+@f.smooth_knn_dist	range	True	acc=2	if other is not lp and other.head in region:
+@f.smooth_knn_dist	range	True	acc=2	PLANNED reads=1 stores=0
+@f.fuzzy_graph	range	True	acc=6	if other is not lp and other.head in region:
+@f.fuzzy_graph	range	True	acc=6	if len(plan.lists) == 0:
+@f.fuzzy_graph	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.edge_arrays	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.edge_arrays	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.make_epochs_per_sample	range	True	acc=2	PLANNED reads=1 stores=1
+@f.random_init	range	True	acc=1	effect call @m.random$Random.uniform.1 wL
+@f.random_init	range	True	acc=5	if other is not lp and other.head in region:
+@f.random_init	range	True	acc=1	if len(plan.lists) == 0:
+@f.random_init	range	True	acc=2	effect call @f.to_float32 wL
+@f.optimize_layout	range	True	acc=3	if other is not lp and other.head in region:
+@f.optimize_layout	range	True	acc=2	PLANNED reads=1 stores=0
+@f.optimize_layout	seq	False	acc=0	if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp
+@f.optimize_layout	range	True	acc=31	if other is not lp and other.head in region:
+@f.optimize_layout	range	True	acc=31	if other is not lp and other.head in region:
+@f.optimize_layout	range	True	acc=8	effect call @f.tau_rand_int wL
+@f.write_ints.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.write_floats.1	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f.main	seq	False	acc=0	no nonnegative range loop in fn: seq
+@f._struct$_unpack_int	range	True	acc=0	if len(plan.lists) == 0:
+@f._struct$_unpack_float	range	True	acc=0	if len(plan.lists) == 0:
+@f._pyrandom$_key_words	while	False	acc=0	no nonnegative range loop in fn: while
+@f._pyrandom$_hash_float	while	False	acc=0	no nonnegative range loop in fn: while
+@f._struct$_bytes	range	True	acc=1	if len(plan.lists) == 0:

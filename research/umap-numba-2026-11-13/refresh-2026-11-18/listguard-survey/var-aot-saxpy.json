@@ -1,0 +1,61 @@
+{
+ "spec": {
+  "variants": [
+   [
+    "generic",
+    [
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/native/saxpy-generic",
+     "2000000",
+     "300"
+    ],
+    {}
+   ],
+   [
+    "native",
+    [
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/native/saxpy-native",
+     "2000000",
+     "300"
+    ],
+    {}
+   ]
+  ]
+ },
+ "rounds": 5,
+ "runs": {
+  "generic": [
+   {
+    "wall": 0.39323148600124114
+   },
+   {
+    "wall": 0.40534605200082297
+   },
+   {
+    "wall": 0.42139461300030234
+   },
+   {
+    "wall": 0.4093922020001628
+   },
+   {
+    "wall": 0.3907710090006731
+   }
+  ],
+  "native": [
+   {
+    "wall": 0.3924635089988442
+   },
+   {
+    "wall": 0.3958199259996036
+   },
+   {
+    "wall": 0.39161070000045584
+   },
+   {
+    "wall": 0.40558702800080937
+   },
+   {
+    "wall": 0.39556266399995366
+   }
+  ]
+ }
+}

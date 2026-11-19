@@ -76,3 +76,64 @@ and `pys_fpow`).
   `List`/`Slot` in main's companion test), #1455 (`a9751229`), #1450 (`e01b4f54`), #1468
   (`5bce6de8`), #1477 (`75b1fd54`); each built at a fixed point and passed its focused checks
   locally.
+
+## Bounds checks and SIMD in general (19 November)
+
+Survey (`listguard-survey/`): every range loop with a list access in `bench/`, `bench/pyperformance/`,
+`bench/extended/`, eighteen loop-pattern kernels and the UMAP probe, by why listguard gave it no
+copy (a patched `guard_plan` logging its reason, hosted compiler, `pystachy ir`). Planned 94; a call
+whose callee writes a list 84 (mostly `regex_v8`'s regex calls); a loop holding a loop 60; a start
+or step that is not a constant >= 0 / > 0 55; an append 46; no list indexed by the loop's index 19.
+In the numeric programs the misses are outer loops (nbody, SciMark LU, FFT, sparse, spectral, UMAP
+layout and kNN) and variable starts (`range(j + 1, n)`, `range(row[r], row[r + 1])`).
+
+- **Variable starts and steps: draft #1569.** Lean already proves a register start (`-c <= s`
+  before the loop) and, once the copy branches on `i < stop` instead of the variable step's
+  `select`, a variable step. Default JIT: Gaussian elimination's row update 0.12×, triangular sum
+  0.25×; AOT: CSR product 0.53× (main's AOT already vectorized the row update through LLVM's own
+  versioning). SciMark's LU indexes rows through `Array2D.__getitem__` and qualifies either way.
+- **Appends: the draft stacked on #1569.** listguard's invariant is "no list gets shorter", not "no
+  length changes": appends, inserts and extends keep the tests before the loop true. The Lean model
+  needed a `grow` node and a `lenGe` fact (a length read before growth is a lower bound); without
+  them every copy of a loop that appends would be unproved, and CI's Lean corpus (dynamic-Any
+  programs, which use the identity variants) would reject them.
+- **Not done: loops that count down, and based indexes from a variable start.** Implemented and
+  differentially tested (`patches/lgvar-full.diff` in the session scratchpad, not pushed), but the
+  Lean access checker rejects their copies. Rules they need in `ruleStep`, each an `omega` case:
+  `.lt a b` from `.off b a k` with k >= 1; `.lt a b` from `.off a c k` with k <= 0 and `.lt c b`;
+  `.ge a k` from `.lt b a` and `.ge b j` with k <= j + 1; and, for a base from a variable start,
+  a lower bound of `b + i` from `b + lo` and `lo <= i`. Then the descending copy's invariant
+  `i < hi` (hi = start + 1) carries through its join.
+- **Not done: calls that only assign items** (UMAP's `tau_rand_int`). Needs a per-function "shortens
+  no list" summary in the compiler and the same in `check_lean_effects`' independent scan, so that
+  such a call becomes a `grow` node.
+- **Not done: outer loops.** Version innermost loops first, then copy the outer loop with the
+  inner versions inside (inner bodies x4), duplicating the inner `Loop` records with renamed
+  labels and values (`stop` and `inc` may be defined in the outer body). Small gains where the
+  inner loops dominate (LU, spectral); the UMAP edge loop also needs the call summary above.
+- **SIMD.** LLVM -O2 (AOT) vectorizes a check-free copy (`saxpy`, `scale`, `stencil`, the LU row
+  update); what still blocks it is Python's semantics: OverflowError checks on int arithmetic
+  (`s += x[i]`, `x[i] * 3 + 1`, `k * m + j` indexes), ZeroDivisionError checks on division,
+  `math.sqrt`'s domain check and libm call, and strict float reductions (correct: no reassociation).
+  The default JIT never vectorizes: no `loop-vectorize`, correlated propagation's
+  `extractvalue(insertvalue({poison, false}, i + 1, 0), 0)` hides the induction variable from
+  SCEV until `instcombine` folds it, and `lljit.c` builds its target machine with no CPU or
+  features (SSE2 vectors even on AVX-512 hosts).
+- **Loop passes over the inlining budget: not worth it now.** On main `8259611e` with #1540,
+  regex_effbot's timed loop is 1.00× with #1540's passes (0.96× with `instcombine` in place of
+  `sccp`), at +0.09 to +0.17 s of `opt` on the four modules over the budget (imports, router,
+  regex_effbot, regex_v8); the 16% of the 18 November screening came from an older main.
+- **SIMD measurements** (`listguard-survey/var-*.json`, `variants.py`, 5–7 interleaved rounds on CPU
+  1). JIT, #1540's loop passes against the same plus `instcombine,loop-vectorize,instcombine,
+  simplifycfg`: listguard's copies of `saxpy` and `scale` over 4,000 items 0.73× and 0.78× of wall
+  time (launch included); with #1569 and #1570 also merged, Gaussian elimination's row update
+  0.57×; `opt` +16 ms on 8,500- and 13,000-line modules. AOT `-march=native` (AVX2 `ymm`, which
+  `PYSTACHY_CFLAGS` already allows) against generic SSE2: the LU row update 0.84×, memory-bound
+  `saxpy`/`stencil` over 2 million items 0.99×/1.02×.
+- **A copy's index overflow checks.** The JIT copy of `b[i] = (a[i - 1] + a[i] + a[i + 1]) * 0.25`
+  keeps `sadd.with.overflow(i, -1)` and its exit: correlated propagation in the JIT does not prove
+  it (AOT's -O2 does), and the exit both blocks vectorization and keeps the items pointer's load in
+  the loop (not dereferenceable, so not hoisted past the exit). listguard could add `i + c` without
+  a check in its copy, as it adds `b + i` (the tests keep `0 <= i + c < len`); each such plain add
+  then needs Lean's `noWrap` from facts the certificate has, to re-check across the corpus.
+- **Loop passes over the budget, data.** `listguard-survey/effbot-over-budget.json`.

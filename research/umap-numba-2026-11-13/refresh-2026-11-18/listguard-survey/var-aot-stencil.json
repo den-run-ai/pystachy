@@ -1,0 +1,61 @@
+{
+ "spec": {
+  "variants": [
+   [
+    "generic",
+    [
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/native/stencil-generic",
+     "2000000",
+     "150"
+    ],
+    {}
+   ],
+   [
+    "native",
+    [
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/native/stencil-native",
+     "2000000",
+     "150"
+    ],
+    {}
+   ]
+  ]
+ },
+ "rounds": 5,
+ "runs": {
+  "generic": [
+   {
+    "wall": 0.4038661470003717
+   },
+   {
+    "wall": 0.4211902610004472
+   },
+   {
+    "wall": 0.40519521400165104
+   },
+   {
+    "wall": 0.4144734290002816
+   },
+   {
+    "wall": 0.4099276010001631
+   }
+  ],
+  "native": [
+   {
+    "wall": 0.4137904809995234
+   },
+   {
+    "wall": 0.41804581100041105
+   },
+   {
+    "wall": 0.41939099000046554
+   },
+   {
+    "wall": 0.4229480739995779
+   },
+   {
+    "wall": 0.39984716899925843
+   }
+  ]
+ }
+}

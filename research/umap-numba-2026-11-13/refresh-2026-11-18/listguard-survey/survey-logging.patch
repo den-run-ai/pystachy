@@ -1,0 +1,128 @@
+diff --git a/src/pystachy_compiler/optimizations.py b/src/pystachy_compiler/optimizations.py
+index 1d0d2bd4e..dc8026ace 100644
+--- a/src/pystachy_compiler/optimizations.py
++++ b/src/pystachy_compiler/optimizations.py
+@@ -762,10 +762,38 @@ class GuardPlan:
+         self.basesums: list[Ins] = []  # (the checked sums b + i of accepted indexes: the copy's add none)
+ 
+ 
++
++def lg_reason(self, fn, lp, why):
++    import os
++    path = os.environ.get("LGSURVEY", "")
++    if path != "":
++        at = {}
++        for j in range(len(fn.blocks)):
++            at[fn.blocks[j].label] = j
++        region = {lp.head: True}
++        pending = [lp.body]
++        acc = 0
++        idxacc = 0
++        while len(pending) > 0:
++            l = pending.pop()
++            if l in region or l == lp.exit or l not in at:
++                continue
++            region[l] = True
++            b = fn.blocks[at[l]]
++            for i in b.code:
++                if i.op == "rt" and (i.s == "list.get" or i.s == "list.set"):
++                    acc += 1
++            for x in b.code[len(b.code) - 1].b:
++                pending.append(x)
++        with open(path, "a") as f:
++            f.write(f"{fn.f.ll}\t{lp.kind}\t{lp.nonnegative}\tacc={acc}\t{why}\n")
++    return None
++
++
+ def guard_plan(self, fn: IFn, lp: Loop, vs: Values, pl: dict[str, list[int]], at: dict[str, int], sums: dict[str, Ins]) -> GuardPlan | None:
+     # the plan for range loop lp (gen_listguard), or None where it gets no copy
+     if lp.kind != "range" or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp.body not in at:
+-        return None
++        return lg_reason(self, fn, lp, "if lp.kind != 'range' or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp")
+     region: dict[str, bool] = {lp.head: True}
+     pending = [lp.body]
+     ops = len(fn.blocks[at[lp.head]].code)
+@@ -774,31 +802,31 @@ def guard_plan(self, fn: IFn, lp: Loop, vs: Values, pl: dict[str, list[int]], at
+         if l in region or l == lp.exit:
+             continue
+         if l not in at:
+-            return None
++            return lg_reason(self, fn, lp, "if l not in at:")
+         region[l] = True
+         b = fn.blocks[at[l]]
+         ops += len(b.code)
+         if ops > GUARD_OPS or b.handler != "":
+-            return None
++            return lg_reason(self, fn, lp, "if ops > GUARD_OPS or b.handler != '':")
+         for s in b.code[len(b.code) - 1].b:
+             pending.append(s)
+     if fn.blocks[at[lp.head]].handler != "" or len([i for i in fn.blocks[at[lp.head]].code if i.op == "phi"]) > 0:
+-        return None
++        return lg_reason(self, fn, lp, "if fn.blocks[at[lp.head]].handler != '' or len([i for i in fn.blocks[at[lp.head]].code if ")
+     for other in fn.loops:
+         if other is not lp and other.head in region:
+-            return None  # (a loop in this one: only innermost loops get copies)
++            return lg_reason(self, fn, lp, "if other is not lp and other.head in region:")  # (a loop in this one: only innermost loops get copies)
+     outside = [j for j in pl[lp.head] if fn.blocks[j].label not in region]
+     if len(outside) != 1:
+-        return None
++        return lg_reason(self, fn, lp, "if len(outside) != 1:")
+     pre = fn.blocks[outside[0]]
+     if pre.code[len(pre.code) - 1].op != "br":
+-        return None
++        return lg_reason(self, fn, lp, "if pre.code[len(pre.code) - 1].op != 'br':")
+     start = ""
+     for i in pre.code:
+         if (i.op == "mem.store" or i.op == "mach.store") and i.a[0].v == lp.ctr:
+             start = i.a[1].v  # (the counter's first value, a nonnegative constant: Loop.nonnegative)
+     if not guard_literal(start):
+-        return None
++        return lg_reason(self, fn, lp, "if not guard_literal(start):")
+     plan = GuardPlan(lp, pre)
+     plan.region = region
+     plan.start = int(start)
+@@ -816,7 +844,7 @@ def guard_plan(self, fn: IFn, lp: Loop, vs: Values, pl: dict[str, list[int]], at
+                 for cb in callee.blocks:
+                     ops += len(cb.code)
+                 if ops > GUARD_OPS:
+-                    return None
++                    return lg_reason(self, fn, lp, "if ops > GUARD_OPS:")
+                 plan.inline.append(i)
+     idx = self.canon(vs, lp.idx[0])
+     bad = FXBIT["wL"] | FXBIT["U"]
+@@ -895,9 +923,9 @@ def guard_plan(self, fn: IFn, lp: Loop, vs: Values, pl: dict[str, list[int]], at
+                 else:
+                     plan.stores.append(i)
+             elif self.opfx(i, fn.fa) & bad != 0:
+-                return None  # (an op that may change a list's length, or run user code)
++                return lg_reason(self, fn, lp, "effect " + ("call " + i.s if i.op == "call" else i.op + " " + i.s) + (" wL" if self.opfx(i, fn.fa) & FXBIT["wL"] != 0 else "") + (" U" if self.opfx(i, fn.fa) & FXBIT["U"] != 0 else ""))  # (an op that may change a list's length, or run user code)
+     if len(plan.lists) == 0:
+-        return None
++        return lg_reason(self, fn, lp, "if len(plan.lists) == 0:")
+     # listfast's check of an index before its inline read: the copy goes to the read
+     for l in region:
+         code = fn.blocks[at[l]].code
+@@ -945,11 +973,15 @@ def gen_listguard(self, fn: IFn) -> int:
+     # change a list while it is suspended), as is a loop that a try statement covers or that holds
+     # another loop or more than GUARD_OPS ops. How many accesses the copies leave unchecked
+     if fn.coro or len(fn.loops) == 0:
++        for lp in fn.loops:
++            lg_reason(self, fn, lp, "coroutine")
+         return 0
+     some = False
+     for lp in fn.loops:
+         some = some or (lp.kind == "range" and lp.nonnegative)
+     if not some:
++        for lp in fn.loops:
++            lg_reason(self, fn, lp, "no nonnegative range loop in fn: " + lp.kind)
+         return 0
+     at: dict[str, int] = {}
+     for j in range(len(fn.blocks)):
+@@ -968,6 +1000,7 @@ def gen_listguard(self, fn: IFn) -> int:
+         plan = guard_plan(self, fn, lp, vs, pl, at, sums)
+         if plan is not None:
+             plans.append(plan)
++            lg_reason(self, fn, lp, f"PLANNED reads={len(plan.reads)} stores={len(plan.stores)}")
+     n = 0
+     for p in plans:
+         n += guard_loop(self, fn, p)
