@@ -8,7 +8,7 @@
 #   tools/llvm_toolchain.sh name        print NAME, pystachy-llvm-VERSION-linux-ARCH
 #
 # The archive runs wherever the C and C++ libraries are at least as new as the build host's. For a
-# portable one, build in an old distribution: the LLVM toolchain workflow uses manylinux_2_28
+# portable one, build in an old distribution: docs/llvm-toolchain.md uses the manylinux_2_28 image
 # (glibc 2.28, libstdc++ from GCC 8). The build needs cmake 3.20 or later, a C++17 compiler, Python 3,
 # curl, tar and xz; ninja is used when present, else make.
 #
@@ -17,7 +17,7 @@
 #   LLVM_TOOLCHAIN_SOURCE    an archive already fetched (its hash is checked all the same)
 #   LLVM_TOOLCHAIN_WORK      the source and build directory (default OUT/work; several GiB)
 #   LLVM_TOOLCHAIN_JOBS      parallel jobs (default: the CPU count)
-#   LLVM_TOOLCHAIN_BUILD     CMAKE_BUILD_TYPE (default MinSizeRel)
+#   LLVM_TOOLCHAIN_BUILD     CMAKE_BUILD_TYPE (default Release; MinSizeRel is smaller and compiles slower)
 #   LLVM_TOOLCHAIN_GLIBC, LLVM_TOOLCHAIN_GLIBCXX   check: the newest symbol versions the binaries
 #                            may need (2.28 and 3.4.25 for manylinux_2_28); unset, they are reported
 set -eu
@@ -25,6 +25,7 @@ set -eu
 VERSION=${LLVM_TOOLCHAIN_VERSION:-18.1.8}
 SHA256=${LLVM_TOOLCHAIN_SHA256:-0b58557a6d32ceee97c8d533a59b9212d87e0fc4d2833924eb6c611247db2f2a}
 MAJOR=${VERSION%%.*}
+BUILD=${LLVM_TOOLCHAIN_BUILD:-Release}
 # What the driver runs: pystachy_toolchain.py's TOOLS, and llc for PYSTACHY_JIT_CODEGEN=0 under lli.
 TOOLS="clang opt lli llc llvm-link llvm-as"
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -136,7 +137,7 @@ EOF
     "$bin/clang" -O2 -fPIC -c -x ir opt.bc -o clang.o &&
     "$bin/clang" clang.o -o clang.exe -lm &&
     ./clang.exe > clang.out
-  ) || fail "the driver's steps failed in $tmp"
+  ) || fail "the driver's steps failed"
   [ "$(cat "$tmp/jit.out")" = "332833500 $(cut -d' ' -f2 "$tmp/clang.out")" ] || fail "lli printed '$(cat "$tmp/jit.out")'"
   cmp -s "$tmp/jit.out" "$tmp/llc.out" && cmp -s "$tmp/jit.out" "$tmp/clang.out" || fail "lli, llc and clang disagree"
 
@@ -177,9 +178,11 @@ build() {
   if command -v ninja > /dev/null 2>&1; then generator=Ninja; fi
   # One target and one shared libLLVM for every tool; clang's own libraries are linked into clang,
   # where unused code is discarded. No optional host library is used, so the result needs only the
-  # C and C++ libraries. The static analyzer, ARC migration and plugins are not built.
+  # C and C++ libraries. The static analyzer, ARC migration and plugins are not built. Release is
+  # compiled at -O2, as distributions build LLVM, not CMake's -O3.
   cmake -S "$src/llvm" -B "$work/build" -G "$generator" \
-    -DCMAKE_BUILD_TYPE="${LLVM_TOOLCHAIN_BUILD:-MinSizeRel}" \
+    -DCMAKE_BUILD_TYPE="$BUILD" \
+    -DCMAKE_C_FLAGS_RELEASE="-O2 -DNDEBUG" -DCMAKE_CXX_FLAGS_RELEASE="-O2 -DNDEBUG" \
     -DCMAKE_INSTALL_PREFIX="$stage" \
     -DLLVM_ENABLE_PROJECTS=clang \
     -DLLVM_TARGETS_TO_BUILD="$TARGET" \
@@ -211,7 +214,7 @@ build() {
     echo "tools: $TOOLS"
     echo "source: llvm-project-$VERSION.src.tar.xz sha256 $SHA256"
     echo "recipe: tools/llvm_toolchain.sh sha256 $(sha256sum "$0" | cut -d' ' -f1)"
-    echo "build: ${LLVM_TOOLCHAIN_BUILD:-MinSizeRel}, $("${CC:-cc}" --version | sed 1q), $(ldd --version | sed 1q)"
+    echo "build: $BUILD, $("${CC:-cc}" --version | sed 1q), $(ldd --version | sed 1q)"
     requirements "$stage"
   } > "$stage/share/BUILD.txt"
   (cd "$stage" && find . -type f ! -name MANIFEST.sha256 | LC_ALL=C sort | xargs sha256sum > MANIFEST.sha256)
