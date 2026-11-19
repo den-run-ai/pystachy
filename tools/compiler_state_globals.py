@@ -26,7 +26,7 @@ dynamic.BINDUNDERS dynamic.BUILTIN dynamic_proof.BUILTIN_KINDS dynamic_proof.BUI
 dynamic_proof.BOX_TAGS expressions.ORDERS expressions.CMPDUNDERS
 ir.NONUMS ir.NOVALS ir.NOLABELS ir.OPERAND_KINDS
 lexer.KEYWORDS lexer.OPS lexer.ESCAPES lexer.PREFIXES lexer.NONPRINT lexer.NOTID
-loader.ENUM_NAMES loader.ENUM_BASES loader.ENUM_HOOKS loader.FUNCTOOLS_NAMES loader.ORDERINGS
+loader.ENUM_NAMES loader.ENUM_BASES loader.ENUM_HOOKS loader.FUNCTOOLS_NAMES loader.ORDERINGS loader.QUIET_CALLS
 local_versions.UNVERSIONED machine_ir.WORD_READS optimizations.PASS_CONTRACTS parser.ATOMS patterns.SEQ_SCALARS program.BOUND_FORMS program.ORDER_OPS program.TV_TYPES
 pipeline.STAGE_PREDECESSORS
 reflection.BUILTIN_TYPES reflection.CLASS_BUILTINS reflection.SLOT_WRAPPERS reflection.OBJ_BUILTINS reflection.TYPE_BUILTINS reflection.PICKLING
@@ -66,6 +66,7 @@ RESET = {
     "diagnostics.INTFILES": "loader resets file-index python-int opt-ins with the file table",
     "diagnostics.INTSPANS": "loader resets the line spans of lib's promoting definitions with the file table",
     "names.ENUMCLASSES": "loader resets the enum classes it makes, by their statements' lines, with the file table",
+    "names.NESTED": "loader resets the nested enum classes it records, by their outer statements' lines, with the file table",
     "names.ORDERED": "loader resets the @total_ordering classes it records, by their statements' lines, with the file table",
 }
 RETAINED = {
@@ -103,6 +104,7 @@ WRITERS = {
     "syntax.LAMBDAS": {"parser.Parser.test1", "driver.compile_program"},
     "names.RENAMED": {"program.gen_prepare_program", "pipeline.gen_lower_program", "driver.compile_program"},
     "names.ENUMCLASSES": {"loader.Loader.program", "loader.enum_classes"},
+    "names.NESTED": {"loader.Loader.program", "loader.hoist_nested"},
     "names.ORDERED": {"loader.Loader.program", "loader.functools_classes"},
     "program_cache.ACTIVE": {"program_cache.start", "program_cache.stop"},
     "program_cache.VALID": {"program_cache.start", "program_cache._record", "program_cache.tracked_kind",

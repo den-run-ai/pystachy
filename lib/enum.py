@@ -100,7 +100,7 @@ class EnumType:
         return MappingProxyType(self._member_map_)
 
     def __repr__(self) -> str:
-        return "<enum %r>" % self._cls_name_
+        return "<enum %r>" % self._cls_name_[self._cls_name_.rfind(".") + 1 :]
 
 
 EnumMeta = EnumType
@@ -624,7 +624,7 @@ class _FlagType:
         if unknown and not self._keep_:
             raise ValueError(
                     '%s(%r) -->  unknown values %r [%s]'
-                    % (self._cls_name_, value, unknown, _flag_bin(unknown))
+                    % (self._cls_name_[self._cls_name_.rfind(".") + 1 :], value, unknown, _flag_bin(unknown))
                     )
         name = ""
         if member_value or aliases:
@@ -705,7 +705,7 @@ class _FlagType:
         return MappingProxyType(self._member_map_)
 
     def __repr__(self) -> str:
-        return "<flag %r>" % self._cls_name_
+        return "<flag %r>" % self._cls_name_[self._cls_name_.rfind(".") + 1 :]
 
 
 class Flag(Enum):

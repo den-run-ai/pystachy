@@ -1377,6 +1377,25 @@ exceptions. Repeated slot declarations and class variables or methods shadowing 
 slots are also unsupported, as are new slots shadowing inherited methods, properties or
 class variables.
 
+### Nested classes
+
+A class statement in the body of a class statement of a module's body makes a class of the
+module, as CPython's does: `Outer.Inner` reads it, also from other modules, its
+`__qualname__` is `Outer.Inner` and its `__name__` `Inner`, and later statements of the outer
+body (annotations, defaults, bases) read it as `Inner`, as CPython's class scope does. It may
+nest classes itself, name itself in a quoted annotation, be a dataclass, a `NamedTuple`, an
+enum class or an exception class, and other classes may derive from it
+([test](../../tests/programs/classes/class_nested.py),
+[enums](../../tests/programs/classes/class_nested_enum.py),
+[exceptions](../../tests/programs/classes/class_nested_exc.py)). The outer class binds it as a
+class attribute, so `self.Inner(...)` makes one; an enum class, and a class nested in a
+dataclass or `NamedTuple`, is no class attribute, so its outer class's objects do not read it
+([test](../../tests/errors/classes/class_nested_enum_attr.py)), though `hasattr()` finds it.
+Pystachy makes a nested class before the class around it, so a call that CPython runs first,
+in that class's decorators, bases or body before the nested class, is an error
+([test](../../tests/errors/classes/class_nested_after_call.py)), as are classes nested in an
+enum class, a generic class of PEP 695 or a class of an `if` or `try` statement.
+
 ## Single inheritance
 
 An ordinary class may derive from one previously declared ordinary class, including an

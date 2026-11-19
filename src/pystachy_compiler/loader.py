@@ -59,7 +59,7 @@ from src.pystachy_compiler.ctypes_schema import ctypes_import, lower_ctypes
 from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, IDPRAGMA, INTFILES, INTSPANS, LINES, MODDUNDERS, RAW, NeedHandlers, dynamic_pragma, fail, int_pragma, leading_pragma
 from src.pystachy_compiler.lexer import KEYWORDS, Lexer, host_text
 from src.pystachy_compiler.module import Mod
-from src.pystachy_compiler.names import ENUMCLASSES, ORDERED, owner, short
+from src.pystachy_compiler.names import ENUMCLASSES, NESTED, ORDERED, owner, short
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.specs import (
     ABCS,
@@ -422,6 +422,190 @@ ENUM_NAMES = ["Enum", "IntEnum", "StrEnum", "ReprEnum", "EnumType", "EnumMeta", 
 ENUM_BASES = ["Enum", "IntEnum", "StrEnum", "Flag", "IntFlag"]
 # the methods that make or look up enum members, which the compiler makes
 ENUM_HOOKS = ["__new__", "__init__", "_generate_next_value_", "__init_subclass__", "__set_name__", "_numeric_repr_"]
+
+
+def nested_classes(n: Node) -> None:
+    # each class statement directly in the body of a class statement C of module body n, and in
+    # those in turn: a class of the module named C.N, its __qualname__ (whose last part is its
+    # __name__), whose statement runs just before C's, as CPython runs it in C's body, which reads
+    # it as N from then on in its class scope (nested_reads). C binds N to it, a class attribute,
+    # but to an enum class, which no class attribute holds here; an enum class's body keeps its
+    # nested classes, which stay errors. Other modules and later code read it as C.N
+    # (Loader.nested_ref)
+    enums = enum_names(n)
+    kinds: dict[str, bool] = {}  # (the module's enum classes so far)
+    out: list[Node] = []
+    for st in n.kids:
+        hoist_nested(st, out, enums, kinds)
+    n.kids = out
+
+
+def enum_based(st: Node, enums: dict[str, str], kinds: dict[str, bool]) -> bool:
+    # (nested_classes) does class statement st derive from one of enum's classes, as the module
+    # imports them (enum_names), or from an enum class of the module before it
+    for b in st.kids[1:] if st.kind == "subclass" else []:
+        d = dotted(b)
+        if d in kinds or enums.get(d, "") in ENUM_BASES or enums.get(d, "") == "ReprEnum":
+            return True
+    return False
+
+
+def hoist_nested(st: Node, out: list[Node], enums: dict[str, str], kinds: dict[str, bool]) -> None:
+    # (nested_classes) statement st to out, after the classes its body nests, if it is a class
+    # statement: each with its qualified name, and their own nested classes before them
+    if st.kind != "class" and st.kind != "subclass":
+        out.append(st)
+        return
+    c = st.kids[0] if st.kind == "subclass" else st
+    if enum_based(st, enums, kinds):
+        kinds[c.s] = True
+        out.append(st)
+        return
+    body = c.kids[0].kids
+    if len([b for b in body if b.kind == "class" or b.kind == "subclass"]) == 0 or len([b for b in st.kids[1:] if b.kind == "typeparams"]) > 0:
+        out.append(st)  # (but a generic class of PEP 695, whose type parameters its nested classes see, stays an error)
+        return
+    seen: dict[str, str] = {}  # (the nested classes so far: their names in the body, and the module's)
+    kept: list[Node] = []
+    ran = len([x for x in c.kids[1:] + st.kids[1:] if runs_code(x)]) > 0  # (decorators and bases, which run first)
+    # (a dataclass or a NamedTuple, whose class attributes are fields unless annotated otherwise,
+    # binds no class attribute to them either)
+    record = len([x for x in c.kids[1:] if x.kind == "deco" and x.s in ["dataclass", "dataclasses.dataclass"]]) > 0
+    record = record or len([x for x in st.kids[1:] if dotted(x) in ["NamedTuple", "typing.NamedTuple"]]) > 0
+    for b in body:
+        if (b.kind == "class" or b.kind == "subclass") and ran:
+            fail(f"class {c.s}.{b.s} is not supported after a call in the decorators, bases or body of class {c.s}: Pystachy makes a nested class before the class around it, and CPython runs those first", b.line)
+        ran = ran or (b.kind != "class" and b.kind != "subclass" and stmt_runs_code(b))
+        nested_reads(b, seen)
+        bound: list[str] = []
+        for t in b.kids[:-1] if b.kind == "assign" else b.kids[:1] if b.kind == "annassign" or b.kind == "augassign" else []:
+            names_in(t, bound)
+        if b.kind == "def":
+            bound.append(b.s)
+        for x in bound:
+            seen.pop(x, "")  # (the class scope binds the name to something else from then on)
+        if b.kind != "class" and b.kind != "subclass":
+            kept.append(b)
+            continue
+        bc = b.kids[0] if b.kind == "subclass" else b
+        own = bc.s
+        bc.s = c.s + "." + own
+        b.s = bc.s
+        nested_self(bc, own, bc.s)
+        enum = enum_based(b, enums, kinds)
+        hoist_nested(b, out, enums, kinds)
+        seen[own] = bc.s
+        if not enum and not record:
+            kept.append(mk("assign", "", b.line, [mk("name", own, b.line, []), mk("name", bc.s, b.line, [])]))
+        elif st.line in NESTED:
+            NESTED[st.line].append(own)  # (hasattr() of an object of C finds it: Gen.has)
+        else:
+            NESTED[st.line] = [own]
+    c.kids[0].kids = kept if len(kept) > 0 else [mk("pass", "", st.line, [])]
+    out.append(st)
+
+
+# the calls a class statement or body may make before a nested class (hoist_nested), which run none
+# of the program's code: dataclasses' and the builtins' descriptors
+QUIET_CALLS = ["field", "dataclasses.field", "dataclass", "dataclasses.dataclass", "property", "staticmethod", "classmethod"]
+
+
+def runs_code(e: Node) -> bool:
+    # (hoist_nested) may evaluating expression e run the program's code: a call (but QUIET_CALLS)
+    # or a comprehension; not a lambda's body
+    if e.kind == "call" and dotted(e.kids[0]) not in QUIET_CALLS:
+        return True
+    if e.kind == "listcomp" or e.kind == "asynccomp" or e.kind == "setcomp" or e.kind == "dictcomp" or e.kind == "yield" or e.kind == "await":
+        return True
+    if e.kind == "lambda" or e.kind == "def" or e.kind == "class" or e.kind == "subclass":
+        return False
+    return len([k for k in e.kids if runs_code(k)]) > 0
+
+
+def stmt_runs_code(b: Node) -> bool:
+    # (hoist_nested) may statement b of a class body run the program's code as CPython runs the
+    # body: an expression of it that does (runs_code), a def's decorators, defaults and
+    # annotations, or a statement other than these, a pass and a docstring
+    if b.kind == "def":
+        return len([x for x in b.kids[3:] + [b.kids[1]] + b.kids[0].kids if runs_code(x)]) > 0
+    if b.kind == "pass":
+        return False
+    if b.kind == "assign" or b.kind == "annassign" or b.kind == "augassign" or b.kind == "expr":
+        return runs_code(b)
+    return True
+
+
+def nested_reads(b: Node, seen: dict[str, str]) -> None:
+    # (nested_classes) the reads of nested classes' names (seen: as the module names them) in
+    # statement b of a class body that run in its class scope: a def's decorators, defaults and
+    # annotations (also a string one that is the name), a class statement's bases and
+    # decorators, the values and annotations of the body's other statements; not the bodies of
+    # defs, classes, lambdas and comprehensions, which CPython's class scope does not reach
+    if len(seen) == 0:
+        return
+    if b.kind == "def":
+        for p in b.kids[0].kids:
+            nested_ann(p.kids[0] if len(p.kids) > 0 else mk("noann", "", b.line, []), seen)
+            for x in p.kids[1:]:
+                nested_names(x, seen)
+        nested_ann(b.kids[1], seen)
+        for x in b.kids[3:]:
+            nested_names(x, seen)
+    elif b.kind == "class" or b.kind == "subclass":
+        c = b.kids[0] if b.kind == "subclass" else b
+        for x in c.kids[1:] + (b.kids[1:] if b.kind == "subclass" else []):
+            nested_names(x, seen)
+    elif b.kind == "annassign":
+        nested_ann(b.kids[1], seen)
+        for x in b.kids[2:]:
+            nested_names(x, seen)
+    elif b.kind == "assign" or b.kind == "augassign" or b.kind == "expr":
+        nested_names(b.kids[-1], seen)
+
+
+def nested_ann(a: Node, seen: dict[str, str]) -> None:
+    # (nested_reads) annotation a: its names, and a string that is one (a forward reference)
+    if a.kind == "str" and a.s.strip() in seen:
+        a.s = seen[a.s.strip()]
+    elif a.kind == "index" or a.kind == "tuple" or (a.kind == "binop" and a.s == "|"):
+        for k in a.kids:
+            nested_ann(k, seen)
+    else:
+        nested_names(a, seen)
+
+
+def nested_names(e: Node, seen: dict[str, str]) -> None:
+    # (nested_reads) the names of nested classes that expression e reads, as the module names them
+    if e.kind == "name" and e.s in seen:
+        e.s = seen[e.s]
+        return
+    if e.kind == "lambda" or e.kind == "listcomp" or e.kind == "asynccomp" or e.kind == "setcomp" or e.kind == "dictcomp":
+        return
+    for k in e.kids:
+        nested_names(k, seen)
+
+
+def nested_self(c: Node, own: str, full: str) -> None:
+    # (nested_classes) the string annotations of class c's body and its defs' signatures that are
+    # its own name (own), a forward reference to the nested class it is: as the module names it
+    seen = {own: full}
+    for b in c.kids[0].kids:
+        if b.kind == "def":
+            for p in b.kids[0].kids:
+                if len(p.kids) > 0 and p.kids[0].kind == "str":
+                    nested_ann(p.kids[0], seen)
+            if b.kids[1].kind == "str" or b.kids[1].kind == "index" or b.kids[1].kind == "binop":
+                nested_quoted(b.kids[1], seen)
+        elif b.kind == "annassign":
+            nested_quoted(b.kids[1], seen)
+
+
+def nested_quoted(a: Node, seen: dict[str, str]) -> None:
+    # (nested_self) the strings of annotation a that are names in seen
+    if a.kind == "str" and a.s.strip() in seen:
+        a.s = seen[a.s.strip()]
+    for k in a.kids:
+        nested_quoted(k, seen)
 
 
 def enum_names(body: Node) -> dict[str, str]:
@@ -818,7 +1002,7 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
             top.append(st)
             continue
         if base in full:
-            fail(f"<enum {st.s!r}> cannot extend <enum {base!r}>", st.line)
+            fail(f"<enum {st.s[st.s.rfind('.') + 1 :]!r}> cannot extend <enum {base[base.rfind('.') + 1 :]!r}>", st.line)
         if len(st.kids) != 2:
             fail(f"enum class {st.s} is not supported: an enum class derives from one class, Enum, IntEnum, StrEnum, Flag, IntFlag or an enum class of its module without members, or from str or int and Enum (no other mixin type, and no keyword such as boundary=)", st.line)
         c = st.kids[0]
@@ -890,7 +1074,7 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                     del env[s.s]  # (the body's name is the function's)
                 out.append(s)
             elif nm != "" and not dunder:
-                if (nm.startswith("_") and nm.endswith("_")) or nm.startswith("__") or nm.startswith("_" + st.s.lstrip("_") + "__"):
+                if (nm.startswith("_") and nm.endswith("_")) or nm.startswith("__") or nm.startswith("_" + st.s[st.s.rfind(".") + 1 :].lstrip("_") + "__"):
                     fail(f"enum class {st.s}'s {nm} is not supported", s.line)  # (_ignore_, _order_; a private name)
                 if nm in canon:
                     fail(f"{nm!r} already defined as {texts[nm]}", s.line)
@@ -1035,7 +1219,7 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                     o.kids[2].kids = [avals[o.kids[0].s], mk("str", o.kids[0].s, o.line, [])] + more
         aliases = [m for m in mnames if canon[m] != m]
         if uniq and len(aliases) > 0:
-            fail(f"duplicate values found in <enum {st.s!r}>: " + ", ".join([f"{m} -> {canon[m]}" for m in aliases]), st.line)
+            fail(f"duplicate values found in <enum {st.s[st.s.rfind('.') + 1 :]!r}>: " + ", ".join([f"{m} -> {canon[m]}" for m in aliases]), st.line)
         flag = kind == "Flag" or kind == "IntFlag"
         fmask = 0
         smask = 0
@@ -1058,7 +1242,8 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
             # CPython sorts by definition order here, reading _sort_order_ even on unnamed bits.
             fail(f"flag class {st.s} is not supported: unnamed bits with single-bit members out of value order", st.line)
         if flag and len(mnames) > 0:
-            made = Parser(Lexer(f"def _flag_type_(self):\n    return _pys_enum_{st.s}\n", st.line).file()).module().kids
+            made = Parser(Lexer("def _flag_type_(self):\n    return _pys_enum_\n", st.line).file()).module().kids
+            made[0].kids[2].kids[0].kids[0].s = "_pys_enum_" + st.s  # (a nested class's, C.N: nested_classes)
             out = out + made
         if glob:
             # @global_enum: repr() is the module's name and the member's, an Enum's str() the
@@ -1096,9 +1281,10 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                 for sh in [1, 2, 4, 8, 16, 32]:
                     allb = allb | (allb >> sh)
                 vm = ", ".join([f"{texts[m]}: {st.s}.{m}" for m in mnames if canon[m] == m])
-                top.append(Parser(Lexer(f"_pys_enum_{st.s} = _pys_FlagType({st.s!r}, {member_list}, {{{mm}}}, {{{vm}}}, {fmask}, {smask}, {allb}, {kind == 'IntFlag'})\n", st.line).file()).module().kids[0])
+                top.append(Parser(Lexer(f"_pys_enum_ = _pys_FlagType({st.s!r}, {member_list}, {{{mm}}}, {{{vm}}}, {fmask}, {smask}, {allb}, {kind == 'IntFlag'})\n", st.line).file()).module().kids[0])
             else:
-                top.append(Parser(Lexer(f"_pys_enum_{st.s} = _pys_EnumType({st.s!r}, [{ms}], {{{mm}}})\n", st.line).file()).module().kids[0])
+                top.append(Parser(Lexer(f"_pys_enum_ = _pys_EnumType({st.s!r}, [{ms}], {{{mm}}})\n", st.line).file()).module().kids[0])
+            top[-1].kids[0].s = "_pys_enum_" + st.s  # (a nested class's, C.N: nested_classes)
             for m in mnames if glob else []:
                 top.append(Parser(Lexer(f"{m} = {st.s}.{m}\n", st.line).file()).module().kids[0])
     n.kids = top
@@ -1631,6 +1817,7 @@ class Loader:
         program_cache.track_source(path, src)
         FILES.clear()
         ENUMCLASSES.clear()
+        NESTED.clear()
         ORDERED.clear()
         DYNFILES.clear()
         IDINERT.clear()
@@ -1645,6 +1832,7 @@ class Loader:
         if not self.rtmode and len(self.dirs) > 0:
             bytearray_import(m.body)
         import_module_calls(m.body, "")
+        nested_classes(m.body)
         cm_methods(m.body, cm_names(m.body))
         functools_classes(m.body, functools_names(m.body))
         enum_classes(m.body, enum_names(m.body))
@@ -2035,6 +2223,7 @@ class Loader:
         if not self.rtmode and len(self.dirs) > 0:
             bytearray_import(self.parsed[key])
         import_module_calls(self.parsed[key], pkg)
+        nested_classes(self.parsed[key])
         cm_methods(self.parsed[key], cm_names(self.parsed[key]))
         functools_classes(self.parsed[key], functools_names(self.parsed[key]))
         enum_classes(self.parsed[key], enum_names(self.parsed[key]))
@@ -4766,6 +4955,12 @@ class Loader:
             fc = self.fragile_chk(m, root.s, loc) if root.kind == "name" else ""
             self.subchk.clear()  # (no list made at each read: few have a check)
             mod = self.qmod(m, n, loc)
+            nested = self.nested_ref(m, n, loc) if mod == "" and n.kind == "attr" else ""
+            if nested != "":
+                n.kind = "name"  # (C.N of a class C whose body nests class N: nested_classes)
+                n.s = nested
+                n.kids = []
+                return
             r = n
             while r.kind == "attr":
                 r = r.kids[0]  # (m.C.k: the name qmod() made of m.C is what is read)
@@ -4869,6 +5064,29 @@ class Loader:
         if k.startswith("m:"):
             return k[2:]
         return base + "." + n.s if k == "" and base + "." + n.s in self.mods else ""
+
+    def nested_ref(self, m: Mod, n: Node, loc: dict[str, bool]) -> str:
+        # the class that attribute n reads, C.N of a class C whose body nests class N, which
+        # nested_classes() made a class of C's module named C.N (also of an imported class, and
+        # C.M.N): its qualified name, or ""
+        if n.kind != "attr" or len(n.kids) != 1:
+            return ""
+        b = n.kids[0]
+        q = ""
+        if b.kind == "name" and b.s not in loc and "$" in b.s:
+            q = b.s  # (a module's class, which qmod() named)
+        elif b.kind == "name" and b.s not in loc:
+            k = self.kind(m, b.s)
+            q = m.q + b.s if k == "c" else k[2:] if k.startswith("a:") else ""
+        elif b.kind == "attr":
+            q = self.nested_ref(m, b, loc)
+        if q == "":
+            return ""
+        t = self.mods.get(owner(q), None) if "$" in q else m
+        own = q[q.rfind("$") + 1 :]
+        if t is None or t.kinds.get(own, "") != "c" or t.kinds.get(own + "." + n.s, "") != "c":
+            return ""
+        return q + "." + n.s
 
     def qann(self, m: Mod, n: Node, loc: dict[str, bool], late: bool) -> None:
         # an annotation; a string one (a forward reference), also inside list["Node"], is parsed

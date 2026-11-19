@@ -1,0 +1,6 @@
+Kind.NUMBER <Kind.NUMBER: 2> Kind.WORD Kind.WORD [<Kind.WORD: 1>, <Kind.NUMBER: 2>] <enum 'Kind'>
+3 <flag 'Flags'> WORD 2
+Config(name='x', mode=<Mode.FAST: 1>) Config(name='y', mode=<Mode.SLOW: 2>) Pair(a=1, side=<Side.LEFT: 1>) Side.LEFT
+True True False
+5 is not a valid Parser.Kind
+[exit 0]

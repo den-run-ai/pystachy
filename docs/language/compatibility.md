@@ -553,8 +553,8 @@ See [object protocols](semantics.md#object-protocols) and
   keyword calls, wrong arity or incompatible return types through `Callable`; printing
   functions, including inside containers; comparing containers of functions.
 - **Closures:** capturing possibly unassigned or later-unbound enclosing variables, or
-  comprehension variables; a decorated nested function capturing its own name; nested
-  classes. An undecorated nested function may reference itself.
+  comprehension variables; a decorated nested function capturing its own name; classes
+  defined in functions. An undecorated nested function may reference itself.
 
 ### Classes, dataclasses and NamedTuples
 
@@ -569,6 +569,10 @@ See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
   results; overridden static/class methods called through base-typed objects. Independent
   classes and ordinary hierarchies with fixed concrete fields may specialize constructor
   arguments without specializing their layouts ([class templates](typing.md#class-templates-and-generic-classes)).
+- **Nested classes:** those of an enum class's body, of a generic class of PEP 695 or of a class
+  in an `if` or `try` statement; one after a call in the outer class's decorators, bases or
+  earlier body; reading a nested enum class, or a class nested in a dataclass or `NamedTuple`,
+  through an object or `getattr()` ([nested classes](typing.md#nested-classes)).
 - **Inherited members:** assigning inherited class attributes through subclasses without their
   own defaults; changing field types; derived-only fields without supported narrowing;
   inherited `cls`-using classmethods through base-typed objects, across modules or with

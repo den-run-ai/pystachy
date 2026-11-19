@@ -8,7 +8,7 @@ from src.pystachy_compiler.dynamic import comparison_record_write, comparison_st
 from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.module import Mod
-from src.pystachy_compiler.names import ENUMCLASSES, owner, short
+from src.pystachy_compiler.names import ENUMCLASSES, own_name, owner, short
 from src.pystachy_compiler.specs import (
     ANYUSE,
     BIG,
@@ -2092,6 +2092,9 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
             ci.fdefault[st.kids[0].s] = st.kids[1]
             st.kind = "annassign"  # (its s stays "Final" where typing_forms made it of x: Final = v)
             st.kids = [st.kids[0], mk("noann", "", st.line, []), st.kids[1]]
+        elif st.kind == "class" or st.kind == "subclass":
+            # (Loader's nested_classes made the others classes of the module)
+            self.err(f"class {short(ci.name)}.{st.s} is not supported: a class nests classes in the body of a class statement of a module's body (not of an if or try statement), but not of an enum class or a generic class of PEP 695")
         elif st.kind != "def" and st.kind != "pass" and not (st.kind == "expr" and (st.kids[0].kind == "str" or st.kids[0].kind == "ellipsis")):
             what = "an assignment to anything but one name (x = v)" if st.kind == "assign" else "an expression statement" if st.kind == "expr" else f"a{'n' if st.kind[0] in 'aeiou' else ''} {st.kind} statement"
             self.err(f"a class body may only contain fields, methods, a docstring, pass and ..., not {what}")
@@ -2439,7 +2442,8 @@ def gen_dc_methods(self, ci: ClassInfo) -> None:
         self.bad_class(ci, f"repr=False in a dataclass whose base's __repr__ is the one @dataclass writes is not supported (CPython's shows the object's class, {short(ci.name)})")
     if "__repr__" not in own and "no-repr" not in ci.dcopts:
         parts: list[Node] = []
-        lit = short(ci.name) + "("
+        # (a dataclass's __qualname__, Outer.Inner for a nested class, a NamedTuple's __name__)
+        lit = (own_name(ci.name) if ci.name in self.nts else short(ci.name)) + "("
         for i in range(len(reprs)):
             parts.append(mk("str", lit + (", " if i > 0 else "") + reprs[i] + "=", line, []))
             parts.append(mk("call", "", line, [mk("name", "__pys_repr", line, []), mk("attr", reprs[i], line, [me])]))
@@ -2905,6 +2909,9 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
             # self.accept(Visitor()) of a method -> T that a visitor's class binds (tv_bound); a
             # static or class method's parameters do not include self
             return self.tv_bound(ms[m], ([f.cls] if ms[m].deco == "" else []) + [self.guess(x, f) for x in e.kids[1:]])
+        ft = self.classes[f.cls].ftypes.get(m, "")
+        if m not in ms and is_clsval(ft) and clsof(ft) in self.classes and clsof(ft) not in self.tmpl:
+            return clsof(ft)  # (self.N(...) of a class attribute that holds a class, as a nested class's: an object of it)
         return "" if m not in ms else ms[m].ret if ms[m].bad == "" else "!" + ms[m].bad
     if k == "call" and e.kids[0].kind == "name" and e.kids[0].s == me:
         ms = self.classes[f.cls].methods  # self(...): self.__call__(...)
@@ -3485,7 +3492,7 @@ def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
             self.err(f"'{short(o.t)}' object has no attribute '{name}' (of an exception object, only the fields of its class are supported; str(e) and repr(e) are)")
         if o.t in self.nts and name == "__doc__":
             self.err(f"reading the __doc__ of NamedTuple {short(o.t)} is not supported (Pystachy keeps no docstrings of classes)")
-        self.err(f"'{shown(o.t)}' object has no attribute '{name}'")
+        self.err(f"'{shown(o.t)}' object has no attribute '{name}'" + self.nested_hint(o.t, name))
     extra = " and no __dict__ for setting new attributes" if store else ""
     if self.rolex != o.v and self.role_field(o.t, name):
         # (the object may be a combining class's, whose layout holds the attribute elsewhere:

@@ -962,6 +962,7 @@ from src.pystachy_compiler.expressions import (
     gen_forget_walrus as expressions_forget_walrus,
     gen_format_ as expressions_format_,
     gen_has as expressions_has,
+    nested_hint as expressions_nested_hint,
     gen_ifexp as expressions_ifexp,
     gen_numeric_phi as expressions_numeric_phi,
     gen_index as expressions_index,
@@ -4689,6 +4690,9 @@ class Gen:
 
     def knownobj(self, n: Node) -> bool:
         return expressions_knownobj(self, n)
+
+    def nested_hint(self, t: str, a: str) -> str:
+        return expressions_nested_hint(self, t, a)
 
     def has(self, t: str, a: str) -> int:
         return expressions_has(self, t, a)

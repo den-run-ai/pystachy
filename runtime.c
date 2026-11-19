@@ -8509,11 +8509,28 @@ Str *pys_exc_ostr(void *obj) { return (*(ExcClass **)obj)->str(obj); }    /* str
 Str *pys_exc_orepr(void *obj) { return (*(ExcClass **)obj)->repr(obj); }  /* and repr(e) */
 Str *pys_exc_errcls(I e) { return cstr(e < 0 || e > 0x7FFFFFFF ? "OSError" : errcls((int)e)); }   /* OSError(e, text)'s class */
 Str *pys_exc_name(Exc *e) { int n; const char *k = exc_name(e, &n); return pys_str(k, n); }   /* type(e).__name__ */
+static I exc_qlen(ExcClass *c) {       /* the length of user class c's __qualname__, which its displayed name ends
+                                          in: its kind's own part, after its module's "$" and before a
+                                          specialization's "-N" (Outer.Inner of a class another's body nests,
+                                          whose __name__ is the last part) */
+  Str *k = c->kind; I e = k->len, n = e;
+  while (n > 0 && k->s[n - 1] >= '0' && k->s[n - 1] <= '9') n--;
+  if (n > 1 && n < e && k->s[n - 1] == '-') e = n - 1;
+  n = e;
+  while (n > 0 && k->s[n - 1] != '$') n--;
+  return e - n < c->disp->len ? e - n : c->disp->len;
+}
+Str *pys_exc_qualname(Exc *e) {        /* type(e).__qualname__: a builtin class's __name__, a user class's
+                                          displayed name's end (exc_qlen) */
+  if (!e->obj) return pys_exc_name(e);
+  Str *d = XCLS(e)->disp; I q = exc_qlen(XCLS(e));
+  return pys_str(d->s + d->len - q, q);
+}
 void pys_exc_setcause(Exc *e, Exc *c) { e->cause = c; }
 Exc *pys_exc_cause(Exc *e) { return e->cause; }
 Str *pys_exc_type(Exc *e) {            /* str(type(e)): "<class 'KeyError'>", "<class '__main__.C'>" */
   Buf b = {0}; put(&b, "<class '", 8);
-  if (e->obj && !memchr(XCLS(e)->disp->s, '.', XCLS(e)->disp->len)) put(&b, "__main__.", 9);   /* (also __main__$ValueError's) */
+  if (e->obj && XCLS(e)->disp->len <= exc_qlen(XCLS(e))) put(&b, "__main__.", 9);   /* (also __main__$ValueError's) */
   Str *d = e->obj ? XCLS(e)->disp : e->kind;
   put(&b, d->s, d->len); put(&b, "'>", 2); return done(&b);
 }
@@ -8565,15 +8582,14 @@ I pys_exc_sub(Exc *a, Exc *b, Str *tree) {    /* a's class (a's, an exception's 
 Str *pys_exc_module(Exc *e) {           /* C.__module__: builtins, a builtin class's own module (io), the program's
                                            (its displayed name but the last part: mods.errs.Missing's mods.errs) */
   if (!e->obj) { const char *d = memchr(e->kind->s, '.', e->kind->len); return d ? pys_str(e->kind->s, d - e->kind->s) : cstr("builtins"); }
-  Str *k = XCLS(e)->disp; I n = k->len;
-  while (n > 0 && k->s[n - 1] != '.') n--;
-  return n ? pys_str(k->s, n - 1) : cstr("__main__");
+  Str *k = XCLS(e)->disp; I q = exc_qlen(XCLS(e));   /* (but its __qualname__, Outer.Inner of a nested class) */
+  return k->len > q ? pys_str(k->s, k->len - q - 1) : cstr("__main__");
 }
 void pys_exc_setmodule(ExcClass *c, Str *mod) {   /* C.__module__ = mod of a user class: the name its uncaught
                                                     exceptions show ("Class" for __main__, as traceback's), which
                                                     pys_exc_module reads back. The class lives as long as the
                                                     program, so the name is no heap object */
-  int n; const char *q = short_name(c->disp, &n);
+  int n = (int)exc_qlen(c); const char *q = c->disp->s + c->disp->len - n;   /* (its __qualname__) */
   if (mod->len == 8 && !memcmp(mod->s, "builtins", 8)) pys_fail("NotImplementedError: a class's __module__ = 'builtins' is not supported");
   int top = mod->len == 8 && !memcmp(mod->s, "__main__", 8);
   I len = top ? n : mod->len + 1 + n;
