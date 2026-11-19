@@ -5,15 +5,19 @@ suite (scheduled and manual runs only) times every adapted pyperformance port an
 microbenchmark in AOT, which the eleven missed when words and float slowed down (#1302).
 """
 import argparse
+import concurrent.futures
+import functools
 import hashlib
 import json
 import math
 import os
 from pathlib import Path
 import platform
+import signal
 import statistics
 import sys
 import tempfile
+import threading
 import time
 
 from bench_extended import execute
@@ -39,6 +43,9 @@ METRICS = ("build_s", "jit_process_s", "jit_loop_s", "aot_process_s", "aot_loop_
 WEEKLY_RATIO = 1.10
 WEEKLY_FLOOR = 0.002
 WEEKLY_TIMEOUT = 300  # (seconds for one build or run: regex ports import lib/re)
+# Seconds for each revision's hosted compiler bootstrap. The two build at once, so even at this limit
+# the 15-minute job keeps 7 minutes for setup, the workloads and the upload (#1547).
+BOOTSTRAP_TIMEOUT = 480
 
 
 class BudgetExhausted(Exception):
@@ -60,6 +67,61 @@ def budgeted(function, command, env, timeout, *args, deadline=None):
         if limit < timeout and str(error).startswith("timeout after "):
             raise BudgetExhausted("out of the time budget") from error
         raise
+
+
+def kill_group(process):
+    """Kill a running command's whole process tree, as execute does at its timeout."""
+    if process.returncode is None:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
+
+def bootstrap(report, path, commands, envs, deadline=None):
+    """Build both revisions' compilers at once, each within BOOTSTRAP_TIMEOUT seconds and the deadline:
+    a hosted self-build is single-threaded, so the slower build, not the sum, sets the wall time (#1547).
+    Each finished build is recorded and checkpointed. The first failure stops the other build and is
+    raised once both threads end, with the phase naming its side; an interruption stops both builds."""
+    lock, processes, stopping = threading.Lock(), [], threading.Event()
+
+    def started(process):
+        with lock:
+            processes.append(process)
+            if stopping.is_set():
+                kill_group(process)
+
+    def stop():
+        with lock:
+            stopping.set()
+            for process in processes:
+                kill_group(process)
+
+    report["bootstrap_budget_s"] = (BOOTSTRAP_TIMEOUT if deadline is None
+                                    else max(0.0, min(BOOTSTRAP_TIMEOUT, deadline - time.monotonic())))
+    write_report(path, report)
+    if not report["bootstrap_budget_s"]:
+        raise BudgetExhausted("out of the time budget")
+    failure = None
+    with concurrent.futures.ThreadPoolExecutor(len(commands)) as pool:
+        try:
+            sides = {pool.submit(budgeted, functools.partial(execute, started=started), command, envs[side],
+                                 BOOTSTRAP_TIMEOUT, deadline=deadline): side for side, command in commands.items()}
+            for future in concurrent.futures.as_completed(sides):
+                side = sides[future]
+                if future.exception() is None:
+                    report["bootstrap"][side] = future.result()
+                    print(f"Built {side} compiler in {future.result()['wall_s']:.1f}s", flush=True)
+                    write_report(path, report)
+                elif failure is None:
+                    failure = future.exception()
+                    report["phase"] = f"bootstrap:{side}"
+                    stop()
+        except BaseException:
+            stop()
+            raise
+    if failure is not None:
+        raise failure
 
 
 def compare(base, head, ratio=1.20, floor=0.005):
@@ -322,33 +384,31 @@ def main():
         report["thresholds"] = {"ratio": WEEKLY_RATIO, "floor_s": WEEKLY_FLOOR}
     try:
         write_report(args.json, report)
-        affinity = sorted(os.sched_getaffinity(0))
-        os.sched_setaffinity(0, {affinity[0]})
+        cpus = sorted(os.sched_getaffinity(0))
         roots = {"base": args.base.resolve(), "head": head}
         report.update(python=sys.version, platform=platform.platform(),
                       runner_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
                       cpu=Path("/proc/cpuinfo").read_text().split("model name", 1)[-1].splitlines()[0],
-                      affinity=[affinity[0]], load_average=os.getloadavg())
+                      load_average=os.getloadavg())
         write_report(args.json, report)
         with tempfile.TemporaryDirectory(prefix="pystachy-perf-") as tmp:
             directory = Path(tmp)
-            compilers, envs = {}, {}
+            report["phase"] = "bootstrap"
+            compilers, envs, commands = {}, {}, {}
             for side, root in roots.items():
-                report["phase"] = f"bootstrap:{side}"
-                write_report(args.json, report)
                 report["revisions"][side] = budgeted(execute, ["git", "-C", str(root), "rev-parse", "HEAD"],
                                                       env, 10, deadline=deadline)["stdout"].strip()
                 (directory / side).mkdir()
                 envs[side] = dict(env, PYSTACHY_HOME=str(root), PYSTACHY_CACHE=str(directory / side / "cache"))
-                compiler = str(directory / side / "compiler")
+                compilers[side] = str(directory / side / "compiler")
+                commands[side] = [sys.executable, str(root / "pystachy.py"), "build", str(root / "pystachy.py"),
+                                  "-o", compilers[side]]
                 print(f"Building {side} compiler at {report['revisions'][side]}", flush=True)
-                write_report(args.json, report)
-                report["bootstrap"][side] = budgeted(execute, [sys.executable, str(root / "pystachy.py"), "build",
-                                                              str(root / "pystachy.py"), "-o", compiler],
-                                                     envs[side], 180, deadline=deadline)
-                compilers[side] = compiler
-                write_report(args.json, report)
-            report["phase"] = "toolchain"
+            bootstrap(report, args.json, commands, envs, deadline)
+            # Pin to one CPU only after the builds, which take one each; every measurement inherits the pin.
+            os.sched_setaffinity(0, {cpus[0]})
+            affinity = cpus
+            report.update(affinity=[cpus[0]], phase="toolchain")
             write_report(args.json, report)
             llvm = Path(env.get("PYSTACHY_LLVM", "/usr/lib/llvm-18/bin"))
             report["clang"] = budgeted(execute, [str(llvm / "clang"), "--version"], env, 10,

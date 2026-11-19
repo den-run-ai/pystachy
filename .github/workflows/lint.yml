@@ -2,7 +2,7 @@
 # tests; make lint adds shellcheck of the scripts as POSIX sh and clang's warnings on
 # runtime.c and tools/dictprobe.c, with the versions of tools/requirements-dev.txt; then make
 # check-recordings (tests/record.sh --check): the CPython of .python-version, which recorded the
-# tests' expected output (with the typing_extensions of tools/requirements-dev.txt), still prints
+# tests' expected output (with the typing_extensions, mypy_extensions, librt and ast-serialize of tools/requirements-dev.txt), still prints
 # every recording, every deviation still deviates from it, lib/'s copies are its files, and no
 # *.rej, *.orig or core file lies in the tree. Runs beside CI's make verify on the same
 # events: pull requests (forks too, and documentation-only ones), pushes to main,
@@ -92,23 +92,24 @@ jobs:
           command -v shellcheck >/dev/null
           "$actionlint_dir/actionlint" -pyflakes=
 
-      - name: Fast hosted checks and full lint
+      - name: Fast hosted checks and full lint beside verification harness and compiler state controls
         # check-fast runs every boundary test once against the checker built above.
         # A missing selector output must require the checker, not silently skip it.
+        # The three suites overlap, mostly one CPU each, so Lint fits its 15 minutes (#1525).
         env:
           LEAN_BOUNDARY_REQUIRED: ${{ steps.lean-boundary.outputs.run != 'false' && '1' || '' }}
-        run: make check-fast lint
+        run: |
+          python3 -m unittest discover -s tools -p test_lint_controls.py
+          python3 tools/lint_controls.py --make 'check-fast lint' 'test_*verif*.py' 'test_compiler_state*.py'
 
       - name: Retained IR and failed native build controls
         run: |
+          PYSTACHY_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p test_runtime_fastpaths.py
           PYSTACHY_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p test_retained_ir.py
+          PYSTACHY_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p test_runtime_rounding.py
           PYSTACHY_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p test_bootstrap_tier.py
+          PYSTACHY_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p test_profile_build.py
           PYSTACHY_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p test_runtime_list_tags.py
-
-      - name: Verification harness and compiler state controls
-        run: |
-          python3 -m unittest discover -s tools -p test_lint_controls.py
-          python3 tools/lint_controls.py 'test_*verif*.py' 'test_compiler_state*.py'
 
       - name: Compact CI sampling and variant controls
         run: |

@@ -1,0 +1,13 @@
+int builtins <class 'int'> True True True True True True
+str builtins <class 'str'> False True False False True False
+bool builtins <class 'bool'> False True False True True True
+A __main__ <class '__main__.A'> False True False False True False
+NoneType builtins <class 'NoneType'> False True False False True False
+int builtins <class 'int'> True True True True True True
+str builtins <class 'str'> False True False False True False
+list builtins <class 'list'> False True False False True False
+<class 'float'> True True True
+<class 'float'> True True type
+int int True False
+True False 0
+[exit 0]

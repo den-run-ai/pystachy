@@ -1,0 +1,14 @@
+True False False True True True
+False False False False False True True False True
+True False True True False
+True False True False
+True True True True
+False False False True False
+True 0 1 False
+1 second False 2
+TypeError: unhashable type: 'list'
+True False True False True True False False
+True True True False
+True True False False False
+1 True False False False False
+[exit 0]

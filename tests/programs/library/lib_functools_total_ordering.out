@@ -1,0 +1,8 @@
+[True, True, False, False, False, False, True, True, True, True, False, False]
+[True, True, False, False, False, False, True, True, True, True, False, False]
+[True, True, False, False, False, False, True, True, True, True, False, False]
+[True, True, False, False, False, False, True, True, True, True, False, False]
+[True, True, False, False, False, False, True, True, True, True, False, False] ['lt', 'lt', 'lt', 'ge', 'lt', 'ge', 'lt', 'lt'] ['lt', 'lt', 'lt', 'ge']
+[True, True, False, False, False, False, True, True, True, True, False, False] [<Grade.LOW: 1>, <Grade.MID: 2>, <Grade.HIGH: 3>] Grade.MID
+3 2
+[exit 0]

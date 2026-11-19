@@ -98,8 +98,10 @@ reuse the f-string's quote, nest f-strings, and hold backslashes, newlines and c
 `%` formatting requires a literal format string, or a module global that one module-level
 assignment binds to one (`FMT = "%8.3f"`, also `Final`) where nothing else in the program, not
 even a function's local, binds its name. It supports `s r a d i u x X o e E f F g G c`, flags,
-widths and precisions, but not named substitutions, `*` widths or precisions, or integer
-precisions. A variable format string such as `fmt % value` is rejected. A literal format of
+widths and precisions, but not `*` widths or precisions, or integer precisions. A dict, or an
+object with `__getitem__`, on the right takes conversions that name keys, `"%(name)s: %(count)d"
+% row`: each key is looked up as its conversion comes, and a missing one raises `KeyError`.
+Every conversion of such a format names a key. A variable format string such as `fmt % value` is rejected. A literal format of
 only `%s`, `%r` and `%a` conversions, whose widths and precisions have at most two digits,
 applied to a tuple display with one item for each, is evaluated as CPython 3.11+ compiles it,
 as an f-string: each item just before its conversion. Any other `%` evaluates all its
@@ -221,6 +223,15 @@ also rejects a call by another name (`builtins.object()`, or an alias that an im
 assignment binds, `obj = object`) and `type(x) is object`; in any other program such a call makes a
 sentinel too.
 
+A parameter annotated with a type `T` whose default is such a module-level sentinel
+(`def copy(self, items: list[int] = _MISSING)`, as mypy's `Bogus[...] = _dummy`) takes a `T`, or
+the sentinel itself where a call leaves it out or passes it. Each call is compiled for the case it
+is, which decides `items is _MISSING`: only the branch that runs is compiled, in
+`x if items is _MISSING else items` and in `if items is _MISSING: items = ...`. Another `object()`
+as the argument is an error, and a `T` that can hold an `object()` (such as `object`) keeps the
+test for run time ([test](../../tests/programs/classes/object_sentinel_params.py)), as does a
+parameter that a nested function assigns (`nonlocal items`).
+
 ## Complex numbers
 
 `complex` is CPython's: imaginary literals (`1.5j`), `complex()` of a number, of a string (with
@@ -277,6 +288,14 @@ An iterator's type is its class. `Iterator[T]` and `Iterable[T]` annotations (`t
 such a parameter or return is compiled for each call's argument types, a class whose
 `__init__` takes one or calls `iter()` is a class template, and an annotated variable or field
 has its value's type. A `Generic[T]` class's `Iterable[T]` parameter binds `T` to the items.
+A class may derive from `typing`'s or `collections.abc`'s `Iterator[...]` or `Iterable[...]` (or
+the unsubscripted name) where it defines the methods that abstract base requires, `__iter__` and
+`__next__` (`__iter__`), and the subscript names only types (no call or attribute of a module):
+it is then a class of its own, generic in the type variables the subscript names, as with
+`Generic[T]` (`class topsort(Iterator[set[T]])`). As `ABCMeta` makes it, its abstract methods
+keep its objects from being made. Reflection of its objects (`dir()`, `hasattr()` of the
+attributes `ABCMeta` and the base give it) is not supported
+([test](../../tests/programs/classes/iterator_base.py)).
 
 ## Generators
 
@@ -377,17 +396,20 @@ and fields are available. See [single inheritance](typing.md#single-inheritance)
 | Operation | Methods |
 |---|---|
 | Binary operators `+ - * / // % @ & \| ^ << >>` | `__add__` and the corresponding methods |
-| `o ** n`, `pow(o, n)` with builtin `int`, `float` or `bool` exponent | `__pow__` |
+| `o ** n`, `pow(o, n)` with a builtin `int`, `float` or `bool` exponent or an object exponent | `__pow__` |
+| `n ** o`, `pow(n, o)` with a builtin number base | `__rpow__` |
 | `o **= n` with a builtin numeric exponent | `__ipow__`, otherwise `__pow__` |
 | In-place operators | `__iadd__` and counterparts, otherwise the binary method |
 | Unary `-`, `+`, `~` | `__neg__`, `__pos__`, `__invert__` |
-| `abs(o)`, `divmod(o, x)` | `__abs__`, `__divmod__` |
+| `abs(o)`, `divmod(o, x)`, `divmod(x, o)` for a builtin number `x` | `__abs__`, `__divmod__`, `__rdivmod__` |
 | `int(o)`, `float(o)` | `__int__` or `__float__`, otherwise `__index__`, of the object's own class: a derived class's method is chosen through a base-typed reference, and a class with neither raises `TypeError`; the method's result type is checked when the call is compiled |
 | `round(o)`, `round(o, n)` | `__round__`, which may be a template: each call types its result |
 | `math.floor(o)`, `math.ceil(o)`, `math.trunc(o)` | `__floor__`, `__ceil__`, `__trunc__` |
 | A builtin number on the left, as in `2 * o` | `__radd__` and the other reflected arithmetic and bitwise methods |
-| Equality and ordering | `__eq__`, `__ne__` and rich comparisons |
+| Equality and ordering | `__eq__`, `__ne__` and rich comparisons; `x == o` for a number or `str` `x` asks `o.__eq__(x)` |
+| `sum(objects)`, `sum(objects, start)` | `__add__`, and `__radd__` for the first addition to a number; see [sums of objects](#sums-of-objects) |
 | Truth and length | `__bool__`, `__len__` |
+| An index: `xs[o]`, a slice bound, `seq * o`, `range(o)`, `enumerate(xs, o)`, an integer argument of a list, tuple or str method (`xs.pop(o)`, `s.find(sub, o)`), `hex(o)`, `oct(o)`, `bin(o)`, `%x`, `%o`, `%c` | `__index__`, which must return an `int`; `%d` asks `__int__` first, and `%e`, `%f`, `%g` ask `__float__` first |
 | Representation | `__str__`, `__repr__`, `__format__` |
 | Call, indexing, assignment, deletion | `__call__`, `__getitem__`, `__setitem__`, `__delitem__` |
 | Membership and iteration | `__contains__`, or supported `__iter__` |
@@ -396,8 +418,12 @@ and fields are available. See [single inheritance](typing.md#single-inheritance)
 Rich comparisons use reflection, such as trying `b.__gt__(a)` for `a < b`.
 Reflected arithmetic methods run only for a builtin `int`, `float` or `bool` on the left, whose
 own method declines an object: `2 * o` calls `o.__rmul__(2)`, with both operands evaluated first.
-Between two objects they remain unsupported, as do `__rdivmod__`, `__rpow__` and an augmented
-assignment that would rebind a number to an object (`n *= o`). Power dispatch with an object exponent, optional numeric exponent, or the
+Between two objects they remain unsupported, as does an augmented
+assignment that would rebind a number to an object (`n *= o`); a variable annotated with both
+types (`n: int | Money`) takes the method's result. `o ** p` of two objects calls
+`o.__pow__(p)`, unless `p` may be of a subclass with its own `__rpow__`, which CPython asks
+first; `o **= p` is `o = o ** p` where no class `o` may be of defines `__ipow__`. Power
+dispatch with an optional numeric exponent, an object exponent of `__ipow__`, or the
 three-argument `pow(o, n, modulus)` is unsupported. A power method may declare an optional
 modulus parameter; two-argument power leaves it at its default.
 
@@ -449,6 +475,27 @@ unsupported. Generator implementations follow the [generator rules](#generators)
 A missing protocol method produces a compilation error using CPython's message.
 An object that is `None` when the operation executes raises the corresponding runtime error.
 
+### Sums of objects
+
+`sum()` adds a class's objects as CPython does: `start + first`, then `sum + item` for each
+next item, in order, each item taken from the iterable just before its addition. With no
+start the first addition is `0 + first`, the item's `__radd__(0)`; no operand is dropped or
+swapped, so a method that records its operands sees CPython's. `sum(items, start=s)` is
+`sum(items, s)`, for numbers too.
+
+The first addition gives the sum's type, which each later addition must keep. `sum()` of no
+items is the start itself: with an object start (`sum(prices, Decimal(0))`) the result has
+that one type, and without a start it is the `int` 0, so `sum(prices)` is an
+[`int | Decimal`](typing.md#objects-beside-scalars), which prints, formats, compares and
+adds as it is and is narrowed with `isinstance()` where a `Decimal` is needed. A class with
+no `__radd__` needs a start. The items may be a list, tuple, set, dict, generator or
+iterator object, and a start may be an object for a sum of numbers.
+
+Floats beside objects in the items (`list[float | Money]`) are rejected unless the start is an
+object: CPython adds floats with a compensated sum until the first object
+(`sum([1e16, 1.0, -1e16], 0.0)` is `1.0`), which additions one by one would not reproduce
+([error test](../../tests/errors/containers/sum_objects_float_items.py)).
+
 <a id="reflection"></a>
 
 ## Reflection
@@ -472,12 +519,75 @@ The compiler's side is described in [internals](../internals.md#reflection).
 `str`, `bytes`, `list`, `NoneType`, ... for builtin values, and `builtins` as their module. Inside an
 expression, `type(a) is C`, `type(a) == type(b)`, their negations and `x.__class__ is C` compare
 the exact classes (`type(True) is bool`, `type(True) is int` is false). `str()` and `repr()` of a
-reference union print each object as its own class prints it. Stored `type(x)` values
-and class-keyed dictionaries are supported in the
-[dynamic-Any prototype](../dynamic-any.md#class-values-and-type-keyed-registries),
-including bounded reconstruction through existing boxed instance adapters and
-compiled initializers. Without the opt-in, class values are limited to
-[exception classes](#exception-classes-as-values).
+reference union print each object as its own class prints it. `type(x)` of an object of the
+program's classes is a [value](#classes-as-values), as [exception classes](#exception-classes-as-values)
+are, and so is `type(x)` of any other value: its builtin class's class object. Calls of a
+builtin class held as a value and bounded reconstruction through boxed instance adapters need
+the [dynamic-Any prototype](../dynamic-any.md#class-values-and-type-keyed-registries).
+
+### Classes as values
+
+A class of the program is a value: `k = Button`, a default (`kind=Widget`), an argument, a field,
+an item of a list, tuple or set, a dict's key or value (`{Leaf: 1}`). `type[C]`, with `| None`,
+annotates it: the class object of `C` or of a class deriving from `C`. Class objects of
+different classes in a conditional expression or a display have the type of the nearest base
+class those classes share, or `type[object]` where they share none. `type(x)` and `x.__class__` of an object are its class's class
+object, so `type(self)(...)` makes an object of the object's own class; `cls` in a class method
+is the class it was called on. Each class has one class object: `is`, `==` and `hash()` compare
+and hash it by identity ([test](../../tests/programs/classes/class_values.py)).
+
+- `str()`, `repr()` and formatting give CPython's text (`<class '__main__.Leaf'>`); `__name__`,
+  `__qualname__` and `__module__` are its names, also through the class's name
+  (`Leaf.__module__`). Ordering raises CPython's `TypeError`; `callable(k)` and
+  `isinstance(k, type)` are true.
+- A call makes an object of the class the value is, with that class's constructor
+  ([test](../../tests/programs/classes/class_value_calls.py)). The class object is evaluated
+  first, then each argument once. A value that is `None`, or an abstract class's class object,
+  raises CPython's `TypeError`. Every class the value may be (`C` and the classes deriving from
+  it) must take the call's arguments: another signature is a compile error.
+- `k.attr` reads a class attribute, a name the class body binds, of the class `k` is, and
+  `k.m(args)` calls that class's class method or static method, as `type(x).attr` and
+  `x.__class__.m()` do through an object's class; a class method's `cls` is that class
+  ([test](../../tests/programs/classes/class_value_attrs.py)). The calls through each class
+  `k` may be share one result type.
+- `type[object]`, also written `type`, is the class object of any ordinary class of the
+  program: a registry of unrelated classes, a dict keyed by `type(node)`, and `type(x)` of an
+  object of a union of classes. It is compared, hashed, named and printed as any class object,
+  and `isinstance(x, k)` and `issubclass(k, C)` test it
+  ([test](../../tests/programs/classes/class_value_any.py)). `k.attr` and `k.m(args)` read
+  the class attribute, or call the class method or static method, of the class it is, where
+  the classes that have the name agree on one type; the class object of a class without it
+  raises CPython's `AttributeError`, before a call's arguments are evaluated
+  ([test](../../tests/programs/classes/class_value_any_attrs.py)). A name that a builtin class
+  has itself (`from_bytes`, `join`, `mro`) is a compile error there, as the value may be that
+  class's class object. Its class is not known where
+  the program is compiled, so a call of it is a compile error: hold a `type[C]` of a base class
+  for that. Exception classes and enum classes are no such values.
+- A builtin class is such a value too: `int`, `str`, `list` and the others, `type(x)` of a
+  value that is no object of the program, and `type(None)`
+  ([test](../../tests/programs/classes/class_value_builtin.py)). A location typed `type` takes
+  one, and a list, dict, set or conditional expression of several builtin classes, or of one
+  beside a class object, holds them as `type[object]`; one as a dict key or a set element is
+  its class object. A builtin class named alone stays the function a call of it compiles
+  (`f = int; f("3")`), which prints, compares and hashes as its class object.
+- `isinstance(x, k)` and `issubclass(k, b)` take a class object `k`; `b` is a class object,
+  names a class, or is a tuple of them ([test](../../tests/programs/classes/class_value_tests.py)).
+  A value of another type is an instance of no class of the program. Where `k` is any class's
+  (`type[object]`), a value is an instance of its builtin class's class object, a `bool` of
+  `int`'s too, `None` of `NoneType`'s and every value of `object`'s
+  ([test](../../tests/programs/classes/class_value_builtin_isinstance.py)).
+- `type(x)` of an `x` that is `None` is `NoneType`'s class object, `type(None)`: a call of it
+  without arguments returns `None`, and one with arguments raises CPython's `TypeError`
+  ([test](../../tests/programs/classes/class_value_type_of.py)).
+- A class is unbound until its class statement runs: reading it as a value before raises
+  `NameError` ([test](../../tests/programs/classes/class_value_unbound.py)). A name assigned
+  another module's class that a function rebinds, or reads before the assignment, is a variable
+  holding the class object ([test](../../tests/programs/imports/import_attr_class_alias_fnbefore.py)).
+
+The [rejected forms](compatibility.md#reflection) include class objects of unrelated classes in
+one variable, instance methods called through a class object and calls of a builtin class held as a value. In a module
+that opts in to dynamic `Any`, a class object stored as `Any` is that prototype's
+[class value](../dynamic-any.md#class-values-and-type-keyed-registries).
 
 ### Attribute names the compiler knows
 
@@ -646,7 +756,12 @@ and its subclasses. The supported pairs use two of `ArithmeticError`, `FloatingP
 `LookupError`, `IndexError`, `ReferenceError`, `RuntimeError`, `NotImplementedError`,
 `RecursionError`, `TypeError` and `ValueError`; neither may derive from the other.
 Pairs involving e.g. `OSError` (additional fields) or `KeyError` (special string
-conversion) are not supported. Exception classes support fields, constructors, class-body defaults,
+conversion) are not supported. One or both bases may be exception classes of the program, as
+in `class DivisionByZero(DecimalException, ZeroDivisionError)` and
+`class Overflow(Inexact, Rounded)`: the first base gives the object its fields, methods and
+text, and the second, which must define none of its own (below an ancestor the first base
+shares), adds only what catches the exception and what `isinstance()` and `issubclass()`
+report. Exception classes support fields, constructors, class-body defaults,
 methods, docstrings and custom `__str__` / `__repr__`.
 
 A subclass inherits fields and methods and can override `__init__`, `__str__` and

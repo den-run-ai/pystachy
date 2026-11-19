@@ -12,6 +12,7 @@
 #include <langinfo.h>
 #include <limits.h>
 #include <locale.h>
+#include <poll.h>
 #include <pthread.h>
 #include <pwd.h>
 #ifdef __APPLE__
@@ -43,7 +44,9 @@
 #ifdef __linux__
 #include <sys/auxv.h>
 #include <sys/file.h>
+#include <sys/syscall.h>
 #endif
+#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 #include <unwind.h>
@@ -177,7 +180,8 @@ static inline int opt_in(void) { if (pys_plain) opt_in_trap(); return 1; }
    reorder them with the program's typed accesses to the first word of an object.
    Roots, all conservative: the C stack from the collector's frame up to the frame of @main
    (the generated @main passes its frame address to pys_init, so a @main.init inlined into
-   it is covered); callee-saved registers, which __builtin_unwind_init spills into the
+   it is covered, with the registers its prologue saves above that address: STACK_PAST);
+   callee-saved registers, which __builtin_unwind_init spills into the
    collector's frame; the program's pointer-typed globals (@main passes a table of their
    addresses: under the JIT they live in memory that no scanner would find); and the
    runtime's own statics. Container slots hold ints, float bits or pointers, so every word of
@@ -267,6 +271,17 @@ static I gc_ext;                       /* malloc'd bytes that heap objects hold:
 static int gc_off, gc_stats;
 /* GC_NO_ROOT(gc_bottom): stack boundary; mark_roots scans the stack range explicitly. */
 static char *gc_bottom;                /* the stack is scanned from the collector up to here */
+/* How far past sb, the frame address of @main or of an extension's outermost entry (pys_enter),
+   the scan reaches: sb's frame record, and on AArch64 outside Darwin also the callee-saved
+   registers that the prologue stores above the record (x19-x28 at most). Their area's alignment
+   slot, which x19 saved alone leaves, may hold a spill: LLVM kept a tuple there in @main, which
+   @main.init inlined into it had made before a set display's allocations, and the collector freed
+   it. x86-64 and Darwin keep a whole frame below its frame address. */
+#if defined(__aarch64__) && !defined(__APPLE__)
+#define STACK_PAST (12 * sizeof(void *))
+#else
+#define STACK_PAST (2 * sizeof(void *))
+#endif
 /* GC_NO_ROOT(gc_roots): program root addresses; mark_roots scans their referenced slots. */
 static I **gc_roots, gc_nroots;        /* addresses of the program's pointer-typed globals */
 /* GC_NO_ROOT(mstk): temporary collector work stack, consumed during marking. */
@@ -727,6 +742,12 @@ static inline __attribute__((always_inline)) void *gc_alloc(I n, int atomic) {
   if ((uint64_t)n < 136) {             /* fast path, inlined: pop a zeroed slot of a class 16..136 */
     W **h = &pys_fl[2 * (n < 8 ? 0 : (n + 8) / 8 - 2) + atomic], *p = *h;
     if (__builtin_expect(p != 0, 1)) { *h = (W *)~*p; *p = 0; return p; }
+  } else if (!atomic && (uint64_t)n < SMALL) {
+    /* a larger scanned object: its slots come zeroed as the smaller ones' do (only atomic
+       classes are LAZY), so the same pop from its class's list. Where the size is a constant
+       once this is inlined into a program, as a class's objects' is, the class is one too */
+    W **h = &pys_fl[2 * cls(n)], *p = *h;
+    if (__builtin_expect(p != 0, 1)) { *h = (W *)~*p; *p = 0; return p; }
   }
   return gc_slow(n, atomic);
 }
@@ -838,7 +859,7 @@ static void gc_report(void) {
 }
 static void gc_init(char *sb, I **roots, I nroots) {
   const char *e = getenv("PYSTACHY_GC");
-  gc_bottom = sb + 2 * sizeof(void *); /* sb is @main's frame address: include its frame record */
+  gc_bottom = sb + STACK_PAST;         /* sb is @main's frame address: include its frame record */
   gc_roots = roots; gc_nroots = nroots;
   if (!(pmap = calloc(1 << 18, sizeof *pmap))) oom();
   gc_off = e && !strcmp(e, "off");
@@ -1415,18 +1436,14 @@ Str *pys_float_hex(double d) {                /* float.hex(): CPython spells zer
   if (d == 0) return cstr(signbit(d) ? "-0x0.0p+0" : "0x0.0p+0");
   return pys_str(b, fsnprintf(b, 40, "%.13a", d));
 }
-I pys_float_is_integer(double d) { return isfinite(d) && d == floor(d); }
+I pys_float_is_integer(double d) {          /* below 2**52 in magnitude, d is whole where its truncation equals it;
+                                                from there every finite float is (no floor(): see pys_floor) */
+  return fabs(d) < 0x1p52 ? d == (double)(I)d : isfinite(d);
+}
 /* int() and float() of a string follow Python's grammar (whitespace around the number, a sign,
    digits with single underscores between them, 0x/0o/0b prefixes), not strtoll/strtod's */
 static void repr_str(Buf *b, Str *s);
 static _Noreturn void failf(const char *f, ...);
-/* Compile-time opt-in audit instrumentation calls this at byte-oriented str boundaries.
-   No header/cache change or default-path work: scan only audit builds; runtime.py's own
-   intentional byte operations are not instrumented. This is conservative, not UTF-8 validation. */
-void pys_str_audit(Str *s, Str *op) {
-  for (I i = 0; i < s->len; i++) if ((unsigned char)s->s[i] >= 128)
-    failf("NotImplementedError: Unicode audit: %s on non-ASCII str uses byte/ASCII semantics", op->s);
-}
 I pys_f2i(double d);
 static _Noreturn void badlit(const char *what, I base, Str *s) {   /* int() (base >= 0) shows at most 200 */
   Buf b = {0}; char t[64]; I r, k = 0, cp;                          /* characters of the repr (%.200R) */
@@ -1605,13 +1622,23 @@ double pys_idiv(I a, I b) {                  /* int / int, rounded once like CPy
   double r = ldexp((double)(uint64_t)(q | sticky), -k);   /* q has 55+ bits: the sticky bit makes the conversion round once */
   return (a < 0) != (b < 0) ? -r : r;
 }
-I pys_cmp_if(I i, double d) {                  /* exact compare of an int with a float: -1, 0, 1, or 2 if unordered */
+static __attribute__((noinline, const)) I cmp_if_whole(I i, double d) {   /* pys_cmp_if past 2**53 */
   if (isnan(d)) return 2;
   if (d >= 9223372036854775808.0) return -1;
   if (d < -9223372036854775808.0) return 1;
   double t = trunc(d); I j = (I)t;
   if (i != j) return i < j ? -1 : 1;
   return d > t ? -1 : d < t ? 1 : 0;
+}
+I pys_cmp_if(I i, double d) {                  /* exact compare of an int with a float: -1, 0, 1, or 2 if unordered */
+  /* an int of at most 2**53 in magnitude converts exactly, so comparing floats decides (NaN: none
+     holds); the rest compare whole parts out of line (cmp_if_whole). Its trunc() is a libm call on
+     x86-64 before SSE4.1, which LLVM computed ahead of this test where it inlined the two together */
+  if ((uint64_t)i + (1ULL << 53) <= (1ULL << 54)) {
+    double x = (double)i;
+    return d > x ? -1 : d < x ? 1 : d == x ? 0 : 2;
+  }
+  return cmp_if_whole(i, d);
 }
 /* ---------- promoting ints (# pystachy: python-int, docs/python-int.md) ----------
    An int of a module that opts in is two words, {lo, hi}: hi is NULL and lo the value where it
@@ -1914,17 +1941,64 @@ double pys_big_float(I lo, void *hi) {         /* rounded once, to nearest even,
   if (isinf(r)) pys_fail("OverflowError: int too large to convert to float");
   return a->size < 0 ? -r : r;
 }
-/* no_builtin("pow") keeps pow a call of libm's, as in CPython's float_pow and math.pow. The AOT tier's
-   whole-program -O2 would otherwise rewrite a call with a constant argument: pow(x, 2.0) as x * x,
-   pow(x, -1.0) as 1.0 / x and pow(2.0, y) as exp2(y), which glibc's pow does not always round alike
-   (#656). It is on these two functions only: LLVM inlines no function with the attribute into one
-   without it, so -fno-builtin-pow over all of runtime.c would keep every runtime.c helper out of
-   runtime.py's code and the program's */
-__attribute__((no_builtin("pow"))) double pys_fpow(double a, double b) {   /* float ** float with CPython's errors */
-  if (a == 0 && b < 0 && isfinite(b)) pys_fail("ZeroDivisionError: 0.0 cannot be raised to a negative power");
-  if (a < 0 && isfinite(a) && isfinite(b) && b != floor(b)) pys_fail("ValueError: a negative number to a fractional power has a complex result (not supported)");
-  double r = pow(a, b);
-  if (isinf(r) && isfinite(a) && isfinite(b)) pys_fail("OverflowError: (34, 'Numerical result out of range')");
+/* Wherever libm's pow is finite, it is what CPython's float ** float (float_pow) and math.pow() return:
+   their special cases of zeros, infinities and NaNs give C99's values, and they raise only where pow is
+   not finite (0.0 to a negative power, a negative base to a fractional one, an overflow). So a power
+   runs inline in a program (AOT) and returns pow's value when it is finite; otherwise const helpers
+   choose CPython's error from the values alone, and pow_fail, which never returns, raises it. Nothing
+   on the way writes memory, so code that goes on past a power keeps what it holds in registers (a
+   loop its lists' lengths and items), and a power of values that a loop does not change may leave it.
+   The inline pow is llvm.pow, which LLVM knows writes no memory (libm sets errno there only for an
+   overflow, an underflow or a domain error, and no code reads errno after a power), of operands that
+   an empty asm hides (opaque). The AOT tier's whole-program -O2 would otherwise rewrite a call with a
+   constant argument: pow(x, 2.0) as x * x, pow(x, -1.0) as 1.0 / x and pow(2.0, y) as exp2(y), which
+   glibc's pow does not always round alike (#656). Without __builtin_elementwise_pow, libm_pow calls
+   libm's: no_builtin("pow") keeps LLVM from rewriting it, and from inlining it into a function
+   without the attribute (-fno-builtin-pow over all of runtime.c would keep every runtime.c helper out
+   of runtime.py's code and the program's) */
+static _Noreturn __attribute__((noinline, cold)) void pow_fail(int kind) {
+  pys_fail(kind == 0 ? "ZeroDivisionError: 0.0 cannot be raised to a negative power"
+           : kind == 1 ? "ValueError: a negative number to a fractional power has a complex result (not supported)"
+           : kind == 2 ? "OverflowError: (34, 'Numerical result out of range')"
+           : kind == 3 ? "ValueError: math domain error" : "OverflowError: math range error");
+}
+/* the error of a ** b, whose libm value r is not finite: pow_fail's kind, or -1 for none */
+__attribute__((noinline, const)) static int fpow_error(double a, double b, double r) {
+  if (a == 0 && b < 0 && isfinite(b)) return 0;
+  if (a < 0 && isfinite(a) && isfinite(b) && b != floor(b)) return 1;
+  return isinf(r) && isfinite(a) && isfinite(b) ? 2 : -1;
+}
+/* the error of math.pow(x, y), whose libm value r is not finite, as mchk decides: 0.0 to a negative
+   finite power, or a NaN of arguments that are not, is a domain error, an infinity of finite ones a range error */
+__attribute__((noinline, const)) static int mpow_error(double x, double y, double r) {
+  if (x == 0 && y < 0 && isfinite(y)) return 3;
+  if (isnan(r) && !isnan(x) && !isnan(y)) return 3;
+  return isinf(r) && isfinite(x) && isfinite(y) ? 4 : -1;
+}
+#if defined(__has_builtin)
+#if __has_builtin(__builtin_elementwise_pow)
+static inline double opaque(double x) {   /* x, which the optimizer cannot see through */
+#if defined(__x86_64__)
+  __asm__("" : "+x"(x));
+#elif defined(__aarch64__)
+  __asm__("" : "+w"(x));
+#else
+  volatile double v = x; x = v;
+#endif
+  return x;
+}
+#define INLINE_POW(a, b) __builtin_elementwise_pow(opaque(a), opaque(b))
+#endif
+#endif
+#ifndef INLINE_POW
+__attribute__((no_builtin("pow"), noinline, const)) static double libm_pow(double a, double b) { return pow(a, b); }
+#define INLINE_POW(a, b) libm_pow(a, b)
+#endif
+double pys_fpow(double a, double b) {   /* float ** float with CPython's errors */
+  double r = INLINE_POW(a, b);
+  if (fabs(r) < INFINITY) return r;
+  int e = fpow_error(a, b, r);
+  if (e >= 0) pow_fail(e);
   return r;
 }
 /* math functions raise like CPython's math module: a NaN from a non-NaN argument is a domain
@@ -1966,9 +2040,12 @@ double pys_m_ulp(double x) {          /* the distance from |x| to the next float
   double a = fabs(x), b = nextafter(a, INFINITY);
   return isinf(b) ? a - nextafter(a, -INFINITY) : b - a;
 }
-__attribute__((no_builtin("pow"))) double pys_m_pow(double x, double y) {   /* (no_builtin: see pys_fpow) */
-  if (x == 0 && y < 0 && isfinite(y)) pys_fail("ValueError: math domain error");
-  return mchk(pow(x, y), x, y, 1);
+double pys_m_pow(double x, double y) {   /* math.pow(): as pys_fpow, with math's errors */
+  double r = INLINE_POW(x, y);
+  if (fabs(r) < INFINITY) return r;
+  int e = mpow_error(x, y, r);
+  if (e >= 0) pow_fail(e);
+  return r;
 }
 /* no_builtin("fmod") keeps fmod a call of libm's. Once the guard below shows x is not infinite and y
    not zero, LLVM 20 to 22 rewrite fmod(x, y) as an frem marked as never NaN, although a NaN x or y still
@@ -2117,7 +2194,11 @@ double pys_m_radians(double x);
 I pys_m_isfinite(double x) { return isfinite(x); }
 I pys_m_isinf(double x) { return isinf(x); }
 I pys_m_isnan(double x) { return isnan(x); }
-I pys_m_trunc(double x) { return pys_f2i(trunc(x)); }
+static __attribute__((noinline)) I trunc_far(double x) { return pys_f2i(trunc(x)); }
+I pys_m_trunc(double x) {                    /* math.trunc(x): the conversion truncates wherever it is defined */
+  if (x >= -0x1p63 && x < 0x1p63) return (I)x;   /* (NaN fails both) */
+  return trunc_far(x);
+}
 /* Portions derived from CPython's Modules/mathmodule.c: Copyright (c) 2001-2024 Python Software
    Foundation; All Rights Reserved; used under the PSF License Agreement (see THIRD_PARTY_NOTICES). */
 I pys_m_isclose(double a, double b, double rel_tol, double abs_tol);
@@ -2454,21 +2535,53 @@ I pys_m_prod_int(List *l, I start);
 double pys_m_prod_float(List *l, double start);
 List *pys_m_floats(List *l);
 
-static double pymod(double a, double b, double *q) {   /* CPython's float_divmod */
-  double m = fmod(a, b), d = (a - m) / b;
-  if (m) { if ((b < 0) != (m < 0)) { m += b; d -= 1; } } else m = copysign(0, b);
-  if (d) { double f = floor(d); if (d - f > 0.5) f += 1; d = f; } else d = copysign(0, a / b);
-  *q = d; return m;
+static __attribute__((noinline)) double pyrem_libm(double a, double b) {   /* CPython's float_divmod: the remainder */
+  double m = fmod(a, b);
+  if (m) { if ((b < 0) != (m < 0)) m += b; } else m = copysign(0, b);
+  return m;
 }
-double pys_fmod(double a, double b) { double q; if (b == 0) pys_fail("ZeroDivisionError: float modulo by zero"); return pymod(a, b, &q); }
-double pys_ffloordiv(double a, double b) { double q; if (b == 0) pys_fail("ZeroDivisionError: float floor division by zero"); pymod(a, b, &q); return q; }
+static __attribute__((noinline)) double pyquot_libm(double a, double b) {   /* and the quotient */
+  double m = fmod(a, b), d = (a - m) / b;
+  if (m && (b < 0) != (m < 0)) d -= 1;
+  if (d) { double f = floor(d); if (d - f > 0.5) f += 1; d = f; } else d = copysign(0, a / b);
+  return d;
+}
+static int whole_divmod(double a, double b, double *m, double *q) {   /* float_divmod of whole a and b != 0 */
+  /* below 2**53 in magnitude, their int remainder is fmod()'s, with a's sign, and the quotient
+     (a - m) / b is exact and whole, which floor() would leave; on x86-64 before SSE4.1 both are libm
+     calls (pyrem_libm and pyquot_libm, out of line so that LLVM computes neither ahead of this test) */
+  if (!(fabs(a) < 0x1p53 && fabs(b) < 0x1p53 && (double)(I)a == a && (double)(I)b == b)) return 0;
+  uint64_t ua = a < 0 ? 0 - (uint64_t)(I)a : (uint64_t)(I)a, ub = b < 0 ? 0 - (uint64_t)(I)b : (uint64_t)(I)b;
+  uint64_t ur = (ua | ub) >> 32 ? ua % ub : (uint32_t)ua % (uint32_t)ub;   /* (a 32-bit division is quicker) */
+  double r = copysign((double)ur, a), d = (a - r) / b;
+  if (r) { if ((b < 0) != (r < 0)) { r += b; d -= 1; } } else r = copysign(0, b);
+  if (!d) d = copysign(0, a / b);
+  *m = r; *q = d; return 1;
+}
+double pys_fmod(double a, double b) {
+  double m, q;
+  if (b == 0) pys_fail("ZeroDivisionError: float modulo by zero");
+  return whole_divmod(a, b, &m, &q) ? m : pyrem_libm(a, b);
+}
+double pys_ffloordiv(double a, double b) {
+  double m, q;
+  if (b == 0) pys_fail("ZeroDivisionError: float floor division by zero");
+  return whole_divmod(a, b, &m, &q) ? q : pyquot_libm(a, b);
+}
 I pys_f2i(double d) {
   if (isnan(d)) pys_fail("ValueError: cannot convert float NaN to integer");
   if (isinf(d)) pys_fail("OverflowError: cannot convert float infinity to integer");
   if (!(d >= -9223372036854775808.0 && d < 9223372036854775808.0)) pys_fail("OverflowError: float too large for a 64-bit int");
   return (I)d;
 }
-I pys_round(double d) { return pys_f2i(nearbyint(d)); }
+static __attribute__((noinline)) I round_far(double d) { return pys_f2i(nearbyint(d)); }
+I pys_round(double d) {                      /* round(d): half to even, nearbyint()'s in the default rounding mode */
+  /* below 2**52 in magnitude, adding and then subtracting 2**52 with d's sign rounds d to a whole
+     float in that mode, exactly; from there d is whole. nearbyint() is a libm call on x86-64 before
+     SSE4.1 (round_far, out of line so that LLVM does not compute it ahead of this test) */
+  if (fabs(d) < 0x1p52) { double big = copysign(0x1p52, d), r = d + big; return (I)(r - big); }
+  return round_far(d);
+}
 I pys_round_int(I x, I n) {                  /* round(x, n) of an int: x, or for n < 0 the nearest multiple of
                                                 10**-n, ties to the even multiple */
   if (n >= 0) return x;
@@ -2500,8 +2613,17 @@ double pys_round_n(double x, I n) {           /* round(x, n): half-even on the e
   if (isinf(r)) pys_fail("OverflowError: rounded value too large to represent");
   return copysign(r, x);
 }
-I pys_floor(double d) { return pys_f2i(floor(d)); }
-I pys_ceil(double d) { return pys_f2i(ceil(d)); }
+static __attribute__((noinline)) I floor_far(double d) { return pys_f2i(floor(d)); }
+static __attribute__((noinline)) I ceil_far(double d) { return pys_f2i(ceil(d)); }
+I pys_floor(double d) {                      /* math.floor(d): where the conversion is defined, it truncates toward 0,
+                                                and a negative d below its truncation is one less */
+  if (d >= -0x1p63 && d < 0x1p63) { I t = (I)d; return t - (d < (double)t); }   /* (NaN fails both) */
+  return floor_far(d);                       /* (floor() is a libm call on x86-64 before SSE4.1) */
+}
+I pys_ceil(double d) {                       /* math.ceil(d): as pys_floor, one more above the truncation */
+  if (d >= -0x1p63 && d < 0x1p63) { I t = (I)d; return t + (d > (double)t); }
+  return ceil_far(d);
+}
 
 /* ---------- generic repr / equality / ordering driven by a type descriptor ----------
    i int, f float, b bool, s str, L<e> list, D<k><v> dict, T<n><e...> tuple, V<e> counted tuple, S<e> set, F<e>
@@ -2658,6 +2780,32 @@ static I resc(char *t, const char *s, I len, char q, I *n) {   /* the character 
   memcpy(t, s, *n);
   return *n;
 }
+/* The bytes of the printable characters from p on (left > 0 bytes, the first not ASCII) that
+   repr() copies as they are: all but the quote q and the backslash. A character of two or three
+   bytes is read here as u8char reads it, and steps by that count, not by one taken from its bytes:
+   the next can then begin before this one is read. Out of line, so that a str of ASCII pays
+   nothing for it. */
+__attribute__((noinline)) static I printable_run(const unsigned char *p, I left, char q) {
+  I n = 0, cp;
+  while (n < left) {
+    if (p[n] < 128) {
+      if (p[n] < 32 || p[n] == 127 || p[n] == q || p[n] == '\\') break;
+      n++;
+    } else if (p[n] >= 0xC2 && p[n] < 0xE0 && left - n > 1 && (p[n + 1] & 0xC0) == 0x80) {
+      if (!printable((p[n] & 0x1F) << 6 | (p[n + 1] & 0x3F))) break;
+      n += 2;
+    } else if (p[n] >= 0xE0 && p[n] < 0xF0 && left - n > 2 && (p[n + 1] & 0xC0) == 0x80 && (p[n + 2] & 0xC0) == 0x80
+               && (cp = (p[n] & 0x0F) << 12 | (p[n + 1] & 0x3F) << 6 | (p[n + 2] & 0x3F)) >= 0x800) {
+      if (!printable(cp)) break;
+      n += 3;
+    } else {
+      I k = u8char((const char *)p + n, left - n, &cp);
+      if (!printable(cp)) break;
+      n += k;
+    }
+  }
+  return n;
+}
 static void repr_str(Buf *b, Str *s) {
   char q = rquote(s->s, s->len), t[12];
   put(b, &q, 1);
@@ -2667,6 +2815,8 @@ static void repr_str(Buf *b, Str *s) {
       if (c < 32 || c > 126 || c == q || c == '\\') break;
     }
     if (n) put(b, s->s + i, n);
+    else if ((unsigned char)s->s[i] > 127 && (n = printable_run((const unsigned char *)s->s + i, s->len - i, q)) > 0)
+      put(b, s->s + i, n);                /* (and a run that begins with a printable character that is not ASCII: another) */
     else put(b, t, resc(t, s->s + i, s->len - i, q, &n));
   }
   put(b, &q, 1);
@@ -2917,14 +3067,13 @@ static int eqv(I a, I b, const char *d) {
     }
     return 1;
   }
-  case 'V': {
-    VTuple *x = (VTuple *)a, *y = (VTuple *)b;
+  case 'V': {   /* as CPython's tuplerichcompare: the items both have, then the lengths (lists
+                   test lengths first; tuples do not, so an object item's __eq__ runs anyway) */
+    VTuple *x = (VTuple *)a, *y = (VTuple *)b; I i = 0;
     if (x == y) return 1;
     if (!x || !y) return x == y;
-    if (x->len != y->len) return 0;
-    for (I i = 0; i < x->len; i++)
-      if (!(x->ids && y->ids && x->ids[i + 1] && x->ids[i + 1] == y->ids[i + 1]) && !eqitem(x->a[i], y->a[i], d + 1)) return 0;
-    return 1;
+    while (i < x->len && i < y->len && ((x->ids && y->ids && x->ids[i + 1] && x->ids[i + 1] == y->ids[i + 1]) || eqitem(x->a[i], y->a[i], d + 1))) i++;
+    return i >= x->len && i >= y->len;
   }
   case 'S': case 'F': return pys_set_cmp((Set *)a, (Set *)b, 4);   /* (a set equals a frozenset of its elements) */
   case 'O': case 'H': return a == b || pys_obj_eq(ocls(d + 1), a, b);   /* identity first, like CPython */
@@ -4280,6 +4429,7 @@ static uint64_t hstrd(Str *s) {                      /* a str key's hash */
 }
 static I ohash(I k, const char *d) { return pys_obj_eq(-1 - ocls(d + 1), k, 0); }   /* hash(k) of an H<id> */
 static I hitem(I k, const char *d);
+static I hfset(Set *s);
 static uint64_t dmask(Dict *d) { return (uint64_t)(d->kind & KTAG ? d->size : d->size * 2) - 1; }   /* idx's slots, less one */
 static int khash(I kind) { return (kind & KTAG) || (kind > 1 && (*kraw(kind) == '!' || strchr(kdesc(kind), 'H') || strchr(kdesc(kind), 'A'))); }   /* keys hashed by CPython's hash */
 /* a tuple or object key's hash (or its item's), by its descriptor d, never 0; 0 where d holds an
@@ -4305,6 +4455,12 @@ static uint64_t hval(I k, const char *d) {
     h = (h ^ (uint64_t)t->len) * 0x100000001B3ULL;
     h ^= h >> 29;
     return h ? h : 1;
+  }
+  if (*d == 'F') {   /* (of the hashes its table keeps: no code runs) */
+    /* where its elements' hashes are CPython's (an H<id> or A in its descriptor), so is its own,
+       in a table that keeps CPython's hashes (khash), 0 too: hcls takes it, as for a tuple's */
+    for (const char *c = d, *z = skip(d); c < z; c++) if (*c == 'H' || *c == 'A') return 0;
+    uint64_t h = (uint64_t)hfset((Set *)k); return h ? h : 1;
   }
   if (*d != 'T') { Dict t = {.kind = *d == 's'}; return hsh(&t, k); }   /* (a P<id>'s: its address's) */
   uint64_t h = 0x27D4EB2F165667C5ULL; const char *e = d + 2;
@@ -4963,6 +5119,19 @@ static I htuple(I *t, I n, const char *e, int each) {   /* tuplehash of n items,
   acc += (uint64_t)n ^ (2870177450012600261ULL ^ 3527539ULL);
   return acc == (uint64_t)-1 ? 1546275796 : (I)acc;
 }
+/* frozenset_hash: of the hashes of a frozenset's elements, which its table keeps (hs, -1 where a
+   slot holds none), in any order, as CPython's xors each shuffled one and then adds its size */
+static I hfset(Set *s) {
+  uint64_t h = 0;
+  for (uint64_t j = 0; j <= (uint64_t)s->mask; j++) {
+    uint64_t x = (uint64_t)s->hs[j];
+    if (s->hs[j] != -1) h ^= ((x ^ 89869747ULL) ^ (x << 16)) * 3644798167ULL;
+  }
+  h ^= ((uint64_t)s->len + 1) * 1927868237ULL;
+  h ^= (h >> 11) ^ (h >> 25);
+  h = h * 69069U + 907133923ULL;
+  return h == (uint64_t)-1 ? 590923713 : (I)h;
+}
 static I hitem(I k, const char *d) {                 /* the hash of a value k (a set's element, a tuple's item), by its descriptor */
   if (*d == '?' || *d == 's' || *d == 'P' || *d == 'H') {   /* (an object's static type may hold None) */
     if (!k) return NONE_HASH;                        /* (None: also a looked-up key's, see hval) */
@@ -4974,6 +5143,7 @@ static I hitem(I k, const char *d) {                 /* the hash of a value k (a
   case 's': return hstr((Str *)k);
   case 'f': return hdbl(dbl(k));
   case 'T': return htuple((I *)k, d[1] - '0', d + 2, 1);
+  case 'F': return hfset((Set *)k);
   case 'V': return htuple(((VTuple *)k)->a, ((VTuple *)k)->len, d + 1, 0);
   case 'P': case 'C': case 'Y': return hptr(k);   /* (class objects: by identity, as object's) */
   case 'U': if (!k) return NONE_HASH; d = umember(&k, d); return hitem(k, d);   /* (a union of classes: the object its box holds, #1452) */
@@ -6391,6 +6561,23 @@ Big pys_set_big_pop(Set *s) {                        /* s.pop() of a set of ints
 void pys_set_clear(Set *s) { stable(s, 8); s->len = 0; }
 /* set(o), s.copy() and frozenset(o) of a set o: o merged into a new set */
 Set *pys_set_copy(Set *s) { Set *r = pys_set_new(s->kind); smerge(r, s); return r; }
+/* frozenset o of Any values as a frozenset of t's, which a frozenset[T] or an AbstractSet[T] takes
+   (Gen.coerce): a new set of kind kind, whose elements are o's payloads. Each is checked as a typed
+   variable's is (pys_dyn_unbox: TypeError), all of them before the set is made. They keep o's
+   hashes of them, which a set of that kind has too, and, in a table without dummies, o's slots: the
+   set is iterated as o is, CPython's being o itself, and no __hash__ or __eq__ runs */
+Set *pys_set_unbox(Set *o, const DynType *t, I kind) {
+  for (I i = 0; i <= o->mask; i++) if (o->hs[i] != -1) pys_dyn_unbox((Dyn *)o->keys[i], t);
+  Set *s = pys_set_new(kind);
+  if (!o->len) return s;
+  if (o->mask != s->mask) stable(s, o->mask + 1);
+  s->fill = s->len = o->len;
+  for (I i = 0; i <= o->mask; i++) if (o->hs[i] != -1) {
+    I k = pys_dyn_unbox((Dyn *)o->keys[i], t);
+    if (o->fill == o->len) { s->keys[i] = k; s->hs[i] = o->hs[i]; } else sclean(s, k, o->hs[i]);
+  }
+  return s;
+}
 /* s.update(o) (s |= o) of a set o; of a list (any other iterable's items), one insertion per item;
    of a dict, one resize for all its keys, then theirs in order */
 void pys_set_update(Set *s, Set *o) { smerge(s, o); }
@@ -6974,7 +7161,7 @@ __attribute__((minsize)) void pys_init(int argc, char **argv, char *sb, I **root
    outermost one's frame bounds the stack scan, as @main's does. One thread only (pyext.c). */
 static I lib_depth;
 void pys_set_hooks(int (*s)(const char *, I, I), Str *(*i)(I, Str *, I)) { std_hook = s; in_hook = i; }
-void pys_enter(char *sb) { if (!lib_depth++) gc_bottom = sb + 2 * sizeof(void *); }
+void pys_enter(char *sb) { if (!lib_depth++) gc_bottom = sb + STACK_PAST; }
 I pys_leave(void) { return --lib_depth; }
 void pys_out_sync(void) {              /* embedded CPython is about to run: what Pystachy wrote to stdout goes first */
   if (!std_out.closed) flush1(&std_out);   /* fflush of an empty stream is harmless; no libc-specific pending probe */
@@ -6983,7 +7170,7 @@ void pys_init_lib(I **roots, I nroots) {
   pys_c_numeric();                     /* (the host may call setlocale) */
   stack_floor(1);                     /* (the importing thread's; the host may have raised its limit) */
   if (!pmap) {                         /* (else an import that failed is tried again) */
-    gc_init(gc_bottom - 2 * sizeof(void *), roots, nroots);
+    gc_init(gc_bottom - STACK_PAST, roots, nroots);
     std_in.f = stdin; std_in.rd = 1; std_in.nl = 2; std_in.std = 1;
     std_out.f = stdout; std_out.wr = 1; std_out.std = 1;
     std_err.f = stderr; std_err.wr = 1; std_err.std = 1;
@@ -7526,6 +7713,23 @@ _Noreturn void pys_execv(Str *path, List *args) {   /* os.execv: the process bec
   execv(path->s, v);
   ioerr(errno);
 }
+static int os_fd(I fd) {              /* a file descriptor argument, as CPython converts it to a C int */
+  if (fd < INT_MIN || fd > INT_MAX) pys_fail("OverflowError: Python int too large to convert to C int");
+  return (int)fd;
+}
+I pys_os_dup(I fd) {                  /* os.dup(): a copy that child processes do not inherit, as CPython's _Py_dup() */
+  int r = fcntl(os_fd(fd), F_DUPFD_CLOEXEC, 0);
+  if (r < 0) ioerr(errno);
+  return r;
+}
+I pys_os_dup2(I fd, I fd2) {          /* os.dup2(fd, fd2): fd2 is inheritable, CPython's default, and is returned */
+  int from = os_fd(fd), to = os_fd(fd2);
+  if (dup2(from, to) < 0) ioerr(errno);
+  return to;
+}
+void pys_os_close(I fd) {             /* os.close(): the runtime's own buffers of a standard stream are not flushed */
+  if (close(os_fd(fd)) < 0) ioerr(errno);
+}
 void pys_set_inheritable(I fd, I inheritable) {
   if (fd < INT_MIN || fd > INT_MAX || inheritable < INT_MIN || inheritable > INT_MAX)
     pys_fail("OverflowError: Python int too large to convert to C int");
@@ -7542,6 +7746,243 @@ I pys_ignored_signals(void) {
     if (!sigaction(s, 0, &sa) && sa.sa_handler == SIG_IGN) m |= (I)1 << (s - 1);
   }
   return m;
+}
+/* ---------- child processes (lib/subprocess.py) ----------
+   What CPython's subprocess.py asks of _posixsubprocess.fork_exec(), os and select, as that module's
+   private primitives (__pys_proc_*). Between fork() and the program it becomes, a child calls only
+   async-signal-safe functions: it allocates nothing and touches no FILE, so the parent's heap,
+   collector and buffered output are as they were, whatever other threads the parent has. */
+#define PROC_RUNNING 256                /* pys_proc_wait's result for a child that has not ended: no status is */
+double pys_monotonic(void);
+static int proc_pipe(int fd[2]) {       /* a pipe that no exec inherits, both ends past the standard three, so that no
+                                           dup2() of the child lands on one; 0, or the errno */
+  if (pipe(fd)) return errno;
+  for (int k = 0; k < 2; k++) {
+    int n = fd[k] < 3 ? fcntl(fd[k], F_DUPFD_CLOEXEC, 3) : fcntl(fd[k], F_SETFD, FD_CLOEXEC) < 0 ? -1 : fd[k];
+    if (n < 0) { int e = errno; close(fd[0]); close(fd[1]); return e; }
+    if (n != fd[k]) { close(fd[k]); fd[k] = n; }
+  }
+  return 0;
+}
+List *pys_proc_pipe(void) {             /* os.pipe(): [the read end, the write end] */
+  int fd[2], e = proc_pipe(fd);
+  if (e) ioerr(e);
+  List *l = pys_list_new_atomic(2);
+  pys_list_append(l, fd[0]); pys_list_append(l, fd[1]);
+  return l;
+}
+I pys_proc_devnull(void) {              /* subprocess.DEVNULL's descriptor: /dev/null, for reading and writing */
+  int fd;
+  do fd = open("/dev/null", O_RDWR | O_CLOEXEC); while (fd < 0 && errno == EINTR);
+  if (fd < 0) oserr("/dev/null");
+  return fd;
+}
+static int proc_cloexec(int fd, int on) {   /* set or clear close-on-exec: -1 with errno where it fails */
+  int f = fcntl(fd, F_GETFD);
+  return f < 0 ? -1 : fcntl(fd, F_SETFD, on ? f | FD_CLOEXEC : f & ~FD_CLOEXEC);
+}
+/* close_fds: the child closes every descriptor past the standard three but keep, the pipe of its
+   errors. Linux has close_range() for it (5.9). Where that is missing (macOS too), the parent lists
+   the open ones before it forks, as the child could not read /dev/fd with async-signal-safe calls
+   alone; with neither, the child closes every number up to the limit of open files. */
+static int *proc_open_fds(I *n) {       /* the open descriptors past the standard three, or NULL without /dev/fd */
+  DIR *d = opendir("/dev/fd");
+  if (!d) return 0;
+  I cap = 64, len = 0;
+  int *v = pys_alloc_atomic((size_t)cap * sizeof *v);
+  for (struct dirent *e; (e = readdir(d));) {
+    char *end; long fd = strtol(e->d_name, &end, 10);
+    if (*end || end == e->d_name || fd < 3 || fd > INT_MAX) continue;
+    if (len == cap) {
+      int *w = pys_alloc_atomic((size_t)(cap *= 2) * sizeof *w);
+      memcpy(w, v, (size_t)len * sizeof *v); v = w;
+    }
+    v[len++] = (int)fd;
+  }
+  closedir(d);
+  *n = len;
+  return v;
+}
+static void proc_close_from3(int keep, const int *fds, I n, long maxfd) {   /* n < 0: with close_range() */
+#if defined(__linux__) && defined(SYS_close_range)
+  if (n < 0 && (keep <= 3 || !syscall(SYS_close_range, 3U, (unsigned)keep - 1, 0U)) &&
+      !syscall(SYS_close_range, (unsigned)keep + 1, ~0U, 0U)) return;
+#endif
+  if (fds) { for (I i = 0; i < n; i++) if (fds[i] != keep) close(fds[i]); return; }
+  for (long fd = 3; fd < maxfd; fd++) if (fd != keep) close((int)fd);
+}
+/* The child's part, in the order of CPython's child_exec: the standard streams, the directory, the
+   signals CPython ignores (here SIGPIPE and SIGXFSZ) back to their defaults, the session, the
+   other descriptors, then the first of execs that the system runs. A failure goes to the parent
+   through errpipe, which a successful exec closes: its errno, and 0 for an exec's, 1 for chdir()'s,
+   2 for another's (CPython's "", "noexec:chdir" and "noexec"). */
+static _Noreturn void proc_child(char **argv, char **execs, char **envp, const char *cwd, int p2cread, int c2pwrite,
+                                 int errwrite, int errpipe, I flags, const int *fds, I nfds, long maxfd) {
+  int msg[2] = {0, 2};
+  /* a descriptor to put on 1 or 2 that is 0 or 1 itself would be overwritten first: a copy of it */
+  if (c2pwrite == 0 && ((c2pwrite = dup(c2pwrite)) < 0 || proc_cloexec(c2pwrite, 1) < 0)) goto fail;
+  while (errwrite == 0 || errwrite == 1)
+    if ((errwrite = dup(errwrite)) < 0 || proc_cloexec(errwrite, 1) < 0) goto fail;
+  /* dup2() makes a descriptor that an exec keeps; one already in its place is only marked so */
+  if (p2cread == 0 ? proc_cloexec(0, 0) < 0 : p2cread != -1 && dup2(p2cread, 0) < 0) goto fail;
+  if (c2pwrite == 1 ? proc_cloexec(1, 0) < 0 : c2pwrite != -1 && dup2(c2pwrite, 1) < 0) goto fail;
+  if (errwrite == 2 ? proc_cloexec(2, 0) < 0 : errwrite != -1 && dup2(errwrite, 2) < 0) goto fail;
+  if (cwd && chdir(cwd) < 0) { msg[1] = 1; goto fail; }
+  if (flags & 2) { signal(SIGPIPE, SIG_DFL); signal(SIGXFSZ, SIG_DFL); }
+  if ((flags & 4) && setsid() < 0) goto fail;
+  msg[1] = 0;
+  if (flags & 1) proc_close_from3(errpipe, fds, nfds, maxfd);
+  int first = 0;                        /* (the PATH search of os._execvpe(), which reports the first error */
+  for (I i = 0; execs[i]; i++) {        /* that is not a missing file's, else the last) */
+    if (envp) execve(execs[i], argv, envp); else execv(execs[i], argv);
+    if (errno != ENOENT && errno != ENOTDIR && !first) first = errno;
+  }
+  if (first) errno = first;
+fail:
+  msg[0] = errno;
+  while (write(errpipe, msg, sizeof msg) < 0 && errno == EINTR) {}
+  _exit(255);
+}
+static char **proc_strs(List *l) {      /* l's strs as a NULL-terminated array of C strings; none holds a NUL */
+  char **v = pys_alloc((l->len + 1) * sizeof *v);
+  for (I i = 0; i < l->len; i++) {
+    if (nul((Str *)l->a[i])) pys_fail("ValueError: embedded null byte");
+    v[i] = ((Str *)l->a[i])->s;
+  }
+  return v;
+}
+/* _posixsubprocess.fork_exec(): start args as a child process, trying each of execs as its
+   program, and return its process ID once it runs. fds are the child's standard input, output
+   and error (-1: the parent's); flags 1 is close_fds, 2 restore_signals, 4 start_new_session,
+   8 that env is its environment (else the parent's) and 16 that cwd is its directory. An exec
+   that fails raises the OSError of its errno with args[0], and chdir()'s with cwd, as CPython's. */
+I pys_proc_fork_exec(List *args, List *execs, List *env, Str *cwd, I p2cread, I c2pwrite, I errwrite, I flags) {
+  if (!args->len) pys_fail("ValueError: args must not be empty");   /* (subprocess.py reads args[0] first) */
+  if (p2cread < INT_MIN || c2pwrite < INT_MIN || errwrite < INT_MIN || p2cread > INT_MAX || c2pwrite > INT_MAX ||
+      errwrite > INT_MAX)
+    pys_fail("OverflowError: Python int too large to convert to C int");   /* (another that is no descriptor */
+                                                                            /* fails in the child: EBADF) */
+  char **argv = proc_strs(args), **paths = proc_strs(execs), **envp = flags & 8 ? proc_strs(env) : 0;
+  if ((flags & 16) && nul(cwd)) pys_fail("ValueError: embedded null byte");
+  long maxfd = sysconf(_SC_OPEN_MAX);
+  if (maxfd < 0) maxfd = 256;
+  int ep[2], e = proc_pipe(ep);
+  if (e) ioerr(e);
+  int *open_fds = 0; I nopen = 0;
+  if (flags & 1) {
+#if defined(__linux__) && defined(SYS_close_range)
+    static int ranged = -1;             /* does this kernel have close_range()? It refuses a first past the last */
+    if (ranged < 0) ranged = !(syscall(SYS_close_range, ~0U, 0U, 0U) < 0 && errno == ENOSYS);
+    if (ranged) nopen = -1; else
+#endif
+    open_fds = proc_open_fds(&nopen);
+  }
+  /* A Ctrl-C between fork() and the exec would run this runtime's handler in the child, which
+     writes the output that the parent has buffered: it waits for the program, or for the parent. */
+  sigset_t block, old;
+  sigemptyset(&block); sigaddset(&block, SIGINT);
+  pthread_sigmask(SIG_BLOCK, &block, &old);
+  pid_t pid = fork();
+  if (!pid) {
+    if (sigint_on) signal(SIGINT, SIG_DFL);
+    pthread_sigmask(SIG_SETMASK, &old, 0);
+    proc_child(argv, paths, envp, flags & 16 ? cwd->s : 0, (int)p2cread, (int)c2pwrite, (int)errwrite, ep[1], flags,
+               open_fds, nopen, maxfd);
+  }
+  e = errno;
+  pthread_sigmask(SIG_SETMASK, &old, 0);
+  close(ep[1]);
+  if (pid < 0) { close(ep[0]); ioerr(e); }
+  int msg[2]; size_t got = 0;
+  for (;;) {                            /* what the child reports: nothing, where its exec closed the pipe */
+    ssize_t n = read(ep[0], (char *)msg + got, sizeof msg - got);
+    if (n > 0) got += (size_t)n;
+    if (!n || got == sizeof msg || (n < 0 && errno != EINTR)) break;
+  }
+  close(ep[0]);
+  if (got != sizeof msg) return pid;
+  int st;
+  while (waitpid(pid, &st, 0) < 0 && errno == EINTR) {}
+  errno = msg[0];
+  if (msg[1] == 0) oserr(argv[0]);
+  if (msg[1] == 1) oserr(cwd->s);
+  ioerr(msg[0]);
+}
+I pys_proc_wait(I pid, I nohang) {      /* os.waitpid(pid, WNOHANG or 0), as the returncode Popen makes of it: the exit
+                                           status, or minus the signal that killed the child; PROC_RUNNING for one that
+                                           has not ended (nohang), and 0 for one that is not this process's to wait for
+                                           (ECHILD: SIGCHLD is ignored, or something else waited) */
+  int st; pid_t r;
+  do r = waitpid((pid_t)pid, &st, nohang ? WNOHANG : 0); while (r < 0 && errno == EINTR);
+  if (r < 0) { if (errno == ECHILD) return 0; ioerr(errno); }
+  if (!r) return PROC_RUNNING;
+  return WIFSIGNALED(st) ? -WTERMSIG(st) : WEXITSTATUS(st);
+}
+void pys_proc_kill(I pid, I sig) {      /* os.kill(pid, sig) */
+  if (sig > INT_MAX) pys_fail("OverflowError: signed integer is greater than maximum");
+  if (sig < INT_MIN) pys_fail("OverflowError: signed integer is less than minimum");
+  if (kill((pid_t)pid, (int)sig) < 0) ioerr(errno);
+}
+Str *pys_proc_read(I fd, I n) {         /* os.read(fd, n), of at most 32768 bytes: b"" at the end */
+  char b[32768]; ssize_t r;
+  do r = read((int)fd, b, n < (I)sizeof b ? (size_t)n : sizeof b); while (r < 0 && errno == EINTR);
+  if (r < 0) ioerr(errno);
+  return pys_str(b, r);
+}
+I pys_proc_write(I fd, Str *data, I at, I n) {   /* os.write(fd, data[at:at + n]): how many bytes it took */
+  if (at < 0 || at > data->len) at = data->len;
+  if (n > data->len - at) n = data->len - at;
+  ssize_t r;
+  do r = write((int)fd, data->s + at, (size_t)n); while (r < 0 && errno == EINTR);
+  if (r < 0) ioerr(errno);              /* (EPIPE where the reader is gone: the runtime ignores SIGPIPE) */
+  return r;
+}
+void pys_proc_close(I fd) { if (close((int)fd) < 0) ioerr(errno); }   /* os.close(fd) */
+/* The selector of Popen.communicate(): which of two descriptors to read (1 and 2) and one to write
+   (4) are ready, an end of file or an error among them, within timeout seconds (negative: wait
+   for one). A descriptor of -1 is not waited for. It is poll(), which has no limit of select(). */
+I pys_proc_ready(I rd1, I rd2, I wr, double timeout) {
+  struct pollfd p[3] = {{(int)rd1, POLLIN, 0}, {(int)rd2, POLLIN, 0}, {(int)wr, POLLOUT, 0}};
+  double end = timeout < 0 ? 0 : pys_monotonic() + timeout;
+  for (;;) {
+    double ms = timeout < 0 ? -1 : ceil(timeout * 1e3);
+    int n = poll(p, 3, ms > INT_MAX ? INT_MAX : (int)ms);
+    if (n >= 0) break;
+    if (errno != EINTR) ioerr(errno);
+    if (timeout >= 0 && (timeout = end - pys_monotonic()) < 0) timeout = 0;
+  }
+  return (p[0].revents ? 1 : 0) | (p[1].revents ? 2 : 0) | (p[2].revents ? 4 : 0);
+}
+Str *pys_proc_signame(I sig) {          /* signal.Signals(sig).name, or "" for a number that names no signal: of two
+                                           names of one signal, the enum's is the first in alphabetical order */
+  /* GC_NO_ROOT(pys_proc_signame.names): signal names are C string literals. */
+  static const struct { int n; const char *s; } names[] = {
+    {SIGABRT, "SIGABRT"}, {SIGALRM, "SIGALRM"}, {SIGBUS, "SIGBUS"}, {SIGCHLD, "SIGCHLD"}, {SIGCONT, "SIGCONT"},
+#ifdef SIGEMT
+    {SIGEMT, "SIGEMT"},
+#endif
+    {SIGFPE, "SIGFPE"}, {SIGHUP, "SIGHUP"}, {SIGILL, "SIGILL"},
+#ifdef SIGINFO
+    {SIGINFO, "SIGINFO"},
+#endif
+    {SIGINT, "SIGINT"}, {SIGIO, "SIGIO"}, {SIGKILL, "SIGKILL"}, {SIGPIPE, "SIGPIPE"}, {SIGPROF, "SIGPROF"},
+#ifdef SIGPWR
+    {SIGPWR, "SIGPWR"},
+#endif
+    {SIGQUIT, "SIGQUIT"}, {SIGSEGV, "SIGSEGV"},
+#ifdef SIGSTKFLT
+    {SIGSTKFLT, "SIGSTKFLT"},
+#endif
+    {SIGSTOP, "SIGSTOP"}, {SIGSYS, "SIGSYS"}, {SIGTERM, "SIGTERM"}, {SIGTRAP, "SIGTRAP"}, {SIGTSTP, "SIGTSTP"},
+    {SIGTTIN, "SIGTTIN"}, {SIGTTOU, "SIGTTOU"}, {SIGURG, "SIGURG"}, {SIGUSR1, "SIGUSR1"}, {SIGUSR2, "SIGUSR2"},
+    {SIGVTALRM, "SIGVTALRM"}, {SIGWINCH, "SIGWINCH"}, {SIGXCPU, "SIGXCPU"}, {SIGXFSZ, "SIGXFSZ"},
+  };
+  for (size_t i = 0; i < sizeof names / sizeof *names; i++) if (names[i].n == sig) return cstr(names[i].s);
+#ifdef SIGRTMIN
+  if (sig == SIGRTMIN) return cstr("SIGRTMIN");
+  if (sig == SIGRTMAX) return cstr("SIGRTMAX");
+#endif
+  return cstr("");
 }
 /* Private native-program cache primitives: no wait and no diagnostics. Retain
    only descriptors we allocated; inherited descriptors belong to the caller.
@@ -8808,6 +9249,7 @@ static _Noreturn void oserr(const char *path) {         /* raise CPython's OSErr
   repr_str(&b, cstr(path)); put(&b, "", 1); pys_fail(b.p);
 }
 void pys_remove(Str *p) { if (nul(p)) pys_fail("ValueError: remove: embedded null character in path"); if (unlink(p->s)) oserr(p->s); }
+void pys_chdir(Str *p) { if (nul(p)) pys_fail("ValueError: chdir: embedded null character in path"); if (chdir(p->s)) oserr(p->s); }
 void pys_rmdir(Str *p) { if (nul(p)) pys_fail("ValueError: rmdir: embedded null character in path"); if (rmdir(p->s)) oserr(p->s); }
 /* os.listdir(p): the names in directory p but . and .., in the order readdir gives them, as
    CPython's _posix_listdir lists them (os.listdir() lists ".") */
@@ -9145,280 +9587,1287 @@ Str *pys_mkdtemp(void) {     /* like CPython: first usable of $TMPDIR $TEMP $TMP
 /* ---------- tables ---------- */
 /* BEGIN GENERATED UNICODE CLASSIFICATION */
 /* Generated by tools/unicode_classification_tables.py from CPython 3.13.16, Unicode 15.1.0.
-   Each entry is (transition code point << 4) | alpha/digit/decimal/numeric flags.
+   A byte for each code point: alpha=1, digit=2, decimal=4, numeric=8. unicode_property_low holds
+   the first 2,048, and unicode_property_1 to _3 are the three stages of all (see unicode_property
+   below). unicode_printable_low and _1 to _3: a bit for each code point, eight to a byte, set for
+   the printable ones, likewise (see printable below).
    Do not edit: regenerate with --write; --check verifies every code point. */
-static const uint32_t unicode_classification[] = {
-  0x0, 0x30e, 0x3a0, 0x411, 0x5b0, 0x611, 0x7b0, 0xaa1, 0xab0, 0xb2a, 0xb40, 0xb51,
-  0xb60, 0xb9a, 0xba1, 0xbb0, 0xbc8, 0xbf0, 0xc01, 0xd70, 0xd81, 0xf70, 0xf81, 0x2c20,
-  0x2c61, 0x2d20, 0x2e01, 0x2e50, 0x2ec1, 0x2ed0, 0x2ee1, 0x2ef0, 0x3701, 0x3750, 0x3761, 0x3780,
-  0x37a1, 0x37e0, 0x37f1, 0x3800, 0x3861, 0x3870, 0x3881, 0x38b0, 0x38c1, 0x38d0, 0x38e1, 0x3a20,
-  0x3a31, 0x3f60, 0x3f71, 0x4820, 0x48a1, 0x5300, 0x5311, 0x5570, 0x5591, 0x55a0, 0x5601, 0x5890,
-  0x5d01, 0x5eb0, 0x5ef1, 0x5f30, 0x6201, 0x64b0, 0x660e, 0x66a0, 0x66e1, 0x6700, 0x6711, 0x6d40,
-  0x6d51, 0x6d60, 0x6e51, 0x6e70, 0x6ee1, 0x6f0e, 0x6fa1, 0x6fd0, 0x6ff1, 0x7000, 0x7101, 0x7110,
-  0x7121, 0x7300, 0x74d1, 0x7a60, 0x7b11, 0x7b20, 0x7c0e, 0x7ca1, 0x7eb0, 0x7f41, 0x7f60, 0x7fa1,
-  0x7fb0, 0x8001, 0x8160, 0x81a1, 0x81b0, 0x8241, 0x8250, 0x8281, 0x8290, 0x8401, 0x8590, 0x8601,
-  0x86b0, 0x8701, 0x8880, 0x8891, 0x88f0, 0x8a01, 0x8ca0, 0x9041, 0x93a0, 0x93d1, 0x93e0, 0x9501,
-  0x9510, 0x9581, 0x9620, 0x966e, 0x9700, 0x9711, 0x9810, 0x9851, 0x98d0, 0x98f1, 0x9910, 0x9931,
-  0x9a90, 0x9aa1, 0x9b10, 0x9b21, 0x9b30, 0x9b61, 0x9ba0, 0x9bd1, 0x9be0, 0x9ce1, 0x9cf0, 0x9dc1,
-  0x9de0, 0x9df1, 0x9e20, 0x9e6e, 0x9f01, 0x9f20, 0x9f48, 0x9fa0, 0x9fc1, 0x9fd0, 0xa051, 0xa0b0,
-  0xa0f1, 0xa110, 0xa131, 0xa290, 0xa2a1, 0xa310, 0xa321, 0xa340, 0xa351, 0xa370, 0xa381, 0xa3a0,
-  0xa591, 0xa5d0, 0xa5e1, 0xa5f0, 0xa66e, 0xa700, 0xa721, 0xa750, 0xa851, 0xa8e0, 0xa8f1, 0xa920,
-  0xa931, 0xaa90, 0xaaa1, 0xab10, 0xab21, 0xab40, 0xab51, 0xaba0, 0xabd1, 0xabe0, 0xad01, 0xad10,
-  0xae01, 0xae20, 0xae6e, 0xaf00, 0xaf91, 0xafa0, 0xb051, 0xb0d0, 0xb0f1, 0xb110, 0xb131, 0xb290,
-  0xb2a1, 0xb310, 0xb321, 0xb340, 0xb351, 0xb3a0, 0xb3d1, 0xb3e0, 0xb5c1, 0xb5e0, 0xb5f1, 0xb620,
-  0xb66e, 0xb700, 0xb711, 0xb728, 0xb780, 0xb831, 0xb840, 0xb851, 0xb8b0, 0xb8e1, 0xb910, 0xb921,
-  0xb960, 0xb991, 0xb9b0, 0xb9c1, 0xb9d0, 0xb9e1, 0xba00, 0xba31, 0xba50, 0xba81, 0xbab0, 0xbae1,
-  0xbba0, 0xbd01, 0xbd10, 0xbe6e, 0xbf08, 0xbf30, 0xc051, 0xc0d0, 0xc0e1, 0xc110, 0xc121, 0xc290,
-  0xc2a1, 0xc3a0, 0xc3d1, 0xc3e0, 0xc581, 0xc5b0, 0xc5d1, 0xc5e0, 0xc601, 0xc620, 0xc66e, 0xc700,
-  0xc788, 0xc7f0, 0xc801, 0xc810, 0xc851, 0xc8d0, 0xc8e1, 0xc910, 0xc921, 0xca90, 0xcaa1, 0xcb40,
-  0xcb51, 0xcba0, 0xcbd1, 0xcbe0, 0xcdd1, 0xcdf0, 0xce01, 0xce20, 0xce6e, 0xcf00, 0xcf11, 0xcf30,
-  0xd041, 0xd0d0, 0xd0e1, 0xd110, 0xd121, 0xd3b0, 0xd3d1, 0xd3e0, 0xd4e1, 0xd4f0, 0xd541, 0xd570,
-  0xd588, 0xd5f1, 0xd620, 0xd66e, 0xd708, 0xd790, 0xd7a1, 0xd800, 0xd851, 0xd970, 0xd9a1, 0xdb20,
-  0xdb31, 0xdbc0, 0xdbd1, 0xdbe0, 0xdc01, 0xdc70, 0xde6e, 0xdf00, 0xe011, 0xe310, 0xe321, 0xe340,
-  0xe401, 0xe470, 0xe50e, 0xe5a0, 0xe811, 0xe830, 0xe841, 0xe850, 0xe861, 0xe8b0, 0xe8c1, 0xea40,
-  0xea51, 0xea60, 0xea71, 0xeb10, 0xeb21, 0xeb40, 0xebd1, 0xebe0, 0xec01, 0xec50, 0xec61, 0xec70,
-  0xed0e, 0xeda0, 0xedc1, 0xee00, 0xf001, 0xf010, 0xf20e, 0xf2a8, 0xf340, 0xf401, 0xf480, 0xf491,
-  0xf6d0, 0xf881, 0xf8d0, 0x10001, 0x102b0, 0x103f1, 0x1040e, 0x104a0, 0x10501, 0x10560, 0x105a1, 0x105e0,
-  0x10611, 0x10620, 0x10651, 0x10670, 0x106e1, 0x10710, 0x10751, 0x10820, 0x108e1, 0x108f0, 0x1090e, 0x109a0,
-  0x10a01, 0x10c60, 0x10c71, 0x10c80, 0x10cd1, 0x10ce0, 0x10d01, 0x10fb0, 0x10fc1, 0x12490, 0x124a1, 0x124e0,
-  0x12501, 0x12570, 0x12581, 0x12590, 0x125a1, 0x125e0, 0x12601, 0x12890, 0x128a1, 0x128e0, 0x12901, 0x12b10,
-  0x12b21, 0x12b60, 0x12b81, 0x12bf0, 0x12c01, 0x12c10, 0x12c21, 0x12c60, 0x12c81, 0x12d70, 0x12d81, 0x13110,
-  0x13121, 0x13160, 0x13181, 0x135b0, 0x1369a, 0x13728, 0x137d0, 0x13801, 0x13900, 0x13a01, 0x13f60, 0x13f81,
-  0x13fe0, 0x14011, 0x166d0, 0x166f1, 0x16800, 0x16811, 0x169b0, 0x16a01, 0x16eb0, 0x16ee8, 0x16f11, 0x16f90,
-  0x17001, 0x17120, 0x171f1, 0x17320, 0x17401, 0x17520, 0x17601, 0x176d0, 0x176e1, 0x17710, 0x17801, 0x17b40,
-  0x17d71, 0x17d80, 0x17dc1, 0x17dd0, 0x17e0e, 0x17ea0, 0x17f08, 0x17fa0, 0x1810e, 0x181a0, 0x18201, 0x18790,
-  0x18801, 0x18850, 0x18871, 0x18a90, 0x18aa1, 0x18ab0, 0x18b01, 0x18f60, 0x19001, 0x191f0, 0x1946e, 0x19501,
-  0x196e0, 0x19701, 0x19750, 0x19801, 0x19ac0, 0x19b01, 0x19ca0, 0x19d0e, 0x19daa, 0x19db0, 0x1a001, 0x1a170,
-  0x1a201, 0x1a550, 0x1a80e, 0x1a8a0, 0x1a90e, 0x1a9a0, 0x1aa71, 0x1aa80, 0x1b051, 0x1b340, 0x1b451, 0x1b4d0,
-  0x1b50e, 0x1b5a0, 0x1b831, 0x1ba10, 0x1bae1, 0x1bb0e, 0x1bba1, 0x1be60, 0x1c001, 0x1c240, 0x1c40e, 0x1c4a0,
-  0x1c4d1, 0x1c50e, 0x1c5a1, 0x1c7e0, 0x1c801, 0x1c890, 0x1c901, 0x1cbb0, 0x1cbd1, 0x1cc00, 0x1ce91, 0x1ced0,
-  0x1cee1, 0x1cf40, 0x1cf51, 0x1cf70, 0x1cfa1, 0x1cfb0, 0x1d001, 0x1dc00, 0x1e001, 0x1f160, 0x1f181, 0x1f1e0,
-  0x1f201, 0x1f460, 0x1f481, 0x1f4e0, 0x1f501, 0x1f580, 0x1f591, 0x1f5a0, 0x1f5b1, 0x1f5c0, 0x1f5d1, 0x1f5e0,
-  0x1f5f1, 0x1f7e0, 0x1f801, 0x1fb50, 0x1fb61, 0x1fbd0, 0x1fbe1, 0x1fbf0, 0x1fc21, 0x1fc50, 0x1fc61, 0x1fcd0,
-  0x1fd01, 0x1fd40, 0x1fd61, 0x1fdc0, 0x1fe01, 0x1fed0, 0x1ff21, 0x1ff50, 0x1ff61, 0x1ffd0, 0x2070a, 0x20711,
-  0x20720, 0x2074a, 0x207a0, 0x207f1, 0x2080a, 0x208a0, 0x20901, 0x209d0, 0x21021, 0x21030, 0x21071, 0x21080,
-  0x210a1, 0x21140, 0x21151, 0x21160, 0x21191, 0x211e0, 0x21241, 0x21250, 0x21261, 0x21270, 0x21281, 0x21290,
-  0x212a1, 0x212e0, 0x212f1, 0x213a0, 0x213c1, 0x21400, 0x21451, 0x214a0, 0x214e1, 0x214f0, 0x21508, 0x21831,
-  0x21858, 0x218a0, 0x2460a, 0x24698, 0x2474a, 0x247d8, 0x2488a, 0x24918, 0x249c0, 0x24eaa, 0x24eb8, 0x24f5a,
-  0x24fe8, 0x24ffa, 0x25000, 0x2776a, 0x277f8, 0x2780a, 0x27898, 0x278aa, 0x27938, 0x27940, 0x2c001, 0x2ce50,
-  0x2ceb1, 0x2cef0, 0x2cf21, 0x2cf40, 0x2cfd8, 0x2cfe0, 0x2d001, 0x2d260, 0x2d271, 0x2d280, 0x2d2d1, 0x2d2e0,
-  0x2d301, 0x2d680, 0x2d6f1, 0x2d700, 0x2d801, 0x2d970, 0x2da01, 0x2da70, 0x2da81, 0x2daf0, 0x2db01, 0x2db70,
-  0x2db81, 0x2dbf0, 0x2dc01, 0x2dc70, 0x2dc81, 0x2dcf0, 0x2dd01, 0x2dd70, 0x2dd81, 0x2ddf0, 0x2e2f1, 0x2e300,
-  0x30051, 0x30078, 0x30080, 0x30218, 0x302a0, 0x30311, 0x30360, 0x30388, 0x303b1, 0x303d0, 0x30411, 0x30970,
-  0x309d1, 0x30a00, 0x30a11, 0x30fb0, 0x30fc1, 0x31000, 0x31051, 0x31300, 0x31311, 0x318f0, 0x31928, 0x31960,
-  0x31a01, 0x31c00, 0x31f01, 0x32000, 0x32208, 0x322a0, 0x32488, 0x32500, 0x32518, 0x32600, 0x32808, 0x328a0,
-  0x32b18, 0x32c00, 0x34001, 0x34059, 0x34061, 0x34839, 0x34841, 0x382a9, 0x382b1, 0x3b4d9, 0x3b4e1, 0x4dc00,
-  0x4e009, 0x4e011, 0x4e039, 0x4e041, 0x4e079, 0x4e081, 0x4e099, 0x4e0a1, 0x4e249, 0x4e251, 0x4e5d9, 0x4e5e1,
-  0x4e8c9, 0x4e8d1, 0x4e949, 0x4e951, 0x4e969, 0x4e971, 0x4eac9, 0x4ead1, 0x4ebf9, 0x4ec11, 0x4edf9, 0x4ee01,
-  0x4ee89, 0x4ee91, 0x4f0d9, 0x4f0e1, 0x4f709, 0x4f711, 0x4fe99, 0x4fea1, 0x50069, 0x50071, 0x51049, 0x51051,
-  0x51469, 0x51471, 0x51699, 0x516a1, 0x516b9, 0x516c1, 0x516d9, 0x516e1, 0x53419, 0x53421, 0x53439, 0x53461,
-  0x534c9, 0x534d1, 0x53c19, 0x53c51, 0x56db9, 0x56dc1, 0x58f19, 0x58f21, 0x58f99, 0x58fa1, 0x5e7a9, 0x5e7b1,
-  0x5efe9, 0x5f001, 0x5f0c9, 0x5f0f1, 0x5f109, 0x5f111, 0x62d09, 0x62d11, 0x62fe9, 0x62ff1, 0x634c9, 0x634d1,
-  0x67d29, 0x67d31, 0x6d1e9, 0x6d1f1, 0x6f069, 0x6f071, 0x73969, 0x73971, 0x767e9, 0x767f1, 0x76959, 0x76961,
-  0x79ed9, 0x79ee1, 0x80869, 0x80871, 0x842c9, 0x842d1, 0x8cae9, 0x8caf1, 0x8cb39, 0x8cb41, 0x8d309, 0x8d311,
-  0x920e9, 0x920f1, 0x94a99, 0x94aa1, 0x96219, 0x96221, 0x96469, 0x96471, 0x964c9, 0x964d1, 0x96789, 0x96791,
-  0x96f69, 0x96f71, 0xa48d0, 0xa4d01, 0xa4fe0, 0xa5001, 0xa60d0, 0xa6101, 0xa620e, 0xa62a1, 0xa62c0, 0xa6401,
-  0xa66f0, 0xa67f1, 0xa69e0, 0xa6a01, 0xa6e68, 0xa6f00, 0xa7171, 0xa7200, 0xa7221, 0xa7890, 0xa78b1, 0xa7cb0,
-  0xa7d01, 0xa7d20, 0xa7d31, 0xa7d40, 0xa7d51, 0xa7da0, 0xa7f21, 0xa8020, 0xa8031, 0xa8060, 0xa8071, 0xa80b0,
-  0xa80c1, 0xa8230, 0xa8308, 0xa8360, 0xa8401, 0xa8740, 0xa8821, 0xa8b40, 0xa8d0e, 0xa8da0, 0xa8f21, 0xa8f80,
-  0xa8fb1, 0xa8fc0, 0xa8fd1, 0xa8ff0, 0xa900e, 0xa90a1, 0xa9260, 0xa9301, 0xa9470, 0xa9601, 0xa97d0, 0xa9841,
-  0xa9b30, 0xa9cf1, 0xa9d0e, 0xa9da0, 0xa9e01, 0xa9e50, 0xa9e61, 0xa9f0e, 0xa9fa1, 0xa9ff0, 0xaa001, 0xaa290,
-  0xaa401, 0xaa430, 0xaa441, 0xaa4c0, 0xaa50e, 0xaa5a0, 0xaa601, 0xaa770, 0xaa7a1, 0xaa7b0, 0xaa7e1, 0xaab00,
-  0xaab11, 0xaab20, 0xaab51, 0xaab70, 0xaab91, 0xaabe0, 0xaac01, 0xaac10, 0xaac21, 0xaac30, 0xaadb1, 0xaade0,
-  0xaae01, 0xaaeb0, 0xaaf21, 0xaaf50, 0xab011, 0xab070, 0xab091, 0xab0f0, 0xab111, 0xab170, 0xab201, 0xab270,
-  0xab281, 0xab2f0, 0xab301, 0xab5b0, 0xab5c1, 0xab6a0, 0xab701, 0xabe30, 0xabf0e, 0xabfa0, 0xac001, 0xd7a40,
-  0xd7b01, 0xd7c70, 0xd7cb1, 0xd7fc0, 0xf9001, 0xf96b9, 0xf96c1, 0xf9739, 0xf9741, 0xf9789, 0xf9791, 0xf9b29,
-  0xf9b31, 0xf9d19, 0xf9d21, 0xf9d39, 0xf9d41, 0xf9fd9, 0xf9fe1, 0xfa6e0, 0xfa701, 0xfada0, 0xfb001, 0xfb070,
-  0xfb131, 0xfb180, 0xfb1d1, 0xfb1e0, 0xfb1f1, 0xfb290, 0xfb2a1, 0xfb370, 0xfb381, 0xfb3d0, 0xfb3e1, 0xfb3f0,
-  0xfb401, 0xfb420, 0xfb431, 0xfb450, 0xfb461, 0xfbb20, 0xfbd31, 0xfd3e0, 0xfd501, 0xfd900, 0xfd921, 0xfdc80,
-  0xfdf01, 0xfdfc0, 0xfe701, 0xfe750, 0xfe761, 0xfefd0, 0xff10e, 0xff1a0, 0xff211, 0xff3b0, 0xff411, 0xff5b0,
-  0xff661, 0xffbf0, 0xffc21, 0xffc80, 0xffca1, 0xffd00, 0xffd21, 0xffd80, 0xffda1, 0xffdd0, 0x100001, 0x1000c0,
-  0x1000d1, 0x100270, 0x100281, 0x1003b0, 0x1003c1, 0x1003e0, 0x1003f1, 0x1004e0, 0x100501, 0x1005e0, 0x100801, 0x100fb0,
-  0x101078, 0x101340, 0x101408, 0x101790, 0x1018a8, 0x1018c0, 0x102801, 0x1029d0, 0x102a01, 0x102d10, 0x102e18, 0x102fc0,
-  0x103001, 0x103208, 0x103240, 0x1032d1, 0x103418, 0x103421, 0x1034a8, 0x1034b0, 0x103501, 0x103760, 0x103801, 0x1039e0,
-  0x103a01, 0x103c40, 0x103c81, 0x103d00, 0x103d18, 0x103d60, 0x104001, 0x1049e0, 0x104a0e, 0x104aa0, 0x104b01, 0x104d40,
-  0x104d81, 0x104fc0, 0x105001, 0x105280, 0x105301, 0x105640, 0x105701, 0x1057b0, 0x1057c1, 0x1058b0, 0x1058c1, 0x105930,
-  0x105941, 0x105960, 0x105971, 0x105a20, 0x105a31, 0x105b20, 0x105b31, 0x105ba0, 0x105bb1, 0x105bd0, 0x106001, 0x107370,
-  0x107401, 0x107560, 0x107601, 0x107680, 0x107801, 0x107860, 0x107871, 0x107b10, 0x107b21, 0x107bb0, 0x108001, 0x108060,
-  0x108081, 0x108090, 0x1080a1, 0x108360, 0x108371, 0x108390, 0x1083c1, 0x1083d0, 0x1083f1, 0x108560, 0x108588, 0x108601,
-  0x108770, 0x108798, 0x108801, 0x1089f0, 0x108a78, 0x108b00, 0x108e01, 0x108f30, 0x108f41, 0x108f60, 0x108fb8, 0x109001,
-  0x109168, 0x1091c0, 0x109201, 0x1093a0, 0x109801, 0x109b80, 0x109bc8, 0x109be1, 0x109c08, 0x109d00, 0x109d28, 0x10a001,
-  0x10a010, 0x10a101, 0x10a140, 0x10a151, 0x10a180, 0x10a191, 0x10a360, 0x10a40a, 0x10a448, 0x10a490, 0x10a601, 0x10a7d8,
-  0x10a7f0, 0x10a801, 0x10a9d8, 0x10aa00, 0x10ac01, 0x10ac80, 0x10ac91, 0x10ae50, 0x10aeb8, 0x10af00, 0x10b001, 0x10b360,
-  0x10b401, 0x10b560, 0x10b588, 0x10b601, 0x10b730, 0x10b788, 0x10b801, 0x10b920, 0x10ba98, 0x10bb00, 0x10c001, 0x10c490,
-  0x10c801, 0x10cb30, 0x10cc01, 0x10cf30, 0x10cfa8, 0x10d001, 0x10d240, 0x10d30e, 0x10d3a0, 0x10e60a, 0x10e698, 0x10e7f0,
-  0x10e801, 0x10eaa0, 0x10eb01, 0x10eb20, 0x10f001, 0x10f1d8, 0x10f271, 0x10f280, 0x10f301, 0x10f460, 0x10f518, 0x10f550,
-  0x10f701, 0x10f820, 0x10fb01, 0x10fc58, 0x10fcc0, 0x10fe01, 0x10ff70, 0x110031, 0x110380, 0x11052a, 0x1105b8, 0x11066e,
-  0x110700, 0x110711, 0x110730, 0x110751, 0x110760, 0x110831, 0x110b00, 0x110d01, 0x110e90, 0x110f0e, 0x110fa0, 0x111031,
-  0x111270, 0x11136e, 0x111400, 0x111441, 0x111450, 0x111471, 0x111480, 0x111501, 0x111730, 0x111761, 0x111770, 0x111831,
-  0x111b30, 0x111c11, 0x111c50, 0x111d0e, 0x111da1, 0x111db0, 0x111dc1, 0x111dd0, 0x111e18, 0x111f50, 0x112001, 0x112120,
-  0x112131, 0x1122c0, 0x1123f1, 0x112410, 0x112801, 0x112870, 0x112881, 0x112890, 0x1128a1, 0x1128e0, 0x1128f1, 0x1129e0,
-  0x1129f1, 0x112a90, 0x112b01, 0x112df0, 0x112f0e, 0x112fa0, 0x113051, 0x1130d0, 0x1130f1, 0x113110, 0x113131, 0x113290,
-  0x1132a1, 0x113310, 0x113321, 0x113340, 0x113351, 0x1133a0, 0x1133d1, 0x1133e0, 0x113501, 0x113510, 0x1135d1, 0x113620,
-  0x114001, 0x114350, 0x114471, 0x1144b0, 0x11450e, 0x1145a0, 0x1145f1, 0x114620, 0x114801, 0x114b00, 0x114c41, 0x114c60,
-  0x114c71, 0x114c80, 0x114d0e, 0x114da0, 0x115801, 0x115af0, 0x115d81, 0x115dc0, 0x116001, 0x116300, 0x116441, 0x116450,
-  0x11650e, 0x1165a0, 0x116801, 0x116ab0, 0x116b81, 0x116b90, 0x116c0e, 0x116ca0, 0x117001, 0x1171b0, 0x11730e, 0x1173a8,
-  0x1173c0, 0x117401, 0x117470, 0x118001, 0x1182c0, 0x118a01, 0x118e0e, 0x118ea8, 0x118f30, 0x118ff1, 0x119070, 0x119091,
-  0x1190a0, 0x1190c1, 0x119140, 0x119151, 0x119170, 0x119181, 0x119300, 0x1193f1, 0x119400, 0x119411, 0x119420, 0x11950e,
-  0x1195a0, 0x119a01, 0x119a80, 0x119aa1, 0x119d10, 0x119e11, 0x119e20, 0x119e31, 0x119e40, 0x11a001, 0x11a010, 0x11a0b1,
-  0x11a330, 0x11a3a1, 0x11a3b0, 0x11a501, 0x11a510, 0x11a5c1, 0x11a8a0, 0x11a9d1, 0x11a9e0, 0x11ab01, 0x11af90, 0x11c001,
-  0x11c090, 0x11c0a1, 0x11c2f0, 0x11c401, 0x11c410, 0x11c50e, 0x11c5a8, 0x11c6d0, 0x11c721, 0x11c900, 0x11d001, 0x11d070,
-  0x11d081, 0x11d0a0, 0x11d0b1, 0x11d310, 0x11d461, 0x11d470, 0x11d50e, 0x11d5a0, 0x11d601, 0x11d660, 0x11d671, 0x11d690,
-  0x11d6a1, 0x11d8a0, 0x11d981, 0x11d990, 0x11da0e, 0x11daa0, 0x11ee01, 0x11ef30, 0x11f021, 0x11f030, 0x11f041, 0x11f110,
-  0x11f121, 0x11f340, 0x11f50e, 0x11f5a0, 0x11fb01, 0x11fb10, 0x11fc08, 0x11fd50, 0x120001, 0x1239a0, 0x124008, 0x1246f0,
-  0x124801, 0x125440, 0x12f901, 0x12ff10, 0x130001, 0x134300, 0x134411, 0x134470, 0x144001, 0x146470, 0x168001, 0x16a390,
-  0x16a401, 0x16a5f0, 0x16a60e, 0x16a6a0, 0x16a701, 0x16abf0, 0x16ac0e, 0x16aca0, 0x16ad01, 0x16aee0, 0x16b001, 0x16b300,
-  0x16b401, 0x16b440, 0x16b50e, 0x16b5a0, 0x16b5b8, 0x16b620, 0x16b631, 0x16b780, 0x16b7d1, 0x16b900, 0x16e401, 0x16e808,
-  0x16e970, 0x16f001, 0x16f4b0, 0x16f501, 0x16f510, 0x16f931, 0x16fa00, 0x16fe01, 0x16fe20, 0x16fe31, 0x16fe40, 0x170001,
-  0x187f80, 0x188001, 0x18cd60, 0x18d001, 0x18d090, 0x1aff01, 0x1aff40, 0x1aff51, 0x1affc0, 0x1affd1, 0x1afff0, 0x1b0001,
-  0x1b1230, 0x1b1321, 0x1b1330, 0x1b1501, 0x1b1530, 0x1b1551, 0x1b1560, 0x1b1641, 0x1b1680, 0x1b1701, 0x1b2fc0, 0x1bc001,
-  0x1bc6b0, 0x1bc701, 0x1bc7d0, 0x1bc801, 0x1bc890, 0x1bc901, 0x1bc9a0, 0x1d2c08, 0x1d2d40, 0x1d2e08, 0x1d2f40, 0x1d3608,
-  0x1d3790, 0x1d4001, 0x1d4550, 0x1d4561, 0x1d49d0, 0x1d49e1, 0x1d4a00, 0x1d4a21, 0x1d4a30, 0x1d4a51, 0x1d4a70, 0x1d4a91,
-  0x1d4ad0, 0x1d4ae1, 0x1d4ba0, 0x1d4bb1, 0x1d4bc0, 0x1d4bd1, 0x1d4c40, 0x1d4c51, 0x1d5060, 0x1d5071, 0x1d50b0, 0x1d50d1,
-  0x1d5150, 0x1d5161, 0x1d51d0, 0x1d51e1, 0x1d53a0, 0x1d53b1, 0x1d53f0, 0x1d5401, 0x1d5450, 0x1d5461, 0x1d5470, 0x1d54a1,
-  0x1d5510, 0x1d5521, 0x1d6a60, 0x1d6a81, 0x1d6c10, 0x1d6c21, 0x1d6db0, 0x1d6dc1, 0x1d6fb0, 0x1d6fc1, 0x1d7150, 0x1d7161,
-  0x1d7350, 0x1d7361, 0x1d74f0, 0x1d7501, 0x1d76f0, 0x1d7701, 0x1d7890, 0x1d78a1, 0x1d7a90, 0x1d7aa1, 0x1d7c30, 0x1d7c41,
-  0x1d7cc0, 0x1d7cee, 0x1d8000, 0x1df001, 0x1df1f0, 0x1df251, 0x1df2b0, 0x1e0301, 0x1e06e0, 0x1e1001, 0x1e12d0, 0x1e1371,
-  0x1e13e0, 0x1e140e, 0x1e14a0, 0x1e14e1, 0x1e14f0, 0x1e2901, 0x1e2ae0, 0x1e2c01, 0x1e2ec0, 0x1e2f0e, 0x1e2fa0, 0x1e4d01,
-  0x1e4ec0, 0x1e4f0e, 0x1e4fa0, 0x1e7e01, 0x1e7e70, 0x1e7e81, 0x1e7ec0, 0x1e7ed1, 0x1e7ef0, 0x1e7f01, 0x1e7ff0, 0x1e8001,
-  0x1e8c50, 0x1e8c78, 0x1e8d00, 0x1e9001, 0x1e9440, 0x1e94b1, 0x1e94c0, 0x1e950e, 0x1e95a0, 0x1ec718, 0x1ecac0, 0x1ecad8,
-  0x1ecb00, 0x1ecb18, 0x1ecb50, 0x1ed018, 0x1ed2e0, 0x1ed2f8, 0x1ed3e0, 0x1ee001, 0x1ee040, 0x1ee051, 0x1ee200, 0x1ee211,
-  0x1ee230, 0x1ee241, 0x1ee250, 0x1ee271, 0x1ee280, 0x1ee291, 0x1ee330, 0x1ee341, 0x1ee380, 0x1ee391, 0x1ee3a0, 0x1ee3b1,
-  0x1ee3c0, 0x1ee421, 0x1ee430, 0x1ee471, 0x1ee480, 0x1ee491, 0x1ee4a0, 0x1ee4b1, 0x1ee4c0, 0x1ee4d1, 0x1ee500, 0x1ee511,
-  0x1ee530, 0x1ee541, 0x1ee550, 0x1ee571, 0x1ee580, 0x1ee591, 0x1ee5a0, 0x1ee5b1, 0x1ee5c0, 0x1ee5d1, 0x1ee5e0, 0x1ee5f1,
-  0x1ee600, 0x1ee611, 0x1ee630, 0x1ee641, 0x1ee650, 0x1ee671, 0x1ee6b0, 0x1ee6c1, 0x1ee730, 0x1ee741, 0x1ee780, 0x1ee791,
-  0x1ee7d0, 0x1ee7e1, 0x1ee7f0, 0x1ee801, 0x1ee8a0, 0x1ee8b1, 0x1ee9c0, 0x1eea11, 0x1eea40, 0x1eea51, 0x1eeaa0, 0x1eeab1,
-  0x1eebc0, 0x1f100a, 0x1f10b8, 0x1f10d0, 0x1fbf0e, 0x1fbfa0, 0x200001, 0x200019, 0x200021, 0x200649, 0x200651, 0x200e29,
-  0x200e31, 0x201219, 0x201221, 0x2092a9, 0x2092b1, 0x209839, 0x209841, 0x2098c9, 0x2098d1, 0x2099c9, 0x2099d1, 0x20aea9,
-  0x20aeb1, 0x20afd9, 0x20afe1, 0x20b199, 0x20b1a1, 0x223909, 0x223911, 0x229989, 0x229991, 0x23b1b9, 0x23b1c1, 0x2626d9,
-  0x2626e1, 0x2a6e00, 0x2a7001, 0x2b73a0, 0x2b7401, 0x2b81e0, 0x2b8201, 0x2cea20, 0x2ceb01, 0x2ebe10, 0x2ebf01, 0x2ee5e0,
-  0x2f8001, 0x2f8909, 0x2f8911, 0x2fa1e0, 0x300001, 0x3134b0, 0x313501, 0x323b00,
+static const uint8_t unicode_property_low[] = {
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0,
+  0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 10, 10, 0, 1, 0, 0, 0, 10, 1, 0, 8, 8, 8, 0,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0,
+  0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1,
+  0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+  0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+  14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14, 14, 14, 14, 14, 14, 14, 14,
+  14, 14, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0,
+  0, 0, 1, 0, 0, 0, 0, 0,
+};
+static const uint8_t unicode_property_1[] = {
+  1, 2, 3, 3, 3, 4, 5, 6, 3, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
+  22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 3, 3, 32, 33, 34, 35, 36, 3, 3, 3, 37, 38, 39, 40,
+  41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 3, 51, 3, 3, 52, 53, 54, 55, 56, 57, 0, 0, 0, 0,
+  58, 59, 0, 0, 0, 0, 60, 61, 0, 0, 0, 0, 0, 0, 0, 0, 3, 62, 63, 64, 65, 0, 0, 0,
+  66, 67, 68, 69, 70, 71, 0, 0, 72, 73, 3, 3, 3, 3, 3, 3, 74, 3, 3, 3, 3, 3, 75, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 51, 76, 77, 78, 79, 80, 3, 81, 3, 3, 3, 82, 83,
+  3, 3, 3, 3, 3, 84, 3, 3, 3, 85, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 86, 87, 88, 3,
+  3, 3, 3, 3, 3, 89, 90, 3, 3, 3, 3, 3, 3, 3, 3, 91, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 92, 3, 3, 3, 80, 3, 3, 3, 3, 3, 3, 3, 3, 93, 3, 3, 3, 3, 94, 95, 3, 3,
+  3, 3, 3, 96, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 80, 3, 3, 3, 3, 3, 3,
+  97, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 98, 99, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 100, 3, 3, 3, 3, 101, 3, 3, 102, 103, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 104, 3, 3, 105, 106, 107, 108,
+  109, 110, 111, 112, 113, 114, 115, 116, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 117,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 118, 119, 120, 121, 122, 123,
+  3, 3, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 0, 134, 135, 136, 3, 137, 138, 139, 3, 3, 140, 141,
+  142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 0, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 0,
+  164, 165, 0, 166, 167, 168, 169, 0, 170, 171, 172, 173, 174, 175, 0, 0, 176, 177, 178, 179, 0, 180, 181, 182,
+  3, 3, 3, 3, 3, 3, 3, 183, 184, 3, 185, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 186, 3, 3, 3, 3, 3, 3, 3, 3, 187, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  3, 3, 3, 3, 188, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  3, 3, 3, 3, 189, 190, 191, 177, 0, 0, 0, 0, 192, 193, 194, 195, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 196, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 197, 198, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 199,
+  3, 3, 200, 3, 3, 201, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  202, 203, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 204, 205, 0,
+  206, 207, 208, 3, 3, 209, 210, 211, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 212, 0,
+  213, 0, 214, 0, 0, 215, 0, 0, 0, 216, 0, 0, 0, 0, 0, 217, 3, 218, 219, 0, 0, 0, 0, 0,
+  220, 221, 222, 0, 223, 224, 0, 0, 0, 0, 225, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 226, 0, 0, 0, 0, 0, 0, 0, 0, 227, 228, 229, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 74, 230, 3, 231, 232, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 233, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 234, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 235, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 96, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 236, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 237, 3,
+  238, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 239, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 240, 3, 3, 3, 3, 241, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 3, 233, 3, 3, 242, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 243, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 244,
+};
+static const uint8_t unicode_property_2[] = {
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2,
+  3, 4, 4, 5, 3, 4, 4, 5, 0, 0, 0, 0, 0, 6, 7, 8, 4, 4, 9, 4, 4, 4, 9, 4,
+  4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+  10, 4, 11, 0, 12, 13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14, 15,
+  16, 17, 4, 4, 18, 4, 4, 4, 4, 4, 4, 4, 4, 4, 19, 4, 11, 20, 4, 4, 4, 4, 4, 4,
+  4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 3, 4, 4, 4, 9, 21, 4, 4, 4, 4,
+  4, 22, 0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 4, 23, 5, 0, 0, 0, 0, 0, 4, 4, 4, 4,
+  4, 5, 0, 0, 1, 24, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 25, 0, 26, 27, 1, 28,
+  0, 0, 29, 4, 4, 4, 0, 0, 0, 30, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 31, 0, 21, 0,
+  1, 32, 4, 4, 4, 5, 33, 6, 4, 4, 31, 6, 34, 22, 0, 0, 4, 4, 4, 22, 4, 5, 4, 4,
+  4, 35, 0, 0, 4, 4, 4, 4, 4, 11, 0, 0, 0, 0, 0, 0, 36, 4, 4, 4, 4, 4, 4, 37,
+  0, 0, 22, 4, 38, 1, 3, 4, 39, 40, 41, 4, 4, 29, 42, 37, 0, 16, 0, 43, 38, 1, 44, 45,
+  30, 23, 41, 4, 4, 29, 46, 11, 0, 0, 0, 47, 48, 1, 49, 0, 30, 19, 18, 4, 4, 29, 50, 37,
+  0, 0, 22, 0, 38, 1, 0, 21, 30, 40, 41, 4, 4, 29, 50, 37, 0, 0, 0, 43, 38, 1, 51, 0,
+  52, 53, 54, 55, 56, 53, 4, 11, 0, 0, 22, 0, 48, 1, 57, 0, 30, 14, 29, 4, 4, 29, 4, 37,
+  0, 0, 0, 58, 38, 1, 0, 59, 39, 14, 29, 4, 4, 29, 60, 37, 0, 0, 0, 26, 38, 1, 61, 0,
+  36, 14, 29, 4, 4, 4, 4, 58, 0, 16, 62, 63, 38, 1, 64, 65, 30, 4, 9, 20, 4, 4, 18, 25,
+  9, 0, 0, 0, 48, 1, 0, 0, 3, 4, 4, 4, 4, 4, 66, 0, 9, 0, 1, 2, 0, 0, 0, 0,
+  55, 67, 4, 4, 68, 4, 66, 69, 70, 0, 1, 71, 0, 0, 0, 0, 22, 0, 0, 0, 1, 72, 73, 0,
+  4, 3, 4, 4, 4, 12, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  4, 4, 4, 4, 4, 5, 0, 74, 1, 2, 31, 75, 76, 27, 39, 4, 11, 16, 1, 2, 4, 4, 4, 4,
+  19, 69, 4, 4, 4, 4, 4, 67, 4, 4, 4, 4, 4, 4, 4, 4, 4, 54, 9, 54, 4, 4, 4, 4,
+  4, 54, 4, 4, 4, 4, 54, 9, 54, 4, 9, 4, 4, 4, 4, 4, 4, 4, 54, 4, 4, 4, 4, 4,
+  4, 4, 4, 5, 0, 77, 78, 79, 4, 4, 0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 31, 31,
+  3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+  4, 4, 4, 4, 4, 40, 4, 4, 3, 4, 4, 5, 4, 4, 4, 4, 4, 4, 4, 4, 4, 80, 81, 22,
+  4, 4, 11, 74, 4, 4, 11, 0, 4, 4, 11, 0, 4, 14, 22, 0, 4, 4, 4, 4, 4, 4, 82, 0,
+  0, 0, 74, 34, 1, 2, 64, 83, 0, 0, 1, 2, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 22,
+  40, 4, 4, 4, 4, 84, 4, 4, 4, 4, 4, 4, 4, 4, 31, 0, 4, 4, 4, 9, 0, 0, 0, 0,
+  48, 1, 4, 4, 4, 31, 12, 0, 4, 4, 4, 4, 4, 82, 4, 4, 4, 11, 1, 85, 0, 0, 0, 0,
+  4, 4, 9, 0, 4, 4, 4, 4, 4, 4, 12, 0, 0, 0, 0, 0, 1, 2, 1, 2, 74, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 30, 4, 4, 4, 4, 4, 82, 0, 30, 12, 1, 2, 0, 0, 0, 0,
+  86, 4, 4, 4, 22, 27, 1, 32, 4, 4, 4, 4, 31, 0, 0, 0, 4, 4, 4, 4, 82, 0, 0, 0,
+  1, 87, 1, 32, 4, 4, 4, 31, 4, 22, 4, 4, 4, 4, 4, 88, 0, 0, 0, 0, 0, 89, 90, 6,
+  4, 4, 4, 4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 31, 31, 4, 4, 4, 4,
+  31, 31, 4, 91, 4, 4, 4, 31, 4, 4, 4, 4, 4, 4, 14, 70, 92, 12, 93, 82, 4, 12, 92, 12,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 94, 95, 96, 97, 4, 12, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 98, 20, 25, 99, 13, 100, 4, 101, 30, 102, 64, 64, 64, 64, 64, 64,
+  103, 83, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 96, 104, 105, 106, 64, 96, 104, 73, 0, 0, 0, 0, 0, 0, 0, 0, 0, 107, 108, 109,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 110, 111, 96, 112, 113, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 12, 114, 115, 116,
+  4, 4, 4, 4, 19, 69, 4, 4, 4, 4, 4, 4, 4, 74, 0, 0, 4, 4, 9, 0, 9, 9, 9, 9,
+  9, 9, 9, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 74, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  117, 0, 0, 0, 118, 83, 99, 119, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 9, 30, 3, 4, 4, 4,
+  4, 4, 4, 4, 4, 4, 4, 67, 30, 4, 4, 4, 4, 4, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+  4, 9, 120, 0, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 4, 4, 0, 0, 0, 0, 64, 83, 0, 0,
+  0, 64, 118, 64, 0, 0, 0, 0, 64, 83, 0, 0, 0, 0, 118, 64, 0, 0, 0, 0, 0, 0, 0, 0,
+  121, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 122, 4, 4, 4, 4, 4, 4, 4,
+  4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 123, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+  4, 4, 4, 4, 4, 4, 4, 4, 4, 121, 4, 4, 4, 4, 4, 4, 124, 125, 4, 4, 126, 4, 4, 4,
+  4, 4, 4, 121, 4, 4, 4, 4, 4, 126, 127, 4, 4, 126, 4, 128, 129, 4, 4, 128, 4, 129, 4, 4,
+  4, 121, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 129, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+  4, 4, 4, 4, 4, 125, 4, 4, 130, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+  126, 4, 4, 4, 4, 4, 4, 4, 130, 4, 4, 4, 4, 131, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+  132, 126, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 133, 4, 4, 4, 4, 4, 4, 4,
+  4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 122, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+  4, 4, 4, 4, 4, 4, 125, 125, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 123,
+  4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 134, 4, 135, 129, 4, 4, 4, 4, 4,
+  4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 129, 4, 4, 4, 4, 130,
+  4, 4, 4, 4, 4, 4, 4, 4, 4, 126, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+  4, 4, 123, 4, 4, 4, 4, 4, 4, 4, 4, 130, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+  4, 4, 130, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+  4, 4, 4, 4, 4, 4, 4, 130, 4, 4, 121, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+  4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 121, 4, 4, 4, 4, 4, 4, 4, 126, 4, 4,
+  4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 130, 122, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+  4, 4, 4, 4, 4, 4, 129, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 130, 4, 4, 4, 4, 4, 4,
+  4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 125, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+  4, 4, 4, 4, 125, 4, 4, 4, 130, 126, 4, 4, 4, 4, 4, 129, 4, 4, 4, 4, 4, 4, 4, 4,
+  4, 4, 4, 4, 4, 4, 130, 4, 4, 12, 0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, 4, 31,
+  4, 12, 4, 4, 1, 136, 0, 0, 4, 4, 4, 4, 4, 9, 0, 74, 4, 4, 4, 31, 4, 4, 4, 4,
+  4, 4, 4, 4, 137, 64, 0, 0, 0, 0, 74, 4, 20, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+  4, 41, 4, 4, 4, 4, 4, 4, 4, 5, 138, 11, 0, 0, 20, 4, 139, 67, 4, 4, 5, 0, 140, 0,
+  4, 4, 4, 4, 4, 4, 82, 0, 20, 4, 4, 4, 4, 4, 82, 0, 0, 0, 1, 2, 0, 0, 20, 141,
+  1, 32, 4, 4, 31, 0, 4, 4, 9, 0, 0, 0, 4, 4, 4, 12, 36, 4, 4, 4, 4, 4, 5, 0,
+  0, 74, 1, 2, 14, 4, 1, 142, 4, 4, 4, 4, 4, 22, 0, 0, 67, 82, 1, 2, 4, 4, 9, 143,
+  4, 4, 4, 4, 4, 4, 76, 99, 84, 0, 0, 144, 4, 5, 49, 0, 35, 35, 35, 0, 9, 9, 4, 4,
+  4, 4, 4, 67, 4, 11, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 0, 1, 2,
+  4, 4, 4, 4, 82, 0, 4, 4, 9, 86, 4, 4, 4, 4, 4, 82, 4, 4, 4, 4, 4, 4, 4, 4,
+  4, 4, 4, 4, 4, 122, 122, 129, 4, 4, 4, 4, 4, 4, 123, 4, 4, 4, 145, 4, 4, 4, 4, 121,
+  4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 31, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+  4, 4, 4, 11, 0, 0, 0, 0, 9, 0, 86, 146, 4, 29, 9, 70, 147, 4, 4, 4, 4, 4, 4, 4,
+  4, 4, 4, 4, 4, 4, 11, 0, 0, 0, 86, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 31,
+  0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 20, 4, 4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 4, 82,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+  4, 4, 4, 4, 4, 4, 4, 12, 0, 0, 1, 2, 3, 4, 4, 5, 3, 4, 4, 5, 27, 4, 4, 4,
+  4, 4, 4, 4, 4, 4, 4, 9, 20, 20, 20, 49, 0, 0, 0, 0, 4, 60, 4, 4, 9, 4, 4, 148,
+  4, 31, 4, 31, 0, 0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5,
+  149, 64, 64, 64, 64, 64, 73, 0, 64, 64, 64, 64, 64, 64, 64, 150, 0, 151, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 4, 12, 4, 4, 4, 4, 4, 4, 22, 0, 118, 64, 64, 73,
+  4, 4, 4, 4, 73, 30, 4, 4, 152, 153, 4, 4, 4, 4, 31, 0, 4, 4, 4, 31, 4, 4, 4, 4,
+  82, 4, 154, 0, 0, 0, 0, 0, 4, 4, 4, 31, 1, 2, 4, 4, 4, 4, 82, 4, 4, 4, 4, 82,
+  4, 4, 4, 4, 4, 0, 4, 4, 4, 4, 4, 4, 82, 0, 4, 67, 4, 67, 148, 4, 18, 4, 18, 155,
+  0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, 4, 4, 9, 0, 4, 4, 31, 0, 4, 0, 0, 0,
+  19, 4, 4, 4, 4, 4, 29, 5, 0, 0, 0, 0, 0, 0, 0, 0, 31, 29, 4, 4, 4, 4, 19, 156,
+  4, 4, 31, 64, 4, 4, 9, 118, 4, 4, 4, 9, 149, 64, 0, 0, 0, 0, 0, 0, 4, 4, 157, 158,
+  4, 4, 137, 73, 4, 4, 4, 11, 0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 159,
+  64, 64, 160, 64, 64, 64, 64, 64, 22, 0, 60, 3, 4, 4, 31, 0, 161, 150, 0, 0, 4, 4, 4, 162,
+  4, 4, 4, 163, 0, 0, 0, 0, 4, 3, 4, 4, 12, 158, 0, 0, 4, 4, 4, 4, 4, 4, 31, 0,
+  4, 4, 31, 64, 4, 4, 5, 64, 4, 4, 11, 0, 0, 118, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  4, 4, 4, 4, 4, 4, 4, 4, 4, 22, 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, 4, 4, 5, 0,
+  4, 4, 4, 4, 4, 4, 5, 160, 4, 4, 4, 4, 82, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 96, 104, 64, 59, 4, 4, 4, 4, 4, 11, 11, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 4, 163, 63, 0, 4, 4, 31, 0, 164, 0, 0, 0, 4, 4,
+  11, 0, 0, 0, 0, 0, 4, 4, 163, 73, 0, 0, 4, 4, 9, 0, 86, 4, 4, 4, 4, 4, 4, 0,
+  0, 0, 165, 166, 167, 1, 168, 0, 86, 4, 4, 4, 4, 4, 0, 0, 0, 0, 4, 4, 4, 22, 1, 2,
+  86, 4, 4, 4, 9, 0, 48, 1, 169, 0, 4, 4, 4, 4, 170, 0, 86, 4, 4, 4, 4, 4, 5, 0,
+  171, 0, 1, 172, 118, 64, 79, 0, 4, 4, 18, 4, 4, 82, 0, 74, 22, 0, 0, 0, 0, 0, 0, 0,
+  9, 100, 4, 19, 4, 22, 4, 4, 4, 4, 4, 9, 0, 0, 1, 2, 30, 40, 41, 4, 4, 29, 50, 37,
+  0, 0, 22, 30, 11, 0, 0, 0, 4, 4, 4, 4, 4, 4, 12, 0, 74, 5, 1, 173, 11, 0, 0, 0,
+  4, 4, 4, 4, 4, 4, 0, 0, 43, 0, 1, 2, 0, 0, 0, 0, 4, 4, 4, 4, 4, 9, 0, 0,
+  0, 0, 0, 82, 0, 0, 0, 0, 4, 4, 4, 4, 4, 4, 0, 0, 34, 0, 1, 2, 0, 0, 0, 0,
+  4, 4, 4, 4, 4, 5, 0, 22, 1, 2, 0, 0, 0, 0, 0, 0, 4, 4, 4, 5, 0, 0, 1, 174,
+  9, 0, 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, 4, 82, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 1, 72, 57, 74, 9, 175, 90, 4, 4, 4, 0, 74,
+  21, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 4, 20, 4, 4, 4, 4, 22, 0, 176, 0, 0, 0,
+  22, 86, 4, 4, 4, 4, 5, 6, 0, 0, 22, 36, 4, 4, 4, 4, 4, 11, 0, 69, 0, 0, 4, 4,
+  4, 4, 4, 4, 4, 4, 4, 22, 4, 29, 4, 4, 4, 9, 0, 0, 22, 0, 1, 72, 64, 79, 20, 4,
+  4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 18, 4, 4, 4, 4, 22, 0,
+  16, 0, 1, 2, 19, 29, 4, 4, 4, 11, 0, 22, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 5, 0, 177, 4, 29, 4, 4, 4, 82, 0,
+  0, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 22, 0, 64, 64, 79, 0, 0, 0, 0, 0,
+  4, 4, 4, 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 64, 64, 64, 64, 64, 64, 64, 64,
+  64, 64, 64, 64, 64, 59, 0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 82, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 22, 0, 4, 4, 4, 4, 4, 4, 0, 0,
+  35, 0, 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 9, 0, 0, 0, 0, 0, 0, 0,
+  4, 4, 4, 4, 4, 4, 4, 22, 4, 4, 4, 9, 1, 2, 4, 4, 4, 4, 4, 4, 4, 4, 4, 9,
+  1, 2, 4, 4, 4, 31, 0, 0, 4, 4, 4, 4, 4, 4, 0, 0, 82, 0, 1, 178, 179, 4, 4, 30,
+  0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 64, 64, 59, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 22, 0, 0, 0, 0, 0,
+  0, 0, 86, 4, 0, 0, 0, 0, 0, 0, 0, 0, 180, 0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 4,
+  4, 4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 31, 0, 0, 0, 0, 0,
+  4, 22, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 60, 90, 4, 4, 4, 4, 5, 0, 6, 0, 0, 0, 58, 0, 36, 0, 4, 4,
+  4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 82, 4, 4, 4, 4, 4, 4, 4, 4,
+  4, 4, 4, 4, 4, 5, 4, 12, 4, 22, 4, 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 64, 64, 73, 0, 64, 64, 73, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 64, 64, 64, 150, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 14, 4, 4, 4, 4, 4,
+  4, 4, 4, 14, 181, 89, 4, 138, 60, 4, 4, 4, 4, 4, 4, 4, 19, 88, 14, 14, 4, 4, 4, 182,
+  70, 20, 29, 4, 4, 4, 4, 4, 4, 4, 4, 4, 31, 4, 4, 4, 29, 4, 4, 67, 4, 4, 4, 67,
+  4, 4, 14, 4, 4, 4, 14, 4, 4, 9, 4, 4, 4, 9, 4, 4, 4, 29, 4, 4, 4, 29, 4, 4,
+  67, 183, 1, 1, 1, 1, 1, 1, 4, 4, 4, 9, 30, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 31, 0, 0, 4, 4, 4, 4, 4, 12, 74, 31,
+  1, 184, 0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 4, 31, 0, 0, 4, 4, 4, 4, 4, 82, 1, 2,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 4, 82, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 9, 90, 4, 9, 4, 4, 4, 4, 4, 4, 4, 4, 185, 64, 0, 0, 0, 0, 0, 0,
+  4, 4, 4, 4, 4, 4, 4, 4, 82, 186, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 118, 64, 64, 64, 64, 64, 64, 187, 164, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  118, 64, 64, 64, 64, 188, 64, 140, 0, 0, 0, 0, 0, 0, 0, 0, 60, 4, 4, 4, 189, 3, 67, 176,
+  98, 190, 189, 91, 189, 67, 67, 47, 4, 18, 4, 82, 191, 18, 4, 82, 0, 0, 0, 0, 0, 0, 0, 0,
+  96, 192, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 1, 2, 125, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 126, 4, 4, 4,
+  4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 123, 4, 4, 4, 4, 4, 4, 4, 125, 4, 4, 4,
+  4, 4, 4, 4, 4, 4, 4, 4, 122, 126, 4, 126, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+  4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 123, 4, 121, 4, 4, 4, 125, 4, 4, 4, 4,
+  4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 129, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+  4, 4, 4, 129, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 122, 4, 4, 4, 4,
+  4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 0, 0, 0,
+  4, 4, 4, 4, 4, 4, 4, 11, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 31, 4, 4, 4, 4,
+  4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 11, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+  4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 22, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+  4, 4, 4, 31, 0, 0, 0, 0, 4, 4, 4, 31, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0,
+};
+static const uint8_t unicode_property_3[] = {
+  0, 0, 0, 0, 0, 0, 0, 0, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 0, 0, 0, 0, 0, 0,
+  0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0,
+  0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 10, 10, 0, 1, 0, 0, 0, 10, 1, 0, 8, 8, 8, 0,
+  1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0,
+  1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1,
+  0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1,
+  1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1,
+  0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1,
+  14, 14, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0,
+  0, 0, 0, 0, 0, 0, 1, 1, 14, 14, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1,
+  0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 14, 14, 1, 1, 1, 1, 1, 1,
+  0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0,
+  0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 14, 14,
+  1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1,
+  1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0, 8, 8, 8, 8,
+  8, 8, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0,
+  0, 0, 0, 0, 0, 0, 14, 14, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1,
+  0, 1, 8, 8, 8, 8, 8, 8, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1,
+  1, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0,
+  8, 8, 8, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 8, 8, 8, 8, 8, 8, 8, 0,
+  1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0,
+  8, 8, 8, 8, 8, 8, 8, 1, 8, 8, 8, 8, 8, 8, 8, 8, 8, 0, 1, 1, 1, 1, 1, 1,
+  1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1,
+  0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 14, 14, 0, 0, 1, 1, 1, 1,
+  14, 14, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+  0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 10, 10, 10, 10, 10, 10, 10,
+  10, 10, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 0, 0, 0, 1, 1, 1, 0, 0, 0, 8, 8,
+  8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 8, 8, 0, 0, 0, 0, 0, 0,
+  1, 0, 1, 0, 0, 0, 0, 0, 14, 14, 10, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1,
+  14, 14, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1,
+  1, 1, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1,
+  1, 1, 1, 1, 0, 0, 1, 1, 10, 1, 0, 0, 10, 10, 10, 10, 10, 10, 0, 0, 0, 0, 0, 1,
+  10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1,
+  0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1,
+  1, 1, 0, 0, 0, 0, 1, 0, 8, 8, 8, 1, 1, 8, 8, 8, 10, 8, 8, 8, 8, 8, 8, 8,
+  8, 8, 8, 8, 10, 10, 10, 10, 10, 10, 10, 10, 10, 8, 8, 8, 0, 0, 10, 8, 8, 8, 8, 8,
+  8, 8, 8, 8, 8, 10, 10, 10, 10, 10, 10, 10, 10, 10, 8, 10, 0, 0, 0, 0, 0, 0, 10, 10,
+  10, 10, 10, 10, 10, 10, 10, 8, 10, 8, 10, 10, 10, 10, 10, 10, 10, 10, 10, 8, 0, 0, 0, 0,
+  0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0,
+  0, 0, 0, 0, 0, 1, 1, 8, 0, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 1, 1, 0, 0, 0,
+  0, 0, 8, 8, 8, 8, 0, 0, 1, 1, 1, 1, 1, 9, 1, 1, 1, 1, 1, 9, 1, 1, 1, 1,
+  1, 1, 9, 1, 1, 1, 1, 1, 9, 1, 1, 9, 1, 1, 1, 9, 1, 9, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 9, 1, 1, 1, 1, 1, 1, 1, 9, 1, 9, 1, 1, 1, 1, 1, 1, 1, 1, 9,
+  9, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9, 1, 1, 9, 1, 9, 1, 9, 1, 1,
+  1, 9, 1, 9, 9, 9, 1, 1, 1, 9, 9, 9, 9, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9, 9,
+  1, 1, 1, 1, 9, 9, 9, 1, 14, 14, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 8, 8,
+  1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 8, 8, 8, 8, 8, 8, 0, 0,
+  0, 0, 0, 1, 0, 1, 1, 0, 14, 14, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1,
+  0, 0, 0, 1, 1, 1, 0, 0, 1, 9, 1, 9, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 1,
+  1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 8,
+  8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 0, 0, 0, 0, 1, 8, 1, 1, 1, 1, 1, 1,
+  1, 1, 8, 0, 0, 0, 0, 0, 0, 8, 8, 8, 8, 8, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0,
+  1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 8, 8, 8, 8, 8,
+  0, 0, 0, 0, 8, 8, 1, 1, 0, 0, 8, 8, 8, 8, 8, 8, 10, 10, 10, 10, 8, 8, 8, 8,
+  1, 1, 1, 1, 1, 8, 8, 0, 1, 1, 1, 1, 1, 8, 8, 8, 0, 8, 8, 8, 8, 0, 0, 0,
+  0, 0, 10, 10, 10, 10, 10, 10, 10, 10, 10, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 14, 14,
+  0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0,
+  0, 1, 1, 1, 1, 0, 0, 0, 14, 14, 1, 0, 1, 0, 0, 0, 14, 14, 0, 0, 0, 0, 0, 1,
+  14, 14, 8, 8, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0,
+  0, 0, 1, 0, 1, 1, 1, 1, 14, 14, 0, 8, 8, 8, 8, 8, 8, 8, 0, 1, 1, 1, 1, 1,
+  1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0,
+  1, 1, 1, 1, 0, 0, 14, 14, 14, 14, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 8,
+  0, 0, 0, 1, 0, 0, 0, 0, 8, 8, 8, 8, 0, 8, 8, 8, 8, 8, 8, 8, 8, 8, 0, 8,
+  0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1,
+  10, 10, 10, 8, 8, 0, 0, 0,
+};
+static const uint8_t unicode_printable_low[] = {
+  0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 127, 0, 0, 0, 0, 254, 223, 255, 255,
+  255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+  255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+  255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+  255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 252, 240, 215, 255, 255, 251, 255, 255, 255,
+  255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+  255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 254, 255,
+  255, 255, 127, 254, 255, 255, 255, 255, 255, 231, 254, 255, 255, 255, 255, 255, 255, 0, 255, 255, 255, 135, 31, 0,
+  192, 255, 255, 239, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+  255, 255, 255, 223, 255, 255, 255, 255, 255, 63, 255, 255, 255, 255, 255, 255, 255, 231, 255, 255, 255, 255, 255, 255,
+  255, 255, 255, 255, 255, 255, 3, 0, 255, 255, 255, 255, 255, 255, 255, 231,
+};
+static const uint8_t unicode_printable_1[] = {
+  1, 2, 3, 4, 5, 6, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 9, 10, 8, 8,
+  8, 8, 11, 0, 0, 0, 0, 12, 13, 14, 15, 16, 17, 18, 19, 0, 20, 0, 0, 0, 0, 21, 8, 8,
+  22, 23, 0, 0, 0, 24, 25, 26, 0, 27, 28, 29, 30, 31, 32, 33, 8, 8, 8, 8, 8, 8, 8, 8,
+  8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 34, 8, 35, 36, 8, 37, 8, 8, 8, 38, 0, 39,
+  8, 8, 40, 8, 41, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 42,
+};
+static const uint8_t unicode_printable_2[] = {
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 3, 3, 3, 4, 5,
+  3, 3, 6, 7, 8, 9, 10, 11, 12, 13, 3, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
+  3, 27, 3, 3, 28, 29, 30, 31, 3, 3, 3, 3, 3, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42,
+  43, 44, 3, 3, 3, 3, 45, 46, 47, 48, 3, 49, 3, 3, 3, 3, 50, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 51, 52, 3, 53, 54, 55, 56, 57, 3, 58, 59, 60, 61, 62, 63, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 64, 3, 3, 65, 66, 3, 67, 68, 69, 70, 71, 72, 73, 74, 75,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 76,
+  0, 0, 3, 3, 77, 78, 79, 80, 3, 3, 3, 81, 82, 83, 84, 85, 86, 87, 88, 89, 0, 90, 91, 92,
+  3, 93, 94, 95, 3, 3, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 0, 109, 110, 111, 112,
+  113, 114, 115, 116, 117, 118, 119, 0, 120, 121, 0, 122, 123, 124, 125, 0, 126, 127, 128, 129, 130, 131, 132, 0,
+  133, 134, 135, 136, 0, 137, 138, 139, 3, 3, 3, 3, 3, 3, 3, 140, 141, 3, 142, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 143, 3, 3, 3, 3, 3, 3, 3, 3,
+  144, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 145, 0, 0, 0,
+  3, 3, 3, 3, 146, 147, 148, 149, 0, 0, 0, 0, 150, 151, 152, 153, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 66, 3, 3, 3, 3, 3, 3, 3, 3, 3, 154, 155, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 156, 3, 3, 157, 3, 3, 158, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 159, 160, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 161, 142, 3, 162, 163, 164, 165, 166, 167, 0,
+  168, 169, 170, 3, 3, 171, 3, 172, 3, 3, 3, 3, 3, 173, 0, 0, 0, 0, 0, 0, 0, 0, 174, 0,
+  175, 176, 177, 0, 0, 178, 0, 0, 0, 179, 0, 0, 0, 0, 0, 180, 3, 181, 182, 0, 0, 0, 0, 0,
+  183, 184, 185, 0, 186, 187, 0, 0, 188, 189, 3, 190, 191, 0, 3, 3, 3, 3, 3, 3, 3, 192, 193, 194,
+  195, 196, 3, 3, 197, 198, 3, 199, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 200, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 201, 3,
+  202, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 203, 3, 3, 3, 3, 3, 3, 3, 3, 3, 204, 3, 3, 3, 3, 56, 0, 0, 0,
+  3, 3, 3, 3, 205, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 3, 3, 206, 3,
+  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 207, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 3, 208, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+};
+static const uint8_t unicode_printable_3[] = {
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255,
+  255, 255, 255, 255, 255, 255, 255, 127, 0, 0, 0, 0, 254, 223, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+  255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+  255, 255, 255, 255, 255, 255, 255, 252, 240, 215, 255, 255, 251, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+  255, 255, 255, 255, 255, 255, 254, 255, 255, 255, 127, 254, 255, 255, 255, 255, 255, 231, 254, 255, 255, 255, 255, 255,
+  255, 0, 255, 255, 255, 135, 31, 0, 192, 255, 255, 239, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+  255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 223, 255, 255, 255, 255, 255, 63, 255, 255, 255, 255, 255, 255,
+  255, 231, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 3, 0, 255, 255, 255, 255, 255, 255, 255, 231,
+  255, 255, 255, 255, 255, 63, 255, 127, 255, 255, 255, 79, 255, 7, 255, 255, 255, 127, 0, 255, 255, 255, 255, 255,
+  255, 255, 255, 255, 251, 255, 255, 255, 239, 159, 249, 255, 255, 253, 197, 243, 159, 121, 128, 176, 207, 255, 255, 127,
+  238, 135, 249, 255, 255, 253, 109, 211, 135, 57, 2, 94, 192, 255, 127, 0, 238, 191, 251, 255, 255, 253, 237, 243,
+  191, 59, 1, 0, 207, 255, 3, 254, 238, 159, 249, 255, 255, 253, 237, 243, 159, 57, 224, 176, 207, 255, 255, 0,
+  236, 199, 61, 214, 24, 199, 255, 195, 199, 61, 129, 0, 192, 255, 255, 7, 255, 223, 253, 255, 255, 253, 255, 243,
+  223, 61, 96, 39, 207, 255, 128, 255, 255, 223, 253, 255, 255, 253, 239, 243, 223, 61, 96, 96, 207, 255, 14, 0,
+  255, 223, 253, 255, 255, 255, 255, 255, 223, 253, 240, 255, 207, 255, 255, 255, 238, 255, 127, 252, 255, 255, 251, 47,
+  127, 132, 95, 255, 192, 255, 28, 0, 254, 255, 255, 255, 255, 255, 255, 135, 255, 255, 255, 15, 0, 0, 0, 0,
+  214, 247, 255, 255, 175, 255, 255, 63, 95, 127, 255, 243, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255,
+  255, 254, 255, 255, 255, 31, 254, 255, 255, 255, 255, 254, 255, 255, 255, 223, 255, 223, 255, 7, 0, 0, 0, 0,
+  255, 255, 255, 255, 255, 255, 255, 255, 191, 32, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+  255, 61, 127, 61, 255, 255, 255, 255, 255, 61, 255, 255, 255, 255, 61, 127, 61, 255, 127, 255, 255, 255, 255, 255,
+  255, 255, 61, 255, 255, 255, 255, 255, 255, 255, 255, 231, 255, 255, 255, 31, 255, 255, 255, 3, 255, 255, 255, 255,
+  255, 255, 255, 255, 255, 255, 63, 63, 254, 255, 255, 31, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 1,
+  255, 255, 63, 128, 255, 255, 127, 0, 255, 255, 15, 0, 255, 223, 13, 0, 255, 255, 255, 255, 255, 255, 255, 255,
+  255, 255, 255, 63, 255, 3, 255, 3, 255, 191, 255, 3, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 1,
+  255, 255, 255, 255, 255, 7, 255, 255, 255, 255, 255, 255, 255, 255, 63, 0, 255, 255, 255, 127, 255, 15, 255, 15,
+  241, 255, 255, 255, 255, 63, 31, 0, 255, 255, 255, 255, 255, 15, 255, 255, 255, 3, 255, 199, 255, 255, 255, 255,
+  255, 255, 255, 207, 255, 255, 255, 255, 255, 255, 255, 127, 255, 255, 255, 159, 255, 3, 255, 3, 255, 63, 255, 255,
+  255, 127, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 31, 255, 255, 255, 255, 255, 127,
+  255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 15, 240, 255, 255, 255, 255, 255, 255, 255, 248,
+  255, 227, 255, 255, 255, 255, 255, 255, 255, 1, 255, 255, 255, 255, 255, 231, 255, 0, 255, 255, 255, 255, 255, 7,
+  255, 255, 63, 63, 255, 255, 255, 255, 63, 63, 255, 170, 255, 255, 255, 63, 255, 255, 255, 255, 255, 255, 223, 255,
+  223, 255, 207, 239, 255, 255, 220, 127, 0, 0, 255, 255, 255, 0, 255, 255, 255, 255, 255, 127, 0, 0, 243, 255,
+  255, 127, 255, 31, 255, 255, 255, 255, 1, 0, 255, 255, 255, 255, 1, 0, 255, 15, 255, 255, 255, 255, 255, 255,
+  255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 127, 0, 0, 0, 255, 7, 0, 0, 255, 255, 255, 255,
+  255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 207, 255, 255, 255, 191, 255, 255, 255, 255, 255,
+  255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 15, 254,
+  255, 255, 255, 255, 191, 32, 255, 255, 255, 255, 255, 255, 255, 128, 1, 128, 255, 255, 127, 0, 127, 127, 127, 127,
+  127, 127, 127, 127, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 63, 0, 0, 0, 0,
+  255, 255, 255, 251, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 15, 0, 255, 255, 255, 255, 255, 255, 255, 255,
+  255, 255, 63, 0, 0, 0, 255, 255, 254, 255, 255, 255, 255, 255, 255, 255, 254, 255, 255, 255, 255, 255, 255, 255,
+  255, 255, 127, 254, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 224, 255, 255, 255, 255, 255, 254, 255,
+  255, 255, 255, 255, 255, 255, 255, 255, 255, 127, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 15, 128, 255, 255,
+  255, 255, 255, 127, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 31, 255, 255, 255, 255, 255, 255,
+  127, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 15, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255,
+  255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 0, 255, 255, 255, 255, 255, 255, 255, 255,
+  255, 7, 235, 3, 0, 0, 252, 255, 255, 255, 255, 255, 255, 31, 255, 3, 255, 255, 255, 255, 255, 255, 255, 0,
+  255, 255, 255, 255, 255, 255, 255, 255, 63, 192, 255, 3, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+  255, 255, 15, 128, 255, 255, 255, 31, 255, 255, 255, 255, 255, 255, 255, 255, 255, 191, 255, 195, 255, 255, 255, 127,
+  255, 255, 255, 255, 255, 255, 127, 0, 255, 63, 255, 243, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+  7, 0, 0, 248, 255, 255, 127, 0, 126, 126, 126, 0, 127, 127, 255, 255, 255, 255, 255, 255, 255, 15, 255, 255,
+  255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 63, 255, 3, 255, 255, 255, 255, 15, 0, 255, 255,
+  127, 248, 255, 255, 255, 255, 255, 15, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 63, 255, 255,
+  255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 3, 0, 0, 0, 0, 127, 0, 248, 224, 255, 255, 127, 95,
+  219, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 7, 0, 248, 255, 255, 255, 255, 255,
+  255, 255, 252, 255, 255, 255, 255, 255, 255, 128, 0, 0, 0, 0, 255, 255, 255, 255, 255, 3, 255, 255, 255, 255,
+  255, 255, 247, 255, 127, 15, 223, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 31,
+  254, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 127,
+  252, 252, 252, 28, 127, 127, 0, 48, 255, 239, 255, 255, 127, 255, 255, 183, 255, 63, 255, 63, 0, 0, 0, 0,
+  255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 7, 135, 255, 255, 255, 255, 255, 143, 255,
+  255, 255, 255, 255, 255, 255, 255, 255, 255, 127, 255, 31, 1, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 63,
+  255, 255, 255, 31, 255, 255, 255, 255, 255, 255, 1, 0, 255, 255, 255, 15, 255, 255, 255, 255, 15, 224, 255, 255,
+  255, 7, 255, 255, 255, 255, 255, 7, 255, 255, 255, 191, 255, 255, 255, 255, 15, 255, 63, 0, 0, 0, 0, 0,
+  255, 255, 255, 63, 255, 3, 255, 255, 255, 255, 15, 255, 255, 255, 255, 15, 255, 255, 255, 255, 255, 0, 255, 255,
+  255, 255, 255, 255, 15, 128, 255, 247, 255, 247, 183, 255, 251, 255, 251, 27, 0, 0, 0, 0, 0, 0, 0, 0,
+  255, 255, 255, 255, 255, 255, 127, 0, 255, 255, 63, 0, 255, 0, 0, 0, 191, 255, 255, 255, 255, 255, 253, 7,
+  0, 0, 0, 0, 0, 0, 0, 0, 63, 253, 255, 255, 255, 255, 191, 145, 255, 255, 191, 255, 255, 255, 255, 255,
+  255, 255, 255, 127, 128, 255, 0, 0, 0, 0, 0, 0, 255, 255, 55, 248, 255, 255, 255, 143, 255, 255, 255, 131,
+  0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 240, 255, 255, 252, 255, 255, 255, 255, 255,
+  111, 240, 239, 254, 255, 255, 63, 135, 255, 1, 255, 1, 255, 255, 255, 255, 255, 255, 255, 255, 0, 0, 0, 0,
+  255, 255, 255, 255, 127, 248, 127, 0, 255, 255, 255, 255, 255, 255, 63, 254, 255, 255, 63, 255, 255, 255, 7, 255,
+  255, 255, 3, 30, 0, 254, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255,
+  255, 1, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 7, 0, 255, 255, 255, 255, 255, 255, 7, 252,
+  255, 255, 255, 255, 255, 0, 255, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 255, 255, 255, 127, 255, 255, 255, 255, 255, 59, 3, 0, 0, 0, 0, 0, 0, 0, 0, 224,
+  255, 255, 255, 255, 255, 0, 255, 255, 255, 255, 255, 3, 0, 0, 255, 255, 255, 3, 0, 0, 0, 0, 255, 255,
+  255, 15, 0, 0, 255, 255, 127, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 63, 252, 255, 255, 255, 63, 128,
+  255, 255, 255, 255, 255, 255, 255, 223, 7, 0, 255, 255, 255, 1, 255, 3, 255, 255, 255, 255, 255, 255, 223, 255,
+  255, 0, 255, 255, 255, 255, 127, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 254, 255, 31, 0,
+  255, 255, 251, 255, 255, 255, 255, 255, 3, 0, 0, 0, 0, 0, 0, 0, 127, 189, 255, 191, 255, 3, 255, 255,
+  255, 255, 255, 255, 255, 7, 255, 3, 239, 159, 249, 255, 255, 253, 237, 251, 159, 57, 129, 224, 207, 31, 31, 0,
+  255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 239, 3, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255,
+  255, 0, 255, 3, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 63, 255, 255, 255, 255, 63, 0, 0, 0, 0,
+  255, 255, 255, 255, 255, 255, 255, 255, 31, 0, 255, 3, 255, 31, 0, 0, 255, 255, 255, 255, 255, 255, 255, 3,
+  255, 3, 0, 0, 0, 0, 0, 0, 255, 255, 255, 231, 255, 15, 255, 255, 127, 0, 0, 0, 0, 0, 0, 0,
+  255, 255, 255, 255, 255, 255, 255, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255,
+  255, 255, 255, 255, 255, 255, 7, 128, 127, 242, 111, 255, 255, 255, 191, 249, 127, 0, 255, 3, 0, 0, 0, 0,
+  0, 0, 0, 0, 255, 252, 255, 255, 255, 255, 255, 252, 31, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255,
+  255, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 7, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 1,
+  255, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 253, 255, 255, 255, 255, 127, 255,
+  63, 0, 255, 255, 255, 31, 255, 255, 255, 255, 252, 255, 255, 254, 127, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  127, 251, 255, 255, 255, 255, 127, 180, 255, 0, 255, 3, 191, 253, 255, 255, 255, 127, 251, 1, 255, 3, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 1,
+  255, 255, 253, 255, 255, 255, 255, 199, 255, 255, 255, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0,
+  255, 255, 255, 255, 255, 255, 3, 128, 255, 255, 255, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 127, 31, 0, 255, 255, 255, 255, 255, 255, 255, 255,
+  15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 7, 0,
+  255, 255, 255, 255, 255, 255, 0, 0, 255, 255, 63, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255,
+  127, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 1, 255, 255, 255, 127, 255, 195, 255, 255,
+  255, 255, 255, 255, 255, 255, 255, 127, 255, 3, 255, 255, 255, 63, 63, 0, 255, 255, 255, 255, 255, 255, 255, 255,
+  63, 0, 255, 251, 251, 255, 255, 224, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 7, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 135, 255, 255, 255, 255, 255, 255,
+  255, 128, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 31, 0, 3, 0, 255, 255, 255, 255, 255, 255, 255, 255,
+  255, 255, 63, 0, 0, 0, 0, 0, 255, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 239, 111, 255, 255, 255, 255, 7, 0, 4, 0,
+  0, 0, 39, 0, 240, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 15,
+  255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 7, 255, 31, 255, 1, 255, 243, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 63, 255, 255, 127, 0, 255, 255, 255, 255, 255, 255,
+  255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 63, 0, 255, 255, 255, 255, 127, 254, 255, 255,
+  255, 255, 255, 255, 255, 255, 7, 248, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 7, 0, 0,
+  255, 255, 255, 255, 255, 255, 255, 255, 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  255, 255, 15, 0, 255, 255, 15, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 127, 0, 255, 255, 255, 1,
+  255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 223, 255, 255, 255, 255, 255, 255, 255, 255, 223, 100, 222, 255, 235,
+  239, 255, 255, 255, 255, 255, 255, 255, 191, 231, 223, 223, 255, 255, 255, 123, 95, 252, 253, 255, 255, 255, 255, 255,
+  255, 255, 255, 255, 63, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+  255, 207, 255, 255, 255, 255, 255, 255, 255, 15, 0, 248, 254, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  255, 255, 255, 127, 224, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 127, 255, 255, 249, 219, 7, 255, 255,
+  255, 255, 255, 255, 255, 63, 0, 0, 0, 128, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  255, 255, 255, 255, 255, 31, 255, 63, 255, 195, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 127, 0, 0,
+  255, 255, 255, 255, 255, 255, 255, 131, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 3,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 127, 111, 255, 127, 255, 255, 255, 255, 255, 255, 255, 255,
+  159, 255, 127, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 15, 255, 195, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 254, 255, 255, 255, 255, 255, 255, 255, 31, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 254, 255, 255, 255, 255, 255, 255, 63, 0, 0, 0, 0, 0, 0, 0, 0,
+  239, 255, 255, 255, 150, 254, 247, 10, 132, 234, 150, 170, 150, 247, 247, 94, 255, 251, 255, 15, 238, 251, 255, 15,
+  0, 0, 0, 0, 0, 0, 3, 0, 255, 255, 255, 255, 255, 15, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+  255, 255, 15, 0, 255, 127, 254, 255, 254, 255, 254, 255, 255, 255, 63, 0, 255, 255, 255, 255, 255, 63, 0, 0,
+  0, 0, 0, 0, 192, 255, 255, 255, 7, 0, 255, 255, 255, 255, 255, 15, 255, 1, 3, 0, 63, 0, 0, 0,
+  255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 240, 255, 31, 255, 31, 255, 255, 255, 255, 255, 255, 255, 255,
+  255, 255, 255, 255, 255, 255, 127, 248, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 3, 255, 15, 1, 0,
+  255, 15, 255, 255, 255, 255, 255, 255, 255, 0, 255, 3, 255, 255, 255, 255, 255, 0, 255, 255, 255, 63, 3, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 15, 0, 255, 63, 255, 31,
+  255, 1, 255, 255, 255, 255, 255, 191, 63, 192, 255, 15, 255, 1, 255, 1, 255, 255, 247, 255, 255, 255, 255, 255,
+  255, 7, 0, 0, 0, 0, 255, 3, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 0, 0, 0, 0,
+  255, 255, 255, 255, 255, 255, 255, 3, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 63, 255, 255, 255, 255,
+  255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 3, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+  255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 1, 0, 255, 255, 255, 255, 255, 63, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 7, 255, 255, 255, 255, 255, 255,
+  255, 255, 255, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255,
+  255, 255, 255, 255, 255, 255, 0, 0,
 };
 /* END GENERATED UNICODE CLASSIFICATION */
+/* BEGIN GENERATED UNICODE CASE */
+/* Generated by tools/unicode_classification_tables.py from CPython 3.13.16, Unicode 15.1.0.
+   record << 3 | upper=1 | lower=2 | title=4 for each code point: unicode_case_low holds the first
+   2,048, and unicode_case_1 to _3 are the three stages of all (see unicode_case below).
+   unicode_case_records: a record's lower, upper, title and casefold mappings, each the distance to
+   the mapped code point, or 1 << 30 | three code points? << 16 | index in unicode_case_pool of a
+   full mapping. unicode_case_ignorable_1 to _3: the three stages of a bit for each code point,
+   eight to a byte, set for the case-ignorable ones (see pys_unicode_case_ignorable below).
+   Do not edit: regenerate with --write; --check verifies every code point. */
+static const uint16_t unicode_case_low[] = {
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9,
+  0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12,
+  0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x2, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x1a, 0x0, 0x0, 0x0, 0x0, 0x2, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9,
+  0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x0, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x22,
+  0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12,
+  0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x0, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x2a,
+  0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a,
+  0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a,
+  0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a,
+  0x41, 0x4a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x2, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31,
+  0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x52, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a,
+  0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a,
+  0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a,
+  0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x59, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x62,
+  0x6a, 0x71, 0x31, 0x3a, 0x31, 0x3a, 0x79, 0x31, 0x3a, 0x81, 0x81, 0x31, 0x3a, 0x2, 0x89, 0x91,
+  0x99, 0x31, 0x3a, 0x81, 0xa1, 0xaa, 0xb1, 0xb9, 0x31, 0x3a, 0xc2, 0x2, 0xb1, 0xc9, 0xd2, 0xd9,
+  0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0xe1, 0x31, 0x3a, 0xe1, 0x2, 0x2, 0x31, 0x3a, 0xe1, 0x31,
+  0x3a, 0xe9, 0xe9, 0x31, 0x3a, 0x31, 0x3a, 0xf1, 0x31, 0x3a, 0x2, 0x0, 0x31, 0x3a, 0x2, 0xfa,
+  0x0, 0x0, 0x0, 0x0, 0x101, 0x10c, 0x112, 0x101, 0x10c, 0x112, 0x101, 0x10c, 0x112, 0x31, 0x3a, 0x31,
+  0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x11a, 0x31, 0x3a,
+  0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a,
+  0x122, 0x101, 0x10c, 0x112, 0x31, 0x3a, 0x129, 0x131, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a,
+  0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a,
+  0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a,
+  0x139, 0x2, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a,
+  0x31, 0x3a, 0x31, 0x3a, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x141, 0x31, 0x3a, 0x149, 0x151, 0x15a,
+  0x15a, 0x31, 0x3a, 0x161, 0x169, 0x171, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a,
+  0x17a, 0x182, 0x18a, 0x192, 0x19a, 0x2, 0x1a2, 0x1a2, 0x2, 0x1aa, 0x2, 0x1b2, 0x1ba, 0x2, 0x2, 0x2,
+  0x1a2, 0x1c2, 0x2, 0x1ca, 0x2, 0x1d2, 0x1da, 0x2, 0x1e2, 0x1ea, 0x1da, 0x1f2, 0x1fa, 0x2, 0x2, 0x1ea,
+  0x2, 0x202, 0x20a, 0x2, 0x2, 0x212, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x21a, 0x2, 0x2,
+  0x222, 0x2, 0x22a, 0x222, 0x2, 0x2, 0x2, 0x232, 0x222, 0x23a, 0x242, 0x242, 0x24a, 0x2, 0x2, 0x2,
+  0x2, 0x2, 0x252, 0x2, 0x0, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x25a, 0x262, 0x2,
+  0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2,
+  0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x2, 0x2, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x2, 0x2, 0x2, 0x2, 0x2, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x26a, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x31, 0x3a, 0x31, 0x3a, 0x0, 0x0, 0x31, 0x3a, 0x0, 0x0, 0x2, 0xd2, 0xd2, 0xd2, 0x0, 0x271,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x279, 0x0, 0x281, 0x281, 0x281, 0x0, 0x289, 0x0, 0x291, 0x291,
+  0x29a, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9,
+  0x9, 0x9, 0x0, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x2a2, 0x2aa, 0x2aa, 0x2aa,
+  0x2b2, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12,
+  0x12, 0x12, 0x2ba, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x2c2, 0x2ca, 0x2ca, 0x2d1,
+  0x2da, 0x2e2, 0x1, 0x1, 0x1, 0x2ea, 0x2f2, 0x2fa, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a,
+  0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a,
+  0x302, 0x30a, 0x312, 0x31a, 0x321, 0x32a, 0x0, 0x31, 0x3a, 0x331, 0x31, 0x3a, 0x2, 0x139, 0x139, 0x139,
+  0x339, 0x339, 0x339, 0x339, 0x339, 0x339, 0x339, 0x339, 0x339, 0x339, 0x339, 0x339, 0x339, 0x339, 0x339, 0x339,
+  0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9,
+  0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9,
+  0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12,
+  0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12,
+  0x342, 0x342, 0x342, 0x342, 0x342, 0x342, 0x342, 0x342, 0x342, 0x342, 0x342, 0x342, 0x342, 0x342, 0x342, 0x342,
+  0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a,
+  0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a,
+  0x31, 0x3a, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a,
+  0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a,
+  0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a,
+  0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a,
+  0x349, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x352,
+  0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a,
+  0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a,
+  0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a,
+  0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a,
+  0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a,
+  0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a,
+  0x0, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359,
+  0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359,
+  0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x2, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362,
+  0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362,
+  0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x36a, 0x2, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+};
+static const uint8_t unicode_case_1[] = {
+  1, 2, 3, 4, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 8, 0, 0, 0, 0,
+  0, 0, 0, 0, 9, 10, 11, 12, 13, 14, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 16, 17, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 18, 19,
+  0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 21, 0, 0, 0, 22, 0, 0, 0, 0, 23, 24, 0, 25,
+  0, 0, 0, 0, 26, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 28, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 29, 30, 31, 32, 0, 0, 0, 0, 0, 0, 0, 33,
+  34, 0, 0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 0, 0, 0, 0, 36,
+};
+static const uint8_t unicode_case_2[] = {
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 3, 4, 5, 5, 6,
+  0, 0, 0, 0, 0, 7, 8, 7, 2, 2, 9, 10, 5, 5, 11, 12, 13, 13, 13, 13, 13, 13, 14, 15,
+  16, 17, 13, 13, 13, 13, 13, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 16, 29, 13, 13, 30, 13,
+  13, 13, 13, 13, 31, 13, 32, 33, 34, 13, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 45, 45, 46,
+  47, 0, 0, 0, 48, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 49, 0, 0, 0, 0, 0, 50, 51,
+  52, 53, 54, 2, 55, 56, 57, 5, 58, 59, 60, 13, 13, 13, 61, 62, 63, 63, 2, 2, 2, 2, 5, 5,
+  5, 5, 64, 64, 13, 13, 13, 13, 65, 66, 13, 13, 13, 13, 13, 13, 67, 68, 13, 13, 13, 13, 13, 13,
+  13, 13, 13, 13, 13, 13, 69, 70, 70, 70, 71, 0, 72, 73, 73, 73, 74, 46, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 75, 75, 75, 75, 76, 77, 78, 78, 78, 78, 78, 79, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 80, 80, 80, 80, 80, 80, 80, 80, 80, 80, 81, 82,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 83, 84, 85, 85, 85, 85, 85, 86,
+  0, 0, 0, 0, 0, 0, 0, 0, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 87,
+  45, 88, 45, 45, 45, 45, 45, 45, 0, 0, 0, 0, 0, 0, 0, 0, 13, 13, 13, 13, 13, 13, 13, 13,
+  13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 89, 90, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13,
+  91, 92, 93, 94, 91, 92, 91, 92, 93, 94, 95, 96, 91, 92, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106,
+  107, 108, 109, 110, 111, 112, 113, 114, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 115, 116,
+  0, 0, 45, 48, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 117, 118, 119, 120, 121, 122, 123, 124,
+  125, 126, 0, 0, 127, 127, 128, 128, 129, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 130, 131,
+  131, 131, 132, 132, 132, 133, 0, 0, 70, 70, 70, 70, 70, 70, 73, 73, 73, 73, 73, 73, 134, 135, 136, 137,
+  13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 138, 139, 140, 0, 141, 141, 141, 141, 142, 143, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 13, 13, 13, 13, 13, 144, 0, 0, 13, 13, 13, 145, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 66, 13, 146, 13, 13, 13, 13, 13, 13, 13, 45, 147,
+  13, 148, 149, 13, 13, 150, 151, 13, 152, 153, 154, 65, 0, 0, 155, 156, 0, 0, 0, 0, 0, 0, 45, 45,
+  45, 45, 157, 158, 45, 47, 159, 159, 159, 159, 159, 159, 159, 159, 159, 159, 0, 0, 0, 0, 0, 0, 0, 0,
+  160, 0, 161, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 3, 4, 5, 5, 6, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 162, 162, 162, 162, 162, 163, 163, 163,
+  163, 163, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 162, 162, 162, 162, 164, 163, 163, 163, 163, 165,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 166, 167, 166, 167, 168, 169, 170, 169, 170, 171,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  172, 45, 45, 45, 45, 45, 173, 156, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 174, 174, 174, 174, 174, 174, 175, 0, 176, 176, 176, 176, 176, 176, 177, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2,
+  5, 5, 5, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 5, 5, 5, 5,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 178, 178, 178, 179, 45, 45, 180, 178,
+  178, 181, 182, 45, 45, 178, 178, 178, 179, 45, 45, 183, 184, 185, 181, 186, 187, 45, 178, 178, 178, 179, 45, 45,
+  188, 189, 190, 191, 45, 45, 45, 192, 193, 194, 195, 45, 45, 180, 178, 178, 181, 45, 45, 45, 178, 178, 178, 179,
+  45, 45, 180, 178, 178, 181, 45, 45, 45, 178, 178, 178, 179, 45, 45, 180, 178, 178, 181, 45, 45, 45, 178, 178,
+  178, 179, 45, 45, 196, 178, 178, 178, 195, 45, 45, 158, 197, 178, 178, 198, 45, 45, 182, 180, 178, 178, 191, 45,
+  45, 199, 200, 178, 178, 201, 45, 45, 45, 173, 178, 178, 178, 195, 45, 45, 158, 202, 0, 0, 0, 0, 0, 0,
+  45, 203, 45, 199, 204, 156, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 45, 45, 45, 45, 45, 45, 45, 196, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 205, 205, 205, 205, 206, 207, 207, 207,
+  208, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 178, 178, 178, 209, 178, 178, 178, 209, 178, 178, 178, 209, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0,
+};
+static const uint16_t unicode_case_3[] = {
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9,
+  0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12,
+  0x12, 0x12, 0x12, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x2, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x1a, 0x0, 0x0, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x0,
+  0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x22, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x0,
+  0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x2a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a,
+  0x41, 0x4a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x2, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31,
+  0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x52, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a,
+  0x59, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x62, 0x6a, 0x71, 0x31, 0x3a, 0x31, 0x3a, 0x79, 0x31,
+  0x3a, 0x81, 0x81, 0x31, 0x3a, 0x2, 0x89, 0x91, 0x99, 0x31, 0x3a, 0x81, 0xa1, 0xaa, 0xb1, 0xb9,
+  0x31, 0x3a, 0xc2, 0x2, 0xb1, 0xc9, 0xd2, 0xd9, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0xe1, 0x31,
+  0x3a, 0xe1, 0x2, 0x2, 0x31, 0x3a, 0xe1, 0x31, 0x3a, 0xe9, 0xe9, 0x31, 0x3a, 0x31, 0x3a, 0xf1,
+  0x31, 0x3a, 0x2, 0x0, 0x31, 0x3a, 0x2, 0xfa, 0x0, 0x0, 0x0, 0x0, 0x101, 0x10c, 0x112, 0x101,
+  0x10c, 0x112, 0x101, 0x10c, 0x112, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x11a, 0x31, 0x3a,
+  0x122, 0x101, 0x10c, 0x112, 0x31, 0x3a, 0x129, 0x131, 0x139, 0x2, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a,
+  0x31, 0x3a, 0x31, 0x3a, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x141, 0x31, 0x3a, 0x149, 0x151, 0x15a,
+  0x15a, 0x31, 0x3a, 0x161, 0x169, 0x171, 0x31, 0x3a, 0x17a, 0x182, 0x18a, 0x192, 0x19a, 0x2, 0x1a2, 0x1a2,
+  0x2, 0x1aa, 0x2, 0x1b2, 0x1ba, 0x2, 0x2, 0x2, 0x1a2, 0x1c2, 0x2, 0x1ca, 0x2, 0x1d2, 0x1da, 0x2,
+  0x1e2, 0x1ea, 0x1da, 0x1f2, 0x1fa, 0x2, 0x2, 0x1ea, 0x2, 0x202, 0x20a, 0x2, 0x2, 0x212, 0x2, 0x2,
+  0x2, 0x2, 0x2, 0x2, 0x2, 0x21a, 0x2, 0x2, 0x222, 0x2, 0x22a, 0x222, 0x2, 0x2, 0x2, 0x232,
+  0x222, 0x23a, 0x242, 0x242, 0x24a, 0x2, 0x2, 0x2, 0x2, 0x2, 0x252, 0x2, 0x0, 0x2, 0x2, 0x2,
+  0x2, 0x2, 0x2, 0x2, 0x2, 0x25a, 0x262, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2,
+  0x2, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x2, 0x2, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x2, 0x2, 0x2, 0x2, 0x2, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x26a, 0x0, 0x0,
+  0x31, 0x3a, 0x31, 0x3a, 0x0, 0x0, 0x31, 0x3a, 0x0, 0x0, 0x2, 0xd2, 0xd2, 0xd2, 0x0, 0x271,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x279, 0x0, 0x281, 0x281, 0x281, 0x0, 0x289, 0x0, 0x291, 0x291,
+  0x29a, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x9, 0x0, 0x9, 0x9, 0x9, 0x9, 0x9,
+  0x9, 0x9, 0x9, 0x9, 0x2a2, 0x2aa, 0x2aa, 0x2aa, 0x2b2, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12,
+  0x12, 0x12, 0x2ba, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x2c2, 0x2ca, 0x2ca, 0x2d1,
+  0x2da, 0x2e2, 0x1, 0x1, 0x1, 0x2ea, 0x2f2, 0x2fa, 0x302, 0x30a, 0x312, 0x31a, 0x321, 0x32a, 0x0, 0x31,
+  0x3a, 0x331, 0x31, 0x3a, 0x2, 0x139, 0x139, 0x139, 0x339, 0x339, 0x339, 0x339, 0x339, 0x339, 0x339, 0x339,
+  0x342, 0x342, 0x342, 0x342, 0x342, 0x342, 0x342, 0x342, 0x31, 0x3a, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x349, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31,
+  0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x352, 0x0, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359,
+  0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x359, 0x0,
+  0x2, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362,
+  0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x362, 0x36a, 0x371, 0x371, 0x371, 0x371, 0x371, 0x371, 0x371, 0x371,
+  0x371, 0x371, 0x371, 0x371, 0x371, 0x371, 0x0, 0x371, 0x0, 0x0, 0x0, 0x0, 0x0, 0x371, 0x0, 0x0,
+  0x37a, 0x37a, 0x37a, 0x37a, 0x37a, 0x37a, 0x37a, 0x37a, 0x37a, 0x37a, 0x37a, 0x0, 0x2, 0x37a, 0x37a, 0x37a,
+  0x381, 0x381, 0x381, 0x381, 0x381, 0x381, 0x381, 0x381, 0x389, 0x389, 0x389, 0x389, 0x389, 0x389, 0x0, 0x0,
+  0x392, 0x392, 0x392, 0x392, 0x392, 0x392, 0x0, 0x0, 0x39a, 0x3a2, 0x3aa, 0x3b2, 0x3b2, 0x3ba, 0x3c2, 0x3ca,
+  0x3d2, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x3d9, 0x3d9, 0x3d9, 0x3d9, 0x3d9, 0x3d9, 0x3d9, 0x3d9,
+  0x3d9, 0x3d9, 0x3d9, 0x0, 0x0, 0x3d9, 0x3d9, 0x3d9, 0x2, 0x3e2, 0x2, 0x2, 0x2, 0x3ea, 0x2, 0x2,
+  0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x3f2, 0x2, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x3fa, 0x402,
+  0x40a, 0x412, 0x41a, 0x422, 0x2, 0x2, 0x429, 0x2, 0x432, 0x432, 0x432, 0x432, 0x432, 0x432, 0x432, 0x432,
+  0x439, 0x439, 0x439, 0x439, 0x439, 0x439, 0x439, 0x439, 0x432, 0x432, 0x432, 0x432, 0x432, 0x432, 0x0, 0x0,
+  0x439, 0x439, 0x439, 0x439, 0x439, 0x439, 0x0, 0x0, 0x442, 0x432, 0x44a, 0x432, 0x452, 0x432, 0x45a, 0x432,
+  0x0, 0x439, 0x0, 0x439, 0x0, 0x439, 0x0, 0x439, 0x462, 0x462, 0x46a, 0x46a, 0x46a, 0x46a, 0x472, 0x472,
+  0x47a, 0x47a, 0x482, 0x482, 0x48a, 0x48a, 0x0, 0x0, 0x492, 0x49a, 0x4a2, 0x4aa, 0x4b2, 0x4ba, 0x4c2, 0x4ca,
+  0x4d4, 0x4dc, 0x4e4, 0x4ec, 0x4f4, 0x4fc, 0x504, 0x50c, 0x512, 0x51a, 0x522, 0x52a, 0x532, 0x53a, 0x542, 0x54a,
+  0x554, 0x55c, 0x564, 0x56c, 0x574, 0x57c, 0x584, 0x58c, 0x592, 0x59a, 0x5a2, 0x5aa, 0x5b2, 0x5ba, 0x5c2, 0x5ca,
+  0x5d4, 0x5dc, 0x5e4, 0x5ec, 0x5f4, 0x5fc, 0x604, 0x60c, 0x432, 0x432, 0x612, 0x61a, 0x622, 0x0, 0x62a, 0x632,
+  0x439, 0x439, 0x639, 0x639, 0x644, 0x0, 0x64a, 0x0, 0x0, 0x0, 0x652, 0x65a, 0x662, 0x0, 0x66a, 0x672,
+  0x679, 0x679, 0x679, 0x679, 0x684, 0x0, 0x0, 0x0, 0x432, 0x432, 0x68a, 0x29a, 0x0, 0x0, 0x692, 0x69a,
+  0x439, 0x439, 0x6a1, 0x6a1, 0x0, 0x0, 0x0, 0x0, 0x432, 0x432, 0x6aa, 0x2b2, 0x6b2, 0x312, 0x6ba, 0x6c2,
+  0x439, 0x439, 0x6c9, 0x6c9, 0x331, 0x0, 0x0, 0x0, 0x0, 0x0, 0x6d2, 0x6da, 0x6e2, 0x0, 0x6ea, 0x6f2,
+  0x6f9, 0x6f9, 0x701, 0x701, 0x70c, 0x0, 0x0, 0x0, 0x0, 0x2, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x2, 0x0, 0x0, 0x1, 0x0, 0x0, 0x0, 0x0, 0x1,
+  0x0, 0x0, 0x2, 0x1, 0x1, 0x1, 0x2, 0x2, 0x1, 0x1, 0x1, 0x2, 0x0, 0x1, 0x0, 0x0,
+  0x0, 0x1, 0x1, 0x1, 0x1, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x711, 0x0,
+  0x1, 0x0, 0x719, 0x721, 0x1, 0x1, 0x0, 0x2, 0x1, 0x1, 0x729, 0x1, 0x2, 0x0, 0x0, 0x0,
+  0x0, 0x2, 0x0, 0x0, 0x2, 0x2, 0x1, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x2, 0x2,
+  0x2, 0x2, 0x0, 0x0, 0x0, 0x0, 0x732, 0x0, 0x739, 0x739, 0x739, 0x739, 0x739, 0x739, 0x739, 0x739,
+  0x742, 0x742, 0x742, 0x742, 0x742, 0x742, 0x742, 0x742, 0x0, 0x0, 0x0, 0x31, 0x3a, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x749, 0x749, 0x749, 0x749, 0x749, 0x749, 0x749, 0x749, 0x749, 0x749,
+  0x752, 0x752, 0x752, 0x752, 0x752, 0x752, 0x752, 0x752, 0x752, 0x752, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x31, 0x3a, 0x759, 0x761, 0x769, 0x772, 0x77a, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x781, 0x789, 0x791,
+  0x799, 0x2, 0x31, 0x3a, 0x2, 0x31, 0x3a, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x7a1, 0x7a1,
+  0x31, 0x3a, 0x31, 0x3a, 0x2, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x31, 0x3a, 0x31, 0x3a, 0x0,
+  0x0, 0x0, 0x31, 0x3a, 0x0, 0x0, 0x0, 0x0, 0x7aa, 0x7aa, 0x7aa, 0x7aa, 0x7aa, 0x7aa, 0x7aa, 0x7aa,
+  0x7aa, 0x7aa, 0x7aa, 0x7aa, 0x7aa, 0x7aa, 0x0, 0x7aa, 0x0, 0x0, 0x0, 0x0, 0x0, 0x7aa, 0x0, 0x0,
+  0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x0, 0x0, 0x31, 0x3a, 0x31, 0x3a, 0x2, 0x2, 0x0, 0x0,
+  0x2, 0x2, 0x31, 0x3a, 0x31, 0x3a, 0x31, 0x3a, 0x2, 0x31, 0x3a, 0x31, 0x3a, 0x7b1, 0x31, 0x3a,
+  0x0, 0x0, 0x0, 0x31, 0x3a, 0x7b9, 0x2, 0x0, 0x31, 0x3a, 0x31, 0x3a, 0x7c2, 0x2, 0x31, 0x3a,
+  0x31, 0x3a, 0x7c9, 0x7d1, 0x7d9, 0x7e1, 0x7c9, 0x2, 0x7e9, 0x7f1, 0x7f9, 0x801, 0x31, 0x3a, 0x31, 0x3a,
+  0x31, 0x3a, 0x31, 0x3a, 0x809, 0x811, 0x819, 0x31, 0x3a, 0x31, 0x3a, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x31, 0x3a, 0x0, 0x2, 0x0, 0x2, 0x31, 0x3a, 0x0, 0x0, 0x2, 0x2, 0x2, 0x31, 0x3a, 0x0,
+  0x2, 0x2, 0x2, 0x0, 0x0, 0x0, 0x0, 0x0, 0x2, 0x2, 0x2, 0x822, 0x2, 0x2, 0x2, 0x2,
+  0x2, 0x2, 0x2, 0x0, 0x2, 0x2, 0x2, 0x2, 0x82a, 0x82a, 0x82a, 0x82a, 0x82a, 0x82a, 0x82a, 0x82a,
+  0x832, 0x83a, 0x842, 0x84a, 0x852, 0x85a, 0x85a, 0x0, 0x0, 0x0, 0x0, 0x862, 0x86a, 0x872, 0x87a, 0x882,
+  0x889, 0x889, 0x889, 0x889, 0x889, 0x889, 0x889, 0x889, 0x892, 0x892, 0x892, 0x892, 0x892, 0x892, 0x892, 0x892,
+  0x889, 0x889, 0x889, 0x889, 0x0, 0x0, 0x0, 0x0, 0x892, 0x892, 0x892, 0x892, 0x0, 0x0, 0x0, 0x0,
+  0x899, 0x899, 0x899, 0x899, 0x899, 0x899, 0x899, 0x899, 0x899, 0x899, 0x899, 0x0, 0x899, 0x899, 0x899, 0x899,
+  0x899, 0x899, 0x899, 0x0, 0x899, 0x899, 0x0, 0x8a2, 0x8a2, 0x8a2, 0x8a2, 0x8a2, 0x8a2, 0x8a2, 0x8a2, 0x8a2,
+  0x8a2, 0x8a2, 0x0, 0x8a2, 0x8a2, 0x8a2, 0x8a2, 0x8a2, 0x8a2, 0x8a2, 0x0, 0x8a2, 0x8a2, 0x0, 0x0, 0x0,
+  0x2, 0x0, 0x0, 0x2, 0x2, 0x2, 0x0, 0x2, 0x2, 0x0, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2,
+  0x289, 0x289, 0x289, 0x289, 0x289, 0x289, 0x289, 0x289, 0x289, 0x289, 0x289, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x2c2, 0x2c2, 0x2c2, 0x2c2, 0x2c2, 0x2c2, 0x2c2, 0x2c2, 0x2c2, 0x2c2, 0x2c2, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2,
+  0x2, 0x2, 0x2, 0x2, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x2, 0x2,
+  0x2, 0x2, 0x2, 0x2, 0x2, 0x0, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x1, 0x0, 0x1, 0x1,
+  0x0, 0x0, 0x1, 0x0, 0x0, 0x1, 0x1, 0x0, 0x0, 0x1, 0x1, 0x1, 0x1, 0x0, 0x1, 0x1,
+  0x2, 0x2, 0x0, 0x2, 0x0, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x0, 0x2, 0x2, 0x2,
+  0x2, 0x2, 0x2, 0x2, 0x1, 0x1, 0x0, 0x1, 0x1, 0x1, 0x1, 0x0, 0x0, 0x1, 0x1, 0x1,
+  0x1, 0x1, 0x1, 0x1, 0x1, 0x0, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x0, 0x2, 0x2,
+  0x1, 0x1, 0x0, 0x1, 0x1, 0x1, 0x1, 0x0, 0x1, 0x1, 0x1, 0x1, 0x1, 0x0, 0x1, 0x0,
+  0x0, 0x0, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x0, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2,
+  0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x0, 0x0, 0x2, 0x2, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,
+  0x1, 0x1, 0x1, 0x0, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x0,
+  0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x0,
+  0x2, 0x2, 0x1, 0x2, 0x0, 0x0, 0x0, 0x0, 0x2, 0x2, 0x0, 0x2, 0x2, 0x2, 0x2, 0x2,
+  0x0, 0x0, 0x0, 0x0, 0x0, 0x2, 0x2, 0x2, 0x8a9, 0x8a9, 0x8a9, 0x8a9, 0x8a9, 0x8a9, 0x8a9, 0x8a9,
+  0x8a9, 0x8a9, 0x8b2, 0x8b2, 0x8b2, 0x8b2, 0x8b2, 0x8b2, 0x8b2, 0x8b2, 0x8b2, 0x8b2, 0x8b2, 0x8b2, 0x8b2, 0x8b2,
+  0x8b2, 0x8b2, 0x8b2, 0x8b2, 0x0, 0x0, 0x0, 0x0, 0x1, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+};
+static const uint32_t unicode_case_records[] = {
+  0x0, 0x0, 0x0, 0x0, 0x20, 0x0, 0x0, 0x20,
+  0x0, 0xffffffe0, 0xffffffe0, 0x0, 0x0, 0x2e7, 0x2e7, 0x307,
+  0x0, 0x40000000, 0x40000002, 0x40000004, 0x0, 0x79, 0x79, 0x0,
+  0x1, 0x0, 0x0, 0x1, 0x0, 0xffffffff, 0xffffffff, 0x0,
+  0x40000006, 0x0, 0x0, 0x40000006, 0x0, 0xffffff18, 0xffffff18, 0x0,
+  0x0, 0x40000008, 0x40000008, 0x4000000a, 0xffffff87, 0x0, 0x0, 0xffffff87,
+  0x0, 0xfffffed4, 0xfffffed4, 0xfffffef4, 0x0, 0xc3, 0xc3, 0x0,
+  0xd2, 0x0, 0x0, 0xd2, 0xce, 0x0, 0x0, 0xce,
+  0xcd, 0x0, 0x0, 0xcd, 0x4f, 0x0, 0x0, 0x4f,
+  0xca, 0x0, 0x0, 0xca, 0xcb, 0x0, 0x0, 0xcb,
+  0xcf, 0x0, 0x0, 0xcf, 0x0, 0x61, 0x61, 0x0,
+  0xd3, 0x0, 0x0, 0xd3, 0xd1, 0x0, 0x0, 0xd1,
+  0x0, 0xa3, 0xa3, 0x0, 0xd5, 0x0, 0x0, 0xd5,
+  0x0, 0x82, 0x82, 0x0, 0xd6, 0x0, 0x0, 0xd6,
+  0xda, 0x0, 0x0, 0xda, 0xd9, 0x0, 0x0, 0xd9,
+  0xdb, 0x0, 0x0, 0xdb, 0x0, 0x38, 0x38, 0x0,
+  0x2, 0x0, 0x1, 0x2, 0x1, 0xffffffff, 0x0, 0x1,
+  0x0, 0xfffffffe, 0xffffffff, 0x0, 0x0, 0xffffffb1, 0xffffffb1, 0x0,
+  0x0, 0x4000000c, 0x4000000c, 0x4000000e, 0xffffff9f, 0x0, 0x0, 0xffffff9f,
+  0xffffffc8, 0x0, 0x0, 0xffffffc8, 0xffffff7e, 0x0, 0x0, 0xffffff7e,
+  0x2a2b, 0x0, 0x0, 0x2a2b, 0xffffff5d, 0x0, 0x0, 0xffffff5d,
+  0x2a28, 0x0, 0x0, 0x2a28, 0x0, 0x2a3f, 0x2a3f, 0x0,
+  0xffffff3d, 0x0, 0x0, 0xffffff3d, 0x45, 0x0, 0x0, 0x45,
+  0x47, 0x0, 0x0, 0x47, 0x0, 0x2a1f, 0x2a1f, 0x0,
+  0x0, 0x2a1c, 0x2a1c, 0x0, 0x0, 0x2a1e, 0x2a1e, 0x0,
+  0x0, 0xffffff2e, 0xffffff2e, 0x0, 0x0, 0xffffff32, 0xffffff32, 0x0,
+  0x0, 0xffffff33, 0xffffff33, 0x0, 0x0, 0xffffff36, 0xffffff36, 0x0,
+  0x0, 0xffffff35, 0xffffff35, 0x0, 0x0, 0xa54f, 0xa54f, 0x0,
+  0x0, 0xa54b, 0xa54b, 0x0, 0x0, 0xffffff31, 0xffffff31, 0x0,
+  0x0, 0xa528, 0xa528, 0x0, 0x0, 0xa544, 0xa544, 0x0,
+  0x0, 0xffffff2f, 0xffffff2f, 0x0, 0x0, 0xffffff2d, 0xffffff2d, 0x0,
+  0x0, 0x29f7, 0x29f7, 0x0, 0x0, 0xa541, 0xa541, 0x0,
+  0x0, 0x29fd, 0x29fd, 0x0, 0x0, 0xffffff2b, 0xffffff2b, 0x0,
+  0x0, 0xffffff2a, 0xffffff2a, 0x0, 0x0, 0x29e7, 0x29e7, 0x0,
+  0x0, 0xffffff26, 0xffffff26, 0x0, 0x0, 0xa543, 0xa543, 0x0,
+  0x0, 0xa52a, 0xa52a, 0x0, 0x0, 0xffffffbb, 0xffffffbb, 0x0,
+  0x0, 0xffffff27, 0xffffff27, 0x0, 0x0, 0xffffffb9, 0xffffffb9, 0x0,
+  0x0, 0xffffff25, 0xffffff25, 0x0, 0x0, 0xa515, 0xa515, 0x0,
+  0x0, 0xa512, 0xa512, 0x0, 0x0, 0x54, 0x54, 0x74,
+  0x74, 0x0, 0x0, 0x74, 0x26, 0x0, 0x0, 0x26,
+  0x25, 0x0, 0x0, 0x25, 0x40, 0x0, 0x0, 0x40,
+  0x3f, 0x0, 0x0, 0x3f, 0x0, 0x40010010, 0x40010010, 0x40010013,
+  0x0, 0xffffffda, 0xffffffda, 0x0, 0x0, 0xffffffdb, 0xffffffdb, 0x0,
+  0x0, 0x40010016, 0x40010016, 0x40010019, 0x0, 0xffffffe1, 0xffffffe1, 0x1,
+  0x0, 0xffffffc0, 0xffffffc0, 0x0, 0x0, 0xffffffc1, 0xffffffc1, 0x0,
+  0x8, 0x0, 0x0, 0x8, 0x0, 0xffffffc2, 0xffffffc2, 0xffffffe2,
+  0x0, 0xffffffc7, 0xffffffc7, 0xffffffe7, 0x0, 0xffffffd1, 0xffffffd1, 0xfffffff1,
+  0x0, 0xffffffca, 0xffffffca, 0xffffffea, 0x0, 0xfffffff8, 0xfffffff8, 0x0,
+  0x0, 0xffffffaa, 0xffffffaa, 0xffffffca, 0x0, 0xffffffb0, 0xffffffb0, 0xffffffd0,
+  0x0, 0x7, 0x7, 0x0, 0x0, 0xffffff8c, 0xffffff8c, 0x0,
+  0xffffffc4, 0x0, 0x0, 0xffffffc4, 0x0, 0xffffffa0, 0xffffffa0, 0xffffffc0,
+  0xfffffff9, 0x0, 0x0, 0xfffffff9, 0x50, 0x0, 0x0, 0x50,
+  0x0, 0xffffffb0, 0xffffffb0, 0x0, 0xf, 0x0, 0x0, 0xf,
+  0x0, 0xfffffff1, 0xfffffff1, 0x0, 0x30, 0x0, 0x0, 0x30,
+  0x0, 0xffffffd0, 0xffffffd0, 0x0, 0x0, 0x4000001c, 0x4000001e, 0x40000020,
+  0x1c60, 0x0, 0x0, 0x1c60, 0x0, 0xbc0, 0x0, 0x0,
+  0x97d0, 0x0, 0x0, 0x0, 0x8, 0x0, 0x0, 0x0,
+  0x0, 0xfffffff8, 0xfffffff8, 0xfffffff8, 0x0, 0xffffe792, 0xffffe792, 0xffffe7b2,
+  0x0, 0xffffe793, 0xffffe793, 0xffffe7b3, 0x0, 0xffffe79c, 0xffffe79c, 0xffffe7bc,
+  0x0, 0xffffe79e, 0xffffe79e, 0xffffe7be, 0x0, 0xffffe79d, 0xffffe79d, 0xffffe7bd,
+  0x0, 0xffffe7a4, 0xffffe7a4, 0xffffe7c4, 0x0, 0xffffe7db, 0xffffe7db, 0xffffe7dc,
+  0x0, 0x89c2, 0x89c2, 0x89c3, 0xfffff440, 0x0, 0x0, 0xfffff440,
+  0x0, 0x8a04, 0x8a04, 0x0, 0x0, 0xee6, 0xee6, 0x0,
+  0x0, 0x8a38, 0x8a38, 0x0, 0x0, 0x40000022, 0x40000022, 0x40000024,
+  0x0, 0x40000026, 0x40000026, 0x40000028, 0x0, 0x4000002a, 0x4000002a, 0x4000002c,
+  0x0, 0x4000002e, 0x4000002e, 0x40000030, 0x0, 0x40000032, 0x40000032, 0x40000034,
+  0x0, 0xffffffc5, 0xffffffc5, 0xffffffc6, 0xffffe241, 0x0, 0x0, 0x40000004,
+  0x0, 0x8, 0x8, 0x0, 0xfffffff8, 0x0, 0x0, 0xfffffff8,
+  0x0, 0x40000036, 0x40000036, 0x40000038, 0x0, 0x4001003a, 0x4001003a, 0x4001003d,
+  0x0, 0x40010040, 0x40010040, 0x40010043, 0x0, 0x40010046, 0x40010046, 0x40010049,
+  0x0, 0x4a, 0x4a, 0x0, 0x0, 0x56, 0x56, 0x0,
+  0x0, 0x64, 0x64, 0x0, 0x0, 0x80, 0x80, 0x0,
+  0x0, 0x70, 0x70, 0x0, 0x0, 0x7e, 0x7e, 0x0,
+  0x0, 0x4000004c, 0x8, 0x4000004e, 0x0, 0x40000050, 0x8, 0x40000052,
+  0x0, 0x40000054, 0x8, 0x40000056, 0x0, 0x40000058, 0x8, 0x4000005a,
+  0x0, 0x4000005c, 0x8, 0x4000005e, 0x0, 0x40000060, 0x8, 0x40000062,
+  0x0, 0x40000064, 0x8, 0x40000066, 0x0, 0x40000068, 0x8, 0x4000006a,
+  0xfffffff8, 0x4000004c, 0x0, 0x4000004e, 0xfffffff8, 0x40000050, 0x0, 0x40000052,
+  0xfffffff8, 0x40000054, 0x0, 0x40000056, 0xfffffff8, 0x40000058, 0x0, 0x4000005a,
+  0xfffffff8, 0x4000005c, 0x0, 0x4000005e, 0xfffffff8, 0x40000060, 0x0, 0x40000062,
+  0xfffffff8, 0x40000064, 0x0, 0x40000066, 0xfffffff8, 0x40000068, 0x0, 0x4000006a,
+  0x0, 0x4000006c, 0x8, 0x4000006e, 0x0, 0x40000070, 0x8, 0x40000072,
+  0x0, 0x40000074, 0x8, 0x40000076, 0x0, 0x40000078, 0x8, 0x4000007a,
+  0x0, 0x4000007c, 0x8, 0x4000007e, 0x0, 0x40000080, 0x8, 0x40000082,
+  0x0, 0x40000084, 0x8, 0x40000086, 0x0, 0x40000088, 0x8, 0x4000008a,
+  0xfffffff8, 0x4000006c, 0x0, 0x4000006e, 0xfffffff8, 0x40000070, 0x0, 0x40000072,
+  0xfffffff8, 0x40000074, 0x0, 0x40000076, 0xfffffff8, 0x40000078, 0x0, 0x4000007a,
+  0xfffffff8, 0x4000007c, 0x0, 0x4000007e, 0xfffffff8, 0x40000080, 0x0, 0x40000082,
+  0xfffffff8, 0x40000084, 0x0, 0x40000086, 0xfffffff8, 0x40000088, 0x0, 0x4000008a,
+  0x0, 0x4000008c, 0x8, 0x4000008e, 0x0, 0x40000090, 0x8, 0x40000092,
+  0x0, 0x40000094, 0x8, 0x40000096, 0x0, 0x40000098, 0x8, 0x4000009a,
+  0x0, 0x4000009c, 0x8, 0x4000009e, 0x0, 0x400000a0, 0x8, 0x400000a2,
+  0x0, 0x400000a4, 0x8, 0x400000a6, 0x0, 0x400000a8, 0x8, 0x400000aa,
+  0xfffffff8, 0x4000008c, 0x0, 0x4000008e, 0xfffffff8, 0x40000090, 0x0, 0x40000092,
+  0xfffffff8, 0x40000094, 0x0, 0x40000096, 0xfffffff8, 0x40000098, 0x0, 0x4000009a,
+  0xfffffff8, 0x4000009c, 0x0, 0x4000009e, 0xfffffff8, 0x400000a0, 0x0, 0x400000a2,
+  0xfffffff8, 0x400000a4, 0x0, 0x400000a6, 0xfffffff8, 0x400000a8, 0x0, 0x400000aa,
+  0x0, 0x400000ac, 0x400000ae, 0x400000b0, 0x0, 0x400000b2, 0x9, 0x400000b4,
+  0x0, 0x400000b6, 0x400000b8, 0x400000ba, 0x0, 0x400000bc, 0x400000bc, 0x400000be,
+  0x0, 0x400100c0, 0x400100c3, 0x400100c6, 0xffffffb6, 0x0, 0x0, 0xffffffb6,
+  0xfffffff7, 0x400000b2, 0x0, 0x400000b4, 0x0, 0xffffe3db, 0xffffe3db, 0xffffe3fb,
+  0x0, 0x400000c9, 0x400000cb, 0x400000cd, 0x0, 0x400000cf, 0x9, 0x400000d1,
+  0x0, 0x400000d3, 0x400000d5, 0x400000d7, 0x0, 0x400000d9, 0x400000d9, 0x400000db,
+  0x0, 0x400100dd, 0x400100e0, 0x400100e3, 0xffffffaa, 0x0, 0x0, 0xffffffaa,
+  0xfffffff7, 0x400000cf, 0x0, 0x400000d1, 0x0, 0x400100e6, 0x400100e6, 0x400100e9,
+  0x0, 0x400000ec, 0x400000ec, 0x400000ee, 0x0, 0x400100f0, 0x400100f0, 0x400100f3,
+  0xffffff9c, 0x0, 0x0, 0xffffff9c, 0x0, 0x400100f6, 0x400100f6, 0x400100f9,
+  0x0, 0x400000fc, 0x400000fc, 0x400000fe, 0x0, 0x40000100, 0x40000100, 0x40000102,
+  0x0, 0x40010104, 0x40010104, 0x40010107, 0xffffff90, 0x0, 0x0, 0xffffff90,
+  0x0, 0x4000010a, 0x4000010c, 0x4000010e, 0x0, 0x40000110, 0x9, 0x40000112,
+  0x0, 0x40000114, 0x40000116, 0x40000118, 0x0, 0x4000011a, 0x4000011a, 0x4000011c,
+  0x0, 0x4001011e, 0x40010121, 0x40010124, 0xffffff80, 0x0, 0x0, 0xffffff80,
+  0xffffff82, 0x0, 0x0, 0xffffff82, 0xfffffff7, 0x40000110, 0x0, 0x40000112,
+  0xffffe2a3, 0x0, 0x0, 0xffffe2a3, 0xffffdf41, 0x0, 0x0, 0xffffdf41,
+  0xffffdfba, 0x0, 0x0, 0xffffdfba, 0x1c, 0x0, 0x0, 0x1c,
+  0x0, 0xffffffe4, 0xffffffe4, 0x0, 0x10, 0x0, 0x0, 0x10,
+  0x0, 0xfffffff0, 0xfffffff0, 0x0, 0x1a, 0x0, 0x0, 0x1a,
+  0x0, 0xffffffe6, 0xffffffe6, 0x0, 0xffffd609, 0x0, 0x0, 0xffffd609,
+  0xfffff11a, 0x0, 0x0, 0xfffff11a, 0xffffd619, 0x0, 0x0, 0xffffd619,
+  0x0, 0xffffd5d5, 0xffffd5d5, 0x0, 0x0, 0xffffd5d8, 0xffffd5d8, 0x0,
+  0xffffd5e4, 0x0, 0x0, 0xffffd5e4, 0xffffd603, 0x0, 0x0, 0xffffd603,
+  0xffffd5e1, 0x0, 0x0, 0xffffd5e1, 0xffffd5e2, 0x0, 0x0, 0xffffd5e2,
+  0xffffd5c1, 0x0, 0x0, 0xffffd5c1, 0x0, 0xffffe3a0, 0xffffe3a0, 0x0,
+  0xffff75fc, 0x0, 0x0, 0xffff75fc, 0xffff5ad8, 0x0, 0x0, 0xffff5ad8,
+  0x0, 0x30, 0x30, 0x0, 0xffff5abc, 0x0, 0x0, 0xffff5abc,
+  0xffff5ab1, 0x0, 0x0, 0xffff5ab1, 0xffff5ab5, 0x0, 0x0, 0xffff5ab5,
+  0xffff5abf, 0x0, 0x0, 0xffff5abf, 0xffff5aee, 0x0, 0x0, 0xffff5aee,
+  0xffff5ad6, 0x0, 0x0, 0xffff5ad6, 0xffff5aeb, 0x0, 0x0, 0xffff5aeb,
+  0x3a0, 0x0, 0x0, 0x3a0, 0xffffffd0, 0x0, 0x0, 0xffffffd0,
+  0xffff5abd, 0x0, 0x0, 0xffff5abd, 0xffff75c8, 0x0, 0x0, 0xffff75c8,
+  0x0, 0xfffffc60, 0xfffffc60, 0x0, 0x0, 0xffff6830, 0xffff6830, 0xffff6830,
+  0x0, 0x40000127, 0x40000129, 0x4000012b, 0x0, 0x4000012d, 0x4000012f, 0x40000131,
+  0x0, 0x40000133, 0x40000135, 0x40000137, 0x0, 0x40010139, 0x4001013c, 0x4001013f,
+  0x0, 0x40010142, 0x40010145, 0x40010148, 0x0, 0x4000014b, 0x4000014d, 0x4000014f,
+  0x0, 0x40000151, 0x40000153, 0x40000155, 0x0, 0x40000157, 0x40000159, 0x4000015b,
+  0x0, 0x4000015d, 0x4000015f, 0x40000161, 0x0, 0x40000163, 0x40000165, 0x40000167,
+  0x0, 0x40000169, 0x4000016b, 0x4000016d, 0x28, 0x0, 0x0, 0x28,
+  0x0, 0xffffffd8, 0xffffffd8, 0x0, 0x27, 0x0, 0x0, 0x27,
+  0x0, 0xffffffd9, 0xffffffd9, 0x0, 0x22, 0x0, 0x0, 0x22,
+  0x0, 0xffffffde, 0xffffffde, 0x0,
+};
+static const uint16_t unicode_case_pool[] = {
+  0x53, 0x53, 0x53, 0x73, 0x73, 0x73, 0x69, 0x307, 0x2bc, 0x4e, 0x2bc, 0x6e, 0x4a, 0x30c, 0x6a, 0x30c,
+  0x399, 0x308, 0x301, 0x3b9, 0x308, 0x301, 0x3a5, 0x308, 0x301, 0x3c5, 0x308, 0x301, 0x535, 0x552, 0x535, 0x582,
+  0x565, 0x582, 0x48, 0x331, 0x68, 0x331, 0x54, 0x308, 0x74, 0x308, 0x57, 0x30a, 0x77, 0x30a, 0x59, 0x30a,
+  0x79, 0x30a, 0x41, 0x2be, 0x61, 0x2be, 0x3a5, 0x313, 0x3c5, 0x313, 0x3a5, 0x313, 0x300, 0x3c5, 0x313, 0x300,
+  0x3a5, 0x313, 0x301, 0x3c5, 0x313, 0x301, 0x3a5, 0x313, 0x342, 0x3c5, 0x313, 0x342, 0x1f08, 0x399, 0x1f00, 0x3b9,
+  0x1f09, 0x399, 0x1f01, 0x3b9, 0x1f0a, 0x399, 0x1f02, 0x3b9, 0x1f0b, 0x399, 0x1f03, 0x3b9, 0x1f0c, 0x399, 0x1f04, 0x3b9,
+  0x1f0d, 0x399, 0x1f05, 0x3b9, 0x1f0e, 0x399, 0x1f06, 0x3b9, 0x1f0f, 0x399, 0x1f07, 0x3b9, 0x1f28, 0x399, 0x1f20, 0x3b9,
+  0x1f29, 0x399, 0x1f21, 0x3b9, 0x1f2a, 0x399, 0x1f22, 0x3b9, 0x1f2b, 0x399, 0x1f23, 0x3b9, 0x1f2c, 0x399, 0x1f24, 0x3b9,
+  0x1f2d, 0x399, 0x1f25, 0x3b9, 0x1f2e, 0x399, 0x1f26, 0x3b9, 0x1f2f, 0x399, 0x1f27, 0x3b9, 0x1f68, 0x399, 0x1f60, 0x3b9,
+  0x1f69, 0x399, 0x1f61, 0x3b9, 0x1f6a, 0x399, 0x1f62, 0x3b9, 0x1f6b, 0x399, 0x1f63, 0x3b9, 0x1f6c, 0x399, 0x1f64, 0x3b9,
+  0x1f6d, 0x399, 0x1f65, 0x3b9, 0x1f6e, 0x399, 0x1f66, 0x3b9, 0x1f6f, 0x399, 0x1f67, 0x3b9, 0x1fba, 0x399, 0x1fba, 0x345,
+  0x1f70, 0x3b9, 0x391, 0x399, 0x3b1, 0x3b9, 0x386, 0x399, 0x386, 0x345, 0x3ac, 0x3b9, 0x391, 0x342, 0x3b1, 0x342,
+  0x391, 0x342, 0x399, 0x391, 0x342, 0x345, 0x3b1, 0x342, 0x3b9, 0x1fca, 0x399, 0x1fca, 0x345, 0x1f74, 0x3b9, 0x397,
+  0x399, 0x3b7, 0x3b9, 0x389, 0x399, 0x389, 0x345, 0x3ae, 0x3b9, 0x397, 0x342, 0x3b7, 0x342, 0x397, 0x342, 0x399,
+  0x397, 0x342, 0x345, 0x3b7, 0x342, 0x3b9, 0x399, 0x308, 0x300, 0x3b9, 0x308, 0x300, 0x399, 0x342, 0x3b9, 0x342,
+  0x399, 0x308, 0x342, 0x3b9, 0x308, 0x342, 0x3a5, 0x308, 0x300, 0x3c5, 0x308, 0x300, 0x3a1, 0x313, 0x3c1, 0x313,
+  0x3a5, 0x342, 0x3c5, 0x342, 0x3a5, 0x308, 0x342, 0x3c5, 0x308, 0x342, 0x1ffa, 0x399, 0x1ffa, 0x345, 0x1f7c, 0x3b9,
+  0x3a9, 0x399, 0x3c9, 0x3b9, 0x38f, 0x399, 0x38f, 0x345, 0x3ce, 0x3b9, 0x3a9, 0x342, 0x3c9, 0x342, 0x3a9, 0x342,
+  0x399, 0x3a9, 0x342, 0x345, 0x3c9, 0x342, 0x3b9, 0x46, 0x46, 0x46, 0x66, 0x66, 0x66, 0x46, 0x49, 0x46,
+  0x69, 0x66, 0x69, 0x46, 0x4c, 0x46, 0x6c, 0x66, 0x6c, 0x46, 0x46, 0x49, 0x46, 0x66, 0x69, 0x66,
+  0x66, 0x69, 0x46, 0x46, 0x4c, 0x46, 0x66, 0x6c, 0x66, 0x66, 0x6c, 0x53, 0x54, 0x53, 0x74, 0x73,
+  0x74, 0x544, 0x546, 0x544, 0x576, 0x574, 0x576, 0x544, 0x535, 0x544, 0x565, 0x574, 0x565, 0x544, 0x53b, 0x544,
+  0x56b, 0x574, 0x56b, 0x54e, 0x546, 0x54e, 0x576, 0x57e, 0x576, 0x544, 0x53d, 0x544, 0x56d, 0x574, 0x56d,
+};
+static const uint8_t unicode_case_ignorable_1[] = {
+  1, 2, 3, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 9, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 10, 11, 12, 13, 14, 0, 0, 15, 0, 0, 0, 0, 0, 0, 16, 0, 0,
+  0, 0, 0, 0, 0, 17, 0, 18, 0, 19, 20, 21, 22, 23, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25,
+};
+static const uint8_t unicode_case_ignorable_2[] = {
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 4, 5, 5, 6, 7, 0,
+  0, 0, 8, 0, 0, 9, 10, 11, 12, 13, 0, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
+  27, 28, 27, 29, 30, 31, 32, 33, 34, 35, 30, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
+  49, 50, 51, 52, 0, 0, 0, 0, 0, 0, 0, 0, 0, 53, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 54, 55, 56, 57, 58, 59, 60, 0, 61, 0, 0, 0, 62, 63, 64, 65, 66, 67, 68, 69,
+  70, 71, 0, 72, 73, 74, 75, 5, 0, 0, 0, 0, 0, 0, 76, 77, 78, 79, 80, 81, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 82, 0, 83, 0, 84, 0, 85,
+  86, 0, 0, 0, 0, 0, 0, 0, 87, 0, 88, 89, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 90, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 71, 0, 0, 0, 0, 91, 92, 93, 94, 95, 96, 97, 98,
+  99, 0, 0, 100, 101, 102, 103, 104, 105, 106, 107, 108, 0, 109, 0, 110, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 111, 0, 112, 113,
+  0, 0, 0, 0, 0, 0, 0, 0, 114, 115, 0, 116, 117, 118, 119, 120, 0, 0, 0, 0, 0, 0, 0, 121,
+  0, 0, 0, 122, 0, 123, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 124, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 125, 0, 0, 126, 0, 0, 0, 0, 0, 0, 0, 0, 127, 0, 0, 0,
+  0, 0, 128, 129, 0, 130, 131, 0, 132, 133, 134, 135, 136, 137, 138, 139, 140, 39, 0, 141, 37, 142, 0, 0,
+  143, 144, 145, 146, 0, 0, 147, 148, 149, 150, 151, 0, 152, 0, 0, 0, 153, 0, 0, 0, 154, 59, 0, 155,
+  156, 157, 158, 0, 0, 0, 0, 0, 159, 0, 160, 0, 161, 162, 163, 0, 0, 0, 0, 164, 165, 166, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 167, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 168, 169, 170, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 171, 172, 173, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 174,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 175, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 176, 177, 0, 0, 0, 0, 0, 0, 0, 178, 179, 0,
+  0, 180, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 181, 182, 183, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 184, 185, 171, 0, 186, 0, 0, 0, 0, 0, 187, 188, 0, 0, 0, 0,
+  0, 0, 0, 189, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 190, 0, 191, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 192, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 193, 5, 0, 0, 5, 5, 5, 194, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+};
+static const uint8_t unicode_case_ignorable_3[] = {
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 64, 0, 4, 0, 0, 0, 64, 1, 0, 0, 0,
+  0, 0, 0, 0, 0, 161, 144, 1, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+  255, 255, 255, 255, 255, 255, 48, 4, 176, 0, 0, 0, 0, 0, 0, 0, 248, 3, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 130, 0, 0, 0, 0, 0, 0, 254, 255, 255, 255, 255, 191, 182, 0, 0, 0, 0, 0, 16, 0,
+  63, 0, 255, 23, 0, 0, 0, 0, 1, 248, 255, 255, 0, 0, 1, 0, 0, 0, 192, 191, 255, 61, 0, 0,
+  0, 128, 2, 0, 0, 0, 255, 255, 255, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 192, 255, 1, 0,
+  0, 0, 0, 0, 0, 248, 63, 36, 0, 0, 192, 255, 255, 63, 0, 0, 0, 0, 0, 14, 0, 0, 0, 0,
+  0, 1, 3, 255, 0, 0, 0, 0, 0, 254, 255, 255, 255, 255, 255, 255, 7, 0, 0, 0, 0, 0, 0, 20,
+  254, 33, 254, 0, 12, 0, 2, 0, 2, 0, 0, 0, 0, 0, 0, 16, 30, 32, 0, 0, 12, 0, 0, 64,
+  6, 0, 0, 0, 0, 0, 0, 16, 134, 57, 2, 0, 0, 0, 35, 0, 190, 33, 0, 0, 12, 0, 0, 252,
+  2, 0, 0, 0, 0, 0, 0, 144, 30, 32, 96, 0, 12, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0,
+  1, 32, 0, 0, 0, 0, 0, 0, 17, 0, 0, 0, 0, 0, 0, 208, 193, 61, 96, 0, 12, 0, 0, 0,
+  64, 48, 0, 0, 12, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 24, 30, 32, 0, 0, 12, 0, 0, 0,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 4, 92, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 242, 7,
+  192, 127, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 242, 31, 64, 127, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 3, 0, 0, 160, 2, 0, 0, 0, 0, 0, 0, 254, 127, 223, 224, 255, 254, 255, 255, 255, 31,
+  64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 224, 253, 102, 0, 0, 0, 195, 1, 0, 30, 0,
+  100, 32, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 224, 0, 0, 0, 0,
+  0, 0, 28, 0, 0, 0, 12, 0, 0, 0, 12, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 176, 63,
+  64, 254, 143, 32, 0, 0, 0, 0, 0, 248, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0,
+  96, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 135, 1, 4, 14, 0, 0, 128, 9, 0, 0, 0, 0,
+  0, 0, 64, 127, 229, 31, 248, 159, 0, 0, 0, 0, 128, 0, 255, 255, 255, 127, 0, 0, 0, 0, 0, 0,
+  15, 0, 0, 0, 0, 0, 208, 23, 4, 0, 0, 0, 0, 248, 15, 0, 3, 0, 0, 0, 60, 59, 0, 0,
+  0, 0, 0, 0, 64, 163, 3, 0, 0, 0, 0, 0, 0, 240, 207, 0, 0, 0, 0, 0, 0, 0, 0, 63,
+  0, 0, 247, 255, 253, 33, 16, 3, 0, 0, 0, 0, 0, 240, 255, 255, 255, 255, 255, 255, 255, 7, 0, 1,
+  0, 0, 0, 248, 255, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 160, 3, 224, 0, 224, 0, 224, 0, 96,
+  0, 248, 0, 3, 144, 124, 0, 0, 0, 0, 0, 0, 223, 255, 2, 128, 0, 0, 255, 31, 0, 0, 0, 0,
+  0, 0, 255, 255, 255, 255, 1, 0, 0, 0, 0, 0, 0, 0, 0, 48, 0, 0, 0, 0, 0, 128, 3, 0,
+  0, 0, 0, 0, 0, 128, 0, 128, 0, 0, 0, 0, 255, 255, 255, 255, 0, 0, 0, 0, 0, 128, 0, 0,
+  32, 0, 0, 0, 0, 60, 62, 8, 0, 0, 0, 126, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 112,
+  0, 0, 32, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 247, 191,
+  0, 0, 0, 240, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 255, 255, 255, 255, 3, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 1, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 28, 3,
+  68, 8, 0, 0, 96, 16, 0, 0, 48, 0, 0, 0, 255, 255, 3, 128, 0, 0, 0, 0, 192, 63, 0, 0,
+  128, 255, 3, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 200, 51, 0, 128, 0, 0, 96, 0, 0, 0,
+  0, 0, 0, 0, 0, 126, 102, 0, 8, 16, 0, 0, 0, 0, 1, 16, 0, 0, 0, 0, 0, 0, 157, 193,
+  2, 0, 0, 32, 0, 48, 88, 0, 0, 0, 0, 248, 0, 14, 0, 0, 0, 0, 0, 0, 32, 33, 0, 0,
+  0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 252, 255, 7, 0, 0, 0, 0, 0, 0, 0,
+  255, 255, 8, 0, 255, 255, 0, 0, 0, 0, 36, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128,
+  128, 64, 0, 4, 0, 0, 0, 64, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 192, 0, 0, 0, 0,
+  0, 0, 0, 0, 8, 0, 0, 14, 0, 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 0, 1, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 192, 7, 191, 255, 255, 255, 255, 255, 253, 7, 110, 240, 0, 0, 0, 0, 0, 135,
+  0, 0, 0, 0, 96, 0, 0, 0, 0, 0, 0, 0, 240, 0, 0, 0, 0, 0, 0, 0, 0, 24, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 224, 192, 255, 1, 0, 0, 0, 0, 0, 60, 0, 0, 0, 0, 0, 0, 0,
+  2, 0, 0, 0, 0, 0, 0, 255, 127, 0, 0, 0, 0, 0, 25, 128, 3, 0, 0, 0, 0, 0, 120, 38,
+  4, 32, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 128, 239, 31, 0, 0, 0, 0, 0, 0, 0, 8, 0,
+  3, 0, 0, 0, 0, 0, 192, 127, 0, 158, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 211, 64,
+  0, 0, 0, 128, 248, 7, 0, 0, 1, 0, 0, 0, 192, 31, 31, 0, 0, 0, 0, 0, 0, 0, 0, 255,
+  92, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 248, 133, 13, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 60, 176, 1, 0, 0, 48, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 248, 167,
+  1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 40, 191, 0, 0, 0, 0, 224, 188, 15, 0, 0,
+  0, 0, 0, 0, 0, 128, 255, 6, 0, 0, 0, 0, 0, 0, 0, 88, 0, 0, 240, 12, 1, 0, 0, 0,
+  254, 7, 0, 0, 0, 0, 248, 121, 128, 0, 126, 14, 0, 0, 0, 0, 0, 252, 127, 3, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 127, 191, 0, 0, 252, 255, 255, 252, 109, 0, 0, 0, 0, 0, 0, 0, 126, 180,
+  191, 0, 0, 0, 0, 0, 0, 0, 0, 0, 163, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24, 0,
+  3, 0, 0, 0, 0, 0, 192, 7, 5, 0, 0, 0, 0, 0, 0, 0, 129, 255, 63, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 31, 0, 0, 0, 0, 0, 0, 0, 127, 0, 15, 0, 0, 0, 0, 0, 0, 0,
+  0, 128, 0, 0, 0, 0, 0, 0, 0, 128, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 27, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 239, 111, 0, 0, 0, 96, 15, 0, 0, 0, 255, 255, 255, 255, 255, 63, 255, 255,
+  127, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 3, 248, 255, 231, 15, 0, 0, 0, 60, 0, 0,
+  28, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 127, 248, 255, 255, 255, 255, 255, 31, 32, 0,
+  16, 0, 0, 248, 254, 255, 0, 0, 127, 255, 255, 249, 219, 7, 255, 255, 255, 255, 255, 255, 255, 63, 0, 0,
+  0, 0, 0, 0, 0, 0, 255, 63, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 240, 0, 0,
+  0, 0, 0, 0, 0, 248, 0, 0, 0, 0, 127, 0, 0, 0, 0, 0, 240, 15, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 248, 2, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 0, 0,
+};
+/* END GENERATED UNICODE CASE */
 
-I pys_unicode_flags(I cp) {  /* pure lookup, shared by str's five classification predicates */
-  if (cp < 0 || cp >= 0x110000) return 0;
-  I lo = 0, hi = sizeof unicode_classification / sizeof *unicode_classification;
-  while (lo < hi) {
-    I mid = (lo + hi) / 2;
-    if ((unicode_classification[mid] >> 4) <= cp) lo = mid + 1; else hi = mid;
-  }
-  return unicode_classification[lo - 1] & 15;  /* the first transition is U+0000 */
+/* A code point's value in a generated table above, with no search. The code points that UTF-8
+   writes in one or two bytes, which are most of the text that is not ASCII in the scripts with
+   case, index the _low array. Any other takes three loads: its high bits index stage 1, which
+   gives a block of stage 2; its next bits index that block, which gives a block of stage 3; its low
+   bits index that one. A stage keeps each distinct block once, the block of zeros as block 0, and
+   stage 1 ends with its last block that holds a value, so a code point past it has the value 0, as
+   has what is no code point (negative, or beyond U+10FFFF). A table of one bit for each code point
+   stages its bytes, eight code points to each, in the same way. */
+static inline uint64_t unicode_property(uint64_t cp) {
+  if (cp < sizeof unicode_property_low / sizeof *unicode_property_low) return unicode_property_low[cp];
+  if (cp >= (sizeof unicode_property_1 / sizeof *unicode_property_1) << 7) return 0;
+  uint64_t block = unicode_property_2[(uint64_t)unicode_property_1[cp >> 7] << 4 | (cp >> 3 & 15)];
+  return unicode_property_3[block << 3 | (cp & 7)];
+}
+static inline uint64_t unicode_case(uint64_t cp) {
+  if (cp < sizeof unicode_case_low / sizeof *unicode_case_low) return unicode_case_low[cp];
+  if (cp >= (sizeof unicode_case_1 / sizeof *unicode_case_1) << 8) return 0;
+  uint64_t block = unicode_case_1[cp >> 8];
+  if (!block) return 0;                        /* (the block of zeros: no script without case goes further) */
+  block = unicode_case_2[block << 5 | (cp >> 3 & 31)];
+  return unicode_case_3[block << 3 | (cp & 7)];
+}
+/* A code point's alpha=1, digit=2, decimal=4 and numeric=8: a pure lookup, for str's
+   classification predicates (runtime.py's every). */
+I pys_unicode_flags(I cp) { return unicode_property(cp); }
+
+/* str's case methods (runtime.py's mapu, ucased, utitled and final_sigma), for the code points that
+   are not ASCII: pure lookups, as pys_unicode_flags is.
+   A code point's upper=1, lower=2 and title=4 (CPython's Py_UNICODE_ISUPPER, ISLOWER and ISTITLE;
+   cased is any of them). */
+I pys_unicode_case_flags(I cp) { return unicode_case(cp) & 7; }
+/* What a code point maps to (kind 0 lower, 1 upper, 2 title, 3 casefold: CPython's
+   _PyUnicode_ToLowerFull, ToUpperFull, ToTitleFull and ToFoldedFull): one to three code points
+   of 21 bits each, the first lowest, or the code point itself where it has no mapping. */
+I pys_unicode_case_map(I cp, I kind) {
+  uint64_t record = unicode_case(cp) >> 3;
+  if (!record || (uint64_t)kind > 3) return cp;   /* (record 0: no mapping) */
+  uint32_t v = unicode_case_records[record * 4 + kind];
+  if (v >> 30 != 1) return cp + (int32_t)v;    /* a distance; else a full mapping, in the pool */
+  const uint16_t *p = unicode_case_pool + (v & 0xFFFF);
+  I r = p[0] | (I)p[1] << 21;
+  return ((v >> 16) & 1) ? r | (I)p[2] << 42 : r;
+}
+
+/* Whether a code point is case-ignorable (CPython's _PyUnicode_IsCaseIgnorable), which only the
+   context of a capital sigma asks (runtime.py's final_sigma): stages of its own, of a bit for each
+   code point, so that a program that maps case links them and not the properties. */
+I pys_unicode_case_ignorable(I cp) {
+  uint64_t at = (uint64_t)cp >> 3;
+  if (at >= (sizeof unicode_case_ignorable_1 / sizeof *unicode_case_ignorable_1) << 8) return 0;
+  uint64_t block = unicode_case_ignorable_2[(uint64_t)unicode_case_ignorable_1[at >> 8] << 5 | (at >> 3 & 31)];
+  return unicode_case_ignorable_3[block << 3 | (at & 7)] >> (cp & 7) & 1;
 }
 
 /* str.isprintable(), CPython's Py_UNICODE_ISPRINTABLE: false for the categories Cc Cf Cs Co Cn Zl
-   Zp and Zs (but U+0020), which repr() escapes. The code points from U+0080 on where it changes,
-   for Unicode 15.1 (unicodedata.unidata_version in CPython 3.13), as printed by
-   python3 -c 'p = lambda c: 0x80 <= c < 0x110000 and not chr(c).isprintable(); print(", ".join(hex(c) for c in range(0x80, 0x110000) if p(c) != p(c - 1)))' */
-static const int32_t pchange[] = {
-  0x80, 0xa1, 0xad, 0xae, 0x378, 0x37a, 0x380, 0x384, 0x38b, 0x38c, 0x38d, 0x38e, 0x3a2, 0x3a3, 0x530, 0x531, 0x557,
-  0x559, 0x58b, 0x58d, 0x590, 0x591, 0x5c8, 0x5d0, 0x5eb, 0x5ef, 0x5f5, 0x606, 0x61c, 0x61d, 0x6dd, 0x6de, 0x70e,
-  0x710, 0x74b, 0x74d, 0x7b2, 0x7c0, 0x7fb, 0x7fd, 0x82e, 0x830, 0x83f, 0x840, 0x85c, 0x85e, 0x85f, 0x860, 0x86b,
-  0x870, 0x88f, 0x898, 0x8e2, 0x8e3, 0x984, 0x985, 0x98d, 0x98f, 0x991, 0x993, 0x9a9, 0x9aa, 0x9b1, 0x9b2, 0x9b3,
-  0x9b6, 0x9ba, 0x9bc, 0x9c5, 0x9c7, 0x9c9, 0x9cb, 0x9cf, 0x9d7, 0x9d8, 0x9dc, 0x9de, 0x9df, 0x9e4, 0x9e6, 0x9ff,
-  0xa01, 0xa04, 0xa05, 0xa0b, 0xa0f, 0xa11, 0xa13, 0xa29, 0xa2a, 0xa31, 0xa32, 0xa34, 0xa35, 0xa37, 0xa38, 0xa3a,
-  0xa3c, 0xa3d, 0xa3e, 0xa43, 0xa47, 0xa49, 0xa4b, 0xa4e, 0xa51, 0xa52, 0xa59, 0xa5d, 0xa5e, 0xa5f, 0xa66, 0xa77,
-  0xa81, 0xa84, 0xa85, 0xa8e, 0xa8f, 0xa92, 0xa93, 0xaa9, 0xaaa, 0xab1, 0xab2, 0xab4, 0xab5, 0xaba, 0xabc, 0xac6,
-  0xac7, 0xaca, 0xacb, 0xace, 0xad0, 0xad1, 0xae0, 0xae4, 0xae6, 0xaf2, 0xaf9, 0xb00, 0xb01, 0xb04, 0xb05, 0xb0d,
-  0xb0f, 0xb11, 0xb13, 0xb29, 0xb2a, 0xb31, 0xb32, 0xb34, 0xb35, 0xb3a, 0xb3c, 0xb45, 0xb47, 0xb49, 0xb4b, 0xb4e,
-  0xb55, 0xb58, 0xb5c, 0xb5e, 0xb5f, 0xb64, 0xb66, 0xb78, 0xb82, 0xb84, 0xb85, 0xb8b, 0xb8e, 0xb91, 0xb92, 0xb96,
-  0xb99, 0xb9b, 0xb9c, 0xb9d, 0xb9e, 0xba0, 0xba3, 0xba5, 0xba8, 0xbab, 0xbae, 0xbba, 0xbbe, 0xbc3, 0xbc6, 0xbc9,
-  0xbca, 0xbce, 0xbd0, 0xbd1, 0xbd7, 0xbd8, 0xbe6, 0xbfb, 0xc00, 0xc0d, 0xc0e, 0xc11, 0xc12, 0xc29, 0xc2a, 0xc3a,
-  0xc3c, 0xc45, 0xc46, 0xc49, 0xc4a, 0xc4e, 0xc55, 0xc57, 0xc58, 0xc5b, 0xc5d, 0xc5e, 0xc60, 0xc64, 0xc66, 0xc70,
-  0xc77, 0xc8d, 0xc8e, 0xc91, 0xc92, 0xca9, 0xcaa, 0xcb4, 0xcb5, 0xcba, 0xcbc, 0xcc5, 0xcc6, 0xcc9, 0xcca, 0xcce,
-  0xcd5, 0xcd7, 0xcdd, 0xcdf, 0xce0, 0xce4, 0xce6, 0xcf0, 0xcf1, 0xcf4, 0xd00, 0xd0d, 0xd0e, 0xd11, 0xd12, 0xd45,
-  0xd46, 0xd49, 0xd4a, 0xd50, 0xd54, 0xd64, 0xd66, 0xd80, 0xd81, 0xd84, 0xd85, 0xd97, 0xd9a, 0xdb2, 0xdb3, 0xdbc,
-  0xdbd, 0xdbe, 0xdc0, 0xdc7, 0xdca, 0xdcb, 0xdcf, 0xdd5, 0xdd6, 0xdd7, 0xdd8, 0xde0, 0xde6, 0xdf0, 0xdf2, 0xdf5,
-  0xe01, 0xe3b, 0xe3f, 0xe5c, 0xe81, 0xe83, 0xe84, 0xe85, 0xe86, 0xe8b, 0xe8c, 0xea4, 0xea5, 0xea6, 0xea7, 0xebe,
-  0xec0, 0xec5, 0xec6, 0xec7, 0xec8, 0xecf, 0xed0, 0xeda, 0xedc, 0xee0, 0xf00, 0xf48, 0xf49, 0xf6d, 0xf71, 0xf98,
-  0xf99, 0xfbd, 0xfbe, 0xfcd, 0xfce, 0xfdb, 0x1000, 0x10c6, 0x10c7, 0x10c8, 0x10cd, 0x10ce, 0x10d0, 0x1249, 0x124a,
-  0x124e, 0x1250, 0x1257, 0x1258, 0x1259, 0x125a, 0x125e, 0x1260, 0x1289, 0x128a, 0x128e, 0x1290, 0x12b1, 0x12b2,
-  0x12b6, 0x12b8, 0x12bf, 0x12c0, 0x12c1, 0x12c2, 0x12c6, 0x12c8, 0x12d7, 0x12d8, 0x1311, 0x1312, 0x1316, 0x1318,
-  0x135b, 0x135d, 0x137d, 0x1380, 0x139a, 0x13a0, 0x13f6, 0x13f8, 0x13fe, 0x1400, 0x1680, 0x1681, 0x169d, 0x16a0,
-  0x16f9, 0x1700, 0x1716, 0x171f, 0x1737, 0x1740, 0x1754, 0x1760, 0x176d, 0x176e, 0x1771, 0x1772, 0x1774, 0x1780,
-  0x17de, 0x17e0, 0x17ea, 0x17f0, 0x17fa, 0x1800, 0x180e, 0x180f, 0x181a, 0x1820, 0x1879, 0x1880, 0x18ab, 0x18b0,
-  0x18f6, 0x1900, 0x191f, 0x1920, 0x192c, 0x1930, 0x193c, 0x1940, 0x1941, 0x1944, 0x196e, 0x1970, 0x1975, 0x1980,
-  0x19ac, 0x19b0, 0x19ca, 0x19d0, 0x19db, 0x19de, 0x1a1c, 0x1a1e, 0x1a5f, 0x1a60, 0x1a7d, 0x1a7f, 0x1a8a, 0x1a90,
-  0x1a9a, 0x1aa0, 0x1aae, 0x1ab0, 0x1acf, 0x1b00, 0x1b4d, 0x1b50, 0x1b7f, 0x1b80, 0x1bf4, 0x1bfc, 0x1c38, 0x1c3b,
-  0x1c4a, 0x1c4d, 0x1c89, 0x1c90, 0x1cbb, 0x1cbd, 0x1cc8, 0x1cd0, 0x1cfb, 0x1d00, 0x1f16, 0x1f18, 0x1f1e, 0x1f20,
-  0x1f46, 0x1f48, 0x1f4e, 0x1f50, 0x1f58, 0x1f59, 0x1f5a, 0x1f5b, 0x1f5c, 0x1f5d, 0x1f5e, 0x1f5f, 0x1f7e, 0x1f80,
-  0x1fb5, 0x1fb6, 0x1fc5, 0x1fc6, 0x1fd4, 0x1fd6, 0x1fdc, 0x1fdd, 0x1ff0, 0x1ff2, 0x1ff5, 0x1ff6, 0x1fff, 0x2010,
-  0x2028, 0x2030, 0x205f, 0x2070, 0x2072, 0x2074, 0x208f, 0x2090, 0x209d, 0x20a0, 0x20c1, 0x20d0, 0x20f1, 0x2100,
-  0x218c, 0x2190, 0x2427, 0x2440, 0x244b, 0x2460, 0x2b74, 0x2b76, 0x2b96, 0x2b97, 0x2cf4, 0x2cf9, 0x2d26, 0x2d27,
-  0x2d28, 0x2d2d, 0x2d2e, 0x2d30, 0x2d68, 0x2d6f, 0x2d71, 0x2d7f, 0x2d97, 0x2da0, 0x2da7, 0x2da8, 0x2daf, 0x2db0,
-  0x2db7, 0x2db8, 0x2dbf, 0x2dc0, 0x2dc7, 0x2dc8, 0x2dcf, 0x2dd0, 0x2dd7, 0x2dd8, 0x2ddf, 0x2de0, 0x2e5e, 0x2e80,
-  0x2e9a, 0x2e9b, 0x2ef4, 0x2f00, 0x2fd6, 0x2ff0, 0x3000, 0x3001, 0x3040, 0x3041, 0x3097, 0x3099, 0x3100, 0x3105,
-  0x3130, 0x3131, 0x318f, 0x3190, 0x31e4, 0x31ef, 0x321f, 0x3220, 0xa48d, 0xa490, 0xa4c7, 0xa4d0, 0xa62c, 0xa640,
-  0xa6f8, 0xa700, 0xa7cb, 0xa7d0, 0xa7d2, 0xa7d3, 0xa7d4, 0xa7d5, 0xa7da, 0xa7f2, 0xa82d, 0xa830, 0xa83a, 0xa840,
-  0xa878, 0xa880, 0xa8c6, 0xa8ce, 0xa8da, 0xa8e0, 0xa954, 0xa95f, 0xa97d, 0xa980, 0xa9ce, 0xa9cf, 0xa9da, 0xa9de,
-  0xa9ff, 0xaa00, 0xaa37, 0xaa40, 0xaa4e, 0xaa50, 0xaa5a, 0xaa5c, 0xaac3, 0xaadb, 0xaaf7, 0xab01, 0xab07, 0xab09,
-  0xab0f, 0xab11, 0xab17, 0xab20, 0xab27, 0xab28, 0xab2f, 0xab30, 0xab6c, 0xab70, 0xabee, 0xabf0, 0xabfa, 0xac00,
-  0xd7a4, 0xd7b0, 0xd7c7, 0xd7cb, 0xd7fc, 0xf900, 0xfa6e, 0xfa70, 0xfada, 0xfb00, 0xfb07, 0xfb13, 0xfb18, 0xfb1d,
-  0xfb37, 0xfb38, 0xfb3d, 0xfb3e, 0xfb3f, 0xfb40, 0xfb42, 0xfb43, 0xfb45, 0xfb46, 0xfbc3, 0xfbd3, 0xfd90, 0xfd92,
-  0xfdc8, 0xfdcf, 0xfdd0, 0xfdf0, 0xfe1a, 0xfe20, 0xfe53, 0xfe54, 0xfe67, 0xfe68, 0xfe6c, 0xfe70, 0xfe75, 0xfe76,
-  0xfefd, 0xff01, 0xffbf, 0xffc2, 0xffc8, 0xffca, 0xffd0, 0xffd2, 0xffd8, 0xffda, 0xffdd, 0xffe0, 0xffe7, 0xffe8,
-  0xffef, 0xfffc, 0xfffe, 0x10000, 0x1000c, 0x1000d, 0x10027, 0x10028, 0x1003b, 0x1003c, 0x1003e, 0x1003f, 0x1004e,
-  0x10050, 0x1005e, 0x10080, 0x100fb, 0x10100, 0x10103, 0x10107, 0x10134, 0x10137, 0x1018f, 0x10190, 0x1019d, 0x101a0,
-  0x101a1, 0x101d0, 0x101fe, 0x10280, 0x1029d, 0x102a0, 0x102d1, 0x102e0, 0x102fc, 0x10300, 0x10324, 0x1032d, 0x1034b,
-  0x10350, 0x1037b, 0x10380, 0x1039e, 0x1039f, 0x103c4, 0x103c8, 0x103d6, 0x10400, 0x1049e, 0x104a0, 0x104aa, 0x104b0,
-  0x104d4, 0x104d8, 0x104fc, 0x10500, 0x10528, 0x10530, 0x10564, 0x1056f, 0x1057b, 0x1057c, 0x1058b, 0x1058c, 0x10593,
-  0x10594, 0x10596, 0x10597, 0x105a2, 0x105a3, 0x105b2, 0x105b3, 0x105ba, 0x105bb, 0x105bd, 0x10600, 0x10737, 0x10740,
-  0x10756, 0x10760, 0x10768, 0x10780, 0x10786, 0x10787, 0x107b1, 0x107b2, 0x107bb, 0x10800, 0x10806, 0x10808, 0x10809,
-  0x1080a, 0x10836, 0x10837, 0x10839, 0x1083c, 0x1083d, 0x1083f, 0x10856, 0x10857, 0x1089f, 0x108a7, 0x108b0, 0x108e0,
-  0x108f3, 0x108f4, 0x108f6, 0x108fb, 0x1091c, 0x1091f, 0x1093a, 0x1093f, 0x10940, 0x10980, 0x109b8, 0x109bc, 0x109d0,
-  0x109d2, 0x10a04, 0x10a05, 0x10a07, 0x10a0c, 0x10a14, 0x10a15, 0x10a18, 0x10a19, 0x10a36, 0x10a38, 0x10a3b, 0x10a3f,
-  0x10a49, 0x10a50, 0x10a59, 0x10a60, 0x10aa0, 0x10ac0, 0x10ae7, 0x10aeb, 0x10af7, 0x10b00, 0x10b36, 0x10b39, 0x10b56,
-  0x10b58, 0x10b73, 0x10b78, 0x10b92, 0x10b99, 0x10b9d, 0x10ba9, 0x10bb0, 0x10c00, 0x10c49, 0x10c80, 0x10cb3, 0x10cc0,
-  0x10cf3, 0x10cfa, 0x10d28, 0x10d30, 0x10d3a, 0x10e60, 0x10e7f, 0x10e80, 0x10eaa, 0x10eab, 0x10eae, 0x10eb0, 0x10eb2,
-  0x10efd, 0x10f28, 0x10f30, 0x10f5a, 0x10f70, 0x10f8a, 0x10fb0, 0x10fcc, 0x10fe0, 0x10ff7, 0x11000, 0x1104e, 0x11052,
-  0x11076, 0x1107f, 0x110bd, 0x110be, 0x110c3, 0x110d0, 0x110e9, 0x110f0, 0x110fa, 0x11100, 0x11135, 0x11136, 0x11148,
-  0x11150, 0x11177, 0x11180, 0x111e0, 0x111e1, 0x111f5, 0x11200, 0x11212, 0x11213, 0x11242, 0x11280, 0x11287, 0x11288,
-  0x11289, 0x1128a, 0x1128e, 0x1128f, 0x1129e, 0x1129f, 0x112aa, 0x112b0, 0x112eb, 0x112f0, 0x112fa, 0x11300, 0x11304,
-  0x11305, 0x1130d, 0x1130f, 0x11311, 0x11313, 0x11329, 0x1132a, 0x11331, 0x11332, 0x11334, 0x11335, 0x1133a, 0x1133b,
-  0x11345, 0x11347, 0x11349, 0x1134b, 0x1134e, 0x11350, 0x11351, 0x11357, 0x11358, 0x1135d, 0x11364, 0x11366, 0x1136d,
-  0x11370, 0x11375, 0x11400, 0x1145c, 0x1145d, 0x11462, 0x11480, 0x114c8, 0x114d0, 0x114da, 0x11580, 0x115b6, 0x115b8,
-  0x115de, 0x11600, 0x11645, 0x11650, 0x1165a, 0x11660, 0x1166d, 0x11680, 0x116ba, 0x116c0, 0x116ca, 0x11700, 0x1171b,
-  0x1171d, 0x1172c, 0x11730, 0x11747, 0x11800, 0x1183c, 0x118a0, 0x118f3, 0x118ff, 0x11907, 0x11909, 0x1190a, 0x1190c,
-  0x11914, 0x11915, 0x11917, 0x11918, 0x11936, 0x11937, 0x11939, 0x1193b, 0x11947, 0x11950, 0x1195a, 0x119a0, 0x119a8,
-  0x119aa, 0x119d8, 0x119da, 0x119e5, 0x11a00, 0x11a48, 0x11a50, 0x11aa3, 0x11ab0, 0x11af9, 0x11b00, 0x11b0a, 0x11c00,
-  0x11c09, 0x11c0a, 0x11c37, 0x11c38, 0x11c46, 0x11c50, 0x11c6d, 0x11c70, 0x11c90, 0x11c92, 0x11ca8, 0x11ca9, 0x11cb7,
-  0x11d00, 0x11d07, 0x11d08, 0x11d0a, 0x11d0b, 0x11d37, 0x11d3a, 0x11d3b, 0x11d3c, 0x11d3e, 0x11d3f, 0x11d48, 0x11d50,
-  0x11d5a, 0x11d60, 0x11d66, 0x11d67, 0x11d69, 0x11d6a, 0x11d8f, 0x11d90, 0x11d92, 0x11d93, 0x11d99, 0x11da0, 0x11daa,
-  0x11ee0, 0x11ef9, 0x11f00, 0x11f11, 0x11f12, 0x11f3b, 0x11f3e, 0x11f5a, 0x11fb0, 0x11fb1, 0x11fc0, 0x11ff2, 0x11fff,
-  0x1239a, 0x12400, 0x1246f, 0x12470, 0x12475, 0x12480, 0x12544, 0x12f90, 0x12ff3, 0x13000, 0x13430, 0x13440, 0x13456,
-  0x14400, 0x14647, 0x16800, 0x16a39, 0x16a40, 0x16a5f, 0x16a60, 0x16a6a, 0x16a6e, 0x16abf, 0x16ac0, 0x16aca, 0x16ad0,
-  0x16aee, 0x16af0, 0x16af6, 0x16b00, 0x16b46, 0x16b50, 0x16b5a, 0x16b5b, 0x16b62, 0x16b63, 0x16b78, 0x16b7d, 0x16b90,
-  0x16e40, 0x16e9b, 0x16f00, 0x16f4b, 0x16f4f, 0x16f88, 0x16f8f, 0x16fa0, 0x16fe0, 0x16fe5, 0x16ff0, 0x16ff2, 0x17000,
-  0x187f8, 0x18800, 0x18cd6, 0x18d00, 0x18d09, 0x1aff0, 0x1aff4, 0x1aff5, 0x1affc, 0x1affd, 0x1afff, 0x1b000, 0x1b123,
-  0x1b132, 0x1b133, 0x1b150, 0x1b153, 0x1b155, 0x1b156, 0x1b164, 0x1b168, 0x1b170, 0x1b2fc, 0x1bc00, 0x1bc6b, 0x1bc70,
-  0x1bc7d, 0x1bc80, 0x1bc89, 0x1bc90, 0x1bc9a, 0x1bc9c, 0x1bca0, 0x1cf00, 0x1cf2e, 0x1cf30, 0x1cf47, 0x1cf50, 0x1cfc4,
-  0x1d000, 0x1d0f6, 0x1d100, 0x1d127, 0x1d129, 0x1d173, 0x1d17b, 0x1d1eb, 0x1d200, 0x1d246, 0x1d2c0, 0x1d2d4, 0x1d2e0,
-  0x1d2f4, 0x1d300, 0x1d357, 0x1d360, 0x1d379, 0x1d400, 0x1d455, 0x1d456, 0x1d49d, 0x1d49e, 0x1d4a0, 0x1d4a2, 0x1d4a3,
-  0x1d4a5, 0x1d4a7, 0x1d4a9, 0x1d4ad, 0x1d4ae, 0x1d4ba, 0x1d4bb, 0x1d4bc, 0x1d4bd, 0x1d4c4, 0x1d4c5, 0x1d506, 0x1d507,
-  0x1d50b, 0x1d50d, 0x1d515, 0x1d516, 0x1d51d, 0x1d51e, 0x1d53a, 0x1d53b, 0x1d53f, 0x1d540, 0x1d545, 0x1d546, 0x1d547,
-  0x1d54a, 0x1d551, 0x1d552, 0x1d6a6, 0x1d6a8, 0x1d7cc, 0x1d7ce, 0x1da8c, 0x1da9b, 0x1daa0, 0x1daa1, 0x1dab0, 0x1df00,
-  0x1df1f, 0x1df25, 0x1df2b, 0x1e000, 0x1e007, 0x1e008, 0x1e019, 0x1e01b, 0x1e022, 0x1e023, 0x1e025, 0x1e026, 0x1e02b,
-  0x1e030, 0x1e06e, 0x1e08f, 0x1e090, 0x1e100, 0x1e12d, 0x1e130, 0x1e13e, 0x1e140, 0x1e14a, 0x1e14e, 0x1e150, 0x1e290,
-  0x1e2af, 0x1e2c0, 0x1e2fa, 0x1e2ff, 0x1e300, 0x1e4d0, 0x1e4fa, 0x1e7e0, 0x1e7e7, 0x1e7e8, 0x1e7ec, 0x1e7ed, 0x1e7ef,
-  0x1e7f0, 0x1e7ff, 0x1e800, 0x1e8c5, 0x1e8c7, 0x1e8d7, 0x1e900, 0x1e94c, 0x1e950, 0x1e95a, 0x1e95e, 0x1e960, 0x1ec71,
-  0x1ecb5, 0x1ed01, 0x1ed3e, 0x1ee00, 0x1ee04, 0x1ee05, 0x1ee20, 0x1ee21, 0x1ee23, 0x1ee24, 0x1ee25, 0x1ee27, 0x1ee28,
-  0x1ee29, 0x1ee33, 0x1ee34, 0x1ee38, 0x1ee39, 0x1ee3a, 0x1ee3b, 0x1ee3c, 0x1ee42, 0x1ee43, 0x1ee47, 0x1ee48, 0x1ee49,
-  0x1ee4a, 0x1ee4b, 0x1ee4c, 0x1ee4d, 0x1ee50, 0x1ee51, 0x1ee53, 0x1ee54, 0x1ee55, 0x1ee57, 0x1ee58, 0x1ee59, 0x1ee5a,
-  0x1ee5b, 0x1ee5c, 0x1ee5d, 0x1ee5e, 0x1ee5f, 0x1ee60, 0x1ee61, 0x1ee63, 0x1ee64, 0x1ee65, 0x1ee67, 0x1ee6b, 0x1ee6c,
-  0x1ee73, 0x1ee74, 0x1ee78, 0x1ee79, 0x1ee7d, 0x1ee7e, 0x1ee7f, 0x1ee80, 0x1ee8a, 0x1ee8b, 0x1ee9c, 0x1eea1, 0x1eea4,
-  0x1eea5, 0x1eeaa, 0x1eeab, 0x1eebc, 0x1eef0, 0x1eef2, 0x1f000, 0x1f02c, 0x1f030, 0x1f094, 0x1f0a0, 0x1f0af, 0x1f0b1,
-  0x1f0c0, 0x1f0c1, 0x1f0d0, 0x1f0d1, 0x1f0f6, 0x1f100, 0x1f1ae, 0x1f1e6, 0x1f203, 0x1f210, 0x1f23c, 0x1f240, 0x1f249,
-  0x1f250, 0x1f252, 0x1f260, 0x1f266, 0x1f300, 0x1f6d8, 0x1f6dc, 0x1f6ed, 0x1f6f0, 0x1f6fd, 0x1f700, 0x1f777, 0x1f77b,
-  0x1f7da, 0x1f7e0, 0x1f7ec, 0x1f7f0, 0x1f7f1, 0x1f800, 0x1f80c, 0x1f810, 0x1f848, 0x1f850, 0x1f85a, 0x1f860, 0x1f888,
-  0x1f890, 0x1f8ae, 0x1f8b0, 0x1f8b2, 0x1f900, 0x1fa54, 0x1fa60, 0x1fa6e, 0x1fa70, 0x1fa7d, 0x1fa80, 0x1fa89, 0x1fa90,
-  0x1fabe, 0x1fabf, 0x1fac6, 0x1face, 0x1fadc, 0x1fae0, 0x1fae9, 0x1faf0, 0x1faf9, 0x1fb00, 0x1fb93, 0x1fb94, 0x1fbcb,
-  0x1fbf0, 0x1fbfa, 0x20000, 0x2a6e0, 0x2a700, 0x2b73a, 0x2b740, 0x2b81e, 0x2b820, 0x2cea2, 0x2ceb0, 0x2ebe1, 0x2ebf0,
-  0x2ee5e, 0x2f800, 0x2fa1e, 0x30000, 0x3134b, 0x31350, 0x323b0, 0xe0100, 0xe01f0
-};
-static int printable(I c) {            /* c >= 0x80: printable unless an odd number of changes are <= c */
-  I lo = 0, hi = sizeof pchange / sizeof *pchange;
-  while (lo < hi) { I m = (lo + hi) / 2; if (pchange[m] <= c) lo = m + 1; else hi = m; }
-  return !(lo & 1);
+   Zp and Zs (but U+0020), which repr() escapes. A bit for each code point, in tables of its own:
+   every program links them, since an uncaught exception's message goes through repr(). */
+static int printable(I c) {
+  uint64_t cp = c, at = cp >> 3, bits;
+  if (at < sizeof unicode_printable_low / sizeof *unicode_printable_low) bits = unicode_printable_low[at];
+  else if (at >= (sizeof unicode_printable_1 / sizeof *unicode_printable_1) << 8) return 0;
+  else bits = unicode_printable_3[(uint64_t)unicode_printable_2[(uint64_t)unicode_printable_1[at >> 8] << 4 | (at >> 4 & 15)] << 4 | (at & 15)];
+  return bits >> (cp & 7) & 1;
 }
 /* @ffi.extern: copy a returned char * into str/bytes storage (must: 0 optional, 1 str, 2 bytes). */
 Str *pys_cstr(const char *p, I must) {
@@ -9469,6 +10918,7 @@ static void trk_sweep(void) {          /* after marking */
     }
 }
 I pys_collected(void) { return ndq ? dq[--ndq] : 0; }   /* a value whose owner a collection found dropped, once; 0: none */
+void pys_gc_collect(void) { if (!gc_off) collect(); }   /* gc.collect() (lib/_pystachy_gc.py): a collection now, but for PYSTACHY_GC=off */
 static I trk_report(I *ex) { *ex = trk_exit; return trk ? trk_gc : -1; }
 I pys_trk_pop(void) {                  /* at exit (pyembed.c): every value not released yet, then 0 */
   static I i = -1;

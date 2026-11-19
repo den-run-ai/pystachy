@@ -1,0 +1,5 @@
+selfpkg: start
+selfpkg.child: start
+fallback: selfpkg
+done
+[exit 0]

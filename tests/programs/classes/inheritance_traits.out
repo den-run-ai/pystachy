@@ -1,0 +1,6 @@
+['def f 1', 'statement at -1', 'statement at 11'] [10, -1, 11]
+['x', 'f', '@f'] ['m.x', 'func f', 'm.@f'] ['m.x line 5', 'func f line 10', 'm.@f line 11']
+['def f 1', 'lambda 0', 'statement at 11', 'node'] ['at 10', 'at 10', 'at 11', 'at 5']
+[True, False, True, False] [True, False, True, True] [False, True, False, False]
+[False, True, False] True -1 statement at -1
+[exit 0]

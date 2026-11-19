@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.ir import Val, Values
 from src.pystachy_compiler.loader import Loader
+from src.pystachy_compiler.machine_ir import machine_ops
 from tools.test_typed_union_proofs import Case
 
 
@@ -43,11 +44,13 @@ class DynamicRawTests(unittest.TestCase):
     def test_lowering_preserves_the_existing_two_load_instructions(self):
         c, _ = raw_case()
         ins = c.b.code[0]
-        c.g.lower_ins(c.fn, ins)
+        for machine in machine_ops(ins):
+            c.g.lower_ins(c.fn, machine)
         raw = c.g.out[:]
         c.g.out = []
         ins.op, ins.s = "dyn.payload", "int"
-        c.g.lower_ins(c.fn, ins)
+        for machine in machine_ops(ins):
+            c.g.lower_ins(c.fn, machine)
         self.assertEqual(raw, c.g.out)
         self.assertEqual(raw, ["  %t1 = getelementptr i64, ptr %a0, i64 1",
                                "  %t2 = load i64, ptr %t1"])

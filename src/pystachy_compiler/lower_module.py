@@ -5,7 +5,8 @@ object dispatch and process/extension entry points. They do not create IR operat
 """
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail, dynamic_program, int_lists
-from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Val
+from src.pystachy_compiler.ir import Data, Val
+from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.llvm_abi import llstr
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import COMPLEXC, CTYPES, DYNTYPE_LL, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, LISTLEN_RANGE, OBJECTC, RANGEC, RECURSION_BRANCH, RTDATA, RTSYM, STR_HEADER_SIZE, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_DEPTH_TYPE, TBAA_FIELDS, TBAA_FLOOR, TBAA_FLOOR_TYPE, TBAA_LEN, TBAA_LIMIT, TBAA_LIMIT_TYPE, TBAA_NAMES, TBAA_SIZES
@@ -77,6 +78,19 @@ def jit_alloc(ir: str) -> str:
     ir = ir.replace("declare ptr @pys_alloc(i64)\n", "define internal ptr @pys_alloc(i64 %n) noinline" + JITFAST)
     ir = ir.replace("declare ptr @pys_new(i64)\n", "define internal ptr @pys_new(i64 %n) noinline" + JITFAST)
     return ir + fl + slow
+
+
+def unprofiled_generators(ir: str) -> str:
+    # The IR of a build that writes profiles (the driver's aot_profile), with noprofile on each
+    # generator function, a presplitcoroutine (lowering.py's define line): LLVM 18 aborts where
+    # it applies a profile to one, so none is recorded for them, and a build that uses the
+    # profile compiles them as it does without one
+    out: list[str] = []
+    for line in ir.split("\n"):
+        if line.startswith("define ") and ") presplitcoroutine" in line:
+            line = line.replace(") presplitcoroutine", ") presplitcoroutine noprofile")
+        out.append(line)
+    return "\n".join(out)
 
 
 def address_runtime_ir(ir: str) -> str:
