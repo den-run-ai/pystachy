@@ -143,6 +143,15 @@ def rows(data: list[float], i: int, j: int, dim: int) -> float:
     return s
 
 
+def backward(xs: list[float], hi: int, lo: int) -> float:
+    # listguard counting down: xs[i] and xs[i - 1] for lo < i <= hi, where tests before the loop
+    # find lo + 1 at least 1 and hi + 1 at most len(xs)
+    s = 0.0
+    for i in range(hi, lo, -1):
+        s = s * 0.5 + xs[i] - xs[i - 1]
+    return s
+
+
 def main() -> None:
     cache = Cache()
     print(item([1, 2, 3], 1), last([4, 5]), pair([4, 5]), ends([1, 2, 3, 4]), total([1, 2, 3]))
@@ -153,6 +162,7 @@ def main() -> None:
     smooth = [0.0] * 5
     smoothed([1.0, 2.0, 3.0, 4.0, 5.0], smooth)
     print(smooth, pairs([1, 2, 3, 4, 5]), shifted([1, 2, 3]), rows([1.0, 2.0, 3.0, 5.0], 0, 1, 2))
+    print(backward([1.0, 2.0, 4.0, 8.0], 3, 0))
 
 
 main()

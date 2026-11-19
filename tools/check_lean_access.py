@@ -428,6 +428,10 @@ def conclusions(fact, by_name, index, relevant, lower_bounds=()):
         for other in partners(a, ("off",)):
             if other[1] == a:
                 out.append((("ge", other[2], k - other[3]), [other, fact]))
+        # (a < b, so b >= k + 1: a descending loop's index above its stop)
+        for other in partners(a, ("lt",)):
+            if other[1] == a:
+                out.append((("ge", other[2], k + 1), [other, fact]))
         # (a length known to be at least k above a constant bound of an index; or, a nonnegative
         # index of such a bound)
         for other in index:
@@ -478,6 +482,12 @@ def conclusions(fact, by_name, index, relevant, lower_bounds=()):
                 out.append((("below", other[1], n), [other, fact]))
     elif kind == "off":
         a, b, j = fact[1], fact[2], fact[3]
+        if j >= 1:  # (a = b + j > b)
+            out.append((("lt", b, a), [fact]))
+        if j <= 0:  # (a = b + j <= b < c)
+            for other in partners(b, ("lt",)):
+                if other[1] == b:
+                    out.append((("lt", a, other[2]), [fact, other]))
         for other in partners(a, ("le",)):
             if other[2] == a:  # (x + k <= a = b + j)
                 out.append((("le", other[1], b, other[3] - j), [other, fact]))
@@ -517,6 +527,11 @@ def conclusions(fact, by_name, index, relevant, lower_bounds=()):
             for other in partners(n, ("le",)):
                 if other[1] == n:  # (i < n, n + k <= b)
                     out.append((("le", i, other[2], other[3] + 1), [fact, other]))
+            for other in partners(i, ("ge", "off")):
+                if other[0] == "ge" and other[1] == i:  # (n > i >= k)
+                    out.append((("ge", n, other[2] + 1), [fact, other]))
+                elif other[0] == "off" and other[2] == i and other[3] <= 0:  # (x = i + k <= i < n)
+                    out.append((("lt", other[1], n), [other, fact]))
         bounded = i if kind == "lt" else n
         for other in partners(bounded, ("ge", "len")):
             if (other[0] == "ge" and other[2] >= 0) or (other[0] == "len" and other[1] == bounded):
@@ -619,15 +634,18 @@ def closure(start, new, relevant, lower_bounds=(), kinds=None):
         for part in mention_set(fact):
             by_name.setdefault(part, []).append(fact)
     premises = {}
-    # (the strongest difference bound a + k <= b and upper bound a <= k known for each pair or
-    # value: a weaker one adds nothing, as each rule that uses one gives at least as much from the
-    # stronger, and a cycle of offsets and orders could derive weaker ones without end)
+    # (the strongest difference bound a + k <= b, upper bound a <= k and lower bound a >= k known for
+    # each pair or value: a weaker one adds nothing, as each rule that uses one gives at least as
+    # much from the stronger, and a cycle of offsets and orders could derive weaker ones without end;
+    # but a lower bound of 0 or of lower_bounds, which joins intersect, is kept)
     strongest = {}
     for fact in facts:
         if fact[0] == "le":
             strongest[("le", fact[1], fact[2])] = max(strongest.get(("le", fact[1], fact[2]), fact[3]), fact[3])
         elif fact[0] == "atMost":
             strongest[("atMost", fact[1])] = min(strongest.get(("atMost", fact[1]), fact[2]), fact[2])
+        elif fact[0] == "ge":
+            strongest[("ge", fact[1])] = max(strongest.get(("ge", fact[1]), fact[2]), fact[2])
     pending = deque(fact for fact in new if fact in index)
     while pending:
         fact = pending.popleft()
@@ -650,6 +668,11 @@ def closure(start, new, relevant, lower_bounds=(), kinds=None):
                 if known_k is not None and known_k <= derived[2]:
                     continue
                 strongest[("atMost", derived[1])] = derived[2]
+            elif derived[0] == "ge":
+                known_k = strongest.get(("ge", derived[1]))
+                if known_k is not None and known_k >= derived[2] and derived[2] != 0 and derived[2] not in lower_bounds:
+                    continue
+                strongest[("ge", derived[1])] = derived[2] if known_k is None else max(known_k, derived[2])
             facts.append(derived)
             index.add(derived)
             premises[derived] = needs
@@ -766,6 +789,14 @@ def rule(known, goal):
                 return True
             if f[0] == "off" and f[2] == a and any(g[0] == "ge" and g[1] == f[1] and k <= g[2] - f[3] for g in known):
                 return True
+            if f[0] == "lt" and f[2] == a and any(g[0] == "ge" and g[1] == f[1] and k <= g[2] + 1 for g in known):
+                return True
+        return substituted(known, goal)
+    if kind == "lt":
+        a, b = goal[1], goal[2]
+        if any(f[0] == "off" and ((f[1] == b and f[2] == a and f[3] >= 1) or
+                                  (f[1] == a and f[3] <= 0 and ("lt", f[2], b) in known)) for f in known):
+            return True
         return substituted(known, goal)
     if kind == "atMost":
         a, k = goal[1], goal[2]

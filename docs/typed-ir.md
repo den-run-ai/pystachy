@@ -772,12 +772,15 @@ can establish invariant list bindings. The whole function must exclude list writ
 Coroutines are excluded because their callers can mutate a list while they are suspended.
 `listguard` handles the range loops `listget` leaves checked.
 
-`listguard` copies an innermost loop over `range(start, stop)` or `range(start, stop, step)`
-that counts up, such as `t += a[i] * b[i]`, `b[i] = (a[i - 1] + a[i] + a[i + 1]) / 3`,
-`zi[j] += xik * yk[j]`, LU's `a[k] -= f * b[k]` over `range(j + 1, n)` or a sparse row's
-`range(row[r], row[r + 1])`: its step is a positive constant or a variable that a test before the
-loop finds positive (range evaluates its arguments once, so no iteration changes them; a loop
-that counts down keeps its checks). No op of the loop may make a list shorter or run user code
+`listguard` copies an innermost loop over `range(start, stop)` or `range(start, stop, step)`,
+such as `t += a[i] * b[i]`, `b[i] = (a[i - 1] + a[i] + a[i + 1]) / 3`,
+`zi[j] += xik * yk[j]`, LU's `a[k] -= f * b[k]` over `range(j + 1, n)`, a sparse row's
+`range(row[r], row[r + 1])` or back substitution's `range(n - 1, -1, -1)`: its step is a constant
+other than 0 or a variable that a test before the loop finds positive (range evaluates its
+arguments once, so no iteration changes them). Its index runs from `lo` to `hi - 1`: `lo = start`
+and `hi = stop` where it counts up, and where it counts down (a negative constant step)
+`lo = stop + 1` and `hi = start + 1`, which the tests compute, checked; below, `start` and `stop`
+stand for `lo` and `hi`. No op of the loop may make a list shorter or run user code
 (`U`): one that writes lists (`wL`) must assign an item or add items (`append`, `insert`,
 `extend`), after which every length the tests read stays a lower bound, and a call counts as its
 callee's effects, in which an item assignment is a list write; a coroutine, a loop that a `try`
@@ -789,7 +792,8 @@ or a `list.store`, which stores the item inline as `list.set` does where no modu
 promoting ints or dynamic `Any` (elsewhere assignments keep their checks); and listfast's inline
 test always passes. Where `start` is a small constant, only indexes with `start + c >= 0` are;
 where it is a variable, a test before the loop checks `start + c >= 0` for the smallest such
-`c`. The copy of a loop with a variable step tests only `i < stop`. Tests before the loop run the copy where every such list has `stop <= len(xs) - c` for its
+`c`. The copy of a loop with a variable step tests only `i < stop`
+(`tests/ir/list_guard_down.py` pins loops that count down). Tests before the loop run the copy where every such list has `stop <= len(xs) - c` for its
 largest `c`, which keeps `0 <= i + c < len(xs)` for every `i` the loop takes; a list that a local
 not yet assigned would hold, and any shorter list, run the loop as compiled, which raises
 `IndexError` (or `UnboundLocalError`) after the same iterations as CPython

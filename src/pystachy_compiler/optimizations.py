@@ -638,6 +638,19 @@ def guard_operand(v: str) -> bool:
     return v.startswith("%t") or v.startswith("%a") or (0 < len(d) <= 18 and d.isdigit())
 
 
+def guard_sum(self, fn: IFn, tests: list[Blk], a: str, b: str, out: str) -> str:
+    # a + b, checked, at the end of the last test block (gen_listguard): the sum's register; the
+    # tests go on in a new block, and to out (the loop as compiled) where the sum overflows
+    self.runtime("llvm.sadd.with.overflow.i64")
+    add = Ins("ovf", "int", "+")
+    add.a = [Val(a, "int"), Val(b, "int")]
+    add.r = [fn.n + 1, fn.n + 2, fn.n + 3]
+    fn.n += 3
+    tests[len(tests) - 1].code.append(add)
+    guard_branch(fn, tests, tmpname(add.r[2]), out, "")
+    return tmpname(add.r[1])
+
+
 def guard_atmost(fn: IFn, tests: list[Blk], a: str, b: str, out: str) -> None:
     # a <= b at the end of the last test block: the tests go on in a new block where it holds, and
     # to out where it does not
@@ -790,11 +803,14 @@ class GuardPlan:
         self.stores: list[Ins] = []
         self.folds: list[Ins] = []
         self.inline: list[Ins] = []
-        # the range's first value and step (an int literal or a register), the first value where it
-        # is a small literal (else NO_OFFSET), and otherwise the smallest constant that an index
-        # without a base adds (the tests check start + low >= 0)
+        # the range's first value and step (an int literal or a register), whether it counts down (a
+        # negative constant step), the index's smallest value where a small literal gives it (the
+        # start of a loop that counts up, stop + 1 of one that counts down; else NO_OFFSET), and
+        # otherwise the smallest constant that an index without a base adds (the tests check
+        # lo + low >= 0, lo being the start or stop + 1)
         self.first = ""
         self.step = ""
+        self.down = False
         self.lowest = NO_OFFSET
         self.low = 0
         # the bases that indexes add (guard_base's keys: "slot S" or a register), the smallest constant
@@ -812,8 +828,8 @@ def guard_plan(self, fn: IFn, lp: Loop, vs: Values, pl: dict[str, list[int]], at
     # the plan for range loop lp (gen_listguard), or None where it gets no copy
     if lp.kind != "range" or len(lp.idx) != 1 or lp.head not in at or lp.body not in at or not guard_operand(lp.inc.v) or not guard_operand(lp.stop.v):
         return None
-    if not lp.inc.v.startswith("%") and int(lp.inc.v) <= 0:
-        return None  # (a loop that counts down; a zero step raises ValueError before the loop)
+    if not lp.inc.v.startswith("%") and int(lp.inc.v) == 0:
+        return None  # (range() raises ValueError before the loop)
     region: dict[str, bool] = {lp.head: True}
     pending = [lp.body]
     ops = len(fn.blocks[at[lp.head]].code)
@@ -851,8 +867,10 @@ def guard_plan(self, fn: IFn, lp: Loop, vs: Values, pl: dict[str, list[int]], at
     plan.region = region
     plan.first = start
     plan.step = lp.inc.v
-    if guard_literal(start):
-        plan.lowest = int(start)
+    plan.down = not plan.step.startswith("%") and int(plan.step) < 0
+    lowest = lp.stop.v if plan.down else start
+    if guard_literal(lowest):
+        plan.lowest = int(lowest) + 1 if plan.down else int(lowest)
     # a call of a function that the program names nowhere else (Gen.callsites), which LLVM inlines
     # as an internal function's last call: once the copy calls it too, LLVM would inline neither
     # call, and the copy would run slower than the loop did (#1300). The copy's call is inlined
@@ -912,7 +930,7 @@ def guard_plan(self, fn: IFn, lp: Loop, vs: Values, pl: dict[str, list[int]], at
                 if c == NO_OFFSET or key == "" or (base == "" and plan.lowest != NO_OFFSET and plan.lowest + c < 0):
                     continue
                 if base != "" and plan.lowest == NO_OFFSET:
-                    continue  # (an index with a base, of a loop whose start is a register: kept checked)
+                    continue  # (an index with a base, of a loop whose lo is a register: kept checked)
                 if base == "" and plan.lowest == NO_OFFSET and (len(plan.most) == 0 or c < plan.low):
                     plan.low = c  # (the tests check lo + c >= 0 for the smallest such c)
                 for summed in found:
@@ -980,25 +998,26 @@ def guard_plan(self, fn: IFn, lp: Loop, vs: Values, pl: dict[str, list[int]], at
 
 def gen_listguard(self, fn: IFn) -> int:
     # Unchecked list accesses in range loops, behind tests before each loop. An innermost loop over
-    # range(start, stop) or range(start, stop, step), with a positive constant step or a variable
-    # one, which the tests check is positive (range evaluates its arguments once: no iteration
-    # changes them), none of whose ops makes a list shorter (guard_shrinks: no op with wL but item
-    # assignments and ops that only add items, LIST_GROWS, and no user code, U), gets a copy. Each
-    # read or assignment of an item of a
-    # list the loop does not rebind (a value it does not define, or a local slot it does not store),
-    # at the loop's index i plus a constant c (xs[i], ys[i + 1], zs[i - 1] = v), is unchecked in the
-    # copy (where start is a small literal, only those with start + c >= 0): a list.load, or a
-    # list.store, which stores the item as list.set does where no list holds numeric identities (a
-    # program none of whose modules opts in to promoting ints or dynamic Any; elsewhere assignments
-    # keep their checks); and listfast's inline read is. The tests run the copy where start + c >= 0
-    # for the smallest such c (where start is a register) and each such list, as the loop starts,
-    # has stop <= len(xs) - c for its largest c: then 0 <= i + c < len(xs) for every i the loop
-    # takes, as no list gets shorter while it runs. Otherwise the loop runs as compiled, raising
-    # IndexError where CPython raises it, after the same iterations. An index may also add a base b
-    # that no iteration changes (guard_base: data[bi + d]), where start is a small literal; then the
-    # tests check start + c + b >= 0 for b's smallest c, compute stop + b, checked, and need
-    # stop + b <= len(xs) - c for each list's largest c with b; the copy reads b once, from the
-    # tests, and adds it without an overflow check (guard_loop). The copy keeps every other check.
+    # range(start, stop) or range(start, stop, step), with a constant step other than 0 or a
+    # variable one, which the tests check is positive (range evaluates its arguments once: no
+    # iteration changes them), none of whose ops makes a list shorter (guard_shrinks: no op with wL
+    # but item assignments and ops that only add items, LIST_GROWS, and no user code, U), gets a
+    # copy. Its index i takes values from lo to hi - 1: lo = start and hi = stop where it counts up,
+    # lo = stop + 1 and hi = start + 1, checked, where it counts down (a negative step). Each read
+    # or assignment of an item of a list the loop does not rebind (a value it does not define, or a
+    # local slot it does not store), at i plus a constant c (xs[i], ys[i + 1], zs[i - 1] = v), is
+    # unchecked in the copy (where lo is a small literal, only those with lo + c >= 0): a list.load,
+    # or a list.store, which stores the item as list.set does where no list holds numeric
+    # identities (a program none of whose modules opts in to promoting ints or dynamic Any;
+    # elsewhere assignments keep their checks); and listfast's inline read is. The tests run the
+    # copy where lo + c >= 0 for the smallest such c (where lo is a register) and each such list, as
+    # the loop starts, has hi <= len(xs) - c for its largest c: then 0 <= i + c < len(xs) for every i
+    # the loop takes, as no list gets shorter while it runs. Otherwise the loop runs as compiled,
+    # raising IndexError where CPython raises it, after the same iterations. An index may also add a
+    # base b that no iteration changes (guard_base: data[bi + d]), where lo is a small literal; then
+    # the tests check lo + c + b >= 0 for b's smallest c, compute hi + b, checked, and need
+    # hi + b <= len(xs) - c for each list's largest c with b; the copy reads b once, from the tests,
+    # and adds it without an overflow check (guard_loop). The copy keeps every other check.
     # A coroutine is left as it is (a caller may
     # change a list while it is suspended), as is a loop that a try statement covers or that holds
     # another loop or more than GUARD_OPS ops. How many accesses the copies leave unchecked
@@ -1137,7 +1156,7 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
                 d.a = [Val("true", "bool")]  # (listfast's check, which the test before the loop makes)
                 n += 1
             elif i.op == "ovf" and len([x for x in plan.basesums if x is i]) > 0:
-                # b + i, an index's base and the loop's index: start + b >= -c and stop + b fit, which
+                # b + i, an index's base and the loop's index: lo + b >= -c and hi + b fit, which
                 # the tests before the loop check, so b + i does, for every i the loop takes
                 fitted[tmpname(d.r[2])] = True
                 d.op = "scalar.bin"
@@ -1185,15 +1204,22 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
         cur.code.append(skip)
         tests.append(nxt)
         cur = nxt
-    # a variable step must be positive (otherwise the loop runs as compiled), and a start that is no
-    # small literal must keep start + c >= 0 for the smallest c that an index adds
+    # the index's bounds where the loop runs: lo, its smallest value, and hi, one past its largest:
+    # start and stop where it counts up (a variable step must be positive, or the loop runs as
+    # compiled), stop + 1 and start + 1, checked, where it counts down; and a lo that is no small
+    # literal must keep lo + c >= 0 for the smallest c that an index without a base adds
     if plan.step.startswith("%"):
         guard_atmost(fn, tests, "1", plan.step, lp.head)
-    if plan.lowest == NO_OFFSET:
-        guard_atmost(fn, tests, str(-plan.low), plan.first, lp.head)
+    lo = plan.first
+    hi = lp.stop.v
+    if plan.down:
+        lo = str(plan.lowest) if plan.lowest != NO_OFFSET else guard_sum(self, fn, tests, lp.stop.v, "1", lp.head)
+        hi = str(int(plan.first) + 1) if guard_literal(plan.first) else guard_sum(self, fn, tests, plan.first, "1", lp.head)
+    if plan.lowest == NO_OFFSET and len(plan.most) > 0:
+        guard_atmost(fn, tests, str(-plan.low), lo, lp.head)
     cur = tests[len(tests) - 1]
-    # each base b's tests: start + c + b >= 0 for its smallest c, then s = stop + b, checked; where
-    # either fails, the loop runs as compiled
+    # each base b's tests: lo + c + b >= 0 for its smallest c (lo is a small literal here), then
+    # s = hi + b, checked; where either fails, the loop runs as compiled
     ends: dict[str, str] = {}  # (each base's s)
     for base in plan.bases:
         if base.startswith("slot "):
@@ -1217,7 +1243,7 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
         cur = nxt
         self.runtime("llvm.sadd.with.overflow.i64")
         add = Ins("ovf", "int", "+")
-        add.a = [Val(lp.stop.v, "int"), Val(based[base], "int")]
+        add.a = [Val(hi, "int"), Val(based[base], "int")]
         add.r = [fn.n + 1, fn.n + 2, fn.n + 3]
         fn.n += 3
         cur.code.append(add)
@@ -1247,7 +1273,7 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
             cur.code.append(less)
             limit = tmpname(fn.n)
         fits = Ins("scalar.cmp", "bool", "sle")
-        fits.a = [Val(lp.stop.v, "int"), Val(limit, "int")]
+        fits.a = [Val(hi, "int"), Val(limit, "int")]
         fn.n += 1
         fits.r = [fn.n]
         cur.code.append(fits)

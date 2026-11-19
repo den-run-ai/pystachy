@@ -237,7 +237,7 @@ class AdapterTests(SnapshotFixture):
                          {"@f.item": 1, "@f.last": 1, "@f.pair": 2, "@f.ends": 2, "@f.tail3": 4,
                           "@f.class_lookup": 2, "@f.total": 1, "@f.odd_lengths": 1, "@f.ranked": 1,
                           "@f.counted": 3, "@f.global_lookup": 1, "@f.smoothed": 4, "@f.pairs": 4, "@f.shifted": 2,
-                          "@f.rows": 2, "@m.Cache.lookup": 1})
+                          "@f.rows": 2, "@f.backward": 2, "@m.Cache.lookup": 1})
 
     def test_selection_and_snapshot_header_are_checked(self):
         with self.assertRaisesRegex(ValueError, "exactly one function"):
@@ -293,8 +293,8 @@ class ProvedCheckerTests(SnapshotFixture):
     def test_every_access_of_the_example_is_proved(self):
         fields, code = check_all(self.snapshot, CHECKER)
         self.assertEqual((fields["status"], code), ("accepted", 0), fields)
-        self.assertEqual(fields["totals"]["proved_accesses"], 32)
-        self.assertEqual(fields["totals"]["accesses"], 32)
+        self.assertEqual(fields["totals"]["proved_accesses"], 34)
+        self.assertEqual(fields["totals"]["accesses"], 34)
 
     def test_negated_guards_prove_only_the_safe_branch(self):
         for kind in ("list", "dict"):
@@ -528,6 +528,53 @@ class ProvedCheckerTests(SnapshotFixture):
             self.assertNotIn("lists", [node["op"] for node in nodes], text)
             self.assertTrue(self.verdict(snapshot, "@f.smoothed"), text)
 
+    def test_a_descending_copy_is_proved_and_each_corruption_of_its_tests_rejects(self):
+        # (listguard counting down: the copy's reads of xs[i] and xs[i - 1] hold where the tests
+        # before the loop find lo = stop + 1 at least 1 and hi = start + 1 at most len(xs); the
+        # loop's own test stop < i bounds i below, and i < hi holds on every iteration)
+        self.assertTrue(self.verdict(copy.deepcopy(self.snapshot), "@f.backward"))
+
+        def tests_of(function):
+            # (the tests' checked sums stop + 1 and start + 1, in that order, and the test of lo)
+            sums = [operation for block in function["blocks"] for operation in block["operations"]
+                    if operation["op"] == "ovf" and operation["text"] == "+" and operation["operands"][1]["value"] == "1"]
+            low = next(operation for block in function["blocks"] for operation in block["operations"]
+                       if operation["op"] == "scalar.cmp" and operation["text"] == "sle"
+                       and operation["operands"][0]["value"] == "1")
+            return sums[0], sums[1], low
+
+        def lowered():
+            # (lo tested at least 0: xs[i - 1] may read xs[-1])
+            snapshot, function = self.selected("@f.backward")
+            tests_of(function)[2]["operands"][0]["value"] = "0"
+            return snapshot
+
+        def raised():
+            # (hi = start, not start + 1: the first index may equal the length tested)
+            snapshot, function = self.selected("@f.backward")
+            tests_of(function)[1]["operands"][1]["value"] = "0"
+            return snapshot
+
+        def shifted():
+            # (lo = stop + 2: an index one below what the tests allow)
+            snapshot, function = self.selected("@f.backward")
+            tests_of(function)[0]["operands"][1]["value"] = "2"
+            return snapshot
+
+        for corrupt in (lowered, raised, shifted):
+            self.assertFalse(self.verdict(corrupt(), "@f.backward"), corrupt.__name__)
+
+    def test_an_order_and_an_offset_derive_no_weaker_lower_bound_without_end(self):
+        # (listguard's copy of a loop with xs[i + 2]: t = x + 2 and x < t, so x >= -21 from
+        # t >= -19 gives t >= -20, weaker, then x >= -22, and so on without end, which exceeded the
+        # resource bound; a weaker lower bound adds nothing but 0 and those joins intersect)
+        start = [("off", "t", "x", 2), ("lt", "x", "t"), ("ge", "t", -19)]
+        facts, _ = access.closure(start, [("ge", "t", -19)], {"t", "x"})
+        self.assertLess(len(facts), 8)
+        self.assertEqual(sorted(f for f in facts if f[0] == "ge"), [("ge", "t", -19), ("ge", "x", -21)])
+        facts, _ = access.closure(start, [("ge", "t", -19)], {"t", "x"}, lower_bounds=(-30,))
+        self.assertIn(("ge", "t", -30), facts)
+
     def test_a_cycle_of_offsets_and_orders_stops_at_the_strongest_bound(self):
         # (listguard's copy of range(i, i + 256): t = x + 256, x < t and t <= n give x + 1 <= n,
         # and that with t = x + 256 gives t - 255 <= n, weaker than t <= n, and so on without
@@ -606,7 +653,7 @@ class ProvedCheckerTests(SnapshotFixture):
         code, report = run("--snapshot", str(self.snapshot_path), "--function", "@f.total")
         self.assertEqual((code, report["status"], report["checked"]), (0, "accepted", True))
         code, report = run("--snapshot", str(self.snapshot_path), "--all")
-        self.assertEqual((code, report["status"], report["totals"]["proved_accesses"]), (0, "accepted", 32))
+        self.assertEqual((code, report["status"], report["totals"]["proved_accesses"]), (0, "accepted", 34))
         with tempfile.TemporaryDirectory() as temporary:
             emitted = Path(temporary) / "candidate.json"
             code, report = run("--snapshot", str(self.snapshot_path), "--function", "@f.item", "--emit", str(emitted))
@@ -665,6 +712,19 @@ def base_loop(low=0, checked=True, inclusive=False, stored=False, offset=0, stop
 
 class RegisterSumMirrorTests(unittest.TestCase):
     """The Python mirror of PystachyAccess's facts about sums of two values."""
+
+    def test_orders_from_offsets_and_bounds_through_orders(self):
+        # (b = a + k with k >= 1 gives a < b; a = c + k with k <= 0 and c < b gives a < b; b < a
+        # and b >= j give a >= j + 1: listguard's copies of loops that count down)
+        self.assertTrue(access.rule([("off", "e", "a", 1)], ("lt", "a", "e")))
+        self.assertFalse(access.rule([("off", "e", "a", 0)], ("lt", "a", "e")))
+        self.assertTrue(access.rule([("off", "t", "i", -1), ("lt", "i", "e")], ("lt", "t", "e")))
+        self.assertFalse(access.rule([("off", "t", "i", 1), ("lt", "i", "e")], ("lt", "t", "e")))
+        self.assertTrue(access.rule([("lt", "s", "i"), ("ge", "s", 0)], ("ge", "i", 1)))
+        self.assertFalse(access.rule([("lt", "s", "i"), ("ge", "s", 0)], ("ge", "i", 2)))
+        facts, _ = access.closure([("off", "e", "a", 1), ("off", "t", "a", -1)], [("off", "e", "a", 1)], {"a", "e", "t"})
+        self.assertIn(("lt", "a", "e"), facts)
+        self.assertIn(("lt", "t", "e"), facts)
 
     def test_a_checked_sum_gives_its_fact_only_where_it_fits(self):
         node = {"op": "add_checked_reg", "dst": "t", "x": "s", "y": "b", "next": 1, "overflow": 2}
