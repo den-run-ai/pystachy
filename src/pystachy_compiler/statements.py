@@ -472,7 +472,11 @@ def gen_loop(self, body: list[Node], lp: Loop) -> list[dict[str, str]]:
     self.wdepth.append(len(self.exits))
     self.brks.append([])
     self.branch += 1
+    header = self.line
     self.stmts(body)
+    # (what the loop runs after its body, a for loop's step and its way back to the test, is the
+    # loop statement's, as CPython numbers it: its header's line, not its body's last)
+    self.line = header
     self.branch -= 1
     # (what follows the loop also follows its breaks, which may end branches whose stores of
     # an attribute the code after those branches does not follow: unions.py's path_undo)
@@ -1112,6 +1116,7 @@ def gen_stmt_main(self, n: Node) -> None:
         if not cm:
             self.stmts(n.kids[-1].kids)
         if not self.term:
+            self.line = n.line  # (closing its files is the with statement's, as CPython numbers its exit)
             self.leave(n0)
         self.exits = self.exits[:n0]
     elif k == "reduce":
