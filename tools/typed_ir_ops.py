@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Views of the typed IR's operation table (OPS, src/pystachy_compiler/specs.py).
 
-The table is the one definition of each operation's shape. This tool writes the reference
-table of docs/typed-ir.md from it (--write), fails when that table is out of date (--check),
-and prints the rows as JSON for other tools (--json): the Lean shape checker reads them.
+The table is the one definition of each operation's shape and types. This tool writes the
+reference tables of docs/typed-ir.md from it (--write), fails when they are out of date
+(--check), and prints the rows as JSON for other tools (--json): the Lean shape checker reads
+them.
 
     python3 tools/typed_ir_ops.py --check
     python3 tools/typed_ir_ops.py --write
@@ -11,19 +12,49 @@ and prints the rows as JSON for other tools (--json): the Lean shape checker rea
 import argparse
 import json
 from pathlib import Path
+import re
 import sys
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from src.pystachy_compiler.specs import FX, OPS  # noqa: E402
+from src.pystachy_compiler.specs import FX, OPS, TYPE_CLASSES, type_list  # noqa: E402
 
 DOC = ROOT / "docs/typed-ir.md"
 BEGIN = "<!-- typed-ir-ops: begin (written by tools/typed_ir_ops.py --write) -->"
 END = "<!-- typed-ir-ops: end -->"
-COLUMNS = ("effects", "operands", "results", "labels", "fields", "value")
+COLUMNS = ("effects", "operands", "results", "labels", "fields", "value", "types")
 FLAGS = ("T", "E", "*")
 FIELD_BITS = {"t": 1, "s": 2, "k": 4, "x": 8}
+VARIABLE = re.compile(r"\$([A-Za-z_][A-Za-z0-9_]*)(?::([A-Za-z_][A-Za-z0-9_]*))?")
+
+
+def constraints(name, text, low, high, fields):
+    """(operand constraints, result constraint) of a types column, or (None, None) for *."""
+    if text == "*":
+        return None, None
+    arrow = text.find("->")
+    operands = type_list(text[:arrow] if arrow >= 0 else text)
+    result = text[arrow + 2:].strip() if arrow >= 0 else ""
+    if arrow >= 0 and result == "":
+        raise ValueError(f"{name}: a types column's -> needs a result type")
+    if (high == 0 and operands) or (high != 0 and not operands) or (high is not None and len(operands) > high):
+        raise ValueError(f"{name}: {len(operands)} operand types for {low} to {high if high is not None else 'any'} operands")
+    if (result != "") != ("t" in fields):
+        raise ValueError(f"{name}: a result type is given where the op sets Ins.t, and only there")
+    kinds = {}
+    for c in [*operands, *([result] if result else [])]:
+        found = VARIABLE.findall(c)
+        if len(found) > 1 or (not found and "$" in c):
+            raise ValueError(f"{name}: {c!r} holds more than one variable or a stray $")
+        for variable, kind in found:
+            if kind and (kind not in TYPE_CLASSES or kinds.get(variable, kind) != kind):
+                raise ValueError(f"{name}: {c!r} gives ${variable} the class {kind}, which it has not")
+            if kind:
+                kinds[variable] = kind
+        if not found and (" " in c or c == ""):
+            raise ValueError(f"{name}: invalid type {c!r}")
+    return operands, result
 
 
 def rows():
@@ -68,11 +99,12 @@ def rows():
             raise ValueError(f"{name}: value {value} names no number of its {row['results']} results")
         if "E" in tokens and ("T" in tokens or labels != "0"):
             raise ValueError(f"{name}: entry storage neither ends a block nor branches")
+        operand_types, result_type = constraints(name, row["types"], low, high, fields)
         result.append({
             "name": name, "text": text, "effects": [t for t in tokens if t not in FLAGS],
             "terminator": "T" in tokens, "entry": "E" in tokens, "varies": "*" in tokens,
             "min": low, "max": high, "results": results, "temporaries": temporaries, "labels": labels,
-            "fields": fields, "value": value,
+            "fields": fields, "value": value, "operand_types": operand_types, "result_type": result_type,
         })
     return result
 
@@ -90,7 +122,7 @@ def schema():
 def reference():
     """The Markdown reference table, one line per operation."""
     words = {"a": "one per operand", "i": "0, or 2 as an invoke"}
-    lines = [BEGIN, "", "| Operation | Effects | Operands | Results | Labels | Fields | Value |", "|---|---|---|---|---|---|---|"]
+    lines = [BEGIN, "", "| Operation | Effects | Operands | Results | Labels | Fields | Value | Types |", "|---|---|---|---|---|---|---|---|"]
     for row in rows():
         kind = [w for flag, w in (("terminator", "ends its block"), ("entry", "entry storage"),
                                   ("varies", "per instruction")) if row[flag]]
@@ -101,7 +133,11 @@ def reference():
                                                            for j in range(row["results"])))
         fields = ", ".join(f"`{f}`" for f in row["fields"]) or "none"
         value = ("none", "first", "second", "each")[row["value"]]
-        lines.append(f"| `{row['name']}` | {effects} | {operands} | {results} | {words.get(row['labels'], row['labels'])} | {fields} | {value} |")
+        types = row["text"].split("|")[6]
+        types = "per instruction" if types == "*" else f"`{types}`".replace("|", "\\|") if types else "none"
+        lines.append(f"| `{row['name']}` | {effects} | {operands} | {results} | {words.get(row['labels'], row['labels'])} | {fields} | {value} | {types} |")
+    lines.extend(["", "| Type class | Admits |", "|---|---|"])
+    lines.extend(f"| `{name}` | {admits} |" for name, admits in TYPE_CLASSES.items())
     return "\n".join([*lines, "", END])
 
 

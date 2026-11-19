@@ -213,7 +213,7 @@ class MachineCheckTests(unittest.TestCase):
         errors = StringIO()
         with redirect_stderr(errors), self.assertRaises(SystemExit):
             Gen().verify(fn, False)
-        self.assertIn("mach.load needs a machine storage value type", errors.getvalue())
+        self.assertIn("mach.load result needs a native value type other than None, or %ptr, %byte or %i32, got %slot", errors.getvalue())
 
 
 class CompiledProgramTests(unittest.TestCase):

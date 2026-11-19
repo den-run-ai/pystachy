@@ -3,10 +3,12 @@ from __future__ import annotations
 from src.pystachy_compiler.diagnostics import dynamic_program, fail, int_lists, int_program
 from src.pystachy_compiler.dynamic_proof import DynamicProof, DynTypes
 from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, operand_kind, tmpname
+from src.pystachy_compiler.scalar_ir import SCALAR_INTS
+from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
-from src.pystachy_compiler.specs import BIG, FX, FXALL, FXBIT, ICMP, IROPS, LIST_READS, LIST_WRITES, NONEVAR, RAWR, RAWW, RUNTIME
-from src.pystachy_compiler.specs import OPS, OP_ENTRY, OP_FIELDS, OP_INVOKE, OP_K, OP_LABELS, OP_MAX, OP_MIN, OP_PER_OPERAND, OP_S, OP_T, OP_TEMPS, OP_X, RESULT_NUMBERS
-from src.pystachy_compiler.utils import elem, gelem, generator_identity, is_dict, is_gen, is_opt, is_set, is_tuple, is_union, is_vtuple, list_read_error, list_receiver_error, list_write_error, lt, same_kind, targs, tslots, umembers
+from src.pystachy_compiler.specs import BIG, FX, FXALL, FXBIT, ICMP, IROPS, LIST_READS, LIST_WRITES, NONEVAR, RAWR, RAWW, RUNTIME, TYPE_CLASSES
+from src.pystachy_compiler.specs import OPS, OP_ENTRY, OP_FIELDS, OP_INVOKE, OP_K, OP_LABELS, OP_MAX, OP_MIN, OP_OPERAND_TYPES, OP_PER_OPERAND, OP_RESULT_TYPE, OP_S, OP_T, OP_TEMPS, OP_X, RESULT_NUMBERS
+from src.pystachy_compiler.utils import gelem, generator_identity, is_dict, is_gen, is_opt, is_set, is_tuple, is_union, list_read_error, list_receiver_error, list_write_error, lt, same_kind, targs, tslots, umembers, unopt
 
 class EffectSummaries:
     # One compilation's completed function contexts. FnInfo retains each context's parameter
@@ -137,6 +139,170 @@ def op_shape_error(i: Ins, entry: bool) -> str:
     return ""
 
 
+# the element types a runtime-length tuple holds besides objects of declared classes (Gen.vtuple_holds)
+VTUPLE_ELEMS: list[str] = ["int", "float", "bool", "str", "dyn", "opt[int]", "opt[float]", "opt[bool]", "opt[str]", "opt[dyn]"]
+
+
+def native_type(t: str, classes: dict[str, ClassInfo]) -> bool:
+    # a Python value's native type (specs.TYPE_CLASSES): no machine type (%), address or packed
+    # slot (*) or descriptor (#), and a runtime type variable only where a class has its name
+    return t != "" and not t.startswith("%") and not t.startswith("*") and t != "#" and ((t != "T" and t != "K" and t != "V" and t != "S") or t in classes)
+
+
+def fixed_tuple(t: str) -> bool:
+    # a fixed tuple's type: every item's type given, none a runtime length (...)
+    if not is_tuple(t) or not t.endswith("]") or t.count("[") != t.count("]"):
+        return False
+    ts = targs(t)
+    return "" not in ts and "..." not in ts
+
+
+def union_members(u: str, classes: dict[str, ClassInfo]) -> list[str]:
+    # the members of a nonoptional closed union: two or more, each a distinct native value type,
+    # and none None, optional or a union; [] for any other type
+    ms = umembers(u) if is_union(u) and u.endswith("]") else []
+    if len(ms) < 2:
+        return []
+    for j in range(len(ms)):
+        m = ms[j]
+        if m == "None" or is_opt(m) or is_union(m) or m.count("[") != m.count("]") or ms.index(m) != j or not native_type(m, classes):
+            return []
+    return ms
+
+
+def name_end(c: str, at: int) -> int:
+    # where the name of a type variable or class that starts at c[at] ends
+    while at < len(c) and (c[at].isalnum() or c[at] == "_"):
+        at += 1
+    return at
+
+
+class OpTypes:
+    # The types column's check of a function's ops (specs.OPS, op_type_error): its declared
+    # classes, and the closed unions found so far, each validated once, whose members the union
+    # proofs read. Per op: each variable's class (kinds), its type (bound) and where that is.
+    def __init__(self, fn: IFn, classes: dict[str, ClassInfo], unions: dict[str, list[str]]):
+        self.fn = fn
+        self.classes = classes
+        self.unions = unions
+        self.kinds: dict[str, str] = {}
+        self.bound: dict[str, str] = {}
+        self.where: dict[str, str] = {}
+
+    def admits(self, name: str, t: str) -> bool:
+        # whether type t is of the type class name (specs.TYPE_CLASSES)
+        native = native_type(t, self.classes)
+        if name == "any":
+            return True
+        if name == "native":
+            return native
+        if name == "scalar":
+            return (native and t != "None") or t == "%ptr" or t == "%byte" or t == "%i32" or t == "%slot"
+        if name == "machine":
+            return (native and t != "None") or t == "%ptr" or t == "%byte" or t == "%i32"
+        if name == "ref":
+            return native and (t == "None" or lt(t) == "ptr")
+        if name == "number":
+            return t == "int" or t == "float"
+        if name == "numeric":
+            return t == "bool" or t == "int" or t == "float"
+        if name == "arith":
+            return t in SCALAR_INTS or t == "float"
+        if name == "bits":
+            return t in SCALAR_INTS or t == "float" or t == "%ptr"
+        if name == "union":
+            if t not in self.unions:
+                ms = union_members(t, self.classes)
+                if len(ms) == 0:
+                    return False
+                self.unions[t] = ms
+            return True
+        if name == "ftuple":
+            return fixed_tuple(t)
+        if name == "class":
+            return t in self.classes
+        if name == "layout":
+            return t in self.classes or fixed_tuple(t)
+        if name == "velem":
+            if t in VTUPLE_ELEMS:
+                return True
+            # (or objects of declared classes, also of a union of them: Gen.vtuple_holds)
+            for m in umembers(t) if is_union(t) else [t]:
+                if m not in self.classes:
+                    return False
+            return True
+        if name == "item":
+            return list_receiver_error("list[" + t + "]") == ""
+        if name == "dictset":
+            return is_dict(t) or is_set(t)
+        if name == "gen":
+            return is_gen(t)
+        if name == "return":
+            # (or, in a function that returns opt[T] of a reference T, a T, whose pointer is its
+            # value as null is None; and an empty container's whose types are not known yet,
+            # Gen.holes, of the kind it returns)
+            r = self.fn.f.ret
+            some = unopt(r) if is_opt(r) and lt(unopt(r)) == "ptr" else r
+            return t == r or t == some or ("?" in t and (same_kind(t, r) or same_kind(t, some)))
+        fail(f"internal error: the operation table names {name}, which is no type class", 0)
+        return False
+
+    def need(self, c: str, t: str, place: str) -> str:
+        # What constraint c of a types column asks for where type t is not that, or "". c is a
+        # type, a type class, or a type around a variable ($T, *$T, list[$E]): the variable is
+        # bound to its part of the first type it meets, which must be of its class, and later
+        # each must be what that makes it
+        v = c.find("$")
+        if v < 0:
+            if c in TYPE_CLASSES:
+                return "" if self.admits(c, t) else TYPE_CLASSES[c]
+            return "" if t == c else c
+        e = name_end(c, v + 1)
+        name = c[v + 1 : e]
+        prefix = c[:v]
+        suffix = c[name_end(c, e + 1) :] if e < len(c) and c[e] == ":" else c[e:]
+        if name in self.bound:
+            want = prefix + self.bound[name] + suffix
+            return "" if t == want else f"{want} (${name} is {self.bound[name]} at {self.where[name]})"
+        kind = self.kinds[name] if name in self.kinds else ""
+        inner = ""
+        if len(t) > len(prefix) + len(suffix) and t.startswith(prefix) and t.endswith(suffix):
+            inner = t[len(prefix) : len(t) - len(suffix)]
+        if inner == "" or (kind != "" and not self.admits(kind, inner)):
+            what = TYPE_CLASSES[kind] if kind != "" else "a type"
+            return what if prefix == "" and suffix == "" else f"{prefix}${name}{suffix}, ${name} {what}"
+        self.bound[name] = inner
+        self.where[name] = place
+        return ""
+
+
+def op_type_error(check: OpTypes, i: Ins) -> str:
+    # What the types column of i's row (specs.OPS) says of its operand and result types, or "".
+    # Its last operand constraint holds for any further operands, and a variable's class may be
+    # given at any of its names. (An rt, call, icall or init op is built to its signature.)
+    if i.op not in OP_OPERAND_TYPES:
+        return ""
+    cs = OP_OPERAND_TYPES[i.op]
+    result = OP_RESULT_TYPE[i.op]
+    check.kinds = {}
+    check.bound = {}
+    check.where = {}
+    for c in cs + [result]:
+        v = c.find("$")
+        e = name_end(c, v + 1) if v >= 0 else 0
+        if v >= 0 and e < len(c) and c[e] == ":":
+            check.kinds[c[v + 1 : e]] = c[e + 1 : name_end(c, e + 1)]
+    for j in range(len(i.a) if len(cs) > 0 else 0):
+        need = check.need(cs[j] if j < len(cs) else cs[len(cs) - 1], i.a[j].t, f"operand {j}")
+        if need != "":
+            return f"{i.op} operand {j} needs {need}, got {i.a[j].t or 'no type'}"
+    if result != "":
+        need = check.need(result, i.t, "the result")
+        if need != "":
+            return f"{i.op} result needs {need}, got {i.t or 'no type'}"
+    return ""
+
+
 def verify_dynamic_raw(self, fn: IFn) -> None:
     # Raw dynamic payload bits are only an identity-comparison input. Collect all
     # producers before uses: block order and an operand's annotation cannot hide
@@ -196,6 +362,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
             self.bad_ir(fn, fn.blocks[j], f"a label above IFn.n ({fn.n})")
         at[l] = j
     succ: list[list[str]] = []
+    types = OpTypes(fn, self.classes, union_types)
     for b in fn.blocks:
         # Most blocks can borrow their terminator's labels without combining edges.
         out: list[str] = NOLABELS
@@ -204,6 +371,13 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
             i = b.code[j]
             if i.op not in IROPS:
                 self.bad_ir(fn, b, f"unknown op {i.op}")
+            # (its row first, its shape and then its types, as MLIR's generated verifiers precede
+            # an op's own; the checks of each op below assume both)
+            shape = op_shape_error(i, False)
+            if shape == "":
+                shape = op_type_error(types, i)
+            if shape != "":
+                self.bad_ir(fn, b, shape)
             inv = len(i.b) == 2 and (i.op == "rt" or i.op == "call" or i.op == "icall" or i.op == "init" or i.op == "gen.resume")
             if ("T" in IROPS[i.op] or inv) != (j == len(b.code) - 1):
                 self.bad_ir(fn, b, f"a terminator in the middle, at {i.op}" if j < len(b.code) - 1 else f"no terminator, last {i.op}")
@@ -227,50 +401,33 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     error = list_write_error(i, int_lists(), self.rtfns[i.s].sig)
                     if error != "":
                         self.bad_ir(fn, b, error)
-            if i.op == "list.store":
+            if i.op == "list.store" and (int_lists() or dynamic_program()):
                 # an item assignment that listguard proved within the list's length, in a program
                 # whose lists hold no numeric identities (none opts in): no index check, and no
                 # identity companion to update, which list.set would
-                t = i.a[0].t if len(i.a) == 3 else ""
-                if len(i.a) != 3 or i.t != "" or i.s != "" or i.x != "" or i.k != 0 or len(i.b) != 0 or list_receiver_error(t) != "":
-                    self.bad_ir(fn, b, "list.store needs a list, an index and an item, and no metadata")
-                elif i.a[1].t != "int" or i.a[2].t != "*" + elem(t):
-                    self.bad_ir(fn, b, "list.store needs an int index and the list's packed item")
-                elif int_lists() or dynamic_program():
-                    self.bad_ir(fn, b, "list.store in a program whose lists may hold numeric identities")
+                self.bad_ir(fn, b, "list.store in a program whose lists may hold numeric identities")
             if i.op == "list.len" or i.op == "list.load" or (i.op == "rt" and i.s in LIST_READS):
                 error = list_read_error(i, self.rtfns[i.s].sig if i.op == "rt" else None)
                 if error != "":
                     self.bad_ir(fn, b, error)
             if i.op == "empty.kind":
-                if len(i.a) != 1 or i.t != "" or i.s != "" or i.x != "" or len(i.b) != 0 or i.k < 0 or i.k >= len(self.holes):
-                    self.bad_ir(fn, b, "empty.kind needs one empty dict/set and a valid type hole")
+                if i.k < 0 or i.k >= len(self.holes):
+                    self.bad_ir(fn, b, "empty.kind needs a valid type hole")
                 t = i.a[0].t
-                if not (is_dict(t) or is_set(t)) or (i.k == 0 and "?" in t):
+                if i.k == 0 and "?" in t:
                     self.bad_ir(fn, b, "empty.kind needs a dict/set key type or a deferred hole")
                 h = self.holes[i.k] if i.k > 0 else t
                 if h != "" and (not same_kind(t, h) or "?" in h):
                     self.bad_ir(fn, b, "empty.kind needs a concrete hole of the same dict/set kind")
             if i.op == "scalar.bin" or i.op == "scalar.cast" or i.op == "scalar.cmp":
                 self.verify_scalar(fn, b, i)
-            if i.op == "select":
-                if len(i.a) != 3 or i.s != "" or i.x != "" or i.k != 0 or len(i.b) != 0:
-                    self.bad_ir(fn, b, "select needs three operands and no extra metadata")
-                t = i.t
-                if i.a[0].t != "bool" or i.a[1].t != t or i.a[2].t != t:
-                    self.bad_ir(fn, b, "select needs a bool condition and matching value and result types")
-                if t == "" or t == "None" or t.startswith("*") or t == "#" or (t.startswith("%") and t not in ["%ptr", "%byte", "%i32", "%slot"]) or ((t == "T" or t == "K" or t == "V" or t == "S") and t not in self.classes):
-                    self.bad_ir(fn, b, "select needs a native or machine scalar value type")
-
             if i.op == "switch":
-                # (an int, then its cases, distinct int literals, with the default's label and then
-                # one for each case; a block that starts with a phi it reaches by one edge at
-                # most, as a phi has one entry for each block that branches there)
-                if len(i.a) < 2 or len(i.b) != len(i.a) or i.a[0].t != "int" or i.t != "" or i.s != "" or i.x != "" or i.k != 0:
-                    self.bad_ir(fn, b, "switch needs an int, its cases, and the default's label and theirs")
+                # (its cases are distinct int literals, with the default's label and then one for
+                # each case; a block that starts with a phi it reaches by one edge at most, as a
+                # phi has one entry for each block that branches there)
                 cases: dict[str, bool] = {}
                 for cv in i.a[1:]:
-                    if cv.t != "int" or not (cv.v[1:] if cv.v.startswith("-") else cv.v).isdigit() or cv.v in cases:
+                    if not (cv.v[1:] if cv.v.startswith("-") else cv.v).isdigit() or cv.v in cases:
                         self.bad_ir(fn, b, "switch needs distinct int literal cases")
                     cases[cv.v] = True
                 edges: dict[str, int] = {}
@@ -278,46 +435,13 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     edges[l] = edges[l] + 1 if l in edges else 1
                     if edges[l] == 2 and l in at and len(fn.blocks[at[l]].code) > 0 and fn.blocks[at[l]].code[0].op == "phi":
                         self.bad_ir(fn, b, f"a switch reaches {l}, which starts with a phi, by more than one edge")
-
             if i.op == "mach.load" or i.op == "mach.store" or i.op == "mach.addr":
                 if i.op == "mach.load" and i.t == "int":
                     machine_tags = True
                 self.verify_memory(fn, b, i, False)
-            if i.op == "mem.load" or i.op == "mem.store":
-                if len(i.a) != (1 if i.op == "mem.load" else 2) or i.s != "" or i.x != "" or i.k != 0 or len(i.b) != 0:
-                    self.bad_ir(fn, b, f"{i.op} has invalid operands or extra metadata")
-                t = i.a[0].t[1:] if i.a[0].t.startswith("*") else ""
-                if t == "" or t.startswith("%") or t.startswith("*") or t == "#" or ((t == "T" or t == "K" or t == "V" or t == "S") and t not in self.classes):
-                    self.bad_ir(fn, b, f"{i.op} needs a typed address of a native value")
-                if (i.op == "mem.load" and i.t != t) or (i.op == "mem.store" and (i.t != "" or i.a[1].t != t)):
-                    self.bad_ir(fn, b, f"{i.op} needs matching address and native value types")
-            if i.op == "alloc.fixed":
-                if len(i.a) != 0 or i.s != "" or i.x != "" or i.k != 0 or len(i.b) != 0:
-                    self.bad_ir(fn, b, "alloc.fixed needs no operands or extra metadata")
-                if i.t not in self.classes and not (is_tuple(i.t) and i.t.endswith("]") and i.t.count("[") == i.t.count("]") and "" not in targs(i.t) and "..." not in targs(i.t)):
-                    self.bad_ir(fn, b, "alloc.fixed needs a declared class or fixed tuple type")
-                if "alloc" not in self.rtfns:
-                    self.bad_ir(fn, b, "alloc.fixed needs the alloc runtime declaration")
-            if i.op == "vtuple.make":
-                if i.s != "" or i.x != "" or i.k != 0 or len(i.b) != 0:
-                    self.bad_ir(fn, b, "vtuple.make needs no extra metadata")
-                ts = targs(i.t) if is_vtuple(i.t) and i.t.endswith("]") and i.t.count("[") == i.t.count("]") else []
-                if len(ts) != 1:
-                    self.bad_ir(fn, b, "vtuple.make needs one declared native element type")
-                et = ts[0]
-                # (or objects of a declared class, also of a union of them: Gen.vtuple_holds)
-                objects = all(m in self.classes for m in (umembers(et) if is_union(et) else [et]))
-                if i.t != "vtuple[" + et + "]" or (et not in ["int", "float", "bool", "str", "dyn", "opt[int]", "opt[float]", "opt[bool]", "opt[str]", "opt[dyn]"] and not objects):
-                    self.bad_ir(fn, b, "vtuple.make needs one declared native element type")
-                if any(a.t != et for a in i.a):
-                    self.bad_ir(fn, b, "vtuple.make needs elements of its declared native type")
-                if "alloc" not in self.rtfns:
-                    self.bad_ir(fn, b, "vtuple.make needs the alloc runtime declaration")
+            if (i.op == "alloc.fixed" or i.op == "vtuple.make") and "alloc" not in self.rtfns:
+                self.bad_ir(fn, b, f"{i.op} needs the alloc runtime declaration")
             if i.op == "field.addr":
-                if len(i.a) != 1 or i.s != "" or i.x != "" or len(i.b) != 0:
-                    self.bad_ir(fn, b, "field.addr needs one object and no extra metadata")
-                if i.a[0].t not in self.classes:
-                    self.bad_ir(fn, b, "field.addr needs a declared class layout")
                 ci = self.classes[i.a[0].t]
                 if i.k < 0 or (i.k >= len(ci.fields) and i.k not in ci.fflag.values() and i.k not in ci.fbox.values()):
                     self.bad_ir(fn, b, "field.addr needs a declared field, assignment flag or identity box index")
@@ -326,87 +450,37 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     # (but a field compiled while only None had been given to it: Gen.none_field)
                     self.bad_ir(fn, b, "field.addr result must address the declared member type")
             if i.op == "tuple.load" or i.op == "tuple.store":
-                if len(i.a) != (1 if i.op == "tuple.load" else 2) or i.x != "" or len(i.b) != 0:
-                    self.bad_ir(fn, b, f"{i.op} has invalid operands or extra metadata")
                 t = i.a[0].t
-                ts = targs(t) if is_tuple(t) and t.endswith("]") and t.count("[") == t.count("]") else []
-                if "" in ts or "..." in ts or i.k < 0 or i.k >= tslots(t):
-                    self.bad_ir(fn, b, f"{i.op} needs a fixed tuple and an in-range item index")
+                ts = targs(t)
+                if i.k < 0 or i.k >= tslots(t):
+                    self.bad_ir(fn, b, f"{i.op} needs an in-range item index")
                 if i.k >= len(ts) and (i.s != BIG or ts[i.k - len(ts)] != BIG):
                     self.bad_ir(fn, b, f"{i.op} of a slot past the items needs a promoting int item's Mpz word")  # (tslots)
-                if i.k < len(ts) and (i.s != ts[i.k] or i.s.startswith("%") or i.s.startswith("*") or i.s == "#" or ((i.s == "T" or i.s == "K" or i.s == "V" or i.s == "S") and i.s not in self.classes)):
+                if i.k < len(ts) and (i.s != ts[i.k] or not native_type(i.s, self.classes)):
                     self.bad_ir(fn, b, f"{i.op} needs the declared native item type")
-                if (i.op == "tuple.load" and i.t != "%slot") or (i.op == "tuple.store" and (i.t != "" or i.a[1].t != "%slot")):
-                    self.bad_ir(fn, b, f"{i.op} needs an opaque item slot")
-            if i.op == "num.cast" or i.op == "num.cmp":
-                if len(i.a) != (1 if i.op == "num.cast" else 2) or i.x != "" or i.k != 0 or len(i.b) != 0:
-                    self.bad_ir(fn, b, f"{i.op} has invalid operands or extra metadata")
-                t = i.a[0].t
-                if i.op == "num.cast":
-                    if i.s != "" or not ((t == "bool" and (i.t == "int" or i.t == "float")) or (t == "int" and i.t == "float")):
-                        self.bad_ir(fn, b, "num.cast needs bool to int/float or int to float")
-                elif i.t != "bool" or i.s not in ICMP or (t != "int" and t != "float") or i.a[1].t != t:
-                    self.bad_ir(fn, b, "num.cmp needs a comparison of two ints or two floats, returning bool")
-            if i.op == "int.ucmp":
-                if len(i.a) != 2 or i.x != "" or i.k != 0 or len(i.b) != 0:
-                    self.bad_ir(fn, b, "int.ucmp needs two operands and no extra metadata")
-                if i.t != "bool" or i.s not in ["<", "<=", ">", ">="] or i.a[0].t != "int" or i.a[1].t != "int":
-                    self.bad_ir(fn, b, "int.ucmp needs an unsigned order comparison of two ints, returning bool")
-            if i.op == "ptr.cmp":
-                if len(i.a) != 2 or i.x != "" or i.k != 0 or len(i.b) != 0:
-                    self.bad_ir(fn, b, "ptr.cmp needs two operands and no extra metadata")
-                if i.t != "bool" or (i.s != "==" and i.s != "!="):
-                    self.bad_ir(fn, b, "ptr.cmp needs == or !=, returning bool")
-                for a in i.a:
-                    t = a.t
-                    if t == "" or t.startswith("%") or t.startswith("*") or t == "#" or ((t == "T" or t == "K" or t == "V" or t == "S") and t not in self.classes) or (t != "None" and lt(t) != "ptr"):
-                        self.bad_ir(fn, b, "ptr.cmp needs native references or None")
-            if i.op == "slot.pack" or i.op == "slot.unpack":
-                if len(i.a) != 1 or i.s != "" or i.x != "" or i.k != 0 or len(i.b) != 0:
-                    self.bad_ir(fn, b, f"{i.op} needs one operand and no immediates or labels")
-                t = i.a[0].t if i.op == "slot.pack" else i.t
-                slot = i.t if i.op == "slot.pack" else i.a[0].t
-                if slot != "%slot" or t == "" or t.startswith("%") or t.startswith("*") or t == "#" or ((t == "T" or t == "K" or t == "V" or t == "S") and t not in self.classes):
-                    self.bad_ir(fn, b, f"{i.op} needs a native value type and a %slot")
+            if i.op == "num.cast" and i.a[0].t != "bool" and not (i.a[0].t == "int" and i.t == "float"):
+                self.bad_ir(fn, b, "num.cast needs bool to int/float or int to float")
+            if i.op == "num.cmp" and i.s not in ICMP:
+                self.bad_ir(fn, b, "num.cmp needs a source comparison: ==, !=, <, <=, > or >=")
+            if i.op == "int.ucmp" and i.s not in ["<", "<=", ">", ">="]:
+                self.bad_ir(fn, b, "int.ucmp needs an unsigned order comparison: <, <=, > or >=")
+            if i.op == "ptr.cmp" and i.s != "==" and i.s != "!=":
+                self.bad_ir(fn, b, "ptr.cmp needs == or !=")
             if i.op == "union.tag" or i.op == "union.payload" or i.op == "union.raw":
+                # (its operand's members, which its types validated: OpTypes.unions)
                 union_proofs = True
-                if len(i.a) != 1 or i.x != "" or i.k != 0 or len(i.b) != 0:
-                    self.bad_ir(fn, b, f"{i.op} needs one union operand and no extra metadata")
-                u = i.a[0].t
-                if u not in union_types:
-                    ms = umembers(u) if is_union(u) and u.endswith("]") else []
-                    if len(ms) < 2:
-                        self.bad_ir(fn, b, f"{i.op} needs a nonoptional closed union")
-                    for j in range(len(ms)):
-                        m = ms[j]
-                        if m == "" or m == "None" or is_opt(m) or is_union(m) or m.count("[") != m.count("]") or ms.index(m) != j or m.startswith("%") or m.startswith("*") or m == "#" or ((m == "T" or m == "K" or m == "V" or m == "S") and m not in self.classes):
-                            self.bad_ir(fn, b, f"{i.op} needs distinct nonoptional union members")
-                    union_types[u] = ms
-                ms = union_types[u]
-                if (i.op == "union.tag" and (i.t != "int" or i.s != "")) or (i.op == "union.payload" and (i.t != "%slot" or i.s not in ms)) or (i.op == "union.raw" and (i.t != "%slot" or i.s != "")):
-                    self.bad_ir(fn, b, f"{i.op} has an invalid result type or member")
-            if i.op == "dyn.type" or i.op == "dyn.payload" or i.op == "dyn.raw":
-                if i.op == "dyn.payload":
-                    dynamic_proofs = True
-                if len(i.a) != 1 or i.a[0].t != "dyn" or i.x != "" or i.k != 0 or len(i.b) != 0:
-                    self.bad_ir(fn, b, f"{i.op} needs one dyn operand and no extra metadata")
-                if (i.op == "dyn.type" and (i.t != "dyntype" or i.s != "")) or (i.op == "dyn.payload" and (i.t != "%slot" or i.s == "" or i.s == "dyn" or i.s.startswith("%"))) or (i.op == "dyn.raw" and (i.t != "%slot" or i.s != "")):
-                    self.bad_ir(fn, b, f"{i.op} has an invalid result type or payload type")
-                if i.op == "dyn.raw":
-                    dynamic_raw = True
-                    if len(i.r) != 2 or i.r[0] < 0 or i.r[1] < 0 or i.r[0] == i.r[1]:
-                        self.bad_ir(fn, b, "dyn.raw needs two distinct nonnegative result numbers")
-            if i.op == "big.make" or i.op == "big.lo" or i.op == "big.hi":
-                # a promoting int's two words: big.make (int, %ptr) -> int+, big.lo -> int, big.hi -> %ptr
-                ts = ["int", "%ptr"] if i.op == "big.make" else ["int+"]
-                rt = "int+" if i.op == "big.make" else "int" if i.op == "big.lo" else "%ptr"
-                if len(i.a) != len(ts) or [a.t for a in i.a] != ts or i.t != rt or i.s != "" or i.x != "" or i.k != 0 or len(i.b) != 0:
-                    self.bad_ir(fn, b, f"{i.op} has invalid operands, result type or metadata")
+                if i.op == "union.payload" and i.s not in union_types[i.a[0].t]:
+                    self.bad_ir(fn, b, f"union.payload of {i.s or 'no member'}, which {i.a[0].t} does not hold")
+            if i.op == "dyn.payload":
+                dynamic_proofs = True
+                if i.s == "" or i.s == "dyn" or i.s.startswith("%"):
+                    self.bad_ir(fn, b, "dyn.payload needs the type of the payload it reads")
+            if i.op == "dyn.raw":
+                dynamic_raw = True
+                if len(i.r) != 2 or i.r[0] < 0 or i.r[1] < 0 or i.r[0] == i.r[1]:
+                    self.bad_ir(fn, b, "dyn.raw needs two distinct nonnegative result numbers")
             if i.op.startswith("gen."):
                 self.verify_gen(fn, b, i, j)
-            shape = op_shape_error(i, False)
-            if shape != "":
-                self.bad_ir(fn, b, shape)
             for a in i.a:
                 if operand_kind(a.v) < 0:
                     self.bad_ir(fn, b, f"{i.op} operand {a.v} is no value, parameter, slot, symbol or constant")
@@ -469,31 +543,28 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
             self.bad_ir(fn, fn.blocks[at[proof.badblocks[j]]], proof.bad[j])
 
 def gen_verify_gen(self, fn: IFn, b: Blk, i: Ins, j: int) -> None:
-    # a generator op (docs/internals.md#generators): gen.start ends the entry block of a
-    # generator function (IFn.coro) and names it (a str); gen.yield (a %slot, k 0 or 1) and
-    # gen.ret (none, or a %slot) suspend one, with the %ptr of a promoting int after the slot in a
-    # program that opts in to them (specs.GENVALP); gen.promise without an operand is its own promise;
-    # gen.promise, gen.resume and gen.drop of a handle take a generator
+    # a generator op (docs/internals.md#generators), past its row's shape and types: gen.start
+    # ends the entry block of a generator function (IFn.coro) and names it; gen.yield (k 0 or 1)
+    # and gen.ret suspend one, with the %ptr of a promoting int after the slot in a program that
+    # opts in to them (specs.GENVALP), and in identity-tracking code a scalar or optional numeric
+    # gen.yield also with its dyn identity companion; gen.promise without an operand is its own
+    # promise
     own = i.op == "gen.start" or i.op == "gen.yield" or i.op == "gen.ret" or (i.op == "gen.promise" and len(i.a) == 0)
     if own and not fn.coro:
         self.bad_ir(fn, b, f"{i.op} outside a generator function")
-    if i.s != "" or i.x != "" or (i.k != 0 and i.op != "gen.yield") or i.k < 0 or i.k > 1:
+    if i.k < 0 or i.k > 1:
         self.bad_ir(fn, b, f"{i.op} with extra metadata")
-    if i.op == "gen.start" and (b is not fn.blocks[0] or len(i.a) != 1 or i.a[0].t != "str" or len(i.b) != 1 or i.t != ""):
+    if i.op == "gen.start" and b is not fn.blocks[0]:
         self.bad_ir(fn, b, "gen.start must end the entry block, with the generator's name and its first block")
-    hi = len(i.a) == 2 and i.a[1].t == "%ptr" and int_program()
+    hi = len(i.a) == 2 and int_program()
     companion = fn.coro and is_gen(fn.f.ret) and generator_identity(gelem(fn.f.ret), self.fn_identity(fn.f))
-    pair = len(i.a) == 3 and i.a[1].t == "%ptr" and i.a[2].t == "dyn" and companion
+    pair = len(i.a) == 3 and companion
     if pair and (not int_program() or gelem(fn.f.ret) != "int") and i.a[1].v != "null":
         self.bad_ir(fn, b, "gen.yield without a wide integer needs a null high placeholder")
-    if i.op == "gen.yield" and ((not pair if companion else len(i.a) != 1 and not hi) or i.a[0].t != "%slot" or len(i.b) != 1 or i.t != ""):
+    if i.op == "gen.yield" and (not pair if companion else len(i.a) != 1 and not hi):
         self.bad_ir(fn, b, "gen.yield needs the value's slot and the block where it resumes")
-    if i.op == "gen.ret" and ((len(i.a) > 1 and not hi) or (len(i.a) > 0 and i.a[0].t != "%slot") or len(i.b) != 0 or i.t != ""):
+    if i.op == "gen.ret" and len(i.a) > 1 and not hi:
         self.bad_ir(fn, b, "gen.ret needs the slot of its value, if any")
-    if i.op == "gen.promise" and (i.t != "%ptr" or len(i.a) > 1 or (len(i.a) == 1 and not is_gen(i.a[0].t)) or len(i.b) != 0):
-        self.bad_ir(fn, b, "gen.promise needs a generator or none (its own)")
-    if (i.op == "gen.resume" or i.op == "gen.drop") and (len(i.a) != 1 or not is_gen(i.a[0].t) or i.t != "" or (len(i.b) != 0 and (i.op == "gen.drop" or len(i.b) != 2))):
-        self.bad_ir(fn, b, f"{i.op} needs a generator")
     if i.op == "gen.start" and j != len(b.code) - 1:
         self.bad_ir(fn, b, "gen.start before other ops")
 
