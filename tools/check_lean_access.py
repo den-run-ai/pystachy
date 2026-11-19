@@ -468,8 +468,6 @@ def conclusions(fact, by_name, index, relevant, lower_bounds=()):
     elif kind == "len":
         n = fact[1]
         out.append((("ge", n, 0), [fact]))
-        # (a length is a lower bound of itself, which survives writes that only add items)
-        out.append((("lenGe", n, fact[2]), [fact]))
         for other in partners(n, ("le",)):
             if other[1] == n and other[3] >= 1:
                 out.append((("below", n, other[2]), [other, fact]))
@@ -621,6 +619,15 @@ def closure(start, new, relevant, lower_bounds=(), kinds=None):
         for part in mention_set(fact):
             by_name.setdefault(part, []).append(fact)
     premises = {}
+    # (the strongest difference bound a + k <= b and upper bound a <= k known for each pair or
+    # value: a weaker one adds nothing, as each rule that uses one gives at least as much from the
+    # stronger, and a cycle of offsets and orders could derive weaker ones without end)
+    strongest = {}
+    for fact in facts:
+        if fact[0] == "le":
+            strongest[("le", fact[1], fact[2])] = max(strongest.get(("le", fact[1], fact[2]), fact[3]), fact[3])
+        elif fact[0] == "atMost":
+            strongest[("atMost", fact[1])] = min(strongest.get(("atMost", fact[1]), fact[2]), fact[2])
     pending = deque(fact for fact in new if fact in index)
     while pending:
         fact = pending.popleft()
@@ -633,6 +640,16 @@ def closure(start, new, relevant, lower_bounds=(), kinds=None):
             if derived in index or (derived[0] == "eq" and derived[1] == derived[2]) or any(
                     part not in relevant for part in mentions(derived)) or (kinds is not None and derived[0] not in kinds):
                 continue
+            if derived[0] == "le":
+                known_k = strongest.get(("le", derived[1], derived[2]))
+                if known_k is not None and known_k >= derived[3]:
+                    continue
+                strongest[("le", derived[1], derived[2])] = derived[3]
+            elif derived[0] == "atMost":
+                known_k = strongest.get(("atMost", derived[1]))
+                if known_k is not None and known_k <= derived[2]:
+                    continue
+                strongest[("atMost", derived[1])] = derived[2]
             facts.append(derived)
             index.add(derived)
             premises[derived] = needs
@@ -970,17 +987,31 @@ def infer_certificate(nodes, entry=0, chain=0, kinds=None):
                 start = [fact for fact in start if fact[0] in kinds]
                 new = [fact for fact in new if fact[0] in kinds]
             if len(predecessors[target]) > 1:
-                # (a join of jumps: what every visited one knows)
+                # (a join of jumps: what every visited one knows; a length known on one and a
+                # lower bound of it on another, after a grow node, is that lower bound, which a
+                # length justifies)
                 incoming = prune(start, live[target], chain)
                 if known[target] is None:
                     merged = incoming
                 else:
                     arriving = set(incoming)
-                    merged = [f for f in known[target] if f in arriving]
+                    merged = []
+                    for f in known[target]:
+                        if f in arriving or (f[0] == "lenGe" and ("len", f[1], f[2]) in arriving):
+                            merged.append(f)
+                        elif f[0] == "len" and ("lenGe", f[1], f[2]) in arriving:
+                            merged.append(("lenGe", f[1], f[2]))
                 justification = ([], {})
             else:
                 relevant = (live[target] | set().union(*map(mentions, start))) if new else live[target]
                 facts, premises = closure(start, new, relevant, lower_bounds, kinds)
+                if nodes[target]["op"] == "grow":
+                    # (each length known where items may be added, as a lower bound too, which
+                    # survives the node: a length is a lower bound of itself)
+                    for f in list(facts):
+                        if f[0] == "len" and ("lenGe", f[1], f[2]) not in facts:
+                            facts.append(("lenGe", f[1], f[2]))
+                            premises[("lenGe", f[1], f[2])] = [f]
                 merged = prune(facts, live[target], chain)
                 justification = (facts, premises)
             if merged != known[target] or derived[target] is None:
@@ -1031,7 +1062,10 @@ def infer_certificate(nodes, entry=0, chain=0, kinds=None):
         incoming = predecessors[index]
         if len(incoming) > 1:
             for pad, _ in incoming:
-                want(pad, fact)
+                if fact[0] == "lenGe" and fact not in (known[pad] or ()) and ("len", fact[1], fact[2]) in (known[pad] or ()):
+                    want(pad, ("len", fact[1], fact[2]))
+                else:
+                    want(pad, fact)
             continue
         if not incoming:
             continue
