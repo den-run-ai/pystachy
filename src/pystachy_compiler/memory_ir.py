@@ -45,5 +45,5 @@ def gen_verify_memory(self, fn: IFn, b: Blk, i: Ins, slots: bool) -> None:
     t = i.t if load else i.a[1].t
     if t == "" or t == "None" or (t.startswith("%") and t not in ["%ptr", "%byte", "%i32"] and not (slots and load and t == "%slot")) or t.startswith("*") or t == "#" or ((t == "T" or t == "K" or t == "V" or t == "S") and t not in self.classes):
         self.bad_ir(fn, b, f"{i.op} needs a machine storage value type")
-    if (not load and i.t != "") or i.s not in ["", "length", "length.range", "bytes"] or (i.s == "length.range" and not load) or (i.s.startswith("length") and t != "int") or (i.s == "bytes" and t != "%byte"):
+    if (not load and i.t != "") or i.s not in ["", "length", "length.range", "list.length", "bytes"] or ((i.s == "length.range" or i.s == "list.length") and not load) or ((i.s.startswith("length") or i.s == "list.length") and t != "int") or (i.s == "bytes" and t != "%byte"):
         self.bad_ir(fn, b, f"{i.op} has invalid value or memory metadata")

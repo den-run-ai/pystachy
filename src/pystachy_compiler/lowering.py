@@ -4,7 +4,7 @@ from src.pystachy_compiler.diagnostics import fail, int_program
 from src.pystachy_compiler.ir import Blk, IFn, Ins, Val, slot_register, tmpname, one_num
 from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.lower_module import const_slot, struct_types
-from src.pystachy_compiler.specs import CHECKED, COMPLEXC, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
+from src.pystachy_compiler.specs import CHECKED, COMPLEXC, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSTATE, GENVALP, ICMP, LISTLEN_RANGE, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
 from src.pystachy_compiler.utils import atomic_dict, atomic_list, gelem, generator_identity, generator_slots, identity_abi, numeric_identity, is_dict, is_tuple, lt, selem, takes_self, targs, tslots
 
 
@@ -273,15 +273,18 @@ def gen_field_tag(self, c: str, k: int) -> str:
     return f", !tbaa !{self.tbaa[key]}"
 
 def gen_list_tag(self, what: str) -> str:
-    # the TBAA of an inline access to a list's items pointer ("items": the header's third word) or
-    # to one of its items ("slot"), with listguard: ", !tbaa !N", numbered as fieldtbaa numbers a
-    # field's (Gen.tbaa). They share fieldtbaa's root, as members of structs of their own ("@list",
-    # runtime.c's List, and "@slot", one item), which no class lays out: LLVM tells an item from an
-    # items pointer and both from any object's field, so that a loop that stores items keeps its
-    # lists' items pointers in registers. runtime.py has no such tags (lower_module's runtime mode)
+    # the TBAA of an inline access to a list's length ("len": the header's first word), its items
+    # pointer ("items": the third) or one of its items ("slot"), with listguard: ", !tbaa !N",
+    # numbered as fieldtbaa numbers a field's (Gen.tbaa). They share fieldtbaa's root, as members of
+    # structs of their own ("@list", runtime.c's List, and "@slot", one item), which no class lays
+    # out: LLVM tells an item from a length or an items pointer and all three from any object's
+    # field, so that a loop that stores items keeps its lists' lengths and items pointers in
+    # registers. The driver gives runtime.c's accesses through its List and Slot the same tags
+    # (retag_runtime_lists), so inlined runtime code's are told apart too. runtime.py has no such
+    # tags (lower_module's runtime mode)
     if "listguard" not in self.opts or self.rtmode:
         return ""
-    key = "@list 2" if what == "items" else "@slot 0"
+    key = "@list 2" if what == "items" else "@list 0" if what == "len" else "@slot 0"
     if key not in self.tbaa:
         self.tbaa[key] = TBAA_FIELDS + len(self.tbaa)
     return f", !tbaa !{self.tbaa[key]}"
@@ -296,6 +299,15 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         metadata = f", !tbaa !{TBAA_LEN}" if i.s == "length" or i.s == "length.range" else f", !tbaa !{TBAA_BYTES}" if i.s == "bytes" else ""
         if i.s == "length.range":
             metadata += f", !range !{STRLEN_RANGE}"
+        if i.s == "list.length":
+            # a list's length (machine_ir's list.len): with listguard the @list tag (list_tag), which
+            # driver.retag_runtime_lists gives runtime.c's List too; in a program never negative
+            # (LISTLEN_RANGE, which lets LLVM fold an index's negative and upper tests into one).
+            # runtime.py's carries neither
+            metadata = self.list_tag("len")
+            if not self.rtmode:
+                metadata += f", !range !{LISTLEN_RANGE}"
+                self.listlen = True
         if op == "mach.load":
             o.append(f"  {tmpname(i.r[0])} = load {lt(i.t)}, ptr {i.a[0].v}{metadata}")
         else:

@@ -1,7 +1,9 @@
 """Layout reads become machine ops before a function is printed, with the same LLVM.
 
 legacy() holds the text that lowering.py printed for each layout read before the machine
-stage existed: the stage and the machine printer together must still give it.
+stage existed, a list's length with the non-negative !range that a program's length load carries
+(LISTLEN_RANGE; with listguard also its @list tag: test_typed_list_contracts.py): the stage and the
+machine printer together must still give it.
 """
 from contextlib import redirect_stderr
 from io import StringIO
@@ -18,7 +20,7 @@ from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Ins, Val
 from src.pystachy_compiler.ircheck import RESULT_NUMBERS
 from src.pystachy_compiler.loader import Loader
 from src.pystachy_compiler.machine_ir import WORD_READS, machine_ops
-from src.pystachy_compiler.specs import IROPS
+from src.pystachy_compiler.specs import IROPS, LISTLEN_RANGE
 from src.pystachy_compiler.syntax import Node
 
 READS = {
@@ -53,8 +55,11 @@ def read(op, value="%a0", first=1, line=0):
     return i
 
 
-def legacy(i):
-    if i.op == "list.len" or i.op == "union.tag":
+def legacy(i, g=None):
+    # (g: the Gen that printed i, whose listguard option gives a length its @list tag)
+    if i.op == "list.len":
+        return [f"  %t{i.r[0]} = load i64, ptr {i.a[0].v}{g.list_tag('len') if g else ''}, !range !{LISTLEN_RANGE}"]
+    if i.op == "union.tag":
         return [f"  %t{i.r[0]} = load i64, ptr {i.a[0].v}"]
     if i.op == "dyn.type":
         return [f"  %t{i.r[0]} = load ptr, ptr {i.a[0].v}"]
@@ -103,7 +108,9 @@ class MachineOpsTests(unittest.TestCase):
             with self.subTest(op=op):
                 i = read(op, "%t3", 9, line=77)
                 load, = machine_ops(i)
-                self.assertEqual((load.op, load.t, load.s, load.x, load.k, load.b), ("mach.load", READS[op][0], "", "", 0, []))
+                # (a list's length is a load of kind list.length, which the printer tags and ranges)
+                kind = "list.length" if op == "list.len" else ""
+                self.assertEqual((load.op, load.t, load.s, load.x, load.k, load.b), ("mach.load", READS[op][0], kind, "", 0, []))
                 self.assertEqual([(a.v, a.t) for a in load.a], [("%t3", "%ptr")])
                 self.assertEqual((load.r, load.line), ([9], 77))
 
@@ -227,8 +234,9 @@ class CompiledProgramTests(unittest.TestCase):
             stage(g, fn)
             after[fn.f.name] = [i for b in fn.blocks for i in b.code]
 
+        g = Gen()
         with patch.dict(os.environ, {"PYSTACHY_IRCHECK": "1"}), patch.object(Gen, "machine_ir", capture):
-            ir = Gen().program(Loader([]).program("machine.py", SOURCE))
+            ir = g.program(Loader([]).program("machine.py", SOURCE))
         text = ir.split("\n")
         reads = [i for name in before for i in before[name] if i.op in WORD_READS]
         self.assertIn("list.len", [i.op for i in before["size"]])
@@ -240,7 +248,7 @@ class CompiledProgramTests(unittest.TestCase):
             self.assertEqual([id(i) for i in after[name] if not i.op.startswith("mach.")],
                              [id(i) for i in before[name] if i.op not in WORD_READS and not i.op.startswith("mach.")])
         for i in reads:
-            for line in legacy(i):
+            for line in legacy(i, g):
                 self.assertIn(line, text)
 
 

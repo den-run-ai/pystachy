@@ -18,7 +18,7 @@ from src.pystachy_compiler.ir import IFn, Ins, Val
 from src.pystachy_compiler.symbols import FnInfo
 from src.pystachy_compiler.loader import Loader
 from src.pystachy_compiler.machine_ir import machine_ops
-from src.pystachy_compiler.specs import LIST_READS, LIST_WRITES
+from src.pystachy_compiler.specs import LIST_READS, LIST_WRITES, LISTLEN_RANGE
 from src.pystachy_compiler.syntax import Node
 from src.pystachy_compiler.utils import ListLayout, list_read_error, list_write_error, rtsym
 
@@ -368,11 +368,26 @@ class ListReadContractTests(unittest.TestCase):
             g.runtime(rtsym(i.s))
             g.lower_ins(function_with(i), i)
             self.assertEqual(g.out, ["  %t1 = call i64 @pys_list_get(ptr %a0, i64 0)"])
+        # a length is the header's first word, loaded as an i64: in a program it is never negative
+        # (LISTLEN_RANGE, which the module then defines) and with listguard carries the @list tag,
+        # which driver.retag_runtime_lists gives runtime.c's List too; runtime.py's carries neither
         i = list_read("list.len")
         g = Gen()
         for machine in machine_ops(i):
             g.lower_ins(function_with(i), machine)
+        self.assertEqual(g.out, [f"  %t1 = load i64, ptr %a0, !range !{LISTLEN_RANGE}"])
+        self.assertTrue(g.listlen)
+        g = Gen()
+        g.opts["listguard"] = True
+        for machine in machine_ops(i):
+            g.lower_ins(function_with(i), machine)
+        self.assertEqual(g.out, [f"  %t1 = load i64, ptr %a0, !tbaa !{g.tbaa['@list 0']}, !range !{LISTLEN_RANGE}"])
+        g = Gen()
+        g.rtmode = True
+        for machine in machine_ops(i):
+            g.lower_ins(function_with(i), machine)
         self.assertEqual(g.out, ["  %t1 = load i64, ptr %a0"])
+        self.assertFalse(g.listlen)
 
     def test_result_count_registry_rejects_missing_semantic_result(self):
         for op in ("rt", "list.load", "list.len"):

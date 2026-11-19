@@ -25,7 +25,9 @@ WORD_READS: dict[str, int] = {
 def machine_ops(i: Ins) -> list[Ins]:
     # the machine ops of layout read i (an op of WORD_READS): a load of the object's first word,
     # or the address of a later word (its first number) and a load from it (its second). They
-    # keep i's numbers, in the order its lowering printed them, and its source line
+    # keep i's numbers, in the order its lowering printed them, and its source line. A list's
+    # length is a load of kind list.length, which lowering prints with the list's alias tag and
+    # range (Gen.list_tag, LISTLEN_RANGE)
     word = WORD_READS[i.op]
     p = i.a[0].v
     out: list[Ins] = []
@@ -36,7 +38,7 @@ def machine_ops(i: Ins) -> list[Ins]:
         addr.r = one_num(i.r[0])
         out.append(addr)
         p = tmpname(i.r[0])
-    load = Ins("mach.load", i.t, "")
+    load = Ins("mach.load", i.t, "list.length" if i.op == "list.len" else "")
     load.line = i.line
     load.a = [Val(p, "%ptr")]
     load.r = one_num(i.r[len(i.r) - 1])
