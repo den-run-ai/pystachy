@@ -1,0 +1,58 @@
+receiver False
+argument 2
+argument 3
+created
+base enter True
+result 5
+base exit
+receiver False
+argument 4
+read created
+read enter 4
+read error 'NoneType' object has no attribute 'value'
+receiver True
+argument 2
+argument 3
+created
+base enter False
+result 5
+base exit
+receiver True
+argument 4
+read created
+read enter 4
+read result 8
+argument 6
+child enter True
+child result 106
+child exit
+receiver True
+argument 7
+argument 8
+base enter False
+decorated 1
+base exit
+base enter False
+decorated 2
+base exit
+2 3
+receiver False
+argument 9
+base enter True
+inner 3
+base exit
+base enter True
+inner 4
+base exit
+3 4
+argument 10
+child enter True
+child exit
+child enter True
+child exit
+child decorated 11 11
+argument 12
+read enter 12
+saved receiver 19
+factory name 23
+[exit 0]

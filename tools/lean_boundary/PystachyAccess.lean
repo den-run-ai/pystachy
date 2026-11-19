@@ -72,6 +72,9 @@ inductive Fact where
   | below (index bound : Name)
   /-- `a = b + k`, without wrapping. -/
   | off (a b : Name) (k : Int)
+  /-- `a = b + c`, without wrapping: a sum of two values, such as an index's base plus a loop's
+  index. -/
+  | sum (a b c : Name)
   /-- `a + k ≤ b`, signed: a difference bound, such as a range loop's stop against a length. -/
   | le (a b : Name) (k : Int)
   /-- `a ≤ k`: an upper bound, such as a range loop's constant stop. -/
@@ -102,6 +105,10 @@ inductive Node where
   | add (dst src : Name) (k : Int) (next : Nat)
   /-- `dst := src + k` on `next`; `overflow` where the sum does not fit. -/
   | addChecked (dst src : Name) (k : Int) (next overflow : Nat)
+  /-- `dst := x + y`, wrapping. -/
+  | addReg (dst x y : Name) (next : Nat)
+  /-- `dst := x + y` on `next`; `overflow` where the sum does not fit. -/
+  | addRegChecked (dst x y : Name) (next overflow : Nat)
   /-- `dst :=` the length of the list `list` points to. -/
   | length (dst list : Name) (next : Nat)
   /-- Any list's length may change. -/
@@ -118,8 +125,11 @@ inductive Node where
   /-- `dst :=` field `index` of class `cls` of the object `object` points to. -/
   | readField (dst object : Name) (cls : String) (index : Nat) (next : Nat)
   /-- Field `index` of class `cls` of the object `object` points to gets `v`. Another field of
-  the class, of any object, keeps its value; any other field may change. -/
-  | writeField (object : Name) (cls : String) (index : Nat) (v : Name) (next : Nat)
+  the class, of any object, keeps its value, and so does every field of each class `unrelated`
+  lists (classes that no object of `cls` also is, which typed memory keeps apart); any other
+  field may change. The checker refuses a write that lists its own class. -/
+  | writeField (object : Name) (cls : String) (index : Nat) (v : Name) (unrelated : List String)
+      (next : Nat)
   /-- Any object's fields may change. -/
   | heap (next : Nat)
   /-- An unchecked read of a list item: the index must be within the length. -/
@@ -147,6 +157,7 @@ def Fact.mentions (name : Name) : Fact → Bool
   | .off a b _ | .le a b _ => a == name || b == name
   | .ge a _ | .ne a _ | .atMost a _ => a == name
   | .cell a _ _ b => a == name || b == name
+  | .sum a b c => a == name || b == name || c == name
   | .absurd => false
 
 def Fact.onLists : Fact → Bool
@@ -178,18 +189,20 @@ def Fact.rename (x y : Name) : Fact → Fact
   | .found a b => .found (renamed x y a) (renamed x y b)
   | .entry a b => .entry (renamed x y a) (renamed x y b)
   | .cell a c i b => .cell (renamed x y a) c i (renamed x y b)
+  | .sum a b c => .sum (renamed x y a) (renamed x y b) (renamed x y c)
   | .absurd => .absurd
 
 /-- Whether a fact still holds after the node: it mentions no value the node defines,
 and no length or entry that the node may change. -/
 def survives : Node → Fact → Bool
   | .havoc dst _, f | .copy dst _ _, f | .lit dst _ _, f | .add dst _ _ _, f
-  | .addChecked dst _ _ _ _, f | .length dst _ _, f | .find dst _ _, f
-  | .entry dst _ _, f | .readField dst _ _ _ _, f => !f.mentions dst
+  | .addChecked dst _ _ _ _, f | .addReg dst _ _ _, f | .addRegChecked dst _ _ _ _, f
+  | .length dst _ _, f | .find dst _ _, f | .entry dst _ _, f | .readField dst _ _ _ _, f =>
+      !f.mentions dst
   | .lists _, f => !f.onLists
   | .dicts _, f => !f.onDicts
-  | .writeField _ cls index _ _, f => match f with
-      | .cell _ c i _ => c == cls && i != index
+  | .writeField _ cls index _ unrelated _, f => match f with
+      | .cell _ c i _ => (c == cls && i != index) || unrelated.contains c
       | _ => true
   | .heap _, f => !f.onFields
   | _, _ => true
@@ -211,6 +224,28 @@ def noWrap (facts : Facts) (src : Name) (k : Int) : Bool :=
   -- `len(xs) + 1` of a 1-based index)
   (decide (0 ≤ k) && decide (k ≤ maxI64 - maxLen) && facts.any fun f => match f with
     | .len a _ => a == src
+    | _ => false)
+
+/-- Facts that show `x + y` fits in 64 bits: `x < c` where `s = c + y` (or `y + c`) is a value, or
+`x ≤ k` where `s = y + k'` is one and `k < k'`, so that `x + y < s`; and lower bounds of `x` and `y`
+that add up to at least the least 64-bit value. listguard's copy adds a loop's index `x` below
+its stop to a base `y` whose sum with the stop a test before the loop computed. -/
+def noWrapSum (facts : Facts) (x y : Name) : Bool :=
+  ((facts.any fun f => match f with
+    | .lt a c => a == x && facts.any fun g => match g with
+        | .sum _ p q => (p == c && q == y) || (p == y && q == c)
+        | _ => false
+    | _ => false) ||
+  -- (a constant stop: x ≤ k < k', where s = y + k')
+  (facts.any fun f => match f with
+    | .atMost a k => a == x && facts.any fun g => match g with
+        | .off _ p k' => p == y && decide (k < k')
+        | _ => false
+    | _ => false)) &&
+  (facts.any fun f => match f with
+    | .ge a k₁ => a == x && facts.any fun g => match g with
+        | .ge b k₂ => b == y && decide (minI64 ≤ k₁ + k₂)
+        | _ => false
     | _ => false)
 
 /-- What a branch learns from its outcome. -/
@@ -255,11 +290,15 @@ def generated (facts : Facts) : Node → Nat → Facts
   | .lit dst k _, _ => [.ge dst k]
   | .add dst src k _, _ => if dst ≠ src ∧ noWrap facts src k = true then [.off dst src k] else []
   | .addChecked dst src k _ _, 0 => if dst = src then [] else [.off dst src k]
+  | .addReg dst x y _, _ =>
+      if dst ≠ x ∧ dst ≠ y ∧ (noWrapSum facts x y || noWrapSum facts y x) = true then [.sum dst x y]
+      else []
+  | .addRegChecked dst x y _ _, 0 => if dst ≠ x ∧ dst ≠ y then [.sum dst x y] else []
   | .length dst l _, _ => if dst = l then [] else [.len dst l]
   | .find dst d _, _ => if dst = d then [] else [.found dst d]
   | .entry dst d _, _ => if dst = d then [] else [.entry dst d]
   | .readField dst o c i _, _ => if dst = o then [] else [.cell o c i dst]
-  | .writeField o c i v _, _ => [.cell o c i v]
+  | .writeField o c i v _ _, _ => [.cell o c i v]
   | .test c _ _, edge => condFacts c (edge == 0) ++ boundFacts facts c (edge == 0)
   | _, _ => []
 
@@ -349,9 +388,34 @@ def ruleStep (facts : Facts) : Fact → Bool
       substituted facts (.entry e d)
   | f => substituted facts f
 
+/-- One step of reasoning about sums: adding one value to both sides keeps an order, and lower
+bounds add up. -/
+def sumStep (facts : Facts) : Fact → Bool
+  -- (x = p + q and z = r + t with an addend in common and the other two ordered; or z = r + k'
+  -- with r one addend and the other at most k < k')
+  | .lt x z => facts.any fun f => match f with
+      | .sum x' p q => x' == x && facts.any fun g => match g with
+          | .sum z' r t => z' == z &&
+              ((p == r && facts.contains (.lt q t)) || (p == t && facts.contains (.lt q r)) ||
+                (q == r && facts.contains (.lt p t)) || (q == t && facts.contains (.lt p r)))
+          | .off z' r k' => z' == z && facts.any fun h => match h with
+              | .atMost a k => decide (k < k') && ((r == p && a == q) || (r == q && a == p))
+              | _ => false
+          | _ => false
+      | _ => false
+  -- (x = p + q, with p ≥ k₁ and q ≥ k₂)
+  | .ge x k => facts.any fun f => match f with
+      | .sum x' p q => x' == x && facts.any fun g => match g with
+          | .ge p' k₁ => p' == p && facts.any fun h => match h with
+              | .ge q' k₂ => q' == q && decide (k ≤ k₁ + k₂)
+              | _ => false
+          | _ => false
+      | _ => false
+  | _ => false
+
 /-- One step of reasoning; anything follows where no execution reaches. -/
 def rule (facts : Facts) (goal : Fact) : Bool :=
-  facts.contains .absurd || ruleStep facts goal
+  facts.contains .absurd || ruleStep facts goal || sumStep facts goal
 
 /-- Each fact of `goals`, in order, is known or follows in one step from what is known
 and the goals before it. -/
@@ -379,15 +443,21 @@ def safeFacts (facts : Facts) (node : Node) : Bool :=
 
 /-- Each successor with the number of its edge. -/
 def edges : Node → List (Nat × Nat)
-  | .havoc _ n | .copy _ _ n | .lit _ _ n | .add _ _ _ n | .length _ _ n | .lists n
+  | .havoc _ n | .copy _ _ n | .lit _ _ n | .add _ _ _ n | .addReg _ _ _ n | .length _ _ n | .lists n
   | .dicts n | .find _ _ n | .entry _ _ n | .jump n | .load _ _ n | .value _ _ n
-  | .deref _ n | .readField _ _ _ _ n | .writeField _ _ _ _ n | .heap n => [(n, 0)]
-  | .addChecked _ _ _ n o => [(n, 0), (o, 1)]
+  | .deref _ n | .readField _ _ _ _ n | .writeField _ _ _ _ _ n | .heap n => [(n, 0)]
+  | .addChecked _ _ _ n o | .addRegChecked _ _ _ n o => [(n, 0), (o, 1)]
   | .test _ y n | .choice y n => [(y, 0), (n, 1)]
   | .stop => []
 
+/-- A node the semantics can always take: a write never lists its own class as unrelated
+(`writeField_step`). -/
+def wellFormed : Node → Bool
+  | .writeField _ cls _ _ unrelated _ => !unrelated.contains cls
+  | _ => true
+
 def nodeOK (program : Program) (certificate : Certificate) (pc : Nat) (node : Node) : Bool :=
-  safeFacts (factsAt certificate pc) node &&
+  wellFormed node && safeFacts (factsAt certificate pc) node &&
   (edges node).all fun (target, edge) =>
     decide (target < program.nodes.length) &&
     justified (immediates node edge (factsAt certificate pc)) (factsAt certificate target)
@@ -444,6 +514,7 @@ def Fact.Holds (m : Mem) : Fact → Prop
   | .found e d => m.val e = -1 ∨ m.live (m.val d) (m.val e)
   | .entry e d => m.live (m.val d) (m.val e)
   | .cell o c i v => m.cell (m.val o) c i = m.val v
+  | .sum a b c => m.val a = m.val b + m.val c
   | .absurd => False
 
 def Knows (m : Mem) (facts : Facts) : Prop := ∀ f ∈ facts, f.Holds m
@@ -463,6 +534,14 @@ inductive Move : Node → Mem → Nat → Mem → Prop where
       I64 (m.val src + k) → Move (.addChecked dst src k next overflow) m next (m.set dst (m.val src + k))
   | addOverflows {dst src : Name} {k : Int} {next overflow : Nat} {m : Mem} {v : Int} :
       ¬ I64 (m.val src + k) → I64 v → Move (.addChecked dst src k next overflow) m overflow (m.set dst v)
+  | addReg {dst x y : Name} {next : Nat} {m : Mem} :
+      Move (.addReg dst x y next) m next (m.set dst (wrap (m.val x + m.val y)))
+  | addRegFits {dst x y : Name} {next overflow : Nat} {m : Mem} :
+      I64 (m.val x + m.val y) →
+      Move (.addRegChecked dst x y next overflow) m next (m.set dst (m.val x + m.val y))
+  | addRegOverflows {dst x y : Name} {next overflow : Nat} {m : Mem} {v : Int} :
+      ¬ I64 (m.val x + m.val y) → I64 v →
+      Move (.addRegChecked dst x y next overflow) m overflow (m.set dst v)
   | length {dst l : Name} {next : Nat} {m : Mem} :
       Move (.length dst l next) m next (m.set dst (m.len (m.val l)))
   | lists {next : Nat} {m : Mem} {len : Int → Int} :
@@ -475,10 +554,12 @@ inductive Move : Node → Mem → Nat → Mem → Prop where
       m.live (m.val d) e → Move (.entry dst d next) m next (m.set dst e)
   | readField {dst o : Name} {c : String} {i next : Nat} {m : Mem} :
       Move (.readField dst o c i next) m next (m.set dst (m.cell (m.val o) c i))
-  | writeField {o v : Name} {c : String} {i next : Nat} {m : Mem} {cell : Int → String → Nat → Int} :
+  | writeField {o v : Name} {c : String} {i next : Nat} {unrelated : List String} {m : Mem}
+      {cell : Int → String → Nat → Int} :
       (∀ a d j, I64 (cell a d j)) → cell (m.val o) c i = m.val v →
       (∀ a j, j ≠ i → cell a c j = m.cell a c j) →
-      Move (.writeField o c i v next) m next { m with cell := cell }
+      (∀ a d j, d ∈ unrelated → cell a d j = m.cell a d j) →
+      Move (.writeField o c i v unrelated next) m next { m with cell := cell }
   | heap {next : Nat} {m : Mem} {cell : Int → String → Nat → Int} :
       (∀ a d j, I64 (cell a d j)) → Move (.heap next) m next { m with cell := cell }
   | testYes {c : Cond} {yes no : Nat} {m : Mem} : c.Holds m → Move (.test c yes no) m yes m
@@ -652,6 +733,66 @@ theorem noWrap_sound {m : Mem} {facts : Facts} {src : Name} {k : Int} (wf : WF m
         unfold maxI64 maxLen at kMax
         omega
     | _ => simp at isBound
+
+theorem noWrapSum_sound {m : Mem} {facts : Facts} {x y : Name} (wf : WF m)
+    (known : Knows m facts) (fits : noWrapSum facts x y = true) : I64 (m.val x + m.val y) := by
+  unfold noWrapSum at fits
+  simp only [Bool.and_eq_true, Bool.or_eq_true, List.any_eq_true] at fits
+  obtain ⟨upper, ⟨g, gMember, gStep⟩⟩ := fits
+  have gHolds := known g gMember
+  -- (the lower bounds: x ≥ k₁ and y ≥ k₂ with k₁ + k₂ at least the least 64-bit value)
+  have lower : minI64 ≤ m.val x + m.val y := by
+    cases g with
+    | ge a' k₁ =>
+        simp only [Bool.and_eq_true, beq_iff_eq, List.any_eq_true] at gStep
+        obtain ⟨rfl, h, hMember, hStep⟩ := gStep
+        have hHolds := known h hMember
+        cases h with
+        | ge b k₂ =>
+            simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at hStep
+            obtain ⟨rfl, low⟩ := hStep
+            simp only [Fact.Holds] at gHolds hHolds
+            omega
+        | _ => simp at hStep
+    | _ => simp at gStep
+  -- (the upper bound: x + y < s for a value s)
+  have higher : m.val x + m.val y ≤ maxI64 := by
+    rcases upper with ⟨f, fMember, fStep⟩ | ⟨f, fMember, fStep⟩
+    · have fHolds := known f fMember
+      cases f with
+      | lt a c =>
+          simp only [Bool.and_eq_true, beq_iff_eq, List.any_eq_true] at fStep
+          obtain ⟨rfl, s, sMember, sStep⟩ := fStep
+          have sHolds := known s sMember
+          cases s with
+          | sum total p q =>
+              have range := wf.1 total
+              simp only [Fact.Holds] at fHolds sHolds
+              simp only [Bool.or_eq_true, Bool.and_eq_true, beq_iff_eq] at sStep
+              unfold I64 maxI64 at range
+              unfold maxI64
+              rcases sStep with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ <;> omega
+          | _ => simp at sStep
+      | _ => simp at fStep
+    · have fHolds := known f fMember
+      cases f with
+      | atMost a k =>
+          simp only [Bool.and_eq_true, beq_iff_eq, List.any_eq_true] at fStep
+          obtain ⟨rfl, s, sMember, sStep⟩ := fStep
+          have sHolds := known s sMember
+          cases s with
+          | off total p k' =>
+              have range := wf.1 total
+              simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at sStep
+              obtain ⟨rfl, smaller⟩ := sStep
+              simp only [Fact.Holds] at fHolds sHolds
+              unfold I64 maxI64 at range
+              unfold maxI64
+              omega
+          | _ => simp at sStep
+      | _ => simp at fStep
+  unfold I64
+  exact ⟨lower, higher⟩
 
 theorem step_sound {m : Mem} {facts : Facts} {goal : Fact} (wf : WF m)
     (known : Knows m facts) (derived : ruleStep facts goal = true) : goal.Holds m := by
@@ -907,14 +1048,75 @@ theorem step_sound {m : Mem} {facts : Facts} {goal : Fact} (wf : WF m)
   | len n l => exact substituted_sound known (by simpa [ruleStep] using derived)
   | found e d => exact substituted_sound known (by simpa [ruleStep] using derived)
   | cell o f v => exact substituted_sound known (by simpa [ruleStep] using derived)
+  | sum a b c => exact substituted_sound known (by simpa [ruleStep] using derived)
   | absurd => exact substituted_sound known (by simpa [ruleStep] using derived)
+
+theorem sumStep_sound {m : Mem} {facts : Facts} {goal : Fact}
+    (known : Knows m facts) (derived : sumStep facts goal = true) : goal.Holds m := by
+  cases goal with
+  | lt x z =>
+      simp only [sumStep, List.any_eq_true] at derived
+      obtain ⟨f, fMember, fStep⟩ := derived
+      have fHolds := known f fMember
+      cases f with
+      | sum x' p q =>
+          simp only [Bool.and_eq_true, beq_iff_eq, List.any_eq_true] at fStep
+          obtain ⟨rfl, g, gMember, gStep⟩ := fStep
+          have gHolds := known g gMember
+          cases g with
+          | sum z' r t =>
+              simp only [Bool.and_eq_true, Bool.or_eq_true, beq_iff_eq, List.contains_iff_mem] at gStep
+              obtain ⟨rfl, order⟩ := gStep
+              simp only [Fact.Holds] at fHolds gHolds ⊢
+              rcases order with ((⟨rfl, ordered⟩ | ⟨rfl, ordered⟩) | ⟨rfl, ordered⟩) | ⟨rfl, ordered⟩ <;>
+                · have less := known _ ordered
+                  simp only [Fact.Holds] at less
+                  omega
+          | off z' r k' =>
+              simp only [Bool.and_eq_true, beq_iff_eq, List.any_eq_true] at gStep
+              obtain ⟨rfl, h, hMember, hStep⟩ := gStep
+              have hHolds := known h hMember
+              cases h with
+              | atMost a k =>
+                  simp only [Bool.and_eq_true, Bool.or_eq_true, beq_iff_eq, decide_eq_true_eq] at hStep
+                  obtain ⟨below, which⟩ := hStep
+                  simp only [Fact.Holds] at fHolds gHolds hHolds ⊢
+                  rcases which with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ <;> omega
+              | _ => simp at hStep
+          | _ => simp at gStep
+      | _ => simp at fStep
+  | ge x k =>
+      simp only [sumStep, List.any_eq_true] at derived
+      obtain ⟨f, fMember, fStep⟩ := derived
+      have fHolds := known f fMember
+      cases f with
+      | sum x' p q =>
+          simp only [Bool.and_eq_true, beq_iff_eq, List.any_eq_true] at fStep
+          obtain ⟨rfl, g, gMember, gStep⟩ := fStep
+          have gHolds := known g gMember
+          cases g with
+          | ge p' k₁ =>
+              simp only [Bool.and_eq_true, beq_iff_eq, List.any_eq_true] at gStep
+              obtain ⟨rfl, h, hMember, hStep⟩ := gStep
+              have hHolds := known h hMember
+              cases h with
+              | ge q' k₂ =>
+                  simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at hStep
+                  obtain ⟨rfl, bound⟩ := hStep
+                  simp only [Fact.Holds] at fHolds gHolds hHolds ⊢
+                  omega
+              | _ => simp at hStep
+          | _ => simp at gStep
+      | _ => simp at fStep
+  | _ => simp [sumStep] at derived
 
 theorem rule_sound {m : Mem} {facts : Facts} {goal : Fact} (wf : WF m)
     (known : Knows m facts) (derived : rule facts goal = true) : goal.Holds m := by
   simp only [rule, Bool.or_eq_true, List.contains_iff_mem] at derived
-  rcases derived with impossible | derived
+  rcases derived with (impossible | derived) | derived
   · exact (known _ impossible).elim
   · exact step_sound wf known derived
+  · exact sumStep_sound known derived
 
 theorem justified_sound {m : Mem} (wf : WF m) :
     ∀ (known goals : Facts), Knows m known → justified known goals = true → Knows m goals
@@ -1077,6 +1279,47 @@ theorem move_sound {node : Node} {m : Mem} {target : Nat} {after : Mem} {facts :
       intro f member
       simp only [immediates, generated, List.append_nil] at member
       exact kept_set (fun f h => by simpa [survives] using h) f member
+  | @addReg dst x y next _ =>
+      refine ⟨wf_set wf (wrap_i64 _) dst, 0, by simp [edges], ?_⟩
+      intro f member
+      simp only [immediates, List.mem_append] at member
+      rcases member with h | h
+      · exact kept_set (fun f h => by simpa [survives] using h) f h
+      · simp only [generated] at h
+        split at h
+        · next ok =>
+            simp at h
+            subst h
+            obtain ⟨dx, dy, fits⟩ := ok
+            have sum : I64 (m.val x + m.val y) := by
+              simp only [Bool.or_eq_true] at fits
+              rcases fits with fits | fits
+              · exact noWrapSum_sound wf known fits
+              · have swapped := noWrapSum_sound wf known fits
+                rwa [Int.add_comm] at swapped
+            simp only [Fact.Holds, Mem.set, Ne.symm dx, Ne.symm dy, ite_true, ite_false]
+            exact wrap_fits _ sum
+        · simp at h
+  | @addRegFits dst x y next overflow _ fits =>
+      refine ⟨wf_set wf fits dst, 0, by simp [edges], ?_⟩
+      intro f member
+      simp only [immediates, List.mem_append] at member
+      rcases member with h | h
+      · exact kept_set (fun f h => by simpa [survives] using h) f h
+      · simp only [generated] at h
+        split at h
+        · next ok =>
+            simp at h
+            subst h
+            obtain ⟨dx, dy⟩ := ok
+            simp only [Fact.Holds, Mem.set]
+            simp [Ne.symm dx, Ne.symm dy]
+        · simp at h
+  | @addRegOverflows dst x y next overflow _ v _ fits =>
+      refine ⟨wf_set wf fits dst, 1, by simp [edges], ?_⟩
+      intro f member
+      simp only [immediates, generated, List.append_nil] at member
+      exact kept_set (fun f h => by simpa [survives] using h) f member
   | @length dst l next _ =>
       have range := wf.2.1 (m.val l)
       unfold maxLen at range
@@ -1159,7 +1402,7 @@ theorem move_sound {node : Node} {m : Mem} {target : Nat} {after : Mem} {facts :
             subst h
             simp only [Fact.Holds, Mem.set]
             simp [Ne.symm differ]
-  | @writeField o v c i next _ cell bounded stored others =>
+  | @writeField o v c i next unrelated _ cell bounded stored others apart =>
       refine ⟨⟨wf.1, wf.2.1, wf.2.2.1, bounded⟩, 0, by simp [edges], ?_⟩
       intro fact member
       simp only [immediates, List.mem_append] at member
@@ -1168,11 +1411,14 @@ theorem move_sound {node : Node} {m : Mem} {target : Nat} {after : Mem} {facts :
         have holds := known fact inFacts
         cases fact with
         | cell a d j w =>
-            simp only [survives, Bool.and_eq_true, beq_iff_eq, bne_iff_ne, ne_eq] at keeps
-            obtain ⟨rfl, differ⟩ := keeps
+            simp only [survives, Bool.or_eq_true, Bool.and_eq_true, beq_iff_eq, bne_iff_ne, ne_eq,
+              List.contains_iff_mem] at keeps
             simp only [Fact.Holds] at holds ⊢
-            rw [others _ _ differ]
-            exact holds
+            rcases keeps with ⟨rfl, differ⟩ | listed
+            · rw [others _ _ differ]
+              exact holds
+            · rw [apart _ _ _ listed]
+              exact holds
         | _ => exact (holds_fields (by simp [Fact.onFields])).mpr holds
       · simp only [generated] at h
         simp at h
@@ -1331,7 +1577,41 @@ theorem accepted_access_safe {program : Program} {certificate : Certificate}
   obtain ⟨_, known⟩ := reachable_invariant checked wf reachable
   have ok := accepted_node checked found
   simp only [nodeOK, Bool.and_eq_true] at ok
-  exact safeFacts_sound known ok.1
+  exact safeFacts_sound known ok.1.2
+
+/-- The cells after field `i` of class `c` of the object at `a₀` gets `x`, and nothing else. -/
+def Mem.written (m : Mem) (a₀ : Int) (c : String) (i : Nat) (x : Int) : Int → String → Nat → Int :=
+  fun a d j => if a = a₀ ∧ d = c ∧ j = i then x else m.cell a d j
+
+/-- A write whose class `unrelated` does not list can always happen, from any well-formed
+state: the cells its premises keep are other cells than the one it writes. The premises that
+model typed memory therefore never make an execution stop at a write. -/
+theorem writeField_step {o v : Name} {c : String} {i next : Nat} {unrelated : List String}
+    {m : Mem} (wf : WF m) (own : c ∉ unrelated) :
+    ∃ m', Move (.writeField o c i v unrelated next) m next m' := by
+  refine ⟨{ m with cell := m.written (m.val o) c i (m.val v) }, Move.writeField ?_ ?_ ?_ ?_⟩
+  · intro a d j
+    unfold Mem.written
+    split
+    · exact wf.1 v
+    · exact wf.2.2.2 a d j
+  · simp [Mem.written]
+  · intro a j differ
+    simp [Mem.written, differ]
+  · intro a d j listed
+    have other : d ≠ c := fun same => own (same ▸ listed)
+    simp [Mem.written, other]
+
+/-- Every write of an accepted program can happen (`writeField_step`): the checker refuses one
+that lists its own class as unrelated. -/
+theorem accepted_write_progress {program : Program} {certificate : Certificate}
+    (checked : check program certificate = true) {pc : Nat} {o v : Name} {c : String}
+    {i next : Nat} {unrelated : List String}
+    (found : program.nodes[pc]? = some (.writeField o c i v unrelated next)) {m : Mem}
+    (wf : WF m) : ∃ m', Move (.writeField o c i v unrelated next) m next m' := by
+  have ok := accepted_node checked found
+  simp [nodeOK, wellFormed] at ok
+  exact writeField_step wf ok.1.1
 
 /-! ## Kernel-checked examples
 
@@ -1469,6 +1749,95 @@ example : check ⟨guardedLoop.nodes.set 8 (.lists 11) ++ [.addChecked "t" "i" 1
 example : check ⟨guardedLoop.nodes.set 2 (.test (.sle (.reg "s") (.reg "m")) 10 3), 0⟩
     guardedLoopCertificate = false := by decide
 
+/-- listguard's copy of `for i in range(s): ... xs[b + i] ...` with a base `b` that no iteration
+changes: tests before the loop that `b >= 0` and that `t = s + b`, a checked sum, is at most the
+length; then the loop's own test `i < s` keeps `b + i`, a plain sum that the facts show fits,
+below the length on every iteration, with no check at the read. -/
+def baseLoop : Program := ⟨[
+  .length "n" "xs" 1,
+  .test (.sle (.lit 0) (.reg "b")) 2 11,
+  .addRegChecked "t" "s" "b" 3 11,
+  .test (.sle (.reg "t") (.reg "n")) 4 11,
+  .lit "h" 0 5,
+  .copy "i" "h" 6,
+  .test (.slt (.reg "i") (.reg "s")) 7 11,
+  .addReg "j" "b" "i" 8,
+  .load "xs" (.reg "j") 9,
+  .addChecked "u" "i" 1 10 11,
+  .copy "h" "u" 5,
+  .stop], 0⟩
+
+def baseLoopCertificate : Certificate := [
+  [],
+  [.len "n" "xs"],
+  [.len "n" "xs", .ge "b" 0],
+  [.len "n" "xs", .ge "b" 0, .sum "t" "s" "b"],
+  [.len "n" "xs", .ge "b" 0, .sum "t" "s" "b", .le "t" "n" 0],
+  [.len "n" "xs", .ge "b" 0, .sum "t" "s" "b", .le "t" "n" 0, .ge "h" 0],
+  [.len "n" "xs", .ge "b" 0, .sum "t" "s" "b", .le "t" "n" 0, .ge "i" 0],
+  [.len "n" "xs", .ge "b" 0, .sum "t" "s" "b", .le "t" "n" 0, .ge "i" 0, .lt "i" "s"],
+  [.len "n" "xs", .ge "b" 0, .sum "t" "s" "b", .le "t" "n" 0, .ge "i" 0, .sum "j" "b" "i",
+    .lt "j" "t", .le "j" "n" 1, .ge "j" 0, .below "j" "n"],
+  [.len "n" "xs", .ge "b" 0, .sum "t" "s" "b", .le "t" "n" 0, .ge "i" 0],
+  [.len "n" "xs", .ge "b" 0, .sum "t" "s" "b", .le "t" "n" 0, .off "u" "i" 1, .ge "u" 0],
+  []]
+
+example : check baseLoop baseLoopCertificate = true := by decide
+/- No test that the base is not negative: `b + i` may be below 0. -/
+example : check ⟨baseLoop.nodes.set 1 (.test (.sle (.lit (-1)) (.reg "b")) 2 11), 0⟩
+    baseLoopCertificate = false := by decide
+/- The stop's sum with the base computed without a check: it may have wrapped. -/
+example : check ⟨baseLoop.nodes.set 2 (.addReg "t" "s" "b" 3), 0⟩ baseLoopCertificate = false := by
+  decide
+/- The base changes in the loop: the sum the tests bounded is no longer its sum with the stop. -/
+example : check ⟨baseLoop.nodes.set 9 (.havoc "b" 12) ++ [.addChecked "u" "i" 1 10 11], 0⟩
+    (baseLoopCertificate ++ [[.len "n" "xs", .ge "b" 0, .sum "t" "s" "b", .le "t" "n" 0, .ge "i" 0]]) = false := by
+  decide
+/- A loop that runs to its stop inclusive (`i <= s`): `b + i` may reach the length. -/
+example : check ⟨baseLoop.nodes.set 6 (.test (.sle (.reg "i") (.reg "s")) 7 11), 0⟩
+    baseLoopCertificate = false := by decide
+/- The copy reached where the length test failed. -/
+example : check ⟨baseLoop.nodes.set 3 (.test (.sle (.reg "t") (.reg "n")) 11 4), 0⟩
+    baseLoopCertificate = false := by decide
+
+/-- The same copy over `range(4)`, a constant stop: the test before the loop computes `t = b + 4`,
+an offset, and the loop's own test `i < 4` bounds `i` by 3, below 4. -/
+def baseConstLoop : Program := ⟨[
+  .length "n" "xs" 1,
+  .test (.sle (.lit 0) (.reg "b")) 2 11,
+  .addChecked "t" "b" 4 3 11,
+  .test (.sle (.reg "t") (.reg "n")) 4 11,
+  .lit "h" 0 5,
+  .copy "i" "h" 6,
+  .test (.slt (.reg "i") (.lit 4)) 7 11,
+  .addReg "j" "b" "i" 8,
+  .load "xs" (.reg "j") 9,
+  .addChecked "u" "i" 1 10 11,
+  .copy "h" "u" 5,
+  .stop], 0⟩
+
+def baseConstLoopCertificate : Certificate := [
+  [],
+  [.len "n" "xs"],
+  [.len "n" "xs", .ge "b" 0],
+  [.len "n" "xs", .ge "b" 0, .off "t" "b" 4],
+  [.len "n" "xs", .ge "b" 0, .off "t" "b" 4, .le "t" "n" 0],
+  [.len "n" "xs", .ge "b" 0, .off "t" "b" 4, .le "t" "n" 0, .ge "h" 0],
+  [.len "n" "xs", .ge "b" 0, .off "t" "b" 4, .le "t" "n" 0, .ge "i" 0],
+  [.len "n" "xs", .ge "b" 0, .off "t" "b" 4, .le "t" "n" 0, .ge "i" 0, .atMost "i" 3],
+  [.len "n" "xs", .ge "b" 0, .off "t" "b" 4, .le "t" "n" 0, .ge "i" 0, .sum "j" "b" "i",
+    .lt "j" "t", .le "j" "n" 1, .ge "j" 0, .below "j" "n"],
+  [.len "n" "xs", .ge "b" 0, .off "t" "b" 4, .le "t" "n" 0, .ge "i" 0],
+  [.len "n" "xs", .ge "b" 0, .off "t" "b" 4, .le "t" "n" 0, .off "u" "i" 1, .ge "u" 0],
+  []]
+
+example : check baseConstLoop baseConstLoopCertificate = true := by decide
+/- The test before the loop adds 3 where the loop runs to 4: `b + 3` may reach the length. -/
+example : check ⟨baseConstLoop.nodes.set 2 (.addChecked "t" "b" 3 3 11), 0⟩
+    (baseConstLoopCertificate.map fun facts => facts.map fun
+      | .off "t" "b" 4 => .off "t" "b" 3
+      | f => f) = false := by decide
+
 /-- `a, b = xs` after the runtime check that the length is 2, and `a, *b, c = xs`'s last
 item, at the length minus one, after the check that the length is at least 2. -/
 def unpacked : Program := ⟨[
@@ -1577,7 +1946,7 @@ def fieldReloadCertificate : Certificate := [
 example : check fieldReload fieldReloadCertificate = true := by decide
 /- A write to any field between the two reads, or a call that may write fields. -/
 example : check ⟨[.readField "d" "self" "State" 1 1, .find "e" "d" 2,
-    .test (.eq (.reg "e") (.lit (-1))) 6 3, .writeField "self" "Other" 2 "x" 4,
+    .test (.eq (.reg "e") (.lit (-1))) 6 3, .writeField "self" "Other" 2 "x" [] 4,
     .readField "d2" "self" "State" 1 5, .value "d2" "e" 6, .stop], 0⟩
     (fieldReloadCertificate.take 4 ++ [[.cell "self" "State" 1 "d", .entry "e" "d"]] ++
      [fieldReloadCertificate[4]!, []]) = false := by decide
@@ -1588,9 +1957,9 @@ example : check ⟨[.readField "d" "self" "State" 1 1, .find "e" "d" 2,
      [fieldReloadCertificate[4]!, []]) = false := by decide
 /- `self.hits += 1` between them writes another field of the same class: the dict's field keeps
 its value. The same field of any object, or a field of another class, may be the dict's. -/
-def fieldWriteBetween (o : Name) (c : String) (i : Nat) : Program := ⟨[
+def fieldWriteBetween (o : Name) (c : String) (i : Nat) (unrelated : List String := []) : Program := ⟨[
   .readField "d" "self" "State" 1 1, .find "e" "d" 2,
-  .test (.eq (.reg "e") (.lit (-1))) 6 3, .writeField o c i "x" 4,
+  .test (.eq (.reg "e") (.lit (-1))) 6 3, .writeField o c i "x" unrelated 4,
   .readField "d2" "self" "State" 1 5, .value "d2" "e" 6, .stop], 0⟩
 
 def fieldWriteCertificate : Certificate :=
@@ -1600,6 +1969,13 @@ def fieldWriteCertificate : Certificate :=
 example : check (fieldWriteBetween "self" "State" 5) fieldWriteCertificate = true := by decide
 example : check (fieldWriteBetween "other" "State" 1) fieldWriteCertificate = false := by decide
 example : check (fieldWriteBetween "self" "Base" 5) fieldWriteCertificate = false := by decide
+/- A field of a class that no `State` object also is (`re.parse`'s `p.state.flags = ...` before
+`p.state` is read again) keeps the dict's field, where the write lists `State` as unrelated. A
+write that lists another class, or its own, keeps nothing more. -/
+example : check (fieldWriteBetween "other" "Pattern" 0 ["State"]) fieldWriteCertificate = true := by decide
+example : check (fieldWriteBetween "other" "Pattern" 0 ["Tokenizer"]) fieldWriteCertificate = false := by
+  decide
+example : check (fieldWriteBetween "other" "State" 1 ["State"]) fieldWriteCertificate = false := by decide
 
 /- Another field of the same object is another value. -/
 example : check ⟨[.readField "d" "self" "State" 1 1, .find "e" "d" 2,

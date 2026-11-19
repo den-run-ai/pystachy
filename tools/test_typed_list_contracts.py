@@ -14,8 +14,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.pystachy_compiler import diagnostics, utils
 from src.pystachy_compiler.gen import Gen
-from src.pystachy_compiler.ir import FnInfo, IFn, Ins, Val
+from src.pystachy_compiler.ir import IFn, Ins, Val
+from src.pystachy_compiler.symbols import FnInfo
 from src.pystachy_compiler.loader import Loader
+from src.pystachy_compiler.machine_ir import machine_ops
 from src.pystachy_compiler.specs import LIST_READS, LIST_WRITES
 from src.pystachy_compiler.syntax import Node
 from src.pystachy_compiler.utils import ListLayout, list_read_error, list_write_error, rtsym
@@ -71,6 +73,7 @@ class ListLayoutTests(unittest.TestCase):
 
     def test_reference_payloads_and_numeric_identity_are_independent(self):
         for element, atomic, identity in (("float", True, 2), ("bool", True, 0),
+                                          ("opt[int]", False, 9), ("opt[float]", False, 10),
                                           ("str", False, 0), ("dyn", False, 0),
                                           ("list[int]", False, 0)):
             with self.subTest(element=element):
@@ -224,6 +227,22 @@ class ListWriteContractTests(unittest.TestCase):
         i.a[-1].t = "bool"
         self.assert_rejected(i, "needs int")
 
+    def test_optional_identity_requires_its_pointer_slot_and_kind(self):
+        for element, kind in (("opt[int]", "9"), ("opt[float]", "10")):
+            for operation in ("list.append_identity", "list.set_identity", "list.insert_identity"):
+                with self.subTest(element=element, operation=operation):
+                    i = list_write(operation, element)
+                    i.a[-1].v = kind
+                    self.assertEqual(list_write_error(i, False), "")
+                    g = Gen()
+                    g.list_write(i.s, i.a)
+                    g.verify(function_with(g.fn.blocks[0].code[0]), False)
+                    i.a[-1].v = str(int(kind) & 3)
+                    self.assert_rejected(i, "numeric identity kind")
+                    i.a[-1].v = kind
+                    i.a[-3].t = "*" + element[4:-1]
+                    self.assert_rejected(i, "needs *" + element)
+
     def test_verifier_rejects_postconstruction_result_and_metadata_corruption(self):
         for field, value in (("t", "int"), ("r", [1]), ("x", "int"), ("k", 1), ("b", ["entry"])):
             i = list_write()
@@ -307,6 +326,15 @@ class ListReadContractTests(unittest.TestCase):
             self.assert_rejected(i, "numeric identity kind")
         self.assert_rejected(list_read(element="dyn", identity=True), "numeric identity kind")
 
+    def test_optional_identity_reads_require_the_optional_kind(self):
+        for element, kind in (("opt[int]", "9"), ("opt[float]", "10")):
+            i = list_read(element=element, identity=True)
+            i.a[-1].v = kind
+            self.assertEqual(list_read_error(i), "")
+            self.verify(i)
+            i.a[-1].v = str(int(kind) & 3)
+            self.assert_rejected(i, "numeric identity kind")
+
     def test_read_builder_reuses_declared_signature_and_refuses_erasure(self):
         g = Gen()
         i = list_read()
@@ -342,7 +370,8 @@ class ListReadContractTests(unittest.TestCase):
             self.assertEqual(g.out, ["  %t1 = call i64 @pys_list_get(ptr %a0, i64 0)"])
         i = list_read("list.len")
         g = Gen()
-        g.lower_ins(function_with(i), i)
+        for machine in machine_ops(i):
+            g.lower_ins(function_with(i), machine)
         self.assertEqual(g.out, ["  %t1 = load i64, ptr %a0"])
 
     def test_result_count_registry_rejects_missing_semantic_result(self):

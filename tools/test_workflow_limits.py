@@ -343,7 +343,8 @@ class LimitTests(unittest.TestCase):
         self.assertNotIn("pull_request", workflows()["performance.yml"]["on"])
         self.assertNotIn("distribution", jobs)
 
-    def test_lint_overlaps_exactly_two_control_suites_on_every_event(self):
+    def test_lint_overlaps_check_fast_lint_and_both_control_suites_on_every_event(self):
+        # The three longest suites run at once, so Lint keeps headroom under 15 minutes (#1525).
         steps = workflows()["lint.yml"]["jobs"]["lint"]["steps"]
         controls = [step for step in steps if "test_*verif*.py" in step.get("run", "")]
         self.assertEqual(len(controls), 1)
@@ -351,12 +352,17 @@ class LimitTests(unittest.TestCase):
         self.assertNotIn("if", control)  # Includes docs-only PRs, main and manual runs.
         self.assertNotIn("continue-on-error", control)
         commands = "\n".join(step.get("run", "") for step in steps)
-        for pattern in ("test_*verif*.py", "test_compiler_state*.py"):
-            self.assertEqual(commands.count(pattern), 1)
+        for pattern in ("test_*verif*.py", "test_compiler_state*.py", "check-fast", "check-recordings"):
+            self.assertEqual(commands.count(pattern), 1, pattern)
         self.assertEqual(control["run"].splitlines(), [
             "python3 -m unittest discover -s tools -p test_lint_controls.py",
-            "python3 tools/lint_controls.py 'test_*verif*.py' 'test_compiler_state*.py'",
+            "python3 tools/lint_controls.py --make 'check-fast lint' 'test_*verif*.py' 'test_compiler_state*.py'",
         ])
+        # check-fast's Lean boundary tests still require the checker that Lint built first.
+        self.assertEqual(control["env"]["LEAN_BOUNDARY_REQUIRED"],
+                         "${{ steps.lean-boundary.outputs.run != 'false' && '1' || '' }}")
+        names = [step.get("name", "") for step in steps]
+        self.assertLess(names.index("Build and audit the Lean boundary prototype"), steps.index(control))
 
     def test_generated_asan_runs_once_on_short_pr_worker_and_full_gc_jit(self):
         found = workflows()
@@ -508,7 +514,7 @@ class LimitTests(unittest.TestCase):
         self.assertNotIn("continue-on-error", job)
         for event in ("pull_request", "push", "workflow_dispatch"):
             with self.subTest(event=event):
-                group = "opt-in" if event == "pull_request" else "hosted"
+                group = "opt-in" if event == "pull_request" else "gc-aot-2"
                 self.assertEqual(selected_rows(job, probe["if"], event),
                                  [{"machine": "x86_64", "group": group}])
         oracles = [step for step in steps if "/^pytest==/p" in step.get("run", "")]
@@ -518,7 +524,7 @@ class LimitTests(unittest.TestCase):
         self.assertNotIn("continue-on-error", workloads[0])
         for event in ("pull_request", "push", "workflow_dispatch"):
             machines = ["x86_64"] if event == "pull_request" else ["x86_64", "aarch64"]
-            group = "opt-in" if event == "pull_request" else "hosted"
+            group = "opt-in" if event == "pull_request" else "gc-aot-2"
             self.assertCountEqual(selected_rows(job, workloads[0]["if"], event),
                                   [{"machine": machine, "group": group} for machine in machines])
             self.assertCountEqual(selected_rows(job, oracles[0]["if"], event),

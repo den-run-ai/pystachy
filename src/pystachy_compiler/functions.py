@@ -2,7 +2,8 @@
 from __future__ import annotations
 from src.pystachy_compiler.analysis import globals_in, lambda_flags, local_names, nonlocal_decls, numeric_statement, numeric_return_names, str_appends, targets
 from src.pystachy_compiler.diagnostics import Rejoin, int_program
-from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Try, Val
+from src.pystachy_compiler.ir import Blk, IFn, Try, Val
+from src.pystachy_compiler.symbols import FnInfo
 from src.pystachy_compiler.local_versions import local_versions
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.optimizations import recursion_unsnapshot
@@ -61,6 +62,13 @@ def gen_enter(self, f: FnInfo, body: list[Node]) -> None:
     self.nonesites = {}
     self.nonepending = {}
     self.narrowed = {}
+    self.preadn = []
+    self.preadv = []
+    self.preads = []
+    self.preadb = []
+    self.pdoms = {}
+    self.psess = [0]
+    self.pfield = ""
     self.lkk = {}
     self.branch = 0
     self.cells = {}
@@ -70,6 +78,7 @@ def gen_enter(self, f: FnInfo, body: list[Node]) -> None:
     self.carried = Val("", "")
     self.nonecmp = False
     self.fieldcmp = False
+    self.rolex = ""
     self.cmpnode = self.nokey
     self.stkkey = self.nokey
     self.reflcopies = 1
@@ -86,10 +95,10 @@ def gen_enter(self, f: FnInfo, body: list[Node]) -> None:
         # raised may have left it higher), before any local handler or body code. Capture
         # it before dry() can build temporary landings: their discarded blocks must not
         # leave a live token referring to a discarded definition. A source function or lambda
-        # (not a module's code or a Callable's adapter, which forwards to one) may count as a
-        # frame: Gen.recursionscope decides once the program is built, and makes this op its
-        # checked entry (docs/internals.md#native-recursion-depth).
-        self.fn.counted = f.node.kind == "def" and len(f.node.kids) >= 3 and f.name != "<callable>"
+        # (not a module's code, nor a Callable's adapter or a shared virtual dispatch, which
+        # forward to one) may count as a frame: Gen.recursionscope decides once the program
+        # is built, and makes this op its checked entry (docs/internals.md#native-recursion-depth).
+        self.fn.counted = f.node.kind == "def" and len(f.node.kids) >= 3 and f.name != "<callable>" and f.name != "<dispatch>"
         self.fn.rdepth = self.rt("pys_recursion_depth", "i64", [])
 
 def gen_materialize(self, f: FnInfo) -> None:
@@ -132,6 +141,7 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
     self.building[f.ll] = True
     sel = self.selfcls
     self.selfcls = ""  # (its annotations name its class's types: f.cls's, see tvar)
+    tried = self.xtry  # (an attempt this function's narrowing makes lasts to its end: narrows)
     ret = f.ret
     noret = f.noret
     asked = self.dyn_asked(f)
@@ -162,6 +172,7 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
                 del self.newhints[key]
     del self.building[f.ll]
     self.selfcls = sel
+    self.xtry = tried
     self.fn.n = self.n
     self.fn.otherbinds = None  # the binding index is needed only while building this function
     self.fns.append(self.fn)
@@ -242,8 +253,9 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
         self.ret = f.ret
     self.numeric_proof(f, body)
     self.fn.numeric_only = f.scalar_only
-    if takes_self(f):
-        # callers check the receiver, so self is never None inside a method
+    if takes_self(f) and not f.nullable_self:
+        # Attribute calls check the receiver; explicit C.m(o, ...) may pass None and
+        # uses its own specialization without these assumptions (including self loads).
         self.nn["%a0"] = True
         if f.params[0] not in self.assigned:
             self.selfname = f.params[0]

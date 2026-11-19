@@ -19,4 +19,4 @@ class Token(NamedTuple):
 
 class Untyped(NamedTuple):
     a: int
-    b: complex
+    b: memoryview

@@ -1,0 +1,5 @@
+loud loud 2 HI HIHI AAA loud v2 of Loud 9
+AttributeError: type object 'Loud' has no attribute 'whisper'
+plain codec 2 hi! hi!hi! a!a!a! codec v2 of Codec 9
+AttributeError: type object 'Codec' has no attribute 'whisper'
+[exit 0]

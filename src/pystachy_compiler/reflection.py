@@ -9,13 +9,16 @@ internal constant global (Data "classrec", lowered in lower_module.py) emitted o
 that reach such a site, which LLVM's globaldce and llvm-link --only-needed drop otherwise.
 """
 from __future__ import annotations
-from src.pystachy_compiler.diagnostics import dynamic_program, int_program, shown
+from src.pystachy_compiler.diagnostics import LINES, dynamic_program, int_program, shown
 from src.pystachy_compiler.analysis import clean_doc, local_names
-from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Loop, Val, tmpname
+from src.pystachy_compiler.ir import Data, Ins, Loop, Val, tmpname
+from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.names import ENUMCLASSES, short
-from src.pystachy_compiler.specs import BIG, BIGOPT, GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, RANGEC, TYPEMODS, is_excname
+from src.pystachy_compiler.specs import BIG, BIGOPT, BYTEARRAYC, COMPLEXC, EMPTYFS, GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, RANGEC, TYPEMODS, is_excname
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
+    is_const,
+    is_clsval,
     lib_file,
     lib_source,
     opaque_class,
@@ -173,19 +176,25 @@ def gen_refl_type_name(self, c: str, what: str) -> str:
     # or "" where Pystachy does not know it
     if c.startswith("%class:"):
         return "builtins" if what == "__module__" else c[7:]
-    if dynamic_program() and self.refl_builtin_class(c) != "":
-        return "builtins" if what == "__module__" else "type"
+    if self.refl_builtin_class(c) != "":
+        return "builtins" if what == "__module__" else "type"  # (a builtin class named: its class is type)
     if dynamic_program() and (is_fn(c) or is_gen(c)):
         return "builtins" if what == "__module__" else tname(c)
     if c == BIG:
         c = "int"  # (a promoting int's class is int: bigints.py)
+    if c.startswith("aset["):
+        self.err("type() of an AbstractSet value is not supported: it is a set or a frozenset, which its type does not tell")
+    if c == EMPTYFS:
+        return "builtins" if what == "__module__" else "frozenset"
+    if is_clsval(c):
+        return "builtins" if what == "__module__" else "type"  # (an ordinary class's class object: class_values.py)
     if c == "None" or c in BUILTIN_TYPES or is_list(c) or is_dict(c) or is_tuple(c) or is_vtuple(c) or is_set(c) or is_kw(c):
         b = "NoneType" if c == "None" else "list" if is_list(c) else "dict" if is_dict(c) or is_kw(c) else "tuple" if is_tuple(c) or is_vtuple(c) else c[: c.find("[")] if is_set(c) else c
         return "builtins" if what == "__module__" else b
     if c in self.classes and self.classes[c].exc == "":
         ci = self.classes[c]
         q = shown(ci.origin if ci.origin != "" else c)
-        if c.startswith("_pystachy_iterators$") or c == RANGEC or c == OBJECTC:
+        if c.startswith("_pystachy_iterators$") or c == RANGEC or c == OBJECTC or c == BYTEARRAYC or c == COMPLEXC:
             return "builtins" if what == "__module__" else short(c)
         own = self.classes[ci.origin] if ci.origin != "" else ci
         if dynamic_program() and what in ["__module__", "__qualname__"] and what in own.fdefault and self.default_home(own, what) is own and own.fdefault[what].kind == "str":
@@ -207,7 +216,7 @@ def gen_refl_record(self, c: str) -> str:
     # the field table (names in __dict__ order, descriptors, offsets: null until needed)
     if c in self.classes and self.classes[c].origin != "":
         c = self.classes[c].origin
-    builtin = c not in self.classes or (dynamic_program() and (c == OBJECTC or c == RANGEC or c.startswith(ITERS + "$")))
+    builtin = c not in self.classes or (dynamic_program() and (c == OBJECTC or c == RANGEC or c == BYTEARRAYC or c == COMPLEXC or c.startswith(ITERS + "$")))
     key = ("b." + self.refl_type_name(c, "__name__")) if builtin else ("c." + c)
     name = "@pys.refl." + key
     if name in self.reflrecs:
@@ -439,6 +448,22 @@ def gen_refl_dyn_type_cmp(self, n: Node) -> Val:
     # a box's, the one of a typed value's type by the value it holds (dyn_value_type: None's for
     # an optional list that is None), of a class or builtin type named, or null where no box
     # holds a value of that type (an exception, a set, bytes), which no DynType is
+    neg = n.s == "is not" or n.s == "!="
+    # A template denotes one Python class, but has no single object descriptor.
+    # Its exact type test is the existing family predicate: templates cannot be
+    # bases or subclasses. It proves no field layout and does not unbox a value.
+    for j in range(2):
+        k = n.kids[j]
+        if k.kind == "name" and k.s in self.tmpl and k.s not in self.ltype and k.s not in self.gtypes:
+            x = self.refl_typeof(n.kids[1 - j])
+            if x is not None:
+                if j == 0:
+                    self.class_ready(k)
+                v = self.expr(x, "")
+                if j == 1:
+                    self.class_ready(k)
+                r = Val(self.dyn_test(self.dyn_box(v), [k.s]), "bool")
+                return Val(self.scalar("xor", [r, Val("true", "bool")]), "bool") if neg else r
     ts: list[str] = []
     for k in n.kids:
         x = self.refl_typeof(k)
@@ -449,8 +474,6 @@ def gen_refl_dyn_type_cmp(self, n: Node) -> Val:
         elif (k.kind == "name" and k.s not in self.ltype and k.s not in self.gtypes) or (k.kind == "call" and len(k.kids) == 2 and k.kids[1].kind == "None"):
             c = self.refl_type_operand(k)
             b = "list[dyn]" if is_list(c) else "dict[dyn,dyn]" if is_dict(c) else "vtuple[dyn]" if is_tuple(c) else c
-            if b in self.tmpl:
-                self.err(f"type(x) is {short(b)} of an Any value is not supported: {short(b)} is a class template, whose objects are its specializations'")
             if b in self.classes and self.classes[b].exc == "":
                 ts.append(self.dyn_class_type(b))
             elif b in ["None", "bool", "int", "float", "str", "list[dyn]", "dict[dyn,dyn]", "vtuple[dyn]"]:
@@ -462,17 +485,19 @@ def gen_refl_dyn_type_cmp(self, n: Node) -> Val:
             if unopt(v.t) != "exctype":
                 self.err("a comparison of type(x) is supported with type(y), y.__class__, a class or a builtin type's name (#486); class objects as values are not (#7)")
             ts.append("null")
-    neg = n.s == "is not" or n.s == "!="
     variants = "@pys_dyntype_list" in ts or (int_program() and "@pys_dyntype_int" in ts)
     if not variants and (not ts[0].startswith("%") or not ts[1].startswith("%")):
         # Most named Python types have one DynType. Lists and promoting integers have
         # several physical layouts, so their Python type identity uses same_type below.
         return self.ptr_cmp("!=" if neg else "==", Val(ts[0], "dyntype"), Val(ts[1], "dyntype"))
-    r = self.rt("pys_dyn_same_type", "i64", [f"ptr {ts[0]}", f"ptr {ts[1]}"])
-    return self.num_cmp("==" if neg else "!=", Val(r, "int"), Val("0", "int"))
+    r = self.dyn_call(self.dyn_dispatcher("sametype", ["dyntype", "dyntype"], "bool", ""),
+                      [Val(ts[0], "dyntype"), Val(ts[1], "dyntype")])
+    return Val(self.scalar("xor", [r, Val("true", "bool")]), "bool") if neg else r
 
 
 def gen_refl_type_operand(self, n: Node) -> str:
+    if n.kind == "name" and n.s in self.deferred_hierarchies:
+        self.request_hierarchy(n.s)
     # what an operand of a type comparison names statically, as refl_record takes it: a class
     # or a builtin type named by its name (C, int, list, ...); "" for type(x) and x.__class__
     if self.refl_typeof(n) is not None:
@@ -484,6 +509,8 @@ def gen_refl_type_operand(self, n: Node) -> str:
         return RANGEC  # (lib/_pystachy_range.py's class)
     if n.kind == "name" and n.s == "object" and OBJECTC in self.classes and not self.bound(n.s):
         return OBJECTC  # (lib/_pystachy_object.py's class, object()'s)
+    if n.kind == "name" and n.s == "complex" and COMPLEXC in self.classes and not self.bound(n.s):
+        return COMPLEXC  # (lib/_pystachy_complex.py's class)
     if n.kind == "name" and n.s in ["int", "float", "bool", "str", "bytes", "list", "dict", "tuple", "set", "frozenset"] and not self.bound(n.s):
         # (a container type's record is its name's: any element types)
         return "list[int]" if n.s == "list" else "dict[int,int]" if n.s == "dict" else "tuple[int]" if n.s == "tuple" else "set[int]" if n.s == "set" else "frozenset[int]" if n.s == "frozenset" else n.s
@@ -535,8 +562,11 @@ def gen_refl_type_cmp(self, n: Node) -> Val | None:
         else:
             # (a value: an exception class's class object, or else not supported)
             v = self.expr(k, "")
-            if unopt(v.t) != "exctype":
-                self.err("a comparison of type(x) is supported with type(y), y.__class__, a class or a builtin type's name (#486); class objects as values are not (#7)")
+            if is_clsval(unopt(v.t)):
+                # (an ordinary class's class object held as a value: its record, or null for None)
+                v = Val(v.v, "%ptr")
+            elif unopt(v.t) != "exctype":
+                self.err("a comparison of type(x) is supported with type(y), y.__class__, a class or a builtin type's name (#486), or a class object of the program's classes (#7)")
             sides.append(v)
     neg = n.s == "is not" or n.s == "!="
     if (unopt(sides[0].t) == "exctype") != (unopt(sides[1].t) == "exctype"):
@@ -728,7 +758,11 @@ def gen_refl_getattr(self, args: list[Node], want: str, split: bool = False) -> 
             blocks.append(self.cur)
             self.br(end)
             self.place(yes)
-        v = d if h == "n" else self.expr(mk("attr", a, self.line, [self.vnode(lf.v)]), "")
+        self.rolex = lf.v.v if self.role_field(lf.c, a) else ""  # (exactly lf.c here)
+        try:
+            v = d if h == "n" else self.expr(mk("attr", a, self.line, [self.vnode(lf.v)]), "")
+        finally:
+            self.rolex = ""  # (also where the read does not compile: the name may be another value's later)
         if not self.term:
             vals.append(v)
             blocks.append(self.cur)
@@ -748,7 +782,7 @@ def gen_refl_setattr(self, args: list[Node]) -> Val:
     if o.t in self.classes and a in self.classes[o.t].ftypes and self.classes[o.t].ftypes[a] != NONEVAR:
         want = self.classes[o.t].ftypes[a]
     v = self.expr(args[2], want)
-    if o.t in self.classes and (a not in self.classes[o.t].ftypes or (a == " enum int" and self.enum_intlike(o.t))) and not self.is_prop(o.t, a) and self.classes[o.t].tag > 0:
+    if o.t in self.classes and (a not in self.classes[o.t].ftypes or (a == " enum int" and self.enum_intlike(o.t)) or (a == " enum str" and self.derives(o.t, "enum$StrEnum"))) and not self.is_prop(o.t, a) and self.classes[o.t].tag > 0:
         self.err(f"setattr() of '{a}' on a {short(o.t)}, which does not have it, would add an attribute to the object, which is not supported (#489)")
     self.assign(mk("attr", a, self.line, [self.vnode(o)]), v)
     return Val("null", "None")
@@ -1037,8 +1071,10 @@ def refl_body(cn: Node) -> list[Node]:
 def refl_annotated(body: list[Node]) -> bool:
     # does a class body annotate a name (x: int): its class has __annotations__
     for st in body:
-        if st.kind == "annassign" and st.kids[0].kind == "name" and st.kids[1].kind != "noann":
+        if st.kind == "annassign" and st.kids[0].kind == "name" and (st.kids[1].kind != "noann" or st.s == "Final"):
             return True  # (not a class attribute's x = v, which the class statement makes an annassign)
+        if st.kind == "assign" and st.s == "Final":
+            return True  # (x: Final = v, a class attribute typed by its value: see typing_forms)
     return False
 
 
@@ -1056,6 +1092,10 @@ def gen_refl_supported(self, c: str, what: str) -> None:
         why = "an iterator of a builtin container"
     elif c == RANGEC:
         why = "a range"
+    elif c == COMPLEXC:
+        why = "a complex number"
+    elif self.iterabc_derived(c):
+        why = "a class deriving from collections.abc's Iterator or Iterable, which ABCMeta gives attributes of its own"
     elif ci.mod in GLUE and self.curfn.mod != ci.mod:
         self.err(f"{what} of a {ci.mod}.{short(c)} object is not supported: its fields are Pystachy's {ci.mod} module's own (its twin's are others), and a program may use only its methods")
     elif opaque_class(ci, self.libdir) and self.curfn.mod != ci.mod:
@@ -1222,6 +1262,17 @@ def gen_refl_init_order(self, c: str, f: FnInfo, out: list[str], maybe: dict[str
     return True
 
 
+def refl_field_name(ci: ClassInfo, field: str, libdir: str) -> str:
+    # The contextlib port keeps its public func/args/kwds metadata while its setter
+    # and generator factory use hidden storage. Other classes retain their own names.
+    if ci.mod == "contextlib" and short(ci.origin if ci.origin != "" else ci.name) == "_GeneratorContextManager" and lib_source(ci.node.line, libdir, "contextlib.py"):
+        if field == " _func":
+            return "func"
+        if field in [" _pys_factory", " _pys_func_changed"]:
+            return ""
+    return field
+
+
 def gen_refl_dict_order(self, c: str) -> list[str]:
     # the names in the __dict__ of an object of class c, in the order CPython inserts them: the
     # fields __init__ assigns (a dataclass's: its fields), each where it is first assigned;
@@ -1233,7 +1284,7 @@ def gen_refl_dict_order(self, c: str) -> list[str]:
     out, why = self.refl_order(c)
     if why != "":
         self.err(f"vars() of {short(c)}{why}")
-    return out
+    return [fl for fl in out if refl_field_name(ci, fl, self.libdir) != ""]
 
 
 def gen_refl_order(self, c: str) -> tuple[list[str], str]:
@@ -1372,7 +1423,7 @@ def gen_refl_fields_table(self, c: str) -> str:
             ft = self.field_type(c, fl)
             if is_union(unopt(ft)) and not self.value_union(ft):
                 self.err(f"vars() of {short(c)}, whose field {fl} is a {typestr(ft)}, is not supported (a union of classes: #487)")
-            t.refs.append(self.sconst(fl))
+            t.refs.append(self.sconst(refl_field_name(ci, fl, self.libdir)))
             t.refs.append(self.sconst("J" if ft == BIG else self.desc(ft, "repr")))  # (a promoting int's {lo, hi}: runtime.c's jbig)
             t.items.append(Val(str(ci.fpos[fl]), "int"))
             flag = ci.fflag[fl] if fl in ci.fflag and c + "." + fl not in self.cvars else -1
@@ -1600,7 +1651,8 @@ def gen_refl_unroll_dict(self, n: Node, d: Node, x: Node, m: str) -> None:
                 go = self.label()
                 self.cbr(self.mem_load(Val(self.fgep(ov, ci.fflag[fl]), "*bool")).v, go, nxt)
                 self.place(go)
-            key = Val(self.sconst(fl), "str")
+            visible = refl_field_name(ci, fl, self.libdir)
+            key = Val(self.sconst(visible), "str")
             if m == "items" and vn is tgt:
                 val = self.coerce(self.getfield(ov, self.field(ov, fl), fl), vt)
                 self.assign(tgt, self.tuple_([key, val]))
@@ -1617,7 +1669,7 @@ def gen_refl_unroll_dict(self, n: Node, d: Node, x: Node, m: str) -> None:
             self.brks.append([])
             self.branch += 1
             sub = kt != "" and kt not in asg
-            self.stmts([refl_subst(st, kt, mk("str", fl, st.line, [])) if sub else st for st in body])
+            self.stmts([refl_subst(st, kt, mk("str", visible, st.line, [])) if sub else st for st in body])
             self.branch -= 1
             self.wdepth.pop()
             self.loops.pop()
@@ -1742,7 +1794,7 @@ def gen_refl_dict_copy(self, d: Node) -> Val:
                 self.place(go)
             kv = targs(dt)  # (["dyn", "dyn"] where the values are Any values or containers: ctype)
             v = self.list_hold(self.getfield(ov, self.field(ov, fl), fl), kv[1])  # (a tuple of ints as the dict holds it, a promoting int as a dict of ints does: bigints.py)
-            self.dict_store(r.v, self.to_slot(self.store_key(Val(self.sconst(fl), "str"), kv[0])), v, kv)
+            self.dict_store(r.v, self.to_slot(self.store_key(Val(self.sconst(refl_field_name(ci, fl, self.libdir)), "str"), kv[0])), v, kv)
             if nxt != "":
                 self.br(nxt)
                 self.place(nxt)
@@ -1767,16 +1819,18 @@ def gen_refl_dict_format(self, d: Node, keys: list[str], fmt: str, what: str) ->
         self.place(lf.label)
         ci = self.classes[lf.c]
         order = self.refl_dict_order(lf.c)
+        names = [refl_field_name(ci, fl, self.libdir) for fl in order]
         ov = Val(lf.v.v, lf.c)
         args: list[Node] = []
         for k in keys:
-            if k not in order:
+            if k not in names:
                 self.err(f"KeyError: '{k}': a {what} format reads a key that vars() of {short(lf.c)} does not have (#486)")
-            if k in ci.fflag and lf.c + "." + k not in self.cvars:
+            fl = order[names.index(k)]
+            if fl in ci.fflag and lf.c + "." + fl not in self.cvars:
                 # (a field __init__ may leave unassigned: KeyError where it is, as CPython's dict raises)
-                unset = self.scalar('xor', [Val(self.mem_load(Val(self.fgep(ov, ci.fflag[k]), "*bool")).v, 'bool'), Val('true', 'bool')])
+                unset = self.scalar('xor', [Val(self.mem_load(Val(self.fgep(ov, ci.fflag[fl]), "*bool")).v, 'bool'), Val('true', 'bool')])
                 self.guard(unset, f"KeyError: '{k}'")
-            args.append(self.vnode(self.getfield(ov, self.field(ov, k), k)))
+            args.append(self.vnode(self.getfield(ov, self.field(ov, fl), fl)))
         r = self.percent(fmt, mk("tuple", "", self.line, args), False) if what == "%" else self.str_format(fmt, "format", args)
         vals.append(r)
         blocks.append(self.cur)
@@ -3026,7 +3080,7 @@ def gen_copy_own(self, t: str, deep: bool) -> int:
     # copy does not support it: another type of the library's, a union of classes, and for a deep
     # copy a bound method or a Callable, which may hold one
     u = unopt(t)
-    if u in ["int", "float", "bool", "str", "bytes", "None", RANGEC, BIG] or t == BIGOPT or self.scalar_union(u):
+    if u in ["int", "float", "bool", "str", "bytes", "None", RANGEC, COMPLEXC, BIG] or t == BIGOPT or self.scalar_union(u):
         return 1
     if is_fn(u) or is_callable(u):
         return 2 if deep and (is_callable(u) or u.startswith("fn[m:")) else 1
@@ -3061,14 +3115,51 @@ def gen_enum_member(self, n: Node, want: str) -> Val:
     self.setfield(o, self.field(o, "_value_"), "_value_", v)
     if self.enum_intlike(c):
         self.mem_store(Val(self.fgep(o, ci.fpos[" enum int"]), "*int"), self.coerce(v, "int"))
+    elif self.derives(c, "enum$StrEnum"):
+        self.mem_store(Val(self.fgep(o, ci.fpos[" enum str"]), "*str"), self.coerce(v, "str"))
+    if len(n.kids) > 1:
+        gen_enum_init(self, o, n.kids[2] if len(n.kids) > 2 else n.kids[0], n.kids[3:])
     return o
+
+
+def gen_enum_init(self, o: Val, v: Node, count: list[Node]) -> None:
+    # the __init__ of member o's enum class, called as EnumType calls it once the member has its
+    # _name_ and _value_: with the items of its value v where that is a tuple, else with v. One
+    # that the Loader made of the class's __new__ (enum_new_init) takes the value as written,
+    # which the _value_ may differ from, after the number of names before it (count) where its
+    # body asks for that. It is a call of the method, whose result is dropped: no constructor
+    # checks that it is None
+    f = self.classes[o.t].methods["__init__"]
+    items = count + (v.kids if v.kind == "tuple" else [v])
+    args = [x for x in items]
+    if f.node.line // LINES == v.line // LINES and f.node.line > v.line:
+        # EnumType calls __init__ once the class body has run. Here the member is initialized
+        # where the body binds it, before the def statement below it has evaluated its
+        # defaults: a parameter that the value's items leave out is given its default value,
+        # a literal, with the call (not one of a base class in another module, whose def ran)
+        for j in range(len(items) + 1, len(f.params)):
+            d = f.defaults[j]
+            if j == f.vararg or j == f.kwarg or d.kind == "noann":
+                continue
+            if not is_const(d):
+                self.err(f"enum class {short(o.t)}'s __init__(): the default value of parameter '{f.params[j]}' is not supported where the members precede the def statement, which evaluates it after they are initialized here: use a literal, or define __init__ first")
+            args.append(clone_node(d) if j < f.npos else mk("kw", f.params[j], v.line, [clone_node(d)]))
+    self.call_fn(f, [o], args, direct=True)
 
 
 def gen_enum_alias(self, n: Node, want: str) -> Val:
     # an enum member's alias (Loader's enum_classes), as its class attribute's default: the member
     # n.s, whose class attribute the class statement has bound before (body order), read from its
-    # global, as the class's own name is not bound until the statement ends
+    # global, as the class's own name is not bound until the statement ends. Where the class has
+    # an __init__ (n's kids: the alias's value and name), CPython first makes and initializes a
+    # member of the alias's own name, which it drops for the member of that value
     ci = self.classes[unopt(want)]
+    if len(n.kids) > 1:
+        v = self.coerce(self.expr(n.kids[0], ci.ftypes["_value_"]), ci.ftypes["_value_"])
+        o = self.new_obj(ci.name)
+        self.setfield(o, self.field(o, "_name_"), "_name_", Val(self.sconst(n.kids[1].s), "str"))
+        self.setfield(o, self.field(o, "_value_"), "_value_", v)
+        gen_enum_init(self, o, n.kids[2] if len(n.kids) > 2 else n.kids[0], n.kids[3:])
     self.class_default(ci, n.s)
     t = ci.ftypes[n.s]
     return Val(self.mload(t, ci.fglob[n.s]), t)
@@ -3227,10 +3318,13 @@ def gen_enum_new(self, args: list[Node]) -> Val:
     if c not in self.classes or self.classes[c].node.line not in ENUMCLASSES:
         self.err("internal error: __pys_enum_new of no enum class's members")
     nm = self.coerce(self.expr(args[1], "str"), "str")
-    v = self.coerce(self.expr(args[2], "int"), "int")
+    vt = "str" if self.derives(c, "enum$StrEnum") else "int"
+    v = self.coerce(self.expr(args[2], vt), vt)
     o = self.new_obj(c)
     self.setfield(o, self.field(o, "_name_"), "_name_", nm)
     self.setfield(o, self.field(o, "_value_"), "_value_", v)
     if self.enum_intlike(c):
         self.mem_store(Val(self.fgep(o, self.classes[c].fpos[" enum int"]), "*int"), v)
+    elif self.derives(c, "enum$StrEnum"):
+        self.mem_store(Val(self.fgep(o, self.classes[c].fpos[" enum str"]), "*str"), v)
     return o

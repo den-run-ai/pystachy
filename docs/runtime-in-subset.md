@@ -76,15 +76,75 @@ that its own functions call.
 ## Unicode classification
 
 `runtime.py` scans ASCII directly for `isalpha`, `isalnum`, `isdecimal`, `isdigit`
-and `isnumeric`, and decodes other UTF-8 code points with `uchar`. A pure C helper,
-`pys_unicode_flags`, binary-searches a 6,944-byte constant transition table in
-`runtime.c`; it allocates nothing and has no locale or mutable state. Its distinct
-alpha, digit, decimal and numeric flags preserve CPython's overlapping properties.
-`tools/unicode_classification_tables.py --write` regenerates the table from the
-pinned CPython and `--check` compares it with all 1,114,112 code points. The table
+and `isnumeric`, and reads other characters as `uchar` does. A pure C helper,
+`pys_unicode_flags`, returns a code point's flags from 9,120 bytes of constant tables
+in `runtime.c`, without a search. The first 2,048 code points, which UTF-8 writes in
+one or two bytes, index an array directly. Any other takes three loads through staged
+tables, which keep each distinct block of values once. The helper allocates nothing
+and has no locale or mutable state. Its distinct alpha, digit, decimal and numeric
+flags preserve CPython's overlapping properties.
+
+`repr()` escapes what is not printable from tables of the same layout that hold one
+bit for each code point, 4,737 bytes. They are apart from the flags because every
+program links them, and `repr()` copies a run of printable characters at once.
+
+`tools/unicode_classification_tables.py --write` regenerates the tables from the
+pinned CPython and `--check` compares them with all 1,114,112 code points. The table
 check runs in `tools/rtcheck.py`; `tools/unicode_audit.py` compares each native
-predicate result over the same entire range in JIT and AOT. Bytes predicates keep
-their independent ASCII scan. Case mapping and case tests remain separate work.
+predicate result and `repr()` over the same entire range in JIT and AOT. Bytes
+predicates keep their independent ASCII scan.
+
+## Unicode case
+
+`str`'s case methods map ASCII first. A string of fewer than 16 bytes, as most are, is
+mapped by a test of each byte in the method itself, which also gathers the union of
+its bytes to learn whether one is not ASCII. A longer string takes `mapstr`'s loops.
+They are written in operations of the byte's width (`tolow`, `toup`, `toswap`), so
+that LLVM maps sixteen bytes in about as many instructions, with a boolean reduction
+for the bytes that are not ASCII. `title`, `isupper` and `islower` keep a test of
+each byte: a short string gathers the union in that loop, a long one is scanned
+separately (`nonascii`, also vectorized), and a string that begins with a byte that
+is not ASCII goes to its characters at once. `istitle` notes such a byte where it
+finds no ASCII letter. An ASCII letter of the other case decides `isupper` and
+`islower` without a scan. Bytes methods use the same byte-width loops (`mapcase`).
+
+For `lower`, `upper`, `swapcase`, `casefold` and `capitalize`, the ASCII loop has
+already written the ASCII characters of the result, since none of them maps an ASCII
+character by what is around it. `upatch` then visits only the characters that are not
+ASCII and maps each in place: one that does not change needs nothing, and most others
+map to as many bytes. Where a mapping has another count of bytes, as `"İ".lower()`
+has, `ucasemap` maps the string anew. It fills a string of the input's size in one
+pass (`mapu`), copies a shorter result, and counts and refills a longer one: no
+character maps to more than three times its bytes. `title` always takes `ucasemap`,
+because a letter's case depends on the character before it. `ucased` and `utitled`
+are the three case tests. All follow CPython's `do_lower`, `do_upper`, `do_swapcase`,
+`do_capitalize`, `do_title`, `do_casefold` and its tests. A byte that begins no
+character is kept and has no case. `final_sigma` reads the context of a capital sigma
+in both directions, as `handle_capital_sigma` does.
+
+These loops read a character of two or three bytes with `utwo` and `uthree`, which
+are small enough for LLVM to make part of each loop; `uchar` reads the rest. A loop
+steps by the count of the reader that succeeded, not by a count taken from the bytes,
+so that the processor can begin the next character before this one is read.
+
+Three pure C helpers read 17,177 bytes of constant tables in `runtime.c`, laid out as
+the property tables are. `pys_unicode_case_flags` returns a code point's upper, lower
+and titlecase flags. `pys_unicode_case_map` returns its lower, upper, title or
+casefold mapping as up to three 21-bit code points, from one of 279 records of four
+signed distances and a pool of the 255 longer mappings. A block of 256 code points
+without case is a zero in the first stage, so a character of a script without case
+takes one load. `pys_unicode_case_ignorable` reads 2,841 of those bytes, a bit for
+each code point in stages of their own: only the context of a capital sigma asks, and
+a program that maps case then links no property table.
+
+`tools/unicode_classification_tables.py` generates these tables with the property
+tables. It reads every value from the pinned CPython's `str` methods, one code point
+at a time, including the two properties that only context shows, and `--check`
+reads the tables again for all 1,114,112 code points. `tools/rtcheck.py` fuzzes the
+traversal against CPython, and `tools/unicode_audit.py` compares the native mappings,
+tests and context properties of every code point in JIT and AOT.
+[`bench/unicode_case`](../bench/unicode_case/README.md) compares these paths with
+main's loops and with CPython.
 
 ## Private primitives
 
@@ -164,18 +224,22 @@ cannot discard a group that still has a renamed initializer referring to it.
 Raw `rt` output and ordinary builds retain their existing IR.
 On Linux, JIT normally loads a shared library built from the cached runtime object;
 other platforms and failed or unavailable shared-library loads use the object path.
-AOT links the runtime bitcode into the program. See the
-[JIT/AOT pipeline](internals.md#jit-aot-and-runtime-caching) for the fallback rules.
+AOT links a precompiled runtime made from the cached bitcode and optimizes each program
+against its interface. See the [JIT/AOT pipeline](internals.md#jit-aot-and-runtime-caching)
+for the fallback rules.
 
 Cache names have the form `build/runtime-py-<L>-<K>.bc`, `.o`, `.so` and `.target`;
-the shared library is used on Linux.
+the shared library is used on Linux. The AOT tier's precompiled runtime for `pys_plain`
+0 or 1 adds `.aot0.o`, `.aot0.bc` and `.aot0.late.bc` (or `.aot1.*`) beside them, or
+`.aot0.fail` (`.aot1.fail`) where it cannot be built.
 The small `.target` file preserves the runtime's target triple and data layout;
 JIT optimization applies them before folding object sizes and field offsets.
 The content key
 includes runtime and compiler bytes, C flags, disabled `PYSTACHY_OPT` passes and
 LLVM tool identities. Host CPU information is included for flags such as
 `-march=native`. The path/flag group `L` separates compiler and tool configurations.
-When a new runtime is published, old entries in its group are removed.
+When a new runtime is published, old entries in its group are removed, with their
+precompiled AOT runtimes.
 
 `runtime-py.hashes` memoizes file hashes with size, mtime and ctime. Recently
 modified files are hashed again to avoid coarse timestamp races. Builds use

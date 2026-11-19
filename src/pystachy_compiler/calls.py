@@ -4,13 +4,17 @@ from src.pystachy_compiler.analysis import local_names, numeric_statement
 from src.pystachy_compiler.bigints import converts
 from src.pystachy_compiler.diagnostics import dynamic_program, shown, where
 from src.pystachy_compiler.generators import fresh_yield_context
-from src.pystachy_compiler.ir import Data, FnInfo, Ins, Val, tmpname
+from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
+from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.reflection import VARS_USES, refl_attr_fields, refl_formatter
-from src.pystachy_compiler.specs import BFILE, BIG, EXCEPTIONS, GLUE, HASATTR, MODATTRS, PYBUILTINS, RANGEC
+from src.pystachy_compiler.specs import BFILE, BIG, BYTEARRAYC, BYTEARRAYS, COMPLEXC, DISPATCH_INLINE, EXCEPTIONS, GLUE, HASATTR, MODATTRS, OBJECTC, PYBUILTINS, RANGEC
 from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import (
+    is_clsval,
+    clsof,
+    lib_source,
     opaque_class,
     atomic_dict,
     identity_abi,
@@ -51,6 +55,8 @@ from src.pystachy_compiler.utils import (
 def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str = "") -> Val:
     f = n.kids[0]
     args = n.kids[1:]
+    if f.kind == "supercallee":
+        return self.super_call(f.kids[0], f.s, args, captured=self.expr(f.kids[1], ""))
     if f.kind == "name":
         self.modchk(f)  # resolve the callable's binding before specialized or unpacked arguments
     if self.getattr_name(f) != "":
@@ -59,6 +65,16 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
         n = mk("call", n.s, n.line, [f] + args)
     if f.kind == "badattr":
         self.err(f.s)
+    if f.kind == "name" and f.s not in self.ltype and not self.unbound_local(f.s) and self.newtype_name(f.s):
+        # N(x) of N = NewType("N", T) (Loader.newtype): x itself, as CPython's NewType returns
+        # its argument unchanged; where the call may run before that statement binds N (flow),
+        # CPython's NameError. (A local N that the function assigns later is not it: read_ahead)
+        if (f.chk or self.foreign(f.s)) and f.s in self.gflag:
+            bad = self.scalar('xor', [Val(self.mload('bool', f'@g.{f.s}.def'), 'bool'), Val('true', 'bool')])
+            self.guard(bad, self.unbound(f.s))
+        if len(args) != 1 or args[0].kind == "kw" or args[0].kind == "starred" or args[0].kind == "dstar":
+            self.err(f"NewType '{short(f.s)}' takes exactly one positional argument")
+        return self.expr(args[0], want)
     if refl_formatter(f) and len(args) >= 1 and args[0].kind == "str" and refl_attr_fields(args[0].s) and "string$Formatter" in self.classes and len([a for a in args if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar"]) == 0:
         # string.Formatter().format("...", args) of a constant template: str.format() of it, which
         # the base Formatter's methods do (#486: its attribute fields, {0.x}, need no run-time names)
@@ -87,6 +103,8 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
         if r is not None:
             return r
     if len([a for a in args if a.kind == "starred" or a.kind == "dstar"]) > 0:
+        if f.kind == "attr" and f.s == "__init__" and f.kids[0].kind == "call" and f.kids[0].kids[0].kind == "name" and f.kids[0].kids[0].s == "super" and not self.bound("super"):
+            return self.super_call(f.kids[0], f.s, args)
         return self.star_call(n, want, resultsoft, typeargs)
     if f.kind == "name" and f.s not in self.ltype:
         self.read_ahead(f.s)
@@ -141,29 +159,7 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
                 # (an enum class's lookup by value: its EnumType object's __call__)
                 self.class_ready(f)
                 return self.obj_call(self.expr(self.enum_view(f.s, f.line), ""), args, want, resultsoft)
-            if self.classes[f.s].bad != "":
-                self.err(self.classes[f.s].bad)
-            if self.classes[f.s].mod in GLUE and self.curfn.mod != self.classes[f.s].mod:
-                m = self.classes[f.s].mod
-                self.err(f"{m}.{short(f.s)}() cannot be called: Pystachy's {m} module makes its objects (with {', '.join([x for x in GLUE[m] if x != short(f.s)])})")
-            ab = self.abstract_of(f.s)
-            if len(ab) > 0:
-                # an object of a class with abstract methods (ABCMeta): CPython evaluates the
-                # arguments, and object.__new__ raises its TypeError
-                for a in args:
-                    self.expr(a.kids[0] if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar" else a, "")
-                names = ", ".join([f"'{n}'" for n in ab])
-                self.raise_("TypeError", self.sconst(f"Can't instantiate abstract class {short(f.s)} without an implementation for abstract method{'s' if len(ab) > 1 else ''} {names}"))
-                return Val("null", f.s)
-            if f.s in self.tmpl:
-                # a class template: the types of the arguments pick the specialization, whose
-                # object call_fn makes once it has them (in made[0])
-                made = [Val("", f.s)]
-                self.init_result(self.call_fn(self.classes[f.s].methods["__init__"], made, args, want, resultsoft=resultsoft, typeargs=typeargs))
-                return made[0]
-            o = self.new_obj(f.s)
-            self.init_result(self.call_fn(self.classes[f.s].methods["__init__"], [o], args, direct=True))
-            return o
+            return self.class_new(f.s, args, want, resultsoft, typeargs)
         if f.s in self.mvars:
             self.not_callable(f.s, self.gtype(f.s))
             return self.obj_call(self.expr(f, ""), args, want, resultsoft)
@@ -176,6 +172,9 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
                 return self.exit_value(vals)
             return self.exc_value("OSError" if f.s == "IOError" or f.s == "EnvironmentError" else f.s, vals)
         return self.builtin(f.s, args, want, resultsoft)
+    if f.kind == "attr" and f.s == "__class__" and self.refl_typeof(f) is not None and self.class_value_named(unopt(self.dry(f.kids[0]))) and (not self.dyn_policy(self.line) or is_clsval(self.dry(f))):
+        # o.__class__(args): a call of the class object of o's class (class_values.py)
+        return self.obj_call(self.expr(f, ""), args, want, resultsoft)
     if f.kind == "attr":
         c = self.curfn.cls
         if c != "" and self.classes[c].exc != "" and f.kids[0].kind == "name" and f.kids[0].s not in self.ltype and self.derives(c, f.kids[0].s) and f.kids[0].s != c and len(args) > 0 and args[0].kind == "name" and len(self.curfn.params) > 0 and args[0].s == self.curfn.params[0] and (f.kids[0].s in self.classes or not self.bound(f.kids[0].s)):
@@ -203,14 +202,26 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
             if f.s == "copy" and len(args) == 0:
                 return self.refl_dict_copy(f.kids[0])  # (vars(x).copy(): reflection.py)
             self.err(VARS_USES)
+        if len(self.narrowed) > 0 and self.anyopt:
+            fk = self.path_key(f)
+            if fk != "" and fk in self.narrowed and is_callable(self.path_type(fk, {}, "")):
+                # (a field that a test narrowed to its union's Callable, called as a Callable variable is: unions.py)
+                return self.obj_call(self.expr(f, ""), args, want, resultsoft)
         o = self.expr(f.kids[0], self.default_want(f.kids[0], f.s, args, ""))
+        if is_clsval(unopt(o.t)) and clsof(unopt(o.t)) in self.classes and f.s in self.classes[clsof(unopt(o.t))].methods:
+            if self.classes[clsof(unopt(o.t))].methods[f.s].deco != "classmethod" and self.classes[clsof(unopt(o.t))].methods[f.s].deco != "staticmethod":
+                self.err(f"{f.s}() called through a class object ({typestr(o.t)}) is supported for class methods and static methods: call a method on its object, o.{f.s}()")
+            return self.class_value_method(o, f.s, args, want, resultsoft)  # (through a class object)
+        if is_clsval(unopt(o.t)) and clsof(unopt(o.t)) == "object" and len([c for c in self.class_value_kinds("object") if f.s in self.classes[c].methods]) > 0 and len(self.class_value_having(f.s, True)) > 0:
+            return self.class_value_method(o, f.s, args, want, resultsoft)  # (through any class's class object)
         self.mcall = n
         r = self.method(o, f.s, args, want, resultsoft)
         if f.s != "close" and r.t != BFILE:  # (__enter__() and __iter__() return the file: it stays open)
             self.close_temp(f.kids[0], o)
         return r
     if f.kind == "name":
-        self.not_callable(f.s, self.ltype[f.s])
+        # (a union's value that a test narrowed to its Callable member is that Callable here)
+        self.not_callable(f.s, self.now_type(f.s) if is_union(unopt(self.ltype[f.s])) else self.ltype[f.s])
     return self.obj_call(self.expr(f, ""), args, want, resultsoft)
 
 def gen_star_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str = "") -> Val:
@@ -362,10 +373,43 @@ def gen_star_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: 
         return self.dyn_method_found(receiver, f.s, out, dynh)
     return self.call(mk("call", n.s, n.line, [f] + out), want, resultsoft, typeargs)
 
+def gen_class_new(self, c: str, args: list[Node], want: str, resultsoft: bool = False, typeargs: str = "") -> Val:
+    # c(args) of ordinary class c of the program: an object of it, which its __init__ fills (a
+    # call that names the class, or one of a class object that is c's: class_values.py)
+    if self.classes[c].bad != "":
+        self.err(self.classes[c].bad)
+    if self.classes[c].mod in GLUE and self.curfn.mod != self.classes[c].mod:
+        m = self.classes[c].mod
+        self.err(f"{m}.{short(c)}() cannot be called: Pystachy's {m} module makes its objects (with {', '.join([x for x in GLUE[m] if x != short(c)])})")
+    ab = self.abstract_of(c)
+    if len(ab) > 0:
+        # an object of a class with abstract methods (ABCMeta): CPython evaluates the
+        # arguments, and object.__new__ raises its TypeError
+        for a in args:
+            self.expr(a.kids[0] if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar" else a, "")
+        names = ", ".join([f"'{n}'" for n in ab])
+        self.raise_("TypeError", self.sconst(f"Can't instantiate abstract class {short(c)} without an implementation for abstract method{'s' if len(ab) > 1 else ''} {names}"))
+        return Val("null", c)
+    if c in self.tmpl:
+        # a class template: the types of the arguments pick the specialization, whose
+        # object call_fn makes once it has them (in made[0])
+        made = [Val("", c)]
+        self.init_result(self.call_fn(self.classes[c].methods["__init__"], made, args, want, resultsoft=resultsoft, typeargs=typeargs))
+        return made[0]
+    if c == BYTEARRAYC and len(args) > 0 and BYTEARRAYS + "$_new" in self.funcs:
+        # bytearray(source, ...): lib/_pystachy_bytearray.py's _new, a function of its
+        # arguments' types (the class's own __init__ takes none: its objects are of one class)
+        return self.call_fn(self.funcs[BYTEARRAYS + "$_new"], [], args, want, resultsoft=resultsoft)
+    o = self.new_obj(c)
+    self.init_result(self.call_fn(self.classes[c].methods["__init__"], [o], args, direct=True))
+    return o
+
 def gen_static_callee(self, f: Node) -> bool:
     # does evaluating callee f (or the object of o.m) read nothing a call's arguments may change:
     # a def, class, builtin or module's function, super(), or a variable's empty container that
     # the call fills (whose name types it)
+    if f.kind == "supercallee":
+        return True  # an internal super initializer whose receiver is already captured
     if f.kind == "attr":
         o = f.kids[0]
         if self.dotted(f) != "" or (o.kind == "call" and o.kids[0].kind == "name" and o.kids[0].s == "super" and not self.bound("super")):
@@ -430,7 +474,7 @@ def gen_not_callable(self, name: str, t: str) -> None:
     # a call of variable name's value (c() for an object c), of type t: CPython's TypeError,
     # unless it has __call__ or is a function (is_fn); a builtin's name bound as a variable is
     # rejected as such
-    if is_fn(t) or is_callable(unopt(t)) or unopt(t) == "exctype" or t == "dyn":
+    if is_fn(t) or is_callable(unopt(t)) or unopt(t) == "exctype" or is_clsval(unopt(t)) or t == "dyn":
         return
     if short(name) in PYBUILTINS or t == "":
         self.err(f"'{name}' is a variable, so it cannot be called")
@@ -449,6 +493,8 @@ def gen_obj_call(self, o: Val, args: list[Node], want: str, resultsoft: bool = F
         return self.dyn_call_value(o, args)  # (the function its box holds: dynamic.py)
     if unopt(o.t) == "exctype":
         return self.exc_call(o, args)  # (an exception class's class object: an object of its class)
+    if is_clsval(unopt(o.t)):
+        return self.class_value_call(o, args)  # (an ordinary class's class object: class_values.py)
     if o.t not in self.classes or "__call__" not in self.classes[o.t].methods:
         self.err(f"'{tname(unopt(o.t))}' object is not callable")
     if self.cached_wrapper(o.t):
@@ -490,6 +536,18 @@ def gen_to_callable(self, v: Val, t: str) -> Val:
     self.nn[o] = True
     return Val(o, t)
 
+def gen_method_family(self, cls: str, method: str) -> str:
+    # the class whose method family a bound method of cls's method (a Callable's adapter) is of:
+    # the topmost class of cls's chain that has it, or a secondary base of that one that does
+    family = cls
+    while self.classes[family].base in self.classes and method in self.classes[self.classes[family].base].methods:
+        family = self.classes[family].base
+    for role in self.classes[family].roles:
+        if method in self.classes[role].methods:
+            family = role
+            break
+    return family
+
 def gen_adapter(self, ft: str, t: str) -> str:
     # the code of a Callable of type t (callable[R,A,B]) that holds function value type ft: a
     # function R(ptr env, A a0, B a1) whose body calls the function, def <callable>(f, a0, a1):
@@ -501,12 +559,13 @@ def gen_adapter(self, ft: str, t: str) -> str:
         cls = ft[5 : ft.rfind(".")]
         method = ft[ft.rfind(".") + 1 : -1]
         if cls in self.classes and self.classes[cls].tag != 0:
-            family = cls
-            while self.classes[family].base in self.classes and method in self.classes[self.classes[family].base].methods:
-                family = self.classes[family].base
-            role = self.classes[family].role
-            if role != "" and method in self.classes[role].methods:
-                family = role
+            family = self.method_family(cls, method)
+            for ci in self.classes.values():
+                for o in ci.overlaps if ci.tag != 0 and self.derives(ci.name, family) and method in ci.methods else []:
+                    if method in self.classes[o].methods and self.method_family(o, method) != family:
+                        # (a primary base's and a trait's own, which one object may be: their
+                        # adapters would differ, so its bound methods would not compare equal)
+                        self.err(f"converting method {short(cls)}.{method} to Callable is not supported where {short(family)} and {short(self.method_family(o, method))}, bases one object may have, define it apart (their shared base does not)")
             fits = True
             signature = targs(t)
             for ci in self.classes.values():
@@ -841,13 +900,14 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
         o = self.unwrap(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
     if is_union(o.t):
         return self.umethod(o, m, args)
-    if (o.t in ["int", "bool", BIG] or o.t in self.nts or self.literal_class(o.t)) and m == "__init__":
-        # p.__init__(args) of an int, NamedTuple or operator getter: object.__init__,
-        # as tuple.__new__ set the fields. It takes any arguments where the class has a __new__
-        # of its own, and does nothing, also on None. The __init__ that makes the object is the
-        # compiler's (see nt_class), which only construction and _replace() call. Operator's
-        # C getters likewise initialize through __new__; reinitialization must not mutate
-        # fields whose literal values the compiler has specialized.
+    if (o.t in ["int", "bool", BIG, COMPLEXC] or o.t in self.nts or self.literal_class(o.t)) and m == "__init__":
+        # p.__init__(args) of an int, complex number, NamedTuple or operator getter:
+        # object.__init__, as tuple.__new__ (complex_new) set the fields. It takes any arguments
+        # where the class has a __new__ of its own, and does nothing, also on None. The __init__
+        # that makes the object is the compiler's (see nt_class, and complex_value for a complex
+        # number), which only construction and _replace() call. Operator's C getters
+        # likewise initialize through __new__; reinitialization must not mutate fields whose
+        # literal values the compiler has specialized (nor a complex number, a dict key's).
         for a in args:
             x = a.kids[0] if a.kind == "kw" else a
             if not pure_arg(x):
@@ -889,6 +949,9 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
         if m not in ci.methods and m in ci.ftypes:
             self.fn_attr_read(o, m)
             self.glue_field(o, m)
+            if self.rolex != o.v and self.role_field(o.t, m):
+                # (an attribute its secondary base declares: read by the object's exact class)
+                return self.obj_call(self.expr(mk("attr", m, self.line, [self.vnode(o)]), ""), args, want, resultsoft)
             return self.obj_call(self.getfield(o, self.field(o, m), m), args, want, resultsoft)  # (o.f(args) of a field f)
         if m not in ci.methods and not ((m == "_replace" or m == "_asdict" or m == "_make" or m == "index" or m == "count") and o.t in self.nts):
             self.err(f"'{shown(o.t)}' object has no method '{m}'")  # (a specialization's is its class's)
@@ -1243,17 +1306,20 @@ def gen_pcoerce(self, v: Val, t: str, f: FnInfo, j: int) -> Val:
         return result
     return value
 
-def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: str, none: str, resultsoft: bool = False) -> Val:
+def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: str, none: str, resultsoft: bool = False, got: list[FnInfo] | None = None) -> Val:
     # Closed-world dispatch, before argument binding: an override owns its defaults. Each
     # selected body is a normal method-template instance, specialized for the concrete self.
     o = pre[0]
     cs = [c for c in self.classes.values() if c.tag > 0 and self.derives(c.name, o.t)]
     if len(cs) == 1:
-        return self.call_fn(cs[0].methods[f.name], pre, args, want, none, direct=True, resultsoft=resultsoft)
+        return self.call_fn(cs[0].methods[f.name], pre, args, want, none, direct=True, resultsoft=resultsoft, got=got)
+    shared = self.shared_dispatch(f, cs, pre, args)
     # Evaluate explicit arguments once, before reading the receiver tag (also for a None
     # callable). Defaults remain inside the selected branch. Overrides have the same typed
     # parameter interface; an unannotated argument is specialized from its value.
     bound: list[Node] = []
+    values: list[Val] = []
+    names: list[str] = []
     pos = len(pre)
     for a in args:
         j = f.params.index(a.s) if a.kind == "kw" and a.s in f.params else pos
@@ -1265,9 +1331,13 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
             value = captured
         argnode = self.vnode(value)
         bound.append(mk("kw", a.s, a.line, [argnode]) if a.kind == "kw" else argnode)
+        values.append(value)
+        names.append(a.s if a.kind == "kw" else "")
         if a.kind != "kw":
             pos += 1
     self.notnone(o, none if none != "" else f"AttributeError: 'NoneType' object has no attribute '{f.name}'")
+    if shared != "":
+        return self.dispatch_call(f, o, values, names, shared)
     tag = self.mload('int', o.v)
     end = self.label()
     vals: list[Val] = []
@@ -1281,7 +1351,7 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
             self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(c.tag), "int")).v, arm, nxt)
             self.place(arm)
         self.narrowed = dict(narrow)
-        v = self.call_fn(c.methods[f.name], [Val(o.v, c.name)] + pre[1:], bound, want, direct=True, resultsoft=resultsoft)
+        v = self.call_fn(c.methods[f.name], [Val(o.v, c.name)] + pre[1:], bound, want, direct=True, resultsoft=resultsoft, got=got)
         if not self.term:
             if self.idhere() and numeric_identity(v.t):
                 v.idfrom = self.dyn_id_box(v).v
@@ -1318,6 +1388,72 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
         result.idversion = "0"
     return result
 
+def gen_shared_dispatch(self, f: FnInfo, cs: list[ClassInfo], pre: list[Val], args: list[Node]) -> str:
+    # The result type of o.m(args), o of a hierarchy of the concrete classes cs, where the call
+    # selects m's override in a function it shares with every such call (dispatch_call), else
+    # "": the arms stay at the call site, where LLVM may inline each override, for at most
+    # DISPATCH_INLINE classes. Each arm's value must be its override's declared result,
+    # whatever the call's context wants, so a generator, an inferred or never-returning
+    # result, a method Pystachy cannot compile, an incompatible join (virtual_call reports
+    # it), star arguments, a dunder method that an operation calls (o.m() of one may compile
+    # to that operation: gen_method), an exception's, a dynamic program's numeric identity
+    # and a comparison helper keep their arms.
+    if len(cs) <= DISPATCH_INLINE or len(pre) != 1 or dynamic_program() or self.curfn.name == "<dispatch>" or self.curfn.cmpops:
+        return ""
+    if (f.name.startswith("__") and f.name.endswith("__")) or self.classes[pre[0].t].exc != "":
+        return ""
+    if any(a.kind == "starred" or a.kind == "dstar" for a in args):
+        return ""
+    t = ""
+    for c in cs:
+        m = c.methods[f.name]
+        if m.ret == "" or "?" in m.ret or m.gen or m.noret or m.iters or m.prop or m.deco != "" or m.bad != "" or m.pyexport:
+            return ""
+        t = m.ret if t == "" else self.join(t, m.ret)
+        if t == "":
+            return ""
+    return t
+
+def gen_dispatch_call(self, f: FnInfo, o: Val, values: list[Val], names: list[str], ret: str) -> Val:
+    # o.m(...) of the evaluated arguments values (keyword names: "" for a positional one), o checked
+    # not None, as virtual_call has done: a call of def <dispatch>(_o, _a0, ...): return _o.m(_a0, ...),
+    # compiled once for o's type, m and the arguments' types and keywords. Its own call keeps
+    # virtual_call's arm for each class, which reads the tag and runs the override as it would here.
+    key = o.t + "." + f.name + "(" + ",".join([(names[j] + "=" if names[j] != "" else "") + values[j].t for j in range(len(values))]) + ")"
+    if key not in self.dispatchers:
+        line = self.line
+        g = FnInfo("<dispatch>", f"@vd.{len(self.dispatchers)}", mk("def", "<dispatch>", line, []), "")
+        g.params = ["_o"] + [f"_a{j}" for j in range(len(values))]
+        g.ptypes = [o.t] + [v.t for v in values]
+        for _ in g.params:
+            g.defaults.append(mk("noann", "", line, []))
+            g.dglob.append("")
+            g.dtypes.append("")
+        g.ret = ret  # (known before its body compiles: an override's own call of m through it, recursion, reads it)
+        g.mod = self.curfn.mod
+        g.home = self.fn_home(self.curfn)
+        argnodes = [mk("kw", names[j], line, [mk("name", f"_a{j}", line, [])]) if names[j] != "" else mk("name", f"_a{j}", line, []) for j in range(len(values))]
+        call = mk("call", "", line, [mk("attr", f.name, line, [mk("name", "_o", line, [])])] + argnodes)
+        body = [mk("return", "", line, [call])] if ret != "None" else [mk("expr", "", line, [call])]
+        g.node.kids = [mk("params", "-1,-1", line, []), mk("noann", "", line, []), mk("block", "", line, body)]
+        self.dispatchers[key] = g
+        fr = self.save()
+        self.modlevel = False
+        self.lenient = False
+        self.function(g, body)
+        self.restore(fr)
+        self.line = line
+    g = self.dispatchers[key]
+    c = Ins("call", g.ret, g.ll)
+    c.a = [Val(o.v, o.t)] + [v for v in values if v.t != "None"]  # (an argument that is None is not passed)
+    if g.ret == "None":
+        self.add(c)
+        return Val("null", "None")
+    if g.ll in self.guessed:
+        self.guessed[self.curfn.ll] = self.guessed[g.ll]  # (what it returns may hold a guess)
+    self.put(c, 1)
+    return Val(tmpname(c.r[0]), g.ret)
+
 def gen_scalar_call_types(self, f: FnInfo, args: list[Node]) -> list[str]:
     # A complete, inert numeric call can specialize before evaluating its arguments.
     # That lets the scalar None-body proof discard their boxes before pcoerce snapshots
@@ -1349,19 +1485,37 @@ def gen_scalar_call_types(self, f: FnInfo, args: list[Node]) -> list[str]:
     return ts if all(numeric_statement(n, names, blocked, {}, True, True) for n in body) else []
 
 
-def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "", none: str = "", cache: Val | None = None, direct: bool = False, resultsoft: bool = False, typeargs: str = "") -> Val:
-    # f(pre + args); none: the error where pre[0], an object called (o(args)), is None
+def int_for_float(f: FnInfo, j: int, t: str) -> bool:
+    # does an argument of type t compile f again, for a float parameter j that takes an int (a
+    # promoting one too) or a bool: a function's or an ordinary method's, whose body then reads
+    # the int, as CPython's does
+    if (t != "int" and t != "bool" and t != BIG) or f.ptypes[j] != "float" or j == f.vararg or j == f.kwarg or len(f.node.kids) < 3:
+        return False
+    if f.gen or f.extern or f.export or f.pyexport or f.clo >= 0 or f.prop or f.acc != "" or f.deco != "":
+        return False
+    return f.cls == "" or not (f.name.startswith("__") and f.name.endswith("__"))
+
+
+def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "", none: str = "", cache: Val | None = None, direct: bool = False, resultsoft: bool = False, typeargs: str = "", unbound: bool = False, got: list[FnInfo] | None = None) -> Val:
+    # f(pre + args); none: the error where pre[0], an object called (o(args)), is None; got: of
+    # a comparison, which reads whether its method returned NotImplemented (concrete_cmp), and
+    # takes the functions called. Any other call takes the result as it is, so that a method
+    # which may return NotImplemented to it is rejected (here, or by decline where compiled later)
     if f.pyexport:
         self.err(f"{f.name}() is @export, so Pystachy code may not call it (under CPython each call goes through the export's checks and conversions): call a private function that both use")
     if f.bad != "":
         self.err(f.bad)  # (before its arguments, whose types may be placeholders')
+    if f.name == "importlib$import_module" and lib_source(f.node.line, self.libdir, "importlib/__init__.py"):
+        # (the loader writes the import statement of a call that binds a variable to the module a
+        # string constant names: loader.import_module_calls. Any other call reaches lib's function)
+        self.err("importlib.import_module() is supported where a string constant names the module and the call binds one variable or stands alone (mod = import_module(\"a.b\")), outside a class body, through a name that only imports of importlib bind and one has bound before the call: a program's modules are compiled with it, so none is imported by a name it computes, and a module is no value")
     if identity_abi(f) and len(f.node.kids) == 3:
         self.numeric_proof(f, f.node.kids[2].kids)
     if f.cls in self.classes and self.classes[f.cls].tag > 0 and f.deco == "" and len(pre) > 0:
         if pre[0].t not in self.classes or not self.derives(pre[0].t, f.cls):
             self.err(f"{short(f.cls)}.{f.name}() needs an instance of {short(f.cls)}")
         if not direct:
-            return self.virtual_call(f, pre, args, want, none, resultsoft)
+            return self.virtual_call(f, pre, args, want, none, resultsoft, got)
     if f.ll not in self.called and f.ll in self.lazyat:
         hpush(self.wake, self.lazyat[f.ll])
     self.called[f.ll] = True
@@ -1388,6 +1542,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
     kwn: list[str] = []
     kwv: list[Val] = []
     offs: dict[int, Val] = {}  # (the index of each list that an @extern call takes as ffi.at(xs, k))
+    late = False  # (an argument that compiles f for its own type: see int_for_float)
     for a in args:
         j = pos
         e = a
@@ -1419,14 +1574,27 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
             # (the callee never observes this argument's object: numeric_proof, as its null
             # companion below says; read it as an operand, without snapshots)
             self.fn.scalar_reads = True
+        # (a sentinel parameter's argument is a T, or the sentinel itself: declare_fn; also as a
+        # sentinel parameter of the caller's for the same sentinel that may hold it: only the
+        # sentinel can where its type is object's (store_name), unless a closure assigns it (nlw),
+        # and a dynamic value is tested at run time, as the caller's tests of it are. Not a
+        # comprehension's variable or a local spelled so: globread)
+        sent = f.params[j] in f.sentinels and e.kind == "name" and e.s not in self.compvars and ((e.s == f.sentinels[f.params[j]] and self.globread(e.s)) or (e.s in self.curfn.sentinels and self.curfn.sentinels[e.s] == f.sentinels[f.params[j]] and ((self.static_type(e) == OBJECTC and e.s not in self.nlw) or self.static_type(e) == "dyn")))
+        pt = f.sentann[f.params[j]] if f.params[j] in f.sentinels and not sent else f.ptypes[j]
         try:
-            arg = self.expr(e, f.ptypes[j] if f.ptypes[j] != "" or j >= len(hint) else self.generic_hint(e, hint[j]))
+            arg = self.expr(e, pt if pt != "" or j >= len(hint) else self.generic_hint(e, hint[j]))
         finally:
             self.fn.scalar_reads = held
         passing = self.fn.idpass
         self.fn.idpass = self.id_move(e)
         try:
-            vals[j] = self.pcoerce(arg, f.ptypes[j], f, j)
+            if cache is None and not self.rtmode and int_for_float(f, j, arg.t) and (f.cls == "" or (f.cls in self.classes and self.classes[f.cls].tag == 0 and self.classes[f.cls].origin == "" and f.cls not in self.tmpl)):
+                # an int for a float parameter (PEP 484 accepts it, and CPython passes the int
+                # on): the function compiles for it, as a template's does (see instance)
+                vals[j] = self.pcoerce(arg, "", f, j)
+                late = True
+            else:
+                vals[j] = self.pcoerce(arg, pt, f, j)
         finally:
             self.fn.idpass = passing
         if self.curfn.cmpops and self.term and vals[j].v == "undef":
@@ -1529,14 +1697,22 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         vals[0] = self.new_obj(sc)
         pre[0] = vals[0]
         f = self.classes[sc].methods["__init__"]
-    if f.generic or (not resultsoft and fresh_yield_context(f, want)):
+    nullable_self = unbound and len(pre) > 0 and pre[0].v not in self.nn
+    if f.generic or nullable_self or late or (not resultsoft and fresh_yield_context(f, want)):
         nnp: list[str] = []
         for j in range(np):
             if vals[j].t in self.classes and vals[j].v in self.nn and self.dispatches(f, f.params[j]):
                 nnp.append(f.params[j])
         # A direct return-call keeps the open-result marker for an empty callee,
         # while forwarding the caller's separate fresh-display context.
-        f = self.instance(f, [v.t for v in vals], nnp, self.curfn.rctx if want == "?" else want, self.curfn.rsoft if want == "?" else resultsoft)
+        f = self.instance(f, [v.t for v in vals], nnp, self.curfn.rctx if want == "?" else want, self.curfn.rsoft if want == "?" else resultsoft, nullable_self=nullable_self)
+    if got is not None or self.curfn.ll.startswith("@o.x."):
+        if got is not None:
+            got.append(f)  # (and a class's helper for Any operands reads it too: xdecline)
+    elif f.declines:
+        self.err(f"{short(f.cls)}.{f.name}() returns NotImplemented for these operands, which only a comparison of objects (==, <, ...) reads: calling it directly is not supported")
+    elif f.cls in self.classes and self.may_decline(f):
+        f.plain = where(self.line)
     c = Ins("call", f.ret, f.ll)
     c.a = [v for v in vals if v.t != "None"]  # (an argument that is None is not passed)
     idresult = ""
@@ -1699,6 +1875,8 @@ def gen_tests(self, ns: list[Node], p: str) -> bool:
             return True
         if n.kind == "call" and n.kids[0].kind == "name" and ((n.kids[0].s == "getattr" and len(n.kids) == 4) or (n.kids[0].s == "type" and len(n.kids) == 2)) and n.kids[1].kind == "name" and n.kids[1].s == p:
             return True  # (getattr(p, name, default) and type(p): reflection.py)
+        if n.kind == "call" and n.kids[0].kind == "name" and n.kids[0].s == "__pys_ordering" and len(n.kids) == 4 and n.kids[2].kind == "name" and n.kids[2].s == p:
+            return True  # (a method the loader wrote for @total_ordering passes p to the class's own one: ordering)
         x = nonetest(n)
         if x >= 0 and n.kids[x].kind == "name" and n.kids[x].s == p:
             return True

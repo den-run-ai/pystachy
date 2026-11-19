@@ -12,7 +12,7 @@ from types import MappingProxyType
 __all__ = [
         'EnumType', 'EnumMeta',
         'Enum', 'IntEnum', 'StrEnum', 'Flag', 'IntFlag', 'ReprEnum',
-        'auto', 'unique',
+        'auto', 'unique', 'global_enum',
         ]
 
 
@@ -204,6 +204,25 @@ def _int_of(x, a, op: str):
     raise TypeError("unsupported operand type(s) for %s: '%s' and '%s'" % (op, type(a).__name__, type(x).__name__))
 
 
+def _int_left(x, a, op: str):
+    # left operand x of IntEnum member a's reflected operation op (x op a), as int's reflected
+    # operation takes it: x, a number; else CPython's TypeError, which names x's type first
+    if isinstance(x, int) or isinstance(x, float):
+        return x
+    if isinstance(x, IntEnum) or isinstance(x, IntFlag):
+        return x._value_
+    raise TypeError("unsupported operand type(s) for %s: '%s' and '%s'" % (op, type(x).__name__, type(a).__name__))
+
+
+def _times_of(x, a):
+    # the operand of IntEnum or IntFlag member a's *: a str, bytes or list, which repeats itself
+    # once int's method declines it; else int's operand (_int_of)
+    if isinstance(x, str) or isinstance(x, bytes) or isinstance(x, list):
+        return x
+    else:
+        return _int_of(x, a, '*')
+
+
 class IntEnum(ReprEnum):
     """
     Enum where members are also (and must be) ints
@@ -262,7 +281,7 @@ class IntEnum(ReprEnum):
         return self._value_ - _int_of(other, self, '-')
 
     def __mul__(self, other):
-        return self._value_ * _int_of(other, self, '*')
+        return self._value_ * _times_of(other, self)
 
     def __truediv__(self, other):
         return self._value_ / _int_of(other, self, '/')
@@ -287,6 +306,45 @@ class IntEnum(ReprEnum):
 
     def __rshift__(self, other):
         return self._value_ >> _int_of(other, self, '>>')
+
+    def __radd__(self, other):
+        return _int_left(other, self, '+') + self._value_
+
+    def __rsub__(self, other):
+        return _int_left(other, self, '-') - self._value_
+
+    def __rmul__(self, other):
+        return _int_left(other, self, '*') * self._value_
+
+    def __rtruediv__(self, other):
+        return _int_left(other, self, '/') / self._value_
+
+    def __rfloordiv__(self, other):
+        return _int_left(other, self, '//') // self._value_
+
+    def __rmod__(self, other):
+        return _int_left(other, self, '%') % self._value_
+
+    def __rlshift__(self, other):
+        return _int_left(other, self, '<<') << self._value_
+
+    def __rrshift__(self, other):
+        return _int_left(other, self, '>>') >> self._value_
+
+    def __rand__(self, other):
+        return _int_left(other, self, '&') & self._value_
+
+    def __ror__(self, other):
+        return _int_left(other, self, '|') | self._value_
+
+    def __rxor__(self, other):
+        return _int_left(other, self, '^') ^ self._value_
+
+    def __pow__(self, other):
+        return self._value_ ** _int_of(other, self, '** or pow()')
+
+    def bit_length(self) -> int:
+        return self._value_.bit_length()
 
     def __neg__(self) -> int:
         return -self._value_
@@ -730,7 +788,7 @@ class Flag(Enum):
     def _flag_of_(self, other, op: str) -> int:
         # (Flag._get_value(): the value of a member of the class; else CPython's TypeError, once
         # the methods of both operands decline; an int on the left is a compile-time error, as
-        # reflected operator methods are not supported)
+        # a flag has no reflected operator methods)
         members = self._flag_type_()._member_list_
         if __pys_enum_is(other, members):
             return other._value_
@@ -809,7 +867,7 @@ class IntFlag(Flag):
         return self._value_ - _int_of(other, self, '-')
 
     def __mul__(self, other):
-        return self._value_ * _int_of(other, self, '*')
+        return self._value_ * _times_of(other, self)
 
     def __truediv__(self, other):
         return self._value_ / _int_of(other, self, '/')
@@ -838,6 +896,39 @@ class IntFlag(Flag):
     def __invert__(self):
         return self._flag_type_()(~self._value_)
 
+    def __radd__(self, other):
+        return _int_left(other, self, '+') + self._value_
+
+    def __rsub__(self, other):
+        return _int_left(other, self, '-') - self._value_
+
+    def __rmul__(self, other):
+        return _int_left(other, self, '*') * self._value_
+
+    def __rtruediv__(self, other):
+        return _int_left(other, self, '/') / self._value_
+
+    def __rfloordiv__(self, other):
+        return _int_left(other, self, '//') // self._value_
+
+    def __rmod__(self, other):
+        return _int_left(other, self, '%') % self._value_
+
+    def __rlshift__(self, other):
+        return _int_left(other, self, '<<') << self._value_
+
+    def __rrshift__(self, other):
+        return _int_left(other, self, '>>') >> self._value_
+
+    def __ror__(self, other):
+        return self._flag_type_()(_intflag_of(other, self, '|') | self._value_)
+
+    def __rand__(self, other):
+        return self._flag_type_()(_intflag_of(other, self, '&') & self._value_)
+
+    def __rxor__(self, other):
+        return self._flag_type_()(_intflag_of(other, self, '^') ^ self._value_)
+
     def __neg__(self) -> int:
         return -self._value_
 
@@ -864,3 +955,28 @@ def unique(enumeration):
     # (the compiler checks the members of an enum class that @unique decorates, and reports its
     # aliases as an error: CPython's ValueError where the class statement runs)
     return enumeration
+
+
+def global_enum(cls):
+    """
+    decorator that makes the repr() of an enum member reference its module
+    instead of its class; also exports all members to the enum's module's
+    global namespace
+    """
+    # (the compiler applies @global_enum to the statement of an enum class it decorates, whose
+    # repr() and str() it makes and whose members' names it binds in the module: Loader's
+    # enum_classes. No other call reaches this function)
+    raise TypeError("global_enum() is supported as the decorator of an enum class statement")
+
+
+def _simple_enum(etype):
+    """
+    Class decorator that converts a normal class into an :class:`Enum`.  No
+    safety checks are done, and some advanced behavior (such as
+    :func:`__init_subclass__`) is not available.  Enum creation can be faster
+    using :func:`_simple_enum`.
+    """
+    # (the compiler makes the enum class of a class statement that @_simple_enum(etype)
+    # decorates, as it makes one of a statement that derives from etype: Loader's enum_classes.
+    # No other call reaches this function)
+    raise TypeError("_simple_enum() is supported as the decorator of a class statement")

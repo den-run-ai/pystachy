@@ -112,10 +112,13 @@ class StorageLayoutTests(unittest.TestCase):
             program = directory / (name + ".py")
             program.write_text(text, encoding="utf-8")
             cls.snapshots[name] = compile_snapshot(program, directory / (name + "-snapshot"))
-        for name, filename in (("dict-items", "python_int_dict_items.py"), ("dict-values", "python_int_dict_values.py")):
+        for name, filename in (("dict-items", "python_int_dict_items.py"), ("dict-values", "python_int_dict_values.py"),
+                               ("optional-keys", "python_int_optional_tuple_keys.py")):
             cls.snapshots[name] = compile_snapshot(
                 ROOT / "tests/programs/numbers" / filename, directory / (name + "-snapshot"),
                 [ROOT / "tests/python_int_modules"])
+        cls.snapshots["kwargs"] = compile_snapshot(
+            ROOT / "tests/programs/classes/contextmanager_python_int_args.py", directory / "kwargs-snapshot")
 
     def assert_accepted(self, snapshot):
         report, code = check_all(snapshot)
@@ -204,6 +207,64 @@ class StorageLayoutTests(unittest.TestCase):
                 mutated["functions"][0]["blocks"][bi]["operations"][oi]["operands"][0]["value"] = "false"
                 self.assert_rejected(mutated, "narrowing")
 
+    def test_nested_optional_tuple_requires_both_narrowing_checks(self):
+        original = selected(self.snapshots["optional-keys"], "@f.fixed_optional_tuple_keys$read_nested")
+        self.assert_accepted(original)
+        sites = [(bi, oi) for bi, block in enumerate(original["functions"][0]["blocks"])
+                 for oi, op in enumerate(block["operations"]) if op["op"] == "check" and op["text"] == NARROW]
+        self.assertEqual(len(sites), 2)
+        for bi, oi in sites:
+            with self.subTest(block=bi, instruction=oi):
+                mutated = copy.deepcopy(original)
+                mutated["functions"][0]["blocks"][bi]["operations"][oi]["operands"][0]["value"] = "false"
+                self.assert_rejected(mutated, "narrowing")
+
+    def test_nested_optional_absence_requires_the_actual_null_test(self):
+        original = selected(self.snapshots["optional-keys"], "@f.fixed_optional_tuple_keys$read_nested")
+        self.assert_accepted(original)
+        fn = original["functions"][0]
+        definitions = {f"%t{result}": op for block in fn["blocks"]
+                       for op in block["operations"] for result in op["results"]}
+        sites = [(bi, oi) for bi, block in enumerate(fn["blocks"]) for oi, op in enumerate(block["operations"])
+                 if op["op"] == "cbr" and definitions.get(op["operands"][0]["value"], {}).get("op") == "ptr.cmp"]
+        self.assertEqual(len(sites), 2)
+        for bi, oi in sites:
+            with self.subTest(block=bi, instruction=oi):
+                mutated = copy.deepcopy(original)
+                # Jumping straight to the absent arm proves nothing about this
+                # value: neither the outer nor the inner fit facts may survive.
+                mutated["functions"][0]["blocks"][bi]["operations"][oi]["operands"][0]["value"] = "true"
+                self.assert_rejected(mutated, "narrowing")
+
+    def test_nested_optional_promoting_views_require_the_copy_guard(self):
+        source = "tuple[tuple[int+,int],str]"
+        target = "tuple[opt[tuple[int+,int+]],str]"
+        for symbol in ("@main.init",):
+            original = selected(self.snapshots["optional-keys"], symbol)
+            self.assert_accepted(original)
+            fn = original["functions"][0]
+            definitions = {f"%t{result}": op for block in fn["blocks"]
+                           for op in block["operations"] for result in op["results"]}
+            sites = []
+            for block in fn["blocks"]:
+                for op in block["operations"]:
+                    if op["op"] != "phi" or op["type"] != target:
+                        continue
+                    for operand, label in zip(op["operands"], op["targets"], strict=True):
+                        definition = definitions.get(operand["value"], {})
+                        if definition.get("op") == "alloc.fixed" and definition["type"] == source:
+                            bi = next(i for i, b in enumerate(fn["blocks"]) if b["label"] == label)
+                            branch = fn["blocks"][bi]["operations"][-1]
+                            self.assertEqual(branch["op"], "cbr")
+                            self.assertEqual(branch["targets"][1], block["label"])
+                            sites.append(bi)
+            self.assertEqual(len(sites), 1, symbol)
+            for bi in sites:
+                with self.subTest(function=symbol, block=bi):
+                    mutated = copy.deepcopy(original)
+                    mutated["functions"][0]["blocks"][bi]["operations"][-1]["operands"][0]["value"] = "false"
+                    self.assert_rejected(mutated, "promoting-view")
+
     def test_big_dictionary_key_requires_matching_digits(self):
         original = selected(self.snapshots["dict-items"], "@main.init")
         self.assert_accepted(original)
@@ -232,6 +293,62 @@ class StorageLayoutTests(unittest.TestCase):
         mutated = copy.deepcopy(original)
         mutated["functions"][0]["blocks"][bi]["operations"][oi]["operands"][0]["value"] = "false"
         self.assert_rejected(mutated, "promoting-view")
+
+    def kwargs_functions(self):
+        snapshot = self.snapshots["kwargs"]
+        functions = []
+        for fn in snapshot["functions"]:
+            decoded = {op["operands"][0]["value"] for block in fn["blocks"] for op in block["operations"]
+                       if op["op"] == "tuple.load"}
+            loads = [op for block in fn["blocks"] for op in block["operations"]
+                     if op["op"] == "mem.load" and op["type"] == "kw[extra:int+]" and
+                     f"%t{op['results'][-1]}" in decoded]
+            if loads:
+                self.assertEqual(len(loads), 1)
+                functions.append((selected(snapshot, fn["symbol"]), loads[0]["results"][-1]))
+        self.assertEqual(len(functions), 2)
+        return functions
+
+    def test_kwargs_load_contract_is_not_inferred_from_consuming_view(self):
+        for original, result in self.kwargs_functions():
+            self.assert_accepted(original)
+            for typ, status, code in (("%ptr", "unsupported", 2), ("kw[extra:int]", "rejected", 1)):
+                with self.subTest(function=original["functions"][0]["symbol"], producer=typ):
+                    mutated = copy.deepcopy(original)
+                    fn = mutated["functions"][0]
+                    load = next(op for block in fn["blocks"] for op in block["operations"]
+                                if op["results"] == [result])
+                    load["type"] = typ
+                    load["operands"][0]["type"] = "*" + typ
+                    report, actual = check_all(mutated)
+                    self.assertEqual((report["status"], actual), (status, code), report)
+                    if status == "rejected":
+                        self.assert_rejected(mutated, "promoting-view")
+
+    def test_each_kwargs_tail_read_still_requires_its_marker_guard(self):
+        for original, result in self.kwargs_functions():
+            fn = original["functions"][0]
+            definitions = {f"%t{r}": op for block in fn["blocks"]
+                           for op in block["operations"] for r in op["results"]}
+            sites = []
+            for bi, block in enumerate(fn["blocks"]):
+                for oi, op in enumerate(block["operations"]):
+                    if op["op"] != "cbr":
+                        continue
+                    condition = definitions.get(op["operands"][0]["value"], {})
+                    if condition.get("op") != "scalar.cmp" or condition["text"] != "eq":
+                        continue
+                    if not any(a["value"] == MIN for a in condition["operands"]):
+                        continue
+                    words = [definitions.get(a["value"], {}) for a in condition["operands"]]
+                    if any(word.get("op") == "tuple.load" and word["immediate"] == 0 and word["operands"] ==
+                           [{"value": f"%t{result}", "type": "tuple[int+]"}] for word in words):
+                        sites.append((bi, oi))
+            self.assertEqual(len(sites), 1, fn["symbol"])
+            for bi, oi in sites:
+                mutated = copy.deepcopy(original)
+                mutated["functions"][0]["blocks"][bi]["operations"][oi]["operands"][0]["value"] = "true"
+                self.assert_rejected(mutated, "tail-marker")
 
 
 if __name__ == "__main__":

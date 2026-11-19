@@ -83,7 +83,8 @@ class DiagnosticCaptureTests(unittest.TestCase):
                          ["compiling outer(int)", "compiling helper.inner(int)"])
 
     def generator(self, **changes):
-        values = dict(xtry="", newx={}, newhints={}, final=False, making=[], recursive=[], line=4)
+        values = dict(retry_hierarchy=lambda msg: None, xtry="", newx={}, newhints={}, final=False, making=[], recursive=[], line=4,
+                      ncand={}, xwant={}, xnot={}, newwant={}, curfn=None, fnkey=lambda f: f, clsused={})
         values.update(changes)
         return SimpleNamespace(**values)
 
@@ -97,6 +98,41 @@ class DiagnosticCaptureTests(unittest.TestCase):
                 self.assertEqual(output.getvalue(), "")
                 self.assertEqual(diagnostics.CAPTURED, [])
         self.assertEqual(generator.newhints, {"local": "int | str"})
+
+    def test_error_asks_for_the_function_s_narrowings(self):
+        # an error in a function whose isinstance() tests of class tuples narrowed nothing asks
+        # for those narrowings (Gen.xwant), not another function's or one already declined
+        diagnostics.CAPTURE = True
+        mine = "narrow:f:3:x:union[A,B]"
+        generator = self.generator(curfn="f", ncand={mine: True, "narrow:g:5:y:union[A,B]": True, "narrow:f:7:z:union[A,B]": True},
+                                   xnot={"narrow:f:7:z:union[A,B]": True})
+        with redirect_stderr(StringIO()) as output:
+            with self.assertRaises(diagnostics.Rejoin):
+                gen_err(generator, "'Base' object has no method 'label'")
+        self.assertEqual(output.getvalue(), "")
+        self.assertEqual(diagnostics.CAPTURED, [])
+        self.assertEqual(generator.newwant, {mine: True})
+        # (an error that a join may explain restarts for the join first, asking for nothing)
+        generator = self.generator(curfn="f", ncand={mine: True}, newhints={"local": "int | str"})
+        with redirect_stderr(StringIO()):
+            with self.assertRaises(diagnostics.Rejoin):
+                gen_err(generator, "'Base' object has no method 'label'")
+        self.assertEqual(generator.newwant, {})
+
+    def test_typed_class_objects_retry_as_class_boxes(self):
+        # (class_values.py) an error in a program a dynamic-Any module of which, without a
+        # type[C] annotation, read a class as a typed class object is no terminal error yet;
+        # Gen.clsused holds no module that names type[C]
+        diagnostics.CAPTURE = True
+        generator = self.generator(clsused={3: True}, final=True)
+        with redirect_stderr(StringIO()) as output, self.assertRaises(diagnostics.ClassBoxes):
+            gen_err(generator, "expected type[A], got Any")
+        self.assertEqual(output.getvalue(), "")
+        self.assertEqual(diagnostics.CAPTURED, [])
+        annotated = self.generator(clsused={}, final=True)
+        with redirect_stderr(StringIO()) as output, self.assertRaises(SystemExit):
+            gen_err(annotated, "expected type[A], got Any")
+        self.assertEqual(output.getvalue(), "main.py:4: error: expected type[A], got Any\n")
 
     def test_terminal_specialization_context_matches_legacy_message(self):
         diagnostics.CAPTURE = True

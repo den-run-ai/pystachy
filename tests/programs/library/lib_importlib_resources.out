@@ -1,0 +1,17 @@
+PosixPath respkg True True
+True True
+hello
+world
+True False
+['hello.txt', 'utf8.txt']
+sub respkg
+True True
+True True
+respkg data True a note in a subpackage
+ModuleNotFoundError No module named 'nope'
+ModuleNotFoundError No module named 'respkg.nope'
+ModuleNotFoundError No module named 'nope'
+ModuleNotFoundError No module named 'respkg.mod.deeper'; 'respkg.mod' is not a package
+ValueError Empty module name
+TypeError the 'package' argument is required to perform a relative import for '.relative'
+[exit 0]

@@ -18,6 +18,7 @@ class Mod:
         # its type aliases, by qualified name: the statement that binds each, a top-level type
         # statement or name = <a type> (Loader.type_value)
         self.taliases: dict[str, Node] = {}
+        self.finals: list[str] = []  # the classes whose @final the loader dropped (Loader.identity_decos), which Gen checks for __final__
         self.fnglobal: dict[str, bool] = {}  # the names a function's global statement binds
         self.fnonly: dict[str, bool] = {}  # those its top-level code does not
         self.rebound: dict[str, bool] = {}  # the names it binds other than as os, sys, TYPE_CHECKING (rebound())
@@ -29,6 +30,11 @@ class Mod:
         self.flagat: dict[str, int] = {}
         self.flagval: dict[str, int] = {}
         self.fails = ""  # the exception its top-level code surely raises, ImportError or ModuleNotFoundError
+        # where that is its own top-level import of a module that is not found (Loader.init_raise()):
+        # the module and the line of the import; or its import of a module that fails so (misvia)
+        self.missing = ""
+        self.missline = 0
+        self.misvia = ""
         self.doc = mk("None", "", 1, [])  # its __doc__ while its code binds none: its docstring (Loader.docstring())
         # a package's names that an import of the submodule of that name rebinds at a time Pystachy
         # cannot tell (Loader.submodules()); True if that may happen while its own code runs
@@ -42,10 +48,17 @@ class Mod:
         # the names only name = f(...) statements bind, with each f: a TypeVar if every f is typing's
         self.tvars: dict[str, list[Node]] = {}
         self.cbases: dict[str, Node] = {}
+        self.cmulti: dict[str, list[Node]] = {}  # (and those of its classes with several bases)
         # its classes whose body binds __class_getitem__ = classmethod(X), with each X: subscripts of
         # them are types where X is types.GenericAlias (Loader.generic_class)
         self.cgetitem: dict[str, Node] = {}
         self.deftps: list[str] = []  # the type parameters of its generic defs, as Loader.qren names them: TypeVars
+        # the imports of its top-level if TYPE_CHECKING: branches, which CPython never runs, and what
+        # their names bind for its annotations alone (Loader.type_only): a class of a module the
+        # program imports anyway is "a:" and its qualified name, as a from-import binds it
+        self.tcimports: list[Node] = []
+        self.tkinds: dict[str, str] = {}
+        self.lazyann = False  # does it import annotations from __future__ (Loader.deftime)
         # the user modules its imports (also its functions') initialize, packages included
         # (Gen.identity_modules: the modules whose code tracks numeric identity)
         self.deps: dict[str, bool] = {}

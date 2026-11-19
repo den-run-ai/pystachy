@@ -4,7 +4,7 @@ from src.pystachy_compiler.analysis import local_names
 from src.pystachy_compiler.diagnostics import int_lists, shown, where
 from src.pystachy_compiler.dynamic import comparison_aliases, comparison_properties, comparison_rebinds, comparison_reserve_fields
 from src.pystachy_compiler.generators import fresh_yield_context
-from src.pystachy_compiler.ir import ClassInfo, FnInfo
+from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.names import retoken, short
 from src.pystachy_compiler.specs import (
     BIG,
@@ -171,6 +171,10 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
                     self.specdone[canonical] = t.specs[key]
             return t.specs[key]
         if s.bad != "":
+            # A needed constructor can fail before a later hierarchy use requests
+            # its fixed-layout annotation dependencies. Retain only syntax-verified
+            # names and retry the whole program, as for a demanded descendant.
+            self.request_hierarchy(c)
             self.err(s.bad)  # (an imported module's class: where the program makes an object of it)
         if self.template_instances >= TEMPLATE_INSTANCES:
             self.err(f"compilation needs more than {TEMPLATE_INSTANCES} template specializations; annotate template parameters or reduce type combinations")
@@ -436,6 +440,26 @@ def gen_generic_ann(self, c: str, a: Node) -> str:
         return c
     return self.specialize(c, [], given, True, {})
 
+def gen_mapping_ann(self, t: str, v: Node) -> str:
+    # the type of a local, global or field that an assignment annotated t gives the value v: t,
+    # but where t is a dict[K, V] (or a spelling of one, such as Mapping[K, V]: ann_base) and v
+    # a call of one of lib/collections' mappings (dict_class), which derive from dict in CPython,
+    # that class's specialization whose type variables K and V bind (a Counter's K, where V is
+    # its counts' int), as the class's own annotation names it: the variable holds the object
+    # that the call makes, which a missing key's lookup asks for its default, as CPython's does
+    if not is_dict(t) or v.kind != "call":
+        return t
+    f = v.kids[0].kids[0] if v.kids[0].kind == "index" else v.kids[0]
+    if f.kind != "name" or f.s not in self.tparams or not self.dict_class(f.s):
+        return t
+    kv = targs(t)
+    tvs = self.tparams[f.s]
+    if len(tvs) == 2:
+        return self.specialize(f.s, [], {tvs[0]: kv[0], tvs[1]: kv[1]}, True, {})
+    if kv[1] != "int" and kv[1] != BIG:
+        return t  # (a Counter's counts are ints, also where they promote: a dict's int values do then)
+    return self.specialize(f.s, [], {tvs[0]: kv[0]}, True, {})
+
 def gen_named_params(self, c: str, init: Node) -> list[str]:
     # the types of the parameters (after self) of the __init__ of generic class c, as the
     # specialization that c[X] names (see generic_ann) types them, its type variables bound:
@@ -528,10 +552,10 @@ def gen_match(self, a: Node, t: str, tv: dict[str, str], tvs: list[str]) -> str:
         return self.match(xs[0], et, tv, tvs) if et != "" else "it has no supported iterable item type"
     if base == "list" and is_list(t) and len(xs) == 1:
         return self.match(xs[0], elem(t), tv, tvs)
-    if (base == "set" or base == "frozenset") and is_set(t) and len(xs) == 1:
-        return self.match(xs[0], selem(t), tv, tvs)
+    if (base == "set" or base == "frozenset" or base == "aset") and is_set(t) and len(xs) == 1:
+        return self.match_key(xs[0], selem(t), tv, tvs)
     if base == "dict" and is_dict(t) and len(xs) == 2:
-        why = self.match(xs[0], targs(t)[0], tv, tvs)
+        why = self.match_key(xs[0], targs(t)[0], tv, tvs)
         return why if why != "" else self.match(xs[1], targs(t)[1], tv, tvs)
     if base == "tuple" and is_tuple(t):
         return self.match_items(xs, targs(t), tv, tvs)
@@ -542,6 +566,20 @@ def gen_match(self, a: Node, t: str, tv: dict[str, str], tvs: list[str]) -> str:
         why = self.match_items(xs[0].kids, sig[1:], tv, tvs)
         return why if why != "" else self.match(xs[1], sig[0], tv, tvs)
     return "it does not fit the parameter's annotation (or that annotation's type variables are not supported there: they are in T, list[T], dict[K, V], set[T], tuple[T, *Ts], T | None, Iterable[T], Callable[[T, *Ts], R], a generic class's C[T] and unions of these)"
+
+def gen_match_key(self, a: Node, t: str, tv: dict[str, str], tvs: list[str]) -> str:
+    # match for the element type of a set, or the key type of a dict: None is one (a set[None]'s,
+    # utils.none_key), and binds a type variable as any other type does, where an argument that is
+    # None itself binds none (match)
+    if a.kind == "str":
+        a = self.parse_expr(a.s)
+    if t != "None" or a.kind != "name" or not self.names_tv(a, tvs) or a.s in self.tvtuples:
+        return self.match(a, t, tv, tvs)
+    j = self.join(tv[a.s], t) if a.s in tv else t
+    if j == "":
+        return f"'{short(a.s)}' is {typestr(tv[a.s])} already, and {typestr(t)} here"
+    tv[a.s] = j
+    return ""
 
 def gen_match_items(self, xs: list[Node], ts: list[str], tv: dict[str, str], tvs: list[str]) -> str:
     # (see match) values of types ts for the items of tuple[...] or the parameters of
@@ -667,7 +705,7 @@ def comparison_missing(n: Node, aliases: list[str], fields: dict[str, str]) -> N
         comparison_missing(kid, aliases, fields)
 
 
-def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "", resultsoft: bool = False, cmpfields: str = "") -> FnInfo:
+def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "", resultsoft: bool = False, cmpfields: str = "", nullable_self: bool = False) -> FnInfo:
     # the function template f compiles to for arguments of types ts, compiled when first
     # needed, in the middle of the function that calls it: its first return statement
     # decides what it returns; nnp: the parameters whose objects are known not to be None
@@ -695,6 +733,8 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     # Keep that specialization separate from typed len(), which requires int.
     raw_hint = f.name == "__len__" and self.curfn.name == "dyn.lengthhint" and self.xtry.startswith("protocol-hint:")
     readkey += " length-hint" if raw_hint else ""
+    nullable_self = nullable_self or f.nullable_self
+    readkey += " nullable-self" if nullable_self else ""
     key = ",".join(ts) + (" " + ",".join(nnp) if len(nnp) > 0 else "") + readkey
     if cmpfields != "":
         key += " fields " + cmpfields  # never reuse the ordinary typed call's specialization
@@ -722,6 +762,13 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
                 g.ret = "None"
             elif f.gen:
                 self.err(f"cannot infer what {short(f.name)}() yields: it calls itself before its first yield; annotate its return type (-> Iterator[T])")
+            elif f.ret != "":
+                g.ret = f.ret  # (an int for a float parameter, see below: the annotation, -> float)
+            elif self.may_decline(f):
+                # (a comparison method that names NotImplemented returns that or a bool: a tree's
+                # __eq__, whose guard is decided here, compares its children first. The
+                # first-return path refuses another type)
+                g.ret = "bool"
             else:
                 self.err(f"cannot infer what {short(f.name)}() returns: it calls itself before a return statement does; annotate its return type")
         if g.ll in self.building:
@@ -748,6 +795,7 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     self.materialize(f)  # (an inherited class method's own body)
     g = FnInfo(f.name, f"{f.ll}.{len(f.insts) + 1}", f.node, f.cls)
     g.deco = f.deco
+    g.nullable_self = nullable_self
     g.prop = f.prop
     g.clsuse = f.clsuse
     g.orig = f.orig
@@ -765,11 +813,18 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     g.defaults = f.defaults
     g.dglob = f.dglob
     g.dtypes = f.dtypes
+    g.sentinels = f.sentinels
+    g.sentann = f.sentann
     g.uflags = f.uflags
     g.mod = f.mod
     g.home = f.home
     g.ret = want if yield_context else f.ret
     g.infer = f.ret == ""
+    if f.tvret != "" and g.ret == "":
+        # (accept(visitor) -> T of a visitor whose class derives from Visitor[X]: X, before the
+        # body runs, so that a recursive call knows it: tv_bound)
+        g.ret = self.tv_bound(f, ts)
+        g.infer = g.ret == ""
     g.rctx = "" if yield_context else want
     g.rsoft = resultsoft and want != ""
     g.rlocals = locals if want != "" else []
@@ -785,6 +840,19 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
         missing = {a: self.classes[cmpfields].ftypes[a] for a in self.classes[cmpfields].ftypes if a not in actual.ftypes and a not in actual.methods}
         if g.cmprebind == "":
             comparison_missing(g.node.kids[2], comparison_aliases(g.node.kids[2], f.params[1]), missing)
+    late = [j for j in range(len(ts)) if j < len(f.ptypes) and f.ptypes[j] == "float" and (ts[j] == "int" or ts[j] == "bool" or ts[j] == BIG)]
+    if len(late) > 0 and cmpfields == "":
+        # an int for a float parameter (see int_for_float): in this instance's own copy of the
+        # def the parameter has no annotation, so its body may bind it again, as a template's
+        g.node = clone(f.node)
+        for par in g.node.kids[0].kids:
+            if par.kind == "param" and par.s in [f.params[j] for j in late]:
+                par.kids[0] = mk("noann", "", f.node.line, [])
+        if g.ret == "float" and not f.gen:
+            # -> float: what this instance returns may be its int, which CPython returns as it
+            # is; its returns decide (the annotation again, where it calls itself before one)
+            g.ret = ""
+            g.infer = True
     g.ikey = key
     g.npos = f.npos
     g.posonly = f.posonly
@@ -800,6 +868,8 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     self.retainers[who] = self.retainers.get(who, 0) + size
     maybe = [f.params[j] for j in range(len(ts)) if ts[j] in self.classes and f.params[j] not in g.nnp and self.dispatches(f, f.params[j])]
     why = f", where {' and '.join(maybe)} may be None: only a new object or self is known not to be None, which decides isinstance(), hasattr() and 'is None' at compile time" if len(maybe) > 0 else ""
+    if len(late) > 0 and cmpfields == "":
+        why += f", which passes an int for the float parameter {' and '.join([f.params[j] for j in late])}: pass a float, as in 1.0 or float(x), to compile it as annotated"
     args = ", ".join(ts[1:] if f.clo >= 0 or takes_self(f) else ts) if size <= 256 else f"<{len(ts)} arguments, {size} type bytes>"  # (a closure's env, a method's self aside)
     self.making.append(f"compiling {who}({args}) for the call at {where(self.line)}{why}")
     self.template_bytes += size
@@ -912,7 +982,7 @@ def gen_const_of(self, n: Node, env: dict[str, Node], live: bool) -> Node | None
             local_names(f.node.kids[2].kids, asg)
             return c.lits[n.s] if n.s not in asg else None
         return None
-    if k == "attr" and c is not None and n.kids[0].kind == "name" and takes_self(f) and n.kids[0].s == f.params[0] and n.s in c.fconst:
+    if k == "attr" and c is not None and n.kids[0].kind == "name" and takes_self(f) and not f.nullable_self and n.kids[0].s == f.params[0] and n.s in c.fconst:
         asg = {}
         local_names(f.node.kids[2].kids, asg)
         return c.fconst[n.s] if f.params[0] not in asg else None

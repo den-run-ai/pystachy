@@ -151,9 +151,20 @@ class Diagnostic:
 CAPTURE = False
 PHASE = "compile"
 CAPTURED: list[Diagnostic] = []
+# a compilation that keeps the except clauses of optional imports that it would drop before #1504
+# (Loader.keeps): an error there is no diagnostic, as driver.compile_program then compiles the
+# program again without them, which reports what it finds
+TRIAL = False
+
+
+class Untried(Exception):
+    # fail() while TRIAL
+    pass
 
 
 def fail(msg: str, line: int, context: list[str] | None = None) -> None:
+    if TRIAL:
+        raise Untried()
     if CAPTURE:
         CAPTURED.append(Diagnostic(msg, line, [] if context is None else context))
     print(f"{where(line)}: error: {shown(msg)}", file=sys.stderr)
@@ -167,9 +178,29 @@ class Rejoin(Exception):
     pass
 
 
+class NeedHierarchy(Rejoin):
+    # A previously excluded fixed-layout class is used. Fresh compilation admits its
+    # hierarchy so earlier dispatch sites include the newly reachable receiver.
+    pass
+
+
 class NeedSliceEH(Rejoin):
     # A dynamic slice needs to catch an iterator callback's TypeError. Start
     # a fresh compile with exception handling before lowering any function.
+    pass
+
+
+class NeedHandlers(Rejoin):
+    # The statements after an optional import's imports may raise a subclass of ImportError
+    # (Loader.keep_site, #1504): a fresh load keeps their except clauses at run time.
+    pass
+
+
+class ClassBoxes(Rejoin):
+    # A module that opts in to dynamic Any read its classes as typed class objects (type[C]) and
+    # the program did not compile so, or stored an Any value where a class object's type was
+    # inferred: the program is compiled from the start with those modules' classes read as the
+    # class boxes they always were, Any values (class_values.py's class_value_static)
     pass
 
 

@@ -109,15 +109,16 @@
 #                  shared/object runtime, -O0 code generation, embedding, cached and AOT launches;
 #                  tools/test_lljit.py: the runner is built and cached once, falls back to lli where
 #                  it cannot be, and keeps lli's contract on small C programs
-#   aot-dead-code  tools/aotprobe.py: an AOT build defines pys_plain; a program that opts in to
-#                  neither dynamic Any nor promoting ints keeps none of their runtime helpers, and
-#                  its list stores none of their companion code; direct and imported opt-ins
-#                  retain them; objects that never escape compile to no allocation and those a
-#                  list keeps do (allocelide), and holders of objects keep their allocations and
-#                  those objects through collections, with outputs matching CPython; and
-#                  PYSTACHY_GC_MIN sets the allocation window between collections
-#   unicode-audit  tools/unicode_audit.py: optional byte-boundary checks in JIT/AOT, cache
-#                  reuse, ASCII/Unicode controls and GC-stress exception paths, both compilers;
+#   aot-dead-code  tools/aotprobe.py: an AOT build links the precompiled runtime specialized
+#                  for pys_plain; a program that opts in to neither dynamic Any nor promoting ints
+#                  keeps none of their runtime helpers, and its list stores none of their companion
+#                  code; direct and imported opt-ins retain them; objects that never escape compile
+#                  to no allocation and those a list keeps do (allocelide), and holders of objects
+#                  keep their allocations and those objects through collections, with outputs
+#                  matching CPython; and PYSTACHY_GC_MIN sets the allocation window between
+#                  collections
+#   unicode-audit  tools/unicode_audit.py: str operations on text that is not ASCII and every code
+#                  point's classification, repr() and case against CPython, JIT/AOT, both compilers;
 #                  unicodeprobe checks code-point cache/locality, mutation and GC invalidation
 #                  bytescanprobe checks bounded delimiter scans, guard pages and bulk-work counts
 #                  floatprobe checks float-parser allocations and exact-terminator guard pages
@@ -254,7 +255,7 @@ export PYSTACHY_HOME="$ROOT"
 # The steps set the knobs they test themselves: one left in the caller's environment would weaken a
 # step (PYSTACHY_GC=off: gc-stress collects nothing) or fail it falsely (PYSTACHY_OPT=-all), so they
 # are dropped, and the report lists them (PYSTACHY_LLVM and PYSTACHY_JOBS are kept)
-ign=$(env | sed -nE 's/^(PYSTACHY_(PATH|CFLAGS|AOT_OPT|RUNTIME_C_CACHE|GC|GC_MIN|GC_STRESS|GC_STRESS_PROGRAM|IRCHECK|IRFX|TIMING|OPT|JIT_INLINE|JIT_OPT|JIT_CODEGEN|JIT_LAUNCHER|PROGRAM_CACHE|PROGRAM_CACHE_TRACE|PROGRAM_CACHE_INPUTS|PROGRAM_CACHE_LOCK|UNICODE_AUDIT|DEBUG_LINES|ARGV0|CASE_TIMES))=.*$/\1/p' | sort -u)
+ign=$(env | sed -nE 's/^(PYSTACHY_(PATH|CFLAGS|AOT_OPT|PROFILE_GENERATE|PROFILE_USE|RUNTIME_C_CACHE|GC|GC_MIN|GC_STRESS|GC_STRESS_PROGRAM|IRCHECK|IRFX|TIMING|OPT|JIT_INLINE|JIT_OPT|JIT_CODEGEN|JIT_LAUNCHER|PROGRAM_CACHE|PROGRAM_CACHE_TRACE|PROGRAM_CACHE_INPUTS|PROGRAM_CACHE_LOCK|DEBUG_LINES|ARGV0|CASE_TIMES))=.*$/\1/p' | sort -u)
 for e in $ign; do echo "verify: ignoring $e=$(printenv "$e")"; unset "$e"; done
 LLVM=${PYSTACHY_LLVM:+${PYSTACHY_LLVM%/}/}
 
@@ -627,9 +628,10 @@ for shard in 0 1 2; do
 done
 
 # ---- runtime-cache: the cached runtime's rules, each compiler with a private home (tests/cache.sh,
-# whose checks are 82 with the native compiler and 84 with CPython's, including mpz/component edits and,
-# on Linux, which verification runs on, the JIT tier's shared library and the JIT runner's 16)
-# Each run has its own home, LLVM wrappers and directory ($TMPDIR/pystachy-cache.PID) and builds the
+# whose checks are 96 with the native compiler and 98 with CPython's, including mpz/component edits, the
+# precompiled AOT runtime and, on Linux, which verification runs on, the JIT tier's shared library and
+# the JIT runner's 16)
+# Each run has its own home, LLVM wrappers and directory ($TMPDIR/pystachy-cache-é.PID) and builds the
 # runtime in one process at a time, so the two run side by side (the native one as a background job:
 # neither sends SIGINT, which a background job would ignore; one after another without bgjobs)
 if want runtime-cache; then
@@ -643,7 +645,7 @@ fi
 tests/cache.sh "$PY -m pystachy" > "$V/cache-cpython.log" 2>&1
 [ -z "${cachepid:-}" ] || wait "$cachepid"; cachepid=
 for l in native cpython; do echo "== $l"; cat "$V/cache-$l.log"; done > "$L"
-x=$(tests $((82 + 84)) "$V/cache-native.log" "$V/cache-cpython.log" 2>> "$L") && r=pass || r=fail
+x=$(tests $((96 + 98)) "$V/cache-native.log" "$V/cache-cpython.log" 2>> "$L") && r=pass || r=fail
 step runtime-cache $r "$s" "$L" ', "compilers": ["stage2", "CPython-hosted"]'"$x"
 fi
 
@@ -663,9 +665,9 @@ nopy() { env -i PATH="$NP" TMPDIR="${TMPDIR:-/tmp}" PYSTACHY_HOME="$V/home" ${PY
   ok=1
   for t in clang opt lli llvm-link llvm-as; do tool $t "$PYSTACHY_LLVM" || ok=0; done
   # clang's system linker; the driver's shell commands (pystachy run's rmdir too); tests/run.sh; the rm,
-  # mkfifo, sleep and ln (shutil's symbolic links) test programs run; the native-agent example's permission
-  # preservation and bounded visible check use chmod and timeout.
-  for t in ld sh mkdir mktemp sed mv chmod timeout rm rmdir test cat cmp diff head tail grep dirname basename mkfifo sleep ln nproc stat cp ldd flock touch sha256sum; do tool $t || ok=0; done
+  # mkfifo, sleep, ln (shutil's symbolic links) and uname (platform's oracle) test programs run; the
+  # native-agent example's permission preservation and bounded visible check use chmod and timeout.
+  for t in ld sh mkdir mktemp sed mv chmod timeout rm rmdir test cat cmp diff head tail grep dirname basename mkfifo sleep ln nproc stat cp ldd flock touch sha256sum uname; do tool $t || ok=0; done
   echo "PATH=$NP"; ls -l "$NP" | sed 1d
   if nopy sh -c 'command -v python3 || command -v python'; then ok=0; echo "python is reachable"
   else py=false; echo "python3, python: not found on PATH"; fi
@@ -1075,7 +1077,7 @@ fi
 }
 
 contracts_b() {
-# ---- Unicode audit: opt-in checks, code-point cache/locality and mutation/GC invalidation
+# ---- Unicode audit: str operations against CPython, code-point cache/locality and mutation/GC invalidation
 if want unicode-audit; then
 L=$V/unicode-audit.log; s=$(now); r=fail
 { $PY tools/unicode_audit.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" &&

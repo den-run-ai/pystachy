@@ -1,5 +1,6 @@
 """Loader component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+import os
 from src.pystachy_compiler import program_cache
 from src.pystachy_compiler.analysis import (
     accel_try,
@@ -38,6 +39,7 @@ from src.pystachy_compiler.analysis import (
     module_reads,
     names_name,
     own_specials,
+    complex_values,
     object_values,
     range_values,
     read_names,
@@ -48,15 +50,16 @@ from src.pystachy_compiler.analysis import (
     special_import,
     specials,
     surely_binds,
+    targets,
     top_bindings,
     walrus_names,
 )
 from src.pystachy_compiler.argparse_schema import lower_argparse, parser_import
 from src.pystachy_compiler.ctypes_schema import ctypes_import, lower_ctypes
-from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, IDPRAGMA, INTFILES, INTSPANS, LINES, MODDUNDERS, RAW, dynamic_pragma, fail, int_pragma, leading_pragma
-from src.pystachy_compiler.lexer import KEYWORDS, Lexer
+from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, IDPRAGMA, INTFILES, INTSPANS, LINES, MODDUNDERS, RAW, NeedHandlers, dynamic_pragma, fail, int_pragma, leading_pragma
+from src.pystachy_compiler.lexer import KEYWORDS, Lexer, host_text
 from src.pystachy_compiler.module import Mod
-from src.pystachy_compiler.names import ENUMCLASSES, owner, short
+from src.pystachy_compiler.names import ENUMCLASSES, ORDERED, owner, short
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.specs import (
     ABCS,
@@ -67,6 +70,7 @@ from src.pystachy_compiler.specs import (
     CTYPES,
     GENERICS,
     GLUE,
+    IDENTITY_DECOS,
     INT_HELPERS,
     ITERS,
     JSONANY,
@@ -77,7 +81,9 @@ from src.pystachy_compiler.specs import (
     OSCONST,
     PLATFORM,
     PYBUILTINS,
+    COMPLEXS,
     OBJECTS,
+    BYTEARRAYS,
     RANGES,
     STANDINS,
     TYPESMOD,
@@ -86,7 +92,7 @@ from src.pystachy_compiler.specs import (
     VERSIONINFO,
     is_excname,
 )
-from src.pystachy_compiler.syntax import NOKIDS, Node, comp_names, has_kind, mk, names_in
+from src.pystachy_compiler.syntax import NOKIDS, Node, comp_names, has_kind, mentions, mk, names_in
 from src.pystachy_compiler.utils import clone, int_fits, is_const
 
 
@@ -104,6 +110,21 @@ def cm_names(body: Node) -> list[str]:
     return out
 
 
+def abstract_cm_body(b: Node) -> bool:
+    # can function body b, of an abstract @contextmanager method, only raise: it has no yield
+    # and no return, and ends in a raise statement (after a docstring, as mypy's interfaces write
+    # them). CPython's helper then calls a function, not a generator function, which raises
+    return len(b.kids) > 0 and b.kids[-1].kind == "raise" and not has_kind(b, "yield") and not has_kind(b, "return") and not has_kind(b, "def") and not has_kind(b, "lambda")
+
+def cm_yields_none(a: Node) -> bool:
+    # is return annotation a Iterator[None] or Generator[None, None, None] (also qualified): the
+    # type of the generator that stands for an abstract method's, whose one yield yields None
+    if a.kind != "index" or len(a.kids) != 2:
+        return False
+    base = a.kids[0].s if a.kids[0].kind in ["name", "attr"] else ""
+    args = a.kids[1].kids if a.kids[1].kind == "tuple" else [a.kids[1]]
+    return base in ["Iterator", "Generator"] and len(args) in [1, 3] and len([x for x in args if x.kind != "None"]) == 0
+
 def cm_root(c: str, name: str, bases: dict[str, list[str]], cms: list[str]) -> str:
     # the first class from c up its bases (classes of the module, by name) that defines the
     # @contextmanager method name, the furthest up it; "" when none does
@@ -114,17 +135,23 @@ def cm_root(c: str, name: str, bases: dict[str, list[str]], cms: list[str]) -> s
     return c if c + "." + name in cms else ""
 
 
+def cm_private_fields(n: Node) -> None:
+    # The contextlib port's recreation bookkeeping is compiler storage, not public
+    # attributes. Its backing function retains the visible __dict__ name "func".
+    if n.kind == "attr" and n.s in ["_func", "_pys_factory", "_pys_func_changed"]:
+        n.s = " " + n.s
+    for kid in n.kids:
+        cm_private_fields(kid)
+
+
 def cm_methods(n: Node, names: list[str]) -> None:
     # a method decorated @contextmanager (names: as the module imports it) is the generator method
-    # _pys_cm_NAME, and NAME(self, /, *args, **kwds) returns the manager that
-    # contextmanager(self._pys_cm_NAME)(*args, **kwds) makes: what CPython's helper does, bound to
-    # the object (the subset has no decorated methods). Its generator is C's own: in a class C
-    # that derives from a class of the module or that one derives from, C._pys_cm_NAME(self,
-    # *args, **kwds) (super().NAME() runs the base class's), else self._pys_cm_NAME(...); and the
-    # function it keeps (for a decorator's calls, which make the generator again) is bound to self
-    # taken as an object of the class that first defines NAME so, so that NAME returns one type
-    # whatever subclass self is. A generic class keeps contextmanager(self._pys_cm_NAME) (C alone
-    # names no type there)
+    # _pys_cm_NAME. Its wrapper captures self in a factory accepting packed args and kwds,
+    # factory that calls C's own generator, even when self is None. The manager keeps this
+    # same private factory for decorator recreation, without looking up a method on self.
+    # Its existing func/args/kwds metadata remains available. cmfactory
+    # converts the closure to a Callable with its inferred return type: overrides yielding
+    # the same type then return one manager type despite having different closure environments.
     if len(names) == 0:
         return
     bases: dict[str, list[str]] = {}
@@ -133,12 +160,6 @@ def cm_methods(n: Node, names: list[str]) -> None:
             bases[st.s] = [x.s for x in st.kids[1:] if x.kind == "name"]
         elif st.kind == "class":
             bases[st.s] = []
-    derived: dict[str, bool] = {}
-    for c in bases:
-        for x in bases[c]:
-            if x in bases:
-                derived[c] = True
-                derived[x] = True
     cms: list[str] = []
     top: list[Node] = []
     imported = False
@@ -148,18 +169,104 @@ def cm_methods(n: Node, names: list[str]) -> None:
             generic = st.kind == "subclass" and len([x for x in st.kids[1:] if x.kind == "typeparams"]) > 0
             kept: list[Node] = []
             for d in b.kids:
-                if d.kind == "def" and len(d.kids) == 4 and d.kids[3].kind == "deco" and len(d.kids[3].kids) == 0 and d.kids[3].s in names and len(d.kids[0].kids) > 0 and d.kids[0].kids[0].kind == "param":
+                # (@abstractmethod with it, in either order, on a method that cannot yield: its
+                # body raises where CPython's helper calls it, below)
+                abstract = ""
+                if d.kind == "def" and len(d.kids) == 5 and not generic and d.kids[3].kind == "deco" and d.kids[4].kind == "deco" and len(d.kids[3].kids) + len(d.kids[4].kids) == 0:
+                    other = d.kids[4].s if d.kids[3].s in names else d.kids[3].s if d.kids[4].s in names else ""
+                    # (its parameters are those of two methods below: defaults that are literals,
+                    # which evaluating twice does not show)
+                    if other in ["abstractmethod", "abc.abstractmethod"] and abstract_cm_body(d.kids[2]) and cm_yields_none(d.kids[1]) and len([x for x in d.kids[0].kids if not is_const(x.kids[1])]) == 0:
+                        abstract = other
+                if d.kind == "def" and abstract != "" and len(d.kids[0].kids) > 0 and d.kids[0].kids[0].kind == "param":
+                    # def NAME(self, ...): raise E, abstract and a context manager: CPython's helper
+                    # calls it for the generator, where it raises. _pys_cm_abs_NAME_LINE is that
+                    # function, which NAME calls first; _pys_cm_NAME is the generator the
+                    # overrides' managers are typed with, which nothing then makes. NAME is
+                    # otherwise the wrapper of the branch below, abstract
                     me = d.kids[0].kids[0].s
                     cms.append(st.s + "." + d.s)
-                    if generic:
-                        src = f"def {d.s}({me}, /, *args, **kwds):\n    return {d.kids[3].s}({me}._pys_cm_{d.s})(*args, **kwds)\n"
-                    else:
-                        if not imported:
-                            top.append(Parser(Lexer("from contextlib import _GeneratorContextManager as _pys_cm_GCM\n", st.line).file()).module().kids[0])
-                            imported = True
-                        own = f"{st.s}._pys_cm_{d.s}({me}, *args, **kwds)" if st.s in derived else f"{me}._pys_cm_{d.s}(*args, **kwds)"
-                        src = f"def {d.s}({me}, /, *args, **kwds):\n    _pys_cm_self: {cm_root(st.s, d.s, bases, cms)} = {me}\n    return _pys_cm_GCM(_pys_cm_self._pys_cm_{d.s}, args, kwds, {own})\n"
+                    root = cm_root(st.s, d.s, bases, cms)
+                    reads = [st.s, root, "_pys_cm_GCM"]
+                    a = "_pys_cm_args" if "args" in reads else "args"
+                    while a in reads:
+                        a += "_"
+                    k = "_pys_cm_kwds" if "kwds" in reads else "kwds"
+                    while k in reads + [a]:
+                        k += "_"
+                    factory = "_pys_cm_factory"
+                    while factory in reads + [a, k]:
+                        factory += "_"
+                    held = "_pys_cm_self"
+                    while held in reads + [a, k, factory]:
+                        held += "_"
+                    if me in reads + [a, k, factory, held]:
+                        me = "_pys_cm_me"
+                        while me in reads + [a, k, factory, held]:
+                            me += "_"
+                    if not imported:
+                        top.append(Parser(Lexer("from contextlib import _GeneratorContextManager as _pys_cm_GCM\n", st.line).file()).module().kids[0])
+                        imported = True
+                    # (this def's body, whatever class the object is of: the method's name has the
+                    # def's line, which no other def of the program has, so super().NAME() of a
+                    # subclass that declares the method again, also in another module, runs this one)
+                    helper = f"_pys_cm_abs_{d.s}_{d.line}"
+                    own = f"{st.s}._pys_cm_{d.s}({me}, *{a}, **{k})"
+                    src = (f"@{abstract}\ndef {d.s}({me}, /, *{a}, **{k}):\n    {me}.{helper}(*{a}, **{k})\n    {factory} = lambda {a}, {k}: {own}\n"
+                           f"    {held}: {root} = {me}\n    return _pys_cm_GCM({held}._pys_cm_{d.s}, {a}, {k}, {factory}({a}, {k}), {factory})\n")
                     w = Parser(Lexer(src, d.line).file()).module().kids[0]
+                    assignment = w.kids[2].kids[1]
+                    assignment.kids[1] = mk("cmfactory", "", d.line, [assignment.kids[1], mk("name", a, d.line, []), mk("name", k, d.line, [])])
+                    call = w.kids[2].kids[-1].kids[0]
+                    call.kids[1].kind = "cmref"  # metadata binding, not an attribute lookup on self
+                    raises = clone(d)
+                    raises.s = helper
+                    raises.kids = [raises.kids[0], mk("noann", "", d.line, []), raises.kids[2]]
+                    if d.pyname == "":
+                        d.pyname = d.s  # the generator's source name, before its hidden binding
+                    d.s = "_pys_cm_" + d.s
+                    d.kids = d.kids[:3]
+                    d.kids[2].kids.append(Parser(Lexer("def _pys_cm_yield():\n    yield\n", d.line).file()).module().kids[0].kids[2].kids[0])
+                    kept.append(raises)
+                    kept.append(d)
+                    kept.append(w)
+                elif d.kind == "def" and len(d.kids) == 4 and d.kids[3].kind == "deco" and len(d.kids[3].kids) == 0 and d.kids[3].s in names and len(d.kids[0].kids) > 0 and d.kids[0].kids[0].kind == "param":
+                    me = d.kids[0].kids[0].s
+                    cms.append(st.s + "." + d.s)
+                    root = cm_root(st.s, d.s, bases, cms)
+                    # (NAME's own parameters are the def's names, args and kwds, but for one that
+                    # would hide a name NAME reads: def scope(C) in class C, class args)
+                    reads = [st.s, root, "_pys_cm_GCM"]
+                    a = "_pys_cm_args" if "args" in reads else "args"
+                    while a in reads:
+                        a += "_"
+                    k = "_pys_cm_kwds" if "kwds" in reads else "kwds"
+                    while k in reads + [a]:
+                        k += "_"
+                    factory = "_pys_cm_factory"
+                    while factory in reads + [a, k]:
+                        factory += "_"
+                    held = "_pys_cm_self"
+                    while held in reads + [a, k, factory]:
+                        held += "_"
+                    if me in reads + [a, k, factory, held]:
+                        me = "_pys_cm_me"
+                        while me in reads + [a, k, factory, held]:
+                            me += "_"
+                    if not imported:
+                        top.append(Parser(Lexer("from contextlib import _GeneratorContextManager as _pys_cm_GCM\n", st.line).file()).module().kids[0])
+                        imported = True
+                    own = f"{st.s}._pys_cm_{d.s}({me}, *{a}, **{k})"
+                    cast = "" if generic else f"    {held}: {root} = {me}\n"
+                    bound = f"{me if generic else held}._pys_cm_{d.s}"
+                    src = f"def {d.s}({me}, /, *{a}, **{k}):\n    {factory} = lambda {a}, {k}: {own}\n{cast}    return _pys_cm_GCM({bound}, {a}, {k}, {factory}({a}, {k}), {factory})\n"
+                    w = Parser(Lexer(src, d.line).file()).module().kids[0]
+                    assignment = w.kids[2].kids[0]
+                    assignment.kids[1] = mk("cmfactory", "", d.line, [assignment.kids[1], mk("name", a, d.line, []), mk("name", k, d.line, [])])
+                    call = w.kids[2].kids[-1].kids[0]
+                    call.kids[1].kind = "cmref"  # metadata binding, not an attribute lookup on self
+                    if d.pyname == "":
+                        d.pyname = d.s  # the generator's source name, before its hidden binding
                     d.s = "_pys_cm_" + d.s
                     d.kids = d.kids[:3]
                     kept.append(d)
@@ -171,8 +278,147 @@ def cm_methods(n: Node, names: list[str]) -> None:
     n.kids = top
 
 
+# functools' class tools that a module's class statements may use, and what @total_ordering
+# makes of the first of __lt__, __le__, __gt__ and __ge__ that a class body defines: the others,
+# each as CPython's functools computes it from that one (the operation, with A the object and B
+# the other)
+FUNCTOOLS_NAMES = ["cached_property", "total_ordering"]
+# the methods functools.total_ordering() adds for a class's own one, each as CPython computes it
+# from R, what that one returns for the operands A and B (functools' _gt_from_lt & co)
+ORDERINGS: dict[str, list[list[str]]] = {
+    "__lt__": [["__gt__", "not R and A != B"], ["__le__", "R or A == B"], ["__ge__", "not R"]],
+    "__le__": [["__ge__", "not R or A == B"], ["__lt__", "R and A != B"], ["__gt__", "not R"]],
+    "__gt__": [["__lt__", "not R and A != B"], ["__ge__", "R or A == B"], ["__le__", "not R"]],
+    "__ge__": [["__le__", "not R or A == B"], ["__gt__", "R and A != B"], ["__lt__", "not R"]],
+}
+
+
+def functools_names(body: Node) -> dict[str, str]:
+    # the names module body binds functools' cached_property and total_ordering as (from
+    # functools import total_ordering, or as another name; import functools, or as f:
+    # functools.total_ordering), each to its name in functools
+    out: dict[str, str] = {}
+    for st in body.kids:
+        for a in st.kids if st.kind == "import" else []:
+            if a.kind == "alias" and len(a.kids) == 2 and st.s == "from" and a.kids[0].s.startswith("functools.") and a.kids[0].s[10:] in FUNCTOOLS_NAMES:
+                out[a.s] = a.kids[0].s[10:]
+            elif a.kind == "alias" and len(a.kids) == 2 and a.kids[0].s == "functools" and st.s != "from":
+                for k in FUNCTOOLS_NAMES:
+                    out[a.s + "." + k] = k
+    return out
+
+
+def functools_calls(n: Node, names: dict[str, str]) -> None:
+    # (functools_classes) a call of one of functools' names that the compiler applies as a
+    # decorator, anywhere in n, is rejected: cached_property(f) makes an object that no class
+    # statement's method is, and total_ordering(C) takes a class as a value
+    for kid in n.kids:
+        if kid.kind == "call" and dotted(kid.kids[0]) in names:
+            made = names[dotted(kid.kids[0])]
+            fail(f"{made}(...) as a call is not supported: the compiler applies it where it decorates a {'class statement' if made == 'total_ordering' else 'method of a class statement'} (@{dotted(kid.kids[0])})", kid.line)
+        functools_calls(kid, names)
+
+
+def functools_classes(n: Node, names: dict[str, str]) -> None:
+    # (functools) what two decorators of functools (names: as the module imports them) make of
+    # the class statements of module body n, as source: the subset has neither class decorators
+    # nor descriptors.
+    # A method decorated @cached_property is the method _pys_cpget_NAME, and NAME a property that
+    # calls it once for an object and keeps what it returns in a field of the object, whose
+    # type the method's return annotation gives; CPython keeps it in the object's __dict__.
+    # A class decorated @total_ordering gets the ordering methods its body lacks, each computed
+    # from the one of __lt__, __le__, __gt__ and __ge__ that CPython's total_ordering() takes of
+    # those the body defines, as it computes it (ORDERINGS), with that method's parameters. The
+    # method calls type(self)'s own one, and returns NotImplemented where that does
+    # (__pys_ordering: Gen.ordering), else a bool. CPython's decorator also takes the ones the
+    # class inherits, and those a decorator applied before it defines, which Gen.ordered_class
+    # reads where it knows the class's bases (ORDERED)
+    if len(names) == 0:
+        return
+    functools_calls(n, names)
+    for st in n.kids:
+        if st.kind != "class" and st.kind != "subclass":
+            continue
+        c = st.kids[0] if st.kind == "subclass" else st
+        b = c.kids[0]
+        ordered = False
+        first = False  # (another decorator applied before @total_ordering: c.kids has the innermost first)
+        decos: list[Node] = []
+        for dn in c.kids[1:]:
+            if names.get(dn.s, "") == "total_ordering" and len(dn.kids) == 0:
+                ordered = True
+            else:
+                first = first or not ordered
+                decos.append(dn)
+        kept: list[Node] = []
+        for d in b.kids:
+            if d.kind == "def" and len(d.kids) == 4 and d.kids[3].kind == "deco" and len(d.kids[3].kids) == 0 and names.get(d.kids[3].s, "") == "cached_property":
+                if len(d.kids[0].kids) != 1 or d.kids[0].kids[0].kind != "param":
+                    fail(f"@cached_property method {st.s}.{d.s}() takes the object alone", d.line)
+                if d.kids[1].kind == "noann":
+                    fail(f"@cached_property method {st.s}.{d.s}() needs a return annotation: the type of the value it keeps", d.line)
+                if len([x for x in decos if x.s == "dataclass" or x.s.endswith(".dataclass")]) > 0:
+                    fail(f"@cached_property method {st.s}.{d.s}() of a dataclass is not supported", d.line)
+                me = d.kids[0].kids[0].s
+                flag = Parser(Lexer(f"_pys_cpset_{d.s}: bool = False\n", d.line).file()).module().kids[0]
+                val = Parser(Lexer(f"_pys_cpval_{d.s}: bool\n", d.line).file()).module().kids[0]
+                val.kids[1] = clone(d.kids[1])
+                src = f"@property\ndef {d.s}({me}):\n    if not {me}._pys_cpset_{d.s}:\n        {me}._pys_cpval_{d.s} = {me}._pys_cpget_{d.s}()\n        {me}._pys_cpset_{d.s} = True\n    return {me}._pys_cpval_{d.s}\n"
+                prop = Parser(Lexer(src, d.line).file()).module().kids[0]
+                prop.kids[1] = clone(d.kids[1])
+                # (an assignment replaces what the object keeps, and del forgets it, so that the
+                # next read calls the method again: CPython's is no data descriptor, and these
+                # write and delete the entry of the object's __dict__)
+                src = f"@{d.s}.setter\ndef {d.s}({me}, _pys_cp_value: bool) -> None:\n    {me}._pys_cpval_{d.s} = _pys_cp_value\n    {me}._pys_cpset_{d.s} = True\n"
+                setter = Parser(Lexer(src, d.line).file()).module().kids[0]
+                setter.kids[0].kids[1].kids[0] = clone(d.kids[1])
+                src = f"@{d.s}.deleter\ndef {d.s}({me}) -> None:\n    if not {me}._pys_cpset_{d.s}:\n        raise AttributeError(\"'\" + type({me}).__name__ + \"' object has no attribute '{d.s}'\")\n    {me}._pys_cpset_{d.s} = False\n"
+                deleter = Parser(Lexer(src, d.line).file()).module().kids[0]
+                d.s = "_pys_cpget_" + d.s
+                d.kids = d.kids[:3]
+                kept.append(flag)
+                kept.append(val)
+                kept.append(d)
+                kept.append(prop)
+                kept.append(setter)
+                kept.append(deleter)
+            else:
+                kept.append(d)
+        if ordered:
+            root: Node | None = None
+            have: dict[str, bool] = {}
+            for op in ["__ge__", "__gt__", "__le__", "__lt__"]:  # (the last one found is CPython's max(roots))
+                for d in kept:
+                    if d.kind == "def" and d.s == op:
+                        root = d
+                        have[op] = True
+            for d in kept:
+                if (d.kind == "assign" or d.kind == "annassign") and d.kids[0].kind == "name" and d.kids[0].s in ORDERINGS:
+                    fail(f"@total_ordering of class {st.s}, whose body assigns {d.kids[0].s}, is not supported (the decorator reads the methods that def statements of the body define)", d.line)
+            if root is None:
+                if not first and (st.kind != "subclass" or len([x for x in st.kids[1:] if x.kind != "typeparams" and dotted(x) != "object"]) == 0):
+                    fail("ValueError: must define at least one ordering operation: < > <= >=", c.line)
+                # (its methods are inherited, or a decorator's: Gen.ordered_class)
+            elif len(root.kids[0].kids) != 2 or root.kids[0].kids[0].kind != "param" or root.kids[0].kids[1].kind != "param":
+                fail(f"@total_ordering of class {st.s}: {root.s}() takes the object and the other one", root.line)
+            else:
+                me = root.kids[0].kids[0].s
+                other = root.kids[0].kids[1].s
+                for made in ORDERINGS[root.s]:
+                    if made[0] in have:
+                        continue
+                    # (A, B and R are the table's own names: a parameter may be called any of them)
+                    body = made[1].replace("A", "\x00").replace("B", "\x01").replace("R", "_pys_to_result").replace("\x00", me).replace("\x01", other)
+                    w = Parser(Lexer(f"def {made[0]}({me}, {other}) -> bool:\n    _pys_to_result = __pys_ordering({me}, {other}, {root.s!r})\n    return {body}\n", root.line).file()).module().kids[0]
+                    w.kids[0] = clone(root.kids[0])
+                    kept.append(w)
+            ORDERED[c.line] = " ".join((["+"] if first else []) + [op for op in ORDERINGS if op in have])
+        b.kids = kept
+        c.kids = [b] + decos
+
+
 # lib/enum.py's names a module may import, and the classes of them an enum class derives from
-ENUM_NAMES = ["Enum", "IntEnum", "StrEnum", "ReprEnum", "EnumType", "EnumMeta", "auto", "unique", "Flag", "IntFlag"]
+ENUM_NAMES = ["Enum", "IntEnum", "StrEnum", "ReprEnum", "EnumType", "EnumMeta", "auto", "unique", "Flag", "IntFlag", "_simple_enum", "global_enum"]
 ENUM_BASES = ["Enum", "IntEnum", "StrEnum", "Flag", "IntFlag"]
 # the methods that make or look up enum members, which the compiler makes
 ENUM_HOOKS = ["__new__", "__init__", "_generate_next_value_", "__init_subclass__", "__set_name__", "_numeric_repr_"]
@@ -231,6 +477,24 @@ def enum_literal(e: Node) -> list[str]:
             ks.append(r[1])
         return ["tuple[" + ", ".join(ts) + "]", "(" + ", ".join(ks) + ")"]
     return []
+
+
+def enum_item_types(t: str) -> list[str]:
+    # the types of the arguments CPython passes an enum class's __init__ for a member whose value
+    # has type t (enum_literal's): a tuple's items, else the value itself
+    if not t.startswith("tuple["):
+        return [t]
+    out: list[str] = []
+    depth = 0
+    w = ""
+    for ch in t[6:-1] + ",":
+        if ch == "," and depth == 0:
+            out.append(w.strip())
+            w = ""
+        else:
+            depth += 1 if ch == "[" else -1 if ch == "]" else 0
+            w += ch
+    return out
 
 
 def enum_int_op(op: str, a: int, b: int) -> list[str]:
@@ -325,6 +589,172 @@ def enum_node(v: list[str], line: int) -> Node:
     return mk("unary", "-", line, [mk("int", str(-x), line, [])])
 
 
+def enum_simple(c: Node, names: dict[str, str], kinds: dict[str, str]) -> Node:
+    # (enum) class statement c, whose first decorator is @_simple_enum(etype): the statement of
+    # the enum class deriving from etype that CPython's _simple_enum makes of the class's body,
+    # whose members are the body's names as an enum class statement's are
+    dn = c.kids[1]
+    args = dn.kids[0].kids[1:] if len(dn.kids) == 1 and dn.kids[0].kind == "call" else []
+    if len(args) != 1 or args[0].kind == "kw" or args[0].kind == "starred":
+        fail("@_simple_enum of a class is supported with the class of enum it makes, as @_simple_enum(IntEnum) (no boundary= or use_args=)", dn.line)
+    d = dotted(args[0])
+    if names.get(d, "") not in ENUM_BASES and d not in kinds:
+        fail("@_simple_enum of a class is supported with Enum, IntEnum, StrEnum, Flag, IntFlag or an enum class of its module without members", dn.line)
+    c.kids = [c.kids[0]] + c.kids[2:]
+    return mk("subclass", c.s, c.line, [c, args[0]])
+
+
+def enum_count(n: Node, cls: str) -> bool:
+    # (enum) in tree n of an enum class's __new__, each len(cls.__members__), the number of names
+    # the class has so far, made the name __pys_count; whether there was one
+    found = False
+    for i in range(len(n.kids)):
+        k = n.kids[i]
+        if k.kind == "call" and len(k.kids) == 2 and k.kids[0].kind == "name" and k.kids[0].s == "len" and k.kids[1].kind == "attr" and k.kids[1].s == "__members__" and len(k.kids[1].kids) == 1 and k.kids[1].kids[0].kind == "name" and k.kids[1].kids[0].s == cls:
+            n.kids[i] = mk("name", "__pys_count", k.line, [])
+            found = True
+        elif enum_count(k, cls):
+            found = True
+    return found
+
+
+def enum_new(d: Node, cname: str, kind: str) -> list[Node]:
+    # (enum) d, the __new__ of enum class cname (of kind), in the form CPython's documentation
+    # gives one: it makes the member with its data type's __new__ (object's; int's in an IntEnum,
+    # str's in a StrEnum), may assign its _value_ and attributes, and returns it:
+    #     def __new__(cls, code, label=""):
+    #         obj = int.__new__(cls, code)
+    #         obj._value_ = code
+    #         obj.label = label
+    #         return obj
+    # [the statement that makes the member, the one that assigns its _value_ (else the former)];
+    # another form is an error. EnumType calls it for each member with the items of the member's
+    # value; here the compiler computes each member's _value_ from it (enum_new_value) and the
+    # rest of its body initializes the member (enum_new_init)
+    why = ""
+    ps = d.kids[0].kids
+    body = d.kids[2].kids
+    if len(ps) == 0 or len([q for q in ps if q.kind != "param"]) > 0 or d.kids[0].s != "0,-1":
+        why = "its parameters are the class and the items of a member's value, by position"
+    made: list[Node] = []
+    value: list[Node] = []
+    cls = ps[0].s if len(ps) > 0 else ""
+    want = "int" if kind == "IntEnum" else "str" if kind == "StrEnum" else "object"
+    for s in body if why == "" else []:
+        e = s.kids[1] if s.kind == "assign" and len(s.kids) == 2 else None
+        if e is not None and s.kids[0].kind == "name" and e.kind == "call" and e.kids[0].kind == "attr" and e.kids[0].s == "__new__" and e.kids[0].kids[0].kind == "name":
+            t = e.kids[0].kids[0].s
+            if t != want or len(e.kids) != (2 if want == "object" else 3) or e.kids[1].kind != "name" or e.kids[1].s != cls or e.kids[-1].kind == "kw" or e.kids[-1].kind == "starred":
+                why = f"it makes the member with {want}.__new__({cls}{'' if want == 'object' else ', value'}), as {'an Enum' if want == 'object' else 'an IntEnum' if want == 'int' else 'a StrEnum'} does"
+            made.append(s)
+        elif e is not None and s.kids[0].kind == "attr" and s.kids[0].s == "_value_" and s.kids[0].kids[0].kind == "name" and len(made) == 1 and s.kids[0].kids[0].s == made[0].kids[0].s:
+            value.append(s)
+    if why == "" and (len(made) != 1 or len(value) > 1):
+        why = f"it makes the member once, with {want}.__new__(), and assigns its _value_ at most once"
+    if why == "" and len(value) == 0 and want != "object":
+        why = "it assigns the member's _value_ (member._value_ = value)"
+    if why == "":
+        obj = made[0].kids[0].s
+        last = body[-1]
+        returns = 0
+        binds = 0
+        for s in body:
+            returns += 1 if has_kind(s, "return") else 0
+            binds += 1 if (s.kind == "assign" or s.kind == "annassign" or s.kind == "augassign") and s.kids[0].kind == "name" and s.kids[0].s == obj else 0
+        if last.kind != "return" or len(last.kids) != 1 or last.kids[0].kind != "name" or last.kids[0].s != obj or returns != 1 or binds != 1 or obj in [q.s for q in ps]:
+            why = "it returns the member it made, in its last statement"
+    if why == "":
+        rest = [s for s in body if s is not made[0]]
+        if mentions(mk("block", "", d.line, rest), [cls]) or len(made[0].kids[1].kids) > 2 and mentions(made[0].kids[1].kids[2], [cls]):
+            why = f"it reads its class only to make the member and as len({cls}.__members__)"
+    if why != "":
+        fail(f"enum class {cname}'s __new__() is not supported: {why}", d.line)
+    return [made[0], value[0] if len(value) > 0 else made[0]]
+
+
+def enum_new_value(d: Node, parts: list[Node], cname: str, member: str, items: list[Node], env: dict[str, list[str]], consts: dict[str, list[str]], count: int, line: int) -> list[Node]:
+    # (enum) the _value_ that __new__ d of enum class cname (parts: enum_new's) gives member, whose
+    # value's items are items, the count-th name of the class: [its literal], as the body computes
+    # it from its parameters (the items, or their defaults), len(cls.__members__) and the names
+    # it assigns before, with int's and str's operators (enum_fold); [] where it assigns none (the
+    # member's value is its _value_). An IntEnum's or a StrEnum's is the int or str it is made of
+    ps = d.kids[0].kids
+    if len(items) > len(ps) - 1:
+        fail(f"{cname}.__new__() takes {len(ps)} positional argument{'s' if len(ps) != 1 else ''} but {len(items) + 1} were given (enum member {cname}.{member})", line)
+    env2: dict[str, list[str]] = {}
+    nodes: dict[str, Node] = {}
+    for k in consts:
+        # (the names the function's body reads are the module's constants: a class body's
+        # names, the members before, are no names of a function in it)
+        env2[k] = consts[k]
+    env2["__pys_count"] = ["int", str(count)]
+    for i in range(1, len(ps)):
+        x = items[i - 1] if i - 1 < len(items) else ps[i].kids[1]
+        if x.kind == "noann":
+            fail(f"{cname}.__new__() missing a required positional argument: '{ps[i].s}' (enum member {cname}.{member})", line)
+        lit = enum_fold(x, env if i - 1 < len(items) else {})
+        if len(lit) > 0:
+            env2[ps[i].s] = lit
+            nodes[ps[i].s] = x
+        elif ps[i].s in env2:
+            del env2[ps[i].s]
+    made = parts[0]
+    assigned = parts[1]
+    if assigned is made and len(made.kids[1].kids) == 2:
+        return []
+    for s in d.kids[2].kids:
+        if s is assigned:
+            break
+        if s.kind == "assign" and len(s.kids) == 2 and s.kids[0].kind == "name" and s is not made:
+            lit = enum_fold(s.kids[1], env2)
+            if s.kids[0].s in nodes:
+                del nodes[s.kids[0].s]
+            if len(lit) > 0:
+                env2[s.kids[0].s] = lit
+            elif s.kids[0].s in env2:
+                del env2[s.kids[0].s]
+        elif s is not made:
+            # (another statement, such as value += 1: a name it binds holds no value the
+            # compiler computes, so a _value_ that reads it is not supported)
+            rebound: dict[str, bool] = {}
+            local_names([s], rebound)
+            for name in rebound:
+                if name in nodes:
+                    del nodes[name]
+                if name in env2:
+                    del env2[name]
+    e = assigned.kids[1]
+    lit = enum_fold(e, env2)
+    if len(lit) == 0:
+        fail(f"enum member {cname}.{member} is not supported: the compiler computes the _value_ that __new__() gives a member from the items of its value, len(cls.__members__) and literals, with int's and str's operators", line)
+    if len(made.kids[1].kids) == 3:
+        of = enum_fold(made.kids[1].kids[2], env2)
+        if len(of) == 0 or of[0] != lit[0] or of[1] != lit[1]:
+            fail(f"enum member {cname}.{member} is not supported: __new__() makes it of another value than its _value_", line)
+    if e.kind == "name" and e.s in nodes:
+        return [clone(nodes[e.s])]
+    if lit[0] != "int" and lit[0] != "str":
+        fail(f"enum member {cname}.{member} is not supported: the _value_ that __new__() computes is an int or a str, or an item of the member's value", line)
+    return [enum_node(lit, line)]
+
+
+def enum_new_init(d: Node, parts: list[Node], counted: bool) -> None:
+    # (enum) __new__ d of an enum class (parts: enum_new's) made the class's __init__: what its
+    # body does besides making the member and assigning its _value_, which the compiler does
+    # (the member is its first parameter, and the number of names before it the second where
+    # the body asks for it)
+    obj = parts[0].kids[0].s
+    d.s = "__init__"
+    first = d.kids[0].kids[0]
+    first.s = obj
+    ps = [first]
+    if counted:
+        ps.append(Parser(Lexer("def _(__pys_count: int): pass\n", d.line).file()).module().kids[0].kids[0].kids[0])
+    d.kids[0].kids = ps + d.kids[0].kids[1:]
+    body = [s for s in d.kids[2].kids[:-1] if s is not parts[0] and s is not parts[1]]
+    d.kids[2].kids = body if len(body) > 0 else [mk("pass", "", d.line, [])]
+
+
 def enum_classes(n: Node, names: dict[str, str]) -> None:
     # (enum) each class statement of module body n that derives from enum's Enum, IntEnum or
     # StrEnum (names: as the module imports them), or from an enum class of the module without
@@ -345,16 +775,21 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
     full: dict[str, bool] = {}  # (those with members, which no class may derive from)
     top: list[Node] = []
     custom_flag_iter: dict[str, bool] = {}  # classes with a user-defined or inherited _iter_member_
+    basenew: dict[str, Node] = {}  # the __new__ of each enum class without members that defines or inherits one
     imported = False
     mixed = False
     rebound: dict[str, bool] = {}  # (the names a function may rebind, or a del statement unbind)
     globals_deep(n.kids, rebound)
     deleted(n.kids, rebound)
     consts: dict[str, list[str]] = {}  # (the module's constants before: names bound once to an int or str)
-    for st in n.kids:
+    for at in range(len(n.kids)):
+        st = n.kids[at]
         kind = ""
         base = ""
         mixin = ""
+        simple = st.kind == "class" and len(st.kids) > 1 and names.get(st.kids[1].s, "") == "_simple_enum"
+        if simple:
+            st = enum_simple(st, names, kinds)
         if st.kind == "subclass" and len(st.kids) == 3 and st.kids[1].kind == "name" and (st.kids[1].s == "str" or st.kids[1].s == "int") and names.get(dotted(st.kids[2]), "") == "Enum":
             # (class C(str, Enum), class C(int, Enum): a mixed-in enum class, made as a StrEnum's
             # or an IntEnum's with Enum's str() and format(): lib/enum.py's _StrMixin, _IntMixin)
@@ -383,20 +818,49 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
             fail(f"enum class {st.s} is not supported: an enum class derives from one class, Enum, IntEnum, StrEnum, Flag, IntFlag or an enum class of its module without members, or from str or int and Enum (no other mixin type, and no keyword such as boundary=)", st.line)
         c = st.kids[0]
         uniq = False
+        glob = False
         for dn in c.kids[1:]:
-            if names.get(dn.s, "") != "unique" or len(dn.kids) > 0:
-                fail(f"decorator @{dn.s} of an enum class is not supported (only @unique)", dn.line)
-            uniq = True
+            dk = names.get(dn.s, "")
+            if (dk != "unique" and dk != "global_enum") or len(dn.kids) > 0:
+                fail(f"decorator @{dn.s} of an enum class is not supported (only @unique and @global_enum)", dn.line)
+            uniq = uniq or dk == "unique"
+            glob = glob or dk == "global_enum"
+        if glob and (kind == "Flag" or kind == "IntFlag"):
+            fail(f"@global_enum of flag class {st.s} is not supported", st.line)
         body = c.kids[0]
         c.kids = [body]
+        # the class's own __new__ (enum_new), which gives each member its _value_: found before
+        # the members, which may precede it in the body
+        news = [s for s in body.kids if s.kind == "def" and s.s == "__new__" and len(s.kids) == 3 and (kind == "Enum" or kind == "IntEnum" or kind == "StrEnum")]
+        inherited = len(news) == 0 and base in basenew and len([s for s in body.kids if s.kind == "def" and (s.s == "__new__" or s.s == "__init__")]) == 0
+        if inherited:
+            news = [clone(basenew[base])]  # (that of the enum class without members it derives from)
+        newparts: list[Node] = []
+        counted = False
+        pristine = clone(news[0]) if len(news) == 1 else st
+        if len(news) == 1:
+            if simple and kind == "Enum":
+                fail(f"enum class {st.s}'s __new__() is not supported: @_simple_enum(Enum) calls it without the member's value", news[0].line)
+            counted = enum_count(news[0].kids[2], news[0].kids[0].kids[0].s if len(news[0].kids[0].kids) > 0 else "")
+            newparts = enum_new(news[0], st.s, kind)
+        margs: dict[str, Node] = {}  # (with a __new__: each member's value as written, its arguments)
+        mcount: dict[str, int] = {}
+        ptypes: list[str] = []  # (and the types of those values' items, by position)
+        wnodes: dict[str, Node] = {}  # each member's value as the class body holds it
         out: list[Node] = []
         mnames: list[str] = []  # the members' names, aliases included, in definition order
         canon: dict[str, str] = {}  # each one's member: itself, or for an alias the member whose value it has
         keys: dict[str, str] = {}  # the members by their values' texts
         texts: dict[str, str] = {}  # the members' values' texts
+        avals: dict[str, Node] = {}  # (each alias's own value, which an __init__ is called with)
+        inits: list[Node] = []  # the class's own __init__, which each member's value's items initialize
+        if inherited:
+            out.append(news[0])
+            inits.append(news[0])
         defs: dict[str, bool] = {}
         vtype = ""
         last: list[int] = []
+        rawkind = ""  # (the type of a value written for a __new__ that auto() cannot count from)
         env: dict[str, list[str]] = {}  # (the names a member's value may read: the module's constants, then the members before)
         for k in consts:
             env[k] = consts[k]
@@ -404,8 +868,14 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
             nm = s.kids[0].s if s.kind == "assign" and len(s.kids) == 2 and s.kids[0].kind == "name" else ""
             dunder = len(nm) > 4 and nm.startswith("__") and nm.endswith("__")
             if s.kind == "def":
-                if s.s in ENUM_HOOKS or s.s in canon:
+                # (__init__ of an enum class but a flag's, whose pseudo-members the run time makes:
+                # called for each member with its value's items, below)
+                own_init = s.s == "__init__" and (kind == "Enum" or kind == "IntEnum" or kind == "StrEnum") and len(s.kids) == 3 and s.s not in canon and not simple and len(news) == 0
+                own_new = len(news) == 1 and s is news[0] and s.s not in canon
+                if (s.s in ENUM_HOOKS and not own_init and not own_new) or s.s in canon:
                     fail(f"enum class {st.s}'s {s.s}() is not supported{' (a member of that name precedes it)' if s.s in canon else ': the compiler makes and looks up its members'}", s.line)
+                if own_init or own_new:
+                    inits.append(s)
                 if s.s == "_missing_" and (kind == "Flag" or kind == "IntFlag"):
                     fail(f"flag class {st.s}'s _missing_() is not supported: Flag's own makes its pseudo-members", s.line)
                 if s.s == "_missing_" and (len(s.kids) != 4 or s.kids[3].s != "classmethod" or len(s.kids[3].kids) != 0):
@@ -422,9 +892,14 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                 if nm in defs or nm == "name" or nm == "value":
                     fail(f"enum member {st.s}.{nm} is not supported: the class has an attribute {nm}", s.line)
                 v = s.kids[1]
+                # (in a class that @_simple_enum makes an enum class of, the body's name is an
+                # auto object until the decorator runs: no value that a later statement reads)
+                unread = simple and v.kind == "call" and names.get(dotted(v.kids[0]), "") == "auto"
                 if v.kind == "call" and names.get(dotted(v.kids[0]), "") == "auto":
                     if len(v.kids) > 1:
                         fail("auto() with an argument is not supported", v.line)
+                    if simple and (kind == "Flag" or kind == "IntFlag"):
+                        fail("auto() in a flag class that @_simple_enum makes is not supported (CPython 3.13's raises AttributeError)", v.line)
                     if kind == "StrEnum" and mixin == "str":
                         fail("auto() in an enum class of str and Enum is not supported (CPython's is the str of Enum's next int)", v.line)
                     if (kind == "Flag" or kind == "IntFlag") and len(last) > 0:
@@ -437,15 +912,45 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                         v = mk("int", str(1 << hb), v.line, [])
                     elif kind == "StrEnum":
                         v = mk("str", nm.lower(), v.line, [])
-                    elif vtype != "" and vtype != "int":
+                    elif rawkind != "":
+                        fail(f"auto() after a member whose value is written as a {rawkind} is not supported (CPython's cannot increment it)", v.line)
+                    elif len(news) == 0 and vtype != "" and vtype != "int":
                         fail(f"auto() after a member whose value is a {vtype} is not supported", v.line)
                     else:
                         v = mk("int", str(max(last) + 1 if len(last) > 0 else 1), v.line, [])
-                lit = enum_fold(v, env)
+                if v.kind == "name" and v.s in wnodes:
+                    v = clone(wnodes[v.s])  # (NAME = MEMBER: the value the body's name holds, an alias)
+                noargs = len(news) == 1 and v.kind == "tuple" and len(v.kids) == 0  # (NAME = (): __new__(cls))
+                if v.kind == "tuple" and len(enum_literal(v)) == 0:
+                    # (a tuple some of whose items the class body computes: of their values)
+                    for j in range(len(v.kids)):
+                        il = enum_fold(v.kids[j], env)
+                        if len(il) > 0 and len(enum_literal(v.kids[j])) == 0:
+                            v.kids[j] = enum_node(il, v.kids[j].line)
+                lit = ["tuple[]", "()"] if noargs else enum_fold(v, env)
                 if len(lit) == 0:
                     fail(f"enum member {st.s}.{nm} is not supported: the compiler makes an enum class's members from literal values (numbers, strs, bytes, True, False, None and tuples of them), auto(), and int or str expressions of them, of the members before and of the module's constants (names bound once)", s.line)
-                if len(enum_literal(v)) == 0:
+                if len(enum_literal(v)) == 0 and not noargs:
                     v = enum_node(lit, v.line)  # (the value the class body computes)
+                written = lit  # (what the body's later statements read the name as)
+                wnodes[nm] = v
+                if len(news) == 1:
+                    # the class's __new__ takes the value's items and gives the member its _value_
+                    margs[nm] = v
+                    mcount[nm] = len(mnames)
+                    items = v.kids if v.kind == "tuple" else [v]
+                    for j in range(len(items)):
+                        it = enum_literal(items[j])[0]
+                        if j < len(ptypes) and ptypes[j] != it:
+                            fail(f"enum class {st.s}'s members' values have items of two types, {ptypes[j]} and {it}, where __new__() takes them: Pystachy's take one type each", s.line)
+                        if j >= len(ptypes):
+                            ptypes.append(it)
+                    given = enum_new_value(news[0], newparts, st.s, nm, items, env, consts, len(mnames), s.line)
+                    if len(given) > 0:
+                        v = given[0]
+                        lit = enum_literal(v)
+                    elif noargs:
+                        fail(f"enum member {st.s}.{nm} is not supported: its value is (), and __new__() assigns it no _value_", s.line)
                 if (kind == "IntEnum" and lit[0] != "int") or (kind == "StrEnum" and lit[0] != "str"):
                     fail(f"{kind} member {st.s}.{nm} must have an {'int' if kind == 'IntEnum' else 'str'} value", s.line)
                 if (kind == "Flag" or kind == "IntFlag") and (lit[0] != "int" or int(lit[1]) < 0):
@@ -453,14 +958,22 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                 if vtype != "" and lit[0] != vtype:
                     fail(f"enum class {st.s}'s members have values of two types, {vtype} and {lit[0]}: Pystachy's enum members' values have one type", s.line)
                 vtype = lit[0]
-                if vtype == "int":
-                    last.append(int(lit[1]))
-                if vtype == "int" or vtype == "str":
-                    env[nm] = lit
+                # (auto() counts from the values the body assigns, which a __new__ may give the
+                # members other _value_s than)
+                raw = written if len(news) == 1 else lit
+                if raw[0] == "int":
+                    last.append(int(raw[1]))
+                elif len(news) == 1:
+                    rawkind = raw[0]
+                if (written[0] == "int" or written[0] == "str") and not unread:
+                    env[nm] = written
+                elif nm in env:
+                    del env[nm]
                 mnames.append(nm)
                 texts[nm] = lit[1]
                 if lit[1] in keys:
                     canon[nm] = keys[lit[1]]
+                    avals[nm] = v
                     init = mk("enumalias", keys[lit[1]], s.line, [])
                 else:
                     keys[lit[1]] = nm
@@ -471,6 +984,50 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                 out.append(s)
             else:
                 fail(f"enum class {st.s}'s body is not supported: an enum class has members (NAME = value), methods and a docstring", s.line)
+        if len(news) == 1 and len(mnames) == 0:
+            # (a __new__ that the enum classes deriving from this one make their members with)
+            basenew[st.s] = pristine
+            out = [o for o in out if o is not news[0]]
+            inits = []
+        if len(inits) > 0:
+            # __init__(self, ...) of the class: EnumType calls it for each member with the items of
+            # the member's value (a tuple's, else the value), also for an alias, whose object it
+            # then drops for the member of that value. A parameter without an annotation takes
+            # the type of its item, which the members' values share
+            if len(mnames) == 0:
+                fail(f"enum class {st.s}'s {inits[0].s}() is not supported: the class that defines the members defines it", inits[0].line)
+            its = enum_item_types(vtype)
+            first = 1
+            if len(news) == 1:
+                # (its __new__, made the __init__ that does the rest of its body: enum_new_init)
+                enum_new_init(news[0], newparts, counted)
+                its = ptypes
+                first = 2 if counted else 1
+            ps = inits[0].kids[0].kids
+            kwonly = int(inits[0].kids[0].s.split(",")[1])  # (the first keyword-only parameter's index, or -1)
+            for i in range(first, len(ps)):
+                if ps[i].kind != "param" or ps[i].kids[0].kind != "noann":
+                    continue
+                # (an item goes to a parameter that takes it by position; another one, which the
+                # members' values never give, has the type of its default value)
+                t = its[i - first] if (kwonly < 0 or i < kwonly) and i - first < len(its) else ""
+                if t == "" and ps[i].kids[1].kind != "noann":
+                    lit = enum_literal(ps[i].kids[1])
+                    t = lit[0] if len(lit) > 0 and lit[0] != "None" else ""
+                if t != "":
+                    ps[i].kids[0] = Parser(Lexer(f"_: {t}\n", ps[i].line).file()).module().kids[0].kids[1]
+            for o in out:
+                # (a member's kids: its _value_, a mark that it is initialized, then with a
+                # __new__ its value as written, the arguments, and its number where asked for)
+                more: list[Node] = []
+                if o.kind == "annassign" and len(o.kids) == 3 and o.kids[0].s in margs:
+                    more.append(clone(margs[o.kids[0].s]))
+                    if counted:
+                        more.append(mk("int", str(mcount[o.kids[0].s]), o.line, []))
+                if o.kind == "annassign" and len(o.kids) == 3 and o.kids[2].kind == "enummember":
+                    o.kids[2].kids = o.kids[2].kids + [mk("str", "__init__", o.line, [])] + more
+                elif o.kind == "annassign" and len(o.kids) == 3 and o.kids[2].kind == "enumalias":
+                    o.kids[2].kids = [avals[o.kids[0].s], mk("str", o.kids[0].s, o.line, [])] + more
         aliases = [m for m in mnames if canon[m] != m]
         if uniq and len(aliases) > 0:
             fail(f"duplicate values found in <enum {st.s!r}>: " + ", ".join([f"{m} -> {canon[m]}" for m in aliases]), st.line)
@@ -498,6 +1055,15 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
         if flag and len(mnames) > 0:
             made = Parser(Lexer(f"def _flag_type_(self):\n    return _pys_enum_{st.s}\n", st.line).file()).module().kids
             out = out + made
+        if glob:
+            # @global_enum: repr() is the module's name and the member's, an Enum's str() the
+            # member's name (CPython replaces the class's own), and the module binds each
+            # member's name (below)
+            out = [o for o in out if o.kind != "def" or (o.s != "__repr__" and (o.s != "__str__" or kind != "Enum"))]
+            src = 'def __repr__(self) -> str:\n    return "%s.%s" % (type(self).__module__.split(".")[-1], self._name_)\n'
+            if kind == "Enum":
+                src += '\ndef __str__(self) -> str:\n    return self._name_\n'
+            out = out + Parser(Lexer(src, st.line).file()).module().kids
         if len(mnames) > 0 and kind == "Enum":
             src = f'_value_: {vtype}\n\n@property\ndef value(self) -> {vtype}:\n    """The value of the Enum member."""\n    return self._value_\n\ndef _value_repr_(self) -> str:\n    return repr(self._value_)\n'
             made = Parser(Lexer(src, st.line).file()).module().kids
@@ -528,7 +1094,236 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                 top.append(Parser(Lexer(f"_pys_enum_{st.s} = _pys_FlagType({st.s!r}, {member_list}, {{{mm}}}, {{{vm}}}, {fmask}, {smask}, {allb}, {kind == 'IntFlag'})\n", st.line).file()).module().kids[0])
             else:
                 top.append(Parser(Lexer(f"_pys_enum_{st.s} = _pys_EnumType({st.s!r}, [{ms}], {{{mm}}})\n", st.line).file()).module().kids[0])
+            for m in mnames if glob else []:
+                top.append(Parser(Lexer(f"{m} = {st.s}.{m}\n", st.line).file()).module().kids[0])
     n.kids = top
+
+
+def importlib_binds(body: list[Node], out: dict[str, str], decl: dict[str, str]) -> None:
+    # (scope_binds) the names that the import statements of the statements body of one scope bind,
+    # not in the functions and classes in them: "m" for the module importlib (import importlib, or
+    # as il; import importlib.x binds importlib too), "f" for its import_module (from importlib
+    # import import_module, or as another name), "x" for anything else (a star import binds "*");
+    # and in decl, the names its global ("g") and nonlocal ("n") statements declare
+    for st in body:
+        if st.kind == "import":
+            for a in st.kids:
+                k = "x"
+                if a.kind == "alias" and len(a.kids) == 2 and st.s == "from" and a.kids[0].s == "importlib.import_module":
+                    k = "f"
+                elif a.kind == "alias" and len(a.kids) == 2 and st.s == "" and a.kids[0].s == "importlib":
+                    k = "m"
+                bind_kind(out, a.s, k)
+        elif st.kind == "global" or st.kind == "nonlocal":
+            for x in st.kids:
+                decl[x.s] = "g" if st.kind == "global" else "n"
+        elif st.kind != "def" and st.kind != "class" and st.kind != "subclass":
+            for kid in st.kids:
+                if kid.kind == "block":
+                    importlib_binds(kid.kids, out, decl)
+                elif kid.kind == "except":
+                    importlib_binds(kid.kids[1].kids, out, decl)
+
+
+def bind_kind(out: dict[str, str], nm: str, k: str) -> None:
+    # (importlib_binds) one more binding of nm, of kind k: the kind of all of them, or "x"
+    out[nm] = k if nm not in out or out[nm] == k else "x"
+
+
+def scope_binds(body: list[Node], params: list[Node], out: dict[str, str], decl: dict[str, str]) -> None:
+    # the names that the module, function or class whose statements are body binds, with a
+    # function's parameters, each with the kind of its bindings (importlib_binds), and the names
+    # it declares global or nonlocal (decl)
+    importlib_binds(body, out, decl)
+    other: dict[str, bool] = {}
+    collect(body, other)  # (assignments, for and with targets, except ... as)
+    deleted(body, other, True)  # (del, def and class)
+    for st in body:
+        bound_in(st, other)  # (:=, also in comprehensions; match captures; type statements)
+    for p in params:
+        other[p.s] = True
+    for nm in other:
+        bind_kind(out, nm, "x")
+
+
+def outer_binds(body: list[Node], top: dict[str, str], nonloc: dict[str, bool]) -> None:
+    # (import_module_calls) what the functions in the statements body bind in other scopes: a
+    # name a global statement declares, the module's (top), and one a nonlocal statement does
+    # (nonloc), whose bindings in the functions around them are not followed
+    for st in body:
+        c = st.kids[0] if st.kind == "subclass" else st
+        own: dict[str, str] = {}
+        decl: dict[str, str] = {}
+        if c.kind == "def":
+            scope_binds(c.kids[2].kids, c.kids[0].kids, own, decl)
+        elif c.kind == "class":
+            scope_binds(c.kids[0].kids, NOKIDS, own, decl)
+        for nm in decl:
+            if nm in own and decl[nm] == "g":
+                bind_kind(top, nm, own[nm])
+            elif nm in own:
+                nonloc[nm] = True
+        if c.kind == "def":
+            outer_binds(c.kids[2].kids, top, nonloc)
+        elif c.kind == "class":
+            outer_binds(c.kids[0].kids, top, nonloc)
+        else:
+            for kid in st.kids:
+                if kid.kind == "block":
+                    outer_binds(kid.kids, top, nonloc)
+                elif kid.kind == "except":
+                    outer_binds(kid.kids[1].kids, top, nonloc)
+
+
+def binding_scope(nm: str, scopes: list[dict[str, str]], kinds: list[str], decls: list[dict[str, str]]) -> int:
+    # the index in scopes (the module's, then those of the functions and classes around some
+    # code, its own last) of the scope whose binding of nm that code reads, as CPython resolves
+    # the name: its own, an enclosing function's (not a class's: the functions in a class do not
+    # see its names), or the module's; -1 where none binds it (a builtin, or a NameError)
+    i = len(scopes) - 1
+    while i > 0:
+        d = decls[i].get(nm, "")
+        if d == "g":
+            break
+        if d == "" and nm in scopes[i] and (kinds[i] == "def" or i == len(scopes) - 1):
+            return i
+        i -= 1
+    return 0 if nm in scopes[0] or "*" in scopes[0] else -1
+
+
+def import_name(call: Node, pkg: str, scopes: list[dict[str, str]], kinds: list[str], decls: list[dict[str, str]]) -> str:
+    # the import statement that import_module(...), call, is where a string constant names the
+    # module: "import a.b as" (the name it binds follows), also for a name relative to a constant
+    # package or to __package__, the module's package pkg (the module that the relative name
+    # resolves to, which `from . import b` would not import where the package has an attribute
+    # b); else ""
+    args = call.kids[1:]
+    if len(args) == 0 or len(args) > 2 or args[0].kind != "str" or args[0].s == "":
+        return ""
+    name = args[0].s
+    package = ""
+    if len(args) == 2:
+        p = args[1].kids[0] if args[1].kind == "kw" and args[1].s == "package" else args[1]
+        if args[1].kind == "kw" and args[1].s != "package":
+            return ""
+        if p.kind == "str":
+            package = p.s
+        elif p.kind == "name" and p.s == "__package__" and binding_scope(p.s, scopes, kinds, decls) < 0:
+            package = pkg  # (the module's own __package__, which nothing rebinds; "" in the main program)
+        elif p.kind != "None":
+            return ""
+    level = len(name) - len(name.lstrip("."))
+    parts = name[level:].split(".")
+    for x in parts + (package.split(".") if package != "" else []):
+        if x == "" or x in KEYWORDS or "0" <= x[0] <= "9" or not all([c == "_" or "A" <= c <= "Z" or "a" <= c <= "z" or "0" <= c <= "9" for c in x]):
+            return ""  # (no name an import statement can write)
+    if level == 0:
+        return f"import {name} as"
+    base = package.split(".") if package != "" else []
+    if len(base) < level:
+        return ""  # (beyond the top-level package, or no package: CPython's ImportError or TypeError)
+    return f"import {'.'.join(base[: len(base) - level + 1] + parts)} as"
+
+
+def import_calls(body: list[Node], scopes: list[dict[str, str]], kinds: list[str], decls: list[dict[str, str]], sure: dict[str, bool], nonloc: dict[str, bool], pkg: str, made: list[int]) -> None:
+    # (import_module_calls) the statements body of one scope (the last of scopes, with kinds and
+    # decls: binding_scope), in the order they run, sure holding the names that an import of
+    # importlib or of its import_module in that scope has bound before them, surely
+    for i in range(len(body)):
+        st = body[i]
+        call: Node | None = None
+        target = ""
+        if st.kind == "expr" and len(st.kids) == 1:
+            call = st.kids[0]
+        elif st.kind == "assign" and len(st.kids) == 2 and st.kids[0].kind == "name":
+            call = st.kids[1]
+            target = st.kids[0].s
+        elif st.kind == "annassign" and len(st.kids) == 3 and st.kids[0].kind == "name":
+            call = st.kids[2]
+            target = st.kids[0].s
+        src = ""
+        if call is not None and call.kind == "call" and kinds[len(kinds) - 1] != "class":
+            # (a class body holds no import statement: its call stays one, which call_fn rejects)
+            # import_module(...) of a name that binds the function, or il.import_module(...) of
+            # one that binds the module importlib: in every place that binds it in the scope it
+            # resolves to, and in the call's own scope by an import that surely ran before it
+            f = call.kids[0]
+            root = ""
+            want = ""
+            if f.kind == "name":
+                root = f.s
+                want = "f"
+            elif f.kind == "attr" and f.s == "import_module" and len(f.kids) == 1 and f.kids[0].kind == "name":
+                root = f.kids[0].s
+                want = "m"
+            j = binding_scope(root, scopes, kinds, decls) if root != "" else -1
+            if j >= 0 and "*" not in scopes[j] and scopes[j].get(root, "") == want and not (j > 0 and root in nonloc) and (j < len(scopes) - 1 or root in sure):
+                src = import_name(call, pkg, scopes, kinds, decls)
+        if src != "":
+            made[0] += 1
+            bound = target if target != "" else "_pys_import_" + str(made[0])
+            body[i] = Parser(Lexer(src + " " + bound + "\n", st.line).file()).module().kids[0]
+            continue
+        c = st.kids[0] if st.kind == "subclass" else st
+        if c.kind == "def" or c.kind == "class":
+            own: dict[str, str] = {}
+            decl: dict[str, str] = {}
+            if c.kind == "def":
+                scope_binds(c.kids[2].kids, c.kids[0].kids, own, decl)
+            else:
+                scope_binds(c.kids[0].kids, NOKIDS, own, decl)
+            blk = c.kids[2] if c.kind == "def" else c.kids[0]
+            import_calls(blk.kids, scopes + [own], kinds + [c.kind], decls + [decl], {}, nonloc, pkg, made)
+            continue
+        for kid in st.kids:
+            if kid.kind == "block":
+                import_calls(kid.kids, scopes, kinds, decls, dict(sure), nonloc, pkg, made)
+            elif kid.kind == "except":
+                import_calls(kid.kids[1].kids, scopes, kinds, decls, dict(sure), nonloc, pkg, made)
+        if st.kind == "import":
+            for a in st.kids:
+                sure[a.s] = True
+
+
+def import_module_calls(n: Node, pkg: str) -> None:
+    # importlib.import_module(NAME), where a string constant names the module and the call is a
+    # statement of its own or the value a statement assigns to one variable, in module body n
+    # (whose package is pkg), is the import statement of that module, which binds the variable:
+    # mod = import_module("a.b") is import a.b as mod. It runs where the call would, and raises
+    # its ImportError there. The callee is one only where CPython would find importlib's function
+    # through it: its name binds importlib or its import_module in the scope it resolves to, there
+    # only so, and in the call's own scope it is surely bound before the call. Pystachy resolves
+    # a program's imports while it compiles the program, so a call that names the module any
+    # other way stays a call of lib/importlib's function, which Gen.call_fn rejects.
+    if not imports_importlib(n):
+        return
+    top: dict[str, str] = {}
+    decl: dict[str, str] = {}
+    scope_binds(n.kids, NOKIDS, top, decl)
+    nonloc: dict[str, bool] = {}
+    outer_binds(n.kids, top, nonloc)
+    import_calls(n.kids, [top], ["module"], [decl], {}, nonloc, pkg, [0])
+
+
+def imports_importlib(n: Node) -> bool:
+    # (import_module_calls) does an import statement in n, also in the functions and classes in
+    # it, bind importlib or its import_module
+    for st in n.kids:
+        if st.kind == "import":
+            for a in st.kids:
+                if a.kind == "alias" and len(a.kids) == 2 and ((st.s == "from" and a.kids[0].s == "importlib.import_module") or (st.s == "" and a.kids[0].s == "importlib")):
+                    return True
+        elif imports_importlib(st):
+            return True
+    return False
+
+
+def module_package(name: str, path: str) -> str:
+    # the __package__ of module name, whose file is path: its own name for a package's
+    # __init__.py, else its parent package's ("" for a top-level module)
+    if path.endswith("/__init__.py") or path == "__init__.py":
+        return name
+    return name[: name.rfind(".")] if "." in name else ""
 
 
 def tb_import(n: Node) -> None:
@@ -649,6 +1444,48 @@ def binary_opens(n: Node) -> None:
     n.kids = n.kids[:at] + [Parser(Lexer(src, first).file()).module().kids[0]] + n.kids[at:]
 
 
+def bytearray_import(n: Node) -> None:
+    # module body n whose code may read the builtin name bytearray (analysis.module_reads: nothing
+    # at the module's top level binds it): the class is lib/_pystachy_bytearray.py's, which the
+    # module imports after its docstring and __future__ imports, as if it had written the import.
+    # A function's own bytearray hides it there, as it hides the builtin
+    if not module_reads(n, "bytearray"):
+        return
+    at = 1 if len(n.kids) > 0 and n.kids[0].kind == "expr" and n.kids[0].kids[0].kind == "str" else 0
+    while at < len(n.kids) and n.kids[at].kind == "import" and n.kids[at].s == "from" and all([a.kind == "alias" and len(a.kids) == 2 and a.kids[0].s.startswith("__future__.") for a in n.kids[at].kids]):
+        at += 1
+    line = n.kids[at].line if at < len(n.kids) else n.line
+    src = "from " + BYTEARRAYS + " import bytearray\n"
+    n.kids = n.kids[:at] + [Parser(Lexer(src, line).file()).module().kids[0]] + n.kids[at:]
+
+
+def import_family(n: Node, fam: dict[str, bool]) -> bool:
+    # the names in code n that may name a subclass of ImportError (#1504), added to fam (which holds
+    # ImportError, ModuleNotFoundError and the names found so far): a class one of whose bases is
+    # such a name (or a module's attribute: errors.Missing), and a name assigned one (E = Missing);
+    # True if it added one
+    more = False
+    if n.kind == "subclass" and n.s not in fam:
+        for b in n.kids[1:]:
+            if (b.kind == "name" or b.kind == "attr") and last_name(b.s) in fam:
+                fam[n.s] = True
+                more = True
+                break
+    if n.kind == "assign" and (n.kids[-1].kind == "name" or n.kids[-1].kind == "attr") and last_name(n.kids[-1].s) in fam:
+        for t in n.kids[:-1]:
+            if t.kind == "name" and t.s not in fam:
+                fam[t.s] = True
+                more = True
+    for k in n.kids:
+        more = import_family(k, fam) or more
+    return more
+
+
+def last_name(s: str) -> str:
+    # a name without its module (errors$Missing, errors.Missing: Missing)
+    return s[max(s.rfind("$"), s.rfind(".")) + 1 :]
+
+
 def ascii_ident(s: str) -> bool:
     # is ASCII string s an identifier, as str.isidentifier() tells
     for i in range(len(s)):
@@ -688,12 +1525,13 @@ class Loader:
         self.fragile: dict[str, str] = {}
         self.solid: dict[str, bool] = {}
         self.first_import: dict[str, bool] = {}  # first local import site's need for a binding flag
+        self.gvisit: dict[str, bool] = {}  # the classes generic_class is deciding: a recursion guard
         # the submodules that imports in try statements run, which their package has as an attribute
         # only once an import of them has run to its end (Gen.modchk), and the reads through such an
         # attribute that qmod() found in the expression being qualified (Node.mchk)
         self.trysubs: dict[str, bool] = {}
         self.subchk: list[str] = []
-        self.parsed: dict[str, Node] = {}  # each module file, parsed once
+        self.parsed: dict[str, Node] = {}  # each module file, parsed once (by "<its package>:<path>")
         # and what its code binds, surely and maybe, as scan() finds it before it is loaded
         self.rawbound: dict[str, dict[str, bool]] = {}
         # and those of the code of the module whose code is being simplified, up to statement ownpos
@@ -703,6 +1541,7 @@ class Loader:
         self.ownmaybe: dict[str, bool] = {}
         self.rawsure: dict[str, dict[str, bool]] = {}
         self.failc: dict[str, str] = {}  # what init_fails() found for a module not loaded yet
+        self.missc: dict[str, str] = {}  # and the module that is not found, where its import of one fails
         self.scanning: dict[str, bool] = {}  # the modules init_fails() is looking at
         # the index of the top-level statement whose code simplify() or init_raise() is in, -1 in a
         # function, and whether simplify() is in a class body there
@@ -718,6 +1557,17 @@ class Loader:
         self.sites: list[Node] = []
         self.sitem: list[Mod] = []
         self.siterest: list[Node] = []
+        # and each one's try statement, its key (its file and line) where all its imports succeed,
+        # else "", and where it is (1 module code, 0 a function, -1 a class body): the optional
+        # imports whose statements after the imports keep the except clauses at run time, by key, as
+        # an earlier load found them (keep_site(), #1504), unless nokeep (the compilation that kept
+        # them failed: driver.compile_program), and those this load finds
+        self.sitetry: list[Node] = []
+        self.sitekey: list[str] = []
+        self.sitetop: list[int] = []
+        self.keeps: dict[str, bool] = {}
+        self.nokeep = False
+        self.newkeeps: list[str] = []
         # what raises() found for a module, where that does not depend on the modules whose code was
         # running (rcyc: a result that did); the function fn_raises() found, "?" before it looks
         self.rmemo: dict[str, int] = {}
@@ -737,6 +1587,7 @@ class Loader:
         self.vtakem: list[Mod] = []
         self.vtook: dict[str, bool] = {}
         self.aliased: dict[str, Node] = {}  # assignment/type alias statements, by "<module> <name>"
+        self.newtypes: dict[str, bool] = {}  # the qualified names that N = NewType("N", T) binds (newtype): type aliases that code may call
         # each star import of a package without __all__, with the module it is in (submodules())
         self.stars: list[Node] = []
         self.starm: list[Mod] = []
@@ -746,10 +1597,12 @@ class Loader:
         # unlike any other). A key prefixed by a space maps an original private spelling to its
         # lexical name, only for quoted annotations; qexpr never consults these aliases.
         self.qren: dict[str, str] = {}
+        self.sigtps: list[str] = []  # the type parameters of the def whose signature is being qualified, which qren names only in its body
         # the function simplify() is in (own_specials()), and the names that its own imports which
         # special_import() recognizes have surely bound where simplify() is
         self.fs = Mod("", "", "")
         self.fsure: dict[str, bool] = {}
+        self.inann = False  # (qualifying an annotation: Mod.tkinds binds names too, see kind())
         self.unsure: dict[str, dict[str, bool]] = {}  # what the defs and generator expressions in each def read before an import of it surely ran (import_reads())
         self.checked: dict[str, dict[str, bool]] = {}  # what each def itself reads so: its imports set a flag, which its reads check
         self.lazyann = False  # the module deftime() walks imports annotations from __future__
@@ -773,6 +1626,7 @@ class Loader:
         program_cache.track_source(path, src)
         FILES.clear()
         ENUMCLASSES.clear()
+        ORDERED.clear()
         DYNFILES.clear()
         IDINERT.clear()
         INTFILES.clear()
@@ -783,7 +1637,11 @@ class Loader:
         m.body = self.parse_source(src, 1)
         tb_import(m.body)
         binary_opens(m.body)
+        if not self.rtmode and len(self.dirs) > 0:
+            bytearray_import(m.body)
+        import_module_calls(m.body, "")
         cm_methods(m.body, cm_names(m.body))
+        functools_classes(m.body, functools_names(m.body))
         enum_classes(m.body, enum_names(m.body))
         self.argparse(m.body)
         self.ctypes(m.body)
@@ -836,6 +1694,14 @@ class Loader:
             self.order = [self.order[-1]] + self.order[:-1]
             for x in users:
                 x.deps[OBJECTS] = True
+        users = [x for x in self.order if complex_values(x.body, False)] if not self.rtmode and len(self.dirs) > 0 and COMPLEXS not in self.mods else []
+        if len(users) > 0:
+            # an imaginary literal, complex() and the arithmetic of complex numbers make objects of
+            # lib's class, whose module nothing imports (as range's)
+            self.load(COMPLEXS, self.dirs[-1] + "/" + COMPLEXS + ".py", "")
+            self.order = [self.order[-1]] + self.order[:-1]
+            for x in users:
+                x.deps[COMPLEXS] = True
         users = [x for x in self.order if module_reads(x.body, "iter")] if not self.rtmode and len(self.dirs) > 0 and ITERS not in self.mods else []
         if len(users) > 0:
             # iter() makes iterator objects of builtin containers: of lib's classes, whose module
@@ -880,6 +1746,7 @@ class Loader:
                 if x.kinds[nm].startswith("a:") and x.name + " " + nm in self.aliased:
                     self.fragile[f"{x.name}  {nm}"] = x.q + nm
         self.doccycles()
+        self.type_only()  # (the names that if TYPE_CHECKING: imports bind for annotations)
         for x in self.order:
             self.lazyann = False
             self.called = 0
@@ -888,6 +1755,7 @@ class Loader:
             env: list[dict[str, bool]] = [{}, {}, {}, {}]  # (a package binds __path__, annotations __annotations__)
             mark((["__path__"] if x.pdir != "" else []) + (["__annotations__"] if has_kind(x.body, "annassign") else []), env[0], env[1], [])
             self.deftime(x, x.body.kids, env, "", [], True)
+            x.lazyann = self.lazyann
         for i in range(len(self.docsets)):
             k = self.docsetm[i].kinds.get(self.docsets[i].s, "")
             if k.startswith("m:"):
@@ -1021,8 +1889,8 @@ class Loader:
             return self.dirs[-1] + "/" + STANDINS[name] + ".py"  # (lib's stand-in for a C module)
         if name in CBUILTIN:
             return ""  # a module built into CPython: no file on the path replaces it (find())
-        if name == ITERS or name == RANGES or name == OBJECTS or name == JSONANY:
-            return ""  # (iter()'s classes, range's, object's and json's of Any values, which no program imports: see program)
+        if name == ITERS or name == RANGES or name == OBJECTS or name == COMPLEXS or name == JSONANY:
+            return ""  # (iter()'s classes, range's, object's, complex's and json's of Any values, which no program imports: see program)
         return self.filepath(name)
 
     def filepath(self, name: str) -> str:
@@ -1089,13 +1957,15 @@ class Loader:
     def load(self, name: str, path: str, pdir: str) -> Mod:
         m = Mod(name, path, pdir)
         self.mods[name] = m
-        m.body = self.parse(path)
-        del self.parsed[path]  # (m rewrites its tree: the file imported under another name is parsed again)
+        m.body = self.parse(path, name)
+        del self.parsed[module_package(name, path) + ":" + path]  # (m rewrites its tree: the file imported under another name is parsed again)
         if name in INT_HELPERS and self.in_lib(path):
             self.int_spans(m.body.kids, INT_HELPERS[name])
         self.prescan(m)
         r: list[Node] = []
         if self.init_raise(m, m.body.kids, r, True):
+            if r[0].kind == "import":
+                r[0] = self.missing_import(m, r[0])
             r[0].s = "init"  # (an optional import of the module returns there instead: Gen.raise_stmt)
             m.fails = import_error(r[0].kids[0])
         self.simplify(m, m.body, {})
@@ -1134,10 +2004,14 @@ class Loader:
         path = path[2:] if path.startswith("./") else path
         return lib != "" and path.startswith(lib + "/")
 
-    def parse(self, path: str) -> Node:
-        # a module's file, parsed once for the looks before it is loaded (optional()) and the load
-        if path in self.parsed:
-            return self.parsed[path]
+    def parse(self, path: str, name: str) -> Node:
+        # module name's file, parsed once for the looks before it is loaded (optional()) and the
+        # load (once for each package it is imported in: import_module_calls resolves a name
+        # relative to it)
+        pkg = module_package(name, path)
+        key = pkg + ":" + path
+        if key in self.parsed:
+            return self.parsed[key]
         f = open(path, "r", encoding=RAW)
         src = f.read()
         f.close()
@@ -1145,14 +2019,53 @@ class Loader:
         k = len(FILES)
         FILES.append(path[2:] if path.startswith("./") else path)
         self.pragmas(src, k, k * LINES + 1)
-        self.parsed[path] = self.parse_source(src, k * LINES + 1, self.in_lib(path))
-        tb_import(self.parsed[path])
-        binary_opens(self.parsed[path])
-        cm_methods(self.parsed[path], cm_names(self.parsed[path]))
-        enum_classes(self.parsed[path], enum_names(self.parsed[path]))
-        self.argparse(self.parsed[path])
-        self.ctypes(self.parsed[path])
-        return self.parsed[path]
+        self.parsed[key] = self.parse_source(src, k * LINES + 1, self.in_lib(path))
+        self.trim_missing(self.parsed[key])
+        if self.in_lib(path) and path.endswith("/contextlib.py"):
+            for st in self.parsed[key].kids:
+                if st.kind == "subclass" and st.s == "_GeneratorContextManager":
+                    cm_private_fields(st)
+        tb_import(self.parsed[key])
+        binary_opens(self.parsed[key])
+        if not self.rtmode and len(self.dirs) > 0:
+            bytearray_import(self.parsed[key])
+        import_module_calls(self.parsed[key], pkg)
+        cm_methods(self.parsed[key], cm_names(self.parsed[key]))
+        functools_classes(self.parsed[key], functools_names(self.parsed[key]))
+        enum_classes(self.parsed[key], enum_names(self.parsed[key]))
+        self.argparse(self.parsed[key])
+        self.ctypes(self.parsed[key])
+        return self.parsed[key]
+
+    def trim_missing(self, body: Node) -> None:
+        # the statements of a module's code after its top-level import of a module that is not
+        # found never run: CPython raises ModuleNotFoundError there. They are left out before the
+        # rewrites of parse() look at them, as they may use what the missing module would bind
+        # (ssl's enum classes, whose members are _ssl's constants). The import itself stays: an
+        # optional import of the module takes its handler (init_raise()), and any other import
+        # of it is the error of this one (import_stmt())
+        for i in range(len(body.kids)):
+            st = body.kids[i]
+            if st.kind == "import" and not st.s.startswith("from.") and self.absent(st) != "":
+                del body.kids[i + 1 :]
+                return
+
+    def absent(self, st: Node) -> str:
+        # the module that is not found where import statement st (no relative import) runs: the
+        # one its first name asks for, or a package on the way to it; or ""
+        a = st.kids[0]
+        p = a.kids[1].s
+        if p == "typing_extensions" or builtin_import(st, a):
+            return ""
+        i = 0
+        while i >= 0:
+            i = p.find(".", i + 1)
+            q = p[:i] if i >= 0 else p
+            if builtin_module(q):
+                return ""
+            if self.modpath(q) == "":
+                return q
+        return ""
 
     def argparse(self, body: Node) -> None:
         if any([parser_import(st) != "" for st in body.kids]) and len(self.dirs) > 0 and self.modpath("argparse") == self.dirs[-1] + "/argparse.py":
@@ -1195,6 +2108,8 @@ class Loader:
                 m.kinds[st.s] = "f" if k == "def" else "c"
                 if k == "subclass" and (len(st.kids) == 2 or st.kids[1].kind == "typeparams") and "__class_getitem__" not in top_bindings(st.kids[0].kids[0].kids):
                     m.cbases[st.s] = st.kids[1]
+                elif k == "subclass" and "__class_getitem__" not in top_bindings(st.kids[0].kids[0].kids):
+                    m.cmulti[st.s] = st.kids[1:]  # (several bases: class N(Generic[T], A[T], B), S(A[T], B))
                 for x in st.kids[0].kids if k == "class" else st.kids[0].kids[0].kids if k == "subclass" else []:
                     if x.kind == "assign" and len(x.kids) == 2 and x.kids[0].kind == "name" and x.kids[0].s == "__class_getitem__":
                         v = x.kids[1]
@@ -1424,6 +2339,14 @@ class Loader:
                 m.kinds[nm] = src if src.startswith("a:") else "a:" + m.q + v.s  # (qstmts drops the statement)
                 self.aliased[m.name + " " + nm] = st
                 self.used_before(m, st)
+            elif not ann and self.newtype(v):
+                # (N = NewType("N", T): an alias of T in annotations, whose calls return their
+                # argument, Gen.call; Gen.program leaves out the assignment)
+                m.kinds[nm] = "t:" + self.qual(m, nm)
+                m.taliases[self.qual(m, nm)] = st
+                self.aliased[m.name + " " + nm] = st
+                self.newtypes[self.qual(m, nm)] = True
+                self.used_before(m, st)
             elif not ann and v.kind == "call" and self.typevar(st.kids[0]):
                 m.kinds[nm] = "t:" + self.qual(m, nm)  # (T = TypeVar("T"): its imports name it, as a type alias's do)
                 self.aliased[m.name + " " + nm] = st
@@ -1522,6 +2445,11 @@ class Loader:
             return ok and self.type_item(e.kids[1])
         return k == "None" and not top
 
+    def newtype(self, e: Node) -> bool:
+        # is e, a value that module dm's top-level code assigns, typing's NewType("N", T) of a
+        # name and a type that annotations can name (type_value)
+        return e.kind == "call" and len(e.kids) == 3 and self.bpath(e.kids[0]) == "typing.NewType" and e.kids[1].kind == "str" and self.type_value(e.kids[2], False)
+
     def type_item(self, e: Node) -> bool:
         # (type_value) an item of a subscript of a type: also a string (a forward reference), a
         # literal, ..., a list of them (Callable's parameters) or *Ts
@@ -1533,7 +2461,7 @@ class Loader:
             return True
         if k == "starred":
             return self.type_item(e.kids[0])
-        if k == "str" or k == "int" or k == "True" or k == "False" or k == "ellipsis":
+        if k == "str" or k == "bytes" or k == "int" or k == "True" or k == "False" or k == "ellipsis":
             return True
         if k == "unary" and e.s == "-" and (e.kids[0].kind == "int" or e.kids[0].kind == "float"):
             return True
@@ -1599,9 +2527,10 @@ class Loader:
             if msg == "":
                 self.vtakek[i][n.s] = k
                 cp.kind = "pass"
-                if k.startswith("a:"):
-                    # The original variable copy now binds an alias. Keep the import's flag
-                    # and source read, just as import_stmt does for an alias known at load time.
+                if k.startswith("a:") or k[2:] in self.newtypes:
+                    # The original variable copy now binds an alias (or a NewType, which code calls
+                    # too). Keep the import's flag and source read, as import_stmt does for an alias
+                    # known at load time: a read where the import may not have run checks the flag.
                     saved_def = self.curdef
                     saved_try = self.intry
                     self.curdef = n.kids[4].s
@@ -1716,10 +2645,21 @@ class Loader:
                 self.tpnames = tpouter
                 plain = top and cls == "" and k == "class" and len(st.kids) == 1 and "__class_getitem__" not in own
             elif k == "annassign" or (alias and k == "assign"):
-                if alias and st.kids[-1].kind != "str":
+                if alias and st.kids[-1].kind == "call":
+                    # (N = NewType("N", T): NewType, then T, which CPython checks is a type)
+                    self.reads(st.kids[-1].kids[0], env, "CPython evaluates this NewType when the assignment runs", 0)
+                    self.reads(st.kids[-1].kids[2], env, "CPython evaluates this NewType's type when the assignment runs", 3)
+                elif alias and st.kids[-1].kind != "str":
                     self.reads(st.kids[-1], env, "CPython evaluates this type alias's value when the assignment runs", 3)
                 if k == "annassign":
                     self.ann(st.kids[1], env, "the class body" if cls != "" else "the annotated assignment")
+            elif top and cls == "" and k == "assign" and len(st.kids) == 2 and st.kids[0].kind == "name" and st.kids[1].kind == "call" and self.bpath(st.kids[1].kids[0]) == "typing.TypeVar":
+                # T = TypeVar("T", A, B) or TypeVar("T", bound=B): CPython evaluates its constraints
+                # and bound as the assignment runs, which Gen.typevar_def drops (finding it by the
+                # call): they are read as an annotation is, which must be bound and run no code
+                for x in st.kids[1].kids[2:]:
+                    if x.kind != "kw" or x.s == "bound":
+                        self.reads(x.kids[0] if x.kind == "kw" else x, env, "CPython evaluates a TypeVar's constraints and bound when the assignment runs", 3)
             first: dict[str, bool] = {}
             for i in range(len(st.kids) if k != "def" and k != "class" and k != "subclass" and k != "typealias" else 0):
                 x = st.kids[i]
@@ -1894,9 +2834,46 @@ class Loader:
         base = m.cbases.get(name, None)
         if base is not None and base.kind == "typeparams":
             return True  # (class C[T])
+        if m.q + name in self.gvisit:
+            return False  # (a class whose bases name it again: CPython's NameError)
+        if base is None and name in m.cmulti:
+            # (several bases: generic where one is Generic[...], or a generic class's subscript that
+            # passes on a type variable, if each is a class or a subscript of one, as gen_program's
+            # generic_traits and implicit_tparams take them)
+            bs = m.cmulti[name]
+            if len([x for x in bs if x.kind != "index" and x.kind != "name" and x.kind != "attr"]) > 0:
+                return False
+            self.gvisit[m.q + name] = True
+            r = len([x for x in bs if x.kind == "index" and self.generic_base(m, x)]) > 0
+            del self.gvisit[m.q + name]
+            return r
         if base is None or base.kind != "index":
             return False
+        self.gvisit[m.q + name] = True
+        r = self.generic_base(m, base)
+        del self.gvisit[m.q + name]
+        return r
+
+    def generic_base(self, m: Mod, base: Node) -> bool:
+        # is base, a subscript that a class statement of module m names as a base, typing.Generic[...],
+        # or a generic class's subscript that passes on a type variable (class S(Visitor[T]))
         g = base.kids[0]
+        dm = self.dm
+        self.dm = m
+        gm = self.mod_of(g.kids[0]) if g.kind == "attr" else ""
+        gk = self.kind_of(g) if g.kind == "name" else self.mods[gm].kinds.get(g.s, "") if gm != "" else ""
+        implicit = False
+        if gk == "c" or gk.startswith("a:"):
+            # class S(Visitor[T]), also S(pkg.visitors.Visitor[T]): generic as Visitor is, in the
+            # type variables it passes on (PEP 484), its module's own or ones it imports
+            if gm != "":
+                self.dm = self.mods[gm]
+            generic = self.generic_class(mk("name", g.s, g.line, []) if gm != "" else g)
+            self.dm = m
+            implicit = generic and len([x for x in (base.kids[1].kids if base.kids[1].kind == "tuple" else [base.kids[1]]) if self.tv_named(x)]) > 0
+        self.dm = dm
+        if gk == "c" or gk.startswith("a:"):
+            return implicit
         if g.kind == "name":
             k = m.kinds.get(g.s, "")
             return k == "b:typing.Generic" or k == "b:typing_extensions.Generic"
@@ -1912,6 +2889,48 @@ class Loader:
             return k[2:] if k.startswith("b:") else ""  # (also a user module's attribute: collections.abc)
         p = self.bpath(e.kids[0]) if e.kind == "attr" else ""
         return p + "." + e.s if p != "" else ""
+
+    def mod_of(self, e: Node) -> str:
+        # the user module that name or attribute e names in module dm (pkg.mod, where import
+        # pkg.mod binds pkg), or ""
+        if e.kind == "name":
+            k = self.dm.kinds.get(e.s, "")
+            return k[2:] if k.startswith("m:") and k[2:] in self.mods else ""
+        p = self.mod_of(e.kids[0]) if e.kind == "attr" else ""
+        k = self.mods[p].kinds.get(e.s, "") if p != "" else ""
+        if k.startswith("m:") and k[2:] in self.mods:
+            return k[2:]
+        return p + "." + e.s if p != "" and k == "" and p + "." + e.s in self.mods else ""
+
+    def tv_named(self, e: Node) -> bool:
+        # is name e a TypeVar of module dm (typevar), or another module's that an import binds
+        # there: its kind names it as its own module's records it ("t:", see bindings); or is e
+        # a user module's attribute that names one there (visitors.T)
+        if e.kind == "attr":
+            p = self.mod_of(e.kids[0])
+            if p == "":
+                return False
+            dm = self.dm
+            self.dm = self.mods[p]
+            r = self.tv_named(mk("name", e.s, e.line, []))
+            self.dm = dm
+            return r
+        if e.kind != "name":
+            return False
+        if self.typevar(e):
+            return True
+        k = self.dm.kinds.get(e.s, "")
+        if not k.startswith("t:"):
+            return False
+        for x in self.mods:
+            q = self.mods[x].q
+            if q != "" and k[2:].startswith(q) and "$" not in k[2 + len(q) :]:
+                dm = self.dm
+                self.dm = self.mods[x]
+                r = self.typevar(mk("name", k[2 + len(q) :], e.line, []))
+                self.dm = dm
+                return r
+        return False
 
     def typevar(self, e: Node) -> bool:
         # is name e a module global that only e = TypeVar(...) (or TypeVarTuple(...)) statements
@@ -1954,7 +2973,11 @@ class Loader:
                 self.docsetm.append(m)
                 continue
             run: list[Node] = []
-            if self.static_if(m, st, scope, run) or self.optional(m, st, run, False) or (blk is m.body and self.unbound_try(m, st, out, blk.kids[i + 1 :], run)):
+            tc = self.tc_test(m, st.kids[0], scope) if blk is m.body and not self.incls and st.kind == "if" else 0
+            for d in (st.kids[1].kids if tc == 1 else st.kids[2].kids) if tc != 0 else NOKIDS:
+                if d.kind == "import" and d not in m.tcimports:
+                    m.tcimports.append(d)  # (what annotations may name: type_only())
+            if self.static_if(m, st, scope, run) or self.flag_switch(st, out, run) or self.optional(m, st, run, False) or (blk is m.body and self.unbound_try(m, st, out, blk.kids[i + 1 :], run)):
                 b = mk("block", "", st.line, run)
                 self.simplify(m, b, scope)
                 out.extend(b.kids)
@@ -2070,6 +3093,66 @@ class Loader:
                 # lambda's its NameError)
                 self.checked[str(d.line)][nm] = True
 
+    def tc_test(self, m: Mod, e: Node, scope: dict[str, bool]) -> int:
+        # is e, the test of a top-level if statement, TYPE_CHECKING as decide() reads it (1), or not
+        # TYPE_CHECKING (-1, also through further nots); else 0
+        if e.kind == "unary" and e.s == "not":
+            return -self.tc_test(m, e.kids[0], scope)
+        if e.kind == "attr" and e.s == "TYPE_CHECKING" and e.kids[0].kind == "name" and self.special(m, e.kids[0].s, scope) == "typing":
+            return 1
+        if e.kind == "name" and (self.special(m, e.s, scope) == "typing.TYPE_CHECKING" or (e.s == "TYPE_CHECKING" and m.falseat >= 0 and m.falseat < self.pos)):
+            return 1
+        return 0
+
+    def type_only(self) -> None:
+        # the names the imports of if TYPE_CHECKING: branches (Mod.tcimports) bind, which CPython
+        # never runs, for annotations alone (Mod.tkinds, see kind()): a class, function, alias or
+        # module of a module that the program loads anyway, as an import would bind it; else why an
+        # annotation cannot name it. Nothing is loaded for them, and code that reads such a name
+        # still finds it unbound, as CPython does; also the main module's (self.order has it)
+        for m in self.order:
+            for st in m.tcimports:
+                for a in st.kids:
+                    if a.s == "" or a.s == "*" or a.s in m.kinds or a.s in m.tkinds or a.s in TYPING or a.s in PYBUILTINS:
+                        continue  # (typing's names and the builtins keep their meaning, as without the import)
+                    path = a.kids[1].s
+                    if st.s.startswith("from."):
+                        path = self.rel_path(m, st.s, path)
+                    if path == "" or path == "typing" or path == "typing_extensions" or builtin_module(path):
+                        continue  # (typing's names: Gen's own fallback; builtin modules: none of their classes)
+                    why = f"'{a.s}' is imported only under if TYPE_CHECKING:, from module '{path}', which the program does not import, so an annotation cannot name it"
+                    if st.s == "":
+                        # import a.b binds the package a, import a.b as x (also as a) the module a.b,
+                        # which the parser names: a, or a.b
+                        mod = a.kids[0].s
+                        m.tkinds[a.s] = "m:" + mod if mod in self.mods else "x:" + why
+                        continue
+                    x = a.kids[0].s[a.kids[0].s.rfind(".") + 1 :]
+                    src = self.mods[path] if path in self.mods else None
+                    k = src.kinds.get(x, "") if src is not None else ""
+                    if src is not None and (k == "f" or k == "c"):
+                        m.tkinds[a.s] = "a:" + src.q + x
+                    elif k.startswith("a:") or k.startswith("t:") or k.startswith("m:"):
+                        m.tkinds[a.s] = k
+                    elif path + "." + x in self.mods:
+                        m.tkinds[a.s] = "m:" + path + "." + x
+                    else:
+                        m.tkinds[a.s] = "x:" + why
+
+    def rel_path(self, m: Mod, s: str, path: str) -> str:
+        # relative()'s module for from .x import y in m, or "" where it would fail (type_only(), whose
+        # imports never run)
+        if m.name == "" or (m.pdir == "" and "." not in m.name):
+            return ""
+        base = m.name if m.pdir != "" else m.name[: m.name.rfind(".")]
+        for _ in range(len(s) - 5):
+            if base == "":
+                break
+            base = base[: base.rfind(".")] if "." in base else ""
+        if base == "":
+            return ""
+        return base + "." + path if path != "" else base
+
     def static_if(self, m: Mod, st: Node, scope: dict[str, bool], out: list[Node]) -> bool:
         # an if statement CPython decides at import time, as Pystachy does at compile time: a test of
         # the platform, of TYPE_CHECKING, in an imported module of __name__ == "__main__" or in module
@@ -2083,6 +3166,47 @@ class Loader:
             return False
         out.extend(pre)
         out.extend(st.kids[1].kids if r == 1 else st.kids[2].kids)
+        return True
+
+    def flag_switch(self, st: Node, before: list[Node], out: list[Node]) -> bool:
+        # if NAME: or if not NAME: right after NAME = True or NAME = False, in module code outside
+        # class bodies (before: what runs before st in its block), as mypy's MYPYC = False then
+        # if MYPYC: Bogus = ... else: Bogus = ...: nothing runs between the assignment and the
+        # test, so CPython decides the test as the literal says. Only where the branch that does
+        # not run assigns names, and only names that the branch that runs binds too, at its own
+        # level: dropping it leaves each name a binding (an unbound global is an error: see Gen's
+        # read of a name) and changes no other declaration. Appends what runs to out; False if st
+        # is no such if
+        if st.kind != "if" or self.pos < 0 or self.incls or len(before) == 0:
+            return False
+        t = st.kids[0]
+        neg = t.kind == "unary" and t.s == "not"
+        t = t.kids[0] if neg else t
+        p = before[-1]
+        if t.kind != "name" or p.kind != "assign" or len(p.kids) != 2 or p.kids[0].kind != "name" or p.kids[0].s != t.s or (p.kids[1].kind != "True" and p.kids[1].kind != "False"):
+            return False
+        r = 1 if (p.kids[1].kind == "True") != neg else 0
+        run = st.kids[1].kids if r == 1 else st.kids[2].kids
+        kept: dict[str, bool] = {}
+        for x in run:
+            # (only what it binds at its own level, which simplify() keeps: a binding in a block of
+            # its own may be in code that simplify() drops too, as in if False: x = 1; and not
+            # what a := in a value binds, which fold_tests() may drop: (x := 1) if False else 0)
+            if x.kind == "assign" or (x.kind == "annassign" and len(x.kids) == 3):
+                targets(x, kept, False)
+            elif x.kind == "def" or x.kind == "class" or x.kind == "subclass":
+                kept[x.s] = True
+            elif x.kind == "import":
+                binds([x], kept, True)
+        for x in st.kids[2].kids if r == 1 else st.kids[1].kids:
+            names: dict[str, bool] = {}
+            binds([x], names, True)
+            for tg in x.kids[:-1] if x.kind == "assign" else []:
+                if tg.kind != "name":
+                    return False
+            if (x.kind != "assign" and x.kind != "pass") or len([nm for nm in names if nm not in kept]) > 0:
+                return False
+        out.extend(run)
         return True
 
     def optional(self, m: Mod, st: Node, out: list[Node], scan: bool) -> bool:
@@ -2184,10 +3308,22 @@ class Loader:
         missing = bad != "" and exc == "ModuleNotFoundError" and self.modpath(bad) == ""
         if bad != "" and not missing and named == "":
             site.s = bad
+        key = f"{FILES[line // LINES]}:{line % LINES}" if bad == "" else ""
         if not scan:
             self.sites.append(site)
             self.sitem.append(m)
             self.siterest.append(mk("block", "", line, st.kids[0].kids[n:] if bad == "" else st.kids[0].kids[:0]))
+            self.sitetry.append(st)
+            self.sitekey.append(key)
+            self.sitetop.append(-1 if self.pos >= 0 and self.incls else 1 if self.pos >= 0 else 0)
+        if key in self.keeps and n < len(st.kids[0].kids):
+            # every import succeeds, and the statements after them may raise a subclass of
+            # ImportError (keep_site()): they run in a try statement of their own, with the except
+            # clauses and the else block, as CPython runs them (also for scan(), whose names they bind
+            # only maybe)
+            out.extend(st.kids[0].kids[:n])
+            out.append(mk("try", st.s, line, [mk("block", "", st.kids[0].line, st.kids[0].kids[n:])] + st.kids[1:]))
+            return True
         if bad == "" or h == 0:
             # every import succeeds, or the exception is not caught: the body runs (the failing
             # module's raise ends the program, as in CPython), then the else block
@@ -2197,7 +3333,10 @@ class Loader:
                     out.extend(e.kids)
             return True
         b = st.kids[h].kids[1]
-        if st.kids[h].s != "" or may_end(b, True) or (missing and may_end(b, False)):
+        lost = ""  # the module that is not found, where module bad fails because its own import of it does
+        if not missing and named == "" and exc == "ModuleNotFoundError":
+            lost = self.mods[bad].missing if bad in self.mods else self.missc.get(bad, "")
+        if st.kids[h].s != "" or may_end(b, True) or ((missing or lost != "") and may_end(b, False)):
             # the handler needs the exception, or may end the program where the module is not found
             # (CPython may find it: a module of its standard library, or an installed package): the
             # module is required
@@ -2206,6 +3345,8 @@ class Loader:
             elif missing:
                 why = "names the exception (as " + short(st.kids[h].s) + ")" if st.kids[h].s != "" else "re-raises the exception" if may_end(b, True) else "may end the program"
                 msg = f"module '{bad}' is not supported: it is not a builtin module and there is no {bad[bad.rfind('.') + 1 :]}.py on the module path; an optional import whose except clause {why} needs its module"
+            elif lost != "" and st.kids[h].s == "" and not may_end(b, True):
+                msg = f"module '{lost}' is not supported: it is not a builtin module and there is no {lost[lost.rfind('.') + 1 :]}.py on the module path (module '{bad}' needs it); an optional import whose except clause may end the program needs its module"
             else:
                 msg = f"module '{bad}' raises {exc} as it initializes, and an except clause that re-raises or names the exception is not supported"
             out.append(mk("badimport", msg, line, []))
@@ -2339,7 +3480,7 @@ class Loader:
         # what module t's code binds, not loaded yet: surely (at its top level), and maybe
         self.rawbound[t.path] = {"*": True}  # (while it is scanned: a module that imports t back cannot tell)
         self.rawsure[t.path] = {}
-        t.body = self.parse(t.path)
+        t.body = self.parse(t.path, t.name)
         self.prescan(t)
         pos = self.pos
         fs = self.fs
@@ -2374,9 +3515,35 @@ class Loader:
         if not path.endswith(".py"):
             return False
         bound: dict[str, bool] = {}
-        for st in self.mods[p].body.kids if p in self.mods else self.parse(path).kids:
+        for st in self.mods[p].body.kids if p in self.mods else self.parse(path, p).kids:
             surely_binds(st, bound, bound)
         return x in bound
+
+    def fails_missing(self, path: str) -> Mod | None:
+        # where a module on the way to module path (its packages, then itself) fails because an
+        # import of a module that is not found does (Mod.missing): the module whose top-level
+        # import that is; or None
+        i = 0
+        while i >= 0:
+            i = path.find(".", i + 1)
+            q = path[:i] if i >= 0 else path
+            if q in self.mods and self.mods[q].missing != "" and self.mods[q].done:
+                # (not a module whose code is running: a circular import of it runs no code)
+                t = self.mods[q]
+                seen: dict[str, bool] = {}
+                while t.misvia != "" and t.misvia in self.mods and t.misvia not in seen:
+                    seen[t.misvia] = True
+                    t = self.mods[t.misvia]  # (the module whose own import is of the missing one)
+                return t
+        return None
+
+    def required(self, path: str) -> None:
+        # an import that is not optional runs the code of module path and of its packages: where
+        # one of them fails because a module it imports is not found, that import's error. Only
+        # an optional import decides that such a module fails (missing_import())
+        lost = self.fails_missing(path)
+        if lost is not None:
+            self.find(lost.missing, lost.missline)
 
     def init_fails(self, name: str) -> str:
         # the exception module name's code raises at its top level for sure (init_raise()), or ""
@@ -2387,7 +3554,7 @@ class Loader:
             # (a module whose code imports it back finds it half run; a namespace package has no code)
             return self.failc.get(name, "")
         t = Mod(name, p, p[:-12] if p.endswith("/__init__.py") else "")
-        t.body = self.parse(p)
+        t.body = self.parse(p, name)
         self.prescan(t)
         r: list[Node] = []
         pos = self.pos
@@ -2395,14 +3562,103 @@ class Loader:
         incls = self.incls
         self.fs = Mod("", "", "")  # (t's code is not in the function or class body simplify() may be in)
         self.incls = False
+        # (name stays marked as being scanned until import_missing() has run for it: a package
+        # whose code imports its own submodule, whose import of a missing module fails, finds
+        # the package half run, as CPython does, rather than scanning it again for ever)
         self.scanning[name] = True
         self.init_raise(t, t.body.kids, r, True)
-        del self.scanning[name]
         self.pos = pos
         self.fs = fs
         self.incls = incls
-        self.failc[name] = import_error(r[0].kids[0]) if len(r) > 0 else ""
+        if len(r) > 0 and r[0].kind == "import":
+            self.missc[name] = self.import_missing(t, r[0])
+            self.failc[name] = "ModuleNotFoundError"
+        else:
+            self.failc[name] = import_error(r[0].kids[0]) if len(r) > 0 else ""
+        del self.scanning[name]
         return self.failc[name]
+
+    def import_missing(self, m: Mod, st: Node) -> str:
+        # the module that is not found where import statement st of module m's code runs, so that
+        # the import surely raises ModuleNotFoundError, or "": the module its first name asks for,
+        # a package on the way to it, or the module that one of those surely fails to import in
+        # the same way at its own top level (ssl's import of _ssl, where a program imports ssl)
+        a = st.kids[0]
+        if a.kids[1].s == "typing_extensions" or builtin_import(st, a):
+            return ""
+        p = a.kids[1].s if not st.s.startswith("from.") else self.relative(m, st.s, a.kids[1].s, st.line)
+        i = 0
+        while i >= 0:
+            i = p.find(".", i + 1)
+            q = p[:i] if i >= 0 else p
+            if builtin_module(q):
+                return ""
+            if self.modpath(q) == "":
+                return q
+            if self.import_fails(q):
+                return self.mods[q].missing if q in self.mods else self.missc.get(q, "")
+        return ""
+
+    def import_fails(self, q: str) -> bool:
+        # does an import of module q, which is found, surely raise because q's own code does: not
+        # while q's code is running, as a circular import finds the module half run and succeeds
+        if q in self.mods and not self.mods[q].done:
+            return False
+        return self.init_fails(q) != ""
+
+    def missing_import(self, m: Mod, st: Node) -> Node:
+        # st, the top-level import of module m's code that surely fails because a module is not
+        # found (init_raise()), becomes what CPython's import does before it raises, then the
+        # raise of ModuleNotFoundError, which load() makes the module's top-level raise: the code
+        # of the packages on the way runs, and that of a module which fails in the same way, up
+        # to its own raise. The statements after it never run and are left out: they may read
+        # what the missing module would bind. A module that fails so can only be imported by an
+        # optional import, whose handler runs then; any other import of it is the error of the
+        # import that fails (import_stmt())
+        line = st.line
+        miss = self.import_missing(m, st)
+        a = st.kids[0]
+        p = a.kids[1].s if not st.s.startswith("from.") else self.relative(m, st.s, a.kids[1].s, line)
+        new: list[Node] = []
+        i = 0
+        run = ""  # the last module on the way whose code runs: to its end, or to its own raise
+        guard = False
+        while i >= 0 and not guard:
+            i = p.find(".", i + 1)
+            q = p[:i] if i >= 0 else p
+            if self.modpath(q) == "":
+                break
+            run = q
+            guard = self.import_fails(q)
+        if run != "":
+            al = mk("alias", "", line, [mk("str", run, line, []), mk("str", run, line, [])])
+            if guard:
+                # (as an optional import of it: guarded() checks that nothing else of its code may raise ImportError)
+                al.kids.append(mk("guard", "", line, []))
+                site = mk("pass", "", line, [])
+                site.s = run
+                new.append(site)
+                self.sites.append(site)
+                self.sitem.append(m)
+                self.siterest.append(mk("block", "", line, []))
+                # (each site has an entry in every list guarded() reads: the import of run fails, so,
+                # as for an optional import of a failing module, no key and no except clauses to keep)
+                self.sitetry.append(mk("try", "", line, [mk("block", "", line, [])]))
+                self.sitekey.append("")
+                self.sitetop.append(1)
+            new.append(mk("import", "", line, [al]))
+        r = mk("raise", "", line, [mk("call", "", line, [mk("name", "ModuleNotFoundError", line, []), mk("str", f"No module named '{miss}'", line, [])])])
+        new.append(r)
+        del m.body.kids[self.pos :]
+        m.body.kids.extend(new)
+        m.missing = miss
+        m.missline = line
+        m.misvia = run if guard else ""
+        # (what prescan() found of the statements left out no longer holds)
+        m.spec = {}
+        m.specat = {}
+        self.prescan(m)
+        return r
 
     def init_raise(self, m: Mod, body: list[Node], out: list[Node], top: bool) -> bool:
         # the raise of ImportError (or ModuleNotFoundError) that module m's code reaches for sure at its
@@ -2415,6 +3671,11 @@ class Loader:
             if st.kind == "raise" and len(st.kids) > 0 and import_error(st.kids[0]) != "":
                 out.append(st)
                 return True
+            if top and st.kind == "import" and "ModuleNotFoundError" not in m.rebound and "*" not in m.rebound and self.import_missing(m, st) != "":
+                # (an import of a module that is not found raises as surely: missing_import(),
+                # whose raise names the builtin exception, which the module must not rebind)
+                out.append(st)
+                return True
             if (self.static_if(m, st, {}, run) or self.optional(m, st, run, True) or (top and self.unbound_try(m, st, body[:i], body[i + 1 :], run))) and self.init_raise(m, run, out, False):
                 return True
         return False
@@ -2424,8 +3685,11 @@ class Loader:
         # raise ImportError in another way: neither what the modules it imports run at import (and
         # the modules they import) nor the statements after the imports, by a raise of their own or
         # by a call, if a function of the program may raise ImportError. The site (a pass statement
-        # where the try was) becomes an error where it is compiled.
+        # where the try was) becomes an error where it is compiled. A subclass of ImportError, which
+        # these do not find, may be raised by the statements after the imports: keep_site() finds
+        # where they keep the except clauses at run time, which a new load does (NeedHandlers)
         back: dict[str, str] = {}  # what failing() found, by the failing module and the importing one
+        fam: dict[str, bool] = {}  # (import_family(), once a site may need it)
         for i in range(len(self.sites)):
             s = self.sites[i]
             m = self.sitem[i]
@@ -2439,12 +3703,70 @@ class Loader:
                 back[key] = self.failing(self.mods[s.s], m)
             if s.s in self.mods and why == "":
                 why = back[key]
+            r = 0
             if why == "":
-                why = self.why(self.raises_in(self.siterest[i], m, False, seen), "the code that runs in the try")
+                r = self.raises_in(self.siterest[i], m, False, seen)
+                why = self.why(r, "the code that runs in the try")
             s.kids = []
             if why != "":
                 s.kind = "badimport"
                 s.s = why
+            elif not self.nokeep and self.sitekey[i] != "" and self.sitekey[i] not in self.keeps and self.keep_site(i, r, fam):
+                self.newkeeps.append(self.sitekey[i])
+        if len(self.newkeeps) > 0:
+            raise NeedHandlers()
+
+    def keep_site(self, i: int, r: int, fam: dict[str, bool]) -> bool:
+        # do the statements after the imports of optional import i, which all succeed, keep its
+        # except clauses at run time (#1504)? Where the program may raise a subclass of ImportError
+        # (a class whose bases name one, import_family()) and these statements may raise an
+        # exception (r: raises_in() found a call or an operator; or a raise or an attribute's read).
+        # Where the program then does not compile, it is compiled as before, keeping none
+        # (driver.compile_program): so neither does a site whose try statement would not compile,
+        # which these, the except clauses or the else block show, or could change what runs where
+        # no exception is raised. Those are a site in a class body; statements that define a
+        # function or class or import a module; names, also an except clause's as name, that the
+        # imports bind (json = None), or that module code binds to anything but a variable; a
+        # dunder name other than __version__, which only module code's top level binds as it means
+        # (__all__); and a builtin's name (len = ...), which a read takes for a NameError where the
+        # except clause has not bound it
+        rest = self.siterest[i]
+        if len(rest.kids) == 0 or self.sitetop[i] < 0 or not (r > 0 or has_kind(rest, "raise") or has_kind(rest, "attr")):
+            return False
+        if len(fam) == 0:
+            fam["ImportError"] = True
+            fam["ModuleNotFoundError"] = True
+            more = True
+            while more:
+                more = False
+                for t in self.order:
+                    more = import_family(t.body, fam) or more
+                    for x in t.kinds:
+                        if t.kinds[x].startswith("a:") and last_name(t.kinds[x]) in fam and x not in fam:
+                            fam[x] = True  # (from errors import Missing as E)
+                            more = True
+        if len(fam) == 2:
+            return False
+        body: list[Node] = list(rest.kids)
+        for h in self.sitetry[i].kids[1:]:
+            body.extend(h.kids[1].kids if h.kind == "except" else h.kids)
+        for st in body:
+            if has_kind(st, "def") or has_kind(st, "class") or has_kind(st, "subclass") or has_kind(st, "import") or has_kind(st, "uimport"):
+                return False
+        names: dict[str, bool] = {}
+        binds(body, names, True)
+        for h in self.sitetry[i].kids[1:]:
+            if h.kind == "except" and h.s != "":
+                # (an except clause's as name, which CPython unbinds after the handler: where the
+                # imports bind it, `except ImportError as json` would keep the module bound)
+                names[h.s] = True
+        imported: dict[str, bool] = {}
+        binds([d for d in self.sitetry[i].kids[0].kids if d.kind == "import"], imported, True)
+        m = self.sitem[i]
+        for x in names:
+            if (x.startswith("__") and x.endswith("__") and x != "__version__") or x in PYBUILTINS or x in imported or (self.sitetop[i] == 1 and m.kinds.get(x, "v") != "v"):
+                return False
+        return True
 
     def failing(self, t: Mod, m: Mod) -> str:
         # what keeps an optional import in module m of module t, whose code raises ImportError at its
@@ -2993,6 +4315,16 @@ class Loader:
                 self.bind(m, a.s, "x:" + msg, infn, line)
                 continue
             src = self.find(path, line)
+            lost = self.fails_missing(path) if not (a.s == "" and len(a.kids) > 2) else None
+            if lost is not None and infn:
+                # (in a function: an error only where the function is compiled, as for a module
+                # that is not found itself)
+                msg = f"module '{lost.missing}' is not supported: it is not a builtin module and there is no {lost.missing[lost.missing.rfind('.') + 1 :]}.py on the module path (module '{lost.name}' imports it)"
+                out.append(mk("badimport", msg, line, []))
+                self.bind(m, a.s, "x:" + msg, infn, line)
+                continue
+            if lost is not None:
+                self.required(path)
             self.chain(path, inits)
             if a.s == "":
                 # an import that fails in an optional import (optional()): its packages' code runs (and
@@ -3264,6 +4596,7 @@ class Loader:
             if self.modpath(sub) == "":
                 fail(f"'{x}' from '{src.name}' is not supported: no definition or submodule was found on the module path", line)
             self.find(sub, line)
+            self.required(sub)
             inits.kids.append(mk("str", sub, line, []))
             self.bind(m, name, "m:" + sub, infn, line)
         elif k == "":
@@ -3305,8 +4638,13 @@ class Loader:
 
     # ---- qualification of names
     def kind(self, m: Mod, s: str) -> str:
-        # what s is bound to in m, where an import in the function being qualified comes first
-        return self.fk[s] if s in self.fk else m.kinds.get(s, "")
+        # what s is bound to in m, where an import in the function being qualified comes first; in
+        # an annotation, also what an import that only if TYPE_CHECKING: runs binds (type_only())
+        if s in self.fk:
+            return self.fk[s]
+        if s in m.kinds or not self.inann:
+            return m.kinds.get(s, "")
+        return m.tkinds.get(s, "")
 
     def qname(self, m: Mod, s: str, loc: dict[str, bool]) -> str:
         if s in loc or "$" in s:
@@ -3352,6 +4690,11 @@ class Loader:
         if n.s == "__doc__" and "__doc__" not in t.kinds:
             self.moddoc(n, t)
             return ""
+        if n.s == "__file__" and "__file__" not in t.kinds and t.path != "":
+            n.kind = "str"  # (module t's source file: see qexpr)
+            n.s = host_text(os.path.abspath(t.path))
+            n.kids = []
+            return ""
         k = t.kinds.get(n.s, "")
         key = f"{base}  {n.s}"
         if key in self.fragile:
@@ -3388,6 +4731,13 @@ class Loader:
                     fail(f"module '{m.name if m.name != '' else self.ext}' binds __name__, which is not supported in an imported module", n.line)
                 n.kind = "str"
                 n.s = m.name if m.name != "" else self.ext
+                return
+            if k == "name" and n.s == "__file__" and n.s not in loc and n.s not in self.qren and n.s not in self.sigtps and n.s not in m.rebound and self.kind(m, n.s) == "" and m.path != "":
+                # (its source file, as CPython names it: an absolute path, which an executable
+                # built ahead of time keeps from where it was built; not a type parameter of that
+                # name, which a generic def's signature and body, and a generic class, may read)
+                n.kind = "str"
+                n.s = host_text(os.path.abspath(m.path))
                 return
             if k == "name" and n.s == "__debug__":
                 n.kind = "True"  # (CPython runs without -O; nothing can bind __debug__)
@@ -3515,22 +4865,60 @@ class Loader:
             return k[2:]
         return base + "." + n.s if k == "" and base + "." + n.s in self.mods else ""
 
-    def qann(self, m: Mod, n: Node, loc: dict[str, bool]) -> None:
+    def qann(self, m: Mod, n: Node, loc: dict[str, bool], late: bool) -> None:
         # an annotation; a string one (a forward reference), also inside list["Node"], is parsed
-        # to qualify the names in it
+        # to qualify the names in it. Its names may also be what if TYPE_CHECKING: imports bind
+        # (kind()) inside strings, and outside them where CPython never evaluates it or deftime()
+        # rejects what it evaluates that reads them (late)
+        was = self.inann
+        self.inann = late
+        self.qann_names(m, n, loc)
+        self.inann = was
+
+    def qann_names(self, m: Mod, n: Node, loc: dict[str, bool]) -> None:
+        was = self.inann
         if n.kind == "str":
             e = Parser(Lexer(n.s, n.line).run()).test()
             self.quoted_types(e)
             n.kind = e.kind
             n.s = e.s
             n.kids = e.kids
-        if n.kind == "index" or n.kind == "tuple" or (n.kind == "binop" and n.s == "|"):
+            self.inann = True
+        if n.kind == "index" and self.literal_base(m, n.kids[0], loc):
+            # Literal["r", "w"]: its arguments are values, and a string no forward reference; a
+            # Literal[...] among them names typing's Literal as this one does
+            self.qann_names(m, n.kids[0], loc)
+            for x in n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]:
+                if x.kind == "index" and self.literal_base(m, x.kids[0], loc):
+                    self.qann_names(m, x, loc)
+        elif n.kind == "index" or n.kind == "tuple" or (n.kind == "binop" and n.s == "|"):
             for k in n.kids:
-                self.qann(m, k, loc)
+                self.qann_names(m, k, loc)
         else:
             self.qexpr(m, n, loc)
             if n.chk and n.kind == "badattr" and " has no attribute " in n.s:
                 fail(n.s, n.line)  # (an evaluated annotation: see Loader.reads)
+        self.inann = was
+
+    def deferred(self, m: Mod) -> bool:
+        # does module m import annotations from __future__: its annotations are never evaluated
+        for k in m.kinds.values():
+            if k == "b:__future__.annotations":
+                return True
+        return False
+
+    def literal_base(self, m: Mod, b: Node, loc: dict[str, bool]) -> bool:
+        # does b, the name an annotation subscripts, name typing's Literal (or typing_extensions'):
+        # as the module's import binds it, or, where the module's annotations are never evaluated
+        # (from __future__ import annotations), as a name nothing binds spells it, which is how an
+        # import under if TYPE_CHECKING: leaves it (Gen.typing_name reads it so too)
+        if b.kind == "name" and b.s not in loc:
+            k = self.kind(m, b.s)
+            return k == "b:typing.Literal" or k == "b:typing_extensions.Literal" or (k == "" and b.s == "Literal" and self.deferred(m))
+        if b.kind == "attr" and b.s == "Literal" and b.kids[0].kind == "name" and b.kids[0].s not in loc:
+            k = self.kind(m, b.kids[0].s)
+            return k == "b:typing" or k == "b:typing_extensions"
+        return False
 
     def quoted_types(self, n: Node) -> None:
         # A private type parameter's source spelling still names it in a forward annotation.
@@ -3548,6 +4936,66 @@ class Loader:
         inf = x in self.fk
         key = f"{m.name} {self.fkey if inf else ''} {x}"
         return f"{self.fragile[key]} {x} {'L' if inf else 'G'}" if key in self.fragile else ""
+
+    def identity_decos(self, m: Mod, st: Node, loc: dict[str, bool]) -> None:
+        # class statement st of m without the decorators that CPython applies to the class itself
+        # as the identity (IDENTITY_DECOS), innermost first: the first other decorator but
+        # @dataclass (which returns the class it takes) ends them, since what it returns, which
+        # those above it take, may be no class (@final above @object.__new__ sets an object's
+        # __final__). CPython still reads their names first, outermost first: st.mchk keeps the
+        # checks of those an import binds (fragile_chk), which Gen runs where the class
+        # statement does (modchk)
+        kept = [st.kids[0]]
+        checks: list[str] = []
+        for i in range(1, len(st.kids)):
+            d = st.kids[i]
+            if self.identity_deco(m, d, loc):
+                chk = self.fragile_chk(m, d.s[: d.s.find(".")] if "." in d.s else d.s, loc)
+                if chk != "":
+                    checks.insert(0, chk)
+                if self.deco_target(m, d, loc) == "typing.final":
+                    m.finals.append(st.s)  # (whose __final__ CPython sets: Gen checks that none binds one)
+            elif self.deco_target(m, d, loc) == "dataclasses.dataclass":
+                kept.append(d)  # (@dataclass returns the class it takes, which @final above it takes)
+            else:
+                kept.extend(st.kids[i:])
+                break
+        st.kids = kept
+        st.mchk = ";".join(checks)
+
+    def identity_deco(self, m: Mod, d: Node, loc: dict[str, bool]) -> bool:
+        # is decorator d, of a class statement of m, an identity decorator (identity_decos): the
+        # name an import binds to typing's final or to lib/'s mypy_extensions trait (not a
+        # module of the program's of that name), or typing.final through typing's module, or a
+        # call of mypy_extensions' mypyc_attr whose arguments are constants (CPython evaluates
+        # them, then applies the identity it returns)
+        q = self.deco_target(m, d, loc)
+        if q not in IDENTITY_DECOS:
+            return False
+        if "$" in q and (q[: q.find("$")] not in self.mods or not self.in_lib(self.mods[q[: q.find("$")]].path)):
+            return False
+        if IDENTITY_DECOS[q] == "":
+            return len(d.kids) == 0
+        if len(d.kids) != 1 or d.kids[0].kind != "call":
+            return False
+        for a in d.kids[0].kids[1:]:
+            v = a.kids[0] if a.kind == "kw" else a
+            if v.kind not in ["int", "float", "str", "bytes", "None", "True", "False"]:
+                return False
+        return True
+
+    def deco_target(self, m: Mod, d: Node, loc: dict[str, bool]) -> str:
+        # what decorator d of m's code names through an import: a builtin module's name
+        # (typing.final, dataclasses.dataclass) or a module's function (mypy_extensions$trait);
+        # "" for anything else (a local, a module's attribute, an expression)
+        if d.kind != "deco" or "?" in d.s:
+            return ""
+        root = d.s[: d.s.find(".")] if "." in d.s else d.s
+        if root in loc:
+            return ""
+        k = self.kind(m, root)
+        rest = d.s[len(root) :]
+        return k[2:] + rest if k.startswith("b:") else k[2:] if k.startswith("a:") and rest == "" else ""
 
     def qdeco(self, m: Mod, d: Node, loc: dict[str, bool], fn: bool = False) -> None:
         # a decorator: the first name of its dotted name (unless it surely names a builtin
@@ -3611,10 +5059,16 @@ class Loader:
                 for d in st.kids[3:]:
                     if d.s != "async":
                         self.qdeco(m, d, loc, not cls)
+                # (a def in a function: CPython evaluates its annotations where the function runs
+                # it, which deftime() does not check)
+                late = m.lazyann or not self.qdef
+                outertps = self.sigtps
+                self.sigtps = st.kids[2].s.split()
                 for p in st.kids[0].kids:
-                    self.qann(m, p.kids[0], loc)
+                    self.qann(m, p.kids[0], loc, late)
                     self.qexpr(m, p.kids[1], loc)
-                self.qann(m, st.kids[1], loc)
+                self.qann(m, st.kids[1], loc, late)
+                self.sigtps = outertps
                 # (a def in a function sees that function's names too: those it does not bind itself
                 # are the enclosing function's, which a closure reads)
                 own: dict[str, bool] = {}
@@ -3651,9 +5105,9 @@ class Loader:
                         del inner[nm]  # (this import hides an enclosing function's variable)
                 for nm in self.unsure.get(str(st.line), {}):
                     k = imports.get(nm, "")
-                    if k.startswith("m:") or k.startswith("a:") or k.startswith("b:"):
-                        # (a function's import of a Python module binds a local, which CPython reads
-                        # unbound before it runs)
+                    if k.startswith("m:") or k.startswith("a:") or k.startswith("b:") or k[2:] in self.newtypes:
+                        # (a function's import of a Python module, or of a NewType, binds a local,
+                        # which CPython reads unbound before it runs)
                         st.kids[2].kids.insert(0, mk("badimport", f"'{nm}' is read in {st.s}() where Pystachy cannot tell that the import in it that binds '{nm}' has run (where it has not, CPython raises UnboundLocalError): not supported", st.line, []))
                         break
                 for nm in imports:
@@ -3713,6 +5167,7 @@ class Loader:
             elif k == "class":
                 # (a class body's own names, in loc once bound, stay unqualified where it reads them)
                 st.s = self.qname(m, st.s, loc)
+                self.identity_decos(m, st, loc)
                 for d in st.kids[1:]:
                     self.qdeco(m, d, loc)
                 # (class scopes do not nest; a class body's __doc__ is the class's docstring, which
@@ -3733,7 +5188,7 @@ class Loader:
                 collect([st], loc)
             elif cls and k == "annassign" and st.kids[0].kind == "name":
                 # a field: the name is the class's, the annotation and default value the module's
-                self.qann(m, st.kids[1], loc)
+                self.qann(m, st.kids[1], loc, m.lazyann or not self.qdef)
                 for kid in st.kids[2:]:
                     self.qexpr(m, kid, loc)
                 if len(st.kids) == 3:
@@ -3757,16 +5212,19 @@ class Loader:
                     st.kids = [st.kids[0], v]
                     self.qstmts(m, [st], loc, cls)
             elif k == "annassign":
+                # (CPython never evaluates a function's; deftime() checks module code's)
                 self.qstore(m, st.kids[0], loc)
-                self.qann(m, st.kids[1], loc)
+                self.qann(m, st.kids[1], loc, True)
                 for kid in st.kids[2:]:
                     self.qexpr(m, kid, loc)
             elif k == "assign":
                 alias = not self.qdef and not cls and self.is_alias(m, st)
                 for kid in st.kids[:-1]:
                     self.qstore(m, kid, loc)
-                if alias:
-                    self.qann(m, st.kids[-1], loc)  # (a type alias's value, where strings are forward references)
+                if alias and st.kids[-1].kind == "call":
+                    self.qann(m, st.kids[-1].kids[2], loc, False)  # (N = NewType("N", T): its type)
+                elif alias:
+                    self.qann(m, st.kids[-1], loc, False)  # (a type alias's value, where strings are forward references)
                 else:
                     self.qexpr(m, st.kids[-1], loc)
             elif k == "typealias" and len(st.kids) > 0:
@@ -3774,7 +5232,7 @@ class Loader:
                 tps = dict(loc)
                 for nm in st.kids[0].s.split():
                     tps[nm] = True
-                self.qann(m, st.kids[0].kids[0], tps)
+                self.qann(m, st.kids[0].kids[0], tps, True)  # (CPython evaluates it lazily)
                 st.s = self.qname(m, st.s, loc)
             elif k == "import" or k == "global":
                 for a in st.kids:

@@ -1,0 +1,9 @@
+{Card(1): 'one', Card(3): 'three', None: 'none'}
+{Card(1): 'one',
+ Card(3): 'three',
+ None: 'none'}
+{Card(1): 'one', Card(3): 'three', None: 'none'}
+{None: 0, <Suit.SPADES: 2>: 2}
+{None: 0,
+ <Suit.SPADES: 2>: 2}
+[exit 0]

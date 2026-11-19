@@ -9,7 +9,8 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.pystachy_compiler.gen import Gen
-from src.pystachy_compiler.ir import Blk, ClassInfo, FnInfo, IFn, Ins, Val, Values
+from src.pystachy_compiler.ir import Blk, IFn, Ins, Val, Values
+from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.loader import Loader
 from src.pystachy_compiler.syntax import Node
 

@@ -249,9 +249,10 @@ the original `88a66bec` feature head rejects the enabled case.
 
 ## Validation boundaries
 
-This is a draft prototype. Full release verification, all GC configurations,
-macOS and MCJIT debug registration, and the complete runtime-cache failure matrix
-have not been run. The normal required CI matrix still applies before merging.
+This prototype merged through [#1108](https://github.com/den-run-ai/pystachy/pull/1108)
+and shipped in v0.3.0-alpha.2. Its local validation did not run full release
+verification, all GC configurations, macOS and MCJIT debug registration, or the
+complete runtime-cache failure matrix.
 
 The available `perf record` could not record inside this execution environment:
 it detected inconsistent process/proc namespaces and produced an empty data

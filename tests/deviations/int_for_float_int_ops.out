@@ -1,0 +1,4 @@
+caught: negative exponent for int ** int
+caught: integer result does not fit in 64 bits
+0.001 1.2089258196146292e+24
+[exit 0]

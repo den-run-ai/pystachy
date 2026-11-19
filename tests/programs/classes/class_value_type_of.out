@@ -1,0 +1,11 @@
+<class '__main__.Button'> True Button made True
+Slider/Slider Slider/Slider A+ Slider/Slider S True True <class '__main__.Slider'>
+Button/Button Button/Button b+ Button/Button w True True <class '__main__.Button'>
+Widget/Widget Widget/Widget plain+ Widget/Widget w True True <class '__main__.Widget'>
+Widget <class '__main__.Widget'> | Button <class '__main__.Button'> | Slider <class '__main__.Slider'>
+Widget <class '__main__.Widget'> True False | Slider <class '__main__.Slider'> False True | NoneType <class 'NoneType'> False False
+None Slider True
+Button AttributeError: 'NoneType' object has no attribute '__name__' TypeError: NoneType takes no arguments made 7
+True False
+{'Slider': ['A', 'A+'], 'Button': ['b', 'b+'], 'Widget': ['plain', 'plain+']}
+[exit 0]

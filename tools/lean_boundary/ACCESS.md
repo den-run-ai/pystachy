@@ -46,8 +46,8 @@ by address, class and index. Each can change arbitrarily where the program may w
 list's length to at most 2^62 items, which no memory holds.
 
 Facts relate values: equality, signed and unsigned order, a lower and an upper bound by a
-constant, a difference bound `a + k ≤ b`, `0 ≤ i < n`, an exact offset, inequality to a
-constant, a list's length, a dict lookup's result or live entry, a field's value, and a fact
+constant, a difference bound `a + k ≤ b`, `0 ≤ i < n`, an exact offset, an exact sum of two
+values, inequality to a constant, a list's length, a dict lookup's result or live entry, a field's value, and a fact
 that marks a point no execution reaches. The certificate is an
 untrusted list of facts at each point. Each fact must survive the node before it or follow from
 the facts there, and from the facts listed before it, by one of fixed rules, each proved sound:
@@ -55,8 +55,10 @@ for example, an unsigned `i < n` of a nonnegative `n` gives `0 ≤ i < n`, and `
 hold for one. A checked addition gives an offset only on the path where its sum fits; a wrapping
 one only where the facts show it fits, as for a constant added to an exact offset of a value
 that brings it no higher than that value (`n - 3 + 2`). A write to a field of a class keeps the
-values of the class's other fields, of any object, and no other field's: a base and a derived
-class may view one object differently.
+values of the class's other fields, of any object, and the fields of the classes it lists as
+unrelated (by the classes table, no object is both); any other field may change: a base and a derived class may view
+one object differently. The checker refuses a write that lists its own class, and
+`accepted_write_progress` shows that an accepted program's writes can always happen.
 
 Difference bounds and upper bounds prove `listguard`'s copies of range loops. A test before the
 loop, `stop <= len(xs) - c`, gives `stop + c ≤ n` for the length `n`; the loop's own test `i <
@@ -64,20 +66,31 @@ stop` and the index `j = i + c` chain to `j + 1 ≤ n`, which with `j ≥ 0` is 
 loop's test, `stop <= len(xs) + 1`, adds to a length, which with at most 2^62 items cannot wrap.
 Where the stop is a constant, the loop's test bounds `i` above, the test before it bounds the
 length below, and the first must lie under the second.
+Sums prove copies whose index adds a base `b` that no iteration changes (`data[bi + d]`). The
+tests before the loop give `b ≥ -start - c` and, through `t = stop + b`, a checked sum, `t + c ≤ n`;
+the copy's `j = b + i` is a plain sum, which gives the fact `j = b + i` only where `i < stop`,
+`t = stop + b` and lower bounds of `i` and `b` show it fits. Adding `b` to both sides of `i < stop`
+gives `j < t`, which chains to `j + c < n` as above, and the lower bounds add up to `j + c ≥ 0`.
+With a constant stop `k'`, the test computes `t = b + k'`, an offset, and the loop's test bounds
+`i` by `k' - 1`, which gives `j < t` the same way.
 Certificate inference retains the finite positive lower bounds requested by initial
 constants and negative offsets. Thus a loop starting at 1 and advancing by 2 keeps
 `i >= 1` at the join of its initial and later iterations. Each proposed weakening
 is checked by the existing Lean rule; an invalid start or descending induction
 still fails the access proof.
 
-The build checks 40 examples by kernel reduction: 13 shapes the compiler emits and 27
+The build checks 51 examples by kernel reduction: 16 shapes the compiler emits and 35
 corruptions that must fail: a signed test of a possibly negative index, a list write between a
 test and its read or in a range loop's body, a missing or weaker unpacking check, a starred
 tail's read at the length or past an offset that may wrap, a lookup's missing-key branch or an
 iteration's end, a dict write before an entry's reuse, an entry of one dict used with another, a
-reload across a write of another class's field or of the same field of any object, an unguarded
-join, facts assumed at entry or around a loop, and a guarded range loop's read past the test's
-offset, after a list write, or where the test failed. `Audit.lean` checks the theorem's axioms as
+reload across a write of another class's field or of the same field of any object, an unrelated
+write that lists a class other than the reloaded one or its own class, an unguarded join, facts
+assumed at entry or around a loop, a guarded range loop's read past the test's offset, after a
+list write, or where the test failed, and a base copy without its test of the base, with an
+unchecked sum of the stop and the base, with a loop that runs to its stop inclusive or stores its
+base, reached where the length test failed, or adding to the base less than the loop's constant
+stop. `Audit.lean` checks the theorem's axioms as
 for the payload checker.
 
 ## How IR reaches the model
@@ -86,20 +99,29 @@ The adapter reads the typed-after snapshot and emits a node for each operation:
 
 - Private slots, and module globals and class variables that the function only loads and stores
   directly, are values; a load copies one and a store assigns it. A global may change wherever
-  an operation may write globals. An object field's load and store read and write its cell,
-  named by the object's register and the field's class and index; a store of a constant or an
-  unknown value writes that field alone too. A field address's operands, like a test's, are SSA
+  an operation may write globals. A store to an escaped slot of the function changes nothing
+  modeled: the slot is its own stack memory, and its loads are unknown. An object field's load
+  and store read and write its cell, named by the object's register and the field's class and
+  index; a store of a constant or an unknown value writes that field alone too. A field store
+  lists as unrelated the function's other field classes that the snapshot's `classes` table
+  (each class's base and fieldless secondary base, as `Gen.derives` follows them, and the classes
+  it overlaps through a common subclass) relates to it in no way; a class the table lacks is
+  related to every class. A field address's operands, like a test's, are SSA
   values, unchanged wherever its result is used.
-- Native list, dict and set references loaded repeatedly from a recognized closure cell use
-  the same heap model. A cell pointer must come from a constant pointer slot of an `env`-typed
+- Values of one 64-bit word (not a promoting int or a narrower scalar) loaded repeatedly from a
+  recognized closure cell use the same heap model, as do typed loads and stores of the first
+  word of a runtime allocation the function makes itself: the cell of a variable its closures
+  take. A field write of a class of the program keeps closure-cell and box cells (its object is
+  neither), and a dynamic or union box's payload read (word 1 of the box) is a cell of the box;
+  `slot.unpack` of a word other than a bool is a copy. A cell pointer must come from a constant pointer slot of an `env`-typed
   environment. Writes through the cell or any potentially aliasing address, object writes,
   callbacks and generator suspension invalidate its content. Arbitrary pointers and different
   cells cannot borrow its equality facts. This relies on the closure environment's cell ABI.
 - `list.len`, and a word load at the address of a register the IR types as a native list (a
   `List` is `{len, cap, a}`), read a length. `num.cmp` and `int.ucmp` of ints, and `ptr.cmp`,
-  become tests of their branch or `check`. `scalar.bin` adds a constant; an `ovf` whose flag
-  only its block's terminator tests splits its block's rest into the path where the sum fits and
-  the path where it overflows.
+  become tests of their branch or `check`. `scalar.bin` adds a constant or two values; an `ovf`
+  of a constant or of two values whose flag only its block's terminator tests splits its block's
+  rest into the path where the sum fits and the path where it overflows.
 - `unpack_check(n, k)` continues only where `n == k`, and `unpack_ex_check(n, k)` only where
   `n >= k` (runtime.c raises `ValueError` otherwise). Lookups and iteration steps (`dict.find`,
   `dict.int_find_any`, `dict.next`, `set.next` and their kin, and a dict comparison's lookups,
@@ -121,7 +143,11 @@ The adapter reads the typed-after snapshot and emits a node for each operation:
   summary from the snapshot, strengthened by an independent scan of every visible function
   body and transitive direct callees; anything for an indirect call, an `init` or a generator resumption.
   A list write or user code may change every list's length, except that `list.slice` writes only
-  the new list it returns; a dict write every dict's entries; an object write every field.
+  the new list it returns; a dict write every dict's entries; an object write every field. The
+  body scan does not count a store to the function's own stack slots, to memory it allocated
+  itself (an `alloc.fixed` object's fields, a fixed tuple's words, a literal-sized runtime
+  allocation's words within the n + 1 bytes `pys_alloc(n)` provides) or through `%idret` where every direct call in the
+  snapshot passes a slot of its caller there: none changes state its callers observed before.
 - Edges are those of `check_lean_boundary.py`: terminator targets, an invoke's unwind edge, each
   `check`'s error block and, from every point of a block a `try` statement covers, its landing
   block. An operation's effects precede the exception edge from it.
@@ -155,8 +181,8 @@ qualification after the corrections is recorded in
 [#1241](https://github.com/den-run-ai/pystachy/pull/1241). The exception in both sweeps is
 `fib_memo`'s `fib` in [`closures.py`](../../tests/programs/language/closures.py): it loads its
 captured dict from the closure's cell for `k in memo` and again for `memo[k]`, and the adapter
-does not track cells, so it cannot tell that the second load gives the dict whose entry the
-first lookup found. The current adapter recognizes those closure cells and proves the
+of those sweeps did not track cells, so it could not tell that the second load gives the dict
+whose entry the first lookup found. The current adapter recognizes those closure cells and proves the
 previously unproved access; a focused replay of `closures.py` proves all eight inventoried
 accesses. The whole-program numbers above remain historical until that sweep is rerun.
 
@@ -187,8 +213,17 @@ Not proved by this version:
 - Closure environments containing pointers to mutable cells in their constant pointer slots.
 - Fields of one class at different indices being distinct memory, for any objects; fields of
   different classes are treated as possibly the same memory.
-- Null checks the `nullcheck` pass removes are not yet normalized: the model's `deref` node
-  and its rules are in place for them.
+- Null checks the `nullcheck` pass removes are normalized from the pass's input function, each
+  as a `deref` of the pointer its check compared with null, by `check_lean_guards.py`
+  ([GUARDS.md](GUARDS.md#removed-checks-through-memory)); list reads and dict entries are no
+  obligations there. That proves the check redundant in the input graph, not the rest of the
+  pass's rewrite.
+- The classes table, and typed memory: objects of classes neither of which derives from the
+  other, and that share no subclass through a secondary base (the table's overlaps), are
+  distinct, as the compiler's `Gen.disjoint` also assumes. A tagged class's objects begin with
+  the 8-byte class tag.
+- The identity-return ABI: `%idret` is the buffer the caller passes last; the scan checks that
+  each direct call passes one of its slots there, not what runtime or native callers pass.
 - Source-language or LLVM equivalence, GC, allocation and aliasing beyond the rules above,
   termination or performance.
 

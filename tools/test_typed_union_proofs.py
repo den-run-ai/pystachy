@@ -12,7 +12,8 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler import ircheck, union_proof
-from src.pystachy_compiler.ir import Blk, ClassInfo, FnInfo, IFn, Ins, NOLABELS, Val, slot_register
+from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, Val, slot_register
+from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.syntax import Node
 from src.pystachy_compiler.specs import IROPS
 from src.pystachy_compiler.union_state import UnionState
@@ -826,19 +827,43 @@ class UnionProofTests(unittest.TestCase):
             self.assertEqual(instruction.b, values)
         self.assertEqual(NOLABELS, [])
 
-    def test_cached_graph_copies_before_accumulating_edges_and_check_failure(self):
-        for extra, check_labels in [(False, []), (False, ["left", "left"]),
-                                    (True, []), (True, ["left", "left"])]:
+    def test_cached_graph_copies_before_adding_a_check_failure_edge(self):
+        c = Case("accumulated_edges", [U])
+        c.op("union.tag", "int", a=[("%a0", U)])
+        c.op("check", s="message", a=[("true", "bool")], b=["right"])
+        c.b.code[-1].x = "cold-key"
+        c.fn.cold["cold-key"] = "left"
+        for label in ["left", "right"]:
+            c.block(label)
+            c.ret()
+        before = [(i, i.b, list(i.b)) for b in c.fn.blocks for i in b.code]
+
+        def observe(fn, tags, at, successors, types, before=before):
+            self.assertEqual(successors[0], ["right", "left"])
+            for _, labels, _ in before:
+                self.assertIsNot(successors[0], labels)
+            self.assertIsNot(successors[0], NOLABELS)
+            return simple_union_proof(fn, tags, at, successors, types)
+
+        with patch.object(ircheck, "simple_union_proof", side_effect=observe) as proof:
+            c.g.verify(c.fn, False)
+        self.assertEqual(proof.call_count, 1)
+        for instruction, labels, values in before:
+            self.assertIs(instruction.b, labels)
+            self.assertEqual(instruction.b, values)
+        self.assertEqual(NOLABELS, [])
+
+    def test_labels_outside_the_operation_table_are_rejected_unchanged(self):
+        # The table gives a check one label and an ovf none: lowering reads a check's first
+        # label and no other. The verifier once added such labels to a block's successors.
+        for extra, check_labels, expected in [(False, [], "check with 0 labels"),
+                                              (False, ["left", "left"], "check with 2 labels"),
+                                              (True, ["left"], "ovf with 2 labels")]:
             with self.subTest(extra=extra, check_labels=check_labels):
                 c = Case("accumulated_edges", [U])
                 c.op("union.tag", "int", a=[("%a0", U)])
                 if extra:
-                    # Preserve unusual nonterminal metadata that the structural
-                    # verifier already includes, even when instructions share it.
                     c.op("ovf", "int", "+", [("0", "int"), ("1", "int")], ["right", "left"])
-                    shared = c.b.code[-1].b
-                    c.op("ovf", "int", "+", [("0", "int"), ("1", "int")])
-                    c.b.code[-1].b = shared
                 c.op("check", s="message", a=[("true", "bool")], b=check_labels)
                 c.b.code[-1].x = "cold-key"
                 c.fn.cold["cold-key"] = "left"
@@ -846,18 +871,10 @@ class UnionProofTests(unittest.TestCase):
                     c.block(label)
                     c.ret()
                 before = [(i, i.b, list(i.b)) for b in c.fn.blocks for i in b.code]
-                expected = (["right", "left", "right", "left"] if extra else []) + check_labels + ["left"]
-
-                def observe(fn, tags, at, successors, types, expected=expected, before=before):
-                    self.assertEqual(successors[0], expected)
-                    for _, labels, _ in before:
-                        self.assertIsNot(successors[0], labels)
-                    self.assertIsNot(successors[0], NOLABELS)
-                    return simple_union_proof(fn, tags, at, successors, types)
-
-                with patch.object(ircheck, "simple_union_proof", side_effect=observe) as proof:
+                error = StringIO()
+                with redirect_stderr(error), self.assertRaises(SystemExit):
                     c.g.verify(c.fn, False)
-                self.assertEqual(proof.call_count, 1)
+                self.assertIn(expected + ", where the operation table has", error.getvalue())
                 for instruction, labels, values in before:
                     self.assertIs(instruction.b, labels)
                     self.assertEqual(instruction.b, values)
@@ -868,9 +885,11 @@ class UnionProofTests(unittest.TestCase):
             with self.subTest(invalid_metadata=invalid_metadata):
                 c = Case("invalid_edges", [U])
                 c.op("union.tag", "int", a=[("%a0", U)], b=["missing"] if invalid_metadata else [])
-                c.op("check", s="message", a=[("true", "bool")])
+                c.op("check", s="message", a=[("true", "bool")], b=["next"])
                 c.b.code[-1].x = "cold-key"
-                before = [(i.b, list(i.b)) for i in c.b.code]
+                c.block("next")
+                c.ret()
+                before = [(i.b, list(i.b)) for b in c.fn.blocks for i in b.code]
                 error = StringIO()
                 with redirect_stderr(error), self.assertRaises(SystemExit):
                     c.g.verify(c.fn, False)
@@ -975,6 +994,197 @@ class UnionProofTests(unittest.TestCase):
                         else:
                             with self.assertRaises(SystemExit):
                                 c.g.verify(c.fn, False)
+
+    def test_tuple_slot_union_reads_take_the_declared_members(self):
+        # A tuple[X, ...] (or a fixed tuple of X items) read through an indexed machine slot
+        # holds a box of X, whose members an exhaustive narrowing proves, else branch too. A
+        # tuple without one union item type, an unguarded read, or a narrowing that leaves two
+        # members (W's) proves nothing. (X has no int member: an unseeded slot's int domain then
+        # proves no branch by coinciding with one.)
+        x = "union[float,str]"
+        for owner in ("vtuple[" + x + "]", "tuple[" + x + "," + x + "]", "opt[vtuple[" + x + "]]", "tuple[" + x + ",int]", "vtuple[" + W + "]"):
+            for guarded in (True, False):
+                with self.subTest(owner=owner, guarded=guarded):
+                    item = W if W in owner else x
+                    c = Case("tuple_slot_union", [owner, "int"])
+                    # (gen_seq_item's address: a runtime-length tuple's item past its length word and
+                    # identity companion pointer, runtime.c's VTuple)
+                    index = c.op("scalar.bin", "int", "add", [("%a1", "int"), ("2", "int")]) if "vtuple[" in owner else "%a1"
+                    address = c.op("mach.addr", "%ptr", "int", [("%a0", "%ptr"), (index, "int")])
+                    bits = c.op("mach.load", "int", a=[(address, "%ptr")])
+                    value = c.op("slot.unpack", item, a=[(bits, "%slot")])
+                    if guarded:
+                        c.guard(value=value, member="float", typ=item)
+                        c.block("hit")
+                        c.payload(value=value, member="float", typ=item)
+                        c.ret()
+                        c.block("miss")
+                        c.payload(value=value, member="str", typ=item)
+                        c.ret()
+                    else:
+                        c.payload(value=value, member="str", typ=item)
+                        c.ret()
+                    valid = guarded and owner in ("vtuple[" + x + "]", "tuple[" + x + "," + x + "]", "opt[vtuple[" + x + "]]")
+                    with redirect_stderr(StringIO()):
+                        if valid:
+                            c.g.verify(c.fn, False)
+                        else:
+                            with self.assertRaises(SystemExit):
+                                c.g.verify(c.fn, False)
+
+    def test_tuple_slot_union_reads_need_item_addresses(self):
+        # Only an item's slot holds a box of the items' union: not a runtime-length tuple's length
+        # word or identity companion pointer (index 0 or 1, or an index not past both as
+        # gen_seq_item's index + 2 is), nor bytes, nor a literal index past a fixed tuple's items.
+        # The first of each group is the valid control.
+        x = "union[float,str]"
+        vt, ft = "vtuple[" + x + "]", "tuple[" + x + "," + x + "]"
+        cases = [(vt, "int", ["%a1", "2"], True), (vt, "int", None, False), (vt, "int", ["0"], False), (vt, "int", ["1"], False),
+                 (vt, "int", ["-1", "2"], False), (vt, "int", ["%a1", "1"], False), (vt, "%byte", ["%a1", "2"], False),
+                 (ft, "int", ["1"], True), (ft, "int", ["2"], False), (ft, "%byte", ["1"], False), (ft, "int", ["-1"], False)]
+        for owner, stride, index, valid in cases:
+            with self.subTest(owner=owner, stride=stride, index=index):
+                c = Case("tuple_item_address", [owner, "int"])
+                if index is None:
+                    at = "%a1"
+                elif len(index) == 2:
+                    at = c.op("scalar.bin", "int", "add", [(index[0], "int"), (index[1], "int")])
+                else:
+                    at = index[0]
+                address = c.op("mach.addr", "%ptr", stride, [("%a0", "%ptr"), (at, "int")])
+                bits = c.op("mach.load", "int", a=[(address, "%ptr")])
+                value = c.op("slot.unpack", x, a=[(bits, "%slot")])
+                c.guard(value=value, member="float", typ=x)
+                c.block("hit")
+                c.payload(value=value, member="float", typ=x)
+                c.ret()
+                c.block("miss")
+                c.payload(value=value, member="str", typ=x)
+                c.ret()
+                with redirect_stderr(StringIO()):
+                    if valid:
+                        c.g.verify(c.fn, False)
+                    else:
+                        with self.assertRaises(SystemExit):
+                            c.g.verify(c.fn, False)
+
+    def test_runtime_tuple_item_reads_take_the_declared_members(self):
+        # pys_vtuple_get's item of a tuple[X, ...] (xs[i]) holds a box of X, whose members an
+        # exhaustive narrowing proves, else branch too; not that of a tuple of W items narrowed
+        # as X, nor an int read of another runtime function
+        x = "union[float,str]"
+        for owner, fn, valid in (("vtuple[" + x + "]", "vtuple.get", True), ("opt[vtuple[" + x + "]]", "vtuple.get", True),
+                                 ("vtuple[" + W + "]", "vtuple.get", False), ("vtuple[" + x + "]", "dyn.index_bound", False)):
+            with self.subTest(owner=owner, fn=fn):
+                c = Case("runtime_tuple_item", [owner, "int"])
+                c.g.runtime("pys_" + fn.replace(".", "_"))
+                bits = c.op("rt", "int", fn, [("%a0", "%ptr"), ("%a1", "int")])
+                item = W if W in owner else x
+                value = c.op("slot.unpack", item, a=[(bits, "%slot")])
+                c.guard(value=value, member="float", typ=item)
+                c.block("hit")
+                c.payload(value=value, member="float", typ=item)
+                c.ret()
+                c.block("miss")
+                c.payload(value=value, member="str", typ=item)
+                c.ret()
+                with redirect_stderr(StringIO()):
+                    if valid:
+                        c.g.verify(c.fn, False)
+                    else:
+                        with self.assertRaises(SystemExit):
+                            c.g.verify(c.fn, False)
+
+    def test_tuple_slot_union_reads_take_the_storage_declaration(self):
+        # A tuple loaded from storage declared tuple[W, W] holds W items, whatever the load's own
+        # annotation says (tuple[X, X], narrower): its items' float test leaves int and str, so
+        # the else branch's str payload is not proved. The control's storage is declared X's.
+        x = "union[float,str]"
+        for storage, valid in (("*tuple[" + x + "," + x + "]", True), ("*tuple[" + W + "," + W + "]", False)):
+            with self.subTest(storage=storage):
+                c = Case("tuple_slot_storage", [storage])
+                owner = c.op("mem.load", "tuple[" + x + "," + x + "]", a=[("%a0", "*tuple[" + x + "," + x + "]")])
+                address = c.op("mach.addr", "%ptr", "int", [(owner, "%ptr"), ("0", "int")])
+                bits = c.op("mach.load", "int", a=[(address, "%ptr")])
+                value = c.op("slot.unpack", x, a=[(bits, "%slot")])
+                c.guard(value=value, member="float", typ=x)
+                c.block("hit")
+                c.payload(value=value, member="float", typ=x)
+                c.ret()
+                c.block("miss")
+                c.payload(value=value, member="str", typ=x)
+                c.ret()
+                with redirect_stderr(StringIO()):
+                    if valid:
+                        c.g.verify(c.fn, False)
+                    else:
+                        with self.assertRaises(SystemExit):
+                            c.g.verify(c.fn, False)
+
+    def test_tuple_slot_union_reads_follow_transports(self):
+        # A tuple that a select, a slot.pack and slot.unpack, or a phi passes on holds the items
+        # that its operands declare, whatever the transport's own annotation says (tuple[X, X],
+        # narrower): from storage declared tuple[W, W], the float test leaves int and str, so the
+        # else branch's str payload is not proved. Each control's storage is declared X's, and
+        # None (a select's other operand) has no items to constrain.
+        x = "union[float,str]"
+        tx = "tuple[" + x + "," + x + "]"
+        for transport in ("select", "select None", "pack", "phi"):
+            for storage, valid in (("*" + tx, True), ("*tuple[" + W + "," + W + "]", False)):
+                with self.subTest(transport=transport, storage=storage):
+                    c = Case("tuple_slot_transport", [storage, "bool"])
+                    loaded = c.op("mem.load", storage[1:], a=[("%a0", storage)])
+                    if transport.startswith("select"):
+                        # (the operands' own annotations match the result's, as the IR check asks)
+                        t = "opt[" + tx + "]" if transport == "select None" else tx
+                        other = "null" if transport == "select None" else loaded
+                        owner = c.op("select", t, a=[("%a1", "bool"), (loaded, t), (other, t)])
+                    elif transport == "pack":
+                        packed = c.op("slot.pack", "%slot", a=[(loaded, tx)])
+                        owner = c.op("slot.unpack", tx, a=[(packed, "%slot")])
+                    else:
+                        c.op("cbr", a=[("%a1", "bool")], b=["left", "right"])
+                        c.block("left")
+                        c.op("br", b=["join"])
+                        c.block("right")
+                        c.op("br", b=["join"])
+                        c.block("join")
+                        owner = c.op("phi", tx, a=[(loaded, tx), (loaded, tx)], b=["left", "right"])
+                    address = c.op("mach.addr", "%ptr", "int", [(owner, "%ptr"), ("0", "int")])
+                    bits = c.op("mach.load", "int", a=[(address, "%ptr")])
+                    value = c.op("slot.unpack", x, a=[(bits, "%slot")])
+                    c.guard(value=value, member="float", typ=x)
+                    c.block("hit")
+                    c.payload(value=value, member="float", typ=x)
+                    c.ret()
+                    c.block("miss")
+                    c.payload(value=value, member="str", typ=x)
+                    c.ret()
+                    with redirect_stderr(StringIO()):
+                        if valid:
+                            c.g.verify(c.fn, False)
+                        else:
+                            with self.assertRaises(SystemExit):
+                                c.g.verify(c.fn, False)
+
+    def test_optional_runtime_tuple_length_read_is_no_tag_read(self):
+        # The length word of a tuple[T, ...] | None, read without a null test in a function that
+        # also narrows a union, is no union tag read; an optional union's machine read (its tag)
+        # still needs a nonnull proof.
+        for source in ("opt[vtuple[str]]", "opt[" + U + "]"):
+            with self.subTest(source=source):
+                c = Case("optional_length", [U, source])
+                c.guard()
+                c.block("hit")
+                c.payload()
+                c.op("mach.load", "int", a=[("%a1", "%ptr")])
+                c.finish_pair()
+                with redirect_stderr(StringIO()):
+                    if source.startswith("opt[vtuple["):
+                        c.g.verify(c.fn, False)
+                    else:
+                        with self.assertRaises(SystemExit):
+                            c.g.verify(c.fn, False)
 
     def test_numeric_parser_small_and_large_bounds_agree(self):
         numbers = ("", "0", "00", "01", "9", "10", "99999", "100000", "262143",
@@ -1301,6 +1511,53 @@ class UnionProofTests(unittest.TestCase):
                     c.g.verify(c.fn, False)
                 self.assertTrue(sizes)
                 self.assertLess(max(sizes), 16)
+
+    def test_select_between_none_and_a_fresh_box_carries_its_member(self):
+        # Gen.ubox boxes an object that may be None as select(obj is None, null, ubox(obj)): a
+        # machine pointer whose own type names no union. Its member reaches a later guarded read;
+        # a pointer of unknown provenance in its place, or a read with no None test, does not.
+        mixed = "union[Item,int]"
+        for mode, accepted, message in (("box", True, ""), ("optional-box", True, ""),
+                                        ("unknown", False, "union.payload needs tag int"),
+                                        ("wrong-member", False, "union.payload needs tag Item"),
+                                        ("unguarded", False, "union.tag needs a nonnull proof")):
+            with self.subTest(mode=mode):
+                c = Case("boxed_object_" + mode.replace("-", "_"), ["Item", "int", "bool", "%ptr"])
+                c.g.classes["Item"] = ClassInfo("Item", Node("class", "Item", 1))
+                c.g.utag("Item")
+                c.g.runtime("pys_ubox")
+                c.g.runtime("pys_ubox_opt")
+                c.op("cbr", a=[("%a2", "bool")], b=["object", "number"])
+                c.block("object")
+                bits = c.op("slot.pack", "%slot", a=[("%a0", "Item")])
+                if mode == "optional-box":
+                    box = c.op("rt", "%ptr", "ubox_opt", [(str(c.g.utags["Item"]), "int"), ("%a0", "%ptr"), ("0", "int")])
+                else:
+                    box = c.op("rt", "%ptr", "ubox", [(str(c.g.utags["Item"]), "int"), (bits, "*T")])
+                absent = c.op("ptr.cmp", "bool", "==", [("%a0", "Item"), ("null", "None")])
+                chosen = c.op("select", "%ptr", a=[(absent, "bool"), ("null", "%ptr"), ("%a3" if mode == "unknown" else box, "%ptr")])
+                c.op("br", b=["join"])
+                c.block("number")
+                number = c.op("rt", "%ptr", "ubox", [(str(c.g.utags["int"]), "int"), ("%a1", "*T")])
+                c.op("br", b=["join"])
+                c.block("join")
+                value = c.op("phi", mixed, a=[(chosen, mixed), (number, mixed)], b=["object", "number"])
+                if mode != "unguarded":
+                    none = c.op("ptr.cmp", "bool", "==", [(value, mixed), ("null", "None")])
+                    c.op("cbr", a=[(none, "bool")], b=["miss", "some"])
+                    c.block("some")
+                c.guard(value, "Item", yes="miss", no="hit", typ=mixed)
+                c.block("hit")
+                c.payload(value, "Item" if mode == "wrong-member" else "int", typ=mixed)
+                c.finish_pair()
+                errors = StringIO()
+                with redirect_stderr(errors):
+                    if accepted:
+                        c.g.verify(c.fn, False)
+                    else:
+                        with self.assertRaises(SystemExit):
+                            c.g.verify(c.fn, False)
+                        self.assertIn(message, errors.getvalue())
 
     def test_nullable_condition_survives_an_unrelated_join(self):
         for loop in (False, True):

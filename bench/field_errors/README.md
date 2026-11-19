@@ -42,9 +42,10 @@ revalidation against that new class lifecycle. This prototype is based on main
 The [2026-11-07 evidence](results/2026-11-07/) compares the verified main
 `f7103067` executable with production changes at `234dd71e` (benchmark harness
 `3ac61739`). Both native compilers were freshly bootstrapped with CPython 3.13.16
-and LLVM 18.1.3 on this Linux x86-64 host. Each input is frozen and reused by both
-compilers, with CPU affinity 0. There are five interleaved fresh-process frontend
-samples and three interleaved warm-runtime native builds per revision/input.
+and LLVM 18.1.3 on this Linux x86-64 host, whose CPU model was not recorded. Each
+input is frozen and reused by both compilers, with CPU affinity 0. There are five
+interleaved fresh-process frontend samples and three interleaved warm-runtime native
+builds per revision/input.
 Compiler preparation is excluded. Other local heavy work was scheduled separately,
 but the machine is shared; these are bounded observations, not universal speedups.
 

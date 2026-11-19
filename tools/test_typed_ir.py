@@ -13,7 +13,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.pystachy_compiler import diagnostics
 from src.pystachy_compiler.gen import Gen
-from src.pystachy_compiler.ir import ClassInfo, FnInfo, IFn, Ins, Val, Values
+from src.pystachy_compiler.ir import IFn, Ins, Val, Values
+from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.loader import Loader
 from src.pystachy_compiler.specs import FXBIT
 from src.pystachy_compiler.syntax import Node

@@ -5,9 +5,10 @@ The worklist joins tag possibilities and loses equalities/conditional implicatio
 stable. It keeps one state per block, not a product of whole-function execution paths.
 """
 from __future__ import annotations
-from src.pystachy_compiler.ir import Data, IFn, Ins, Val, slot_register
+from src.pystachy_compiler.dataflow import forward_fixpoint, live_values
+from src.pystachy_compiler.ir import Blk, Data, IFn, Ins, Val, slot_register
 from src.pystachy_compiler.specs import BIG
-from src.pystachy_compiler.union_state import UnionState, intersect_tags, union_join
+from src.pystachy_compiler.union_state import UnionState, intersect_tags, union_join, union_tags
 from src.pystachy_compiler.utils import gelem, is_gen, is_opt, is_union, targs, umembers
 
 
@@ -246,6 +247,7 @@ class UnionProof:
         self.domains: dict[str, list[str]] = {}
         self.native: dict[str, str] = {}
         self.memtypes: dict[str, str] = {}
+        self.declaredtypes: dict[str, str] = {}  # (declared(), by value)
         self.defs: dict[str, Ins] = {}
         self.blocks: dict[str, int] = {}
         self.raw: dict[str, bool] = {}
@@ -362,6 +364,25 @@ class UnionProof:
             for i in b.code:
                 if (i.op == "rt" and len(i.r) == 1) or i.op == "list.load":
                     self.native["%t" + str(i.r[0])] = self.runtime_type(i, i.t)
+                if i.op == "rt" and i.s == "vtuple.get" and len(i.r) == 1 and len(i.a) == 2:
+                    # A tuple[U, ...]'s item at an index, which pys_vtuple_get checks against its
+                    # length: a box of that union, as an item slot's (below) or a list's (list.get)
+                    owner = self.declared(i.a[0].v)
+                    owner = owner[4:-1] if is_opt(owner) else owner
+                    item = targs(owner)[0] if owner.startswith("vtuple[") else ""
+                    if is_union(item[4:-1] if is_opt(item) else item):
+                        self.typebase("U:%t" + str(i.r[0]), item)
+                if i.op == "mach.addr" and len(i.r) == 1 and len(i.a) == 2:
+                    # An item slot of a tuple whose items are all of one union type (a fixed
+                    # tuple's, or a tuple[U, ...]'s past its header) holds a box of that union:
+                    # container typing is its own contract, as for a list's items (list.get), so
+                    # an item read from the slot has its members. A length read is no union read.
+                    # (Also of a tuple that may be None, read where it is not: a field's.)
+                    owner = self.declared(i.a[0].v)
+                    owner = owner[4:-1] if is_opt(owner) else owner
+                    items = targs(owner) if owner.startswith("tuple[") or owner.startswith("vtuple[") else []
+                    if len(items) > 0 and all(x == items[0] for x in items) and is_union(items[0][4:-1] if is_opt(items[0]) else items[0]) and self.item_slot(i, owner.startswith("vtuple["), len(items)):
+                        self.typebase("MU:%t" + str(i.r[0]), items[0])
         # Backward relevance for boxed values and forward/backward transport closure for
         # tags and bits. Literals never become tainted: the same integer spelling in an
         # unrelated loop index does not make that index a payload.
@@ -387,7 +408,7 @@ class UnionProof:
                             wanted["MU:" + i.a[0].v] = True
                     if (i.op == "mem.store" or i.op == "mach.store") and "MU:" + i.a[0].v in wanted:
                         wanted["U:" + i.a[1].v] = True
-                    if i.op == "mach.load" and i.t == "int" and "U:" + i.a[0].v in wanted:
+                    if i.op == "mach.load" and i.t == "int" and "U:" + i.a[0].v in wanted and not self.length_read(i.a[0].v):
                         self.tagvals[r] = True
                     self.transport_closure(i, self.raw, self.rawslots, True)
                     if i.op != "slot.pack":
@@ -414,55 +435,7 @@ class UnionProof:
                 self.base["MB:" + v] = [self.memtypes[v]]
         # Facts matter only while their value or storage address can still be read.
         # Retaining completed selectors at every later join multiplies unrelated work.
-        self.livevalues: dict[str, dict[str, bool]] = {}
-        uses: dict[str, dict[str, bool]] = {}
-        defined: dict[str, dict[str, bool]] = {}
-        for b in fn.blocks:
-            uses[b.label] = {}
-            defined[b.label] = {}
-            self.livevalues[b.label] = {}
-            for i in b.code:
-                if i.op == "phi":
-                    continue
-                for a in i.a:
-                    if a.v.startswith("%") and a.v not in defined[b.label]:
-                        uses[b.label][a.v] = True
-                for n in i.r:
-                    defined[b.label]["%t" + str(n)] = True
-        changed = True
-        while changed:
-            changed = False
-            for bn in range(len(fn.blocks) - 1, -1, -1):
-                b = fn.blocks[bn]
-                live = dict(uses[b.label])
-                targets = [v for v in b.code[-1].b]
-                if b.handler != "":
-                    targets.append(b.handler)
-                last = b.code[-1]
-                if last.op == "check":
-                    ck = last.x if last.x != "" else last.s
-                    if ck in fn.cold:
-                        targets.append(fn.cold[ck])
-                for target in targets:
-                    if target not in self.blocks:
-                        continue
-                    incoming = dict(self.livevalues[target])
-                    for i in fn.blocks[self.blocks[target]].code:
-                        if i.op != "phi":
-                            break
-                        r = "%t" + str(i.r[0])
-                        if r in incoming:
-                            del incoming[r]
-                            if b.label in i.b:
-                                v = i.a[i.b.index(b.label)].v
-                                if v.startswith("%"):
-                                    incoming[v] = True
-                    for v in incoming:
-                        if v not in defined[b.label]:
-                            live[v] = True
-                if live != self.livevalues[b.label]:
-                    self.livevalues[b.label] = live
-                    changed = True
+        self.livevalues: dict[str, dict[str, bool]] = live_values(fn, self.blocks)
 
     def transport_closure(self, i: Ins, vals: dict[str, bool], slots: dict[str, bool], bits: bool) -> None:
         r = "%t" + str(i.r[0]) if len(i.r) > 0 else ""
@@ -498,7 +471,7 @@ class UnionProof:
             return targs(receiver)[0]
         if receiver.startswith("dict[") and (t == "*K" or t == "*V"):
             return targs(receiver)[0 if t == "*K" else 1]
-        if (receiver.startswith("list[") or receiver.startswith("set[") or receiver.startswith("frozenset[")) and t == "*T":
+        if (receiver.startswith("list[") or receiver.startswith("set[") or receiver.startswith("frozenset[") or receiver.startswith("aset[")) and t == "*T":
             return targs(receiver)[0]
         return t
 
@@ -528,6 +501,76 @@ class UnionProof:
             self.full.sort()
         self.domains[t] = ts
         return ts
+
+    def item_slot(self, i: Ins, vtuple: bool, n: int) -> bool:
+        # Does mach.addr i address an item's slot, as gen_seq_item's addresses do: words, at
+        # an index of a fixed tuple's n items, or past a runtime-length tuple's length word and
+        # identity companion pointer (index + 2: runtime.c's VTuple)? Not either header word, nor
+        # bytes. Whether the item index is below the length is the loop's test (Loop.idx), as a
+        # list.load's index is its caller's.
+        if i.s != "int":
+            return False
+        k = i.a[1].v
+        if not vtuple:
+            return not k.startswith("-") and (k.startswith("%") or proof_number(k, 0, n - 1) >= 0)
+        d = self.defs[k] if k in self.defs else None
+        if d is None or d.op != "scalar.bin" or d.s != "add" or d.t != "int" or len(d.a) != 2:
+            return False
+        x = d.a[0].v if d.a[1].v == "2" else d.a[1].v if d.a[0].v == "2" else ""
+        return x.startswith("%") or proof_number(x, 0, 1 << 62) >= 0
+
+    def length_read(self, v: str) -> bool:
+        # Is an integer machine load from v the length word of a tuple[T, ...] that may be None
+        # (a field's, read after its test): no union's tag, though None and the tuple make two
+        # members of v's domain. The compiler checks None before such a read where it must.
+        t = self.declared(v)
+        return is_opt(t) and t[4:-1].startswith("vtuple[")
+
+    def declared(self, v: str) -> str:
+        # The type that value v's definition declares: a load's is that of its storage
+        # (memtypes: a parameter's, a local's, a global's or a field's declaration), and a
+        # transport's (phi, select, slot.pack, slot.unpack) is the one its operands all declare
+        # (declared_from), never the op's own annotation, which a narrower type could spell;
+        # "" where that cannot be established. Else its definition's.
+        if v not in self.declaredtypes:
+            t = self.declared_from(v, {})
+            self.declaredtypes[v] = t if t != "?" else ""
+        return self.declaredtypes[v]
+
+    def declared_from(self, v: str, seen: dict[str, bool]) -> str:
+        # (declared) seen: the transports on the way to v. "?" for one of them again (a loop's
+        # back edge, which brings what the other edges declare) and for None (null), which has
+        # no items: they constrain nothing
+        d = self.defs[v] if v in self.defs else None
+        if v == "null":
+            return "?"
+        if d is not None and (d.op == "mem.load" or d.op == "mach.load"):
+            return self.memtypes[d.a[0].v] if len(d.a) > 0 and d.a[0].v in self.memtypes else ""
+        if d is not None and (d.op == "phi" or d.op == "select" or d.op == "slot.pack" or d.op == "slot.unpack"):
+            if v in seen:
+                return "?"
+            seen[v] = True
+            t = "?"
+            for a in d.a[1:] if d.op == "select" else d.a[:1] if d.op != "phi" else d.a:
+                x = self.declared_from(a.v, seen)
+                if x == "" or (x != "?" and t != "?" and x != t):
+                    return ""
+                t = x if x != "?" else t
+            return t
+        return self.native.get(v, "")
+
+    def box_select(self, i: Ins) -> bool:
+        # Is select i a machine pointer chosen between None and boxes made here (Gen.ubox's,
+        # for an object that may be None: null, else its box)? Its result is one of them, so
+        # it has their members and None though its own type names no union. Any other
+        # operand, a pointer of unknown provenance, leaves the result unknown as before.
+        if i.t != "%ptr":
+            return False
+        for a in i.a[1:]:
+            d = self.defs[a.v] if a.v in self.defs else None
+            if a.v != "null" and (d is None or d.op != "rt" or (d.s != "ubox" and d.s != "ubox_opt")):
+                return False
+        return True
 
     def box(self, s: UnionState, v: str) -> str:
         k = "U:" + v
@@ -634,7 +677,7 @@ class UnionProof:
             return
         if (op == "mem.load" or op == "mach.load"):
             addr = a[0].v
-            if op == "mach.load" and i.t == "int" and ("U:" + addr in self.base or "U:" + addr in s.d):
+            if op == "mach.load" and i.t == "int" and ("U:" + addr in self.base or "U:" + addr in s.d) and not self.length_read(addr):
                 u = self.box(s, addr)
                 if checking and "None" in s.dom(u):
                     self.error(b, "mach.load needs a nonnull proof for " + addr)
@@ -753,6 +796,10 @@ class UnionProof:
                 else:
                     xt.cond(y, True)
                     s.boolean(r, xt, union_join(xf, yf))
+        elif op == "select" and self.box_select(i):
+            # Either operand: the condition is an object's own None test, and a class type's
+            # domain has no None for it to select. A later read needs its own None test.
+            s.set("U:" + r, union_tags(s.dom(self.box(s, a[1].v)), s.dom(self.box(s, a[2].v))))
         elif op == "select":
             yes = s.conditional(a[0].v, True)
             no = s.conditional(a[0].v, False)
@@ -842,76 +889,53 @@ class UnionProof:
         z.retain(self.livevalues[to])
         return z
 
-    def run(self) -> None:
-        starts: dict[str, UnionState] = {"entry": UnionState(self.base, self.full)}
-        pending: list[str] = ["entry"]
-        queued: dict[str, bool] = {"entry": True}
-        head = 0
-        while head < len(pending):
-            label = pending[head]
-            head += 1
-            queued[label] = False
-            s = starts[label].clone()
-            b = self.fn.blocks[self.blocks[label]]
-            self.visits += 1
-            dests: list[str] = []
-            edges: list[UnionState] = []
-            for i in b.code:
-                if i.op == "phi":
-                    continue
-                self.transfer(s, i, label, False)
-                call = (i.op == "rt" or i.op == "call" or i.op == "icall" or i.op == "init" or i.op == "gen.resume")
-                throwing = (i.op == "raise" or i.op == "throw" or i.op == "check") or (call and self.raises.get(i.op + "|" + i.s + "|" + i.x, True))
-                if b.handler != "" and throwing:
-                    ex = s.conditional(i.a[0].v, True) if i.op == "check" else s.clone()
-                    self.killmem(ex)
-                    dests.append(b.handler)
-                    edges.append(ex)
-            last = b.code[-1]
-            if last.op == "cbr":
-                dests.extend(last.b)
+    def flow(self, b: Blk, s: UnionState, dests: list[str], edges: list[UnionState]) -> None:
+        # one block for the worklist (dataflow.forward_fixpoint): s becomes its facts at its
+        # end, and each edge that leaves it joins dests and edges
+        label = b.label
+        for i in b.code:
+            if i.op == "phi":
+                continue
+            self.transfer(s, i, label, False)
+            call = (i.op == "rt" or i.op == "call" or i.op == "icall" or i.op == "init" or i.op == "gen.resume")
+            throwing = (i.op == "raise" or i.op == "throw" or i.op == "check") or (call and self.raises.get(i.op + "|" + i.s + "|" + i.x, True))
+            if b.handler != "" and throwing:
+                ex = s.conditional(i.a[0].v, True) if i.op == "check" else s.clone()
+                self.killmem(ex)
+                dests.append(b.handler)
+                edges.append(ex)
+        last = b.code[-1]
+        if last.op == "cbr":
+            dests.extend(last.b)
+            edges.append(s.conditional(last.a[0].v, True))
+            edges.append(s.conditional(last.a[0].v, False))
+        elif last.op == "check":
+            dests.append(last.b[0])
+            edges.append(s.conditional(last.a[0].v, False))
+            ck = last.x if last.x != "" else last.s
+            if ck in self.fn.cold:
+                dests.append(self.fn.cold[ck])
                 edges.append(s.conditional(last.a[0].v, True))
-                edges.append(s.conditional(last.a[0].v, False))
-            elif last.op == "check":
-                dests.append(last.b[0])
-                edges.append(s.conditional(last.a[0].v, False))
-                ck = last.x if last.x != "" else last.s
-                if ck in self.fn.cold:
-                    dests.append(self.fn.cold[ck])
-                    edges.append(s.conditional(last.a[0].v, True))
-            elif last.op == "switch" and last.a[0].v in self.tagvals:
-                key = self.tag(s, last.a[0].v)
-                default = s.clone()
-                dests.extend(last.b)
-                edges.append(default)
-                for j in range(1, len(last.a)):
-                    arm = s.clone()
-                    literal = last.a[j].v
-                    # Only canonical, known tag IDs establish an exact member.
-                    # Other spellings and the many unknown IDs grouped by '?'
-                    # remain conservative on both the case and default edges.
-                    if literal in self.tags:
-                        member = self.tags[literal]
-                        arm.narrow(key, [member])
-                        default.narrow(key, [t for t in default.dom(key) if t != member])
-                    edges.append(arm)
-            else:
-                for l in last.b:
-                    dests.append(l)
-                    edges.append(s.clone())
-            for j in range(len(dests)):
-                to = dests[j]
-                if not edges[j].live or to not in self.blocks:
-                    continue
-                z = self.edge(edges[j], label, to)
-                new = union_join(starts[to], z) if to in starts else z
-                if to not in starts or not new.same(starts[to]):
-                    starts[to] = new
-                    if to not in queued or not queued[to]:
-                        pending.append(to)
-                        queued[to] = True
-        for label in starts:
-            s = starts[label].clone()
-            for i in self.fn.blocks[self.blocks[label]].code:
-                if i.op != "phi":
-                    self.transfer(s, i, label, True)
+        elif last.op == "switch" and last.a[0].v in self.tagvals:
+            key = self.tag(s, last.a[0].v)
+            default = s.clone()
+            dests.extend(last.b)
+            edges.append(default)
+            for j in range(1, len(last.a)):
+                arm = s.clone()
+                literal = last.a[j].v
+                # Only canonical, known tag IDs establish an exact member.
+                # Other spellings and the many unknown IDs grouped by '?'
+                # remain conservative on both the case and default edges.
+                if literal in self.tags:
+                    member = self.tags[literal]
+                    arm.narrow(key, [member])
+                    default.narrow(key, [t for t in default.dom(key) if t != member])
+                edges.append(arm)
+        else:
+            for l in last.b:
+                dests.append(l)
+                edges.append(s.clone())
+
+    def run(self) -> None:
+        forward_fixpoint(self)

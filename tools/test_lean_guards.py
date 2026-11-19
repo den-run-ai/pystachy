@@ -8,8 +8,10 @@ import sys
 import tempfile
 import unittest
 
+import check_lean_access as access
 import check_lean_boundary as boundary
 import check_lean_guards as guards
+from check_lean_effects import summaries
 
 ROOT = Path(__file__).resolve().parent.parent
 CHECKER = boundary.DEFAULT_CHECKER
@@ -68,6 +70,14 @@ class GuardTests(unittest.TestCase):
     def union(self, snap):
         return next(fn for fn in snap["functions"] if fn["name"] == "narrow")
 
+    def removal_proof(self, snap, fn, removed):
+        """Both Lean models' verdict on removed checks, as check_all reaches them."""
+        if not (CHECKER.is_file() and access.DEFAULT_CHECKER.is_file()):
+            if os.environ.get("LEAN_BOUNDARY_REQUIRED") == "1":
+                self.fail("Lean checkers required")
+            self.skipTest("Lean checkers not built")
+        return guards.prove_removals(snap, fn, removed, summaries(snap), CHECKER, access.DEFAULT_CHECKER)
+
     def nullrecord(self, snap):
         return next(record for record in snap["nullcheck_evidence"] if record["reported_rewrites"])
 
@@ -124,6 +134,9 @@ class GuardTests(unittest.TestCase):
                 if op["op"] == "check" and (block["label"], offset) not in removed:
                     op["operands"][0]["value"] = "false"
         self.assertFalse(self.lean(*guards.normalize(snap, record["before"], removed)))
+        result = self.removal_proof(snap, record["before"], removed)
+        self.assertEqual([(a["model"], a["status"]) for a in result["attempts"]],
+                         [("access", "rejected"), ("finite-tag", "rejected")])
 
     def test_removed_count_mismatch_fails_closed(self):
         record = self.nullrecord(self.sample())
@@ -149,13 +162,19 @@ class GuardTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "tag inventory"):
             guards.normalize(snap, self.union(snap))
 
-    def test_raw_union_is_explicitly_unsupported(self):
+    def test_raw_union_bits_are_read_as_their_member(self):
+        # (a raw read claims no member: the reads of its bits as a member's are the obligations)
         snap = self.sample()
         fn = self.union(snap)
         op = next(op for b in fn["blocks"] for op in b["operations"] if op["op"] == "union.payload")
         op["op"], op["text"] = "union.raw", ""
-        with self.assertRaisesRegex(boundary.Unsupported, "raw union"):
-            guards.normalize(snap, fn)
+        candidate, meta = guards.normalize(snap, fn)
+        self.assertGreater(meta["payload_obligations"], 0)
+        self.assertTrue(self.lean(candidate, meta))
+        test = next(op for b in fn["blocks"] for op in b["operations"] if op["op"] == "num.cmp")
+        test["operands"][1]["value"] = next(str(tag) for tag in snap["union_tags"].values()
+                                            if str(tag) != test["operands"][1]["value"])
+        self.assertFalse(self.lean(*guards.normalize(snap, fn)))
 
     def test_unknown_union_guard_stays_rejected(self):
         snap = self.sample()
@@ -189,10 +208,17 @@ class GuardTests(unittest.TestCase):
                     and b["operations"][0]["op"] == "phi" and b["operations"][0]["type"] == "bool")
         value = f"%t{join['operations'][0]['results'][0]}"
         successor = next(b for b in fn["blocks"] if b["label"] == join["operations"][1]["targets"][0])
-        successor["operations"].insert(0, instruction("select", "int", results=[100],
-                                                    operands=[(value, "bool"), ("1", "int"), ("0", "int")]))
-        # No per-edge phi assignment is modeled: keep this join and fail closed.
+        union, tag = "union[int,str]", str(snap["union_tags"]["int"])
+        # The join stays threaded, but its phi's other uses test it as an opaque condition: a union
+        # select on it may be either operand, so reading it as an int needs a guard.
+        successor["operations"][:0] = [
+            instruction("rt", "%ptr", "ubox", [100], [(tag, "int"), ("5", "*T")]),
+            instruction("mem.load", union, results=[99], operands=[("@g.unknown", "*" + union)]),
+            instruction("select", union, results=[101], operands=[(value, "bool"), ("%t100", union), ("%t99", union)]),
+            instruction("union.payload", "%slot", "int", [102, 103], [("%t101", union)])]
         self.assertFalse(self.lean(*guards.normalize(snap, fn)))
+        successor["operations"][2]["operands"][2] = {"value": "%t100", "type": union}
+        self.assertTrue(self.lean(*guards.normalize(snap, fn)))
 
     def test_union_address_rewrite_cannot_drop_inventory(self):
         from test_lean_boundary import instruction
@@ -341,7 +367,7 @@ class GuardTests(unittest.TestCase):
                     op["operands"][0]["value"] = "%t100"
         self.assertEqual(len(guards.inventory(fn)), 3)
         candidate, meta = guards.normalize(snap, fn)
-        self.assertEqual(meta["payloads"], 3)
+        self.assertEqual(meta["payloads"] - meta["payload_obligations"], 3)
         # Even an explicit null guard cannot turn the incoming float into a str.
         self.assertFalse(self.lean(candidate, meta))
 
@@ -377,6 +403,10 @@ class GuardTests(unittest.TestCase):
         removed = guards.removed_checks(record)
         self.assertEqual(len(removed), 2)
         self.assertFalse(self.lean(*guards.normalize(snap, before, removed)))
+        self.assertEqual(self.removal_proof(snap, before, removed)["status"], "rejected")
+        snap["guard_inventory"]["removed_checks"] += 1
+        report, code = guards.check_all(snap, CHECKER)
+        self.assertEqual((code, report["removed_checks"], report["proved_removed_checks"]), (1, 2, 0))
 
     def test_declared_domains_parse_nested_members(self):
         self.assertEqual(guards.union_members("opt[union[int,tuple[int,str]]]"),
@@ -419,6 +449,7 @@ class GuardTests(unittest.TestCase):
                                    op("ret", operands=[("0", "int")])])
                 fn["blocks"] = [{"label": "entry", "handler": "", "operations": operations}]
                 self.assertEqual(len(guards.inventory(fn)), 1)
+                self.assertEqual(len(guards.inventory(fn, guards.union_context(snap))), 1)
                 with self.assertRaisesRegex(boundary.Unsupported, "declared source domain|nonprivate writes|opaque call"):
                     guards.normalize(snap, fn)
                 snap["functions"], snap["nullcheck_evidence"] = [fn], []
@@ -427,6 +458,89 @@ class GuardTests(unittest.TestCase):
                 self.assertEqual(code, 2)
                 self.assertEqual(report["union_reads"], 1)
                 self.assertEqual(report["proved_union_reads"], 0)
+
+
+    def test_typed_union_memory_keeps_retyped_reads(self):
+        # Typed union memory (a field word or tuple item some view types as a union, a private slot,
+        # a call's result) is read as that union; each way of reading the word as anything else and
+        # then reading through it as a box must stay inventoried. Reads of other words must not be.
+        from test_lean_boundary import instruction as op
+        union, holder = "union[int,str]", "Holder"
+        def field(results, typ, index=0):
+            made = op("field.addr", "*" + typ, results=results, operands=[("%a1", holder)])
+            made["immediate"] = index
+            return made
+        def box_read(word):
+            return [op("scalar.cast", "%ptr", "inttoptr", [150], [(word, "int")]),
+                    op("mach.load", "int", results=[151], operands=[("%t150", "%ptr")])]
+        def tuple_item(kind, typ, text, results, operands):
+            made = op(kind, typ, text, results, operands)
+            made["immediate"] = 0
+            return made
+        cases = {
+            "raw object": ([field([100], union), op("mem.store", operands=[("%t100", "*" + union), ("%a0", union)]),
+                            op("mach.addr", "%ptr", "%ptr", [101], [("%a1", holder), ("1", "int")]),
+                            op("mach.load", "int", results=[102], operands=[("%t101", "%ptr")])], "%t102", 1),
+            "other view": ([field([100], union), op("mem.store", operands=[("%t100", "*" + union), ("%a0", union)]),
+                            field([101], "int"), op("mem.load", "int", results=[102], operands=[("%t101", "*int")])],
+                           "%t102", 1),
+            "other field": ([field([100], union), op("mem.store", operands=[("%t100", "*" + union), ("%a0", union)]),
+                             field([101], "int", 1), op("mem.load", "int", results=[102], operands=[("%t101", "*int")])],
+                            "%t102", 0),
+            "item text": ([op("slot.pack", "%slot", results=[100], operands=[("%a0", union)]),
+                           op("alloc.fixed", f"tuple[{union}]", results=[101]),
+                           tuple_item("tuple.store", "", union, [], [("%t101", f"tuple[{union}]"), ("%t100", "%slot")]),
+                           tuple_item("tuple.load", "%slot", "int", [103, 104], [("%t101", f"tuple[{union}]")]),
+                           op("slot.unpack", "int", results=[102], operands=[("%t104", "%slot")])], "%t102", 1),
+            "tuple view": ([op("slot.pack", "%slot", results=[100], operands=[("%a0", union)]),
+                            op("alloc.fixed", f"tuple[{union}]", results=[101]),
+                            tuple_item("tuple.store", "", union, [], [("%t101", f"tuple[{union}]"), ("%t100", "%slot")]),
+                            op("select", "tuple[int]", results=[105], operands=[
+                                ("true", "bool"), ("%t101", "tuple[int]"), ("%t101", "tuple[int]")]),
+                            tuple_item("tuple.load", "%slot", "int", [103, 104], [("%t105", "tuple[int]")]),
+                            op("slot.unpack", "int", results=[102], operands=[("%t104", "%slot")])], "%t102", 1),
+            "tuple cast": ([op("slot.pack", "%slot", results=[100], operands=[("%a0", union)]),
+                            op("alloc.fixed", f"tuple[{union}]", results=[101]),
+                            tuple_item("tuple.store", "", union, [], [("%t101", f"tuple[{union}]"), ("%t100", "%slot")]),
+                            op("scalar.cast", "tuple[int]", "bitcast", [105], [("%t101", f"tuple[{union}]")]),
+                            tuple_item("tuple.load", "%slot", "int", [103, 104], [("%t105", "tuple[int]")]),
+                            op("slot.unpack", "int", results=[102], operands=[("%t104", "%slot")])], "%t102", 1),
+            "slot": ([op("mem.store", operands=[("%value.9", "*" + union), ("%a0", union)]),
+                      op("mem.load", "int", results=[102], operands=[("%value.9", "*int")])], "%t102", 1),
+            "transport": ([op("call", "int", "@f.leak", [102], [("%a0", union)])], "%t102", 1),
+        }
+        for name, (operations, word, expected) in cases.items():
+            with self.subTest(case=name):
+                snap = self.sample()
+                fn = self.union(snap)
+                fn["parameters"] = fn["parameters"] + [dict(fn["parameters"][0], representation=holder)]
+                fn["slots"] = fn["slots"] + [dict(fn["slots"][0], text="value", type=union, results=[9])]
+                fn["blocks"] = [{"label": "entry", "handler": "", "operations": operations + box_read(word) + [
+                    op("ret", operands=[("0", "int")])]}]
+                leak = copy.deepcopy(fn)
+                leak.update(symbol="@f.leak", name="leak", return_representation="int", slots=[])
+                leak["blocks"] = [{"label": "entry", "handler": "", "operations": [
+                    op("scalar.cast", "int", "ptrtoint", [100], [("%a0", union)]), op("ret", operands=[("%t100", "int")])]}]
+                snap["functions"] = [fn, leak]
+                snap["classes"][holder] = {"base": "", "role": "", "overlaps": [], "tagged": False}
+                snap["class_layouts"][holder] = {"fields": ["u", "n"], "flags": {}, "sure": []}
+                context = guards.union_context(snap)
+                self.assertEqual(context["transports"], {"@f.leak"})
+                self.assertEqual(len(guards.inventory(fn, context)), expected)
+
+
+class PlaceholderSlotTests(unittest.TestCase):
+    def test_resolved_placeholder_slot_types(self):
+        # (a local's slot keeps the type it had when made; its accesses name the resolved one)
+        for declared, used in (("list[?]", "*list[int]"), ("dict[?,?]", "*dict[str,int]"),
+                               ("opt[None]", "*str"), ("opt[None]", "*opt[int]"),
+                               ("opt[None]", "*opt[union[int,str]]")):
+            self.assertTrue(boundary.resolved_container(declared, used), (declared, used))
+        for declared, used in (("list[?]", "*dict[str,int]"), ("list[int]", "*list[str]"),
+                               ("list[?]", "list[int]"), ("opt[None]", "*int"), ("opt[None]", "*dyn"),
+                               ("opt[None]", "*opt[dyn]"), ("opt[None]", "*union[int,str]"),
+                               ("opt[None]", "*opt[?]"), ("opt[None]", "*%slot")):
+            self.assertFalse(boundary.resolved_container(declared, used), (declared, used))
 
 
 class GuardCorpusAccountingTests(unittest.TestCase):
@@ -461,6 +575,32 @@ class GuardCorpusAccountingTests(unittest.TestCase):
         record = self.record(union_reads=0, proved_union_reads=0, removed_checks=0, proved_removed_checks=0)
         report = summarize(["p.py"], [record], 0)
         self.assertEqual(report["totals"]["vacuous_programs"], 1)
+
+    def test_payload_obligations_are_counted_and_not_vacuous(self):
+        from check_lean_guard_corpus import summarize
+        record = self.record(union_reads=0, proved_union_reads=0, removed_checks=0, proved_removed_checks=0,
+                             payload_obligations=3, proved_payload_obligations=3)
+        report = summarize(["p.py"], [record], 0)
+        self.assertEqual(report["totals"]["vacuous_programs"], 0)
+        self.assertEqual(report["totals"]["proved_payload_obligations"], 3)
+        with self.assertRaisesRegex(ValueError, "omitted obligations"):
+            summarize(["p.py"], [self.record(payload_obligations=3, proved_payload_obligations=2)], 0)
+        with self.assertRaisesRegex(ValueError, "invalid payload obligation counts"):
+            summarize(["p.py"], [self.record(status="rejected", payload_obligations=1,
+                                             proved_payload_obligations=2)], 0)
+
+    def test_field_obligations_are_counted_and_not_vacuous(self):
+        from check_lean_guard_corpus import summarize
+        record = self.record(union_reads=0, proved_union_reads=0, removed_checks=0, proved_removed_checks=0,
+                             field_obligations=4, proved_field_obligations=4)
+        report = summarize(["p.py"], [record], 0)
+        self.assertEqual(report["totals"]["vacuous_programs"], 0)
+        self.assertEqual(report["totals"]["proved_field_obligations"], 4)
+        with self.assertRaisesRegex(ValueError, "omitted obligations"):
+            summarize(["p.py"], [self.record(field_obligations=4, proved_field_obligations=3)], 0)
+        with self.assertRaisesRegex(ValueError, "invalid field obligation counts"):
+            summarize(["p.py"], [self.record(status="rejected", field_obligations=1,
+                                             proved_field_obligations=2)], 0)
 
     def test_unsupported_write_only_program_is_not_vacuous(self):
         from check_lean_guard_corpus import summarize

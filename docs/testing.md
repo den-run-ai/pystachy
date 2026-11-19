@@ -435,7 +435,7 @@ unexpected output. Its `match-dispatch-smoke.json` artifact is correctness evide
 paired performance and optional pyperf measurements have separate reproduction commands
 in [the match benchmark](../bench/match_dispatch/README.md).
 
-The PR `opt-in` worker and full-run `hosted` jobs run 20 independent example API suites through
+The PR `opt-in` worker and full-run `gc-aot-2` jobs run 20 independent example API suites through
 `make test-pytest-workloads PYTEST_WORKLOAD_ARGS='--group examples'`, reusing the
 verified compiler. Splitting these checks between existing jobs leaves more room
 within the 15-minute budget without adding workers. `pytest-workloads.json` records every
@@ -447,13 +447,14 @@ Missing modules/results, empty suites, skips, xfails and failed builds fail this
 check. These tests supplement the exact CLI, FFI, upstream-reference and timing
 contracts below; they do not replace those distinct observations.
 
-The x86-64 PR `opt-in` worker (full-run `hosted`) also runs `make test-pytest-native` with the verified compiler
+The x86-64 PR `opt-in` worker (full-run `gc-aot-2`) also runs `make test-pytest-native` with the verified compiler
 and pinned original pytest oracle. Its JIT examples retain the hosted compiler; repeated
 native builds use `PYTEST_NATIVE_COMPILER="$PWD/build/verify/pystachy2"`, with `PYSTACHY_HOME`
 pointing at the checkout. Test modules run first, at most four at once. Only after they
 finish do the JIT examples, AOT examples, failure controls and bundled upstream methods
 run together, each with its own work directory. This ordering prevents tests from
 competing with examples for the default directory's lock. The checks cover collection, fixture lifecycle,
+unittest cases, package layouts, `conftest.py` hooks answered for by the comparison, `-k`/`-m` selection,
 JIT/AOT parity, GC stress, failure controls and the bundled upstream fnmatch/textwrap
 methods. The existing job runs once on code PRs, main pushes and manual runs;
 documentation-only PRs retain their lightweight plan. Its artifact includes both
@@ -512,8 +513,13 @@ to emit an advisory Actions warning; other threshold crossings are `unconfirmed`
 Correctness, setup and measurement errors fail the job. Timing warnings do not gate merging.
 Peak RSS and retained-memory costs remain separate measurements; this suite records timing.
 The step summary and 30-day `perf-smoke` JSON artifacts retain revisions, toolchain, source
-hashes, raw samples and same-run CPython controls. The job allows 15 minutes for both
-compiler builds, warmups and any confirmation batches. Atomic JSON checkpoints preserve
+hashes, raw samples and same-run CPython controls. Each hosted compiler build is
+single-threaded, so the two run at once before the process pins itself to one CPU, and
+setup takes as long as the slower build rather than both
+([#1547](https://github.com/den-run-ai/pystachy/issues/1547)). Each build may take 480 seconds,
+recorded as `bootstrap_budget_s` beside each build's `wall_s` under `bootstrap`. The first
+build to fail stops the other, and `phase` names its side. The job allows 15 minutes for
+both builds, warmups and any confirmation batches. Atomic JSON checkpoints preserve
 completed workloads during execution. Their `status` is `incomplete` until every workload
 and the summary finish, `error` if a caught exception is recorded and re-raised, or
 `complete` after success; `phase` identifies the current or last stage. A cancelled process
@@ -537,6 +543,24 @@ Historical absolute times are unsuitable as gates: in the retained
 AOT workloads had over 20% within-revision wall-time spread (excluding removed `deltablue`
 and optimized-away `unpack_sequence`). This small monitor does not cover memory, full models,
 end-to-end json_repair or all examples; broader benchmark history remains under #45.
+
+### Weekly AOT performance
+
+The eleven smoke workloads missed two AOT slowdowns: `words` after #667 and `float` after
+#1268 ([#1302](https://github.com/den-run-ai/pystachy/issues/1302)). The separate
+[Weekly performance workflow](../.github/workflows/performance-weekly.yml) runs on Mondays and
+on manual dispatch, never on PRs or pushes. Its two jobs each build the head's compiler and a
+base's: the fixed reference above, or main's first-parent commit of seven days before. They time
+every adapted pyperformance port (its `seconds` line) and every `bench/*.py` microbenchmark (the
+process) in AOT, with the head's workload sources and CPython's output, in three alternating
+base/head pairs on one CPU. A slowdown of at least 10% and 2 ms triggers three more pairs; both
+batches must meet it with disjoint ranges to emit an advisory warning. A workload that the base
+cannot build or run correctly has no comparison, as a compiler may predate it; its head is still
+checked. A head failure fails the job after the other workloads and the report. All commands,
+including the concurrent compiler builds and confirmation runs, share an 11-minute deadline, leaving job time
+for setup, reporting and artifact upload. A budget-limited report is marked incomplete. The
+90-day `perf-weekly-*` JSON artifacts keep partial samples and each revision's failure. Replay a change locally with
+`python3 tools/perf_smoke.py --suite weekly --base OLD --head NEW --only bench/words`.
 
 ### PR budget
 
@@ -950,11 +974,13 @@ report-gate tests and recording checks use the pinned CPython and require no com
 When Lean validation is selected, Lint builds and audits the pinned checker first;
 `make check-fast` then runs all boundary test groups once with missing checkers treated as
 errors. Ordinary local `make check-fast` retains its existing optional Lean behavior.
-The verification-harness and compiler-state control suites overlap as two isolated
-unittest processes. Lint waits for both, prints their logs separately and fails if
-either suite fails; the same coverage runs for documentation PRs, main and manual runs.
-The coordinator preserves normal SIGINT handling, cancels both process groups and
-reaps the suite processes before returning from SIGINT or SIGTERM cancellation.
+`make check-fast lint` and the verification-harness and compiler-state control suites
+overlap as three isolated processes, which keeps Lint well inside its 15 minutes
+([#1525](https://github.com/den-run-ai/pystachy/issues/1525)). Lint waits for all three,
+prints their logs separately in that order and fails if any suite fails; the same
+coverage runs for documentation PRs, main and manual runs. The coordinator preserves
+normal SIGINT handling, cancels every process group and reaps the suite processes
+before returning from SIGINT or SIGTERM cancellation.
 
 Generated-user and generated-runtime ASan controls run in the existing x86-64
 `safety-1` worker on code PRs and `gc-jit-0` on main pushes and manual runs, using
@@ -1004,11 +1030,17 @@ bounds and live, followed by `make check-lean-int` for promoting-integer
 runs `make check-lean-storage` for [storage guards](../tools/lean_boundary/STORAGE.md),
 including programs that import opted-in modules, and upload `lean-storage.json`.
 Code PRs and full CI retain `make check-lean-guards` in the x86 `contracts` group on the explicit
-`null_guards.py` and `union_guards.py` examples, uploading
+`null_guards.py`, `null_reloads.py`, `union_effects.py`, `union_guards.py`, `union_split.py`,
+`union_memory.py`, `union_defaults.py`, `gc_arrays.py` and `field_init.py` examples, uploading
 `lean-guards.json`. The selection and its limits are recorded in
-[GUARDS.md](../tools/lean_boundary/GUARDS.md). These enforce bounded null/union guard
-coverage; the strict full-corpus guard command remains an investigation tool with
-unsupported forms, not a passing whole-corpus gate. Arithmetic reports separately
+[GUARDS.md](../tools/lean_boundary/GUARDS.md). These enforce bounded null/union guard,
+field-initialization and collector-scanning coverage; the strict full-corpus guard command remains an investigation tool with
+unsupported forms, not a passing whole-corpus gate. No CI job runs every check over the
+whole corpus: `make lean-report` does, locally, and rewrites the small committed
+[report](../tools/lean_boundary/REPORT.md) of their counts and unproved functions. Run it
+after a change to typed IR, to a pass a Lean check covers or to a checker, and commit the
+report when it changes; `python3.13 tools/lean_report.py --status` names the inputs that
+changed since. Arithmetic reports separately
 count actual checked overflow reconstructions and other observed arithmetic.
 All sweeps use two local processes within existing jobs and their 15-minute limits.
 On full runs, the corpus and integer proofs start after `gc-jit-1` finishes;
@@ -1079,3 +1111,22 @@ without DCO certification. The existing submission bot sends a one-time,
 non-blocking rights/guidelines/AI acknowledgment reminder on new PRs. The legacy
 DCO workflow always skips; remove it after deleting its required status in
 GitHub branch protection settings.
+
+## Lessons from reviewed changes
+
+Each row pairs a failure that review caught with the rule that prevents it. The links are
+evidence, not claims about today's open work.
+
+| Failure pattern | Rule to carry forward |
+|---|---|
+| Another `iter()` masked a missing iterator helper ([#633](https://github.com/den-run-ai/pystachy/pull/633)) | Keep dependency regressions in separate programs; test all annotation spellings. |
+| Inferring `Any` erased concrete generator channels ([#633](https://github.com/den-run-ai/pystachy/pull/633)) | Preserve yield/send/return contracts independently. `Any` specializes concrete types; it adds dynamically typed storage only in modules that opt in to [dynamic `Any`](dynamic-any.md). |
+| An unresolved empty-container allocation could serve pointer-bearing callers ([#603](https://github.com/den-run-ai/pystachy/pull/603)) | Mark storage pointer-free only after representation is proven; test copy, growth, clear/refill and shared template results under GC. |
+| A lazily created global needed an explicit collector root ([#602](https://github.com/den-run-ai/pystachy/pull/602)) | Test survival after caller references disappear, including aliases and extension initialization. |
+| A C `float` declared as `double` compiled but returned zeros ([#609](https://github.com/den-run-ai/pystachy/pull/609)) | Verify ABI widths, mutation, aliasing and pointer lifetime with real C calls; twin parity alone cannot establish ABI correctness. |
+| A malformed view could make BLAS write past its buffer, under green CI ([#647](https://github.com/den-run-ai/pystachy/pull/647)) | Validate strides, offset, reachable storage and output length before a native write; reproduce suspected overruns with a spy, not a real write. |
+| Tuple repetition first divided by zero, then missed byte-size overflow ([#761](https://github.com/den-run-ai/pystachy/pull/761)) | Handle empty/zero/negative cases before division; check element width and header overhead before multiplication/allocation, not just the element count. |
+| AOT `-O2` rewrote constant-exponent `pow` and changed last digits ([#656](https://github.com/den-run-ai/pystachy/issues/656)) | Read floating-point inputs at run time (`NAME.in`, `sys.argv`) and compare exact output in both modes. |
+| Import counts barely changed after real feature fixes ([#635](https://github.com/den-run-ai/pystachy/pull/635)) | Record the next blocker and functional API delta; one removed blocker does not establish whole-package support. |
+| Cancelled runs retained queued final jobs ([#643](https://github.com/den-run-ai/pystachy/pull/643)) | Inspect run/job state and concurrency; a skipped summary is not successful verification. |
+| "This PR does not close #4" closed #4 on merge ([#168](https://github.com/den-run-ai/pystachy/pull/168)) | GitHub acts on closing keywords even when negated, in PR bodies and commit messages; write `Refs #N`. |

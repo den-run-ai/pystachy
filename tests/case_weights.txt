@@ -56,7 +56,6 @@ default rejection 3
 3500 tests/deviations/lib_datetime.py
 1695 tests/deviations/lib_fnmatch_byte_boundaries.py
 479 tests/deviations/lib_functools_partial_attrs.py
-8981 tests/deviations/lib_html_parser_names.py
 462 tests/deviations/lib_io_newline_decoder_object.py
 1244 tests/deviations/lib_io_newline_decoder_tuple.py
 1613 tests/deviations/lib_io_textiowrapper.py
@@ -1320,7 +1319,6 @@ default rejection 3
 3 tests/errors/optimizations/opt_builtin_arg.py
 3 tests/errors/optimizations/opt_builtin_unsupported.py
 3 tests/errors/optimizations/opt_dataclass_default.py
-3 tests/errors/optimizations/opt_dict_key.py
 3 tests/errors/optimizations/opt_file.py
 3 tests/errors/optimizations/opt_isinstance_tuple_call.py
 3 tests/errors/optimizations/opt_isinstance_tuple_none.py
@@ -1338,11 +1336,9 @@ default rejection 3
 3 tests/errors/optimizations/opt_narrow_loop_else.py
 3 tests/errors/optimizations/opt_narrow_reassigned.py
 3 tests/errors/optimizations/opt_none_empty_list.py
-3 tests/errors/optimizations/opt_none_unknown.py
 3 tests/errors/optimizations/opt_return.py
 3 tests/errors/optimizations/opt_scalar_arg.py
 3 tests/errors/optimizations/opt_scalar_is.py
-3 tests/errors/optimizations/opt_scalar_key_type.py
 3 tests/errors/optimizations/opt_scalar_list_arg.py
 3 tests/errors/optimizations/opt_scalar_sum.py
 3 tests/errors/optimizations/opt_template_empty_none.py
@@ -2999,6 +2995,7 @@ default rejection 3
 9442 tests/programs/library/lib_html.py
 9432 tests/programs/library/lib_html_entities.py
 9532 tests/programs/library/lib_html_parser.py
+8981 tests/programs/library/lib_html_parser_names.py
 9437 tests/programs/library/lib_html_parser_positions.py
 1741 tests/programs/library/lib_io.py
 2186 tests/programs/library/lib_io_bytesio.py

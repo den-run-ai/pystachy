@@ -5,7 +5,8 @@ already-emitted immutable function objects are candidates. No source is inferred
 again, and no code or profiling state is created while the program runs.
 """
 from __future__ import annotations
-from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Ins, Loop, Val, tmpname, one_num
+from src.pystachy_compiler.ir import Blk, IFn, Ins, Loop, Val, tmpname, one_num
+from src.pystachy_compiler.symbols import FnInfo
 from src.pystachy_compiler.utils import identity_abi, is_callable
 
 

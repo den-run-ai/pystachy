@@ -1,0 +1,12 @@
+empty one 7 1 then [2, 3]
+short ['a'] a..b around 0 a..d around 2
+-1 3 1 0 99
+one-two [] one-two [3] one or two [5] one or two [] nine after [3] other
+zero [1, 2] 3 5
+[3] [-1]
+empty one 1 1 [] 2 1 [2, 3] 4
+empty one 3 0 [1, 2, 3] 4 2 [5] 8
+2 a b
+['dict is no sequence', 'set is no sequence', 'str is no sequence here', 'scalar']
+[1, 2, 0] [1, 2]
+[exit 0]

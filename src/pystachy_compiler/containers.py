@@ -2,20 +2,24 @@
 from __future__ import annotations
 from src.pystachy_compiler.analysis import none_display, walrus_names
 from src.pystachy_compiler.bigints import big_tree, held, narrow_type
+from src.pystachy_compiler.conversions import ends_in_id
 from src.pystachy_compiler.diagnostics import dynamic_program, int_lists, shown
-from src.pystachy_compiler.ir import ClassInfo, Ins, IterArg, SetArg, Val
+from src.pystachy_compiler.frames import IterArg, SetArg
+from src.pystachy_compiler.ir import Ins, Val
+from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import BIG, BIGOPT, ITERS, NONE_ITEM, NONEVAR, OBJECTC, OPTTYPES, TYPEMODS
+from src.pystachy_compiler.specs import BIG, BIGOPT, EMPTYFS, ITERS, NONE_ITEM, NONEVAR, OBJECTC, OPTTYPES, TYPEMODS, VTUPLE_ITEMS
 from src.pystachy_compiler.syntax import Node, made_var, mentions, mk
 from src.pystachy_compiler.utils import (
+    is_clsval,
     ListLayout,
     atomic_list,
     bool_for_int,
     elem,
-    elem_problem,
     folds,
     has_method,
     is_dict,
+    is_aset,
     is_fset,
     is_kw,
     is_list,
@@ -26,23 +30,26 @@ from src.pystachy_compiler.utils import (
     is_union,
     is_vtuple,
     key_problem,
+    none_key,
     list_identity_kind,
     literal,
     lookable,
     selem,
+    set_base,
     targs,
     tname,
     typestr,
+    umembers,
     unopt,
 )
 
 
 def gen_list_id_kind(self, t: str) -> int:
     # A program graph opting into dynamic values preserves typed numeric item objects.
-    # The raw payload stays in its existing atomic array; identity lives in scanned storage.
+    # The payload keeps its existing scalar or nullable layout; identity lives in scanned storage.
     # Code that does not track identity (Gen.identity_modules) uses the plain operations, which
     # keep a list's companion consistent (runtime.c): such a list never reaches tracking code.
-    if t in ["list[int]", "list[float]"] and self.fn_home(self.curfn) in self.idhint:
+    if list_identity_kind(t) != 0 and self.fn_home(self.curfn) in self.idhint:
         # Internal searches/equality can observe shared NaNs even when no numeric
         # value leaves the module. A hint cannot suppress these companions.
         self.identity_event("numeric list in an identity-inert module")
@@ -63,6 +70,12 @@ def gen_list_item(self, o: Val, i: Val, keep: bool = False) -> Val:
     k = self.list_id_kind(o.t)
     if k != 0:
         b = self.list_get("list.get_identity", [o, i, Val(str(k), "int")])
+        if is_opt(elem(o.t)):
+            # The typed optional's existing representation box is already valid.
+            # Reading its identity must not allocate another representation box.
+            value = self.list_value(o, i.v, self.list_get("list.get", [o, i]), keep)
+            value.idfrom = b
+            return value
         t = BIG if keep and elem(o.t) == "int" and int_lists() else self.item_type(o.t)
         return self.dyn_unbox(Val(b, "dyn"), t)
     return self.list_value(o, i.v, self.list_get("list.get", [o, i]), keep)
@@ -213,8 +226,14 @@ def gen_set_display(self, n: Node, want: str, folded: bool, returnctx: bool = Fa
                 et = v.t
     if not given and is_tuple(jt):
         et = self.none_items(jt)  # (None among the strs of a tuple's item: str | None)
-    if et == "":
-        self.err("cannot infer the type of a set of None")
+    elif not given and none_key(jt) and len([v for v in items if v.t == "None" or is_opt(v.t)]) > 0:
+        et = jt  # (None among the elements, {None, "a"}: T | None; {None}: a set whose elements are None, set[None])
+    if not given and self.class_join(et, jt, "") != "":
+        et = jt  # (objects of classes of one hierarchy: of their nearest common base)
+    if not given and is_clsval(jt):
+        et = jt  # (class objects: of a base class their classes have in common)
+    if not given and len(items) > 0 and all(self.refl_builtin_class(v.t) != "" or is_clsval(v.t) for v in items) and len([v for v in items if self.refl_builtin_class(v.t) != ""]) > 0:
+        et = "type[object]"  # (builtin classes named, beside class objects or not: their class objects)
     if self.elem_problem(et) != "":
         self.err(self.elem_problem(et))
     if const:
@@ -338,9 +357,20 @@ def gen_star_display(self, n: Node, want: str) -> Val:
             self.list_store(Val(r, self.ctype("list", [et])), self.list_hold(parts[i], et), "append")
     if n.kind == "list":
         return Val(r, self.ctype("list", [et]))
-    if unopt(et) not in ["int", "float", "bool", "str", "dyn", BIG]:
-        self.err("runtime-length tuple elements must be int, float, bool, str or their optional types")
+    if not self.vtuple_holds(et):
+        self.err(VTUPLE_ITEMS)
     return Val(self.rt("pys_vtuple_new", "ptr", [f"ptr {r}"]), self.ctype("vtuple", [et]))
+
+def gen_vtuple_holds(self, t: str) -> bool:
+    # can a runtime-length tuple hold items of type t: ints, floats, bools, strs (or None with
+    # them), Any values, and objects of one of the program's classes, whose pointers a slot holds
+    # and the tuple's scanned allocation retains (runtime.c's pys_vtuple_from), also of a union of
+    # such classes (a tagged box, unions.py), whose narrowing union_proof.py proves from the
+    # tuple's item type
+    u = unopt(t)
+    if u in ["int", "float", "bool", "str", "dyn", BIG]:
+        return True
+    return all(m in self.classes and self.classes[m].exc == "" and m not in self.nts for m in (umembers(u) if is_union(u) else [u]))
 
 def gen_iter_elem(self, t: str) -> str:
     # the type of the items a loop over a value of type t gets, or ""
@@ -358,17 +388,63 @@ def gen_iter_elem(self, t: str) -> str:
         return targs(t)[0]
     return ""
 
-def gen_siter(self, n: Node, et: str, what: str, resultsoft: bool = False) -> Val:
+def gen_siter(self, n: Node, et: str, what: str, resultsoft: bool = False, mode: str = "") -> Val:
     # an iterable that a set takes the elements of (set(it), s.update(it), s.union(it), ...),
     # for elements of type et ("": any): a set or frozenset, a dict (CPython takes its keys
     # with their hashes), or else the list of its items, in the order CPython's iterator
     # gives them (a list's, a tuple's, a str's characters, what a generator yields, ...)
-    return self.sitems(self.consume(n, self.ctype("list", [et]) if et != "" else "", resultsoft=resultsoft), et, what)
+    if (et == "" or none_key(et)) and none_display(n) == "list":
+        return self.sitems(self.none_container(n), et, what, mode)  # ([None, None]: a list of None, which is each such element)
+    return self.sitems(self.consume(n, self.ctype("list", [et]) if et != "" and et != "None" else "", resultsoft=resultsoft), et, what, mode)
 
-def gen_sitems(self, v: Val, et: str, what: str) -> Val:
+def gen_set_kind(self, et: str) -> str:
+    # what tells the tables of sets of et from those of other elements (runtime.c's Set.kind): 0
+    # ints, 1 strs or bytes, else the elements' descriptor (key_kind's, by its text)
+    t = "int" if et == BIG else held(narrow_type(et))
+    return "0" if t == "int" else "1" if t == "str" or t == "bytes" else self.hash_desc(t)
+
+def gen_set_rekind(self, v: Val, et: str) -> Val:
+    # set v as a set of elements of type et, which each of its own is as it is (wider): v itself
+    # where its table has the kind of et's, else its elements, with their hashes, in a new set of
+    # that kind. A table of strs (kind 1) holds no None and looks none up, where one whose
+    # elements may be None (none_key) has a descriptor that says so; hash(None) and a str's are
+    # the same in both
+    t = self.ctype(set_base(v.t), [et])
+    if self.set_kind(selem(v.t)) == self.set_kind(et):
+        return Val(v.v, t)
+    r = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(et)}"])
+    self.rt("pys_set_update", "void", [f"ptr {r}", f"ptr {v.v}"], self.key_fx(et))
+    return Val(r, t)
+
+def gen_set_some(self, v: Val) -> Val:
+    # a copy of set v, whose elements may be None, without None: what a set that holds no None
+    # can share with it, or lose to it
+    r = self.rt("pys_set_copy", "ptr", [f"ptr {v.v}"])
+    self.rt("pys_set_discard", "void", [f"ptr {r}", "i64 0"], self.key_fx(selem(v.t)))
+    return Val(r, v.t)
+
+def gen_set_pair(self, a: Val, b: Val, w: str) -> list[Val]:
+    # sets a and b, whose elements' types differ in what may be None (w: wider's of them), as an
+    # operator that makes a new set or compares them takes them: both as sets of w (set_rekind),
+    # where one of the types holds None as a value of its own (none_key). Other pairs, of tuples
+    # whose items may be None, are as they were: their tables' descriptors take None items
+    if selem(a.t) == selem(b.t) or not (none_key(selem(a.t)) or none_key(selem(b.t))):
+        return [a, b]
+    return [self.set_rekind(a, w), self.set_rekind(b, w)]
+
+def gen_sitems(self, v: Val, et: str, what: str, mode: str = "") -> Val:
     # siter's iterable, from its value v: where the set method takes its items (the iterator
-    # CPython makes then runs __iter__, and None raises)
+    # CPython makes then runs __iter__, and None raises). A set, or a dict's keys, of another
+    # type than et, where one of the types holds None as a value of its own (none_key), is made
+    # one the method's lookups take: elements that are et's as they are, in a table of et's kind
+    # (set_rekind; a dict's keys as their list). mode "probe": the method only looks its
+    # elements up in the set, or discards them from it (intersection, difference): they may
+    # also be None where the set's are not, and are then taken without it (set_some). mode
+    # "peer": the method compares the two sets (isdisjoint, issubset, issuperset): such a set is
+    # taken as a set of both types (wider's), as which the caller then takes its own set
     v = self.unwrap(v, "TypeError: 'NoneType' object is not iterable")
+    if v.t == EMPTYFS and et != "":
+        v = self.coerce(v, self.ctype("frozenset", [et]))  # (frozenset() that nothing typed: an empty one of the set's elements)
     if v.t == "str":
         v = Val(self.rt("pys_str_list", "ptr", [f"ptr {v.v}"]), "list[str]")
     elif v.t == "bytes":
@@ -380,13 +456,36 @@ def gen_sitems(self, v: Val, et: str, what: str) -> Val:
     if not is_set(v.t) and not is_dict(v.t) and not is_list(v.t):
         self.err(f"'{tname(v.t)}' object is not iterable")
     it = self.iter_elem(v.t)
+    if it == NONE_ITEM and (et == "" or none_key(et)) and is_list(v.t):
+        return v  # (a list of None so far, [None] * n: its items are None, which the elements may be)
     if "?" in v.t:
         self.err(f"cannot infer the type of an empty {tname(v.t)}; add a type annotation")
     if et != "" and it != et and self.wider(it, et) != et:
+        if mode == "probe" and is_set(v.t) and none_key(it) and not none_key(et) and et not in self.classes and (it == "None" or (self.wider(it, et) == it and unopt(it) == et)):
+            return self.set_some(v)
+        if mode == "peer" and is_set(v.t) and (none_key(it) or none_key(et)) and self.wider(it, et) != "":
+            return self.set_rekind(v, self.wider(it, et))
         self.err(f"{what} of {typestr(v.t)} for a set of {typestr(et)} is not supported: a set holds elements of one type")
+    if et != "" and it != et and (none_key(it) or none_key(et)):
+        if is_set(v.t):
+            return self.set_rekind(v, et)
+        if is_dict(v.t):
+            return self.keys_list(v)
     if et == "" and self.elem_problem(it) != "":
         self.err(self.elem_problem(it))
     return v
+
+def gen_emptyfs_pair(self, a: Val, b: Val) -> list[Val]:
+    # the operands of an operator or a comparison, one of which is frozenset() that nothing typed
+    # (EMPTYFS): beside a set it is an empty frozenset of that set's elements (coerce), and two
+    # of them are empty frozensets of one type
+    if a.t == EMPTYFS and b.t == EMPTYFS:
+        return [Val(a.v, "frozenset[int]"), Val(b.v, "frozenset[int]")]
+    if a.t == EMPTYFS and is_set(unopt(b.t)):
+        return [self.coerce(a, self.ctype("frozenset", [selem(unopt(b.t))])), b]
+    if b.t == EMPTYFS and is_set(unopt(a.t)):
+        return [a, self.coerce(b, self.ctype("frozenset", [selem(unopt(a.t))]))]
+    return [a, b]
 
 def gen_supdate(self, s: str, v: Val, et: str) -> None:
     # set s, of elements of type et, takes the elements of v, a set, a dict or a list (siter), as
@@ -401,7 +500,7 @@ def gen_supdate(self, s: str, v: Val, et: str) -> None:
 def gen_sdiscard(self, ov: str, v: Val, et: str) -> None:
     # set ov (of elements of type et) discards v, which it holds or not; None is no element (but
     # where the elements are objects, which may be None)
-    if v.t == "None" and et not in self.classes:
+    if v.t == "None" and et not in self.classes and not self.key_union(et) and not none_key(et):
         return
     if v.t == BIG and et == "int" and int_lists():
         self.rt("pys_set_big_discard", "void", [ov, f"i64 {self.big_lo(v).v}", f"ptr {self.big_hi(v).v}"])  # (bigints.py)
@@ -433,7 +532,10 @@ def gen_sargs(self, o: Val, m: str, args: list[Node]) -> list[SetArg]:
             item = made_var("__item", g.line)
             g = mk("listcomp", "gen", g.line, [item, item, g])
         if g.kind != "listcomp" or g.s != "gen":
-            out.append(SetArg(self.consume(g, self.ctype("list", [et]) if et != "" else ""), g))
+            if none_key(et) and none_display(g) == "list":
+                out.append(SetArg(self.none_container(g), g))  # ([None, None]: a list of None, siter's)
+                continue
+            out.append(SetArg(self.consume(g, self.ctype("list", [et]) if et != "" and et != "None" else ""), g))
             continue
         x = SetArg(Val("", ""), g)
         if split:
@@ -449,15 +551,16 @@ def gen_stake(self, o: Val, m: str, x: SetArg) -> Val:
     # the items of argument x of set o's method m (sargs), at its turn: a set, a dict or a list,
     # or none (type "") where a generator added (or discarded) each item as it came
     what = f"{'frozenset' if is_fset(o.t) else 'set'}.{m}()"
+    mode = "probe" if m in ["intersection", "intersection_update", "difference", "difference_update"] else ""
     if x.gen.kind != "listcomp" or x.gen.s != "gen":
-        return self.sitems(x.v, selem(o.t), what)
+        return self.sitems(x.v, selem(o.t), what, mode)
     if x.arg.split == "":
         v = self.sgen(o, m, x.gen, None)
     else:
         self.br(x.arg.trav)
         self.place(x.back)
         v = x.v
-    return v if v.t == "" else self.sitems(v, selem(o.t), what)
+    return v if v.t == "" else self.sitems(v, selem(o.t), what, mode)
 
 def gen_sgen(self, o: Val, m: str, g: Node, arg: IterArg | None) -> Val:
     # generator expression g, an argument of set o's method m: update() adds each item to o as
@@ -467,7 +570,7 @@ def gen_sgen(self, o: Val, m: str, g: Node, arg: IterArg | None) -> Val:
         self.listcomp(g, o.t, "", o.v, arg, "set" if m == "update" else "discard")
         return Val("", "")
     et = selem(o.t)
-    return self.listcomp(g, self.ctype("list", [et]) if et != "" else "", "", "", arg)
+    return self.listcomp(g, self.ctype("list", [et]) if et != "" and et != "None" else "", "", "", arg)
 
 def gen_keys_list(self, v: Val) -> Val:
     # a dict's keys (or v as it is), where CPython iterates over a dict as over any iterable
@@ -485,14 +588,22 @@ def gen_set_new(self, name: str, args: list[Node], want: str, resultsoft: bool =
     if len(args) > 1:
         self.err(f"{name} expected at most 1 argument, got {len(args)}")
     w = want if is_set(want) and is_fset(want) == fz and "?" not in want else ""
+    if is_aset(want) and "?" not in want:
+        w = self.ctype(name, [selem(want)])  # (for an AbstractSet[T]: a set[T], or a frozenset[T], which is one)
     if len(args) == 0:
+        if w == "" and fz and not is_set(unopt(want)):
+            # frozenset() that nothing types: empty for good, so an empty frozenset[T] or
+            # AbstractSet[T] of any T where one is expected (coerce); its table is an int's,
+            # whose lookups hash any slot
+            return Val(self.rt("pys_set_new", "ptr", ["i64 0"]), EMPTYFS)
         if w == "":
             self.err(f"cannot infer the type of an empty {name}; add a type annotation ({'s: set[T] = set()' if not fz else 'f: frozenset[T] = frozenset()'})")
         return Val(self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(selem(w))}"]), w)
     v = self.siter(args[0], selem(w) if w != "" else "", f"{name}()", resultsoft)
-    t = self.ctype(name, [selem(w) if w != "" else self.none_items(self.iter_elem(v.t))])
-    if fz and is_fset(v.t):
-        return Val(v.v, t)
+    it = self.iter_elem(v.t)
+    t = self.ctype(name, [selem(w) if w != "" else "None" if it == NONE_ITEM else self.none_items(it)])  # (set([None, None]): set[None])
+    if fz and is_fset(v.t) and not is_aset(v.t):
+        return Val(v.v, t)  # (frozenset(f) of a frozenset is f; an AbstractSet's value may be a set, and is copied)
     if is_set(v.t):
         return Val(self.rt("pys_set_copy", "ptr", [f"ptr {v.v}"]), t)
     r = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(selem(t))}"])
@@ -506,7 +617,9 @@ def gen_setop(self, op: str, a: Val, b: Val) -> Val:
     if w == "":
         self.err(f"unsupported operand types for {op}: {typestr(a.t)} and {typestr(b.t)} (a set holds elements of one type)")
     fn = "pys_set_or" if op == "|" else "pys_set_and" if op == "&" else "pys_set_sub" if op == "-" else "pys_set_xor"
-    return Val(self.rt(fn, "ptr", [f"ptr {a.v}", f"ptr {b.v}"], self.key_fx(selem(a.t)) + self.key_fx(selem(b.t))), self.ctype("frozenset" if is_fset(a.t) else "set", [w]))
+    ab = self.set_pair(a, b, w)  # (a set[str] and a set[str | None]: tables of one kind)
+    # (the result is of the left operand's kind of set, which CPython's is: an AbstractSet's too)
+    return Val(self.rt(fn, "ptr", [f"ptr {ab[0].v}", f"ptr {ab[1].v}"], self.key_fx(selem(a.t)) + self.key_fx(selem(b.t))), self.ctype(set_base(a.t), [w]))
 
 def gen_smethod(self, o: Val, m: str, args: list[Node]) -> Val:
     # a method of a set or frozenset o, run as CPython's setobject.c runs it; the iterables the
@@ -546,7 +659,7 @@ def gen_smethod(self, o: Val, m: str, args: list[Node]) -> Val:
             self.br(end)
             self.place(end)
             return none
-        if (v.t == "None" or (is_opt(v.t) and unopt(v.t) == et)) and et not in self.classes:
+        if (v.t == "None" or (is_opt(v.t) and unopt(v.t) == et)) and et not in self.classes and not self.key_union(et) and not none_key(et):
             # None is no element (but an object's): discard() does nothing, remove() raises
             # KeyError: None
             if m == "remove":
@@ -577,7 +690,7 @@ def gen_smethod(self, o: Val, m: str, args: list[Node]) -> Val:
         self.rt("pys_set_clear", "void", [ov])
         return none
     if m == "copy":
-        return o if fz else Val(self.rt("pys_set_copy", "ptr", [ov]), o.t)  # (frozenset.copy() is the frozenset)
+        return o if fz and not is_aset(o.t) else Val(self.rt("pys_set_copy", "ptr", [ov]), o.t)  # (frozenset.copy() is the frozenset; an AbstractSet's value may be a set)
     if m == "update" or m == "union" or m == "intersection" or m == "intersection_update" or m == "difference" or m == "difference_update":
         # CPython evaluates every argument first, in order, then the method takes the items of
         # each in turn (sargs, stake): update() adds a generator's (or map()'s, filter()'s) as
@@ -632,8 +745,13 @@ def gen_smethod(self, o: Val, m: str, args: list[Node]) -> Val:
         g = self.mapgen(args[0]) if self.is_mapcall(args[0]) else args[0]
         e = mk("cmp", "in" if m == "issuperset" else "not in", g.line, [g.kids[0], self.vnode(o)])
         return self.listcomp(mk("listcomp", "gen", g.line, [e] + g.kids[1:]), "", "all")
-    vs = [self.siter(a, et, f"{tn}.{m}()") for a in args]
+    vs = [self.siter(a, et, f"{tn}.{m}()", mode="peer" if m in ["isdisjoint", "issubset", "issuperset"] else "") for a in args]
     v = vs[0]
+    if is_set(v.t) and selem(v.t) != et and (none_key(selem(v.t)) or none_key(et)) and m in ["isdisjoint", "issubset", "issuperset"]:
+        # (a set whose elements may be None where o's are not, taken as a set of both types
+        # (sitems's peer): o is compared as one too)
+        ov = f"ptr {self.set_rekind(o, selem(v.t)).v}"
+        kx = self.key_fx(selem(v.t))
     if m == "symmetric_difference":
         return Val(self.rt("pys_set_xor" if is_set(v.t) else "pys_set_xor_dict" if is_dict(v.t) else "pys_set_xor_list", "ptr", [ov, f"ptr {v.v}"], kx), o.t)
     if m == "symmetric_difference_update":
@@ -703,6 +821,31 @@ def gen_affix_any(self, tup: Val, m: str, av: list[str], base: str = "str") -> V
     # is None raises when it is reached. av: the call's arguments, the item's place left empty
     lend = self.label()
     ph = Ins("phi", "bool", "")
+    if is_vtuple(tup.t):
+        # (a tuple whose length the run decides: the same loop, over the items it holds)
+        size = Val(self.mload("int", tup.v), "int")
+        index = self.alloca("int", "")
+        self.mstore("int", "0", index)
+        cond = self.label()
+        body = self.label()
+        step = self.label()
+        self.br(cond)
+        self.place(cond)
+        vi = self.mload("int", index)
+        self.incoming(ph, "false", self.cur)
+        self.cbr(self.num_cmp("<", Val(vi, "int"), size).v, body, lend)
+        self.place(body)
+        item = self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {tup.v}", f"i64 {vi}"]), targs(tup.t)[0])
+        if is_opt(item.t):
+            self.guard(self.ptr_cmp('==', item, Val('null', 'None')).v, f"TypeError: tuple for {m} must only contain str, not NoneType" if base == "str" else "TypeError: a bytes-like object is required, not 'NoneType'")
+        c = self.rres(self.rt(f"pys_{base}_{m}", "i64", [av[0], f"ptr {item.v}"] + av[2:]), "bool")
+        self.incoming(ph, "true", self.cur)
+        self.cbr(c.v, lend, step)
+        self.place(step)
+        self.mstore("int", self.scalar("add", [Val(vi, "int"), Val("1", "int")]), index)
+        self.br(cond)
+        self.place(lend)
+        return Val(self.phi(ph), "bool")
     for i in range(len(targs(tup.t))):
         item = self.tget(tup, i)
         if is_opt(item.t):
@@ -761,16 +904,28 @@ def gen_key_items(self, t: str) -> bool:
     # objects too)
     for x in targs(t):
         u = unopt(x)
-        if x != "int" and x != "bool" and u != "str" and u != "bytes" and x != "exctype" and not self.key_class(u) and not (is_tuple(u) and self.key_items(u)):
+        if x != "int" and x != "bool" and u != "str" and u != "bytes" and x != "exctype" and not is_clsval(x) and not self.key_class(u) and not (is_tuple(u) and self.key_items(u)):
             return False
     return True
+
+def gen_key_union(self, t: str) -> bool:
+    # is t a union of classes whose objects hash and compare by identity alone (no class an object
+    # of a member may be of defines __hash__ or __eq__): a key, as an object of one such class is.
+    # runtime.c hashes and compares the object its box holds, not the box (#1452)
+    return is_union(t) and all([self.key_class(m) and len([c for c in self.hash_classes(m) if self.hash_kind(c.name) != "id"]) == 0 for m in umembers(t)])
 
 def gen_key_problem(self, t: str) -> str:
     # why t cannot be a dict's key type, or "" (utils.key_problem): objects too, and dynamic values
     # (hashed by their types at run time: TypeError: unhashable type)
     t = narrow_type(t)  # (a promoting int, also a tuple's, is a key as a 64-bit int: bigints.py)
-    if t == "dyn" or self.key_class(t) or (is_tuple(t) and self.key_items(t)):
+    if t == "dyn" or self.key_class(t) or self.key_union(t) or (is_tuple(t) and self.key_items(t)):
         return ""
+    if is_opt(t) and t != NONEVAR and t != NONE_ITEM and is_tuple(unopt(t)) and self.key_items(unopt(t)):
+        return ""  # (a tuple key that may be None, objects among its items too)
+    if is_union(t) and self.reference_union(t) and all([self.key_class(m) for m in umembers(t)]):
+        return key_problem(t) + " (a union's classes must hash and compare by identity: none may define __hash__ or __eq__)"
+    if is_fset(t) and self.elem_problem(selem(t)) == "":
+        return ""  # (hashed by runtime.c's hfset and compared as sets are, by its descriptor F)
     if t in self.nts:
         return key_problem(t) + " (a NamedTuple, which CPython hashes as the tuple of its fields)"
     if t in self.classes and self.classes[t].exc != "":
@@ -779,8 +934,7 @@ def gen_key_problem(self, t: str) -> str:
 
 def gen_elem_problem(self, t: str) -> str:
     # why t cannot be the element type of a set, or "": the types of dict keys (key_problem)
-    p = self.key_problem(t)
-    return elem_problem(t) if p != "" and is_opt(t) else p.replace("dict keys", "set elements")
+    return self.key_problem(t).replace("dict keys", "set elements")
 
 def gen_hash_kind(self, c: str) -> str:
     # how CPython hashes an object of class c (not of a subclass): "id" by identity, as object's
@@ -806,6 +960,14 @@ def gen_hash_desc(self, t: str) -> str:
     # runtime.c's descriptor of keys of type t (Dict.kind): desc's, but an object is P<id> where
     # it hashes and compares by identity alone (no class it may be of defines __eq__ or
     # __hash__), else H<id>, which hashes through the program (obj_hash) and compares as O<id>
+    if self.key_union(t):
+        # U<n>: each member's tag and P<id>, as a union's descriptor lists them (gen_plain_desc)
+        ms = umembers(t)
+        out = "U" + str(len(ms)) + ":"
+        for i in range(len(ms)):
+            md = self.hash_desc(ms[i])
+            out += str(self.utag(ms[i])) + ":" + md + ("." if i + 1 < len(ms) and ends_in_id(md) else "")
+        return out
     if t in self.classes:
         d = self.desc(t, "==")
         for c in self.hash_classes(t):
@@ -820,6 +982,12 @@ def gen_hash_desc(self, t: str) -> str:
         return "?" + self.hash_desc(unopt(t))
     if is_tuple(t) and len(targs(t)) <= 9:
         return "T" + str(len(targs(t))) + "".join(["J" if x == BIG else self.hash_desc(x) for x in targs(t)])  # (desc's J)
+    if is_vtuple(t):
+        return "V" + self.hash_desc(targs(t)[0])  # (its objects' too: H or P)
+    if is_fset(t):
+        # (desc's F, of its elements' hash descriptors: an H in them runs the program's __eq__ where
+        # two frozensets compare, key_fx)
+        return "F" + self.hash_desc(held(selem(t)))
     return self.desc(t, "==")
 
 def gen_key_fx(self, kt: str) -> str:
@@ -834,13 +1002,17 @@ def gen_key_repr(self, t: str) -> bool:
     u = unopt(t)
     if u in self.classes:
         return len([c for c in self.hash_classes(u) if "__repr__" in c.methods]) > 0
-    return is_tuple(u) and any(self.key_repr(x) for x in targs(u))
+    if self.key_union(u):
+        return any(self.key_repr(x) for x in umembers(u))
+    return (is_tuple(u) and any(self.key_repr(x) for x in targs(u))) or (is_fset(u) and self.key_repr(selem(u)))
 
 def gen_dkey(self, k: Val, kt: str) -> Val:
     # a key to look up in a dict whose keys have type kt: one that may be None stays optional
     # (see nonekey), and a bool or a tuple with what CPython finds as such a key (lookable) is one
     # (a tuple of ints in the layout in which the dict holds it, key_hold: bigints.held)
-    if (is_tuple(k.t) or (is_opt(k.t) and unopt(k.t) == kt)) and held(narrow_type(kt)) != narrow_type(kt):
+    if none_key(kt):
+        return self.none_dkey(k, kt)
+    if is_tuple(unopt(k.t)) and held(narrow_type(kt)) != narrow_type(kt):
         return self.key_hold(k, narrow_type(kt))
     if is_tuple(k.t) and BIG in k.t and BIG not in kt:
         k = self.big_tuple_narrow(k)  # (a key holds 64-bit ints: bigints.py)
@@ -851,8 +1023,34 @@ def gen_dkey(self, k: Val, kt: str) -> Val:
         return self.as_int(k)  # (True is the key 1)
     if is_tuple(k.t) and k.t != kt and lookable(k.t, kt):
         return Val(k.v, kt)  # (a None where the keys hold a str finds none: runtime.c's hval)
+    if is_vtuple(kt) and is_tuple(k.t):
+        # (a runtime-length tuple's keys, #1460: a fixed tuple whose items it finds as the keys'
+        # items, True as 1, becomes one, as its items are)
+        ft = "tuple[" + ",".join([targs(kt)[0] for x in targs(k.t)]) + "]"
+        if k.t != ft and lookable(k.t, ft):
+            return self.coerce(Val(k.v, ft), kt)
     if is_sopt(k.t) and bool_for_int(unopt(k.t), kt):
         self.err(f"a {typestr(k.t)} key of a dict with {typestr(kt)} keys is supported by get() and in only, as CPython's KeyError would name it as the bool it is: test it with 'is not None' first")
+    return self.coerce(k, kt)
+
+def gen_none_dkey(self, k: Val, kt: str) -> Val:
+    # dkey for keys of a type kt that holds None (none_key): k as a value of kt, which None is,
+    # found as CPython finds it (hash(None) and identity). A tuple with what CPython finds as such
+    # a key is one (lookable); a bool where the keys are ints that may be None is not looked up
+    # (bool_for_int's cases take an int's table)
+    if kt == "None":
+        if k.t != "None":
+            self.err(f"a {typestr(k.t)} is looked up among keys that are always None: only None is one")
+        return k
+    if (k.t == "None" or is_tuple(unopt(k.t))) and held(narrow_type(kt)) != narrow_type(kt):
+        return self.key_hold(k, narrow_type(kt))
+    if is_tuple(unopt(k.t)) and k.t != kt and unopt(k.t) != unopt(kt) and lookable(unopt(k.t), unopt(kt)):
+        return Val(k.v, kt)  # (a None where the keys hold a str finds none: runtime.c's hval)
+    if is_tuple(unopt(k.t)) and BIG in k.t and BIG not in kt:
+        k = self.big_tuple_narrow(k)  # (a key holds 64-bit ints: bigints.py)
+    k = self.big_opt_narrow(k)  # (and an int | None the box of one)
+    if k.t == "bool" and unopt(kt) == "int":
+        self.err(f"a bool is looked up among {typestr(kt)} keys, which CPython finds as the int it equals: convert the bool with int()")
     return self.coerce(k, kt)
 
 def gen_bool_find(self, d: str, k: Val, key: str) -> str:
@@ -983,10 +1181,11 @@ def gen_store_elem(self, k: Val, et: str) -> Val:
         self.err(f"a {typestr(k.t)} element is added to a set of {typestr(et)} elements, where CPython keeps an element it adds as the bool it is (True, not 1): convert the bool with int()")
     return self.list_hold(k, et) if held(narrow_type(et)) != narrow_type(et) else self.coerce(k, et)  # (a tuple of ints as the set holds it: bigints.held)
 
-def gen_nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str) -> str:
-    # the slot fn(av) returns, a dict lookup of key k (x: key_fx of the dict's keys); a key that
-    # is None is in no dict: the result is then the slot none, or with none "" KeyError: None
-    if not is_opt(k.t):
+def gen_nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str, kt: str) -> str:
+    # the slot fn(av) returns, a dict lookup of key k (x: key_fx of the dict's keys, of type kt); a
+    # key that is None is in no dict whose keys cannot be None (none_key: one whose keys can looks
+    # None up as any key): the result is then the slot none, or with none "" KeyError: None
+    if not is_opt(k.t) or none_key(kt):
         return self.rt(fn, "i64", av, x)
     if none == "":
         self.guard(self.ptr_cmp('==', k, Val('null', 'None')).v, "KeyError: None")
@@ -1030,6 +1229,8 @@ def gen_none_arg(self, m: str, k: int) -> str:
 def gen_to_str(self, v: Val) -> Val:
     if self.dyn_policy(self.line) and self.refl_builtin_class(v.t) != "":
         return self.dyn_str(self.dyn_box(v))
+    if self.refl_builtin_class(v.t) != "":
+        v = self.class_value_builtin(v)  # (a builtin class named: its class object, <class 'int'>)
     t = v.t
     if t == "dyn":
         return self.dyn_str(v)  # (by its box's type: dynamic.py)
@@ -1047,8 +1248,8 @@ def gen_to_str(self, v: Val) -> Val:
         return Val(self.rt("pys_str_float", "ptr", [f"double {v.v}"]), "str")
     if t == "bool":
         return Val(self.select(v.v, Val(self.sconst("True"), "str"), Val(self.sconst("False"), "str")), "str")
-    if t == "None":
-        return Val(self.sconst("None"), "str")
+    if t == "None" or t == NONEVAR:
+        return Val(self.sconst("None"), "str")  # (also a local that only None has reached so far: none_read)
     if t in self.classes:
         return self.obj_str(v, "__str__")
     if t == "opt[str]":
@@ -1057,6 +1258,9 @@ def gen_to_str(self, v: Val) -> Val:
         return Val(self.rt("pys_exc_str", "ptr", [f"ptr {v.v}"]), "str")
     if t == "exctype":
         return Val(self.rt("pys_exc_type", "ptr", [f"ptr {v.v}"]), "str")
+    if is_clsval(unopt(t)):
+        # (an ordinary class's class object, or None: runtime.c's repr of its record, <class 'M.Q'>)
+        return Val(self.rt("pys_repr", "ptr", ["i64 " + self.to_slot(v), f"ptr {self.sconst(self.desc(t, 'repr'))}"]), "str")
     if t == "opt[exc]" or t == "opt[exctype]":
         # (an __exit__'s exception, or its class: str(e), or "None")
         ln = self.label()
@@ -1225,15 +1429,20 @@ def gen_hash_value(self, v: Val) -> Val:
 
 def gen_hashable(self, t: str) -> bool:
     # can hash() take a value of type t (but an object's, obj_hash): a number, a str, None, an
-    # object, a tuple of such items, or one of these that may be None
+    # object, a frozenset (runtime.c's hfset, of the hashes its table keeps) or a tuple of such
+    # items, or one of these that may be None
     u = unopt(t)
-    if u == "int" or u == BIG or u == "bool" or u == "float" or u == "str" or u == "bytes" or u == "None" or u == "exctype" or self.key_class(u):
+    if u == "int" or u == BIG or u == "bool" or u == "float" or u == "str" or u == "bytes" or u == "None" or u == "exctype" or is_clsval(u) or self.key_class(u):
         return True
+    if is_fset(u):
+        return self.elem_problem(selem(u)) == ""
     return (is_tuple(u) or is_vtuple(u)) and all(self.hashable(x) for x in targs(u))
 
 def gen_repr(self, v: Val) -> Val:
     if self.dyn_policy(self.line) and self.refl_builtin_class(v.t) != "":
         return self.dyn_repr(self.dyn_box(v))
+    if self.refl_builtin_class(v.t) != "":
+        v = self.class_value_builtin(v)  # (a builtin class named: its class object, <class 'int'>)
     if is_kw(v.t):
         return self.kw_repr(v)
     if v.t == BIG:
@@ -1247,14 +1456,16 @@ def gen_repr(self, v: Val) -> Val:
         return self.big_tuple_repr(v)  # (of promoting ints, item by item: bigints.py)
     if self.reference_union(v.t):
         return self.refl_union_str(v, "__repr__")  # (each class's: reflection.py)
+    if self.object_union(v.t):
+        return self.uop(v, "repr")  # (the member's: unions.py)
     if v.t in self.classes:
         return self.obj_str(v, "__repr__")
-    if v.t == "None":
+    if v.t == "None" or v.t == NONEVAR:
         return Val(self.sconst("None"), "str")
     if v.t == "file":
         self.err(f"cannot convert {v.t} to str")
     if v.t == "exc":
         return Val(self.rt("pys_exc_repr", "ptr", [f"ptr {v.v}"]), "str")
-    if unopt(v.t) == "exctype":
+    if unopt(v.t) == "exctype" or is_clsval(unopt(v.t)):
         return self.to_str(v)  # (a class's repr is its str)
     return Val(self.rt("pys_repr", "ptr", ["i64 " + self.to_slot(v), f"ptr {self.sconst(self.desc(v.t, 'repr'))}"]), "str")

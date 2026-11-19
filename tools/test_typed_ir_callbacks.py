@@ -10,7 +10,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.callbacks import callback_clone, callback_ins, specialize_callbacks
-from src.pystachy_compiler.ir import FnInfo, IFn, Ins, Loop, Val
+from src.pystachy_compiler.ir import IFn, Ins, Loop, Val
+from src.pystachy_compiler.symbols import FnInfo
 from src.pystachy_compiler.loader import Loader
 from src.pystachy_compiler.syntax import Node
 from src.pystachy_compiler.utils import identity_abi

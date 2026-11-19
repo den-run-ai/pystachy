@@ -47,8 +47,9 @@ flowchart TD
     llvm --> ext["ext: CPython extension"]
     runtime["C and subset runtime"] --> object["Cached runtime object"]
     runtime --> bitcode["Cached runtime bitcode"]
+    bitcode --> precompiled["Cached AOT runtime object and interface"]
     object --> jit
-    bitcode --> aot
+    precompiled --> aot
     bitcode --> ext
 ```
 
@@ -90,6 +91,14 @@ retain a copy of their context across internal retries.
 
 Ordinary single-inheritance hierarchies carry a class tag. Base-typed instance-method calls
 select a concrete implementation, then reuse method specialization for that receiver.
+Up to eight concrete classes (`DISPATCH_INLINE`), each call site tests the tag itself, and
+LLVM may inline the overrides there. Wider hierarchies select the override in one internal
+function per receiver type, method and argument types (`@vd.N`, `Gen.dispatch_call`), which
+the call sites share: a site costs one call rather than an arm per class, and each override
+is inlined once. Arguments are evaluated and the receiver checked before that call, and
+each arm keeps its override's defaults. Calls whose arms depend on context keep the
+per-site form: generators, inferred or never-returning results, dunder methods, exception
+classes, star arguments and dynamic programs.
 A comparison tests both operands' classes (a `switch` on an ordinary tag), but compiles
 each distinct call once: pairs of classes that call one method instance, on the same
 operand, share its code. A method that takes the other operand as a template's parameter
@@ -97,6 +106,30 @@ operand, share its code. A method that takes the other operand as a template's p
 once for each receiver's class.
 Inherited fields keep the base layout; unrelated classes retain their existing layout.
 Explicit base calls and `super()` select a body directly while preserving the receiver.
+A hierarchy needing only constructor-code specialization is activated on demand. The
+retry registry retains qualified class names, their ancestors and required constructor
+type dependencies; a fresh `Gen` rebuilds layouts and dispatch sites, including calls
+compiled before the subclass was discovered.
+Ancestors whose layouts are already verified can activate before a child's annotations
+are re-evaluated; this handles constructor parameters and fields naming that base.
+A used imported descendant also discovers dependencies whose annotated fields contain
+class-template objects, using the same annotation rule as local hierarchies. Such
+dependencies need no inheritance tag; unused imported descendants do not discover them.
+Discovery starts at a compiled hierarchy use or a failed standalone template
+construction whose required annotation dependencies can be verified by the same rule.
+A failure requests a fresh whole-program pass; previously valid specializations do not
+trigger discovery on their own.
+Unrelated imported descendants stay deferred. A speculative adapter can still decline
+without admitting any of its constructor dependencies.
+A self-reference names the prospective nominal layout, including a subclass not yet
+registered. The class and template registries are restored after each syntax-only
+eligibility check, including errors and retries.
+Unused imported subclasses retain deferred diagnostics, so their overrides do not enter
+dispatch merely because their base acquired a fixed layout. Speculative comparison
+adapters keep their existing decline path before a diagnostic can activate a hierarchy.
+Activating a class also discards saved union hints and declined dynamic adapters:
+those may refer to the previous template layouts. The finite class-name registry is
+independent of the union-join retry budget.
 
 A known function value can become a direct call. Closures keep captured variables in shared
 cells, so `nonlocal` assignments remain visible. A typed `Callable` uses an adapter with a
@@ -152,7 +185,7 @@ Scalars use LLVM's `i64`, `double` and `i1`; strings, containers and objects use
 Container elements occupy uniform eight-byte slots, allowing one runtime implementation to
 serve multiple static element types. Optional reference values use null for `None`; optional
 numbers use boxes. Integers use checked 64-bit arithmetic rather than CPython's arbitrary
-precision.
+precision, except in modules that opt in to [promoting ints](python-int.md).
 
 Strings retain UTF-8 storage: their header holds the byte length, cached dictionary hash,
 and cached code-point count plus one (zero means unknown), followed by the bytes at offset
@@ -198,7 +231,8 @@ its maker writes in full, are not cleared at all. Each sweep keeps as many free 
 next cycle may take (up to half as much again as its allocation window, which grows with the
 live bytes), reused before clean ones without page faults, and returns the rest to the system. Pointer-free slots of more than 136 bytes are cleared when they are handed out rather
 than when they die. `PYSTACHY_GC_MIN` sets the 32 MiB allocation window between collections
-([#650](https://github.com/den-run-ai/pystachy/issues/650)). The
+([#650](https://github.com/den-run-ai/pystachy/issues/650)), and [`gc.collect()`](../lib/compatibility.md#gc)
+starts one at once. The
 [2 November 2026 allocator evaluation](https://github.com/den-run-ai/pystachy/blob/a2cb8a3638d715577a7ab1cd1e4a0d6b01b6cdf2/docs/reports/allocator-prototype.md)
 records the measurements. Unreachable files close during collection or at program exit. Supported Python operations are checked
 against CPython; the [compatibility reference](language/compatibility.md) lists deviations.
@@ -256,7 +290,10 @@ program that uses none of these constructs compiles to the IR it compiled to bef
 Where a run-time choice remains, the code dispatches on the value's exact type, the way method
 calls already do: None first (where it may be), then a union's member tag, then an object's class
 tag (`refl_split`). Each concrete class's arm then reads the class's **reflection record**, an
-internal constant global that is emitted only for classes that reach such a site:
+internal constant global that is emitted only for classes that reach such a site. The record is
+also the class's class object where the class is a [value](language/semantics.md#classes-as-values)
+(`class_values.py`): a `type[C]` value is a pointer to it, compared and hashed by identity, and
+a call compares it with the record of each class it may be to run that class's constructor. Its words:
 
 | Word | Contents |
 |---|---|
@@ -330,8 +367,8 @@ clause `except (A, B): pass` (`statements.suppress_item`), and the loader makes 
 `@contextmanager` the generator method `_pys_cm_NAME` and a method `NAME` that calls
 `contextmanager()` on it bound (`loader.cm_methods`): it makes the `_GeneratorContextManager`
 itself, of the generator `C._pys_cm_NAME(self, ...)` of its own class `C` (so `super().NAME()`
-runs the base class's; `self._pys_cm_NAME(...)` where no class of the module derives from `C` or
-is a base of it) and of `_pys_cm_NAME` bound to `self` taken as an object of the class that
+runs the base class's, also where a subclass in another module overrides it) and of
+`_pys_cm_NAME` bound to `self` taken as an object of the class that
 first defines `NAME` so (`loader.cm_root`): `NAME` returns one type for every subclass. A program that reads `__cause__`
 (`Gen.causeread`) records it, `pys_exc_setcause`, for `raise ... from c` and PEP 479's
 `RuntimeError`.
@@ -425,7 +462,18 @@ value. Programs without `send` and `throw` keep five words and the code they had
 `yield from` whose closing may run code closes its generator as above. A program where a module
 opts in to [promoting ints](python-int.md) gives its generators nine words: also the pointers of
 the promoting ints yielded last and returned (`specs.GENVALP`, `GENRETP`), which every `yield` of
-an int writes, null where the value fits.
+an int writes, null where the value fits. In code tracking dynamic `Any` identity, scalar
+`int` and `float` yield channels add one scanned nullable object companion after
+the existing promise: six, eight or ten words in total. The numeric payload and
+any promoting-int high pointer keep their original slots. Existing source aliases
+supply their canonical box; fresh computed yields supply null, as scalar calls do.
+Consumers copy that companion into a private result slot before any later resume.
+They can transfer a fresh result into a lone loop local without boxing, while
+observable aliases materialize normally. No pointer into a generator's local
+identity slot escapes. Isolated nontracking modules keep their old frame size.
+A typed generator crossing identity regions, including erasure to `Any`, forces
+recompilation with consistent tracking before a consumer can read it. Generator
+return channels keep their prior layout.
 
 A generator expression that no consumer takes directly becomes an anonymous generator
 function, called with its first iterable (evaluated where it is written) and the values of
@@ -553,7 +601,9 @@ calls passes through a counted function or a counted resume. A source function o
 that can be entered again counts; any other neither checks nor counts, and keeps its
 snapshot only when one of its handlers restores it. A Callable's adapter (`@cv.N`) only
 forwards to its target and never counts: a cycle through it also passes through the
-function that makes the indirect call, which reaches `U`.
+function that makes the indirect call, which reaches `U`. Nor does a shared virtual
+dispatch (`@vd.N`, `Gen.dispatch_call`): a cycle through it also passes through the
+override it selects, a source function.
 
 A counted function's snapshot becomes its entry, `recursion.enter`: it raises
 `RecursionError` if the depth has reached the limit (before any local handler or body
@@ -657,8 +707,9 @@ margin is what the deepest counted frame may still use without an entry
 of its own: on Linux x86-64, raising the error and unwinding to a handler used under 5 KiB
 below the floor (JIT and AOT, also with handlers or `finally` in every frame and through
 generator resumes), and a `repr()` of 510 nested lists from the deepest frame (the runtime
-stops at 512) about 150 KiB; the rest covers non-recursive callees and a signal handler's
-frame. No signal handler is involved ([#988](https://github.com/den-run-ai/pystachy/issues/988)).
+stops at 512) about 150 KiB; the rest covers non-recursive callees and the frame of a signal
+handler that runs there. No signal handler detects the floor: each counted entry compares the
+stack pointer with it ([#1015](https://github.com/den-run-ai/pystachy/issues/1015)).
 `tools/test_stack_floor.py` checks the floor's policy against simulated bounds and mappings,
 including 4 KiB and 64 KiB pages, and runs deep recursion in JIT and AOT under a fixed
 `RLIMIT_STACK`. Its extension probe also maps an obstacle before import and verifies catchable
@@ -698,19 +749,35 @@ native Linux CLI runs. Validated hits execute a previously linked JIT-tier
 program without rerunning the frontend or LLVM. `PYSTACHY_PROGRAM_CACHE=0`
 disables it; unsupported configurations use ordinary compilation.
 
-`build` links the runtime bitcode with the program and applies clang's `-O2` optimization
-pipeline, allowing optimization across that boundary. The program's module also defines
-`pys_plain`: 1 when no module opts in to dynamic `Any` or promoting ints, else 0. The runtime
+`build` links a precompiled runtime ([#706](https://github.com/den-run-ai/pystachy/issues/706),
+`aot_runtime.py`). The cached runtime bitcode, linked to a definition of `pys_plain` and
+optimized again with `-O2`, is compiled once to an object that every executable links, and each
+program is optimized with clang's `-O2` pipeline against an interface of the same module. The
+interface holds as `available_externally` definitions, which LLVM may inline and never compiles,
+the bodies of runtime functions of up to 200 instructions and of functions that switch on a
+parameter, whose calls with a constant selector cost only the selected case; it declares the
+rest. The module's local symbols become hidden symbols of the object under their own names, so
+an inlined body and the runtime's own code share one definition of each static. The
+executable's link keeps the runtime code the program reaches (`--gc-sections`, `-dead_strip`
+on macOS). The object, the interface and the late step's module (below) are cached beside the
+runtime as `.aot0.*` or `.aot1.*` and built by the first `build` that may publish them, in about
+5 seconds; `opt`'s `name-anon-globals` first names the unnamed globals that UBSan's checks add. A
+build with AddressSanitizer, a runtime built for one run alone or a failed step instead links the
+needed part of the runtime bitcode into the program's module and optimizes and compiles them
+together, as every `build` did before. A failed step leaves `.aot0.fail` or `.aot1.fail` with
+the tools' messages, and later builds of that runtime do not try again.
+
+`pys_plain` is 1 when no module opts in to dynamic `Any` or promoting ints, else 0. The runtime
 tests it (`opt_in()` in `runtime.c`) only on paths that values of those opt-ins lead to: ints
 past 64 bits in containers, promoting ints and list identity companions, which only those
 opt-ins create (every list operation that keeps a companion in step tests it first). For a
 plain program those paths become traps, and `-O2` drops static helpers that have no remaining
-caller from the executable. Explicit `mpz` users retain the helpers they need. The reusable
-runtime cache still contains all features. `make aotprobe` checks retained symbols and output
-for plain programs, direct opt-ins and imported opt-ins, and that a plain program's list store
-writes no companion. The JIT tier's precompiled runtime and `ext` keep the runtime's weak
-definition, 0. `ext` builds a shared CPython module with its boundary wrappers; see the
-[FFI guide](ffi.md).
+caller, from the `.aot1` runtime (or the program's module). Explicit `mpz` users retain the
+helpers they need. The reusable runtime cache still contains all features. `make aotprobe`
+checks retained symbols and output for plain programs, direct opt-ins and imported opt-ins, and
+that a plain program's list store writes no companion. The JIT tier's precompiled runtime and
+`ext` keep the runtime's weak definition, 0. `ext` builds a shared CPython module with its
+boundary wrappers; see the [FFI guide](ffi.md).
 
 Compiled code gets its objects and fixed tuples that hold no reference from `pys_new` (the
 `allocelide` optimization, [#1017](https://github.com/den-run-ai/pystachy/issues/1017)): those
@@ -732,14 +799,16 @@ collections that clear weak references, close dropped files and release `ffi.tra
 can come later than without `allocelide`. `runtime.c` keeps `pys_new` out of line so that
 `-O2` still sees those calls. Each surviving allocation then gets the allocator's fast path
 back: `build` optimizes the linked module to bitcode, and one `opt` run then inlines `pys_new`
-into the calls that are left. Its `forceattrs` passes first swap `pys_new`'s `noinline` (and the
+into the calls that are left (with the precompiled runtime, from the late module, which brings
+`pys_new`'s body back after `-O2` dropped the interface's bodies; `elim-avail-extern` then drops
+them again). Its `forceattrs` passes first swap `pys_new`'s `noinline` (and the
 `optnone` of a runtime compiled at `-O0`) for `alwaysinline` (the driver's `LATE_INLINE`), then
 `always-inline` inlines it. There are two (`LATE_PASSES`): LLVM 23 adds a forced attribute before
 it removes one and no longer adds `alwaysinline` beside `noinline` or `optnone`, so its first
 pass only removes them. Clang then compiles the module without optimizing it again.
 `ext` does the same between its `opt -O2` and its compilation. A module without `pys_new`
 keeps the single `clang -O2 -c` step. The JIT tier, which never inlines the shared runtime,
-puts its own copy of the fast path in the program's module (`lower_module.py`'s `JITFAST`): calls of
+puts its own copy of the fast path for sizes below 136 bytes in the program's module (`lower_module.py`'s `JITFAST`): calls of
 `pys_new` and `pys_alloc` stay calls (`noinline`) through its cleanup pipeline, which deletes
 what instcombine can prove unused, and the same last `forceattrs` and `always-inline` passes
 then inline the calls left. Each pops the runtime's free list of its class (`pys_fl`, a
@@ -777,6 +846,34 @@ tool pair. This opt-in does not change the existing combined-cache hit contract 
 cache headers independently on those hits. Cache directories must remain trusted
 local storage; no shared-cache trust or additional platform support is implied.
 
+<a id="profile-guided-builds"></a>
+
+### Profile-guided builds
+
+`build` can optimize an executable with a profile of its own runs, in three steps:
+
+```sh
+PYSTACHY_PROFILE_GENERATE=prof pystachy build app.py -o app-profiling
+./app-profiling typical-input        # each run writes prof/default_*.profraw
+llvm-profdata merge -o app.profdata prof/*.profraw
+PYSTACHY_PROFILE_USE=app.profdata pystachy build app.py -o app
+```
+
+The settings give clang's `-fprofile-generate=DIR` and `-fprofile-use=FILE` to the one step
+that runs LLVM's passes over the program's module: the program with the precompiled runtime's
+interface, or with the part of the runtime it needs where `build` links no precompiled runtime.
+So the profile also covers the runtime code inlined into the program; the generating build's link
+takes the flag too, for LLVM's profile runtime. The runtime's own build, and the precompiled
+runtime made of it, take neither: its modules are compiled apart, each would carry the module
+flag that a profile adds, and LLVM refuses to link two. `llvm-profdata` must be the toolchain's own, since the raw format follows LLVM's version.
+Only `build` reads the settings.
+
+Generator functions are left out of the profile (`noprofile`, which the generating build adds
+to each): LLVM 18 aborts where it applies a profile to one, so they are compiled as without a
+profile, and the code that calls them is still profiled. A profile is used only where the
+program has not changed since it was made: LLVM compiles a function whose code differs without
+it, and warns.
+
 ### Compiler stage timings
 
 Set `PYSTACHY_TIMING=1` to emit tab-separated stderr records with a monotonic
@@ -790,9 +887,11 @@ Frontend phases are `load`, `prepare`, `discover`, `analysis`, `optimize`,
 `finalize` and `lower`, prefixed with `program.` or `runtime.`. `program.attempt`
 includes one inference attempt; retries repeat phase names. `program.frontend`
 contains all attempts. Runtime lookup, frontend, LLVM build, code generation and
-shared linking are separate records. AOT also reports LLVM linking, optimization,
-late allocator inlining, code generation and executable linking; a program without
-allocator calls combines optimization and code generation. Extension backend work
+shared linking are separate records, as are the precompiled AOT runtime's
+specialization, split, code generation and interface (`runtime.aot_*`). AOT also
+reports LLVM linking, optimization, late allocator inlining, code generation and
+executable linking; a program without allocator calls combines optimization and code
+generation. Extension backend work
 is one record. Failed commands retain their status and report elapsed time;
 a frontend failure can omit unfinished phases.
 
@@ -851,11 +950,12 @@ are required before promotion. `make verify` keeps the standard tier.
 | `PYSTACHY_RUNTIME_C_CACHE=1` | Opt in to Linux default-flag C-runtime bitcode reuse across compiler producers; `0` (default) disables it |
 | `PYSTACHY_CFLAGS` | Extra clang flags for runtime compilation and AOT linking; part of the cache key |
 | `PYSTACHY_AOT_OPT=0\|1\|2` | Experimental ordinary `build` program optimization/codegen tier; `2` is the default. Runtime compilation, raw IR, JIT and extensions keep their existing tiers. Use `make BOOTSTRAP_AOT_OPT=1` for the temporary bootstrap stage only. |
+| `PYSTACHY_PROFILE_GENERATE=DIR` | Make `build` write an executable that records a raw profile in `DIR` each time it runs; see [profile-guided builds](#profile-guided-builds) |
+| `PYSTACHY_PROFILE_USE=FILE` | Make `build` optimize with the indexed profile `FILE`; not together with `PYSTACHY_PROFILE_GENERATE` |
 | `PYSTACHY_DEBUG_LINES=1` | Emit deterministic Python file, function and instruction line metadata in LLVM IR; AOT retains DWARF line tables. No local variable descriptions; part of the runtime and program cache keys. See [source attribution](../bench/source_attribution/README.md) for JIT and profiler limits. |
 | `PYSTACHY_TIMING=1` | Print monotonic compiler [stage durations](#compiler-stage-timings) to stderr; nested totals overlap |
 | `PYSTACHY_IRCHECK=1` | Verify typed IR before lowering and after transforming passes |
 | `PYSTACHY_IRFX=1` | Print function effect summaries to stderr |
-| `PYSTACHY_UNICODE_AUDIT=1` | Compile the [Unicode audit](language/compatibility.md#unicode-audit) checks into the program and its imported library code |
 | `PYSTACHY_OPT` | Disable named optimizations with `-name`, comma-separated, or all with `-all`; see [IR passes](typed-ir.md#optimizations) |
 | `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT user-function inlining, including the recursion entry helper; `0` disables it (the scalar recursion helpers remain inlined) |
 | `PYSTACHY_JIT_OPT=0\|1\|2` | `1` (default) runs the JIT tier's cleanup over the program, then loop passes where the program is within the `PYSTACHY_JIT_INLINE` threshold; `0` runs the cleanup alone; `2` runs LLVM's `-O2` pipeline in its place, which takes longer at each launch (no `PYSTACHY_JIT_INLINE` budget applies) |

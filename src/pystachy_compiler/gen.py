@@ -15,12 +15,18 @@ from src.pystachy_compiler.union_arithmetic import (
     gen_unumeric as union_arithmetic_unumeric,
     gen_unumeric_case as union_arithmetic_unumeric_case,
     gen_uorders as union_arithmetic_uorders,
+    gen_unequal_types as union_arithmetic_unequal_types,
     gen_usplit as union_arithmetic_usplit,
 )
 from src.pystachy_compiler.memory_ir import (
     gen_mload as memory_ir_mload,
     gen_mstore as memory_ir_mstore,
     gen_maddr as memory_ir_maddr,
+    gen_verify_memory as memory_ir_verify_memory,
+)
+from src.pystachy_compiler.machine_ir import (
+    gen_machine_ir as machine_ir_machine_ir,
+    gen_verify_machine as machine_ir_verify_machine,
 )
 from src.pystachy_compiler.bigints import (
     gen_big_builtin as bigints_big_builtin,
@@ -117,6 +123,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_bind as dynamic_dyn_bind,
     gen_dyn_body as dynamic_dyn_body,
     gen_dyn_bound as dynamic_dyn_bound,
+    gen_dyn_index as dynamic_dyn_index,
     gen_dyn_box as dynamic_dyn_box,
     gen_dyn_id_box as dynamic_dyn_id_box,
     gen_dyn_boxable as dynamic_dyn_boxable,
@@ -236,6 +243,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_widen as dynamic_dyn_widen,
     gen_dyn_widened as dynamic_dyn_widened,
     gen_dyn_xbody as dynamic_dyn_xbody,
+    gen_xdecline as dynamic_xdecline,
     gen_dyn_xhelper as dynamic_dyn_xhelper,
     gen_dyn_xmethod as dynamic_dyn_xmethod,
     gen_empty_ctor as dynamic_empty_ctor,
@@ -253,10 +261,13 @@ from src.pystachy_compiler.unions import (
     gen_replay_state as unions_replay_state,
     gen_stable as unions_stable,
     gen_ueq_type as unions_ueq_type,
+    gen_object_union as unions_object_union,
     gen_scalar_union as unions_scalar_union,
     gen_num_union as unions_num_union,
+    gen_cx_union as unions_cx_union,
     gen_value_union as unions_value_union,
     gen_uop as unions_uop,
+    gen_scalar_view as unions_scalar_view,
     gen_uequal as unions_uequal,
     gen_reference_union as unions_reference_union,
     gen_umethod as unions_umethod,
@@ -269,7 +280,25 @@ from src.pystachy_compiler.unions import (
     gen_utest as unions_utest,
     gen_to_union as unions_to_union,
     gen_narrow_val as unions_narrow_val,
+    gen_class_union as unions_class_union,
     gen_unarrowed as unions_unarrowed,
+    gen_path_key as unions_path_key,
+    gen_path_void as unions_path_void,
+    gen_path_stamp as unions_path_stamp,
+    gen_path_event as unions_path_event,
+    gen_path_live as unions_path_live,
+    gen_path_mark as unions_path_mark,
+    gen_path_undo as unions_path_undo,
+    gen_path_redo as unions_path_redo,
+    gen_path_read as unions_path_read,
+    gen_path_dominates as unions_path_dominates,
+    gen_path_again as unions_path_again,
+    gen_path_seen as unions_path_seen,
+    gen_path_type as unions_path_type,
+    gen_path_value as unions_path_value,
+    gen_narrows_path as unions_narrows_path,
+    gen_narrows_paths as unions_narrows_paths,
+    gen_narrows_leaf as unions_narrows_leaf,
     gen_uisinst as unions_uisinst,
     gen_now_type as unions_now_type,
     gen_isinst_narrow as unions_isinst_narrow,
@@ -410,6 +439,8 @@ from src.pystachy_compiler.builtins import (
     gen_iter_ as builtins_iter_,
     gen_iter_obj as builtins_iter_obj,
     gen_range_fields as builtins_range_fields,
+    gen_ba_prim as builtins_ba_prim,
+    gen_complex_new as builtins_complex_new,
     gen_range_prim as builtins_range_prim,
     gen_walk as builtins_walk,
     gen_pwrite as builtins_pwrite,
@@ -418,6 +449,9 @@ from src.pystachy_compiler.builtins import (
     gen_comp_end as builtins_comp_end,
     gen_neumaier as builtins_neumaier,
     gen_sum_union_item as builtins_sum_union_item,
+    gen_sum_objects as builtins_sum_objects,
+    gen_sum_object_item as builtins_sum_object_item,
+    gen_sum_object_end as builtins_sum_object_end,
     gen_sum_union_end as builtins_sum_union_end,
     gen_reverse_arg as builtins_reverse_arg,
     gen_bytes_ as builtins_bytes_,
@@ -430,6 +464,7 @@ from src.pystachy_compiler.builtins import (
 )
 from src.pystachy_compiler.calls import (
     gen_adapter as calls_adapter,
+    gen_method_family as calls_method_family,
     gen_adapter_ret as calls_adapter_ret,
     gen_arity as calls_arity,
     gen_arity_error as calls_arity_error,
@@ -443,6 +478,7 @@ from src.pystachy_compiler.calls import (
     gen_call_callable as calls_call_callable,
     gen_call_fn as calls_call_fn,
     gen_call_value as calls_call_value,
+    gen_class_new as calls_class_new,
     gen_callable_pat as calls_callable_pat,
     gen_close_temp as calls_close_temp,
     gen_dispatches as calls_dispatches,
@@ -478,6 +514,41 @@ from src.pystachy_compiler.calls import (
     gen_to_callable as calls_to_callable,
     gen_unbound_call as calls_unbound_call,
     gen_virtual_call as calls_virtual_call,
+    gen_shared_dispatch as calls_shared_dispatch,
+    gen_dispatch_call as calls_dispatch_call,
+)
+from src.pystachy_compiler.class_values import (
+    gen_class_value_named as class_values_class_value_named,
+    gen_class_value_problem as class_values_class_value_problem,
+    gen_class_value as class_values_class_value,
+    gen_class_value_static as class_values_class_value_static,
+    gen_class_value_annotated as class_values_class_value_annotated,
+    gen_class_value_box as class_values_class_value_box,
+    gen_class_value_isa as class_values_class_value_isa,
+    gen_class_value_unbox as class_values_class_value_unbox,
+    gen_class_value_typed as class_values_class_value_typed,
+    gen_class_value_kinds as class_values_class_value_kinds,
+    gen_class_value_bases as class_values_class_value_bases,
+    gen_class_value_builtin as class_values_class_value_builtin,
+    gen_class_value_having as class_values_class_value_having,
+    gen_class_value_lacks as class_values_class_value_lacks,
+    gen_class_value_type as class_values_class_value_type,
+    gen_class_value_builtin_record as class_values_class_value_builtin_record,
+    gen_class_value_chain as class_values_class_value_chain,
+    gen_class_value_holds as class_values_class_value_holds,
+    gen_class_value_of as class_values_class_value_of,
+    gen_class_value_objects as class_values_class_value_objects,
+    gen_class_value_name as class_values_class_value_name,
+    gen_class_value_asks as class_values_class_value_asks,
+    gen_class_value_cmp as class_values_class_value_cmp,
+    gen_class_value_is as class_values_class_value_is,
+    gen_class_value_sub as class_values_class_value_sub,
+    gen_class_value_isinst as class_values_class_value_isinst,
+    gen_class_value_issub as class_values_class_value_issub,
+    gen_class_value_dynamic as class_values_class_value_dynamic,
+    gen_class_value_call as class_values_class_value_call,
+    gen_class_value_attr as class_values_class_value_attr,
+    gen_class_value_method as class_values_class_value_method,
 )
 from src.pystachy_compiler.containers import (
     gen_list_id_kind as containers_list_id_kind,
@@ -495,6 +566,7 @@ from src.pystachy_compiler.containers import (
     gen_dict_any_method as containers_dict_any_method,
     gen_dkey as containers_dkey,
     gen_elem_problem as containers_elem_problem,
+    gen_emptyfs_pair as containers_emptyfs_pair,
     gen_fromkeys as containers_fromkeys,
     gen_hash_classes as containers_hash_classes,
     gen_hash_desc as containers_hash_desc,
@@ -502,15 +574,18 @@ from src.pystachy_compiler.containers import (
     gen_hash_value as containers_hash_value,
     gen_hashable as containers_hashable,
     gen_iter_elem as containers_iter_elem,
+    gen_vtuple_holds as containers_vtuple_holds,
     gen_key_class as containers_key_class,
     gen_key_fx as containers_key_fx,
     gen_key_items as containers_key_items,
     gen_key_kind as containers_key_kind,
     gen_key_problem as containers_key_problem,
+    gen_key_union as containers_key_union,
     gen_key_repr as containers_key_repr,
     gen_keyed as containers_keyed,
     gen_keys_list as containers_keys_list,
     gen_none_arg as containers_none_arg,
+    gen_none_dkey as containers_none_dkey,
     gen_nonekey as containers_nonekey,
     gen_obj_hash as containers_obj_hash,
     gen_obj_str as containers_obj_str,
@@ -519,7 +594,11 @@ from src.pystachy_compiler.containers import (
     gen_sargs as containers_sargs,
     gen_sdiscard as containers_sdiscard,
     gen_set_display as containers_set_display,
+    gen_set_kind as containers_set_kind,
     gen_set_new as containers_set_new,
+    gen_set_pair as containers_set_pair,
+    gen_set_rekind as containers_set_rekind,
+    gen_set_some as containers_set_some,
     gen_setop as containers_setop,
     gen_sgen as containers_sgen,
     gen_sitems as containers_sitems,
@@ -540,8 +619,11 @@ from src.pystachy_compiler.conversions import (
     gen_ptr_cmp as conversions_ptr_cmp,
     gen_as_float as conversions_as_float,
     gen_as_int as conversions_as_int,
+    gen_index_of as conversions_index_of,
+    gen_method_index as conversions_method_index,
     gen_coerce as conversions_coerce,
     gen_desc as conversions_desc,
+    gen_fset_unboxes as conversions_fset_unboxes,
     gen_floats as conversions_floats,
     gen_ufloats as conversions_ufloats,
     gen_from_slot as conversions_from_slot,
@@ -558,10 +640,14 @@ from src.pystachy_compiler.declarations import (
     gen_alias_args as declarations_alias_args,
     gen_alias_arity as declarations_alias_arity,
     gen_alias_kept as declarations_alias_kept,
+    gen_newtype_name as declarations_newtype_name,
+    gen_ann_reads as declarations_ann_reads,
+    gen_def_ann_reads as declarations_def_ann_reads,
     gen_alias_params as declarations_alias_params,
     gen_alias_problem as declarations_alias_problem,
     gen_alias_tvars as declarations_alias_tvars,
     gen_alias_value as declarations_alias_value,
+    gen_sentinel_param as declarations_sentinel_param,
     gen_alias_variadic as declarations_alias_variadic,
     gen_alias_whole as declarations_alias_whole,
     gen_rec_type as declarations_rec_type,
@@ -570,6 +656,7 @@ from src.pystachy_compiler.declarations import (
     gen_ann as declarations_ann,
     gen_ann_base as declarations_ann_base,
     gen_ann_items as declarations_ann_items,
+    gen_literal_ann as declarations_literal_ann,
     gen_ann_none as declarations_ann_none,
     gen_ann_problem as declarations_ann_problem,
     gen_any_in as declarations_any_in,
@@ -599,6 +686,7 @@ from src.pystachy_compiler.declarations import (
     gen_none_field as declarations_none_field,
     gen_none_field_store as declarations_none_field_store,
     gen_refine_field as declarations_refine_field,
+    gen_holds_union as declarations_holds_union,
     gen_set_elsewhere as declarations_set_elsewhere,
     gen_frozen as declarations_frozen,
     gen_frozen_store as declarations_frozen_store,
@@ -611,13 +699,18 @@ from src.pystachy_compiler.declarations import (
     gen_getfield as declarations_getfield,
     gen_guess as declarations_guess,
     gen_guess_iter as declarations_guess_iter,
+    gen_class_reads as declarations_class_reads,
     gen_guess_args as declarations_guess_args,
     gen_has_path as declarations_has_path,
     gen_imported_ref as declarations_imported_ref,
     gen_init_after as declarations_init_after,
     gen_iter_ann as declarations_iter_ann,
+    gen_tv_plan as declarations_tv_plan,
+    gen_tv_bound as declarations_tv_bound,
+    gen_tv_through as declarations_tv_through,
     gen_iter_item as declarations_iter_item,
     gen_join as declarations_join,
+    gen_class_join as declarations_class_join,
     gen_none_items as declarations_none_items,
     gen_nt_base as declarations_nt_base,
     gen_nt_class as declarations_nt_class,
@@ -630,9 +723,12 @@ from src.pystachy_compiler.declarations import (
     gen_path_union as declarations_path_union,
     gen_pathlike as declarations_pathlike,
     gen_scan_fields as declarations_scan_fields,
+    gen_scan_target as declarations_scan_target,
+    gen_target_types as declarations_target_types,
     gen_guess_varargs as declarations_guess_varargs,
     gen_self_type as declarations_self_type,
     gen_setfield as declarations_setfield,
+    gen_setfield_store as declarations_setfield_store,
     gen_shadowed as declarations_shadowed,
     gen_stub as declarations_stub,
     gen_subst as declarations_subst,
@@ -646,6 +742,7 @@ from src.pystachy_compiler.declarations import (
     gen_typing_forms as declarations_typing_forms,
     gen_typing_name as declarations_typing_name,
     gen_typing_ref as declarations_typing_ref,
+    gen_seq_default as declarations_seq_default,
     gen_unalias as declarations_unalias,
     gen_unalias_all as declarations_unalias_all,
     gen_union_members as declarations_union_members,
@@ -660,6 +757,7 @@ from src.pystachy_compiler.emission import (
     gen_alloc_fixed as emission_alloc_fixed,
     gen_alloca as emission_alloca,
     gen_boxes as emission_boxes,
+    gen_vtuple_fits as emission_vtuple_fits,
     gen_br as emission_br,
     gen_cbr as emission_cbr,
     gen_switch as emission_switch,
@@ -741,6 +839,7 @@ from src.pystachy_compiler.exceptions import (
     gen_exc_tree as exceptions_exc_tree,
     gen_exc_type_of as exceptions_exc_type_of,
     gen_exc_isinst as exceptions_exc_isinst,
+    gen_exc_overlap as exceptions_exc_overlap,
     gen_exc_init_keeps as exceptions_exc_init_keeps,
     gen_exc_keep as exceptions_exc_keep,
     gen_exc_kw as exceptions_exc_kw,
@@ -763,6 +862,7 @@ from src.pystachy_compiler.exceptions import (
     gen_raise_ as exceptions_raise_,
     gen_raise_stmt as exceptions_raise_stmt,
     gen_super_call as exceptions_super_call,
+    gen_super_own_init as exceptions_super_own_init,
     gen_throw as exceptions_throw,
     gen_try_ as exceptions_try_,
     gen_unbind as exceptions_unbind,
@@ -774,6 +874,9 @@ from src.pystachy_compiler.expressions import (
     gen_list_hint_type as expressions_list_hint_type,
     gen_argtype as expressions_argtype,
     gen_arith as expressions_arith,
+    gen_low32 as expressions_low32,
+    gen_low32_const as expressions_low32_const,
+    gen_low32_tree as expressions_low32_tree,
     gen_masked as expressions_masked,
     gen_wexpr as expressions_wexpr,
     gen_wflag as expressions_wflag,
@@ -786,18 +889,40 @@ from src.pystachy_compiler.expressions import (
     gen_cls_bound as expressions_cls_bound,
     gen_cmp2 as expressions_cmp2,
     gen_titem_eq as expressions_titem_eq,
+    gen_titem_union as expressions_titem_union,
+    gen_titem_nt as expressions_titem_nt,
+    gen_big_union as expressions_big_union,
+    gen_titem_big as expressions_titem_big,
     gen_union_same as expressions_union_same,
     gen_cmp_method as expressions_cmp_method,
     gen_concrete_cmp as expressions_concrete_cmp,
     gen_comparable as expressions_comparable,
     gen_numeric_comparable as expressions_numeric_comparable,
     gen_compare as expressions_compare,
+    gen_complex_value as expressions_complex_value,
+    gen_complex_parts as expressions_complex_parts,
+    gen_complex_arith as expressions_complex_arith,
+    gen_complex_cmp as expressions_complex_cmp,
+    gen_complex_ueq as expressions_complex_ueq,
     gen_exc_kinds as expressions_exc_kinds,
     gen_cmp_kinds as expressions_cmp_kinds,
     gen_cmp_pick as expressions_cmp_pick,
+    gen_may_decline as expressions_may_decline,
+    gen_decl_flag as expressions_decl_flag,
+    gen_cmp_cands as expressions_cmp_cands,
+    gen_ordering as expressions_ordering,
+    gen_declining_call as expressions_declining_call,
+    gen_cmp_stage as expressions_cmp_stage,
+    gen_cmp_declining as expressions_cmp_declining,
     gen_enum_intlike as expressions_enum_intlike,
+    gen_enum_scalar as expressions_enum_scalar,
+    gen_enum_builtin as expressions_enum_builtin,
+    gen_enum_compare as expressions_enum_compare,
     gen_inherit_cmp as expressions_inherit_cmp,
     gen_cmp_alts as expressions_cmp_alts,
+    gen_class_members as expressions_class_members,
+    gen_cmp_object as expressions_cmp_object,
+    gen_cmp_try as expressions_cmp_try,
     gen_cmp_key as expressions_cmp_key,
     gen_cmp_arm as expressions_cmp_arm,
     gen_cmp_rest as expressions_cmp_rest,
@@ -846,6 +971,8 @@ from src.pystachy_compiler.expressions import (
     gen_obj_isinst as expressions_obj_isinst,
     gen_isinst_reads as expressions_isinst_reads,
     gen_isnone as expressions_isnone,
+    gen_dict_class as expressions_dict_class,
+    gen_dict_object as expressions_dict_object,
     gen_isnull as expressions_isnull,
     gen_iter_ret as expressions_iter_ret,
     gen_keep_stack as expressions_keep_stack,
@@ -858,10 +985,13 @@ from src.pystachy_compiler.expressions import (
     gen_narrow_by as expressions_narrow_by,
     gen_narrowable as expressions_narrowable,
     gen_narrows as expressions_narrows,
+    gen_callable_narrow as expressions_callable_narrow,
     gen_no_class_attr as expressions_no_class_attr,
     gen_nonefmt as expressions_nonefmt,
     gen_ntop as expressions_ntop,
     gen_ntup as expressions_ntup,
+    gen_nt_eq as expressions_nt_eq,
+    gen_nt_wide as expressions_nt_wide,
     gen_numkey as expressions_numkey,
     gen_obj_iter as expressions_obj_iter,
     gen_obj_iterator as expressions_obj_iterator,
@@ -871,6 +1001,7 @@ from src.pystachy_compiler.expressions import (
     gen_optcmp as expressions_optcmp,
     gen_optint as expressions_optint,
     gen_percent as expressions_percent,
+    gen_percent_map as expressions_percent_map,
     gen_percent_opt as expressions_percent_opt,
     gen_pformat as expressions_pformat,
     gen_str_field as expressions_str_field,
@@ -878,10 +1009,12 @@ from src.pystachy_compiler.expressions import (
     gen_str_format as expressions_str_format,
     gen_probe_type as expressions_probe_type,
     gen_protocol as expressions_protocol,
+    gen_slice_written as expressions_slice_written,
     gen_puretype as expressions_puretype,
     gen_richcmp as expressions_richcmp,
     gen_slice_bound as expressions_slice_bound,
     gen_slice_dyn as expressions_slice_dyn,
+    gen_slice_late as expressions_slice_late,
     gen_slice_step as expressions_slice_step,
     gen_slice_tuple as expressions_slice_tuple,
     gen_stack_key as expressions_stack_key,
@@ -902,6 +1035,7 @@ from src.pystachy_compiler.expressions import (
     gen_tuple_ as expressions_tuple_,
     gen_list_const as expressions_list_const,
     gen_vtuple_make as expressions_vtuple_make,
+    gen_vtuple_item as expressions_vtuple_item,
     gen_tuple_const as expressions_tuple_const,
     gen_dict_merge as expressions_dict_merge,
     gen_unroll as expressions_unroll,
@@ -914,6 +1048,9 @@ from src.pystachy_compiler.expressions import (
     gen_container_pair_eq as expressions_container_pair_eq,
     gen_tuple_pair_eq as expressions_tuple_pair_eq,
     gen_dict_pair_eq as expressions_dict_pair_eq,
+    gen_dict_view as expressions_dict_view,
+    gen_dict_view_has as expressions_dict_view_has,
+    gen_dict_view_cmp as expressions_dict_view_cmp,
     gen_unary as expressions_unary,
 )
 from src.pystachy_compiler.flow import (
@@ -998,26 +1135,9 @@ from src.pystachy_compiler.functions import (
     gen_materialize as functions_materialize,
     gen_untold as functions_untold,
 )
-from src.pystachy_compiler.ir import (
-    Blk,
-    ClassInfo,
-    Closure,
-    Data,
-    Exit,
-    FmtArgs,
-    FnInfo,
-    Frame,
-    IFn,
-    Ins,
-    IterArg,
-    Loop,
-    Reduce,
-    SeqStart,
-    SetArg,
-    StopCatch,
-    Val,
-    Values,
-)
+from src.pystachy_compiler.frames import Exit, FmtArgs, Frame, IterArg, Reduce, SeqStart, SetArg, StopCatch
+from src.pystachy_compiler.ir import Blk, Data, IFn, Ins, Loop, Val, Values
+from src.pystachy_compiler.symbols import ClassInfo, Closure, FnInfo
 from src.pystachy_compiler.ircheck import (
     EffectSummaries,
     gen_bad_ir as ircheck_bad_ir,
@@ -1038,12 +1158,14 @@ from src.pystachy_compiler.lowering import (
     gen_alloc_call as lowering_alloc_call,
 )
 from src.pystachy_compiler.lower_module import (
+    ExternDecl,
     gen_cextern as lower_module_cextern,
     gen_dispatch as lower_module_dispatch,
     gen_extern_decl as lower_module_extern_decl,
     gen_gen_module as lower_module_gen_module,
     gen_lower_module as lower_module_lower_module,
     gen_pyext as lower_module_pyext,
+    gen_validate_module as lower_module_validate_module,
     gen_tbaa_nodes as lower_module_tbaa_nodes,
 )
 from src.pystachy_compiler.module import Mod
@@ -1071,6 +1193,10 @@ from src.pystachy_compiler.optimizations import (
     gen_usplits as optimizations_usplits,
 )
 from src.pystachy_compiler.program import (
+    gen_bound_problem as program_bound_problem,
+    gen_tv_items as program_tv_items,
+    gen_tv_names as program_tv_names,
+    gen_tv_problem as program_tv_problem,
     gen_body_effect as program_body_effect,
     gen_body_names as program_body_names,
     gen_class_effect as program_class_effect,
@@ -1090,19 +1216,62 @@ from src.pystachy_compiler.program import (
     gen_class_ref as program_class_ref,
     gen_dc_options as program_dc_options,
     gen_init_template as program_init_template,
+    gen_init_generic as program_init_generic,
+    gen_fixed_ann as program_fixed_ann,
+    gen_fixed_stores as program_fixed_stores,
+    gen_fixed_init as program_fixed_init,
+    gen_fixed_layout as program_fixed_layout,
+    gen_fixed_layout_body as program_fixed_layout_body,
+    gen_fixed_base_properties as program_fixed_base_properties,
+    gen_fixed_hierarchy as program_fixed_hierarchy,
+    gen_hierarchy_chain as program_hierarchy_chain,
+    gen_request_hierarchy as program_request_hierarchy,
+    gen_retry_hierarchy as program_retry_hierarchy,
     gen_template_fix as program_template_fix,
     gen_left_out as program_left_out,
     gen_makes_tmpl as program_makes_tmpl,
+    gen_ann_classes as program_ann_classes,
+    gen_fixed_template_field_ann as program_fixed_template_field_ann,
+    gen_init_param_classes as program_init_param_classes,
+    gen_init_makes_tmpl as program_init_makes_tmpl,
     gen_objects as program_objects,
     gen_partly as program_partly,
     gen_path_of as program_path_of,
     gen_plain as program_plain,
-    gen_program as program_program,
+    gen_prepare_program as program_prepare_program,
+    gen_discover_program as program_discover_program,
     gen_pure as program_pure,
     gen_raisers as program_raisers,
     gen_subclass_problem as program_subclass_problem,
+    gen_on_chain as program_on_chain,
+    gen_ordered_class as program_ordered_class,
+    gen_ordering_ops as program_ordering_ops,
+    gen_trait_root as program_trait_root,
+    gen_role_field as program_role_field,
+    gen_role_chain as program_role_chain,
+    gen_declarer as program_declarer,
+    gen_declares as program_declares,
+    gen_mro as program_mro,
+    gen_mro_first as program_mro_first,
+    gen_slotted_trait as program_slotted_trait,
+    gen_generic_subclass as program_generic_subclass,
+    gen_generic_traits as program_generic_traits,
+    gen_implicit_tparams as program_implicit_tparams,
+    gen_iter_abc as program_iter_abc,
+    gen_inert_subscript as program_inert_subscript,
+    gen_iterabc_derived as program_iterabc_derived,
     gen_tmpl_ann as program_tmpl_ann,
     gen_tmpl_of as program_tmpl_of,
+)
+from src.pystachy_compiler.pipeline import (
+    PipelineState,
+    PreparedProgram,
+    gen_analyze_program as pipeline_analyze_program,
+    gen_optimize_program as pipeline_optimize_program,
+    gen_finalize_program as pipeline_finalize_program,
+    gen_lower_program as pipeline_lower_program,
+    gen_typed_program as pipeline_typed_program,
+    gen_program as pipeline_program,
 )
 from src.pystachy_compiler.specs import IROPS
 from src.pystachy_compiler.statements import (
@@ -1130,6 +1299,7 @@ from src.pystachy_compiler.statements import (
     gen_iterarg as statements_iterarg,
     gen_ival as statements_ival,
     gen_leave as statements_leave,
+    gen_decline as statements_decline,
     gen_with_cm as statements_with_cm,
     gen_cm_exits as statements_cm_exits,
     gen_suppress_item as statements_suppress_item,
@@ -1174,6 +1344,7 @@ from src.pystachy_compiler.templates import (
     gen_fn_sig as templates_fn_sig,
     gen_instance as templates_instance,
     gen_generic_ann as templates_generic_ann,
+    gen_mapping_ann as templates_mapping_ann,
     gen_generic_hint as templates_generic_hint,
     gen_named_param as templates_named_param,
     gen_named_params as templates_named_params,
@@ -1181,6 +1352,7 @@ from src.pystachy_compiler.templates import (
     gen_want_tvars as templates_want_tvars,
     gen_match as templates_match,
     gen_match_items as templates_match_items,
+    gen_match_key as templates_match_key,
     gen_names_tv as templates_names_tv,
     gen_specialize as templates_specialize,
     gen_literal_class as templates_literal_class,
@@ -1282,6 +1454,7 @@ from src.pystachy_compiler.variables import (
 
 class Gen:
     def __init__(self):
+        self.pipeline = PipelineState()  # attempt-owned; never borrowed by a function Frame
         self.classes: dict[str, ClassInfo] = {}
         self.tmpl: dict[str, bool] = {}  # the class templates (an __init__ parameter without an annotation)
         self.compiling = False  # every declaration is made: code is being compiled (see guess)
@@ -1392,6 +1565,16 @@ class Gen:
         # an object of a class whose code does not track it may be of (identity_box)
         self.idoff: dict[str, bool] = {}
         self.idfull = False
+        # (class_values.py) the files of modules that opt in to dynamic Any whose classes are
+        # read as class boxes (the driver's, kept across passes); those that read one as a typed
+        # class object in this pass, but those that name type[C] of an ordinary class themselves;
+        # the modules' statements, and the files of the modules that name one (clsann -1: not
+        # looked for yet)
+        self.clsany: dict[int, bool] = {}
+        self.clsused: dict[int, bool] = {}
+        self.clsbodies: list[Node] = []
+        self.clsannfiles: dict[int, bool] = {}
+        self.clsann = -1
         # Fixed for a compilation pass; dry traversal retains these program policies,
         # and a restart makes a fresh Gen before disabling hints or tracking everything.
         self.idtry = True  # try checked identity-inert module hints on this pass
@@ -1430,6 +1613,27 @@ class Gen:
         self.noneglobalpending: dict[str, bool] = {}  # unresolved global reads, shared by nested compiles
         # optional, union and class locals: the narrower type a read has here (see narrows)
         self.narrowed: dict[str, str] = {}
+        # attribute paths that a test narrowed are entries of narrowed too (unions.py: path_key).
+        # pseq numbers the operations that may change an attribute's value, and the facts: pcall
+        # is the last that may run code of the program or write objects' fields, pstamps the
+        # last store to each attribute name ("a" + name) and local slot ("l" + register), and
+        # plogk/plogv their values before each stamp, which an if statement takes back for its
+        # other branch (path_undo). pfield: the attribute whose store setfield is compiling.
+        # preadn/preadv/preads: the attribute paths the statement being compiled has read, each
+        # one's value and when; psess: the dry() sessions that are open, 0 for code that is kept
+        self.pseq = 0
+        self.pcall = 0
+        self.pstamps: dict[str, int] = {}
+        self.plogk: list[str] = []
+        self.plogv: list[int] = []
+        self.pfield = ""
+        self.preadn: list[Node] = []
+        self.preadv: list[Val] = []
+        self.preads: list[int] = []
+        self.preadb: list[str] = []  # (and the block that read it, for path_dominates; pdoms: its answers)
+        self.pdoms: dict[str, bool] = {}
+        self.psess: list[int] = [0]
+        self.pdry = 0
         self.nonecmp = False  # the read being compiled is compared with None (see none_type)
         self.anyopt = False  # an optional, union or class local exists: narrows has work to do
         self.building: dict[str, bool] = {}  # the functions being compiled
@@ -1439,6 +1643,7 @@ class Gen:
         self.stkkey = self.nokey  # a tuple display that a lookup takes as its key (lookup_key): made in the frame
         self.cmpnode = self.nokey  # the operand of x is None (is not None) being compiled (see none_field)
         self.fieldcmp = False  # the field read being compiled is that operand
+        self.rolex = ""  # the object, typed as a secondary base, that the access being compiled knows to be of exactly that class (role_field)
         self.nonereads: dict[str, str] = {}  # Class.field -> where it was read as None, the only value it gets (none_field)
         self.fieldbusy: dict[str, bool] = {}  # Class.field whose type none_field is looking for
         self.attrvals: dict[str, list[Node]] = {}  # attribute name -> the values the program's code stores to it (attr_values)
@@ -1455,6 +1660,9 @@ class Gen:
         # finds; the method whose call with one is being compiled (then an error restarts: gen_err)
         self.xnot: dict[str, bool] = {}
         self.newx: dict[str, bool] = {}
+        self.xwant: dict[str, bool] = {}  # narrowings of class tuples that a function needs (narrows, err)
+        self.newwant: dict[str, bool] = {}  # and those this pass found it needs
+        self.ncand: dict[str, bool] = {}  # the narrowings this pass did not make (narrows)
         self.xtry = ""
         self.joinkind = ""  # the location being stored to, which a join may widen: "local", "global", "field"
         self.joinname = ""  # (its name: the variable's, or the field's key, see field_key)
@@ -1468,6 +1676,9 @@ class Gen:
         self.template_retained = 0  # and the bytes of their signatures
         self.retainers: dict[str, int] = {}  # and those of each template, by the name messages give it
         self.unsupported: dict[str, str] = {}  # classes of imported modules that cannot be compiled: why
+        # Program-wide names only: retained by fresh-Gen retries, never speculative layouts.
+        self.hierarchies: dict[str, bool] = {}
+        self.deferred_hierarchies: dict[str, bool] = {}
         self.cnodes: dict[int, Node] = {}  # every module-level class or subclass statement, by line
         self.hooks: dict[str, str] = {}  # see hook()
         self.chooks: dict[int, str] = {}
@@ -1477,14 +1688,32 @@ class Gen:
         self.intglobals: dict[str, str] = {}  # single-binding module int literals, after normal read checks
         self.rangeused = False  # code addresses an object of lib's range class (declared then: lower_module)
         self.objectused = False  # and of lib's object class, which object() makes
+        self.declflag = False  # a comparison method returns NotImplemented: its hidden variable is declared (decl_flag)
+        self.complexused = False  # and of lib's class of complex numbers
+        self.abcsets = False  # an annotation names collections.abc.Set, which holds a frozenset once a pass is told so (ann_base, coerce)
         self.intat: dict[str, int] = {}  # the line of each constant's own binding (including from-imports)
         self.strglobals: dict[str, str] = {}  # single-binding module str literals: formats for str.format()
+        self.guessvars: dict[str, str] = {}  # comprehension variables that guess binds to their items' types
+        self.guessowner: dict[str, FnInfo] = {}  # and the function whose comprehension binds each
+        self.globanns: dict[str, Node] = {}  # and the annotations of single-binding annotated globals (module_anns)
+        # single-binding module globals: their values and modules (analysis.module_values), which
+        # field inference types them by (guess); guessing: those whose value it is typing now
+        self.globvalues: dict[str, Node] = {}
+        self.globowners: dict[str, Mod] = {}
+        self.globalts: dict[str, list[Node]] = {}  # (the values of other bindings in if branches)
+        self.guessing: dict[str, bool] = {}
+        # the types guess() gave constants' values within one guess of a constant's value, which
+        # starts afresh, and the reads of a constant being guessed that it has cut (guess)
+        self.globguess: dict[str, str] = {}
+        self.guesscuts = 0
         self.strtuples: dict[str, list[str]] = {}  # and tuples of them: functools.wraps()'s assigned
         self.abstracts: dict[str, list[str]] = {}  # each class's own @abstractmethod methods (abstract_defs)
         self.abcmeta: dict[str, bool] = {}  # the classes whose statements pass metaclass=ABCMeta
         # each module's TYPE_CHECKING that is a constant False (false_flag()), and its names that hold a
         # test of the platform (Loader.platform_flags()): the literal each holds, "False" or "True"
         self.constflags: dict[str, str] = {}
+        self.earlycopies: dict[str, str] = {}  # the types of modules' copies of other modules' constants (program.py), declared where a circular import reads them
+        self.sentinelglobals: dict[str, bool] = {}  # the module globals whose one binding is NAME = object() (program.py: sentinel parameters)
         # an imported module's globals (and defs and classes) that other code may find unbound:
         # not assigned on every path through its module code, or before an import that may run
         # code calling back into the module
@@ -1493,15 +1722,15 @@ class Gen:
         self.ext = ""  # pystachy ext: the name of the CPython extension module the program becomes
         self.libdir = ""  # the lib/ beside the compiler, the last directory of the module path (lib_fn)
         self.prefix = ""  # the directory that holds it, absolute: sys.prefix (gen_modattr)
-        self.csyms: dict[str, str] = {}  # @ffi.extern: each C symbol's declare (one signature per program)
+        self.moddirs: list[str] = []  # the module path, absolute: where imports are found, in order (importlib.metadata)
+        self.csyms: dict[str, ExternDecl] = {}  # @ffi.extern: each C symbol's ABI plan (one signature per program)
         self.csymline: dict[str, int] = {}  # and the line that declared it
         self.cdirect: dict[str, bool] = {}  # the C symbols a GLUE module (lib/pyobj.py) calls directly, declared once
         self.extvars: dict[str, int] = {}  # pystachy ext: the main module's variables, and the line that binds each
-        self.unicode_audit = os.getenv("PYSTACHY_UNICODE_AUDIT", "") == "1"
         self.rtmode = False  # compiling runtime.py: its pys_* functions join runtime.c's under their C names (see runtime_ir)
         self.rtdefs: dict[str, FnInfo] = {}  # runtime mode: the pys_* functions this module defines, by C name
         self.rtcache = False  # runtime mode, for the driver's runtime cache: PYSTACHY_IRFX is the program's
-        self.externs: dict[str, str] = {}  # runtime mode: runtime.c's functions runtime.py declares (def f(...) -> T: ...), by symbol: their declare line ("" if RUNTIME's)
+        self.externs: dict[str, ExternDecl] = {}  # attempt-owned C adapters and runtime declarations, serialized only in lower_module
         self.deps: dict[str, str] = {}  # the modules each module's top-level code imports, space-separated
         self.comp: dict[str, str] = {}  # each module's strongly connected component of that graph (one of its modules)
         self.flowmod = ""
@@ -1516,6 +1745,7 @@ class Gen:
         self.adapters: dict[str, str] = {}  # "<function value type> <Callable type>" -> its adapter's symbol (Gen.adapter)
         self.adrets: dict[str, str] = {}  # "<function value type> <parameter types>" -> what it returns (Gen.adapter_ret)
         self.ncv = 0  # the adapters named (@cv.N), each before its body is compiled, which may name others
+        self.dispatchers: dict[str, FnInfo] = {}  # "<receiver>.<method>(<argument types>)" -> its shared override selection (@vd.N, Gen.dispatch_call)
         self.cacheforms: dict[str, int] = {}  # cached calls: positional count and ordered keyword names
         self.decorated: dict[str, bool] = {}  # the defs of a module's top level that bind what their decorators give (decorate)
         self.decoexprs: dict[str, Node] = {}  # "<module> <line>" -> the dotted name of the decorator there (deco_callee)
@@ -1623,6 +1853,12 @@ class Gen:
         # the generic classes (class C(Generic[T, *Ts]) and class C[T, *Ts]): their type variables,
         # which the arguments of the call that makes an object bind (see bind)
         self.tparams: dict[str, list[str]] = {}
+        # class V(G[X, ...], H[Y, ...]) of generic classes G and H that bind nothing
+        # (generic_subclass): for each, the types X, ... that bind its TypeVars for the methods of
+        # V's objects (tv_bound); "~T" where generic V passes its own TypeVar T on
+        self.genargs: dict[str, dict[str, list[str]]] = {}
+        self.implicitgen: dict[str, bool] = {}  # the classes generic only by their bases' subscripts (program.implicit_tparams)
+        self.iterabc: dict[str, bool] = {}  # the classes whose base was collections.abc's Iterator or Iterable (program.iter_abc)
         self.pep695: dict[str, bool] = {}  # the generic classes of PEP 695's syntax, class C[T] (reflection: __type_params__)
         # the type aliases, by qualified name: the statement that binds each (Mod.taliases), and
         # those whose annotation alias_ann is making the type of
@@ -1974,6 +2210,9 @@ class Gen:
     def dyn_xhelper(self, c: str) -> None:
         return dynamic_dyn_xhelper(self, c)
 
+    def xdecline(self, method: FnInfo, after: bool) -> None:
+        return dynamic_xdecline(self, method, after)
+
     def dyn_xbody(self, c: str) -> None:
         return dynamic_dyn_xbody(self, c)
 
@@ -2265,11 +2504,14 @@ class Gen:
     def dyn_bound(self, v: Val, bound: bool) -> str:
         return dynamic_dyn_bound(self, v, bound)
 
+    def dyn_index(self, v: Val, none: str) -> Val:
+        return dynamic_dyn_index(self, v, none)
+
     def dyn_slice(self, o: Val, bs: list[Node]) -> Val:
         return dynamic_dyn_slice(self, o, bs)
 
-    def dyn_mixed(self, es: list[Node]) -> bool:
-        return dynamic_dyn_mixed(self, es)
+    def dyn_mixed(self, es: list[Node], display: list[Node]) -> bool:
+        return dynamic_dyn_mixed(self, es, display)
 
     def dyn_dry(self, e: Node) -> str:
         return dynamic_dyn_dry(self, e)
@@ -2642,6 +2884,15 @@ class Gen:
     def maddr(self, t: str, p: str, index: str, inbounds: bool = False) -> str:
         return memory_ir_maddr(self, t, p, index, inbounds)
 
+    def verify_memory(self, fn: IFn, b: Blk, i: Ins, slots: bool) -> None:
+        return memory_ir_verify_memory(self, fn, b, i, slots)
+
+    def machine_ir(self, fn: IFn) -> None:
+        return machine_ir_machine_ir(self, fn)
+
+    def verify_machine(self, fn: IFn) -> None:
+        return machine_ir_verify_machine(self, fn)
+
     def mem_load(self, a: Val) -> Val:
         return emission_mem_load(self, a)
 
@@ -2735,6 +2986,9 @@ class Gen:
     def boxes(self, a: str, b: str) -> bool:
         return emission_boxes(self, a, b)
 
+    def vtuple_fits(self, a: str, b: str) -> bool:
+        return emission_vtuple_fits(self, a, b)
+
     def convert_in(self, v: Val, t: str, blk: Blk) -> Val:
         return emission_convert_in(self, v, t, blk)
 
@@ -2761,6 +3015,12 @@ class Gen:
 
     def as_int(self, v: Val) -> Val:
         return conversions_as_int(self, v)
+
+    def index_of(self, v: Val, none: str) -> Val:
+        return conversions_index_of(self, v, none)
+
+    def method_index(self, v: Val, dflt: str, none: str) -> Val:
+        return conversions_method_index(self, v, dflt, none)
 
     def as_float(self, v: Val) -> Val:
         return conversions_as_float(self, v)
@@ -2798,6 +3058,9 @@ class Gen:
     def desc(self, t: str, use: str) -> str:
         return conversions_desc(self, t, use)
 
+    def fset_unboxes(self, et: str) -> bool:
+        return conversions_fset_unboxes(self, et)
+
     def ctype(self, base: str, ts: list[str], canon: bool = True) -> str:
         return declarations_ctype(self, base, ts, canon)
 
@@ -2821,6 +3084,9 @@ class Gen:
 
     def ann_items(self, xs: list[Node]) -> list[str]:
         return declarations_ann_items(self, xs)
+
+    def literal_ann(self, items: list[Node], line: int) -> str:
+        return declarations_literal_ann(self, items, line)
 
     def unpack_ann(self, n: Node) -> str:
         return declarations_unpack_ann(self, n)
@@ -2852,6 +3118,18 @@ class Gen:
     def typevar_def(self, st: Node) -> bool:
         return declarations_typevar_def(self, st)
 
+    def bound_problem(self, x: Node) -> str:
+        return program_bound_problem(self, x)
+
+    def tv_names(self, e: Node) -> str:
+        return program_tv_names(self, e)
+
+    def tv_problem(self, e: Node, ctx: int) -> str:
+        return program_tv_problem(self, e, ctx)
+
+    def tv_items(self, xs: list[Node], ctx: int, tup: bool) -> str:
+        return program_tv_items(self, xs, ctx, tup)
+
     def typevar_in(self, anns: list[Node], skip: list[str]) -> str:
         return declarations_typevar_in(self, anns, skip)
 
@@ -2869,6 +3147,9 @@ class Gen:
 
     def alias_value(self, name: str) -> Node:
         return declarations_alias_value(self, name)
+
+    def sentinel_param(self, p: Node) -> bool:
+        return declarations_sentinel_param(self, p)
 
     def alias_params(self, name: str) -> list[str]:
         return declarations_alias_params(self, name)
@@ -2893,6 +3174,15 @@ class Gen:
 
     def alias_kept(self, name: str) -> bool:
         return declarations_alias_kept(self, name)
+
+    def newtype_name(self, name: str) -> bool:
+        return declarations_newtype_name(self, name)
+
+    def ann_reads(self, e: Node) -> None:
+        return declarations_ann_reads(self, e)
+
+    def def_ann_reads(self, d: Node) -> None:
+        return declarations_def_ann_reads(self, d)
 
     def unalias(self, a: Node, seen: list[str]) -> Node:
         return declarations_unalias(self, a, seen)
@@ -2927,8 +3217,11 @@ class Gen:
     def typing_ref(self, n: Node) -> str:
         return declarations_typing_ref(self, n)
 
-    def typing_forms(self, m: Mod, body: list[Node], cls: bool) -> list[Node]:
-        return declarations_typing_forms(self, m, body, cls)
+    def seq_default(self, p: Node, d: Node) -> bool:
+        return declarations_seq_default(self, p, d)
+
+    def typing_forms(self, m: Mod, body: list[Node], cls: bool, attrs: bool = False, top: bool = False) -> list[Node]:
+        return declarations_typing_forms(self, m, body, cls, attrs, top)
 
     def stub(self, m: Mod, st: Node) -> bool:
         return declarations_stub(self, m, st)
@@ -2944,6 +3237,9 @@ class Gen:
 
     def join(self, a: str, b: str) -> str:
         return declarations_join(self, a, b)
+
+    def class_join(self, a: str, b: str, want: str) -> str:
+        return declarations_class_join(self, a, b, want)
 
     def wider(self, a: str, b: str) -> str:
         return declarations_wider(self, a, b)
@@ -2965,6 +3261,15 @@ class Gen:
 
     def iter_ann(self, n: Node) -> str:
         return declarations_iter_ann(self, n)
+
+    def tv_plan(self, f: FnInfo, ps: list[Node], ret: Node, tvs: list[str]) -> None:
+        declarations_tv_plan(self, f, ps, ret, tvs)
+
+    def tv_bound(self, f: FnInfo, ts: list[str]) -> str:
+        return declarations_tv_bound(self, f, ts)
+
+    def tv_through(self, c: str, g: str, k: int) -> str:
+        return declarations_tv_through(self, c, g, k)
 
     def iter_item(self, n: Node) -> Node | None:
         return declarations_iter_item(self, n)
@@ -3044,6 +3349,12 @@ class Gen:
     def scan_fields(self, ci: ClassInfo, f: FnInfo, body: list[Node], known: dict[str, bool]) -> None:
         return declarations_scan_fields(self, ci, f, body, known)
 
+    def scan_target(self, ci: ClassInfo, f: FnInfo, x: Node, t: str) -> None:
+        return declarations_scan_target(self, ci, f, x, t)
+
+    def target_types(self, f: FnInfo, x: Node, v: Node | None, t: str, out: list[Node], types: list[str]) -> None:
+        return declarations_target_types(self, f, x, v, t, out, types)
+
     def guess_args(self, init: FnInfo, args: list[Node], f: FnInfo) -> list[str]:
         return declarations_guess_args(self, init, args, f)
 
@@ -3053,6 +3364,9 @@ class Gen:
     def guess_iter(self, a: Node, f: FnInfo) -> str:
         return declarations_guess_iter(self, a, f)
 
+    def class_reads(self, e: Node, f: FnInfo, t: str) -> bool:
+        return declarations_class_reads(self, e, f, t)
+
     def field(self, o: Val, name: str, store: bool=False) -> Val:
         return declarations_field(self, o, name, store)
 
@@ -3061,6 +3375,9 @@ class Gen:
 
     def refine_field(self, ci: ClassInfo, name: str, t: str) -> None:
         return declarations_refine_field(self, ci, name, t)
+
+    def holds_union(self, t: str, seen: list[str]) -> bool:
+        return declarations_holds_union(self, t, seen)
 
     def none_field(self, cls: str, name: str, cmp: bool) -> str:
         return declarations_none_field(self, cls, name, cmp)
@@ -3100,6 +3417,9 @@ class Gen:
 
     def setfield(self, o: Val, p: Val, name: str, v: Val) -> None:
         return declarations_setfield(self, o, p, name, v)
+
+    def setfield_store(self, o: Val, p: Val, name: str, v: Val) -> None:
+        return declarations_setfield_store(self, o, p, name, v)
 
     def global_var(self, g: str, ty: str) -> None:
         return variables_global_var(self, g, ty)
@@ -3175,6 +3495,9 @@ class Gen:
 
     def uorders(self, a: str, b: str) -> bool:
         return union_arithmetic_uorders(self, a, b)
+
+    def unequal_types(self, a: str, b: str) -> bool:
+        return union_arithmetic_unequal_types(self, a, b)
 
     def ucmp(self, op: str, a: Val, b: Val, nonnull: bool = False) -> Val:
         return union_arithmetic_ucmp(self, op, a, b, nonnull)
@@ -3377,8 +3700,8 @@ class Gen:
     def assign(self, t: Node, v: Val) -> None:
         return variables_assign(self, t, v)
 
-    def slice_target(self, t: Node, bnd: list[str], nosub: str, raw: list[str] | None = None, values: list[Val] | None = None) -> Val:
-        return variables_slice_target(self, t, bnd, nosub, raw, values)
+    def slice_target(self, t: Node, bnd: list[str], nosub: str, raw: list[str] | None = None, values: list[Val] | None = None, written: list[Val] | None = None) -> Val:
+        return variables_slice_target(self, t, bnd, nosub, raw, values, written)
 
     def slice_check(self, step: str) -> None:
         return variables_slice_check(self, step)
@@ -3490,8 +3813,8 @@ class Gen:
     def gen_stream(self, name: str, v: Val, args: list[Node], want: str, resultsoft: bool) -> Val:
         return generators_gen_stream(self, name, v, args, want, resultsoft)
 
-    def gen_suspend(self, slot: str, k: int, sub: Val, thrown: str = "", hi: str = "") -> None:
-        return generators_gen_suspend(self, slot, k, sub, thrown, hi)
+    def gen_suspend(self, slot: str, k: int, sub: Val, thrown: str = "", hi: str = "", identity: str = "") -> None:
+        return generators_gen_suspend(self, slot, k, sub, thrown, hi, identity)
 
     def yield_from_iter(self, what: str) -> None:
         return generators_yield_from_iter(self, what)
@@ -3505,8 +3828,8 @@ class Gen:
     def yield_from_proto(self, v: Val, t: str, y: str, callee: FnInfo | None) -> Val:
         return generators_yield_from_proto(self, v, t, y, callee)
 
-    def gen_keep(self, w: list[str], ys: str, yh: str) -> None:
-        return generators_gen_keep(self, w, ys, yh)
+    def gen_keep(self, w: list[str], ys: str, yh: str, yi: str) -> None:
+        return generators_gen_keep(self, w, ys, yh, yi)
 
     def gen_slots(self, v: Val, y: str) -> list[str]:
         return generators_gen_slots(self, v, y)
@@ -3580,11 +3903,14 @@ class Gen:
     def pyext(self) -> list[str]:
         return lower_module_pyext(self)
 
+    def validate_module(self) -> None:
+        return lower_module_validate_module(self)
+
     def untold(self, f: FnInfo, ts: list[str], how: str) -> None:
         return functions_untold(self, f, ts, how)
 
-    def extern_decl(self, f: FnInfo) -> None:
-        return lower_module_extern_decl(self, f)
+    def extern_decl(self, f: FnInfo, provided: bool = False) -> None:
+        return lower_module_extern_decl(self, f, provided)
 
     def lower_module(self) -> str:
         return lower_module_lower_module(self)
@@ -3703,6 +4029,24 @@ class Gen:
     def subclass_problem(self, st: Node) -> str:
         return program_subclass_problem(self, st)
 
+    def generic_subclass(self, st: Node) -> str:
+        return program_generic_subclass(self, st)
+
+    def generic_traits(self, st: Node) -> int:
+        return program_generic_traits(self, st)
+
+    def implicit_tparams(self, st: Node) -> list[str]:
+        return program_implicit_tparams(self, st)
+
+    def iter_abc(self, st: Node) -> str:
+        return program_iter_abc(self, st)
+
+    def iterabc_derived(self, c: str) -> bool:
+        return program_iterabc_derived(self, c)
+
+    def inert_subscript(self, n: Node) -> bool:
+        return program_inert_subscript(self, n)
+
     def exc_base(self, b: Node) -> str:
         return program_exc_base(self, b)
 
@@ -3721,14 +4065,92 @@ class Gen:
     def derives(self, c: str, base: str) -> bool:
         return program_derives(self, c, base)
 
-    def init_template(self, st: Node) -> bool:
-        return program_init_template(self, st)
+    def on_chain(self, c: str, a: str) -> bool:
+        return program_on_chain(self, c, a)
+
+    def ordered_class(self, ci: ClassInfo) -> None:
+        return program_ordered_class(self, ci)
+
+    def ordering_ops(self, c: str, seen: list[str]) -> list[str]:
+        return program_ordering_ops(self, c, seen)
+
+    def trait_root(self, primary: str, secondary: str) -> str:
+        return program_trait_root(self, primary, secondary)
+
+    def role_field(self, t: str, name: str) -> bool:
+        return program_role_field(self, t, name)
+
+    def role_chain(self, primary: str, secondary: str) -> list[str]:
+        return program_role_chain(self, primary, secondary)
+
+    def declarer(self, c: str, m: str) -> str:
+        return program_declarer(self, c, m)
+
+    def declares(self, c: str, m: str) -> bool:
+        return program_declares(self, c, m)
+
+    def mro(self, c: str) -> list[str]:
+        return program_mro(self, c)
+
+    def mro_first(self, order: list[str], m: str) -> str:
+        return program_mro_first(self, order, m)
+
+    def slotted_trait(self, cls: str, role: str) -> bool:
+        return program_slotted_trait(self, cls, role)
+
+    def init_template(self, st: Node, hier: bool = False) -> bool:
+        return program_init_template(self, st, hier)
+
+    def init_generic(self, st: Node, hier: bool = False) -> bool:
+        return program_init_generic(self, st, hier)
+
+    def fixed_ann(self, a: Node) -> bool:
+        return program_fixed_ann(self, a)
+
+    def fixed_stores(self, n: Node, receiver: str, fields: dict[str, str]) -> bool:
+        return program_fixed_stores(self, n, receiver, fields)
+
+    def fixed_init(self, st: Node) -> bool:
+        return program_fixed_init(self, st)
+
+    def fixed_layout(self, st: Node) -> bool:
+        return program_fixed_layout(self, st)
+
+    def fixed_layout_body(self, st: Node) -> bool:
+        return program_fixed_layout_body(self, st)
+
+    def fixed_base_properties(self, name: str, fields: dict[str, str], seen: list[str]) -> bool:
+        return program_fixed_base_properties(self, name, fields, seen)
+
+    def fixed_hierarchy(self, name: str) -> bool:
+        return program_fixed_hierarchy(self, name)
+
+    def hierarchy_chain(self, name: str, chain: list[str], seen: list[str]) -> bool:
+        return program_hierarchy_chain(self, name, chain, seen)
+
+    def request_hierarchy(self, name: str) -> None:
+        return program_request_hierarchy(self, name)
+
+    def retry_hierarchy(self, msg: str) -> None:
+        return program_retry_hierarchy(self, msg)
 
     def template_fix(self, cs: list[Node]) -> str:
         return program_template_fix(self, cs)
 
     def makes_tmpl(self, n: Node) -> bool:
         return program_makes_tmpl(self, n)
+
+    def fixed_template_field_ann(self, a: Node) -> bool:
+        return program_fixed_template_field_ann(self, a)
+
+    def init_param_classes(self, st: Node, out: dict[str, bool]) -> None:
+        program_init_param_classes(self, st, out)
+
+    def ann_classes(self, a: Node, out: dict[str, bool]) -> None:
+        program_ann_classes(self, a, out)
+
+    def init_makes_tmpl(self, n: Node, me: str, fixed: dict[str, bool]) -> bool:
+        return program_init_makes_tmpl(self, n, me, fixed)
 
     def tmpl_ann(self, a: Node) -> bool:
         return program_tmpl_ann(self, a)
@@ -3793,8 +4215,29 @@ class Gen:
     def partly(self, e: Node, use: int) -> str:
         return program_partly(self, e, use)
 
+    def prepare_program(self, mods: list[Mod]) -> PreparedProgram:
+        return program_prepare_program(self, mods)
+
+    def discover_program(self, prepared: PreparedProgram) -> None:
+        return program_discover_program(self, prepared)
+
+    def analyze_program(self) -> None:
+        return pipeline_analyze_program(self)
+
+    def optimize_program(self) -> None:
+        return pipeline_optimize_program(self)
+
+    def finalize_program(self) -> None:
+        return pipeline_finalize_program(self)
+
+    def typed_program(self, mods: list[Mod]) -> None:
+        return pipeline_typed_program(self, mods)
+
+    def lower_program(self) -> str:
+        return pipeline_lower_program(self)
+
     def program(self, mods: list[Mod]) -> str:
-        return program_program(self, mods)
+        return pipeline_program(self, mods)
 
     def flow_program(self, top: list[Node], mod: str, mfns: list[FnInfo], mcls: list[ClassInfo], first: bool) -> None:
         return flow_flow_program(self, top, mod, mfns, mcls, first)
@@ -3898,6 +4341,9 @@ class Gen:
     def loop(self, body: list[Node], lp: Loop) -> list[dict[str, str]]:
         return statements_loop(self, body, lp)
 
+    def decline(self, n: Node) -> Node:
+        return statements_decline(self, n)
+
     def leave(self, depth: int) -> bool:
         return statements_leave(self, depth)
 
@@ -3930,6 +4376,9 @@ class Gen:
 
     def exc_isinst(self, v: Val, t: Node) -> Val:
         return exceptions_exc_isinst(self, v, t)
+
+    def exc_overlap(self, a: str, b: str) -> bool:
+        return exceptions_exc_overlap(self, a, b)
 
     def catch_set(self, t: Node) -> str:
         return exceptions_catch_set(self, t)
@@ -4042,8 +4491,11 @@ class Gen:
     def exc_brepr(self, o: Val) -> Val:
         return exceptions_exc_brepr(self, o)
 
-    def super_call(self, sc: Node, m: str, args: list[Node], based: bool=False, read: bool=False) -> Val:
-        return exceptions_super_call(self, sc, m, args, based, read)
+    def super_call(self, sc: Node, m: str, args: list[Node], based: bool=False, read: bool=False, own_bound: bool=False, captured: Val | None=None) -> Val:
+        return exceptions_super_call(self, sc, m, args, based, read, own_bound, captured)
+
+    def super_own_init(self, args: list[Node]) -> Val:
+        return exceptions_super_own_init(self, args)
 
     def exc_helpers(self, c: str) -> None:
         return exceptions_exc_helpers(self, c)
@@ -4168,8 +4620,8 @@ class Gen:
     def iterable(self, v: Val, msg: str="TypeError: 'NoneType' object is not iterable") -> Val:
         return statements_iterable(self, v, msg)
 
-    def ival(self, n: Node, none: str='') -> Val:
-        return statements_ival(self, n, none)
+    def ival(self, n: Node, none: str='', index: bool=True, recv: Val | None=None, recvnone: str='') -> Val:
+        return statements_ival(self, n, none, index, recv, recvnone)
 
     def range_args(self, args: list[Node]) -> list[str]:
         return statements_range_args(self, args)
@@ -4206,6 +4658,9 @@ class Gen:
 
     def narrows(self, n: Node, truth: bool, out: dict[str, str]) -> None:
         return expressions_narrows(self, n, truth, out)
+
+    def callable_narrow(self, t: str, truth: bool) -> str:
+        return expressions_callable_narrow(self, t, truth)
 
     def narrowable(self, name: str) -> bool:
         return expressions_narrowable(self, name)
@@ -4249,6 +4704,12 @@ class Gen:
     def isnone(self, t: str) -> int:
         return expressions_isnone(self, t)
 
+    def dict_class(self, t: str) -> bool:
+        return expressions_dict_class(self, t)
+
+    def dict_object(self, t: str) -> bool:
+        return expressions_dict_object(self, t)
+
     def isinst_reads(self, c: Node) -> None:
         return expressions_isinst_reads(self, c)
 
@@ -4285,8 +4746,8 @@ class Gen:
     def scalar_receiver(self, n: Node) -> str:
         return expressions_scalar_receiver(self, n)
 
-    def seq_index(self, n: Node, msg: str) -> Val:
-        return expressions_seq_index(self, n, msg)
+    def seq_index(self, n: Node, msg: str, recv: Val | None=None, recvnone: str='') -> Val:
+        return expressions_seq_index(self, n, msg, recv, recvnone)
 
     def list_hint_type(self, a: str, b: str) -> str:
         return expressions_list_hint_type(self, a, b)
@@ -4314,6 +4775,9 @@ class Gen:
 
     def cls_bound(self, f: FnInfo, c: str, obj: bool) -> None:
         return expressions_cls_bound(self, f, c, obj)
+
+    def percent_map(self, fmt: str, v: Val) -> Val:
+        return expressions_percent_map(self, fmt, v)
 
     def percent(self, fmt: str, rhs: Node, lit: bool) -> Val:
         return expressions_percent(self, fmt, rhs, lit)
@@ -4387,6 +4851,9 @@ class Gen:
     def slice_dyn(self, ss: list[str], dvs: list[Val]) -> None:
         return expressions_slice_dyn(self, ss, dvs)
 
+    def slice_late(self, v: Val, bound: bool) -> str:
+        return expressions_slice_late(self, v, bound)
+
     def slice_tuple(self, o: Val, bnd: list[str], step: str) -> Val:
         return expressions_slice_tuple(self, o, bnd, step)
 
@@ -4398,6 +4865,9 @@ class Gen:
 
     def tuple_(self, vals: list[Val]) -> Val:
         return expressions_tuple_(self, vals)
+
+    def vtuple_item(self, o: Val, index: Val) -> Val:
+        return expressions_vtuple_item(self, o, index)
 
     def vtuple_make(self, vals: list[Val], t: str) -> Val:
         return expressions_vtuple_make(self, vals, t)
@@ -4501,6 +4971,9 @@ class Gen:
     def protocol(self, o: Val, m: str, args: list[Val]) -> Val:
         return expressions_protocol(self, o, m, args)
 
+    def slice_written(self, bounds: list[Node]) -> list[Val]:
+        return expressions_slice_written(self, bounds)
+
     def obj_iter(self, v: Val, none: str, missing: str, name: str = "__iter__") -> Val:
         return expressions_obj_iter(self, v, none, missing, name)
 
@@ -4540,6 +5013,12 @@ class Gen:
     def ntup(self, v: Val, known: bool=False) -> Val:
         return expressions_ntup(self, v, known)
 
+    def nt_wide(self, v: Val) -> bool:
+        return expressions_nt_wide(self, v)
+
+    def nt_eq(self, op: str, a: Val, b: Val) -> Val:
+        return expressions_nt_eq(self, op, a, b)
+
     def cmp_method(self, t: str, m: str, other: str) -> str:
         return expressions_cmp_method(self, t, m, other)
 
@@ -4552,23 +5031,62 @@ class Gen:
     def enum_intlike(self, c: str) -> bool:
         return expressions_enum_intlike(self, c)
 
+    def enum_scalar(self, at: str, bt: str) -> bool:
+        return expressions_enum_scalar(self, at, bt)
+
+    def enum_builtin(self, c: str) -> str:
+        return expressions_enum_builtin(self, c)
+
+    def enum_compare(self, op: str, a: Val, b: Val, lenient: bool = False) -> Val:
+        return expressions_enum_compare(self, op, a, b, lenient)
+
     def cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
         return expressions_cmp_pick(self, op, at, bt)
 
-    def inherit_cmp(self, op: str, a: Val, b: Val) -> Val:
-        return expressions_inherit_cmp(self, op, a, b)
+    def may_decline(self, f: FnInfo) -> bool:
+        return expressions_may_decline(self, f)
+
+    def decl_flag(self) -> str:
+        return expressions_decl_flag(self)
+
+    def declining_call(self, f: FnInfo, me: Val, arg: Val, direct: bool, decl: list[bool]) -> Val:
+        return expressions_declining_call(self, f, me, arg, direct, decl)
+
+    def ordering(self, args: list[Node]) -> Val:
+        return expressions_ordering(self, args)
+
+    def cmp_cands(self, op: str, at: str, bt: str) -> list[list[str]]:
+        return expressions_cmp_cands(self, op, at, bt)
+
+    def cmp_declining(self, op: str, at: str, bt: str) -> bool:
+        return expressions_cmp_declining(self, op, at, bt)
+
+    def cmp_stage(self, op: str, at: str, bt: str, stage: int) -> list[str]:
+        return expressions_cmp_stage(self, op, at, bt, stage)
+
+    def inherit_cmp(self, op: str, a: Val, b: Val, lenient: bool = False, stage: int = 0) -> Val:
+        return expressions_inherit_cmp(self, op, a, b, lenient, stage)
 
     def cmp_alts(self, v: Val) -> list[Val]:
         return expressions_cmp_alts(self, v)
 
-    def cmp_widen(self, op: str, x: Val, y: Val, at: str, bt: str) -> list[Val]:
-        return expressions_cmp_widen(self, op, x, y, at, bt)
+    def class_members(self, t: str) -> list[str]:
+        return expressions_class_members(self, t)
 
-    def cmp_key(self, op: str, a: Val, b: Val) -> str:
-        return expressions_cmp_key(self, op, a, b)
+    def cmp_object(self, v: Val) -> Val:
+        return expressions_cmp_object(self, v)
 
-    def cmp_arm(self, op: str, a: Val, b: Val, k: str, p: list[Val], l: str, ph: Ins, end: str) -> None:
-        return expressions_cmp_arm(self, op, a, b, k, p, l, ph, end)
+    def cmp_widen(self, op: str, x: Val, y: Val, at: str, bt: str, stage: int = 0) -> list[Val]:
+        return expressions_cmp_widen(self, op, x, y, at, bt, stage)
+
+    def cmp_key(self, op: str, a: Val, b: Val, stage: int = 0) -> str:
+        return expressions_cmp_key(self, op, a, b, stage)
+
+    def cmp_arm(self, op: str, a: Val, b: Val, k: str, p: list[Val], l: str, ph: Ins, end: str, lenient: bool, stage: int, nxt: list[str]) -> None:
+        return expressions_cmp_arm(self, op, a, b, k, p, l, ph, end, lenient, stage, nxt)
+
+    def cmp_try(self, op: str, k: str, x: Val, y: Val, stage: int = 0, decl: list[bool] | None = None) -> Val:
+        return expressions_cmp_try(self, op, k, x, y, stage, decl)
 
     def cmp_rest(self, v: Val, alts: list[Val], to: list[str]) -> str:
         return expressions_cmp_rest(self, v, alts, to)
@@ -4588,8 +5106,8 @@ class Gen:
     def iter_in(self, op: str, a: Val, it: Val) -> Val:
         return expressions_iter_in(self, op, a, it)
 
-    def concrete_cmp(self, op: str, a: Val, b: Val) -> Val:
-        return expressions_concrete_cmp(self, op, a, b)
+    def concrete_cmp(self, op: str, a: Val, b: Val, stage: int = 0, decl: list[bool] | None = None) -> Val:
+        return expressions_concrete_cmp(self, op, a, b, stage, decl)
 
     def isnull(self, v: Val) -> str:
         return expressions_isnull(self, v)
@@ -4606,6 +5124,15 @@ class Gen:
     def masked(self, n: Node, want: str, resultsoft: bool) -> Val:
         return expressions_masked(self, n, want, resultsoft)
 
+    def low32(self, e: Node) -> Val:
+        return expressions_low32(self, e)
+
+    def low32_const(self, e: Node) -> str:
+        return expressions_low32_const(self, e)
+
+    def low32_tree(self, e: Node, room: list[int]) -> bool:
+        return expressions_low32_tree(self, e, room)
+
     def wexpr(self, e: Node, want: str, resultsoft: bool, op: str = "", kept: list[str] | None = None) -> list[Val]:
         return expressions_wexpr(self, e, want, resultsoft, op, kept)
 
@@ -4614,6 +5141,21 @@ class Gen:
 
     def compare(self, n: Node) -> Val:
         return expressions_compare(self, n)
+
+    def complex_value(self, re: Val, im: Val) -> Val:
+        return expressions_complex_value(self, re, im)
+
+    def complex_parts(self, v: Val) -> list[Val]:
+        return expressions_complex_parts(self, v)
+
+    def complex_arith(self, op: str, a: Val, b: Val, shown: str) -> Val:
+        return expressions_complex_arith(self, op, a, b, shown)
+
+    def complex_cmp(self, op: str, a: Val, b: Val, checked: bool = False) -> Val:
+        return expressions_complex_cmp(self, op, a, b, checked)
+
+    def complex_ueq(self, op: str, a: Val, b: Val) -> Val:
+        return expressions_complex_ueq(self, op, a, b)
 
     def exc_id(self, v: Val) -> Val:
         return expressions_exc_id(self, v)
@@ -4624,8 +5166,20 @@ class Gen:
     def cmp2(self, op: str, a: Val, b: Val) -> Val:
         return expressions_cmp2(self, op, a, b)
 
-    def titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) -> bool:
-        return expressions_titem_eq(self, item, a, hit, ph, value)
+    def titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str, lenient: bool = False) -> bool:
+        return expressions_titem_eq(self, item, a, hit, ph, value, lenient)
+
+    def titem_union(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) -> bool:
+        return expressions_titem_union(self, item, a, hit, ph, value)
+
+    def titem_nt(self, item: Val, a: Val, left: bool, hit: str, ph: Ins | None, value: str, lenient: bool = False) -> bool:
+        return expressions_titem_nt(self, item, a, left, hit, ph, value, lenient)
+
+    def big_union(self, v: Val) -> bool:
+        return expressions_big_union(self, v)
+
+    def titem_big(self, item: Val, a: Val, left: bool, hit: str, ph: Ins | None, value: str, lenient: bool = False) -> bool:
+        return expressions_titem_big(self, item, a, left, hit, ph, value, lenient)
 
     def union_same(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) -> bool:
         return expressions_union_same(self, item, a, hit, ph, value)
@@ -4647,6 +5201,15 @@ class Gen:
 
     def dict_pair_eq(self, op: str, a: Val, b: Val) -> Val:
         return expressions_dict_pair_eq(self, op, a, b)
+
+    def dict_view(self, n: Node) -> str:
+        return expressions_dict_view(self, n)
+
+    def dict_view_has(self, op: str, view: str, a: Val, n: Node) -> Val:
+        return expressions_dict_view_has(self, op, view, a, n)
+
+    def dict_view_cmp(self, op: str, items: bool, a: Val, b: Val) -> Val:
+        return expressions_dict_view_cmp(self, op, items, a, b)
 
     def tuple_order(self, op: str, a: Val, b: Val) -> Val:
         return expressions_tuple_order(self, op, a, b)
@@ -4696,6 +5259,9 @@ class Gen:
     def adapter(self, ft: str, t: str) -> str:
         return calls_adapter(self, ft, t)
 
+    def method_family(self, cls: str, method: str) -> str:
+        return calls_method_family(self, cls, method)
+
     def callable_pat(self, a: Node) -> str:
         return calls_callable_pat(self, a)
 
@@ -4705,11 +5271,107 @@ class Gen:
     def adapter_ret(self, ft: str, ps: list[str]) -> str:
         return calls_adapter_ret(self, ft, ps)
 
+    def class_value_named(self, c: str) -> bool:
+        return class_values_class_value_named(self, c)
+
+    def class_value_problem(self, c: str) -> str:
+        return class_values_class_value_problem(self, c)
+
+    def class_value(self, c: str) -> Val:
+        return class_values_class_value(self, c)
+
+    def class_value_static(self, c: str, mod: str, line: int) -> bool:
+        return class_values_class_value_static(self, c, mod, line)
+
+    def class_value_annotated(self, file: int) -> bool:
+        return class_values_class_value_annotated(self, file)
+
+    def class_value_box(self, v: Val) -> Val:
+        return class_values_class_value_box(self, v)
+
+    def class_value_isa(self, v: Val, t: str) -> str:
+        return class_values_class_value_isa(self, v, t)
+
+    def class_value_unbox(self, v: Val, t: str) -> Val:
+        return class_values_class_value_unbox(self, v, t)
+
+    def class_value_typed(self, v: Val, known: bool) -> bool:
+        return class_values_class_value_typed(self, v, known)
+
+    def class_value_kinds(self, c: str) -> list[str]:
+        return class_values_class_value_kinds(self, c)
+
+    def class_value_bases(self, c: str, top: str) -> list[str]:
+        return class_values_class_value_bases(self, c, top)
+
+    def class_value_builtin(self, v: Val) -> Val:
+        return class_values_class_value_builtin(self, v)
+
+    def class_value_having(self, name: str, method: bool) -> list[str]:
+        return class_values_class_value_having(self, name, method)
+
+    def class_value_lacks(self, k: Val, name: str) -> None:
+        class_values_class_value_lacks(self, k, name)
+
+    def class_value_type(self, v: Val, known: bool) -> Val:
+        return class_values_class_value_type(self, v, known)
+
+    def class_value_builtin_record(self, name: str) -> str:
+        return class_values_class_value_builtin_record(self, name)
+
+    def class_value_chain(self, c: str, top: str) -> list[str]:
+        return class_values_class_value_chain(self, c, top)
+
+    def class_value_holds(self, t: str) -> bool:
+        return class_values_class_value_holds(self, t)
+
+    def class_value_objects(self, t: str) -> bool:
+        return class_values_class_value_objects(self, t)
+
+    def class_value_of(self, v: Val, known: bool) -> Val:
+        return class_values_class_value_of(self, v, known)
+
+    def class_value_name(self, v: Val, what: str) -> Val:
+        return class_values_class_value_name(self, v, what)
+
+    def class_value_asks(self, op: str, a: Val, b: Val) -> bool:
+        return class_values_class_value_asks(self, op, a, b)
+
+    def class_value_cmp(self, op: str, a: Val, b: Val) -> Val:
+        return class_values_class_value_cmp(self, op, a, b)
+
+    def class_value_is(self, k: Val, c: str) -> Val:
+        return class_values_class_value_is(self, k, c)
+
+    def class_value_sub(self, c: str, k: Val) -> Val:
+        return class_values_class_value_sub(self, c, k)
+
+    def class_value_isinst(self, v: Val, k: Val, known: bool) -> Val:
+        return class_values_class_value_isinst(self, v, k, known)
+
+    def class_value_issub(self, k: Val, t: Node) -> Val:
+        return class_values_class_value_issub(self, k, t)
+
+    def class_value_dynamic(self, t: Node) -> bool:
+        return class_values_class_value_dynamic(self, t)
+
+    def class_value_call(self, c: Val, args: list[Node]) -> Val:
+        return class_values_class_value_call(self, c, args)
+
+    def class_value_attr(self, k: Val, name: str) -> Val:
+        return class_values_class_value_attr(self, k, name)
+
+    def class_value_method(self, k: Val, name: str, args: list[Node], want: str, resultsoft: bool) -> Val:
+        return class_values_class_value_method(self, k, name, args, want, resultsoft)
+
     def call_callable(self, o: Val, args: list[Node]) -> Val:
         return calls_call_callable(self, o, args)
 
     def call_value(self, v: Val, args: list[Node], want: str, resultsoft: bool = False) -> Val:
         return calls_call_value(self, v, args, want, resultsoft)
+
+    def class_new(self, c: str, args: list[Node], want: str, resultsoft: bool = False, typeargs: str = "") -> Val:
+        return calls_class_new(self, c, args, want, resultsoft, typeargs)
 
     def bound(self, s: str) -> bool:
         return calls_bound(self, s)
@@ -4783,11 +5445,17 @@ class Gen:
     def scalar_call_types(self, f: FnInfo, args: list[Node]) -> list[str]:
         return calls_scalar_call_types(self, f, args)
 
-    def call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str='', none: str='', cache: Val | None=None, direct: bool=False, resultsoft: bool = False, typeargs: str = "") -> Val:
-        return calls_call_fn(self, f, pre, args, want, none, cache, direct, resultsoft, typeargs)
+    def call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str='', none: str='', cache: Val | None=None, direct: bool=False, resultsoft: bool = False, typeargs: str = "", unbound: bool = False, got: list[FnInfo] | None = None) -> Val:
+        return calls_call_fn(self, f, pre, args, want, none, cache, direct, resultsoft, typeargs, unbound, got)
 
-    def virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: str, none: str, resultsoft: bool = False) -> Val:
-        return calls_virtual_call(self, f, pre, args, want, none, resultsoft)
+    def virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: str, none: str, resultsoft: bool = False, got: list[FnInfo] | None = None) -> Val:
+        return calls_virtual_call(self, f, pre, args, want, none, resultsoft, got)
+
+    def shared_dispatch(self, f: FnInfo, cs: list[ClassInfo], pre: list[Val], args: list[Node]) -> str:
+        return calls_shared_dispatch(self, f, cs, pre, args)
+
+    def dispatch_call(self, f: FnInfo, o: Val, values: list[Val], names: list[str], ret: str) -> Val:
+        return calls_dispatch_call(self, f, o, values, names, ret)
 
     def fname(self, f: FnInfo) -> str:
         return calls_fname(self, f)
@@ -4849,6 +5517,9 @@ class Gen:
     def generic_ann(self, c: str, a: Node) -> str:
         return templates_generic_ann(self, c, a)
 
+    def mapping_ann(self, t: str, v: Node) -> str:
+        return templates_mapping_ann(self, t, v)
+
     def named_params(self, c: str, init: Node) -> list[str]:
         return templates_named_params(self, c, init)
 
@@ -4858,14 +5529,17 @@ class Gen:
     def match(self, a: Node, t: str, tv: dict[str, str], tvs: list[str]) -> str:
         return templates_match(self, a, t, tv, tvs)
 
+    def match_key(self, a: Node, t: str, tv: dict[str, str], tvs: list[str]) -> str:
+        return templates_match_key(self, a, t, tv, tvs)
+
     def match_items(self, xs: list[Node], ts: list[str], tv: dict[str, str], tvs: list[str]) -> str:
         return templates_match_items(self, xs, ts, tv, tvs)
 
     def fn_sig(self, t: str) -> list[str]:
         return templates_fn_sig(self, t)
 
-    def instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "", resultsoft: bool = False, cmpfields: str = "") -> FnInfo:
-        return templates_instance(self, f, ts, nnp, want, resultsoft, cmpfields)
+    def instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "", resultsoft: bool = False, cmpfields: str = "", nullable_self: bool = False) -> FnInfo:
+        return templates_instance(self, f, ts, nnp, want, resultsoft, cmpfields, nullable_self)
 
     def dotted(self, n: Node) -> str:
         return builtins_dotted(self, n)
@@ -4939,6 +5613,15 @@ class Gen:
     def sum_union_item(self, r: Reduce, v: Val) -> None:
         return builtins_sum_union_item(self, r, v)
 
+    def sum_objects(self, t: str, stt: str) -> bool:
+        return builtins_sum_objects(self, t, stt)
+
+    def sum_object_item(self, r: Reduce, v: Val) -> None:
+        return builtins_sum_object_item(self, r, v)
+
+    def sum_object_end(self, r: Reduce) -> Val:
+        return builtins_sum_object_end(self, r)
+
     def sum_union_end(self, r: Reduce) -> Val:
         return builtins_sum_union_end(self, r)
 
@@ -5008,11 +5691,17 @@ class Gen:
     def walk(self, name: str, args: list[Node]) -> Val:
         return builtins_walk(self, name, args)
 
+    def ba_prim(self, name: str, args: list[Node]) -> Val:
+        return builtins_ba_prim(self, name, args)
+
     def range_prim(self, name: str, args: list[Node]) -> Val:
         return builtins_range_prim(self, name, args)
 
     def range_fields(self, v: Val) -> list[str]:
         return builtins_range_fields(self, v)
+
+    def complex_new(self, args: list[Node]) -> Val:
+        return builtins_complex_new(self, args)
 
     def pwrite(self, fd: str, fv: str, s: str, fo: Val) -> None:
         return builtins_pwrite(self, fd, fv, s, fo)
@@ -5050,11 +5739,30 @@ class Gen:
     def iter_elem(self, t: str) -> str:
         return containers_iter_elem(self, t)
 
-    def siter(self, n: Node, et: str, what: str, resultsoft: bool = False) -> Val:
-        return containers_siter(self, n, et, what, resultsoft)
+    def vtuple_holds(self, t: str) -> bool:
+        return containers_vtuple_holds(self, t)
 
-    def sitems(self, v: Val, et: str, what: str) -> Val:
-        return containers_sitems(self, v, et, what)
+    def siter(self, n: Node, et: str, what: str, resultsoft: bool = False, mode: str = "") -> Val:
+        return containers_siter(self, n, et, what, resultsoft, mode)
+
+    def sitems(self, v: Val, et: str, what: str, mode: str = "") -> Val:
+        return containers_sitems(self, v, et, what, mode)
+
+    def set_kind(self, et: str) -> str:
+        return containers_set_kind(self, et)
+
+    def emptyfs_pair(self, a: Val, b: Val) -> list[Val]:
+        return containers_emptyfs_pair(self, a, b)
+
+    def set_rekind(self, v: Val, et: str) -> Val:
+        return containers_set_rekind(self, v, et)
+
+    def set_some(self, v: Val) -> Val:
+        return containers_set_some(self, v)
+
+    def set_pair(self, a: Val, b: Val, w: str) -> list[Val]:
+        return containers_set_pair(self, a, b, w)
+
 
     def supdate(self, s: str, v: Val, et: str) -> None:
         return containers_supdate(self, s, v, et)
@@ -5104,6 +5812,9 @@ class Gen:
     def key_problem(self, t: str) -> str:
         return containers_key_problem(self, t)
 
+    def key_union(self, t: str) -> bool:
+        return containers_key_union(self, t)
+
     def elem_problem(self, t: str) -> str:
         return containers_elem_problem(self, t)
 
@@ -5152,8 +5863,11 @@ class Gen:
     def store_elem(self, k: Val, et: str) -> Val:
         return containers_store_elem(self, k, et)
 
-    def nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str) -> str:
-        return containers_nonekey(self, k, none, fn, av, x)
+    def nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str, kt: str) -> str:
+        return containers_nonekey(self, k, none, fn, av, x, kt)
+
+    def none_dkey(self, k: Val, kt: str) -> Val:
+        return containers_none_dkey(self, k, kt)
 
     def keyed(self, k: Val, av: list[str]) -> list[str]:
         return containers_keyed(self, k, av)
@@ -5173,8 +5887,14 @@ class Gen:
     def ueq_type(self, t: str) -> bool:
         return unions_ueq_type(self, t)
 
+    def object_union(self, t: str) -> bool:
+        return unions_object_union(self, t)
+
     def scalar_union(self, t: str) -> bool:
         return unions_scalar_union(self, t)
+
+    def cx_union(self, t: str) -> bool:
+        return unions_cx_union(self, t)
 
     def num_union(self, t: str) -> bool:
         return unions_num_union(self, t)
@@ -5184,6 +5904,9 @@ class Gen:
 
     def uop(self, v: Val, op: str) -> Val:
         return unions_uop(self, v, op)
+
+    def scalar_view(self, v: Val) -> Val:
+        return unions_scalar_view(self, v)
 
     def uequal(self, op: str, a: Val, b: Val) -> Val:
         return unions_uequal(self, op, a, b)
@@ -5224,11 +5947,65 @@ class Gen:
     def to_union(self, v: Val, t: str, what: str) -> Val:
         return unions_to_union(self, v, t, what)
 
+    def class_union(self, v: Val, nt: str) -> Val:
+        return unions_class_union(self, v, nt)
+
     def narrow_val(self, v: Val, nt: str) -> Val:
         return unions_narrow_val(self, v, nt)
 
     def unarrowed(self, v: Val) -> str:
         return unions_unarrowed(self, v)
+
+    def path_key(self, n: Node) -> str:
+        return unions_path_key(self, n)
+
+    def path_void(self) -> None:
+        return unions_path_void(self)
+
+    def path_stamp(self, key: str) -> None:
+        return unions_path_stamp(self, key)
+
+    def path_event(self, i: Ins, kind: int) -> None:
+        return unions_path_event(self, i, kind)
+
+    def path_live(self, key: str, born: int, session: int) -> bool:
+        return unions_path_live(self, key, born, session)
+
+    def path_mark(self) -> int:
+        return unions_path_mark(self)
+
+    def path_undo(self, mark: int, keys: list[str], vals: list[int]) -> None:
+        return unions_path_undo(self, mark, keys, vals)
+
+    def path_redo(self, keys: list[str], vals: list[int]) -> None:
+        return unions_path_redo(self, keys, vals)
+
+    def path_read(self, n: Node, v: Val, born: int, block: str) -> None:
+        return unions_path_read(self, n, v, born, block)
+
+    def path_dominates(self, block: str) -> bool:
+        return unions_path_dominates(self, block)
+
+    def path_again(self, n: Node, key: str, v: Val) -> Val:
+        return unions_path_again(self, n, key, v)
+
+    def path_seen(self, n: Node) -> int:
+        return unions_path_seen(self, n)
+
+    def path_type(self, key: str, out: dict[str, str], t: str) -> str:
+        return unions_path_type(self, key, out, t)
+
+    def path_value(self, n: Node, key: str) -> Val:
+        return unions_path_value(self, n, key)
+
+    def narrows_path(self, n: Node, test: str, c: Node, truth: bool, out: dict[str, str]) -> None:
+        return unions_narrows_path(self, n, test, c, truth, out)
+
+    def narrows_paths(self, n: Node, truth: bool, out: dict[str, str]) -> None:
+        return unions_narrows_paths(self, n, truth, out)
+
+    def narrows_leaf(self, n: Node, truth: bool, out: dict[str, str]) -> None:
+        return unions_narrows_leaf(self, n, truth, out)
 
     def uisinst(self, v: Val, c: Node) -> str:
         return unions_uisinst(self, v, c)

@@ -6,15 +6,17 @@ import unittest
 from unittest.mock import patch
 
 from src.pystachy_compiler.gen import Gen
-from src.pystachy_compiler.ir import Data, FnInfo, IFn, Ins, Val
+from src.pystachy_compiler.ir import Data, IFn, Ins, Val
+from src.pystachy_compiler.symbols import FnInfo
 from src.pystachy_compiler.loader import Loader
 from src.pystachy_compiler.lower_module import lower_data
 from src.pystachy_compiler.syntax import Node
 
 
 ROOT = Path(__file__).resolve().parents[1]
-# Source-line metadata is emitted after LLVM lowering (see src/README.md).
-BACKENDS = {"lowering.py", "lower_module.py", "llvm_abi.py", "source_lines.py"}
+# Source-line metadata is emitted after LLVM lowering, and aot_runtime.py rewrites the optimized
+# runtime module for AOT links (see src/README.md).
+BACKENDS = {"lowering.py", "lower_module.py", "llvm_abi.py", "source_lines.py", "aot_runtime.py"}
 
 
 class ModuleLoweringTests(unittest.TestCase):

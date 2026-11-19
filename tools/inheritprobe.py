@@ -10,6 +10,12 @@ N=40 and N=80 subclasses inherit, for an exception base and an ordinary one, who
 declares other's type or takes it as object (#625): they must grow with N, not with its
 square. tests/programs/classes/inheritance_compare_pairs.py and inheritance_compare_object.py
 check what such comparisons call.
+Last, it counts the IR lines of a visitor: N=40 and N=80 subclasses each overriding accept(),
+called through the base at 16 and 32 sites. Above DISPATCH_INLINE classes a call selects its
+override in one shared function (Gen.dispatch_call), so each site adds a few lines, not an arm
+per class (a 100-class visitor at 100 sites took 251 s to build before); the lines must grow
+with N plus the sites, not with their product. tests/programs/classes/inheritance_dispatch_wide.py
+checks what such calls do.
 """
 import importlib.util
 import os
@@ -55,6 +61,31 @@ def compare_source(n, kind):
         lines += [f"    if x {'==' if s % 2 == 0 else '!='} y:", f"        k += {s + 1}"]
     lines += ["    return k", f"print(same(C0('a'), C{n - 1}('a')))", ""]
     return "\n".join(lines)
+
+
+def dispatch_source(n, sites):
+    # N subclasses of Node, each overriding accept() to call its own visit method, and SITES
+    # functions calling accept() of a Node
+    lines = ["class Visitor:"]
+    lines += [f"    def visit{i}(self, o: 'N{i}') -> int:\n        return o.v + {i}" for i in range(n)]
+    lines += ["class Node:", "    def accept(self, v: Visitor) -> int:", "        return -1"]
+    for i in range(n):
+        lines += [f"class N{i}(Node):", "    def __init__(self, v: int) -> None:", "        self.v = v",
+                  "    def accept(self, v: Visitor) -> int:", f"        return v.visit{i}(self)"]
+    for j in range(sites):
+        lines += [f"def site{j}(x: Node, v: Visitor) -> int:", f"    return x.accept(v) + {j}"]
+    lines += ["nodes: list[Node] = [" + ", ".join(f"N{i}({i})" for i in range(n)) + "]", "total = 0"]
+    lines += ["for x in nodes:"] + [f"    total += site{j}(x, Visitor())" for j in range(sites)]
+    return "\n".join(lines + ["print(total)", ""])
+
+
+def dispatch_lines(native, path, n, sites):
+    path.write_text(dispatch_source(n, sites))
+    output = path.with_suffix(".ll")
+    result = subprocess.run([str(native.resolve()), "ir", str(path), "-o", str(output)], cwd=ROOT,
+                            capture_output=True, preexec_fn=limits, timeout=30, check=False)
+    assert result.returncode == 0 and result.stderr == b"", (n, sites, result.stderr[-2000:])
+    return len(output.read_text().splitlines())
 
 
 def compare_lines(native, path, n, kind):
@@ -144,6 +175,13 @@ def main():
                     "object": "an ordinary base's (other: object)"}[kind]
             assert large <= 2.3 * small, (what, "comparisons grow quadratically", small, large)
             print(f"N=40, N=80: {SITES} comparisons of {what} values in {small} and {large} IR lines")
+        small = dispatch_lines(native, path, 40, 16)
+        large = dispatch_lines(native, path, 80, 16)
+        more = dispatch_lines(native, path, 80, 32)
+        assert large <= 2.3 * small, ("virtual calls grow quadratically in the classes", small, large)
+        # (an arm per class at each site was some 6 lines a class: 490 at N=80)
+        assert more - large <= 16 * 60, ("each virtual call site repeats the dispatch", large, more)
+        print(f"N=40, N=80: 16 accept() sites in {small} and {large} IR lines; 32 sites at N=80 in {more}")
     return 0
 
 
