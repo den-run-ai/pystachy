@@ -219,8 +219,9 @@ change IR and needs behavioral tests instead.
 `make check-ir` verifies typed-IR structure, LLVM acceptance, and the effect summaries,
 runtime calls, function attributes, field TBAA tags or calls of compiled functions recorded for
 `tests/ir/*.py` (`NAME.fx`, `NAME.calls`, `NAME.attrs`, `NAME.tbaa`, `NAME.inline`). These probes
-compile without running;
-`tests/ir/pending/` holds probes for open bugs.
+compile without running.
+A probe for an open bug goes in `tests/ir/pending/`, outside the corpus, and runs with
+`make check-ir FILES=tests/ir/pending/NAME.py`.
 
 ## Syntax errors against CPython
 

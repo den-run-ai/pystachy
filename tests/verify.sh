@@ -628,7 +628,7 @@ for shard in 0 1 2; do
 done
 
 # ---- runtime-cache: the cached runtime's rules, each compiler with a private home (tests/cache.sh,
-# whose checks are 96 with the native compiler and 98 with CPython's, including mpz/component edits, the
+# whose checks are 97 with the native compiler and 99 with CPython's, including mpz/component edits, the
 # precompiled AOT runtime and, on Linux, which verification runs on, the JIT tier's shared library and
 # the JIT runner's 16)
 # Each run has its own home, LLVM wrappers and directory ($TMPDIR/pystachy-cache-é.PID) and builds the
@@ -645,7 +645,7 @@ fi
 tests/cache.sh "$PY -m pystachy" > "$V/cache-cpython.log" 2>&1
 [ -z "${cachepid:-}" ] || wait "$cachepid"; cachepid=
 for l in native cpython; do echo "== $l"; cat "$V/cache-$l.log"; done > "$L"
-x=$(tests $((96 + 98)) "$V/cache-native.log" "$V/cache-cpython.log" 2>> "$L") && r=pass || r=fail
+x=$(tests $((97 + 99)) "$V/cache-native.log" "$V/cache-cpython.log" 2>> "$L") && r=pass || r=fail
 step runtime-cache $r "$s" "$L" ', "compilers": ["stage2", "CPython-hosted"]'"$x"
 fi
 

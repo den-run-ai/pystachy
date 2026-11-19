@@ -751,6 +751,11 @@ def enum_new_init(d: Node, parts: list[Node], counted: bool) -> None:
     if counted:
         ps.append(Parser(Lexer("def _(__pys_count: int): pass\n", d.line).file()).module().kids[0].kids[0].kids[0])
     d.kids[0].kids = ps + d.kids[0].kids[1:]
+    if d.kids[1].kind != "noann":
+        # (-> "C", the member __new__ returns, is no return type of the __init__, which returns
+        # None: the annotation is left unannotated, kept as the kid that Loader.deftime reads, as
+        # CPython evaluates it when the def statement runs)
+        d.kids[1] = mk("noann", "", d.line, [d.kids[1]])
     body = [s for s in d.kids[2].kids[:-1] if s is not parts[0] and s is not parts[1]]
     d.kids[2].kids = body if len(body) > 0 else [mk("pass", "", d.line, [])]
 

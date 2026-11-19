@@ -30,14 +30,12 @@ def host_text(s: str) -> str:
     # text the compiler takes from the host (os.path.realpath(), os.getcwd(), the module path) as a
     # str of its own: the host's is decoded, a character per code point, where the compiler's str
     # holds bytes, a character per byte (RAW), which it writes into programs as they are (#1517).
-    # A byte that does not decode, kept as a lone surrogate (surrogateescape), is that byte again.
+    # A byte that does not decode is that byte again (#1523): CPython keeps it as a lone surrogate
+    # (surrogateescape), the native compiler's runtime as the byte itself, and encoding with
+    # surrogateescape gives the host's bytes back from either.
     if RAW != "latin-1":
         return s
-    out: list[str] = []
-    for c in s:
-        o = ord(c)
-        out.append(chr(o - 0xDC00) if o >= 0xDC80 and o <= 0xDCFF else utf8(o))
-    return "".join(out)
+    return s.encode("utf-8", "surrogateescape").decode("latin-1")
 
 
 def utf8len(s: str, i: int, surrogatepass: bool = False) -> int:
