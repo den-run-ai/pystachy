@@ -1,0 +1,19 @@
+reads 1000000000000010.8
+reads past the end: IndexError list index out of range
+reads before the start: IndexError list index out of range
+writes [0.5, -2.25, 2.5, -0.0, 7.75, -1.5, 0.125, 9.0, -4.5, 1.5]
+writes past the end: IndexError list assignment index out of range
+ratios 10.617460317460317
+ratios by zero: ZeroDivisionError float division by zero
+roots 31622791.905503016
+roots of a negative: ValueError math domain error
+ints [5, 2, 17, 5, -2, -272, 142857143, 6, 16000000112, 17636684, -1, -123456789, 0, 0, 0, 1, 0, 80]
+ints by zero: ZeroDivisionError integer division or modulo by zero
+shifts 2
+negative shifts: ValueError negative shift count
+truncs 1000000000000018
+truncs of nan: ValueError cannot convert float NaN to integer
+truncs of inf: OverflowError cannot convert float infinity to integer
+order: IndexError list index out of range
+['index 0', 'index 3', 'index 6', 'index 9', 'index 12']
+[exit 0]

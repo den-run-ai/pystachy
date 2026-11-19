@@ -15,6 +15,10 @@ status and the PYSTACHY_TIMING record that names the runner. PYSTACHY_JIT_OPT=2,
 pipeline in place of the JIT's cleanup, keeps the same behavior under GC stress, and the module
 the runner executes shows -O2's GlobalOpt (main marked local_unnamed_addr, which the cleanup never
 does).
+The runtime's small functions that a
+loop calls (a list[float]'s reads and assignments, float division, math.sqrt(), shifts and int %)
+reach the module the runner executes inlined (jit_helpers, #705), with no copy left of them, and as
+calls with PYSTACHY_OPT=-jithelpers, both as CPython prints, under GC stress too.
 """
 import argparse
 import os
@@ -115,6 +119,38 @@ print(list(numbers(4)))
 """
 
 
+# a loop of the runtime's small functions, and their errors (#705)
+HELPERS_SOURCE = """import math
+import sys
+
+def kernel(xs: list[float], ys: list[float], n: int, k: int) -> float:
+    s = 0.0
+    for i in range(n):
+        j = (i * 7 + k) % n
+        d = xs[i] - ys[j]
+        s += math.sqrt(d * d + 1.0) / (2.0 + xs[j])
+        ys[j] = xs[i] * 0.5
+        s += float((i << 3) >> 2)
+    return s
+
+xs = [float(i % 13) for i in range(100)]
+ys = [float(i % 7) for i in range(100)]
+print(kernel(xs, ys, 100, len(sys.argv)))
+for case in range(3):
+    try:
+        if case == 0:
+            print(kernel(xs[:10], ys, 100, 1))
+        elif case == 1:
+            xs[3] = -2.0
+            print(kernel(xs, ys, 100, 1))
+        else:
+            print(math.sqrt(xs[3]))
+    except (IndexError, ZeroDivisionError, ValueError) as error:
+        print(type(error).__name__, error)
+"""
+HELPERS = ["pys_list_get", "pys_list_set", "pys_m_sqrt", "pys_fdiv", "pys_shl", "pys_shr", "pys_mod"]
+
+
 def run(command, env):
     result = subprocess.run(command, cwd=ROOT, env=env, capture_output=True, timeout=60, check=False)
     if result.returncode or result.stderr:
@@ -134,6 +170,8 @@ def main():
         source.write_text(SOURCE + "\n".join(f"def unused_{i}(x: int) -> int:\n    return x + {i}\n" for i in range(32)))
         coroutine = temp / "coroutine.py"
         coroutine.write_text(COROUTINE_SOURCE)
+        helpers = temp / "helpers.py"
+        helpers.write_text(HELPERS_SOURCE)
         (temp / "jitprobe_module.py").write_text('print("import")\n')
         capture = temp / "executed.ll"
         invocation = temp / "lli-args"
@@ -181,12 +219,14 @@ def main():
         env.pop("PYSTACHY_JIT_INLINE", None)  # (the default's inliner is what is checked first)
         env.pop("PYSTACHY_JIT_CODEGEN", None)
         env.pop("PYSTACHY_JIT_OPT", None)
+        env.pop("PYSTACHY_OPT", None)
         env.pop("PYSTACHY_TIMING", None)
         runners = {"lljit": env | {"PYSTACHY_LLVM": str(runnerdir), "PYSTACHY_JIT_LAUNCHER": "auto"},
                    "lli": env | {"PYSTACHY_LLVM": str(bindir), "PYSTACHY_JIT_LAUNCHER": "lli"}}
         arguments = ["space here", "'quoted$argument`"]
         expected = run([sys.executable, str(source), *arguments], env)
         coroutine_expected = run([sys.executable, str(coroutine)], env)
+        helpers_expected = run([sys.executable, str(helpers)], env)
         handler = ROOT / "tests/programs/exceptions/exc_handler_loop_values.py"
         handler_expected = run([sys.executable, str(handler)], env)
 
@@ -351,6 +391,18 @@ def main():
                 if run(cmd + ["run", str(handler)], optimized) != handler_expected:
                     raise RuntimeError(f"{where}: PYSTACHY_JIT_OPT=2 values reaching an except clause differ")
                 print(f"{where}: PYSTACHY_JIT_OPT=2 runs -O2 and preserves argv, callback exceptions, coroutines, except-clause values and callbacks under GC stress")
+                # the runtime's small functions: inlined, as calls with PYSTACHY_OPT=-jithelpers (#705)
+                for setting, inline in [({}, True), ({"PYSTACHY_OPT": "-jithelpers"}, False), ({"PYSTACHY_GC_STRESS_PROGRAM": "1"}, True)]:
+                    capture.unlink(missing_ok=True)
+                    if run(cmd + ["run", str(helpers)], chosen | setting) != helpers_expected:
+                        raise RuntimeError(f"{where}: {setting}: the runtime's small functions' results or errors differ from CPython")
+                    executed = capture.read_text()
+                    calls = [h for h in HELPERS if re.search(rf"\b(?:call|invoke)\b[^\n]*@{h}\(", executed)]
+                    if inline and (calls or "available_externally" in executed):
+                        raise RuntimeError(f"{where}: {setting}: the loop still calls {calls}, or a copy reached the JIT")
+                    if not inline and calls != HELPERS:
+                        raise RuntimeError(f"{where}: PYSTACHY_OPT=-jithelpers inlined {sorted(set(HELPERS) - set(calls))}")
+                print(f"{where}: {len(HELPERS)} small runtime functions inlined into a loop, also under GC stress, and called with PYSTACHY_OPT=-jithelpers")
             for setting, invalid in [("PYSTACHY_JIT_CODEGEN", value) for value in ("", "1", "-O0", "0;false")] + \
                                     [("PYSTACHY_JIT_OPT", value) for value in ("", "0", "3", "O2")] + \
                                     [("PYSTACHY_JIT_LAUNCHER", value) for value in ("", "LLI", "lljit", "auto;lli")]:

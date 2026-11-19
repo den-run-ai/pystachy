@@ -109,6 +109,7 @@ jobs:
           PYSTACHY_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p test_runtime_rounding.py
           PYSTACHY_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p test_bootstrap_tier.py
           PYSTACHY_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p test_profile_build.py
+          PYSTACHY_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p test_jit_helpers.py
 
       - name: Compact CI sampling and variant controls
         run: |
