@@ -138,6 +138,10 @@ static branch need not be type-checked. The [typing](language/typing.md) and
 | `Try` | The source-level shape of a try statement; LLVM lowering uses block handler metadata |
 | `IFn` | Function signature, parameter indices, entry slots, blocks, loops, handlers and effect summary |
 
+`IFn.build` holds what the frontend keeps of a body while it builds it: lazy field locals,
+numeric identity tracking and exception-binding indexes (`FnBuild` in
+[symbols](../src/pystachy_compiler/symbols.py)). No pass, analysis or lowering reads it.
+
 Types are canonical strings, such as `list[int]`, `dict[str,int]`, `opt[str]` and
 `union[int,str]`; `exc` is an exception, `exctype` its class (the exception itself, as a
 context manager's `__exit__` takes it), and `opt[exc]` and `opt[exctype]` use null for `None`. A closed union is an immutable pointer to a program-wide

@@ -745,7 +745,7 @@ def gen_alloca(self, t: str, name: str) -> str:
             self.fn.slots.append(i)
             self.owned[name] = f"%{name}.own.{self.n}"
         self.idbox.pop(name, "")
-        if numeric_identity(t) and self.idhere() and (not self.fn.numeric_only or name in self.curfn.idnames):
+        if numeric_identity(t) and self.idhere() and (not self.fn.build.numeric_only or name in self.curfn.idnames):
             # the box of its binding as an Any value (idbox): null, as each slot is where the
             # function begins, until a store or its first crossing gives it one (dyn_box)
             i = Ins("slot", "dyn", name + ".box")

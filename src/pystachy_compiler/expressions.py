@@ -902,13 +902,13 @@ def gen_seq_index(self, n: Node, msg: str, recv: Val | None = None, recvnone: st
     # object, as an arithmetic operand does not, so its variable and field reads need no
     # identity snapshot. The sequence's own item read keeps its identity (list_read).
     fn = self.fn
-    held = fn.scalar_reads
+    held = fn.build.scalar_reads
     if not held and self.idhere() and n.kind != "int" and self.scalar_read_index(n):
-        fn.scalar_reads = True
+        fn.build.scalar_reads = True
     try:
         return self.ival(n, msg, True, recv, recvnone)
     finally:
-        fn.scalar_reads = held
+        fn.build.scalar_reads = held
 
 
 def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool = False) -> Val:
@@ -1045,9 +1045,9 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         return self.arith(n.s, self.expr(n.kids[0], unopt(b.t) if is_dict(unopt(b.t)) else ""), b)
     if k == "binop":
         scalar_fn = self.fn
-        scalar_held = scalar_fn.scalar_reads
+        scalar_held = scalar_fn.build.scalar_reads
         if not scalar_held and self.idhere() and self.scalar_read_value(n):
-            scalar_fn.scalar_reads = True
+            scalar_fn.build.scalar_reads = True
         try:
             if n.s == "&" and (wraps(n.kids[0]) or wraps(n.kids[1])) and not self.int_policy(n.line):
                 return self.masked(n, want, resultsoft)
@@ -1065,20 +1065,20 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             ab = operand_pair(self, n.s, a, ka[0], b, kb[0] if len(kb) > 0 else "")
             return self.arith(n.s, ab[0], ab[1])
         finally:
-            scalar_fn.scalar_reads = scalar_held
+            scalar_fn.build.scalar_reads = scalar_held
     if k == "unary":
         return self.unary(n)
     if k == "boolop":
         return self.boolop(n, False, want, resultsoft)
     if k == "cmp":
         scalar_fn = self.fn
-        scalar_held = scalar_fn.scalar_reads
+        scalar_held = scalar_fn.build.scalar_reads
         if not scalar_held and self.idhere() and self.scalar_read_value(n):
-            scalar_fn.scalar_reads = True
+            scalar_fn.build.scalar_reads = True
         try:
             return self.compare(n)
         finally:
-            scalar_fn.scalar_reads = scalar_held
+            scalar_fn.build.scalar_reads = scalar_held
     if k == "ifexp":
         return self.ifexp(n, want, resultsoft)
     if k == "call":
@@ -2874,7 +2874,7 @@ def gen_vtuple_make(self, vals: list[Val], t: str) -> Val:
 def gen_vtuple_item(self, o: Val, index: Val) -> Val:
     et = targs(o.t)[0]
     kind = self.list_id_kind(self.ctype("list", [et]))
-    if kind != 0 and not self.fn.scalar_reads:
+    if kind != 0 and not self.fn.build.scalar_reads:
         box = self.rt("pys_vtuple_get_identity", "ptr", [f"ptr {o.v}", f"i64 {index.v}", f"i64 {kind}"])
         if is_opt(et):
             value = self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {o.v}", f"i64 {index.v}"]), et)
@@ -3387,7 +3387,7 @@ def gen_list_read(self, o: Val, i: Val) -> Val:
     # Both operands have run, and o is not None. Check the current length: unsigned
     # comparison also sends every negative index to the runtime's normalization and errors.
     # No call or allocation separates this check from the existing inline list.load.
-    if self.list_id_kind(o.t) != 0 and not self.fn.scalar_reads:
+    if self.list_id_kind(o.t) != 0 and not self.fn.build.scalar_reads:
         return self.list_item(o, i)
     if o.t != "list[int]" or "listfast" not in self.opts:
         return self.list_value(o, i.v, self.list_get("list.get", [o, i]))

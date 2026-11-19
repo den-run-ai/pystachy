@@ -478,12 +478,12 @@ def gen_bind_as(self, name: str, e: Val, t: str) -> None:
     had = self.ltype[name] if name in self.ltype else self.gtypes[name] if self.is_global(name) and name in self.gtypes else ""
     other = False
     if had == "":
-        names = self.fn.otherbinds
+        names = self.fn.build.otherbinds
         if names is None:
             names = {}
             node = self.curfn.node
             other_bindings(node.kids if node.kind == "block" else node.kids[2].kids, names)
-            self.fn.otherbinds = names
+            self.fn.build.otherbinds = names
         other = name in names
     if (had != "" and had != t) or other:
         f = self.global_reader(name) if self.modlevel else ""
