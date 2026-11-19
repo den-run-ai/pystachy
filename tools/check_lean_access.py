@@ -219,7 +219,11 @@ def no_wrap(facts, src, k):
     if 0 <= k and any(f[0] == "off" and f[1] == src and f[3] + k <= 0 for f in facts):
         return True
     # (a length plus a constant: a list has at most MAX_LEN items)
-    return 0 <= k <= MAX_I64 - MAX_LEN and any(f[0] == "len" and f[1] == src for f in facts)
+    if 0 <= k <= MAX_I64 - MAX_LEN and any(f[0] == "len" and f[1] == src for f in facts):
+        return True
+    # (src + j <= n for a length, or a lower bound of one, n, and k <= j: xs[i + 1] in a guarded copy)
+    return 0 <= k and any(f[0] == "le" and f[1] == src and k <= f[3] and
+                          any(g[0] in ("len", "lenGe") and g[1] == f[2] for g in facts) for f in facts)
 
 
 def sum_upper(facts, f, y):
@@ -999,6 +1003,10 @@ def generation_premises(facts, node, fact):
                 return [f]
             if 0 <= k <= MAX_I64 - MAX_LEN and f[0] == "len" and f[1] == src:
                 return [f]
+            if 0 <= k and f[0] == "le" and f[1] == src and k <= f[3]:
+                length = next((g for g in facts if g[0] in ("len", "lenGe") and g[1] == f[2]), None)
+                if length is not None:
+                    return [f, length]
     return []
 
 

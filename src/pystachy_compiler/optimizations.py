@@ -822,6 +822,9 @@ class GuardPlan:
         self.pairs: list[str] = []
         self.pmost: dict[str, int] = {}
         self.basesums: list[Ins] = []  # (the checked sums b + i of accepted indexes: the copy's add none)
+        # (the checked sums and differences of an accepted index and a constant, i + c or b + i + c,
+        # which the copy computes without an overflow check too)
+        self.offsums: list[Ins] = []
 
 
 def guard_plan(self, fn: IFn, lp: Loop, vs: Values, pl: dict[str, list[int]], at: dict[str, int], sums: dict[str, Ins]) -> GuardPlan | None:
@@ -936,6 +939,9 @@ def guard_plan(self, fn: IFn, lp: Loop, vs: Values, pl: dict[str, list[int]], at
                 for summed in found:
                     if summed.op == "ovf" and len([x for x in plan.basesums if x is summed]) == 0:
                         plan.basesums.append(summed)
+                summed_c = sums.get(self.canon(vs, i.a[1].v))
+                if summed_c is not None and summed_c.op == "ovf" and len([x for x in found if x is summed_c]) == 0 and len([x for x in plan.offsums if x is summed_c]) == 0:
+                    plan.offsums.append(summed_c)  # (the index plus or minus a constant: guard_loop)
                 if key not in plan.list_type:
                     plan.lists.append(key)
                     plan.list_type[key] = o.t
@@ -1017,7 +1023,9 @@ def gen_listguard(self, fn: IFn) -> int:
     # base b that no iteration changes (guard_base: data[bi + d]), where lo is a small literal; then
     # the tests check lo + c + b >= 0 for b's smallest c, compute hi + b, checked, and need
     # hi + b <= len(xs) - c for each list's largest c with b; the copy reads b once, from the tests,
-    # and adds it without an overflow check (guard_loop). The copy keeps every other check.
+    # and adds it without an overflow check (guard_loop), as it adds each such index's constant c
+    # (i + c, or b + i + c, which the tests keep at least 0 and below a list's length). The copy
+    # keeps every other check.
     # A coroutine is left as it is (a caller may
     # change a list while it is suspended), as is a loop that a try statement covers or that holds
     # another loop or more than GUARD_OPS ops. How many accesses the copies leave unchecked
@@ -1155,12 +1163,14 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
             elif i.op == "cbr" and len([x for x in folds if x is i]) > 0:
                 d.a = [Val("true", "bool")]  # (listfast's check, which the test before the loop makes)
                 n += 1
-            elif i.op == "ovf" and len([x for x in plan.basesums if x is i]) > 0:
+            elif i.op == "ovf" and len([x for x in plan.basesums if x is i]) + len([x for x in plan.offsums if x is i]) > 0:
                 # b + i, an index's base and the loop's index: lo + b >= -c and hi + b fit, which
-                # the tests before the loop check, so b + i does, for every i the loop takes
+                # the tests before the loop check, so b + i does, for every i the loop takes; and an
+                # accepted index plus or minus its constant c, i + c or b + i + c, which the tests
+                # keep at least 0 and below a list's length
                 fitted[tmpname(d.r[2])] = True
                 d.op = "scalar.bin"
-                d.s = "add"
+                d.s = "sub" if i.s == "-" else "add"
                 d.x = "nsw"
                 d.r = [d.r[1]]
             elif i.op == "check" and len(d.a) == 1 and d.a[0].v in fitted:

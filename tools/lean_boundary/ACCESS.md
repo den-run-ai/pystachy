@@ -62,7 +62,10 @@ one object differently. The checker refuses a write that lists its own class, an
 
 Difference bounds and upper bounds prove `listguard`'s copies of range loops. A test before the
 loop, `stop <= len(xs) - c`, gives `stop + c ≤ n` for the length `n`; the loop's own test `i <
-stop` and the index `j = i + c` chain to `j + 1 ≤ n`, which with `j ≥ 0` is `0 ≤ j < n`. A 1-based
+stop` and the index `j = i + c` chain to `j + 1 ≤ n`, which with `j ≥ 0` is `0 ≤ j < n`. The copy
+computes `i + c` without an overflow check: a wrapping addition gives its offset where `i + j ≤ n`
+for a list's length `n` (or a lower bound of one) and `c ≤ j`, as a list has at most 2^62 items,
+or, for `c ≤ 0`, where a lower bound of `i` keeps the sum above the least 64-bit value. A 1-based
 loop's test, `stop <= len(xs) + 1`, adds to a length, which with at most 2^62 items cannot wrap.
 Where the stop is a constant, the loop's test bounds `i` above, the test before it bounds the
 length below, and the first must lie under the second. Where the start is a variable `s`, a test
@@ -98,7 +101,7 @@ loop that reads `xs[i + 2]`) would otherwise derive weaker ones without end. Onc
 `absurd` it derives nothing more there; at a join, an edge whose facts hold `absurd`, which no
 execution takes, keeps the other edges' facts.
 
-The build checks 60 examples by kernel reduction: 19 shapes the compiler emits and 41
+The build checks 62 examples by kernel reduction: 20 shapes the compiler emits and 42
 corruptions that must fail: a signed test of a possibly negative index, a list write between a
 test and its read or in a range loop's body, a missing or weaker unpacking check, a starred
 tail's read at the length or past an offset that may wrap, a lookup's missing-key branch or an
@@ -111,8 +114,9 @@ shorten a list or with an exact length after its growth, and a base copy without
 unchecked sum of the stop and the base, with a loop that runs to its stop inclusive or stores its
 base, reached where the length test failed, or adding to the base less than the loop's constant
 stop, a copy of a loop that counts down with a lower test that lets its index reach -1, a
-bound of its start without the `+ 1`, or a step up, and a read where facts that do not
-contradict each other are taken for a contradiction. `Audit.lean` checks the theorem's axioms as
+bound of its start without the `+ 1`, or a step up, a read where facts that do not
+contradict each other are taken for a contradiction, and a copy's index computed without an
+overflow check past the test's offset. `Audit.lean` checks the theorem's axioms as
 for the payload checker.
 
 ## How IR reaches the model

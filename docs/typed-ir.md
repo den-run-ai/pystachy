@@ -794,7 +794,8 @@ test always passes. Where `start` is a small constant, only indexes with `start 
 where it is a variable, a test before the loop checks `start + c >= 0` for the smallest such
 `c`. The copy of a loop with a variable step tests only `i < stop`
 (`tests/ir/list_guard_down.py` pins loops that count down). Tests before the loop run the copy where every such list has `stop <= len(xs) - c` for its
-largest `c`, which keeps `0 <= i + c < len(xs)` for every `i` the loop takes; a list that a local
+largest `c`, which keeps `0 <= i + c < len(xs)` for every `i` the loop takes, so that the copy
+computes `i + c` without an overflow check, whose exit would keep LLVM from vectorizing it; a list that a local
 not yet assigned would hold, and any shorter list, run the loop as compiled, which raises
 `IndexError` (or `UnboundLocalError`) after the same iterations as CPython
 (`tests/programs/optimizations/opt_listguard_bounds.py`, `tests/ir/list_guard_bounds.py`). Where
