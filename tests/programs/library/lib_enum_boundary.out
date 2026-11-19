@@ -7,7 +7,11 @@ ValueError <flag 'R'> invalid value 4
 ValueError <flag 'R'> invalid value 17
     given 0b0 10001
   allowed 0b0 01011
+ValueError <flag 'R'> invalid value 17
+    given 0b0 10001
+  allowed 0b0 01011
 <R.X|Y: 3> <R.Y|Z: 10> <R.X|Y|Z: 11> 3 True False
 <T.X|Y: 3> <T.X: 1> <T.Y: 2> 3 0
+<T.X: 1> <T.Y: 2> <T: 0>
 <Sub.ONE|TWO|4: 7> <Sub.TWO: 2> Plain.RED [<Plain.RED: 1>]
 [exit 0]

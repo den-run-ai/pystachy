@@ -1,10 +1,10 @@
 # A flag class's boundary=, FlagBoundary's STRICT, CONFORM or KEEP: what a lookup by value does
 # with bits that no member has. STRICT raises CPython's ValueError (Flag's default, also for an
-# IntFlag that asks for it, and for | with such an int), CONFORM drops those bits (a value of
-# all bits too, or a negative one), and KEEP keeps them (IntFlag's default, also for a Flag): a
-# pseudo-member named for them, and ~ that gives every bit but the member's. A class deriving
-# from a flag class without members takes its boundary, and a class of Enum takes and ignores
-# one, as CPython's EnumType does.
+# IntFlag that asks for it, and for | with such an int on either side), CONFORM drops those bits
+# (a value of all bits too, or a negative one), and KEEP keeps them (IntFlag's default, also for a
+# Flag): a pseudo-member named for them, and ~ that gives every bit but the member's. A class
+# deriving from a flag class without members takes its boundary, and a class of Enum takes and
+# ignores one, as CPython's EnumType does.
 import enum
 from enum import CONFORM, KEEP, STRICT, Enum, Flag, FlagBoundary, IntFlag
 from enum import STRICT as S
@@ -56,6 +56,11 @@ try:
     print(R.X | 16)
 except ValueError as e:
     print("ValueError", e)
+try:
+    print(16 | R.X)
+except ValueError as e:
+    print("ValueError", e)
 print(repr(R.X | R.Y), repr(~R.X), repr(R(11)), R.X | 2, 3 in R, 4 in R)
 print(repr(T(7)), repr(T.X | 4), repr(~T.X), T(-1), 5 & T.Y)
+print(repr(4 | T.X), repr(7 & T.Y), repr(6 ^ T.Y))
 print(repr(Sub(7)), repr(~Sub.ONE), Plain(1), list(Plain))
