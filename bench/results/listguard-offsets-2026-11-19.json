@@ -1,0 +1,86 @@
+{
+ "notes": "A listguard copy's index offsets computed without overflow checks (new: this branch, claude/dreamy-shannon-bb3cu1-listguard-offsets) against the copy that computes them checked (base: #1576, claude/dreamy-shannon-bb3cu1-listguard-down at 262164f0a), both on main 8259611e, under the JIT pipeline of #1540 and #1571 (their JIT_LOOPS and JIT_VECTORIZE, which an opt wrapper appends to these trees' cleanup, as those drafts' driver runs them), with the module target's CPU (SSE2) and, -native, the host's (opt -mcpu=native, as #1575 does). variants.py: interleaved rounds, rotating order, each run pinned to CPU 1 with taskset, PYSTACHY_PROGRAM_CACHE=0, PYSTACHY_TIMING=1; every run's stdout is the first variant's. run: wall seconds less the driver's preparation and the runner's code generation. stencil runs b[i] = (a[i - 1] + a[i] + a[i + 1]) * 0.25 over range(1, len(a) - 1), 4,000 items, twice per repetition, 5,000 repetitions; the base copy keeps the overflow checks of i - 1 and i + 1, whose exits keep it scalar. x86-64 (Intel Xeon @ 2.10GHz, AVX-512; 4 CPUs, shared host), LLVM 18.1.3.",
+ "kernel": {
+  "rounds": 7,
+  "args": [
+   "k/stencil.py",
+   "4000",
+   "5000"
+  ],
+  "variants": {
+   "base": {
+    "run": {
+     "median": 0.8731,
+     "paired": 1.0
+    },
+    "wall": {
+     "median": 0.9425,
+     "paired": 1.0
+    },
+    "jit_optimize": {
+     "median": 0.0223,
+     "paired": 1.0
+    },
+    "jit_codegen": {
+     "median": 0.0114,
+     "paired": 1.0
+    }
+   },
+   "new": {
+    "run": {
+     "median": 0.4035,
+     "paired": 0.464
+    },
+    "wall": {
+     "median": 0.4415,
+     "paired": 0.488
+    },
+    "jit_optimize": {
+     "median": 0.0225,
+     "paired": 1.014
+    },
+    "jit_codegen": {
+     "median": 0.0122,
+     "paired": 1.066
+    }
+   },
+   "base-native": {
+    "run": {
+     "median": 0.8898,
+     "paired": 1.017
+    },
+    "wall": {
+     "median": 0.9287,
+     "paired": 1.019
+    },
+    "jit_optimize": {
+     "median": 0.0225,
+     "paired": 1.026
+    },
+    "jit_codegen": {
+     "median": 0.0125,
+     "paired": 1.105
+    }
+   },
+   "new-native": {
+    "run": {
+     "median": 0.2164,
+     "paired": 0.244
+    },
+    "wall": {
+     "median": 0.2592,
+     "paired": 0.275
+    },
+    "jit_optimize": {
+     "median": 0.0238,
+     "paired": 1.043
+    },
+    "jit_codegen": {
+     "median": 0.0146,
+     "paired": 1.207
+    }
+   }
+  }
+ },
+ "source": "import sys\nimport math\n\n\ndef fill(n: int, seed: int) -> list[float]:\n    out = [0.0] * n\n    x = seed\n    for i in range(n):\n        x = (x * 1103515245 + 12345) % 2147483648\n        out[i] = (x % 1000) / 250.0 + 0.5\n    return out\n\n\ndef ifill(n: int, seed: int) -> list[int]:\n    out = [0] * n\n    x = seed\n    for i in range(n):\n        x = (x * 1103515245 + 12345) % 2147483648\n        out[i] = x % 1000\n    return out\n\n\ndef kernel(a: list[float], b: list[float]) -> None:\n    for i in range(1, len(a) - 1):\n        b[i] = (a[i - 1] + a[i] + a[i + 1]) * 0.25\n\n\ndef main() -> None:\n    n = int(sys.argv[1])\n    reps = int(sys.argv[2])\n    a = fill(n, 1)\n    b = [0.0] * n\n    for r in range(reps):\n        kernel(a, b)\n        kernel(b, a)\n    print(sum(a))\n\n\nmain()\n"
+}
