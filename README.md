@@ -23,8 +23,8 @@ data repair.
   example below builds to 138 kB on Linux x86-64.
 - Source stays ordinary Python that CPython also runs, with dataclasses, generators,
   closures, generics and [much of the standard library](https://github.com/den-run-ai/pystachy/blob/main/docs/stdlib.md#library-support-at-a-glance).
-- More than 2,200 test programs must match CPython 3.13's output in both JIT and AOT
-  modes, and more than 1,800 others must be rejected with the expected diagnostic
+- More than 2,900 test programs must match CPython 3.13's output in both JIT and AOT
+  modes, and more than 2,200 others must be rejected with the expected diagnostic
   ([testing](https://github.com/den-run-ai/pystachy/blob/main/docs/testing.md)).
 - The compiler is written in the subset it compiles. Each build checks that
   successive self-compilations emit [identical LLVM IR](https://github.com/den-run-ai/pystachy/blob/main/docs/internals.md#bootstrap-validation).

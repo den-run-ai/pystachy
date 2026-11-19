@@ -97,6 +97,9 @@ def gen_unumeric_case(self, op: str, a: Val, b: Val, shown: str, unary: bool) ->
             im = "__i" + DUNDER[op][2:]
             if im in self.classes[a.t].methods:
                 return self.call_fn(self.classes[a.t].methods[im], [a, b], [])
+            r = self.inplace_subclasses(op, a, b)  # (one its subclass defines: statements.py)
+            if r is not None:
+                return r
         return self.unary(mk("unary", op, 0, [self.vnode(a)])) if unary else self.arith(op, a, b, shown)
     members = umembers(unopt(v.t)) if is_union(unopt(v.t)) else [unopt(v.t)]
     if is_opt(v.t) or (self.object_union(v.t) and v.v not in self.nn):
