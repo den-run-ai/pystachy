@@ -238,6 +238,13 @@ def noWrap (facts : Facts) (src : Name) (k : Int) : Bool :=
   -- `len(xs) + 1` of a 1-based index)
   (decide (0 ≤ k) && decide (k ≤ maxI64 - maxLen) && facts.any fun f => match f with
     | .len a _ => a == src
+    | _ => false) ||
+  -- (src + j ≤ n for a list's length, or a lower bound of one, n, and k ≤ j: a guarded loop's
+  -- index plus a constant that its test before the loop allows, `xs[i + 1]`)
+  (decide (0 ≤ k) && facts.any fun f => match f with
+    | .le a n j => a == src && decide (k ≤ j) && facts.any fun g => match g with
+        | .len n' _ | .lenGe n' _ => n' == n
+        | _ => false
     | _ => false)
 
 /-- Facts that show `x + y` fits in 64 bits: `x < c` where `s = c + y` (or `y + c`) is a value, or
@@ -735,8 +742,8 @@ theorem noWrap_sound {m : Mem} {facts : Facts} {src : Name} {k : Int} (wf : WF m
   unfold noWrap at fits
   simp only [Bool.or_eq_true, Bool.and_eq_true, decide_eq_true_eq, List.any_eq_true] at fits
   unfold I64 minI64 maxI64
-  rcases fits with ((⟨k0, f, member, isBound⟩ | ⟨⟨k0, k1⟩, f, member, isBound⟩) | ⟨k0, f, member, isBound⟩) |
-    ⟨⟨k0, kMax⟩, f, member, isBound⟩
+  rcases fits with (((⟨k0, f, member, isBound⟩ | ⟨⟨k0, k1⟩, f, member, isBound⟩) | ⟨k0, f, member, isBound⟩) |
+    ⟨⟨k0, kMax⟩, f, member, isBound⟩) | ⟨k0, f, member, isBound⟩
   · have holds := known f member
     cases f with
     | ge a g =>
@@ -785,6 +792,30 @@ theorem noWrap_sound {m : Mem} {facts : Facts} {src : Name} {k : Int} (wf : WF m
         unfold maxLen at this
         unfold maxI64 maxLen at kMax
         omega
+    | _ => simp at isBound
+  · have holds := known f member
+    cases f with
+    | le a n j =>
+        simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq, List.any_eq_true] at isBound
+        obtain ⟨⟨rfl, kj⟩, g, gMember, gStep⟩ := isBound
+        have gHolds := known g gMember
+        simp only [Fact.Holds] at holds
+        cases g with
+        | len n' l =>
+            simp only [beq_iff_eq] at gStep
+            subst gStep
+            simp only [Fact.Holds] at gHolds
+            have := wf.2.1 (m.val l)
+            unfold maxLen at this
+            omega
+        | lenGe n' l =>
+            simp only [beq_iff_eq] at gStep
+            subst gStep
+            simp only [Fact.Holds] at gHolds
+            have := wf.2.1 (m.val l)
+            unfold maxLen at this
+            omega
+        | _ => simp at gStep
     | _ => simp at isBound
 
 theorem noWrapSum_sound {m : Mem} {facts : Facts} {x y : Name} (wf : WF m)
@@ -1882,6 +1913,12 @@ def guardedLoopCertificate : Certificate := [
   []]
 
 example : check guardedLoop guardedLoopCertificate = true := by decide
+/- The copy's index computed without an overflow check, as listguard's copy computes it:
+`i + 2 ≤ n` for the length `n` shows that `i + 1` fits. -/
+example : check ⟨guardedLoop.nodes.set 6 (.add "j" "i" 1 7), 0⟩ guardedLoopCertificate = true := by decide
+/- `i + 3` may not fit: an unchecked sum past the test's offset gives no offset fact. -/
+example : check ⟨guardedLoop.nodes.set 6 (.add "j" "i" 3 7), 0⟩ (guardedLoopCertificate.set 7
+    [.len "n" "xs", .le "s" "n" 1, .ge "i" 0, .le "i" "n" 2, .off "j" "i" 3]) = false := by decide
 /- An index past the test's offset: `i + 2` is only known to be at most the length. -/
 example : check ⟨guardedLoop.nodes.set 6 (.addChecked "j" "i" 2 7 10), 0⟩
     (guardedLoopCertificate.set 7 [.len "n" "xs", .le "s" "n" 1, .ge "i" 0, .le "i" "n" 2,

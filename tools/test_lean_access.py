@@ -480,11 +480,16 @@ class ProvedCheckerTests(SnapshotFixture):
         self.assertFalse(self.verdict(snapshot, "@f.shifted"))
 
         def further(symbol):
-            # (the copy's read of xs[i + 1] reads xs[i + 2]: one past what the test allows)
+            # (the copy's read of xs[i + 1] reads xs[i + 2]: one past what the test allows; the copy
+            # computes i + 1 without an overflow check, the loop with one)
             snapshot, function = self.selected(symbol)
             sums = {f"%t{operation['results'][1]}": operation for block in function["blocks"]
                     for operation in block["operations"]
                     if operation["op"] == "ovf" and operation["text"] == "+" and len(operation["results"]) == 3}
+            sums.update({f"%t{operation['results'][0]}": operation for block in function["blocks"]
+                         for operation in block["operations"]
+                         if operation["op"] == "scalar.bin" and operation["text"] == "add" and len(operation["results"]) == 1
+                         and not operation["operands"][1]["value"].startswith("%")})
             # (the copy's blocks follow the loop's: its last read of one, unchecked; the loop's own
             # inline reads test the index they read, also a further one)
             read = [operation for block in function["blocks"] for operation in block["operations"]
@@ -512,6 +517,19 @@ class ProvedCheckerTests(SnapshotFixture):
         for symbol in ("@f.smoothed", "@f.pairs"):
             for corrupt in (further, lowered, shortened):
                 self.assertFalse(self.verdict(corrupt(symbol), symbol), (symbol, corrupt.__name__))
+
+    def test_a_guarded_copy_computes_its_offsets_without_overflow_checks(self):
+        # (smoothed's copy reads a[i - 1] and a[i + 1]: the loop computes i - 1 and i + 1 checked,
+        # its copy, which the tests keep in range, as plain sums, which Lean finds fit)
+        _, function = self.selected("@f.smoothed")
+        checked = [operation["text"] for block in function["blocks"] for operation in block["operations"]
+                   if operation["op"] == "ovf" and operation["operands"][1]["value"] == "1"]
+        plain = [operation["text"] for block in function["blocks"] for operation in block["operations"]
+                 if operation["op"] == "scalar.bin" and operation["text"] in ("add", "sub")
+                 and operation["operands"][1]["value"] == "1" and "nsw" in operation["descriptor"]]
+        self.assertEqual(sorted(plain), ["add", "sub"])
+        self.assertIn("-", checked)
+        self.assertTrue(self.verdict(copy.deepcopy(self.snapshot), "@f.smoothed"))
 
     def test_a_guarded_copy_that_adds_items_keeps_its_proof(self):
         # (an append, an insertion or an extension shortens no list, a grow node: the length the
@@ -727,6 +745,18 @@ def base_loop(low=0, checked=True, inclusive=False, stored=False, offset=0, stop
 
 class RegisterSumMirrorTests(unittest.TestCase):
     """The Python mirror of PystachyAccess's facts about sums of two values."""
+
+    def test_an_index_plus_a_constant_fits_below_a_length(self):
+        # (i + j <= n for a length n, or a lower bound of one, and k <= j: listguard's copy computes
+        # i + k without an overflow check)
+        self.assertTrue(access.no_wrap([("le", "i", "n", 2), ("len", "n", "xs")], "i", 2))
+        self.assertTrue(access.no_wrap([("le", "i", "n", 2), ("lenGe", "n", "xs")], "i", 1))
+        self.assertFalse(access.no_wrap([("le", "i", "n", 2), ("len", "n", "xs")], "i", 3))
+        self.assertFalse(access.no_wrap([("le", "i", "n", 2)], "i", 1))
+        node = {"op": "add", "dst": "j", "src": "i", "k": 2, "next": 1}
+        facts = [("le", "i", "n", 2), ("len", "n", "xs"), ("ge", "i", 0)]
+        self.assertEqual(access.generation_premises(facts, node, ("off", "j", "i", 2)),
+                         [("le", "i", "n", 2), ("len", "n", "xs")])
 
     def test_orders_from_offsets_and_bounds_through_orders(self):
         # (b = a + k with k >= 1 gives a < b; a = c + k with k <= 0 and c < b gives a < b; b < a

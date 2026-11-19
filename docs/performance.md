@@ -251,7 +251,13 @@ too: over 4,000 items, the default JIT ran `y[i] = x[i] * 2.0 + y[i]` over
 `range(len(x) - 1, -1, -1)` in 0.17× the time and a recurrence from the end,
 `c[i] = c[i] * 0.5 + c[i + 1] * 0.25 + 1.0`, in 0.78×; an AOT build ran the recurrence in 0.31×
 and the first loop, which LLVM already versioned, as before
-([results](../bench/results/listguard-down-2026-11-19.json)).
+([results](../bench/results/listguard-down-2026-11-19.json)). A copy computes `i - 1` and `i + 1`
+without overflow checks, whose exits kept a stencil scalar: with the JIT loop passes and loop
+vectorizer of [#1540](https://github.com/den-run-ai/pystachy/pull/1540) and
+[#1571](https://github.com/den-run-ai/pystachy/pull/1571), `b[i] = (a[i - 1] + a[i] + a[i + 1]) * 0.25`
+over 4,000 items ran in 0.46× the time with SSE2's vectors and 0.24× with the host's (AVX-512,
+kept to 256 bits), where the copy with the checks gained nothing from the host's CPU
+([results](../bench/results/listguard-offsets-2026-11-19.json)).
 
 `PYSTACHY_OPT=-all` disables the typed-IR passes. JIT inlining has a separate control:
 `PYSTACHY_JIT_INLINE=N` changes the size limit. It excludes the separately compiled runtime;
