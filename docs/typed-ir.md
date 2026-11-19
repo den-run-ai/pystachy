@@ -772,7 +772,7 @@ can establish invariant list bindings. The whole function must exclude list writ
 Coroutines are excluded because their callers can mutate a list while they are suspended.
 `listguard` handles the range loops `listget` leaves checked.
 
-`listguard` copies an innermost loop over `range(start, stop)` or `range(start, stop, step)`,
+`listguard` copies a loop over `range(start, stop)` or `range(start, stop, step)`,
 such as `t += a[i] * b[i]`, `b[i] = (a[i - 1] + a[i] + a[i + 1]) / 3`,
 `zi[j] += xik * yk[j]`, LU's `a[k] -= f * b[k]` over `range(j + 1, n)`, a sparse row's
 `range(row[r], row[r + 1])` or back substitution's `range(n - 1, -1, -1)`: its step is a constant
@@ -786,8 +786,10 @@ stand for `lo` and `hi`. No op of the loop may make a list shorter or run user c
 function may not reach such an op, directly or through the functions it calls (`list_shrinkers`,
 found once before the passes: a callee that only assigns items, such as a random number
 generator's `state[0] = ...`, keeps the copy; an unknown or indirect callee does not); a coroutine, a loop that a `try`
-statement covers,
-one holding another loop and one of more than 400 ops keep their checks. In the copy, each read
+statement covers and one of more than 400 ops keep their checks. A loop that holds others gets its
+copy after them, innermost first and up to four loops deep, around both versions of each inner
+loop, whose tests stay: the outer copy unchecks its own reads, such as LU's `row = a[i]`, and
+doubles the inner loops' code again (`tests/ir/list_guard_outer.py`). In the copy, each read
 or assignment of an item of a list that the loop does not rebind (a value it does not define,
 or a local slot it never stores), at the index plus a constant `c`, is unchecked: a `list.load`,
 or a `list.store`, which stores the item inline as `list.set` does where no module opts in to

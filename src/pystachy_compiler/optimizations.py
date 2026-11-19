@@ -623,6 +623,7 @@ def gen_listget(self, fn: IFn) -> int:
 GUARD_OPS = 400
 GUARD_OFFSET = 1 << 20
 NO_OFFSET = -(1 << 62)  # (guard_offset: no offset)
+GUARD_DEPTH = 4  # (listguard: how many loops deep it copies, innermost first)
 
 
 def guard_literal(v: str) -> bool:
@@ -885,7 +886,22 @@ class GuardPlan:
         self.offsums: list[Ins] = []
 
 
-def guard_plan(self, fn: IFn, lp: Loop, vs: Values, pl: dict[str, list[int]], at: dict[str, int], sums: dict[str, Ins]) -> GuardPlan | None:
+def guard_region(fn: IFn, lp: Loop, at: dict[str, int]) -> dict[str, bool]:
+    # the blocks of loop lp, by label: its head and those its body reaches before its exit
+    region: dict[str, bool] = {lp.head: True}
+    pending = [lp.body]
+    while len(pending) > 0:
+        l = pending.pop()
+        if l in region or l == lp.exit or l not in at:
+            continue
+        region[l] = True
+        b = fn.blocks[at[l]]
+        for s in b.code[len(b.code) - 1].b:
+            pending.append(s)
+    return region
+
+
+def guard_plan(self, fn: IFn, lp: Loop, vs: Values, pl: dict[str, list[int]], at: dict[str, int], sums: dict[str, Ins], done: list[Loop]) -> GuardPlan | None:
     # the plan for range loop lp (gen_listguard), or None where it gets no copy
     if lp.kind != "range" or len(lp.idx) != 1 or lp.head not in at or lp.body not in at or not guard_operand(lp.inc.v) or not guard_operand(lp.stop.v):
         return None
@@ -910,8 +926,8 @@ def guard_plan(self, fn: IFn, lp: Loop, vs: Values, pl: dict[str, list[int]], at
     if fn.blocks[at[lp.head]].handler != "" or len([i for i in fn.blocks[at[lp.head]].code if i.op == "phi"]) > 0:
         return None
     for other in fn.loops:
-        if other is not lp and other.head in region:
-            return None  # (a loop in this one: only innermost loops get copies)
+        if other is not lp and other.head in region and len([x for x in done if x is other]) == 0:
+            return None  # (a loop in this one that listguard has not yet considered: inner loops first)
     outside = [j for j in pl[lp.head] if fn.blocks[j].label not in region]
     if len(outside) != 1:
         return None
@@ -1061,7 +1077,7 @@ def guard_plan(self, fn: IFn, lp: Loop, vs: Values, pl: dict[str, list[int]], at
 
 
 def gen_listguard(self, fn: IFn) -> int:
-    # Unchecked list accesses in range loops, behind tests before each loop. An innermost loop over
+    # Unchecked list accesses in range loops, behind tests before each loop. A loop over
     # range(start, stop) or range(start, stop, step), with a constant step other than 0 or a
     # variable one, which the tests check is positive (range evaluates its arguments once: no
     # iteration changes them), none of whose ops makes a list shorter (guard_shrinks: no op with wL
@@ -1084,9 +1100,10 @@ def gen_listguard(self, fn: IFn) -> int:
     # and adds it without an overflow check (guard_loop), as it adds each such index's constant c
     # (i + c, or b + i + c, which the tests keep at least 0 and below a list's length). The copy
     # keeps every other check.
-    # A coroutine is left as it is (a caller may
-    # change a list while it is suspended), as is a loop that a try statement covers or that holds
-    # another loop or more than GUARD_OPS ops. How many accesses the copies leave unchecked
+    # A loop that holds others is considered after them (innermost first, up to GUARD_DEPTH deep):
+    # its copy holds both versions of each, whose own tests stay. A coroutine is left as it is (a
+    # caller may change a list while it is suspended), as is a loop that a try statement covers or
+    # that holds more than GUARD_OPS ops. How many accesses the copies leave unchecked
     if fn.coro or len(fn.loops) == 0:
         return 0
     some = False
@@ -1106,15 +1123,59 @@ def gen_listguard(self, fn: IFn) -> int:
                 sums[tmpname(i.r[1])] = i
             elif i.op == "scalar.bin" and i.t == "int" and (i.s == "add" or i.s == "sub") and len(i.r) == 1:
                 sums[tmpname(i.r[0])] = i
-    plans: list[GuardPlan] = []
-    for lp in fn.loops:
-        plan = guard_plan(self, fn, lp, vs, pl, at, sums)
-        if plan is not None:
-            plans.append(plan)
     n = 0
-    for p in plans:
-        n += guard_loop(self, fn, p)
+    done: list[Loop] = []  # (the loops considered: innermost first, then those around them)
+    for depth in range(GUARD_DEPTH):
+        if depth > 0:
+            if len([lp for lp in fn.loops if len([x for x in done if x is lp]) == 0]) == 0:
+                break
+            # (the copies of inner loops changed the function: analyze it again)
+            at = {}
+            for j in range(len(fn.blocks)):
+                at[fn.blocks[j].label] = j
+            pl = self.preds(fn)
+            vs = Values(fn, pl)
+            sums = {}
+            for b in fn.blocks:
+                for i in b.code:
+                    if i.op == "ovf" and len(i.r) == 3 and (i.s == "+" or i.s == "-"):
+                        sums[tmpname(i.r[1])] = i
+                    elif i.op == "scalar.bin" and i.t == "int" and (i.s == "add" or i.s == "sub") and len(i.r) == 1:
+                        sums[tmpname(i.r[0])] = i
+        # each loop not yet considered none of whose inner loops is: this depth's loops
+        ready: list[Loop] = []
+        for lp in fn.loops:
+            if len([x for x in done if x is lp]) > 0:
+                continue
+            region = guard_region(fn, lp, at)
+            if len([o for o in fn.loops if o is not lp and o.head in region and len([x for x in done if x is o]) == 0]) == 0:
+                ready.append(lp)
+        if len(ready) == 0:
+            break
+        plans: list[GuardPlan] = []
+        for lp in ready:
+            plan = guard_plan(self, fn, lp, vs, pl, at, sums, done)
+            if plan is not None:
+                plans.append(plan)
+        for lp in ready:
+            done.append(lp)
+        before = len(fn.loops)
+        for p in plans:
+            n += guard_loop(self, fn, p)
+        for k in range(before, len(fn.loops)):
+            done.append(fn.loops[k])  # (the copies, and the loops in them: none is copied again)
     return n
+
+
+def guard_renamed(v: Val, numbers: dict[int, int]) -> Val:
+    # value v as a copy names it: a result that numbers renames, or v itself
+    w = Val(tmpname(numbers[int(v.v[2:])]) if v.v.startswith("%t") and v.v[2:].isdigit() and int(v.v[2:]) in numbers else v.v, v.t)
+    return w
+
+
+def guard_renamed_label(l: str, labels: dict[str, str]) -> str:
+    # block label l as a copy names it
+    return labels[l] if l in labels else l
 
 
 def clone_instruction(i: Ins, numbers: dict[int, int], labels: dict[str, str]) -> Ins:
@@ -1414,14 +1475,19 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
         if fn.blocks[j].label == lp.head:
             head = j
     fn.blocks = fn.blocks[:head] + tests + fn.blocks[head:last + 1] + copies + fn.blocks[last + 1:]
-    copy = Loop(lp.kind, labels[lp.head], labels[lp.body], labels[lp.step] if lp.step in labels else lp.step, lp.exit)
-    copy.mode = lp.mode
-    copy.ctr = lp.ctr
-    copy.nonnegative = lp.nonnegative
-    copy.stop = Val(lp.stop.v, lp.stop.t)
-    copy.inc = Val(lp.inc.v, lp.inc.t)
-    copy.idx = [tmpname(numbers[int(lp.idx[0][2:])])]
-    fn.loops.append(copy)
+    # the copy's loops, the loop's and those in it (an outer loop's inner loops and their copies),
+    # each with its labels and the values it defines renamed
+    for other in [x for x in fn.loops if x.head in region]:
+        copy = Loop(other.kind, labels[other.head], guard_renamed_label(other.body, labels), guard_renamed_label(other.step, labels), guard_renamed_label(other.exit, labels))
+        copy.mode = other.mode
+        copy.ctr = other.ctr
+        copy.nonnegative = other.nonnegative
+        copy.stop = guard_renamed(other.stop, numbers)
+        copy.inc = guard_renamed(other.inc, numbers)
+        copy.seqs = [guard_renamed(v, numbers) for v in other.seqs]
+        copy.tests = [guard_renamed_label(t, labels) for t in other.tests]
+        copy.idx = [guard_renamed(Val(v, "int"), numbers).v for v in other.idx]
+        fn.loops.append(copy)
     return n
 
 

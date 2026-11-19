@@ -1,0 +1,11 @@
+rows [63.0, 446.25, 1172.5, 2241.75, 3654.0, 5409.25, 7507.5] pairs 243.25
+rows short list assignment index out of range
+rows few list index out of range
+back [-0.3256305626463445, -0.02035191016539649, -0.007631966312023753, -0.004054482103262558, -0.0025340513145391255, -0.00174216027874566, 0.1326530612244898]
+back short list index out of range
+cube 17760
+cube short list index out of range
+waits 36
+drains 33
+drains short list index out of range
+[exit 0]

@@ -261,7 +261,11 @@ kept to 256 bits), where the copy with the checks gained nothing from the host's
 that only assigns items, such as a random number generator's `state[0] = ...`, gets a copy too: a
 sum of `xs[i] * ys[i] + bump(state, i % 3)` over 4,000 items ran in 0.83× the time under the
 default JIT and 0.91× in an AOT build, where `bump` keeps its own checks
-([results](../bench/results/listguard-calls-2026-11-19.json)).
+([results](../bench/results/listguard-calls-2026-11-19.json)). A loop that holds others gets a copy
+after them, a trade-off: the default JIT ran a loop over 20,000 points around a loop over each
+one's three coordinates, as UMAP's, in 0.46× the time and the UMAP probe's layout in 0.96×, but an
+AOT build ran the point loop in 1.16×, and scimark's JIT launch took 1.09× of its wall time, as
+its IR grew 16% ([results](../bench/results/listguard-outer-2026-11-19.json)).
 
 `PYSTACHY_OPT=-all` disables the typed-IR passes. JIT inlining has a separate control:
 `PYSTACHY_JIT_INLINE=N` changes the size limit. It excludes the separately compiled runtime;
