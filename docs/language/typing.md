@@ -1382,7 +1382,9 @@ class variables.
 A class statement in the body of a class statement of a module's body makes a class of the
 module, as CPython's does: `Outer.Inner` reads it, also from other modules, its
 `__qualname__` is `Outer.Inner` and its `__name__` `Inner`, and later statements of the outer
-body (annotations, defaults, bases) read it as `Inner`, as CPython's class scope does. It may
+body (annotations, defaults, bases) read it as `Inner`, as CPython's class scope does. Under a
+private name, `__Inner`, the outer class binds `_Outer__Inner`, as CPython mangles it
+([test](../../tests/programs/classes/class_nested_private.py)). It may
 nest classes itself, name itself in a quoted annotation, be a dataclass, a `NamedTuple`, an
 enum class or an exception class, and other classes may derive from it
 ([test](../../tests/programs/classes/class_nested.py),

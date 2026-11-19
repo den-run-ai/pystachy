@@ -488,8 +488,8 @@ def hoist_nested(st: Node, out: list[Node], enums: dict[str, str], kinds: dict[s
             kept.append(b)
             continue
         bc = b.kids[0] if b.kind == "subclass" else b
-        own = bc.s
-        bc.s = c.s + "." + own
+        own = bc.s  # (its binding, _C__N of a private name __N, which names its class attribute)
+        bc.s = c.s + "." + (bc.pyname if bc.pyname != "" else own)  # (its __qualname__, C.__N)
         b.s = bc.s
         nested_self(bc, own, bc.s)
         enum = enum_based(b, enums, kinds)
@@ -5080,13 +5080,19 @@ class Loader:
             q = m.q + b.s if k == "c" else k[2:] if k.startswith("a:") else ""
         elif b.kind == "attr":
             q = self.nested_ref(m, b, loc)
-        if q == "":
-            return ""
+        if q == "" or (n.s.startswith("__") and not n.s.endswith("__")):
+            return ""  # (C.__N outside C's body, which mangles nothing: no attribute of C, as in CPython)
         t = self.mods.get(owner(q), None) if "$" in q else m
         own = q[q.rfind("$") + 1 :]
-        if t is None or t.kinds.get(own, "") != "c" or t.kinds.get(own + "." + n.s, "") != "c":
+        if t is None or t.kinds.get(own, "") != "c":
             return ""
-        return q + "." + n.s
+        if t.kinds.get(own + "." + n.s, "") == "c":
+            return q + "." + n.s
+        # (C._C__N, the binding of a class nested under a private name, __N: the class C.__N)
+        p = "_" + own[own.rfind(".") + 1 :].lstrip("_")
+        if p != "_" and n.s.startswith(p + "__") and not n.s.endswith("__") and t.kinds.get(own + "." + n.s[len(p) :], "") == "c":
+            return q + "." + n.s[len(p) :]
+        return ""
 
     def qann(self, m: Mod, n: Node, loc: dict[str, bool], late: bool) -> None:
         # an annotation; a string one (a forward reference), also inside list["Node"], is parsed

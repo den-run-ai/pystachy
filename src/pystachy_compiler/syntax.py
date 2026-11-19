@@ -7,7 +7,7 @@ class Node:
     def __init__(self, kind: str, s: str, line: int, kids: list[Node] | None = None):
         self.kind = kind
         self.s = s
-        self.pyname = ""  # a private def's source name, before its binding is mangled
+        self.pyname = ""  # a private def's or nested class's source name, before its binding is mangled
         self.tpsource = ""  # a def/class's type-parameter spellings, when lexical mangling changes them
         self.line = line
         self.kids: list[Node] = kids if kids is not None else []  # (mk's: no list made to replace)
