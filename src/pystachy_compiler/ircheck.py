@@ -2,24 +2,11 @@
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import dynamic_program, fail, int_lists, int_program
 from src.pystachy_compiler.dynamic_proof import DynamicProof, DynTypes
-from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, tmpname
+from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, operand_kind, tmpname
 from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
 from src.pystachy_compiler.specs import BIG, FX, FXALL, FXBIT, ICMP, IROPS, LIST_READS, LIST_WRITES, NONEVAR, RAWR, RAWW, RUNTIME
+from src.pystachy_compiler.specs import OPS, OP_ENTRY, OP_FIELDS, OP_INVOKE, OP_K, OP_LABELS, OP_MAX, OP_MIN, OP_PER_OPERAND, OP_S, OP_T, OP_X, RESULT_NUMBERS
 from src.pystachy_compiler.utils import elem, gelem, generator_identity, is_dict, is_gen, is_opt, is_set, is_tuple, is_union, is_vtuple, list_read_error, list_receiver_error, list_write_error, lt, same_kind, targs, tslots, umembers
-
-# Fixed SSA result counts printed by each lowering (gen_nums handles calls).
-RESULT_NUMBERS: dict[str, int] = {
-    "scalar.bin": 1, "scalar.cast": 1, "scalar.cmp": 1, "field.addr": 1,
-    "mach.load": 1, "mach.addr": 1, "ovf": 3, "list.load": 4, "list.store": 3,
-    "landing": 2, "exc.match": 2, "union.payload": 2, "union.raw": 2,
-    "tuple.load": 2, "dyn.payload": 2, "dyn.raw": 2, "dyn.type": 1, "phi": 1,
-    "select": 1, "list.len": 1, "slot.pack": 1, "slot.unpack": 1,
-    "union.tag": 1, "num.cast": 1, "num.cmp": 1, "alloc.fixed": 1,
-    "vtuple.make": 1, "tuple.store": 1, "mem.load": 1, "int.ucmp": 1, "ptr.cmp": 1,
-    "empty.kind": 1, "gen.yield": 2, "gen.ret": 2, "gen.promise": 1,
-    "big.make": 2, "big.lo": 1, "big.hi": 1,
-}
-
 
 class EffectSummaries:
     # One compilation's completed function contexts. FnInfo retains each context's parameter
@@ -130,6 +117,26 @@ def has_machine_union_tag(fn: IFn) -> bool:
     return False
 
 
+def op_shape_error(i: Ins, entry: bool) -> str:
+    # What its row of the operation table (specs.OPS) says of i's shape, or "": its place (entry
+    # is whether it is among a function's slots), its operand and label counts, and the fields
+    # it may set. Its result count is Gen.nums', which reads a call's from its signature.
+    op = i.op
+    if OP_ENTRY[op] != entry:
+        return f"{op} in a block, where entry storage belongs among the slots" if OP_ENTRY[op] else f"{op} among the slots"
+    n = len(i.a)
+    if n < OP_MIN[op] or (OP_MAX[op] >= 0 and n > OP_MAX[op]):
+        return f"{op} with {n} operands, where the operation table has {OPS[op].split('|')[1]}"
+    rule = OP_LABELS[op]
+    m = len(i.b)
+    if (m != n) if rule == OP_PER_OPERAND else (m != 0 and m != 2) if rule == OP_INVOKE else m != rule:
+        return f"{op} with {m} labels, where the operation table has {OPS[op].split('|')[3]}"
+    fields = OP_FIELDS[op]
+    if (i.t != "" and fields & OP_T == 0) or (i.s != "" and fields & OP_S == 0) or (i.k != 0 and fields & OP_K == 0) or (i.x != "" and fields & OP_X == 0):
+        return f"{op} sets a field outside the operation table's {OPS[op].split('|')[4] or 'none'}"
+    return ""
+
+
 def verify_dynamic_raw(self, fn: IFn) -> None:
     # Raw dynamic payload bits are only an identity-comparison input. Collect all
     # producers before uses: block order and an operand's annotation cannot hide
@@ -175,6 +182,9 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
             self.bad_ir(fn, fn.blocks[0], f"a {i.op} op among the slots, with {len(i.r)} numbers")
         if i.r[0] > fn.n:
             self.bad_ir(fn, fn.blocks[0], f"the slot of {i.s} numbered {i.r[0]}, above IFn.n ({fn.n})")
+        shape = op_shape_error(i, True)
+        if shape != "":
+            self.bad_ir(fn, fn.blocks[0], shape)
     for j in range(len(fn.blocks)):
         l = fn.blocks[j].label
         if l in at:
@@ -266,24 +276,10 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     if edges[l] == 2 and l in at and len(fn.blocks[at[l]].code) > 0 and fn.blocks[at[l]].code[0].op == "phi":
                         self.bad_ir(fn, b, f"a switch reaches {l}, which starts with a phi, by more than one edge")
 
-            if i.op == "mach.load" or i.op == "mach.store":
-                load = i.op == "mach.load"
-                if load and i.t == "int":
+            if i.op == "mach.load" or i.op == "mach.store" or i.op == "mach.addr":
+                if i.op == "mach.load" and i.t == "int":
                     machine_tags = True
-                if len(i.a) != (1 if load else 2) or i.x != "" or i.k != 0 or len(i.b) != 0:
-                    self.bad_ir(fn, b, f"{i.op} has invalid operands or extra metadata")
-                if i.a[0].t != "%ptr":
-                    self.bad_ir(fn, b, f"{i.op} needs a machine pointer address")
-                t = i.t if load else i.a[1].t
-                if t == "" or t == "None" or (t.startswith("%") and t not in ["%ptr", "%byte", "%i32"]) or t.startswith("*") or t == "#" or ((t == "T" or t == "K" or t == "V" or t == "S") and t not in self.classes):
-                    self.bad_ir(fn, b, f"{i.op} needs a machine storage value type")
-                if (not load and i.t != "") or i.s not in ["", "length", "length.range", "bytes"] or (i.s == "length.range" and not load) or (i.s.startswith("length") and t != "int") or (i.s == "bytes" and t != "%byte"):
-                    self.bad_ir(fn, b, f"{i.op} has invalid value or memory metadata")
-            if i.op == "mach.addr":
-                if len(i.a) != 2 or i.t != "%ptr" or i.s not in ["int", "%ptr", "%byte"] or i.x != "" or i.k not in [0, 1] or len(i.b) != 0:
-                    self.bad_ir(fn, b, "mach.addr needs a machine element type and inbounds flag")
-                if i.a[0].t != "%ptr" or i.a[1].t != "int":
-                    self.bad_ir(fn, b, "mach.addr needs a machine pointer and int index")
+                self.verify_memory(fn, b, i, False)
             if i.op == "mem.load" or i.op == "mem.store":
                 if len(i.a) != (1 if i.op == "mem.load" else 2) or i.s != "" or i.x != "" or i.k != 0 or len(i.b) != 0:
                     self.bad_ir(fn, b, f"{i.op} has invalid operands or extra metadata")
@@ -306,7 +302,9 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 if len(ts) != 1:
                     self.bad_ir(fn, b, "vtuple.make needs one declared native element type")
                 et = ts[0]
-                if i.t != "vtuple[" + et + "]" or et not in ["int", "float", "bool", "str", "dyn", "opt[int]", "opt[float]", "opt[bool]", "opt[str]", "opt[dyn]"]:
+                # (or objects of a declared class, also of a union of them: Gen.vtuple_holds)
+                objects = all(m in self.classes for m in (umembers(et) if is_union(et) else [et]))
+                if i.t != "vtuple[" + et + "]" or (et not in ["int", "float", "bool", "str", "dyn", "opt[int]", "opt[float]", "opt[bool]", "opt[str]", "opt[dyn]"] and not objects):
                     self.bad_ir(fn, b, "vtuple.make needs one declared native element type")
                 if any(a.t != et for a in i.a):
                     self.bad_ir(fn, b, "vtuple.make needs elements of its declared native type")
@@ -403,6 +401,12 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     self.bad_ir(fn, b, f"{i.op} has invalid operands, result type or metadata")
             if i.op.startswith("gen."):
                 self.verify_gen(fn, b, i, j)
+            shape = op_shape_error(i, False)
+            if shape != "":
+                self.bad_ir(fn, b, shape)
+            for a in i.a:
+                if operand_kind(a.v) < 0:
+                    self.bad_ir(fn, b, f"{i.op} operand {a.v} is no value, parameter, slot, symbol or constant")
             n = self.nums(i)
             if len(i.r) != n:
                 self.bad_ir(fn, b, f"{i.op} {i.s} with {len(i.r)} numbers, where its lowering prints {n}")

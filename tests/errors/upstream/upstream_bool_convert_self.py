@@ -3,8 +3,8 @@
 # commit cbc944f4bc59639a444dd971c737788ba2283a91.
 # PSF License v2; see tests/upstream/CPYTHON-LICENSE.txt and THIRD_PARTY_NOTICES.
 # CPython raises this TypeError where bool() calls __bool__; Pystachy rejects the method at
-# compile time, with CPython's message. The return annotation is added: without it, the method
-# is typed to return None, and the message says "returned NoneType".
+# compile time, with CPython's message. The return annotation is added: without it, the error
+# is "expected bool, got Foo", at the return statement.
 
 
 class Foo(object):

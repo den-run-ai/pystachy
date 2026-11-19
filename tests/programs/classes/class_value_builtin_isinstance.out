@@ -1,0 +1,24 @@
+int [True, False, False, False, True, False, False, False, False, False]
+bool [True, False, False, True, True, False, False, False, False, False]
+str [False, True, False, False, True, False, False, False, False, False]
+float [False, False, True, False, True, False, False, False, False, False]
+A [False, False, False, False, True, True, False, False, False, False]
+B [False, False, False, False, True, True, True, False, False, False]
+P [False, False, False, False, True, False, False, True, False, False]
+no object [False, False, False, False, True, False, False, False, True, False]
+None [False, False, False, False, True, False, False, False, True, False]
+int [True, False, False, False, True, False, False, False, False, False] True True False True False
+str [False, True, False, False, True, False, False, False, False, False] False True False True False
+float [False, False, True, False, True, False, False, False, False, False] False True False False False
+bool [True, False, False, True, True, False, False, False, False, False] True True False True False
+object [False, False, False, False, True, False, False, False, False, False] False True False False False
+A [False, False, False, False, True, True, False, False, False, False] False True True False True
+B [False, False, False, False, True, True, True, False, False, False] False True True False True
+P [False, False, False, False, True, False, False, True, False, False] False True False False True
+NoneType [False, False, False, False, True, False, False, False, True, False] False True False False False
+list [False, False, False, False, True, False, False, False, False, True] False True False False False
+[True, False, False, False, True, False, False, False, False, False] [False, False, False, False, True, False, False, False, False, True]
+[True, False, True, False, False] [False, True, True, False, False]
+True False True False
+True False True True
+[exit 0]

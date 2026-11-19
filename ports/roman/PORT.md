@@ -25,7 +25,7 @@ print(fromRoman("mcmlxxxvii"))
 ## Compatibility
 
 - Invalid argument types are rejected during compilation rather than following CPython’s dynamic coercion/error paths.
-- ASCII case conversion agrees; non-ASCII text uses Pystachy’s ASCII-only case mapping. CPython accepts dotless `ı` as `I`, while the port rejects it.
+- Case conversion follows CPython's for every script: both accept dotless `ı` as `I`.
 - Values beyond checked 64-bit integers overflow before the converter can raise `OutOfRangeError`.
 
 <a id="tests"></a>

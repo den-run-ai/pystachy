@@ -1,0 +1,5 @@
+ValueError byte must be in range(0, 256)
+IndexError bytearray index out of range
+ValueError byte must be in range(0, 256)
+bytearray(b'\x00\xff')
+[exit 0]

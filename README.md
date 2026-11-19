@@ -23,8 +23,8 @@ data repair.
   example below builds to 138 kB on Linux x86-64.
 - Source stays ordinary Python that CPython also runs, with dataclasses, generators,
   closures, generics and [much of the standard library](https://github.com/den-run-ai/pystachy/blob/main/docs/stdlib.md#library-support-at-a-glance).
-- More than 2,200 test programs must match CPython 3.13's output in both JIT and AOT
-  modes, and more than 1,800 others must be rejected with the expected diagnostic
+- More than 2,900 test programs must match CPython 3.13's output in both JIT and AOT
+  modes, and more than 2,200 others must be rejected with the expected diagnostic
   ([testing](https://github.com/den-run-ai/pystachy/blob/main/docs/testing.md)).
 - The compiler is written in the subset it compiles. Each build checks that
   successive self-compilations emit [identical LLVM IR](https://github.com/den-run-ai/pystachy/blob/main/docs/internals.md#bootstrap-validation).
@@ -150,11 +150,11 @@ behavioral differences are listed as [deviations from CPython](https://github.co
 
 | Area | Supported | Not supported |
 |---|---|---|
-| Values | `int`, `float`, `complex`, `bool`, `str`, `bytes`, `list`, `dict`, `set`, `frozenset`, `tuple` | `bytearray`, `memoryview` |
+| Values | `int`, `float`, `complex`, `bool`, `str`, `bytes`, `list`, `dict`, `set`, `frozenset`, `tuple`, `bytearray` | `memoryview` |
 | Functions | Closures, lambdas, decorators, `*args` and `**kwargs`, generators | `async` and `await` |
 | Classes | Single inheritance, dataclasses, `NamedTuple`, properties, operator methods | General multiple inheritance, metaclasses, subclasses of builtin types |
 | Typing | Inferred locals and returns, generics, closed unions, `T \| None` narrowing | General object unions |
-| Syntax | Comprehensions, f-strings, `with`, `try`/`except`/`finally`, `:=`, bounded `match` | Mapping and general sequence/class patterns; `except*` |
+| Syntax | Comprehensions, f-strings, `with`, `try`/`except`/`finally`, `:=`, bounded `match` | Mapping patterns and class patterns beyond dataclass fields; `except*` |
 | Runtime | Modules and packages, automatic memory management | Native threads, `__del__` finalizers, `eval` and `exec` |
 
 An `int` is a checked 64-bit value: overflow raises `OverflowError`. A module can
@@ -194,7 +194,7 @@ CPython comparisons, and lower compilation and execution costs.
 
 - [Documentation](https://github.com/den-run-ai/pystachy/blob/main/docs/README.md) covers installation, packaging, interoperability and compiler internals.
 - [Testing](https://github.com/den-run-ai/pystachy/blob/main/docs/testing.md) explains CPython comparisons, bootstrap checks and CI.
-- [Native pytest-style tests](https://github.com/den-run-ai/pystachy/blob/main/docs/pytest-native.md) use a generated runner for a bounded fixture and parametrization subset, with CPython pytest as the oracle.
+- [Native pytest-style tests](https://github.com/den-run-ai/pystachy/blob/main/docs/pytest-native.md) use a generated runner for a bounded subset of test classes, `unittest` cases, fixtures, parametrization and test packages, with CPython pytest as the oracle.
 - [Contributing](https://github.com/den-run-ai/pystachy/blob/main/CONTRIBUTING.md) covers development setup, focused tests and submissions.
 
 Pystachy is [MIT-licensed](https://github.com/den-run-ai/pystachy/blob/main/LICENSE). See the [third-party notices](https://github.com/den-run-ai/pystachy/blob/main/THIRD_PARTY_NOTICES)

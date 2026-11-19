@@ -1,0 +1,3 @@
+b'xy'
+TypeError cannot convert 'NoneType' object to bytes
+[exit 0]

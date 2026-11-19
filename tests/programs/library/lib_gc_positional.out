@@ -1,0 +1,23 @@
+0 TypeError set_threshold() takes no keyword arguments
+(2000, 10, 10) 0
+1 TypeError set_threshold() takes no keyword arguments
+(2000, 10, 10) 0
+2 TypeError gc.set_threshold requires 1 to 3 arguments
+(2000, 10, 10) 0
+3 TypeError gc.set_threshold requires 1 to 3 arguments
+(2000, 10, 10) 0
+4 TypeError 'NoneType' object cannot be interpreted as an integer
+(2000, 10, 10) 0
+5 TypeError gc.set_debug() takes no keyword arguments
+(2000, 10, 10) 0
+6 TypeError gc.set_debug() takes no keyword arguments
+(2000, 10, 10) 0
+7 TypeError gc.set_debug() takes exactly one argument (0 given)
+(2000, 10, 10) 0
+8 TypeError gc.set_debug() takes exactly one argument (2 given)
+(2000, 10, 10) 0
+(700, 10, 10)
+(800, 20, 10)
+(900, 30, 40)
+0 True
+[exit 0]

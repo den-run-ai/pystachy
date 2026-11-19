@@ -1,0 +1,3 @@
+done
+TypeError __bytes__ returned non-bytes (type str)
+[exit 0]

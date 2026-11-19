@@ -1,11 +1,11 @@
-# error: cannot compare int == Equal
-class Equal:
-    def __eq__(self, other: object) -> bool:
-        return True
+# error: cannot compare int == Plain
+# An int member and an object whose class defines no __eq__ (CPython compares them by identity).
+class Plain:
+    pass
 
 
 def f(v: int | complex) -> bool:
-    return v == Equal()
+    return v == Plain()
 
 
 print(f(1j))

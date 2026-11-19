@@ -8,7 +8,8 @@ import argparse
 import json
 
 from compiler_state_probe import Gen, Snapshot
-from src.pystachy_compiler.ir import FnInfo, Val
+from src.pystachy_compiler.ir import Val
+from src.pystachy_compiler.symbols import FnInfo
 from src.pystachy_compiler.syntax import Node
 
 FIELDS = ("drying", "carried", "nonecmp", "fieldcmp", "cmpnode", "stkkey", "reflcopies", "stmtexpr")

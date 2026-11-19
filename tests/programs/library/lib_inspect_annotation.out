@@ -1,0 +1,8 @@
+x: int x: str = 's' x: 'int' x: None x: 3.5 x: (1, 'a') x: True
+*x: float **x: object x: bool = None <Parameter "x: list = 0">
+(x: int, *, y: dict = None) -> bool
+() -> 'None' () -> None () -> tuple () -> 0 <Signature () -> str>
+int 'x' list dict None 1.5 set bytes type
+True False True False <class 'int'>
+True False True
+[exit 0]

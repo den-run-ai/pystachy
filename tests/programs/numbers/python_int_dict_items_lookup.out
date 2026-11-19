@@ -1,0 +1,23 @@
+  hash 1
+  hash 2
+small value
+  hash 2
+  eq 2 2
+True
+big value
+  hash 1
+  eq 1 1
+True
+other value
+  hash 2
+  eq 2 2
+  hash 1
+  eq 1 1
+False True
+missing key
+  hash 5
+  eq 2 5
+False
+True False True False
+True True False False
+[exit 0]

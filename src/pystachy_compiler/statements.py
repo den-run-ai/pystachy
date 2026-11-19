@@ -3,13 +3,16 @@ from __future__ import annotations
 from src.pystachy_compiler.utils import identity_abi, identity_default, is_union
 from src.pystachy_compiler.analysis import appends_to, builtin_has, local_names, none_display
 from src.pystachy_compiler.diagnostics import shown
-from src.pystachy_compiler.ir import Blk, ClassInfo, Exit, FnInfo, Ins, IterArg, Loop, SeqStart, StopCatch, Val, tmpname
+from src.pystachy_compiler.frames import Exit, IterArg, SeqStart, StopCatch
+from src.pystachy_compiler.ir import Blk, Ins, Loop, Val, tmpname
+from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.names import ENUMCLASSES, owner, short
 from src.pystachy_compiler.specs import (
     STR_HEADER_SIZE,
     ABCS,
     BIG,
     BIGOPT,
+    EMPTYFS,
     ABCSMORE,
     ABCSOTHER,
     DUNDER,
@@ -34,6 +37,7 @@ from src.pystachy_compiler.specs import (
 from src.pystachy_compiler.patterns import unsupported_match, unsupported_reason
 from src.pystachy_compiler.syntax import Node, mk, names_in, starred_target
 from src.pystachy_compiler.utils import (
+    is_clsval,
     bool_for_int,
     elem,
     empty_result_type,
@@ -41,6 +45,7 @@ from src.pystachy_compiler.utils import (
     gelem,
     is_const,
     is_dict,
+    is_aset,
     is_fset,
     is_gen,
     is_kw,
@@ -243,7 +248,7 @@ def gen_early_default(self, f: FnInfo, j: int) -> None:
         f.dglob[j] = self.classes[f.cls].fglob[f.params[j]]
         return
     t = f.ptypes[j]
-    bad = self.default_problem(f.defaults[j], t) if f.mod != "" else ""
+    bad = self.default_problem(f.defaults[j], t) if f.mod != "" and not self.class_reads(f.defaults[j], FnInfo("", "", f.node, ""), t) else ""
     if bad != "":
         f.dglob[j] = "!" + bad
         return
@@ -282,7 +287,7 @@ def gen_hoist(self, f: FnInfo) -> None:
         if (f.dglob[j] == "" or early) and (not is_const(d) or (identity_default(d) and self.fn_identity(f))):
             t = f.ptypes[j] if f.bad == "" else ""  # (an unsupported annotation is no type)
             self.line = d.line
-            bad = self.default_problem(d, t) if f.mod != "" else ""
+            bad = self.default_problem(d, t) if f.mod != "" and not self.class_reads(d, FnInfo("", "", f.node, ""), t) else ""
             if bad != "":
                 # a function of an imported module: the default is an error only where a call
                 # needs it, if evaluating it when the def runs does nothing
@@ -320,7 +325,7 @@ def gen_hoist(self, f: FnInfo) -> None:
 def gen_default_problem(self, e: Node, t: str) -> str:
     # why default value e of a parameter of type t ("": a template's) cannot be compiled, as far
     # as its form shows, or ""
-    if e.kind == "name" and e.s in self.classes and self.classes[e.s].exc == "":
+    if e.kind == "name" and e.s in self.classes and self.classes[e.s].exc == "" and (self.class_value_problem(e.s) != "" or (self.dyn_policy(e.line) and not self.class_value_static(e.s, "", e.line))):
         return f"class '{short(e.s)}' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)"
     if e.kind == "name" and e.s in PYBUILTINS and "$" not in e.s and not e.s[0].islower() and not is_excname(e.s):
         return f"the builtin '{e.s}' cannot be used as a value (not supported)"
@@ -353,7 +358,8 @@ def gen_hoist_class(self, ci: ClassInfo) -> None:
             self.err(f"enum class {short(ci.name)} is not supported: it derives from {short(ci.base)}, an enum class of another module (an enum class derives from Enum, IntEnum, StrEnum, Flag, IntFlag, str or int and Enum, or an enum class of its own module)")
     for st in ci.node.kids[0].kids if ci.mod != "" and ci.bad == "" else []:
         if st.kind == "annassign" and len(st.kids) == 3 and st.kids[0].kind == "name":
-            why = self.default_problem(st.kids[2], ci.ftypes[st.kids[0].s])
+            t = ci.ftypes[st.kids[0].s]
+            why = self.default_problem(st.kids[2], t) if not self.class_reads(st.kids[2], FnInfo("", "", ci.node, ""), t) else ""
             if why != "":
                 ci.bad = f"class {shown(ci.name)} is not supported: {why}"
     if ci.bad != "":
@@ -375,9 +381,11 @@ def gen_hoist_class(self, ci: ClassInfo) -> None:
             bound[fl] = True
             t = ci.ftypes[fl]
             u = unopt(t)  # (a default of a T | None field that is not None is a T)
-            if self.is_dc(ci.name) and ci.name not in self.nts and not is_const(st.kids[2]) and (is_list(u) or is_dict(u) or (is_set(u) and not is_fset(u)) or self.unhashable(u)):
+            # (an AbstractSet field's default is a set unless frozenset(...) makes it)
+            aset_set = is_aset(u) and not (st.kids[2].kind == "call" and st.kids[2].kids[0].kind == "name" and st.kids[2].kids[0].s == "frozenset")
+            if self.is_dc(ci.name) and ci.name not in self.nts and not is_const(st.kids[2]) and (is_list(u) or is_dict(u) or (is_set(u) and (not is_fset(u) or aset_set)) or self.unhashable(u)):
                 # (CPython's ValueError where it creates the class: the default's class has __hash__ = None)
-                c = u[: u.find("[")] if "[" in u else f"{self.classes[u].mod if self.classes[u].mod != '' else '__main__'}.{short(u)}"
+                c = "set" if is_aset(u) else u[: u.find("[")] if "[" in u else f"{self.classes[u].mod if self.classes[u].mod != '' else '__main__'}.{short(u)}"
                 self.err(f"mutable default <class '{c}'> for field {fl} is not allowed: use default_factory")
             for m in ["__set_name__", "__get__", "__set__", "__delete__"] if t in self.classes and not is_const(st.kids[2]) else []:
                 # (__set_name__ runs when CPython creates the class, __get__ too with @dataclass)
@@ -392,6 +400,9 @@ def gen_hoist_class(self, ci: ClassInfo) -> None:
             if (cv or not is_const(st.kids[2])) and (fl not in ci.fglob or ci.fglob[fl] in self.pending):
                 self.class_store(ci, fl, self.expr(st.kids[2], t))
                 self.pending.pop(ci.fglob[fl], False)
+            self.ann_reads(st.kids[1])  # (CPython evaluates the annotation after the value)
+        elif st.kind == "annassign":
+            self.ann_reads(st.kids[1])
         elif st.kind == "def":
             f = ci.methods[st.s]
             for k in [st.s + ".setter", st.s + ".deleter"]:
@@ -401,6 +412,7 @@ def gen_hoist_class(self, ci: ClassInfo) -> None:
             bound[st.s] = True
             if f.name != "__init__" or not syn:
                 self.hoist(f)
+            self.def_ann_reads(st)  # (after its defaults)
     if syn:
         init = ci.methods["__init__"]
         for j in range(1, len(init.params)):
@@ -462,6 +474,9 @@ def gen_loop(self, body: list[Node], lp: Loop) -> list[dict[str, str]]:
     self.branch += 1
     self.stmts(body)
     self.branch -= 1
+    # (what follows the loop also follows its breaks, which may end branches whose stores of
+    # an attribute the code after those branches does not follow: unions.py's path_undo)
+    self.path_void()
     self.wdepth.pop()
     self.loops.pop()
     r = self.brks.pop()
@@ -635,6 +650,12 @@ def gen_stmt(self, n: Node) -> None:
 def gen_stmt_main(self, n: Node) -> None:
     self.line = n.line
     k = n.kind
+    if len(self.preadn) > 0:
+        # (the attribute paths the statement before read: a test narrows what its own statement reads, unions.py)
+        self.preadn = []
+        self.preadv = []
+        self.preads = []
+        self.preadb = []
     if len(self.dmemo) > 0:
         # (the dry-run types of the display items of the statement before, see dyn_dry)
         self.dmemo = []
@@ -735,6 +756,8 @@ def gen_stmt_main(self, n: Node) -> None:
         # an annotation that names a class template types nothing: x: Box = v is x = v
         if len(n.kids) == 3:
             self.stmt(mk("assign", "", n.line, [n.kids[0], n.kids[2]]))
+        if self.modlevel:
+            self.ann_reads(n.kids[1])  # (module code's, which CPython evaluates after the value)
     elif k == "annassign":
         if n.s != "" and self.ann_problem(n.kids[1], False) != "":
             self.err(n.s)  # (the declaration of a local that only dropped code binds: Loader.dropped_locals())
@@ -747,6 +770,8 @@ def gen_stmt_main(self, n: Node) -> None:
             v = self.expr(n.kids[2], t)
             # (x: T | None = <a T> knows x holds a T, see narrowed)
             self.assign(n.kids[0], v if n.kids[0].kind == "name" and ((is_opt(t) and self.widens(v.t, t)) or (is_union(unopt(t)) and (self.widens(v.t, t) or self.boxes(v.t, t)))) else self.coerce(v, t))
+        if self.modlevel:
+            self.ann_reads(n.kids[1])  # (module code's, which CPython evaluates after the value)
     elif k == "augassign":
         self.augassign(n)
     elif k == "if":
@@ -762,16 +787,31 @@ def gen_stmt_main(self, n: Node) -> None:
         l2 = self.label()
         l3 = self.label()
         self.cbr(c, l1, l2)
+        # the attribute paths the test narrows where it is false, made here, where it has just
+        # read them; and what may change an attribute in one branch has not happened in the
+        # other, but has after the if where that branch goes on (unions.py: path_undo)
+        elsepaths: dict[str, str] = {}
+        if len(self.preadn) > 0:
+            self.narrows_paths(n.kids[0], False, elsepaths)
+        pcall = self.pcall
+        pmark = self.path_mark()
         self.branch += 1
         self.place(l1)
         pre = self.narrow_by(n.kids[0], True)
         self.stmts(n.kids[1].kids)
         yes = self.narrowed
         ygo = not self.term
+        ykeys: list[str] = []
+        yvals: list[int] = []
+        self.path_undo(pmark, ykeys, yvals)
+        ycall = self.pcall
+        self.pcall = pcall
         self.br(l3)
         self.place(l2)
         self.narrowed = pre
         self.narrow_by(n.kids[0], False)
+        for pk in elsepaths:
+            self.narrowed[pk] = elsepaths[pk]
         self.stmts(n.kids[2].kids)
         ngo = not self.term
         self.branch -= 1
@@ -779,8 +819,13 @@ def gen_stmt_main(self, n: Node) -> None:
         # after the if: what holds at the end of each branch that goes on
         if ygo and not ngo:
             self.narrowed = yes
+            self.path_undo(pmark, [], [])
+            self.pcall = ycall
         elif ygo and ngo and len(yes) + len(self.narrowed) > 0:
             self.narrowed = meet([yes, self.narrowed])
+        if ygo:
+            self.path_redo(ykeys, yvals)
+            self.pcall = max(self.pcall, ycall)
         if not ygo and self.callable_guard(n, self.curfn) != "":
             self.curfn.nnp[self.callable_guard(n, self.curfn)] = True  # (its isinstance() tests are static)
     elif k == "while" and self.static(n.kids[0]) == 0:
@@ -934,6 +979,8 @@ def gen_stmt_main(self, n: Node) -> None:
         l1 = self.label()
         l2 = self.label()
         self.cbr(self.cond(n.kids[0]), l2, l1)
+        pcall = self.pcall  # (what its message does has not happened where the assertion holds: unions.py's path_undo)
+        pmark = self.path_mark()
         self.place(l1)
         pre = self.narrowed
         self.narrowed = dict(pre)  # (what a := in the message binds is not bound where the assertion holds)
@@ -941,6 +988,8 @@ def gen_stmt_main(self, n: Node) -> None:
         self.assert_fails(n)
         self.branch -= 1
         self.narrowed = pre
+        self.path_undo(pmark, [], [])
+        self.pcall = pcall
         self.place(l2)
         self.narrow_by(n.kids[0], True)
     elif k == "raise":
@@ -962,7 +1011,11 @@ def gen_stmt_main(self, n: Node) -> None:
                 self.err("del of an attribute is only supported for a property (which calls its deleter)")
             if dt.kind == "slice":
                 bnd: list[str] = []
-                o = self.slice_target(dt, bnd, "TypeError: 'NoneType' object does not support item deletion")
+                gone: list[Val] = []
+                o = self.slice_target(dt, bnd, "TypeError: 'NoneType' object does not support item deletion", None, None, gone)
+                if len(gone) > 0:
+                    self.protocol(o, "_delslice", gone)  # (a bytearray's)
+                    continue
                 self.rt("pys_dyn_list_del_slice" if o.t == "dyn" else "pys_list_del_slice", "void", [f"ptr {o.v}", f"i64 {bnd[0]}", f"i64 {bnd[1]}", f"i64 {bnd[2]}"])
                 continue
             if dt.kind == "index" and dt.kids[0].kind == "attr" and self.dotted(dt.kids[0]) == "os.environ":
@@ -975,7 +1028,7 @@ def gen_stmt_main(self, n: Node) -> None:
             if o.t == "dyn":
                 self.dyn_delitem(o, self.expr(dt.kids[1], "dyn"))  # (by its box's type: dynamic.py)
             elif is_list(unopt(o.t)):
-                ix = self.ival(dt.kids[1])
+                ix = self.ival(dt.kids[1], "", True, o, nodel)
                 self.rt("pys_list_del", "void", [f"ptr {self.unwrap(o, nodel).v}", f"i64 {ix.v}"])
             elif is_dict(unopt(o.t)):
                 # del d[k] looks k up as d[k] does (dkey): a key that may be None raises
@@ -1137,20 +1190,24 @@ def gen_stmt_main(self, n: Node) -> None:
             self.sdiscard(f"ptr {self.lcs[-1]}", v, et)
         else:
             self.list_store(Val(self.lcs[-1], self.ctype("list", [et])), self.list_hold(v, et), "append")
-    elif k == "newtype":
-        self.newtype_reads(self.alias_value(n.s))
-        if n.s in self.gflag:
+    elif k == "newtype" or k == "aliasvalue":
+        # (where program left out N = NewType("N", T), or an assigned type alias that reads a
+        # module's attribute: CPython evaluates T, or the value, there)
+        self.ann_reads(self.alias_value(n.s))
+        if k == "newtype" and n.s in self.gflag:
             self.mstore('bool', 'true', f'@g.{n.s}.def')  # (N = NewType(...) has run: see call)
     elif k == "defaults" or k == "cdefaults":
         if k == "defaults":
             self.decorators(self.funcs[n.s].node, self.funcs[n.s].node.kids[3:] if self.curfn.mod != "" else [], {})
             self.hoist(self.funcs[n.s])
+            self.def_ann_reads(self.funcs[n.s].node)  # (after its defaults, as CPython evaluates them)
             ef = self.funcs[n.s]
             if ef.extern and not self.rtmode and ef.mod not in GLUE:
                 # @ffi.extern looks its C function up when the def runs, as ctypes.CDLL does (cextern)
                 xs = ef.ll[1:]
                 self.rt("pys_c_bind", "void", [f"ptr @ffi.fp.{xs}", f"ptr @ffi.lib.{xs}", f"ptr @ffi.sym.{xs}"])
         else:
+            self.modchk(n)  # (CPython reads its identity decorators before its body runs: Loader.identity_decos)
             self.hoist_class(self.classes[n.s])
         if n.s in self.gflag:
             self.mstore('bool', 'true', f'@g.{n.s}.def')
@@ -1301,7 +1358,7 @@ def gen_augassign(self, n: Node) -> None:
         self.class_store(ci, t.s, self.inplace(op, self.class_attr(t.kids[0], t.s), n.kids[1]))
     elif t.kind == "attr":
         o = self.expr(t.kids[0], "")
-        if self.reference_union(o.t):
+        if self.reference_union(o.t) or (self.rolex != o.v and self.role_field(o.t, t.s)):
             target = mk("attr", t.s, t.line, [self.vnode(o)])
             self.assign(target, self.inplace(op, self.expr(target, ""), n.kids[1]))
             return
@@ -1338,7 +1395,12 @@ def gen_augassign(self, n: Node) -> None:
         bnd: list[str] = []
         raw: list[str] = []
         values: list[Val] = []
-        o = self.slice_target(t, bnd, "TypeError: 'NoneType' object is not subscriptable", raw, values)
+        taken: list[Val] = []
+        o = self.slice_target(t, bnd, "TypeError: 'NoneType' object is not subscriptable", raw, values, taken)
+        if len(taken) > 0:
+            # a bytearray's: the slice, a new bytearray that op changes, stored back by the same bounds
+            self.protocol(o, "_setslice", taken + [self.inplace(op, self.protocol(o, "_getslice", taken), n.kids[1])])
+            return
         if o.t == "dyn":
             cur = Val(self.rt("pys_dyn_list_slice", "ptr", [f"ptr {o.v}", f"i64 {bnd[0]}", f"i64 {bnd[1]}", f"i64 {bnd[2]}"]), "dyn")
             value = self.inplace(op, cur, n.kids[1])
@@ -1350,7 +1412,13 @@ def gen_augassign(self, n: Node) -> None:
         if bnd[2] != "1":
             av.append(f"i64 {bnd[2]}")
         cur = Val(self.rt("pys_list_slice" if bnd[2] == "1" else "pys_list_slice_step", "ptr", av), o.t)
-        self.slice_store(o, bnd, self.inplace(op, cur, n.kids[1]))
+        value = self.inplace(op, cur, n.kids[1])
+        again = [raw[j] if raw[j].startswith("?") and values[int(raw[j][1:])].t != "dyn" else bnd[j] for j in range(3)]
+        if again[0].startswith("?") or again[1].startswith("?") or again[2].startswith("?"):
+            # (a bound that is an object: CPython's store asks it for its __index__() again,
+            # after the right operand has run)
+            self.slice_dyn(again, values)
+        self.slice_store(o, again, value)
     elif t.kind == "index":
         o = self.expr(t.kids[0], "")
         sub = "TypeError: 'NoneType' object is not subscriptable"
@@ -1360,10 +1428,18 @@ def gen_augassign(self, n: Node) -> None:
             return
         if is_list(unopt(o.t)):
             et = elem(unopt(o.t))
-            i = self.ival(t.kids[1])
+            ix = self.expr(t.kids[1], "int")
+            indexed = ix.t == "dyn" or (ix.t in self.classes and "__index__" in self.classes[ix.t].methods)
+            noindex = "TypeError: list indices must be integers or slices, not NoneType"
+            if indexed:
+                o = self.unwrap(o, sub)
+            i = self.coerce(self.as_int(self.index_of(ix, noindex)), "int")
             o = self.unwrap(o, sub)
             cur = self.list_item(o, i)
             r = self.list_hold(self.inplace(op, cur, n.kids[1]), et)
+            if indexed:
+                # (an object: CPython's store asks it for its __index__() again)
+                i = self.coerce(self.as_int(self.index_of(ix, noindex)), "int")
             self.list_store(o, r, "set", i.v)
         elif is_dict(unopt(o.t)):
             # d[k] op= v stores k where d[k] has found it: k is looked up as d[k] does (dkey),
@@ -1492,10 +1568,14 @@ def gen_inplace(self, op: str, cur: Val, rhs: Node) -> Val:
             cur = Val(cur.v, unopt(cur.t))
         self.rt("pys_list_imul", "void", [f"ptr {cur.v}", f"i64 {self.coerce(b, 'int').v}"])
         return cur
+    if is_aset(unopt(cur.t)) and (op == "|" or op == "&" or op == "-" or op == "^"):
+        self.err(f"{op}= on an AbstractSet value is not supported: it changes a set in place and rebinds a frozenset, and the value is either; write x = x {op} y")
     if is_set(unopt(cur.t)) and not is_fset(unopt(cur.t)) and (op == "|" or op == "&" or op == "-" or op == "^"):
         # s |= t, s &= t, s -= t, s ^= t of a set t: s changes in place (a frozenset s is
         # rebound to s op t, as CPython's has no in-place operators)
         b = self.expr(rhs, unopt(cur.t))
+        if b.t == EMPTYFS:
+            b = self.coerce(b, self.ctype("frozenset", [selem(unopt(cur.t))]))  # (frozenset() that nothing typed)
         if is_opt(cur.t) or is_opt(b.t):
             self.none_operands(op, cur, b, op + "=")
             cur = Val(cur.v, unopt(cur.t))
@@ -1546,7 +1626,79 @@ def gen_inplace(self, op: str, cur: Val, rhs: Node) -> Val:
         b = self.expr(rhs, cur.t)  # (as for cur op rhs: c += Counter() types the empty Counter)
         self.none_operand(op + "=", cur, b)
         return self.call_fn(self.classes[cur.t].methods[im], [cur, b], [])
-    return self.arith(op, cur, self.expr(rhs, cur.t), op + "=")
+    b = self.expr(rhs, cur.t)
+    r = self.inplace_subclasses(op, cur, b)
+    if r is not None:
+        return r
+    return self.arith(op, cur, b, op + "=")
+
+def gen_inplace_subclasses(self, op: str, cur: Val, b: Val) -> Val | None:
+    # cur op= b of an object whose class has no in-place method for op (__iadd__ & co) but
+    # whose subclasses have one (#1538): CPython calls the in-place method of the object's own
+    # class, so the class is selected by its tag, as virtual_call selects an override: a
+    # subclass's in-place method where it has one, else cur op b. The results join (wider).
+    # None where no subclass has one, or b is an Any, whose dynamic operation calls the method
+    # of the object's class itself (dyn_arith): cur op b, as before
+    im = "__i" + DUNDER[op][2:] if op in DUNDER else ""
+    if im == "" or b.t == "dyn" or cur.t not in self.classes or self.classes[cur.t].tag == 0 or im in self.classes[cur.t].methods:
+        return None
+    cs = [c for c in self.classes.values() if c.tag > 0 and c.name != cur.t and self.derives(c.name, cur.t) and im in c.methods]
+    if len(cs) == 0:
+        return None
+    self.none_operand(op + "=", cur, b)
+    tag = self.mload('int', cur.v)
+    end = self.label()
+    other = self.label()
+    arms: list[str] = []
+    for i in range(len(cs)):
+        arms.append(self.label())
+        nxt = self.label() if i + 1 < len(cs) else other
+        self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(cs[i].tag), "int")).v, arms[i], nxt)
+        if i + 1 < len(cs):
+            self.place(nxt)
+    vals: list[Val] = []
+    edges: list[str] = []
+    narrow = dict(self.narrowed)
+    for i in range(len(cs) + 1):
+        self.narrowed = dict(narrow)
+        if i < len(cs):
+            self.place(arms[i])
+            v = self.call_fn(cs[i].methods[im], [Val(cur.v, cs[i].name), b], [], direct=True)
+        else:
+            self.place(other)
+            v = self.arith(op, cur, b, op + "=")
+        if not self.term:
+            if self.idhere() and numeric_identity(v.t):
+                v.idfrom = self.dyn_id_box(v).v
+            vals.append(v)
+            edges.append(self.cur)
+            self.br(end)
+    self.narrowed = narrow
+    t = vals[0].t if len(vals) > 0 else "None"
+    for v in vals[1:]:
+        w = self.wider(v.t, t)
+        if w == "":
+            self.err(f"{op}= on {short(cur.t)} calls the in-place method of the object's class where it has one, whose results ({', '.join([typestr(x.t) for x in vals])}) have no common type; give them one")
+        t = w
+    ph = Ins("phi", t, "")
+    for i in range(len(vals)):
+        r = self.convert_at(vals[i], t, edges[i])
+        self.incoming(ph, r.v, self.convedge)
+    self.place(end)
+    if len(vals) == 0:
+        self.unreachable()
+    result = Val("null", "None") if t == "None" else Val(self.phi(ph), t)
+    if self.idhere() and numeric_identity(t):
+        identity = Ins("phi", "dyn", "")
+        for i in range(len(vals)):
+            self.incoming(identity, vals[i].idfrom if vals[i].idfrom != "" else "null", edges[i])
+        held = self.phi(identity)
+        result.idslot = self.alloca("dyn", "")
+        self.mem_store(Val(result.idslot, "*dyn"), Val(held, "dyn"))
+        result.idheld = held
+        result.idcounter = self.alloca("int", "")
+        result.idversion = "0"
+    return result
 
 def gen_objlen(self, v: Val) -> Val:
     r = self.call_fn(self.classes[v.t].methods["__len__"], [v], [])
@@ -1707,7 +1859,7 @@ def gen_for_(self, n: Node, hide: list[str], arg: IterArg | None = None) -> None
             own = self.owned_gen(seq, args[0])
             obj = is_opt(seq.t) or seq.t in self.classes
             a1 = args[1].kids[0] if args[1].kind == "kw" else args[1]
-            st = self.ival(a1).v
+            st = self.ival(a1).v  # (CPython takes start's index too: a bool's, an object's __index__())
             self.gencall = ""
             seq = self.iterable(seq)
             if own == 0 and obj:
@@ -1803,6 +1955,14 @@ def gen_iterable(self, v: Val, msg: str = "TypeError: 'NoneType' object is not i
         return v  # (for_seq steps through its numbers)
     if v.t in self.classes:
         return self.obj_iterator(v, msg, f"'{tname(v.t)}' object is not iterable")
+    if is_tuple(v.t) and len(targs(v.t)) > 1 and all(is_clsval(x) for x in targs(v.t)) and not all(x == targs(v.t)[0] for x in targs(v.t)):
+        # (class objects of several classes, for k in (A, B): of the base class they have in
+        # common, the same pointers)
+        jt = targs(v.t)[0]
+        for x in targs(v.t)[1:]:
+            jt = self.join(jt, x) if jt != "" else ""
+        if jt != "":
+            v = self.coerce(v, self.ctype("tuple", [jt for x in targs(v.t)]))
     if is_tuple(v.t) and BIG in targs(v.t) and all(x == "int" or x == BIG for x in targs(v.t)):
         # (64-bit and promoting ints, as the latter, read from its slots also without tupleiter: a
         # list holds 64-bit ints, bigints.py)
@@ -1817,12 +1977,20 @@ def gen_iterable(self, v: Val, msg: str = "TypeError: 'NoneType' object is not i
             self.err(f"cannot iterate over {typestr(v.t)}: its items have different types")
     return self.as_list(v, "iter")
 
-def gen_ival(self, n: Node, none: str = "") -> Val:
+def gen_ival(self, n: Node, none: str = "", index: bool = True, recv: Val | None = None, recvnone: str = "") -> Val:
     # an index, slice bound or range() argument: an int, or a bool used as one (as CPython does);
-    # an int | None that is None raises none ("Kind: text")
+    # an int | None that is None raises none ("Kind: text"). With index, an object gives its
+    # __index__() (enumerate()'s start too), which the sequence recv asks for: one that is None
+    # raises recvnone before the call
     v = self.expr(n, "int")
     if is_sopt(v.t) and none != "":
         v = self.unwrap(v, none)
+    if index and (v.t == "dyn" or (v.t in self.classes and "__index__" in self.classes[v.t].methods)):
+        if recv is not None and is_opt(recv.t):
+            self.guard(self.ptr_cmp("==", recv, Val("null", "None")).v, recvnone)
+        # (an Any value that is no index raises the sequence's TypeError, which names its type)
+        listed = v.t == "dyn" and recv is not None and is_list(unopt(recv.t))
+        v = self.index_of(v, none if none != "" else "TypeError: list indices must be integers or slices, not NoneType" if listed else "TypeError: 'NoneType' object cannot be interpreted as an integer")
     return self.coerce(self.as_int(v), "int")
 
 def gen_range_args(self, args: list[Node]) -> list[str]:
@@ -1832,6 +2000,7 @@ def gen_range_args(self, args: list[Node]) -> list[str]:
     for v in vals:
         if is_sopt(v.t):
             v = self.unwrap(v, "TypeError: 'NoneType' object cannot be interpreted as an integer")
+        v = self.index_of(v, "TypeError: 'NoneType' object cannot be interpreted as an integer")
         vs.append(self.coerce(self.as_int(v), "int").v)
     if len(vs) == 1:
         vs.insert(0, "0")

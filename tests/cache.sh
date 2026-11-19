@@ -410,5 +410,18 @@ printf 'import os, sys\nfrom importlib.metadata import version\nprint(os.path.is
 got=$(pys run prefix.py 2>&1)
 if [ "$got" = "True home True 1.0" ]; then ok "sys.prefix, __file__ and importlib.metadata's search path, in a directory named with a non-ASCII character"
 else bad "host paths in a directory named with a non-ASCII character: printed '$got', not 'True home True 1.0'"; fi
+# a directory whose name is not UTF-8 (#1523): its byte reaches __file__ and importlib.metadata's
+# search path unchanged, as CPython's surrogateescape keeps it (a file system that refuses such
+# a name, as macOS's do, skips the check)
+U=$T/$(printf 'raw\377')
+if mkdir -p "$U/rawdemo-2.0.dist-info" 2> /dev/null; then
+  printf 'Name: rawdemo\nVersion: 2.0\n' > "$U/rawdemo-2.0.dist-info/METADATA"
+  printf 'import os\nfrom importlib.metadata import version\nprint(os.path.isfile(__file__), __file__.encode("utf-8", "surrogateescape").endswith(b"/raw\\xff/p.py"), version("rawdemo"))\n' > "$U/p.py"
+  got=$(pys run "$U/p.py" 2>&1)
+  if [ "$got" = "True True 2.0" ]; then ok "__file__ and importlib.metadata's search path, in a directory whose name is not UTF-8"
+  else bad "host paths in a directory whose name is not UTF-8: printed '$got', not 'True True 2.0'"; fi
+else
+  echo "skip a directory whose name is not UTF-8: this file system refuses it"
+fi
 echo "$pass passed, $fail failed"
 [ $fail = 0 ]

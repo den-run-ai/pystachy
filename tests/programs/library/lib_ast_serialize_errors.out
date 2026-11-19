@@ -1,0 +1,254 @@
+0 0 29 1557790129 2 1974276567
+   1 7 True Expected a parameter or the end of the parameter list
+   1 8 True Expected `)`, found newline
+0 5 29 1557790129 2 1974276567
+   1 7 True Expected a parameter or the end of the parameter list
+   1 8 True Expected `)`, found newline
+1 0 69 4168708067 2 1974276567
+   2 1 True Expected `,`, found name
+   2 3 True Expected `,`, found `=`
+   3 1 True unexpected EOF while parsing
+1 5 69 4168708067 2 1974276567
+   2 1 True Expected `,`, found name
+   2 3 True Expected `,`, found `=`
+   3 1 True unexpected EOF while parsing
+2 0 34 1234642003 2 1974276567
+   1 5 True Expected `:`, found newline
+2 5 34 1234642003 2 1974276567
+   1 5 True Expected `:`, found newline
+3 0 36 2917580785 2 1974276567
+   2 1 True Expected an indented block after `class` definition
+3 5 36 2917580785 2 1974276567
+   2 1 True Expected an indented block after `class` definition
+4 0 32 2875459267 2 1974276567
+   1 1 True Unexpected indentation
+4 5 32 2875459267 2 1974276567
+   1 1 True Unexpected indentation
+5 0 87 1000847053 2 1974276567
+   3 1 True unindent does not match any outer indentation level
+   4 1 True Expected dedent, found end of file
+5 5 87 1000847053 2 1974276567
+   3 1 True unindent does not match any outer indentation level
+   4 1 True Expected dedent, found end of file
+6 0 35 1077740558 2 1974276567
+   1 5 True missing closing quote in string literal
+6 5 36 1116513633 2 1974276567
+   1 5 True missing closing quote in string literal
+7 0 36 459213264 2 1974276567
+   1 5 True missing closing quote in string literal
+7 5 37 1276351812 2 1974276567
+   1 5 True missing closing quote in string literal
+8 0 79 1030147799 2 1974276567
+   1 9 True f-string: expecting `}`
+8 5 80 1782802654 2 1974276567
+   1 9 True f-string: expecting `}`
+9 0 93 685425782 2 1974276567
+   1 10 True f-string: invalid conversion character
+   1 19 True f-string: invalid conversion character
+   1 20 True f-string: expecting `}`
+   1 26 True f-string: expecting `}`
+   1 30 True f-string: single `}` is not allowed
+   1 31 True Expected a statement
+   1 32 True Expected a statement
+9 5 94 4065322325 2 1974276567
+   1 10 True f-string: invalid conversion character
+   1 19 True f-string: invalid conversion character
+   1 20 True f-string: expecting `}`
+   1 26 True f-string: expecting `}`
+   1 30 True f-string: single `}` is not allowed
+   1 31 True Expected a statement
+   1 32 True Expected a statement
+10 0 79 2549698425 2 1974276567
+   1 15 True Expected an expression
+   1 8 True f-string: lambda expressions are not allowed without parentheses
+   1 15 True f-string: expecting `}`
+   1 17 True Expected an element of or the end of the f-string
+10 5 80 2794880178 2 1974276567
+   1 15 True Expected an expression
+   1 8 True f-string: lambda expressions are not allowed without parentheses
+   1 15 True f-string: expecting `}`
+   1 17 True Expected an element of or the end of the f-string
+11 0 45 3363801662 2 1974276567
+   1 8 True Expected an expression
+11 5 45 3363801662 2 1974276567
+   1 8 True Expected an expression
+12 0 59 3981183082 2 1974276567
+   1 11 True Expected an expression or a ']'
+12 5 59 3981183082 2 1974276567
+   1 11 True Expected an expression or a ']'
+13 0 181 3630029055 2 1974276567
+   1 8 True Positional argument cannot follow keyword argument
+   2 8 True Iterable argument unpacking cannot follow keyword argument unpacking
+   3 3 True Unparenthesized generator expression cannot be used here
+13 5 181 3630029055 2 1974276567
+   1 8 True Positional argument cannot follow keyword argument
+   2 8 True Iterable argument unpacking cannot follow keyword argument unpacking
+   3 3 True Unparenthesized generator expression cannot be used here
+14 0 165 3630986788 2 1974276567
+   1 5 True Invalid delete target
+   2 1 True Invalid augmented assignment target
+   3 1 True Invalid assignment target
+   4 7 True Expected a statement
+14 5 165 3630986788 2 1974276567
+   1 5 True Invalid delete target
+   2 1 True Invalid augmented assignment target
+   3 1 True Invalid assignment target
+   4 7 True Expected a statement
+15 0 170 2058554097 2 1974276567
+   1 12 True Parameter without a default cannot follow a parameter with a default
+   1 18 True Expected one or more keyword parameter after `*` separator
+   2 13 True Only one '*' parameter allowed
+   3 7 True Position-only parameter separator not allowed as first parameter
+15 5 170 2058554097 2 1974276567
+   1 12 True Parameter without a default cannot follow a parameter with a default
+   1 18 True Expected one or more keyword parameter after `*` separator
+   2 13 True Only one '*' parameter allowed
+   3 7 True Position-only parameter separator not allowed as first parameter
+16 0 56 265581527 2 1974276567
+   3 1 True Expected `except` or `finally` after `try` block
+16 5 56 265581527 2 1974276567
+   3 1 True Expected `except` or `finally` after `try` block
+17 0 163 2416516508 2 1974276567
+   2 14 True Expected an imaginary number in complex literal pattern
+   3 16 True Only one double star pattern is allowed
+   4 17 True Positional patterns cannot follow keyword patterns
+17 5 163 2416516508 2 1974276567
+   2 14 True Expected an imaginary number in complex literal pattern
+   3 16 True Only one double star pattern is allowed
+   4 17 True Positional patterns cannot follow keyword patterns
+18 0 127 1218871477 2 1974276567
+   1 5 True ParseIntError { kind: Empty }
+   1 11 True ParseIntError { kind: Empty }
+   1 17 True Invalid decimal integer literal
+   1 23 True Simple statements must be separated by newlines or semicolons
+   1 29 True ParseIntError { kind: Empty }
+   1 31 True Expected a statement
+18 5 127 1218871477 2 1974276567
+   1 5 True ParseIntError { kind: Empty }
+   1 11 True ParseIntError { kind: Empty }
+   1 17 True Invalid decimal integer literal
+   1 23 True Simple statements must be separated by newlines or semicolons
+   1 29 True ParseIntError { kind: Empty }
+   1 31 True Expected a statement
+19 0 92 276848488 2 1974276567
+   1 5 True Got unexpected token $
+   1 6 True Expected a statement
+   2 5 True Got unexpected token ?
+   2 6 True Expected a statement
+   3 5 True Got unexpected token `
+   3 6 True Expected a statement
+19 5 92 276848488 2 1974276567
+   1 5 True Got unexpected token $
+   1 6 True Expected a statement
+   2 5 True Got unexpected token ?
+   2 6 True Expected a statement
+   3 5 True Got unexpected token `
+   3 6 True Expected a statement
+20 0 104 2892699553 2 1974276567
+   1 7 True Expected `def`, `with` or `for` to follow `async`, found name
+   3 1 True Expected class, function definition or async function definition after decorator
+20 5 104 2892699553 2 1974276567
+   1 7 True Expected `def`, `with` or `for` to follow `async`, found name
+   3 1 True Expected class, function definition or async function definition after decorator
+21 0 49 1383056262 42 1769149740
+   1 6 True Expected a module name
+   2 15 True Star import cannot be parenthesized
+   3 7 True Expected one or more symbol names after import
+21 5 55 2212192658 42 1769149740
+   1 6 True Expected a module name
+   2 15 True Star import cannot be parenthesized
+   3 7 True Expected one or more symbol names after import
+22 0 56 1659295373 2 1974276567
+   1 16 True Expected `)`, found newline
+22 5 56 1659295373 2 1974276567
+   1 16 True Expected `)`, found newline
+23 0 71 2229436460 2 1974276567
+   1 7 True bytes can only contain ASCII literal characters
+   1 16 True Got unexpected unicode
+   1 35 True Got unexpected unicode
+   1 44 True Got unexpected unicode
+23 5 74 1965781303 2 1974276567
+   1 7 True bytes can only contain ASCII literal characters
+   1 16 True Got unexpected unicode
+   1 35 True Got unexpected unicode
+   1 44 True Got unexpected unicode
+24 0 92 2773686174 2 1974276567
+   1 9 True Got unexpected unicode
+   2 9 True Got unexpected unicode
+   3 9 True Got unexpected unicode
+24 5 95 2019208530 2 1974276567
+   1 9 True Got unexpected unicode
+   2 9 True Got unexpected unicode
+   3 9 True Got unexpected unicode
+25 0 52 2243708260 2 1974276567
+   1 8 True Expected `)`, found `=`
+   1 13 True Expected `)`, found `=`
+   2 1 True unexpected EOF while parsing
+25 5 52 2243708260 2 1974276567
+   1 8 True Expected `)`, found `=`
+   1 13 True Expected `)`, found `=`
+   2 1 True unexpected EOF while parsing
+26 0 75 917705340 2 1974276567
+   2 1 True Invalid assignment target
+26 5 75 917705340 2 1974276567
+   2 1 True Invalid assignment target
+27 0 233 2930657044 2 1974276567
+   1 6 True Starred expression cannot be used here
+   1 17 True Expected an expression
+   3 4 True PEP 798 is not supported yet
+27 5 222 2389699364 2 1974276567
+   1 6 True Starred expression cannot be used here
+   1 17 True Expected an expression
+28 0 36 1549298045 2 1974276567
+   1 7 True Global statement must have at least one name
+   2 9 True Nonlocal statement must have at least one name
+   3 4 True Delete statement must have at least one target
+28 5 36 1549298045 2 1974276567
+   1 7 True Global statement must have at least one name
+   2 9 True Nonlocal statement must have at least one name
+   3 4 True Delete statement must have at least one target
+29 0 96 2100209584 2 1974276567
+   1 7 True Type parameter list cannot be empty
+   2 8 True Type parameter list cannot be empty
+   3 11 True Expected a type parameter or the end of the type parameter list
+29 5 96 2100209584 2 1974276567
+   1 7 True Type parameter list cannot be empty
+   2 8 True Type parameter list cannot be empty
+   3 11 True Expected a type parameter or the end of the type parameter list
+30 0 115 2522238315 2 1974276567
+   1 11 True Expected `else`, found newline
+   2 16 True Expected an expression
+30 5 115 2522238315 2 1974276567
+   1 11 True Expected `else`, found newline
+   2 16 True Expected an expression
+31 0 104 1847041587 2 1974276567
+   3 5 True Expected an expression
+   5 6 True Expected `:`, found name
+   5 8 True Expected an expression
+   6 1 True Unexpected indentation
+31 5 104 1847041587 2 1974276567
+   3 5 True Expected an expression
+   5 6 True Expected `:`, found name
+   5 8 True Expected an expression
+   6 1 True Unexpected indentation
+32 0 32 1241383266 2 1974276567
+   3 1 True Expected a newline after line continuation character
+32 5 32 1241383266 2 1974276567
+   3 1 True Expected a newline after line continuation character
+33 0 34 1664602477 2 1974276567
+   1 207 True Source is too deeply nested
+   2 1 True Expected `)`, found end of file
+33 5 34 1664602477 2 1974276567
+   1 207 True Source is too deeply nested
+   2 1 True Expected `)`, found end of file
+'List[' 28 2870192057
+'a b' 26 3431752171
+'(' 24 3266750467
+'x[]' 26 1677643196
+'1 +' 26 1867321399
+"'" 24 889116906
+'lambda: (yield)' 38 2663121192
+'def' 26 321506366
+ValueError No such file or directory (os error 2)
+ValueError Is a directory (os error 21)
+[exit 0]

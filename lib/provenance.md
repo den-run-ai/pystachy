@@ -20,6 +20,7 @@ observable contract.
 | `html.parser` | `Lib/html/parser.py` | `4274e9112adf3fa57c7f9afa7c9b5c631456b18b7403cc627cc5027d02cdd2ae` |
 | `_markupbase` | `Lib/_markupbase.py` | `cb14dd6f2e2439eb70b806cd49d19911363d424c2b6b9f4b73c9c08022d47030` |
 | `difflib` | `Lib/difflib.py` | `1593ae08143632f4f81fea3beeeb279d803f8a9be922b12fe79664d78bba879d` |
+| `pprint` | `Lib/pprint.py` | `1585c8d74d7f485590db2af46680ae0a73737ca9fb66022b2bcbbc4c4925e203` |
 | `getopt` | `Lib/getopt.py` | `0ce875700c8798193b8e2748f7a27fc542cc4d525a1e6fc403767450ec92be99` |
 | `base64` | `Lib/base64.py` | `a80fc2454f7a0ad644f02259184de5b52084392ddb8b41c1ce372e50a09f3993` |
 | `gettext` | `Lib/gettext.py` | `7178d6ebdd0647b003da0ccdffb9431bc5fcf5c3822a247b578fdb745162865d` |
@@ -41,6 +42,9 @@ observable contract.
 | `warnings` | `Lib/warnings.py` | `e040f52be0199c69fa8c0d35428ba64e6f9b6412691a689ccbd7c23e07c6ed3f` |
 | `threading` | `Lib/threading.py` | `a979d5ab97993d7fbfd7601e928476c8dc90e1807df7c8c7d9f324e620331caa` |
 | `logging` | `Lib/logging/__init__.py` | `4106cc3aa4e722116bbf0a3ffae3a8c7bc4981468ca7998ca35ed201a5605519` |
+| `concurrent.futures` | `Lib/concurrent/futures/__init__.py` | `9b597f6de7da771109ca7bf96a1af5ea4d5fda69b27b39312d34966d987f73cd` |
+| `concurrent.futures._base` | `Lib/concurrent/futures/_base.py` | `6ca5d2bb59aa23af56d95dcdd31728fda687f7727e79f4465236d1f65c06b053` |
+| `concurrent.futures.thread` | `Lib/concurrent/futures/thread.py` | `62e194f69dcd39919d8c06d0abee8b92c6c3d3c71229d7b55e151005e2960a76` |
 | `tomllib._parser` | `Lib/tomllib/_parser.py` | `82591be9349687b88926a7b1a28b0f892a132e4043cb249bd1bd1594bdd721e3` |
 | `tomllib._re` | `Lib/tomllib/_re.py` | `0bd8a54280babaa755456e0e4ceabd5f072558f19373698e29d2491e0fb7e4b4` |
 | `tomllib._types` | `Lib/tomllib/_types.py` | `f864c6d9552a929c7032ace654ee05ef26ca75d21b027b801d77e65907138b74` |
@@ -54,6 +58,12 @@ Its selected compiled output-format tests derive from `Lib/test/test_difflib.py`
 CPython commit `cbc944f4bc59639a444dd971c737788ba2283a91`, SHA-256
 `dc6b140c8dd31e6971888070ea5175a0ab72ecadbdc96956071ceb062f34e636`;
 the test header identifies selections and exclusions.
+`pprint` selects each value's method by its static type, where upstream looks
+`type(object).__repr__` up in a table; its loops over items have their bodies in methods of
+their own, so that a tuple's items keep their types. Its selected compiled tests derive from
+`Lib/test/test_pprint.py` at the same commit, SHA-256
+`e189a2517eb6569907fdfd8dcb5f820e96ce3cf97275aa288623b6441af91e19`; the
+[test header](../tests/programs/upstream/upstream_pprint.py) identifies selections and exclusions.
 `tomllib`'s package file, `Lib/tomllib/__init__.py`, is unchanged (lib/README.md); its other
 modules opt in to dynamic `Any` and carry the edits lib/compatibility.md lists. The files and the
 test data of `tests/programs/upstream/upstream_tomllib_data.py` were taken from the
@@ -62,6 +72,11 @@ test data of `tests/programs/upstream/upstream_tomllib_data.py` were taken from 
 `threading` and `logging` were committed unchanged from the `Python-3.13.16` release first, so the
 diff of the next commit to each is its port's edits; both opt in to dynamic `Any` and carry the
 edits lib/compatibility.md lists.
+`concurrent.futures`' three modules were committed unchanged from that release first too, with
+the package file `Lib/concurrent/__init__.py`, which stays unchanged (lib/README.md); the
+later commits to them are the port's edits. The edits take out the worker threads, their queue,
+the waiters and the locks, run a submitted call in `submit()` and make `Future` a generic class
+of its result's type; `Lib/concurrent/futures/process.py` is not taken.
 `datetime` is `_pydatetime`, which CPython's `Lib/datetime.py` re-exports when its C
 accelerator is missing. Where CPython's accelerator behaves differently, the edits follow
 `Modules/_datetimemodule.c` (SHA-256
@@ -87,8 +102,10 @@ CPython runs the source.
 | `io` | `Modules/_io/stringio.c`, `Modules/_io/bytesio.c`, `Modules/_io/textio.c`, `Modules/_io/_iomodule.c` | Typed `StringIO` and `BytesIO`, with append chunks joined when read; `TextIOWrapper`, generic over its buffer's class, with the C type's chunks, decoders and messages; `IncrementalNewlineDecoder` without a decoder and `text_encoding()` |
 | `_pystachy_bfile` | `Modules/_io/_iomodule.c`, `Modules/_io/fileio.c`, `Modules/_io/bufferedio.c` | The binary files of `open()`: `FileIO`, `BufferedReader`, `BufferedWriter` and `BufferedRandom` over the runtime's files (runtime.c's `pys_bopen`), with `open()`'s argument checks and each class's messages and reprs |
 | `types` (`_pystachy_types`, `_pystachy_mappingproxy`) | `Lib/types.py` (SHA-256 `3a289bc5366e96d01017038870b5b8861b87305d351b99c688bcc681d908fa7d`), `Objects/descrobject.c` | The module's docstring and its names: `TracebackType`, as `from types import TracebackType` imports it for `__exit__`'s annotation, `MappingProxyType`, the C type `mappingproxy` of a dict, with its docstrings and messages, and the others, of which the compiler supports `GenericAlias` in `__class_getitem__ = classmethod(GenericAlias)` |
+| `inspect` | `Lib/inspect.py` (SHA-256 `b56e92a94bd48d89e44b8a4cdaa3a16f4d69df06c8500fce737c7cc879b0c982`) | The module's docstring, `cleandoc()`, `formatannotation()`'s branches for a class and for another value, `_ParameterKind` and the classes `Parameter` and `Signature` (their constructors' checks, properties, `replace()`, `__str__()`, `format()`, `__repr__()`, `__eq__()` and `__hash__()`) with their docstrings and comments; the markers `_empty` and `_void` are objects, and what reads live objects is left out |
 | `csv` | `Modules/_csv.c`, `Lib/csv.py` | Reader state machine, writer and dialect APIs |
-| `decimal` | `Lib/_pydecimal.py`, `Modules/_decimal/libmpdec/mpdecimal.c` | `Decimal` on integer coefficients with the Python module's rounding, arithmetic, text and hashing, the C library's integer power and the C module's messages; contexts without flags or configurable traps |
+| `decimal` | `Lib/_pydecimal.py`, `Modules/_decimal/libmpdec/mpdecimal.c` | `Decimal` on integer coefficients with the Python module's rounding, arithmetic, text and hashing, its integer algorithms for `exp()`, `ln()` and `log10()` (`_ilog`, `_iexp`, `_dlog`, `_dlog10`, `_dexp`), the C library's power and the C module's messages; contexts without flags or configurable traps |
+| `importlib` | `Lib/importlib/util.py` (SHA-256 `47eed68cfc84cdb4950edc092fc1a81abf37b47cadd6ff68d3460b1c9f536e9b`), `Lib/importlib/_bootstrap.py` (SHA-256 `cec8963970494ea46eaa12073b8ba4c04963b1d1cf4329313c8014925ed0cb12`), `Lib/importlib/resources/_common.py` (SHA-256 `f476de9f54ce40631f28b7175eef8f2d3deeac748ea77e2f9b10938fb31297e8`), `Lib/importlib/resources/_functional.py` (SHA-256 `98b5380f04a587cff62175aac0a39f3d5c7246a004a41dc1e174df471af75f73`), `Lib/importlib/machinery.py` (SHA-256 `2e558d293587d18a5919f7093f8c5c10ea54dd9336f6b2c4ed9d6233c114652a`) | `util.resolve_name()` and `_bootstrap._resolve_name()`, annotated; `resources.files()` over the compiler's table of the program's module files, with `as_file()` and the functional API's code; `machinery.all_suffixes()` over Pystachy's own suffix lists; their docstrings. `tests/programs/upstream/upstream_importlib_util.py` adapts `ResolveNameTests` of `Lib/test/test_importlib/test_util.py` (SHA-256 `0e3cda547e2e3383635cb55b69f2d4496d12f98f45fcf00d953bd3579515bfbf`) |
 | `collections.deque` | `Modules/_collectionsmodule.c` | Typed two-list queue with CPython comparison-state checks |
 | `collections.defaultdict` | `Modules/_collectionsmodule.c` | Typed dict wrapper with the C type's factory, repr and `\|` |
 | `collections.OrderedDict` | `Lib/collections/__init__.py`, `Objects/odictobject.c` | Two typed dicts, the first items reversed, with the Python class's docstrings and the C type's messages |
@@ -97,6 +114,7 @@ CPython runs the source.
 | `functools` | `Modules/_functoolsmodule.c`, `Lib/functools.py` | Generic cache wrapper, plus adapted reduction, comparison-key and `partial` fallbacks, and the unchanged `update_wrapper()` and `wraps()`, which the compiler applies |
 | `platform` | `Lib/platform.py` (SHA-256 `75fe9b94662e55b91e19602bb75e6ca6132f7a53fb22844fc44a507a639127e1`) | `uname()`, whose fields the runtime reads from `uname(2)` as `os.uname()` does, with `_unknown_as_blank()`; `system()`, `node()`, `release()`, `version()`, `machine()` and the Python version functions; their docstrings |
 | `_pystachy_string` | `Objects/stringlib/unicode_format.h`, `Objects/unicodeobject.c` | `_string.formatter_parser()` and `formatter_field_name_split()`, returning lists |
+| `subprocess` | `Lib/subprocess.py` (SHA-256 `3418c49f58081da808966bf1d3a6c819b28e95074a43e1a36d60bcf9649bdc51`) | The exceptions, `CompletedProcess`, `run()`, `call()`, `check_call()`, `check_output()`, `getstatusoutput()`, `getoutput()`, `list2cmdline()` and the POSIX `Popen` (`_get_handles()`, `_execute_child()`, `_communicate()`, `_wait()`, `send_signal()`) with their docstrings and comments, over private primitives in place of `os`, `select`, `io` and `_posixsubprocess`; the child's steps in `runtime.c` follow `Modules/_posixsubprocess.c`'s `child_exec()` |
 | `re` | `Lib/re/`, `Modules/_sre/sre_lib.h`, `sre.c` | Typed parser/compiler and matching engine with an explicit context stack |
 | `sysconfig` | `Lib/sysconfig/__init__.py` (SHA-256 `09a99ccf9fd3a2b5455167bf1cf64d869fe0e93107baf6c3edb1cbeb7a063b10`) | The variables CPython computes as it starts (`_init_config_vars()`), `get_config_vars()`, `get_config_var()`, `get_paths()`, `get_path()`, `get_preferred_scheme()`, `get_default_scheme()`, the name functions and their docstrings, for one scheme of Pystachy's own layout; the path expansion is a loop in place of `str.format(**vars)` |
 | `_pyrandom` | `Modules/_randommodule.c`, `Python/pyhash.c` | `_random.Random`'s Mersenne Twister, seeding and state; float hashing for float seeds |
@@ -104,6 +122,7 @@ CPython runs the source.
 | `hashlib` | `Lib/hashlib.py`, `Modules/_hashopenssl.c` for the API; RFC 1321 and FIPS 180-4 for the algorithms | MD5, SHA-1, SHA-224 and SHA-256 on 32-bit words in Pystachy's ints, as one class of hash object with the C type's docstrings and `new()`'s message |
 | `hmac` | `Lib/hmac.py` for the API and docstrings; RFC 2104 for the algorithm | HMAC over `lib/hashlib.py`'s hash objects, with the hash given by name or by constructor, and a constant-time `compare_digest()` in place of `_operator`'s |
 | `atexit` (`_pystachy_atexit`) | `Modules/atexitmodule.c` (SHA-256 `a61f11e295d38463b36524e51b8eba64d5a84022bb7df7b3c0ccd8aa9fe9521b`) | `register()`, `_clear()`, `_run_exitfuncs()` and `_ncallbacks()`, with the C module's order of callbacks; `unregister()` raises `NotImplementedError` |
+| `gc` (`_pystachy_gc`) | `Modules/gcmodule.c` (SHA-256 `7b9d11b17f0e1811fbbf592e73b997b7a5a70d22af22c2be95a3774c2eb6a14a`), `Include/internal/pycore_runtime_init.h` | `collect()`, which runs Pystachy's collector, with the C module's check of its generation; the settings `enable()`, `disable()`, `set_threshold()` and `set_debug()` keep, with CPython's initial values and the `TypeError`s of the C functions' argument checks; their docstrings |
 | `abc` (`_pystachy_abc`) | `Lib/abc.py` (SHA-256 `e558702a95cdce3febd289da021715d2b92bc43995b8a1bc58dfa1c3d8010287`), `Modules/_abc.c`, `Objects/typeobject.c` | `ABC`, `ABCMeta`, `abstractmethod()` and the deprecated decorators, which the compiler applies, with `object.__new__`'s `TypeError` for an abstract class; their docstrings |
 | `_codecs` (`_pystachy_codecs`) | `Modules/_codecsmodule.c`, `Objects/unicodeobject.c`, `Objects/stringlib/codecs.h` | The UTF-8, Latin-1, ASCII and charmap codec functions, `encode()`, `decode()` and the error handler registry, with the C module's errors and messages; the other codecs raise `NotImplementedError` |
 | `_struct` (`_pystachy_struct`) | `Modules/_struct.c`, `Objects/floatobject.c` | `calcsize()`, and the packing and unpacking of each item, which the compiler composes into `pack()`, `unpack()`, `unpack_from()` and `iter_unpack()` for a format it knows, with the C module's sizes, alignment, errors and messages and `PyFloat_Pack2()`'s rounding; `Struct`; their docstrings |
@@ -119,6 +138,9 @@ CPython runs the source.
 | `traceback` | `Lib/traceback.py` (SHA-256 `d81f560ce5f09e217bc81a40cb9881d51720121661d1488834a7b2c72618a1a2`) | The exception-only formatting of `format_exception()` and its relatives, with causes, as `TracebackException` gives it for an exception whose `__traceback__` is `None`; empty stacks |
 | `_pystachy_percent` | `Objects/unicodeobject.c` (SHA-256 `68a5618c520f5b348e9e2abe1a77688c4b0c1f377d86f79e3399b41b445c24ab`) | `PyUnicode_Format()`, for `%` of a format string that only the run time knows, with its errors and messages |
 | `_pystachy_iterators` | `Objects/listobject.c`, `tupleobject.c`, `unicodeobject.c`, `rangeobject.c`, `dictobject.c`, `setobject.c` | Iterator classes of `iter()` over builtin containers, with CPython's exhaustion and size-change checks and messages |
+| `librt.internal` | librt 0.16.0's `internal/librt_internal.c` (SHA-256 `c9bb928d585188f83980bcc5ab2c3c26f68ce0620dbe2f2b84d241e770ce41a2`; MIT, see THIRD_PARTY_NOTICES) | mypy's cache codec: `ReadBuffer`, `WriteBuffer` (chunks joined by `getvalue()`) and every function, with the extension's byte formats, errors, messages and read positions; `extract_symbol()` keeps a stack rather than recursing |
+| `librt.base64` | librt 0.16.0's `base64/librt_base64.c` (SHA-256 `ff22e856eaaf15c1a597b2176d13ab4207347c9ab7f321f46a6cf0f9a90c29a6`; MIT, see THIRD_PARTY_NOTICES) | `b64encode()`, `b64decode()`, `urlsafe_b64encode()` and `urlsafe_b64decode()` on `binascii`: the characters the decoders ignore, and the extension's errors and messages (`ValueError` for incorrect padding, `RuntimeError` where one character and three padding characters end the data); the decoder of its bundled base64 library is described by what it accepts, not ported |
+| `ast_serialize` | ast-serialize 0.13.1's `src/serialize_ast.rs` (SHA-256 `84fb5c119d5389ed69c61c79ac9adfbd7bff675f20f6d5d8bcb886c29aa899a0`), `reachability.rs`, `type_comment.rs`, `mypy_inline_config.rs`, `func_effect_visitor.rs` and `lib.rs`, and the lexer, parser and string parsing of the Ruff 0.16.3 crates it vendors (`crates/ruff_python_parser/src/lexer.rs`, SHA-256 `eca092187be1cc52863df3d564942a40bcf5b4065acd403c26aba192a67365aa`, `parser/*.rs`, `string.rs`, `token_source.rs`; MIT, see THIRD_PARTY_NOTICES); Unicode 17.0's `DerivedCoreProperties.txt` (SHA-256 `24c7fed1195c482faaefd5c1e7eb821c5ee1fb6de07ecdbaa64b56a99da22c08`) and 16.0's `UnicodeData.txt` (SHA-256 `ff58e5823bd095166564a006e47d111130813dcf8bf234ef79fa51a870edb48f`) and `NameAliases.txt` (SHA-256 `9953f0fcebf5ea8091c5c581e4df0e43f20d2533c84ccca7987a9bb819a896a8`), the versions of the crates its lexer and string parser use | mypy's native parser front end: `parse()` and `parse_type_string()`, with the lexer's tokens and errors, the parser's ranges, recovery and messages, and the serializer's bytes, also where they are quirks (a non-ASCII line's columns), on the source's UTF-8 bytes; the source's SHA-1 in the subset |
 
 `re/_constants.py` retains upstream opcode/flag numbers. `tools/re_tables.py`
 generates `re/_unicode.py` from CPython's Unicode functions, including group-name
@@ -192,6 +214,24 @@ SHA-256 `bd2f762ac481caabd817f6b94de19f3788ae7635406d06770b7972aafad03632`, whos
 `Objects/stringlib/codecs.h`, SHA-256
 `d126faea1dcf3f3b19a256237e5e87bdaa006dbc5b26fb0b5267f9a1dcbab3b4`), and compares the 39
 functions' signatures.
+
+`tools/librt_check.py` runs `lib/librt/internal.py` on CPython and compares it with librt 0.16.0's
+extension: 20,000 rounds of random values (at the integer formats' boundaries, random strings, bytes
+and float bit patterns) give the same bytes and read back the same values, and 560,000 reads and
+`extract_symbol()` calls of random nested cache objects and their truncations and corruptions give
+the same results or errors, with the same next position (`--rounds 20000 --seed 7`).
+
+`tools/librt_base64_check.py` does the same for `lib/librt/base64.py`: 1,416,764 calls of the four
+functions on random bytes, text over the alphabet with padding and other characters, and valid
+encodings with characters inserted, removed or appended, as bytes and as str, give the
+extension's bytes or its exception and message (`--rounds 200000 --seed 99`), and so do arguments
+of other types.
+
+`tools/ast_serialize_check.py` runs `lib/ast_serialize/` on CPython and compares all five elements of `parse()`'s result with ast-serialize 0.13.1's extension, for seven option sets (target versions 3.8, 3.11, 3.13 and 3.14, platforms linux, win32 and darwin, cache versions 0, 5 and 7, `always_true` and `always_false` names, body skipping), over every Python file of mypy 2.4.1's and mypyc's sources (246 files), CPython 3.13.16's `Lib/` (1,771, 4 of them with syntax errors), the site-packages of the pinned development tools (1,671, mypy's 761 typeshed stubs among them) and this repository's `lib/`, `src/` and `tests/` (5,206, 228 of them with syntax errors): all are identical. So are 18,000 random corruptions of windows of those sources (`--fuzz`; 15,599 have syntax errors, whose messages, positions and recovered trees match) and `parse_type_string()` on the 4,070 string annotations and type comments of those files and hand-written cases, for cache versions 0, 5 and 7 (`--type-strings`). `tools/ast_serialize_tables.py` generates the identifier tables of `lib/ast_serialize/_unicode.py` from Unicode 17.0.0's `DerivedCoreProperties.txt` (the unicode-ident crate's version) and `lib/ast_serialize/_names16.py`, the names and aliases of Unicode 16.0.0 (unicode_names2's) that CPython 3.13's `unicodedata` lacks; with them every non-ASCII identifier character, first or not, parses as in the extension (298,316 sources), and so does a `\N{...}` escape of each of Unicode 16.0's 40,013 names.
+
+`lib/ast_serialize/_sha1.py`, the SHA-1 of the source hash, is written by
+`tools/ast_serialize_sha1.py`, which with `--check` fails if the file is not what it writes and
+compares the function with `hashlib` for 264 lengths.
 
 `tools/binascii_check.py` runs `lib/_pystachy_binascii.py` on CPython, compares the results and
 errors of 420,000 calls of its functions, mostly at the edges of their inputs, with those of the C

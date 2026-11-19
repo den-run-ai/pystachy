@@ -1,0 +1,5 @@
+['A', 'B', 'C'] 3 True
+c None ['c', 'a']
+True False False True
+True False False True
+[exit 0]
