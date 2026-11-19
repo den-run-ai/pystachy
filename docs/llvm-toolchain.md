@@ -3,8 +3,8 @@
 [`tools/llvm_toolchain.sh`](../tools/llvm_toolchain.sh) builds, from LLVM's release sources,
 the part of LLVM that Pystachy's driver runs: `clang`, `opt`, `lli`, `llc`, `llvm-link` and
 `llvm-as` over one shared `libLLVM` that holds the host's target alone, with clang's C headers
-for that architecture. Built in the `manylinux_2_28` image, the archive runs on Linux with
-glibc 2.28 or later.
+for that architecture. Built in the `manylinux_2_28` image, the x86-64 archive is 25.5 MiB
+(101.1 MiB unpacked) and its tools run on Linux with glibc 2.28 or later.
 
 Pystachy does not download this toolchain: [installation](install.md) still uses a
 distribution's LLVM, or the pinned packages that `pystachy_toolchain.py` fetches. Select a
@@ -21,6 +21,19 @@ finds its headers in `../lib/clang/18`.
 
 ## Contents
 
+| | Minimal toolchain | Ubuntu 24.04 packages |
+|---|---:|---:|
+| Download | 25.5 MiB | 64.5 MiB |
+| Installed | 101.1 MiB | 308.8 MiB |
+| `libLLVM` | 61.4 MiB, one target | 117.5 MiB, 21 targets |
+| clang | 36.3 MiB, its libraries linked in | 61.8 MiB `libclang-cpp` |
+| Host libraries | glibc 2.28, libstdc++ | glibc 2.38, libstdc++, libedit, libffi, libtinfo, libxml2, libzstd, zlib |
+
+The Ubuntu column is LLVM 18.1.3 as `pystachy_toolchain.py` pins it, without
+`libclang-rt-18-dev`. Both need the host's linker and C library development files to
+link a program (`build-essential` on Ubuntu). [Measured](#measured) gives the build behind
+the first column.
+
 Each choice removes code the driver never reaches:
 
 - **One target.** The driver compiles for the host only.
@@ -29,9 +42,12 @@ Each choice removes code the driver never reaches:
   the linker drops what clang does not reach.
 - **No optional host library.** zlib, zstd, libxml2, terminfo, libedit and libffi are off, so
   the tools need only the C and C++ libraries.
-- **`MinSizeRel`.** LLVM is compiled for size.
 - **No static analyzer, ARC migration or plugins.** `clang --analyze` reports that the
   action is not compiled in.
+
+LLVM is compiled at `-O2`, because the driver's time is LLVM's.
+`LLVM_TOOLCHAIN_BUILD=MinSizeRel` compiles it for size instead: the archive is 16.2 MiB,
+36% smaller, and `opt` and `llc` took 28% and 43% longer on the compiler's own IR.
 
 What the archive leaves out limits three uses. It has no compiler-rt, so `PYSTACHY_CFLAGS`
 with `-fsanitize`, `PYSTACHY_PROFILE_GENERATE` and the UBSan stage of `make verify` need a
@@ -40,9 +56,9 @@ compressed debug sections.
 
 ## Build
 
-Compiling LLVM and clang takes longer than the 15-minute limit on workflow jobs
-([PR budget](testing.md#pr-budget)), so no workflow runs the build. Build in the pinned image,
-from the repository root:
+The build compiles 2,368 files, which took 33 minutes on four cores: longer than the
+15-minute limit on workflow jobs ([PR budget](testing.md#pr-budget)), so no workflow runs it.
+Build in the pinned image, from the repository root:
 
 ```sh
 docker run --rm -v "$PWD:/src" -w /src \
@@ -77,3 +93,35 @@ program: C to IR, `llvm-as`, `llvm-link --only-needed`, a coroutine and `-O2` pi
 also builds [`lljit.c`](../lljit.c) against that `libLLVM` and runs its self-check, as the
 driver does at first use. `python3 -m unittest discover -s tools -p test_llvm_toolchain.py`
 checks the recipe's pins and the check's refusals.
+
+## Measured
+
+These are measurements of 19 November 2026, built in the image above on a shared 4-CPU
+x86-64 host. They are not rerun by CI. The `-O2` archive (SHA-256 `b61cb774…5526929e`) comes
+from the recipe at commit `7fde2da2`; the `MinSizeRel` one (`212abbe8…89948fbc`) from
+`a4b2fd18`, whose LLVM settings for that build type are the same.
+
+| | `-O2` (default) | `MinSizeRel` | Ubuntu 18.1.3 |
+|---|---:|---:|---:|
+| Archive | 25.5 MiB | 16.2 MiB | 64.5 MiB |
+| Installed | 101.1 MiB | 69.1 MiB | 308.8 MiB |
+| `opt -passes='default<O2>'` | 26.7 s | 34.3 s | 26.0 s |
+| `llc -O2 -filetype=obj` | 19.9 s | 28.5 s | 20.5 s |
+| `make`, the three-stage bootstrap | 308 s | 422 s | 315 s |
+| Full corpus, JIT and AOT | 528 s | 698 s | not run |
+
+`opt` and `llc` ran on the compiler's stage-1 IR (1,064,114 lines) on one pinned core, and
+each figure is the median of three interleaved rounds. The bootstrap and corpus times are
+single runs with four workers on Ubuntu 24.04.
+
+With each built archive selected by `PYSTACHY_LLVM` on Ubuntu 24.04, `make` reached the
+compiler's and the runtime's fixed points and `make test` passed all 5,395 cases (8,784
+JIT and AOT runs). Every binary needs at most glibc 2.27 and `GLIBCXX_3.4.22`, and
+`tools/linux_abi.py --max-glibc 2.28` reports no violation.
+
+The toolchain's floor is lower than Pystachy's, whose [supported platforms](install.md) need
+glibc 2.39. On AlmaLinux 8.10 (glibc 2.28, GCC 8's `libgcc_s`) the check passes, and `make`
+reaches both fixed points only with `PYSTACHY_CFLAGS=-pthread`. Of 1,106 runs of a 559-case
+sample there, 24 failed: in 22 JIT runs an exception escaped a handler that catches it in
+AOT, and one case printed another last digit from `pow` in both modes.
+[#998](https://github.com/den-run-ai/pystachy/issues/998) tracks an older baseline.
