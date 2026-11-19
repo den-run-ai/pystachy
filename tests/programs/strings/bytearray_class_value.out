@@ -1,0 +1,3 @@
+<class 'bytearray'> <class 'bytearray'> <class 'bytearray'> <class 'bytearray'> builtins bytearray True True
+bytearray(b'\x00') True
+[exit 0]

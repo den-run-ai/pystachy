@@ -40,13 +40,13 @@ numbers with their units and state each limit once. GitHub shows every newline i
 as a line break, so write each paragraph and list item on one line. Disclose AI
 assistance in a sentence; generated-by footers and session links are not accepted.
 
-The metadata workflow flags incomplete issues with `needs-description` and removes
-it after correction; it also flags hard-wrapped paragraphs and tool footers. PRs
-receive a `Submission format` check, rerun on edits and pushes without
-rerunning compiler tests. Maintainers must require that
-check in branch protection/rulesets to block merges. Issues cannot be blocked at
-creation; API-created issues use the same check as the web templates. The workflow
-starts after it lands on the default branch; it does not audit untouched older items.
+The issue metadata workflow flags incomplete issues with `needs-description` and removes
+it after correction; it also flags hard-wrapped paragraphs and tool footers. A separate
+PR workflow uses a read-only token and reports a `Submission format` check, rerun on edits
+and pushes without rerunning compiler tests. Maintainers must require that check in
+branch protection/rulesets to block merges. Issues cannot be blocked at creation;
+API-created issues use the same check as the web templates. Issue labeling starts after
+its workflow lands on the default branch; it does not audit untouched older items.
 
 ## Repository contents
 

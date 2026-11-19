@@ -22,6 +22,7 @@ These programs can compile and run with different results, errors or timing of e
 |---|---|
 | Ordinary `int` | Signed 64-bit. Oversized results, intermediates and `int()` conversions raise `OverflowError`. Use explicit [`mpz`](../mpz.md) or opt in to [promoting ints](#promoting-ints-opt-in-prototype). |
 | `int ** negative int` | `ValueError`; `0 ** -1` still raises `ZeroDivisionError`. |
+| An `int` for a `float` parameter | The function is [compiled for the `int`](typing.md#int-arguments-for-float-parameters), so where CPython computes with the `int` its body follows the two rows above: `w * h` of `2**40` and `2**40` raises `OverflowError`, and `base ** exp` of `10` and `-3` raises `ValueError`. Earlier releases rejected these calls at compile time ([deviation](../../tests/deviations/int_for_float_int_ops.py)). |
 | Negative float to a fractional power | `ValueError`; CPython returns a complex number. |
 | `complex` identity | Each imaginary literal, operation and `complex()` of a number makes a new object; CPython shares a module's equal constants, so `x = 1j; y = 1j; x is y` is true there ([deviation](../../tests/deviations/complex_identity.py)). A NaN part hashes as a NaN does (below). |
 | `None` as `complex` in a union | A `complex` that holds `None`, stored where a union without `None` is declared, raises `TypeError`; CPython stores `None`, which mypy rejects ([deviation](../../tests/deviations/complex_union_none.py)). |
@@ -35,6 +36,17 @@ counts stay checked. With an exact, nonnegative opposite operand,
 `(k * 0xCC9E2D51) & 0xFFFFFFFF` matches CPython. An oversized final masked result
 raises only after the whole expression is evaluated
 ([deviation](../../tests/deviations/int_masked_overflow.py)).
+
+**bytearray:** a class of the subset (`lib/_pystachy_bytearray.py`) whose buffer no other code
+holds: `bytes(b)`, a slice and a method's result are copies, and two names of one bytearray share
+its changes. It has CPython's constructor forms, items, slices (read, assigned and deleted, with
+steps), `append`, `extend`, `insert`, `pop`, `remove`, `reverse`, `+`, `+=`, `*`, comparisons with
+`bytes` and bytearrays on either side, and the methods `bytes` has here. Rejected as the program
+compiles: `bytes + bytearray` and `int * bytearray` (reflected operators),
+`bytes | bytearray` annotations, `%` formatting, `title()`, `istitle()` and `expandtabs()` (which
+`bytes` lacks too), a `range(...)` passed to `extend()` (pass `list(range(...))`), and a bytearray
+given to `struct`, a file or another library function, which take `bytes(b)`. There is no
+`memoryview`.
 
 ### Text and file positions
 
@@ -108,6 +120,9 @@ applies. Bytes case methods remain ASCII-only.
   those in later call arguments. `enumerate`, `zip`, `reversed`, and `in`/`min`/`max`
   over values can therefore miss size changes that CPython detects. Plain `for`
   loops and `iter()` over `d.items()` traverse the dict and detect size changes.
+  Written directly in a test, `d.keys()` or `d.items()` of a dict variable, field or
+  display is looked up by `in` and compared with another such view as a set, as
+  CPython does: `{1: 0, 2: 0}.keys() == {2: 0, 1: 0}.keys()` is true.
 - **Set order differs.** String hashes are not CPython's randomized hashes;
   constant displays do not reuse CPython's frozenset constants or `.pyc` layouts.
   Identity-hashed objects depend on addresses in both runtimes. Use `sorted()`
@@ -250,10 +265,11 @@ or generator/async initializers retain eager formatting
   not created, and uncalled templates are not type-checked. Syntax errors remain
   errors. See [import-time scope](modules.md#unsupported-code-in-imported-modules).
 - **Optional imports** can take the fallback where CPython finds an installed
-  module or API. A failed module retains globals already assigned; a later import
-  reruns its code over them. A subclass of `ImportError` ends the program instead of
-  reaching the handler when an imported module's code raises it, or when the statements
-  after resolved imports raise it but cannot keep the `except` clauses. See
+  module or API, also where a module that the imported module needs is missing here
+  (CPython's `ssl` without `_ssl`). A failed module retains globals already assigned;
+  a later import reruns its code over them. A subclass of `ImportError` ends the program
+  instead of reaching the handler when an imported module's code raises it, or when the
+  statements after resolved imports raise it but cannot keep the `except` clauses. See
   [optional imports](modules.md#optional-imports).
 - **Unbound globals** read as `m.x` raise `AttributeError` without CPython's
   circular-import/renaming hints. `from m import x` raises `ImportError`, using the
@@ -434,7 +450,8 @@ See [module initialization](modules.md#finding-and-running-modules),
 - **Optional imports:** a possible `ImportError` or `ModuleNotFoundError` raised under that name,
   other than a definite module-top-level raise;
   a possibly unbound from-import; handlers using `as e`, re-raising, or potentially ending
-  the program when the module is missing; a failing module importing its caller back.
+  the program when the module, or one it needs, is missing; a failing module importing its
+  caller back; an import that is not optional of a module that needs a missing one.
   Optional from-imports also require a definite binding, excluding conditional, deleted,
   annotation-only, function-created or star-imported names.
 - **Module structure:** imported modules binding `__name__`; syntax errors even in imports
@@ -716,7 +733,7 @@ See [user exception classes](semantics.md#user-exception-classes) and
 - **Dict methods:** `update` with different key/value types, pair iterables beyond lists of
   matching tuples, or keyword arguments for nonstring keys; `fromkeys` with generators or
   implicit `None` values without a contextual type.
-- **Bytes:** `bytearray`, `memoryview`, `expandtabs`, `title`, `istitle`, `%`
+- **Bytes:** `memoryview`, `expandtabs`, `title`, `istitle`, `%`
   formatting, integer search arguments, method keywords except `hex` / `translate`, and
   equality with strings.
 - **Formatting:** format strings beyond literals or uniquely bound module literals whose

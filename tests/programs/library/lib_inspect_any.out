@@ -1,0 +1,17 @@
+fn()
+fn(p0)
+fn(p0, p1=None)
+fn(p0, p1=None, p2=7)
+fn(p0, p1=None, p2=7, p3=2.5)
+fn(p0, p1=None, p2=7, p3=2.5, p4=(1, 'a', None))
+fn(p0, p1=None, p2=7, p3=2.5, p4=(1, 'a', None), p5='text')
+fn(p0, p1=None, p2=7, p3=2.5, p4=(1, 'a', None), p5='text', p6=True)
+None
+pt: __main__.Point = None (*, pt: __main__.Point = None) -> __main__.Point Point __main__.Point inspect.Parameter True
+True True False [<class 'inspect._empty'>, 1, <class 'inspect._empty'>] pt: __main__.Point = None 3
+pt True True pt: __main__.Point = None True True q: __main__.Point
+KEYWORD_ONLY True KEYWORD_ONLY True no parameter KEYWORD_ONLY keyword-only True
+(*, pt: __main__.Point = None) 1 True True True
+late: 'int' = 5 6 INT
+TypeError: name must be a str, not a int
+[exit 0]

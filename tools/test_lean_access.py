@@ -237,7 +237,7 @@ class AdapterTests(SnapshotFixture):
                          {"@f.item": 1, "@f.last": 1, "@f.pair": 2, "@f.ends": 2, "@f.tail3": 4,
                           "@f.class_lookup": 2, "@f.total": 1, "@f.odd_lengths": 1, "@f.ranked": 1,
                           "@f.counted": 3, "@f.global_lookup": 1, "@f.smoothed": 4, "@f.pairs": 4, "@f.shifted": 2,
-                          "@m.Cache.lookup": 1})
+                          "@f.rows": 2, "@m.Cache.lookup": 1})
 
     def test_selection_and_snapshot_header_are_checked(self):
         with self.assertRaisesRegex(ValueError, "exactly one function"):
@@ -293,8 +293,8 @@ class ProvedCheckerTests(SnapshotFixture):
     def test_every_access_of_the_example_is_proved(self):
         fields, code = check_all(self.snapshot, CHECKER)
         self.assertEqual((fields["status"], code), ("accepted", 0), fields)
-        self.assertEqual(fields["totals"]["proved_accesses"], 30)
-        self.assertEqual(fields["totals"]["accesses"], 30)
+        self.assertEqual(fields["totals"]["proved_accesses"], 32)
+        self.assertEqual(fields["totals"]["accesses"], 32)
 
     def test_negated_guards_prove_only_the_safe_branch(self):
         for kind in ("list", "dict"):
@@ -513,6 +513,38 @@ class ProvedCheckerTests(SnapshotFixture):
             for corrupt in (further, lowered, shortened):
                 self.assertFalse(self.verdict(corrupt(symbol), symbol), (symbol, corrupt.__name__))
 
+    def test_a_base_copy_is_proved_and_each_corruption_of_its_tests_rejects(self):
+        # (listguard with a base: the copy's unchecked reads of data[bi + d] and data[bj + d] hold
+        # where the tests before the loop find each base at least 0 and the stop plus it at most
+        # the length, and the copy's plain sums of a base and d fit)
+        self.assertTrue(self.verdict(copy.deepcopy(self.snapshot), "@f.rows"))
+
+        def tests_of(function, registers):
+            # (the tests before the loop: a literal at most a base, or a sum at most a length)
+            return [(block, operation) for block in function["blocks"] for operation in block["operations"]
+                    if operation["op"] == "scalar.cmp" and operation["text"] == "sle"
+                    and operation["operands"][0]["value"].startswith("%") == registers]
+
+        def lowered():
+            # (each base is tested against -1: bi + 0 may be negative)
+            snapshot, function = self.selected("@f.rows")
+            for _, test in tests_of(function, False):
+                self.assertEqual(test["operands"][0]["value"], "0")
+                test["operands"][0]["value"] = "-1"
+            return snapshot
+
+        def swapped():
+            # (the copy runs where a length test fails, and the loop as compiled where it passes)
+            snapshot, function = self.selected("@f.rows")
+            for block, _ in tests_of(function, True):
+                branch = block["operations"][-1]
+                self.assertEqual(branch["op"], "cbr")
+                branch["targets"].reverse()
+            return snapshot
+
+        for corrupt in (lowered, swapped):
+            self.assertFalse(self.verdict(corrupt(), "@f.rows"), corrupt.__name__)
+
     def test_a_global_write_between_reloads_rejects(self):
         # (TABLE = {} after the lookup and before its reload: the entry belongs to another dict)
         snapshot, function = self.selected("@f.global_lookup")
@@ -548,7 +580,7 @@ class ProvedCheckerTests(SnapshotFixture):
         code, report = run("--snapshot", str(self.snapshot_path), "--function", "@f.total")
         self.assertEqual((code, report["status"], report["checked"]), (0, "accepted", True))
         code, report = run("--snapshot", str(self.snapshot_path), "--all")
-        self.assertEqual((code, report["status"], report["totals"]["proved_accesses"]), (0, "accepted", 30))
+        self.assertEqual((code, report["status"], report["totals"]["proved_accesses"]), (0, "accepted", 32))
         with tempfile.TemporaryDirectory() as temporary:
             emitted = Path(temporary) / "candidate.json"
             code, report = run("--snapshot", str(self.snapshot_path), "--function", "@f.item", "--emit", str(emitted))

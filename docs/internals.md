@@ -709,6 +709,15 @@ including 4 KiB and 64 KiB pages, and runs deep recursion in JIT and AOT under a
 `RLIMIT_STACK`. Its extension probe also maps an obstacle before import and verifies catchable
 errors and recovery under finite and unlimited host limits, with program GC stress.
 
+`PYSTACHY_JIT_OPT=2` runs LLVM's `-O2` pipeline over the program's module in place of the JIT
+tier's cleanup (inlining, `mem2reg`, `instcombine` and `simplifycfg`): loop optimizations,
+vectorization and an inliner without the `PYSTACHY_JIT_INLINE` budget, as an AOT build gets, but
+over the program alone, since this tier still calls the precompiled runtime. Optimizing costs time
+at each launch that only a program whose loops run long enough repays, so the default stays `1`
+([#430](https://github.com/den-run-ai/pystachy/issues/430); measurements in
+[performance](performance.md#start-up-and-memory)). Coroutines are lowered by the pipeline itself,
+and the allocator's late inlining (`JITLATE`) follows it as before.
+
 `PYSTACHY_JIT_CODEGEN=0` selects `-O0` code generation. This can reduce startup for large
 programs, but the generated code can run slower. The default (`2`) keeps ORC's own level of code
 generation, `-O2`. The [JIT runner](#the-jit-runner) generates the code at the level selected
@@ -831,6 +840,34 @@ tool pair. This opt-in does not change the existing combined-cache hit contract 
 cache headers independently on those hits. Cache directories must remain trusted
 local storage; no shared-cache trust or additional platform support is implied.
 
+<a id="profile-guided-builds"></a>
+
+### Profile-guided builds
+
+`build` can optimize an executable with a profile of its own runs, in three steps:
+
+```sh
+PYSTACHY_PROFILE_GENERATE=prof pystachy build app.py -o app-profiling
+./app-profiling typical-input        # each run writes prof/default_*.profraw
+llvm-profdata merge -o app.profdata prof/*.profraw
+PYSTACHY_PROFILE_USE=app.profdata pystachy build app.py -o app
+```
+
+The settings give clang's `-fprofile-generate=DIR` and `-fprofile-use=FILE` to the one step
+that runs LLVM's passes over the program's module: the program with the precompiled runtime's
+interface, or with the part of the runtime it needs where `build` links no precompiled runtime.
+So the profile also covers the runtime code inlined into the program; the generating build's link
+takes the flag too, for LLVM's profile runtime. The runtime's own build, and the precompiled
+runtime made of it, take neither: its modules are compiled apart, each would carry the module
+flag that a profile adds, and LLVM refuses to link two. `llvm-profdata` must be the toolchain's own, since the raw format follows LLVM's version.
+Only `build` reads the settings.
+
+Generator functions are left out of the profile (`noprofile`, which the generating build adds
+to each): LLVM 18 aborts where it applies a profile to one, so they are compiled as without a
+profile, and the code that calls them is still profiled. A profile is used only where the
+program has not changed since it was made: LLVM compiles a function whose code differs without
+it, and warns.
+
 ### Compiler stage timings
 
 Set `PYSTACHY_TIMING=1` to emit tab-separated stderr records with a monotonic
@@ -907,12 +944,15 @@ are required before promotion. `make verify` keeps the standard tier.
 | `PYSTACHY_RUNTIME_C_CACHE=1` | Opt in to Linux default-flag C-runtime bitcode reuse across compiler producers; `0` (default) disables it |
 | `PYSTACHY_CFLAGS` | Extra clang flags for runtime compilation and AOT linking; part of the cache key |
 | `PYSTACHY_AOT_OPT=0\|1\|2` | Experimental ordinary `build` program optimization/codegen tier; `2` is the default. Runtime compilation, raw IR, JIT and extensions keep their existing tiers. Use `make BOOTSTRAP_AOT_OPT=1` for the temporary bootstrap stage only. |
+| `PYSTACHY_PROFILE_GENERATE=DIR` | Make `build` write an executable that records a raw profile in `DIR` each time it runs; see [profile-guided builds](#profile-guided-builds) |
+| `PYSTACHY_PROFILE_USE=FILE` | Make `build` optimize with the indexed profile `FILE`; not together with `PYSTACHY_PROFILE_GENERATE` |
 | `PYSTACHY_DEBUG_LINES=1` | Emit deterministic Python file, function and instruction line metadata in LLVM IR; AOT retains DWARF line tables. No local variable descriptions; part of the runtime and program cache keys. See [source attribution](../bench/source_attribution/README.md) for JIT and profiler limits. |
 | `PYSTACHY_TIMING=1` | Print monotonic compiler [stage durations](#compiler-stage-timings) to stderr; nested totals overlap |
 | `PYSTACHY_IRCHECK=1` | Verify typed IR before lowering and after transforming passes |
 | `PYSTACHY_IRFX=1` | Print function effect summaries to stderr |
 | `PYSTACHY_OPT` | Disable named optimizations with `-name`, comma-separated, or all with `-all`; see [IR passes](typed-ir.md#optimizations) |
 | `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT user-function inlining, including the recursion entry helper; `0` disables it (the scalar recursion helpers remain inlined) |
+| `PYSTACHY_JIT_OPT=1\|2` | `1` (default) runs the JIT tier's cleanup over the program; `2` runs LLVM's `-O2` pipeline in its place, which takes longer at each launch (no `PYSTACHY_JIT_INLINE` budget applies) |
 | `PYSTACHY_JIT_CODEGEN=0\|2` | `0` generates the program's code at `-O0`: the JIT runner's `-O0`, or `llc -O0` for `lli`'s ORC to link; `2` (default) keeps ORC's level |
 | `PYSTACHY_JIT_LAUNCHER=auto\|lli` | What runs `pystachy run`'s programs: `auto` (default), Pystachy's [JIT runner](#the-jit-runner) where it can be built, else `lli`; `lli` always `lli` |
 | `PYSTACHY_PROGRAM_CACHE=0` | Disable the default Linux native [program cache](program-cache.md); unset, empty or `1` enables it where supported. Its [settings](program-cache.md#settings) section lists the variables that key or bypass it |

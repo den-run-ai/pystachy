@@ -10,7 +10,7 @@ h = H()
 
 
 class Table:
-    KEYS = {(h, 1)}
+    KEYS = {(h, 1), (1, h)}
 
     def __init__(self, *a):
         self.a = a

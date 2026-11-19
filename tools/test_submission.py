@@ -206,14 +206,41 @@ class MainTests(unittest.TestCase):
 
 
 class WorkflowTests(unittest.TestCase):
-    def test_pull_requests_get_the_required_check_from_pull_request(self):
+    def workflow(self, name):
         # BaseLoader keeps "on" a string key instead of YAML 1.1's boolean.
-        workflow = yaml.load((ROOT / ".github/workflows/submissions.yml").read_text(), Loader=yaml.BaseLoader)
-        self.assertEqual(set(workflow["on"]), {"issues", "pull_request"})
+        return yaml.load((ROOT / ".github/workflows" / name).read_text(), Loader=yaml.BaseLoader)
+
+    def test_pull_requests_get_the_required_check_from_pull_request(self):
+        workflow = self.workflow("submissions.yml")
+        self.assertEqual(set(workflow["on"]), {"pull_request"})
         self.assertEqual(workflow["on"]["pull_request"]["types"],
                          ["opened", "edited", "synchronize", "reopened", "ready_for_review"])
         self.assertEqual([job["name"] for job in workflow["jobs"].values()], [check.CHECK])
-        self.assertEqual(workflow["permissions"], {"contents": "read", "issues": "write"})
+        for job in workflow["jobs"].values():
+            self.assertEqual(job.get("permissions", workflow["permissions"]),
+                             {"contents": "read", "pull-requests": "read"})
+
+    def test_only_the_issue_workflow_can_write_labels(self):
+        workflow = self.workflow("issue-submissions.yml")
+        self.assertEqual(workflow["on"], {"issues": {"types": ["opened", "edited", "reopened"]}})
+        self.assertNotEqual(workflow["name"], check.CHECK)
+        for job in workflow["jobs"].values():
+            self.assertNotEqual(job["name"], check.CHECK)
+            self.assertEqual(job.get("permissions", workflow["permissions"]),
+                             {"contents": "read", "issues": "write"})
+            checkout = next(step for step in job["steps"] if step.get("uses", "").startswith("actions/checkout@"))
+            self.assertEqual(checkout["with"], {"persist-credentials": "false"})
+
+    def test_migration_runs_cannot_cancel_the_legacy_status_producer(self):
+        # Both triggers run while this PR targets a base with the old workflow.
+        legacy = "submission-${{ github.event.issue.number || github.event.pull_request.number }}"
+        pr = self.workflow("submissions.yml")["concurrency"]
+        issue = self.workflow("issue-submissions.yml")["concurrency"]
+        self.assertEqual(pr["group"], "submission-pr-${{ github.event.pull_request.number }}")
+        self.assertEqual(issue["group"], "submission-issue-${{ github.event.issue.number }}")
+        self.assertNotIn(legacy, (pr["group"], issue["group"]))
+        self.assertEqual(pr["cancel-in-progress"], "true")
+        self.assertEqual(issue["cancel-in-progress"], "true")
 
 
 if __name__ == "__main__":

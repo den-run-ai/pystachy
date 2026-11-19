@@ -1,0 +1,28 @@
+# Issue events use default-branch code; only this workflow may update issue labels.
+name: Issue submission format
+
+on:
+  issues:
+    types: [opened, edited, reopened]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: submission-issue-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  description:
+    name: Issue submission format
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate current metadata
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 tools/check_submission.py

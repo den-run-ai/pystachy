@@ -1,25 +1,23 @@
-# Checks issue and PR titles and bodies; builds and tests nothing. Pull requests use
-# pull_request, as CI and Lint do: a fork's run gets a read-only token, so this job's own
-# check is the PR's result. GitHub blocks pull_request_target by default in public repositories.
+# Check PR titles and bodies with a read-only token, including same-repository PRs.
+# The job's own check is the result; issue labeling has a separate workflow.
 name: Submission format
 
 on:
-  issues:
-    types: [opened, edited, reopened]
   pull_request:
     types: [opened, edited, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
-  issues: write  # Issue labels; the PR path only reads.
+  pull-requests: read
 
 concurrency:
-  group: submission-${{ github.event.issue.number || github.event.pull_request.number }}
+  # Keep this distinct from the legacy submission-<number> group during migration.
+  group: submission-pr-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
   description:
-    # Branch protection requires this check name (tools/check_submission.py's CHECK).
+    # Keep the required-check name aligned with tools/check_submission.py's CHECK.
     name: Submission format
     runs-on: ubuntu-24.04
     timeout-minutes: 2

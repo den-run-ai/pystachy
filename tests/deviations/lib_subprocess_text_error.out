@@ -1,0 +1,7 @@
+Command '['sh', '-c', "printf 'out\\r\\n'; echo err >&2; exit 3"]' returned non-zero exit status 3. b'out\r\n' b'out\r\n' b'err\n'
+b'caf\xe9\n' café
+
+'café\n' None
+Command '['sh', '-c', "printf 'caf\\351\\r\\n'; exit 4"]' returned non-zero exit status 4. b'caf\xe9\r\n' None
+Command 'made' returned non-zero exit status 2. b'caf\xc3\xa9\n' b''
+[exit 0]

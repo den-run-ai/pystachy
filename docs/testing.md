@@ -404,8 +404,8 @@ to `main` and manual dispatch. Pull requests test the branch merged with the the
 Markdown/docs-only PRs run Lint and submission format checks plus a lightweight
 `Verification` check. The x86-64 bootstrap worker classifies the tested merge commit's
 changes against its base. The documentation plan skips toolchain setup, builds and
-verification/variant workers. The full-only qualification job skips on every PR. Renaming a source file into `docs/`
-still selects code verification.
+verification/variant workers. The full-only qualification job skips on every PR.
+Renaming a source file into `docs/` still selects code verification.
 Classification verifies the immutable event merge SHA and its PR-head parent. If
 GitHub generated that merge against a newer base than the event payload records,
 CI requires code verification and uses the validated merge's first parent for changed-case
@@ -652,9 +652,9 @@ are unchanged. The PR matrix retains its existing groups and budget.
 A failed group leaves the others running. The aggregate checks are
 `make verify (Linux x86-64, LLVM 18, Python 3.13)` and
 `make verify (Linux ARM64, LLVM 18, Python 3.13)`. For pull requests, maintainers
-verify `Verification` and `make lint (ruff, shellcheck, clang -Wall -Wextra)` on the
-current revision before merging. Branch protection requires both checks, including
-for administrators.
+verify `Verification`, `make lint (ruff, shellcheck, clang -Wall -Wextra)` and
+`Submission format` on the current revision before merging. Branch protection should
+require all three checks, including for administrators.
 [Issue #766](https://github.com/den-run-ai/pystachy/issues/766) records the enforcement
 work; [CONTRIBUTING.md](../CONTRIBUTING.md#ai-assistance-and-review) describes the
 review and submission requirements.
@@ -1107,8 +1107,11 @@ Contributions use the [contribution-rights policy](../CONTRIBUTING.md#contributi
 no workflow certifies or records them. No workflow uses `pull_request_target`, which
 GitHub [blocks by default](https://github.blog/changelog/2026-11-02-pull_request_target-blocked-by-default-december-2/)
 in public repositories from 2 December 2026 (`test_workflow_limits.py` keeps it out).
-The [submission workflow](../.github/workflows/submissions.yml) runs on `pull_request`, so
-a fork's run has a read-only token; its job's `Submission format` check is the result.
+The [submission workflow](../.github/workflows/submissions.yml) runs on `pull_request`
+with a read-only token for both same-repository and fork PRs; its job's `Submission format`
+check is the result. The separate [issue workflow](../.github/workflows/issue-submissions.yml)
+runs default-branch code with permission to update issue labels. Their concurrency groups
+are distinct from the retired workflow so migration runs cannot cancel its status update.
 
 ## Lessons from reviewed changes
 
