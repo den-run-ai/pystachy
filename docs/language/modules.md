@@ -286,10 +286,10 @@ Pystachy. The [library reference](../../lib/README.md) records provenance, avail
 restrictions and tests for each module.
 
 The adapted sources remain valid Python, but that does not imply every upstream API compiles.
-Common limitations include unsupported generator forms, lack of `bytearray`, and
-homogeneous container types. Check the module's reference before choosing an
-API; [binary files](../../lib/compatibility.md#binary-files) have their own supported calls and
-limits.
+Common limitations include unsupported generator forms, binary data that must be `bytes`
+rather than a `bytearray`, and homogeneous container types. Check the module's reference
+before choosing an API; [binary files](../../lib/compatibility.md#binary-files) have their
+own supported calls and limits.
 
 ## Builtins
 
