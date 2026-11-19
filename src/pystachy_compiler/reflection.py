@@ -17,6 +17,7 @@ from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.specs import BIG, BIGOPT, BYTEARRAYC, COMPLEXC, EMPTYFS, GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, RANGEC, TYPEMODS, is_excname
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
+    elem,
     is_const,
     is_clsval,
     lib_file,
@@ -3100,6 +3101,20 @@ def gen_enum_view(self, c: str, line: int) -> Node:
     if g not in self.gtypes and g not in self.mvars:
         self.err(f"enum class {short(c)} without members cannot be used as a value (classes are not values: an enum class with members is its EnumType object)")
     return mk("name", g, line, [])
+
+
+def gen_enum_view_class(self, t: str) -> str:
+    # the enum class whose EnumType object (a _FlagType's, for a flag class) a value of type t is,
+    # as a variable, a field or a class attribute holds it, or "": the class its members' list has
+    if t not in self.classes:
+        return ""
+    ci = self.classes[t]
+    o = ci.origin if ci.origin != "" else t
+    if o != "enum$EnumType" and o != "enum$_FlagType":
+        return ""
+    lt = ci.ftypes.get("_member_list_", "")
+    c = elem(lt) if is_list(lt) else ""
+    return c if c in self.classes and self.classes[c].node.line in ENUMCLASSES else ""
 
 
 def gen_enum_member(self, n: Node, want: str) -> Val:

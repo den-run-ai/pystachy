@@ -1,0 +1,6 @@
+Color.RED True dark Color.GREEN Color.GREEN [<Color.RED: 1>, <Color.GREEN: 2>] 2
+Perm.R|W Perm.R|X [<Perm.R: 4>, <Perm.W: 2>, <Perm.X: 1>] True
+Color.GREEN Perm.X Perm.R|X Perm.R|W
+3 1 Color.RED Color.RED 2
+True True ['RED', 'GREEN']
+[exit 0]

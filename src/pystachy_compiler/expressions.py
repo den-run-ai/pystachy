@@ -1254,6 +1254,12 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if o.t == "file" and (n.s == "closed" or n.s == "name" or n.s == "mode"):
             r = self.rt(f"pys_file_{n.s}", "i64" if n.s == "closed" else "ptr", [f"ptr {o.v}"])
             return self.num_cmp('!=', Val(r, "int"), Val('0', "int")) if n.s == "closed" else Val(r, "str")
+        ev = self.enum_view_class(o.t)
+        if ev != "" and n.s not in self.classes[o.t].ftypes and n.s not in self.classes[o.t].methods and n.s in self.classes[ev].fdefault:
+            # (an enum class as a value, its EnumType object, held by a variable, a field or a class
+            # attribute: a member, an alias or another class attribute of the class its type names,
+            # read as C.name reads it once the object has been evaluated)
+            return self.class_attr(mk("name", ev, n.line, []), n.s)
         bm = self.method_value(o, n.s)
         if bm.t != "":
             return bm

@@ -885,6 +885,124 @@ def enum_new_init(d: Node, parts: list[Node], counted: bool) -> None:
     d.kids[2].kids = body if len(body) > 0 else [mk("pass", "", d.line, [])]
 
 
+def enum_src(e: Node) -> str:
+    # (enum) the source text of literal e (a number, str, True, False, None or a tuple of them),
+    # as a class statement made of it writes it, or ""
+    if e.kind == "int" or e.kind == "float":
+        return e.s
+    if e.kind == "unary" and e.s == "-" and len(e.kids) == 1 and (e.kids[0].kind == "int" or e.kids[0].kind == "float"):
+        return "-" + e.kids[0].s
+    if e.kind == "str":
+        return repr(e.s)
+    if e.kind == "name" and (e.s == "True" or e.s == "False" or e.s == "None"):
+        return e.s
+    if e.kind == "tuple":
+        items = [enum_src(k) for k in e.kids]
+        if len([x for x in items if x == ""]) > 0:
+            return ""
+        return "(" + ", ".join(items) + ("," if len(items) == 1 else "") + ")"
+    return ""
+
+
+def enum_functional(n: Node, names: dict[str, str]) -> None:
+    # (enum) NAME = Enum("NAME", names, ...) at the top of module body n, CPython's functional API,
+    # becomes the class statement that EnumType._create_ makes of its literals: names as a str
+    # (split at commas and spaces) or a list or tuple of strs, valued as _generate_next_value_
+    # values them from start (Enum's count up, a flag's are powers of two, StrEnum's the names in
+    # lower case), or as (name, value) pairs or a dict display; type=int or str as the mixin,
+    # boundary=, and module=__name__, the default. The class is one line, the call's
+    lines: dict[int, bool] = {}
+    for i in range(len(n.kids)):
+        st = n.kids[i]
+        if st.kind != "assign" or len(st.kids) != 2 or st.kids[0].kind != "name" or st.kids[1].kind != "call" or len(st.kids[1].kids) == 0:
+            continue
+        call = st.kids[1]
+        fn = dotted(call.kids[0])
+        kind = names.get(fn, "")
+        pos = [a for a in call.kids[1:] if a.kind != "kw"]
+        if kind not in ENUM_BASES or len(pos) < 2:
+            continue  # (C(value), a lookup by value)
+        cname = st.kids[0].s
+        if len(pos) > 2 or len([a for a in call.kids[1:] if a.kind == "starred" or a.kind == "dstar"]) > 0:
+            fail(f"{fn}() of more than a name and the members' names is not supported", st.line)
+        if pos[0].kind != "str" or pos[0].s != cname:
+            fail(f"{cname} = {fn}(...) is supported with the class's name, {cname!r}, as its first argument", st.line)
+        if st.line in lines:
+            fail(f"two enum classes that {fn}() makes on one line are not supported", st.line)
+        lines[st.line] = True
+        start = 1
+        mixin = ""
+        bound = ""
+        for kw in [a for a in call.kids[1:] if a.kind == "kw"]:
+            v = kw.kids[0]
+            if kw.s == "start" and len(enum_literal(v)) > 0 and enum_literal(v)[0] == "int":
+                start = int(enum_src(v))
+            elif kw.s == "type" and v.kind == "name" and (v.s == "int" or v.s == "str") and kind == "Enum":
+                mixin = v.s
+            elif kw.s == "boundary" and dotted(v) != "":
+                bound = dotted(v)
+            elif kw.s == "module" and v.kind == "name" and v.s == "__name__":
+                pass  # (the module that calls it, the class statement's)
+            elif kw.s == "qualname" and v.kind == "str" and v.s == cname:
+                pass
+            else:
+                fail(f"{fn}()'s {kw.s}= is not supported here (start= an int, type=int or str with Enum, boundary=, module=__name__)", kw.line)
+        spec = pos[1]
+        members: list[str] = []
+        texts: list[str] = []
+        if spec.kind == "str" or ((spec.kind == "list" or spec.kind == "tuple") and len(spec.kids) > 0 and len([x for x in spec.kids if x.kind != "str"]) == 0):
+            ms = spec.s.replace(",", " ").split() if spec.kind == "str" else [x.s for x in spec.kids]
+            if mixin == "str":
+                fail(f"{fn}() of an enum class of str and Enum with names alone is not supported (CPython's values are the strs of Enum's next ints)", st.line)
+            last: list[int] = []
+            for j in range(len(ms)):
+                if kind == "StrEnum":
+                    texts.append(repr(ms[j].lower()))
+                    continue
+                val = start
+                if (kind == "Flag" or kind == "IntFlag") and j > 0:
+                    val = 1 << max(last).bit_length()  # (2 ** (_high_bit(last) + 1))
+                elif j > 0:
+                    val = max(last) + 1
+                last.append(val)
+                texts.append(str(val))
+            members = ms
+        elif (spec.kind == "list" or spec.kind == "tuple") and len([x for x in spec.kids if x.kind != "tuple" or len(x.kids) != 2 or x.kids[0].kind != "str"]) == 0:
+            members = [x.kids[0].s for x in spec.kids]
+            texts = [enum_src(x.kids[1]) for x in spec.kids]
+        elif spec.kind == "dict" and len(spec.kids) % 2 == 0 and len([spec.kids[j] for j in range(0, len(spec.kids), 2) if spec.kids[j].kind != "str"]) == 0:
+            members = [spec.kids[j].s for j in range(0, len(spec.kids), 2)]
+            texts = [enum_src(spec.kids[j + 1]) for j in range(0, len(spec.kids), 2)]
+        else:
+            fail(f"{fn}()'s members are supported as literals: a str of names, a list or tuple of names or of (name, value) pairs, or a dict display", spec.line)
+        if len([t for t in texts if t == ""]) > 0:
+            fail(f"{fn}()'s member values are supported as literals (numbers, strs, True, False, None and tuples of them)", spec.line)
+        if len(members) == 0:
+            fail(f"{fn}() of no members is not supported", spec.line)
+        for m in members:
+            if m == "" or not (m[0].isalpha() or m[0] == "_") or not m.replace("_", "a").isalnum() or m in KEYWORDS:
+                fail(f"{fn}()'s member name {m!r} is not supported: the class statement made of it binds names", spec.line)
+        bases = (mixin + ", " if mixin != "" else "") + fn + (", boundary=" + bound if bound != "" else "")
+        body = "; ".join([members[j] + " = " + texts[j] for j in range(len(members))])
+        n.kids[i] = Parser(Lexer(f"class {cname}({bases}): {body}\n", st.line).file()).module().kids[0]
+    made = enum_creating(n, names)
+    if made is not None:
+        fn = dotted(made.kids[0])
+        fail(f"{fn}() with members is supported as NAME = {fn}('NAME', ...) at the top of a module, of literals: this one makes an enum class as the code runs", made.line)
+
+
+def enum_creating(n: Node, names: dict[str, str]) -> Node | None:
+    # (enum) the first call in tree n of Enum, IntEnum, StrEnum, Flag or IntFlag with a name and
+    # members, CPython's functional API, or None
+    if n.kind == "call" and len(n.kids) > 0 and names.get(dotted(n.kids[0]), "") in ENUM_BASES and len([a for a in n.kids[1:] if a.kind != "kw"]) >= 2:
+        return n
+    for k in n.kids:
+        c = enum_creating(k, names)
+        if c is not None:
+            return c
+    return None
+
+
 def enum_classes(n: Node, names: dict[str, str]) -> None:
     # (enum) each class statement of module body n that derives from enum's Enum, IntEnum or
     # StrEnum (names: as the module imports them), or from an enum class of the module without
@@ -909,6 +1027,7 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
             st.kids = [al for al in st.kids if not (al.kind == "alias" and len(al.kids) == 2 and al.kids[0].s == "enum.property")]
             if len(st.kids) == 0:
                 n.kids[i] = mk("pass", "", st.line, [])
+    enum_functional(n, names)
     for nm in names:
         if names[nm] in ENUM_UNCALLED:
             called = enum_called(n, nm)
@@ -1005,6 +1124,16 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                 for j in range(len(s.kids) - 1):
                     w = v if j == 0 else mk("name", s.kids[0].s, v.line, []) if once else clone(v)
                     chained.append(mk("assign", "", s.line, [s.kids[j], w]))
+            elif s.kind == "assign" and len(s.kids) == 2 and s.kids[0].kind == "tuple" and len([tn for tn in s.kids[0].kids if tn.kind != "name"]) == 0:
+                # (R, W, X = 4, 2, 1: the class namespace binds each name to its item in turn, once
+                # CPython has evaluated the values, which therefore read no name the statement binds)
+                tns = [tn.s for tn in s.kids[0].kids]
+                if (s.kids[1].kind != "tuple" and s.kids[1].kind != "list") or len(s.kids[1].kids) != len(tns) or len([x for x in s.kids[1].kids if x.kind == "starred"]) > 0:
+                    fail(f"enum class {st.s}'s {', '.join(tns)} = ... is supported with as many values, written as a tuple", s.line)
+                for j in range(len(tns)):
+                    if mentions(s.kids[1].kids[j], tns):
+                        fail(f"enum class {st.s}'s {', '.join(tns)} = ... is not supported: a value reads a name the statement binds", s.line)
+                    chained.append(mk("assign", "", s.line, [s.kids[0].kids[j], s.kids[1].kids[j]]))
             else:
                 chained.append(s)
         body.kids = chained
