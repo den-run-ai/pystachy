@@ -48,7 +48,7 @@ specs.OP_ENTRY specs.OP_MIN specs.OP_MAX specs.OP_LABELS specs.OP_FIELDS
 specs.FXBIT specs.RUNTIME specs.NARROWED specs.PATH_OPS specs.READ_HELPERS specs.INT_HELPERS specs.RTDATA specs.RTSYM
 structs.STRUCT_FNS structs.NATIVE_SIZES structs.STANDARD_SIZES
 syntax.DCOPTS syntax.EXPRNAMES syntax.STARTS syntax.CMPOPS syntax.AUGOPS syntax.BINOPS syntax.NOKIDS
-utils.DECRUNS
+unions.ANNTYPES utils.DECRUNS
 """.split())
 
 # These four rewind boundaries have executable removal controls in
