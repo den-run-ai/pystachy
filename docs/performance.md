@@ -242,7 +242,11 @@ This inventory does not implement source-line annotations or explain missed pass
 elimination's row update over `range(j + 1, n)` and a sparse row's `range(row[r], row[r + 1])`:
 the default JIT ran the row update in 0.12× the time (it calls the runtime for each checked
 item), and an AOT build ran a CSR product in 0.53×; AOT builds already vectorized the row update
-([results](../bench/results/listguard-bounds-2026-11-19.json)).
+([results](../bench/results/listguard-bounds-2026-11-19.json)). A loop that appends, inserts or
+extends gets a copy too, as no list gets shorter while it runs: the default JIT ran
+`[a[i] * b[i] for i in range(n)]` in 0.49× the time and an `out.append(a[i] - a[i - 1])` loop in
+0.45×; AOT builds, whose time goes to the appends, ran them about as before
+([results](../bench/results/listguard-grow-2026-11-19.json)).
 
 `PYSTACHY_OPT=-all` disables the typed-IR passes. JIT inlining has a separate control:
 `PYSTACHY_JIT_INLINE=N` changes the size limit. It excludes the separately compiled runtime;
