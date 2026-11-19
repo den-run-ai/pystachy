@@ -56,6 +56,7 @@ its numbers as results for your build.
 | Choose a check or investigation tool | [Development tools](../tools/README.md), [testing and CI](testing.md) |
 | Write an issue, pull request, guide or release notes | [Writing guide](writing.md), [submission format](../CONTRIBUTING.md#issues-and-pull-requests) |
 | Support a compatibility, port or performance claim | [Evidence guide](evidence.md) |
+| Build a small LLVM for Pystachy | [Minimal LLVM toolchain](llvm-toolchain.md): six tools, one target, glibc 2.28 |
 | Prepare a release | [Release procedure and stages](releasing.md), [published releases](https://github.com/den-run-ai/pystachy/releases) |
 
 Keep these guides focused on current behavior. Superseded designs, dated audit
