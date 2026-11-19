@@ -137,3 +137,33 @@ layout and kNN) and variable starts (`range(j + 1, n)`, `range(row[r], row[r + 1
   a check in its copy, as it adds `b + i` (the tests keep `0 <= i + c < len`); each such plain add
   then needs Lean's `noWrap` from facts the certificate has, to re-check across the corpus.
 - **Loop passes over the budget, data.** `listguard-survey/effbot-over-budget.json`.
+
+## The remaining gaps, as drafts (19 November, evening)
+
+Five more drafts. Each JIT and listguard draft stacks on the one before it: #1540 → #1571 → #1575 and
+#1569 → #1570 → #1576 → #1577 → #1578 → #1579. Data and scripts: `gaps-2026-11-19/`.
+
+- **Host CPU in the JIT: #1575.** `opt -mcpu=native` names the host's CPU on each function where a
+  loop vectorizer runs (within the inlining budget, or `PYSTACHY_JIT_OPT=2`); `PYSTACHY_JIT_CPU=
+  generic` keeps SSE2. saxpy/scale copies over 1,000 items 0.73×/0.81× of run time (AVX-512, which
+  LLVM keeps to 256 bits). A first scimark run of five rounds read 1.21×; eleven rounds, 1.01×. The
+  first push named the host's CPU everywhere: CI's cache-gc ran past 15 minutes (gc-self 518 s
+  against 446 s), so programs over the budget, the compiler among them, keep the target's CPU. #1577's
+  cache-gc, which this change does not touch, also ran past 15 minutes (runtime-cache 372 s against
+  247 s): that group sits at 11 to 15 minutes on these runners.
+- **Loops that count down: #1576.** Lean needed three ordering rules, then `absurd`: on itertools'
+  `combinations`, the first iteration of an empty range loop has facts that contradict each other,
+  around which the new rules strengthened a bound without end (`ab-down2.json`: JIT rev 0.17×,
+  recurrence 0.78×; AOT recurrence 0.31×). The first run's recurrence decayed to subnormal floats,
+  which dominated it and read as AOT 1.6×; `ab-down.json` keeps that run.
+- **A copy's offsets without overflow checks: #1577.** A stencil's copy vectorizes in the JIT with
+  #1540's and #1571's passes: 0.46× with SSE2, 0.24× with the host's CPU (`var-off-stencil.json`).
+- **Calls that only assign items: #1578.** `list_shrinkers`, and the Lean scan's `sL`/`gL`: a sum
+  that calls a generator of random numbers per item 0.83× JIT, 0.91× AOT (`ab-calls.json`); the
+  Lean corpus proves 34 more accesses.
+- **Outer loops: #1579, a trade-off.** JIT: a loop over points around one over their three
+  coordinates 0.46×, the UMAP probe's layout 0.96×; AOT: the same point loop 1.16×; scimark's JIT
+  launch 1.09× (IR +16%, `irsize-outer.tsv`). Not localized: the point kernel is inlined into
+  `main` in the AOT build. UMAP's edge loop (461 ops) stays over the 400-op limit; with 800 the copy
+  left its AOT layout unchanged (`var-umap-ops.json`: 0.997×), so the checks there cost little next
+  to its `pow` calls and data-dependent reads.

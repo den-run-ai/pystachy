@@ -1,0 +1,271 @@
+{
+ "spec": {
+  "variants": [
+   [
+    "base",
+    [
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/pr-lgdown/pystachy",
+     "run",
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/k/stencil.py",
+     "4000",
+     "5000"
+    ],
+    {
+     "PYSTACHY_LLVM": "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/vecw",
+     "VEC_PRESET": "jlvec"
+    }
+   ],
+   [
+    "new",
+    [
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/pr-lgoff/pystachy",
+     "run",
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/k/stencil.py",
+     "4000",
+     "5000"
+    ],
+    {
+     "PYSTACHY_LLVM": "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/vecw",
+     "VEC_PRESET": "jlvec"
+    }
+   ],
+   [
+    "base-native",
+    [
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/pr-lgdown/pystachy",
+     "run",
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/k/stencil.py",
+     "4000",
+     "5000"
+    ],
+    {
+     "PYSTACHY_LLVM": "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/vecw",
+     "VEC_PRESET": "jlvec",
+     "VEC_MCPU": "native"
+    }
+   ],
+   [
+    "new-native",
+    [
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/pr-lgoff/pystachy",
+     "run",
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/simd/k/stencil.py",
+     "4000",
+     "5000"
+    ],
+    {
+     "PYSTACHY_LLVM": "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/vecw",
+     "VEC_PRESET": "jlvec",
+     "VEC_MCPU": "native"
+    }
+   ]
+  ]
+ },
+ "rounds": 7,
+ "runs": {
+  "base": [
+   {
+    "wall": 15.308181066000543,
+    "jit_optimize": 0.021642668,
+    "prepare_run": 14.424085799,
+    "jit_codegen": 0.011043541,
+    "run": 0.8730517260005428
+   },
+   {
+    "wall": 0.8924450360000264,
+    "jit_optimize": 0.02103897,
+    "prepare_run": 0.024206834,
+    "jit_codegen": 0.01071463,
+    "run": 0.8575235720000265
+   },
+   {
+    "wall": 1.0322355939997578,
+    "jit_optimize": 0.02862983,
+    "prepare_run": 0.033043425,
+    "jit_codegen": 0.015784021,
+    "run": 0.9834081479997578
+   },
+   {
+    "wall": 0.9425172999999631,
+    "jit_optimize": 0.029411685,
+    "prepare_run": 0.033179171,
+    "jit_codegen": 0.015094652,
+    "run": 0.8942434769999631
+   },
+   {
+    "wall": 0.8805131740000434,
+    "jit_optimize": 0.022018988,
+    "prepare_run": 0.025616058,
+    "jit_codegen": 0.01137498,
+    "run": 0.8435221360000433
+   },
+   {
+    "wall": 0.9054191920004087,
+    "jit_optimize": 0.022272405,
+    "prepare_run": 0.025634932,
+    "jit_codegen": 0.011065492,
+    "run": 0.8687187680004087
+   },
+   {
+    "wall": 0.9595730669998375,
+    "jit_optimize": 0.022324658,
+    "prepare_run": 0.026902056,
+    "jit_codegen": 0.011488195,
+    "run": 0.9211828159998375
+   }
+  ],
+  "new": [
+   {
+    "wall": 15.055915279000146,
+    "jit_optimize": 0.022478521,
+    "prepare_run": 14.630609904,
+    "jit_codegen": 0.012231471,
+    "run": 0.4130739040001463
+   },
+   {
+    "wall": 0.44793571999980486,
+    "jit_optimize": 0.021596631,
+    "prepare_run": 0.025079347,
+    "jit_codegen": 0.01192038,
+    "run": 0.4109359929998049
+   },
+   {
+    "wall": 0.439894084000116,
+    "jit_optimize": 0.022401967,
+    "prepare_run": 0.025568536,
+    "jit_codegen": 0.012213946,
+    "run": 0.40211160200011603
+   },
+   {
+    "wall": 0.5345059900000706,
+    "jit_optimize": 0.025499996,
+    "prepare_run": 0.029118331,
+    "jit_codegen": 0.015429852,
+    "run": 0.4899578070000705
+   },
+   {
+    "wall": 0.42610659599995415,
+    "jit_optimize": 0.023337974,
+    "prepare_run": 0.026665417,
+    "jit_codegen": 0.012629949,
+    "run": 0.38681122999995415
+   },
+   {
+    "wall": 0.4414733600006002,
+    "jit_optimize": 0.022587943,
+    "prepare_run": 0.026245058,
+    "jit_codegen": 0.011772194,
+    "run": 0.4034561080006002
+   },
+   {
+    "wall": 0.4361830119996739,
+    "jit_optimize": 0.021723437,
+    "prepare_run": 0.025033384,
+    "jit_codegen": 0.01224768,
+    "run": 0.39890194799967393
+   }
+  ],
+  "base-native": [
+   {
+    "wall": 0.8698952690001533,
+    "jit_optimize": 0.022211029,
+    "prepare_run": 0.025382118,
+    "jit_codegen": 0.011627149,
+    "run": 0.8328860020001534
+   },
+   {
+    "wall": 0.9181939019999845,
+    "jit_optimize": 0.02161789,
+    "prepare_run": 0.024730273,
+    "jit_codegen": 0.012466514,
+    "run": 0.8809971149999846
+   },
+   {
+    "wall": 0.912299685999642,
+    "jit_optimize": 0.022457594,
+    "prepare_run": 0.02576063,
+    "jit_codegen": 0.012089956,
+    "run": 0.874449099999642
+   },
+   {
+    "wall": 0.9602647530000468,
+    "jit_optimize": 0.028012691,
+    "prepare_run": 0.032454602,
+    "jit_codegen": 0.01874555,
+    "run": 0.9090646010000467
+   },
+   {
+    "wall": 0.9418478680008775,
+    "jit_optimize": 0.021371036,
+    "prepare_run": 0.024555977,
+    "jit_codegen": 0.012428848,
+    "run": 0.9048630430008775
+   },
+   {
+    "wall": 0.9286706279999635,
+    "jit_optimize": 0.022856096,
+    "prepare_run": 0.026159147,
+    "jit_codegen": 0.012685964,
+    "run": 0.8898255169999635
+   },
+   {
+    "wall": 0.9335876980003377,
+    "jit_optimize": 0.025456533,
+    "prepare_run": 0.029012188,
+    "jit_codegen": 0.012694708,
+    "run": 0.8918808020003376
+   }
+  ],
+  "new-native": [
+   {
+    "wall": 0.24929416099985247,
+    "jit_optimize": 0.02254383,
+    "prepare_run": 0.02594379,
+    "jit_codegen": 0.013326151,
+    "run": 0.21002421999985246
+   },
+   {
+    "wall": 0.2528243509996173,
+    "jit_optimize": 0.024053495,
+    "prepare_run": 0.027552864,
+    "jit_codegen": 0.013860984,
+    "run": 0.2114105029996173
+   },
+   {
+    "wall": 0.2676315839999006,
+    "jit_optimize": 0.029868743,
+    "prepare_run": 0.03385607,
+    "jit_codegen": 0.014573586,
+    "run": 0.2192019279999006
+   },
+   {
+    "wall": 0.2595402289998674,
+    "jit_optimize": 0.024810271,
+    "prepare_run": 0.028424015,
+    "jit_codegen": 0.014855474,
+    "run": 0.2162607399998674
+   },
+   {
+    "wall": 0.25924507700074173,
+    "jit_optimize": 0.023212175,
+    "prepare_run": 0.026586819,
+    "jit_codegen": 0.014839108,
+    "run": 0.21781915000074173
+   },
+   {
+    "wall": 0.25870998299978964,
+    "jit_optimize": 0.023833249,
+    "prepare_run": 0.027475909,
+    "jit_codegen": 0.014825417,
+    "run": 0.21640865699978964
+   },
+   {
+    "wall": 0.2640448270003617,
+    "jit_optimize": 0.022395896,
+    "prepare_run": 0.025786188,
+    "jit_codegen": 0.013590913,
+    "run": 0.2246677260003617
+   }
+  ]
+ }
+}

@@ -1,0 +1,113 @@
+{
+ "spec": {
+  "variants": [
+   [
+    "calls",
+    [
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/pr-lgcall/pystachy",
+     "run",
+     "/home/user/pystachy/research/umap-numba-2026-11-13/umap_core.py",
+     "10000",
+     "16",
+     "10",
+     "15",
+     "200",
+     "7"
+    ],
+    {}
+   ],
+   [
+    "outer",
+    [
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/pr-lgouter/pystachy",
+     "run",
+     "/home/user/pystachy/research/umap-numba-2026-11-13/umap_core.py",
+     "10000",
+     "16",
+     "10",
+     "15",
+     "200",
+     "7"
+    ],
+    {}
+   ]
+  ]
+ },
+ "rounds": 5,
+ "runs": {
+  "calls": [
+   {
+    "wall": 8.189318754999476,
+    "data": 0.038,
+    "knn": 2.486,
+    "graph": 0.1,
+    "layout": 5.298
+   },
+   {
+    "wall": 8.2584694090001,
+    "data": 0.039,
+    "knn": 2.68,
+    "graph": 0.099,
+    "layout": 5.16
+   },
+   {
+    "wall": 7.702703713999654,
+    "data": 0.038,
+    "knn": 2.248,
+    "graph": 0.09,
+    "layout": 5.057
+   },
+   {
+    "wall": 8.395390548999785,
+    "data": 0.038,
+    "knn": 2.592,
+    "graph": 0.105,
+    "layout": 5.401
+   },
+   {
+    "wall": 7.873115075999522,
+    "data": 0.038,
+    "knn": 2.307,
+    "graph": 0.092,
+    "layout": 5.166
+   }
+  ],
+  "outer": [
+   {
+    "wall": 8.006075281000449,
+    "data": 0.037,
+    "knn": 2.439,
+    "graph": 0.093,
+    "layout": 5.062
+   },
+   {
+    "wall": 8.343099186000472,
+    "data": 0.038,
+    "knn": 2.442,
+    "graph": 0.09,
+    "layout": 5.456
+   },
+   {
+    "wall": 8.088959536999937,
+    "data": 0.037,
+    "knn": 2.482,
+    "graph": 0.086,
+    "layout": 5.165
+   },
+   {
+    "wall": 7.886383002999537,
+    "data": 0.038,
+    "knn": 2.335,
+    "graph": 0.089,
+    "layout": 5.126
+   },
+   {
+    "wall": 7.634655224999733,
+    "data": 0.039,
+    "knn": 2.284,
+    "graph": 0.086,
+    "layout": 4.945
+   }
+  ]
+ }
+}

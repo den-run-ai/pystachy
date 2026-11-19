@@ -1,0 +1,103 @@
+{
+ "spec": {
+  "variants": [
+   [
+    "generic",
+    [
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/pr-jitcpu/pystachy",
+     "run",
+     "/home/user/pystachy/bench/pyperformance/scimark.py"
+    ],
+    {
+     "PYSTACHY_JIT_CPU": "generic"
+    }
+   ],
+   [
+    "native",
+    [
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/pr-jitcpu/pystachy",
+     "run",
+     "/home/user/pystachy/bench/pyperformance/scimark.py"
+    ],
+    {}
+   ]
+  ]
+ },
+ "rounds": 5,
+ "runs": {
+  "generic": [
+   {
+    "wall": 0.2177571980000721,
+    "jit_optimize": 0.070649084,
+    "prepare_run": 0.098310574,
+    "jit_codegen": 0.067737191,
+    "run": 0.051709433000072094
+   },
+   {
+    "wall": 0.2085459280001487,
+    "jit_optimize": 0.067426761,
+    "prepare_run": 0.089769137,
+    "jit_codegen": 0.071001769,
+    "run": 0.0477750220001487
+   },
+   {
+    "wall": 0.185230230000343,
+    "jit_optimize": 0.052537151,
+    "prepare_run": 0.069002756,
+    "jit_codegen": 0.070960217,
+    "run": 0.045267257000342995
+   },
+   {
+    "wall": 0.18024874600041585,
+    "jit_optimize": 0.055759508,
+    "prepare_run": 0.075116984,
+    "jit_codegen": 0.060493744,
+    "run": 0.04463801800041585
+   },
+   {
+    "wall": 0.20388292400002683,
+    "jit_optimize": 0.054433345,
+    "prepare_run": 0.072058582,
+    "jit_codegen": 0.078700655,
+    "run": 0.053123687000026856
+   }
+  ],
+  "native": [
+   {
+    "wall": 0.2157880979998481,
+    "jit_optimize": 0.070844648,
+    "prepare_run": 0.091365166,
+    "jit_codegen": 0.073279307,
+    "run": 0.051143624999848106
+   },
+   {
+    "wall": 0.21346432300015294,
+    "jit_optimize": 0.063255732,
+    "prepare_run": 0.085119744,
+    "jit_codegen": 0.073993415,
+    "run": 0.05435116400015294
+   },
+   {
+    "wall": 0.2313172270000905,
+    "jit_optimize": 0.064935524,
+    "prepare_run": 0.089448469,
+    "jit_codegen": 0.082353149,
+    "run": 0.059515609000090494
+   },
+   {
+    "wall": 0.2368456710000828,
+    "jit_optimize": 0.070237941,
+    "prepare_run": 0.095324793,
+    "jit_codegen": 0.087855931,
+    "run": 0.053664947000082786
+   },
+   {
+    "wall": 0.2473848370000269,
+    "jit_optimize": 0.076679864,
+    "prepare_run": 0.100463587,
+    "jit_codegen": 0.087677681,
+    "run": 0.059243569000026905
+   }
+  ]
+ }
+}

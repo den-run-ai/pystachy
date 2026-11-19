@@ -1,0 +1,129 @@
+{
+ "spec": {
+  "variants": [
+   [
+    "calls",
+    [
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/pr-lgcall/pystachy",
+     "run",
+     "/home/user/pystachy/bench/pyperformance/scimark.py"
+    ],
+    {}
+   ],
+   [
+    "outer",
+    [
+     "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/pr-lgouter/pystachy",
+     "run",
+     "/home/user/pystachy/bench/pyperformance/scimark.py"
+    ],
+    {}
+   ]
+  ]
+ },
+ "rounds": 7,
+ "runs": {
+  "calls": [
+   {
+    "wall": 0.16755117699995026,
+    "jit_optimize": 0.048524941,
+    "prepare_run": 0.066896556,
+    "jit_codegen": 0.062293733,
+    "run": 0.038360887999950265
+   },
+   {
+    "wall": 0.1439157630002228,
+    "jit_optimize": 0.040570931,
+    "prepare_run": 0.056283165,
+    "jit_codegen": 0.051657691,
+    "run": 0.0359749070002228
+   },
+   {
+    "wall": 0.1412515740003073,
+    "jit_optimize": 0.037954847,
+    "prepare_run": 0.053562641,
+    "jit_codegen": 0.051541239,
+    "run": 0.036147694000307304
+   },
+   {
+    "wall": 0.15196470899991255,
+    "jit_optimize": 0.042366961,
+    "prepare_run": 0.059443769,
+    "jit_codegen": 0.053559301,
+    "run": 0.03896163899991254
+   },
+   {
+    "wall": 0.14819711800009827,
+    "jit_optimize": 0.041131871,
+    "prepare_run": 0.057713471,
+    "jit_codegen": 0.053205489,
+    "run": 0.03727815800009827
+   },
+   {
+    "wall": 0.162268099999892,
+    "jit_optimize": 0.04148716,
+    "prepare_run": 0.06679253,
+    "jit_codegen": 0.055632904,
+    "run": 0.039842665999892
+   },
+   {
+    "wall": 0.15005754699996032,
+    "jit_optimize": 0.042566491,
+    "prepare_run": 0.058227687,
+    "jit_codegen": 0.053320607,
+    "run": 0.038509252999960324
+   }
+  ],
+  "outer": [
+   {
+    "wall": 0.16048971399959555,
+    "jit_optimize": 0.043368451,
+    "prepare_run": 0.060647782,
+    "jit_codegen": 0.062365415,
+    "run": 0.037476516999595554
+   },
+   {
+    "wall": 0.16472593700018479,
+    "jit_optimize": 0.04509044,
+    "prepare_run": 0.061747267,
+    "jit_codegen": 0.062725951,
+    "run": 0.04025271900018479
+   },
+   {
+    "wall": 0.1714417909997792,
+    "jit_optimize": 0.049207584,
+    "prepare_run": 0.067065223,
+    "jit_codegen": 0.066705711,
+    "run": 0.03767085699977919
+   },
+   {
+    "wall": 0.16014932699999918,
+    "jit_optimize": 0.045336643,
+    "prepare_run": 0.06178793,
+    "jit_codegen": 0.061584958,
+    "run": 0.03677643899999918
+   },
+   {
+    "wall": 0.16169292199992924,
+    "jit_optimize": 0.045583379,
+    "prepare_run": 0.06231488,
+    "jit_codegen": 0.062469981,
+    "run": 0.036908060999929236
+   },
+   {
+    "wall": 0.18132759400032228,
+    "jit_optimize": 0.045868593,
+    "prepare_run": 0.063261745,
+    "jit_codegen": 0.075190576,
+    "run": 0.04287527300032229
+   },
+   {
+    "wall": 0.1552443430000494,
+    "jit_optimize": 0.043160439,
+    "prepare_run": 0.059690682,
+    "jit_codegen": 0.059299687,
+    "run": 0.03625397400004942
+   }
+  ]
+ }
+}
