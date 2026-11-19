@@ -1,0 +1,257 @@
+{
+ "notes": "listguard copies of loops that hold other loops (new: this branch, claude/dreamy-shannon-bb3cu1-listguard-outer) against the branch below it (base: claude/dreamy-shannon-bb3cu1-listguard-calls at 1420d0ca), both on main 8259611e, default JIT and AOT. ab.py and variants.py: interleaved rounds, rotating order, each run pinned to CPU 1 with taskset, PYSTACHY_PROGRAM_CACHE=0; every run's stdout equals the first's (ab.py: CPython 3.13's). norms sums the squares of each of 20,000 points' three coordinates (an outer loop around a tiny inner one, as UMAP's), rows a 200 x 200 matrix-vector product, 2,000 repetitions each. scimark: pyperformance's, wall seconds and the driver's stage records (run: wall less preparation and code generation). umap: the probe of research/umap-numba-2026-11-13 (10,000 points, 200 epochs) under the JIT, its own stage timers. ops: GUARD_OPS 800 against this branch's 400, AOT builds of the probe by the hosted compiler: the larger limit copies UMAP's edge loop (461 ops) and leaves the layout's time unchanged. ir_lines: pystachy ir's lines. x86-64 (Intel Xeon @ 2.10GHz, 4 CPUs, shared host), LLVM 18.1.3.",
+ "kernels": {
+  "args": [
+   "k3/outer.py",
+   "20000",
+   "2000"
+  ],
+  "rounds": 7,
+  "results": {
+   "jit norms": {
+    "base_median": 0.1778,
+    "new_median": 0.0829,
+    "paired": 0.461
+   },
+   "jit rows": {
+    "base_median": 0.0612,
+    "new_median": 0.0601,
+    "paired": 1.007
+   },
+   "jit wall": {
+    "base_median": 0.3024,
+    "new_median": 0.2075,
+    "paired": 0.701
+   },
+   "aot norms": {
+    "base_median": 0.0817,
+    "new_median": 0.0955,
+    "paired": 1.162
+   },
+   "aot rows": {
+    "base_median": 0.0362,
+    "new_median": 0.0345,
+    "paired": 1.009
+   },
+   "aot wall": {
+    "base_median": 0.1224,
+    "new_median": 0.1381,
+    "paired": 1.115
+   }
+  }
+ },
+ "scimark_jit": {
+  "rounds": 7,
+  "variants": {
+   "calls": {
+    "wall": {
+     "median": 0.1501,
+     "paired": 1.0
+    },
+    "run": {
+     "median": 0.0384,
+     "paired": 1.0
+    },
+    "jit_optimize": {
+     "median": 0.0415,
+     "paired": 1.0
+    },
+    "jit_codegen": {
+     "median": 0.0533,
+     "paired": 1.0
+    }
+   },
+   "outer": {
+    "wall": {
+     "median": 0.1617,
+     "paired": 1.091
+    },
+    "run": {
+     "median": 0.0375,
+     "paired": 0.99
+    },
+    "jit_optimize": {
+     "median": 0.0453,
+     "paired": 1.106
+    },
+    "jit_codegen": {
+     "median": 0.0625,
+     "paired": 1.174
+    }
+   }
+  }
+ },
+ "umap_jit": {
+  "rounds": 5,
+  "variants": {
+   "calls": {
+    "wall": {
+     "median": 8.1893,
+     "paired": 1.0
+    },
+    "knn": {
+     "median": 2.486,
+     "paired": 1.0
+    },
+    "layout": {
+     "median": 5.166,
+     "paired": 1.0
+    }
+   },
+   "outer": {
+    "wall": {
+     "median": 8.0061,
+     "paired": 0.978
+    },
+    "knn": {
+     "median": 2.439,
+     "paired": 0.981
+    },
+    "layout": {
+     "median": 5.126,
+     "paired": 0.957
+    }
+   }
+  }
+ },
+ "umap_aot_guard_ops": {
+  "rounds": 7,
+  "variants": {
+   "ops400": {
+    "wall": {
+     "median": 5.3393,
+     "paired": 1.0
+    },
+    "knn": {
+     "median": 0.97,
+     "paired": 1.0
+    },
+    "layout": {
+     "median": 4.149,
+     "paired": 1.0
+    }
+   },
+   "ops800": {
+    "wall": {
+     "median": 5.2193,
+     "paired": 0.968
+    },
+    "knn": {
+     "median": 0.943,
+     "paired": 0.953
+    },
+    "layout": {
+     "median": 4.152,
+     "paired": 0.997
+    }
+   }
+  }
+ },
+ "ir_lines": {
+  "barnes_hut.py": {
+   "calls": 2652,
+   "outer": 2910
+  },
+  "bm_logging.py": {
+   "calls": 123369,
+   "outer": 123369
+  },
+  "bpe_tokeniser.py": {
+   "calls": 56851,
+   "outer": 56993
+  },
+  "chaos.py": {
+   "calls": 3850,
+   "outer": 3850
+  },
+  "comprehensions.py": {
+   "calls": 1612,
+   "outer": 1612
+  },
+  "fannkuch.py": {
+   "calls": 494,
+   "outer": 494
+  },
+  "float.py": {
+   "calls": 650,
+   "outer": 650
+  },
+  "generators.py": {
+   "calls": 1651,
+   "outer": 1651
+  },
+  "go.py": {
+   "calls": 4575,
+   "outer": 4575
+  },
+  "hexiom.py": {
+   "calls": 6607,
+   "outer": 6607
+  },
+  "json_dumps.py": {
+   "calls": 3844,
+   "outer": 3844
+  },
+  "json_loads.py": {
+   "calls": 13056,
+   "outer": 13056
+  },
+  "meteor_contest.py": {
+   "calls": 2128,
+   "outer": 2128
+  },
+  "nbody.py": {
+   "calls": 1344,
+   "outer": 1344
+  },
+  "nqueens.py": {
+   "calls": 716,
+   "outer": 716
+  },
+  "pidigits.py": {
+   "calls": 3130,
+   "outer": 3130
+  },
+  "raytrace.py": {
+   "calls": 4054,
+   "outer": 4054
+  },
+  "regex_dna.py": {
+   "calls": 58798,
+   "outer": 58940
+  },
+  "regex_effbot.py": {
+   "calls": 55634,
+   "outer": 55776
+  },
+  "regex_v8.py": {
+   "calls": 83556,
+   "outer": 83698
+  },
+  "richards.py": {
+   "calls": 6308,
+   "outer": 6308
+  },
+  "richards_super.py": {
+   "calls": 6391,
+   "outer": 6391
+  },
+  "scimark.py": {
+   "calls": 3594,
+   "outer": 4175
+  },
+  "spectral_norm.py": {
+   "calls": 630,
+   "outer": 630
+  },
+  "unpack_sequence.py": {
+   "calls": 42273,
+   "outer": 42273
+  },
+  "umap_core.py": {
+   "calls": 8062,
+   "outer": 8798
+  }
+ },
+ "source": "import sys\nimport time\n\n\ndef norms(pts: list[list[float]], out: list[float]) -> None:\n    # (an outer loop around a tiny inner one, as UMAP's loops over points and their few dimensions)\n    for i in range(len(pts)):\n        p = pts[i]\n        s = 0.0\n        for d in range(len(p)):\n            s += p[d] * p[d]\n        out[i] = s\n\n\ndef rows(a: list[list[float]], x: list[float], y: list[float]) -> None:\n    # (a dense matrix-vector product: the inner loop dominates)\n    for i in range(len(a)):\n        row = a[i]\n        s = 0.0\n        for j in range(len(x)):\n            s += row[j] * x[j]\n        y[i] = s\n\n\ndef main() -> None:\n    n = int(sys.argv[1])\n    reps = int(sys.argv[2])\n    pts = [[float((i * 7 + d) % 13) * 0.5 for d in range(3)] for i in range(n)]\n    out = [0.0] * n\n    m = 200\n    a = [[float((i + j) % 17) * 0.25 for j in range(m)] for i in range(m)]\n    x = [float(j % 5) for j in range(m)]\n    y = [0.0] * m\n    t0 = time.perf_counter()\n    for r in range(reps):\n        norms(pts, out)\n    t1 = time.perf_counter()\n    for r in range(reps):\n        rows(a, x, y)\n    t2 = time.perf_counter()\n    print(sum(out), sum(y))\n    print(\"norms=%.4f rows=%.4f\" % (t1 - t0, t2 - t1), file=sys.stderr)\n\n\nmain()\n"
+}
