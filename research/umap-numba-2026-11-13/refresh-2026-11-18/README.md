@@ -220,3 +220,10 @@ conflicts took both sides. Built to a fixed point; every run printed the recorde
   generic tuning, run kNN in 1.32 to 1.34 s against the runner's 0.95 to 0.97 s on the same IR
   (`cache-umap.json`, generic CPU): the cached path, the native CLI's default, is the slower one.
   Not addressed.
+- **CI's cache-gc after the refresh.** #1442: runtime-cache 272 s, gc-self 447 s, passed (12.4 min).
+  #1468 and #1477: runtime-cache 380 s and 367 s, then cancelled at the 15-minute job limit during
+  gc-self (over 502 s and 520 s). #1575: passed in 11.8 min. Locally, `make test-cache` took 580 s on
+  #1442's tree and about 617 s on #1468's (+6%): #1468 prepares the runtime's JIT copies once per
+  fresh runtime (0.35 s natively, 0.61 s hosted, of a 14 s runtime build; opt's disassembly 0.19 s,
+  the table 0.14 s, its check 0.02 s), and most cache tests start from a fresh runtime. #1577,
+  without #1468, also timed out earlier (runtime-cache 372 s): the group sits at 11 to 15 minutes.
