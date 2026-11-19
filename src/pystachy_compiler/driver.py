@@ -48,10 +48,12 @@ JIT_LOOPS = "function(correlated-propagation,sccp,simplifycfg,loop-mssa(loop-rot
 # listguard's copy of y[i] = a * x[i], then runs on vectors
 JIT_VECTORIZE = "function(instcombine<no-verify-fixpoint>,loop-vectorize,instcombine<no-verify-fixpoint>,simplifycfg)"
 # PYSTACHY_JIT_CPU=native (the default): the JIT tier optimizes and compiles a program for the host's
-# CPU, as it runs where it is compiled: opt's -mcpu=native gives each function of the module the
-# host's CPU and features (target-cpu, target-features), which its cost models and the runner's code
-# generation follow (AVX2's four doubles in a vector where the host has them). generic leaves them to
-# the module's target (x86-64's SSE2). Neither changes a result: the program's module asks for no
+# CPU, as it runs where it is compiled, wherever a loop vectorizer runs (JIT_VECTORIZE's programs,
+# within the inlining budget, and LLVM's -O2 pipeline): opt's -mcpu=native gives each function of the
+# module the host's CPU and features (target-cpu, target-features), which its cost models and the
+# runner's code generation follow (AVX2's four doubles in a vector where the host has them). A larger
+# program, such as the compiler itself, keeps the module target's CPU, where the host's would only
+# lengthen code generation, and so does generic (x86-64's SSE2). Neither changes a result: the program's module asks for no
 # fused or reassociated float operation (no fast-math flag, no llvm.fmuladd), and the program cache
 # keys an executable by the host's CPU (cached_run.CPU_FIELDS) and by this setting
 JIT_CPU = " -mcpu=native"
@@ -1541,7 +1543,8 @@ def main() -> None:
         # last gives such successors predecessors of their own, and the landing pad its own copies,
         # whichever program generates the code at -O0 (the JIT runner, or llc)
         split = ",function(break-crit-edges)" if codegen == "0" else ""
-        fast = f"{llvm}opt{JIT_CPU if jitcpu == 'native' else ''} -passes='{passes},function(early-cse,adce){late}{split}'" + (JITLATE if late != "" else "")
+        native = jitcpu == "native" and ((jitopt == "1" and small) or jitopt == "2")
+        fast = f"{llvm}opt{JIT_CPU if native else ''} -passes='{passes},function(early-cse,adce){late}{split}'" + (JITLATE if late != "" else "")
         if code == 0:
             # the cache's library may lie on a file system mounted noexec since it was made (or copied
             # there), from which lli could map nothing: the shell that runs opt first asks whether this

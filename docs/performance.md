@@ -278,7 +278,7 @@ and `y[i] = x[i] * 3.0` over 4,000 items ran in 0.73× and 0.78× of the time, l
 SSE2's two doubles; optimizing took about 16 ms more on modules of 8,500 and 13,000 lines of IR
 ([results](../bench/results/jit-vectorize-2026-11-19.json)). A copy that keeps an exit, such as an
 index's overflow check (`a[i - 1]`), stays scalar.
-The tier compiles for the host's CPU (`PYSTACHY_JIT_CPU`): on an AVX-512 host, whose vectors LLVM
+Where the vectorizer runs, the tier compiles for the host's CPU (`PYSTACHY_JIT_CPU`): on an AVX-512 host, whose vectors LLVM
 keeps to 256 bits, the same copies over 1,000 items ran in 0.73× and 0.81× of the time of SSE2's
 code, launch excluded. Code generation took up to 12% longer, and six pyperformance programs ran
 in 0.99× to 1.05× of the wall time

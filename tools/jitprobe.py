@@ -18,7 +18,8 @@ does). The default's loop passes rotate a range loop (a *.lr.ph preheader) and v
 without exits (listguard's copy of an elementwise loop), which PYSTACHY_JIT_OPT=0, the cleanup
 alone, leaves as lowered. Each function of the default's module names the host's CPU (llc's), and
 where its features include AVX that loop runs on vectors of four doubles or more;
-PYSTACHY_JIT_CPU=generic names none (SSE2's two doubles on x86-64).
+PYSTACHY_JIT_CPU=generic, and PYSTACHY_JIT_OPT=0, which runs no loop vectorizer, name none (SSE2's
+two doubles on x86-64).
 """
 import argparse
 import os
@@ -388,6 +389,8 @@ def main():
                     raise RuntimeError(f"{where}: PYSTACHY_JIT_OPT=0 rotated a loop: the default's check proves nothing")
                 if re.search(r"fmul <[0-9]+ x double>", capture.read_text()):
                     raise RuntimeError(f"{where}: PYSTACHY_JIT_OPT=0 vectorized a loop: the default's check proves nothing")
+                if '"target-cpu"=' in capture.read_text():
+                    raise RuntimeError(f"{where}: PYSTACHY_JIT_OPT=0, which runs no loop vectorizer, compiled for the host's CPU")
                 print(f"{where}: the default pipeline rotates loop_feedback's loop and vectorizes doubled's; PYSTACHY_JIT_OPT=0 keeps them as lowered")
                 # The default compiles for the host's CPU: each function names it and its features,
                 # and where they include AVX a vector holds at least four doubles; with
