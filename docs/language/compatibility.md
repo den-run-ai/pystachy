@@ -571,8 +571,10 @@ See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
   arguments without specializing their layouts ([class templates](typing.md#class-templates-and-generic-classes)).
 - **Nested classes:** those of an enum class's body, of a generic class of PEP 695 or of a class
   in an `if` or `try` statement; one after a call in the outer class's decorators, bases or
-  earlier body; reading a nested enum class, or a class nested in a dataclass or `NamedTuple`,
-  through an object or `getattr()` ([nested classes](typing.md#nested-classes)).
+  earlier body, or whose decorators or bases read a name that body binds before it; a decorator
+  in that body that reads a nested class; reading a nested enum class, or a class nested in a
+  dataclass or `NamedTuple`, through an object or `getattr()`
+  ([nested classes](typing.md#nested-classes)).
 - **Inherited members:** assigning inherited class attributes through subclasses without their
   own defaults; changing field types; derived-only fields without supported narrowing;
   inherited `cls`-using classmethods through base-typed objects, across modules or with

@@ -1382,7 +1382,8 @@ class variables.
 A class statement in the body of a class statement of a module's body makes a class of the
 module, as CPython's does: `Outer.Inner` reads it, also from other modules, its
 `__qualname__` is `Outer.Inner` and its `__name__` `Inner`, and later statements of the outer
-body (annotations, defaults, bases) read it as `Inner`, as CPython's class scope does. Under a
+body (annotations, defaults, bases, a comprehension's first iterable) read it as `Inner`, as
+CPython's class scope does ([scope](../../tests/programs/classes/class_nested_scope.py)). Under a
 private name, `__Inner`, the outer class binds `_Outer__Inner`, as CPython mangles it
 ([test](../../tests/programs/classes/class_nested_private.py)). It may
 nest classes itself, name itself in a quoted annotation, be a dataclass, a `NamedTuple`, an
@@ -1395,8 +1396,12 @@ dataclass or `NamedTuple`, is no class attribute, so its outer class's objects d
 ([test](../../tests/errors/classes/class_nested_enum_attr.py)), though `hasattr()` finds it.
 Pystachy makes a nested class before the class around it, so a call that CPython runs first,
 in that class's decorators, bases or body before the nested class, is an error
-([test](../../tests/errors/classes/class_nested_after_call.py)), as are classes nested in an
-enum class, a generic class of PEP 695 or a class of an `if` or `try` statement.
+([test](../../tests/errors/classes/class_nested_after_call.py)), as is one whose decorators or
+bases read a name that the outer body binds before it, which CPython reads in that body's scope
+([test](../../tests/errors/classes/class_nested_scope_base.py)), and so are a decorator of the
+outer body that reads a nested class ([test](../../tests/errors/classes/class_nested_deco_name.py))
+and classes nested in an enum class, a generic class of PEP 695 or a class of an `if` or `try`
+statement.
 
 ## Single inheritance
 

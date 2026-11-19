@@ -466,6 +466,7 @@ def hoist_nested(st: Node, out: list[Node], enums: dict[str, str], kinds: dict[s
         out.append(st)  # (but a generic class of PEP 695, whose type parameters its nested classes see, stays an error)
         return
     seen: dict[str, str] = {}  # (the nested classes so far: their names in the body, and the module's)
+    scope: dict[str, bool] = {}  # (the names the body's other statements bind so far)
     kept: list[Node] = []
     ran = len([x for x in c.kids[1:] + st.kids[1:] if runs_code(x)]) > 0  # (decorators and bases, which run first)
     # (a dataclass or a NamedTuple, whose class attributes are fields unless annotated otherwise,
@@ -475,6 +476,8 @@ def hoist_nested(st: Node, out: list[Node], enums: dict[str, str], kinds: dict[s
     for b in body:
         if (b.kind == "class" or b.kind == "subclass") and ran:
             fail(f"class {c.s}.{b.s} is not supported after a call in the decorators, bases or body of class {c.s}: Pystachy makes a nested class before the class around it, and CPython runs those first", b.line)
+        if b.kind == "class" or b.kind == "subclass":
+            nested_header(b, c.s, scope)
         ran = ran or (b.kind != "class" and b.kind != "subclass" and stmt_runs_code(b))
         nested_reads(b, seen)
         bound: list[str] = []
@@ -484,6 +487,7 @@ def hoist_nested(st: Node, out: list[Node], enums: dict[str, str], kinds: dict[s
             bound.append(b.s)
         for x in bound:
             seen.pop(x, "")  # (the class scope binds the name to something else from then on)
+            scope[x] = True
         if b.kind != "class" and b.kind != "subclass":
             kept.append(b)
             continue
@@ -503,6 +507,29 @@ def hoist_nested(st: Node, out: list[Node], enums: dict[str, str], kinds: dict[s
             NESTED[st.line] = [own]
     c.kids[0].kids = kept if len(kept) > 0 else [mk("pass", "", st.line, [])]
     out.append(st)
+
+
+def nested_header(b: Node, c: str, scope: dict[str, bool]) -> None:
+    # (hoist_nested) nested class statement b of class c's body: an error if its decorators or
+    # bases read a name that the body binds before it (scope), as CPython's class scope reads
+    # it there, where Pystachy, which makes the class before c, would read the module's
+    bc = b.kids[0] if b.kind == "subclass" else b
+    for x in bc.kids[1:] + (b.kids[1:] if b.kind == "subclass" else []):
+        r = x.s[: x.s.find(".")] if x.kind == "deco" and "." in x.s else x.s if x.kind == "deco" else ""
+        r = r if r in scope else scope_read(x, scope)
+        if r != "":
+            fail(f"class {c}.{bc.s} is not supported: its decorators or bases read {r}, which the body of class {c} binds before it, and Pystachy makes a nested class before the class around it", b.line)
+
+
+def scope_read(e: Node, scope: dict[str, bool]) -> str:
+    # (nested_header) the first name of scope that expression e reads, or ""
+    if e.kind == "name" and e.s in scope:
+        return e.s
+    for k in e.kids:
+        r = scope_read(k, scope)
+        if r != "":
+            return r
+    return ""
 
 
 # the calls a class statement or body may make before a nested class (hoist_nested), which run none
@@ -575,11 +602,24 @@ def nested_ann(a: Node, seen: dict[str, str]) -> None:
 
 
 def nested_names(e: Node, seen: dict[str, str]) -> None:
-    # (nested_reads) the names of nested classes that expression e reads, as the module names them
+    # (nested_reads) the names of nested classes that expression e reads, as the module names them:
+    # in a lambda's defaults and a comprehension's first iterable, which CPython evaluates in the
+    # class scope, but not in their bodies, which it does not reach
     if e.kind == "name" and e.s in seen:
         e.s = seen[e.s]
         return
-    if e.kind == "lambda" or e.kind == "listcomp" or e.kind == "asynccomp" or e.kind == "setcomp" or e.kind == "dictcomp":
+    if e.kind == "deco" and e.s.split(".")[0] in seen:
+        fail(f"decorator @{e.s} is not supported: it reads class {seen[e.s.split('.')[0]]}, which the class body around it nests", e.line)
+    if e.kind == "lambda":
+        for p in e.kids[0].kids:
+            for x in p.kids[1:]:
+                nested_names(x, seen)
+        return
+    if e.kind == "listcomp" or e.kind == "asynccomp":
+        nested_names(e.kids[2], seen)
+        return
+    if e.kind == "setcomp" or e.kind == "dictcomp":
+        nested_names(e.kids[0], seen)
         return
     for k in e.kids:
         nested_names(k, seen)
