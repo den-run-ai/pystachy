@@ -2805,10 +2805,10 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         v = self.globvalues[g] if g in self.globvalues else mk("pass", "", e.line, [])
         tc = v.kids[0].s if v.kind == "call" and len(v.kids) > 0 and v.kids[0].kind == "name" else ""
         if e.s not in asg and (tc == "enum$EnumType" or tc == "enum$_FlagType") and tc in self.tmpl:
-            ts = ["str", "list[" + e.s + "]", "dict[str," + e.s + "]"]
+            ets = ["str", "list[" + e.s + "]", "dict[str," + e.s + "]"]
             if tc == "enum$_FlagType":
-                ts = ts + ["dict[int," + e.s + "]", "int", "int", "int", "str"]
-            return self.specialize(tc, ts, {}, False, {})
+                ets = ets + ["dict[int," + e.s + "]", "int", "int", "int", "str"]
+            return self.specialize(tc, ets, {}, False, {})
     p = self.imported_ref(e) if k == "name" or k == "attr" else ""
     if p in MODFUNCS:
         # a builtin module's function (math.sqrt, or sqrt from-imported), unless a local of the
