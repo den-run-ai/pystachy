@@ -1,6 +1,7 @@
 @main.init:
 @f.stencil: load:@list+16 load:@slot+0 load:@list+16 load:@slot+0 load:@list+16 load:@slot+0 load:@list+16 store:@slot+0
-@f.grow:
+@f.grow: load:@list+16 load:@slot+0
+@f.shrink:
 @pys_obj_eq:
 @pys_obj_cmp:
 @pys_obj_repr:
