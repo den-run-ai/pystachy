@@ -856,8 +856,14 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   ([test](../tests/programs/library/lib_enum_int_left.py)). An `IntEnum` or `IntFlag` member is
   an index where CPython asks for one: a subscript, a slice bound, `range()`, a repetition count,
   `hex()` and `%d` use its value ([test](../tests/programs/library/lib_enum_index.py)). One
-  cannot be passed where an `int` or `str` is typed, `int(member)` is not supported, and these
-  are compile-time errors, as
+  passed or stored where `int` or `str` is annotated, for a parameter, a variable, a field or
+  a return, is held as it is, as CPython's is: the function compiles for the member's class and
+  the location holds an `int | C` union
+  ([typing](../docs/language/typing.md#enum-members-in-int-and-str-locations),
+  [test](../tests/programs/library/lib_enum_int_store.py)), with operators of the union and a
+  member as CPython's ([test](../tests/programs/library/lib_enum_union_member.py)). A
+  container's item takes none ([test](../tests/errors/library/lib_enum_int_list.py)),
+  `int(member)` is not supported, and these are compile-time errors, as
   CPython's member is an `int` or a `str`: `isinstance()` of one and `int` or `str`, also of a
   value of a base class, such as `Enum`, that may hold one
   ([test](../tests/errors/library/lib_enum_isinstance_base.py)), and a member as an `Any` value,

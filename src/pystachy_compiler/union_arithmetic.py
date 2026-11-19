@@ -29,6 +29,13 @@ def none_call_error(name: str, ts: list[str], i: int) -> str:
     return ""
 
 
+def declines_none(self, c: str, m: str) -> bool:
+    # is method m of class c one of int's or str's operations that lib/enum.py gives the members
+    # of an IntEnum, IntFlag or StrEnum class (enum_builtin), which decline None, as CPython's do:
+    # an operation of None and such a member raises the TypeError it raises for a number
+    return m in self.classes[c].methods and self.enum_builtin(c) != "" and self.classes[c].methods[m].mod == "enum"
+
+
 def gen_unumeric(self, op: str, a: Val, b: Val, shown: str, unary: bool) -> Val:
     # (a complex number, as an operand or a member, takes part as complex_arith computes it: each
     # member's case is arith's of its value, and ** too, where one is complex)
@@ -71,12 +78,12 @@ def gen_unumeric_case(self, op: str, a: Val, b: Val, shown: str, unary: bool) ->
                 if b.t == "None" and a.t in self.classes and a.t != COMPLEXC:
                     for m in (["__i" + DUNDER[op][2:]] if shown == op + "=" else []) + [DUNDER[op]]:
                         if m in self.classes[a.t].methods:
-                            if self.cmp_method(a.t, m, "None") != "":
+                            if self.cmp_method(a.t, m, "None") != "" and not declines_none(self, a.t, m):
                                 return self.call_fn(self.classes[a.t].methods[m], [a, b], [])
                             break
                 elif a.t == "None" and b.t in self.classes and b.t != COMPLEXC:
                     rm = "__r" + DUNDER[op][2:]
-                    if self.cmp_method(b.t, rm, "None") != "":
+                    if self.cmp_method(b.t, rm, "None") != "" and not declines_none(self, b.t, rm):
                         return self.call_fn(self.classes[b.t].methods[rm], [b, a], [])
             message = f"bad operand type for unary {op}: 'NoneType'" if unary else f"unsupported operand type(s) for {shown if shown != '' else op}: '{tname(a.t)}' and '{tname(b.t)}'"
             self.raise_("TypeError", self.sconst(message))

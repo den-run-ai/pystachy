@@ -11,7 +11,7 @@ from src.pystachy_compiler.reflection import VARS_USES, refl_attr_fields, refl_f
 from src.pystachy_compiler.specs import BFILE, BIG, BYTEARRAYC, BYTEARRAYS, COMPLEXC, DISPATCH_INLINE, EXCEPTIONS, GLUE, HASATTR, MODATTRS, OBJECTC, PYBUILTINS, RANGEC
 from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
-from src.pystachy_compiler.unions import field_value, float_open, float_returns, float_site, float_takes
+from src.pystachy_compiler.unions import ANNTYPES, ann_open, ann_returns, ann_site, ann_takes, field_value
 from src.pystachy_compiler.utils import (
     is_clsval,
     clsof,
@@ -1298,8 +1298,9 @@ def gen_pcoerce(self, v: Val, t: str, f: FnInfo, j: int) -> Val:
         v = captured
     if v.t == "bool" and t == BIG and self.bool_numeric(f, j):
         v = self.to_big(v)  # (a bool that f reads only as a number: the int it equals, see bool_numeric)
-    if float_site(t) and float_takes(v.t) and f.name == "__init__" and f.cls in self.classes and f.node.kids[0].kind == "noann" and self.classes[f.cls].ftypes.get(f.params[j], "") == t:
-        # (an int for a float field that the __init__ @dataclass writes fills: the field's join)
+    if ann_site(t) and ann_takes(self, t, v.t) and f.name == "__init__" and f.cls in self.classes and f.node.kids[0].kind == "noann" and self.classes[f.cls].ftypes.get(f.params[j], "") == t:
+        # (an int for a float field, or an enum member for an int or str one, that the __init__
+        # @dataclass writes fills: the field's join)
         value = field_value(self, self.classes[f.cls], f.params[j], v)
     else:
         value = self.coerce(v, t, what) if t != "" else v
@@ -1370,13 +1371,15 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
     for v in vals[1:]:
         t = self.join(t, v.t)
         if t == "":
-            both = self.union_type([u.t for u in vals]) if all([float_site(u.t) for u in vals]) else ""
-            if float_takes(both) and not self.final and float_open(self):
-                # (-> float overrides, one of which returns an int: all return what it does, the
-                # join of their returns, a union of numbers, see float_returns)
+            both = self.union_type([u.t for u in vals]) if all([ann_site(u.t) for u in vals]) else ""
+            if both != "" and not both.startswith("!") and not self.final and ann_open(self):
+                # (-> float overrides, one of which returns an int, or -> int or -> str ones, one
+                # of which returns an enum member: all return what it does, the join of their
+                # returns, see ann_returns)
                 for c in cs:
-                    if c.methods[f.name].ret == "float" and float_returns(c.methods[f.name]) and self.hints.get(f"return:{c.methods[f.name].node.line}", "") != both:
-                        self.newhints[f"return:{c.methods[f.name].node.line}"] = both
+                    m = c.methods[f.name]
+                    if m.ret in ANNTYPES and ann_takes(self, m.ret, both) and ann_returns(m) and self.hints.get(f"return:{m.node.line}", "") != both:
+                        self.newhints[f"return:{m.node.line}"] = both
             self.err(f"overrides of {short(o.t)}.{f.name}() return incompatible types; use a common return type")
     ph = Ins("phi", t, "")
     for i in range(len(vals)):
@@ -1497,11 +1500,12 @@ def gen_scalar_call_types(self, f: FnInfo, args: list[Node]) -> list[str]:
     return ts if all(numeric_statement(n, names, blocked, {}, True, True) for n in body) else []
 
 
-def int_for_float(f: FnInfo, j: int, t: str) -> bool:
-    # does an argument of type t compile f again, for a float parameter j that takes an int (a
-    # promoting one too) or a bool: a function's or an ordinary method's, whose body then reads
-    # the int, as CPython's does
-    if not float_takes(t) or f.ptypes[j] != "float" or j == f.vararg or j == f.kwarg or len(f.node.kids) < 3:
+def ann_param(self, f: FnInfo, j: int, t: str) -> bool:
+    # does an argument of type t compile f again, for a parameter j annotated float, int or str
+    # that takes it as it is (ann_takes): an int (a promoting one too) or a bool for a float, the
+    # member of an IntEnum, IntFlag or StrEnum class for an int or a str; a function's or an
+    # ordinary method's, whose body then reads the argument, as CPython's does
+    if f.ptypes[j] not in ANNTYPES or not ann_takes(self, f.ptypes[j], t) or j == f.vararg or j == f.kwarg or len(f.node.kids) < 3:
         return False
     if f.gen or f.extern or f.export or f.pyexport or f.clo >= 0 or f.prop or f.acc != "" or f.deco != "":
         return False
@@ -1556,7 +1560,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
     kwn: list[str] = []
     kwv: list[Val] = []
     offs: dict[int, Val] = {}  # (the index of each list that an @extern call takes as ffi.at(xs, k))
-    late = False  # (an argument that compiles f for its own type: see int_for_float)
+    late = False  # (an argument that compiles f for its own type: see ann_param)
     for a in args:
         j = pos
         e = a
@@ -1602,9 +1606,10 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         passing = self.fn.idpass
         self.fn.idpass = self.id_move(e)
         try:
-            if cache is None and not self.rtmode and int_for_float(f, j, arg.t) and (f.cls == "" or (f.cls in self.classes and (self.classes[f.cls].tag == 0 or f.name == "__init__") and self.classes[f.cls].origin == "" and f.cls not in self.tmpl)):
-                # an int for a float parameter (PEP 484 accepts it, and CPython passes the int
-                # on): the function compiles for it, as a template's does (see instance)
+            if cache is None and not self.rtmode and ann_param(self, f, j, arg.t) and (f.cls == "" or (f.cls in self.classes and (self.classes[f.cls].tag == 0 or f.name == "__init__") and self.classes[f.cls].origin == "" and f.cls not in self.tmpl)):
+                # an int for a float parameter, or an enum member for an int or str one (PEP 484
+                # accepts it, and CPython passes it on as it is): the function compiles for it,
+                # as a template's does (see instance)
                 vals[j] = self.pcoerce(arg, "", f, j)
                 late = True
             else:
