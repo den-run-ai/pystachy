@@ -90,6 +90,44 @@ done:
   ret double %r
 }
 """
+# the step's overflow check of `for i in range(n): ys[i] = xs[i] * 2.0` as listguard's copy reads and
+# stores the items, with the TBAA tags that keep the items apart from the lists' items pointers
+SCALE_LOOP = """declare {i64, i1} @llvm.sadd.with.overflow.i64(i64, i64)
+define void @scale(ptr %xs, ptr %ys, i64 %n) {
+entry:
+  %ctr = alloca i64
+  store i64 0, ptr %ctr
+  br label %head
+head:
+  %i = load i64, ptr %ctr
+  %more = icmp slt i64 %i, %n
+  br i1 %more, label %body, label %done
+body:
+  %xp = getelementptr inbounds i8, ptr %xs, i64 16
+  %xitems = load ptr, ptr %xp, !tbaa !4
+  %xat = getelementptr double, ptr %xitems, i64 %i
+  %x = load double, ptr %xat, !tbaa !5
+  %y = fmul double %x, 2.0
+  %yp = getelementptr inbounds i8, ptr %ys, i64 16
+  %yitems = load ptr, ptr %yp, !tbaa !4
+  %yat = getelementptr double, ptr %yitems, i64 %i
+  store double %y, ptr %yat, !tbaa !5
+  %step = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %i, i64 1)
+  %next = extractvalue {i64, i1} %step, 0
+  %over = extractvalue {i64, i1} %step, 1
+  store i64 %next, ptr %ctr
+  br i1 %over, label %done, label %head
+done:
+  ret void
+}
+!0 = !{!"pystachy fields"}
+!1 = !{!"int", !0, i64 0}
+!2 = !{!"pointer", !0, i64 0}
+!3 = !{!"@list", !1, i64 0, !1, i64 8, !2, i64 16, !2, i64 24}
+!6 = !{!"@slot", !1, i64 0}
+!4 = !{!3, !2, i64 16}
+!5 = !{!6, !1, i64 0}
+"""
 GENERATOR = ("def count(n: int):\n"
              "    i = 0\n"
              "    while i < n:\n"
@@ -231,6 +269,22 @@ class LlvmReadsItTests(unittest.TestCase):
                 self.assertEqual(len(reads), 1, run.stdout)
                 self.assertEqual("load ptr" in reads[0], not optimized, run.stdout)
                 self.assertEqual("call { i64, i1 } @llvm.sadd.with.overflow" in run.stdout, not optimized, run.stdout)
+
+    def test_jit_vectorizer_runs_a_loop_without_exits_on_vectors(self):
+        # PYSTACHY_JIT_OPT=1's JIT_VECTORIZE after JIT_LOOPS: the rotated loop's items pointers are
+        # hoisted, instcombine folds what correlated propagation leaves of the step, and the loop
+        # vectorizer, for the host's target (the driver gives the module the runtime's), multiplies
+        # vectors
+        version = subprocess.run([llvm_tool("opt"), "--version"], capture_output=True, text=True, timeout=60).stdout
+        host = re.search(r"Default target: (\S+)", version)
+        self.assertIsNotNone(host, version)
+        cleanup = "function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)"
+        for passes, vectorized in [(f"{cleanup},{driver.JIT_LOOPS}", False),
+                                   (f"{cleanup},{driver.JIT_LOOPS},{driver.JIT_VECTORIZE}", True)]:
+            with self.subTest(vectorized=vectorized):
+                run = opt(f'target triple = "{host.group(1)}"\n' + SCALE_LOOP, passes)
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertEqual(bool(re.search(r"fmul <[0-9]+ x double>", run.stdout)), vectorized, run.stdout)
 
 
 if __name__ == "__main__":

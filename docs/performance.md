@@ -273,6 +273,11 @@ cleanup alone, they cut the instructions pyperformance's richards executes by 6.
 per launch (json_loads, 12,800 lines of IR). A program over the budget, such as regex_v8, runs the
 same code. These are callgrind counts and paired medians on one x86-64 core
 ([results](../bench/results/jit-loop-passes-2026-11-18.json)).
+The loop vectorizer then runs over the rotated loops: listguard's copies of `y[i] = a * x[i] + y[i]`
+and `y[i] = x[i] * 3.0` over 4,000 items ran in 0.73× and 0.78× of the time, launch included, on
+SSE2's two doubles; optimizing took about 16 ms more on modules of 8,500 and 13,000 lines of IR
+([results](../bench/results/jit-vectorize-2026-11-19.json)). A copy that keeps an exit, such as an
+index's overflow check (`a[i - 1]`), stays scalar.
 
 A program that builds `list(range(4194305))` peaks at **34.2 MiB RSS in v0.4.0-alpha.3's AOT
 executable, against 171.2 MiB in CPython 3.13.18**, a 5.0× reduction. The JIT's processes,

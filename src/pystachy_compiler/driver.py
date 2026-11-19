@@ -42,6 +42,11 @@ LATE_PASSES = "forceattrs,forceattrs,always-inline"
 # what it leaves), so that the latch exits nowhere and loop-rotate rotates the loop; LICM then
 # hoists out of the rotated loop what each iteration reloads, such as a list's items pointer
 JIT_LOOPS = "function(correlated-propagation,sccp,simplifycfg,loop-mssa(loop-rotate,licm))"
+# and then the loop vectorizer, as -O2 runs it, over the rotated loops: instcombine first folds
+# the extractvalue of the insertvalue that correlated propagation leaves of a step's overflow check,
+# which hides the induction variable from scalar evolution; a loop without exits, such as
+# listguard's copy of y[i] = a * x[i], then runs on vectors
+JIT_VECTORIZE = "function(instcombine<no-verify-fixpoint>,loop-vectorize,instcombine<no-verify-fixpoint>,simplifycfg)"
 
 # Every hosted component contributes to runtime-cache identity and startup trust.
 COMPILER_SOURCES: list[str] = [
@@ -1489,7 +1494,7 @@ def main() -> None:
         # callbacks stay visible to the precompiled runtime (which this tier never inlines). A
         # program of up to JIT_INLINE lines of IR has its own functions inlined into their callers
         # first, bottom-up (cgscc), each then cleaned up as before, and then its loops optimized
-        # (JIT_LOOPS) unless PYSTACHY_JIT_OPT=0
+        # and vectorized (JIT_LOOPS, JIT_VECTORIZE) unless PYSTACHY_JIT_OPT=0
         clean = "function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)"
         small = ir.split("; pystachy source locations\n")[0].count("\n") <= jitinline
         if small:
@@ -1507,7 +1512,7 @@ def main() -> None:
             split = clean.replace("simplifycfg)", "simplifycfg,coro-elide),coro-split") if clean.startswith("cgscc(") else f"cgscc({clean},coro-split)"
             passes = f"coro-early,globaldce,always-inline,{split},coro-cleanup,globaldce"
         if jitopt == "1" and small:
-            passes += "," + JIT_LOOPS
+            passes += "," + JIT_LOOPS + "," + JIT_VECTORIZE
         if jitopt == "2":
             # PYSTACHY_JIT_OPT=2: LLVM's -O2 pipeline, as an AOT build runs over the program, but for
             # the runtime, which this tier still calls: it lowers coroutines itself, and its inliner

@@ -527,8 +527,12 @@ A program within the threshold also gets loop passes after the cleanup (the driv
 `JIT_LOOPS`). A range loop's step exits on overflow, although the loop's own test already bounds
 it: correlated propagation removes that exit, SCCP and `simplifycfg` fold what it leaves,
 `loop-rotate` then rotates the loop, and LICM hoists what each iteration reloaded, such as a list's
-items pointer. `PYSTACHY_JIT_OPT=0` skips them. A larger program skips them too: on a module of
-63,000 lines they took about 0.1 s more at each launch.
+items pointer. Then the loop vectorizer runs (`JIT_VECTORIZE`), after `instcombine` folds the
+`extractvalue` of an `insertvalue` that correlated propagation leaves of the step, which hid the
+induction variable from scalar evolution: a loop without exits, such as `listguard`'s copy of
+`y[i] = a * x[i]`, runs on vectors of the module's target (SSE2's two doubles on x86-64, where the
+runtime names no CPU). `PYSTACHY_JIT_OPT=0` skips them. A larger program skips them too: on a module
+of 63,000 lines the loop passes took about 0.1 s more at each launch.
 
 ### The JIT runner
 
@@ -958,7 +962,7 @@ are required before promotion. `make verify` keeps the standard tier.
 | `PYSTACHY_IRFX=1` | Print function effect summaries to stderr |
 | `PYSTACHY_OPT` | Disable named optimizations with `-name`, comma-separated, or all with `-all`; see [IR passes](typed-ir.md#optimizations) |
 | `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT user-function inlining, including the recursion entry helper; `0` disables it (the scalar recursion helpers remain inlined) |
-| `PYSTACHY_JIT_OPT=0\|1\|2` | `1` (default) runs the JIT tier's cleanup over the program, then loop passes where the program is within the `PYSTACHY_JIT_INLINE` threshold; `0` runs the cleanup alone; `2` runs LLVM's `-O2` pipeline in its place, which takes longer at each launch (no `PYSTACHY_JIT_INLINE` budget applies) |
+| `PYSTACHY_JIT_OPT=0\|1\|2` | `1` (default) runs the JIT tier's cleanup over the program, then loop passes and the loop vectorizer where the program is within the `PYSTACHY_JIT_INLINE` threshold; `0` runs the cleanup alone; `2` runs LLVM's `-O2` pipeline in its place, which takes longer at each launch (no `PYSTACHY_JIT_INLINE` budget applies) |
 | `PYSTACHY_JIT_CODEGEN=0\|2` | `0` generates the program's code at `-O0`: the JIT runner's `-O0`, or `llc -O0` for `lli`'s ORC to link; `2` (default) keeps ORC's level |
 | `PYSTACHY_JIT_LAUNCHER=auto\|lli` | What runs `pystachy run`'s programs: `auto` (default), Pystachy's [JIT runner](#the-jit-runner) where it can be built, else `lli`; `lli` always `lli` |
 | `PYSTACHY_PROGRAM_CACHE=0` | Disable the default Linux native [program cache](program-cache.md); unset, empty or `1` enables it where supported. Its [settings](program-cache.md#settings) section lists the variables that key or bypass it |
