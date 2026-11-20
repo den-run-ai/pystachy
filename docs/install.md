@@ -137,6 +137,12 @@ Source builds need **Python 3.11+** to bootstrap and `make`, in addition to LLVM
 There are no pip dependencies for building or running the compiler. Ordinary AOT programs
 run without Python; compiling new programs still requires LLVM.
 
+The compiler runs under CPython 3.11 to 3.15, including the free-threaded 3.14t and 3.15t,
+and emits the same IR for itself and its runtime under each: compiled programs keep CPython
+3.13's semantics whichever interpreter runs the compiler. A daily workflow checks that IR, a
+sample of programs and the [FFI](ffi.md) under each
+([other CPython versions](testing.md#other-cpython-versions)).
+
 ## Ubuntu 24.04 (x86-64 or ARM64)
 
 ```sh
