@@ -1821,53 +1821,34 @@ def pys_str_expandtabs(s: str, size: int) -> str:
     return _rt.str_done(r)
 
 
-def join_items(sep: str, l: list[str], lo: int, hi: int) -> str:
-    # sep.join(l[lo:hi]) for 0 <= lo <= hi <= len(l), with a separator of one byte stored as a byte
+def pys_str_join(sep: str, l: list[str]) -> str:
+    # iterating (no index checks), and a separator of one byte stored as a byte
     m = len(sep)
     n = 0
-    for i in range(lo, hi):
-        x = l[i]
+    i = 0
+    for x in l:
         if _rt.null(x):
             # an item of a list[str | None]
-            raise TypeError("sequence item " + str(i - lo) + ": expected str instance, NoneType found")
+            raise TypeError("sequence item " + str(i) + ": expected str instance, NoneType found")
         n += len(x)
-    if hi - lo > 1:
-        n += m * (hi - lo - 1)
+        i += 1
+    if len(l) > 1:
+        n += m * (len(l) - 1)
     r = _rt.str_new(n)
     at = 0
     c = _rt.byte(sep, 0) if m == 1 else -1
-    for i in range(lo, hi):
-        if i > lo and m > 0:
+    first = True
+    for x in l:
+        if not first and m > 0:
             if c >= 0:
                 _rt.str_put(r, at, c)
             else:
                 _rt.copy(r, at, sep, 0, m)
             at += m
-        x = l[i]
+        first = False
         _rt.copy(r, at, x, 0, len(x))
         at += len(x)
     return _rt.str_done(r)
-
-
-def pys_str_join(sep: str, l: list[str]) -> str:
-    return join_items(sep, l, 0, len(l))
-
-
-def pys_str_join_slice(sep: str, l: list[str], lo: int, hi: int) -> str:
-    # sep.join(l[lo:hi]) without the list l[lo:hi]: lo and hi as a slice takes them, where
-    # -2**63 is an omitted bound
-    n = len(l)
-    if lo == -9223372036854775807 - 1:
-        lo = 0
-    elif lo < 0:
-        lo = max(lo + n, 0)
-    elif lo > n:
-        lo = n
-    if hi == -9223372036854775807 - 1 or hi > n:
-        hi = n
-    elif hi < 0:
-        hi = max(hi + n, 0)
-    return join_items(sep, l, lo, max(hi, lo))
 
 
 def pys_str_split(s: str, sep: str, maxsplit: int) -> list[str]:

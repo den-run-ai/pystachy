@@ -1,4 +1,5 @@
-"""List reductions, joins and path joins moved to runtime.py; the timed region excludes inputs."""
+"""List reductions and path joins moved to runtime.py, and joins, which stayed as they were;
+the timed region excludes input construction."""
 import os
 import sys
 from time import perf_counter

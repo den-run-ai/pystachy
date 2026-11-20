@@ -120,14 +120,6 @@ def fuzz_str():
         same("expandtabs", outcome(rt.pys_str_expandtabs, s, ts), outcome(s.expandtabs, ts), (s, ts))
         parts = [text(n=4) for _ in range(R.randrange(4))]
         same("join", outcome(rt.pys_str_join, n, parts), outcome(n.join, parts), (n, parts))
-        # the join of a slice, whose bounds are a slice's (-2**63: omitted); an item that is None
-        # is counted from the slice's first
-        items = [text(n=4) for _ in range(R.randrange(7))]
-        if items and R.randrange(8) == 0:
-            items[R.randrange(len(items))] = None
-        lo, hi = [R.choice([None, None, R.randrange(-9, 10), R.randrange(-9, 10), -2**63 + 1, 2**63 - 1]) for _ in range(2)]
-        same("join-slice", outcome(rt.pys_str_join_slice, n, items, -2**63 if lo is None else lo, -2**63 if hi is None else hi),
-             outcome(lambda: n.join(items[lo:hi])), (n, items, lo, hi))
         # widths count characters: compare on UTF-8 text through its bytes
         w = text(WIDE, 6)
         width = R.randrange(-2, 12)
