@@ -43,6 +43,11 @@ BUILD=${LLVM_TOOLCHAIN_BUILD:-Release}
 TOOLS="clang opt lli llc llvm-link llvm-as"
 # LLVM's table generators: nearly every other object file includes a header that one of them writes.
 GENERATORS="llvm-min-tblgen llvm-tblgen clang-tblgen"
+# The code in libLLVM that keeps terms of its own, which a copy of the binary must carry: the regex
+# and BLAKE3 terms are files beside the code, and the others begin their source file.
+THIRD_PARTY="llvm/lib/Support/COPYRIGHT.regex llvm/lib/Support/BLAKE3/LICENSE
+  llvm/lib/Support/xxhash.cpp llvm/lib/Support/MD5.cpp llvm/lib/Support/SHA1.cpp llvm/lib/Support/SHA256.cpp
+  llvm/lib/Support/ConvertUTF.cpp llvm/lib/Support/UnicodeNameToCodepointGenerated.cpp"
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 
 fail() { echo "llvm_toolchain: $*" >&2; exit 1; }
@@ -290,6 +295,24 @@ compile() {
   xargs ninja -C "$work/build" -j "$jobs" < "$work/slice.txt"
 }
 
+# Print the terms of the third-party code in libLLVM, each under its path in the source tree $1:
+# a file beside the code, or the comments that begin a source file.
+notices() {
+  for file in $THIRD_PARTY; do
+    [ -s "$1/$file" ] || fail "no third-party notice in $file"
+    echo "==== $file ===="
+    case "$file" in
+      *.cpp)
+        awk '/^[[:space:]]*\/\*/ { block = 1 }
+             block { print; if (/\*\//) block = 0; next }
+             /^[[:space:]]*(\/\/.*)?$/ { print; next }
+             { exit }' "$1/$file" ;;
+      *) cat "$1/$file" ;;
+    esac
+    echo
+  done
+}
+
 build() {
   objects=${LLVM_TOOLCHAIN_OBJECTS:-}
   prepare "$1"
@@ -306,6 +329,7 @@ build() {
   mkdir -p "$stage/share/licenses"
   cp "$src/llvm/LICENSE.TXT" "$stage/share/licenses/LLVM-LICENSE.TXT"
   cp "$src/clang/LICENSE.TXT" "$stage/share/licenses/clang-LICENSE.TXT"
+  notices "$src" > "$stage/share/licenses/LLVM-THIRD-PARTY.TXT"
   {
     echo "LLVM $VERSION for Pystachy: Linux $ARCH, $TARGET target only"
     echo "tools: $TOOLS"
@@ -338,5 +362,6 @@ case "${1:-}" in
   check) [ $# -eq 2 ] || fail "usage: llvm_toolchain.sh check DIR"; check "$2" ;;
   name) echo "$NAME" ;;
   launch) shift; launch "$@" ;;
+  notices) [ $# -eq 2 ] || fail "usage: llvm_toolchain.sh notices SOURCE"; notices "$2" ;;
   *) fail "usage: llvm_toolchain.sh build OUT | fingerprint OUT | generators OUT | compile OUT I N | check DIR | name" ;;
 esac

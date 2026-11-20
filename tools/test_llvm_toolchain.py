@@ -223,6 +223,32 @@ class FingerprintTests(unittest.TestCase):
         self.assertIn("no compile_commands.json", result.stderr)
 
 
+class NoticesTests(unittest.TestCase):
+    def test_third_party_terms_are_files_and_the_comments_before_the_code(self):
+        paths = setting("THIRD_PARTY").split()
+        self.assertEqual(len(paths), 8)
+        with tempfile.TemporaryDirectory() as directory:
+            for path in paths:
+                file = Path(directory) / path
+                file.parent.mkdir(parents=True, exist_ok=True)
+                file.write_text(f"terms of {path}\n" if not path.endswith(".cpp") else
+                                f"// {path}\n\n/*\nterms of {path}\nwithout a marker\n*/\n\n  /* one line */\n"
+                                "#include <x>\n// a later comment\nint code;\n")
+            result = run("notices", directory)
+            self.assertEqual((result.returncode, result.stderr), (0, ""))
+            sections = result.stdout.split("==== ")[1:]
+            self.assertEqual([section.split(" ====\n")[0] for section in sections], paths)
+            for path, section in zip(paths, sections, strict=True):
+                self.assertIn(f"terms of {path}\n", section)
+                if path.endswith(".cpp"):
+                    self.assertTrue(section.endswith("without a marker\n*/\n\n  /* one line */\n\n"), section)
+            # A release that drops or moves one of them fails the build.
+            (Path(directory) / paths[-1]).write_text("")
+            result = run("notices", directory)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn(f"no third-party notice in {paths[-1]}", result.stderr)
+
+
 class WorkflowTests(unittest.TestCase):
     def setUp(self):
         # BaseLoader keeps "on" and the slices as text.

@@ -100,8 +100,11 @@ The script fetches `llvm-project-18.1.8.src.tar.xz`, checks its pinned SHA-256, 
 installs LLVM's `distribution` target, runs the check below and writes
 `pystachy-llvm-18.1.8-linux-x86_64.tar.xz` with its `.sha256`. Inside the archive,
 `share/BUILD.txt` records the source hash, the recipe's hash, the compiler and the library
-versions needed, and `MANIFEST.sha256` lists every file. The archive has sorted names, no
-owners and the sources' time, so the same binaries give the same bytes.
+versions needed, and `MANIFEST.sha256` lists every file. `share/licenses` holds LLVM's and
+clang's licenses and, in `LLVM-THIRD-PARTY.TXT`, the terms of the code that `libLLVM` compiles
+in under other ones: the regex, BLAKE3, xxHash, MD5 and SHA sources and Unicode's tables. The
+archive has sorted names, no owners and the sources' time, so the same binaries give the same
+bytes.
 
 The archive needs C and C++ libraries at least as new as the build host's; the two
 `LLVM_TOOLCHAIN_GLIB*` settings make the build fail if it needs newer ones than
