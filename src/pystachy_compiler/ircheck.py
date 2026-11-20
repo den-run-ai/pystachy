@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import dynamic_program, fail, int_lists, int_program
 from src.pystachy_compiler.dynamic_proof import DynamicProof, DynTypes
-from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, operand_kind, slot_register, tmpname, value_definitions
+from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, merged_blocks, operand_kind, slot_register, tmpname, value_definitions
 from src.pystachy_compiler.scalar_ir import SCALAR_INTS
 from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
@@ -682,6 +682,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
         at[l] = j
     succ: list[list[str]] = []
     types = OpTypes(fn, self.classes, union_types)
+    merged = merged_blocks(fn, self.source_lines.enabled)
     for b in fn.blocks:
         # Most blocks can borrow their terminator's labels without combining edges.
         out: list[str] = NOLABELS
@@ -697,7 +698,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 shape = op_type_error(types, i)
             if shape != "":
                 self.bad_ir(fn, b, shape)
-            if i.line == 0 and fn.located:
+            if i.line == 0 and fn.located and b.label not in merged:
                 self.bad_ir(fn, b, f"{i.op} {i.s} has no source line" if i.s != "" else f"{i.op} has no source line")
             inv = len(i.b) == 2 and (i.op == "rt" or i.op == "call" or i.op == "icall" or i.op == "init" or i.op == "gen.resume")
             if ("T" in IROPS[i.op] or inv) != (j == len(b.code) - 1):

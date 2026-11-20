@@ -164,6 +164,17 @@ TMPNAMES: list[str] = []
 ONENUMS: list[list[int]] = []
 
 
+def merged_blocks(fn: IFn, lines: bool) -> dict[str, bool]:
+    # The shared raise blocks (IFn.cold) whose ops may have no line: with line tables (lines),
+    # Gen.function_body numbers one that checks of several lines reach 0, as LLVM numbers code
+    # merged from several lines. A function the compiler built locates every other op
+    merged: dict[str, bool] = {}
+    if lines:
+        for key in fn.cold:
+            merged[fn.cold[key]] = True
+    return merged
+
+
 def tmpname(n: int) -> str:
     if n < 0:
         return f"%t{n}"

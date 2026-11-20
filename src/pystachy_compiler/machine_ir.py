@@ -14,7 +14,7 @@ it would be had the frontend and the passes made no cast.
 """
 from __future__ import annotations
 import os
-from src.pystachy_compiler.ir import OPERAND_SLOT, OPERAND_VALUE, IFn, Ins, Val, digits, one_num, operand_kind, tmpname
+from src.pystachy_compiler.ir import OPERAND_SLOT, OPERAND_VALUE, IFn, Ins, Val, digits, merged_blocks, one_num, operand_kind, tmpname
 
 # A layout read and the 8-byte word of its operand's object that it reads, as runtime.c lays
 # them out: a List is {len, cap, items}, a closed union's box {tag, payload} and a dynamic
@@ -73,11 +73,12 @@ def gen_verify_machine(self, fn: IFn) -> None:
     # for the backend, and every machine memory op, the frontend's and this stage's, has the
     # shape Gen.verify asks of one. A machine load may now give a payload's opaque %slot. Every
     # op still has its source line, as Gen.verify asks of a function the compiler built
+    merged = merged_blocks(fn, self.source_lines.enabled)
     for b in fn.blocks:
         for i in b.code:
             if i.op in WORD_READS:
                 self.bad_ir(fn, b, f"{i.op} left after machine lowering")
-            if i.line == 0 and fn.located:
+            if i.line == 0 and fn.located and b.label not in merged:
                 self.bad_ir(fn, b, f"{i.op} has no source line after machine lowering")
             if i.op == "mach.load" or i.op == "mach.store" or i.op == "mach.addr":
                 self.verify_memory(fn, b, i, True)
