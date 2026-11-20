@@ -994,7 +994,8 @@ decides a fixed tuple's slots while its function is printed.
 - `tools/typed_ir_ops.py --check` fails when the [operation reference](#operation-reference)
   differs from `OPS`.
 - `tools/typed_ir_text.py verify tools/fixtures/typed_ir/invalid.tir` holds the verifier to
-  the error each function of the file expects (see [text form](#text-form)).
+  the error each function of the file expects, and `classes.tir` holds the verifier's class
+  view to the classes its module declares (see [text form](#text-form)).
 - `make check-runtime` checks runtime signature/effect declarations.
 - `make irsame` and `make irsame-py` compare a refactor's IR, diagnostics and exit status with a
   reference compiler. Behavior changes need their own explicit tests, not a byte-identical promise.
@@ -1076,7 +1077,13 @@ fails with an error containing MESSAGE in the block that holds the line, and a f
 without one must verify. The verifier stops at its first error, so a function expects one
 at most. [`invalid.tir`](../tools/fixtures/typed_ir/invalid.tir) breaks one rule per
 function: each kind of shape and type rule of an operation's row, some operations' own
-checks, block structure, and the values operands name. Its last function verifies.
+checks, block structure, and the values operands name. Its last function verifies. A
+module's functions are verified with its classes, which the class view of an operand's type
+relates by their bases, secondary bases and overlaps; a function list declares none.
+[`classes.tir`](../tools/fixtures/typed_ir/classes.tir) reads a class as its base, as a
+derived class, as a secondary base, as a class it overlaps and as `object`, which verify, and
+as unrelated classes, which do not. A module declares no fields, so a `field.addr` does not
+verify.
 
 The optional [Lean shape checker](../tools/lean_boundary/SHAPE.md) reads the same records
 and the operation table. For the functions it accepts it proves the table's counts and

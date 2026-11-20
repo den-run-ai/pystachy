@@ -466,10 +466,36 @@ L1:
                                     capture_output=True, text=True, check=False)
             self.assertEqual(result.returncode, 1)
             self.assertIn("@f: unexpected error in block entry", result.stderr)
-            result = subprocess.run([sys.executable, str(ROOT / "tools/typed_ir_text.py"), "verify", str(self.INVALID)],
-                                    capture_output=True, text=True, check=False)
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn("functions verify as expected", result.stdout)
+            for fixture in (self.INVALID, self.CLASSES):
+                result = subprocess.run([sys.executable, str(ROOT / "tools/typed_ir_text.py"), "verify", str(fixture)],
+                                        capture_output=True, text=True, check=False)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("functions verify as expected", result.stdout)
+
+    CLASSES = FIXTURES / "classes.tir"
+
+    def test_a_modules_classes_are_the_ones_its_class_view_relates(self):
+        source = self.CLASSES.read_text()
+        self.assertEqual(text.verify_errors(source), [])
+        expected = text.expectations(source)
+        admitted = [r["symbol"] for r, e in zip(text.parse_functions(source), expected, strict=True) if not e]
+        self.assertEqual((len(admitted), len(expected) - len(admitted)), (6, 2))
+        # (as functions alone the verifier knows no class: each reading the view admits is an error)
+        alone = re.sub(r"(?ms)^module \{$.*?^\}$\n", "", source)
+        self.assertIsInstance(text.parse(alone), list)
+        problems = text.verify_errors(alone)
+        self.assertEqual([p.split(":")[0] for p in problems], admitted)
+        for problem in problems:
+            self.assertRegex(problem, r": unexpected error in block entry: ret operand 0 reads %a0 as \w+, but it is \w+$")
+
+    def test_class_declarations_the_verifier_cannot_read_are_rejected(self):
+        for declarations, expected in (("  class A roles=[B]\n", "class A: B is no declared class"),
+                                       ("  class A overlaps=[B]\n", "class A: B is no declared class"),
+                                       ("  class A base=B\n", "class A: its base B is neither a declared class nor a builtin exception class"),
+                                       ("  class A base=B\n  class B base=A\n", "class A derives from itself")):
+            with self.subTest(expected=expected), self.assertRaisesRegex(text.TextError, expected):
+                text.verify_errors("module {\n" + declarations + "}\n\n" + self.CASE)
+        self.assertEqual(text.verify_errors("module {\n  class A base=KeyError\n  class B base=A\n}\n\n" + self.CASE), [])
 
 
 if __name__ == "__main__":

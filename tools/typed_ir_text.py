@@ -61,7 +61,9 @@ and it holds no class fields, globals or runtime declarations.
 -verify-diagnostics does. A comment line `; expected-error {{MESSAGE}}` in a function says that
 its verification must fail with an error that contains MESSAGE, in the block the line is in
 (before the first block: that block); a function without one must verify. The verifier stops
-at its first error, so a function expects one at most.
+at its first error, so a function expects one at most. A module's functions are verified with
+its classes (class_infos): the class view of an operand's type (specs.TYPE_VIEWS) relates them
+by their bases, secondary bases and overlaps. A function list declares no class.
 """
 import argparse
 from contextlib import redirect_stderr
@@ -729,11 +731,37 @@ def from_ifn(fn):
     }
 
 
-def gen_for(fn):
-    """A fresh code generator that has declared the runtime functions fn calls."""
+def class_infos(module):
+    """The compiler's ClassInfo of each class a module declares, with what the verifier's class
+    view reads of it (ircheck.related, Gen.derives): its base, secondary bases and overlaps. The
+    text holds no fields, so a field.addr of a class does not verify."""
+    ir, specs, symbols, syntax, utils = compiler()
+    declared = module["classes"]
+    infos = {}
+    for name, c in declared.items():
+        require(c["base"] == "" or c["base"] in declared or c["base"] in specs.EXCBASES,
+                f"class {name}: its base {c['base']} is neither a declared class nor a builtin exception class")
+        for other in c["roles"] + c["overlaps"]:
+            require(other in declared, f"class {name}: {other} is no declared class")
+        chain = [name]
+        while chain[-1] in declared and declared[chain[-1]]["base"] != "":
+            require(declared[chain[-1]]["base"] not in chain, f"class {name} derives from itself")
+            chain.append(declared[chain[-1]]["base"])
+        info = symbols.ClassInfo(name, syntax.Node("class", name, 1))
+        info.base = c["base"]
+        info.roles = list(c["roles"])
+        info.overlaps = list(c["overlaps"])
+        infos[name] = info
+    return infos
+
+
+def gen_for(fn, classes=None):
+    """A fresh code generator that has declared the runtime functions fn calls and knows the
+    classes of its module (class_infos), if any."""
     ir, specs, symbols, syntax, utils = compiler()
     from src.pystachy_compiler.gen import Gen
     g = Gen()
+    g.classes.update(classes or {})
     for block in fn.blocks:
         for i in block.code:
             if i.op == "rt":
@@ -769,8 +797,11 @@ def expectations(text):
 
 
 def verify_errors(text, eh=False):
-    """Why the functions of a text do not verify as their expected errors say, or []."""
-    records = parse_functions(text)
+    """Why the functions of a text do not verify as their expected errors say, or []. A module's
+    are verified with its classes."""
+    parsed = parse(text)
+    records = parsed["functions"] if isinstance(parsed, dict) else parsed
+    classes = class_infos(parsed) if isinstance(parsed, dict) else {}
     problems = []
     for record, expected in zip(records, expectations(text), strict=True):
         name = record["symbol"]
@@ -781,7 +812,7 @@ def verify_errors(text, eh=False):
         errors = StringIO()
         try:
             with redirect_stderr(errors):
-                gen_for(fn).verify(fn, eh)
+                gen_for(fn, classes).verify(fn, eh)
             reported = None
         except SystemExit:
             reported = REPORTED.search(errors.getvalue())
