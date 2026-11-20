@@ -1114,7 +1114,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return vals[0]  # a str path is its own file system path, and posixpath's normcase() of it
     if (name == "os.getenv" or name == "os.environ.get") and (len(vals) == 1 or (len(vals) == 2 and vals[1].t == "None")):
         # without a default the result is the variable's value or None
-        return Val(self.rt("pys_getenv", "ptr", [f"ptr {self.coerce(vals[0], 'str', f'argument 1 of {name}()').v}", "ptr null"]), "opt[str]")
+        return Val(self.rt("pys_getenv", "ptr", [f"ptr {self.coerce(vals[0], 'str', f'argument 1 of {name}()').v}", "ptr null"], "", "opt[str]"), "opt[str]")
     if (name == "math.floor" or name == "math.ceil" or name == "math.trunc") and len(vals) == 1 and (vals[0].t == "int" or vals[0].t == "bool"):
         return self.as_int(vals[0])
     if name == "round" and len(vals) >= 1 and (vals[0].t == "int" or vals[0].t == "bool"):
@@ -1188,7 +1188,9 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             LINKDL.append("dl")
         spec = CALLS[key].split(":")
         r = spec[1] if spec[1] != "" else vals[0].t
-        return self.rres(self.rt(spec[0], rtt(r), [self.rarg(v) for v in vals]), r)
+        # (getenv's result, the variable's value or else the default, is a str where the default
+        # is one: its RUNTIME result R, which the call gives)
+        return self.rres(self.rt(spec[0], rtt(r), [self.rarg(v) for v in vals], "", r if spec[0] == "pys_getenv" else ""), r)
     if len(vals) == 0:
         self.err(f"unsupported call {name}()")
     v = vals[0]
