@@ -62,6 +62,7 @@ BENCHMARKS = {
     "pprint": (["1"], ["1", "50"]),
     "pyflate": (["3"], ["1"]),
     "raytrace": (["4"], ["1", "20", "20"]),
+    "regex_compile": (["10"], ["1", "300"]),
     "regex_dna": (["4"], ["1", "1000"]),
     "regex_effbot": (["20"], ["1"]),
     "regex_v8": (["20"], ["1"]),
@@ -70,6 +71,7 @@ BENCHMARKS = {
     "scimark": (["2"], ["1"]),
     "spectral_norm": (["10"], ["1"]),
     "telco": (["200"], ["1"]),
+    "tomli_loads": (["4"], ["1", "3"]),
     "unpack_sequence": (["50000"], ["1"]),
 }
 
@@ -136,6 +138,33 @@ UPSTREAM = {
     "unpack_sequence": "0dafe97531abc4a5baf30fe011db7acb3bf1e64cd4e41acb0c7db2bb141a8382",
     "xml_etree": "1d824c4d4dd92a7598e085dbdf7beed3809a75e4d6972c90377822c78f73477c",
 }
+
+# regex_compile's port reads the regexes that upstream captures from its own copies of two other
+# benchmarks, in REGEX_RECORD; --census captures them again from these pinned files and compares.
+REGEX_RECORD = BENCH / "data" / "regex_compile.txt"
+REGEX_HELPERS = {
+    "bm_regex_effbot.py": "0823b6507f8babea2238847562d9c9af31000ea57cbb695e5d47053321ea68c7",
+    "bm_regex_v8.py": "37133ec6c383183a95ee640deffce54b42cbad4dbfa24415e46ad656127c56aa",
+}
+# CPython runs this in a directory of upstream's regex_compile: a line of REGEX_RECORD for each
+# captured regex, "p" with a compiled pattern's own flags where the regex is one.
+REGEX_CAPTURE = """import re, sys, time, types
+stub = types.ModuleType("pyperf")
+stub.perf_counter = time.perf_counter
+sys.modules["pyperf"] = stub
+sys.path.insert(0, sys.argv[1])
+import run_benchmark
+for regex, flags in run_benchmark.capture_regexes():
+    if isinstance(regex, re.Pattern):
+        if flags:
+            raise ValueError("a compiled pattern captured with flags")
+        kind, flags, regex = "p", regex.flags, regex.pattern
+    else:
+        kind = "s"
+    if not isinstance(regex, str) or any(c in regex for c in "\\t\\r\\n"):
+        raise ValueError("a regex that a line cannot hold: %r" % (regex,))
+    sys.stdout.write("%s\\t%d\\t%s\\n" % (kind, flags, regex))
+"""
 
 # --census: the statements that stand in for each upstream main, calling what its pyperf
 # runner would time with the default arguments.
@@ -242,6 +271,7 @@ TIMED_PART = {
     "pprint": ("_safe_repr", "pformat"),
     "pyflate": ["bench_pyflake"],
     "raytrace": ["bench_raytrace"],
+    "regex_compile": ["bench_regex_compile"],
     "regex_dna": ["bench_regex_dna"],
     "regex_effbot": ["bench_regex_effbot"],
     "regex_v8": ["bench_regex_v8"],
@@ -250,6 +280,7 @@ TIMED_PART = {
     "scimark": ["SparseCompRow_matmult", "bench_FFT", "bench_LU", "bench_MonteCarlo", "bench_SOR"],
     "spectral_norm": ["bench_spectral_norm"],
     "telco": ["bench_telco"],
+    "tomli_loads": ["bench_tomli_loads"],
     "unpack_sequence": ["do_unpacking"],
 }
 
@@ -394,15 +425,34 @@ def timing_errors(name, text):
     return errors
 
 
-def upstream_files(path):
-    """Read the census sources from the pinned sdist or its extracted benchmarks directory."""
+def upstream_files(path, files=None):
+    """Read the census sources from the pinned sdist or its extracted benchmarks directory: each
+    benchmark's run_benchmark.py, or FILES of bm_regex_compile."""
+    names = ({name: f"bm_{name}/run_benchmark.py" for name in UPSTREAM} if files is None
+             else {name: "bm_regex_compile/" + name for name in files})
     if path.is_dir():
-        return {name: (path / f"bm_{name}" / "run_benchmark.py").read_bytes() for name in UPSTREAM}
+        return {name: (path / relative).read_bytes() for name, relative in names.items()}
     checksum = digest(path.read_bytes())
     if checksum != SDIST_SHA256:
         raise ValueError(f"{path}: SHA-256 {checksum}, expected {SDIST_SHA256}")
     with tarfile.open(path) as tar:
-        return {name: tar.extractfile(SDIST_DIR + f"bm_{name}/run_benchmark.py").read() for name in UPSTREAM}
+        return {name: tar.extractfile(SDIST_DIR + relative).read() for name, relative in names.items()}
+
+
+def regex_capture(source, helpers, timeout):
+    """What upstream's regex_compile (SOURCE, with its HELPERS) captures, as REGEX_RECORD's text."""
+    for name, text in helpers.items():
+        if digest(text) != REGEX_HELPERS[name]:
+            raise RuntimeError(f"bm_regex_compile/{name}: SHA-256 {digest(text)}, expected {REGEX_HELPERS[name]}")
+    with tempfile.TemporaryDirectory(prefix="pyperformance-regexes-") as tmp:
+        (Path(tmp) / "run_benchmark.py").write_bytes(source)
+        for name, text in helpers.items():
+            (Path(tmp) / name).write_bytes(text)
+        result = subprocess.run([sys.executable, "-I", "-X", "utf8", "-W", "ignore", "-c", REGEX_CAPTURE, tmp],
+                                capture_output=True, timeout=timeout)
+    if result.returncode:
+        raise RuntimeError("regex_compile: capture failed: " + result.stderr.decode("utf-8", "replace")[-500:])
+    return result.stdout.decode("utf-8")
 
 
 def census(args, compiler, env):
@@ -445,9 +495,16 @@ def census(args, compiler, env):
     failures = [f"{r['name']}: hunks without a 'Pystachy port' note at lines {', '.join(r['unmarked_hunks'])}"
                 for r in rows if r.get("unmarked_hunks")]
     failures += [f"{r['name']}: {problem}" for r in rows for problem in r.get("timing", [])]
+    result = {"sdist_sha256": None if input_path.is_dir() else SDIST_SHA256, "benchmarks": rows}
+    if "regex_compile" in sources and "regex_compile" in BENCHMARKS:
+        captured = regex_capture(sources["regex_compile"], upstream_files(input_path, REGEX_HELPERS), args.timeout)
+        result["regex_record"] = {"sha256": digest(captured.encode("utf-8")), "regexes": captured.count("\n"),
+                                  "matches": captured == REGEX_RECORD.read_text(encoding="utf-8")}
+        if not result["regex_record"]["matches"]:
+            failures.append(f"regex_compile: {REGEX_RECORD.relative_to(ROOT)} is not what the pinned sources capture")
     for failure in failures:
         print(failure, file=sys.stderr)
-    return {"sdist_sha256": None if input_path.is_dir() else SDIST_SHA256, "benchmarks": rows}, not failures
+    return result, not failures
 
 
 def seconds(stderr):

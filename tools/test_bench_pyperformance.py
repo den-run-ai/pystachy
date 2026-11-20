@@ -334,7 +334,7 @@ class RecordTests(unittest.TestCase):
             cases.extend(generate(source, path.name).cases)
         modules = {bench.port_path(name).stem for name in bench.BENCHMARKS}
         self.assertEqual(imported & modules, modules)
-        self.assertEqual(len(cases), 49)
+        self.assertEqual(len(cases), 51)
         self.assertEqual(len(set(cases)), len(cases))
 
     def test_pytest_correctness_suite_matches_original_pytest(self):
@@ -357,6 +357,58 @@ class RecordTests(unittest.TestCase):
             text = bench.port_path(name).read_text()
             self.assertIn("Pystachy port: a deterministic main replaces pyperf.Runner", text, name)
             self.assertNotIn("import pyperf", text, name)
+
+    def test_regex_record_holds_one_regex_a_line(self):
+        lines = bench.REGEX_RECORD.read_text(encoding="utf-8").split("\n")
+        self.assertEqual(lines.pop(), "")
+        self.assertEqual(len(lines), 4267)
+        kinds = {"s": 0, "p": 0}
+        for line in lines:
+            kind, flags, regex = line.split("\t")
+            kinds[kind] += 1
+            self.assertEqual(re.compile(regex, int(flags)).pattern, regex)
+        self.assertEqual(kinds, {"s": 2797, "p": 1470})
+
+    def test_regex_capture_records_strings_and_compiled_patterns(self):
+        source = (b"import re\nimport pyperf\n\n\ndef capture_regexes():\n    regexes = []\n    real = re.compile\n\n"
+                  b"    def capture(regex, flags=0):\n        regexes.append((regex, flags))\n"
+                  b"        return real(regex, flags)\n    re.compile = capture\n    try:\n        import bm_regex_effbot\n"
+                  b"    finally:\n        re.compile = real\n    return regexes\n")
+        helper = b"import re\np = re.compile('a(b)', re.I)\nre.compile(p)\nre.compile('x|y')\n"
+        with mock.patch.dict(bench.REGEX_HELPERS, {"bm_regex_effbot.py": bench.digest(helper)}, clear=True):
+            self.assertEqual(bench.regex_capture(source, {"bm_regex_effbot.py": helper}, 60),
+                             "s\t2\ta(b)\np\t34\ta(b)\ns\t0\tx|y\n")
+            with self.assertRaisesRegex(RuntimeError, "SHA-256"):
+                bench.regex_capture(source, {"bm_regex_effbot.py": helper + b"\n"}, 60)
+        tabbed = helper.replace(b"'x|y'", b"'x\\ty'")
+        with mock.patch.dict(bench.REGEX_HELPERS, {"bm_regex_effbot.py": bench.digest(tabbed)}, clear=True):
+            with self.assertRaisesRegex(RuntimeError, "a regex that a line cannot hold"):
+                bench.regex_capture(source, {"bm_regex_effbot.py": tabbed}, 60)
+
+    def test_census_fails_where_the_regex_record_differs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "bm_regex_compile" / "run_benchmark.py"
+            source.parent.mkdir()
+            source.write_text(CensusTests.UPSTREAM)
+            for name in bench.REGEX_HELPERS:
+                (source.parent / name).write_text("")
+            args = SimpleNamespace(census=tmp, timeout=1)
+            port = bench.port_path("regex_compile").read_text()
+            with mock.patch.dict(bench.UPSTREAM, {"regex_compile": bench.digest(source.read_bytes())}, clear=True), \
+                    mock.patch.object(bench, "upstream_timed_part", return_value=(["bench_regex_compile"], [])), \
+                    mock.patch.object(bench, "unmarked_hunks", return_value=[]), \
+                    mock.patch.object(bench.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "", "")), \
+                    mock.patch.object(bench, "regex_capture", return_value="s\t0\tx\n") as capture, \
+                    contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as errors:
+                report, valid = bench.census(args, ["compiler"], {})
+                self.assertFalse(valid)
+                self.assertFalse(report["regex_record"]["matches"])
+                self.assertIn("is not what the pinned sources capture", errors.getvalue())
+                capture.return_value = bench.REGEX_RECORD.read_text(encoding="utf-8")
+                report, valid = bench.census(args, ["compiler"], {})
+                self.assertTrue(valid)
+                self.assertEqual(report["regex_record"]["regexes"], 4267)
+            self.assertIn("data/regex_compile.txt", port)
 
     def test_readme_links_the_authoritative_manifest(self):
         readme = (bench.BENCH / "README.md").read_text()
