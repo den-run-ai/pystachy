@@ -339,10 +339,14 @@ def gen_dyn_boxable(self, t: str) -> str:
         # Match dyn_box here so a tentative comparison can choose its concrete
         # adapter before a later attribute dispatcher encounters this layout.
         return f"a {typestr(t)} as an Any value is not supported yet"
-    if is_list(t) or is_dict(t) or is_set(t):
+    if is_set(t):
+        # (no box holds a set or frozenset yet, #775; a list comprehension of its items, for an Any
+        # target, builds a list[Any], which one does, #1591)
+        return f"a {typestr(t)} cannot become an Any value: Any values hold no sets yet (a list comprehension of its items can become one)"
+    if is_list(t) or is_dict(t):
         # (an alias of a typed container would read its slots with another layout, or store a
         # box where its typed code reads a number: copying it would break its identity)
-        which = "list[Any]" if is_list(t) else "dict[Any, Any]" if is_dict(t) else "set[Any]"
+        which = "list[Any]" if is_list(t) else "dict[Any, Any]"
         return f"a {typestr(t)} cannot become an Any value: its items are typed, and Any's containers hold Any items (make it a {which} from the start, or copy it)"
     if t.startswith("fn[b:") or t.startswith("fn[d:") or t.startswith("fn[u:"):
         return f"a builtin function or method as an Any value is not supported yet ({typestr(t)})"
