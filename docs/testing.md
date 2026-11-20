@@ -1102,11 +1102,12 @@ does the [Variants workflow](../.github/workflows/variants.yml), which
 
 The [LLVM toolchain workflow](../.github/workflows/llvm-toolchain.yml) runs only when a person
 dispatches it, apart from PR CI; no check requires it. Compiling LLVM and clang
-takes about two CPU-hours, so one job compiles LLVM's table generators, six each compile one
-slice of the object files and another links, checks and packs them: each stays within the job
+takes about two CPU-hours, so for each of x86-64 and ARM64 one job compiles LLVM's table
+generators, six each compile one slice of the object files and another links, checks and packs
+them: each stays within the job
 limit, and a run whose compile commands are an earlier run's takes the objects from its cache
 ([minimal LLVM toolchain](llvm-toolchain.md#build)). Given a revision on `main`, it
-[publishes the archive](llvm-toolchain.md#publish) as a release asset.
+[publishes the archives](llvm-toolchain.md#publish) as the assets of one release.
 
 Every job, including release jobs, has a time limit of at most 15 minutes. Release preparation
 waits at most ten minutes for its exact-commit CI evidence. Expensive new checks must fit the
