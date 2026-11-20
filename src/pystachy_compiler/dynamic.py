@@ -5626,7 +5626,7 @@ def gen_dyn_sum(self, xs: Val, start: Val) -> Val:
     return self.dyn_sum_end(r)
 
 
-def gen_json_any(self, name: str, args: list[Node], want: str, resultsoft: bool) -> Val | None:
+def gen_json_any(self, name: str, args: list[Node], want: str, resultsoft: bool, policy: bool = True) -> Val | None:
     # json.loads(), json.dumps(), or the native _raw_decode adapter in an opt-in module:
     # dyn: lib's function of Any values (JSONANY, which the loader adds to a program that has such
     # a module and json) where the document is Any values, so that loads() decodes it into Any's
@@ -5634,10 +5634,23 @@ def gen_json_any(self, name: str, args: list[Node], want: str, resultsoft: bool)
     # None, json's own function of JSONValue. _raw_decode explicitly requests Any storage;
     # loads() where its result becomes Any storage (want
     # holds Any values); dumps() where its argument does, or is a list, dict or tuple display or a
-    # list or dict comprehension, which is then Any's
+    # list or dict comprehension, which is then Any's. A module that does not opt in (policy
+    # false) makes no Any value, but dumps() of one an opt-in module gave it is the same call:
+    # json's own function would check it against JSONValue, whose containers Any's are not
     q = JSONANY + "$" + name[name.find("$") + 1 :]
     if q not in self.funcs:
         return None
+    if not policy:
+        objs = [x for x in args if x.kind == "kw" and x.s == "obj"]
+        if len(args) == 0 or args[0].kind == "starred" or args[0].kind == "dstar" or (args[0].kind == "kw" and len(objs) != 1):
+            return None
+        first = args[0] if args[0].kind != "kw" else objs[0].kids[0]
+        # (a variable, an attribute, an item or a call's result: typed as json's parameter
+        # takes it, so that what is no Any value compiles as before, by json's own function)
+        if first.kind not in ["name", "attr", "index", "call"] or not holds_dyn(self.dry(first, self.funcs[name].ptypes[0])):
+            return None
+        self.add(Ins("init", "", JSONANY))
+        return self.call_fn(self.funcs[q], [], args, want, resultsoft=resultsoft)
     if name == "json$loads" or name == "json$_raw_decode":
         if name == "json$loads" and not holds_dyn(want):
             return None

@@ -2229,8 +2229,8 @@ class Gen:
     def dyn_id_box(self, v: Val) -> Val:
         return dynamic_dyn_id_box(self, v)
 
-    def json_any(self, name: str, args: list[Node], want: str, resultsoft: bool) -> Val | None:
-        return dynamic_json_any(self, name, args, want, resultsoft)
+    def json_any(self, name: str, args: list[Node], want: str, resultsoft: bool, policy: bool = True) -> Val | None:
+        return dynamic_json_any(self, name, args, want, resultsoft, policy)
 
     def dyn_id_held(self, v: Val) -> Val:
         return dynamic_dyn_id_held(self, v)
