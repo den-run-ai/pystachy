@@ -20,8 +20,8 @@ COUNTS = {"scalar": 120000000, "range": 60000000, "power": 60000000,
           "sum-float": 5000, "sum-int": 5000, "reduction": 5000, "ascii": 5000, "unicode": 5000,
           "str-int": 20000000, "str-int-short": 20000000, "int-str": 20000000, "int-str-short": 20000000,
           "int-str-hex": 20000000, "int-str-padded": 20000000,
-          "ints-any-all": 100000, "ints-any-all-short": 100000000, "ints-sum-float": 100000,
-          "join": 500000, "join-bytes": 200000, "join-slice": 500000, "path-join": 20000000}
+          "ints-any-all": 400000, "ints-any-all-short": 200000000, "ints-sum-float": 400000,
+          "join": 800000, "join-bytes": 400000, "join-slice": 1200000, "path-join": 60000000}
 # The cases of a later migration have a source of their own, so that workload.py keeps the hash
 # that the first recorded report names.
 INT_TEXT_CASES = ("str-int", "str-int-short", "int-str", "int-str-short", "int-str-hex", "int-str-padded")
