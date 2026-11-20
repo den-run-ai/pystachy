@@ -193,7 +193,7 @@ class GuardTests(unittest.TestCase):
         fn["blocks"][0]["operations"].insert(0, instruction(
             "rt", "int", "int.str", results=[100], operands=[("@s.6", "str"), ("10", "int")]))
         fn["blocks"].append({"label": "catch", "handler": "", "operations": [
-            instruction("mem.load", "union[int,str]", results=[101], operands=[(address, "*union[int,str]")]),
+            instruction("mem.load", "union[int,str]", results=[101], operands=[(address, "&union[int,str]")]),
             instruction("union.tag", "int", results=[102], operands=[("%t101", "union[int,str]")]),
             instruction("ret", operands=[("0", "int")])]})
         with self.assertRaisesRegex(boundary.Unsupported, "opaque call"):
@@ -213,7 +213,7 @@ class GuardTests(unittest.TestCase):
         # select on it may be either operand, so reading it as an int needs a guard.
         successor["operations"][:0] = [
             instruction("rt", "%ptr", "ubox", [100], [(tag, "int"), ("5", "*T")]),
-            instruction("mem.load", union, results=[99], operands=[("@g.unknown", "*" + union)]),
+            instruction("mem.load", union, results=[99], operands=[("@g.unknown", "&" + union)]),
             instruction("select", union, results=[101], operands=[(value, "bool"), ("%t100", union), ("%t99", union)]),
             instruction("union.payload", "%slot", "int", [102, 103], [("%t101", union)])]
         self.assertFalse(self.lean(*guards.normalize(snap, fn)))
@@ -435,9 +435,9 @@ class GuardTests(unittest.TestCase):
                         op("slot.unpack", "int", results=[104], operands=[("%t103", "%slot")]),
                         op("scalar.cast", "%ptr", "inttoptr", [102], [("%t104", "int")])]
                 elif transport in {"address", "reverse_address"}:
-                    cast = op("scalar.cast", "%ptr", "bitcast", [100], [(address, "*" + union)])
+                    cast = op("scalar.cast", "%ptr", "bitcast", [100], [(address, "&" + union)])
                     if transport == "address":
-                        operations = [op("mem.store", operands=[(address, "*" + union), ("%a0", union)]), cast]
+                        operations = [op("mem.store", operands=[(address, "&" + union), ("%a0", union)]), cast]
                         source = "%t100"
                     else:
                         operations = [cast, op("mem.store", operands=[("%t100", "%ptr"), ("%a0", union)])]
@@ -467,7 +467,7 @@ class GuardTests(unittest.TestCase):
         from test_lean_boundary import instruction as op
         union, holder = "union[int,str]", "Holder"
         def field(results, typ, index=0):
-            made = op("field.addr", "*" + typ, results=results, operands=[("%a1", holder)])
+            made = op("field.addr", "&" + typ, results=results, operands=[("%a1", holder)])
             made["immediate"] = index
             return made
         def box_read(word):
@@ -478,14 +478,14 @@ class GuardTests(unittest.TestCase):
             made["immediate"] = 0
             return made
         cases = {
-            "raw object": ([field([100], union), op("mem.store", operands=[("%t100", "*" + union), ("%a0", union)]),
+            "raw object": ([field([100], union), op("mem.store", operands=[("%t100", "&" + union), ("%a0", union)]),
                             op("mach.addr", "%ptr", "%ptr", [101], [("%a1", holder), ("1", "int")]),
                             op("mach.load", "int", results=[102], operands=[("%t101", "%ptr")])], "%t102", 1),
-            "other view": ([field([100], union), op("mem.store", operands=[("%t100", "*" + union), ("%a0", union)]),
-                            field([101], "int"), op("mem.load", "int", results=[102], operands=[("%t101", "*int")])],
+            "other view": ([field([100], union), op("mem.store", operands=[("%t100", "&" + union), ("%a0", union)]),
+                            field([101], "int"), op("mem.load", "int", results=[102], operands=[("%t101", "&int")])],
                            "%t102", 1),
-            "other field": ([field([100], union), op("mem.store", operands=[("%t100", "*" + union), ("%a0", union)]),
-                             field([101], "int", 1), op("mem.load", "int", results=[102], operands=[("%t101", "*int")])],
+            "other field": ([field([100], union), op("mem.store", operands=[("%t100", "&" + union), ("%a0", union)]),
+                             field([101], "int", 1), op("mem.load", "int", results=[102], operands=[("%t101", "&int")])],
                             "%t102", 0),
             "item text": ([op("slot.pack", "%slot", results=[100], operands=[("%a0", union)]),
                            op("alloc.fixed", f"tuple[{union}]", results=[101]),
@@ -505,8 +505,8 @@ class GuardTests(unittest.TestCase):
                             op("scalar.cast", "tuple[int]", "bitcast", [105], [("%t101", f"tuple[{union}]")]),
                             tuple_item("tuple.load", "%slot", "int", [103, 104], [("%t105", "tuple[int]")]),
                             op("slot.unpack", "int", results=[102], operands=[("%t104", "%slot")])], "%t102", 1),
-            "slot": ([op("mem.store", operands=[("%value.9", "*" + union), ("%a0", union)]),
-                      op("mem.load", "int", results=[102], operands=[("%value.9", "*int")])], "%t102", 1),
+            "slot": ([op("mem.store", operands=[("%value.9", "&" + union), ("%a0", union)]),
+                      op("mem.load", "int", results=[102], operands=[("%value.9", "&int")])], "%t102", 1),
             "transport": ([op("call", "int", "@f.leak", [102], [("%a0", union)])], "%t102", 1),
         }
         for name, (operations, word, expected) in cases.items():
@@ -532,14 +532,14 @@ class GuardTests(unittest.TestCase):
 class PlaceholderSlotTests(unittest.TestCase):
     def test_resolved_placeholder_slot_types(self):
         # (a local's slot keeps the type it had when made; its accesses name the resolved one)
-        for declared, used in (("list[?]", "*list[int]"), ("dict[?,?]", "*dict[str,int]"),
-                               ("opt[None]", "*str"), ("opt[None]", "*opt[int]"),
-                               ("opt[None]", "*opt[union[int,str]]")):
+        for declared, used in (("list[?]", "&list[int]"), ("dict[?,?]", "&dict[str,int]"),
+                               ("opt[None]", "&str"), ("opt[None]", "&opt[int]"),
+                               ("opt[None]", "&opt[union[int,str]]")):
             self.assertTrue(boundary.resolved_container(declared, used), (declared, used))
-        for declared, used in (("list[?]", "*dict[str,int]"), ("list[int]", "*list[str]"),
-                               ("list[?]", "list[int]"), ("opt[None]", "*int"), ("opt[None]", "*dyn"),
-                               ("opt[None]", "*opt[dyn]"), ("opt[None]", "*union[int,str]"),
-                               ("opt[None]", "*opt[?]"), ("opt[None]", "*%slot")):
+        for declared, used in (("list[?]", "&dict[str,int]"), ("list[int]", "&list[str]"),
+                               ("list[?]", "list[int]"), ("opt[None]", "&int"), ("opt[None]", "&dyn"),
+                               ("opt[None]", "&opt[dyn]"), ("opt[None]", "&union[int,str]"),
+                               ("opt[None]", "&opt[?]"), ("opt[None]", "&%slot"), ("list[?]", "*list[int]")):
             self.assertFalse(boundary.resolved_container(declared, used), (declared, used))
 
 

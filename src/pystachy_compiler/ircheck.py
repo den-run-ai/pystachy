@@ -144,9 +144,9 @@ VTUPLE_ELEMS: list[str] = ["int", "float", "bool", "str", "dyn", "opt[int]", "op
 
 
 def native_type(t: str, classes: dict[str, ClassInfo]) -> bool:
-    # a Python value's native type (specs.TYPE_CLASSES): no machine type (%), address or packed
+    # a Python value's native type (specs.TYPE_CLASSES): no machine type (%), address (&), packed
     # slot (*) or descriptor (#), and a runtime type variable only where a class has its name
-    return t != "" and not t.startswith("%") and not t.startswith("*") and t != "#" and ((t != "T" and t != "K" and t != "V" and t != "S") or t in classes)
+    return t != "" and not t.startswith("%") and not t.startswith("&") and not t.startswith("*") and t != "#" and ((t != "T" and t != "K" and t != "V" and t != "S") or t in classes)
 
 
 def fixed_tuple(t: str) -> bool:
@@ -356,7 +356,7 @@ def rt_generic(t: str) -> bool:
         return False
     start = 0
     for j in range(len(t) + 1):
-        if j == len(t) or t[j] == "[" or t[j] == "]" or t[j] == "," or t[j] == "*" or t[j] == ":":
+        if j == len(t) or t[j] == "[" or t[j] == "]" or t[j] == "," or t[j] == "*" or t[j] == "&" or t[j] == ":":
             if t[start:j] in RT_VARS:
                 return True
             start = j + 1
@@ -364,8 +364,8 @@ def rt_generic(t: str) -> bool:
 
 
 def ref_type(t: str) -> bool:
-    # is t a type whose value is a pointer: no machine type, packed slot or None
-    return t != "" and not t.startswith("%") and not t.startswith("*") and lt(t) == "ptr"
+    # is t a type whose value is a pointer: no machine type, address, packed slot or None
+    return t != "" and not t.startswith("%") and not t.startswith("&") and not t.startswith("*") and lt(t) == "ptr"
 
 
 def held_none(t: str) -> bool:
@@ -396,7 +396,7 @@ def type_view(self, a: str, b: str, generic: bool, parent: str) -> str:
         return "alias"
     if (a == EMPTYFS and is_set(b)) or (b == EMPTYFS and is_set(a)):
         return "alias"
-    if a.startswith("*") and b.startswith("*"):
+    if (a.startswith("*") and b.startswith("*")) or (a.startswith("&") and b.startswith("&")):
         return type_view(self, a[1:], b[1:], generic, parent)
     if a == "None" and (is_opt(b) or ref_type(b)):
         return "optional"
@@ -507,28 +507,20 @@ def value_types(self, fn: IFn) -> None:
     # Each operand reads its value at the type the value's definition gives it, or by a view of
     # specs.TYPE_VIEWS, as an MLIR operand has its value's one type. A value is a result of an op
     # (but its lowering's temporaries; ovf's second is its bool flag), a parameter (its identity
-    # companion a dyn, and the identity result's address a *dyn), or a slot's register (the
-    # address *T of its slot of T; a stack tuple's register is its value). A *T is an address
-    # where a slot's register, a *T parameter, field.addr, or a phi or select of an address or of
-    # %ptr bits gives it, and where a memory op's address, a compiled function's *T parameter (the
-    # identity result's) or a phi or select of an address reads it; it is a packed slot elsewhere.
-    # Symbols and constants have no definition here.
+    # companion a dyn, and the identity result's address a &dyn), or a slot's register (the
+    # address &T of its slot of T; a stack tuple's register is its value). An address has a type
+    # &T and a packed slot a type *T, and no view reads one as the other. Symbols and constants
+    # have no definition here.
     types: dict[str, str] = {}
     makers: dict[str, str] = {}
-    addresses: dict[str, bool] = {}
     for i in fn.slots:
         reg = slot_register(i)
-        types[reg] = i.t if i.k == 2 else "*" + i.t
+        types[reg] = i.t if i.k == 2 else "&" + i.t
         makers[reg] = "slot"
-        if i.k != 2:
-            addresses[reg] = True
     for j in range(len(fn.f.ptypes)):
         types["%a" + str(j)] = fn.f.ptypes[j]
         types["%aid" + str(j)] = "dyn"
-        if fn.f.ptypes[j].startswith("*"):
-            addresses["%a" + str(j)] = True
-    types["%idret"] = "*dyn"
-    addresses["%idret"] = True
+    types["%idret"] = "&dyn"
     for b in fn.blocks:
         for i in b.code:
             k = 0
@@ -538,21 +530,7 @@ def value_types(self, fn: IFn) -> None:
                 name = tmpname(i.r[j])
                 types[name] = "bool" if i.op == "ovf" and k == 1 else i.t
                 makers[name] = i.op
-                if i.op == "field.addr":
-                    addresses[name] = True
                 k += 1
-    # (the phis and selects of addresses, to a fixed point: a phi may read one it precedes)
-    grew = True
-    while grew:
-        grew = False
-        for b in fn.blocks:
-            for i in b.code:
-                if (i.op == "phi" or i.op == "select") and i.t.startswith("*") and len(i.r) == 1 and tmpname(i.r[0]) not in addresses:
-                    for j in range(1 if i.op == "select" else 0, len(i.a)):
-                        v = i.a[j].v
-                        if v in addresses or (v in types and types[v] == "%ptr"):
-                            addresses[tmpname(i.r[0])] = True
-                            grew = True
     # (the values whose definition gives them only a machine type, a runtime type variable or a
     # placeholder; the first type an operand of an op but rt reads each at, and where; and the
     # views decided so far, as many operands read alike)
@@ -567,33 +545,32 @@ def value_types(self, fn: IFn) -> None:
     opaque = fn.f.mod == "_pystachy_copy"
     for b in fn.blocks:
         for i in b.code:
-            joined = (i.op == "phi" or i.op == "select") and len(i.r) == 1 and tmpname(i.r[0]) in addresses
             for j in range(len(i.a)):
                 v = i.a[j].v
                 if v not in types:
                     continue
                 d = types[v]
                 u = i.a[j].t
-                if d == u and v not in loose and not d.startswith("*"):
+                if d == u and v not in loose:
                     continue
-                address = ((i.op == "mem.load" or i.op == "mem.store") and j == 0) or ((i.op == "call" or i.op == "icall") and u.startswith("*")) or (joined and (i.op == "phi" or j > 0))
-                held = v in addresses
-                if d.startswith("*") and u.startswith("*") and held != address:
-                    self.bad_ir(fn, b, f"{i.op} operand {j} reads {v}, a packed slot, as an address" if address else f"{i.op} operand {j} reads the address {v} as a packed slot")
+                if d.startswith("&") and u.startswith("*"):
+                    self.bad_ir(fn, b, f"{i.op} operand {j} reads the address {v} as a packed slot")
+                if d.startswith("*") and u.startswith("&"):
+                    self.bad_ir(fn, b, f"{i.op} operand {j} reads {v}, a packed slot, as an address")
                 ok = d == u
                 if ok:
                     pass
                 elif u == "%ptr":
-                    ok = held or ref_type(d) or d == "None"
+                    ok = d.startswith("&") or ref_type(d) or d == "None"
                 elif u == "%slot":
-                    ok = (d.startswith("*") and not held) or d == "int"
+                    ok = d.startswith("*") or d == "int"
                 elif u == "%addr":
-                    ok = held
+                    ok = d.startswith("&")
                 elif d == "%ptr":
-                    ok = u.startswith("*") if address else ref_type(u)
+                    ok = u.startswith("&") or ref_type(u)
                 elif d == "%slot":
                     # (an int, a packed slot, or a runtime function's bool, which its ABI passes as an int)
-                    ok = not address and (u == "int" or u.startswith("*") or (i.op == "rt" and u == "bool"))
+                    ok = u == "int" or u.startswith("*") or (i.op == "rt" and u == "bool")
                 else:
                     rt = v in makers and makers[v] == "rt"
                     key = d + "|" + u + ("|1" if rt else "|0") + ("1" if i.op == "rt" else "0")
@@ -757,7 +734,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 if i.k < 0 or (i.k >= len(ci.fields) and i.k not in ci.fflag.values() and i.k not in ci.fbox.values()):
                     self.bad_ir(fn, b, "field.addr needs a declared field, assignment flag or identity box index")
                 t = ci.ftypes[ci.fields[i.k]] if i.k < len(ci.fields) else "dyn" if i.k in ci.fbox.values() else "bool"
-                if i.t != "*" + t and not (i.t == "*" + NONEVAR and lt(t) == "ptr"):
+                if i.t != "&" + t and not (i.t == "&" + NONEVAR and lt(t) == "ptr"):
                     # (but a field compiled while only None had been given to it: Gen.none_field)
                     self.bad_ir(fn, b, "field.addr result must address the declared member type")
             if i.op == "tuple.load" or i.op == "tuple.store":

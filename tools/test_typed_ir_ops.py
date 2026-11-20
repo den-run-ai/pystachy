@@ -144,8 +144,9 @@ class TypeCheckTests(unittest.TestCase):
                 (typed("select", "None", [("%a0", "bool"), ("null", "None"), ("null", "None")]),
                  "select operand 1 needs a native value type other than None, or a machine scalar (%ptr, %byte, %i32, %slot), got None"),
                 # a type around a variable
-                (typed("mem.load", "int", [("%a0", "int")]), f"mem.load operand 0 needs *$T, $T {specs.TYPE_CLASSES['native']}, got int"),
-                (typed("mem.load", "%ptr", [("%a0", "*%ptr")]), f"mem.load operand 0 needs *$T, $T {specs.TYPE_CLASSES['native']}, got *%ptr"),
+                (typed("mem.load", "int", [("%a0", "int")]), f"mem.load operand 0 needs &$T, $T {specs.TYPE_CLASSES['native']}, got int"),
+                (typed("mem.load", "%ptr", [("%a0", "&%ptr")]), f"mem.load operand 0 needs &$T, $T {specs.TYPE_CLASSES['native']}, got &%ptr"),
+                (typed("mem.load", "int", [("%a0", "*int")]), f"mem.load operand 0 needs &$T, $T {specs.TYPE_CLASSES['native']}, got *int"),
                 (typed("list.store", "", [("%a0", "list[int]"), ("0", "int"), ("%a1", "*float")]),
                  "list.store operand 2 needs *int ($E is int at operand 0), got *float"),
                 (typed("list.len", "int", [("%a0", "list[int+]")]),
@@ -160,7 +161,7 @@ class TypeCheckTests(unittest.TestCase):
 
     def test_rows_admit_what_the_compiler_emits(self):
         for i in (typed("cbr", "", [("%a0", "bool")], labels=2), typed("select", "%slot", [("%a0", "bool"), ("%a1", "%slot"), ("%a2", "%slot")]),
-                  typed("mem.load", "None", [("%a0", "*None")]), typed("list.store", "", [("%a0", "list[int]"), ("0", "int"), ("%a1", "*int")]),
+                  typed("mem.load", "None", [("%a0", "&None")]), typed("list.store", "", [("%a0", "list[int]"), ("0", "int"), ("%a1", "*int")]),
                   typed("switch", "", [("%a0", "int"), ("1", "int"), ("2", "int")], labels=3), typed("phi", "int", [("1", "int"), ("2", "int")], labels=2),
                   typed("vtuple.make", "vtuple[dyn]", [("%a0", "dyn"), ("%a1", "dyn")]), typed("vtuple.make", "vtuple[int]", []),
                   typed("gen.ret", "", []), typed("gen.yield", "", [("%a0", "%slot"), ("null", "%ptr"), ("%a1", "dyn")], labels=1)):
@@ -243,9 +244,9 @@ class ValueTypeTests(unittest.TestCase):
                 ("machine", [typed("mach.load", "int", [("%a0", "%ptr")])], ["str"], ()),
                 ("machine", [typed("mach.store", "", [("%x.1", "%ptr"), ("0", "int")])], (), [slot("x", "int", 1)]),
                 ("bits", [made("rt", "%ptr", 1, [("%a0", "*T")], "box"), typed("ret", "", [("%t1", "opt[int]")])], ["int"], ()),
-                ("bits", [made("rt", "%ptr", 1, [], "x"), typed("mem.load", "int", [("%t1", "*int")])], (), ()),
+                ("bits", [made("rt", "%ptr", 1, [], "x"), typed("mem.load", "int", [("%t1", "&int")])], (), ()),
                 ("instance", [made("rt", "list[T]", 1, [("3", "int")], "list.new"), typed("list.len", "int", [("%t1", "list[str]")])], (), ()),
-                ("instance", [typed("mem.load", "list[str]", [("%x.1", "*list[str]")])], (), [slot("x", "list[?]", 1)]),
+                ("instance", [typed("mem.load", "list[str]", [("%x.1", "&list[str]")])], (), [slot("x", "list[?]", 1)]),
                 ("instance", [typed("rt", "int", [("%a0", "S")], "dict.len")], ["dict[str,int]"], ()),
                 ("alias", [typed("ret", "", [("%a0", "bytes")])], ["str"], ()),
                 ("alias", [typed("slot.pack", "%slot", [("%a0", "tuple[int,str]")])], ["tuple[bool,str]"], ()),
@@ -278,9 +279,9 @@ class ValueTypeTests(unittest.TestCase):
                 ([made("rt", "list[T]", 1, [], "list.new"), typed("ret", "", [("%t1", "dict[str,int]")])], (), (),
                  "ret operand 0 reads %t1 as dict[str,int], but it is list[T]"),
                 ([typed("rt", "%ptr", [("%x.1", "*T")], "box")], (), [slot("x", "int", 1)], "rt operand 0 reads the address %x.1 as a packed slot"),
-                ([made("list.load", "*int", 1, [("%a0", "list[int]"), ("0", "int")]), typed("mem.load", "int", [("%t1", "*int")])], ["list[int]"], (),
+                ([made("list.load", "*int", 1, [("%a0", "list[int]"), ("0", "int")]), typed("mem.load", "int", [("%t1", "&int")])], ["list[int]"], (),
                  "mem.load operand 0 reads %t1, a packed slot, as an address"),
-                ([made("rt", "%ptr", 1, [], "x"), typed("mem.store", "", [("%s.2", "*str"), ("%t1", "str")]), typed("ret", "", [("%t1", "list[int]")])],
+                ([made("rt", "%ptr", 1, [], "x"), typed("mem.store", "", [("%s.2", "&str"), ("%t1", "str")]), typed("ret", "", [("%t1", "list[int]")])],
                  (), [slot("s", "str", 2)], "ret operand 0 reads %t1 as list[int], where mem.store operand 1 reads it as str")):
             with self.subTest(expected=expected):
                 self.assertEqual(self.error(code, params, slots, classes=classes), expected)

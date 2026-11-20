@@ -122,8 +122,8 @@ def gen_load_name(self, name: str) -> Val:
             if t == "None":
                 return Val("null", "None")
         if name in self.owned and not self.appending:
-            self.mem_store(Val(self.owned[name], "*int"), Val("0", "int"))  # (what reads it may keep it: str_append)
-        r = self.mem_load(Val(self.lreg[name], "*" + t)).v
+            self.mem_store(Val(self.owned[name], "&int"), Val("0", "int"))  # (what reads it may keep it: str_append)
+        r = self.mem_load(Val(self.lreg[name], "&" + t)).v
         if (name == self.selfname or (name in self.curfn.nnp and self.may_decline(self.curfn))) and name not in self.compvars:
             # (and, in a comparison method that may return NotImplemented, a parameter whose
             # object is known not to be None, which it may pass on: to super().__eq__(other))
@@ -150,7 +150,7 @@ def gen_load_name(self, name: str) -> Val:
             t = self.none_global(name)
             if t == "None":
                 return Val("null", "None")
-        r = self.mem_load(Val(f"@g.{name}", "*" + t)).v
+        r = self.mem_load(Val(f"@g.{name}", "&" + t)).v
         if is_opt(t) or is_union(t):
             self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
         val = Val(r, t)
@@ -759,11 +759,11 @@ def gen_read(self, n: Node) -> Val:
     initialized = constant and not self.modlevel and owner(name) == self.curfn.mod and self.curfn.node.kind == "def" and self.intat[name] < self.curfn.node.line
     if n.chk and name in self.ltype:
         if name in self.lflag and name not in self.compvars:
-            bad = self.scalar('xor', [Val(self.mem_load(Val(self.lflag[name], '*bool')).v, 'bool'), Val('true', 'bool')])
+            bad = self.scalar('xor', [Val(self.mem_load(Val(self.lflag[name], '&bool')).v, 'bool'), Val('true', 'bool')])
             self.guard(bad, f"UnboundLocalError: cannot access local variable '{name}' where it is not associated with a value")
     elif not initialized and (n.chk or self.foreign(name)) and name in self.gflag and (name in self.gtypes or (name in self.funcs and name not in self.ltype)):
         # (a global, or a function whose def statement may not have run yet)
-        bad = self.scalar('xor', [Val(self.mem_load(Val(f'@g.{name}.def', '*bool')).v, 'bool'), Val('true', 'bool')])
+        bad = self.scalar('xor', [Val(self.mem_load(Val(f'@g.{name}.def', '&bool')).v, 'bool'), Val('true', 'bool')])
         self.guard(bad, self.unbound(name, self.copying))
     if constant:
         # Keep a variable read dynamic for frontend rules (tuple index/length), while LLVM
@@ -801,7 +801,7 @@ def gen_modchk(self, n: Node) -> None:
         elif p[2] == "L":
             un = f"UnboundLocalError: cannot access local variable '{p[1]}' where it is not associated with a value"
         flag = f"@init.{p[0]}.done" if p[2] == "A" else self.imp_flag(p[0], p[2] == "G" or p[2] == "M" or p[2] == "I")
-        self.guard(self.scalar('xor', [Val(self.mem_load(Val(flag, '*bool')).v, 'bool'), Val('true', 'bool')]), un)
+        self.guard(self.scalar('xor', [Val(self.mem_load(Val(flag, '&bool')).v, 'bool'), Val('true', 'bool')]), un)
 
 def gen_imp_flag(self, x: str, glob: bool) -> str:
     # the flag of name x, which an import in a try statement binds (Loader.import_binds()), set
@@ -1796,9 +1796,9 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
         cv = self.coerce(v, t, self.assigned_to(v, t, name))
         self.join_at(was[0], was[1], was[2])
         self.identity_global(name, t, True)  # (dynamic.py)
-        self.mem_store(Val(f"@g.{name}", "*" + t), cv)
+        self.mem_store(Val(f"@g.{name}", "&" + t), cv)
         if name in self.gflag:
-            self.mem_store(Val(f"@g.{name}.def", "*bool"), Val("true", "bool"))
+            self.mem_store(Val(f"@g.{name}.def", "&bool"), Val("true", "bool"))
         if name in self.gidbox and numeric_identity(t):
             self.dyn_id_store(self.gidbox[name], v, t)  # (the object it now holds: dyn_box)
     else:
@@ -1852,15 +1852,15 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
         was = self.join_at("local", name, t)  # (a value it does not take may widen it: join_hint)
         cv = self.coerce(v, t, self.assigned_to(v, t, name))
         self.join_at(was[0], was[1], was[2])
-        self.mem_store(Val(self.lreg[name], "*" + t), cv)
+        self.mem_store(Val(self.lreg[name], "&" + t), cv)
         if name in self.lflag and name not in self.compvars:
-            self.mem_store(Val(self.lflag[name], "*bool"), Val("true", "bool"))
+            self.mem_store(Val(self.lflag[name], "&bool"), Val("true", "bool"))
         if name in self.owned:
-            self.mem_store(Val(self.owned[name], "*int"), Val("0", "int"))  # (a value others may hold: str_append)
+            self.mem_store(Val(self.owned[name], "&int"), Val("0", "int"))  # (a value others may hold: str_append)
         if name in self.idbox and numeric_identity(t):
             self.dyn_id_store(self.idbox[name], v, t)  # (the object it now holds: dyn_box)
         if name in self.fn.lazyflag:
-            self.mem_store(Val(self.fn.lazyflag[name], "*bool"), Val("false", "bool"))  # (no longer a field's object)
+            self.mem_store(Val(self.fn.lazyflag[name], "&bool"), Val("false", "bool"))  # (no longer a field's object)
         # (a local a closure assigns (nonlocal) keeps its declared type: a call may run the
         # closure, as narrowable says)
         u = unopt(t)

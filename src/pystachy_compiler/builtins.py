@@ -710,7 +710,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
                     self.place(arm)
                 hy = self.has(ci.name, attr)
                 if attr in ci.fflag and attr not in ci.fdefault and attr not in ci.methods:
-                    value = self.mem_load(Val(self.fgep(Val(hv.v, ci.name), ci.fflag[attr]), "*bool")).v
+                    value = self.mem_load(Val(self.fgep(Val(hv.v, ci.name), ci.fflag[attr]), "&bool")).v
                 else:
                     value = "false" if hy == 0 else "true"
                 self.incoming(ph, value, self.cur)
@@ -728,11 +728,11 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             self.cbr("true" if hv.v in self.nn else self.ptr_cmp('!=', hv, Val('null', 'None')).v, l1, l2)
             self.place(l1)
             ci = self.classes[hv.t]
-            fv = self.mem_load(Val(self.fgep(hv, ci.fflag[args[1].s]), "*bool")).v
+            fv = self.mem_load(Val(self.fgep(hv, ci.fflag[args[1].s]), "&bool")).v
             shadows = self.exc_shadows(ci, args[1].s)
             if len(shadows) > 0:
                 # (or the object is of a class whose class variable shadows the field: getfield)
-                cls = self.mem_load(Val(self.fgep(hv, ci.fpos[" cls"]), "*str")).v
+                cls = self.mem_load(Val(self.fgep(hv, ci.fpos[" cls"]), "&str")).v
                 for x in shadows:
                     self.xcls[x.name] = True
                     match = self.ptr_cmp('==', Val(cls, "str"), Val(f"@x.{x.name}", "str")).v

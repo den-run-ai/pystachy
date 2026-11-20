@@ -17,7 +17,7 @@ class Case:
     def __init__(self, name="dynamic_guard", ptypes=None):
         self.g = Gen()
         f = FnInfo(name, "@" + name, Node("def", name, 1), "")
-        f.ptypes = ptypes or ["dyn", "dyn", "bool", "*dyn", "%ptr"]
+        f.ptypes = ptypes or ["dyn", "dyn", "bool", "&dyn", "%ptr"]
         f.params = ["p" + str(i) for i in range(len(f.ptypes))]
         self.fn = IFn(f)
         self.fn.ps = list(range(len(f.ptypes)))
@@ -54,10 +54,10 @@ class Case:
         return slot_register(i)
 
     def load(self, address, typ="dyn"):
-        return self.op("mem.load", typ, a=[(address, "*" + typ)])
+        return self.op("mem.load", typ, a=[(address, "&" + typ)])
 
     def store(self, address, value, typ="dyn"):
-        self.op("mem.store", a=[(address, "*" + typ), (value, typ)])
+        self.op("mem.store", a=[(address, "&" + typ), (value, typ)])
 
     def compare(self, value="%a0", member="float", pred="==", swap=False):
         tag = self.op("dyn.type", "dyntype", a=[(value, "dyn")])
@@ -250,7 +250,7 @@ class DynamicGuardTests(unittest.TestCase):
             value = c.load(slot)
             c.guard(value)
             c.block("hit")
-            args = [("%a4", "%ptr")] + ([(slot, "*dyn")] if escaped else [])
+            args = [("%a4", "%ptr")] + ([(slot, "&dyn")] if escaped else [])
             c.op("icall", "None", a=args)
             c.payload(value if old else c.load(slot))
             c.finish_pair()
@@ -269,7 +269,7 @@ class DynamicGuardTests(unittest.TestCase):
             if mode == "alias":
                 c.op("mach.addr", "%ptr", "%ptr", [(slot, "%ptr"), ("0", "int")])
             else:
-                c.op("mem.store", a=[("@escaped", "**dyn"), (slot, "*dyn")])
+                c.op("mem.store", a=[("@escaped", "&&dyn"), (slot, "&dyn")])
             c.finish_pair()
             self.assert_safe(c, False)
 
@@ -393,7 +393,7 @@ class DynamicGuardTests(unittest.TestCase):
             c = Case()
             slot = c.slot()
             if mode == "store":
-                c.op("mem.store", a=[(slot, "*dyntype"), ("@pys_dyntype_float", "dyntype")])
+                c.op("mem.store", a=[(slot, "&dyntype"), ("@pys_dyntype_float", "dyntype")])
                 value = c.load(slot)
             else:
                 c.store(slot, "%a0")

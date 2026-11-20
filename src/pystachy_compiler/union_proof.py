@@ -294,9 +294,10 @@ class UnionProof:
             t = fn.f.ptypes[n]
             v = "%a" + str(n)
             self.native[v] = t
-            if t.startswith("*"):
+            # (an address &T, or a packed slot *T, which this proof has always treated alike)
+            if t.startswith("&") or t.startswith("*"):
                 self.memtypes[v] = t[1:]
-            self.typebase(("MU:" if t.startswith("*") else "U:") + v, t[1:] if t.startswith("*") else t)
+            self.typebase(("MU:" if t.startswith("&") or t.startswith("*") else "U:") + v, t[1:] if t.startswith("&") or t.startswith("*") else t)
         for i in fn.slots:
             if i.k == 2:
                 # (a stack tuple's register is a tuple value, not storage that is loaded; its
@@ -336,8 +337,9 @@ class UnionProof:
                         self.roots[a.v] = a.v
                         self.native[a.v] = consts[a.v].text
                 if len(i.r) == 1:
-                    self.typebase(("MU:" if i.t.startswith("*") else "U:") + "%t" + str(i.r[0]), i.t[1:] if i.t.startswith("*") else i.t)
-                    if i.t.startswith("*") and i.op != "rt":
+                    held = i.t.startswith("&") or i.t.startswith("*")
+                    self.typebase(("MU:" if held else "U:") + "%t" + str(i.r[0]), i.t[1:] if held else i.t)
+                    if held and i.op != "rt":
                         self.memtypes["%t" + str(i.r[0])] = i.t[1:]
                 for j in range(len(i.a)):
                     v = i.a[j].v
@@ -489,7 +491,7 @@ class UnionProof:
         ts: list[str] = []
         if is_union(u):
             ts = umembers(u)
-        elif t != "" and not t.startswith("%") and not t.startswith("*") and t != "#":
+        elif t != "" and not t.startswith("%") and not t.startswith("*") and not t.startswith("&") and t != "#":
             ts = [u]
         if len(ts) > 0:
             if is_opt(t) and "None" not in ts:

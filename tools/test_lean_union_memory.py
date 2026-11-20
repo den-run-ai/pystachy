@@ -57,7 +57,7 @@ class UnionMemoryTests(unittest.TestCase):
         snapshot = copy.deepcopy(self.memory)
         init = self.function(snapshot, "@m.Reading.__init__")
         store = next(op for _, _, op in self.operations(init) if op["op"] == "mem.store"
-                     and op["operands"][0]["type"] == "*" + UNION and op["operands"][0]["value"].startswith("%t"))
+                     and op["operands"][0]["type"] == "&" + UNION and op["operands"][0]["value"].startswith("%t"))
         store["operands"][1] = {"value": "null", "type": UNION}
         self.assertEqual(self.status(snapshot, "@m.Reading.size"), "rejected")
 

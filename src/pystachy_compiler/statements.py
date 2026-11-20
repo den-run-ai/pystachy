@@ -1519,7 +1519,7 @@ def gen_str_append(self, t: Node, rhs: Node, shown: str) -> None:
     cur = self.read(t)
     self.appending = False
     b = self.expr(rhs, "str")
-    own = Val(self.owned[t.s], "*int")
+    own = Val(self.owned[t.s], "&int")
     if b.t != "str":
         self.mem_store(own, Val("0", "int"))  # (an optional str, or an error: arith's +, a read of cur as any other)
         self.store_name(t.s, self.arith("+", cur, b, shown))

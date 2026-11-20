@@ -752,7 +752,7 @@ def gen_refl_getattr(self, args: list[Node], want: str, split: bool = False) -> 
         if h == "f":
             yes = self.label()
             no = self.label()
-            self.cbr(self.mem_load(Val(self.fgep(lf.v, self.classes[lf.c].fflag[a]), "*bool")).v, yes, no)
+            self.cbr(self.mem_load(Val(self.fgep(lf.v, self.classes[lf.c].fflag[a]), "&bool")).v, yes, no)
             self.place(no)
             vals.append(d)
             blocks.append(self.cur)
@@ -1023,7 +1023,7 @@ def gen_refl_unroll_for(self, n: Node) -> bool:
         snap: dict[str, str] = {}
         for nm in groups[gi]:
             if nm.startswith(" "):
-                snap[nm] = self.mem_load(Val(self.fgep(objs[gi], self.classes[objs[gi].t].fflag[nm[1:]]), "*bool")).v
+                snap[nm] = self.mem_load(Val(self.fgep(objs[gi], self.classes[objs[gi].t].fflag[nm[1:]]), "&bool")).v
         for entry in groups[gi]:
             nxt = self.label()
             nm = entry[1:] if entry.startswith(" ") else entry
@@ -1476,7 +1476,7 @@ def comparison_dict_guard(self, o: Val, known: bool) -> None:
         if lf.c in self.classes:
             ci = self.classes[lf.c]
             for field in ci.fextra:
-                flag = self.mem_load(Val(self.fgep(lf.v, ci.fflag[field]), "*bool"))
+                flag = self.mem_load(Val(self.fgep(lf.v, ci.fflag[field]), "&bool"))
                 self.guard(flag.v, "TypeError: vars() and __dict__ after comparison-created attributes are not supported (#486)")
         self.br(end)
     self.place(end)
@@ -1638,7 +1638,7 @@ def gen_refl_unroll_dict(self, n: Node, d: Node, x: Node, m: str) -> None:
         # one, CPython's next step raises, see refl_size_check)
         flagged = [fl for fl in orders[li] if fl in ci.fflag and lf.c + "." + fl not in self.cvars]
         flagged.extend([fl for fl in ci.fextra if fl not in flagged])
-        snap = [self.mem_load(Val(self.fgep(ov, ci.fflag[fl]), "*bool")).v for fl in flagged]
+        snap = [self.mem_load(Val(self.fgep(ov, ci.fflag[fl]), "&bool")).v for fl in flagged]
         for j in range(len(orders[li])):
             fl = orders[li][j]
             if j > 0:
@@ -1649,7 +1649,7 @@ def gen_refl_unroll_dict(self, n: Node, d: Node, x: Node, m: str) -> None:
                 self.narrowed[x.s] = lf.c
             if fl in ci.fflag and lf.c + "." + fl not in self.cvars:
                 go = self.label()
-                self.cbr(self.mem_load(Val(self.fgep(ov, ci.fflag[fl]), "*bool")).v, go, nxt)
+                self.cbr(self.mem_load(Val(self.fgep(ov, ci.fflag[fl]), "&bool")).v, go, nxt)
                 self.place(go)
             visible = refl_field_name(ci, fl, self.libdir)
             key = Val(self.sconst(visible), "str")
@@ -1698,7 +1698,7 @@ def gen_refl_size_check(self, ov: Val, flagged: list[str], snap: list[str]) -> N
     ci = self.classes[ov.t]
     bad = ""
     for i in range(len(flagged)):
-        now = self.mem_load(Val(self.fgep(ov, ci.fflag[flagged[i]]), "*bool")).v
+        now = self.mem_load(Val(self.fgep(ov, ci.fflag[flagged[i]]), "&bool")).v
         d = self.scalar('xor', [Val(now, 'bool'), Val(snap[i], 'bool')])
         bad = d if bad == "" else self.scalar('or', [Val(bad, 'bool'), Val(d, 'bool')])
     self.guard(bad, "RuntimeError: dictionary changed size during iteration")
@@ -1738,7 +1738,7 @@ def gen_refl_dir(self, x: Node) -> Val:
             if lf.c in self.classes and not self.refl_listed(lf.c, nk):
                 yes = self.label()
                 no = self.label()
-                self.cbr(self.mem_load(Val(self.fgep(lf.v, self.classes[lf.c].fflag[nk[0]]), "*bool")).v, yes, no)
+                self.cbr(self.mem_load(Val(self.fgep(lf.v, self.classes[lf.c].fflag[nk[0]]), "&bool")).v, yes, no)
                 self.place(yes)
                 self.list_write("list.append", [Val(r, "list[str]"), Val(self.to_slot(Val(self.sconst(nk[0]), "str")), "*str")])
                 self.br(no)
@@ -1790,7 +1790,7 @@ def gen_refl_dict_copy(self, d: Node) -> Val:
                 # (a field __init__ may leave unassigned: where its flag is set)
                 go = self.label()
                 nxt = self.label()
-                self.cbr(self.mem_load(Val(self.fgep(ov, ci.fflag[fl]), "*bool")).v, go, nxt)
+                self.cbr(self.mem_load(Val(self.fgep(ov, ci.fflag[fl]), "&bool")).v, go, nxt)
                 self.place(go)
             kv = targs(dt)  # (["dyn", "dyn"] where the values are Any values or containers: ctype)
             v = self.list_hold(self.getfield(ov, self.field(ov, fl), fl), kv[1])  # (a tuple of ints as the dict holds it, a promoting int as a dict of ints does: bigints.py)
@@ -1828,7 +1828,7 @@ def gen_refl_dict_format(self, d: Node, keys: list[str], fmt: str, what: str) ->
             fl = order[names.index(k)]
             if fl in ci.fflag and lf.c + "." + fl not in self.cvars:
                 # (a field __init__ may leave unassigned: KeyError where it is, as CPython's dict raises)
-                unset = self.scalar('xor', [Val(self.mem_load(Val(self.fgep(ov, ci.fflag[fl]), "*bool")).v, 'bool'), Val('true', 'bool')])
+                unset = self.scalar('xor', [Val(self.mem_load(Val(self.fgep(ov, ci.fflag[fl]), "&bool")).v, 'bool'), Val('true', 'bool')])
                 self.guard(unset, f"KeyError: '{k}'")
             args.append(self.vnode(self.getfield(ov, self.field(ov, fl), fl)))
         r = self.percent(fmt, mk("tuple", "", self.line, args), False) if what == "%" else self.str_format(fmt, "format", args)
@@ -2288,7 +2288,7 @@ def gen_refl_hasattr(self, args: list[Node]) -> Val:
                 blocks.append(self.cur)
                 self.br(end)
             elif kind == "g":
-                vals.append(Val(self.mem_load(Val(self.fgep(lf.v, self.classes[lf.c].fflag[names[j][0]]), "*bool")).v, "bool"))
+                vals.append(Val(self.mem_load(Val(self.fgep(lf.v, self.classes[lf.c].fflag[names[j][0]]), "&bool")).v, "bool"))
                 blocks.append(self.cur)
                 self.br(end)
             else:
@@ -2432,7 +2432,7 @@ def gen_refl_lookup(self, n: Node) -> RText:
                 if d.t != "" and kind == "g":
                     there = self.label()
                     miss = self.label()
-                    self.cbr(self.mem_load(Val(self.fgep(lf.v, self.classes[lf.c].fflag[nm]), "*bool")).v, there, miss)
+                    self.cbr(self.mem_load(Val(self.fgep(lf.v, self.classes[lf.c].fflag[nm]), "&bool")).v, there, miss)
                     self.place(miss)
                     self.mstore('int', '0', r.sel)
                     self.br(end)
@@ -2644,7 +2644,7 @@ def gen_refl_hasattr_lit(self, o: Val, a: str, known: bool) -> Val:
             self.refl_catch_attr(lf.v, a, Val("false", "bool"), vals, blocks, end, True)
             continue
         if h == "f":
-            vals.append(Val(self.mem_load(Val(self.fgep(lf.v, self.classes[lf.c].fflag[a]), "*bool")).v, "bool"))
+            vals.append(Val(self.mem_load(Val(self.fgep(lf.v, self.classes[lf.c].fflag[a]), "&bool")).v, "bool"))
         else:
             vals.append(Val("true" if h == "y" else "false", "bool"))
         blocks.append(self.cur)
@@ -2749,8 +2749,8 @@ def gen_copy_clone(self, o: Val) -> Val:
         if i in numbox:
             continue
         t = ci.ftypes[ci.fields[i]] if i < len(ci.fields) else "dyn" if i in ci.fbox.values() else "bool"
-        v = self.mem_load(Val(self.fgep(o, i), "*" + t))
-        self.mem_store(Val(self.fgep(y, i), "*" + t), v)
+        v = self.mem_load(Val(self.fgep(o, i), "&" + t))
+        self.mem_store(Val(self.fgep(y, i), "&" + t), v)
     for i in sorted(numbox):
         self.copy_share(o, y, numbox[i])
     return y
@@ -2765,10 +2765,10 @@ def gen_copy_share(self, o: Val, y: Val, fl: str) -> None:
     if fl in ci.fflag:
         held = self.label()
         end = self.label()
-        self.cbr(self.mem_load(Val(self.fgep(o, ci.fflag[fl]), "*bool")).v, held, end)
+        self.cbr(self.mem_load(Val(self.fgep(o, ci.fflag[fl]), "&bool")).v, held, end)
         self.place(held)
-    v = self.mem_load(Val(self.fgep(o, ci.fpos[fl]), "*" + t))
-    self.mem_store(Val(self.fgep(y, ci.fpos[fl]), "*" + t), v)
+    v = self.mem_load(Val(self.fgep(o, ci.fpos[fl]), "&" + t))
+    self.mem_store(Val(self.fgep(y, ci.fpos[fl]), "&" + t), v)
     if fl in ci.fbox and numeric_identity(t):
         self.dyn_id_read(v, self.fgep(o, ci.fbox[fl]))
         self.dyn_id_store(self.fgep(y, ci.fbox[fl]), v, t)
@@ -2821,14 +2821,14 @@ def gen_copy_fields(self, y: Val, x: Val, memo: Val) -> None:
         if fl in ci.fflag:
             set_ = self.label()
             end = self.label()
-            self.cbr(self.mem_load(Val(self.fgep(y, ci.fflag[fl]), "*bool")).v, set_, end)
+            self.cbr(self.mem_load(Val(self.fgep(y, ci.fflag[fl]), "&bool")).v, set_, end)
             self.place(set_)
         if own:
             self.copy_share(x, y, fl)  # (x's value now, which an earlier copy may have changed)
         else:
-            v = self.mem_load(Val(self.fgep(x if live else y, ci.fpos[fl]), "*" + t))
+            v = self.mem_load(Val(self.fgep(x if live else y, ci.fpos[fl]), "&" + t))
             c = self.call_fn(self.funcs["copy$_deepcopy"], [], [self.vnode(v), self.vnode(memo)])
-            self.mem_store(Val(self.fgep(y, ci.fpos[fl]), "*" + t), self.coerce(c, t))
+            self.mem_store(Val(self.fgep(y, ci.fpos[fl]), "&" + t), self.coerce(c, t))
         if end != "":
             self.br(end)
             self.place(end)
@@ -2836,8 +2836,8 @@ def gen_copy_fields(self, y: Val, x: Val, memo: Val) -> None:
             # (_deepcopy_dict's next step over x's __dict__: an attribute added since its start)
             grown = "false"
             for g in flagged:
-                a = self.mem_load(Val(self.fgep(x, ci.fflag[g]), "*bool"))
-                b = self.mem_load(Val(self.fgep(y, ci.fflag[g]), "*bool"))
+                a = self.mem_load(Val(self.fgep(x, ci.fflag[g]), "&bool"))
+                b = self.mem_load(Val(self.fgep(y, ci.fflag[g]), "&bool"))
                 d = self.scalar("xor", [a, b])
                 grown = d if grown == "false" else self.scalar("or", [Val(grown, "bool"), Val(d, "bool")])
             self.guard(grown, "RuntimeError: dictionary changed size during iteration")
@@ -3114,9 +3114,9 @@ def gen_enum_member(self, n: Node, want: str) -> Val:
     self.setfield(o, self.field(o, "_name_"), "_name_", Val(self.sconst(n.s), "str"))
     self.setfield(o, self.field(o, "_value_"), "_value_", v)
     if self.enum_intlike(c):
-        self.mem_store(Val(self.fgep(o, ci.fpos[" enum int"]), "*int"), self.coerce(v, "int"))
+        self.mem_store(Val(self.fgep(o, ci.fpos[" enum int"]), "&int"), self.coerce(v, "int"))
     elif self.derives(c, "enum$StrEnum"):
-        self.mem_store(Val(self.fgep(o, ci.fpos[" enum str"]), "*str"), self.coerce(v, "str"))
+        self.mem_store(Val(self.fgep(o, ci.fpos[" enum str"]), "&str"), self.coerce(v, "str"))
     if len(n.kids) > 1:
         gen_enum_init(self, o, n.kids[2] if len(n.kids) > 2 else n.kids[0], n.kids[3:])
     return o
@@ -3324,7 +3324,7 @@ def gen_enum_new(self, args: list[Node]) -> Val:
     self.setfield(o, self.field(o, "_name_"), "_name_", nm)
     self.setfield(o, self.field(o, "_value_"), "_value_", v)
     if self.enum_intlike(c):
-        self.mem_store(Val(self.fgep(o, self.classes[c].fpos[" enum int"]), "*int"), v)
+        self.mem_store(Val(self.fgep(o, self.classes[c].fpos[" enum int"]), "&int"), v)
     elif self.derives(c, "enum$StrEnum"):
-        self.mem_store(Val(self.fgep(o, self.classes[c].fpos[" enum str"]), "*str"), v)
+        self.mem_store(Val(self.fgep(o, self.classes[c].fpos[" enum str"]), "&str"), v)
     return o

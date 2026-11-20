@@ -57,7 +57,7 @@ class Summaries(dict):
             return True
         last = op["operands"][-1] if op.get("operands") else {}
         value = last.get("value")
-        return last.get("type") == "*dyn" and (
+        return last.get("type") == "&dyn" and (
             value in slots or value == "null" or (value == IDENTITY_RETURN and caller in self.exempt))
 
 
@@ -241,7 +241,7 @@ cycle cannot conceal a write reachable elsewhere in the cycle.
                 if isinstance(op, dict) and op.get("op") == "call" and op.get("text") in returners:
                     last = op["operands"][-1] if op.get("operands") else {}
                     value = last.get("value") if isinstance(last, dict) else None
-                    if not (isinstance(last, dict) and last.get("type") == "*dyn"
+                    if not (isinstance(last, dict) and last.get("type") == "&dyn"
                             and (value in own or value in (IDENTITY_RETURN, "null"))):
                         unverified.add(op["text"])
                     elif value == IDENTITY_RETURN:
