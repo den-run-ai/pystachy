@@ -26,15 +26,19 @@ program you can also run under CPython, then check the APIs your application use
 | Handle I/O readiness or weak references | [POSIX select](select.md), [weak references](weakref.md) |
 | Package a library or deploy an application | [Packages and deployment](packages.md), [package tutorial](../examples/package/README.md) |
 | Run work in parallel | [Concurrency](concurrency.md) |
+| Run pytest-style tests natively | [Native pytest runner](pytest-native.md): an experimental, bounded pytest dialect, checked against CPython pytest |
 
 ## Measure and improve performance
 
 Start with the [performance guide](performance.md) for compilation, execution,
-memory and emitted LLVM. Then choose a workload-specific guide:
+memory and emitted LLVM. The Linux native CLI reuses compiled programs across
+`pystachy run` launches through its [program cache](program-cache.md), so
+measure first runs and cache hits separately. Then choose a workload-specific
+guide:
 
 | Workload | Guide |
 |---|---|
-| Text, regex and memoization | [Caching](caching.md), [router example](../examples/route/README.md) |
+| Text, regex and memoization | [Caching](caching.md), [router example](../examples/route/README.md), [regex matchers generated from a profile](re-specialization.md) |
 | JSON and data repair | [JSON benchmarks](json.md#benchmarks), [json_repair](../bench/json_repair/README.md) |
 | General Python workloads | [Extended benchmarks](extended-performance.md), [adapted pyperformance](../bench/pyperformance/README.md) |
 | Numerical and machine-learning code | [microGPT](../bench/microgpt/README.md), [nanoGPT](../examples/nanogpt/README.md), [arrays](../examples/ndarray/README.md) |
@@ -50,9 +54,10 @@ its numbers as results for your build.
 |---|---|
 | Make a first contribution | [Contributing](../CONTRIBUTING.md), [agent workflow](../AGENTS.md) |
 | Follow a program through compilation | [Compiler internals](internals.md#compilation-pipeline), [source map](../src/README.md) |
-| Understand or change optimization | [Typed IR](typed-ir.md) |
+| Understand or change optimization | [Typed IR](typed-ir.md), [reduced LLVM optimization checks](llvm-validation.md) |
 | Inspect compiler stages or a diagnostic | [Compiler inspection](compiler-inspection.md): hosted prototype, pass diffs and structured diagnostics |
 | Work on runtime code or its ABI | [Runtime in the subset](runtime-in-subset.md) |
+| Opt a library module in to dynamic `Any` | [Admission rule](dynamic-any.md#admission-and-containment), [library boundary inventory](dynamic-any-boundaries.md) |
 | Choose a check or investigation tool | [Development tools](../tools/README.md), [testing and CI](testing.md) |
 | Write an issue, pull request, guide or release notes | [Writing guide](writing.md), [submission format](../CONTRIBUTING.md#issues-and-pull-requests) |
 | Support a compatibility, port or performance claim | [Evidence guide](evidence.md) |

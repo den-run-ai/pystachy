@@ -112,7 +112,7 @@ python3.13 tests/upstream/json_repair/cli.py ./pystachy
   cache tail/regex whitespace metadata and flatten once at finalization. This
   removes repeated growing-prefix copies. [Historical measurements](../../bench/json_repair/README.md#historical-evidence)
   record native wins, a warmed PyPy mixed-workload regression and higher CPython
-  peak memory; these experimental port tradeoffs were not remeasured for alpha.4.
+  peak memory; these experimental port tradeoffs were not remeasured for v0.1.0-alpha.4.
 - Process ordinary repair text in spans between quotes, escapes and structural
   characters, retaining the existing heuristics at each boundary. Append source
   ranges in bounded chunks; the same storage helper serves decoded escapes and

@@ -1,0 +1,9 @@
+{aset(...)}
+{aset(...)} {aset(...)} {aset(...)} [{aset(...)}] {1: {aset(...)}}
+a{aset(...)}
+frozenset({bfrozenset(...)}) bfrozenset({bfrozenset(...)})
+[{c[...]}] c[{c[...]}]
+ValueError no repr of d
+{dset(...)} {dset(...)}
+set() frozenset() {1, 2} frozenset({'x'})
+[exit 0]

@@ -1887,6 +1887,14 @@ class Gen:
         self.rtdatas: dict[str, bool] = {}
         self.dyntypes: dict[str, str] = {}
         self.dynclasses: list[str] = []
+        # isinstance(x, tuple) of an Any value (dyn_isinst_types, #1581): ntboxes is the driver's,
+        # set where a NamedTuple's objects are boxed, which pass that test with a class's layout,
+        # so the test accepts them and x stays an Any value after it; nttests says that this pass
+        # compiled the test for a tuple's box alone, after which the first NamedTuple DynType
+        # starts the program again (TupleBoxes). nttests only grows within a pass, so speculative
+        # compilation (dry) may set it: that costs a pass, never a wrong read
+        self.ntboxes = False
+        self.nttests = False
         self.dynfns: dict[str, FnInfo] = {}
         self.dynkeys: dict[str, str] = {}
         self.dynlines: dict[str, int] = {}
