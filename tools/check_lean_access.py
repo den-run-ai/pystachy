@@ -1150,11 +1150,14 @@ def class_relation(snapshot):
     table = snapshot.get("classes")
     if table is None:
         return (lambda c, d: True), (lambda c: False)
+    # (each entry also holds its class's struct, which the relation does not read)
     require(isinstance(table, dict) and len(table) <= 65536 and all(
-        isinstance(name_, str) and isinstance(entry, dict) and set(entry) == {"base", "roles", "overlaps", "tagged"}
+        isinstance(name_, str) and isinstance(entry, dict)
+        and set(entry) == {"base", "roles", "overlaps", "tagged", "fields", "flags", "boxes"}
         and isinstance(entry["base"], str) and type(entry["tagged"]) is bool
         and isinstance(entry["roles"], list) and all(isinstance(role, str) for role in entry["roles"])
         and isinstance(entry["overlaps"], list) and all(isinstance(other, str) for other in entry["overlaps"])
+        and isinstance(entry["fields"], list) and isinstance(entry["flags"], dict) and isinstance(entry["boxes"], dict)
         for name_, entry in table.items()), "invalid classes table")
 
     @functools.lru_cache(maxsize=None)

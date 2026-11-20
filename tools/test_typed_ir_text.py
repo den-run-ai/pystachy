@@ -53,8 +53,8 @@ LOCATED = (WRITTEN.replace("  %left.1 = slot left : int\n", "  %left.1 = slot le
            .replace("-> L8, L5, L8\n", "-> L8, L5, L8 loc(9999999)\n"))
 MODULE = """module {
   class Base tagged
-  class Error base=Exception
-  class Node base=Base roles=[Reader] tagged
+  class Error base=Exception fields=[" cls":str " str":str " args":str]
+  class Node base=Base roles=[Reader] tagged fields=[" class":int value:int "a:b":"odd type" next:opt[Node]] flags=[value:4 "a:b":5] boxes=[value:6]
   class Reader overlaps=[Base "odd name"] tagged
   class "odd name"
   dyntype @dt.Node kind=8 cls=1 flags=256 base=@dt.Base role=@dt.Reader payload=Node
@@ -279,9 +279,14 @@ class ModuleTests(unittest.TestCase):
         self.assertEqual(text.module_roundtrip_errors(module), [])
         self.assertEqual(list(module), ["classes", "dynamic_types", "dynamic_layouts", "functions"])
         self.assertEqual(list(module["classes"]), ["Base", "Error", "Node", "Reader", "odd name"])
-        self.assertEqual(module["classes"]["Node"], {"base": "Base", "roles": ["Reader"], "overlaps": [], "tagged": True})
+        self.assertEqual(module["classes"]["Node"], {
+            "base": "Base", "roles": ["Reader"], "overlaps": [], "tagged": True,
+            "fields": [{"name": " class", "type": "int"}, {"name": "value", "type": "int"}, {"name": "a:b", "type": "odd type"},
+                       {"name": "next", "type": "opt[Node]"}],
+            "flags": {"value": 4, "a:b": 5}, "boxes": {"value": 6}})
         self.assertEqual(module["classes"]["Reader"]["overlaps"], ["Base", "odd name"])
-        self.assertEqual(module["classes"]["odd name"], {"base": "", "roles": [], "overlaps": [], "tagged": False})
+        self.assertEqual(module["classes"]["odd name"], {"base": "", "roles": [], "overlaps": [], "tagged": False,
+                                                         "fields": [], "flags": {}, "boxes": {}})
         self.assertEqual(module["dynamic_types"][1], {"symbol": "@dtf.0", "kind": 9, "cls": -1, "flags": 8, "base": "",
                                                       "role": "", "payload": "fn[m:Node.f]"})
         self.assertEqual(module["dynamic_types"][2], {"symbol": "@dt.Base", "kind": 8, "cls": 0, "flags": 0, "base": "",
@@ -316,6 +321,22 @@ class ModuleTests(unittest.TestCase):
                 ("  class Base tagged\n", "  class Base roles=[] tagged\n", "line 2: class field roles is omitted where it holds its default"),
                 ("  class Base tagged\n", "  class Base roles=Reader\n", "line 2: expected '=['"),
                 ("  class Base tagged\n", '  class "Base" tagged\n', "line 2: atom 'Base' must be written bare"),
+                # (a struct: NAME:TYPE fields, NAME:INT flags and boxes, a name quoted where it has
+                # a space or a colon)
+                ('fields=[" cls":str " str":str " args":str]', "fields=[]", "line 3: class field fields is omitted where it holds its default"),
+                ("boxes=[value:6]", "boxes=[]", "line 4: class field boxes is omitted where it holds its default"),
+                ('" args":str]\n', '" args":str\n', "line 3: fields=[ has no closing ']'"),
+                ('fields=[" cls":str', 'fields=[" cls" :str', "line 3: expected ':' at column 42"),
+                ('fields=[" cls":str', 'fields=[" cls": str', "line 3: expected an atom at column 43"),
+                ('fields=[" cls":str', 'fields=[ cls:str', "line 3: expected an atom at column 36"),
+                ('fields=[" cls":str', 'fields=["cls":str', "line 3: atom 'cls' must be written bare"),
+                ('"a:b":"odd type"', 'a:b:"odd type"', "line 4: expected ' ' at column 79"),
+                ("flags=[value:4", "flags=[value:04", "line 4: flags=[ needs an integer after value:"),
+                ("flags=[value:4", "flags=[value:x", "line 4: flags=[ needs an integer after value:"),
+                ('flags=[value:4 "a:b":5]', "flags=[value:4 value:5]", "line 4: class field flags names 'value' twice"),
+                (' flags=[value:4 "a:b":5] boxes=[value:6]', ' boxes=[value:6] flags=[value:4 "a:b":5]',
+                 "line 4: class field flags must come before boxes"),
+                ('" args":str]\n', '" args":str] tagged\n', "line 3: class field tagged must come before fields"),
                 ("kind=8 cls=0\n", "kind=8 cls=0 flags=0\n", "line 9: dyntype field flags is omitted where it holds its default"),
                 ("kind=8 cls=0\n", "kind=8\n", "line 9: dyntype @dt.Base needs cls="),
                 ("cls=-1", "cls=-01", "line 8: cls= needs an integer"),
@@ -323,7 +344,7 @@ class ModuleTests(unittest.TestCase):
                 ("ptr]\n", "ptr\n", "line 10: llvm=[ has no closing ']'"),
                 ("  layout Base", "  class Late\n  layout Base", "line 11: a class after the layouts"),
                 ("  layout Base", "  dyntype @dt.Late kind=8 cls=2\n  layout Base", "line 11: a dyntype after the layouts"),
-                ("  class Error base=Exception\n", "  class Error base=Exception\n  class Error\n", "line 4: class Error is declared twice"),
+                ("  class Error base=Exception", "  class Error\n  class Error base=Exception", "line 4: class Error is declared twice"),
                 ("  dyntype @dt.Base kind=8 cls=0\n", "  dyntype @dt.Base kind=8 cls=0\n  dyntype @dt.Node kind=8 cls=1\n",
                  "line 10: dyntype @dt.Node is declared twice"),
                 ("}\n\nfunction", "\nfunction", "line 13: expected a declaration, indented by two spaces"),
@@ -343,8 +364,15 @@ class ModuleTests(unittest.TestCase):
         module = text.parse_module(MODULE)
         for change, expected in ((lambda m: m.pop("dynamic_layouts"), "a module record holds classes, dynamic_types, dynamic_layouts, functions"),
                                  (lambda m: m.__setitem__("dynamic_types", {}), "a module's dynamic_types must be a list"),
-                                 (lambda m: m["classes"]["Base"].pop("tagged"), "class Base: the record must hold base, roles, overlaps, tagged"),
+                                 (lambda m: m["classes"]["Base"].pop("tagged"),
+                                  "class Base: the record must hold base, roles, overlaps, tagged, fields, flags, boxes"),
                                  (lambda m: m["classes"]["Base"].__setitem__("tagged", 1), "class Base: tagged must be a flag"),
+                                 (lambda m: m["classes"]["Base"].__setitem__("fields", {}), "class Base: fields must be a list of names with types"),
+                                 (lambda m: m["classes"]["Node"]["fields"].append({"name": "x"}),
+                                  "class Node: each of its fields must hold a name and a type"),
+                                 (lambda m: m["classes"]["Node"]["fields"][1].__setitem__("type", 1), "an atom must be a string, not 1"),
+                                 (lambda m: m["classes"]["Node"].__setitem__("flags", []), "class Node: flags must be a dict of names to ints"),
+                                 (lambda m: m["classes"]["Node"]["boxes"].__setitem__("value", True), "class Node: boxes must map names to ints"),
                                  (lambda m: m["dynamic_types"][0].__setitem__("kind", "8"), "dyntype @dt.Node: kind must be an int"),
                                  (lambda m: m["dynamic_types"][0].__setitem__("flags", True), "dyntype @dt.Node: flags must be an int"),
                                  (lambda m: m["dynamic_layouts"][0].__setitem__("members", "int"), "layout Node: members must be a list"),
@@ -439,6 +467,23 @@ class CompilerTests(unittest.TestCase):
             self.assertTrue(any(c["overlaps"] for c in module["classes"].values()))
             self.assertTrue(any(t["role"] for t in module["dynamic_types"]))
             self.assertTrue(module["dynamic_layouts"])
+            # (each class's struct: hidden fields, flags and identity boxes, a base's among a derived
+            # class's fields; a layout's members are its class's struct, recorded apart)
+            classes = module["classes"]
+            self.assertTrue(any(f["name"].startswith(" ") for c in classes.values() for f in c["fields"]))
+            self.assertTrue(all(c["flags"] and c["boxes"] for c in (classes["Storage"], classes["Both"])))
+            self.assertEqual(classes["Both"]["fields"][:len(classes["Storage"]["fields"])], classes["Storage"]["fields"])
+            for layout in module["dynamic_layouts"]:
+                c = classes[layout["name"]]
+                own = [sum(k >= len(c["fields"]) for k in c[key].values()) for key in ("flags", "boxes")]
+                self.assertEqual(layout["members"], [f["type"] for f in c["fields"]] + ["bool"] * own[0] + ["dyn"] * own[1])
+            # (its functions that address fields verify with its structs, but those that call
+            # functions or need declarations the text does not hold)
+            problems = text.verify_errors(printed)
+            self.assertEqual([p for p in problems if "field.addr" in p], [])
+            failing = {p.split(":")[0] for p in problems}
+            addressing = {r["symbol"] for r in module["functions"] for b in r["blocks"] for i in b["operations"] if i["op"] == "field.addr"}
+            self.assertGreaterEqual(len(addressing - failing), 3)
             # (its functions print as they do alone, after its declarations)
             alone = subprocess.run(tool + ["print", str(output / "typed-after.json"), "--function", "@", "--locations"],
                                    check=True, capture_output=True, text=True, timeout=60).stdout
@@ -574,13 +619,21 @@ L1:
                                     capture_output=True, text=True, check=False)
             self.assertEqual(result.returncode, 1)
             self.assertIn("@f: unexpected error in block entry", result.stderr)
-            for fixture in (self.INVALID, self.CLASSES):
+            for fixture in (self.INVALID, self.CLASSES, self.FIELDS):
                 result = subprocess.run([sys.executable, str(ROOT / "tools/typed_ir_text.py"), "verify", str(fixture)],
                                         capture_output=True, text=True, check=False)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertIn("functions verify as expected", result.stdout)
 
+    def test_annotated_fixtures_are_in_the_printed_form_but_for_their_comments(self):
+        for fixture in (self.INVALID, self.CLASSES, self.FIELDS):
+            with self.subTest(fixture=fixture.name):
+                bare = "\n".join(line for line in fixture.read_text().split("\n") if not line.lstrip().startswith(";"))
+                bare = re.sub(r"\n{3,}", "\n\n", bare).lstrip("\n")
+                self.assertEqual(text.format_text(text.parse(bare)), bare)
+
     CLASSES = FIXTURES / "classes.tir"
+    FIELDS = FIXTURES / "fields.tir"
 
     def test_a_modules_classes_are_the_ones_its_class_view_relates(self):
         source = self.CLASSES.read_text()
@@ -596,14 +649,67 @@ L1:
         for problem in problems:
             self.assertRegex(problem, r": unexpected error in block entry: ret operand 0 reads %a0 as \w+, but it is \w+$")
 
+    def test_a_modules_structs_are_the_ones_field_addr_indexes(self):
+        source = self.FIELDS.read_text()
+        self.assertEqual(text.verify_errors(source), [])
+        expected = text.expectations(source)
+        admitted = [r["symbol"] for r, e in zip(text.parse_functions(source), expected, strict=True) if not e]
+        self.assertEqual((len(admitted), len(expected) - len(admitted)), (7, 7))
+        self.assertEqual({e["message"] for found in expected for e in found},
+                         {"field.addr result must address the declared member type",
+                          "field.addr needs a declared field, assignment flag or identity box index"})
+        # (a class declared without its struct has no member to address: each reading the struct
+        # admits is an error)
+        bare = re.sub(r"(?m)^(  class .*?) fields=\[.*$", r"\1", source)
+        self.assertNotIn("fields=", bare)
+        problems = [p for p in text.verify_errors(bare) if ": unexpected error" in p]
+        self.assertEqual([p.split(":")[0] for p in problems], admitted)
+        for problem in problems:
+            self.assertTrue(problem.endswith("field.addr needs a declared field, assignment flag or identity box index"), problem)
+
+    def test_class_infos_hold_the_declared_structs(self):
+        from src.pystachy_compiler.lower_module import struct_types
+        infos = text.class_infos(text.parse_module(self.FIELDS.read_text()))
+        leaf, root = infos["Leaf"], infos["Root"]
+        self.assertEqual(leaf.fields, [" class", "count", "items", " Root.0", " Root.1", " Root.box.0", "tail"])
+        self.assertEqual((leaf.ftypes["tail"], leaf.fpos["tail"]), ("str", 6))
+        self.assertEqual((leaf.fflag, leaf.fbox, leaf.nflag, leaf.nbox), ({"count": 3, "items": 4, "tail": 7}, {"count": 5}, 1, 0))
+        self.assertEqual((root.fflag, root.fbox, root.nflag, root.nbox), ({"count": 3, "items": 4}, {"count": 5}, 2, 1))
+        # (the members lowering lays out: a derived class's struct begins with its base's)
+        self.assertEqual(struct_types(root), ["i64", "i64", "ptr", "i1", "i1", "ptr"])
+        self.assertEqual(struct_types(leaf), struct_types(root) + ["ptr", "i1"])
+
     def test_class_declarations_the_verifier_cannot_read_are_rejected(self):
         for declarations, expected in (("  class A roles=[B]\n", "class A: B is no declared class"),
                                        ("  class A overlaps=[B]\n", "class A: B is no declared class"),
                                        ("  class A base=B\n", "class A: its base B is neither a declared class nor a builtin exception class"),
-                                       ("  class A base=B\n  class B base=A\n", "class A derives from itself")):
-            with self.subTest(expected=expected), self.assertRaisesRegex(text.TextError, expected):
-                text.verify_errors("module {\n" + declarations + "}\n\n" + self.CASE)
+                                       ("  class A base=B\n  class B base=A\n", "class A derives from itself"),
+                                       # (a struct that no ClassInfo holds, or that lays out no struct)
+                                       ("  class A fields=[x:int x:str]\n", "class A: field 'x' is declared twice"),
+                                       ("  class A fields=[x:int] flags=[y:1]\n", "class A: 'y' has a flag, but is no field of it"),
+                                       ("  class A fields=[x:int] boxes=[y:1]\n", "class A: 'y' has a box, but is no field of it"),
+                                       ("  class A fields=[x:int] flags=[x:-1]\n", "class A: the flag of 'x' is at -1, which is no index"),
+                                       ("  class A fields=[x:int] flags=[x:2]\n",
+                                        "class A: the flag of 'x' is at 2, where its own flags are at 1, after its fields"),
+                                       ("  class A fields=[x:int y:int] flags=[x:2 y:4]\n",
+                                        "class A: the flag of 'y' is at 4, where its own flags are at 2 to 3, after its fields"),
+                                       ("  class A fields=[x:int] flags=[x:1] boxes=[x:1]\n",
+                                        "class A: the box of 'x' is at 1, where its own boxes are at 2, after its fields and own flags"),
+                                       ("  class A fields=[x:int y:int] flags=[x:2 y:2]\n", "class A: the flag of 'x' and the flag of 'y' are both at 2"),
+                                       ("  class A fields=[x:int] flags=[x:1] boxes=[x:0]\n",
+                                        "class A: the box of 'x' is at 0, field 'x' of type int, where a base's box is a dyn field"),
+                                       ('  class A fields=[x:int " B.0":int] flags=[x:1]\n',
+                                        "class A: the flag of 'x' is at 1, field ' B.0' of type int, where a base's flag is a bool field"),
+                                       ('  class A fields=[x:int " B.0":bool " B.1":bool] flags=[x:1] boxes=[x:1]\n',
+                                        "class A: the box of 'x' is at 1, field ' B.0' of type bool, where a base's box is a dyn field")):
+            with self.subTest(expected=expected):
+                with self.assertRaises(text.TextError) as raised:
+                    text.verify_errors("module {\n" + declarations + "}\n\n" + self.CASE)
+                self.assertEqual(str(raised.exception), expected)
         self.assertEqual(text.verify_errors("module {\n  class A base=KeyError\n  class B base=A\n}\n\n" + self.CASE), [])
+        # (a base's flag and box, at its hidden fields, and the derived class's own after its fields)
+        self.assertEqual(text.verify_errors('module {\n  class A fields=[x:int " B.0":bool " B.box.0":dyn y:int] '
+                                            'flags=[x:1 y:4] boxes=[x:2 y:5]\n}\n\n' + self.CASE), [])
 
 
 if __name__ == "__main__":

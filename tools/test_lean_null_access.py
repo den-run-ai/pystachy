@@ -145,7 +145,9 @@ class NullAccessTests(unittest.TestCase):
 
     def test_a_write_of_an_unrelated_class_keeps_the_proof(self):
         # (no object is both an Inner and a Holder: the classes table relates neither to the other)
-        self.assertEqual(self.snap["classes"]["Inner"], {"base": "", "roles": [], "overlaps": [], "tagged": False})
+        inner = self.snap["classes"]["Inner"]
+        self.assertEqual({key: inner[key] for key in ("base", "roles", "overlaps", "tagged")},
+                         {"base": "", "roles": [], "overlaps": [], "tagged": False})
         self.assert_proved(*self.other_class_write())
 
     def test_a_write_through_a_related_or_unknown_class_view_refutes(self):

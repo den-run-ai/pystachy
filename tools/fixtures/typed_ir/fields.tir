@@ -1,0 +1,121 @@
+; A module's class declarations give the verifier each class's struct, which field.addr indexes:
+; its fields in order with their types, then a bool for each of its own "is assigned" flags and a
+; dyn for each of its own identity boxes (flow.gen_fl_fields, lower_module.struct_types). A
+; derived class's struct begins with its base's, so a base's flags and boxes are hidden fields
+; of it (" Root.0", " Root.box.0"). A field.addr's result must address its member's declared
+; type, or a reference field's as NONEVAR where only None had reached the field when the code
+; was compiled (Gen.none_field). A function list declares no class, so without the module each
+; reading below is an error. Check with
+;   python3 tools/typed_ir_text.py verify tools/fixtures/typed_ir/fields.tir
+
+module {
+  class Config fields=[hook:opt[str] level:int]
+  class Failure base=ValueError fields=[" cls":str " str":str " args":str path:str] flags=[path:4]
+  class Leaf base=Root tagged fields=[" class":int count:int items:list[int] " Root.0":bool " Root.1":bool " Root.box.0":dyn tail:str] flags=[count:3 items:4 tail:7] boxes=[count:5]
+  class Point fields=[x:int y:float]
+  class Root tagged fields=[" class":int count:int items:list[int]] flags=[count:3 items:4] boxes=[count:5]
+}
+
+; ---- readings the structs admit
+
+function @a_field(p: Point) -> float {
+entry:
+  %t1 = field.addr index=1 (Point %a0) : *float
+  %t2 = mem.load(*float %t1) : float
+  ret(float %t2)
+}
+
+function @an_own_flag(r: Root) -> bool {
+entry:
+  %t1 = field.addr index=4 (Root %a0) : *bool
+  %t2 = mem.load(*bool %t1) : bool
+  ret(bool %t2)
+}
+
+function @an_own_identity_box(r: Root) -> dyn {
+entry:
+  %t1 = field.addr index=5 (Root %a0) : *dyn
+  %t2 = mem.load(*dyn %t1) : dyn
+  ret(dyn %t2)
+}
+
+function @a_base_flag_in_a_derived_class(l: Leaf) -> bool {
+entry:
+  %t1 = field.addr index=3 (Leaf %a0) : *bool
+  %t2 = mem.load(*bool %t1) : bool
+  ret(bool %t2)
+}
+
+function @a_derived_classs_own_field_and_flag(l: Leaf, tail: str) -> None {
+entry:
+  %t2 = field.addr index=6 (Leaf %a0) : *str
+  mem.store(*str %t2, str %a1)
+  %t3 = field.addr index=7 (Leaf %a0) : *bool
+  mem.store(*bool %t3, bool true)
+  ret.none
+}
+
+function @an_exception_classs_hidden_field(f: Failure) -> str {
+entry:
+  %t1 = field.addr index=1 (Failure %a0) : *str
+  %t2 = mem.load(*str %t1) : str
+  ret(str %t2)
+}
+
+function @a_reference_field_while_only_none_reached_it(c: Config) -> None {
+entry:
+  %t1 = field.addr(Config %a0) : *opt[None]
+  mem.store(*opt[None] %t1, opt[None] null)
+  ret.none
+}
+
+; ---- readings they reject
+
+function @a_field_at_another_type(p: Point) -> None {
+entry:
+  ; expected-error {{field.addr result must address the declared member type}}
+  %t1 = field.addr index=1 (Point %a0) : *int
+  ret.none
+}
+
+function @an_index_past_the_struct(p: Point) -> None {
+entry:
+  ; expected-error {{field.addr needs a declared field, assignment flag or identity box index}}
+  %t1 = field.addr index=2 (Point %a0) : *int
+  ret.none
+}
+
+function @a_negative_index(p: Point) -> None {
+entry:
+  ; expected-error {{field.addr needs a declared field, assignment flag or identity box index}}
+  %t1 = field.addr index=-1 (Point %a0) : *int
+  ret.none
+}
+
+function @a_derived_classs_member_through_its_base(r: Root) -> None {
+entry:
+  ; expected-error {{field.addr needs a declared field, assignment flag or identity box index}}
+  %t1 = field.addr index=6 (Root %a0) : *str
+  ret.none
+}
+
+function @a_flag_as_an_int(r: Root) -> None {
+entry:
+  ; expected-error {{field.addr result must address the declared member type}}
+  %t1 = field.addr index=3 (Root %a0) : *int
+  ret.none
+}
+
+function @an_identity_box_as_a_flag(r: Root) -> None {
+entry:
+  ; expected-error {{field.addr result must address the declared member type}}
+  %t1 = field.addr index=5 (Root %a0) : *bool
+  ret.none
+}
+
+function @an_int_field_as_none(c: Config) -> None {
+entry:
+  ; expected-error {{field.addr result must address the declared member type}}
+  %t1 = field.addr index=1 (Config %a0) : *opt[None]
+  ret.none
+}

@@ -22,23 +22,28 @@ module or functions alone. A module gives its declarations, one a line, between 
 `}`, and then its functions:
 
     module {
-      class Both base=Storage roles=[Reader] tagged
-      class Reader overlaps=[Storage] tagged
+      class Both base=Storage roles=[Reader] tagged fields=[" class":int value:int " Storage.0":bool " Storage.box.0":dyn] flags=[value:2] boxes=[value:3]
+      class Reader overlaps=[Storage] tagged fields=[" class":int]
       dyntype @dt.Both kind=8 cls=1 flags=256 base=@dt.Storage role=@dt.Reader payload=Both
-      layout Both descriptor=@dt.Both base=@dt.Storage role=@dt.Reader number=1 members=[int] llvm=[i64]
+      layout Both descriptor=@dt.Both base=@dt.Storage role=@dt.Reader number=1 members=[int int bool dyn] llvm=[i64 i64 i1 ptr]
     }
 
-    class NAME [base=CLASS] [roles=[CLASS ...]] [overlaps=[CLASS ...]] [tagged]
+    class NAME [base=CLASS] [roles=[CLASS ...]] [overlaps=[CLASS ...]] [tagged] [fields=[FIELD:TYPE ...]] [flags=[FIELD:INT ...]] [boxes=[FIELD:INT ...]]
     dyntype SYMBOL kind=INT cls=INT [flags=INT] [base=SYMBOL] [role=SYMBOL] [payload=TYPE]
     layout NAME descriptor=SYMBOL [base=SYMBOL] [role=SYMBOL] number=INT [members=[TYPE ...]] [llvm=[TYPE ...]]
 
 A class gives its single base (a class or a builtin exception class), its fieldless secondary
-bases, the unrelated classes it shares a subclass with and whether its objects begin with a
-class tag; a dyntype, a DynType's kind, class number, flags, base and role DynTypes and its
-boxes' payload type (dynamic.py); a layout, the struct of a class that has a DynType, by its
-members' types and their LLVM types (inspect_compiler.py's classes, dynamic_types and
-dynamic_layouts). Classes come first, then dyntypes, then layouts; a field that holds its
-default ("", [], 0 or false) is omitted.
+bases, the unrelated classes it shares a subclass with, whether its objects begin with a class
+tag, and its struct as field.addr indexes it: its fields in order with their types (a hidden
+field's name begins with a space, so it is quoted), and the index of each field's "is
+assigned" flag and identity box (ClassInfo.fflag and fbox). Its own flags take the indexes
+after its fields and its own boxes those after its flags; a base's are among its fields
+(" Storage.0" and " Storage.box.0"), as a derived class's struct begins with its base's
+(flow.gen_fl_fields). A dyntype gives a DynType's kind, class number, flags, base and role
+DynTypes and its boxes' payload type (dynamic.py); a layout, the struct of a class that has a
+DynType, by its members' types and their LLVM types (inspect_compiler.py's classes,
+dynamic_types and dynamic_layouts). Classes come first, then dyntypes, then layouts; a field
+that holds its default ("", [], {}, 0 or false) is omitted.
 
 One instruction is one line:
 
@@ -68,7 +73,7 @@ An instruction without one reads as 0.
 
 An atom (a type, a value, a label, a text, a name) is written bare where that is unambiguous,
 else as a JSON string. The form is for tests and review. It is no stable interchange format,
-and it holds no class fields, globals or runtime declarations.
+and it holds no globals or runtime declarations.
 
 `verify` runs the compiler's verifier (PYSTACHY_IRCHECK=1's) on each function, as MLIR's
 -verify-diagnostics does. A comment line `; expected-error {{MESSAGE}}` in a function says that
@@ -76,7 +81,8 @@ its verification must fail with an error that contains MESSAGE, in the block the
 (before the first block: that block); a function without one must verify. The verifier stops
 at its first error, so a function expects one at most. A module's functions are verified with
 its classes (class_infos): the class view of an operand's type (specs.TYPE_VIEWS) relates them
-by their bases, secondary bases and overlaps. A function list declares no class.
+by their bases, secondary bases and overlaps, and a field.addr addresses a member of its
+operand's class's struct, of that member's declared type. A function list declares no class.
 """
 import argparse
 from contextlib import redirect_stderr
@@ -94,16 +100,21 @@ LOOP_LISTS = ("tests", "indices")
 # table that holds them, the key of a declaration's name in its record ("" where the table maps
 # names to records), and its fields in the order they are written: (key, kind, default). A field
 # that holds its default is omitted (None: none, it is always written). Kinds: an atom, an int, a
-# list of atoms, or a flag, written as its bare key where it is true.
+# list of atoms, a flag, written as its bare key where it is true, a list of typed names (each
+# {"name", "type"}, written NAME:TYPE) or a dict of names to ints (NAME:INT).
 DECLARATIONS = {
     "class": ("classes", "", (("base", "atom", ""), ("roles", "list", []), ("overlaps", "list", []),
-                              ("tagged", "flag", False))),
+                              ("tagged", "flag", False), ("fields", "typed", []), ("flags", "indexed", {}),
+                              ("boxes", "indexed", {}))),
     "dyntype": ("dynamic_types", "symbol", (("kind", "int", None), ("cls", "int", None), ("flags", "int", 0),
                                            ("base", "atom", ""), ("role", "atom", ""), ("payload", "atom", ""))),
     "layout": ("dynamic_layouts", "name", (("descriptor", "atom", None), ("base", "atom", ""), ("role", "atom", ""),
                                           ("number", "int", None), ("members", "list", []), ("llvm", "list", []))),
 }
 MODULE_KEYS = [table for table, _, _ in DECLARATIONS.values()] + ["functions"]
+# each kind's Python type in a record, and what a message calls a value of it
+KINDS = {"atom": (str, "an atom"), "int": (int, "an int"), "list": (list, "a list"), "flag": (bool, "a flag"),
+         "typed": (list, "a list of names with types"), "indexed": (dict, "a dict of names to ints")}
 DECODER = json.JSONDecoder()
 
 
@@ -518,14 +529,20 @@ def declaration_text(keyword, name, record):
     parts = [keyword, atom(name)]
     for key, kind, default in fields:
         value = record[key]
-        require(type(value) is {"atom": str, "int": int, "list": list, "flag": bool}[kind],
-                f"{keyword} {name}: {key} must be {'an' if kind in ('atom', 'int') else 'a'} {kind}")
+        require(type(value) is KINDS[kind][0], f"{keyword} {name}: {key} must be {KINDS[kind][1]}")
         if value == default:
             continue
         if kind == "flag":
             parts.append(key)
         elif kind == "list":
             parts.append(f"{key}=[{' '.join(atom(v) for v in value)}]")
+        elif kind == "typed":
+            require(all(isinstance(v, dict) and sorted(v) == ["name", "type"] for v in value),
+                    f"{keyword} {name}: each of its {key} must hold a name and a type")
+            parts.append(f"{key}=[{' '.join(atom(v['name'], ':') + ':' + atom(v['type']) for v in value)}]")
+        elif kind == "indexed":
+            require(all(type(v) is int for v in value.values()), f"{keyword} {name}: {key} must map names to ints")
+            parts.append(f"{key}=[{' '.join(atom(k, ':') + ':' + str(v) for k, v in value.items())}]")
         else:
             parts.append(f"{key}={value if kind == 'int' else atom(value)}")
     return " ".join(parts)
@@ -557,15 +574,29 @@ def read_declaration(text):
             number = re.compile(r"=(-?\d+)").match(text, at)
             require(number is not None and str(int(number.group(1))) == number.group(1), f"{key}= needs an integer")
             value, at = int(number.group(1)), number.end()
-        elif kind == "list":
+        elif kind in ("list", "typed", "indexed"):
             at = expect(text, at, "=[")
-            value = []
+            value = {} if kind == "indexed" else []
             while not text.startswith("]", at):
                 require(at < len(text), f"{key}=[ has no closing ']'")
                 if value:
                     at = expect(text, at, " ")
-                item, at = read_atom(text, at)
-                value.append(item)
+                if kind == "list":
+                    item, at = read_atom(text, at)
+                    value.append(item)
+                    continue
+                # (NAME:TYPE or NAME:INT, the name quoted where it holds a colon)
+                item, at = read_atom(text, at, ":")
+                at = expect(text, at, ":")
+                if kind == "typed":
+                    t, at = read_atom(text, at)
+                    value.append({"name": item, "type": t})
+                else:
+                    number = re.compile(r"-?\d+").match(text, at)
+                    require(number is not None and str(int(number.group(0))) == number.group(0),
+                            f"{key}=[ needs an integer after {atom(item, ':')}:")
+                    require(item not in value, f"{keyword} field {key} names {item!r} twice")
+                    value[item], at = int(number.group(0)), number.end()
             at += 1
         else:
             value, at = read_atom(text, expect(text, at, "="))
@@ -573,7 +604,7 @@ def read_declaration(text):
         record[key] = value
     for key, kind, default in fields:
         require(key in record or default is not None, f"{keyword} {name} needs {key}=")
-    record = {key: record[key] if key in record else list(default) if kind == "list" else default
+    record = {key: record[key] if key in record else type(default)(default) if isinstance(default, (list, dict)) else default
               for key, kind, default in fields}
     return keyword, name, dict({named: name}, **record) if named else record
 
@@ -729,7 +760,9 @@ def module_from_snapshot(snapshot):
     """The module record of a typed-after inspection snapshot: its tables as they are, and the
     record of each of its functions."""
     return {
-        "classes": {name: dict(c, roles=list(c["roles"]), overlaps=list(c["overlaps"])) for name, c in snapshot["classes"].items()},
+        "classes": {name: dict(c, roles=list(c["roles"]), overlaps=list(c["overlaps"]), fields=[dict(f) for f in c["fields"]],
+                               flags=dict(c["flags"]), boxes=dict(c["boxes"]))
+                    for name, c in snapshot["classes"].items()},
         "dynamic_types": [dict(t) for t in snapshot["dynamic_types"]],
         "dynamic_layouts": [dict(t, members=list(t["members"]), llvm=list(t["llvm"])) for t in snapshot["dynamic_layouts"]],
         "functions": [from_snapshot(f, snapshot.get("files", [])) for f in snapshot["functions"]],
@@ -837,10 +870,51 @@ def from_ifn(fn):
     }
 
 
+# what a class's struct holds besides its fields: an "is assigned" flag and an identity box, each
+# by its name, its class record's key and its member type
+MEMBERS = (("flag", "flags", "bool"), ("box", "boxes", "dyn"))
+
+
+def class_struct(name, c, info):
+    """Give ClassInfo info the struct that class record c declares, as flow.gen_fl_fields lays it
+    out (lower_module.struct_types): its fields, then a bool for each of its own flags and then a
+    dyn for each of its own identity boxes. A flag or box at a field's index is a base's, which a
+    derived class's struct begins with: a bool or a dyn field. Declared data that no ClassInfo
+    holds, or that lays out no struct, is a TextError."""
+    for field in c["fields"]:
+        require(field["name"] not in info.ftypes, f"class {name}: field {field['name']!r} is declared twice")
+        info.fpos[field["name"]] = len(info.fields)
+        info.fields.append(field["name"])
+        info.ftypes[field["name"]] = field["type"]
+    first = len(info.fields)
+    taken = {}  # (each index a flag or box takes -> which)
+    own = {}
+    for what, key, member in MEMBERS:
+        own[key] = len([k for k in c[key].values() if k >= len(info.fields)])
+        span = (f"{first}" if own[key] == 1 else f"{first} to {first + own[key] - 1}") + ", after its fields"
+        span += " and own flags" if key == "boxes" else ""
+        for field, k in c[key].items():
+            require(field in info.ftypes, f"class {name}: {field!r} has a {what}, but is no field of it")
+            require(k >= 0, f"class {name}: the {what} of {field!r} is at {k}, which is no index")
+            if k < len(info.fields):
+                t = info.ftypes[info.fields[k]]
+                require(t == member, f"class {name}: the {what} of {field!r} is at {k}, field {info.fields[k]!r} "
+                                     f"of type {t}, where a base's {what} is a {member} field")
+            else:
+                require(first <= k < first + own[key], f"class {name}: the {what} of {field!r} is at {k}, where its own {key} are at {span}")
+            require(k not in taken, f"class {name}: the {taken.get(k)} and the {what} of {field!r} are both at {k}")
+            taken[k] = f"{what} of {field!r}"
+        first += own[key]
+    info.fflag = dict(c["flags"])
+    info.fbox = dict(c["boxes"])
+    info.nflag = own["flags"]
+    info.nbox = own["boxes"]
+
+
 def class_infos(module):
-    """The compiler's ClassInfo of each class a module declares, with what the verifier's class
-    view reads of it (ircheck.related, Gen.derives): its base, secondary bases and overlaps. The
-    text holds no fields, so a field.addr of a class does not verify."""
+    """The compiler's ClassInfo of each class a module declares, with what the verifier reads of
+    it: its base, secondary bases and overlaps, which the class view relates (ircheck.related,
+    Gen.derives), and its struct, which field.addr indexes (class_struct)."""
     ir, specs, symbols, syntax, utils = compiler()
     declared = module["classes"]
     infos = {}
@@ -857,6 +931,7 @@ def class_infos(module):
         info.base = c["base"]
         info.roles = list(c["roles"])
         info.overlaps = list(c["overlaps"])
+        class_struct(name, c, info)
         infos[name] = info
     return infos
 

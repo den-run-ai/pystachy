@@ -437,9 +437,18 @@ class Observer:
         # the unrelated classes whose objects it may also be (a primary chain's and a secondary
         # base's common subclass); and whether its objects begin with the class tag. An object of
         # one class is no object of a class related to it none of these ways: their fields are
-        # other memory (Gen.disjoint).
+        # other memory (Gen.disjoint). And its struct, as field.addr indexes it
+        # (lower_module.struct_types): its fields in order with their types (a name beginning
+        # with a space is hidden storage, such as the class tag), and the index of each field's
+        # "is assigned" flag (fl_fields) and identity box, in the order of their indexes. Its own
+        # flags follow its fields, and its own boxes its flags; a base's are among its fields
+        # (" Base.0" and " Base.box.0"), as a derived class's struct begins with its base's.
         return {name: {"base": info.base, "roles": list(info.roles), "overlaps": sorted(info.overlaps),
-                       "tagged": info.tag != 0} for name, info in sorted(gen.classes.items())}
+                       "tagged": info.tag != 0,
+                       "fields": [{"name": field, "type": info.ftypes[field]} for field in info.fields],
+                       "flags": dict(sorted(info.fflag.items(), key=lambda item: item[1])),
+                       "boxes": dict(sorted(info.fbox.items(), key=lambda item: item[1]))}
+                for name, info in sorted(gen.classes.items())}
 
     @staticmethod
     def key_descriptors(gen, functions) -> dict:
