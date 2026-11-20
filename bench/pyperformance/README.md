@@ -21,7 +21,9 @@ python3 bench/pyperformance/richards.py 10
 ```
 
 Each benchmark's main takes the number of loops as its first argument; some also take input
-sizes. It prints its results to standard output and the seconds of the part that pyperf would
+sizes. `bpe_tokeniser`, `pyflate`, `regex_compile` and `telco` read a file of [data/](data/)
+by its path from the repository root: run them from there, or pass the file as their last
+argument. A main prints its results to standard output and the seconds of the part that pyperf would
 time to standard error. The check runs small inputs once and compares CPython, JIT and AOT
 output, without timings. `make bench-pyperformance` runs five processes per mode and writes
 `build/pyperformance.json`. Both targets accept `BENCH_COMPILER`; `BENCH_ARGS` adds options to
