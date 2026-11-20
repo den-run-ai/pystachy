@@ -50,7 +50,43 @@ def objects() -> int:
     return ts[0].n
 
 
-print(look({"a": 1}, "a"), names(), same([1], ["1"]), boxed(True), keyed(["bb", "a"]), objects())
+class Base:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+    def __hash__(self) -> int:
+        return self.n
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, Base) and other.n == self.n
+
+
+class Derived(Base):
+    pass
+
+
+class R(Exception):
+    pass
+
+
+def joined(xs: list[Derived], ys: list[Base], a: set[Derived], b: set[Base]) -> int:
+    return len(xs + ys) + len(a | b) + len(a & b) + len(a ^ b) + len(a - b)
+
+
+def maybe(d: dict[str, str], k: str) -> int:
+    x = d.get(k)
+    return -1 if x is None else len(x)
+
+
+def caught() -> int:
+    try:
+        raise R("r")
+    except R as e:
+        return len(str(e))
+
+
+print(look({"a": 1}, "a"), names(), same([1], ["1"]), boxed(True), keyed(["bb", "a"]), objects(),
+      joined([Derived(1)], [Base(2)], {Derived(1)}, {Base(2)}), maybe({"a": "xy"}, "b"), caught())
 """
 
 
@@ -103,6 +139,36 @@ class RuntimeCallTests(unittest.TestCase):
         self.assertEqual([a.t for a in append.a], ["list[T]", "*T"])
         [made] = calls(self.fn("objects"), "list.new")
         self.assertEqual(made.t, "list[T]")
+        # (exc.obj's R is the type its builder gives, here class R)
+        [obj] = calls(self.fn("caught"), "exc.obj")
+        self.assertEqual(obj.t, "R")
+        self.assertEqual(rt_instance_error(obj, rtsig("exc.obj")), "")
+
+    def test_a_result_that_may_hold_either_operands_items_has_their_join(self):
+        # (CPython's list + list, set | set, & and ^ may hold ys's and b's Base objects; a - b only
+        # a's Derived ones)
+        fn = self.fn("joined")
+        for name, want in (("list.add", "list[Base]"), ("set.or", "set[Base]"), ("set.and", "set[Base]"), ("set.xor", "set[Base]")):
+            with self.subTest(op=name):
+                [op] = calls(fn, name)
+                self.assertEqual(op.t, want)
+                self.assertEqual(rt_instance_error(op, rtsig(name)), "")
+        [sub] = calls(fn, "set.sub")
+        self.assertEqual(sub.t, sub.a[0].t)
+
+    def test_a_lookup_that_may_miss_returns_an_optional(self):
+        # (d.get(k) is None for a missing key: the slot's type says so)
+        [get] = calls(self.fn("maybe"), "dict.get")
+        self.assertEqual(get.t, "*opt[str]")
+        self.assertEqual([a.t for a in get.a], ["dict[str,str]", "*str", "*opt[str]"])
+        self.assertEqual(rt_instance_error(get, rtsig("dict.get")), "")
+
+    def test_a_result_that_may_be_no_object_of_a_type_claims_none(self):
+        # (pys_dyn_next returns null at the end of an iteration; pys_exc_id a user exception's
+        # object)
+        for name in ("dyn.next", "dyn.next_box", "exc.id"):
+            with self.subTest(name=name):
+                self.assertEqual(rtsig(name)[0], "%ptr")
 
     def test_no_variable_is_left_where_an_operand_binds_it(self):
         for name, (_, fn) in self.functions.items():

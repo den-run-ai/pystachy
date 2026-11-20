@@ -5871,8 +5871,8 @@ class Gen:
     def store_elem(self, k: Val, et: str) -> Val:
         return containers_store_elem(self, k, et)
 
-    def nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str, kt: str) -> str:
-        return containers_nonekey(self, k, none, fn, av, x, kt)
+    def nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str, kt: str, t: str = "") -> str:
+        return containers_nonekey(self, k, none, fn, av, x, kt, t)
 
     def none_dkey(self, k: Val, kt: str) -> Val:
         return containers_none_dkey(self, k, kt)

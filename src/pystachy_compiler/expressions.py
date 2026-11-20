@@ -5374,10 +5374,10 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
             return Val(self.rt(FRT[op], "double", [f"double {x.v}", f"double {y.v}"]), "float")
     seq = a.t == "str" or a.t == "bytes" or is_list(a.t)
     if op == "+" and seq and a.t == b.t:
-        return Val(self.rt("pys_str_add" if a.t == "str" else "pys_bytes_add" if a.t == "bytes" else "pys_list_add", "ptr", [f"ptr {a.v}", f"ptr {b.v}"]), a.t)
+        return Val(self.rt("pys_str_add" if a.t == "str" else "pys_bytes_add" if a.t == "bytes" else "pys_list_add", "ptr", [f"ptr {a.v}", f"ptr {b.v}"], t=a.t if is_list(a.t) else ""), a.t)
     lw = self.wider(a.t, b.t) if op == "+" and is_list(a.t) and is_list(b.t) else ""
     if lw != "" and self.widens_items(a.t, lw) and self.widens_items(b.t, lw):
-        return Val(self.rt("pys_list_add", "ptr", [f"ptr {a.v}", f"ptr {b.v}"]), lw)  # (a new list of the items of both)
+        return Val(self.rt("pys_list_add", "ptr", [f"ptr {a.v}", f"ptr {b.v}"], t=lw), lw)  # (a new list of the items of both)
     if op == "*" and seq and b.t == "int":
         return Val(self.rt("pys_str_mul" if a.t == "str" else "pys_bytes_mul" if a.t == "bytes" else "pys_list_mul", "ptr", [f"ptr {a.v}", f"i64 {b.v}"]), a.t)
     if op == "*" and seq and b.t in self.classes and "__index__" in self.classes[b.t].methods:

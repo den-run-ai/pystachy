@@ -146,7 +146,7 @@ VTUPLE_ELEMS: list[str] = ["int", "float", "bool", "str", "dyn", "opt[int]", "op
 def native_type(t: str, classes: dict[str, ClassInfo]) -> bool:
     # a Python value's native type (specs.TYPE_CLASSES): no machine type (%), address (&), packed
     # slot (*) or descriptor (#), and a runtime type variable only where a class has its name
-    return t != "" and not t.startswith("%") and not t.startswith("&") and not t.startswith("*") and t != "#" and ((t != "T" and t != "K" and t != "V" and t != "S") or t in classes)
+    return t != "" and not t.startswith("%") and not t.startswith("&") and not t.startswith("*") and t != "#" and (t not in RT_VARS or t in classes)
 
 
 def fixed_tuple(t: str) -> bool:

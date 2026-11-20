@@ -3375,9 +3375,10 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
         self.list_write("list." + m, operands)
         return Val("null", "None")
     if kx.t != "":
-        res = self.nonekey(kx, av[2][4:] if m == "get" else "", fn, av, x, K)
+        res = self.nonekey(kx, av[2][4:] if m == "get" else "", fn, av, x, K, "*" + rtype if optget else "")
     else:
-        res = self.rt(self.dict_key_fn(fn, bigkey) if bigkey.t != "" else fn, "i64" if slot else rtt(rtype), av, x)
+        # (d.get(k)'s value or None: its optional type, which no operand gives)
+        res = self.rt(self.dict_key_fn(fn, bigkey) if bigkey.t != "" else fn, "i64" if slot else rtt(rtype), av, x, "*" + rtype if optget else "")
     if numok != "true" and m == "count":
         res = self.select(numok, Val(res, "int"), Val("0", "int"))
     if fn == "pys_dict_getbox" and self.dict_int(o.t):

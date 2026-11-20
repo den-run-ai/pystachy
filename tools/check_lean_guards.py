@@ -648,7 +648,7 @@ PRESENT = "present"  # (an opt[None] split's tag 1: the member is its payload's,
 SCALAR_MEMBERS = frozenset({"member:bool", "member:float", "member:int"})
 OPTIONAL_SCALARS = frozenset({"opt[bool]", "opt[float]", "opt[int]"})
 # Operand types that carry a payload word without saying which member's bits it holds.
-GENERIC_WORDS = frozenset({"%slot", "%ptr", "*T", "*K", "*V", "S", "*dyn", "dyn"})
+GENERIC_WORDS = frozenset({"%slot", "%ptr", "*T", "*K", "*V", "*U", "S", "*dyn", "dyn"})
 
 
 def split_layout(fn, slots, tag_names):
