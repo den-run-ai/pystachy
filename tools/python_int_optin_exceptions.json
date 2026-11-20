@@ -469,7 +469,7 @@
       "case": "tests/programs/language/flow_locals.py",
       "mode": "jit",
       "category": "unsupported-storage",
-      "diagnostic": "tests/programs/language/flow_locals.py:18: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float",
+      "diagnostic": "tests/programs/language/flow_locals.py:18: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float (note: what is annotated float and was given an int at tests/programs/language/flow_locals.py:20 holds an int | float; a float there, as in 1.0 or float(x), keeps it a float)",
       "reason": "Control-flow locals join promoting-int and float results into a closed union whose representation is not supported.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
@@ -477,7 +477,7 @@
       "case": "tests/programs/language/flow_locals.py",
       "mode": "aot",
       "category": "unsupported-storage",
-      "diagnostic": "tests/programs/language/flow_locals.py:18: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float",
+      "diagnostic": "tests/programs/language/flow_locals.py:18: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float (note: what is annotated float and was given an int at tests/programs/language/flow_locals.py:20 holds an int | float; a float there, as in 1.0 or float(x), keeps it a float)",
       "reason": "Control-flow locals join promoting-int and float results into a closed union whose representation is not supported.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
