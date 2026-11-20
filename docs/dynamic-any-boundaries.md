@@ -43,16 +43,28 @@ consumer only after preserving its aliases and the boundary to existing users.
 | Modules | Current boundary | Concrete work and remaining containment debt |
 |---|---|---|
 | `json_repair.py`, `json_parser.py`, `parse_array.py`, `parse_object.py`, `parse_string.py` | Dynamic repaired results, nested mutable containers, optional result/log tuples and interoperability with dynamic JSON. | Scanning state is largely concrete already. Recursive typed storage and known log-record fields are candidates; returning logs through an existing `Any` tuple is an alias/layout boundary to preserve. |
-| `__main__.py` | The CLI serializes the repair result; it declares no `Any` annotation. | The opt-in only selects the dynamic `json.dumps()` encoder: without it the result is checked against typed `JSONValue` and the CLI raises `TypeError`. Choosing the encoder from the argument's type would make this opt-in removable. |
 
-Eleven other modules of the port no longer opt in: the three package `__init__.py` files,
-`parse_comment.py`, `parse_number.py`, `parser_parenthesized.py`, `utils/json_context.py`,
-`utils/object_comparer.py` and, under `parse_string_helpers/`, `parse_json_llm_block.py`,
-`parse_boolean_or_null.py` and `object_value_context.py`. Their `Any` annotations are
-inferred from each call, and the five modules above box what they store. Removing these
-comments is containment, not a cost result. The modules stay inside the import closure
-that tracks numeric identity, so `tests/programs/apps/port_json_repair.py` compiles to
-40,175 lines of LLVM IR instead of 40,361, with the same 403 numeric box sites.
+Twelve other modules of the port no longer opt in. Eleven only pass values on: the three
+package `__init__.py` files, `parse_comment.py`, `parse_number.py`,
+`parser_parenthesized.py`, `utils/json_context.py`, `utils/object_comparer.py` and, under
+`parse_string_helpers/`, `parse_json_llm_block.py`, `parse_boolean_or_null.py` and
+`object_value_context.py`. Their `Any` annotations are inferred from each call, and the five
+modules above box what they store. Removing these comments is containment, not a cost
+result. The modules stay inside the import closure that tracks numeric identity, so
+`tests/programs/apps/port_json_repair.py` compiles to 40,175 lines of LLVM IR instead of
+40,361, with the same 403 numeric box sites.
+
+The twelfth, `__main__.py`, only serializes the repair result: `json.dumps()` of a value
+that is already `Any`'s selects the dynamic encoder from the argument's type in any module
+(`tests/programs/inference/dynany_dumps_caller.py`). Its comment was what put `argparse`
+and the modules it imports in the tracked closure, so this removal is a cost result for
+the consumer's own modules. `tests/programs/apps/port_json_repair_cli.py` compiles to
+121,437 lines of LLVM IR instead of 143,887, with 403 numeric box sites instead of 1,696
+and 592 `pys_dyn_*` call sites instead of 2,596; its AOT executable is 949,432 bytes
+instead of 1,085,032. The counts are of the program's IR before the runtime is linked, by
+one compiler, and restoring the comment restores the larger ones. The five parser modules
+still track identity, so the repair itself is the same code: the result is compilation
+work and size, not steady-state speed or allocation.
 
 ## Evidence required for a migration
 

@@ -176,6 +176,13 @@ promotes integer tokens beyond 64 bits without a caller `python-int` pragma; the
 decimal digit limit and fixed-width scanner indices still apply. See the
 [JSON prototype](json.md#in-modules-that-opt-in-to-dynamic-any).
 
+A module that does not opt in makes no `Any` value, but it may hold one that an
+opt-in module returned. `json.dumps()` of such a variable, attribute, item or call
+result uses the same encoder there, `default=` included, so a module that only
+serializes a result needs no opt-in
+(`tests/programs/inference/dynany_dumps_caller.py`). `json.loads()` and a display
+keep `JSONValue` storage in that module.
+
 Without `sort_keys`, the encoder observes a `default()` callback's changes to later
 values and deletion of later keys. Structural changes can differ from CPython's
 live dict-table traversal: the encoder retains queued keys in their old order and
