@@ -478,6 +478,7 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_parser_allocations.py
 	$(PY) -m unittest discover -s tools -p test_exception_bindings.py
 	$(PY) -m unittest discover -s tools -p test_inspect_compiler.py
+	$(PY) -m unittest discover -s tools -p test_rejection_survey.py
 	$(PY) -m unittest discover -s tools -p test_compiler_pipeline.py
 	$(PY) -m unittest discover -s tools -p test_compiler_stage_admission.py
 	$(PY) -m unittest discover -s tools -p test_compiler_abi_stages.py

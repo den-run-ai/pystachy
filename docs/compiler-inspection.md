@@ -305,7 +305,9 @@ Diagnostic codes are deliberately coarse in this prototype:
 An ordinary rejection is not automatically a compiler defect. The existing text
 message and specialization notes remain the explanation; the code provides a
 stable category, not one unique identifier for every language restriction. The
-tool stops at the compiler's first terminal diagnostic and adds no error recovery.
+tool stops at the compiler's first terminal diagnostic and adds no error recovery;
+the [rejection survey](porting.md#survey-a-programs-rejections) lists further
+rejections of a program by compiling a copy with the rejected functions stubbed.
 An unavailable input also retains `PYS0001`, with phase `input`, but has outcome
 `error` rather than a language rejection. An existing non-regular input produces
 `PYS9001` in phase `input` without invoking the compiler.

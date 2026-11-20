@@ -171,6 +171,7 @@ These tools answer different questions:
 |---|---|
 | `tools/import_sweep.py` | A module's import program compiles; this does not verify its functions. |
 | `tools/import_sweep.py --stubs` | A module's import compiles once the modules built into CPython that it needs exist; this ranks those modules. |
+| `tools/rejection_survey.py` | Rejections of one program, at most one in each function that it reaches, from compiling a copy again after stubbing each rejected function; a stub can cause a later rejection ([limits](porting.md#survey-a-programs-rejections)). |
 | `tests/programs/library/lib_*.py` | Selected compiled APIs match CPython in the differential suite. |
 | `make port-check` | Pinned upstream sources, reviewed adaptation diffs and selected upstream suites pass under CPython; compiled coverage is tracked separately. |
 
