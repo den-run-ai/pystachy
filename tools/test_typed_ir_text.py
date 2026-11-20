@@ -252,22 +252,56 @@ class CompilerTests(unittest.TestCase):
             for name in ("typed-before.json", "typed-after.json"):
                 snapshot = json.loads((output / name).read_text())
                 self.assertGreater(len(snapshot["functions"]), 0)
+                self.assertEqual(snapshot["files"][0], str(EXAMPLE))
                 for function in snapshot["functions"]:
-                    record = text.from_snapshot(function)
+                    record = text.from_snapshot(function, snapshot["files"])
                     self.assertEqual(text.roundtrip_errors(record), [])
                     self.assertEqual(text.parse_function(text.format_function(record))["symbol"], function["symbol"])
+                    # (a record's line is the snapshot's location, as the compiler numbers lines)
+                    for b, found in zip([{"operations": function["slots"]}] + function["blocks"],
+                                        [{"operations": record["slots"]}] + record["blocks"], strict=True):
+                        for ins, line in zip(b["operations"], [i["line"] for i in found["operations"]], strict=True):
+                            self.assertEqual(ins["location"]["precision"], "line")
+                            self.assertEqual((ins["location"]["file"], ins["location"]["line"]),
+                                             (snapshot["files"][line // 10000000], line % 10000000))
             printed = subprocess.run([sys.executable, str(ROOT / "tools/typed_ir_text.py"), "print", str(output / "typed-after.json"),
                                       "--function", "score_samples"], check=True, capture_output=True, text=True, timeout=60).stdout
             self.assertEqual(text.parse_function(printed)["symbol"], "@f.score_samples")
+            self.assertNotIn(" loc(", printed)
+            located = subprocess.run([sys.executable, str(ROOT / "tools/typed_ir_text.py"), "print", str(output / "typed-after.json"),
+                                      "--function", "score_samples", "--locations"], check=True, capture_output=True, text=True, timeout=60).stdout
+            self.assertIn(" loc(", located)
+            self.assertEqual(text.format_function(text.parse_function(located)), printed)
             listing = Path(directory) / "score.tir"
-            listing.write_text(printed)
-            checked = subprocess.run([sys.executable, str(ROOT / "tools/typed_ir_text.py"), "check", str(listing)],
-                                     capture_output=True, text=True, timeout=60)
-            self.assertEqual((checked.returncode, checked.stdout), (0, "typed_ir_text: 1 functions parse and print unchanged\n"))
+            for listed in (located, printed):
+                listing.write_text(listed)
+                checked = subprocess.run([sys.executable, str(ROOT / "tools/typed_ir_text.py"), "check", str(listing)],
+                                         capture_output=True, text=True, timeout=60)
+                self.assertEqual((checked.returncode, checked.stdout), (0, "typed_ir_text: 1 functions parse and print unchanged\n"))
             listing.write_text(printed.replace("  br -> ", "  br  -> ", 1))
             checked = subprocess.run([sys.executable, str(ROOT / "tools/typed_ir_text.py"), "check", str(listing)],
                                      capture_output=True, text=True, timeout=60)
             self.assertEqual(checked.returncode, 1)
+
+
+    def test_a_snapshot_location_names_one_of_its_files(self):
+        ret = {"op": "ret.none", "type": "", "text": "", "immediate": 0, "descriptor": "", "results": [], "operands": [],
+               "targets": [], "location": {"file": "lib/heapq.py", "line": 12, "column": None, "precision": "line"}}
+        function = {"symbol": "@f", "parameters": [], "return_representation": "None", "recursion": {"coroutine": False},
+                    "effects": None, "slots": [], "blocks": [{"label": "entry", "handler": "", "operations": [ret]}],
+                    "check_targets": {}, "loops": []}
+        record = text.from_snapshot(function, ["main.py", "lib/os.py", "lib/heapq.py"])
+        self.assertEqual(record["blocks"][0]["operations"][0]["line"], 20000012)
+        self.assertEqual(text.format_function(record, True), "function @f() -> None {\nentry:\n  ret.none loc(2:12)\n}\n")
+        with self.assertRaisesRegex(text.TextError, "lib/heapq.py, which the snapshot's files do not list"):
+            text.from_snapshot(function, ["main.py"])
+        for unknown in (None, "absent"):
+            with self.subTest(location=unknown):
+                if unknown is None:
+                    ret["location"] = None
+                else:
+                    del ret["location"]
+                self.assertEqual(text.from_snapshot(function)["blocks"][0]["operations"][0]["line"], 0)
 
 
 class PassTests(unittest.TestCase):

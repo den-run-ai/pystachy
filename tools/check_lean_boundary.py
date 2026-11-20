@@ -56,6 +56,9 @@ CLASS_WORD = "3"
 MAX_TAGS = 262144
 MAX_CONDITION = 64
 OP_KEYS = {"op", "type", "text", "immediate", "descriptor", "results", "operands", "targets"}
+# An instruction's source location (inspect_compiler.py: the line of the statement it implements,
+# or None where unknown), which no check reads. A snapshot made before locations has none.
+LOCATION_KEYS = {"file", "line", "column", "precision"}
 # How each typed-IR operation (IROPS, src/pystachy_compiler/specs.py) is normalized. Ordinary
 # operations write no private slot (a slot whose address reaches any other operation is not
 # private) and no box (boxes are immutable; a store through an address derived from a box is
@@ -128,8 +131,19 @@ def read_snapshot(path, limit=MAX_BYTES):
     return json.loads(raw, object_pairs_hook=unique_object), hashlib.sha256(raw).hexdigest()
 
 
+def instruction_fields(value):
+    """Whether value holds exactly an instruction's fields, OP_KEYS, with or without a location."""
+    if not isinstance(value, dict):
+        return False
+    location = value.get("location")
+    if location is not None and not (isinstance(location, dict) and set(location) == LOCATION_KEYS
+                                     and isinstance(location["file"], str) and type(location["line"]) is int):
+        return False
+    return set(value) - {"location"} == OP_KEYS
+
+
 def instruction(value, slot=False):
-    require(isinstance(value, dict) and set(value) == OP_KEYS, "invalid instruction fields")
+    require(instruction_fields(value), "invalid instruction fields")
     for key in ("op", "type", "text", "descriptor"):
         require(isinstance(value[key], str) and len(value[key]) <= 4096, f"invalid instruction {key}")
     if value["op"] not in ({"slot"} if slot else SUPPORTED_OPS):

@@ -32,7 +32,8 @@ An instruction's location is the line of the statement it implements (Ins.line).
 holds it as the compiler numbers lines, a file's index times diagnostics.LINES plus the line,
 and 0 where it is unknown. The text holds it only where asked to, as MLIR prints locations
 only with -mlir-print-debuginfo: `loc(12)` is line 12 of the program's main file, and
-`loc(3:12)` line 12 of its file 3 (diagnostics.FILES[3]). An instruction without one reads as 0.
+`loc(3:12)` line 12 of its file 3 (diagnostics.FILES[3]; a snapshot lists them as `files`).
+An instruction without one reads as 0.
 
 An atom (a type, a value, a label, a text) is written bare where that is unambiguous, else as
 a JSON string. The form is for tests and review. It is no stable interchange format, and it
@@ -473,18 +474,28 @@ def parse_function(text):
     return records[0]
 
 
-def from_snapshot(function):
-    """The record of one function of an inspection snapshot (tools/inspect_compiler.py), which
-    holds no locations."""
+def from_snapshot(function, files=()):
+    """The record of one function of an inspection snapshot (tools/inspect_compiler.py), whose
+    instructions' locations name the snapshot's files (its `files`)."""
+    def instruction(ins):
+        record = {key: ins[key] for key in ("op", "type", "text", "immediate", "descriptor", "results", "targets")}
+        record["operands"] = [dict(a) for a in ins["operands"]]
+        location = ins.get("location")
+        record["line"] = 0
+        if location is not None:
+            require(location["file"] in files, f"a location in {location['file']}, which the snapshot's files do not list")
+            record["line"] = list(files).index(location["file"]) * lines_per_file() + location["line"]
+        return record
+
     return {
         "symbol": function["symbol"],
         "parameters": [{"name": p["name"], "type": p["representation"]} for p in function["parameters"]],
         "return": function["return_representation"],
         "coroutine": function["recursion"]["coroutine"],
         "effects": function["effects"],
-        "slots": [dict(i, operands=[dict(a) for a in i["operands"]], line=0) for i in function["slots"]],
+        "slots": [instruction(i) for i in function["slots"]],
         "blocks": [{"label": b["label"], "handler": b["handler"],
-                    "operations": [dict(i, operands=[dict(a) for a in i["operands"]], line=0) for i in b["operations"]]}
+                    "operations": [instruction(i) for i in b["operations"]]}
                    for b in function["blocks"]],
         "check_targets": dict(function["check_targets"]),
         "loops": [{"kind": lp["kind"], "mode": lp["mode"], "head": lp["head"], "body": lp["body"],
@@ -692,7 +703,7 @@ def main():
         source = args.path.read_text(encoding="utf-8")
         if args.mode == "print":
             snapshot = json.loads(source)
-            records = [from_snapshot(f) for f in snapshot["functions"] if args.function in f["symbol"]]
+            records = [from_snapshot(f, snapshot.get("files", [])) for f in snapshot["functions"] if args.function in f["symbol"]]
             problems = [e for r in records for e in roundtrip_errors(r)]
             if problems:
                 print("\n".join(problems), file=sys.stderr)

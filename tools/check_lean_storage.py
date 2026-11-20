@@ -130,7 +130,7 @@ class Normalize:
             require(b["label"] not in self.starts, "duplicate block label")
             self.starts[b["label"]] = None
             for offset, o in enumerate(b["operations"]):
-                require(isinstance(o, dict) and set(o) == bridge.OP_KEYS, "invalid instruction fields")
+                require(bridge.instruction_fields(o), "invalid instruction fields")
                 if o["op"] not in bridge.SUPPORTED_OPS | {"gen.start", "gen.yield", "gen.ret"}:
                     raise Unsupported("unclassified storage instruction: " + o["op"])
                 for n in o["results"]:

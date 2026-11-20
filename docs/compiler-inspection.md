@@ -146,9 +146,12 @@ and the diagnostic context gives the rejected request when available.
 ## Reading the report accurately
 
 - **Locations:** diagnostics retain the compiler's file and line directly.
-  Function snapshots link to the function's definition. Instructions do not
-  currently retain source spans; no column or exact instruction location is
-  inferred from LLVM text.
+  Function snapshots link to the function's definition. Each instruction's
+  `location` is the file and line of the statement it implements, decoded as the
+  function's but with `precision: "line"`; prologue code has its function's
+  definition line ([locations](typed-ir.md#locations)). No column or span is
+  recorded. A snapshot's `files` lists the program's source files in the order the
+  compiler numbers them, which `typed_ir_text.py print --locations` follows.
 - **Types:** signatures and operands preserve Pystachy's native type spellings,
   which can expose distinctions such as `int`, `int+`, `dyn` and closed unions.
 - **Effects:** function summaries come from the compiler's last analysis and may
