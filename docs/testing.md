@@ -404,18 +404,20 @@ The tests' expected output is what the CPython of `.python-version` prints, and 
 runs under that interpreter. The compiler itself runs under CPython 3.11 or later; compiled
 programs embed CPython, and CPython imports extension modules, from 3.12.
 `make python-versions PYTHONS="python3.11 python3.15t"` (`tools/python_versions.sh`) checks
-each interpreter in three ways:
+each interpreter in these ways:
 
 | Check | Requirement |
 |---|---|
 | IR | Run by that interpreter, the hosted compiler emits the IR of stage 1 of `make` for itself and for `runtime.py`, byte for byte. |
 | Corpus sample | `tests/programs/syntax` and `tests/programs/imports` pass in JIT and AOT with that hosted compiler; `FILES` selects other cases. |
 | FFI | `tests/ffi/run.sh` passes with the interpreter's libpython. It may skip only what that interpreter cannot run: embedding and extension modules before 3.12, extension modules on a free-threaded build before 3.15, and the JSON repair replay, whose oracle is the pinned CPython. |
+| GIL | On a free-threaded build from 3.15, an `abi3t` module's import fails under `PYTHON_GIL=0` and `-X gil=0`. |
 
 The [Python versions workflow](../.github/workflows/python-versions.yml) runs these checks with
 CPython 3.11, 3.12, 3.14 and 3.15 and the free-threaded 3.14t and 3.15t: daily, on demand and
 on relevant `main` pushes. Like Variants, it builds one verified bootstrap and each interpreter's
-job restores it. Pull requests do not run it, because their [job budget](#pr-budget) is full.
+job restores it. Each job also installs the compiler with pip and uv under its interpreter
+(`tools/compiler_install_smoke.py`), which the Installation workflow runs with the pinned one. Pull requests do not run it, because their [job budget](#pr-budget) is full.
 Its interpreters are pinned to exact releases, like `.python-version`, and are updated by hand.
 
 Compiled programs keep the semantics of the pinned CPython whichever interpreter hosts the

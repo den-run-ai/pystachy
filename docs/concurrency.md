@@ -61,8 +61,9 @@ compares its bounded API with the real stdlib. Its pipe consumer drains inherite
 worker output with deadlines; the launcher owns worker processes. This does not
 enable native stdlib `socket`, `selectors` or `asyncio` imports.
 
-An `abi3t` extension refuses import under `PYTHON_GIL=0`. That check needs a
-free-threaded CPython 3.15, which CI does not run. See the
+An `abi3t` extension refuses import under `PYTHON_GIL=0` or `-X gil=0`. The daily
+[Python versions workflow](../.github/workflows/python-versions.yml) checks that with a
+free-threaded CPython 3.15 ([other CPython versions](testing.md#other-cpython-versions)). See the
 [extension threading and host-lifetime contract](ffi.md#threading-and-host-lifetime).
 
 ## Process pools today
