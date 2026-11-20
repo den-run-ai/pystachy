@@ -3,6 +3,7 @@ import pytest
 
 import bpe_tokeniser
 import comprehensions
+import deltablue
 import fannkuch
 import generators
 import go
@@ -42,6 +43,15 @@ def test_nqueens(size: int, expected_count: int):
         assert len(set(solution[i] - i for i in range(size))) == size
     if size == 4:
         assert solutions == [(1, 3, 0, 2), (2, 0, 3, 1)]
+
+
+def test_deltablue():
+    chain, projection = deltablue.delta_blue(5)
+    assert chain == 99
+    # The scale constraint divides: the source's value is a float, the others stay ints.
+    assert projection[0] == -190.0 and projection[1] == 1050
+    assert str(projection[2]) == "[2000, 2005, 2010, 2015, 1050]"
+    assert str(projection[0]) == "-190.0" and str(projection[1]) == "1050"
 
 
 def test_pidigits():
