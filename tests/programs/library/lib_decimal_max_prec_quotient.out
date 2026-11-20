@@ -1,0 +1,10 @@
+250 3 -3 -1
+49382 0.178
+142857142857142857142857142857 1 4 1
+13868311854568983573793901972038940634590 133605669 True
+999 1 999 0
+1000 1 InvalidOperation [<class 'decimal.DivisionImpossible'>]
+12345 7 InvalidOperation [<class 'decimal.DivisionImpossible'>]
+-999 1 -999 -0
+-1000 1 InvalidOperation [<class 'decimal.DivisionImpossible'>]
+[exit 0]
