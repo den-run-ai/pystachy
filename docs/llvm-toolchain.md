@@ -54,7 +54,8 @@ LLVM is compiled at `-O2`, because the driver's time is LLVM's.
 What the archive leaves out limits three uses. It has no compiler-rt, so `PYSTACHY_CFLAGS`
 with `-fsanitize`, `PYSTACHY_PROFILE_GENERATE` and the UBSan stage of `make verify` need a
 distribution's LLVM. It cannot cross-compile. Without zlib, clang neither writes nor reads
-compressed debug sections.
+compressed debug sections. It also holds only the tools the driver runs: two of the
+repository's own checks call `llvm-ar` and `llvm-dis`.
 
 ## Build
 
@@ -253,12 +254,20 @@ The sixth run's jobs also ran once on `ubuntu-24.04-arm` runners in the
 `manylinux_2_28_aarch64` image, with the recipe unchanged. The slices took 7.0 to 9.7 minutes,
 and the AArch64 archive, 23.0 MiB with SHA-256 `bf002c93…dc6fd087`, was ready after 15.3
 minutes. It passed the check, and with it `make` reached both fixed points and two corpus
-areas passed in JIT and AOT. That is one build: nothing has reproduced its bytes.
+areas passed in JIT and AOT. A second run on a branch without a cache compiled every AArch64
+object again, in 16.5 minutes, and gave the same bytes.
 
 With each of the first three archives selected by `PYSTACHY_LLVM` on Ubuntu 24.04, `make`
 reached the compiler's and the runtime's fixed points and `make test` passed all 5,395 cases
 (8,784 JIT and AOT runs). Every binary needs at most glibc 2.27 and `GLIBCXX_3.4.22`, and
 `tools/linux_abi.py --max-glibc 2.28` reports no violation.
+
+With the fourth archive selected, the PR profile of `tests/verify.sh` ran on Ubuntu 24.04 with
+CPython 3.13.16, at commit `c5789c70` on current `main`'s compiler: 40 of its 43 steps passed.
+Among them are the bootstrap, the hosted compiler against stage 2 on 5,414 cases, every native
+JIT and AOT shard, the unoptimized, Python-free and GC-stressed samples, `runtime-cache` and
+`ffi`. The other three need what the archive leaves out: `ubsan-0` compiler-rt, one test of
+`jit-dead-code` `llvm-ar`, and `aot-dead-code` `llvm-dis`. The full profile has not run.
 
 The toolchain's floor is lower than Pystachy's, whose [supported platforms](install.md) need
 glibc 2.39. On AlmaLinux 8.10 (glibc 2.28, GCC 8's `libgcc_s`) the check passes, and `make`
