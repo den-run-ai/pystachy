@@ -678,7 +678,21 @@ SETMETHODS: list[str] = FSETMETHODS + "add clear difference_update discard inter
 #             invoke (then it ends its block); a for one per operand (a phi's predecessors, a
 #             switch's default and cases)
 #   fields    which of Ins.t (result type), Ins.s (text), Ins.k (integer) and Ins.x (descriptor)
-#             it may set: t s k x; the others stay "" or 0
+#             it may set, in that order; the others stay "" or 0. Each of s, k and x is given as
+#             s:NAME, its name for the op:
+#             name and kind, a slot's variable and kind (slot_register); entry, hole and
+#             descriptor, an rt op's RUNTIME key, its empty container's type hole (Gen.holes, as
+#             empty.kind's) and the descriptor of the static type it works on; callee and hint, the
+#             symbol a call calls and "inline" where listguard's copy of a loop inlines it;
+#             module, the module an init runs; message and key, a check's "Kind: text" and its
+#             cold block's key (IFn.cold); exception, what a raise raises; flags, scalar.bin's
+#             overflow flags; metadata, the length, length.range or bytes a machine access
+#             tags; element and inbounds, mach.addr's element type and inbounds flag; item and
+#             index, a tuple slot's native item type and index, and a field.addr's member index;
+#             member and type, the union member or dynamic payload type a payload read takes;
+#             cleanup, whether closing a generator at its gen.yield runs code (GENCLEAN). An
+#             operator selects an arithmetic, conversion or comparison op's computation (ovf's +
+#             - *, scalar.bin's opcode, num.cmp's comparison)
 #   value     which number names the value Values places: 0 none, 1 the first, 2 the second
 #             (after an address), 3 each
 #   types     its operands' types, then its result's (Ins.t): "OPERAND, ... -> RESULT", without
@@ -688,23 +702,23 @@ SETMETHODS: list[str] = FSETMETHODS + "add clear difference_update discard inter
 #             ($T:native). The last operand's holds for any further operands the count admits. *
 #             is decided per instruction: an rt op's by its RUNTIME signature, a call's by its callee
 OPS: dict[str, str] = {
-    "slot": "E|0|1|0|t s k|0|-> any",
-    "rt": "*|0+|?|i|t s k x|1|*", "call": "*|0+|?|i|t s x|0|*", "icall": "*|1+|?|i|t|0|*", "init": "*|0|0|i|s|0|*",
-    "br": "T|0|0|1||0|", "cbr": "T|1|0|2||0|bool", "switch": "T|2+|0|a||0|int, int", "check": "T R|1|0|1|s x|0|bool",
-    "ret": "T|0-1|0|0||0|return", "ret.none": "T|0|0|0||0|", "raise": "T R N|2|0|0|s|0|str, str", "unreachable": "T|0|0|0||0|",
-    "phi": "|1+|1|a|t|0|$T -> $T", "select": "|3|1|0|t|1|bool, $T:scalar, $T -> $T", "ovf": "|2|.vv|0|t s|0|int, int -> int",
+    "slot": "E|0|1|0|t s:name k:kind|0|-> any",
+    "rt": "*|0+|?|i|t s:entry k:hole x:descriptor|1|*", "call": "*|0+|?|i|t s:callee x:hint|0|*", "icall": "*|1+|?|i|t|0|*", "init": "*|0|0|i|s:module|0|*",
+    "br": "T|0|0|1||0|", "cbr": "T|1|0|2||0|bool", "switch": "T|2+|0|a||0|int, int", "check": "T R|1|0|1|s:message x:key|0|bool",
+    "ret": "T|0-1|0|0||0|return", "ret.none": "T|0|0|0||0|", "raise": "T R N|2|0|0|s:exception|0|str, str", "unreachable": "T|0|0|0||0|",
+    "phi": "|1+|1|a|t|0|$T -> $T", "select": "|3|1|0|t|1|bool, $T:scalar, $T -> $T", "ovf": "|2|.vv|0|t s:operator|0|int, int -> int",
     "list.load": "rL|2|v...|0|t|0|list[$E:item], int -> *$E", "list.store": "rL wL|3|...|0||0|list[$E:item], int, *$E", "list.len": "rL|1|1|0|t|1|list[$E:item] -> int",
     "alloc.fixed": "A|0|1|0|t|0|-> layout", "vtuple.make": "A|0+|1|0|t|0|$E:velem -> vtuple[$E]",
     "mem.load": "*|1|1|0|t|1|*$T:native -> $T", "mem.store": "*|2|0|0||0|*$T:native, $T",
-    "mach.load": "*|1|1|0|t s|1|%ptr -> machine", "mach.store": "*|2|0|0|s|0|%ptr, machine", "mach.addr": "|2|1|0|t s k|1|%ptr, int -> %ptr",
-    "tuple.load": "rL rD rO|1|.v|0|t s k|3|ftuple -> %slot", "tuple.store": "wL wD wO|2|.|0|s k|3|ftuple, %slot",
-    "field.addr": "|1|1|0|t k|1|class -> *$F",
+    "mach.load": "*|1|1|0|t s:metadata|1|%ptr -> machine", "mach.store": "*|2|0|0|s:metadata|0|%ptr, machine", "mach.addr": "|2|1|0|t s:element k:inbounds|1|%ptr, int -> %ptr",
+    "tuple.load": "rL rD rO|1|.v|0|t s:item k:index|3|ftuple -> %slot", "tuple.store": "wL wD wO|2|.|0|s:item k:index|3|ftuple, %slot",
+    "field.addr": "|1|1|0|t k:index|1|class -> *$F",
     "slot.pack": "|1|1|0|t|1|native -> %slot", "slot.unpack": "|1|1|0|t|1|%slot -> native",
-    "scalar.bin": "|1-2|1|0|t s x|1|$T:arith, $T -> $T", "scalar.cast": "|1|1|0|t s|1|bits -> bits", "scalar.cmp": "|2|1|0|t s|1|$T:bits, $T -> bool",
-    "num.cast": "|1|1|0|t|1|numeric -> number", "num.cmp": "|2|1|0|t s|1|$N:number, $N -> bool", "int.ucmp": "|2|1|0|t s|1|int, int -> bool", "ptr.cmp": "|2|1|0|t s|1|ref, ref -> bool",
-    "empty.kind": "wD|1|1|0|k|0|dictset",
-    "union.tag": "rL rD rO|1|1|0|t|0|union -> int", "union.payload": "rL rD rO|1|.v|0|t s|2|union -> %slot", "union.raw": "rL rD rO|1|.v|0|t|2|union -> %slot",
-    "dyn.type": "|1|1|0|t|1|dyn -> dyntype", "dyn.payload": "|1|.v|0|t s|2|dyn -> %slot", "dyn.raw": "|1|.v|0|t|2|dyn -> %slot",
+    "scalar.bin": "|1-2|1|0|t s:operator x:flags|1|$T:arith, $T -> $T", "scalar.cast": "|1|1|0|t s:operator|1|bits -> bits", "scalar.cmp": "|2|1|0|t s:operator|1|$T:bits, $T -> bool",
+    "num.cast": "|1|1|0|t|1|numeric -> number", "num.cmp": "|2|1|0|t s:operator|1|$N:number, $N -> bool", "int.ucmp": "|2|1|0|t s:operator|1|int, int -> bool", "ptr.cmp": "|2|1|0|t s:operator|1|ref, ref -> bool",
+    "empty.kind": "wD|1|1|0|k:hole|0|dictset",
+    "union.tag": "rL rD rO|1|1|0|t|0|union -> int", "union.payload": "rL rD rO|1|.v|0|t s:member|2|union -> %slot", "union.raw": "rL rD rO|1|.v|0|t|2|union -> %slot",
+    "dyn.type": "|1|1|0|t|1|dyn -> dyntype", "dyn.payload": "|1|.v|0|t s:type|2|dyn -> %slot", "dyn.raw": "|1|.v|0|t|2|dyn -> %slot",
     "big.make": "|2|.v|0|t|2|int, %ptr -> int+", "big.lo": "|1|1|0|t|1|int+ -> int", "big.hi": "|1|1|0|t|1|int+ -> %ptr",
     "landing": "T|1|..|1|t|0|%addr -> exc", "throw": "T R N|1|0|0||0|exc", "exc.match": "|2|.v|0|t|0|exc, str -> bool",
     # generators (LLVM switched-resume coroutines, docs/internals.md#generators): gen.start ends a
@@ -713,7 +727,7 @@ OPS: dict[str, str] = {
     # generator's own, or of a handle's), gen.resume runs it to its next suspend, and gen.drop
     # closes a generator a loop owns and destroys it (it reports what closing raises, as CPython
     # reports an exception it ignores, so it never raises itself)
-    "gen.start": "T A|1|0|1||0|str", "gen.yield": "T U|1-3|..|1|k|0|%slot, %ptr, dyn", "gen.ret": "T|0-2|..|0||0|%slot, %ptr",
+    "gen.start": "T A|1|0|1||0|str", "gen.yield": "T U|1-3|..|1|k:cleanup|0|%slot, %ptr, dyn", "gen.ret": "T|0-2|..|0||0|%slot, %ptr",
     "gen.promise": "|0-1|1|0|t|0|gen -> %ptr", "gen.resume": "U|1|0|i||0|gen",
     "gen.drop": "A I rL wL rD wD rO wO rG wG rF wF|1|0|0||0|gen",
 }
@@ -846,8 +860,10 @@ for _k in OPS:
         OP_MAX[_k] = int(_s)
     _s = OPS[_k].split("|")[3]
     OP_LABELS[_k] = OP_PER_OPERAND if _s == "a" else OP_INVOKE if _s == "i" else int(_s)
-    _s = OPS[_k].split("|")[4]
-    OP_FIELDS[_k] = (OP_T if "t" in _s else 0) | (OP_S if "s" in _s else 0) | (OP_K if "k" in _s else 0) | (OP_X if "x" in _s else 0)
+    OP_FIELDS[_k] = 0
+    for _f in OPS[_k].split("|")[4].split():
+        # (t, or a field and its name: s:entry)
+        OP_FIELDS[_k] |= OP_T if _f == "t" else OP_S if _f[0] == "s" else OP_K if _f[0] == "k" else OP_X if _f[0] == "x" else 0
     _s = OPS[_k].split("|")[6]
     if _s != "*":
         _r = _s.find("->")

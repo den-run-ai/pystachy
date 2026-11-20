@@ -23,8 +23,15 @@ L1:
 
 function @a_field_outside_the_row() -> None {
 entry:
-  ; expected-error {{ret.none sets a field outside the operation table's none}}
+  ; expected-error {{ret.none sets k, where its row of the operation table names no field}}
   ret.none k=1
+}
+
+function @a_field_the_row_does_not_name(n: int) -> None {
+entry:
+  ; expected-error {{num.cmp sets k, where its row of the operation table names t, s:operator}}
+  %t1 = num.cmp < k=1 (int %a0, int 1) : bool
+  ret.none
 }
 
 function @entry_storage_in_a_block() -> None {
@@ -122,6 +129,14 @@ entry:
   ; expected-error {{switch needs distinct int literal cases}}
   switch(int %a0, int 1, int 1) -> L1, L1, L1
 L1:
+  ret.none
+}
+
+function @a_cleanup_a_yield_lacks() -> gen[int] coroutine {
+entry:
+  ; expected-error {{gen.yield with cleanup 2, where it is 0 or 1}}
+  ~%t1 ~%t2 = gen.yield k=2 (%slot 0) -> L3
+L3:
   ret.none
 }
 

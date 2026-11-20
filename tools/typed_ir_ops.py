@@ -26,6 +26,9 @@ END = "<!-- typed-ir-ops: end -->"
 COLUMNS = ("effects", "operands", "results", "labels", "fields", "value", "types")
 FLAGS = ("T", "E", "*")
 FIELD_BITS = {"t": 1, "s": 2, "k": 4, "x": 8}
+FIELD_NAME = re.compile(r"([skx]):([a-z]+)")
+# the name of a field that selects an op's computation: an s
+OPERATOR = "operator"
 VARIABLE = re.compile(r"\$([A-Za-z_][A-Za-z0-9_]*)(?::([A-Za-z_][A-Za-z0-9_]*))?")
 
 
@@ -91,8 +94,19 @@ def rows():
         labels = row["labels"]
         if labels not in ("a", "i") and (not labels.isdigit() or str(int(labels)) != labels):
             raise ValueError(f"{name}: invalid label count {labels!r}")
-        fields = row["fields"].split()
-        if any(f not in FIELD_BITS for f in fields) or fields != [f for f in FIELD_BITS if f in fields]:
+        fields, names = [], {}
+        for token in row["fields"].split():
+            named = FIELD_NAME.fullmatch(token)
+            if token != "t" and named is None:
+                raise ValueError(f"{name}: a field is t, or s, k or x with its name (s:entry), not {token!r}")
+            fields.append(token[0])
+            if named is not None:
+                letter, word = named.groups()
+                if word in FIELD_BITS or word in names.values() or (word == OPERATOR and letter != "s"):
+                    raise ValueError(f"{name}: {letter} cannot be named {word}: a name is no field's letter, "
+                                     f"names one field of the op, and {OPERATOR} names an s")
+                names[letter] = word
+        if fields != [f for f in FIELD_BITS if f in fields]:
             raise ValueError(f"{name}: fields must be some of t s k x, in that order: {row['fields']!r}")
         value = int(row["value"])
         if value not in (0, 1, 2, 3) or (results is not None and value in (1, 2) and value > results):
@@ -104,7 +118,7 @@ def rows():
             "name": name, "text": text, "effects": [t for t in tokens if t not in FLAGS],
             "terminator": "T" in tokens, "entry": "E" in tokens, "varies": "*" in tokens,
             "min": low, "max": high, "results": results, "temporaries": temporaries, "labels": labels,
-            "fields": fields, "value": value, "operand_types": operand_types, "result_type": result_type,
+            "fields": fields, "names": names, "value": value, "operand_types": operand_types, "result_type": result_type,
         })
     return result
 
@@ -131,7 +145,7 @@ def reference():
         results = ("0 or 1, by signature" if row["results"] is None else str(row["results"]) if not row["temporaries"]
                    else f"{row['results']}: " + ", ".join("temporary" if j in row["temporaries"] else "value"
                                                            for j in range(row["results"])))
-        fields = ", ".join(f"`{f}`" for f in row["fields"]) or "none"
+        fields = ", ".join(f"`{f}`" if f == "t" else f"`{f}:{row['names'][f]}`" for f in row["fields"]) or "none"
         value = ("none", "first", "second", "each")[row["value"]]
         types = row["text"].split("|")[6]
         types = "per instruction" if types == "*" else f"`{types}`".replace("|", "\\|") if types else "none"
