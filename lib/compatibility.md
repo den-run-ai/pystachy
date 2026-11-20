@@ -2161,7 +2161,11 @@ reading or assigning a field is a compile-time error, where CPython raises `Attr
   Comparing a dict with such an object is a compile-time error.
 - Through a dynamic `Any` value, a view is an object like others: it is not iterable, and its
   `keys()`, `values()` and `items()`, typed lists, are compile-time errors (dynamic `Any`'s
-  [deviations](../docs/dynamic-any.md#deviations)).
+  [deviations](../docs/dynamic-any.md#deviations)). Its `==` and `!=` there compare its dict
+  with a dict, another view or one of `collections`' mappings, as CPython's do
+  ([test](../tests/programs/inference/dynany_mappingproxy_eq.py)); typed code calls such a
+  mapping unequal, as above. An object of another class runs its own `__eq__` with the view,
+  not with the dict ([deviation](../tests/deviations/dynany_mappingproxy_eq_object.py)).
 
 - Any other use of `GenericAlias`, such as calling it, is a compile-time error
   ([error test](../tests/errors/reflection/types_generic_alias_call.py)).

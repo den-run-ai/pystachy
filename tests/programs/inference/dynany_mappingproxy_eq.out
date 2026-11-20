@@ -1,0 +1,8 @@
+FalseFalseTrueTrue FalseFalseTrueTrue FalseFalseTrueTrue FalseFalseTrueTrue FalseFalseTrueTrue FalseFalseTrueTrue FalseFalseTrueTrue
+False 0 TypeError TypeError
+TrueTrueFalseFalse FalseFalseTrueTrue FalseFalseTrueTrue
+True 2 1 TypeError
+TrueTrueFalseFalse TrueTrueFalseFalse TrueTrueFalseFalse FalseFalseTrueTrue FalseFalseTrueTrue
+TrueTrueFalseFalse TrueTrueFalseFalse TrueTrueFalseFalse FalseFalseTrueTrue
+FalseFalseTrueTrue TrueTrueFalseFalse FalseFalseTrueTrue
+[exit 0]
