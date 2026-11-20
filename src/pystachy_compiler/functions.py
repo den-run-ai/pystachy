@@ -323,7 +323,11 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
             pt = self.hints.get(f"none:{self.fnkey(f)}|{f.params[i]}", t)
             self.mem_store(Val(self.alloca(pt, f.params[i]), "&" + pt), self.coerce(Val("null", "None"), pt))
         else:
-            self.mem_store(Val(self.alloca(t, f.params[i]), "&" + t), Val(f"%a{i}", t))
+            # (as its slot's type: the cell of an int a closure takes holds a promoting int in a
+            # module whose ints promote, gen_alloca)
+            slot = self.alloca(t, f.params[i])
+            held = self.ltype[f.params[i]]
+            self.mem_store(Val(slot, "&" + held), self.coerce(Val(f"%a{i}", t), held))
         if identity_abi(f) and numeric_identity(t) and f.params[i] in self.idbox:
             self.mem_store(Val(self.idbox[f.params[i]], "&dyn"), Val(f"%aid{i}", "dyn"))
         if f.params[i] in self.lflag:
