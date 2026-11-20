@@ -5,7 +5,7 @@
    Where it cannot be built, or with PYSTACHY_JIT_LAUNCHER=lli, the driver runs lli as before.
 
    It takes the part of lli's command line that the driver's launch uses:
-     lljit [-O0|-O1|-O2|-O3] [-default-tuning] [-dlopen=LIB]... [-extra-object=OBJ]... [-extra-archive=AR]...
+     lljit [-O0|-O1|-O2|-O3] [-dlopen=LIB]... [-extra-object=OBJ]... [-extra-archive=AR]...
            [LLVM-OPTION]... INPUT.bc [ARG]...
    and runs the program as LLVM 18's lli runs it with its default ORC JIT (runOrcJIT): the -dlopen
    libraries are loaded first (dlopen RTLD_LAZY | RTLD_GLOBAL), then LLJIT, with JITLink and the
@@ -18,13 +18,9 @@
    -profile-guided-section-prefix=false).
    An error ends the process with status 1 and its message on stderr, as in lli, behind this
    program's name (lljit:) where lli puts its own; a symbol that no input defines is "JIT session
-   error: Symbols not found: [ NAME ]", from ORC itself. It differs from lli in five ways:
+   error: Symbols not found: [ NAME ]", from ORC itself. It differs from lli in four ways:
    - -O selects the level of code generation (lli's ORC generates code at -O2, whatever -O says), so
      that PYSTACHY_JIT_CODEGEN=0 needs no llc;
-   - -default-tuning drops each function's target-cpu and keeps its target-features: the code uses
-     the instruction set that opt chose for (the host's, with the driver's -mcpu=native) with the
-     tuning of no named CPU, LLVM's default, which it would have without -mcpu (a named CPU's
-     tuning changes scheduling and register allocation: driver.py's JIT_CPU);
    - LLVM's signal handlers, stack printer and perf listener are not set up: the program starts with
      its caller's signal dispositions;
    - the JIT is not torn down after main returns: the process exits with the code mapped (lli frees
@@ -112,9 +108,6 @@ LLVMContextRef LLVMContextCreate(void);
 LLVMContextRef LLVMGetModuleContext(LLVMModuleRef M);
 const char *LLVMGetTarget(LLVMModuleRef M);
 LLVMValueRef LLVMGetNamedGlobal(LLVMModuleRef M, const char *Name);
-LLVMValueRef LLVMGetFirstFunction(LLVMModuleRef M);
-LLVMValueRef LLVMGetNextFunction(LLVMValueRef Fn);
-void LLVMRemoveStringAttributeAtIndex(LLVMValueRef F, unsigned Idx, const char *K, unsigned KLen);
 LLVMBool LLVMIsDeclaration(LLVMValueRef Global);
 LLVMValueRef LLVMGetInitializer(LLVMValueRef GlobalVar);
 void LLVMDeleteGlobal(LLVMValueRef GlobalVar);
@@ -305,7 +298,7 @@ int main(int argc, char **argv) {
   const char **objects = calloc((size_t)argc + 1, sizeof *objects);
   const char **archives = calloc((size_t)argc + 1, sizeof *archives);
   if (!llvmopts || !objects || !archives) fail("out of memory", NULL);
-  int nllvm = 0, nobj = 0, nar = 0, selfcheck = 0, deftune = 0, i = 1;
+  int nllvm = 0, nobj = 0, nar = 0, selfcheck = 0, i = 1;
   llvmopts[nllvm++] = self;
   for (; i < argc && argv[i][0] == '-'; i++) {
     const char *a = argv[i];
@@ -316,7 +309,6 @@ int main(int argc, char **argv) {
     else if (!strcmp(a, "-O2")) level = LLVMCodeGenLevelDefault;
     else if (!strcmp(a, "-O3")) level = LLVMCodeGenLevelAggressive;
     else if (!strcmp(a, "-self-check")) selfcheck = 1;
-    else if (!strcmp(a, "-default-tuning")) deftune = 1;
     else if (!strncmp(a, "-dlopen=", 8)) {
       /* (lli's loadDylibs: before anything else, where the JIT's process symbols find them) */
       if (LLVMLoadLibraryPermanently(a + 8)) {
@@ -350,11 +342,6 @@ int main(int argc, char **argv) {
 #endif
   if (bad) fail(input, msg ? msg : "invalid bitcode");
   if (!selfcheck) LLVMDisposeMemoryBuffer(buf);   /* (LLVMParseIRInContext takes the buffer) */
-  /* -default-tuning: no function names a CPU, so that code generation tunes as for none (the target
-     machine below names none either); target-features keep the instruction set (~0U: the function) */
-  if (deftune)
-    for (LLVMValueRef f = LLVMGetFirstFunction(mod); f; f = LLVMGetNextFunction(f))
-      LLVMRemoveStringAttributeAtIndex(f, ~0U, "target-cpu", 10);
   int ctors = collect(mod, "llvm.global_ctors", "__pystachy_lljit_init");
   int dtors = collect(mod, "llvm.global_dtors", "__pystachy_lljit_fini");
   stage("program.jit_load");

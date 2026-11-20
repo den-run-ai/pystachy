@@ -254,7 +254,6 @@ def main():
                 if run(cmd + ["run", str(source), *arguments], chosen) != expected:
                     raise RuntimeError(f"{where}: JIT output differs from CPython")
                 flags = invocation.read_text().splitlines()
-                launched = flags  # (the default's arguments, which the checks of the host's CPU below read)
                 # (the runner generates code at the -O it is given, -O2 by default; lli takes none)
                 if any(arg.startswith("-jit-kind=") for arg in flags) or codegen.exists() or \
                         [arg for arg in flags if re.fullmatch(r"-O[0-3]", arg)] != (["-O2"] if runner else []):
@@ -398,23 +397,16 @@ def main():
                 # PYSTACHY_JIT_CPU=generic no function names a CPU, and SSE2's vectors hold two
                 if f'"target-cpu"="{host.group(1)}"' not in executed or re.search(r'"target-cpu"="(?!' + re.escape(host.group(1)) + '")', executed):
                     raise RuntimeError(f"{where}: the default JIT pipeline did not compile for the host's CPU ({host.group(1)})")
-                # (the runner keeps the host's features and the tuning of no named CPU: -default-tuning;
-                # lli takes no such option and compiles for the CPU each function names)
-                if ("-default-tuning" in launched) != runner:
-                    raise RuntimeError(f"{where}: -default-tuning {'not ' if runner else ''}given to the {name} that compiles for the host's CPU: {launched}")
                 avx = re.search(r'"target-features"="[^"]*\+avx[,"]', executed) is not None
                 if avx and not re.search(r"fmul <(?:4|8) x double>", executed):
                     raise RuntimeError(f"{where}: the host has AVX, but doubled's loop runs on no wider vector than SSE2's")
                 capture.unlink(missing_ok=True)
-                invocation.unlink(missing_ok=True)
                 if run(cmd + ["run", str(source), *arguments], chosen | {"PYSTACHY_JIT_CPU": "generic"}) != expected:
                     raise RuntimeError(f"{where}: PYSTACHY_JIT_CPU=generic output/argv/callback exception differs")
-                if "-default-tuning" in invocation.read_text().splitlines():
-                    raise RuntimeError(f"{where}: PYSTACHY_JIT_CPU=generic, which names no CPU, gave the runner -default-tuning")
                 generic = capture.read_text()
                 if '"target-cpu"=' in generic or ('"x86_64' in generic and not re.search(r"fmul <2 x double>", generic)):
                     raise RuntimeError(f"{where}: PYSTACHY_JIT_CPU=generic compiled for a CPU of its own")
-                print(f"{where}: the default compiles for the host's CPU ({host.group(1)}{', wider vectors' if avx else ''}{', the runner with the default tuning' if runner else ''}); PYSTACHY_JIT_CPU=generic for the target's")
+                print(f"{where}: the default compiles for the host's CPU ({host.group(1)}{', wider vectors' if avx else ''}); PYSTACHY_JIT_CPU=generic for the target's")
             for setting, invalid in [("PYSTACHY_JIT_CODEGEN", value) for value in ("", "1", "-O0", "0;false")] + \
                                     [("PYSTACHY_JIT_OPT", value) for value in ("", "3", "O2", "0;1")] + \
                                     [("PYSTACHY_JIT_CPU", value) for value in ("", "NATIVE", "x86-64", "native;generic")] + \

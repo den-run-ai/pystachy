@@ -7,7 +7,6 @@ variants (LLVM 18 to 20, 21 to 23).
 """
 import os
 from pathlib import Path
-import re
 import shutil
 import signal
 import subprocess
@@ -185,27 +184,6 @@ int main(int argc, char **argv) {
                                  (42, ["program.jit_load", "program.jit_codegen"], 2))
                 check = self.run_jit([path, "-self-check"])
                 self.assertEqual((check.returncode, check.stdout), (0, "two\nlljit\n"))
-
-    def test_default_tuning_names_no_cpu(self):
-        # -default-tuning (driver.py's JIT_CPU) drops each function's target-cpu: code generation
-        # then names no CPU. A CPU that LLVM does not know shows it: LLVM rejects one that a function
-        # names (on x86-64 it stops, as the CPU brings no 64-bit feature), and with the option the
-        # program runs as it would with none
-        for llvm in toolchains():
-            with self.subTest(llvm=llvm):
-                path, why = self.launcher(llvm)
-                self.assertEqual(why, "")
-                text = Path(self.compile(llvm, "named.ll", PROGRAM, "-S", "-emit-llvm")).read_text()
-                named, count = re.subn(r'"target-cpu"="[^"]*"', '"target-cpu"="pystachy-no-such-cpu"', text)
-                self.assertGreater(count, 0, "clang named no CPU")
-                (self.work / "named.ll").write_text(named)
-                program = str(self.work / "named.bc")
-                subprocess.run([str(Path(llvm) / "llvm-as"), str(self.work / "named.ll"), "-o", program], check=True, timeout=60)
-                plain = self.run_jit([path, program, "a b", "c"])
-                self.assertIn("'pystachy-no-such-cpu' is not a recognized processor", plain.stderr)
-                for level in ("-O0", "-O2"):
-                    tuned = self.run_jit([path, level, "-default-tuning", program, "a b", "c"])
-                    self.assertEqual((tuned.returncode, tuned.stdout, tuned.stderr), (42, f"2 1 2|[{program}][a b][c]\nfini\n", ""), level)
 
     def test_inputs_and_errors(self):
         for llvm in toolchains():

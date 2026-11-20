@@ -50,12 +50,8 @@ JIT_VECTORIZE = "function(instcombine<no-verify-fixpoint>,loop-vectorize,instcom
 # PYSTACHY_JIT_CPU=native (the default): the JIT tier optimizes and compiles a program for the host's
 # CPU, as it runs where it is compiled, wherever a loop vectorizer runs (JIT_VECTORIZE's programs,
 # within the inlining budget, and LLVM's -O2 pipeline): opt's -mcpu=native gives each function of the
-# module the host's CPU and features (target-cpu, target-features), which its cost models follow
-# (AVX2's four doubles in a vector where the host has them). The program cache's clang compiles the
-# executable for both; the runner, given -default-tuning, keeps the features and the tuning it has
-# without a named CPU, LLVM's default, whose register allocation suited a large inlined function
-# better than the host's tuning (UMAP's kNN in the runner: 1.19x with the host's tuning, 1.07x without;
-# in the cache's executables, which clang otherwise tunes for x86-64's generic, 0.89x). A larger
+# module the host's CPU and features (target-cpu, target-features), which its cost models and the
+# runner's code generation follow (AVX2's four doubles in a vector where the host has them). A larger
 # program, such as the compiler itself, keeps the module target's CPU, where the host's would only
 # lengthen code generation, and so does generic (x86-64's SSE2). Neither changes a result: the program's module asks for no
 # fused or reassociated float operation (no fast-math flag, no llvm.fmuladd), and the program cache
@@ -1663,7 +1659,7 @@ def main() -> None:
                     archive += '[ -f "$jit_rtlib" ] || { echo "cannot find compiler runtime archive: $jit_rtlib" >&2; exit 1; }; '
                     rt += ' -extra-archive="$jit_rtlib"'
                 # (the runner's -O: its level of code generation, which lli's ORC does not take)
-                launch = f"/dev/fd/{pinned[0].fileno()} -O{codegen}{' -default-tuning' if native else ''}" if lljit != "" else f"{llvm}lli"
+                launch = f"/dev/fd/{pinned[0].fileno()} -O{codegen}" if lljit != "" else f"{llvm}lli"
                 run = f"unset PYSTACHY_PROGRAM_CACHE_LOCK; {archive}{env}PYSTACHY_ARGV0={q(diagnostics.SRC)} exec {launch}{jitflags}{pe}{rt}{prog} /dev/fd/{inputs[0].fileno()} {' '.join([q(a) for a in rest])}"
                 for p in [bc, jobj, jmain, parto, partso, peo[2]]:
                     if p != "" and os.path.exists(p):
