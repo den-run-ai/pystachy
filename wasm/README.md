@@ -1,9 +1,8 @@
 # WebAssembly (experimental)
 
 This directory builds Pystachy programs for `wasm32-wasi` (WASI preview 1) and runs them
-under Node's WASI. It is a prototype: the compiler is unchanged, programs reach WebAssembly
-through the LLVM IR it already emits, and the runtime (`runtime.c` and `runtime.py`) is
-compiled once for the same target.
+under Node's WASI. Programs compile through LLVM. The runtime (`runtime.c` and `runtime.py`)
+compiles once for the same target.
 
 ## Build and run
 
@@ -40,9 +39,10 @@ runtime. The link treats a signature mismatch as an error, because a mismatched 
   passed as `PWD`.
 - **Pointers are 4 bytes.** Compiled code addresses the runtime's structs through their LLVM
   types, which follow the target's layout. Constants that hold an address in a 64-bit slot are
-  rewritten as the address and a zero word (`wasm32_ir.py`). The compiler still reads some
-  runtime records by 8-byte word index (a `DynType`'s class id and flags, class reflection
-  records), so dynamic `Any` dispatch on classes and parts of reflection read the wrong field.
+  rewritten as the address and a zero word (`wasm32_ir.py`). Dynamic class dispatch and
+  reflection read the name, class id and flags at their target-specific offsets in `DynType`
+  and the flags in a class reflection record.
+  A boxed class record pointer occupies an eight-byte payload slot on both targets.
 
 ## Files
 

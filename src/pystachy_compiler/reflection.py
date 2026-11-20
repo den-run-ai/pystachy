@@ -330,7 +330,7 @@ def gen_refl_dynamic_type(self, v: Val) -> None:
     arms = [self.label() for _ in classes]
     rest = self.label()
     if len(classes) > 0:
-        cid = Val(self.mload("int", self.maddr("int", typ.v, "3")), "int")
+        cid = Val(self.mload("int", self.maddr("dyntype", typ.v, "3")), "int")
         self.switch(cid, [str(self.ocls[c]) for c in classes], arms, rest)
     for j in range(len(classes)):
         self.place(arms[j])

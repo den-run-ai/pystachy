@@ -109,11 +109,11 @@ class Case:
         notnone = self.compare(value, "none", "!=")
         return self.op("scalar.bin", "bool", "and", [(hit, "bool"), (notnone, "bool")])
 
-    def dispatch(self, cases, value="%a0", word="3", operand=None):
-        # a class dispatcher's switch on the class number word of value's DynType: cases maps
+    def dispatch(self, cases, value="%a0", field="3", operand=None, element="dyntype"):
+        # a class dispatcher's switch on the class number field of value's DynType: cases maps
         # each class number to its block; the rest go to "miss"
         tag = self.op("dyn.type", "dyntype", a=[(value, "dyn")])
-        address = self.op("mach.addr", "%ptr", "int", [(tag, "%ptr"), (word, "int")])
+        address = self.op("mach.addr", "%ptr", element, [(tag, "%ptr"), (field, "int")])
         number = self.op("mach.load", "int", a=[(address, "%ptr")])
         self.op("switch", a=[(operand or number, "int")] + [(n, "int") for n in cases],
                 b=["miss"] + list(cases.values()))
@@ -574,14 +574,14 @@ class ClassAndContainerGuardTests(unittest.TestCase):
                     c.g.verify(c.fn, False)
 
     def test_a_switch_proves_only_its_own_tags_class_number(self):
-        for mode in ("other box", "other word", "parameter", "unknown number"):
+        for mode in ("other box", "other field", "raw word", "parameter", "unknown number"):
             with self.subTest(mode=mode):
                 c = self.classes()
                 if mode == "unknown number":
                     c.dispatch({"7": "base"})
                 else:
                     c.dispatch({"0": "base"}, value="%a1" if mode == "other box" else "%a0",
-                               word="2" if mode == "other word" else "3",
+                               field="2" if mode == "other field" else "3", element="int" if mode == "raw word" else "dyntype",
                                operand="%a4" if mode == "parameter" else None)
                 c.block("base")
                 c.payload(member="Base")
@@ -597,7 +597,7 @@ class ClassAndContainerGuardTests(unittest.TestCase):
         tag = c.op("dyn.type", "dyntype", a=[("%a0", "dyn")])
         c.op("br", b=["dispatch"])
         c.block("dispatch")
-        address = c.op("mach.addr", "%ptr", "int", [(tag, "%ptr"), ("3", "int")])
+        address = c.op("mach.addr", "%ptr", "dyntype", [(tag, "%ptr"), ("3", "int")])
         number = c.op("mach.load", "int", a=[(address, "%ptr")])
         c.op("switch", a=[(number, "int"), ("0", "int")], b=["miss", "base"])
         c.block("base")
