@@ -130,7 +130,7 @@ def gen_exc_mark(self) -> str:
     h = self.rt("pys_exc_handled", "ptr", [])
     if not self.excread or self.fn.gouter == "":
         return h
-    same = self.ptr_cmp("==", Val(h, "exc"), Val(self.mload("%ptr", self.fn.gouter), "exc")).v
+    same = self.ptr_cmp("==", Val(h, "exc"), Val(self.mload("exc", self.fn.gouter), "exc")).v
     return self.select(same, Val("null", "exc"), Val(h, "exc"))
 
 
@@ -139,7 +139,7 @@ def gen_exc_back(self, old: str) -> None:
     # it, null is its resumer's now
     if self.excread and self.fn.gouter != "":
         none = self.ptr_cmp("==", Val(old, "exc"), Val("null", "exc")).v
-        old = self.select(none, Val(self.mload("%ptr", self.fn.gouter), "exc"), Val(old, "exc"))
+        old = self.select(none, Val(self.mload("exc", self.fn.gouter), "exc"), Val(old, "exc"))
     self.rt("pys_exc_restore", "void", [f"ptr {old}"])
 
 
@@ -323,7 +323,7 @@ def gen_gen_enter(self) -> None:
         # yield in an except clause or a finally block handles its own again)
         self.mstore("%ptr", self.rt("pys_exc_handled", "ptr", []), fn.gouter)
         if len(self.excs) > 0:
-            self.rt("pys_exc_restore", "void", [f"ptr {self.mload('%ptr', fn.ghand)}"])
+            self.rt("pys_exc_restore", "void", [f"ptr {self.mload('exc', fn.ghand)}"])
 
 
 def gen_gen_end(self, f: FnInfo) -> None:
@@ -357,7 +357,7 @@ def gen_gen_end(self, f: FnInfo) -> None:
         lr = self.label()
         self.cbr(self.exc_match(e, self.builtin_catch("GeneratorExit")), lf, lr)
         self.place(lr)
-        name = self.mload("%ptr", self.maddr("int", p, str(GENNAME)))
+        name = self.mload("str", self.maddr("int", p, str(GENNAME)))
         self.rt("pys_gen_unraisable", "void", [f"ptr {e.v}", f"ptr {name}", f"ptr {p}"])
         self.br(lf)
         self.place(lf)
@@ -402,7 +402,7 @@ def gen_gen_unhandle(self) -> None:
         return
     if len(self.excs) > 0:
         self.mstore("%ptr", self.rt("pys_exc_handled", "ptr", []), fn.ghand)
-    self.rt("pys_exc_restore", "void", [f"ptr {self.mload('%ptr', fn.gouter)}"])
+    self.rt("pys_exc_restore", "void", [f"ptr {self.mload('exc', fn.gouter)}"])
 
 
 def gen_gen_ret(self, v: Val) -> None:

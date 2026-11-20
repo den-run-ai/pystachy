@@ -403,7 +403,7 @@ class UnionProof:
                     if (i.op == "mach.addr" or i.op == "field.addr") and i.a[0].v in self.roots:
                         self.roots[r] = self.roots[i.a[0].v]
                     if "U:" + r in wanted:
-                        if (i.op == "phi" or i.op == "slot.pack" or i.op == "slot.unpack"):
+                        if (i.op == "phi" or i.op == "slot.pack" or i.op == "slot.unpack" or i.op == "cast"):
                             for a in i.a:
                                 wanted["U:" + a.v] = True
                         if i.op == "select":
@@ -444,7 +444,7 @@ class UnionProof:
 
     def transport_closure(self, i: Ins, vals: dict[str, bool], slots: dict[str, bool], bits: bool) -> None:
         r = "%t" + str(i.r[0]) if len(i.r) > 0 else ""
-        if (i.op == "phi" or i.op == "select" or i.op == "slot.pack") and (bits or (i.t == "int" or i.t == "%slot" or i.t.startswith("*"))):
+        if (i.op == "phi" or i.op == "select" or i.op == "slot.pack" or i.op == "cast") and (bits or (i.t == "int" or i.t == "%slot" or i.t.startswith("*"))):
             aa = i.a[1:] if i.op == "select" else i.a
             for a in aa:
                 if a.v in vals:
@@ -543,7 +543,7 @@ class UnionProof:
     def declared(self, v: str) -> str:
         # The type that value v's definition declares: a load's is that of its storage
         # (memtypes: a parameter's, a local's, a global's or a field's declaration), and a
-        # transport's (phi, select, slot.pack, slot.unpack) is the one its operands all declare
+        # transport's (phi, select, slot.pack, slot.unpack, cast) is the one its operands all declare
         # (declared_from), never the op's own annotation, which a narrower type could spell;
         # "" where that cannot be established. Else its definition's.
         if v not in self.declaredtypes:
@@ -560,7 +560,7 @@ class UnionProof:
             return "?"
         if d is not None and (d.op == "mem.load" or d.op == "mach.load"):
             return self.memtypes[d.a[0].v] if len(d.a) > 0 and d.a[0].v in self.memtypes else ""
-        if d is not None and (d.op == "phi" or d.op == "select" or d.op == "slot.pack" or d.op == "slot.unpack"):
+        if d is not None and (d.op == "phi" or d.op == "select" or d.op == "slot.pack" or d.op == "slot.unpack" or d.op == "cast"):
             if v in seen:
                 return "?"
             seen[v] = True
@@ -574,12 +574,12 @@ class UnionProof:
         return self.native.get(v, "")
 
     def box_select(self, i: Ins) -> bool:
-        # Is select i a machine pointer chosen between None and boxes made here (Gen.ubox's,
-        # for an object that may be None: null, else its box)? Its result is one of them, so
-        # it has their members and None though its own type names no union. Any other
-        # operand, a pointer of unknown provenance, leaves the result unknown as before.
-        if i.t != "%ptr":
-            return False
+        # Is each of select i's values None or a box made here, whatever the select's type? (Gen.ubox
+        # boxes an object that may be None so, in a select of the union's type: null, else its
+        # box.) Its result is one of them, so it has their members and None whatever its condition
+        # says of its object, a class whose domain has no None to select (a later read needs its
+        # own None test). Any other value, a pointer of unknown provenance, leaves the result to
+        # the select's own rule
         for a in i.a[1:]:
             d = self.defs[a.v] if a.v in self.defs else None
             if a.v != "null" and (d is None or d.op != "rt" or (d.s != "ubox" and d.s != "ubox_opt")):
@@ -601,7 +601,7 @@ class UnionProof:
             return k
         opaque = False
         if a.v in self.defs:
-            opaque = (self.defs[a.v].op == "phi" or self.defs[a.v].op == "select" or self.defs[a.v].op == "mem.load" or self.defs[a.v].op == "mach.load" or self.defs[a.v].op == "union.payload" or self.defs[a.v].op == "union.raw" or self.defs[a.v].op == "slot.pack")
+            opaque = (self.defs[a.v].op == "phi" or self.defs[a.v].op == "select" or self.defs[a.v].op == "mem.load" or self.defs[a.v].op == "mach.load" or self.defs[a.v].op == "union.payload" or self.defs[a.v].op == "union.raw" or self.defs[a.v].op == "slot.pack" or self.defs[a.v].op == "cast")
         if k not in s.d and (a.v not in self.bitsneeded or not opaque):
             t = self.native[a.v] if a.v in self.native else "int" if self.integer(a.v) else "?"
             s.set(k, [t])
@@ -668,7 +668,7 @@ class UnionProof:
                     del s.bt[v]
                 if v in s.bf:
                     del s.bf[v]
-        if (op != "phi" and op != "select" and op != "mem.load" and op != "mach.load" and op != "union.payload" and op != "union.raw" and op != "slot.pack"):
+        if (op != "phi" and op != "select" and op != "mem.load" and op != "mach.load" and op != "union.payload" and op != "union.raw" and op != "slot.pack" and op != "cast"):
             for n in i.r:
                 v = "%t" + str(n)
                 if v in self.bitsneeded:
@@ -771,6 +771,14 @@ class UnionProof:
                 s.copy("B:" + r, self.bits(s, a[0]))
             else:
                 s.set("B:" + r, [a[0].t])
+        elif op == "cast":
+            # (the value it reads, at another type: lowering erases it, and its uses read that value)
+            if "U:" + r in self.base or "U:" + a[0].v in s.d:
+                s.copy("U:" + r, self.box(s, a[0].v))
+            if r in self.bitsneeded:
+                s.copy("B:" + r, self.bits(s, a[0]))
+            if r in self.tagvals:
+                s.copy("T:" + r, self.tag(s, a[0].v))
         elif op == "slot.unpack":
             if "U:" + r in self.base:
                 if "U:" + a[0].v in s.d:
@@ -811,8 +819,6 @@ class UnionProof:
                     xt.cond(y, True)
                     s.boolean(r, xt, union_join(xf, yf))
         elif op == "select" and self.box_select(i):
-            # Either operand: the condition is an object's own None test, and a class type's
-            # domain has no None for it to select. A later read needs its own None test.
             s.set("U:" + r, union_tags(s.dom(self.box(s, a[1].v)), s.dom(self.box(s, a[2].v))))
         elif op == "select":
             yes = s.conditional(a[0].v, True)
@@ -837,7 +843,7 @@ class UnionProof:
         if checking:
             for j in range(len(a)):
                 operand = a[j]
-                transport = (op == "phi" or op == "select" or op == "slot.pack" or op == "slot.unpack" or op == "mem.load" or op == "mach.load") or (op == "rt" and ((i.s == "ubox" and j == 1) or (i.s == "box" and j == 0)))
+                transport = (op == "phi" or op == "select" or op == "slot.pack" or op == "slot.unpack" or op == "mem.load" or op == "mach.load" or op == "cast") or (op == "rt" and ((i.s == "ubox" and j == 1) or (i.s == "box" and j == 0)))
                 if not transport:
                     t = self.runtime_type(i, operand.t, j + 1) if op == "rt" else operand.t
                     if op == "gen.yield" and j == 0 and is_gen(self.fn.f.ret):

@@ -241,6 +241,73 @@ entry:
   ret(opt[int] %t2)
 }
 
+function @another_ops_word_read_as_a_typed_value(s: str) -> str {
+  %s.2 = slot s : str
+entry:
+  %t3 = mach.load(%ptr %s.2) : %ptr
+  ; expected-error {{ret operand 0 reads %t3 as str, but it is %ptr}}
+  ret(str %t3)
+}
+
+; ---- casts: each of a kind of specs.CAST_KINDS, which keeps its operand's LLVM type
+
+function @a_cast_of_no_kind(p: %ptr) -> None {
+entry:
+  ; expected-error {{cast wide, where a cast is of a kind of specs.CAST_KINDS}}
+  %t1 = cast wide (%ptr %a0) : str
+  ret.none
+}
+
+function @a_cast_to_another_llvm_type(p: %ptr) -> None {
+entry:
+  ; expected-error {{cast bits of a %ptr to a int, where a cast reads its operand at another type of its LLVM type}}
+  %t1 = cast bits (%ptr %a0) : int
+  ret.none
+}
+
+function @a_bits_cast_of_a_typed_value(s: str) -> None {
+entry:
+  ; expected-error {{cast bits of a str to a list[int], where a cast of kind bits reads a machine word}}
+  %t1 = cast bits (str %a0) : list[int]
+  ret.none
+}
+
+function @a_bits_cast_of_a_reference_read_as_a_word(s: str) -> None {
+entry:
+  ; expected-error {{cast bits of %a0, a str read as a %ptr, where a cast of kind bits reads a machine word}}
+  %t1 = cast bits (%ptr %a0) : list[int]
+  ret.none
+}
+
+function @a_bits_cast_of_a_packed_slot_read_as_a_word(x: float) -> None {
+entry:
+  %t1 = slot.pack(float %a0) : *float
+  ; expected-error {{cast bits of %t1, a *float read as a %slot, where a cast of kind bits reads a machine word}}
+  %t2 = cast bits (%slot %t1) : int
+  ret.none
+}
+
+function @an_object_cast_to_a_union_of_no_classes(p: %ptr) -> None {
+entry:
+  ; expected-error {{cast object of a %ptr to a union[int,str], where a cast of kind object reads}}
+  %t1 = cast object (%ptr %a0) : union[int,str]
+  ret.none
+}
+
+function @a_member_cast_of_a_box(u: union[int,str]) -> None {
+entry:
+  ; expected-error {{cast member of a union[int,str] to a str, where a cast of kind member reads}}
+  %t1 = cast member (union[int,str] %a0) : str
+  ret.none
+}
+
+function @an_opaque_cast_outside_the_copy_memo(xs: list[int]) -> None {
+entry:
+  ; expected-error {{cast opaque of a list[int] to a str, where a cast of kind opaque reads}}
+  %t1 = cast opaque (list[int] %a0) : str
+  ret.none
+}
+
 ; ---- a runtime call's instance of its signature: one type for each of its type variables (S its
 ; receiver, which binds what no other operand did of T, K and V to what that holds), and the
 ; signature's own LLVM type
@@ -289,6 +356,15 @@ L12:
   ret(opt[str] %a1)
 L13:
   ret(opt[str] null)
+}
+
+function @accepted_casts(p: %ptr, w: %slot) -> int {
+entry:
+  %t1 = cast bits (%ptr %a0) : &int
+  %t2 = mem.load(&int %t1) : int
+  %t3 = cast bits (%slot %a1) : int
+  %t4 = scalar.bin add (int %t2, int %t3) : int
+  ret(int %t4)
 }
 
 function @accepted(n: int, xs: list[int], flag: bool) -> int {

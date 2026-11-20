@@ -2132,7 +2132,7 @@ def gen_reduce_item(self, r: Reduce, e: Node) -> None:
         self.mstore(r.stt, self.coerce(result, r.stt, "math.prod() must preserve its start type").v, r.acc)
         return
     if r.collect:
-        self.list_store(Val(self.mload("%ptr", r.acc), self.ctype("list", [r.t])), self.list_hold(v, r.t), "append")
+        self.list_store(Val(self.mload(self.ctype("list", [r.t]), r.acc), self.ctype("list", [r.t])), self.list_hold(v, r.t), "append")
         return
     if r.name != "sum":
         # the first item is kept; another where it is greater (max) or less (min) than the kept one
@@ -3056,7 +3056,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
         if kx.t == BIG:
             r = self.rt(self.dict_key_fn(fn, kx), "i64", [f"ptr {o.v}"] + self.dict_key_args(kx, k) + [f"i64 {dv}"], self.key_fx(kv[0]))
         else:
-            r = self.nonekey(kx, dv, fn, [f"ptr {o.v}", f"i64 {k}", f"i64 {dv}"], self.key_fx(kv[0]), kv[0])
+            r = self.nonekey(kx, dv, fn, [f"ptr {o.v}", f"i64 {k}", f"i64 {dv}"], self.key_fx(kv[0]), kv[0], o.t)
         if fn == "pys_dict_popbox" and self.dict_int(o.t):
             return self.dict_box(r)  # (a value past 64 bits: bigints.py)
         return self.held_read(self.from_slot(r, vt))
@@ -3350,7 +3350,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
     elif numx.t != "" and m == "index":
         fn = "pys_list_index_as"  # (its ValueError names x, not the item)
         # (the flag and the number as the bits of runtime words: a bool and an int)
-        av = av + ["i64 " + self.to_slot(Val(numok, "bool"), False, True), "i64 " + self.to_slot(numx, False, True), f"ptr {self.sconst(self.desc(numx.t, '=='))}"]
+        av = av + ["i64 " + self.slot_word(Val(numok, "bool")).v, "i64 " + self.slot_word(numx).v, f"ptr {self.sconst(self.desc(numx.t, '=='))}"]
     if bk.t != "":
         self.bool_find(o.v, bk, av[1][4:])
     x = self.key_fx(K) if base == "dict" else ""  # (Ins.x of a lookup: U? where the keys are objects)
@@ -3375,7 +3375,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
         self.list_write("list." + m, operands)
         return Val("null", "None")
     if kx.t != "":
-        res = self.nonekey(kx, av[2][4:] if m == "get" else "", fn, av, x, K, "*" + rtype if optget else "")
+        res = self.nonekey(kx, av[2][4:] if m == "get" else "", fn, av, x, K, o.t, "*" + rtype if optget else "")
     else:
         # (d.get(k)'s value or None: its optional type, which no operand gives)
         res = self.rt(self.dict_key_fn(fn, bigkey) if bigkey.t != "" else fn, "i64" if slot else rtt(rtype), av, x, "*" + rtype if optget else "")

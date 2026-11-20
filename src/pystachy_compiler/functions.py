@@ -174,6 +174,7 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
     del self.building[f.ll]
     self.selfcls = sel
     self.xtry = tried
+    self.number_casts()  # (after its last value: gen_cast)
     self.instantiate(self.fn)
     self.fn.n = self.n
     self.fn.otherbinds = None  # the binding index is needed only while building this function
@@ -275,7 +276,7 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
             self.cells[cv] = self.rt("pys_alloc", "ptr", [("i64 23" if big else "i64 15") if identity_abi(f) else ("i64 15" if big else "i64 8")])
             if identity_abi(f) and self.fn_identity(f):
                 # Define the address before any branch or loop can first bind the cell.
-                self.idbox[cv] = self.maddr('%ptr', self.cells[cv], '2' if big else '1', True)
+                self.idbox[cv] = self.cast(Val(self.maddr('%ptr', self.cells[cv], '2' if big else '1', True), "%ptr"), "&dyn", "bits").v
         lf: dict[str, bool] = {}
         for st in body if f.clo < 0 or self.closures[f.clo].name != "<lambda>" else []:
             lambda_flags(st, False, lf)
@@ -338,13 +339,14 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
                 self.nonevars[c.caps[i]] = 0  # (a parameter whose argument is None: it reads as None)
                 continue
             a = self.maddr('%ptr', env, f'{i}', True)
-            self.lreg[c.caps[i]] = self.mload('%ptr', a)
+            # (its env's word holds the address of the variable's cell)
+            self.lreg[c.caps[i]] = self.cast(Val(self.mload('%ptr', a), "%ptr"), "&" + c.ctypes[i], "bits").v
             self.ltype[c.caps[i]] = c.ctypes[i]
             if numeric_identity(c.ctypes[i]) and identity_abi(f) and self.fn_identity(f):
-                self.idbox[c.caps[i]] = self.maddr('%ptr', self.lreg[c.caps[i]], '2' if int_program() else '1', True)
+                self.idbox[c.caps[i]] = self.cast(Val(self.maddr('%ptr', self.lreg[c.caps[i]], '2' if int_program() else '1', True), "%ptr"), "&dyn", "bits").v
         for j in range(len(c.iflags)):
             a = self.maddr('%ptr', env, f'{len(c.caps) + closure_default_slots(c) + j}', True)
-            self.iflag[c.iflags[j]] = self.mload('%ptr', a)
+            self.iflag[c.iflags[j]] = self.cast(Val(self.mload('%ptr', a), "%ptr"), "&bool", "bits").v
     self.none_ends()
     if f.gen:
         self.gen_begin(f)  # (a generator: a call makes it, and runs none of the code below)

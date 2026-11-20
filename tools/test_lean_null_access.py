@@ -7,7 +7,6 @@ graph: each corruption makes a removed check fallible, and Lean must then reject
 of its models.
 """
 import copy
-import json
 import os
 from pathlib import Path
 import subprocess
@@ -47,7 +46,7 @@ class NullAccessTests(unittest.TestCase):
                                 cwd=ROOT, env=env, capture_output=True, text=True, timeout=120)
         if result.returncode:
             raise AssertionError(result.stdout + result.stderr)
-        cls.snapshot = json.loads((output / "typed-after.json").read_text())
+        cls.snapshot = boundary.read_snapshot((output / "typed-after.json"), boundary.MAX_PROGRAM_BYTES)[0]
 
     def setUp(self):
         if not all(path.is_file() for path in CHECKERS):

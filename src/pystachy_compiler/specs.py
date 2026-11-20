@@ -715,6 +715,7 @@ OPS: dict[str, str] = {
     "tuple.load": "rL rD rO|1|.v|0|t s:item k:index|3|ftuple -> packed", "tuple.store": "wL wD wO|2|.|0|s:item k:index|3|ftuple, packed",
     "field.addr": "|1|1|0|t k:index|1|class -> &$F",
     "slot.pack": "|1|1|0|t|1|native -> packed", "slot.unpack": "|1|1|0|t|1|packed -> native",
+    "cast": "|1|1|0|t s:operator|0|any -> any",
     "scalar.bin": "|1-2|1|0|t s:operator x:flags|1|$T:arith, $T -> $T", "scalar.cast": "|1|1|0|t s:operator|1|bits -> bits", "scalar.cmp": "|2|1|0|t s:operator|1|$T:bits, $T -> bool",
     "num.cast": "|1|1|0|t|1|numeric -> number", "num.cmp": "|2|1|0|t s:operator|1|$N:number, $N -> bool", "int.ucmp": "|2|1|0|t s:operator|1|int, int -> bool", "ptr.cmp": "|2|1|0|t s:operator|1|ref, ref -> bool",
     "empty.kind": "wD|1|1|0|k:hole|0|dictset",
@@ -775,20 +776,31 @@ TYPE_CLASSES: dict[str, str] = {
     "return": "the function's return type, or T where it is opt[T] of a reference T",
 }
 
+# The kinds of a cast op (Ins.s), each a reading of its operand's value at another type of the
+# same LLVM type (utils.lt): lowering erases a cast, and its uses read its operand
+# (Gen.erase_casts). The verifier holds each to its kind's rule (ircheck.cast_error), which holds
+# of the value the operand reads, at the type its definition gives it. A cast that narrows takes
+# the frontend's word for what it reads, such as a test before its readers.
+CAST_KINDS: dict[str, str] = {
+    "bits": "a machine word, which its definition gives only that type, as a typed value: %ptr as a reference or an address &T, %slot as an int or a packed slot *T",
+    "object": "a %ptr as a closed union of classes: the object that a box of the union holds (Gen.cmp_object's phi), which only a ptr.cmp, a mach.load of its class word (an int or a %ptr) and member casts read",
+    "member": "an object cast's value as one of its union's classes or a class derived from one: Gen.cmp_alts makes one for each class it tells apart, beside the object cast, and only code that a test of the object's class leads to reads it",
+    "opaque": "a reference as a str, and back, in lib/_pystachy_copy.py, whose deep-copy memo keeps any reference as a str",
+}
+
 # How an operand may read its value at a type other than the one the value's definition gives it
 # (the definition's type D, the operand's U), each a reading of the same bits that no op of the IR
 # writes (ircheck.value_types). The IR check rejects any other difference. In MLIR a value has one
 # type, which its uses share, and an op converts it; these are the readings that no op makes
-# explicit yet. Those that narrow (bits, opt[U] as U, a derived class, other union members) rely on
-# what the frontend knows, such as a test before them, which the check does not see. instance,
-# alias, optional and class hold inside a type's brackets as well (list[opt[str]] as list[str]).
-# A value whose definition gives only a machine type (%ptr, %slot), a runtime type variable or a
-# placeholder is read at related types by every operand that names a type of its own (an rt op's
-# operands name their runtime signature's): by a view between them, or as a closed union of
-# classes and one of its members.
+# explicit yet (a cast op makes the others: CAST_KINDS). Those that narrow (bits, opt[U] as U, a
+# derived class, other union members) rely on what the frontend knows, such as a test before
+# them, which the check does not see. instance, alias, optional and class hold inside a type's
+# brackets as well (list[opt[str]] as list[str]). A value whose definition gives only a machine
+# type (%ptr, %slot), a runtime type variable or a placeholder is read at related types by every
+# operand that names a type of its own (an rt op's operands name their runtime signature's).
 TYPE_VIEWS: dict[str, str] = {
     "machine": "U is D's machine type: %ptr for a reference, an address &T or None (null), %slot for a packed slot *T or an int, %addr for a slot's address",
-    "bits": "D is %ptr, read as a reference or an address &T; or D is %slot, read as an int, a packed slot *T or an rt op's bool",
+    "bits": "D is %ptr, read as a reference or an address &T, or %slot, read as an int, a packed slot *T or an rt op's bool, where an rt op defines it (its RUNTIME result type) or an rt op's operand of a runtime type variable (*T, S) reads it; another op's word is read through a bits cast",
     "instance": "D or U holds an empty container's placeholder (list[?], or opt[None] for a local first assigned None) or a runtime type variable (T K V S U R) that no binding replaced (Gen.instantiate), in an rt op's result or operand or where no class has its name: each stands for one type",
     "alias": "one object by two types: a str and a bytes, an exc and its exctype, a recursive alias rec[A] and A's definition, a set, a frozenset and an AbstractSet, a fixed tuple and a keyword record (kw[...]), a generator with and without its return type; inside brackets an int and an int+, and inside a tuple's a bool read as an int",
     "int slot": "an int read as a packed slot *int, which holds its value, and back",
@@ -796,7 +808,6 @@ TYPE_VIEWS: dict[str, str] = {
     "class": "a class read as a class derived from it, as one of its bases or as a class derived from a base that has a common derived class with it; a closed union read as one with a common member",
     "runtime bool": "an rt op's bool result, which the runtime ABI passes as an int, read as an int; an int read as an rt op's bool operand",
     "method": "a bound method fn[m:C.f] or fn[d:f:C] read as its receiver C, and back; a closure fn[c:...] read as its env",
-    "opaque": "in lib/_pystachy_copy.py, whose private primitives keep any reference in the deep-copy memo as a str: a reference read as a str, and back",
 }
 
 

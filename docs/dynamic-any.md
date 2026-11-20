@@ -1503,7 +1503,8 @@ or of a class that takes it as its role. Its control-flow proof covers copies, p
 branches, simultaneous phis, loops, exception edges, `pys_dyn_isa` tests and
 class dispatchers' switches, losing facts on rebinding and refusing to infer facts
 for escaping storage. Identity comparisons use `dyn.raw` for opaque bits, which
-the verifier permits only in direct integer equality comparisons. See the
+the verifier permits only as a cast to an int that a direct integer equality comparison
+reads. See the
 [IR contracts](typed-ir.md) for the exact scope and remaining assumptions.
 
 The optional

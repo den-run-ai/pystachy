@@ -50,6 +50,16 @@ def gen_to_slot(self, v: Val, keep: bool = False, opaque: bool = False) -> str:
     self.put(i, 1)
     return tmpname(i.r[0])
 
+def gen_slot_word(self, v: Val) -> Val:
+    # the bits of v in an 8-byte slot (to_slot's opaque %slot) as an int, which an identity
+    # comparison compares with a box's payload (dyn_raw): a bits cast reads them, but an int's,
+    # which is its own slot
+    s = self.to_slot(v, False, True)
+    code = self.blk.code
+    if len(code) > 0 and code[len(code) - 1].op == "slot.pack" and tmpname(code[len(code) - 1].r[0]) == s:
+        return self.cast(Val(s, "%slot"), "int", "bits")
+    return Val(s, "int")
+
 def gen_from_slot(self, s: str, t: str) -> Val:
     # Recursive container slots hold the existing union-box pointer. Expose one
     # layer of its finite named type graph when reading the value.

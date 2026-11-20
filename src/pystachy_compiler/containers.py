@@ -5,7 +5,7 @@ from src.pystachy_compiler.bigints import big_tree, held, narrow_type
 from src.pystachy_compiler.conversions import ends_in_id
 from src.pystachy_compiler.diagnostics import dynamic_program, int_lists, shown
 from src.pystachy_compiler.frames import IterArg, SetArg
-from src.pystachy_compiler.ir import Ins, Val
+from src.pystachy_compiler.ir import Ins, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import BIG, BIGOPT, EMPTYFS, ITERS, NONE_ITEM, NONEVAR, OBJECTC, OPTTYPES, TYPEMODS, VTUPLE_ITEMS
@@ -34,6 +34,8 @@ from src.pystachy_compiler.utils import (
     list_identity_kind,
     literal,
     lookable,
+    rt_bind,
+    rt_subst,
     selem,
     set_base,
     targs,
@@ -194,9 +196,12 @@ def gen_set_display(self, n: Node, want: str, folded: bool, returnctx: bool = Fa
     old = ""
     l0 = ""
     ldone = ""
+    load = Ins("mach.load", "%ptr", "")  # (of the constant, whose type its items give: below)
     if const:
         self.global_var(g, "frozenset[?]")
-        old = self.mload('%ptr', g)
+        load.a = [Val(g, "%ptr")]
+        self.put(load, 1)
+        old = tmpname(load.r[0])
         l0 = self.cur
         lmake = self.label()
         ldone = self.label()
@@ -238,6 +243,7 @@ def gen_set_display(self, n: Node, want: str, folded: bool, returnctx: bool = Fa
         self.err(self.elem_problem(et))
     if const:
         self.globs[gi].t = self.ctype("frozenset", [et])
+        load.t = self.globs[gi].t
     items = [self.set_coerce(v, et) for v in items]
     r = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(et)}"], t=self.ctype("set", [et]))
     for v in items:
@@ -1183,11 +1189,12 @@ def gen_store_elem(self, k: Val, et: str) -> Val:
         self.err(f"a {typestr(k.t)} element is added to a set of {typestr(et)} elements, where CPython keeps an element it adds as the bool it is (True, not 1): convert the bool with int()")
     return self.list_hold(k, et) if held(narrow_type(et)) != narrow_type(et) else self.coerce(k, et)  # (a tuple of ints as the set holds it: bigints.held)
 
-def gen_nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str, kt: str, t: str = "") -> str:
+def gen_nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str, kt: str, dt: str = "", t: str = "") -> str:
     # the slot fn(av) returns, a dict lookup of key k (x: key_fx of the dict's keys, of type kt; t:
     # the slot's type, where its builder gives it: gen_rt); a key that is None is in no dict whose
     # keys cannot be None (none_key: one whose keys can looks None up as any key): the result is
-    # then the slot none, or with none "" KeyError: None
+    # then the slot none, or with none "" KeyError: None. dt: the dict's type, which types that
+    # slot where none is given and its builder gives no type
     if not is_opt(k.t) or none_key(kt):
         return self.rt(fn, "i64", av, x, t)
     if none == "":
@@ -1198,13 +1205,19 @@ def gen_nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str, kt: str
     l3 = self.label()
     self.cbr(self.ptr_cmp('==', k, Val('null', 'None')).v, l1, l2)
     self.place(l2)
-    r = self.rt(self.dict_key_fn(fn, k), "i64", self.keyed(k, av), x, t)
+    name = self.dict_key_fn(fn, k)
+    r = self.rt(name, "i64", self.keyed(k, av), x, t)
     e2 = self.cur
     self.br(l3)
     self.place(l1)
     self.br(l3)
     self.place(l3)
-    ph = Ins("phi", "%slot", "")
+    # (the type of the word fn returns from this dict, as Gen.instantiate types the call: the type
+    # its builder gives (t), else its signature's with S the dict's type; not the signature's *V,
+    # whose type variable only an rt op may name, and which a class V would name)
+    bound: dict[str, str] = {}
+    rt_bind("S", dt, bound, False)
+    ph = Ins("phi", t if t != "" else rt_subst(self.rtfns[self.runtime(name)].sig[0], bound), "")
     self.incoming(ph, none, l1)
     self.incoming(ph, r, e2)
     return self.phi(ph)

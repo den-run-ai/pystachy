@@ -33,7 +33,7 @@ def inspect(program, directory):
                             cwd=ROOT, env=env, capture_output=True, text=True, timeout=60)
     if result.returncode:
         raise AssertionError(result.stdout + result.stderr)
-    return json.loads((directory / "typed-after.json").read_text())
+    return boundary.read_snapshot((directory / "typed-after.json"), boundary.MAX_PROGRAM_BYTES)[0]
 
 
 class FieldInitTests(unittest.TestCase):

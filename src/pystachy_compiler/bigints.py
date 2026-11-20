@@ -992,7 +992,7 @@ def gen_big_dict_call(self, o: Val, m: str, kx: Val, k: str, d: Val, has: bool, 
         if kx.t == BIG:
             e = self.big_key_entry(o, kx, "pys_dict_big_find")
         else:
-            e = self.nonekey(kx, "-1", "pys_dict_find", [f"ptr {o.v}", f"i64 {k}"], x, targs(o.t)[0])  # (a key that is None: none)
+            e = self.nonekey(kx, "-1", "pys_dict_find", [f"ptr {o.v}", f"i64 {k}"], x, targs(o.t)[0], o.t)  # (a key that is None: none)
         found = self.label()
         end = self.label()
         ph = Ins("phi", BIG, "")
@@ -1119,7 +1119,7 @@ def gen_big_list_find(self, o: Val, x: Val, op: int, st: str, en: str) -> Val:
     # list[int] o (int_lists) and x a promoting int or a float, which an item past 64 bits may equal:
     # exactly (pys_list_big_find)
     if x.t == "float":
-        args = ["i64 " + self.to_slot(x, False, True), "ptr null", "i64 1"]  # (the float's bits, as an int word)
+        args = ["i64 " + self.slot_word(x).v, "ptr null", "i64 1"]  # (the float's bits, as an int word)
     else:
         x = self.to_big(x)
         args = [f"i64 {self.big_lo(x).v}", f"ptr {self.big_hi(x).v}", "i64 0"]

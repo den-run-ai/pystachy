@@ -1707,7 +1707,7 @@ def gen_dyn_box(self, v: Val) -> Val:
         self.place(chk)
         typ = Val(self.rtdata("pys_dyntype_int" if t == "int" else "pys_dyntype_float"), "dyntype")
         st = self.ptr_cmp("==", Val(self.dyn_typeof(b), "dyntype"), typ).v
-        sp = self.num_cmp("==", self.dyn_raw(b), Val(self.to_slot(v, False, True), "int")).v
+        sp = self.num_cmp("==", self.dyn_raw(b), self.slot_word(v)).v
         self.cbr(self.scalar("and", [Val(st, "bool"), Val(sp, "bool")]), hit, miss)
         self.place(hit)
         self.br(end)
@@ -2530,12 +2530,12 @@ def gen_dyn_typeof(self, v: Val) -> str:
 
 
 def gen_dyn_raw(self, v: Val) -> Val:
-    # Opaque identity bits, with no claim about the box's Python type. Only
-    # direct integer equality comparisons may consume this result.
+    # Opaque identity bits, with no claim about the box's Python type, read as an int by a bits
+    # cast. Only direct integer equality comparisons may consume this result.
     i = Ins("dyn.raw", "%slot", "")
     i.a = [Val(v.v, DYN)]
     self.put(i, 2)
-    return Val(tmpname(i.r[1]), "int")
+    return self.cast(Val(tmpname(i.r[1]), "%slot"), "int", "bits")
 
 
 def gen_dyn_payload(self, v: Val, t: str) -> Val:
@@ -3441,7 +3441,7 @@ def gen_dyn_slice(self, o: Val, bs: list[Node]) -> Val:
 def gen_dyn_type_name(self, v: Val) -> Val:
     # type(v).__name__: its DynType's name
     t = self.dyn_typeof(v)
-    return Val(self.mload("%ptr", self.maddr("%ptr", t, "2", True)), "str")
+    return Val(self.mload("str", self.maddr("%ptr", t, "2", True)), "str")
 
 
 # ---- the dispatchers: functions of the program that the compiler writes once every class that

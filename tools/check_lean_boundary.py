@@ -122,13 +122,55 @@ def unique_object(pairs):
     return result
 
 
+def erase_casts(function):
+    """A function record as lowering prints it (the compiler's Gen.erase_casts): a cast is no
+    instruction, and an operand that reads one reads the value it casts. The adapters model
+    values, which a cast does not change; the shape checker reads casts as the snapshot has them."""
+    # (records that are no well-formed functions are left as they are, for the adapters' own checks)
+    blocks = [b for b in function["blocks"] if isinstance(b, dict) and isinstance(b.get("operations"), list)]
+    source = {}
+    for block in blocks:
+        for op in block["operations"]:
+            if isinstance(op, dict) and op.get("op") == "cast":
+                require(isinstance(op.get("results"), list) and len(op["results"]) == 1 and isinstance(op.get("operands"), list)
+                        and len(op["operands"]) == 1 and isinstance(op["operands"][0], dict), "invalid cast")
+                source[f"%t{op['results'][0]}"] = op["operands"][0].get("value")
+    if not source:
+        return function
+    for value in list(source):
+        cast = source[value]
+        seen = {value}
+        while cast in source:
+            require(cast not in seen, "a cycle of casts")
+            seen.add(cast)
+            cast = source[cast]
+        source[value] = cast
+    for block in blocks:
+        block["operations"] = [op for op in block["operations"] if not (isinstance(op, dict) and op.get("op") == "cast")]
+        for op in block["operations"]:
+            for operand in op.get("operands", []) if isinstance(op, dict) and isinstance(op.get("operands"), list) else []:
+                if isinstance(operand, dict) and isinstance(operand.get("value"), str) and operand["value"] in source:
+                    operand["value"] = source[operand["value"]]
+    return function
+
+
 def read_snapshot(path, limit=MAX_BYTES):
+    # (its functions, and those of the null checks' evidence, without casts: erase_casts)
     descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NONBLOCK", 0))
     with os.fdopen(descriptor, "rb") as source:
         require(stat.S_ISREG(os.fstat(source.fileno()).st_mode), "snapshot must be a regular file")
         raw = source.read(limit + 1)
     require(len(raw) <= limit, f"snapshot exceeds {limit} bytes")
-    return json.loads(raw, object_pairs_hook=unique_object), hashlib.sha256(raw).hexdigest()
+    snapshot = json.loads(raw, object_pairs_hook=unique_object)
+    if isinstance(snapshot, dict):
+        for function in snapshot["functions"] if isinstance(snapshot.get("functions"), list) else []:
+            if isinstance(function, dict) and isinstance(function.get("blocks"), list):
+                erase_casts(function)
+        for evidence in snapshot["nullcheck_evidence"] if isinstance(snapshot.get("nullcheck_evidence"), list) else []:
+            for side in ("before", "after"):
+                if isinstance(evidence, dict) and isinstance(evidence.get(side), dict) and isinstance(evidence[side].get("blocks"), list):
+                    erase_casts(evidence[side])
+    return snapshot, hashlib.sha256(raw).hexdigest()
 
 
 def instruction_fields(value):

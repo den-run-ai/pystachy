@@ -1,6 +1,5 @@
 """Check promoting ints' fit claims in real IR, and independently corrupt them."""
 import copy
-import json
 import os
 from pathlib import Path
 import subprocess
@@ -8,6 +7,7 @@ import sys
 import tempfile
 import unittest
 
+import check_lean_boundary as boundary
 import check_lean_int
 from check_lean_int import check_all, definitions, evaluate, known_claims, operands
 
@@ -50,7 +50,7 @@ def compile_snapshot(source):
                                    cwd=ROOT, env=env, capture_output=True, text=True, timeout=600)
         if completed.returncode != 0:
             raise AssertionError(completed.stdout + completed.stderr)
-        return json.loads((output / "typed-after.json").read_text())
+        return boundary.read_snapshot((output / "typed-after.json"), boundary.MAX_PROGRAM_BYTES)[0]
 
 
 def function(snapshot, symbol):

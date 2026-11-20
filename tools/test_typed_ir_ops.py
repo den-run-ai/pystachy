@@ -278,7 +278,6 @@ class ValueTypeTests(unittest.TestCase):
                 ("method", [typed("ptr.cmp", "bool", [("%a0", "Base"), ("null", "None")], "==")], ["fn[m:Base.f]"], ())):
             with self.subTest(view=view, params=params):
                 self.assertEqual(self.error(code, params, slots, classes=classes), "")
-        self.assertEqual(self.error([typed("ret", "", [("%a0", "Base")])], ["str"], mod="_pystachy_copy", classes=classes), "")
 
     def test_other_readings_are_rejected(self):
         classes = (("Base", ""), ("Derived", "Base"), ("Other", ""))
@@ -300,15 +299,97 @@ class ValueTypeTests(unittest.TestCase):
                 ([made("list.load", "*int", 1, [("%a0", "list[int]"), ("0", "int")]), typed("mem.load", "int", [("%t1", "&int")])], ["list[int]"], (),
                  "mem.load operand 0 reads %t1, a packed slot, as an address"),
                 ([made("rt", "%ptr", 1, [], "x"), typed("mem.store", "", [("%s.2", "&str"), ("%t1", "str")]), typed("ret", "", [("%t1", "list[int]")])],
-                 (), [slot("s", "str", 2)], "ret operand 0 reads %t1 as list[int], where mem.store operand 1 reads it as str")):
+                 (), [slot("s", "str", 2)], "ret operand 0 reads %t1 as list[int], where mem.store operand 1 reads it as str"),
+                # (another op's machine word is read at a type only through a cast: bits are an rt op's)
+                ([made("mach.load", "%ptr", 1, [("%a0", "%ptr")]), typed("ret", "", [("%t1", "str")])], ["str"], (),
+                 "ret operand 0 reads %t1 as str, but it is %ptr"),
+                ([made("slot.pack", "%slot", 1, [("%a0", "float")]), typed("num.cast", "float", [("%t1", "int")])], ["float"], (),
+                 "num.cast operand 0 reads %t1 as int, but it is %slot"),
+                # (nor is a value read as a closed union of classes and as one of its members: casts do)
+                ([made("rt", "%ptr", 1, [], "x"), typed("ptr.cmp", "bool", [("%t1", "union[Base,Other]"), ("null", "None")], "=="),
+                  typed("ret", "", [("%t1", "Other")])], (), (), "ret operand 0 reads %t1 as Other, where ptr.cmp operand 0 reads it as union[Base,Other]")):
             with self.subTest(expected=expected):
                 self.assertEqual(self.error(code, params, slots, classes=classes), expected)
+        # (lib/_pystachy_copy.py's memo reads a reference as a str through opaque casts)
+        self.assertEqual(self.error([typed("ret", "", [("%a0", "Base")])], ["str"], mod="_pystachy_copy", classes=classes),
+                         "ret operand 0 reads %a0 as Base, but it is str")
 
     def test_a_value_its_definition_types_loosely_is_read_at_related_types(self):
         classes = (("Base", ""), ("Derived", "Base"))
         code = [made("rt", "%ptr", 1, [], "x"), typed("ptr.cmp", "bool", [("%t1", "opt[Base]"), ("null", "None")], "=="),
                 typed("ret", "", [("%t1", "Derived")])]
         self.assertEqual(self.error(code, classes=classes), "")
+
+
+class CastTests(unittest.TestCase):
+    """A cast reads its operand at another type of its LLVM type, by its kind's rule (specs.CAST_KINDS)."""
+
+    def error(self, code, params=(), mod=""):
+        fn = function(code + [typed("br", "", [], labels=1)])
+        fn.n = 64
+        fn.f.params = [f"p{j}" for j in range(len(params))]
+        fn.f.ptypes = list(params)
+        fn.f.mod = mod
+        g = Gen()
+        for name in ("A", "B", "C", "D"):
+            g.classes[name] = ClassInfo(name, Node("class", name, 1))
+        g.classes["C"].base = "A"
+        errors = StringIO()
+        try:
+            with redirect_stderr(errors):
+                g.verify(fn, False)
+        except SystemExit:
+            return errors.getvalue().split(": ", 3)[-1].strip()
+        return ""
+
+    def test_each_kind_reads_what_its_rule_admits(self):
+        for code, params, mod in (
+                ([made("cast", "&int", 1, [("%a0", "%ptr")], "bits")], ["%ptr"], ""),
+                ([made("cast", "str", 1, [("%a0", "%ptr")], "bits")], ["%ptr"], ""),
+                ([made("cast", "int", 1, [("%a0", "%slot")], "bits")], ["%slot"], ""),
+                ([made("cast", "*float", 1, [("%a0", "%slot")], "bits")], ["%slot"], ""),
+                # (another op's word, which the bits view reads at a type only where an rt op makes it
+                # or reads it at a type variable)
+                ([made("slot.pack", "%slot", 1, [("%a0", "float")]), made("cast", "int", 2, [("%t1", "%slot")], "bits"),
+                  made("num.cmp", "bool", 3, [("%t2", "int"), ("0", "int")], "==")], ["float"], ""),
+                ([made("cast", "union[A,B]", 1, [("%a0", "%ptr")], "object"), made("cast", "C", 2, [("%t1", "union[A,B]")], "member"),
+                  made("ptr.cmp", "bool", 3, [("%t1", "union[A,B]"), ("null", "None")], "=="), made("mach.load", "%ptr", 4, [("%t1", "%ptr")])],
+                 ["%ptr"], ""),
+                ([made("cast", "str", 1, [("%a0", "A")], "opaque"), made("cast", "A", 2, [("%t1", "str")], "opaque")], ["A"], "_pystachy_copy")):
+            with self.subTest(kinds=[i.s for i in code if i.op == "cast"]):
+                self.assertEqual(self.error(code, params, mod), "")
+
+    def test_each_kind_rejects_what_its_rule_does_not(self):
+        for code, params, mod, expected in (
+                ([made("cast", "int", 1, [("%a0", "%ptr")], "bits")], ["%ptr"], "", "cast bits of a %ptr to a int, where a cast reads"),
+                ([made("cast", "%ptr", 1, [("%a0", "%ptr")], "bits")], ["%ptr"], "", "cast bits of a %ptr to a %ptr, where a cast reads"),
+                ([made("cast", "*str", 1, [("%a0", "%ptr")], "bits")], ["%ptr"], "", "cast bits of a %ptr to a *str, where a cast reads"),
+                ([made("cast", "str", 1, [("%a0", "A")], "bits")], ["A"], "", "cast bits of a A to a str, where a cast of kind bits reads a machine word"),
+                ([made("cast", "bool", 1, [("%a0", "%slot")], "bits")], ["%slot"], "", "cast bits of a %slot to a bool, where a cast reads"),
+                ([made("cast", "int", 1, [("%a0", "%slot")], "wide")], ["%slot"], "", "cast wide, where a cast is of a kind"),
+                ([made("cast", "union[A,int]", 1, [("%a0", "%ptr")], "object")], ["%ptr"], "", "cast object of a %ptr to a union[A,int], where a cast of kind object reads"),
+                ([made("cast", "A", 1, [("%a0", "union[A,B]")], "member")], ["union[A,B]"], "", "cast member of a union[A,B] to a A, where a cast of kind member reads"),
+                ([made("cast", "union[A,B]", 1, [("%a0", "%ptr")], "object"), made("cast", "str", 2, [("%t1", "union[A,B]")], "member")],
+                 ["%ptr"], "", "cast member of a union[A,B] to a str, where a cast of kind member reads"),
+                ([made("cast", "union[A,B]", 1, [("%a0", "%ptr")], "object"), made("union.tag", "int", 2, [("%t1", "union[A,B]")])],
+                 ["%ptr"], "", "union.tag reads %t1, an object cast's value"),
+                ([made("cast", "union[A,B]", 1, [("%a0", "%ptr")], "object"), made("mach.load", "str", 2, [("%t1", "%ptr")])],
+                 ["%ptr"], "", "mach.load reads %t1, an object cast's value"),
+                # (a rule holds of the value at its definition's type, which no view may change: a %ptr
+                # reads any reference, a %slot any packed slot, a union one with a common member)
+                ([made("cast", "list[int]", 1, [("%a0", "%ptr")], "bits")], ["str"], "",
+                 "cast bits of %a0, a str read as a %ptr, where a cast of kind bits reads a machine word"),
+                ([made("slot.pack", "*float", 1, [("%a0", "float")]), made("cast", "int", 2, [("%t1", "%slot")], "bits")], ["float"], "",
+                 "cast bits of %t1, a *float read as a %slot, where a cast of kind bits reads a machine word"),
+                ([made("cast", "B", 1, [("%a0", "%ptr")], "bits")], ["A"], "", "cast bits of %a0, a A read as a %ptr, where"),
+                ([made("cast", "union[A,B]", 1, [("%a0", "%ptr")], "object"), made("cast", "A", 2, [("%t1", "union[A,B]")], "member")],
+                 ["union[A,B]"], "", "cast object of %a0, a union[A,B] read as a %ptr, where a cast of kind object reads"),
+                ([made("cast", "union[A,B]", 1, [("%a0", "%ptr")], "object"), made("cast", "D", 2, [("%t1", "union[B,D]")], "member")],
+                 ["%ptr"], "", "cast member of %t1, a union[A,B] read as a union[B,D], where a cast of kind member reads"),
+                ([made("cast", "str", 1, [("%a0", "A")], "opaque")], ["A"], "", "cast opaque of a A to a str, where a cast of kind opaque reads"),
+                ([made("cast", "B", 1, [("%a0", "A")], "opaque")], ["A"], "_pystachy_copy", "cast opaque of a A to a B, where a cast of kind opaque reads")):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, self.error(code, params, mod))
 
 
 class ShapeCheckTests(unittest.TestCase):

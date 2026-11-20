@@ -346,7 +346,10 @@ from its theorem. These results do not justify removing roots, companions or gua
 ## How actual IR reaches the model
 
 `tools/check_lean_boundary.py` reads the existing inspection schema, validates
-the selected function and emits normalized nodes for its instructions. A box's
+the selected function and emits normalized nodes for its instructions. Every
+adapter reads a snapshot through its `read_snapshot`, which takes the functions'
+casts out (`erase_casts`) as LLVM lowering does: an operand that reads a cast reads
+the value it casts, which no cast changes. A box's
 tag is its DynType descriptor's symbol: a runtime.c builtin's, or one of the
 program's own, which `typed-after.json` lists in `dynamic_types` (its kind,
 class number, base, role, flags and payload type). Each typed-IR operation has an
