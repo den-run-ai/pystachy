@@ -62,7 +62,8 @@ build/dlpack-venv/bin/python -m unittest discover -s tools -p test_runtime_dlpac
 build/dlpack-venv/bin/python examples/cpu_dlpack/check.py --compiler ./pystachy
 ```
 
-The protocol unit tests run under Lint's existing `test_runtime_*.py` discovery.
+The protocol unit tests run with CI's other `test_runtime_*.py` files
+([CI](../../docs/testing.md#continuous-integration)).
 Without NumPy, the two dependency/device tests run and the eight NumPy tests
 explicitly skip. The optional native runner must be invoked separately: it checks
 the CPython twin and native JIT, AOT and abi3 extension, each native mode with
