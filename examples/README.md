@@ -14,19 +14,26 @@ The extra requirements below are in addition to the compiler and its build toolc
 | [byte_bpe](byte_bpe/README.md) | Educational byte tokenizer training and Unicode encode/decode | [App corpus](../tests/programs/apps/byte_bpe.py); pyperformance smoke | None |
 | [column](column/README.md) | Table alignment with `io.StringIO` | [App corpus](../tests/programs/apps/example_column.py) | None |
 | [comm](comm/README.md) | Owned host buffers, bounded completions and local reference collectives | CPython/native comparison and C ownership probe in its guide | Linux and a C compiler |
+| [cpu_dlpack](cpu_dlpack/README.md) | Score a float64 batch that a CPU DLPack producer supplies, through a retained CPython buffer | [Protocol tests](../tools/test_runtime_dlpack.py) in CI; CPython twin, JIT, AOT and extension runner in its guide | Linux CPython 3.12+ with shared `libpython`; NumPy 2.1+ in the host |
 | [csvstat](csvstat/README.md) | CSV parsing, reports and numeric statistics | [App corpus](../tests/programs/apps/example_csvstat.py) | None |
+| [ctypes_llvmlite](ctypes_llvmlite/README.md) | Parse and verify LLVM IR through llvmlite's native library with static `ctypes` declarations | CPython, JIT, AOT and GC-stress comparison in its guide | Linux; Python 3.13 with llvmlite 0.46.0 |
 | [cut](cut/README.md) | Field and character selection with `getopt` | [App corpus](../tests/programs/apps/example_cut.py) | None |
+| [guarded_score](guarded_score/README.md) | A reduction over a loss function chosen at run time through a `Callable` argument | [Shared pytest suite](#checks) | None |
 | [id_filter](id_filter/README.md) | Dense bounded ID masks and faceted document filtering | [App corpus](../tests/programs/apps/example_id_filter.py) with independent set oracles | None |
 | [json_repair](json_repair/README.md) | CPython companion for the native JSON-repair port | [Extension replay](../tests/upstream/json_repair/extension.py) in the FFI suite | Linux and GIL-enabled CPython 3.12+ for the companion |
 | [latency](latency/README.md) | Access-log statistics with `statistics` | [App corpus](../tests/programs/apps/example_latency.py) | None |
 | [linediff](linediff/README.md) | Unified and word diffs with `difflib` | [App corpus](../tests/programs/apps/example_linediff.py) | None |
 | [mailmerge](mailmerge/README.md) | Message rendering with `string.Template` | [App corpus](../tests/programs/apps/example_mailmerge.py) | None |
+| [match_dispatch](match_dispatch/README.md) | Command parsing and dispatch with bounded `match` over a dataclass | [Shared pytest suite](#checks) | None |
 | [mazepath](mazepath/README.md) | Breadth-first search with `collections.deque` | [App corpus](../tests/programs/apps/example_mazepath.py) | None |
+| [miniui](miniui/README.md) | Immediate-mode UI controls with an optional raylib desktop backend | [App corpus](../tests/programs/apps/miniui_headless.py) and [shared pytest suite](#checks); fake-raylib backend check in its guide | raylib 5.5+ development files and a C compiler for the desktop backend |
 | [montecarlo](montecarlo/README.md) | Seeded sampling with `random` | [App corpus](../tests/programs/apps/example_montecarlo.py) | None |
 | [nanogpt](nanogpt/README.md) | CPU float64 inference and analytic training | [Inference](../tests/programs/apps/example_nanogpt.py) and [training](../tests/programs/apps/example_nanogpt_training.py) in the app corpus; BLAS parity | PyTorch for offline export/upstream checks; optional LP64 BLAS at runtime |
 | [ndarray](ndarray/README.md) | Float64 arrays, views, broadcasting and fused expressions | [App corpus](../tests/programs/apps/example_ndarray.py), [edges](../tests/programs/apps/example_ndarray_edges.py), [elementwise](../tests/programs/apps/example_ndarray_elementwise.py) and [upstream cases](../tests/programs/apps/example_ndarray_upstream.py); BLAS checks | NumPy for reference checks; optional LP64 BLAS at runtime |
 | [netio](netio/README.md) | Optional native TCP, socket pairs and scalable readiness | `make netio-check`: stdlib oracle, JIT/AOT, GC stress and high descriptors | C compiler; Linux verified, macOS backend unexecuted |
 | [package](package/README.md) | Build and consume a source wheel with a port dependency | [Package smoke](../tools/package_smoke.py) in packaging and distribution CI | `uv`; see [packaging requirements](../tools/requirements-packaging.txt) |
+| [pytest_native](pytest_native/README.md) | Original pytest-style tests of library APIs, ports, fixtures and `unittest` cases | `make test-pytest-native` in CI: JIT and AOT against original pytest | Pinned pytest from `tools/requirements-dev.txt` |
+| [pytest_native_mypyc](pytest_native_mypyc/README.md) | Original tests of mypyc's unchanged `NameGenerator` module | Generated CPython and AOT against pytest in its guide; not run in CI | The hash-pinned `mypyc/namegen.py`, fetched as its guide shows; pinned pytest |
 | [route](route/README.md) | Pattern matching and cached event classifications | [App corpus](../tests/programs/apps/example_route.py) and [empty traces](../tests/programs/apps/example_route_empty.py) | None |
 | [suggest](suggest/README.md) | Spelling suggestions with `difflib` | [App corpus](../tests/programs/apps/example_suggest.py) | None |
 | [topk](topk/README.md) | Word counts and heap-based selection | [App corpus](../tests/programs/apps/example_topk.py) | None |
@@ -53,7 +60,7 @@ python3 tools/pytest_native_suites.py --suite byte_bpe --mode aot
 
 | Shared API suites | Coverage boundary |
 |---|---|
-| column, csvstat, cut, latency, linediff, mailmerge, mazepath, route, suggest, topk, urlstats | In-memory parsing, transformation, output construction, errors, state and aliases |
+| column, csvstat, cut, latency, linediff, mailmerge, match_dispatch, mazepath, route, suggest, topk, urlstats | In-memory parsing, transformation, output construction, errors, state and aliases |
 | byte_bpe, id_filter, montecarlo, guarded_score | Byte/token results, independent set/document oracles, seeded samples and callback contracts |
 | agent, miniui | Wire/action validation and widget state; HTTP, tool processes and raylib remain integration checks |
 | ndarray, nanogpt | Pure array/view and numerical contracts; NumPy/PyTorch reference, training, BLAS and foreign-buffer checks remain separate |
