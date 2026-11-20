@@ -1,17 +1,18 @@
-# Build the minimal LLVM toolchain (docs/llvm-toolchain.md) from LLVM's pinned release sources.
-# Compiling LLVM and clang takes about two CPU-hours, so one job compiles the table generators that
-# every other object file waits for, six jobs each compile one slice of the object files, and
-# another finds them all compiled and links, checks and packs the archive. The objects are cached
-# under a hash of every compile command: a run with the same hash compiles nothing. Given a
-# revision, a run on main publishes the archive that bootstrapped Pystachy as a release asset.
+# Build the minimal LLVM toolchain (docs/llvm-toolchain.md) from LLVM's pinned release sources, for
+# x86-64 and for ARM64, each on its own runners. Compiling LLVM and clang takes about two CPU-hours,
+# so for each architecture one job compiles the table generators that every other object file waits
+# for, six jobs each compile one slice of the object files, and another finds them all compiled and
+# links, checks and packs the archive. The objects are cached under a hash of every compile command:
+# a run with the same hash compiles nothing. Given a revision, a run on main publishes the archives
+# that bootstrapped Pystachy as the assets of one release.
 name: LLVM toolchain
 
-# Nothing but a person starts a run: an uncached one takes an hour of runner time.
+# Nothing but a person starts a run: an uncached one takes two hours of runner time.
 on:
   workflow_dispatch:
     inputs:
       revision:
-        description: 'Publish the archive as release llvm-toolchain-<LLVM release>-<revision>, for example 1; empty builds only'
+        description: 'Publish the archives as release llvm-toolchain-<LLVM release>-<revision>, for example 1; empty builds only'
         required: false
         type: string
 
@@ -23,19 +24,28 @@ permissions:
   contents: read
 
 env:
-  # The image and the recipe's settings of docs/llvm-toolchain.md; ninja is the build tool.
-  IMAGE: quay.io/pypa/manylinux_2_28_x86_64@sha256:d086f64cddcace250ef0f0073583c51b8298159303290a730c9f59bd91edfd2c
+  # The image and the recipe's settings of docs/llvm-toolchain.md; ninja is the build tool. The image
+  # is an index: each runner pulls its own architecture's.
+  IMAGE: quay.io/pypa/manylinux_2_28@sha256:834a11a02642a46e580b62f25f5b04588355092c8677eaf0393e3ea1997001a3
   NINJA: ninja==1.13.2
   OUT: build/llvm-toolchain
 
 jobs:
   generators:
-    name: compile the table generators
-    runs-on: ubuntu-24.04
+    name: compile the table generators (${{ matrix.arch }})
+    runs-on: ${{ matrix.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     timeout-minutes: 15
+    strategy:
+      matrix:
+        arch: [x86_64, aarch64]
+    # A matrix job has one set of outputs: each architecture writes the two that carry its name.
     outputs:
-      key: ${{ steps.fingerprint.outputs.key }}
-      cached: ${{ steps.objects.outputs.cache-hit }}
+      key-x86_64: ${{ steps.fingerprint.outputs.key-x86_64 }}
+      key-aarch64: ${{ steps.fingerprint.outputs.key-aarch64 }}
+      cached-x86_64: ${{ steps.cached.outputs.cached-x86_64 }}
+      cached-aarch64: ${{ steps.cached.outputs.cached-aarch64 }}
+    env:
+      ARCH: ${{ matrix.arch }}
     steps:
       # Before an hour of compiling, not after it.
       - name: Publish only from main and under a revision number
@@ -49,6 +59,7 @@ jobs:
           persist-credentials: false
 
       # Every job mounts the checkout at /src: an object's key is its compile command, paths included.
+      # The two architectures' commands differ, in their targets' sources at least, and so do the keys.
       - name: Hash the compile commands
         id: fingerprint
         run: |
@@ -56,6 +67,7 @@ jobs:
             sh -c "pipx install '$NINJA' >&2 && tools/llvm_toolchain.sh fingerprint '$OUT'")
           [[ $fingerprint =~ ^[0-9a-f]{64}$ ]]
           echo "key=llvm-toolchain-objects-$fingerprint" >> "$GITHUB_OUTPUT"
+          echo "key-$ARCH=llvm-toolchain-objects-$fingerprint" >> "$GITHUB_OUTPUT"
 
       # The objects of a run with the same compile commands are this run's: nothing is compiled, and
       # package restores them. GitHub drops a cache that no run has read for seven days.
@@ -66,6 +78,12 @@ jobs:
           key: ${{ steps.fingerprint.outputs.key }}
           lookup-only: true
 
+      - name: Tell the later jobs whether this architecture's objects are cached
+        id: cached
+        env:
+          HIT: ${{ steps.objects.outputs.cache-hit }}
+        run: echo "cached-$ARCH=$HIT" >> "$GITHUB_OUTPUT"
+
       - name: Compile LLVM's table generators
         if: steps.objects.outputs.cache-hit != 'true'
         run: |
@@ -75,34 +93,40 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         if: steps.objects.outputs.cache-hit != 'true'
         with:
-          name: llvm-objects-generators
+          name: llvm-objects-${{ matrix.arch }}-generators
           path: ${{ env.OUT }}/objects/
           if-no-files-found: error
           retention-days: 1
           overwrite: true
 
   compile:
-    name: compile (slice ${{ matrix.slice }} of 6)
+    name: compile (${{ matrix.arch }}, slice ${{ matrix.slice }} of 6)
     needs: generators
-    if: needs.generators.outputs.cached != 'true'
-    runs-on: ubuntu-24.04
+    # A job's condition cannot name its matrix: the slices are skipped when both architectures'
+    # objects are cached, and where one's are, its slices start and skip their steps.
+    if: needs.generators.outputs.cached-x86_64 != 'true' || needs.generators.outputs.cached-aarch64 != 'true'
+    runs-on: ${{ matrix.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     timeout-minutes: 15
     strategy:
       matrix:
+        arch: [x86_64, aarch64]
         slice: ["0", "1", "2", "3", "4", "5"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        if: needs.generators.outputs[format('cached-{0}', matrix.arch)] != 'true'
         with:
           persist-credentials: false
 
       # No run-id or token: download-artifact can only select this workflow run here.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
+        if: needs.generators.outputs[format('cached-{0}', matrix.arch)] != 'true'
         with:
-          name: llvm-objects-generators
+          name: llvm-objects-${{ matrix.arch }}-generators
           path: ${{ env.OUT }}/objects
 
       # A slice without the generators' objects would compile them itself, at two to three minutes.
       - name: Compile one slice of the object files
+        if: needs.generators.outputs[format('cached-{0}', matrix.arch)] != 'true'
         env:
           SLICE: ${{ matrix.slice }}
         run: |
@@ -110,22 +134,26 @@ jobs:
             sh -c "pipx install '$NINJA' && tools/llvm_toolchain.sh compile '$OUT' '$SLICE' 6"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        if: needs.generators.outputs[format('cached-{0}', matrix.arch)] != 'true'
         with:
-          name: llvm-objects-${{ matrix.slice }}
+          name: llvm-objects-${{ matrix.arch }}-${{ matrix.slice }}
           path: ${{ env.OUT }}/objects/
           if-no-files-found: error
           retention-days: 1
           overwrite: true  # allow a rerun of one slice
 
   package:
-    name: link, check and pack
+    name: link, check and pack (${{ matrix.arch }})
     needs: [generators, compile]
     # Skipped slices are the cached case; without a condition, a skipped job skips those after it.
     if: >-
       ${{ !cancelled() && needs.generators.result == 'success'
       && (needs.compile.result == 'success' || needs.compile.result == 'skipped') }}
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     timeout-minutes: 15
+    strategy:
+      matrix:
+        arch: [x86_64, aarch64]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -133,16 +161,17 @@ jobs:
 
       # One job cannot compile LLVM within its time limit, so a cache that has gone fails here.
       - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
-        if: needs.generators.outputs.cached == 'true'
+        if: needs.generators.outputs[format('cached-{0}', matrix.arch)] == 'true'
         with:
           path: ${{ env.OUT }}/objects
-          key: ${{ needs.generators.outputs.key }}
+          key: ${{ needs.generators.outputs[format('key-{0}', matrix.arch)] }}
           fail-on-cache-miss: true
 
+      # Its own architecture's alone: an object's key does not name the machine that compiled it.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
-        if: needs.generators.outputs.cached != 'true'
+        if: needs.generators.outputs[format('cached-{0}', matrix.arch)] != 'true'
         with:
-          pattern: llvm-objects-*
+          pattern: llvm-objects-${{ matrix.arch }}-*
           path: ${{ env.OUT }}/objects
           merge-multiple: true
 
@@ -155,14 +184,14 @@ jobs:
 
       # Only after a build that passed its check, and only the objects of this build.
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
-        if: needs.generators.outputs.cached != 'true'
+        if: needs.generators.outputs[format('cached-{0}', matrix.arch)] != 'true'
         with:
           path: ${{ env.OUT }}/objects
-          key: ${{ needs.generators.outputs.key }}
+          key: ${{ needs.generators.outputs[format('key-{0}', matrix.arch)] }}
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
-          name: pystachy-llvm-linux-x86_64
+          name: pystachy-llvm-linux-${{ matrix.arch }}
           path: |
             ${{ env.OUT }}/pystachy-llvm-*.tar.xz
             ${{ env.OUT }}/pystachy-llvm-*.tar.xz.sha256
@@ -171,11 +200,14 @@ jobs:
           overwrite: true
 
   bootstrap:
-    name: bootstrap Pystachy with the archive
+    name: bootstrap Pystachy with the archive (${{ matrix.arch }})
     needs: package
     if: ${{ !cancelled() && needs.package.result == 'success' }}
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     timeout-minutes: 15
+    strategy:
+      matrix:
+        arch: [x86_64, aarch64]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -187,7 +219,7 @@ jobs:
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
         with:
-          name: pystachy-llvm-linux-x86_64
+          name: pystachy-llvm-linux-${{ matrix.arch }}
           path: ${{ env.OUT }}
 
       - name: Check the archive and select it
@@ -213,9 +245,9 @@ jobs:
         run: make test FILES="tests/programs/generators/*.py tests/programs/exceptions/*.py"
 
   publish:
-    name: publish the archive
+    name: publish the archives
     needs: [package, bootstrap]
-    # Only the archive that bootstrapped Pystachy, and only when the run was given a revision.
+    # Only archives that both bootstrapped Pystachy, and only when the run was given a revision.
     if: ${{ !cancelled() && needs.bootstrap.result == 'success' && inputs.revision != '' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -231,15 +263,16 @@ jobs:
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
         with:
-          name: pystachy-llvm-linux-x86_64
+          pattern: pystachy-llvm-linux-*
           path: ${{ env.OUT }}
+          merge-multiple: true
 
-      # A draft until the archive has been read back; never the repository's latest release.
-      - name: Publish the archive as a release asset
+      # A draft until the archives have been read back; never the repository's latest release.
+      - name: Publish the archives as release assets
         env:
           GH_TOKEN: ${{ github.token }}
           REVISION: ${{ inputs.revision }}
         run: |
           [[ $GITHUB_REF == refs/heads/main ]]
           python3 tools/llvm_toolchain_release.py --repository "$GITHUB_REPOSITORY" --commit "$GITHUB_SHA" \
-            --revision "$REVISION" "$OUT/$(tools/llvm_toolchain.sh name).tar.xz"
+            --revision "$REVISION" "$OUT"/pystachy-llvm-*.tar.xz

@@ -134,10 +134,14 @@ jobs:
 
   # A host with no LLVM, which is not Ubuntu 24.04: the first compile downloads the minimal toolchain.
   provision-minimal:
-    name: Source install with the minimal LLVM (Debian 12)
-    runs-on: ubuntu-24.04
+    name: Source install with the minimal LLVM (Debian 12, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     container: debian:12
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm]
     steps:
       - name: Python, Git and the C toolchain, without LLVM
         run: |
