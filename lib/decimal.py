@@ -991,7 +991,9 @@ class Decimal:
             else:
                 b *= 10 ** (other._exp - self._exp)
             q, r = divmod(a, b)
-            if q < 10 ** context._prec:
+            # (the quotient's digits are counted: 10 ** prec has as many digits as the precision,
+            # which may be MAX_PREC)
+            if _ndigits(q) <= context._prec:
                 return _dec(sign, q, 0), _dec(self._sign, r, ideal)
         raise InvalidOperation("[<class 'decimal.DivisionImpossible'>]")
 
