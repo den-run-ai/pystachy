@@ -270,7 +270,7 @@ The Python-free verification stage rebuilds the runtime with the native compiler
 | Check | Purpose |
 |---|---|
 | Runtime IR fixed point | Compiler stages agree on compilation of `runtime.py`. |
-| `tools/check_runtime.py` | Runtime signatures, effects and call cycles agree with the compiler. |
+| `tools/check_runtime.py` | Runtime signatures, effects and call cycles agree with the compiler. The built runtime calls no name that only glibc 2.38 and later have (`__isoc23_strtol`): `runtime.c` reads its numbers itself. |
 | `tools/rtabi.py` | LLVM signatures agree across runtime parts and corpus calls. |
 | `tools/rtcheck.py` | Run subset algorithms on CPython against CPython behavior. |
 | `tests/cache.sh` | Verify rebuilding and publishing rules with both compilers. |

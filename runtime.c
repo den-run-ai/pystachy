@@ -855,6 +855,27 @@ static void gc_report(void) {
   I ex, n = trk_report(&ex);
   if (n >= 0) fprintf(stderr, "gc: Python references released: %lld after collections, %lld at exit\n", (long long)n, (long long)ex);
 }
+/* The decimal number that s begins with, as strtoll(s, end, 10) reads it: whitespace, a sign, digits,
+   the nearest limit for a number past one, and *end at s where there are no digits. The runtime
+   reads its numbers with this and hexnum, not with libc's: glibc 2.38 gives strtol(), atoi() and
+   sscanf() C23 names (__isoc23_strtol) that an older glibc lacks, and the runtime's bitcode would
+   then link only where it was built. */
+static long long decnum(const char *s, const char **end) {
+  const char *p = s;
+  while (*p == ' ' || (*p >= 9 && *p <= 13)) p++;
+  int neg = *p == '-', over = 0;
+  if (*p == '-' || *p == '+') p++;
+  const char *d = p;
+  unsigned long long v = 0, lim = (unsigned long long)LLONG_MAX + (unsigned)neg;
+  for (; *p >= '0' && *p <= '9'; p++) {
+    unsigned c = (unsigned)(*p - '0');
+    if (v > (lim - c) / 10) over = 1; else v = v * 10 + c;
+  }
+  if (end) *end = p == d ? s : p;
+  if (over) v = lim;
+  return neg ? (long long)(0 - v) : (long long)v;
+}
+static int decint(const char *s) { return (int)decnum(s, 0); }   /* atoi(s) */
 static void gc_init(char *sb, I **roots, I nroots) {
   const char *e = getenv("PYSTACHY_GC");
   gc_bottom = sb + STACK_PAST;         /* sb is @main's frame address: include its frame record */
@@ -862,10 +883,10 @@ static void gc_init(char *sb, I **roots, I nroots) {
   if (!(pmap = calloc(1 << 18, sizeof *pmap))) oom();
   gc_off = e && !strcmp(e, "off");
   gc_stats = e && !strcmp(e, "stats");
-  if (!gc_off && (e = getenv("PYSTACHY_GC_STRESS")) && atoll(e) > 0) gc_stress = atoll(e);
+  if (!gc_off && (e = getenv("PYSTACHY_GC_STRESS")) && decnum(e, 0) > 0) gc_stress = decnum(e, 0);
   /* PYSTACHY_GC_MIN=N: N MiB (1 to 2^20) of allocation between collections at least, for GC_MIN's 32
      (#650): a program trades memory for fewer collections, or the reverse */
-  if ((e = getenv("PYSTACHY_GC_MIN")) && atoll(e) > 0 && atoll(e) <= (I)1 << 20) gc_limit = gc_min = (I)atoll(e) << 20;
+  if ((e = getenv("PYSTACHY_GC_MIN")) && decnum(e, 0) > 0 && decnum(e, 0) <= (I)1 << 20) gc_limit = gc_min = (I)decnum(e, 0) << 20;
 }
 
 /* errors end the program after flushing stdout; a flush that fails is reported at exit, as
@@ -1414,7 +1435,7 @@ Str *pys_str_float(double d) {               /* Python repr(): shortest round-tr
   int nd = 0, neg = b[0] == '-';
   char *q = b + neg;
   for (; *q != 'E'; q++) if (*q != '.') dig[nd++] = *q;
-  int e = atoi(q + 1) + 1;                      /* position of the decimal point */
+  int e = decint(q + 1) + 1;                    /* position of the decimal point */
   while (nd > 1 && dig[nd - 1] == '0') nd--;
   if (neg) *w++ = '-';
   if (e > -4 && e <= 16) {
@@ -6749,7 +6770,7 @@ Str *pys_fmt_float(double m, I type, I prec, I alt) {   /* |x| = m for type (0: 
   else if (!type) {                          /* like 'g', but the exponent starts at p-1 and a ".0" stays */
     int pr = prec ? (int)prec : 1;
     fsnprintf(t, tsz, "%.*e", pr - 1, m);
-    int X = atoi(strchr(t, 'e') + 1), ex = X < -4 || X >= pr - 1;
+    int X = decint(strchr(t, 'e') + 1), ex = X < -4 || X >= pr - 1;
     n = ex ? fsnprintf(t, tsz, alt ? "%#.*e" : "%.*e", pr - 1, m) : fsnprintf(t, tsz, alt ? "%#.*f" : "%.*f", pr - 1 - X, m);
     if (!alt) {                              /* drop the mantissa's trailing zeros, as 'g' does */
       char *e = strchr(t, 'e'); I me = e ? e - t : n;
@@ -6761,7 +6782,7 @@ Str *pys_fmt_float(double m, I type, I prec, I alt) {   /* |x| = m for type (0: 
        the notation from the rounded exponent, as CPython does, and keep every digit */
     int pr = prec < 0 ? 6 : prec ? (int)prec : 1;
     fsnprintf(t, tsz, "%.*e", pr - 1, m);
-    int X = atoi(strchr(t, 'e') + 1);
+    int X = decint(strchr(t, 'e') + 1);
     n = X < -4 || X >= pr ? fsnprintf(t, tsz, type == 'G' ? "%#.*E" : "%#.*e", pr - 1, m) : fsnprintf(t, tsz, "%#.*f", pr - 1 - X, m);
   } else {
     char c = type == 'n' ? 'g' : type == '%' ? 'f' : type, f[16]; int pr = prec < 0 ? 6 : (int)prec;
@@ -7767,7 +7788,7 @@ static int *proc_open_fds(I *n) {       /* the open descriptors past the standar
   I cap = 64, len = 0;
   int *v = pys_alloc_atomic((size_t)cap * sizeof *v);
   for (struct dirent *e; (e = readdir(d));) {
-    char *end; long fd = strtol(e->d_name, &end, 10);
+    const char *end; long long fd = decnum(e->d_name, &end);
     if (*end || end == e->d_name || fd < 3 || fd > INT_MAX) continue;
     if (len == cap) {
       int *w = pys_alloc_atomic((size_t)(cap *= 2) * sizeof *w);
@@ -8107,15 +8128,28 @@ _Noreturn void pys_recursion_stack_error(void) {
    not 1 MiB on every target. Never discard the stack's already mapped part. A failed inspection
    retains the platform bounds; /proc and mappings changed after initialization are not a promise.
    Read once only for extensions or glibc's fallback, keeping ordinary program startup cheap. */
+static const char *hexnum(const char *s, unsigned long *v) {   /* past the hex digits at s, their value in *v: 0 for none, or too many */
+  const char *p = s;
+  for (*v = 0; digitv(*p) < 16; p++) {
+    if (*v >> (sizeof *v * 8 - 4)) return 0;
+    *v = *v << 4 | (unsigned)digitv(*p);
+  }
+  return p == s ? 0 : p;
+}
 static uintptr_t stack_mapping_bottom(uintptr_t here, uintptr_t page) {
   FILE *f = fopen("/proc/self/maps", "r");
   if (!f) return 0;
   uintptr_t previous = 0, bottom = 0;
   int accessible = 0;
-  char line[512], perm[5];
+  char line[512];
   unsigned long from, to;
   while (fgets(line, sizeof line, f)) {
-    if (sscanf(line, "%lx-%lx %4s", &from, &to, perm) != 3 || strlen(perm) != 4 || from >= to || previous > from) break;
+    /* "from-to perm": two hex addresses and four permission characters, in the kernel's form alone */
+    const char *perm = hexnum(line, &from);
+    int np = 0;
+    if (!perm || *perm != '-' || !(perm = hexnum(perm + 1, &to)) || *perm++ != ' ') break;
+    while (np < 4 && perm[np] && !aws((unsigned char)perm[np])) np++;
+    if (np != 4 || from >= to || previous > from) break;
     if (from <= here && here < to) {
       bottom = previous;
       if (bottom && accessible) {
@@ -8456,8 +8490,8 @@ static Exc *exc_line(const char *m) {  /* pys_fail's "Kind: message"; the args i
   const char *c = strstr(m, ": "), *t, *r;
   Str *k = pys_str(m, c ? c - m : (I)strlen(m)), *s = cstr(c ? c + 2 : ""), *a = 0;
   if (s->len > 1 && s->s[0] == '(' && !strcmp(k->s, "OverflowError")) a = pys_str(s->s + 1, s->len - 2);   /* (34, '...') */
-  else if (!strncmp(s->s, "[Errno ", 7) && (t = strstr(s->s, "] ")) && !strcmp(k->s, errcls(atoi(s->s + 7)))) {
-    Buf b = {0}; int n = atoi(s->s + 7);     /* an OSError, of n's class (a ValueError can show a repr like it): */
+  else if (!strncmp(s->s, "[Errno ", 7) && (t = strstr(s->s, "] ")) && !strcmp(k->s, errcls(decint(s->s + 7)))) {
+    Buf b = {0}; int n = decint(s->s + 7);   /* an OSError, of n's class (a ValueError can show a repr like it): */
     put(&b, s->s + 7, t - s->s - 7); put(&b, ", ", 2);   /* (errno, strerror), without the filenames after */
     r = strerror(n); t += 2;                             /* strerror, which can hold ": " */
     repr_str(&b, strncmp(t, r, strlen(r)) ? pys_str(t, s->s + s->len - t) : cstr(r));   /* another text: all of it */
