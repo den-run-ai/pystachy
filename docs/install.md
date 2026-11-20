@@ -92,7 +92,7 @@ Command Line Tools.
 
 On other x86-64 Linux with glibc 2.34 or later, a host that has no complete LLVM of its
 own downloads the [minimal LLVM 18.1.8 toolchain](llvm-toolchain.md#download) from this
-repository's releases instead (about 26 MB). It needs the host's C toolchain and
+repository's releases instead (about 27 MB). It needs the host's C toolchain and
 `libstdc++`. A complete LLVM that [discovery](#check-or-prepare-dependencies) finds is
 used as before, whatever its release. These hosts are outside full verification:
 [measured](llvm-toolchain.md#measured) lists what ran on seven distributions.

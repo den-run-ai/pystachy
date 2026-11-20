@@ -571,6 +571,7 @@ class MinimalToolchainTests(unittest.TestCase):
         driver = (Path(toolchain.__file__).parent / "src/pystachy_compiler/driver.py").read_text()
         found = re.search(r'def llvm_dir\(\).*?for d in \[(.*?)\]:\s+if all\(\[os\.path\.exists\(d \+ "/" \+ t\) for t in \[(.*?)\]\]\)',
                           driver, re.S)
+        self.assertIsNotNone(found, "llvm_dir no longer reads as a list of directories and a list of tools")
         self.assertEqual(ast.literal_eval(f"({found[1]},)"), toolchain.HOST_LLVM)
         self.assertEqual(sorted(ast.literal_eval(f"({found[2]},)")), sorted(toolchain.TOOLS))
 
