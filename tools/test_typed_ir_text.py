@@ -628,7 +628,7 @@ L1:
                 self.assertIn("functions verify as expected", result.stdout)
 
     def test_annotated_fixtures_are_in_the_printed_form_but_for_their_comments(self):
-        for fixture in (self.INVALID, self.CLASSES, self.FIELDS):
+        for fixture in (self.INVALID, self.CLASSES, self.FIELDS, self.OPTIONAL):
             with self.subTest(fixture=fixture.name):
                 bare = "\n".join(line for line in fixture.read_text().split("\n") if not line.lstrip().startswith(";"))
                 bare = re.sub(r"\n{3,}", "\n\n", bare).lstrip("\n")
@@ -636,6 +636,26 @@ L1:
 
     CLASSES = FIXTURES / "classes.tir"
     FIELDS = FIXTURES / "fields.tir"
+    OPTIONAL = FIXTURES / "optional.tir"
+
+    def test_an_optional_read_at_its_type_needs_a_test_that_it_is_not_none(self):
+        source = self.OPTIONAL.read_text()
+        self.assertEqual(text.verify_errors(source), [])
+        expected = text.expectations(source)
+        records = text.parse_functions(source)
+        admitted = [r["symbol"] for r, e in zip(records, expected, strict=True) if not e]
+        self.assertEqual((len(admitted), len(expected) - len(admitted)), (8, 6))
+        for found in expected:
+            for e in found:
+                self.assertRegex(e["message"], r"^(rt operand 0|phi operand from \w+) reads %\w+ as str without a proof that it is not None$")
+        # (a comparison of a value with itself tells the proof nothing: without their tests, the
+        # reads it admitted are errors, but for the one whose slot holds a str)
+        untested = re.sub(r"ptr\.cmp (==|!=) \(opt\[str\] (%\w+), None null\)", r"ptr.cmp \1 (opt[str] \2, opt[str] \2)", source)
+        self.assertNotIn("None null", untested)
+        problems = [p for p in text.verify_errors(untested) if ": unexpected error" in p]
+        self.assertEqual(sorted(p.split(":")[0] for p in problems), sorted(a for a in admitted if a != "@a_reload_of_a_stored_str"))
+        for problem in problems:
+            self.assertRegex(problem, r"reads %\w+ as str without a proof that it is not None$")
 
     def test_a_modules_classes_are_the_ones_its_class_view_relates(self):
         source = self.CLASSES.read_text()

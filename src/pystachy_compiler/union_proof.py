@@ -7,7 +7,7 @@ stable. It keeps one state per block, not a product of whole-function execution 
 from __future__ import annotations
 from src.pystachy_compiler.dataflow import forward_fixpoint, live_values
 from src.pystachy_compiler.ir import Blk, Data, IFn, Ins, Val, slot_register
-from src.pystachy_compiler.specs import BIG, RUNTIME
+from src.pystachy_compiler.specs import BIG, FXBIT, RUNTIME
 from src.pystachy_compiler.union_state import UnionState, intersect_tags, union_join, union_tags
 from src.pystachy_compiler.utils import gelem, is_gen, is_opt, is_union, rt_generic, rtsig, targs, umembers
 
@@ -230,8 +230,21 @@ def simple_union_proof(fn: IFn, utags: dict[str, int], at: dict[str, int] | None
 
 
 class UnionProof:
-    def __init__(self, fn: IFn, utags: dict[str, int], writes: dict[str, bool] | None = None, globals: dict[str, str] | None = None, raises: dict[str, bool] | None = None, declarations: list[Val] | None = None, consts: dict[str, Data] | None = None):
+    def __init__(self, fn: IFn, utags: dict[str, int], writes: dict[str, bool] | None = None, globals: dict[str, str] | None = None, raises: dict[str, bool] | None = None, declarations: list[Val] | None = None, consts: dict[str, Data] | None = None, narrowed: dict[str, dict[str, bool]] | None = None, written: dict[str, int] | None = None, kin: dict[str, dict[str, bool]] | None = None):
         self.fn = fn
+        # (the storage classes each call writes, its effects' wL wD wO and wG bits, where they
+        # are known: a call that writes no global keeps the facts of globals' storage, and one
+        # that writes no object those of the fields that field keys name, field_key)
+        self.written: dict[str, int] = {} if written is None else written
+        # (for the class of each object whose field fn addresses, those that may be the same
+        # object, ircheck's kin; and the class of each field key's object)
+        self.kin: dict[str, dict[str, bool]] = {} if kin is None else kin
+        self.keyclass: dict[str, str] = {}
+        # (the values that operands read at a type without None, which their definitions give as
+        # opt[U], by the types they read them at: ircheck.optional_reads; and the blocks whose
+        # edges carry such a read of a phi's)
+        self.narrowed: dict[str, dict[str, bool]] = {} if narrowed is None else narrowed
+        self.phireads: dict[str, bool] = {}
         self.writes: dict[str, bool] = {} if writes is None else writes
         self.raises: dict[str, bool] = {} if raises is None else raises
         self.tags: dict[str, str] = {}
@@ -394,6 +407,24 @@ class UnionProof:
         for k in self.base:
             if len(self.base[k]) > 1:
                 wanted[k] = True
+        for v in self.narrowed:
+            wanted["U:" + v] = True
+        if len(self.narrowed) > 0:
+            # (an object whose field a field key names, and the slot it is loaded from: a
+            # narrowed read of a field may lean on a test of an earlier read of it)
+            for b in fn.blocks:
+                for i in b.code:
+                    if i.op == "field.addr" and i.a[0].v.startswith("%"):
+                        wanted["U:" + i.a[0].v] = True
+                        if "U:" + i.a[0].v not in self.base:
+                            self.typebase("U:" + i.a[0].v, self.native.get(i.a[0].v, ""))
+        for b in fn.blocks:
+            for i in b.code:
+                if i.op != "phi":
+                    break
+                for j in range(len(i.a)):
+                    if i.a[j].v in self.narrowed and i.a[j].t in self.narrowed[i.a[j].v]:
+                        self.phireads[i.b[j]] = True
         changed = True
         while changed:
             before = len(wanted) + len(self.raw) + len(self.rawslots) + len(self.bitsneeded) + len(self.bitsslots) + len(self.tagvals) + len(self.tagslots) + len(self.roots)
@@ -590,6 +621,10 @@ class UnionProof:
         k = "U:" + v
         if v == "null":
             s.set(k, ["None"])
+        elif v.startswith("@") and not v.startswith("@g.") and k not in s.d:
+            # (a constant's symbol, a string's, a tuple's or a function's, is never None; a
+            # global's, @g., is its storage's address, which a load reads)
+            s.set(k, [t for t in self.full if t != "None"])
         return k
 
     def bits(self, s: UnionState, a: Val) -> str:
@@ -616,13 +651,55 @@ class UnionProof:
             s.set(k, [self.tags[v] if v in self.tags else "?"])
         return k
 
-    def killmem(self, s: UnionState, address: str = "") -> None:
+    def killmem(self, s: UnionState, address: str = "", effects: int = -1) -> None:
+        # forget what storage that a write may change held: a store's to address (whose root, if
+        # known, limits it), or a call's whose effects give the storage classes it writes (-1:
+        # any). A global's storage changes only by a write of globals (wG), a field's that a
+        # field key names only by one of objects (wO)
         written = self.roots.get(address, "")
+        # (a store to a field of an object of class c changes no field of an object that cannot
+        # be the same object, of a class unrelated to c; a field key of a global's object is the
+        # field of what the global holds, which a write of globals changes)
+        d = self.defs[address] if address in self.defs else None
+        c = d.a[0].t if d is not None and d.op == "field.addr" and d.a[0].t in self.kin else ""
         for k in list(s.d):
-            if (k.startswith("MU:") or k.startswith("MB:") or k.startswith("MT:")) and k[3:] not in self.private:
+            if k.startswith("MF:"):
+                if c != "" and not self.kin[c].get(self.keyclass.get(k, ""), True):
+                    continue
+                if effects == -1 or effects & FXBIT["wO"] != 0 or (k.startswith("MF:g.") and effects & FXBIT["wG"] != 0):
+                    s.forget(k)
+            elif (k.startswith("MU:") or k.startswith("MB:") or k.startswith("MT:")) and k[3:] not in self.private:
+                if effects != -1 and effects & FXBIT["wG"] == 0 and k[3:].startswith("@g."):
+                    continue
                 root = self.roots.get(k[3:], "")
                 if written == "" or root == "" or root == written:
                     s.forget(k)
+
+    def field_key(self, s: UnionState, obj: str, index: int, cls: str) -> str:
+        # the key of the storage of field index of object obj, where obj is a parameter or what a
+        # load of a local's slot or a global read and that still holds: so that a field.addr of the same
+        # object, as an attribute path reads it again, reads the facts that a test of an earlier
+        # read of the field gave. The key names the slot (or parameter), not obj, as liveness
+        # keeps no fact of a value no path reads; a store to the slot forgets it (forget_fields)
+        base = ""
+        if obj.startswith("%a") and obj[2:].isdigit():
+            base = obj
+        elif obj in self.defs:
+            d = self.defs[obj]
+            slot = d.a[0].v if d.op == "mem.load" and len(d.a) == 1 else ""
+            if (slot in self.private or slot.startswith("@g.")) and ("U:" + obj) in s.eq and ("MU:" + slot) in s.eq and s.eq["U:" + obj] == s.eq["MU:" + slot]:
+                base = slot
+        if base == "":
+            return ""
+        key = "MF:" + base[1:] + "#" + str(index)
+        self.keyclass[key] = cls
+        return key
+
+    def forget_fields(self, s: UnionState, slot: str) -> None:
+        prefix = "MF:" + slot[1:] + "#"
+        for k in list(s.d):
+            if k.startswith(prefix):
+                s.forget(k)
 
     def compare(self, s: UnionState, r: str, key: str, allowed: list[str], equal: bool) -> None:
         domain = s.dom(key)
@@ -655,10 +732,44 @@ class UnionProof:
         if v in self.raw and s.dom("B:" + v) != [t]:
             self.error(b, op + " interprets payload " + v + " as " + t + " without its tag proof")
 
+    def check_some(self, s: UnionState, a: Val, b: str, where: str) -> None:
+        # an operand that reads a value of type opt[U] at a type without None (ircheck.optional_reads)
+        # needs facts that it is not None: a test, on every path to the read, of it or of what it
+        # was loaded from since the last store there (facts that no path has, as where a select's
+        # condition never selects the value, need none)
+        if s.live and a.v in self.narrowed and a.t in self.narrowed[a.v] and "None" in s.dom(self.box(s, a.v)):
+            self.error(b, where + " reads " + a.v + " as " + a.t + " without a proof that it is not None")
+
+    def check_phis(self, starts: dict[str, UnionState]) -> None:
+        # a phi reads its operand on the edge from the block that the operand's label names: each
+        # such read that narrows is checked with the facts on that edge, as transfer checks the
+        # reads of other ops with the facts before them
+        for label in starts:
+            if label not in self.phireads:
+                continue
+            dests: list[str] = []
+            edges: list[UnionState] = []
+            self.flow(self.fn.blocks[self.blocks[label]], starts[label].clone(), dests, edges)
+            for j in range(len(dests)):
+                if not edges[j].live or dests[j] not in self.blocks:
+                    continue
+                for i in self.fn.blocks[self.blocks[dests[j]]].code:
+                    if i.op != "phi":
+                        break
+                    if label in i.b:
+                        self.check_some(edges[j], i.a[i.b.index(label)], dests[j], "phi operand from " + label)
+
     def transfer(self, s: UnionState, i: Ins, b: str, checking: bool) -> None:
         op = i.op
         a = i.a
         r = "%t" + str(i.r[0]) if len(i.r) > 0 else ""
+        if checking and len(self.narrowed) > 0 and op != "phi":
+            for j in range(len(a)):
+                if (op == "union.tag" or op == "union.payload" or op == "union.raw") and j == 0:
+                    continue  # (their own nonnull proof below names the read more closely)
+                # (a select's value reads count where its condition selects them, as for a phi)
+                facts = s.conditional(a[0].v, j == 1) if op == "select" and j > 0 else s
+                self.check_some(facts, a[j], b, op + " operand " + str(j))
         for n in i.r:
             v = "%t" + str(n)
             if self.native[v] == "bool":
@@ -689,6 +800,12 @@ class UnionProof:
                 if checking and op == "union.payload" and d != [i.s]:
                     self.error(b, "union.payload needs tag " + i.s + " for " + a[0].v)
             return
+        if op == "field.addr" and len(self.narrowed) > 0 and "MU:" + r in self.base:
+            key = self.field_key(s, a[0].v, i.k, a[0].t)
+            if key != "":
+                if key not in s.d:
+                    s.set(key, self.base["MU:" + r])
+                s.copy("MU:" + r, key)
         if (op == "mem.load" or op == "mach.load"):
             addr = a[0].v
             if op == "mach.load" and i.t == "int" and ("U:" + addr in self.base or "U:" + addr in s.d) and not self.length_read(addr):
@@ -713,6 +830,8 @@ class UnionProof:
             t = a[1].t
             if addr not in self.private:
                 self.killmem(s, addr)
+            else:
+                self.forget_fields(s, addr)
             if "MU:" + addr in self.base or "U:" + v in self.base or "U:" + v in s.d:
                 s.copy("MU:" + addr, self.box(s, v))
             else:
@@ -789,7 +908,7 @@ class UnionProof:
                 self.checkbits(s, a[0].v, i.t, b, op)
             if (i.t == "str" or i.t == "bytes") and a[0].v in self.raw and "U:" + r in self.base:
                 s.copy("U:" + r, "B:" + a[0].v)
-        elif (op == "num.cmp" or op == "scalar.cmp") and (i.s == "==" or i.s == "!=" or i.s == "eq" or i.s == "ne"):
+        elif (op == "num.cmp" or op == "scalar.cmp") and (i.s == "==" or i.s == "!=" or i.s == "eq" or i.s == "ne") and not (a[0].t == "%ptr" and (a[0].v == "null" or a[1].v == "null")):
             x = a[0].v
             y = a[1].v
             if self.integer(x):
@@ -798,10 +917,11 @@ class UnionProof:
                 y = tmp
             if x in self.tagvals and self.integer(y):
                 self.compare(s, r, self.tag(s, x), [self.tags[y] if y in self.tags else "?"], (i.s == "==" or i.s == "eq"))
-        elif op == "ptr.cmp" and (a[0].v == "null" or a[1].v == "null"):
+        elif (op == "ptr.cmp" or (op == "scalar.cmp" and (i.s == "eq" or i.s == "ne") and a[0].t == "%ptr")) and (a[0].v == "null" or a[1].v == "null"):
+            # (a test of a reference against None, also of its pointer as a machine word)
             v = a[0].v if a[1].v == "null" else a[1].v
             if "U:" + v in self.base or "U:" + v in s.d:
-                self.compare(s, r, self.box(s, v), ["None"], i.s == "==")
+                self.compare(s, r, self.box(s, v), ["None"], i.s == "==" or i.s == "eq")
         elif op == "scalar.bin" and i.t == "bool":
             x = a[0].v
             y = a[1].v
@@ -852,7 +972,7 @@ class UnionProof:
                         t = gelem(self.fn.f.ret)
                     self.checkbits(s, operand.v, t, b, op)
         if (op == "rt" or op == "call" or op == "icall" or op == "init" or op == "gen.resume") and self.writes.get(op + "|" + i.s + "|" + i.x, True):
-            self.killmem(s)
+            self.killmem(s, "", self.written.get(op + "|" + i.s + "|" + i.x, -1))
 
     def edge(self, s: UnionState, frm: str, to: str) -> UnionState:
         z = s.clone()
@@ -958,4 +1078,6 @@ class UnionProof:
                 edges.append(s.clone())
 
     def run(self) -> None:
-        forward_fixpoint(self)
+        starts = forward_fixpoint(self)
+        if len(self.phireads) > 0:
+            self.check_phis(starts)
