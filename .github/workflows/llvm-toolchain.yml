@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
   # A changed recipe is rebuilt at once, so a broken one is found before an archive is needed.
   push:
-    branches: [main, claude/gracious-cannon-a68uaf]
+    branches: [main]
     paths:
       - tools/llvm_toolchain.sh
       - .github/workflows/llvm-toolchain.yml
