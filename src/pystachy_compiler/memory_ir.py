@@ -5,6 +5,7 @@ operations also cover closure environments, runtime headers and byte buffers.
 """
 from __future__ import annotations
 from src.pystachy_compiler.ir import Blk, IFn, Ins, Val, tmpname
+from src.pystachy_compiler.utils import RT_VARS
 
 
 def gen_mload(self, t: str, p: str, metadata: str = "") -> str:
@@ -44,7 +45,7 @@ def gen_verify_memory(self, fn: IFn, b: Blk, i: Ins, slots: bool) -> None:
     if i.a[0].t != "%ptr":
         self.bad_ir(fn, b, f"{i.op} needs a machine pointer address")
     t = i.t if load else i.a[1].t
-    if t == "" or t == "None" or (t.startswith("%") and t not in ["%ptr", "%byte", "%i32"] and not (t == "%slot" and (slots or not load))) or (t.startswith("*") and (t == "*" or t[1:2] in ["%", "*", "&", "#"])) or t.startswith("&") or t == "#" or ((t == "T" or t == "K" or t == "V" or t == "S") and t not in self.classes):
+    if t == "" or t == "None" or (t.startswith("%") and t not in ["%ptr", "%byte", "%i32"] and not (t == "%slot" and (slots or not load))) or (t.startswith("*") and (t == "*" or t[1:2] in ["%", "*", "&", "#"])) or t.startswith("&") or t == "#" or (t in RT_VARS and t not in self.classes):
         self.bad_ir(fn, b, f"{i.op} needs a machine storage value type")
     if (not load and i.t != "") or i.s not in ["", "length", "length.range", "bytes"] or (i.s == "length.range" and not load) or (i.s.startswith("length") and t != "int") or (i.s == "bytes" and t != "%byte"):
         self.bad_ir(fn, b, f"{i.op} has invalid value or memory metadata")

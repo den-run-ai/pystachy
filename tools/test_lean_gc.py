@@ -26,6 +26,24 @@ ROOT = Path(__file__).resolve().parent.parent
 CHECKER = boundary.DEFAULT_CHECKER
 
 
+class VariablePositionTests(unittest.TestCase):
+    """A runtime signature's type variable is open where the signature names it; a program's class
+    of its name (class R, class U) is a class there and elsewhere."""
+
+    def test_a_class_of_a_variables_name_holds_pointers(self):
+        for name in ("R", "U"):
+            with self.subTest(name=name):
+                self.assertTrue(gc.holds_pointer(name))
+                self.assertEqual(gc.arrays(f"list[{name}]"), [("", ["none", "scanned"])])
+
+    def test_a_signatures_variable_is_open_at_its_position(self):
+        operands = [{"value": "%t1", "type": "*R"}, {"value": "%t2", "type": "*R"}, {"value": "@d", "type": "#"}]
+        eq = {"op": "rt", "text": "eq", "operands": operands}  # (eq: bool:*T,*U,#)
+        self.assertEqual([gc.operand_view(eq, j) for j in range(2)], ["*?T", "*?U"])
+        self.assertIsNone(gc.holds_pointer(gc.operand_view(eq, 1)))
+        self.assertEqual(gc.operand_view({"op": "phi", "text": "", "operands": operands}, 1), "*R")
+
+
 class ArrayKindTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

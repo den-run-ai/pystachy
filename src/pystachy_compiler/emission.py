@@ -23,6 +23,7 @@ from src.pystachy_compiler.utils import (
     runtime_decl,
     rt_bind,
     rt_generic,
+    rt_operand_order,
     rt_subst,
     rtsym,
     selem,
@@ -434,8 +435,9 @@ def gen_instantiate(self, fn: IFn) -> None:
     # types of the values its operands read, the receiver's last (instantiate_op). The verifier
     # checks that each op is then an instance of its signature (rt_instance_error). A variable is
     # told from a class of its name (class T) by where it is: the signature's type that the
-    # builder left. An op reads a later op's result where a loop brings it back, so another round
-    # types what this round typed too late.
+    # builder left. An op may read a result that a later op defines (where a loop brings it
+    # back): another round types it once a round typed that result. Each round costs a pass over
+    # fn, so three bound the work; an operand still pending keeps its variables (instance view).
     types: dict[str, str] = {}
     makers: dict[str, str] = {}
     pending: dict[str, bool] = {}  # (results whose type is their signature's, which names a variable)
@@ -444,8 +446,7 @@ def gen_instantiate(self, fn: IFn) -> None:
     rounds = 0
     while again and rounds < 3:
         again = False
-        typed = False
-        late = False
+        lates: list[str] = []  # (the pending values that this round's ops read)
         rounds += 1
         for b in fn.blocks:
             for i in b.code:
@@ -458,17 +459,17 @@ def gen_instantiate(self, fn: IFn) -> None:
                             if x.op == "rt" and len(x.r) > 0 and x.s in self.rtfns and x.t == self.rtfns[x.s].sig[0] and rt_generic(x.t):
                                 pending[tmpname(x.r[0])] = True
                     found = True
-                changed = instantiate_op(i, self.rtfns[i.s].sig, types, pending)
-                if changed & 1 != 0:
-                    typed = True
-                    types[tmpname(i.r[0])] = i.t
-                    pending.pop(tmpname(i.r[0]))
-                if changed & 2 != 0:
-                    late = True
-        again = typed and late
+                if instantiate_op(i, self.rtfns[i.s].sig, types, pending, lates) and len(i.r) > 0:
+                    name = tmpname(i.r[0])
+                    types[name] = i.t
+                    if name in pending:
+                        pending.pop(name)
+        for v in lates:
+            if v not in pending:
+                again = True  # (a value an op read too late has its type now)
 
 
-def instantiate_op(i: Ins, sig: list[str], types: dict[str, str], pending: dict[str, bool]) -> int:
+def instantiate_op(i: Ins, sig: list[str], types: dict[str, str], pending: dict[str, bool], lates: list[str]) -> bool:
     # Gen.instantiate of rt op i, whose runtime function's signature is sig, in a function whose
     # values have types, but those that pending holds, whose types are still their signatures':
     # its type variables bind to its result's type where its builder gave one (not the
@@ -478,13 +479,13 @@ def instantiate_op(i: Ins, sig: list[str], types: dict[str, str], pending: dict[
     # the value an optional holds (a runtime function's receiver is never None). Each operand
     # and the result whose builder left them the signature's types get them with the variables
     # replaced (rt_subst), but an operand that reads a value that claims no type (%slot, %ptr)
-    # has that type. Returns 1 if it retyped the result, plus 2 if an operand reads a pending
-    # value (a later op's result).
+    # has that type. The builder's result type binds first, so that no operand overrides it (the
+    # verifier binds the result last, to check it). Returns whether it retyped the result; the
+    # pending values its operands read go to lates.
     bound: dict[str, str] = {}
     n = min(len(i.a), len(sig) - 1)
     if i.t != sig[0]:
         rt_bind(sig[0], i.t, bound, False)
-    late = 0
     found: list[str] = []
     for j in range(n):
         s = sig[j + 1]
@@ -494,16 +495,13 @@ def instantiate_op(i: Ins, sig: list[str], types: dict[str, str], pending: dict[
             if a.t != s:
                 t = a.t
             elif a.v in pending:
-                late = 2
+                lates.append(a.v)
             elif a.v in types:
                 t = unopt(types[a.v]) if s == "S" else types[a.v]
         found.append(t)
-    for j in range(n):
-        if sig[j + 1] != "S" and found[j] != "":
-            rt_bind(sig[j + 1], found[j], bound, False)
-    for j in range(n):
-        if sig[j + 1] == "S" and found[j] != "":
-            rt_bind("S", found[j], bound, False)
+    for j in rt_operand_order(sig):
+        if j <= n and found[j - 1] != "":
+            rt_bind(sig[j], found[j - 1], bound, False)
     for j in range(n):
         s = sig[j + 1]
         a = i.a[j]
@@ -519,8 +517,8 @@ def instantiate_op(i: Ins, sig: list[str], types: dict[str, str], pending: dict[
         t = rt_subst(sig[0], bound)
         if t != i.t:
             i.t = t
-            return 1 + late
-    return late
+            return True
+    return False
 
 
 def gen_list_len(self, o: Val) -> str:

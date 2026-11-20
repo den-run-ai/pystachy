@@ -449,15 +449,22 @@ variables replaced:
     %t9 = rt dict.getitem (dict[str,int] %t4, *str %t8) : *int
 
 An operand's own type comes first because it may differ from the receiver's items: a search
-compares a value of another type with them. A result variable that no operand binds takes the
-type its call's builder gives (`gen_rt`'s `t`): a new list's items, a union's box (`R`). An
-operand that reads a value that claims no type (`%slot`, `%ptr`) reads it at that type. With
-`PYSTACHY_IRCHECK=1` the verifier binds in the same order and requires one type for each
-variable across the call's operands and result, and the signature's LLVM types
-(`rt_instance_error`); each operand then reads its value at its type or by a view. A
-comparison's operands are `*T` and `*U`, and another container than the receiver is `U`, as
-they need not share a type. A variable still stands for any type where nothing binds it, and
-an empty container keeps its placeholder (`list[?]`) until the use that types it.
+compares a value of another type with them. A result type that the call's builder gives
+(`gen_rt`'s `t`) binds before them, so that no operand overrides it: a new list's items, a
+union's box (`R`), the items of a concatenation or of a set's union, intersection or symmetric
+difference, which may be either operand's (`R`), and `d.get(k)`'s value or None. An operand
+that reads a value that claims no type (`%slot`, `%ptr`) reads it at that type. With
+`PYSTACHY_IRCHECK=1` the verifier binds the operands in the same order and the result last, so
+that what they bind checks it, and requires one type for each variable and the signature's LLVM
+types (`rt_instance_error`); each operand then reads its value at its type or by a view. The
+receiver binds only what the other operands leave, so an item or a container that a call writes
+into it is checked against its items only for lists (`list_write_error`). A comparison's
+operands are `*T` and `*U`, and another container than the receiver is `U`, as they need not
+share a type. A variable still stands for any type where nothing binds it and in the rt ops that
+a pass adds later (`unionslots`' boxes, `dictfuse`'s lookups), and an empty container keeps its
+placeholder (`list[?]`) until the use that types it. A runtime function that may return what its
+type excludes keeps `%ptr`: iteration's `dyn.next` returns null at the end, and `exc.id` a user
+exception's object.
 
 ### Casts
 

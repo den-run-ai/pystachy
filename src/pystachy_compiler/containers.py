@@ -624,8 +624,10 @@ def gen_setop(self, op: str, a: Val, b: Val) -> Val:
         self.err(f"unsupported operand types for {op}: {typestr(a.t)} and {typestr(b.t)} (a set holds elements of one type)")
     fn = "pys_set_or" if op == "|" else "pys_set_and" if op == "&" else "pys_set_sub" if op == "-" else "pys_set_xor"
     ab = self.set_pair(a, b, w)  # (a set[str] and a set[str | None]: tables of one kind)
-    # (the result is of the left operand's kind of set, which CPython's is: an AbstractSet's too)
-    return Val(self.rt(fn, "ptr", [f"ptr {ab[0].v}", f"ptr {ab[1].v}"], self.key_fx(selem(a.t)) + self.key_fx(selem(b.t))), self.ctype(set_base(a.t), [w]))
+    # (the result is of the left operand's kind of set, which CPython's is: an AbstractSet's too;
+    # a union, intersection or symmetric difference may hold b's elements, a difference only a's)
+    t = self.ctype(set_base(a.t), [w])
+    return Val(self.rt(fn, "ptr", [f"ptr {ab[0].v}", f"ptr {ab[1].v}"], self.key_fx(selem(a.t)) + self.key_fx(selem(b.t)), t if fn != "pys_set_sub" else ""), t)
 
 def gen_smethod(self, o: Val, m: str, args: list[Node]) -> Val:
     # a method of a set or frozenset o, run as CPython's setobject.c runs it; the iterables the
@@ -725,7 +727,7 @@ def gen_smethod(self, o: Val, m: str, args: list[Node]) -> Val:
             r = o if n > 0 else Val(self.rt("pys_set_copy", "ptr", [ov]), o.t)
             for x in sa:
                 v = self.stake(o, m, x)
-                r = Val(self.rt("pys_set_and" if is_set(v.t) else "pys_set_and_list", "ptr", [f"ptr {r.v}", f"ptr {self.keys_list(v).v}"], kx), o.t)
+                r = Val(self.rt("pys_set_and" if is_set(v.t) else "pys_set_and_list", "ptr", [f"ptr {r.v}", f"ptr {self.keys_list(v).v}"], kx, o.t if is_set(v.t) else ""), o.t)
             if m == "intersection":
                 return r
             self.rt("pys_set_assign", "void", [ov, f"ptr {r.v}"])  # (o takes the intersection's table)
@@ -759,7 +761,7 @@ def gen_smethod(self, o: Val, m: str, args: list[Node]) -> Val:
         ov = f"ptr {self.set_rekind(o, selem(v.t)).v}"
         kx = self.key_fx(selem(v.t))
     if m == "symmetric_difference":
-        return Val(self.rt("pys_set_xor" if is_set(v.t) else "pys_set_xor_dict" if is_dict(v.t) else "pys_set_xor_list", "ptr", [ov, f"ptr {v.v}"], kx), o.t)
+        return Val(self.rt("pys_set_xor" if is_set(v.t) else "pys_set_xor_dict" if is_dict(v.t) else "pys_set_xor_list", "ptr", [ov, f"ptr {v.v}"], kx, o.t if is_set(v.t) else ""), o.t)
     if m == "symmetric_difference_update":
         self.rt("pys_set_ixor" if is_set(v.t) else "pys_set_ixor_dict" if is_dict(v.t) else "pys_set_ixor_list", "void", [ov, f"ptr {v.v}"], kx)
         return none
@@ -1187,33 +1189,35 @@ def gen_store_elem(self, k: Val, et: str) -> Val:
         self.err(f"a {typestr(k.t)} element is added to a set of {typestr(et)} elements, where CPython keeps an element it adds as the bool it is (True, not 1): convert the bool with int()")
     return self.list_hold(k, et) if held(narrow_type(et)) != narrow_type(et) else self.coerce(k, et)  # (a tuple of ints as the set holds it: bigints.held)
 
-def gen_nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str, kt: str, dt: str = "") -> str:
-    # the slot fn(av) returns, a dict lookup of key k (x: key_fx of the dict's keys, of type kt); a
-    # key that is None is in no dict whose keys cannot be None (none_key: one whose keys can looks
-    # None up as any key): the result is then the slot none, or with none "" KeyError: None. dt:
-    # the dict's type, which types that slot where none is given
+def gen_nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str, kt: str, dt: str = "", t: str = "") -> str:
+    # the slot fn(av) returns, a dict lookup of key k (x: key_fx of the dict's keys, of type kt; t:
+    # the slot's type, where its builder gives it: gen_rt); a key that is None is in no dict whose
+    # keys cannot be None (none_key: one whose keys can looks None up as any key): the result is
+    # then the slot none, or with none "" KeyError: None. dt: the dict's type, which types that
+    # slot where none is given and its builder gives no type
     if not is_opt(k.t) or none_key(kt):
-        return self.rt(fn, "i64", av, x)
+        return self.rt(fn, "i64", av, x, t)
     if none == "":
         self.guard(self.ptr_cmp('==', k, Val('null', 'None')).v, "KeyError: None")
-        return self.rt(self.dict_key_fn(fn, k), "i64", self.keyed(k, av), x)
+        return self.rt(self.dict_key_fn(fn, k), "i64", self.keyed(k, av), x, t)
     l1 = self.label()
     l2 = self.label()
     l3 = self.label()
     self.cbr(self.ptr_cmp('==', k, Val('null', 'None')).v, l1, l2)
     self.place(l2)
     name = self.dict_key_fn(fn, k)
-    r = self.rt(name, "i64", self.keyed(k, av), x)
+    r = self.rt(name, "i64", self.keyed(k, av), x, t)
     e2 = self.cur
     self.br(l3)
     self.place(l1)
     self.br(l3)
     self.place(l3)
-    # (the type of the word fn returns from this dict, as Gen.instantiate types the call: not its
-    # signature's *V, whose type variable only an rt op may name, and which a class V would name)
+    # (the type of the word fn returns from this dict, as Gen.instantiate types the call: the type
+    # its builder gives (t), else its signature's with S the dict's type; not the signature's *V,
+    # whose type variable only an rt op may name, and which a class V would name)
     bound: dict[str, str] = {}
     rt_bind("S", dt, bound, False)
-    ph = Ins("phi", rt_subst(self.rtfns[self.runtime(name)].sig[0], bound), "")
+    ph = Ins("phi", t if t != "" else rt_subst(self.rtfns[self.runtime(name)].sig[0], bound), "")
     self.incoming(ph, none, l1)
     self.incoming(ph, r, e2)
     return self.phi(ph)

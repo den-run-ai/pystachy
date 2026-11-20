@@ -160,17 +160,39 @@ def rtsym(k: str) -> str:
 RT_VARS: list[str] = ["T", "K", "V", "S", "U", "R"]
 
 
+def rt_words(t: str) -> list[str]:
+    # the names in type t: what lies between its brackets, commas, slot and address marks
+    words: list[str] = []
+    start = 0
+    for j in range(len(t) + 1):
+        if j == len(t) or t[j] == "[" or t[j] == "]" or t[j] == "," or t[j] == "*" or t[j] == "&" or t[j] == ":":
+            if j > start:
+                words.append(t[start:j])
+            start = j + 1
+    return words
+
+
 def rt_generic(t: str) -> bool:
     # does type t name a runtime type variable (RT_VARS)
     if "T" not in t and "K" not in t and "V" not in t and "S" not in t and "U" not in t and "R" not in t:
         return False
-    start = 0
-    for j in range(len(t) + 1):
-        if j == len(t) or t[j] == "[" or t[j] == "]" or t[j] == "," or t[j] == "*" or t[j] == "&" or t[j] == ":":
-            if t[start:j] in RT_VARS:
-                return True
-            start = j + 1
+    for w in rt_words(t):
+        if w in RT_VARS:
+            return True
     return False
+
+
+def rt_operand_order(sig: list[str]) -> list[int]:
+    # the positions of a runtime signature's operands (1 on) in the order that binds their
+    # variables: the receiver (S) last, as it binds what the others leave (rt_receiver)
+    order: list[int] = []
+    for j in range(1, len(sig)):
+        if sig[j] != "S":
+            order.append(j)
+    for j in range(1, len(sig)):
+        if sig[j] == "S":
+            order.append(j)
+    return order
 
 
 def rt_receiver(s: str, bound: dict[str, str]) -> None:
@@ -193,8 +215,9 @@ def rt_receiver(s: str, bound: dict[str, str]) -> None:
 def rt_bind(sig: str, t: str, bound: dict[str, str], strict: bool) -> bool:
     # Bind the type variables of a runtime signature's type sig (RT_VARS) so that sig names type t:
     # whether t is an instance of sig. A variable takes the type its first position gives it, and
-    # S also binds what its receiver holds, where nothing did (rt_receiver: the receiver's last). A type that claims none (%slot for a
-    # packed slot, %ptr for a reference) or an empty container's placeholder (?) binds nothing.
+    # S also binds what its receiver holds, where nothing did (rt_receiver: the receiver's last). A
+    # type that claims none (%slot for a packed slot, %ptr for a reference) or an empty
+    # container's placeholder (?) binds nothing.
     # Where a later position gives a variable another type: strict, t is no instance; else (when
     # Gen.instantiate types an op) the variable keeps its type, which the position's value is
     # then read as by a view (specs.TYPE_VIEWS), but a placeholder's gives way to a concrete one.
@@ -243,12 +266,9 @@ def rt_bind(sig: str, t: str, bound: dict[str, str], strict: bool) -> bool:
 
 def rt_open(sig: str, bound: dict[str, str]) -> bool:
     # does runtime signature type sig name a type variable that bound does not bind
-    start = 0
-    for j in range(len(sig) + 1):
-        if j == len(sig) or sig[j] == "[" or sig[j] == "]" or sig[j] == "," or sig[j] == "*" or sig[j] == "&" or sig[j] == ":":
-            if sig[start:j] in RT_VARS and sig[start:j] not in bound:
-                return True
-            start = j + 1
+    for w in rt_words(sig):
+        if w in RT_VARS and w not in bound:
+            return True
     return False
 
 
@@ -272,19 +292,14 @@ def rt_instance_error(i: Ins, sig: list[str]) -> str:
     # What makes rt op i's operand and result types no instance of its runtime function's
     # signature sig (rtsig), or "": with one type for each type variable (rt_bind, strict), each
     # is the signature's type with its variables replaced, or claims none (%slot, %ptr, ?); and a
-    # type that names no variable is the signature's own
+    # type that names no variable is the signature's own. The operands bind in Gen.instantiate's
+    # order (rt_operand_order) and the result last, so that what they bind checks it; the
+    # receiver binds only what the other operands leave, so an item they write is not checked
+    # against its items here (a list write's is: list_write_error).
     if len(i.a) != len(sig) - 1:
         return f"rt {i.s} has {len(i.a)} operands, but its signature {len(sig) - 1}"
     bound: dict[str, str] = {}
-    # (the operands but the receiver first, then the receiver, which binds what they leave, then
-    # the result)
-    order: list[int] = []
-    for j in range(1, len(sig)):
-        if sig[j] != "S":
-            order.append(j)
-    for j in range(1, len(sig)):
-        if sig[j] == "S":
-            order.append(j)
+    order = rt_operand_order(sig)
     order.append(0)
     for j in order:
         s = sig[j]
