@@ -143,32 +143,39 @@ comes from one `build` of the recipe at commit `7fde2da2`; the `MinSizeRel` one
 each figure is the median of three interleaved rounds. The bootstrap and corpus times are
 single runs with four workers on Ubuntu 24.04.
 
-The workflow ran three times on GitHub's `ubuntu-24.04` runners on 20 November 2026. Those
-runners compile 1.4 to 2 times slower than the host above. In the first two runs there was no
-`generators` job, and every slice compiled the table generators itself:
+The workflow ran five times on GitHub's `ubuntu-24.04` runners on 20 November 2026; the fifth
+was a second attempt of the fourth, at the same commit. Those runners compile 1.4 to 2 times
+slower than the host above. In the first two runs there was no `generators` job, and every
+slice compiled the table generators itself:
 
 | Jobs before the archive | Each `compile` job | Their runner time | Archive after | Whole run |
 |---|---:|---:|---:|---:|
 | 8 slices, `package` | 7.7 to 8.6 min, and one of 11.1 | 70.1 min | 17.1 min | 22.9 min |
 | 12 slices, `package` | 5.7 to 9.1 min | 86.2 min | 13.6 min | 20.0 min |
 | `generators`, 6 slices, `package` | 7.3 to 9.3 min | 53.7 min | 14.6 min | 20.4 min |
+| `generators`, 8 slices, `package` | 5.8 to 8.0 min | 60.6 min | 13.5 min | 19.4 min |
+| `generators`, `package`: objects cached | skipped | 3.5 min | 3.6 min | 10.0 min |
 
-A whole run adds `bootstrap`, 5.8 minutes, and the wait for runners while the pull request's
-own checks ran: up to 3.6 minutes in the first run. `generators` took 2.8 minutes and
-`package` 2.3 to 3.0.
+A whole run adds `bootstrap`, 5.8 to 6.3 minutes, and the wait for runners while the pull
+request's own checks ran: up to 3.6 minutes in the first run. `generators` took 2.8 minutes,
+or 0.9 when it found the cache, and `package` 2.3 to 3.0. The fifth run found the 68 MB cache
+that the fourth wrote, and compiled nothing.
 
-Twelve slices brought the archive one minute sooner than the present six, for 60% more runner
-time, because each job repeated the same work. The slowest of the twelve jobs and a quick one
-each spent a minute fetching the image and the sources and configuring, and two to three
-minutes on the generators: 46% of the job. With the generators' objects, a slice reached its
-own 16 to 21 seconds into the build. By these times one runner would need about 45 minutes
-for the whole build, an estimate: no job may run that long.
+Twelve slices that each compiled the generators brought the archive one minute sooner than
+six that did not, for 60% more runner time, because each job repeated the same work. The
+slowest of the twelve jobs and a quick one each spent a minute fetching the image and the
+sources and configuring, and two to three minutes on the generators: 46% of the job. With the
+generators' objects, a slice reached its own 16 to 21 seconds into the build. Eight such
+slices brought the archive 1.1 minutes sooner than six, for 13% more runner time; that is
+within the spread of the runners, on which equal slices of one run took 7.3 to 9.3 minutes.
+By these times one runner would need about 45 minutes for the whole build, an estimate: no
+job may run that long.
 
 `package` found 2,360 objects compiled and assembled the other four. The first two runs, and
 eight slices built in the same image on the host above, gave one archive, byte for byte:
 SHA-256 `364462a2…94aafc98`. The third run and six slices on that host gave another,
-`8c964bce…799ca32c`. Its files equal the first archive's except `share/BUILD.txt`, which
-records the recipe's hash.
+`8c964bce…799ca32c`, and the fifth run and those six slices a third, `9d71e217…528b61c1`. The
+files of all three are equal except `share/BUILD.txt`, which records the recipe's hash.
 
 With each of the first three archives selected by `PYSTACHY_LLVM` on Ubuntu 24.04, `make`
 reached the compiler's and the runtime's fixed points and `make test` passed all 5,395 cases
