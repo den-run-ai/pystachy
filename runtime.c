@@ -106,7 +106,8 @@ _Static_assert(offsetof(Str, len) == 0 && offsetof(Str, dict_hash) == 8 &&
                "Str ABI: len, dict_hash, chars1, bytes");
 typedef struct { I len, cap; I *a, *ids; } List; /* optional scanned numeric identity companion: kind, then boxes */
 _Static_assert(offsetof(List, len) == 0 && offsetof(List, cap) == 8 && offsetof(List, a) == 16 &&
-               offsetof(List, ids) == 24 && sizeof(List) == 32, "List ABI: raw prefix and identity companion");
+               offsetof(List, ids) == 16 + sizeof(I *) && sizeof(List) == 16 + 2 * sizeof(I *),
+               "List ABI: raw prefix and identity companion (pointers of 8 bytes, or wasm32's 4)");
 typedef struct { I len; I *ids; I a[]; } VTuple; /* immutable raw slots and optional scanned numeric identities */
 _Static_assert(offsetof(VTuple, len) == 0 && offsetof(VTuple, ids) == 8 &&
                offsetof(VTuple, a) == 16 && sizeof(VTuple) == 16, "VTuple ABI: length, identities, raw items");
@@ -338,7 +339,7 @@ static I cls(I n) {                    /* size class for n bytes plus one byte o
   return 16 + (e - 7) * 4 + (I)((y + (1ULL << (e - 2)) - 1) >> (e - 2)) - 5;
 }
 __attribute__((noinline)) static void pmap_set(uintptr_t a, uintptr_t e, Seg *v) {
-  if (e >> 48) oom();                  /* map the pages of [a, e) to v (or unmap) */
+  if ((uint64_t)e >> 48) oom();        /* map the pages of [a, e) to v (or unmap) */
   if (v && (!gc_hi || a < gc_lo)) gc_lo = a;
   if (v && e > gc_hi) gc_hi = e;
   for (; a < e; a += PAGE) {
@@ -422,6 +423,13 @@ static I os_page(void) {               /* the system's page size; 0 if unusable 
 }
 static void heap_add(I bytes) { if ((gc_heap += bytes) > gc_peak) gc_peak = gc_heap; }
 static char *map_pages(I bytes) {      /* bytes (whole system pages) of zero pages, aligned to REGION */
+#ifdef __wasi__
+  /* (WASI, wasm/README.md: linear memory has no mappings; the C library's allocator gives the aligned
+     pages, and munmap, of a whole mapping only, frees them: wasm/wasi_stubs.c) */
+  char *z = aligned_alloc(REGION, (size_t)bytes);
+  if (!z) oom();
+  return memset(z, 0, (size_t)bytes);
+#endif
   size_t len = (size_t)bytes + REGION;
   char *p = mmap(0, len, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
   if (p == MAP_FAILED) oom();
@@ -433,6 +441,9 @@ static char *map_pages(I bytes) {      /* bytes (whole system pages) of zero pag
 static I purge(uintptr_t a, uintptr_t e) {   /* the whole system pages in [a, e) back to the system,
                                                 zero when next read: their bytes (0: none) */
   I page = os_page();
+#ifdef __wasi__
+  page = 0;                            /* (WASI: linear memory cannot give pages back) */
+#endif
   if (!page) return 0;
   a = (a + page - 1) & ~(uintptr_t)(page - 1); e &= ~(uintptr_t)(page - 1);
   if (a >= e) return 0;
@@ -876,6 +887,9 @@ static void gc_init(char *sb, I **roots, I nroots) {
   gc_roots = roots; gc_nroots = nroots;
   if (!(pmap = calloc(1 << 18, sizeof *pmap))) oom();
   gc_off = e && !strcmp(e, "off");
+#ifdef __wasi__
+  gc_off = 1;                          /* (WASI, wasm/README.md: the stack scan cannot see WebAssembly's locals) */
+#endif
   gc_stats = e && !strcmp(e, "stats");
   if (!gc_off && (e = getenv("PYSTACHY_GC_STRESS")) && atoll(e) > 0) gc_stress = atoll(e);
   /* PYSTACHY_GC_MIN=N: N MiB (1 to 2^20) of allocation between collections at least, for GC_MIN's 32

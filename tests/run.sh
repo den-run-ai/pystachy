@@ -30,6 +30,8 @@
 # PYSTACHY_CASE_TIMES=FILE appends a line "MILLISECONDS CASE" for each case, in the report's order: the
 # wall-clock time its worker took (needs GNU date's %N; tools/case_weights.py turns such files into the
 # weights that balance tests/corpus.sh's shards).
+# Mode wasm (experimental, wasm/README.md) builds each program for wasm32-wasi through LLVM and runs it
+# under Node's WASI.
 # usage: tests/run.sh [COMPILER [MODES [FILE...]]]   (default: ./pystachy "jit aot" and every case;
 #        e.g. "python3 pystachy.py", or tests/run.sh ./pystachy jit tests/programs/strings/str_*.py
 #        tests/errors/syntax/x.py; FILEs are relative to the repository root)
@@ -99,6 +101,9 @@ program() { # tests/programs/AREA/NAME.py, its sidecars B.in, B.out... (B: the p
     : > "$T/$n.build"; : > "$T/$n.err"
     if [ $mode = jit ]; then
       (PYSTACHY_PATH=$mp $PYS run "$1" a1 a2 < "$in" <&$si >&$o 2>&$se; echo "[exit $?]") > "$T/$n.$mode" 2> "$T/$n.err"
+    elif [ $mode = wasm ]; then
+      PYSTACHY_PATH=$mp PYSTACHY=$PYS wasm/build.sh program "$1" "$T/$n.exe.wasm" 2> "$T/$n.build" &&
+        ($WASMRUN "$T/$n.exe.wasm" a1 a2 < "$in" <&$si >&$o 2>&$se; echo "[exit $?]") > "$T/$n.$mode" 2> "$T/$n.err"
     else
       PYSTACHY_PATH=$mp $PYS build "$1" -o "$T/$n.exe" 2> "$T/$n.build" &&
         ($XENV "$T/$n.exe" a1 a2 < "$in" <&$si >&$o 2>&$se; echo "[exit $?]") > "$T/$n.$mode" 2> "$T/$n.err"
@@ -126,6 +131,8 @@ deviation() { # tests/deviations/NAME.py
   for mode in $MODES; do
     if [ $mode = jit ]; then
       ($PYS run "$1" a1 a2 < /dev/null 2>&1; echo "[exit $?]") > "$T/dev.$n.$mode"
+    elif [ $mode = wasm ]; then
+      { PYSTACHY=$PYS wasm/build.sh program "$1" "$T/dev.$n.exe.wasm" 2>&1 && $WASMRUN "$T/dev.$n.exe.wasm" a1 a2 < /dev/null 2>&1; echo "[exit $?]"; } > "$T/dev.$n.$mode"
     else
       { $PYS build "$1" -o "$T/dev.$n.exe" 2>&1 && $XENV "$T/dev.$n.exe" a1 a2 < /dev/null 2>&1; echo "[exit $?]"; } > "$T/dev.$n.$mode"
     fi
@@ -187,7 +194,14 @@ worker() {
   done
   rm -f "$T/now.$k"
 }
-# the cached runtime is built once, before the workers start (each would rebuild a stale one)
+# the cached runtime is built once, before the workers start (each would rebuild a stale one);
+# so is the WebAssembly runtime of mode wasm (wasm/README.md)
+# (a WebAssembly program that runs past 120 s is stopped: a busy loop on what WASI cannot do)
+WASMRUN="node --disable-warning=ExperimentalWarning wasm/run.mjs"
+if command -v timeout > /dev/null 2>&1; then WASMRUN="timeout 120 $WASMRUN"; fi
+case " $MODES " in
+  *" wasm "*) PYSTACHY=$PYS wasm/build.sh runtime || { echo "tests/run.sh: cannot build the WebAssembly runtime" >&2; exit 1; } ;;
+esac
 echo pass > "$T/warm.py" || exit 1
 if $PYS run "$T/warm.py" > "$T/warm.log" 2>&1; then :; else
   st=$?
