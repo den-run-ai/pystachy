@@ -1,0 +1,44 @@
+"""wasm/wasm32_ir.py: wasm32's constants keep the layout that native code reads (wasm/README.md)."""
+import importlib.util
+from pathlib import Path
+import unittest
+
+ROOT = Path(__file__).resolve().parent.parent
+SPEC = importlib.util.spec_from_file_location("wasm32_ir", ROOT / "wasm" / "wasm32_ir.py")
+W = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(W)
+
+
+class Wasm32Ir(unittest.TestCase):
+    def test_array_of_addresses_becomes_packed_struct(self):
+        line = "@tc.0 = private constant [2 x i64] [i64 ptrtoint (ptr @s.1 to i64), i64 5], align 8"
+        self.assertEqual(W.line_of(line), "@tc.0 = private constant <{<{ptr, i32}>, i64}> "
+                                          "<{<{ptr, i32}> <{ptr @s.1, i32 0}>, i64 5}>, align 8")
+
+    def test_struct_member_keeps_its_offset(self):
+        # a dynamic box {DynType *, I}: the value stays at offset 8 behind a 4-byte pointer
+        line = "@dbs.0 = internal constant {ptr, i64} {ptr @pys_dyntype_str, i64 ptrtoint (ptr @s.0 to i64)}, align 8"
+        self.assertEqual(W.line_of(line), "@dbs.0 = internal constant <{ptr, [4 x i8], <{ptr, i32}>}> <{ptr @pys_dyntype_str, "
+                                          "[4 x i8] zeroinitializer, <{ptr, i32}> <{ptr @s.0, i32 0}>}>, align 8")
+
+    def test_trailing_padding_keeps_the_size(self):
+        self.assertEqual(W.struct_layout(["i64", "ptr"]), ([0, 8], 16, 8))
+        line = "@x = internal constant {i64, ptr, i64} {i64 ptrtoint (ptr @a to i64), ptr @b, i64 1}, align 8"
+        t = "<{<{ptr, i32}>, ptr, [4 x i8], i64}>"
+        self.assertEqual(W.line_of(line), f"@x = internal constant {t} <{{<{{ptr, i32}}> <{{ptr @a, i32 0}}>, ptr @b, "
+                                          "[4 x i8] zeroinitializer, i64 1}>, align 8")
+        self.assertEqual(W.layout(t)[0], W.layout("{i64, ptr, i64}")[0])
+
+    def test_other_lines_unchanged(self):
+        for line in ["@g.x = internal global ptr zeroinitializer",
+                     "@s.0 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c\" \\00\"}, align 8",
+                     "  %p = call ptr @pys_new(i64 ptrtoint (ptr getelementptr (%C.Point, ptr null, i32 1) to i64))"]:
+            self.assertEqual(W.line_of(line), line)
+
+    def test_main_and_sized_calls(self):
+        self.assertEqual(W.line_of("define i32 @main(i32 %argc, ptr %argv) {"), "define i32 @__main_argc_argv(i32 %argc, ptr %argv) {")
+        self.assertEqual(W.line_of("declare i32 @memcmp(ptr, ptr, i64)"), "declare i32 @pys_wasi_memcmp(ptr, ptr, i64)")
+
+
+if __name__ == "__main__":
+    unittest.main()
