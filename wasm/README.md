@@ -42,11 +42,13 @@ Each typed IR value is a WebAssembly local, and so is a slot that only loads and
 read. A function's blocks lie in order inside nested `block`s within a `loop`: a forward
 branch is a `br` to its target's label, and a backward branch sets the next block's index
 and continues the loop, whose `br_table` dispatches it. The emitter handles the operations
-of scalar code, runtime calls, direct calls, globals, strings, class fields and list items.
-It refuses, by name, exception handlers, generators, function values, dynamic values,
-classes that the runtime compares or prints through the program's dispatchers, module
-imports and constants other than strings; `wasm/build.sh tir` then builds the program
-through LLVM, and `WASM_TIR_LOG` records which way each program went.
+of scalar code, runtime calls, direct calls, globals, class fields, tuples and list items,
+and constants (strings, tuples, field-name tables, class records), whose addresses
+`run.mjs` relocates once it has allocated the program's data. It refuses, by name,
+exception handlers, generators, function values (exception classes and callables among
+constants), dynamic values, and classes that the runtime compares or prints through the
+program's dispatchers; `wasm/build.sh tir` then builds the program through LLVM, and
+`WASM_TIR_LOG` records which way each program went.
 
 The typed IR module text comes from `tools/inspect_compiler.py` on Python, so `wasm/build.sh
 tir` is not yet fast end to end: the compiler cannot print the module itself.

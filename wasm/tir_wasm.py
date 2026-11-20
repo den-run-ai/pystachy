@@ -26,7 +26,7 @@ import struct
 import sys
 
 from src.pystachy_compiler.specs import RTSYM
-from src.pystachy_compiler.utils import RtFn, atomic_dict, atomic_list, lt, tslots
+from src.pystachy_compiler.utils import RtFn, atomic_dict, atomic_list, lt, rtsym, tslots
 
 I32 = 0x7F
 I64 = 0x7E
@@ -34,6 +34,8 @@ F64 = 0x7C
 VOID = 0x40
 
 
+# the C library's functions that RUNTIME declares with i64 lengths (wasm/wasm32_ir.py's SIZED)
+SIZED: list[str] = ["memcmp", "memchr", "memmem"]
 # machine_ir.WORD_READS: layout reads that load an object's word, by its index
 WORD_READS: dict[str, int] = {"union.tag": 0, "dyn.type": 0, "union.payload": 1, "union.raw": 1, "dyn.payload": 1, "dyn.raw": 1}
 # LLVM's ordered fcmp predicates and une, as WebAssembly's f64 comparisons
@@ -619,6 +621,10 @@ class Emitter:
         return self.runtime_sym(f.sym, f.ll)
 
     def runtime_sym(self, sym: str, ll: list[str]) -> Import:
+        if sym in SIZED:
+            sym = "pys_wasi_" + sym  # (wasm/wasi_stubs.c's, which take LP64's i64 lengths)
+        elif not sym.startswith("pys_"):
+            raise Refused(f"runtime symbol {sym}")
         if sym not in self.imports:
             params = [wasm_type(t) for t in ll[1:]]
             results: list[int] = [] if ll[0] == "void" else [wasm_type(ll[0])]
@@ -635,9 +641,9 @@ class Emitter:
                         self.recursion = True
                         if i.fields["entry"] == "recursion.enter":
                             self.runtime("recursion.error")
-                    elif i.op == "rt":
+                    elif i.op == "rt" and rtsym_of(self.rt_key(i)) != "fabs":
                         self.runtime(self.rt_key(i))
-                    elif i.op == "alloc.fixed":
+                    elif i.op == "alloc.fixed" or i.op == "vtuple.make":
                         self.alloc_import()
                     elif i.op == "raise":
                         self.runtime("raise")
@@ -728,12 +734,26 @@ class Emitter:
             if wt != I32:
                 raise Refused(f"null as {ll}")
             self.i32c(0)
+        elif v.startswith("ptrtoint (ptr @") and v.endswith(" to i64)") and wt == I64:
+            # (a constant's address as an int: a dict's tuple-key descriptor)
+            sym = v[len("ptrtoint (ptr "):len(v) - len(" to i64)")]
+            if sym not in self.addr:
+                raise Refused(f"symbol {sym} as a value")
+            self.data_addr(sym, 0)
+            self.op(0xAD)
+        elif v.startswith("bitcast (i64 ") and v.endswith(" to double)") and wt == F64:
+            self.op(0x44)
+            self.code.extend(struct.pack("<q", int(v[len("bitcast (i64 "):len(v) - len(" to double)")])))
         elif wt == F64:
             self.op(0x44)
             if v.startswith("0x"):
                 self.code.extend(struct.pack("<Q", int(v[2:], 16)))
-            else:
+            elif is_number(v):
                 self.code.extend(struct.pack("<d", float(v)))
+            else:
+                raise Refused(f"a float operand {v}")
+        elif not is_number(v) or "." in v or "e" in v:
+            raise Refused(f"an operand {v} as {ll}")
         elif wt == I64:
             self.i64c(int(v))
         else:
@@ -748,9 +768,14 @@ class Emitter:
         self.ltypes = []
         self.code = bytearray()
         self.depth_local = -1
+        # (a parameter of type None is not passed, as lowering's IFn.ps: its uses read a null local)
         for j in range(len(fn.ptypes)):
-            self.local(f"%a{j}", wasm_type(value_ll(fn.ptypes[j])))
-        self.nparams = len(fn.ptypes)
+            if fn.ptypes[j] != "None":
+                self.local(f"%a{j}", wasm_type(value_ll(fn.ptypes[j])))
+        self.nparams = len(self.ltypes)
+        for j in range(len(fn.ptypes)):
+            if fn.ptypes[j] == "None":
+                self.local(f"%a{j}", I32)
         for s in fn.slots:
             self.local(s, wasm_type(value_ll(fn.slots[s])))
         self.bindex = {}
@@ -849,6 +874,11 @@ class Emitter:
             if key.startswith("recursion."):
                 self.recursion_op(i, key)
                 return
+            if rtsym_of(self.rt_key(i)) == "fabs":
+                self.push(i.args[0], "double")
+                self.op(0x99)  # (f64.abs)
+                self.result(i, 0, "float")
+                return
             imp = self.runtime(self.rt_key(i))
             args = i.args
             hole = int(i.fields.get("hole", "0"))
@@ -869,7 +899,8 @@ class Emitter:
             if callee not in self.fnindex:
                 raise Refused(f"call of {callee}")
             for a in i.args:
-                self.push(a, value_ll(a.t))
+                if a.t != "None":
+                    self.push(a, value_ll(a.t))
             self.op(0x10)
             uleb(self.code, self.fnindex[callee])
             if i.t != "None" and i.t != "":
@@ -963,6 +994,8 @@ class Emitter:
             self.binary(i)
         elif op == "scalar.cmp":
             self.scalar_cmp(i)
+        elif op == "scalar.cast":
+            self.cast(i)
         elif op == "num.cast":
             a = i.args[0]
             if i.t == "int":
@@ -1251,6 +1284,36 @@ class Emitter:
         self.op(table[ll][o])
         self.result(i, 0, i.t)
 
+    def cast(self, i: Inst) -> None:
+        # LLVM's cast i.operator from the operand's LLVM type to the result's
+        a = i.args[0]
+        src = value_ll(a.t)
+        dst = value_ll(i.t)
+        key = f"{i.operator} {src} {dst}"
+        table: dict[str, list[int]] = {
+            "zext i1 i64": [0xAD], "sext i1 i64": [],
+            "trunc i64 i1": [0xA7, 0x41, 0x01, 0x71], "trunc i64 i8": [0xA7, 0x41, 0xFF, 0x01, 0x71],
+            "sitofp i64 double": [0xB9], "uitofp i1 double": [0xB8], "fptosi double i64": [0xB0],
+            "bitcast i64 double": [0xBF], "bitcast double i64": [0xBD],
+            "ptrtoint ptr i64": [0xAD], "inttoptr i64 ptr": [0xA7],
+        }
+        if key not in table:
+            raise Refused(f"scalar.cast {key}")
+        self.push(a, src)
+        codes = table[key]
+        if key == "sext i1 i64":
+            # (0 - zext: -1 for true)
+            self.op(0xAD)
+            k = self.scratch(I64)
+            self.set(k)
+            self.i64c(0)
+            self.get(k)
+            self.op(0x7D)
+        else:
+            for b in codes:
+                self.op(b)
+        self.result(i, 0, i.t)
+
     def scalar_cmp(self, i: Inst) -> None:
         ll = value_ll(i.args[0].t)
         o = i.operator
@@ -1356,7 +1419,7 @@ class Emitter:
         for fn in self.m.funcs:
             if fn.attrs.get("kind", "def") not in ("def", "block") or "export" in fn.attrs or "extern" in fn.attrs:
                 raise Refused(f"function {fn.name} of kind {fn.attrs.get('kind', 'def')}")
-            params = [wasm_type(value_ll(t)) for t in fn.ptypes]
+            params = [wasm_type(value_ll(t)) for t in fn.ptypes if t != "None"]
             results: list[int] = [] if fn.ret == "None" else [wasm_type(value_ll(fn.ret))]
             own.append(self.types.of(params, results))
             self.fnindex[fn.name] = len(self.fnindex)
@@ -1426,6 +1489,21 @@ class Emitter:
             uleb(reloc, r)
         section(out, 0, reloc)
         return out
+
+
+def rtsym_of(key: str) -> str:
+    return rtsym(key)
+
+
+def is_number(v: str) -> bool:
+    # an int or a decimal float's text
+    body = v[1:] if v.startswith("-") else v
+    if body == "":
+        return False
+    for c in body:
+        if not (c.isdigit() or c == "." or c == "e" or c == "E" or c == "+" or c == "-"):
+            return False
+    return body[0].isdigit()
 
 
 def const_size(c: Const) -> int:
