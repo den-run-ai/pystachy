@@ -180,7 +180,7 @@ def gen_erase_casts(self, fn: IFn) -> None:
     fn.gouter = renamed(fn.gouter, first, renum)
     fn.ghand = renamed(fn.ghand, first, renum)
     # (all old keys go before any new one is added, which may be another call's old key)
-    for k in range(0, len(moved), 2):
-        del self.vcalls[moved[k]]
-    for k in range(1, len(moved), 2):
-        self.vcalls[moved[k]] = True
+    for j in range(0, len(moved), 2):
+        del self.vcalls[moved[j]]
+    for j in range(1, len(moved), 2):
+        self.vcalls[moved[j]] = True
