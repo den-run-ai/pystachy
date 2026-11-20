@@ -1,4 +1,4 @@
-# Typed-IR shape checks
+# Typed-IR shape and def-before-use checks
 
 `PystachyShape.lean` proves what an accepted typed-IR function's shape is, against the
 compiler's [operation table](../../docs/typed-ir.md#operation-reference).
@@ -37,6 +37,30 @@ reader of the theorem list. `distinct_sound` and `covers_sound` prove the two de
 procedures that are not linear scans: sorting before comparing neighbours, and a hash set
 of the definitions.
 
+## Def-before-use
+
+`PystachyDominance.lean` proves that each value an accepted function reads is defined on
+every path to the read. A path is a `Walk` from the entry block along the control-flow graph:
+each instruction's labels and a `check`'s error block, but not a phi's labels, which name
+its predecessors.
+
+The adapter claims each reachable block's immediate dominator, computed by Cooper, Harvey and
+Kennedy's iteration. Lean does not trust the claim. It checks that the entry block has no
+parent and that every edge out of a block of the tree goes to a block whose parent is an
+ancestor of the edge's source. `walk_dominated` proves that every block on a path is in the
+tree and that each ancestor of a block lies on every path to it.
+
+| Theorem | Property |
+|---|---|
+| `accepted_defined_before_use` | On every path to an instruction that is no phi, each value it reads is defined earlier in its block, or in a block the path went through before. An invoke's results are first defined at the start of its normal successor, every edge into which comes from the invoke's block. |
+| `accepted_phi_defined` | Each value a phi of a reachable block reads from a predecessor is defined on every path to the end of that predecessor. |
+
+The check finds each definition through a hash map whose entries are only claims:
+`lookup_sound` proves that a found definition is an instruction of a block of the function
+that has the value among its results. Code no path reaches is not checked. Single definition
+comes from the shape check, so the definition found is the value's only one. The corpus row
+of the [Lean report](REPORT.md) runs both checks on every function of every program.
+
 ## Trust boundary
 
 Lean checks the candidate, not the compiler. The adapter is trusted to read `OPS`, to number
@@ -44,8 +68,10 @@ operations and labels, to classify each operand with `ir.operand_kind`, and to m
 operand to a slot's own register. A snapshot or text is an observation of the IR, not the
 IR that lowering consumed.
 
-The model has no dominance: a definition is not shown to precede its uses on every path.
-Operand and result types, effects, the result count of a call (the table says none or one;
-the signature decides), exception semantics and LLVM lowering are outside it. The
+The dominator tree is not trusted, but the control-flow graph is the adapter's: it draws
+each edge from an instruction's labels and a `check`'s error block, as the compiler's own
+verifier does. Operand and result types, effects, the result count of a call (the table says
+none or one; the signature decides), what an exception edge carries and LLVM lowering are
+outside the model. The
 compiler's own verifier (`PYSTACHY_IRCHECK=1`) checks the table's counts and fields too;
 this checker shares the table with it and nothing else.
