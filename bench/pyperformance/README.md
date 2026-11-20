@@ -1,6 +1,6 @@
 # pyperformance benchmarks
 
-These are 37 of the 52 benchmarks tried from [pyperformance](https://github.com/python/pyperformance)
+These are 38 of the 52 benchmarks tried from [pyperformance](https://github.com/python/pyperformance)
 1.14.0, adapted so that Pystachy compiles them. CPython runs the same adapted files, so each
 comparison runs identical source in CPython, the JIT and AOT. The adaptations and smaller
 inputs change the work, so these results are not comparable with published pyperformance numbers.
@@ -40,8 +40,8 @@ cannot validate the kernels.
 
 ## Shared pytest correctness suite
 
-The [pytest tests](pytest/) import all 37 delivered benchmark modules and exercise
-their existing workload functions with 51 ordinary pytest cases. The same files
+The [pytest tests](pytest/) import all 38 delivered benchmark modules and exercise
+their existing workload functions with 52 ordinary pytest cases. The same files
 run under original CPython pytest and the [native runner](../../docs/pytest-native.md):
 
 ```sh
@@ -50,7 +50,7 @@ python3 tools/pytest_native_suites.py --group pyperformance --mode jit
 python3 tools/pytest_native_suites.py --group pyperformance --mode aot
 ```
 
-The registry preserves all 51 cases in nine independent categories, each with
+The registry preserves all 52 cases in nine independent categories, each with
 its own original-pytest oracle. This bounds native build memory and separates
 the JSON, TOML and nested-list opt-ins from typed workloads. `make bench-pyperformance-check` includes
 both native modes in addition to its existing process/timing/provenance checks.
@@ -58,7 +58,7 @@ both native modes in addition to its existing process/timing/provenance checks.
 These original tests check full discrete results where available, finite numeric
 reference values with explicit tolerances, complete generator order, nonuniform
 SOR and signed sparse-matrix inputs, fixture cleanup, and JSON values. Reference
-values were checked with pinned CPython 3.13.16; those of the twelve ports added on
+values were checked with pinned CPython 3.13.16; those of the thirteen ports added on
 20 November 2026 with CPython 3.13.18. The JSON, TOML and `gc_traversal` tests retain
 the workloads' dynamic `Any` contract; the other tests use concrete types. They do not
 require importing pyperf or changing any timed workload source.
@@ -105,7 +105,7 @@ directory is also accepted. In that mode each source hash is verified and the ar
 hash is unmeasured (`null`).
 
 The runner's [`UPSTREAM` map](../../tools/bench_pyperformance.py) is the authoritative
-file-by-file SHA-256 manifest for all 52 sources. Its `BENCHMARKS` map selects the 37
+file-by-file SHA-256 manifest for all 52 sources. Its `BENCHMARKS` map selects the 38
 ports and their normal and smoke inputs. Keep provenance in those checked manifests
 when adding a port; the tables below describe adaptations and recorded first errors.
 A port named for a standard library module is `bm_NAME.py` (`bm_base64.py`,
@@ -149,8 +149,10 @@ before its marked edits. `tomli_loads`'s 16.8 MB fixture is not vendored; see it
 pyperformance is distributed under the MIT License; [LICENSE](LICENSE) and [AUTHORS](AUTHORS)
 are its `COPYING` and `AUTHORS` files. Each port keeps its upstream header. `regex_v8.py`'s
 header carries the V8 project's BSD license, and `raytrace.py`'s states the MIT License.
-`deltablue` is excluded pending a separate provenance decision: its upstream docstring
-says the JavaScript original was GPL-licensed. The other 37 benchmarks remain included.
+`deltablue.py`'s docstring says that it was ported from V8's `deltablue.js`, itself "derived
+from the Smalltalk implementation by John Maloney and Mario Wolczko", and that "The original
+Javascript implementation was licensed under the GPL". It is included as a benchmark, in
+the file that pyperformance distributes under its MIT License.
 `fannkuch.py`, `meteor_contest.py`, `nbody.py`, `pidigits.py`, `regex_dna.py` and `spectral_norm.py` say they
 come from The Computer Language Benchmarks Game, whose programs are published under the
 3-clause BSD License. `richards.py` and `richards_super.py` credit a Java version
@@ -160,7 +162,7 @@ origins are listed so that a license review can confirm that this suffices. See
 [THIRD_PARTY_NOTICES](../../THIRD_PARTY_NOTICES). Byte BPE credits Shantanu Jain and
 tiktoken; those notices also retain tiktoken's MIT copyright and permission text.
 
-Of the ports added on 20 November 2026, `pyflate.py` says "Copyright 2006--2007-01-21
+Of the other ports added on 20 November 2026, `pyflate.py` says "Copyright 2006--2007-01-21
 Paul Sladen" and permits use "under any DFSG-compatible license (eg. BSD, GNU GPLv2)";
 its archive, `interpreter.tar.bz2`, holds 25 source files of PyPy's interpreter.
 `decimal_factorial.py` and `decimal_pi.py` come from CPython's
@@ -206,6 +208,7 @@ adaptations follow these rules:
 | `crypto_pyaes` | None besides the runner; the ciphertext's digest is printed. The vendored [pyaes](pyaes/) keeps Python 3's helpers where upstream redefines Python 2's, calls `range()` for `xrange()`, annotates the constructors that fields and subclasses need, decorates `Counter.value`, and leaves out the mode table and the block feeder import, which only the modes that the benchmark does not use need. |
 | `decimal_factorial` | `factorial()` returns `int \| decimal.Decimal`, annotated because it calls itself before it returns. The sizes are a module list, `SIZES`, which the main replaces for a smaller run. The factorials are returned, and the main prints a remainder of each: `str()` of a `Decimal` of more than 4,300 digits raises `ValueError` here. |
 | `decimal_pi` | The discarded result has a variable of its own: upstream's `_` also holds the loop's int. Pi at both precisions is printed. |
+| `deltablue` | An annotated list replaces each `OrderedCollection()`, a class derived from `list`. `Strength`'s class attributes, `None` until the module assigns them, are annotated, and `Strength` replaces `self.__class__`. The `super().__init__()` calls of classes whose base is `object` are left out. `Constraint` declares the methods that only its subclasses define. Constructors, `Variable`'s fields and the methods that call one another are annotated; a variable's value is `int \| float`, an int until a scale constraint divides it. The tests return the values they leave, which the main prints. |
 | `logging` | All three kernels run directly on the same `StringIO` stream. The driver checks every emitted line and verifies that disabled calls produce no output. |
 | `gc_collect` | `total_time` starts as a float. Rebinding the list replaces `del all_cycles`, because `del` of a local is rejected in an imported module, and the pytest suite imports this one. The assertion also accepts the 0 that Pystachy's `gc.collect()` returns: it does not count what it frees. The timed call is a collection by Pystachy's tracing collector, not by CPython's cycle collector. |
 | `gc_traversal` | Opt into dynamic `Any` for the lists, which nest to any depth, and annotate them. `total_time` starts as a float. The lists that survive are walked outside the timer. The timed call is a collection by Pystachy's tracing collector. |
@@ -278,7 +281,7 @@ blockers than its first error, and a newer compiler may have removed one.
 | `async_tree`, `asyncio_tcp` | no `asyncio` module | `socket` imports the missing `_socket` |
 | `concurrent_imap` | no `multiprocessing` module | `signal` imports the missing `_signal` |
 | `deepcopy` | a bare `list` annotation (`lst: list`) | a bare `list` annotation (`lst: list`) |
-| `deltablue`, `typing_runtime_protocols` | unsupported base class | same |
+| `typing_runtime_protocols` | unsupported base class | same |
 | `mdp` | no `fractions` module | `contextvars` imports the missing `_contextvars` |
 | `pickle` | no `pickle` module | `copyreg` keys a dict by classes |
 | `sqlite_synth` | no `sqlite3` module | `sqlite3` imports the missing `_sqlite3` |
@@ -304,8 +307,8 @@ When evaluating another port:
 - Check beyond the first error. For example, `deepcopy`'s kernels also copy through
   `__reduce__()` and `__setstate__()`, so its annotation alone does not complete the port.
 - Account for external inputs and licenses, as `crypto_pyaes` does with a vendored pyaes
-  and `tomli_loads` with a generated document; `deltablue` is deferred for its
-  [license provenance](#license).
+  and `tomli_loads` with a generated document, and as the [license notes](#license) do
+  for `deltablue`.
 
 Related design and coverage history is in
 [#361](https://github.com/den-run-ai/pystachy/issues/361) (benchmark coverage),
@@ -332,6 +335,7 @@ at that revision.
 | `crypto_pyaes` | no `pyaes` module (third-party) |
 | `decimal_factorial` | `factorial()` needs a return annotation: it calls itself before it returns |
 | `decimal_pi` | `expected int, got Decimal` (line 42) |
+| `deltablue` | unsupported base class: `OrderedCollection` derives from `list` |
 | `fannkuch`, `gc_collect`, `generators`, `nbody`, `nqueens`, `pprint`, `regex_v8`, `spectral_norm`, `unpack_sequence` | none |
 | `float` | field `x` needs a type annotation |
 | `gc_traversal` | empty `current_list` needs a type annotation |
@@ -381,8 +385,8 @@ The table gives **millions of whole-process instructions**, sorted by change.
 Positive values mean more instructions; negative values mean fewer. `pidigits`
 needed alpha.4's [promoting ints](../../docs/python-int.md); alpha.3 raised
 `OverflowError`, so it has no comparable row. `logging` and `bpe_tokeniser` joined
-the suite after this measurement, as did the twelve ports of 20 November, so the table
-does not cover the current 37-port suite.
+the suite after this measurement, as did the thirteen ports of 20 November, so the table
+does not cover the current 38-port suite.
 
 | Benchmark | alpha.3 | alpha.4 | Change |
 |---|---:|---:|---:|

@@ -44,6 +44,7 @@ BENCHMARKS = {
     "crypto_pyaes": (["20"], ["1"]),
     "decimal_factorial": (["1"], ["1", "200", "1000"]),
     "decimal_pi": (["2"], ["1"]),
+    "deltablue": (["400"], ["1", "5"]),
     "fannkuch": (["2"], ["1", "7"]),
     "float": (["10"], ["1", "1000"]),
     "gc_collect": (["500"], ["1", "5", "3"]),
@@ -79,8 +80,8 @@ BENCHMARKS = {
 # shadow that module, so their files are bm_NAME.py.
 SHADOWING = {"base64", "logging", "pathlib", "pprint"}
 
-# Excluded from the delivered suite pending a separate provenance decision.
-DEFERRED = {"deltablue": "license provenance"}
+# Sources excluded from the delivered suite pending a separate decision, with the reason: none now.
+DEFERRED: dict[str, str] = {}
 
 # SHA-256 of each upstream bm_NAME/run_benchmark.py tried, ported or not: the 31 that this port
 # set out to try, and the other 21 that need no third-party package (bench/pyperformance/README.md).
@@ -253,6 +254,7 @@ TIMED_PART = {
     "crypto_pyaes": ["bench_pyaes"],
     "decimal_factorial": "bench_decimal_factorial",
     "decimal_pi": "bench_decimal_pi",
+    "deltablue": "delta_blue",
     "fannkuch": "fannkuch",
     "float": "benchmark",
     "gc_collect": ["benchamark_collection"],

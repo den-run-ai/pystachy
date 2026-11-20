@@ -334,7 +334,7 @@ class RecordTests(unittest.TestCase):
             cases.extend(generate(source, path.name).cases)
         modules = {bench.port_path(name).stem for name in bench.BENCHMARKS}
         self.assertEqual(imported & modules, modules)
-        self.assertEqual(len(cases), 51)
+        self.assertEqual(len(cases), 52)
         self.assertEqual(len(set(cases)), len(cases))
 
     def test_pytest_correctness_suite_matches_original_pytest(self):
@@ -504,7 +504,7 @@ class ByteBpeShowcaseTests(unittest.TestCase):
 class ArgumentTests(unittest.TestCase):
     def test_invalid_settings_fail_before_execution(self):
         for arguments in (["--runs", "0"], ["--timeout", "inf"], ["--timeout", "-1"], ["--compiler", ""],
-                          ["--benchmarks", "sqlite_synth"], ["--benchmarks", "deltablue"]):
+                          ["--benchmarks", "sqlite_synth"], ["--benchmarks", "xml_etree"]):
             with self.subTest(arguments=arguments), mock.patch.object(bench, "execute") as execute:
                 with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as caught:
                     bench.main(arguments)
