@@ -244,7 +244,8 @@ def gen_subclass_problem(self, st: Node) -> str:
                 # its objects as any other's)
                 # (... and @property a getter, abstract or not, which the class may override)
                 abstract = d.kind == "def" and len(d.kids) > 3 and len([x for x in d.kids[3:] if len(x.kids) > 0 or (self.imported(x.s) != "abc.abstractmethod" and x.s != "property")]) == 0
-                if d.kind != "def" or d.s.startswith("__") or (len(d.kids) != 3 and not abstract) or len(d.kids[0].kids) == 0:
+                # (an __init__ that stores the base's attributes: role_attrs)
+                if d.kind != "def" or (d.s.startswith("__") and d.s != "__init__") or (len(d.kids) != 3 and not abstract) or len(d.kids[0].kids) == 0:
                     return why
                 if "_pys_cm_" + d.s in methods and len(attrs) > 0:
                     continue  # (a @contextmanager method's own code is _pys_cm_<name>, checked as a method: this one makes its context manager, loader.py)
@@ -495,7 +496,7 @@ def gen_inherit(self, ci: ClassInfo) -> None:
                 # (the classes that define it, not FnInfo.cls: inherit copies a class method that
                 # uses cls for each class that inherits it)
                 own = self.declares(ci.name, method)
-                if method not in b.methods and method in seen and seen[method] != r and own:
+                if method not in b.methods and method in seen and seen[method] != r and own and method != "__init__":
                     # (also where the class's own overrides both: a Callable of its bound method
                     # would differ by the base it is read through, adapter's method families)
                     self.line = ci.node.line
@@ -518,6 +519,10 @@ def gen_inherit(self, ci: ClassInfo) -> None:
                     ci.methods[method] = original
                 elif trait and method in b.methods:
                     pass  # (the class's own, or one that comes before the trait's: kept, and checked against it)
+                elif method == "__init__" and method in b.methods:
+                    # (the primary chain's comes first in CPython's method resolution order, as here;
+                    # the class's code may call the base's own as C.__init__(self, ...))
+                    continue
                 elif method in b.methods or (method in ci.methods and ci.methods[method].cls != ci.name):
                     # (also another secondary base's: CPython's method resolution order picks one)
                     self.line = ci.node.line
@@ -525,6 +530,8 @@ def gen_inherit(self, ci: ClassInfo) -> None:
                 elif method not in ci.methods:
                     ci.methods[method] = original
             fn = ci.methods[method]
+            if method == "__init__":
+                continue  # (a constructor's own signature: no value of the base's type calls the class's)
             same = len(fn.ptypes) == len(original.ptypes)
             for j in range(1, len(fn.ptypes) if same else 0):
                 if fn.ptypes[j] != original.ptypes[j] and not (generic and original.ptypes[j] == ""):
@@ -668,8 +675,18 @@ def gen_on_chain(self, c: str, a: str) -> bool:
 
 def role_attrs(c: Node) -> list[str]:
     # the attributes class c (its class node) declares by annotation alone (x: T), which a
-    # secondary base may: no object has them until its class's code stores them
-    return [d.kids[0].s for d in c.kids[0].kids if d.kind == "annassign" and len(d.kids) == 2 and d.kids[0].kind == "name" and d.kids[0].s != "__slots__"]
+    # secondary base may: no object has them until its class's code stores them; and those its
+    # __init__ stores (self.x = v), the fields of its own objects and of the classes combining it,
+    # which their __init__ give it by calling its own (C.__init__(self, ...))
+    out = [d.kids[0].s for d in c.kids[0].kids if d.kind == "annassign" and len(d.kids) == 2 and d.kids[0].kind == "name" and d.kids[0].s != "__slots__"]
+    for d in c.kids[0].kids:
+        if d.kind == "def" and d.s == "__init__" and len(d.kids[0].kids) > 0:
+            me = d.kids[0].kids[0].s
+            for st in d.kids[2].kids:
+                for t in st.kids[:-1] if st.kind == "assign" else st.kids[:1] if st.kind == "annassign" else []:
+                    if t.kind == "attr" and t.kids[0].kind == "name" and t.kids[0].s == me and t.s not in out:
+                        out.append(t.s)
+    return out
 
 def gen_role_field(self, t: str, name: str) -> bool:
     # is name an attribute that t declares (role_attrs), a class that some class names as a

@@ -1495,8 +1495,19 @@ and the class that combines the bases may call `super()` only for methods that n
 base defines: CPython's method resolution order puts the secondary bases after the primary's,
 where such a call could find them. Abstract base classes (`abc.ABC`), `__slots__` in the
 combined hierarchy (but with traits, below), and secondary bases with class attributes,
-property setters, constructors or other special methods are outside this subset. Single
+property setters or special methods other than `__init__` are outside this subset. Single
 inheritance from the combined class works, `super()` included.
+
+A secondary base may have an `__init__` that stores its attributes (`self.size = size`): they
+are its declared attributes (below), fields of each class that combines it, whose own `__init__`
+calls it as `Sized.__init__(self, ...)`, as CPython's code calls a mixin's
+([test](../../tests/programs/classes/inheritance_secondary_init.py)). Where neither the class nor
+its primary chain defines `__init__`, the base's makes the class's objects, as CPython's method
+resolution order finds it there; where two secondary bases define one, that is an error
+([test](../../tests/errors/classes/inheritance_secondary_init_two.py)). The class's own `__init__`
+may take other parameters. Its `super().__init__()` would reach the next class of the combining
+class's method resolution order, which depends on that class: not supported
+([test](../../tests/errors/classes/inheritance_secondary_init_super.py)).
 
 A secondary base may declare attributes by annotation alone, as mypy's plugin interfaces do
 (`options: Options`, `path: str`;
