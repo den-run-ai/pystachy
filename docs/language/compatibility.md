@@ -37,6 +37,8 @@ counts stay checked. With an exact, nonnegative opposite operand,
 raises only after the whole expression is evaluated
 ([deviation](../../tests/deviations/int_masked_overflow.py)).
 
+<a id="bytearray"></a>
+
 **bytearray:** a class of the subset (`lib/_pystachy_bytearray.py`) whose buffer no other code
 holds: `bytes(b)`, a slice and a method's result are copies, and two names of one bytearray share
 its changes. It has CPython's constructor forms, items, slices (read, assigned and deleted, with
@@ -74,7 +76,8 @@ applies. Bytes case methods remain ASCII-only.
 
 - **Invalid UTF-8:** builtin text files read/write unchecked bytes, where CPython
   decodes or raises `UnicodeDecodeError`. Each invalid byte counts as one character
-  for length, widths, padding, precision and `expandtabs()`. Case methods keep such
+  for length, widths, padding, precision and `expandtabs()`, and in encodes: ASCII
+  rejects it and Latin-1 writes the byte. Case methods keep such
   a byte and give it no case. `read(n)` counts
   non-continuation bytes instead, so malformed input can return `len(text) > n`.
 - **Surrogates:** U+D800–U+DFFF retain their three-byte encoding and can be printed
@@ -566,7 +569,9 @@ See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
   (bases whose constructor binds type variables, or a type variable inside a base's type
   argument: `Visitor[list[T]]`); mixed dataclass/ordinary hierarchies; decorated subclasses except
   dataclass-from-dataclass and [identity decorators](typing.md#single-inheritance); changing method kind; incompatible virtual call signatures or
-  results; overridden static/class methods called through base-typed objects. Independent
+  results; overridden static/class methods called through base-typed objects; reads of the
+  declared class's members after `isinstance()` narrows a value to a secondary base of one
+  of its subclasses ([#1602](https://github.com/den-run-ai/pystachy/issues/1602)). Independent
   classes and ordinary hierarchies with fixed concrete fields may specialize constructor
   arguments without specializing their layouts ([class templates](typing.md#class-templates-and-generic-classes)).
 - **Inherited members:** assigning inherited class attributes through subclasses without their

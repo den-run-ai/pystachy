@@ -32,6 +32,55 @@ HELPER = '''def imported(value: int) -> int:
     result = value * value
     return result + 3
 '''
+# Code compiled after a body, and the one raise block that a function's checks of one message
+# share (their line, or 0 for code merged from several lines, as LLVM numbers it).
+ATTRIBUTION = '''def total(xs: list[int]) -> int:
+    s = 0
+    for x in xs:
+        s += x
+        s += 1
+    return s
+
+
+def count(n: int) -> int:
+    k = 0
+    for i in range(n):
+        k = k + i
+    return k
+
+
+def single(a: int, b: int) -> int:
+    c = a + b
+    print(c)
+    return 0
+
+
+def first(path: str) -> str:
+    with open(path) as f:
+        text = f.read()
+        print(len(text))
+    return text
+
+
+print(total([1, 2]), count(3), single(1, 2), first(__file__))
+'''
+
+
+def located(ir):
+    """Each defined function's instructions, without their !dbg, with the line it names."""
+    lines = {m.group(1): int(m.group(2)) for m in re.finditer(r'^!(\d+) = !DILocation\(line: (\d+),', ir, re.M)}
+    functions = {}
+    current = None
+    for text in ir.splitlines():
+        found = re.match(r'define [^@]*(@[^(]+)\(', text)
+        if found:
+            current = functions.setdefault(found.group(1), [])
+        elif text == '}':
+            current = None
+        elif current is not None and text.startswith('  '):
+            dbg = re.search(r', !dbg !(\d+)$', text)
+            current.append((text[:dbg.start()].strip(), lines[dbg.group(1)]) if dbg else (text.strip(), -1))
+    return functions
 
 
 class SourceLinesTests(unittest.TestCase):
@@ -48,11 +97,11 @@ class SourceLinesTests(unittest.TestCase):
                     if not key.startswith('PYSTACHY_') or key == 'PYSTACHY_LLVM'}
         self.env.update(PYSTACHY_HOME=str(ROOT), PYSTACHY_IRCHECK='1')
 
-    def compile_ir(self, setting=None):
+    def compile_ir(self, setting=None, path=None):
         env = dict(self.env)
         if setting is not None:
             env['PYSTACHY_DEBUG_LINES'] = setting
-        result = subprocess.run([sys.executable, '-m', 'pystachy', 'ir', str(self.path)],
+        result = subprocess.run([sys.executable, '-m', 'pystachy', 'ir', str(path or self.path)],
                                 cwd=ROOT, env=env, capture_output=True, check=True, timeout=90)
         self.assertEqual(result.stderr, b'')
         return result.stdout.decode('latin-1')
@@ -152,6 +201,30 @@ class SourceLinesTests(unittest.TestCase):
         self.assertIn('!pysdi0; pystachy source locations', enabled)
         self.assertIn('\\22-bang\\21-caf\\C3\\A9-', enabled)
         self.assertIn('\\E8\\B7\\AF\\E5\\BE\\84', enabled)
+
+    def test_code_after_a_body_and_shared_raise_blocks_keep_their_lines(self):
+        path = self.directory / 'attribution.py'
+        path.write_text(ATTRIBUTION)
+        enabled = self.compile_ir('1', path)
+        body = enabled.split('; pystachy source locations\n')[0]
+        self.assertEqual(self.compile_ir(None, path), re.sub(r',? !dbg ![0-9]+', '', body))
+        functions = located(enabled)
+
+        def line(function, pattern):
+            found = [at for text, at in functions[function] if re.search(pattern, text)]
+            self.assertEqual(len(found), 1, (function, pattern, functions[function]))
+            return found[0]
+
+        # A loop's step is its header's, not the last statement of its body.
+        self.assertEqual(line('@f.total', r'= add i64 %t\d+, 1$'), 3)
+        self.assertEqual(line('@f.count', r'sadd\.with\.overflow\.i64\(i64 %t\d+, i64 1\)'), 11)
+        # A raise block is its checks' line where they share one, else 0; never the function's
+        # last statement's. (A range loop's step ends the loop where it would overflow.)
+        self.assertEqual(line('@f.single', r'@pys_raise\('), 17)
+        self.assertEqual(line('@f.count', r'@pys_raise\('), 12)
+        self.assertEqual(line('@f.total', r'@pys_raise\('), 0)
+        # Closing a with statement's file is the statement's.
+        self.assertEqual(line('@f.first', r'@pys_file_close\('), 23)
 
     def test_native_dwarf_verifies_after_optimization(self):
         opt, clang, dwarf = [self.tool(name) for name in ('opt', 'clang', 'llvm-dwarfdump')]

@@ -397,6 +397,10 @@ def gen_hoist_class(self, ci: ClassInfo) -> None:
             # Numeric class defaults need their defining module's object too, including
             # literals read from another module. class_default owns the shared GC root.
             cv = fl == "__slots__" or ci.name + "." + fl in self.cvars or (numeric_identity(t) and self.class_identity(ci))
+            # (a numeric literal for a dataclass's __init__ in a program with Any values, which a
+            # call that leaves out its field reads from the global, whatever the field's type:
+            # early_default, as calls.py decides from the default, int | C's too)
+            cv = cv or (syn and identity_default(st.kids[2]))
             if (cv or not is_const(st.kids[2])) and (fl not in ci.fglob or ci.fglob[fl] in self.pending):
                 self.class_store(ci, fl, self.expr(st.kids[2], t))
                 self.pending.pop(ci.fglob[fl], False)
@@ -472,7 +476,11 @@ def gen_loop(self, body: list[Node], lp: Loop) -> list[dict[str, str]]:
     self.wdepth.append(len(self.exits))
     self.brks.append([])
     self.branch += 1
+    header = self.line
     self.stmts(body)
+    # (what the loop runs after its body, a for loop's step and its way back to the test, is the
+    # loop statement's, as CPython numbers it: its header's line, not its body's last)
+    self.line = header
     self.branch -= 1
     # (what follows the loop also follows its breaks, which may end branches whose stores of
     # an attribute the code after those branches does not follow: unions.py's path_undo)
@@ -1112,6 +1120,7 @@ def gen_stmt_main(self, n: Node) -> None:
         if not cm:
             self.stmts(n.kids[-1].kids)
         if not self.term:
+            self.line = n.line  # (closing its files is the with statement's, as CPython numbers its exit)
             self.leave(n0)
         self.exits = self.exits[:n0]
     elif k == "reduce":

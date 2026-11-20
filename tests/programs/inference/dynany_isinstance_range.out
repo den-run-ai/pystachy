@@ -1,0 +1,29 @@
+range True True range or str 23
+3 1 8 3 [1, 4, 7] True
+range True True range or str 0
+0 0 0 1 [] False
+range True True range or str 15
+5 0 5 1 [0, 1, 2, 3, 4] True
+list False False list or tuple 0
+not a range: list
+tuple False False list or tuple 0
+not a range: tuple
+str False False range or str 0
+not a range: str
+NoneType False False other 0
+not a range: NoneType
+int False False int 0
+not a range: int
+bool False False int 0
+not a range: bool
+float False False other 0
+not a range: float
+Span False False other 0
+not a range: Span
+dict False False other 0
+not a range: dict
+True False True
+False True
+[True, False]
+[range(1, 8, 3), range(0, 0), range(0, 5)]
+[exit 0]

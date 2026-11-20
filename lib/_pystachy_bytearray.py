@@ -612,10 +612,11 @@ def _new(source, encoding=None, errors=None) -> bytearray:
     if source is None:
         raise TypeError("cannot convert 'NoneType' object to bytearray")
     if isinstance(source, int):
-        if source < 0:
+        n = int(source)  # (a bool's count is its int, #1552)
+        if n < 0:
             raise ValueError("negative count")
-        _reserve(r, source)
-        r._n = source
+        _reserve(r, n)
+        r._n = n
         return r
     _append(r, _items(source))
     return r

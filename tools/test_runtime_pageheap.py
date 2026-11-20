@@ -244,7 +244,7 @@ int main(int argc, char **argv) {
 """
 DEFINES = ["PAGE", "CHUNK", "REGION", "RPAGES", "NBIN"]
 SEEDS = (1, 2, 3)
-HELPERS = ["os_page", "heap_add", "map_pages", "purge", "bits", "nbits", "next_bit", "run_bin", "run_push",
+HELPERS = ["arr_grow", "os_page", "heap_add", "map_pages", "purge", "bits", "nbits", "next_bit", "run_bin", "run_push",
            "pages_take", "pages_give", "pages_purge", "zero_dirty", "pages_settle", "str_trim", "big_new"]
 
 
