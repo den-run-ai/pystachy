@@ -12,6 +12,7 @@ from src.pystachy_compiler.names import ORDERED, RENAMED, owner, short
 from src.pystachy_compiler.pipeline import PreparedProgram
 from src.pystachy_compiler.specs import (
     ABSTRACT_DECOS,
+    CABCS,
     EXCBASES,
     EXCEPTIONS,
     FINAL_FIELD,
@@ -363,9 +364,10 @@ def gen_inert_subscript(self, n: Node) -> bool:
 
 def gen_iterabc_derived(self, c: str) -> bool:
     # does class c (or a specialization's origin) derive from a class whose base was collections.abc's
-    # Iterator or Iterable (iter_abc), whose objects have ABCMeta's attributes too
+    # Iterator or Iterable (iter_abc), or from a class of lib's port of collections.abc (Loader's
+    # abc_classes), whose objects have ABCMeta's attributes too
     while c in self.classes:
-        if c in self.iterabc or self.classes[c].origin in self.iterabc:
+        if c in self.iterabc or self.classes[c].origin in self.iterabc or c.startswith(CABCS + "$"):
             return True
         c = self.classes[c].base
     return False

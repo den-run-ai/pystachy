@@ -289,12 +289,16 @@ such a parameter or return is compiled for each call's argument types, a class w
 `__init__` takes one or calls `iter()` is a class template, and an annotated variable or field
 has its value's type. A `Generic[T]` class's `Iterable[T]` parameter binds `T` to the items.
 A class may derive from `typing`'s or `collections.abc`'s `Iterator[...]` or `Iterable[...]` (or
-the unsubscripted name) where it defines the methods that abstract base requires, `__iter__` and
-`__next__` (`__iter__`), and the subscript names only types (no call or attribute of a module):
-it is then a class of its own, generic in the type variables the subscript names, as with
-`Generic[T]` (`class topsort(Iterator[set[T]])`). As `ABCMeta` makes it, its abstract methods
-keep its objects from being made. Reflection of its objects (`dir()`, `hasattr()` of the
-attributes `ABCMeta` and the base give it) is not supported
+the unsubscripted name), where the subscript names only types (no call or attribute of a module).
+Where it names no type variable, the class derives from lib's port of that ABC, as from any of
+[`collections.abc`'s classes](typing.md#single-inheritance), and inherits `Iterator`'s `__iter__`;
+a missing `__next__` raises CPython's `TypeError` where an object is made
+([test](../../tests/programs/classes/iterator_base_no_next.py)). Where it names one and the class
+defines the methods that abstract base requires, `__iter__` and `__next__` (`__iter__`), the
+class is a class of its own, generic in those type variables, as with `Generic[T]`
+(`class topsort(Iterator[set[T]])`), whose abstract methods keep its objects from being made, as
+`ABCMeta` makes it. Reflection of either's objects (`dir()`, `hasattr()` of the attributes
+`ABCMeta` and the base give it) is not supported
 ([test](../../tests/programs/classes/iterator_base.py)).
 
 ## Generators

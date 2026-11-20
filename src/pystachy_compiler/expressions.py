@@ -12,6 +12,10 @@ from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.patterns import pattern_expr, pattern_static
 from src.pystachy_compiler.reflection import VARS_USES, refl_annotated, refl_body, refl_fold, refl_reflective
 from src.pystachy_compiler.specs import (
+    ABC_BASES,
+    ABC_METHODS,
+    ABC_NOMINAL,
+    ABC_TYPING,
     BIG,
     BIGOPT,
     STR_HEADER_SIZE,
@@ -35,6 +39,7 @@ from src.pystachy_compiler.specs import (
     PYBUILTINS,
     BYTEARRAYC,
     BYTEARRAYS,
+    CABCS,
     RANGEC,
     RANGES,
     REFL,
@@ -70,6 +75,7 @@ from src.pystachy_compiler.utils import (
     is_aset,
     is_dict,
     is_fn,
+    is_fset,
     is_gen,
     is_kw,
     is_list,
@@ -406,7 +412,7 @@ def gen_has(self, t: str, a: str) -> int:
         if a in ci.methods and ci.methods[a].prop:
             self.err(f"hasattr() of property '{a}' is not supported: read it in a try/except AttributeError block")
         if a in ["__abstractmethods__", "_abc_impl", "__slots__", "__class_getitem__", "__orig_bases__", "__parameters__"] and self.iterabc_derived(t):
-            self.err(f"hasattr() of '{a}' on an object of a class deriving from collections.abc's Iterator or Iterable is not supported (ABCMeta gives it attributes of its own)")
+            self.err(f"hasattr() of '{a}' on an object of a class deriving from a class of collections.abc is not supported (ABCMeta gives it attributes of its own)")
         if opaque_class(ci, self.libdir) and self.curfn.mod != ci.mod and a not in ci.methods and (a in ci.ftypes or a in HASATTR["obj"].split() or a in ["__orig_bases__", "__parameters__", "__type_params__"]):
             return 0  # (the module's own fields: CPython's object has none, nor a __dict__ or the attributes of a Python class)
         if a in ci.fflag and t + "." + a not in self.cvars:
@@ -523,14 +529,9 @@ def gen_isinst(self, t: str, c: Node) -> int:
         return r
     if c.kind == "call" and len(c.kids) == 2 and c.kids[0].kind == "name" and c.kids[0].s == "type" and c.kids[1].kind == "None" and not self.bound("type"):
         return self.isnone(t)
-    abc = self.typing_ref(c) if c.kind == "attr" or (c.kind == "name" and c.s not in self.classes and self.imported(c.s) != "") else ""
-    if abc == "Sequence" or abc == "MutableSequence" or abc == "Mapping" or abc == "MutableMapping":
-        # (collections.abc's: str, bytes and tuple, also a NamedTuple, are Sequences, list is a mutable one)
-        if abc.endswith("Mapping"):
-            return 1 if is_dict(t) else -2 if self.dict_object(t) else 0
-        if is_list(t) or (abc == "Sequence" and (t == "str" or t == "bytes" or is_tuple(t) or is_vtuple(t))):
-            return 1
-        return -2 if abc == "Sequence" and (t in self.nts or t == RANGEC) else 0  # (a range is a Sequence too)
+    abc = self.cabc_ref(c)
+    if abc != "":
+        return self.cabc_isinst(t, abc)  # (a class of collections.abc)
     if c.kind != "name":
         return -1
     while c.s in self.taliases and self.alias_kept(c.s):
@@ -598,6 +599,141 @@ def gen_isinst(self, t: str, c: Node) -> int:
         return 0
     return -1
 
+def gen_cabc_ref(self, c: Node) -> str:
+    # the class of collections.abc that isinstance()'s or issubclass()'s second argument c names:
+    # collections.abc's name of it, typing's (AbstractSet for Set; typing.Set is set's), or a class
+    # of lib's module of them (CABCS, whose own code tests them); "" for another expression
+    if c.kind == "name" and c.s.startswith(CABCS + "$"):
+        k = c.s[len(CABCS) + 1 :]
+        return k if k in ABC_BASES else ""
+    if not (c.kind == "attr" or (c.kind == "name" and c.s not in self.classes and self.imported(c.s) != "")):
+        return ""
+    p = self.imported_ref(c)
+    k = p[p.rfind(".") + 1 :]
+    if p.startswith("collections.abc.") or p.startswith("_collections_abc."):
+        return k if (k in ABC_BASES or k in ABC_METHODS or k in ABC_NOMINAL) and k != "Buffer" else ""
+    if p.startswith("typing.") and "." not in p[7:]:
+        return ABC_TYPING[k] if k in ABC_TYPING else k if k in ABC_METHODS and k != "Buffer" else ""
+    return ""
+
+def gen_cabc_isinst(self, t: str, k: str) -> int:
+    # isinstance(x, k) for x of static type t (no union, no optional: isinst splits them), k a
+    # class of collections.abc (abc_ref), as isinst's results. CPython's ABCMeta answers by the
+    # classes registered with k (its module registers the builtin types), by k's __subclasshook__,
+    # which looks for k's methods (ABC_METHODS), and by derivation from k: a builtin type's answer
+    # is CPython's, a class's is cabc_exact's for each class an object of t may be of
+    if t in self.classes:
+        rs = [self.cabc_exact(x, k) for x in self.refl_concrete(t) if x in self.classes]
+        if len(rs) > 0 and len([r for r in rs if r != 1]) == 0:
+            return -2  # (unless it is None)
+        return 0 if len([r for r in rs if r != 0]) == 0 else -1
+    if t == "int" or t == "bool" or t == "float" or t == BIG or t == "None" or t == "exc":
+        return 1 if k == "Hashable" else 0
+    if t == "exctype" or is_clsval(t) or is_fn(t) or is_callable(t):
+        return 1 if k == "Hashable" or k == "Callable" else 0  # (a class object, a function, a method)
+    if is_gen(t):
+        return 1 if k == "Generator" or k == "Iterator" or k == "Iterable" or k == "Hashable" else 0
+    if t == "str" or t == "bytes":
+        return 1 if k in ["Hashable", "Iterable", "Reversible", "Sized", "Container", "Collection", "Sequence"] or (k == "ByteString" and t == "bytes") else 0
+    if is_list(t):
+        return 1 if k in ["Iterable", "Reversible", "Sized", "Container", "Collection", "Sequence", "MutableSequence"] else 0
+    if is_tuple(t) or is_vtuple(t):
+        return 1 if k in ["Hashable", "Iterable", "Reversible", "Sized", "Container", "Collection", "Sequence"] else 0
+    if is_dict(t):
+        return 1 if k in ["Iterable", "Reversible", "Sized", "Container", "Collection", "Mapping", "MutableMapping"] else 0
+    if is_aset(t) and (k == "MutableSet" or k == "Hashable"):
+        self.err(f"isinstance() of an AbstractSet value and {k} is not supported: the value is a set or a frozenset, which its type does not tell")
+    if is_set(t) or t == EMPTYFS:
+        if k == "MutableSet" or k == "Hashable":
+            return 1 if (k == "Hashable") == (is_fset(t) or t == EMPTYFS) else 0
+        return 1 if k in ["Iterable", "Sized", "Container", "Collection", "Set"] else 0
+    return -1
+
+def gen_cabc_issub(self, a: Node, k: str, kn: Node) -> Val:
+    # issubclass(a, k), k (node kn) a class of collections.abc: a builtin class answers as its
+    # values do (cabc_isinst), a class object as each class it may be does (cabc_exact): by a test
+    # of which it is where they answer differently
+    v = self.expr(a, "")
+    self.isinst_reads(kn)
+    b = self.refl_builtin_class(v.t)
+    if b != "":
+        reps = {"int": "int", "float": "float", "bool": "bool", "str": "str", "bytes": "bytes", "list": "list[int]", "tuple": "tuple[int]",
+                "dict": "dict[int,int]", "set": "set[int]", "frozenset": "frozenset[int]", "object": "int", "type": "type[object]"}
+        r: int = -1
+        if b[7:] in reps:
+            r = self.cabc_isinst(reps[b[7:]], k)
+        if r < 0:
+            self.err(f"issubclass() of {b[7:]} and {k} is not supported")
+        return Val("true" if r == 1 else "false", "bool")
+    t = unopt(v.t)
+    c = clsof(t) if is_clsval(t) else ""
+    if c not in self.classes:
+        self.err(f"issubclass() of {typestr(v.t)} and {k} is not supported: its first argument is a class of the program here")
+    v = self.unwrap(v, "TypeError: issubclass() arg 1 must be a class")
+    xs = [x for x in self.refl_concrete(c) if x in self.classes]
+    rs = [self.cabc_exact(x, k) for x in xs]
+    if len([r for r in rs if r < 0]) > 0:
+        self.err(f"issubclass() of {short(c)} and {k} is not supported: a class attribute stands for one of {k}'s methods")
+    if len([r for r in rs if r != rs[0]]) == 0:
+        return Val("true" if len(rs) > 0 and rs[0] == 1 else "false", "bool")
+    res = "false"
+    for i in range(len(xs)):
+        if rs[i] == 1:
+            hit = self.ptr_cmp("==", v, Val(self.refl_record(xs[i]), v.t)).v
+            res = hit if res == "false" else self.scalar("or", [Val(res, "bool"), Val(hit, "bool")])
+    return Val(res, "bool")
+
+def gen_cabc_exact(self, c: str, k: str) -> int:
+    # isinstance(x, k) for x an object of exactly class c (of the program or of lib), k a class of
+    # collections.abc: 1 or 0, as CPython's ABCMeta answers for the class c stands for or is (the
+    # builtin classes lib's stand for, as CPython registers them; lib's views, which derive from
+    # the ABCs in CPython), else by k's methods that c has, or by c's deriving from lib's k
+    # (CABCS); -1 where c binds such a name to a class attribute, whose value decides
+    o = self.classes[c].origin if self.classes[c].origin != "" else c
+    if o == RANGEC:
+        return 1 if k in ["Hashable", "Iterable", "Reversible", "Sized", "Container", "Collection", "Sequence"] else 0
+    if o == BYTEARRAYC:
+        return 1 if k in ["Iterable", "Reversible", "Sized", "Container", "Collection", "Sequence", "MutableSequence", "ByteString"] else 0
+    if self.dict_class(o) and not lib_file(self.line, self.libdir):
+        # (dicts in CPython; lib's own code tests what they are here, as dict_object's callers do)
+        return 1 if k in ["Iterable", "Reversible", "Sized", "Container", "Collection", "Mapping", "MutableMapping"] else 0
+    if o.startswith(ITERS + "$"):
+        return 1 if k == "Iterator" or k == "Iterable" or k == "Hashable" else 0
+    if c in self.nts:
+        return 1 if k in ["Hashable", "Iterable", "Reversible", "Sized", "Container", "Collection", "Sequence"] else 0
+    if o == "collections$deque" and lib_source(self.classes[o].node.line, self.libdir, "collections/__init__.py") and (k == "Sequence" or k == "MutableSequence"):
+        return 1
+    if o == CABCS + "$KeysView" or o == CABCS + "$ItemsView":
+        if k == "Set" or k == "MappingView":
+            return 1  # (CPython's derive from MappingView and Set)
+    if o == CABCS + "$ValuesView" and k == "MappingView":
+        return 1
+    nominal = CABCS + "$" + k in self.classes and (self.derives(c, CABCS + "$" + k) or self.derives(o, CABCS + "$" + k))
+    if k in ABC_NOMINAL or k not in ABC_METHODS:
+        return 1 if nominal else 0
+    r = self.cabc_methods(c, ABC_METHODS[k])
+    return 1 if nominal else r
+
+def gen_cabc_methods(self, c: str, names: list[str]) -> int:
+    # CPython's _check_methods(c, *names) for exactly class c: 1 where its class or a base defines
+    # each of names as a method, 0 where one is missing, or None (__hash__ = None, which a class
+    # that defines __eq__ without __hash__ has, and a dataclass whose __eq__ @dataclass writes);
+    # -1 where a class attribute of another value is one of them
+    ci = self.classes[c]
+    for m in names:
+        if m in ci.ftypes and m not in ci.methods:
+            if ci.ftypes[m] == "None":
+                return 0
+            return -1
+        if m == "__hash__":
+            if self.unhashable(c) or (self.is_dc(c) and "no-eq" not in ci.dcopts and "frozen" not in ci.dcopts and "unsafe_hash" not in ci.dcopts and "__hash__" not in ci.methods):
+                return 0
+            if self.hash_kind(c) == "":
+                return 0
+        elif m not in ci.methods:
+            return 0
+    return 1
+
 def gen_dict_class(self, t: str) -> bool:
     # is t one of lib/collections' mappings, defaultdict, OrderedDict and Counter, or a
     # specialization of one: classes that derive from dict in CPython, and hold a dict here
@@ -623,6 +759,8 @@ def gen_class_matches(self, c: str, t: Node) -> bool:
     # isinstance's type expression, for an exact ordinary class rather than a static upper bound.
     if t.kind == "tuple" or (t.kind == "binop" and t.s == "|"):
         return any([self.class_matches(c, x) for x in t.kids])
+    if self.cabc_ref(t) != "":
+        return self.cabc_exact(c, self.cabc_ref(t)) == 1  # (an object of exactly c: not its subclasses')
     if t.kind == "name" and t.s in self.classes:
         return self.derives(c, t.s)
     return self.isinst(c, t) in [1, -2]

@@ -143,7 +143,9 @@ shipped; a program runs on one thread, which `threading` and `_thread` describe 
 ### Runtime services
 
 `typing`, `dataclasses` and `collections.abc` are compiler support; see
-[typing](../docs/language/typing.md).
+[typing](../docs/language/typing.md). A class deriving from one of `collections.abc`'s classes
+inherits its methods from `_pystachy_collections_abc`, a port of CPython's `_collections_abc.py`;
+see [`collections.abc`](compatibility.md#collectionsabc).
 
 | Module | Origin | Supported APIs | Main limitation |
 |---|---|---|---|
@@ -233,7 +235,10 @@ is never imported there. `_pystachy_bfile.py` holds the binary files that `open(
 (the compiler imports it where a module calls `open()` so: loader.py's `binary_opens`). `types.py` binds `TracebackType` from `_pystachy_types.py`, `MappingProxyType`
 from `_pystachy_mappingproxy.py` and CPython's other names of `types` from `_pystachy_typenames`, the
 compiler's, which only it may import. `_collections_abc` has no file here: it is the compiler's builtin
-`collections.abc`, as CPython's `collections` makes it `collections.abc`.
+`collections.abc`, as CPython's `collections` makes it `collections.abc`. `_pystachy_collections_abc.py`
+holds the classes of `collections.abc` that a class statement's base names: the compiler makes the
+class derive from this module's (loader.py's `abc_classes`), whose objects report the module
+`collections.abc`.
 
 `_pystachy_iterators.py` holds the iterator classes of `iter()` over builtin containers
 (`list_iterator`, `dict_keyiterator`, ...). The compiler loads it for a program that calls

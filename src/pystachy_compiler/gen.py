@@ -967,6 +967,11 @@ from src.pystachy_compiler.expressions import (
     gen_index as expressions_index,
     gen_indexed_ord as expressions_indexed_ord,
     gen_isinst as expressions_isinst,
+    gen_cabc_ref as expressions_cabc_ref,
+    gen_cabc_isinst as expressions_cabc_isinst,
+    gen_cabc_exact as expressions_cabc_exact,
+    gen_cabc_methods as expressions_cabc_methods,
+    gen_cabc_issub as expressions_cabc_issub,
     gen_class_matches as expressions_class_matches,
     gen_obj_isinst as expressions_obj_isinst,
     gen_isinst_reads as expressions_isinst_reads,
@@ -4698,6 +4703,21 @@ class Gen:
 
     def isinst(self, t: str, c: Node) -> int:
         return expressions_isinst(self, t, c)
+
+    def cabc_ref(self, c: Node) -> str:
+        return expressions_cabc_ref(self, c)
+
+    def cabc_isinst(self, t: str, k: str) -> int:
+        return expressions_cabc_isinst(self, t, k)
+
+    def cabc_exact(self, c: str, k: str) -> int:
+        return expressions_cabc_exact(self, c, k)
+
+    def cabc_methods(self, c: str, names: list[str]) -> int:
+        return expressions_cabc_methods(self, c, names)
+
+    def cabc_issub(self, a: Node, k: str, kn: Node) -> Val:
+        return expressions_cabc_issub(self, a, k, kn)
 
     def class_matches(self, c: str, t: Node) -> bool:
         return expressions_class_matches(self, c, t)

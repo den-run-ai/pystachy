@@ -676,8 +676,8 @@ snapshots when item comparison callbacks mutate a queue. Searches (`count`, `ind
 containment and `remove`) read live items and detect structural mutations with
 CPython's operation-specific errors; same-size replacements are preserved.
 
-The mappings hold dicts rather than derive from `dict`, so `isinstance(x, dict)`
-and `isinstance(x, collections.abc.Mapping)` are false. They support indexing,
+The mappings hold dicts rather than derive from `dict`; `isinstance(x, dict)` and
+`isinstance(x, collections.abc.Mapping)` are true all the same, as CPython's are. They support indexing,
 assignment, `del`, `in`, `len`, iteration,
 `reversed()`, `keys()`, `values()`, `items()`, `get`, `pop`, `popitem`,
 `setdefault`, `clear`, `update`, `copy` and equality with each other and with a
@@ -722,8 +722,8 @@ the counts; a `defaultdict`'s also replaces `default_factory`).
 
 A deque compares with deques: `==` with `None` is false and `<` raises CPython's
 `TypeError`. Its reflected multiplication and comparisons with other containers,
-pickling, `ChainMap` and the `User*` classes are unavailable. A `deque` is
-not a `collections.abc.Sequence` to `isinstance`.
+pickling, `ChainMap` and the `User*` classes are unavailable. A `deque` is a
+`collections.abc.MutableSequence` to `isinstance()`, which CPython registers it as.
 
 `namedtuple()` is carried out by the compiler: a module's top-level
 `NAME = namedtuple(typename, field_names, *, rename=False, defaults=None, module=None)` with
@@ -736,6 +736,47 @@ names and too many defaults are compile errors. Assigning the class's or a field
 string literal is accepted; reading it, other uses of the function, subclassing and a field
 given `None` are rejected (see
 [compatibility](../docs/language/compatibility.md#classes-dataclasses-and-namedtuples)).
+
+### `collections.abc`
+
+`collections.abc` is the compiler's: its names annotate builtin types (`Mapping[K, V]` is
+`dict[K, V]`), and `isinstance()` and `issubclass()` answer for each of its classes as CPython's
+do: by the classes CPython registers with it (`dict` is a `MutableMapping`, `tuple` a
+`Sequence`, `deque` a `MutableSequence`, a generator a `Generator`), by the methods a class
+defines (`Sized` asks for `__len__`, `Hashable` for a `__hash__` that is not `None`, which a
+class defining `__eq__` alone has), or by the class it derives from
+([test](../tests/programs/library/collections_abc_isinstance.py)). An `AbstractSet` value,
+which may be a set or a frozenset, is no `MutableSet` or `Hashable` to `isinstance()`: a
+compile-time error.
+
+A class whose one base names a class of `collections.abc` or typing's name of one
+(`typing.Mapping`, `AbstractSet`), subscripted or not (`MutableMapping[str, int]`: the
+subscript types nothing, the methods' annotations do), derives from that class of
+`_pystachy_collections_abc`, a port of CPython's `_collections_abc.py`: it defines the abstract
+methods and inherits the others, `Mapping`'s `get`, `keys()`, `items()` and `values()` views,
+`MutableMapping`'s `pop`, `update` and `setdefault`, `Sequence`'s `index` and `count`,
+`MutableSequence`'s `append`, `extend` and `+=`, `Set`'s comparisons and operators and
+`MutableSet`'s in-place operators ([tests](../tests/programs/classes/abc_mutable_mapping.py)).
+Making an object of a class that leaves an abstract method raises CPython's `TypeError`.
+
+- `Set`'s `&`, `|`, `-` and `^` (and the views') raise CPython's `TypeError` for an operand
+  that is no iterable, where CPython's methods return `NotImplemented` and then ask the
+  other operand's reflected method: an object whose class defines `__rand__` is not asked.
+- `Set._from_iterable()` is a method that makes an object of the object's own class: a
+  subclass overriding it with a class method is a compile-time error
+  ([test](../tests/errors/classes/abc_from_iterable_classmethod.py)).
+- `MutableMapping.pop()` takes its default by position only
+  ([test](../tests/errors/classes/abc_pop_keyword.py)), and `update()` takes pairs from a
+  list, tuple, set or frozenset: another iterable object is read as a mapping (`keys()`).
+- `reversed()` of a `Mapping` is a compile-time error, where CPython's `__reversed__ = None`
+  raises `TypeError` ([test](../tests/errors/classes/abc_mapping_reversed.py)); `Set._hash()`
+  is not provided.
+- A generic subclass (`class Stack(Sequence[T])`), one with other bases or a keyword such as
+  `metaclass=`, and one whose module rebinds the base's name keep the base they name: an
+  unsupported base class. The classes derive from one class each (CPython's `Collection` derives
+  from `Sized`, `Iterable` and `Container`), which `__mro__`, unavailable here, would show;
+  `register()` is not supported. The ABCs are no annotations of their subclasses' objects: pass
+  a `Mapping` subclass where its own class is the parameter's type.
 
 ### `copy`
 
@@ -1278,9 +1319,8 @@ replace it. `binomialvariate` calls `math.lgamma`, provided by the native runtim
 - Populations are lists, strings, ranges and runtime-length tuples
   ([test](../tests/programs/containers/range_value.py)). String populations are
   sequences of code points.
-  Weights and counts share one numeric type. `sample` raises `TypeError` for a
-  `deque`, which `isinstance` does not find a `Sequence`, and takes a dict view,
-  which is a list.
+  Weights and counts share one numeric type. `sample` takes a `deque`, as CPython's
+  does, and a dict view, which is a list.
 - Of the module functions, only `random` and `getrandbits` convert to a typed
   `Callable`; the others are unannotated upstream methods, which unannotated
   parameters or a lambda can take.

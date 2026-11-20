@@ -59,7 +59,8 @@ OPAQUE: dict[str, bool] = {"_weakref": True, "_pystachy_mappingproxy": True, "_p
 # not the module's own: weakref.ReferenceType, _io.StringIO (every class that lib's
 # io defines is the C module _io's in CPython, as are the binary files of _pystachy_bfile), and
 # mappingproxy, a builtin type
-TYPEMODS: dict[str, str] = {"_weakref": "weakref", "io": "_io", "_pystachy_mappingproxy": "builtins", "_pystachy_bfile": "_io"}
+TYPEMODS: dict[str, str] = {"_weakref": "weakref", "io": "_io", "_pystachy_mappingproxy": "builtins", "_pystachy_bfile": "_io",
+                            "_pystachy_collections_abc": "collections.abc"}
 # binary files (lib/_pystachy_bfile.py): the names the loader binds a module's open() of a literal binary
 # mode to (binary_opens), each to the factory of the class CPython's open() makes for that mode, and their type
 BOPENS: dict[str, str] = {"_pys_bfile_reader": "open_reader", "_pys_bfile_writer": "open_writer",
@@ -347,6 +348,30 @@ for _k in ("ABCMeta EllipsisType FunctionType GenericAlias _CallableGenericAlias
            "zip_iterator __all__ __builtins__ __doc__ __file__ __loader__ __name__ __package__ __spec__").split():
     ABCSMORE[_k] = True
 ABCSOTHER = "collections.abc.NAME is not supported: Pystachy's collections.abc (which _collections_abc is too) has only the ABCs"
+# lib's module of the collections.abc classes that a class of the program may derive from (Loader's
+# abc_classes): its classes, by their names in collections.abc, and typing's names of them (typing.Set
+# is set's alias, AbstractSet the ABC). An ABC that isinstance() decides by the methods a class has,
+# as its __subclasshook__ does (each with those methods), and the others, which a class is an
+# instance of by deriving from one (or the builtin classes CPython registers with it: Gen.abc_isinst)
+CABCS = "_pystachy_collections_abc"
+ABC_BASES: dict[str, bool] = {}
+for _k in ("Hashable Iterable Iterator Reversible Sized Container Collection Set MutableSet Mapping MutableMapping "
+           "MappingView KeysView ItemsView ValuesView Sequence MutableSequence").split():
+    ABC_BASES[_k] = True
+ABC_TYPING: dict[str, str] = {"AbstractSet": "Set"}
+for _k in ABC_BASES:
+    if _k != "Set":
+        ABC_TYPING[_k] = _k
+ABC_METHODS: dict[str, list[str]] = {"Hashable": ["__hash__"], "Iterable": ["__iter__"], "Iterator": ["__iter__", "__next__"],
+                                     "Reversible": ["__reversed__", "__iter__"], "Sized": ["__len__"], "Container": ["__contains__"],
+                                     "Collection": ["__len__", "__iter__", "__contains__"], "Callable": ["__call__"],
+                                     "Generator": ["__iter__", "__next__", "send", "throw", "close"], "Awaitable": ["__await__"],
+                                     "Coroutine": ["__await__", "send", "throw", "close"], "AsyncIterable": ["__aiter__"],
+                                     "AsyncIterator": ["__aiter__", "__anext__"], "AsyncGenerator": ["__aiter__", "__anext__", "asend", "athrow", "aclose"],
+                                     "Buffer": ["__buffer__"]}
+ABC_NOMINAL: dict[str, bool] = {}
+for _k in "Set MutableSet Mapping MutableMapping MappingView KeysView ItemsView ValuesView Sequence MutableSequence ByteString".split():
+    ABC_NOMINAL[_k] = True
 CLASSVAR = "typing.ClassVar (a class attribute) is not supported"
 ITERS = "_pystachy_iterators"  # lib's module of the iterator classes iter() makes objects of (Loader.program)
 # lib's modules that hand a container's items on as they are: their reads of a list's, a dict's or a

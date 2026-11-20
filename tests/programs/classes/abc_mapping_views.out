@@ -1,0 +1,7 @@
+[('a', 0), ('b', 1), ('c', 2)] True True True True 9
+True True False ['a'] ['a', 'b', 'c', 'z'] ['b', 'c']
+['b', 'c', 'q'] True False 3 True
+[('a', 0)] True False False
+True False 3 [0, 1, 2]
+KeysView ItemsView ValuesView collections.abc
+[exit 0]
