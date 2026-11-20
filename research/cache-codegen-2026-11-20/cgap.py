@@ -54,13 +54,14 @@ if only:
     PROGRAMS = {k: v for k, v in PROGRAMS.items() if k in only}
 base = {k: v for k, v in os.environ.items() if not k.startswith("PYSTACHY_")}
 extra = dict(kv.split("=", 1) for kv in os.getenv("CGAP_EXTRA", "").split(",") if kv)  # (build-time settings, e.g. PYSTACHY_JIT_CPU=generic)
+TAG = os.path.basename(tree) + "".join(f"-{k.removeprefix('PYSTACHY_')}={v}" for k, v in sorted(extra.items()))
 exes = {}
 RUNNER = os.getenv("CGAP_RUNNER", "") == "1"
 for prog, (src, args) in PROGRAMS.items():
     if RUNNER:
         exes[(prog, "runner")] = None
     for var, cc in VARIANTS.items():
-        cache = f"{W}/pc/{os.path.basename(tree)}/{var}/{prog}"
+        cache = f"{W}/pc/{TAG}/{var}/{prog}"
         if AOT:
             exe = f"{cache}/{prog}.exe"
             if not os.path.exists(exe):
@@ -74,14 +75,14 @@ for prog, (src, args) in PROGRAMS.items():
             continue
         # a stable copy per program and variant; built in one cache per variant (one runtime build),
         # the new executable being the one that was not there before
-        stable = f"{W}/exe/{os.path.basename(tree)}/{var}/{prog}.exe"
+        stable = f"{W}/exe/{TAG}/{var}/{prog}.exe"
         old = [f for f in os.listdir(cache + "/program-v2") if f.endswith(".exe")] if os.path.isdir(cache + "/program-v2") else []
         if not os.path.exists(stable):
             os.makedirs(os.path.dirname(stable), exist_ok=True)
             if len(old) == 1:
                 shutil.copy2(f"{cache}/program-v2/{old[0]}", stable)
             else:
-                shared = f"{W}/pc/{os.path.basename(tree)}/{var}/_shared"
+                shared = f"{W}/pc/{TAG}/{var}/_shared"
                 pv = shared + "/program-v2"
                 before = set(f for f in os.listdir(pv) if f.endswith(".exe")) if os.path.isdir(pv) else set()
                 env = base | extra | {"PYSTACHY_CACHE": shared, "PYSTACHY_PROGRAM_CACHE_TRACE": "1"} | ({"PYSTACHY_X_PCCOMPILE": cc} if cc else {})

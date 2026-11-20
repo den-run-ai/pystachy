@@ -56,3 +56,17 @@ One cached executable's kNN ranged from 0.94 to 1.35 s over 12 runs, with or wit
   per-program swings both ways; 32 bytes is worse for the 33-byte loop.
 - Measurements with `PYSTACHY_PROGRAM_CACHE=0` time the runner's code, which differs from what the
   default (cached) path runs.
+
+## Implemented (20 November, later)
+
+- #1612 (`claude/dreamy-shannon-bb3cu1-jit-x86-64`, on main `d35417c9`): the driver gives the runner,
+  lli and llc clang's default CPU on x86-64 Linux (`-mcpu=x86-64`; the runner takes lli's `-mcpu`).
+  Runner on main against the branch (`main-runner-ab.json`, `runner_ab.py`, 43 programs, 5 rounds):
+  geomean 0.990, UMAP kNN 0.96 and layout 0.97, the division micro 1.02 (main divides in the
+  runtime), code generation 1.014.
+- #1575 reverts `-default-tuning` (head `39b4181f`, the tree of `a1d94d2a`).
+- All drafts with both (scratch `e99f79e6`), runner over cached (`all-drafts-summary.json`): generic
+  CPU, division micro 1.63 before and 1.01 after, kNN 0.84 and 1.02, layout 0.95 and 1.00; host
+  CPU, 0.97, 0.96 and 1.01. In the host-CPU run, json_loads and regex_v8 read 0.86 and 0.88, but
+  regex_v8's cached executable is byte-identical to the generic run's, where it read 0.99:
+  run-to-run variance.

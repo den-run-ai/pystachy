@@ -1,0 +1,246 @@
+{
+ "before_generic": {
+  "geomean_runner_over_cached": 1.094,
+  "timings": 3,
+  "programs": {
+   "divmicro.seconds": {
+    "cached_s": 0.0761,
+    "runner_s": 0.1245,
+    "runner_over_cached": 1.632,
+    "range": [
+     1.247,
+     1.708
+    ]
+   },
+   "umap.knn": {
+    "cached_s": 1.234,
+    "runner_s": 1.019,
+    "runner_over_cached": 0.843,
+    "range": [
+     0.797,
+     0.902
+    ]
+   },
+   "umap.layout": {
+    "cached_s": 4.311,
+    "runner_s": 4.122,
+    "runner_over_cached": 0.951,
+    "range": [
+     0.933,
+     1.018
+    ]
+   }
+  }
+ },
+ "after_generic": {
+  "geomean_runner_over_cached": 0.997,
+  "timings": 11,
+  "programs": {
+   "divmicro.seconds": {
+    "cached_s": 0.0757,
+    "runner_s": 0.0762,
+    "runner_over_cached": 1.008,
+    "range": [
+     0.973,
+     1.146
+    ]
+   },
+   "pp-fannkuch.seconds": {
+    "cached_s": 0.2473,
+    "runner_s": 0.208,
+    "runner_over_cached": 0.928,
+    "range": [
+     0.756,
+     1.058
+    ]
+   },
+   "pp-go.seconds": {
+    "cached_s": 0.0416,
+    "runner_s": 0.0412,
+    "runner_over_cached": 1.011,
+    "range": [
+     0.937,
+     1.027
+    ]
+   },
+   "pp-json_loads.seconds": {
+    "cached_s": 0.7651,
+    "runner_s": 0.7663,
+    "runner_over_cached": 1.004,
+    "range": [
+     0.882,
+     1.055
+    ]
+   },
+   "pp-nbody.seconds": {
+    "cached_s": 0.0527,
+    "runner_s": 0.0528,
+    "runner_over_cached": 0.995,
+    "range": [
+     0.917,
+     1.072
+    ]
+   },
+   "pp-nqueens.seconds": {
+    "cached_s": 0.2849,
+    "runner_s": 0.2767,
+    "runner_over_cached": 0.976,
+    "range": [
+     0.832,
+     1.002
+    ]
+   },
+   "pp-raytrace.seconds": {
+    "cached_s": 0.0428,
+    "runner_s": 0.045,
+    "runner_over_cached": 1.043,
+    "range": [
+     0.979,
+     1.092
+    ]
+   },
+   "pp-regex_v8.seconds": {
+    "cached_s": 0.3867,
+    "runner_s": 0.3881,
+    "runner_over_cached": 0.99,
+    "range": [
+     0.98,
+     1.093
+    ]
+   },
+   "pp-richards.seconds": {
+    "cached_s": 0.015,
+    "runner_s": 0.0149,
+    "runner_over_cached": 0.994,
+    "range": [
+     0.962,
+     1.233
+    ]
+   },
+   "umap.knn": {
+    "cached_s": 1.232,
+    "runner_s": 1.261,
+    "runner_over_cached": 1.017,
+    "range": [
+     0.935,
+     1.111
+    ]
+   },
+   "umap.layout": {
+    "cached_s": 4.197,
+    "runner_s": 4.114,
+    "runner_over_cached": 1.003,
+    "range": [
+     0.962,
+     1.013
+    ]
+   }
+  }
+ },
+ "after_host_cpu": {
+  "geomean_runner_over_cached": 0.979,
+  "timings": 11,
+  "programs": {
+   "divmicro.seconds": {
+    "cached_s": 0.0758,
+    "runner_s": 0.0758,
+    "runner_over_cached": 0.969,
+    "range": [
+     0.959,
+     1.204
+    ]
+   },
+   "pp-fannkuch.seconds": {
+    "cached_s": 0.2061,
+    "runner_s": 0.2022,
+    "runner_over_cached": 0.973,
+    "range": [
+     0.95,
+     1.036
+    ]
+   },
+   "pp-go.seconds": {
+    "cached_s": 0.0411,
+    "runner_s": 0.0415,
+    "runner_over_cached": 1.003,
+    "range": [
+     0.997,
+     1.051
+    ]
+   },
+   "pp-json_loads.seconds": {
+    "cached_s": 0.8347,
+    "runner_s": 0.7385,
+    "runner_over_cached": 0.855,
+    "range": [
+     0.852,
+     0.97
+    ]
+   },
+   "pp-nbody.seconds": {
+    "cached_s": 0.053,
+    "runner_s": 0.052,
+    "runner_over_cached": 1.004,
+    "range": [
+     0.928,
+     1.144
+    ]
+   },
+   "pp-nqueens.seconds": {
+    "cached_s": 0.2806,
+    "runner_s": 0.2765,
+    "runner_over_cached": 1.021,
+    "range": [
+     0.904,
+     1.091
+    ]
+   },
+   "pp-raytrace.seconds": {
+    "cached_s": 0.0426,
+    "runner_s": 0.0489,
+    "runner_over_cached": 1.138,
+    "range": [
+     0.916,
+     1.591
+    ]
+   },
+   "pp-regex_v8.seconds": {
+    "cached_s": 0.4066,
+    "runner_s": 0.3655,
+    "runner_over_cached": 0.879,
+    "range": [
+     0.781,
+     0.936
+    ]
+   },
+   "pp-richards.seconds": {
+    "cached_s": 0.0144,
+    "runner_s": 0.0141,
+    "runner_over_cached": 0.993,
+    "range": [
+     0.939,
+     1.013
+    ]
+   },
+   "umap.knn": {
+    "cached_s": 1.176,
+    "runner_s": 1.129,
+    "runner_over_cached": 0.96,
+    "range": [
+     0.834,
+     1.061
+    ]
+   },
+   "umap.layout": {
+    "cached_s": 4.11,
+    "runner_s": 4.117,
+    "runner_over_cached": 1.005,
+    "range": [
+     0.96,
+     1.041
+    ]
+   }
+  }
+ },
+ "note": "Runner (program cache off) over the cached executable of the same program, both from one compiler. before_generic: the scratch merge with the runner naming no CPU (and #1575's -default-tuning), 5 rounds interleaved with other cache variants; after: this change, and #1575 without -default-tuning. regex_v8's cached executable is byte-identical in both after runs (it exceeds the inlining budget, so names no CPU), and its ratio was 0.99 in one and 0.88 in the other: run-to-run variance on this VM."
+}
