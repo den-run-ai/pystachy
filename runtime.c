@@ -105,9 +105,13 @@ _Static_assert(offsetof(Str, len) == 0 && offsetof(Str, dict_hash) == 8 &&
                offsetof(Str, chars1) == 16 && offsetof(Str, s) == 24 && sizeof(Str) == 24,
                "Str ABI: len, dict_hash, chars1, bytes");
 typedef struct { I len, cap; I *a, *ids; } List; /* optional scanned numeric identity companion: kind, then boxes */
+#ifndef __wasi__
 _Static_assert(offsetof(List, len) == 0 && offsetof(List, cap) == 8 && offsetof(List, a) == 16 &&
-               offsetof(List, ids) == 16 + sizeof(I *) && sizeof(List) == 16 + 2 * sizeof(I *),
-               "List ABI: raw prefix and identity companion (pointers of 8 bytes, or wasm32's 4)");
+               offsetof(List, ids) == 24 && sizeof(List) == 32, "List ABI: raw prefix and identity companion");
+#else
+_Static_assert(offsetof(List, len) == 0 && offsetof(List, cap) == 8 && offsetof(List, a) == 16 &&
+               offsetof(List, ids) == 20 && sizeof(List) == 24, "List ABI under WASI: wasm32's 4-byte pointers");
+#endif
 typedef struct { I len; I *ids; I a[]; } VTuple; /* immutable raw slots and optional scanned numeric identities */
 _Static_assert(offsetof(VTuple, len) == 0 && offsetof(VTuple, ids) == 8 &&
                offsetof(VTuple, a) == 16 && sizeof(VTuple) == 16, "VTuple ABI: length, identities, raw items");
