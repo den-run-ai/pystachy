@@ -887,7 +887,8 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
         for j in range(len(dynamic.bad)):
             self.bad_ir(fn, fn.blocks[at[dynamic.badblocks[j]]], dynamic.bad[j])
     narrowed = optional_reads(self, fn)
-    if len(narrowed) > 0 or ((union_proofs or (machine_tags and has_machine_union_tag(fn))) and not simple_union_proof(fn, self.utags, at, succ, union_types)):
+    unions = union_proofs or (machine_tags and has_machine_union_tag(fn))
+    if len(narrowed) > 0 or (unions and not simple_union_proof(fn, self.utags, at, succ, union_types)):
         writes: dict[str, bool] = {}
         raises: dict[str, bool] = {}
         written: dict[str, int] = {}  # (the storage classes each call writes: its RAWW and wG bits)
@@ -910,7 +911,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
         for x in kin:
             for y in kin:
                 kin[x][y] = x == y or x not in self.classes or y not in self.classes or related(self, x, y)
-        proof = UnionProof(fn, self.utags, writes, self.gtypes, raises, self.globs, self.tconstdata, narrowed, written, kin)
+        proof = UnionProof(fn, self.utags, writes, self.gtypes, raises, self.globs, self.tconstdata, narrowed, written, kin, unions)
         proof.run()
         for j in range(len(proof.bad)):
             self.bad_ir(fn, fn.blocks[at[proof.badblocks[j]]], proof.bad[j])

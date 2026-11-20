@@ -230,7 +230,7 @@ def simple_union_proof(fn: IFn, utags: dict[str, int], at: dict[str, int] | None
 
 
 class UnionProof:
-    def __init__(self, fn: IFn, utags: dict[str, int], writes: dict[str, bool] | None = None, globals: dict[str, str] | None = None, raises: dict[str, bool] | None = None, declarations: list[Val] | None = None, consts: dict[str, Data] | None = None, narrowed: dict[str, dict[str, bool]] | None = None, written: dict[str, int] | None = None, kin: dict[str, dict[str, bool]] | None = None):
+    def __init__(self, fn: IFn, utags: dict[str, int], writes: dict[str, bool] | None = None, globals: dict[str, str] | None = None, raises: dict[str, bool] | None = None, declarations: list[Val] | None = None, consts: dict[str, Data] | None = None, narrowed: dict[str, dict[str, bool]] | None = None, written: dict[str, int] | None = None, kin: dict[str, dict[str, bool]] | None = None, unions: bool = True):
         self.fn = fn
         # (the storage classes each call writes, its effects' wL wD wO and wG bits, where they
         # are known: a call that writes no global keeps the facts of globals' storage, and one
@@ -371,7 +371,13 @@ class UnionProof:
                         self.addresses["%t" + str(i.r[0])] = True
                 if i.op == "ptr.cmp":
                     for a in i.a:
-                        wanted["U:" + a.v] = True
+                        # (without union obligations only a test of what may be None matters:
+                        # an optional value's, whose read may lean on it)
+                        if unions or is_opt(a.t) or is_union(a.t):
+                            wanted["U:" + a.v] = True
+                if i.op == "scalar.cmp" and (i.s == "eq" or i.s == "ne") and i.a[0].t == "%ptr" and (i.a[0].v == "null" or i.a[1].v == "null"):
+                    for a in i.a:
+                        wanted["U:" + a.v] = True  # (a test of a pointer word against null: a None test)
                 if i.op == "rt" and (i.s == "ubox" or i.s == "ubox_opt"):
                     wanted["U:%t" + str(i.r[0])] = True
                     if i.a[0].v.startswith("%"):
@@ -404,17 +410,20 @@ class UnionProof:
         # Backward relevance for boxed values and forward/backward transport closure for
         # tags and bits. Literals never become tainted: the same integer spelling in an
         # unrelated loop index does not make that index a payload.
+        # (unions: fn has closed-union obligations, whose boxes each have more than one member;
+        # without them the proof runs for reads of optional values alone, which need only their
+        # own values, what tests compare and what those are loaded from, below)
         for k in self.base:
-            if len(self.base[k]) > 1:
+            if unions and len(self.base[k]) > 1:
                 wanted[k] = True
         for v in self.narrowed:
             wanted["U:" + v] = True
         if len(self.narrowed) > 0:
-            # (an object whose field a field key names, and the slot it is loaded from: a
-            # narrowed read of a field may lean on a test of an earlier read of it)
+            # (an object whose optional field a field key names, and the slot it is loaded from:
+            # a narrowed read of the field may lean on a test of an earlier read of it)
             for b in fn.blocks:
                 for i in b.code:
-                    if i.op == "field.addr" and i.a[0].v.startswith("%"):
+                    if i.op == "field.addr" and i.a[0].v.startswith("%") and is_opt(i.t[1:]):
                         wanted["U:" + i.a[0].v] = True
                         if "U:" + i.a[0].v not in self.base:
                             self.typebase("U:" + i.a[0].v, self.native.get(i.a[0].v, ""))
