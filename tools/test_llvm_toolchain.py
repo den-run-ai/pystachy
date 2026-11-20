@@ -77,7 +77,8 @@ class CheckTests(unittest.TestCase):
         self.assertEqual(result.stdout.strip(), f"pystachy-llvm-{setting('VERSION')}-linux-{os.uname().machine}")
 
     def test_usage_errors_fail(self):
-        for arguments in ((), ("build",), ("check",), ("check", "a", "b"), ("install", "a"), ("compile", "a", "0")):
+        for arguments in ((), ("build",), ("check",), ("check", "a", "b"), ("install", "a"), ("compile", "a", "0"),
+                          ("generators",), ("generators", "a", "b")):
             with self.subTest(arguments=arguments):
                 result = run(*arguments)
                 self.assertEqual(result.returncode, 1)
@@ -174,6 +175,19 @@ class WorkflowTests(unittest.TestCase):
         count = int(re.search(r"llvm_toolchain\.sh compile '\$OUT' '\$SLICE' ([0-9]+)", commands)[1])
         self.assertEqual(job["strategy"]["matrix"]["slice"], [str(number) for number in range(count)])
         self.assertIn(f"of {count})", job["name"])
+
+    def test_every_slice_waits_for_the_table_generators_and_starts_with_their_objects(self):
+        generators, job = self.workflow["jobs"]["generators"], self.workflow["jobs"]["compile"]
+        self.assertEqual(job["needs"], "generators")
+        self.assertIn("llvm_toolchain.sh generators '$OUT'", "".join(step.get("run", "") for step in generators["steps"]))
+        upload = generators["steps"][-1]["with"]
+        steps = job["steps"]
+        download = next(number for number, step in enumerate(steps) if "download-artifact" in step.get("uses", ""))
+        compile_ = next(number for number, step in enumerate(steps) if "llvm_toolchain.sh compile" in step.get("run", ""))
+        self.assertLess(download, compile_)
+        self.assertEqual(steps[download]["with"]["name"], upload["name"])
+        self.assertEqual(steps[download]["with"]["path"], upload["path"].rstrip("/"))
+        self.assertEqual(upload["path"], steps[-1]["with"]["path"])
 
     def test_packing_waits_for_every_slice_and_reads_their_objects(self):
         package = self.workflow["jobs"]["package"]

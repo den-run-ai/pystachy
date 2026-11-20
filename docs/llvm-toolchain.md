@@ -62,18 +62,22 @@ minutes on four cores, against a 15-minute limit on workflow jobs
 [LLVM toolchain workflow](../.github/workflows/llvm-toolchain.yml) therefore shares the
 compiling among jobs. It runs on manual dispatch and when the recipe changes on `main`:
 
-1. Twelve `compile` jobs each run `tools/llvm_toolchain.sh compile OUT I 12`. It builds LLVM's
-   table generators, which every job needs, then compiles every twelfth object file of the
+1. `generators` runs `tools/llvm_toolchain.sh generators OUT`. It compiles LLVM's three table
+   generators into `OUT/objects`: nearly every other object file includes a header that one of
+   them writes, so each of the next jobs needs them first.
+2. Six `compile` jobs start with those objects and each run
+   `tools/llvm_toolchain.sh compile OUT I 6`, which compiles every sixth object file of the
    distribution into `OUT/objects`.
-2. `package` downloads the twelve sets into one directory and runs `build` with
+3. `package` downloads the sets into one directory and runs `build` with
    `LLVM_TOOLCHAIN_OBJECTS` naming it. `build` finds each object compiled, links, runs the
    check below and packs the archive, which the job uploads with its `.sha256`.
-3. `bootstrap` extracts the archive, runs the check and `make` with it, and runs two corpus
+4. `bootstrap` extracts the archive, runs the check and `make` with it, and runs two corpus
    areas in JIT and AOT.
 
 An object is kept under a hash of its compile command, the compilers' versions and the source
 archive's hash, and is reused only under that key, so every job mounts the checkout at `/src`.
-`build` compiles an object that no slice compiled: a wrong slice costs time, not the result.
+A job compiles what its directory lacks: a slice without the generators' objects, or `build`
+after a wrong slice, costs time, not the result.
 
 On one machine `build` does all of it. Build in the pinned image, from the repository root:
 

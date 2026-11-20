@@ -4,13 +4,15 @@
 # alone, from LLVM's release sources.
 #
 #   tools/llvm_toolchain.sh build OUT          fetch, configure, build, check and pack OUT/NAME.tar.xz
+#   tools/llvm_toolchain.sh generators OUT     compile LLVM's table generators into OUT/objects
 #   tools/llvm_toolchain.sh compile OUT I N    compile slice I of N of the object files into OUT/objects
 #   tools/llvm_toolchain.sh check DIR          check the toolchain directory DIR (its bin holds the tools)
 #   tools/llvm_toolchain.sh name               print NAME, pystachy-llvm-VERSION-linux-ARCH
 #
-# Compiling is most of a build, so it can be shared: N machines each run compile for one slice, and
-# build then finds every object in the LLVM_TOOLCHAIN_OBJECTS directory that holds theirs and only
-# links, checks and packs. The LLVM toolchain workflow does this. compile needs ninja.
+# Compiling is most of a build, so it can be shared: one machine runs generators, N machines that
+# have its objects each run compile for one slice, and build then finds every object in the
+# LLVM_TOOLCHAIN_OBJECTS directory that holds theirs and only links, checks and packs. The LLVM
+# toolchain workflow does this. generators and compile need ninja.
 #
 # The archive runs wherever the C and C++ libraries are at least as new as the build host's. For a
 # portable one, build in an old distribution: docs/llvm-toolchain.md uses the manylinux_2_28 image
@@ -24,8 +26,9 @@
 #   LLVM_TOOLCHAIN_JOBS      parallel jobs (default: the CPU count)
 #   LLVM_TOOLCHAIN_BUILD     CMAKE_BUILD_TYPE (default Release; MinSizeRel is smaller and compiles slower)
 #   LLVM_TOOLCHAIN_OBJECTS   a directory of compiled objects to reuse and add to (build: none by
-#                            default; compile: OUT/objects). It must be used at one path, with one
-#                            source and build directory: an object's key is its compile command
+#                            default; generators and compile: OUT/objects). It must be used at one
+#                            path, with one source and build directory: an object's key is its
+#                            compile command
 #   LLVM_TOOLCHAIN_GLIBC, LLVM_TOOLCHAIN_GLIBCXX   check: the newest symbol versions the binaries
 #                            may need (2.28 and 3.4.25 for manylinux_2_28); unset, they are reported
 set -eu
@@ -36,6 +39,8 @@ MAJOR=${VERSION%%.*}
 BUILD=${LLVM_TOOLCHAIN_BUILD:-Release}
 # What the driver runs: pystachy_toolchain.py's TOOLS, and llc for PYSTACHY_JIT_CODEGEN=0 under lli.
 TOOLS="clang opt lli llc llvm-link llvm-as"
+# LLVM's table generators: nearly every other object file includes a header that one of them writes.
+GENERATORS="llvm-min-tblgen llvm-tblgen clang-tblgen"
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 
 fail() { echo "llvm_toolchain: $*" >&2; exit 1; }
@@ -248,8 +253,18 @@ prepare() {
     -DCLANG_INCLUDE_TESTS=OFF -DCLANG_INCLUDE_DOCS=OFF
 }
 
-# Compile slice $2 of $3 of the object files that the distribution is linked from, and what
-# they need first (LLVM's table generators and their output), into the object store.
+# Compile the table generators into the object store. Every slice needs them before its own
+# objects, so a slice that starts with this store links them instead of compiling them again.
+generators() {
+  objects=${LLVM_TOOLCHAIN_OBJECTS:-$1/objects}
+  prepare "$1"
+  [ "$generator" = Ninja ] || fail "generators needs ninja"
+  # shellcheck disable=SC2086
+  ninja -C "$work/build" -j "$jobs" $GENERATORS
+}
+
+# Compile slice $2 of $3 of the object files that the distribution is linked from into the object
+# store, after the table generators and their output, which the slice's objects need first.
 compile() {
   case "$2$3" in *[!0-9]*) fail "compile: I and N are numbers, not '$2' and '$3'" ;; esac
   [ "$2" -lt "$3" ] || fail "compile: slice $2 is not below $3"
@@ -305,9 +320,10 @@ build() {
 
 case "${1:-}" in
   build) [ $# -eq 2 ] || fail "usage: llvm_toolchain.sh build OUT"; build "$2" ;;
+  generators) [ $# -eq 2 ] || fail "usage: llvm_toolchain.sh generators OUT"; generators "$2" ;;
   compile) [ $# -eq 4 ] || fail "usage: llvm_toolchain.sh compile OUT I N"; compile "$2" "$3" "$4" ;;
   check) [ $# -eq 2 ] || fail "usage: llvm_toolchain.sh check DIR"; check "$2" ;;
   name) echo "$NAME" ;;
   launch) shift; launch "$@" ;;
-  *) fail "usage: llvm_toolchain.sh build OUT | compile OUT I N | check DIR | name" ;;
+  *) fail "usage: llvm_toolchain.sh build OUT | generators OUT | compile OUT I N | check DIR | name" ;;
 esac

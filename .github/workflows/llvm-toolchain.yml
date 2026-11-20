@@ -1,13 +1,14 @@
 # Build the minimal LLVM toolchain (docs/llvm-toolchain.md) from LLVM's pinned release sources.
-# Compiling LLVM and clang takes about two CPU-hours, so twelve jobs each compile one slice of the
-# object files, and another finds them all compiled and links, checks and packs the archive.
+# Compiling LLVM and clang takes about two CPU-hours, so one job compiles the table generators that
+# every other object file waits for, six jobs each compile one slice of the object files, and
+# another finds them all compiled and links, checks and packs the archive.
 name: LLVM toolchain
 
 on:
   workflow_dispatch:
   # A changed recipe is rebuilt at once, so a broken one is found before an archive is needed.
   push:
-    branches: [main]
+    branches: [main, claude/gracious-cannon-a68uaf]
     paths:
       - tools/llvm_toolchain.sh
       - .github/workflows/llvm-toolchain.yml
@@ -26,25 +27,55 @@ env:
   OUT: build/llvm-toolchain
 
 jobs:
-  compile:
-    name: compile (slice ${{ matrix.slice }} of 12)
+  generators:
+    name: compile the table generators
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    strategy:
-      matrix:
-        slice: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
 
       # Every job mounts the checkout at /src: an object's key is its compile command, paths included.
+      - name: Compile LLVM's table generators
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src "$IMAGE" \
+            sh -c "pipx install '$NINJA' && tools/llvm_toolchain.sh generators '$OUT'"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: llvm-objects-generators
+          path: ${{ env.OUT }}/objects/
+          if-no-files-found: error
+          retention-days: 1
+          overwrite: true
+
+  compile:
+    name: compile (slice ${{ matrix.slice }} of 6)
+    needs: generators
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        slice: ["0", "1", "2", "3", "4", "5"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      # No run-id or token: download-artifact can only select this workflow run here.
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
+        with:
+          name: llvm-objects-generators
+          path: ${{ env.OUT }}/objects
+
+      # A slice without the generators' objects would compile them itself, at two to three minutes.
       - name: Compile one slice of the object files
         env:
           SLICE: ${{ matrix.slice }}
         run: |
           docker run --rm -v "$PWD:/src" -w /src "$IMAGE" \
-            sh -c "pipx install '$NINJA' && tools/llvm_toolchain.sh compile '$OUT' '$SLICE' 12"
+            sh -c "pipx install '$NINJA' && tools/llvm_toolchain.sh compile '$OUT' '$SLICE' 6"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
@@ -64,7 +95,6 @@ jobs:
         with:
           persist-credentials: false
 
-      # No run-id or token: download-artifact can only select this workflow run here.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
         with:
           pattern: llvm-objects-*
