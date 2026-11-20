@@ -62,15 +62,18 @@ minutes on four cores, against a 15-minute limit on workflow jobs
 [LLVM toolchain workflow](../.github/workflows/llvm-toolchain.yml) therefore shares the
 compiling among jobs. It runs on manual dispatch and when the recipe changes on `main`:
 
-1. `generators` runs `tools/llvm_toolchain.sh generators OUT`. It compiles LLVM's three table
-   generators into `OUT/objects`: nearly every other object file includes a header that one of
-   them writes, so each of the next jobs needs them first.
-2. Six `compile` jobs start with those objects and each run
-   `tools/llvm_toolchain.sh compile OUT I 6`, which compiles every sixth object file of the
-   distribution into `OUT/objects`.
-3. `package` downloads the sets into one directory and runs `build` with
-   `LLVM_TOOLCHAIN_OBJECTS` naming it. `build` finds each object compiled, links, runs the
-   check below and packs the archive, which the job uploads with its `.sha256`.
+1. `generators` runs `tools/llvm_toolchain.sh fingerprint OUT`, a hash of the source archive,
+   the compilers' versions and every compile command, and looks for a cache of objects under
+   it. Finding none, it runs `tools/llvm_toolchain.sh generators OUT`, which compiles LLVM's
+   three table generators into `OUT/objects`: nearly every other object file includes a header
+   that one of them writes, so each of the next jobs needs them first.
+2. Eight `compile` jobs start with those objects and each run
+   `tools/llvm_toolchain.sh compile OUT I 8`, which compiles every eighth object file of the
+   distribution into `OUT/objects`. With cached objects these jobs are skipped.
+3. `package` restores the cached objects, or downloads the jobs' sets into one directory, and
+   runs `build` with `LLVM_TOOLCHAIN_OBJECTS` naming it. `build` finds each object compiled,
+   links, runs the check below and packs the archive, which the job uploads with its
+   `.sha256`. After a run that compiled, the job caches the directory.
 4. `bootstrap` extracts the archive, runs the check and `make` with it, and runs two corpus
    areas in JIT and AOT.
 
@@ -78,6 +81,11 @@ An object is kept under a hash of its compile command, the compilers' versions a
 archive's hash, and is reused only under that key, so every job mounts the checkout at `/src`.
 A job compiles what its directory lacks: a slice without the generators' objects, or `build`
 after a wrong slice, costs time, not the result.
+
+The cache serves a run whose fingerprint an earlier run had: a change to the recipe's check or
+packing, or to the workflow, compiles nothing. A new LLVM release, compiler or compile flag
+compiles everything. GitHub drops a cache that no run has read for seven days, and one written
+on another branch than `main` serves that branch alone.
 
 On one machine `build` does all of it. Build in the pinned image, from the repository root:
 

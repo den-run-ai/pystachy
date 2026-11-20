@@ -1,14 +1,15 @@
 # Build the minimal LLVM toolchain (docs/llvm-toolchain.md) from LLVM's pinned release sources.
 # Compiling LLVM and clang takes about two CPU-hours, so one job compiles the table generators that
-# every other object file waits for, six jobs each compile one slice of the object files, and
-# another finds them all compiled and links, checks and packs the archive.
+# every other object file waits for, eight jobs each compile one slice of the object files, and
+# another finds them all compiled and links, checks and packs the archive. The objects are cached
+# under a hash of every compile command: a run with the same hash compiles nothing.
 name: LLVM toolchain
 
 on:
   workflow_dispatch:
   # A changed recipe is rebuilt at once, so a broken one is found before an archive is needed.
   push:
-    branches: [main]
+    branches: [main, claude/gracious-cannon-a68uaf]
     paths:
       - tools/llvm_toolchain.sh
       - .github/workflows/llvm-toolchain.yml
@@ -31,18 +32,40 @@ jobs:
     name: compile the table generators
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    outputs:
+      key: ${{ steps.fingerprint.outputs.key }}
+      cached: ${{ steps.objects.outputs.cache-hit }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
 
       # Every job mounts the checkout at /src: an object's key is its compile command, paths included.
+      - name: Hash the compile commands
+        id: fingerprint
+        run: |
+          fingerprint=$(docker run --rm -v "$PWD:/src" -w /src "$IMAGE" \
+            sh -c "pipx install '$NINJA' >&2 && tools/llvm_toolchain.sh fingerprint '$OUT'")
+          [[ $fingerprint =~ ^[0-9a-f]{64}$ ]]
+          echo "key=llvm-toolchain-objects-$fingerprint" >> "$GITHUB_OUTPUT"
+
+      # The objects of a run with the same compile commands are this run's: nothing is compiled, and
+      # package restores them. GitHub drops a cache that no run has read for seven days.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        id: objects
+        with:
+          path: ${{ env.OUT }}/objects
+          key: ${{ steps.fingerprint.outputs.key }}
+          lookup-only: true
+
       - name: Compile LLVM's table generators
+        if: steps.objects.outputs.cache-hit != 'true'
         run: |
           docker run --rm -v "$PWD:/src" -w /src "$IMAGE" \
             sh -c "pipx install '$NINJA' && tools/llvm_toolchain.sh generators '$OUT'"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        if: steps.objects.outputs.cache-hit != 'true'
         with:
           name: llvm-objects-generators
           path: ${{ env.OUT }}/objects/
@@ -51,13 +74,14 @@ jobs:
           overwrite: true
 
   compile:
-    name: compile (slice ${{ matrix.slice }} of 6)
+    name: compile (slice ${{ matrix.slice }} of 8)
     needs: generators
+    if: needs.generators.outputs.cached != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       matrix:
-        slice: ["0", "1", "2", "3", "4", "5"]
+        slice: ["0", "1", "2", "3", "4", "5", "6", "7"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -75,7 +99,7 @@ jobs:
           SLICE: ${{ matrix.slice }}
         run: |
           docker run --rm -v "$PWD:/src" -w /src "$IMAGE" \
-            sh -c "pipx install '$NINJA' && tools/llvm_toolchain.sh compile '$OUT' '$SLICE' 6"
+            sh -c "pipx install '$NINJA' && tools/llvm_toolchain.sh compile '$OUT' '$SLICE' 8"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
@@ -87,7 +111,11 @@ jobs:
 
   package:
     name: link, check and pack
-    needs: compile
+    needs: [generators, compile]
+    # Skipped slices are the cached case; without a condition, a skipped job skips those after it.
+    if: >-
+      ${{ !cancelled() && needs.generators.result == 'success'
+      && (needs.compile.result == 'success' || needs.compile.result == 'skipped') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -95,7 +123,16 @@ jobs:
         with:
           persist-credentials: false
 
+      # One job cannot compile LLVM within its time limit, so a cache that has gone fails here.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        if: needs.generators.outputs.cached == 'true'
+        with:
+          path: ${{ env.OUT }}/objects
+          key: ${{ needs.generators.outputs.key }}
+          fail-on-cache-miss: true
+
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
+        if: needs.generators.outputs.cached != 'true'
         with:
           pattern: llvm-objects-*
           path: ${{ env.OUT }}/objects
@@ -107,6 +144,13 @@ jobs:
           docker run --rm -v "$PWD:/src" -w /src -e LLVM_TOOLCHAIN_OBJECTS="$OUT/objects" \
             -e LLVM_TOOLCHAIN_GLIBC=2.28 -e LLVM_TOOLCHAIN_GLIBCXX=3.4.25 "$IMAGE" \
             sh -c "pipx install '$NINJA' && tools/llvm_toolchain.sh build '$OUT'"
+
+      # Only after a build that passed its check, and only the objects of this build.
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        if: needs.generators.outputs.cached != 'true'
+        with:
+          path: ${{ env.OUT }}/objects
+          key: ${{ needs.generators.outputs.key }}
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
@@ -121,6 +165,7 @@ jobs:
   bootstrap:
     name: bootstrap Pystachy with the archive
     needs: package
+    if: ${{ !cancelled() && needs.package.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:

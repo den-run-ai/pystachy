@@ -4,6 +4,7 @@
 # alone, from LLVM's release sources.
 #
 #   tools/llvm_toolchain.sh build OUT          fetch, configure, build, check and pack OUT/NAME.tar.xz
+#   tools/llvm_toolchain.sh fingerprint OUT    print a hash of what the object files are compiled from
 #   tools/llvm_toolchain.sh generators OUT     compile LLVM's table generators into OUT/objects
 #   tools/llvm_toolchain.sh compile OUT I N    compile slice I of N of the object files into OUT/objects
 #   tools/llvm_toolchain.sh check DIR          check the toolchain directory DIR (its bin holds the tools)
@@ -12,7 +13,8 @@
 # Compiling is most of a build, so it can be shared: one machine runs generators, N machines that
 # have its objects each run compile for one slice, and build then finds every object in the
 # LLVM_TOOLCHAIN_OBJECTS directory that holds theirs and only links, checks and packs. The LLVM
-# toolchain workflow does this. generators and compile need ninja.
+# toolchain workflow does this, and keeps that directory under its fingerprint: a later build with
+# the same fingerprint compiles nothing. generators and compile need ninja.
 #
 # The archive runs wherever the C and C++ libraries are at least as new as the build host's. For a
 # portable one, build in an old distribution: docs/llvm-toolchain.md uses the manylinux_2_28 image
@@ -26,7 +28,7 @@
 #   LLVM_TOOLCHAIN_JOBS      parallel jobs (default: the CPU count)
 #   LLVM_TOOLCHAIN_BUILD     CMAKE_BUILD_TYPE (default Release; MinSizeRel is smaller and compiles slower)
 #   LLVM_TOOLCHAIN_OBJECTS   a directory of compiled objects to reuse and add to (build: none by
-#                            default; generators and compile: OUT/objects). It must be used at one
+#                            default; the others: OUT/objects). It must be used at one
 #                            path, with one source and build directory: an object's key is its
 #                            compile command
 #   LLVM_TOOLCHAIN_GLIBC, LLVM_TOOLCHAIN_GLIBCXX   check: the newest symbol versions the binaries
@@ -253,6 +255,16 @@ prepare() {
     -DCLANG_INCLUDE_TESTS=OFF -DCLANG_INCLUDE_DOCS=OFF
 }
 
+# Print a hash of what the object files are compiled from: the source archive, the compilers'
+# versions and every compile command. Builds with one fingerprint compile the same objects, so the
+# object store of one serves the others.
+fingerprint() {
+  objects=${LLVM_TOOLCHAIN_OBJECTS:-$1/objects}
+  prepare "$1" >&2
+  [ -s "$work/build/compile_commands.json" ] || fail "cmake wrote no compile_commands.json"
+  { echo "$LLVM_TOOLCHAIN_STAMP"; cat "$work/build/compile_commands.json"; } | sha256sum | cut -d' ' -f1
+}
+
 # Compile the table generators into the object store. Every slice needs them before its own
 # objects, so a slice that starts with this store links them instead of compiling them again.
 generators() {
@@ -320,10 +332,11 @@ build() {
 
 case "${1:-}" in
   build) [ $# -eq 2 ] || fail "usage: llvm_toolchain.sh build OUT"; build "$2" ;;
+  fingerprint) [ $# -eq 2 ] || fail "usage: llvm_toolchain.sh fingerprint OUT"; fingerprint "$2" ;;
   generators) [ $# -eq 2 ] || fail "usage: llvm_toolchain.sh generators OUT"; generators "$2" ;;
   compile) [ $# -eq 4 ] || fail "usage: llvm_toolchain.sh compile OUT I N"; compile "$2" "$3" "$4" ;;
   check) [ $# -eq 2 ] || fail "usage: llvm_toolchain.sh check DIR"; check "$2" ;;
   name) echo "$NAME" ;;
   launch) shift; launch "$@" ;;
-  *) fail "usage: llvm_toolchain.sh build OUT | generators OUT | compile OUT I N | check DIR | name" ;;
+  *) fail "usage: llvm_toolchain.sh build OUT | fingerprint OUT | generators OUT | compile OUT I N | check DIR | name" ;;
 esac
