@@ -1904,6 +1904,12 @@ def gen_target_type(self, n: Node, base: bool = False) -> str:
             return elem(t)
         if n.kind == "index" and is_dict(t):
             return targs(t)[1]
+        if n.kind == "index" and self.value_union(self.rec_type(t)):
+            # (a closed union's list or dict member takes the store, ustore: a display stored
+            # there is made of its items' type, doc["rows"][0]["tags"] = [])
+            items = self.usub_items(unopt(self.rec_type(t)))
+            joined = self.union_type(items) if len(items) > 0 else "!"
+            return "" if joined.startswith("!") else joined
         if n.kind == "index" and t in self.classes and "__setitem__" in self.classes[t].methods and len(self.classes[t].methods["__setitem__"].ptypes) > 2:
             return self.classes[t].methods["__setitem__"].ptypes[2]
         if base and n.kind == "index" and is_tuple(t) and self.dyn_policy(n.line):
@@ -1938,6 +1944,45 @@ def gen_target_type(self, n: Node, base: bool = False) -> str:
     if base and n.kind == "ifexp" and self.dyn_policy(n.line):
         return "dyn" if self.target_type(n.kids[1], True) == "dyn" and self.target_type(n.kids[2], True) == "dyn" else ""  # (Any either way)
     return ""
+
+def gen_ustore(self, o: Val, t: Node, v: Val) -> None:
+    # o[k] = v for a closed union o of builtin values (expressions.py's usubscript reads one): k
+    # is evaluated once, then the list or dict that the box's tag names takes the store as a
+    # value of its own type does, v coerced to its items' type. A member that takes no item
+    # assignment, or no index of k's type, raises CPython's TypeError. A dict whose keys are of
+    # another type than k raises TypeError too, where CPython adds the key
+    # (tests/deviations/union_store_key.py): the dict's layout holds keys of one type.
+    u = unopt(o.t)
+    index = self.expr(t.kids[1], "")
+    kt = index.t
+    if kt not in ["int", "bool", "str", BIG]:
+        self.err(f"assigning an item of a closed union value ({typestr(o.t)}) at {typestr(kt)} is not supported: narrow the value with isinstance() first, or index it with an int or a str")
+    o = self.unone(o, "'NoneType' object does not support item assignment")
+    end = self.label()
+    tag = self.mload('int', o.v)
+    members = umembers(u)
+    for i in range(len(members)):
+        m = members[i]
+        nxt = self.label() if i + 1 < len(members) else ""
+        if nxt != "":
+            arm = self.label()
+            self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(m)), "int")).v, arm, nxt)
+            self.place(arm)
+        if not (is_list(m) or is_dict(m)):
+            self.raise_("TypeError", self.sconst(f"'{tname(m)}' object does not support item assignment"))
+        elif is_list(m) and kt == "str":
+            self.raise_("TypeError", self.sconst("list indices must be integers or slices, not str"))
+        elif is_dict(m) and (targs(m)[0] == "str") != (kt == "str"):
+            self.raise_("TypeError", self.sconst(f"expected a {typestr(targs(m)[0])} key, got {tname(kt)}"))
+        else:
+            item = self.uget(Val(o.v, u), m)
+            # (a list's index as an int: a bool's, or a promoting int's, bigints.py)
+            at = self.as_int(index) if kt == "bool" or (kt == BIG and not is_dict(m)) else index
+            self.assign(mk("index", "", t.line, [self.vnode(item), self.vnode(at)]), v)
+            self.br(end)
+        if nxt != "":
+            self.place(nxt)
+    self.place(end)
 
 def gen_assign(self, t: Node, v: Val) -> None:
     k = t.kind
@@ -2087,6 +2132,8 @@ def gen_assign(self, t: Node, v: Val) -> None:
             self.protocol(o, "__setitem__", [ik, v])
         elif is_kw(o.t):
             self.err("changing **kwargs is not supported: copy it to a dict first (d = dict(kwargs))")
+        elif self.value_union(o.t) and any(is_list(m) or is_dict(m) for m in umembers(unopt(o.t))):
+            self.ustore(o, t, v)  # (the member its tag names: below)
         else:
             self.err(f"'{o.t}' does not support item assignment")
     elif k == "slice":

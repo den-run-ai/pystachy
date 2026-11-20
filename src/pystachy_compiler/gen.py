@@ -1027,6 +1027,9 @@ from src.pystachy_compiler.expressions import (
     gen_static_reads as expressions_static_reads,
     gen_static_type as expressions_static_type,
     gen_subscript as expressions_subscript,
+    gen_unone as expressions_unone,
+    gen_usub_items as expressions_usub_items,
+    gen_usubscript as expressions_usubscript,
     gen_tget as expressions_tget,
     gen_tstore as expressions_tstore,
     gen_tput as expressions_tput,
@@ -1374,6 +1377,7 @@ from src.pystachy_compiler.variables import (
     gen_ahead as variables_ahead,
     gen_applies as variables_applies,
     gen_assign as variables_assign,
+    gen_ustore as variables_ustore,
     gen_unpack_next as variables_unpack_next,
     gen_list_slot as variables_list_slot,
     gen_assigned_to as variables_assigned_to,
@@ -3701,6 +3705,9 @@ class Gen:
     def assign(self, t: Node, v: Val) -> None:
         return variables_assign(self, t, v)
 
+    def ustore(self, o: Val, t: Node, v: Val) -> None:
+        return variables_ustore(self, o, t, v)
+
     def slice_target(self, t: Node, bnd: list[str], nosub: str, raw: list[str] | None = None, values: list[Val] | None = None, written: list[Val] | None = None) -> Val:
         return variables_slice_target(self, t, bnd, nosub, raw, values, written)
 
@@ -4941,6 +4948,15 @@ class Gen:
 
     def subscript(self, n: Node, o: Val, want: str = "") -> Val:
         return expressions_subscript(self, n, o, want)
+
+    def unone(self, o: Val, msg: str) -> Val:
+        return expressions_unone(self, o, msg)
+
+    def usub_items(self, t: str) -> list[str]:
+        return expressions_usub_items(self, t)
+
+    def usubscript(self, n: Node, o: Val) -> Val:
+        return expressions_usubscript(self, n, o)
 
     def list_find(self, o: Val, v: Val, method: str, start: str = "", stop: str = "") -> Val:
         return containers_list_find(self, o, v, method, start, stop)

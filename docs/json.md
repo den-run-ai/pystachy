@@ -68,8 +68,11 @@ slots contain these boxed values. The existing conservative collector scans
 those references. Descriptor strings use finite backward references for recursive
 edges; runtime traversal follows the descriptor alongside each value.
 
-`isinstance()` narrows local values and parameters before indexing, iteration,
-arithmetic or mutation. Narrowing preserves identity: two references to the same
+Indexing, `len()` and item assignment need no narrowing: they select the list, dict
+or str that the value holds and raise CPython's `TypeError` for another member
+([operations on closed unions](language/typing.md#operations-on-closed-unions)).
+`isinstance()` narrows local values and parameters before iteration, arithmetic or
+container methods. Narrowing preserves identity: two references to the same
 parsed list see each other's changes. Existing typed containers remain invariant;
 an existing `list[int]` is not reinterpreted or implicitly copied into
 `list[JSONValue]`. Construct recursive storage explicitly or obtain it from

@@ -1059,7 +1059,9 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             bad = "int() can't convert non-string with explicit base"
         elif (name == "sum" or name == "math.prod") and i == 0:
             bad = "'NoneType' object is not iterable"
-        if bad != "":
+        if bad != "" and name == "len" and self.value_union(vals[i].t):
+            vals[i] = self.unone(vals[i], bad)  # (a branch, as a closed union's subscript tests it: unone)
+        elif bad != "":
             vals[i] = self.unwrap(vals[i], "TypeError: " + bad)
         elif name not in OPTARG:
             if f"{name}({','.join([unopt(v.t) for v in vals])})".replace(BIG, "int") not in CALLS and name not in OPTCALLS:
@@ -1259,8 +1261,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     if is_kw(t) and name == "dict" and len(vals) == 1:
         return self.kw_dict(v)  # (a new dict: CPython's dict(kwargs) copies it too)
     if name == "len":
-        if is_union(unopt(t)) and all(m == "str" or is_list(m) or is_dict(m) for m in umembers(unopt(t))):
-            return self.uop(v, "len")
+        if is_union(unopt(t)) and (all(m == "str" or is_list(m) or is_dict(m) for m in umembers(unopt(t))) or (self.value_union(t) and any(m == "str" or is_list(m) or is_dict(m) for m in umembers(unopt(t))))):
+            return self.uop(v, "len")  # (a member without a length raises CPython's TypeError: unions.py)
         if t in self.classes and "__len__" in self.classes[t].methods:
             self.notnone(v, "TypeError: object of type 'NoneType' has no len()")
             return self.objlen(v)

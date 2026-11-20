@@ -3199,6 +3199,79 @@ def gen_tput(self, v: Val, index: int, x: Val) -> None:
         return
     self.tstore(v, index, self.to_slot(x, BIG in targs(v.t)[index]))  # (a tuple of promoting ints, as its type's item: kept)
 
+def gen_usub_items(self, t: str) -> list[str]:
+    # the item types of closed union t's members that an index selects from: a list's, a
+    # dict's values' and a str's (its characters)
+    items: list[str] = []
+    for m in umembers(t):
+        if is_list(m):
+            items.append(elem(m))
+        elif is_dict(m):
+            items.append(targs(m)[1])
+        elif m == "str":
+            items.append("str")
+    return items
+
+def gen_unone(self, o: Val, msg: str) -> Val:
+    # closed union value o, which raises TypeError msg where it is None, as the union it holds.
+    # A branch tests it, as utest's does, not a check: nullcheck removes a check that an equal
+    # value's test dominates, and the tag's read then has no test of its own box to prove it.
+    if not is_opt(o.t):
+        return o
+    bad = self.label()
+    arm = self.label()
+    self.cbr(self.ptr_cmp('==', o, Val('null', 'None')).v, bad, arm)
+    self.place(bad)
+    self.raise_("TypeError", self.sconst(msg))
+    self.place(arm)
+    return Val(o.v, unopt(o.t)).identity(o)
+
+def gen_usubscript(self, n: Node, o: Val) -> Val:
+    # o[k] for a closed union o of builtin values (numbers, strs, lists and dicts, as a
+    # recursive alias's value is, which may be None): k is evaluated once, then the member that
+    # the box's tag names is indexed as a value of its own type is. A member whose type takes no
+    # such index raises CPython's TypeError there, and a dict whose keys are of another type its
+    # KeyError: the errors CPython raises for that object. The result is one of the members'
+    # items, which a recursive alias's own type holds (doc["rows"][0]["id"] needs no narrowing).
+    t = unopt(o.t)
+    index = self.expr(n.kids[1], "")
+    kt = index.t
+    if kt not in ["int", "bool", "str", BIG]:
+        self.err(f"indexing a closed union value ({typestr(o.t)}) with {typestr(kt)} is not supported: narrow the value with isinstance() first, or index it with an int or a str")
+    rt = self.union_type(self.usub_items(t))
+    if rt.startswith("!"):
+        self.err(f"indexing a closed union value ({typestr(o.t)}) is not supported ({rt[1:]}): narrow it with isinstance() first")
+    o = self.unone(o, "'NoneType' object is not subscriptable")
+    end = self.label()
+    ph = Ins("phi", rt, "")
+    tag = self.mload('int', o.v)
+    members = umembers(t)
+    for i in range(len(members)):
+        m = members[i]
+        nxt = self.label() if i + 1 < len(members) else ""
+        if nxt != "":
+            arm = self.label()
+            self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(m)), "int")).v, arm, nxt)
+            self.place(arm)
+        bad = comparison_invalid("[]", m, kt)
+        if bad == "" and not (is_list(m) or is_dict(m) or m == "str"):
+            bad = f"'{tname(m)}' object is not subscriptable"
+        if bad != "":
+            self.raise_("TypeError", self.sconst(bad))
+        elif is_dict(m) and (targs(m)[0] == "str") != (kt == "str"):
+            self.raise_("KeyError", self.repr(index).v, self.sconst("KeyError"))  # (no key of that type)
+        else:
+            item = self.uget(Val(o.v, t), m)
+            # (a sequence's index as an int: a bool's, or a promoting int's, bigints.py)
+            at = self.as_int(index) if kt == "bool" or (kt == BIG and not is_dict(m)) else index
+            r = self.subscript(mk("index", "", n.line, [self.vnode(item), self.vnode(at)]), item)
+            self.incoming(ph, self.coerce(r, rt).v, self.cur)
+            self.br(end)
+        if nxt != "":
+            self.place(nxt)
+    self.place(end)
+    return Val(self.phi(ph), rt)
+
 def gen_indexed_ord(self, n: Node) -> Val | None:
     # Code point of an indexed str. Runtime mode indexes bytes, and comparison
     # methods have their own error path for invalid indexing.
@@ -3251,6 +3324,8 @@ def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
     sub = "TypeError: 'NoneType' object is not subscriptable"  # (once the index is evaluated)
     if t == "dyn":
         return self.dyn_getitem(o, self.expr(n.kids[1], "dyn"))  # (its box's type's: dynamic.py)
+    if self.value_union(t) and n.kids[1].kind != "slice" and len(self.usub_items(t)) > 0:
+        return self.usubscript(n, o)  # (the member its tag names: below)
     if t in ["fn[b:list]", "fn[b:dict]", "fn[b:tuple]", "fn[b:set]", "fn[b:frozenset]"]:
         self.err(f"{t[5:-1]}[...] as a value is not supported (only annotations may name a type: a type alias is a module-level name = {t[5:-1]}[...] that nothing else binds)")
     if is_kw(t) and n.kids[1].kind == "str":

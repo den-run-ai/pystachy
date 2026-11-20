@@ -131,6 +131,10 @@ applies. Bytes case methods remain ASCII-only.
   `key=`, so size changes are not detected. `intersection()` and
   `intersection_update()` consume a generator expression before testing its items;
   CPython interleaves generation and testing.
+- **A closed union's dict keeps its key type.** An item assigned through a
+  [closed union](typing.md#operations-on-closed-unions) at an index of another type than
+  the selected dict's keys raises `TypeError`; CPython adds the key
+  ([deviation](../../tests/deviations/union_store_key.py)).
 - **Hash callbacks can repeat.** `dict.fromkeys(set_of_objects)` recomputes user
   hashes; CPython reuses the set's hashes. `cache()`/`lru_cache()` may hash an
   argument more than once per call; CPython does so once.

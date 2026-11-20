@@ -656,9 +656,41 @@ or `None`-only displays retain context from an unambiguous declared member.
 Dictionary equality keeps hashed lookup for matching key layouts. Different key
 layouts compare keys pairwise, which can take quadratic time; ordinary string-keyed
 JSON-shaped dictionaries use hashed lookup. User objects, files, functions and sets
-inside mixed-value equality remain unsupported. Narrow before ordering, container
-methods on a union receiver or indexing; there is no generic method dispatch.
-Container members are not [inferred](#inferred-unions).
+inside mixed-value equality remain unsupported. Narrow before ordering, arithmetic
+with a member that is no number, iteration and container methods on a union receiver;
+there is no generic method dispatch. Container members are not
+[inferred](#inferred-unions).
+
+### Operations on closed unions
+
+Indexing, `len()` and item assignment select the member that the box's tag names, so
+JSON-shaped values need no `isinstance()` for them:
+
+```python
+import json
+
+doc = json.loads('{"rows": [{"id": 7, "tags": ["a", "b"]}]}')
+print(doc["rows"][0]["id"], len(doc["rows"][0]["tags"]))  # 7 2
+doc["rows"][0]["tags"][1] = "c"
+doc["count"] = 1
+```
+
+The index is an `int`, a `bool` or a `str`, and is evaluated once, after the value. A
+member that cannot take the operation raises the error CPython raises for that object:
+`'int' object is not subscriptable`, `list indices must be integers or slices, not str`,
+`object of type 'float' has no len()` or `'str' object does not support item
+assignment`. A dict whose keys have another type than the index raises `KeyError` on
+a read. The result of an index is the union of the members' item types, which a
+[recursive alias](#recursive-value-aliases-prototype) is itself, so chains such as
+`doc["rows"][0]["id"]` keep one type. A display stored through a union takes that item
+type, as one stored into a list or dict of the union does.
+
+An item assigned at an index whose type the selected dict's keys do not have raises
+`TypeError`, where CPython adds the key
+([deviation](../../tests/deviations/union_store_key.py)): `value[0] = x` works for a
+list in `value` and raises for a `dict[str, T]` there. Slices, a union that holds
+objects or tuples, and other index types still need narrowing
+([cases](../../tests/programs/inference/recursive_alias_index.py)).
 
 A union may hold one `Callable[[...], R]` beside scalars, lists and dictionaries, for a
 parameter that takes a value or a function that decides it:

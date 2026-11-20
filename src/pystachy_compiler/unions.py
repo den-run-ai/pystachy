@@ -7,7 +7,7 @@ from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.names import owner
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, FXBIT, NONEVAR, OPTTYPES
-from src.pystachy_compiler.utils import elem, is_callable, is_clsval, is_dict, is_fn, is_list, is_opt, is_sopt, is_tuple, is_union, is_vtuple, targs, typestr, umembers, unopt
+from src.pystachy_compiler.utils import elem, is_callable, is_clsval, is_dict, is_fn, is_list, is_opt, is_sopt, is_tuple, is_union, is_vtuple, targs, tname, typestr, umembers, unopt
 
 def gen_uboxes(self, a: str, b: str) -> bool:
     # is a value of type a one of union type b (or b | None) once boxed: a member's (one that
@@ -96,6 +96,12 @@ def gen_uop(self, v: Val, op: str) -> Val:
         if is_callable(members[i]):
             self.incoming(ph, "true", self.cur)  # (a function is true)
             self.br(end)
+            if nxt != "":
+                self.place(nxt)
+            continue
+        if op == "len" and not (members[i] == "str" or is_list(members[i]) or is_dict(members[i])):
+            # (a number: CPython's error for that object, as len() of it alone is rejected)
+            self.raise_("TypeError", self.sconst(f"object of type '{tname(members[i])}' has no len()"))
             if nxt != "":
                 self.place(nxt)
             continue
