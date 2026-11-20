@@ -179,6 +179,11 @@ The download is checked against the pinned hash before anything is extracted, in
 [`PYSTACHY_LLVM_CACHE`](install.md#install-from-github-with-pip-or-uv), and each tool must
 report 18.1.8 before the directory is used.
 
+clang links with GCC's start files and `libgcc`, which it looks for under the names of the
+distributions it knows. LLVM 18 knows `x86_64-amazon-linux` and not `aarch64-amazon-linux`, so
+on Amazon Linux 2023 for ARM64 it would link nothing. Where the downloaded clang finds no GCC,
+the name that the host's `gcc` gives is written to `bin/clang.cfg` beside it as `--gcc-triple`.
+
 The pinned revision takes both archives and no other bytes: [publishing](#publish) a build
 with another hash under it, or one architecture alone, is refused, since downloads of it would
 fail. After a change to the
