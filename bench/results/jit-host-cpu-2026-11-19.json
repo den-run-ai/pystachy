@@ -1,0 +1,349 @@
+{
+ "notes": "The JIT tier compiling for the host's CPU (this branch's default, PYSTACHY_JIT_CPU=native: opt -mcpu=native names it and its features on each function) against the module target's default CPU (PYSTACHY_JIT_CPU=generic, x86-64's SSE2), on this branch (claude/dreamy-shannon-bb3cu1-jit-host-cpu, stacked on #1571 and #1540, main 8259611e). variants.py: interleaved rounds, rotating order, each run pinned to CPU 1 with taskset, PYSTACHY_PROGRAM_CACHE=0, PYSTACHY_TIMING=1; every run's stdout is the first variant's. run: wall seconds less the driver's preparation and the runner's code generation; jit_optimize and jit_codegen: the driver's stage records. saxpy and scale run listguard's copy of y[i] = a * x[i] + y[i] and y[i] = x[i] * 3.0 over 1,000 items (in L1) 400,000 times. x86-64 (Intel Xeon @ 2.10GHz, AVX-512, which LLVM calls sapphirerapids and tunes to 256-bit vectors; 4 CPUs, shared host), LLVM 18.1.3.",
+ "kernels": {
+  "saxpy": {
+   "rounds": 7,
+   "args": [
+    "k/saxpy.py",
+    "1000",
+    "400000"
+   ],
+   "variants": {
+    "generic": {
+     "run": {
+      "median": 0.1116,
+      "paired": 1.0
+     },
+     "wall": {
+      "median": 0.167,
+      "paired": 1.0
+     },
+     "jit_optimize": {
+      "median": 0.0234,
+      "paired": 1.0
+     },
+     "jit_codegen": {
+      "median": 0.0138,
+      "paired": 1.0
+     }
+    },
+    "native": {
+     "run": {
+      "median": 0.0847,
+      "paired": 0.726
+     },
+     "wall": {
+      "median": 0.1228,
+      "paired": 0.795
+     },
+     "jit_optimize": {
+      "median": 0.0206,
+      "paired": 0.988
+     },
+     "jit_codegen": {
+      "median": 0.0157,
+      "paired": 1.121
+     }
+    }
+   }
+  },
+  "scale": {
+   "rounds": 7,
+   "args": [
+    "k/scale.py",
+    "1000",
+    "400000"
+   ],
+   "variants": {
+    "generic": {
+     "run": {
+      "median": 0.1169,
+      "paired": 1.0
+     },
+     "wall": {
+      "median": 0.163,
+      "paired": 1.0
+     },
+     "jit_optimize": {
+      "median": 0.0262,
+      "paired": 1.0
+     },
+     "jit_codegen": {
+      "median": 0.0154,
+      "paired": 1.0
+     }
+    },
+    "native": {
+     "run": {
+      "median": 0.095,
+      "paired": 0.806
+     },
+     "wall": {
+      "median": 0.142,
+      "paired": 0.883
+     },
+     "jit_optimize": {
+      "median": 0.0286,
+      "paired": 1.051
+     },
+     "jit_codegen": {
+      "median": 0.0178,
+      "paired": 1.158
+     }
+    }
+   }
+  }
+ },
+ "programs": {
+  "bench/pyperformance/scimark.py": {
+   "rounds": 11,
+   "variants": {
+    "generic": {
+     "wall": {
+      "median": 0.2255,
+      "paired": 1.0
+     },
+     "run": {
+      "median": 0.0551,
+      "paired": 1.0
+     },
+     "jit_optimize": {
+      "median": 0.0704,
+      "paired": 1.0
+     },
+     "jit_codegen": {
+      "median": 0.0772,
+      "paired": 1.0
+     }
+    },
+    "native": {
+     "wall": {
+      "median": 0.2196,
+      "paired": 1.008
+     },
+     "run": {
+      "median": 0.0526,
+      "paired": 0.916
+     },
+     "jit_optimize": {
+      "median": 0.072,
+      "paired": 1.025
+     },
+     "jit_codegen": {
+      "median": 0.072,
+      "paired": 1.029
+     }
+    }
+   }
+  },
+  "bench/pyperformance/nbody.py": {
+   "rounds": 5,
+   "variants": {
+    "generic": {
+     "wall": {
+      "median": 0.0824,
+      "paired": 1.0
+     },
+     "run": {
+      "median": 0.0281,
+      "paired": 1.0
+     },
+     "jit_optimize": {
+      "median": 0.0252,
+      "paired": 1.0
+     },
+     "jit_codegen": {
+      "median": 0.0227,
+      "paired": 1.0
+     }
+    },
+    "native": {
+     "wall": {
+      "median": 0.0909,
+      "paired": 1.048
+     },
+     "run": {
+      "median": 0.0272,
+      "paired": 0.971
+     },
+     "jit_optimize": {
+      "median": 0.0257,
+      "paired": 1.039
+     },
+     "jit_codegen": {
+      "median": 0.0249,
+      "paired": 1.115
+     }
+    }
+   }
+  },
+  "bench/pyperformance/spectral_norm.py": {
+   "rounds": 5,
+   "variants": {
+    "generic": {
+     "wall": {
+      "median": 0.061,
+      "paired": 1.0
+     },
+     "run": {
+      "median": 0.0197,
+      "paired": 1.0
+     },
+     "jit_optimize": {
+      "median": 0.022,
+      "paired": 1.0
+     },
+     "jit_codegen": {
+      "median": 0.015,
+      "paired": 1.0
+     }
+    },
+    "native": {
+     "wall": {
+      "median": 0.0621,
+      "paired": 1.015
+     },
+     "run": {
+      "median": 0.0199,
+      "paired": 1.002
+     },
+     "jit_optimize": {
+      "median": 0.0221,
+      "paired": 1.004
+     },
+     "jit_codegen": {
+      "median": 0.0161,
+      "paired": 1.07
+     }
+    }
+   }
+  },
+  "bench/pyperformance/raytrace.py": {
+   "rounds": 5,
+   "variants": {
+    "generic": {
+     "wall": {
+      "median": 0.2179,
+      "paired": 1.0
+     },
+     "run": {
+      "median": 0.0426,
+      "paired": 1.0
+     },
+     "jit_optimize": {
+      "median": 0.0626,
+      "paired": 1.0
+     },
+     "jit_codegen": {
+      "median": 0.0882,
+      "paired": 1.0
+     }
+    },
+    "native": {
+     "wall": {
+      "median": 0.22,
+      "paired": 1.043
+     },
+     "run": {
+      "median": 0.0421,
+      "paired": 1.022
+     },
+     "jit_optimize": {
+      "median": 0.0592,
+      "paired": 0.951
+     },
+     "jit_codegen": {
+      "median": 0.0983,
+      "paired": 1.115
+     }
+    }
+   }
+  },
+  "bench/pyperformance/json_loads.py": {
+   "rounds": 5,
+   "variants": {
+    "generic": {
+     "wall": {
+      "median": 1.3764,
+      "paired": 1.0
+     },
+     "run": {
+      "median": 0.8553,
+      "paired": 1.0
+     },
+     "jit_optimize": {
+      "median": 0.1461,
+      "paired": 1.0
+     },
+     "jit_codegen": {
+      "median": 0.2762,
+      "paired": 1.0
+     }
+    },
+    "native": {
+     "wall": {
+      "median": 1.4256,
+      "paired": 0.991
+     },
+     "run": {
+      "median": 0.9169,
+      "paired": 0.971
+     },
+     "jit_optimize": {
+      "median": 0.1334,
+      "paired": 0.972
+     },
+     "jit_codegen": {
+      "median": 0.259,
+      "paired": 0.992
+     }
+    }
+   }
+  },
+  "bench/pyperformance/chaos.py": {
+   "rounds": 5,
+   "variants": {
+    "generic": {
+     "wall": {
+      "median": 0.2102,
+      "paired": 1.0
+     },
+     "run": {
+      "median": 0.0331,
+      "paired": 1.0
+     },
+     "jit_optimize": {
+      "median": 0.0697,
+      "paired": 1.0
+     },
+     "jit_codegen": {
+      "median": 0.087,
+      "paired": 1.0
+     }
+    },
+    "native": {
+     "wall": {
+      "median": 0.2161,
+      "paired": 1.026
+     },
+     "run": {
+      "median": 0.0327,
+      "paired": 0.983
+     },
+     "jit_optimize": {
+      "median": 0.0739,
+      "paired": 1.018
+     },
+     "jit_codegen": {
+      "median": 0.0913,
+      "paired": 1.044
+     }
+    }
+   }
+  }
+ },
+ "sources": {
+  "saxpy": "import sys\nimport math\n\n\ndef fill(n: int, seed: int) -> list[float]:\n    out = [0.0] * n\n    x = seed\n    for i in range(n):\n        x = (x * 1103515245 + 12345) % 2147483648\n        out[i] = (x % 1000) / 250.0 + 0.5\n    return out\n\n\ndef ifill(n: int, seed: int) -> list[int]:\n    out = [0] * n\n    x = seed\n    for i in range(n):\n        x = (x * 1103515245 + 12345) % 2147483648\n        out[i] = x % 1000\n    return out\n\n\ndef kernel(a: float, x: list[float], y: list[float]) -> None:\n    for i in range(len(x)):\n        y[i] = a * x[i] + y[i]\n\n\ndef main() -> None:\n    n = int(sys.argv[1])\n    reps = int(sys.argv[2])\n    x = fill(n, 1)\n    y = fill(n, 2)\n    for r in range(reps):\n        kernel(0.5, x, y)\n    print(sum(y))\n\n\nmain()\n",
+  "scale": "import sys\nimport math\n\n\ndef fill(n: int, seed: int) -> list[float]:\n    out = [0.0] * n\n    x = seed\n    for i in range(n):\n        x = (x * 1103515245 + 12345) % 2147483648\n        out[i] = (x % 1000) / 250.0 + 0.5\n    return out\n\n\ndef ifill(n: int, seed: int) -> list[int]:\n    out = [0] * n\n    x = seed\n    for i in range(n):\n        x = (x * 1103515245 + 12345) % 2147483648\n        out[i] = x % 1000\n    return out\n\n\ndef kernel(xs: list[float], ys: list[float]) -> None:\n    for i in range(len(xs)):\n        ys[i] = xs[i] * 3.0\n\n\ndef main() -> None:\n    n = int(sys.argv[1])\n    reps = int(sys.argv[2])\n    x = fill(n, 1)\n    y = [0.0] * n\n    for r in range(reps):\n        kernel(x, y)\n    print(sum(y))\n\n\nmain()\n"
+ }
+}
