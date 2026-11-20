@@ -606,8 +606,11 @@ See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
   property/setter/deleter, abstractmethod, contextmanager, functools.cached_property,
   functools.total_ordering, dataclass and overload. Defining or inheriting `__new__` (but in an
   [enum class](../../lib/compatibility.md#enum), in the form CPython's documentation gives),
-  `__getattr__`, `__getattribute__`, `__setattr__` or `__delattr__`, or a base defining
-  `__init_subclass__`, is rejected.
+  `__getattribute__`, `__setattr__` or `__delattr__`, or a base defining
+  `__init_subclass__`, is rejected. `__getattr__` is called for the attributes a class does
+  not define ([attribute fallback](semantics.md#attribute-fallback)); it is rejected in an
+  exception class, a `NamedTuple`, an enum, a generic class, a class template and a class
+  with a secondary base, as a class attribute, and with parameters other than `(self, name)`.
 - **Properties and attributes:** getter decorators, duplicate/misnamed setters or deleters,
   `property()` calls, assigning `super().x`, deleting nonproperty attributes; unannotated
   dataclass/NamedTuple class attributes, writes to them through their classes or to other class
@@ -804,6 +807,12 @@ See [reflection rules](semantics.md#reflection).
   additions through setters, outside `__init__` or in `__post_init__`, or later assignment to a potentially
   uninitialized nonlast field; class attributes also assigned through objects.
 - **Targets:** `getattr`, `setattr`, `hasattr` and `dir` on exceptions; `dir` on files/functions.
+- **`__getattr__`:** a read of a field that an object may lack (an `__init__` that may leave
+  it unassigned, also a derived one that does not call its base's) where the method's return
+  type is not the field's; where only a derived class defines the method, a base-typed read
+  of a property, or of a field that an object of that class may lack; an object of such a
+  class as a dynamic `Any` value, in a class pattern or copied with `copy`; a module's
+  `__getattr__` is never called ([attribute fallback](semantics.md#attribute-fallback)).
 - **Expansion:** constant-name loops defining functions/lambdas/classes, reassigning the loop
   variable or expanding the body over 256 times; `dataclasses.replace` with runtime dict keys.
 

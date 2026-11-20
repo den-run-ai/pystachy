@@ -1,0 +1,21 @@
+b 5 10 4 ['color', 'size', 'margin', 'size']
+4 6 -2 True False
+AttributeError: b has no bad
+w 5 106 100 ['color', 'margin']
+100 6 -2 True False
+AttributeError: w has no bad
+l 1005 2010 1004 ['COLOR', 'SIZE', 'MARGIN', 'SIZE']
+1004 1006 1003 True True
+1003
+ll 2010 2009 2008 ['COLOR', 'SIZE', 'SIZE']
+2008 1 2006 True True
+2006
+q 1005 2010 1004 ['COLOR', 'SIZE', 'MARGIN', 'SIZE']
+1004 1006 1003 True True
+1003
+[4, 4, 1004, 2008, 1004] 4120
+100 5 104 108 ['other', 'step', 'step']
+1 2008 ['SIZE', 'AB'] True 2004
+wd ['step'] 100 104 ['step'] 2
+4 4 blob corners 4
+[exit 0]

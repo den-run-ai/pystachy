@@ -9,7 +9,7 @@ from src.pystachy_compiler.ir import Data, Ins, Loop, Val, tmpname
 from src.pystachy_compiler.lexer import Lexer, codepoint, utf8len
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.parser import Parser
-from src.pystachy_compiler.reflection import VARS_USES
+from src.pystachy_compiler.reflection import VARS_USES, hook_of
 from src.pystachy_compiler.bigints import held, narrow_type, search_type
 from src.pystachy_compiler.specs import (
     ARITY,
@@ -685,8 +685,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         hv = self.expr(args[0], "")
         if unopt(hv.t) in self.classes and self.classes[unopt(hv.t)].mod in GLUE:
             self.refl_supported(unopt(hv.t), "hasattr()")  # (pyobj.Object's names are not its twin's)
-        if self.refl_prop_in(hv.t, args[1].s) or (self.reference_union(hv.t) and "file" not in umembers(unopt(hv.t))):
-            # (a property's getter, and each class of a union of classes: reflection.py)
+        if self.refl_prop_in(hv.t, args[1].s) or hook_of(self, hv.t) != 0 or (self.reference_union(hv.t) and "file" not in umembers(unopt(hv.t))):
+            # (a property's getter, a class's __getattr__, and each class of a union of classes: reflection.py)
             return self.refl_hasattr_lit(hv, args[1].s, self.knownobj(args[0]))
         if hv.t in self.classes and self.classes[hv.t].tag > 0:
             # A derived class may add this attribute, or leave its field unassigned.

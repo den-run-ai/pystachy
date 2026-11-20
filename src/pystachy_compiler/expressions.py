@@ -11,7 +11,7 @@ from src.pystachy_compiler.ir import Data, Ins, Loop, Val, tmpname, one_num
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.names import ENUMCLASSES, NESTED, own_name, short
 from src.pystachy_compiler.patterns import pattern_expr, pattern_static
-from src.pystachy_compiler.reflection import VARS_USES, refl_annotated, refl_body, refl_fold, refl_reflective
+from src.pystachy_compiler.reflection import VARS_USES, has_hook, hook_missing, hook_of, hook_read, hook_reads, refl_annotated, refl_body, refl_fold, refl_reflective
 from src.pystachy_compiler.specs import (
     ABC_BASES,
     ABC_METHODS,
@@ -330,8 +330,8 @@ def gen_static(self, n: Node) -> int:
         t = self.static_type(n.kids[1], True)
         if t == "dyn" or (t in self.classes and self.classes[t].tag > 0):
             return -1  # the concrete class may add attributes beyond the static type
-        if t != "" and (self.refl_prop_in(t, n.kids[2].s) or self.reference_union(t)):
-            return -1  # (a property's getter, or the union's member, decides: reflection.py)
+        if t != "" and (self.refl_prop_in(t, n.kids[2].s) or hook_of(self, t) != 0 or self.reference_union(t)):
+            return -1  # (a property's getter, a class's __getattr__ or the union's member decides: reflection.py)
         h = self.has(t, n.kids[2].s) if t != "" else -1
         return 1 if h == -1 and self.knownobj(n.kids[1]) else max(h, -1)
     if k == "call" and n.kids[0].kind == "name" and n.kids[0].s == "isinstance" and not self.bound("isinstance") and len(n.kids) == 3:
@@ -1431,6 +1431,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             # attribute: a member, an alias or another class attribute of the class its type names,
             # read as C.name reads it once the object has been evaluated)
             return self.class_attr(mk("name", ev, n.line, []), n.s)
+        if has_hook(self, o.t) and hook_missing(self, o.t, n.s):
+            return hook_read(self, o, n.s)  # (its class's __getattr__: reflection.py)
         bm = self.method_value(o, n.s)
         if bm.t != "":
             return bm
@@ -1438,6 +1440,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             self.fn_attr_read(o, n.s)
         self.glue_field(o, n.s)
         self.fieldcmp = n is self.cmpnode  # (o.f is None: see none_field)
+        if hook_reads(self, o.t, n.s):
+            pk = ""  # (a read that may call __getattr__: a call, as a property's is, and no path)
         plive = pk != "" and pk in self.narrowed and self.path_type(pk, {}, "") != ""
         pcall = self.pcall
         pmark = self.path_mark()

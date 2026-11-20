@@ -9,8 +9,9 @@ internal constant global (Data "classrec", lowered in lower_module.py) emitted o
 that reach such a site, which LLVM's globaldce and llvm-link --only-needed drop otherwise.
 """
 from __future__ import annotations
-from src.pystachy_compiler.diagnostics import LINES, dynamic_program, int_program, shown
+from src.pystachy_compiler.diagnostics import LINES, NeedSliceEH, dynamic_program, int_program, shown
 from src.pystachy_compiler.analysis import clean_doc, local_names
+from src.pystachy_compiler.bigints import converts
 from src.pystachy_compiler.ir import Data, Ins, Loop, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.names import ENUMCLASSES, own_name, short
@@ -64,6 +65,199 @@ class RLeaf:
         self.c = c
         self.label = label
         self.v = v
+
+
+# ---- __getattr__ (#1536): the method CPython calls for an attribute that ordinary lookup does not
+# find. The compiler knows every attribute of a class, so a read of a name that the class and the
+# classes derived from it lack is a direct call (hook_call); a field that may be unassigned calls
+# it where its flag is clear (hook_field, in getfield), and a property's getter that raises
+# AttributeError where the getter's try block lands (hook_prop). Where the method's value cannot
+# stand for the field's, the read is an error if an object may be read without the field
+# (hook_class, by flow.py's funset)
+def hook_problem(self, ci: ClassInfo) -> str:
+    # why Pystachy does not call the __getattr__ that class ci defines or inherits, or "": it
+    # calls a def of an ordinary class that takes the object and the name by position
+    if "__getattr__" not in ci.methods:
+        return " as a class attribute (define it with def)"
+    f = ci.methods["__getattr__"]
+    if ci.exc != "":
+        return " in an exception class"
+    if ci.name in self.nts or ci.node.line in ENUMCLASSES:
+        return " in a NamedTuple or an enum"
+    if ci.name in self.tmpl or ci.origin != "":
+        return " in a generic class or a class template (whose __init__ has an unannotated parameter)"
+    if len(ci.roles) > 0 or ci.isrole:
+        return " in a hierarchy with a secondary base"  # (it has one, also through its base, or is one)
+    if f.node.kind != "def" or f.deco != "" or f.prop or f.acc != "" or f.gen or len(f.params) != 2 or f.vararg >= 0 or f.kwarg >= 0 or (f.npos >= 0 and f.npos < 2):
+        return " unless it is an instance method def __getattr__(self, name)"
+    return ""
+
+
+def has_hook(self, t: str) -> bool:
+    # does each object of static type t have a __getattr__ that Pystachy calls: class t defines
+    # or inherits it (hook_problem rejects the others where they are used)
+    return t in self.classes and "__getattr__" in self.classes[t].methods
+
+
+def hook_reads(self, t: str, name: str) -> bool:
+    # may the read of field name of an object of static type t call its class's __getattr__
+    # (getfield's hook_field: a field with a flag, which a class variable outside a hierarchy is
+    # not tested by): a call, as a property's read is, which no attribute path follows (unions.py)
+    if not has_hook(self, t):
+        return False
+    ci = self.classes[t]
+    return name in ci.fflag and name not in ci.fsure and not (t + "." + name in self.cvars and ci.tag == 0)
+
+
+def hook_of(self, t: str) -> int:
+    # which objects of static type t have such a __getattr__: 1 each (has_hook), 2 only those of
+    # a class derived from t, 0 none
+    if has_hook(self, t):
+        return 1
+    if t in self.classes and self.classes[t].tag > 0:
+        for c in self.classes.values():
+            if c.tag > 0 and "__getattr__" in c.methods and self.derives(c.name, t):
+                return 2
+    return 0
+
+
+def hook_type(self, t: str, name: str) -> str:
+    # what field inference (guess) takes o.name to be where class t has a __getattr__ and lacks
+    # name: the method's return type; else ""
+    if t not in self.classes or "__getattr__" not in self.classes[t].methods or (name.startswith("__") and name.endswith("__")):
+        return ""
+    ci = self.classes[t]
+    return ci.methods["__getattr__"].ret if name not in ci.ftypes and name not in ci.methods else ""
+
+
+def hook_class(self, t: str, name: str) -> str:
+    # the class (t, else one derived from it) whose objects, of static type t, may ask its
+    # __getattr__ for field name: one that has the method and whose __init__ may leave the field
+    # unassigned (flow.py's funset; a class it has not analysed may). With name "", any class
+    # that has the method. "" if there is none
+    for c in [t] + [x.name for x in self.classes.values() if x.name != t and self.derives(x.name, t)]:
+        ci = self.classes[c]
+        if "__getattr__" in ci.methods and (name == "" or name in ci.funset or not ci.flowed):
+            return c
+    return ""
+
+
+def hook_derived(self, t: str, sub: str, what: str) -> None:
+    # what, a lookup that may fail for an object of static type t, is not supported where only a
+    # class derived from t (sub) has a __getattr__ (hook_of gives 2) that may answer it: CPython
+    # calls it for that class's objects, and the code compiled for t would not
+    self.err(f"{what} of a {short(t)} is not supported where {short(sub)}, which derives from it, defines __getattr__ (CPython calls it for an object of that class): define __getattr__ in {short(t)}, or narrow the object with isinstance()")
+
+
+def hook_missing(self, t: str, name: str) -> bool:
+    # does ordinary lookup of name fail for an object of class t itself, which has a
+    # __getattr__: neither t nor object has the attribute (a class derived from t may: hook_read)
+    ci = self.classes[t]
+    return name not in ci.ftypes and name not in ci.methods and self.has(t, name) == 0
+
+
+def hook_node(self, x: Val, name: Node) -> Node:
+    # the call x.__getattr__(name), as the program may write it: the method of x's class
+    return mk("call", "", self.line, [mk("attr", "__getattr__", self.line, [self.vnode(x)]), name])
+
+
+def hook_call(self, o: Val, name: str) -> Val:
+    # o.__getattr__("name") for the attribute name that ordinary lookup does not find: a direct
+    # call of the method of o's class (of the object's class in a hierarchy, as any call)
+    return self.call_fn(self.classes[o.t].methods["__getattr__"], [o], [mk("str", name, self.line, [])], "", f"AttributeError: 'NoneType' object has no attribute '{name}'")
+
+
+def hook_read(self, o: Val, name: str) -> Val:
+    # o.name where o's class, which has a __getattr__, lacks name (hook_missing): the method's
+    # value, unless a class derived from o's has the attribute, whose objects read their own
+    # (by the object's exact class: refl_getattr)
+    for c in self.refl_concrete(o.t):
+        if name in self.classes[c].ftypes or name in self.classes[c].methods:
+            return self.refl_getattr([self.vnode(o), mk("str", name, self.line, [])], "", True)
+    return hook_call(self, o, name)
+
+
+def hook_field(self, o: Val, p: Val, name: str, bad: str) -> Val:
+    # field name of o, an object of a class with a __getattr__, where bad says it is unassigned:
+    # __getattr__(name)'s value there, as the field's type, else the field's
+    no = self.label()
+    yes = self.label()
+    end = self.label()
+    vals: list[Val] = []
+    blocks: list[str] = []
+    self.cbr(bad, no, yes)
+    self.place(no)
+    line = self.line
+    ci = self.classes[o.t]
+    hv = hook_call(self, o, name)
+    fits = hv.t == p.t or hv.t == "dyn" or self.widens(hv.t, p.t) or self.boxes(hv.t, p.t) or converts(hv.t, p.t)
+    c = hook_class(self, o.t, name) if not fits else ""
+    if not self.term and not fits and c == "":
+        # (no object of o's class or of one derived from it is read without the field, whose
+        # flag a hierarchy keeps all the same: a check that does not fail)
+        self.raise_("TypeError", self.sconst(f"__getattr__ returned {typestr(hv.t)} for field '{name}' of a {short(o.t)} object, which is unassigned and holds {typestr(p.t)} (not supported)"))
+    if not self.term and not fits:
+        on = "" if c == o.t else f" (an object of {short(c)}, which derives from it, may lack it)"
+        self.err(f"field '{name}' of {short(o.t)} may be unassigned where it is read{on}, and CPython then calls __getattr__, which returns {typestr(hv.t)}, not the field's {typestr(p.t)}: not supported (assign the field on every path of each __init__, before the object is used)")
+    if not self.term:
+        # (as a value assigned to the field: of an inferred int, a promoting int makes it one)
+        was = self.join_at("field" if name in self.field_root(ci, name).fguess else "", self.field_key(ci, name), p.t)
+        vals.append(self.coerce(hv, p.t))
+        self.join_at(was[0], was[1], was[2])
+        blocks.append(self.cur)
+        self.br(end)
+    self.place(yes)
+    self.line = line
+    vals.append(self.getfield(o, p, name, True))
+    blocks.append(self.cur)
+    self.br(end)
+    r = self.refl_phi(vals, blocks, end, f"field '{name}'")
+    if is_opt(p.t) or is_union(p.t):
+        self.wide[self.curfn.ll + r.v] = True  # (not narrowed, as getfield's)
+    return r
+
+
+def hook_prop(self, f: FnInfo, o: Val, name: str) -> Val:
+    # o.name of property name (getter f): where o's class has a __getattr__, the getter in a try
+    # block of its own, and __getattr__(name) where it raises AttributeError, as CPython calls it
+    k = hook_of(self, o.t)
+    if k == 0:
+        return self.call_fn(f, [o], [])
+    if k == 2:
+        hook_derived(self, o.t, hook_class(self, o.t, ""), f"reading property '{name}', whose getter may raise AttributeError,")
+    if not self.eh:
+        raise NeedSliceEH()
+    c = self.stop_catch()
+    outer = self.handler
+    self.handler = c.landing
+    c.tr.body = self.label()
+    self.place(c.tr.body)
+    line = self.line
+    vals: list[Val] = [self.call_fn(f, [o], [])]
+    blocks: list[str] = [self.cur]
+    end = self.label()
+    self.handler = outer
+    if self.term:
+        vals = []
+        blocks = []
+    else:
+        self.br(end)
+    e = self.landing(c.landing, c.slot, c.mark)
+    yes = self.label()
+    no = self.label()
+    self.cbr(self.exc_match(e, self.catch_set(mk("name", "AttributeError", line, []))), yes, no)
+    self.place(no)
+    self.throw(e)
+    self.place(yes)
+    self.rt("pys_exc_restore", "void", [f"ptr {c.old}"])
+    c.tr.exit = end
+    self.line = line
+    hv = hook_call(self, o, name)
+    if not self.term:
+        vals.append(hv)
+        blocks.append(self.cur)
+        self.br(end)
+    return self.refl_phi(vals, blocks, end, f"property '{name}' and __getattr__")
 
 
 def gen_refl_typeof(self, n: Node) -> Node | None:
@@ -679,22 +873,26 @@ def gen_refl_phi(self, vals: list[Val], blocks: list[str], end: str, what: str) 
     return r
 
 
-def gen_refl_catch_attr(self, x: Val, a: str, d: Val, vals: list[Val], blocks: list[str], end: str, truth: bool = False) -> None:
+def gen_refl_catch_attr(self, x: Val, a: str, d: Val, vals: list[Val], blocks: list[str], end: str, truth: bool = False, body: Node | None = None) -> None:
     # x.a, a property read, where an AttributeError its getter raises gives d instead (getattr's
     # default, or hasattr's False): the getter in a try block of its own, as CPython catches it;
-    # with truth, True where the getter returns (hasattr)
+    # with truth, True where the getter returns (hasattr). body: the lookup, where it is not the
+    # read x.a (the __getattr__ of x's class, called for a name it lacks: hook_node)
+    if not self.eh:
+        raise NeedSliceEH()  # (a __getattr__ may raise it in a program without a try or a property)
     c = self.stop_catch()
     outer = self.handler
     self.handler = c.landing
     l = self.label()
     c.tr.body = l
     self.place(l)
-    v = self.expr(mk("attr", a, self.line, [self.vnode(x)]), "")
+    v = self.expr(body if body is not None else mk("attr", a, self.line, [self.vnode(x)]), "")
     self.handler = outer
     if truth:
         v = Val("true", "bool")  # (hasattr: the getter returned)
-    vals.append(v)
-    blocks.append(self.cur)
+    if not self.term:
+        vals.append(v)
+        blocks.append(self.cur)
     self.br(end)
     e = self.landing(c.landing, c.slot, c.mark)
     yes = self.label()
@@ -747,6 +945,20 @@ def gen_refl_getattr(self, args: list[Node], want: str, split: bool = False) -> 
         h = self.refl_has(lf.c, a)
         if lf.c not in self.classes and h != "n":
             self.err(f"getattr() of '{a}' of {typestr(lf.c)}, a method or attribute of a builtin type, is not supported (#247)")
+        if h != "y" and (h == "n" or d.t != "") and has_hook(self, lf.c):
+            # an object whose class has a __getattr__: called for a name the class lacks, and by
+            # the read where a field is unassigned or a getter raises AttributeError (getfield,
+            # hook_prop); its own AttributeError gives the default
+            lookup = hook_node(self, lf.v, mk("str", a, self.line, [])) if h == "n" else mk("attr", a, self.line, [self.vnode(lf.v)])
+            if d.t != "":
+                self.refl_catch_attr(lf.v, a, d, vals, blocks, end, False, lookup)
+                continue
+            found = self.expr(lookup, "")
+            if not self.term:
+                vals.append(found)
+                blocks.append(self.cur)
+                self.br(end)
+            continue
         if d.t == "" and (h == "n" or lf.c == "None"):
             cn = "NoneType" if lf.c == "None" else short(lf.c)
             self.raise_("AttributeError", self.sconst(f"'{cn}' object has no attribute '{a}'"))
@@ -1661,11 +1873,12 @@ def gen_refl_unroll_dict(self, n: Node, d: Node, x: Node, m: str) -> None:
             visible = refl_field_name(ci, fl, self.libdir)
             key = Val(self.sconst(visible), "str")
             if m == "items" and vn is tgt:
-                val = self.coerce(self.getfield(ov, self.field(ov, fl), fl), vt)
+                # (plain reads: the instance __dict__'s items, which no __getattr__ answers)
+                val = self.coerce(self.getfield(ov, self.field(ov, fl), fl, True), vt)
                 self.assign(tgt, self.tuple_([key, val]))
             else:
                 if vn is not None:
-                    self.assign(vn, self.coerce(self.getfield(ov, self.field(ov, fl), fl), vt))
+                    self.assign(vn, self.coerce(self.getfield(ov, self.field(ov, fl), fl, True), vt))
                 if kt != "":
                     self.assign(mk("name", kt, n.line, []), key)
                 elif m == "keys":
@@ -1800,7 +2013,7 @@ def gen_refl_dict_copy(self, d: Node) -> Val:
                 self.cbr(self.mem_load(Val(self.fgep(ov, ci.fflag[fl]), "&bool")).v, go, nxt)
                 self.place(go)
             kv = targs(dt)  # (["dyn", "dyn"] where the values are Any values or containers: ctype)
-            v = self.list_hold(self.getfield(ov, self.field(ov, fl), fl), kv[1])  # (a tuple of ints as the dict holds it, a promoting int as a dict of ints does: bigints.py)
+            v = self.list_hold(self.getfield(ov, self.field(ov, fl), fl, True), kv[1])  # (a tuple of ints as the dict holds it, a promoting int as a dict of ints does: bigints.py)
             self.dict_store(r.v, self.to_slot(self.store_key(Val(self.sconst(refl_field_name(ci, fl, self.libdir)), "str"), kv[0])), v, kv)
             if nxt != "":
                 self.br(nxt)
@@ -1837,7 +2050,7 @@ def gen_refl_dict_format(self, d: Node, keys: list[str], fmt: str, what: str) ->
                 # (a field __init__ may leave unassigned: KeyError where it is, as CPython's dict raises)
                 unset = self.scalar('xor', [Val(self.mem_load(Val(self.fgep(ov, ci.fflag[fl]), "&bool")).v, 'bool'), Val('true', 'bool')])
                 self.guard(unset, f"KeyError: '{k}'")
-            args.append(self.vnode(self.getfield(ov, self.field(ov, fl), fl)))
+            args.append(self.vnode(self.getfield(ov, self.field(ov, fl), fl, True)))
         r = self.percent(fmt, mk("tuple", "", self.line, args), False) if what == "%" else self.str_format(fmt, "format", args)
         vals.append(r)
         blocks.append(self.cur)
@@ -2282,6 +2495,7 @@ def gen_refl_hasattr(self, args: list[Node]) -> Val:
         self.narrowed = dict(narrow)
         names = self.refl_name_list(lf.c)
         idx = self.refl_find(lf.c, nv)
+        hooked = has_hook(self, lf.c)  # (its class's __getattr__ decides where the lookup fails)
         for j in range(len(names)):
             kind = names[j][1]
             if kind != "g" and kind != "p" and kind != "u":
@@ -2290,7 +2504,9 @@ def gen_refl_hasattr(self, args: list[Node]) -> Val:
             no = self.label()
             self.cbr(self.num_cmp('==', Val(idx, "int"), Val(str(j), "int")).v, yes, no)
             self.place(yes)
-            if kind == "u":
+            if hooked:
+                self.refl_catch_attr(lf.v, names[j][0], Val("false", "bool"), vals, blocks, end, True, hook_node(self, lf.v, mk("str", names[j][0], self.line, [])) if kind == "u" else None)
+            elif kind == "u":
                 vals.append(Val("false", "bool"))
                 blocks.append(self.cur)
                 self.br(end)
@@ -2301,6 +2517,15 @@ def gen_refl_hasattr(self, args: list[Node]) -> Val:
             else:
                 self.refl_catch_attr(lf.v, names[j][0], Val("false", "bool"), vals, blocks, end, True)
             self.place(no)
+        if hooked:
+            # (a name its class lacks: __getattr__ is asked for it, and raises AttributeError or not)
+            miss = self.label()
+            self.cbr(self.num_cmp('>=', Val(idx, "int"), Val("0", "int")).v, end, miss)
+            vals.append(Val("true", "bool"))
+            blocks.append(self.cur)
+            self.place(miss)
+            self.refl_catch_attr(lf.v, "", Val("false", "bool"), vals, blocks, end, True, hook_node(self, lf.v, self.vnode(nv)))
+            continue
         vals.append(self.num_cmp('>=', Val(idx, "int"), Val("0", "int")))
         blocks.append(self.cur)
         self.br(end)
@@ -2382,6 +2607,41 @@ def refl_static_attrs(n: Node, out: list[str]) -> None:
         refl_static_attrs(k, out)
 
 
+def refl_arm_read(self, r: RText, arm: RArm, lookup: Node, catch: bool, end: str) -> None:
+    # an arm of refl_lookup whose value the lookup gives now (a field's or property's read, or the
+    # __getattr__ of the object's class, called for a name it lacks): kept in a slot of its own,
+    # and the arm selected; where catch, in a try block of its own, whose AttributeError selects
+    # the default (arm 0)
+    if catch and not self.eh:
+        raise NeedSliceEH()
+    cc = self.stop_catch() if catch else None
+    outer = self.handler
+    if cc is not None:
+        self.handler = cc.landing
+        body = self.label()
+        cc.tr.body = body
+        self.place(body)
+    v = self.expr(lookup, "")
+    self.handler = outer
+    arm.slot = self.alloca(v.t, "")
+    self.mstore(v.t, v.v, arm.slot)
+    arm.c = arm.c + "\x01" + v.t
+    self.mstore('int', str(arm.k), r.sel)
+    self.br(end)
+    if cc is not None:
+        e = self.landing(cc.landing, cc.slot, cc.mark)
+        caught = self.label()
+        other = self.label()
+        self.cbr(self.exc_match(e, self.catch_set(mk("name", "AttributeError", self.line, []))), caught, other)
+        self.place(other)
+        self.throw(e)
+        self.place(caught)
+        self.rt("pys_exc_restore", "void", [f"ptr {cc.old}"])
+        cc.tr.exit = end
+        self.mstore('int', '0', r.sel)
+        self.br(end)
+
+
 def gen_refl_lookup(self, n: Node) -> RText:
     # getattr(o, name[, default]) with a run-time name, as a consumer of its text evaluates it:
     # per exact class of o, the name's index in its name table selects what CPython's lookup
@@ -2423,6 +2683,7 @@ def gen_refl_lookup(self, n: Node) -> RText:
             if nk[1] == "o" and self.refl_otext(lf.c, nk[0]) == "v":
                 self.refl_fields_table(lf.c)
         idx = self.refl_find(lf.c, nv)
+        hooked = has_hook(self, lf.c)
         for j in range(len(names)):
             nm = names[j][0]
             kind = names[j][1]
@@ -2436,7 +2697,7 @@ def gen_refl_lookup(self, n: Node) -> RText:
             self.cbr(self.num_cmp('==', Val(idx, "int"), Val(str(j), "int")).v, yes, no)
             self.place(yes)
             if kind in ["f", "g", "c", "p"]:
-                if d.t != "" and kind == "g":
+                if d.t != "" and kind == "g" and not hooked:
                     there = self.label()
                     miss = self.label()
                     self.cbr(self.mem_load(Val(self.fgep(lf.v, self.classes[lf.c].fflag[nm]), "&bool")).v, there, miss)
@@ -2444,38 +2705,20 @@ def gen_refl_lookup(self, n: Node) -> RText:
                     self.mstore('int', '0', r.sel)
                     self.br(end)
                     self.place(there)
-                cc = self.stop_catch() if d.t != "" and kind == "p" else None
-                outer = self.handler
-                if cc is not None:
-                    # (a getter's AttributeError gives the default, as CPython catches it)
-                    self.handler = cc.landing
-                    body = self.label()
-                    cc.tr.body = body
-                    self.place(body)
-                v = self.expr(mk("attr", nm, self.line, [self.vnode(lf.v)]), "")
-                self.handler = outer
-                arm.slot = self.alloca(v.t, "")
-                self.mstore(v.t, v.v, arm.slot)
-                arm.c = lf.c + "\x01" + v.t
-                if cc is not None:
-                    self.mstore('int', str(arm.k), r.sel)
-                    self.br(end)
-                    e = self.landing(cc.landing, cc.slot, cc.mark)
-                    caught = self.label()
-                    other = self.label()
-                    self.cbr(self.exc_match(e, self.catch_set(mk("name", "AttributeError", self.line, []))), caught, other)
-                    self.place(other)
-                    self.throw(e)
-                    self.place(caught)
-                    self.rt("pys_exc_restore", "void", [f"ptr {cc.old}"])
-                    cc.tr.exit = end
-                    self.mstore('int', '0', r.sel)
-                    self.br(end)
-                    self.place(no)
-                    continue
+                # (a getter's AttributeError gives the default, as CPython catches it; so does that
+                # of the __getattr__ which the read of an unassigned field calls)
+                refl_arm_read(self, r, arm, mk("attr", nm, self.line, [self.vnode(lf.v)]), d.t != "" and (kind == "p" or (hooked and kind == "g")), end)
+                self.place(no)
+                continue
             self.mstore('int', str(arm.k), r.sel)
             self.br(end)
             self.place(no)
+        if hooked:
+            # (a name its class lacks: what its __getattr__ returns for it, kept as a field's value)
+            arm = RArm(len(r.arms), lf.c, "f", "__getattr__")
+            r.arms.append(arm)
+            refl_arm_read(self, r, arm, hook_node(self, lf.v, self.vnode(nv)), d.t != "", end)
+            continue
         if d.t != "":
             self.mstore('int', '0', r.sel)
         else:
@@ -2647,6 +2890,10 @@ def gen_refl_hasattr_lit(self, o: Val, a: str, known: bool) -> Val:
         self.place(lf.label)
         self.narrowed = dict(narrow)
         h = self.refl_has(lf.c, a)
+        if h != "y" and has_hook(self, lf.c):
+            # (its class's __getattr__ decides where the class lacks a or the read of it fails)
+            self.refl_catch_attr(lf.v, a, Val("false", "bool"), vals, blocks, end, True, hook_node(self, lf.v, mk("str", a, self.line, [])) if h == "n" else None)
+            continue
         if h == "p":
             self.refl_catch_attr(lf.v, a, Val("false", "bool"), vals, blocks, end, True)
             continue
@@ -2732,8 +2979,9 @@ def gen_copy_check(self, ci: ClassInfo, what: str) -> None:
         if (opaque_class(bi, self.libdir) or lib_file(bi.node.line, self.libdir)) and len([fl for fl in bi.fields if not fl.startswith(" ")]) > 0:
             self.err(f"{what} of a {short(ci.name)} object is not supported: its class derives from {short(b)}, a library's class, which defines no __copy__ or __deepcopy__ for it")
         b = bi.base
-    for m in PICKLING:
+    for m in PICKLING + ["__getattr__"]:
         if m in ci.methods:
+            # (__getattr__: CPython's copy asks the new object, which no __init__ has run for, for __setstate__, and deepcopy asks the object for __deepcopy__)
             self.err(f"{what} of a {short(ci.name)} object is not supported: its class defines {m}, by which CPython's copy would copy it")
 
 

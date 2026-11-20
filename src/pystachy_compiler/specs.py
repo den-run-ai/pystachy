@@ -105,7 +105,8 @@ for _k in "add sub mul truediv floordiv mod matmul and or xor lshift rshift iadd
 for _k in "neg pos invert".split():
     SPECIAL[f"__{_k}__"] = "1:"
 # special methods that CPython calls implicitly and Pystachy never does, and when CPython calls
-# them: a class that defines or inherits one is an error (see declare_fields)
+# them: a class that defines or inherits one is an error (see declare_fields), but the
+# __getattr__ of an ordinary class, which a failed lookup calls (reflection.py's hook_problem)
 UNCALLED: dict[str, str] = {"__new__": "to make each object of the class", "__getattribute__": "to read each attribute",
                             "__getattr__": "for each attribute it does not find", "__setattr__": "to assign each attribute",
                             "__delattr__": "to delete each attribute"}

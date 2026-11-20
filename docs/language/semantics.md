@@ -67,8 +67,8 @@ test is true its captures are bound, so its guard and body read them without an
 unbound-local check.
 
 Mapping patterns, complex literals, arbitrary class patterns, dataclass hierarchies, custom
-`__match_args__` and attribute hooks remain unsupported; the error names the statement's first
-such pattern.
+`__match_args__` and classes with attribute hooks (also `__getattr__`) remain unsupported; the
+error names the statement's first such pattern.
 A class body rejects a `match` statement as it rejects an `if` statement there. Dataclass
 patterns require a concrete subject type; dynamic `Any` and union subjects are rejected
 rather than treated as mismatches.
@@ -418,6 +418,7 @@ and fields are available. See [single inheritance](typing.md#single-inheritance)
 | Call, indexing, assignment, deletion | `__call__`, `__getitem__`, `__setitem__`, `__delitem__` |
 | Membership and iteration | `__contains__`, or supported `__iter__` |
 | `reversed()` | Supported `__reversed__` |
+| `o.name` of an attribute that ordinary lookup does not find | `__getattr__` ([attribute fallback](#attribute-fallback)) |
 
 Rich comparisons use reflection, such as trying `b.__gt__(a)` for `a < b`.
 Reflected arithmetic methods run only for a builtin `int`, `float` or `bool` on the left, whose
@@ -499,6 +500,74 @@ Floats beside objects in the items (`list[float | Money]`) are rejected unless t
 object: CPython adds floats with a compensated sum until the first object
 (`sum([1e16, 1.0, -1e16], 0.0)` is `1.0`), which additions one by one would not reproduce
 ([error test](../../tests/errors/containers/sum_objects_float_items.py)).
+
+<a id="attribute-fallback"></a>
+
+### Attribute fallback: `__getattr__`
+
+CPython calls a class's `__getattr__(self, name)` for an attribute that ordinary lookup does
+not find. Pystachy knows every field, method, property and class attribute of a class, so
+`o.name` of a name the class and its bases lack compiles to a direct call with that name as a
+constant, typed by the method's return annotation
+([test](../../tests/programs/reflection/getattr_hook.py)). The read's value can be used as any
+other: in arithmetic, called (the method runs before the call's arguments are evaluated), in an
+f-string, or inside the class's own methods as `self.name`. A defined attribute never reaches
+the method, and an `AttributeError` it raises is the read's. A class object (`type[C]`,
+`type(o)`, `o.__class__`) reads its class's attributes, which no `__getattr__` answers, and
+makes objects that read as `C()`'s
+([test](../../tests/programs/reflection/getattr_hook_class_values.py)).
+
+```python
+class Conf:
+    def __init__(self) -> None:
+        self.data = {"port": 80}
+
+    def __getattr__(self, name: str) -> int:
+        return self.data[name]
+
+print(Conf().port)  # 80
+```
+
+The method is also called where ordinary lookup fails for a name the class has, as in CPython
+([test](../../tests/programs/reflection/getattr_hook_unbound.py)):
+
+| Lookup | Behavior |
+|---|---|
+| A field that `__init__` may leave unassigned, or that the class body only annotates | Its "is assigned" flag is tested; an unassigned field calls `__getattr__`. The value must be one of the field's type, so a return type that the field does not take is a compile-time error. Such a read is a call, as a property's is: a test of it narrows no later read of it, and it ends what tests of other attributes narrowed ([test](../../tests/programs/reflection/getattr_hook_narrowing.py)). |
+| A property whose getter raises `AttributeError` | The getter runs in a `try` block of its own, and its `AttributeError` calls `__getattr__`. The read has the common type of both return types; where they differ it is their union, which `isinstance()` narrows. |
+| `getattr(o, "name", default)`, `hasattr(o, "name")` | The lookup above; an `AttributeError` from `__getattr__` gives the default or `False`, and any other exception propagates. |
+| `hasattr(o, name)` and the text of `getattr(o, name[, default])` with a [run-time name](#names-only-the-run-time-knows) | The class's name table first, then `__getattr__(name)` ([test](../../tests/programs/reflection/getattr_hook_lookup.py)). |
+
+In a [single-inheritance hierarchy](typing.md#single-inheritance) a class inherits or overrides
+the method, and the object's class selects it as for any method
+([test](../../tests/programs/reflection/getattr_hook_inherit.py)). Through a base-typed value,
+a name that only a derived class defines is that class's attribute for its objects and the
+method's value for the others. A derived `__init__` that does not call its base's leaves the
+base's fields unassigned, and reading one calls the method, as above
+([test](../../tests/programs/reflection/getattr_hook_skip_init.py)). Where the method's value
+is not of the field's type, a read is a compile-time error if an object of the value's class,
+or of a class derived from it, may lack the field when it is read; a field that every such
+`__init__` assigns, also through `super().__init__()`, is read as in a class without the
+method.
+
+The method must be a `def` with annotated `name` and return types, in an ordinary class or a
+dataclass ([test](../../tests/programs/reflection/getattr_hook_classes.py)). These remain
+compile-time errors:
+
+- `__getattr__` in an exception class, a `NamedTuple`, an enum, a generic class, a class
+  template or a class with a secondary base; one bound as a class attribute, decorated, or
+  with other parameters.
+- `__getattribute__`, `__setattr__`, `__delattr__`, and a module's `__getattr__` (PEP 562),
+  which is compiled as a function that no lookup calls.
+- Where only a derived class defines `__getattr__`, a base-typed read of a property, or of a
+  field that an object of that class may lack; define the method in the base or narrow the
+  value with `isinstance()`.
+- An object of such a class as a [dynamic `Any`](../dynamic-any.md) value, in a class pattern,
+  or passed to `copy.copy()` or `copy.deepcopy()`, which ask CPython's object for
+  `__setstate__` and `__deepcopy__`.
+- Assigning or deleting an attribute that the class does not declare, as for any class. A
+  method that caches its result in an attribute needs the field declared in the class body
+  (`rows: list[int]`): the field then reaches the method until it is assigned.
 
 <a id="reflection"></a>
 
@@ -606,7 +675,8 @@ CPython catches it. `hasattr()` of a property runs its getter likewise, and `has
 that may be an object of one of several classes (a union of classes) answers for its class. On a
 hierarchy's base,
 `getattr(o, "name")` of an attribute only a subclass has reads it where the object has it and
-raises CPython's `AttributeError` elsewhere.
+raises CPython's `AttributeError` elsewhere. Where the object's class defines `__getattr__`,
+each of these lookups calls it as CPython does ([attribute fallback](#attribute-fallback)).
 
 A `for` loop, or a list comprehension, over a constant set of names unrolls where its body uses
 the name with `getattr`, `setattr`, `hasattr` or `operator.attrgetter`/`methodcaller`: a tuple
@@ -691,7 +761,9 @@ consumer needs no value of the attribute, for objects whose possible classes are
   attribute 'z' and no __dict__ for setting new attributes`.
 
 Each name is found by a binary search of the sorted name table in the class's reflection
-record, and the site then switches on its index. Any other use of a run-time name (its value
+record, and the site then switches on its index. A name the table lacks, an unassigned field
+and a getter's `AttributeError` call the class's `__getattr__` where it defines one
+([attribute fallback](#attribute-fallback)). Any other use of a run-time name (its value
 kept or passed on, `setattr()` that may add an attribute, `delattr()`), and
 `dataclasses.replace(obj, **changes)` of a `dict[str, T]`, is a compile-time error.
 

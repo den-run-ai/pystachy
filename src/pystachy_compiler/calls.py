@@ -8,7 +8,7 @@ from src.pystachy_compiler.generators import fresh_yield_context
 from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.names import ENUMCLASSES, short
-from src.pystachy_compiler.reflection import VARS_USES, refl_attr_fields, refl_formatter
+from src.pystachy_compiler.reflection import VARS_USES, has_hook, hook_missing, hook_prop, hook_read, refl_attr_fields, refl_formatter
 from src.pystachy_compiler.specs import BFILE, BIG, BYTEARRAYC, BYTEARRAYS, COMPLEXC, DISPATCH_INLINE, EXCEPTIONS, GLUE, HASATTR, MODATTRS, OBJECTC, PYBUILTINS, RANGEC
 from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
@@ -974,6 +974,9 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
             # container's own, on the object as that container (builtin_bases.py)
             self.bfill(o.t, m, args)
             return self.method(self.bview(o), m, args, want, resultsoft)
+        if m not in ci.methods and has_hook(self, o.t) and hook_missing(self, o.t, m):
+            # (what its class's __getattr__ returns, called: found before the arguments are evaluated)
+            return self.obj_call(hook_read(self, o, m), args, want, resultsoft)
         if m not in ci.methods and not ((m == "_replace" or m == "_asdict" or m == "_make" or m == "index" or m == "count") and o.t in self.nts):
             self.err(f"'{shown(o.t)}' object has no method '{m}'")  # (a specialization's is its class's)
         self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
@@ -988,7 +991,7 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
         if ci.methods[m].iters:
             self.err(f"calling {short(o.t)}.{m}() is not supported (its iterator is the list it steps through here): iterate over the object")
         if ci.methods[m].prop:
-            return self.obj_call(self.call_fn(ci.methods[m], [o], []), args, "")
+            return self.obj_call(hook_prop(self, ci.methods[m], o, m), args, "")
         self.cls_bound(ci.methods[m], o.t, True)
         # Only user calls consume the result context; builtin methods retain their
         # normal argument contexts, including when forwarding an open empty result.
@@ -1103,7 +1106,7 @@ def gen_method_value(self, o: Val, name: str) -> Val:
         f = ci.methods[name]
         if f.prop:
             self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{name}'")
-            return self.call_fn(f, [o], [])
+            return hook_prop(self, f, o, name)
         if f.deco != "":
             self.err(f"{'a static' if f.deco == 'staticmethod' else 'a class'} method as a value ({short(t)}.{name}) is not supported: call it")
         if f.iters:

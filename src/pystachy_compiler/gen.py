@@ -2674,8 +2674,8 @@ class Gen:
     def refl_phi(self, vals: list[Val], blocks: list[str], end: str, what: str) -> Val:
         return reflection_refl_phi(self, vals, blocks, end, what)
 
-    def refl_catch_attr(self, x: Val, a: str, d: Val, vals: list[Val], blocks: list[str], end: str, truth: bool = False) -> None:
-        return reflection_refl_catch_attr(self, x, a, d, vals, blocks, end, truth)
+    def refl_catch_attr(self, x: Val, a: str, d: Val, vals: list[Val], blocks: list[str], end: str, truth: bool = False, body: Node | None = None) -> None:
+        return reflection_refl_catch_attr(self, x, a, d, vals, blocks, end, truth, body)
 
     def refl_getattr(self, args: list[Node], want: str, split: bool = False) -> Val:
         return reflection_refl_getattr(self, args, want, split)
@@ -3490,8 +3490,8 @@ class Gen:
     def glue_field(self, o: Val, name: str) -> None:
         return declarations_glue_field(self, o, name)
 
-    def getfield(self, o: Val, p: Val, name: str) -> Val:
-        return declarations_getfield(self, o, p, name)
+    def getfield(self, o: Val, p: Val, name: str, plain: bool = False) -> Val:
+        return declarations_getfield(self, o, p, name, plain)
 
     def setfield(self, o: Val, p: Val, name: str, v: Val) -> None:
         return declarations_setfield(self, o, p, name, v)

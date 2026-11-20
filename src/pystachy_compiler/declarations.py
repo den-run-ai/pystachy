@@ -10,6 +10,7 @@ from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, own_name, owner, short
+from src.pystachy_compiler.reflection import hook_class, hook_derived, hook_field, hook_of, hook_problem, hook_type
 from src.pystachy_compiler.specs import (
     ANYUSE,
     BIG,
@@ -2172,6 +2173,11 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
         if owner == "":
             continue
         why = f"the special method {m}{'' if owner == ci.name else ' of its base ' + shown(owner)} is not supported (CPython calls it {UNCALLED[m]})"
+        if m == "__getattr__":
+            # (a def of an ordinary class is called for the attributes it does not find: reflection.py)
+            if hook_problem(self, ci) == "":
+                continue
+            why += hook_problem(self, ci)
         if ci.mod == "":
             self.line = ci.node.line if owner != ci.name else ci.methods[m].node.line if m in ci.methods else ci.fdefault[m].line
             self.err(why)
@@ -2897,7 +2903,7 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
             return ci.methods[e.s].ret
         if e.s not in ci.ftypes and e.s in ci.methods and ci.methods[e.s].deco == "":
             return f"fn[m:{f.cls}.{e.s}]"  # (self.m: the method bound to the object)
-        return ci.ftypes.get(e.s, "")
+        return ci.ftypes[e.s] if e.s in ci.ftypes else hook_type(self, f.cls, e.s)
     if k == "attr" and not (e.kids[0].kind == "name" and e.kids[0].s == me) and attr_root(e).kind == "name" and (attr_root(e).s in f.params or (attr_root(e).s in self.guessvars and self.guessowner[attr_root(e).s] is f)):
         # p.k of a parameter p holding an object (also of a comprehension's variable, or of an
         # attribute of either or of self's: p.j.k, self.j.k): the type of its field k, or what its
@@ -2918,6 +2924,8 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
             return self.classes[t].ftypes[e.s]
         if t in self.classes and e.s in self.classes[t].methods and self.classes[t].methods[e.s].prop and self.classes[t].methods[e.s].bad == "":
             return self.classes[t].methods[e.s].ret
+        if hook_type(self, t, e.s) != "":
+            return hook_type(self, t, e.s)
     if k == "dictstar":
         # {**a, **b} of **kwargs records: their record, each name with its last value's type
         names: list[str] = []
@@ -3599,8 +3607,9 @@ def gen_fgep(self, o: Val, i: int) -> str:
     self.fn.fa[r] = True
     return r
 
-def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
+def gen_getfield(self, o: Val, p: Val, name: str, plain: bool = False) -> Val:
     # load a field (p = self.field(o, name)); a field __init__ may leave unassigned is checked
+    # (where its class has a __getattr__, CPython calls that instead: hook_field, unless plain)
     ci = self.classes[o.t]
     r = ""
     bad = ""
@@ -3691,6 +3700,11 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
         f = self.fgep(o, ci.fflag[name])
         if bad == "":
             bad = self.scalar('xor', [Val(self.mem_load(Val(f, '&bool')).v, 'bool'), Val('true', 'bool')])
+        hooked = 0 if plain else hook_of(self, o.t)
+        if hooked == 2 and hook_class(self, o.t, name) != "":
+            hook_derived(self, o.t, hook_class(self, o.t, name), f"reading field '{name}', which may be unassigned,")
+        if hooked == 1:
+            return hook_field(self, o, p, name, bad)
         subs = [x for x in self.classes.values() if x.base == o.t]
         if len(subs) > 0 and (ci.exc != "" or ci.tag != 0):
             # CPython's missing-attribute error names the concrete object's class.
