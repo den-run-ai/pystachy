@@ -6,8 +6,8 @@ from src.pystachy_compiler.ir import Ins, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.names import owner
 from src.pystachy_compiler.syntax import Node, mk
-from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, FXBIT, NONEVAR, OPTTYPES
-from src.pystachy_compiler.utils import elem, is_callable, is_clsval, is_dict, is_fn, is_list, is_opt, is_sopt, is_tuple, is_union, is_vtuple, targs, tname, typestr, umembers, unopt
+from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, FXBIT, NONEVAR, OPTTYPES, PYMETHODS
+from src.pystachy_compiler.utils import elem, has_method, is_callable, is_clsval, is_dict, is_fn, is_list, is_opt, is_sopt, is_tuple, is_union, is_vtuple, targs, tname, typestr, umembers, unopt
 
 def gen_uboxes(self, a: str, b: str) -> bool:
     # is a value of type a one of union type b (or b | None) once boxed: a member's (one that
@@ -116,6 +116,248 @@ def gen_uop(self, v: Val, op: str) -> Val:
             self.place(nxt)
     self.place(end)
     return Val(self.phi(ph), t)
+
+# ---- a closed value union's own operations (None | bool | int | float | str | list | dict, as
+# json.JSONValue is): the member that the box's tag names performs them, natively, and a member
+# that cannot raises the error CPython raises for that object. Each tag is tested by a branch of
+# its own, so that the payload's read follows the test of the tag it belongs to (union_proof.py).
+
+def gen_ureject(self, o: Val, keep: list[str], kind: str, text: str, none: str = "") -> Val:
+    # o, a closed union's value that may be None, where only a value of one of types keep goes
+    # on: None and the other members raise kind (an exception class) with text, in which {} is
+    # the type's name (none: the whole text for None, where the caller has one). The value, as
+    # the union it holds
+    t = unopt(o.t)
+    o = self.unone(o, none if none != "" else text.replace("{}", "NoneType"), kind)
+    bad = [m for m in umembers(t) if m not in keep]
+    if len(bad) == 0:
+        return o
+    tag = self.mload('int', o.v)
+    for m in bad:
+        arm = self.label()
+        nxt = self.label()
+        self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(m)), "int")).v, arm, nxt)
+        self.place(arm)
+        self.raise_(kind, self.sconst(text.replace("{}", tname(m))))
+        self.place(nxt)
+    return o
+
+def gen_uonly(self, o: Val, m: str, kind: str, text: str) -> Val:
+    # the value of member type m that closed union value o holds: None and the other members
+    # raise, as ureject's do
+    t = unopt(o.t)
+    o = self.unone(o, text.replace("{}", "NoneType"), kind)
+    tag = self.mload('int', o.v)
+    ok = self.label()
+    bad = self.label()
+    self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(m)), "int")).v, ok, bad)
+    self.place(bad)
+    others = [x for x in umembers(t) if x != m]
+    for i in range(len(others)):
+        if i + 1 < len(others):
+            arm = self.label()
+            nxt = self.label()
+            self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(others[i])), "int")).v, arm, nxt)
+            self.place(arm)
+            self.raise_(kind, self.sconst(text.replace("{}", tname(others[i]))))
+            self.place(nxt)
+        else:
+            self.raise_(kind, self.sconst(text.replace("{}", tname(others[i]))))
+    self.place(ok)
+    return self.uget(Val(o.v, t), m)
+
+def gen_uiter_items(self, t: str) -> list[str]:
+    # the types of the items a loop takes from a value of closed union t: a list member's items,
+    # a dict member's keys, a str member's characters
+    items: list[str] = []
+    for m in umembers(t):
+        if is_list(m):
+            items.append(elem(m))
+        elif is_dict(m):
+            items.append(targs(m)[0])
+        elif m == "str":
+            items.append("str")
+    return items
+
+def gen_uiterable(self, v: Val, msg: str) -> Val:
+    # what a for loop steps through where v is a closed value union's (Gen.iterable): the value
+    # itself, known to hold a list, a dict or a str. None raises msg and a number CPython's
+    # TypeError here, where the loop's iterator is made, before another sequence of a zip() is
+    # asked for an item. for_seq then takes each item by the tag (useq_used, useq_next)
+    t = unopt(v.t)
+    items = self.uiter_items(t)
+    if len(items) == 0 or self.rtmode:
+        self.err(f"cannot iterate over {typestr(v.t)}")
+    it = self.union_type(items)
+    if it.startswith("!"):
+        self.err(f"iterating over a closed union value ({typestr(v.t)}) is not supported ({it[1:]}): narrow it with isinstance() first")
+    keep = [m for m in umembers(t) if is_list(m) or is_dict(m) or m == "str"]
+    return self.ureject(v, keep, "TypeError", "'{}' object is not iterable", msg[11:] if msg.startswith("TypeError: ") else msg)
+
+def gen_useq_used(self, s: Val) -> str:
+    # what the iterator over closed union value s (uiterable) records when it is made, as
+    # seq_start does for each type: a dict's size and a str's length, 0 for a list
+    members = [m for m in umembers(s.t) if is_list(m) or is_dict(m) or m == "str"]
+    tag = self.mload('int', s.v)
+    end = self.label()
+    ph = Ins("phi", "int", "")
+    for m in members:
+        arm = self.label()
+        nxt = self.label()
+        self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(m)), "int")).v, arm, nxt)
+        self.place(arm)
+        self.incoming(ph, "0" if is_list(m) else self.mload('int', self.uget(s, m).v), self.cur)
+        self.br(end)
+        self.place(nxt)
+    self.unreachable()  # (another member raised: uiterable)
+    self.place(end)
+    return self.phi(ph)
+
+def gen_useq_next(self, s: Val, pos: str, used: str, i: str, le: str) -> Val:
+    # the next item of closed union value s in a for loop (for_seq), which goes to le at its
+    # end: the list's, by index against its current length, the dict's, by entry, failing if it
+    # changed size, or the str's, by its byte cursor, each as that type's own loop takes it
+    # (pos: the entry or cursor; used: useq_used's; i: the loop's count), as a value of the
+    # union of their item types (uiter_items)
+    it = self.union_type(self.uiter_items(s.t))
+    members = [m for m in umembers(s.t) if is_list(m) or is_dict(m) or m == "str"]
+    tag = self.mload('int', s.v)
+    end = self.label()
+    ph = Ins("phi", it, "")
+    for m in members:
+        arm = self.label()
+        nxt = self.label()
+        self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(m)), "int")).v, arm, nxt)
+        self.place(arm)
+        x = self.uget(s, m)
+        go = self.label()
+        j = i
+        if is_list(m):
+            self.cbr(self.num_cmp('<', Val(i, "int"), Val(self.list_len(x), "int")).v, go, le)
+            self.place(go)
+        elif is_dict(m):
+            j = self.rt("pys_dict_next", "i64", [f"ptr {x.v}", f"i64 {self.mload('int', pos)}", f"i64 {used}", f"i64 {i}"])
+            self.cbr(self.num_cmp('>=', Val(j, "int"), Val('0', "int")).v, go, le)
+            self.place(go)
+            self.mstore('int', self.scalar('add', [Val(j, 'int'), Val('1', 'int')]), pos)
+        else:
+            j = self.mload('int', pos)
+            self.cbr(self.int_ucmp('<', Val(j, "int"), Val(used, "int")).v, go, le)
+            self.place(go)
+            self.mstore('int', self.rt("pys_text_next", "i64", [f"ptr {x.v}", f"i64 {j}"]), pos)
+        item = self.coerce(self.seq_item(x, j, "")[0], it)
+        self.incoming(ph, item.v, self.cur)
+        self.br(end)
+        self.place(nxt)
+    self.unreachable()  # (another member raised: uiterable)
+    self.place(end)
+    return Val(self.phi(ph), it)
+
+def umethod_mismatch(m: str, member: str, ts: list[str]) -> str:
+    # what o.m(args) does where a closed union's value o is of type member and its positional
+    # arguments are of builtin types ts, for the methods that a list shares with a dict or a
+    # str but that take other arguments (pop, index, count): "" for the member's own call;
+    # "TypeError: ..." for CPython's error; "KeyError" where a dict has no key of that type;
+    # "default" where its pop() then gives the default
+    plain = all([t in ["None", "bool", "int", "float", "str"] or is_list(t) or is_dict(t) for t in ts])
+    if not plain:
+        return ""
+    if is_list(member) and m == "pop":
+        if len(ts) > 1:
+            return f"TypeError: pop expected at most 1 argument, got {len(ts)}"
+        if len(ts) == 1 and ts[0] != "int" and ts[0] != "bool":
+            return f"TypeError: '{tname(ts[0])}' object cannot be interpreted as an integer"
+    if is_dict(member) and m == "pop":
+        if len(ts) == 0:
+            return "TypeError: pop expected at least 1 argument, got 0"
+        if len(ts) > 2:
+            return f"TypeError: pop expected at most 2 arguments, got {len(ts)}"
+        if is_list(ts[0]) or is_dict(ts[0]):
+            return f"TypeError: unhashable type: '{tname(ts[0])}'"
+        if (targs(member)[0] == "str") != (ts[0] == "str"):
+            return "KeyError" if len(ts) == 1 else "default"
+    if is_list(member) and m == "count" and len(ts) != 1:
+        return f"TypeError: list.count() takes exactly one argument ({len(ts)} given)"
+    if member == "str" and (m == "count" or m == "index") and len(ts) > 0 and ts[0] != "str":
+        return f"TypeError: must be str, not {tname(ts[0])}"
+    return ""
+
+def gen_uvalue_method(self, o: Val, m: str, args: list[Node], want: str, resultsoft: bool) -> Val:
+    # o.m(args) of a closed value union's value: the method of the member that its tag names. A
+    # member whose type has no such method in CPython (and None) raises AttributeError, before
+    # the arguments are evaluated, as CPython looks the attribute up first. Where one member has
+    # it, the call is its own; where several do (pop, copy, index), each argument is evaluated
+    # once and the results are their union
+    t = unopt(o.t)
+    if len([x for x in umembers(t) if is_list(x)]) > 1 or len([x for x in umembers(t) if is_dict(x)]) > 1:
+        # (lists, or dicts, of several item types: no one call's arguments suit them all)
+        self.err("closed union method calls require narrowing with isinstance() first")
+    havers: list[str] = []
+    for x in umembers(t):
+        base = "list" if is_list(x) else "dict" if is_dict(x) else x
+        if base in PYMETHODS and m in PYMETHODS[base]:
+            if base == "bool" and has_method("int", m):
+                base = "int"  # (a bool's are an int's: the call is of its int, below)
+            if not (has_method(base, m) or (base == "str" and (m == "format" or m == "format_map"))):
+                self.err(f"{base}.{m}() is not supported, and a closed union's value ({typestr(o.t)}) may be a {base}: narrow it with isinstance() first")
+            havers.append(x)
+    if len(havers) == 0:
+        self.err(f"no member of {typestr(o.t)} has a method {m}(): closed union method calls select a str, list, dict or number member's method")
+    missing = f"'{{}}' object has no attribute '{m}'"
+    if len(havers) == 1:
+        only = self.uonly(o, havers[0], "AttributeError", missing)
+        return self.method(self.as_int(only) if only.t == "bool" else only, m, args, want, resultsoft)
+    o = self.ureject(o, havers, "AttributeError", missing)
+    bound: list[Node] = []
+    for a in args:
+        if a.kind == "starred" or a.kind == "dstar":
+            self.err("closed union methods do not support unpacked arguments: narrow the value with isinstance() first")
+        if a.kind == "kw":
+            bound.append(mk("kw", a.s, a.line, [self.vnode(self.expr(a.kids[0], ""))]))
+        else:
+            bound.append(self.vnode(self.expr(a, "")))
+    tag = self.mload('int', o.v)
+    end = self.label()
+    results: list[Val] = []
+    edges: list[str] = []
+    narrow = dict(self.narrowed)
+    for x in havers:
+        arm = self.label()
+        nxt = self.label()
+        self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(x)), "int")).v, arm, nxt)
+        self.place(arm)
+        self.narrowed = dict(narrow)
+        result = Val("null", "None")
+        problem = umethod_mismatch(m, x, [self.expr(b, "").t for b in bound if b.kind != "kw"])
+        if problem.startswith("TypeError: "):
+            self.raise_("TypeError", self.sconst(problem[11:]))
+        elif problem == "KeyError":
+            self.raise_("KeyError", self.repr(self.expr(bound[0], "")).v, self.sconst("KeyError"))
+        elif problem == "default":
+            result = self.expr(bound[1], "")
+        else:
+            result = self.method(self.as_int(self.uget(o, x)) if x == "bool" else self.uget(o, x), m, bound)
+        if not self.term:
+            results.append(result)
+            edges.append(self.cur)
+            self.br(end)
+        self.place(nxt)
+    self.unreachable()  # (another member raised: ureject)
+    self.narrowed = narrow
+    self.place(end)
+    if len(results) == 0:
+        self.unreachable()
+        return Val("null", "None")
+    if all([r.t == "None" for r in results]):
+        return Val("null", "None")
+    rt = self.union_type([r.t for r in results])
+    if rt.startswith("!"):
+        self.err(f"unsupported call of {m}() on {typestr(o.t)}: its members' results ({', '.join([typestr(r.t) for r in results])}) have no union; narrow it with isinstance() first")
+    ph = Ins("phi", rt, "")
+    for i in range(len(results)):
+        r = self.convert_at(results[i], rt, edges[i])
+        self.incoming(ph, r.v, self.convedge)
+    return Val(self.phi(ph), rt)
 
 def gen_scalar_view(self, v: Val) -> Val:
     # The box of a union of objects and scalars, where its tag is one of the scalars', as a

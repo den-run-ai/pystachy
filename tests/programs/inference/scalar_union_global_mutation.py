@@ -1,4 +1,4 @@
-# error: closed union arithmetic requires narrowing with isinstance() first
+# A call may change the global: the read after it is the union's, whose str has no + with an int.
 value: int | str = 1
 
 def change() -> None:

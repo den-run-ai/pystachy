@@ -13,6 +13,9 @@ from src.pystachy_compiler.scalar_ir import (
 )
 from src.pystachy_compiler.union_arithmetic import (
     gen_ucmp as union_arithmetic_ucmp,
+    gen_ucontains as union_arithmetic_ucontains,
+    gen_uorder as union_arithmetic_uorder,
+    gen_uvalue_orders as union_arithmetic_uvalue_orders,
     gen_unumeric as union_arithmetic_unumeric,
     gen_unumeric_case as union_arithmetic_unumeric_case,
     gen_uorders as union_arithmetic_uorders,
@@ -273,6 +276,13 @@ from src.pystachy_compiler.unions import (
     gen_uequal as unions_uequal,
     gen_reference_union as unions_reference_union,
     gen_umethod as unions_umethod,
+    gen_ureject as unions_ureject,
+    gen_uonly as unions_uonly,
+    gen_uiter_items as unions_uiter_items,
+    gen_uiterable as unions_uiterable,
+    gen_useq_used as unions_useq_used,
+    gen_useq_next as unions_useq_next,
+    gen_uvalue_method as unions_uvalue_method,
     gen_uboxes as unions_uboxes,
     gen_umember_problem as unions_umember_problem,
     gen_union_type as unions_union_type,
@@ -3509,6 +3519,15 @@ class Gen:
     def ucmp(self, op: str, a: Val, b: Val, nonnull: bool = False) -> Val:
         return union_arithmetic_ucmp(self, op, a, b, nonnull)
 
+    def ucontains(self, op: str, a: Val, b: Val) -> Val:
+        return union_arithmetic_ucontains(self, op, a, b)
+
+    def uorder(self, op: str, a: Val, b: Val, top: bool = True) -> Val:
+        return union_arithmetic_uorder(self, op, a, b, top)
+
+    def uvalue_orders(self, a: str, b: str) -> bool:
+        return union_arithmetic_uvalue_orders(self, a, b)
+
     def join_hint(self, t: str, vt: str) -> bool:
         return unions_join_hint(self, t, vt)
 
@@ -4953,8 +4972,8 @@ class Gen:
     def subscript(self, n: Node, o: Val, want: str = "") -> Val:
         return expressions_subscript(self, n, o, want)
 
-    def unone(self, o: Val, msg: str) -> Val:
-        return expressions_unone(self, o, msg)
+    def unone(self, o: Val, msg: str, kind: str = "TypeError") -> Val:
+        return expressions_unone(self, o, msg, kind)
 
     def usub_items(self, t: str) -> list[str]:
         return expressions_usub_items(self, t)
@@ -5946,6 +5965,27 @@ class Gen:
 
     def umethod(self, o: Val, m: str, args: list[Node]) -> Val:
         return unions_umethod(self, o, m, args)
+
+    def ureject(self, o: Val, keep: list[str], kind: str, text: str, none: str = "") -> Val:
+        return unions_ureject(self, o, keep, kind, text, none)
+
+    def uonly(self, o: Val, m: str, kind: str, text: str) -> Val:
+        return unions_uonly(self, o, m, kind, text)
+
+    def uiter_items(self, t: str) -> list[str]:
+        return unions_uiter_items(self, t)
+
+    def uiterable(self, v: Val, msg: str) -> Val:
+        return unions_uiterable(self, v, msg)
+
+    def useq_used(self, s: Val) -> str:
+        return unions_useq_used(self, s)
+
+    def useq_next(self, s: Val, pos: str, used: str, i: str, le: str) -> Val:
+        return unions_useq_next(self, s, pos, used, i, le)
+
+    def uvalue_method(self, o: Val, m: str, args: list[Node], want: str, resultsoft: bool) -> Val:
+        return unions_uvalue_method(self, o, m, args, want, resultsoft)
 
     def uboxes(self, a: str, b: str) -> bool:
         return unions_uboxes(self, a, b)

@@ -137,6 +137,11 @@ applies. Bytes case methods remain ASCII-only.
   [closed union](typing.md#operations-on-closed-unions) at an index of another type than
   the selected dict's keys raises `TypeError`; CPython adds the key
   ([deviation](../../tests/deviations/union_store_key.py)).
+- **A closed union's str is no run-time format.** `value % number`, where a
+  [closed union](typing.md#operations-on-closed-unions)'s value is a str that holds a
+  conversion (`"%d items"`), raises `TypeError`; CPython formats with it
+  ([deviation](../../tests/deviations/union_percent_format.py)). A number there takes the
+  remainder, and a str without a conversion raises CPython's own `TypeError`.
 - **Hash callbacks can repeat.** `dict.fromkeys(set_of_objects)` recomputes user
   hashes; CPython reuses the set's hashes. `cache()`/`lru_cache()` may hash an
   argument more than once per call; CPython does so once.

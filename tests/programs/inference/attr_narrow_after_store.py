@@ -1,4 +1,5 @@
-# error: closed union arithmetic requires narrowing with isinstance() first: copy it to a local variable, and narrow that to one of its types with isinstance() (a test does not narrow a global, nor a field past a call or a store that may change it)
+# A store to an attribute of that name voids the narrowing of e.value: the read after it is
+# the union's again, whose str then has no + with an int, as in CPython.
 class Ref:
     def __init__(self, value: int | str) -> None:
         self.value = value

@@ -4,7 +4,7 @@ from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.bigints import TSLOT_BIG, big_tree, big_viewable, held, narrow_type, narrows, search_type
 from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
 from src.pystachy_compiler.diagnostics import DYNPRAGMA, LINES, dynamic_program, int_lists, shown, where
-from src.pystachy_compiler.dynamic import boxed_list_items, comparison_container_pair, comparison_invalid, comparison_property_type
+from src.pystachy_compiler.dynamic import boxed_list_items, comparison_builtin, comparison_container_pair, comparison_invalid, comparison_property_type
 from src.pystachy_compiler.frames import FmtArgs, IterArg
 from src.pystachy_compiler.ir import Data, Ins, Loop, Val, tmpname, one_num
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
@@ -3212,8 +3212,8 @@ def gen_usub_items(self, t: str) -> list[str]:
             items.append("str")
     return items
 
-def gen_unone(self, o: Val, msg: str) -> Val:
-    # closed union value o, which raises TypeError msg where it is None, as the union it holds.
+def gen_unone(self, o: Val, msg: str, kind: str = "TypeError") -> Val:
+    # closed union value o, which raises msg (a TypeError, or kind) where it is None, as the union it holds.
     # A branch tests it, as utest's does, not a check: nullcheck removes a check that an equal
     # value's test dominates, and the tag's read then has no test of its own box to prove it.
     if not is_opt(o.t):
@@ -3222,7 +3222,7 @@ def gen_unone(self, o: Val, msg: str) -> Val:
     arm = self.label()
     self.cbr(self.ptr_cmp('==', o, Val('null', 'None')).v, bad, arm)
     self.place(bad)
-    self.raise_("TypeError", self.sconst(msg))
+    self.raise_(kind, self.sconst(msg))
     self.place(arm)
     return Val(o.v, unopt(o.t)).identity(o)
 
@@ -6308,6 +6308,10 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             return self.complex_ueq(op, a, b)
         if op in ["<", "<=", ">", ">="] and not is_opt(a.t) and not is_opt(b.t) and self.uorders(a.t, b.t):
             return self.ucmp(op, a, b)  # (each member's ordering: union splitting)
+        if op in ["<", "<=", ">", ">="] and self.uvalue_orders(a.t, b.t):
+            return self.uorder(op, a, b)  # (a closed value union's: its members', or CPython's TypeError)
+        if (op == "in" or op == "not in") and self.value_union(b.t) and (comparison_builtin(unopt(a.t)) != "" or self.value_union(a.t)):
+            return self.ucontains(op, a, b)  # (in the list, dict or str it holds)
         # (a set's or dict's keys that are a union of classes compared by identity, of whose
         # members a's are: runtime.c compares the objects the boxes hold, #1452)
         kt = selem(b.t) if is_set(b.t) else targs(b.t)[0] if is_dict(b.t) else ""

@@ -48,6 +48,7 @@ from src.pystachy_compiler.specs import (
     RANGES,
     TYPESMOD,
     TYPESUSE,
+    UCALLS,
     VERSIONINFO,
     VTUPLE_ITEMS,
 )
@@ -1047,6 +1048,11 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             out = self.int_ucmp('>', Val(self.scalar('sub', [Val(nb, 'int'), Val('2', 'int')]), "int"), Val('34', "int")).v
             nonzero = self.num_cmp("!=", Val(nb, "int"), Val("0", "int")).v
             self.guard(self.scalar('and', [Val(out, 'bool'), Val(nonzero, 'bool')]), "ValueError: int() base must be >= 2 and <= 36, or 0")
+    if name in UCALLS and len(vals) > 0 and len([a for a in args if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar"]) == 0 and self.value_union(vals[0].t) and len([m for m in umembers(unopt(vals[0].t)) if m not in UCALLS[name]]) > 0 and COMPLEXC not in umembers(unopt(vals[0].t)):
+        # (a closed value union's that may hold what this builtin takes no value of, a str or
+        # a container: each member's call by its tag, and CPython's TypeError for those and
+        # for None: usplit)
+        return self.usplit(name, vals, 0, want)
     for i in range(len(vals)):
         if vals[i].t == "None" and name in NONERET and len(vals) == 1:
             # None itself (a template's parameter whose argument is None): CPython's error

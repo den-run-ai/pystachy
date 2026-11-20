@@ -1,4 +1,4 @@
-# error: closed union arithmetic requires narrowing with isinstance() first: narrow it to one of its types first, with isinstance()
+# A property's read is a call: the second read gives the str, which has no + with an int.
 class Ref:
     def __init__(self) -> None:
         self.reads = 0

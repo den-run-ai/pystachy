@@ -95,12 +95,12 @@ Measure compilation and execution separately
 | Containers | `list[T]`, `dict[K, V]`, `set[T]`, `frozenset[T]`, fixed-shape `tuple[A, B]`, runtime-length `tuple[T, ...]` |
 | Objects | User classes, dataclasses and class-style `NamedTuple` |
 | Closed scalar unions | `int \| float \| bool \| str`, optionally including `None` |
-| Mixed container unions | Scalar members plus explicit `list[T]` / `dict[K, V]` members, with narrowing |
+| Mixed container unions | Scalar members plus explicit `list[T]` / `dict[K, V]` members; loops, indexes, methods and operators [select the member](language/typing.md#operations-on-closed-unions), and `isinstance()` narrows |
 | Native reference unions | Up to four non-overlapping class/file types, such as `TextIO \| StringIO`, and scalar members beside them, such as `int \| Decimal` |
 | Optional values | `T \| None`, `Optional[T]`, `Union[T, None]` |
 | Functions | Typed `Callable[[A, B], R]`, functions, lambdas, closures and bound methods |
 | Generics | Function templates and `Generic` or PEP 695 (`class Box[T]`) classes with inferred or explicit type arguments; module-level type aliases |
-| Recursive values (prototype) | `type JSONValue = None \| bool \| int \| float \| str \| list[JSONValue] \| dict[str, JSONValue]` and smaller closed recursive unions, narrowed with `isinstance()`; see [recursive value aliases](language/typing.md#recursive-value-aliases-prototype) |
+| Recursive values (prototype) | `type JSONValue = None \| bool \| int \| float \| str \| list[JSONValue] \| dict[str, JSONValue]` and smaller closed recursive unions, used as they are or narrowed with `isinstance()`; see [recursive value aliases](language/typing.md#recursive-value-aliases-prototype) |
 
 - **Integers** are checked 64-bit values; `x & y` keeps the low 64 bits of the arithmetic it
   masks ([numbers](language/compatibility.md#numbers)). A module that opts in to

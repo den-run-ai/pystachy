@@ -898,6 +898,9 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
         return self.kw_method(o, m, args)
     if o.t == "dyn":
         return self.dyn_method(o, m, args)  # (its box's type's: dynamic.py)
+    if self.value_union(self.rec_type(o.t)):
+        # (a closed value union's: its member's method, by the tag, unions.py)
+        return self.uvalue_method(Val(o.v, self.rec_type(o.t)).identity(o), m, args, want, resultsoft)
     if is_opt(o.t):
         o = self.unwrap(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
     if is_union(o.t):
