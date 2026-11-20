@@ -6,7 +6,7 @@ the model does not establish that the exporter or runtime implements that model.
 
 | Area | Enforced property | Current boundary |
 |---|---|---|
-| Typed-IR shape | Each instruction has the counts and fields of its row of the operation table, each block ends in its one terminator, labels name blocks, and each value number has one definition that every operand reading it names ([SHAPE.md](SHAPE.md)) | Python adapter and operation table, operand classification, dominance, types, effects and lowering |
+| Typed-IR shape and def-before-use | Each instruction has the counts and fields of its row of the operation table, each block ends in its one terminator, labels name blocks, each value number has one definition that every operand reading it names, and that definition is reached on every path to each read, against a checked dominator tree ([SHAPE.md](SHAPE.md)) | Python adapter, operation table and control-flow edges, operand classification, types, effects and lowering |
 | Compiler stages | Completed stages form an ordered prefix; unfinished stages block new starts; lowering follows finalization and is terminal; successful inspection reports bind the snapshot to the terminal attempt ([PIPELINE.md](PIPELINE.md)) | Python state/exporter correspondence, stage body semantics and artifact authenticity |
 | Dynamic `Any` | Payload reads have matching type guards and compatible class layout prefixes | Exported layouts, runtime tag/boxing contracts and LLVM offsets |
 | Reference boxing | A non-null reference round trip preserves its address, mutable aliases and abstract tracing edge | Bounded C-AST adapter, physical layout correspondence and allocator/collector semantics |
@@ -346,7 +346,10 @@ from its theorem. These results do not justify removing roots, companions or gua
 ## How actual IR reaches the model
 
 `tools/check_lean_boundary.py` reads the existing inspection schema, validates
-the selected function and emits normalized nodes for its instructions. A box's
+the selected function and emits normalized nodes for its instructions. Every
+adapter reads a snapshot through its `read_snapshot`, which takes the functions'
+casts out (`erase_casts`) as LLVM lowering does: an operand that reads a cast reads
+the value it casts, which no cast changes. A box's
 tag is its DynType descriptor's symbol: a runtime.c builtin's, or one of the
 program's own, which `typed-after.json` lists in `dynamic_types` (its kind,
 class number, base, role, flags and payload type). Each typed-IR operation has an

@@ -9,7 +9,7 @@
 # would color its tracebacks, the caller's PYTHONPATH add modules, PYTHONUNBUFFERED change what
 # reaches a stdout the program shares with os.system's commands. Without LANG and LC_*, the locale
 # is C, in which CPython runs in UTF-8 mode (PEP 540: PYTHONUTF8=1 changes nothing). It must be the
-# CPython of .python-version: another minor version is refused (3.12 prints otherwise for 28
+# CPython of .python-version: another minor version is refused (3.12.16 prints otherwise for 116
 # tests), another patch version warned about.
 # tests/record.sh --check records every test into a temporary directory instead, and fails where
 # that differs from NAME.out or NAME.err; where CPython prints what a tests/deviations/NAME.py must

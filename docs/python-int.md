@@ -226,7 +226,7 @@ Some of these boundaries reject values CPython accepts. The
 
 | Destination | Limit |
 |---|---|
-| Closed unions other than scalar `int \| None` | Int members stay 64-bit, including inferred bool/int joins and mixed int/float/bool/str container displays. |
+| Closed unions other than scalar `int \| None` | Int members stay 64-bit, including inferred bool/int joins, mixed int/float/bool/str container displays and a location annotated `float` that was [given an `int`](language/typing.md#int-values-in-float-locations) ([deviation](../tests/deviations/python_int_float_store.py)). Arithmetic on such a union that could yield an `int` is rejected. |
 | Unsupported list items, dict keys/values and set elements | Int storage promotes only in the supported integer and tuple forms above. An `int \| None` inside a list or tuple remains 64-bit, including nested tuple items. |
 | Optional tuple results | Dict `get()`/`pop()` results that may be `None`, such as `d.get(k)` for tuple values, retain the 64-bit tuple boundary. |
 | Runtime-length tuples | `tuple[int, ...]` items, including a tuple sliced by a variable, stay 64-bit. |
@@ -264,7 +264,7 @@ integer is absent from a `range`, whose bounds remain 64-bit. An object's
 | Case | Difference from CPython |
 |---|---|
 | [64-bit boundaries](#64-bit-boundaries) | Oversized values raise `OverflowError`; unsupported heterogeneous dataclass fields can be rejected at compile time. |
-| Integer identity | Direct `is` between typed ints is rejected in an opted-in module; CPython's result depends on its small-int cache. `x is None` and `x is not None` remain false and true for an int. |
+| Integer identity | Direct `is` between typed ints is rejected in an opted-in module; CPython's result depends on its small-int cache. `x is y or x == y` of two names, the identity-or-equality test of `operator.indexOf()` and `collections.abc`, is `x == y`, as for other numbers ([test](../tests/programs/numbers/python_int_is_or_eq.py)). `x is None` and `x is not None` remain false and true for an int. |
 | Tuple identity at the minimum int64 value | A fixed-width tuple containing `-2**63`, even nested, is copied when converting to a promoting tuple layout. This includes storing it in an integer-tuple list, dict or set from any module. Equality is preserved, but identity differs. |
 | Negative integer exponent | Two-argument integer power raises `ValueError` instead of returning a float. |
 | Bool-to-int storage and calls | The [boolean rules](#booleans) reject cases that would erase an observable bool. |

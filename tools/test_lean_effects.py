@@ -69,11 +69,11 @@ class EffectSummaryTests(unittest.TestCase):
 
     def test_memory_roles_and_escaping_slots(self):
         slot = op("slot", results=[1], typ="int", text="local")
-        private = function("@private", [op("mem.store", [("%local.1", "*int"), ("1", "int")])], slots=[slot])
+        private = function("@private", [op("mem.store", [("%local.1", "&int"), ("1", "int")])], slots=[slot])
         raw = function("@raw", [op("mach.store", [("%a0", "%ptr"), ("1", "int")])])
-        field = function("@field", [op("field.addr", [("%a0", "Thing")], [1], typ="*int"),
-                                    op("mem.store", [("%t1", "*int"), ("1", "int")])])
-        global_ = function("@global", [op("mem.store", [("@saved", "*int"), ("1", "int")])])
+        field = function("@field", [op("field.addr", [("%a0", "Thing")], [1], typ="&int"),
+                                    op("mem.store", [("%t1", "&int"), ("1", "int")])])
+        global_ = function("@global", [op("mem.store", [("@saved", "&int"), ("1", "int")])])
         found = effects.summaries({"functions": [private, raw, field, global_]})
         self.assertFalse(found["@private"] & effects.WRITES)
         self.assertEqual(found["@raw"] & effects.WRITES, effects.WRITES)
@@ -81,11 +81,11 @@ class EffectSummaryTests(unittest.TestCase):
         self.assertEqual(found["@global"] & effects.WRITES, {"wG"})
         # An escaped slot is still the function's own stack memory: others may read or write it
         # through its address, but a store to it changes no global, object, list or dict.
-        private["blocks"][0]["operations"].insert(0, op("slot.pack", [("%local.1", "*int")], [2], typ="%slot"))
+        private["blocks"][0]["operations"].insert(0, op("slot.pack", [("%local.1", "&int")], [2], typ="%slot"))
         self.assertFalse(effects.summaries({"functions": [private]})["@private"] & effects.WRITES)
         # Its address passed on lets a callee write anything through that parameter, though.
         writer = function("@writer", [op("mach.store", [("%a0", "%ptr"), ("1", "int")])])
-        private["blocks"][0]["operations"].insert(1, op("call", [("%local.1", "*int")], text="@writer", typ="None"))
+        private["blocks"][0]["operations"].insert(1, op("call", [("%local.1", "&int")], text="@writer", typ="None"))
         found = effects.summaries({"functions": [private, writer]})
         self.assertEqual(found["@private"] & effects.WRITES, effects.WRITES)
 
@@ -93,18 +93,18 @@ class EffectSummaryTests(unittest.TestCase):
         # (a closure's cell and environment, as _first in examples/ndarray builds them, and a
         # fixed object's field: new memory on each execution)
         cell = [op("rt", [("8", "int")], [1], text="alloc", typ="%ptr"),
-                op("mem.store", [("%t1", "*int"), ("%a0", "int")])]
+                op("mem.store", [("%t1", "&int"), ("%a0", "int")])]
         environment = [op("rt", [("16", "int")], [2], text="alloc", typ="%ptr"),
                        op("mach.addr", [("%t2", "%ptr"), ("1", "int")], [3], text="%ptr", typ="%ptr"),
                        op("mach.store", [("%t3", "%ptr"), ("null", "%ptr")])]
         obj = [op("alloc.fixed", [], [4], typ="Thing"),
-               op("field.addr", [("%t4", "Thing")], [5], typ="*int", immediate=1),
-               op("mem.store", [("%t5", "*int"), ("1", "int")])]
+               op("field.addr", [("%t4", "Thing")], [5], typ="&int", immediate=1),
+               op("mem.store", [("%t5", "&int"), ("1", "int")])]
         # (a promoting program's closure cell: 23 bytes requested for a 24-byte slot, its identity
         # box in the third word, functions.py)
         identity_cell = [op("rt", [("23", "int")], [8], text="alloc", typ="%ptr"),
                          op("mach.addr", [("%t8", "%ptr"), ("2", "int")], [9], text="%ptr", typ="%ptr"),
-                         op("mem.store", [("%t9", "*dyn"), ("null", "dyn")])]
+                         op("mem.store", [("%t9", "&dyn"), ("null", "dyn")])]
         # (a fixed tuple's last word: lru_cache's _call copies its key into a new tuple)
         pair = [op("alloc.fixed", [], [6], typ="tuple[str,int,int]"),
                 op("mach.addr", [("%t6", "%ptr"), ("2", "int")], [7], text="int", typ="%ptr"),
@@ -151,7 +151,7 @@ class EffectSummaryTests(unittest.TestCase):
             with self.subTest(size=size, index=index):
                 body = [op("rt", [(size, "int")], [1], text="alloc", typ="%ptr"),
                         op("mach.addr", [("%t1", "%ptr"), (index, "int")], [2], text="%ptr", typ="%ptr"),
-                        op("mem.store", [("%t2", "*int+"), ("%a0", "int+")])]
+                        op("mem.store", [("%t2", "&int+"), ("%a0", "int+")])]
                 found = effects.summaries({"functions": [function("@wide", body)]})["@wide"]
                 self.assertEqual(found & effects.WRITES, set() if fits else effects.WRITES)
         # (an object's first word is its class tag only for a tagged class)
@@ -163,25 +163,25 @@ class EffectSummaryTests(unittest.TestCase):
                 found = effects.summaries(snapshot)["@header"]
                 self.assertEqual(found & effects.WRITES, set() if tagged else effects.WRITES)
         # (a field of memory that is not a fixed object's stays an object write)
-        untyped = [alloc, op("field.addr", [("%t1", "Thing")], [2], typ="*int"),
-                   op("mem.store", [("%t2", "*int"), ("1", "int")])]
+        untyped = [alloc, op("field.addr", [("%t1", "Thing")], [2], typ="&int"),
+                   op("mem.store", [("%t2", "&int"), ("1", "int")])]
         self.assertEqual(effects.summaries({"functions": [function("@stale", untyped)]})["@stale"]
                          & effects.WRITES, {"wO"})
 
     def test_identity_return_stores_are_the_caller_slot_only_where_every_call_passes_one(self):
-        returner = function("@returner", [op("mem.store", [("%idret", "*dyn"), ("null", "dyn")])])
+        returner = function("@returner", [op("mem.store", [("%idret", "&dyn"), ("null", "dyn")])])
         slot = op("slot", results=[1], typ="dyn", text="h")
         for argument, writes in (("%h.1", set()), ("%idret", set()), ("null", set()),
                                  ("%a0", effects.WRITES), ("@g.saved", effects.WRITES)):
             with self.subTest(argument=argument):
-                caller = function("@caller", [op("mem.store", [("%h.1", "*dyn"), ("null", "dyn")]),
-                                              op("call", [("1", "int"), (argument, "*dyn")], [2],
+                caller = function("@caller", [op("mem.store", [("%h.1", "&dyn"), ("null", "dyn")]),
+                                              op("call", [("1", "int"), (argument, "&dyn")], [2],
                                                  text="@returner", typ="int")], slots=[slot])
                 found = effects.summaries({"functions": [copy.deepcopy(returner), caller]})
                 self.assertEqual(found["@returner"] & effects.WRITES, writes)
                 self.assertEqual(found["@caller"] & effects.WRITES, writes)
         # (an argument of another type is no identity-return buffer)
-        caller = function("@caller", [op("call", [("1", "int"), ("%h.1", "*int")], [2], text="@returner",
+        caller = function("@caller", [op("call", [("1", "int"), ("%h.1", "&int")], [2], text="@returner",
                                          typ="int")], slots=[slot])
         self.assertEqual(effects.summaries({"functions": [copy.deepcopy(returner), caller]})["@returner"]
                          & effects.WRITES, effects.WRITES)
@@ -191,17 +191,17 @@ class EffectSummaryTests(unittest.TestCase):
         fn = snapshot["functions"][0]
         entry = fn["blocks"][0]["operations"]
         entry[0]["operands"][0]["value"] = "%t30"
-        entry[:0] = [op("mem.load", [("@saved", "*list[int]")], [30], typ="list[int]"),
+        entry[:0] = [op("mem.load", [("@saved", "&list[int]")], [30], typ="list[int]"),
                      op("call", [("%a2", "%ptr")], text="@raw", typ="None")]
         read = fn["blocks"][1]["operations"]
         read[0]["operands"][0]["value"] = "%t31"
-        read.insert(0, op("mem.load", [("@saved", "*list[int]")], [31], typ="list[int]"))
+        read.insert(0, op("mem.load", [("@saved", "&list[int]")], [31], typ="list[int]"))
         snapshot["functions"].append(function("@raw", [
             op("mach.store", [("%a0", "%ptr"), ("null", "list[int]")])], "wL wD wO"))
         # Clearing list facts at the call is insufficient: the length is read
         # afterwards. The earlier @saved == %t30 relation must be killed too.
         self.assert_verdict(snapshot, False)
-        entry[1] = op("mem.store", [("%a2", "*list[int]"), ("null", "list[int]")])
+        entry[1] = op("mem.store", [("%a2", "&list[int]"), ("null", "list[int]")])
         self.assert_verdict(snapshot, False)
 
     def test_missing_summary_and_unknown_operations_stay_conservative(self):

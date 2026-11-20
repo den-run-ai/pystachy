@@ -1,8 +1,7 @@
 """Typed IR records of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.specs import FXALL, VALUE_AT
-from src.pystachy_compiler.symbols import FnInfo
-from src.pystachy_compiler.syntax import Node
+from src.pystachy_compiler.specs import FXALL, OP_TEMPS, VALUE_AT
+from src.pystachy_compiler.symbols import FnBuild, FnInfo
 
 
 class Val:
@@ -165,6 +164,17 @@ TMPNAMES: list[str] = []
 ONENUMS: list[list[int]] = []
 
 
+def merged_blocks(fn: IFn, lines: bool) -> dict[str, bool]:
+    # The shared raise blocks (IFn.cold) whose ops may have no line: with line tables (lines),
+    # Gen.function_body numbers one that checks of several lines reach 0, as LLVM numbers code
+    # merged from several lines. A function the compiler built locates every other op
+    merged: dict[str, bool] = {}
+    if lines:
+        for key in fn.cold:
+            merged[fn.cold[key]] = True
+    return merged
+
+
 def tmpname(n: int) -> str:
     if n < 0:
         return f"%t{n}"
@@ -192,16 +202,26 @@ def one_nums_intact() -> bool:
 class Ins:
     # one instruction: op decides which fields mean something
     def __init__(self, op: str, t: str, s: str):
-        self.line = 0  # encoded source position; zero for synthesized operations
+        # its source location, as an MLIR operation's loc: the line of the statement it
+        # implements, numbered as diagnostics.LINES numbers lines (a file's index * LINES + its
+        # line). The frontend gives every op it builds, a slot too, the line it is compiling
+        # (Gen.add): a function's prologue (its entry depth, parameter stores, cells) compiles
+        # at its def's line, and module code's at its block's, line 1, which is numbered in the
+        # main program's file whatever the module (as LLVM line tables place module code). A
+        # pass gives an op it makes the line of the op it derives from, as an MLIR rewriter
+        # gives the replaced op's location. 0 is an unknown location, which no op of the
+        # compiler's has (IFn.located). Only LLVM line tables (PYSTACHY_DEBUG_LINES=1) read it
+        self.line = 0
         self.op = op  # a key of IROPS
         self.t = t  # its result type ("" if it defines no value; an rt op's as RUNTIME spells it), a slot's type
-        # slot.pack/unpack keep the native type in the operand/result and use %slot for
-        # the opaque eight-byte container payload. Only LLVM lowering chooses its bitcast.
+        # slot.pack/unpack keep the native type T in the operand/result and the packed slot *T, the
+        # eight-byte word that holds it, on the other side; %slot is a word that claims no type (a
+        # box's payload bits, a runtime word). Only LLVM lowering chooses its bitcast.
         # union.tag reads a nonoptional union's tag; union.payload reads its member's
-        # opaque slot (s: member type, r: address then payload). Narrowing proves those reads safe.
+        # packed slot *s (s: member type, r: address then payload). Narrowing proves those reads safe.
         # union.raw copies those bits without claiming a member (s: empty); its tag travels
         # with the bits when unionslots splits storage or rebuilds a box.
-        # dyn.type reads a dynamic value's DynType pointer and dyn.payload its slot (s: the type
+        # dyn.type reads a dynamic value's DynType pointer and dyn.payload its packed slot *s (s: the type
         # a test proved it holds, r: address then payload); the box never changes (dynamic.py).
         # dyn.raw reads opaque identity bits with no member claim (s: empty), for
         # direct integer equality only; r is again the address then payload.
@@ -209,7 +229,7 @@ class Ins:
         # in s and compares two operands of the same native numeric type.
         # empty.kind fixes a fresh dict/set result's key layout, using its typed
         # operand or the deferred type hole k; it never retypes a filled container.
-        # mem.load/store transfer native values through an address of type *<native>.
+        # mem.load/store transfer native values through an address of type &<native>.
         # Their effects retain local/global/field/unknown address classification.
         # mach.load/store additionally access runtime headers, closure slots and byte
         # buffers through %ptr. s is finite metadata: length, length.range, bytes or empty.
@@ -256,6 +276,9 @@ class Blk:
         # where an exception raised here goes: the landing block of the innermost try statement
         # of its function around it, or "" (it leaves the function)
         self.handler = ""
+        # opened after an expression raised, for the code that uses its value, which nothing
+        # branches to (gen_class_new): an expression statement that leaves it empty ends it
+        self.dead = False
 
 
 class Loop:
@@ -291,28 +314,9 @@ class IFn:
     # one compiled function: a function, a method, a module's code, a helper or a template's function
     def __init__(self, f: FnInfo):
         self.f = f  # f.ret is final once the IFn is complete
-        # Syntax-only names bound outside except targets, built lazily by bind_as.
-        # Frame retains this IFn during nested compilation; a retry gets a fresh one.
-        # dry() may retain the index: it depends on no inferred or speculative state.
-        self.otherbinds: dict[str, bool] | None = None
-        self.numeric_only = False  # function_body proved local numeric identity unobservable
-        self.scalar_reads = False  # scoped numeric arithmetic/comparison; no operand identity escapes
-        # Lazy numeric field locals (Gen.lazy_fields): local -> the parameter whose field it reads,
-        # that field, its bit in lazymasks, and its "shares the field's object" flag slot
-        self.lazyobj: dict[str, str] = {}
-        self.lazyfield: dict[str, str] = {}
-        self.lazybit: dict[str, int] = {}
-        self.lazyflag: dict[str, str] = {}
-        self.lazyreads: list[Node] = []  # the x = o.f statements that share without a box
-        self.lazywbs: list[Node] = []  # the o.f = x statements that write such a local back
-        self.lazylines: dict[int, list[Node]] = {}  # statements by line, and the lazy locals
-        self.lazymasks: dict[int, list[int]] = {}  # live where each starts (analysis.lazy_block)
-        self.lazyoff = 0  # inside a while loop whose test may run code: no sharing starts
-        self.lazywb = ""  # the local whose write-back setfield is compiling
-        self.idmove = False  # a lone assignment stores a call's result (dyn_id_store)
-        self.idpass = False  # a copy or argument moves a local (Gen.id_move)
-        self.movebit: dict[str, int] = {}  # locals a read may move: their bits in lazymasks
-        self.idstmt: Node | None = None  # the statement being compiled, where movebit has any
+        # what the frontend keeps of the body while it builds it (symbols.FnBuild): no pass,
+        # analysis or lowering reads it
+        self.build = FnBuild()
         self.ps: list[int] = []  # the indices of its parameters that are passed (a None-typed one is not)
         self.slots: list[Ins] = []  # entry-block storage ("slot" ops)
         self.blocks: list[Blk] = [Blk("entry")]
@@ -342,6 +346,10 @@ class IFn:
         # the last number its builder gave (%tN, LN, %name.N), once it is complete: a pass that
         # adds values or blocks numbers them after it (the IR check checks that none is above it)
         self.n = 0
+        # the numbers given to its casts (Gen.number_casts, cast_number), which lowering takes
+        # out with them (Gen.erase_casts); n less these counts what it would have numbered had it
+        # made no cast (real_n)
+        self.casts: list[int] = []
         self.fa: dict[str, bool] = {}  # the values that are addresses of an object's field or flag (Gen.fgep)
         # a generator function's (FnInfo.gen): a presplitcoroutine, whose gen.start op ends its entry
         # block. With exceptions on (Gen.eh): gpad, the landing block around its body (it finishes
@@ -357,6 +365,63 @@ class IFn:
         # resumer's), and of its own where it suspended in an except clause or a finally block
         self.gouter = ""
         self.ghand = ""
+        # whether each of its ops records its source line (Ins.line), which the verifier then
+        # requires: true of every function the compiler builds (Gen.enter, callback versions).
+        # IR written by hand (tools/typed_ir_text.py) may leave lines unknown, as MLIR's
+        # verifier accepts an unknown location
+        self.located = False
+
+
+def cast_number(fn: IFn) -> int:
+    # the number of a cast that a pass adds to fn, after its other numbers (IFn.casts)
+    fn.n += 1
+    fn.casts.append(fn.n)
+    return fn.n
+
+
+def real_n(fn: IFn) -> int:
+    # how many numbers fn would have had had no cast been made (IFn.casts): what a pass's limit on
+    # a function's size reads, which no cast may change
+    return fn.n - len(fn.casts)
+
+
+def real_ops(code: list[Ins]) -> int:
+    # how many of the ops of code lowering prints: no cast (Gen.erase_casts), which a pass's limit
+    # on a loop's or a function's size does not count
+    n = len(code)
+    for i in code:
+        if i.op == "cast":
+            n -= 1
+    return n
+
+
+def value_definitions(fn: IFn, types: dict[str, str], makers: dict[str, str]) -> None:
+    # The type that each value of fn has where it is defined (types) and what defines it (makers:
+    # its op, "slot" or "param"): a result of an op (but its lowering's temporaries, OP_TEMPS;
+    # ovf's second is its bool flag), a parameter (its identity companion a dyn, and the identity
+    # result's address a &dyn), or a slot's register (the address &T of its slot of T; a stack
+    # tuple's register is its value). Symbols and constants have no definition here.
+    for i in fn.slots:
+        reg = slot_register(i)
+        types[reg] = i.t if i.k == 2 else "&" + i.t
+        makers[reg] = "slot"
+    for j in range(len(fn.f.ptypes)):
+        types["%a" + str(j)] = fn.f.ptypes[j]
+        types["%aid" + str(j)] = "dyn"
+        makers["%a" + str(j)] = "param"
+        makers["%aid" + str(j)] = "param"
+    types["%idret"] = "&dyn"
+    makers["%idret"] = "param"
+    for b in fn.blocks:
+        for i in b.code:
+            k = 0
+            for j in range(len(i.r)):
+                if i.op in OP_TEMPS and j in OP_TEMPS[i.op]:
+                    continue
+                name = tmpname(i.r[j])
+                types[name] = "bool" if i.op == "ovf" and k == 1 else i.t
+                makers[name] = i.op
+                k += 1
 
 
 class Lookup:
@@ -391,10 +456,13 @@ class Values:
         self.fieldtype: dict[str, str] = {}  # canonical field address -> declared class
         self.fieldindex: dict[str, int] = {}  # canonical field address -> member index
         self.depth = 0  # how many calls of Gen.canon are under way (at most CANON_DEPTH)
+        self.casts: dict[str, str] = {}  # a cast's value -> the value it reads, which Gen.canon makes it
         for j in range(len(fn.blocks)):
             code = fn.blocks[j].code
             for x in range(len(code)):
                 i = code[x]
+                if i.op == "cast" and len(i.r) == 1:
+                    self.casts[tmpname(i.r[0])] = i.a[0].v
                 how = VALUE_AT.get(i.op, 0)
                 if how == 1 and len(i.r) == 1:
                     self.at[i.r[0]] = j * self.stride + x

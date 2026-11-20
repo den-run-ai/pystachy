@@ -1,0 +1,11 @@
+True 150
+0 True 5 bag0/4 bag0! ['bag0-note']
+7 True 5 bag7/4 bag7! ['bag7-note']
+14 True 5 bag14/4 bag14! ['bag14-note']
+21 True 5 bag21/4 bag21! ['bag21-note']
+28 True 5 bag28/4 bag28! ['bag28-note']
+35 True 5 bag35/4 bag35! ['bag35-note']
+[9477, 10584, 11774] [27, 28, 29] c29 812 True
+15 c29 812 28 [7, 14, 21] [20, 15]
+60 w59.0/w59.1/w59.2/w59.3 w13.0/w13.1/w13.2/w13.3/w13.4/w13.5/w13.6 234 True
+[exit 0]

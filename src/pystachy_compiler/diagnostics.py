@@ -185,7 +185,8 @@ class NeedHierarchy(Rejoin):
 
 
 class NeedSliceEH(Rejoin):
-    # A dynamic slice needs to catch an iterator callback's TypeError. Start
+    # A dynamic slice needs to catch an iterator callback's TypeError, or a lookup the
+    # AttributeError that a class's __getattr__ answers or raises (reflection.py). Start
     # a fresh compile with exception handling before lowering any function.
     pass
 

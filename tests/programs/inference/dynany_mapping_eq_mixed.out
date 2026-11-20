@@ -1,0 +1,12 @@
+True True False False True True False False True True False False True True False False True True False False
+False False True True False False True True False False True True
+False False True True True True False False True True False False True True False False
+True True False False False False True True False False True True True True False False
+False False True True True True False False False False True True False False True True
+Tag.__eq__ left right
+Tag.__eq__ left right
+Tag.__eq__ left right
+Tag.__eq__ left right
+True True False False
+True 1 1 False False
+[exit 0]

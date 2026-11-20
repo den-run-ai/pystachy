@@ -1,4 +1,4 @@
-# GC compiler weights for the full identity halves (tests/verify.sh).
+# GC compiler weights for the full identity thirds (tests/verify.sh).
 # Each weight is a case's gc-ir wall time (stage 2 unstressed and collecting every
 # 1000 allocations, and their comparison) in thousandths of the median corpus
 # program; placement and order change, coverage and stress intervals do not.

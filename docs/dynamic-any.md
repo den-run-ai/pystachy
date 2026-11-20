@@ -769,6 +769,31 @@ no range, as CPython's does (`tests/programs/inference/dynany_range_eq_other.py`
 `Any` takes any operand, also between typed objects of its class
 (`tests/programs/inference/dynany_eq_any_param.py`).
 
+The library's `deque`, `bytearray`, `defaultdict`, `OrderedDict`, `Counter` and `weakref.ref`
+decline a value of another kind, as CPython's methods return `NotImplemented` for it: a deque
+takes deques, a bytearray takes bytearrays, a weak reference takes weak references, and each
+mapping takes dicts and these mappings (`dynany_deque_eq_other.py`,
+`dynany_bytearray_eq_other.py`, `dynany_counter_eq_other.py`, `dynany_ordereddict_eq_other.py`,
+`dynany_defaultdict_eq_other.py`, `dynany_weakref_eq_other.py` and
+`dynany_container_eq_mixed.py` in `tests/programs/inference/`). A `types.MappingProxyType` is
+one of these mappings: CPython's compares its dict with the other value, so it is equal to a
+dict or a mapping of equal items and declines a value that is no mapping
+(`tests/programs/inference/dynany_mappingproxy_eq.py`). An object of another class then answers
+with its own `__eq__`, which is given the view where CPython gives it the dict
+(`tests/deviations/dynany_mappingproxy_eq_object.py`).
+
+Two of these containers of one kind compare their items, each read in its own layout: deques
+of different item types, and a mapping with a dict or with a mapping of another class or item
+type. Two `OrderedDict`s also compare the order of their keys, and two `Counter`s their counts,
+a missing count being zero (`dynany_deque_eq_items.py`, `dynany_deque_two_types.py`,
+`dynany_mapping_eq_dict.py`, `dynany_mapping_eq_mixed.py`, `dynany_mapping_any_items.py` and
+`dynany_mappingproxy_eq.py` in `tests/programs/inference/`). The compiler emits these cases
+itself, behind exact `DynType` guards: it does not compile the library methods' bodies for an
+`Any` operand, which would call the operand's typed storage through a dispatcher. Item layouts
+that `==` does not pair in a module that opts in, such as a mapping of typed lists and a dict
+of `Any` values, still raise the unsupported-comparison `TypeError`, a limit that #803 tracks
+(`tests/deviations/dynany_mapping_eq_nested.py`).
+
 One whose parameter has no annotation, or
 `object`, is compiled for an `Any` operand there; where its body does not compile for one (a typed
 list compared with an `Any` value's field), the compiler also tries the body against the
@@ -862,9 +887,12 @@ raise an explicit `TypeError` until runtime insertion order is supported (#489),
 deferred text conversion; `hasattr` and `dir` use the normal assignment flags. Iteration
 already in progress retains its dictionary-size mutation check. This boundary is recorded
 in `tests/deviations/dynany_cmp_field_reflection.py`.
-Custom `__getattr__`/`__getattribute__` methods remain explicit compile-time rejections,
-not new supported lookup paths. This matrix does not establish a complete comparison
-contract or implement the broader operation-table design in #803.
+A custom `__getattribute__` remains an explicit compile-time rejection, and so does an
+object of a class with `__getattr__` as an `Any` value: typed code calls that method
+([attribute fallback](language/semantics.md#attribute-fallback)), but the lookups of an
+`Any` value do not, so neither is a new supported lookup path here. This matrix does not
+establish a complete comparison contract or implement the broader operation-table design
+in #803.
 
 ### Comparison selection and failures
 
@@ -1478,7 +1506,8 @@ or of a class that takes it as its role. Its control-flow proof covers copies, p
 branches, simultaneous phis, loops, exception edges, `pys_dyn_isa` tests and
 class dispatchers' switches, losing facts on rebinding and refusing to infer facts
 for escaping storage. Identity comparisons use `dyn.raw` for opaque bits, which
-the verifier permits only in direct integer equality comparisons. See the
+the verifier permits only as a cast to an int that a direct integer equality comparison
+reads. See the
 [IR contracts](typed-ir.md) for the exact scope and remaining assumptions.
 
 The optional

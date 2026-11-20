@@ -1,0 +1,22 @@
+9 True True StackSummary
+  File "a.py", line 1, in main
+    run()
+  File "b.py", line 20, in run
+    step(n)
+  File "c.py", line 7, in step
+    step(n - 1)
+  File "c.py", line 7, in step
+    step(n - 1)
+  File "c.py", line 7, in step
+    step(n - 1)
+  [Previous line repeated 3 more times]
+  File "d.py", line 3, in leaf
+<FrameSummary file a.py, line 1 in main> <FrameSummary file d.py, line 3 in leaf>
+[1, 20, 7, 7, 7, 7, 7, 7, 3]
+['run', 'step', 'step'] list
+[20, 7, 7]
+leaf 8
+step main
+0 False True []
+2 True True False
+[exit 0]

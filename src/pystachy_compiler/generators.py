@@ -130,7 +130,7 @@ def gen_exc_mark(self) -> str:
     h = self.rt("pys_exc_handled", "ptr", [])
     if not self.excread or self.fn.gouter == "":
         return h
-    same = self.ptr_cmp("==", Val(h, "exc"), Val(self.mload("%ptr", self.fn.gouter), "exc")).v
+    same = self.ptr_cmp("==", Val(h, "exc"), Val(self.mload("exc", self.fn.gouter), "exc")).v
     return self.select(same, Val("null", "exc"), Val(h, "exc"))
 
 
@@ -139,7 +139,7 @@ def gen_exc_back(self, old: str) -> None:
     # it, null is its resumer's now
     if self.excread and self.fn.gouter != "":
         none = self.ptr_cmp("==", Val(old, "exc"), Val("null", "exc")).v
-        old = self.select(none, Val(self.mload("%ptr", self.fn.gouter), "exc"), Val(old, "exc"))
+        old = self.select(none, Val(self.mload("exc", self.fn.gouter), "exc"), Val(old, "exc"))
     self.rt("pys_exc_restore", "void", [f"ptr {old}"])
 
 
@@ -323,7 +323,7 @@ def gen_gen_enter(self) -> None:
         # yield in an except clause or a finally block handles its own again)
         self.mstore("%ptr", self.rt("pys_exc_handled", "ptr", []), fn.gouter)
         if len(self.excs) > 0:
-            self.rt("pys_exc_restore", "void", [f"ptr {self.mload('%ptr', fn.ghand)}"])
+            self.rt("pys_exc_restore", "void", [f"ptr {self.mload('exc', fn.ghand)}"])
 
 
 def gen_gen_end(self, f: FnInfo) -> None:
@@ -357,7 +357,7 @@ def gen_gen_end(self, f: FnInfo) -> None:
         lr = self.label()
         self.cbr(self.exc_match(e, self.builtin_catch("GeneratorExit")), lf, lr)
         self.place(lr)
-        name = self.mload("%ptr", self.maddr("int", p, str(GENNAME)))
+        name = self.mload("str", self.maddr("int", p, str(GENNAME)))
         self.rt("pys_gen_unraisable", "void", [f"ptr {e.v}", f"ptr {name}", f"ptr {p}"])
         self.br(lf)
         self.place(lf)
@@ -402,7 +402,7 @@ def gen_gen_unhandle(self) -> None:
         return
     if len(self.excs) > 0:
         self.mstore("%ptr", self.rt("pys_exc_handled", "ptr", []), fn.ghand)
-    self.rt("pys_exc_restore", "void", [f"ptr {self.mload('%ptr', fn.gouter)}"])
+    self.rt("pys_exc_restore", "void", [f"ptr {self.mload('exc', fn.gouter)}"])
 
 
 def gen_gen_ret(self, v: Val) -> None:
@@ -551,7 +551,7 @@ def gen_yield_value(self, n: Node) -> Val:
         # next() and loops send None: dynamic storage needs its box, not null.
         return Val(self.rtdata("pys_dyn_none_box") if t == "dyn" else "null", t)
     p = self.gen_promise(Val("", ""))
-    v = self.from_slot(self.mload("int", self.maddr("int", p, str(GENSEND))), t)
+    v = self.from_word(self.mload("int", self.maddr("int", p, str(GENSEND))), t)
     if t == "dyn":
         # next()/throw() clear the shared send slot to zero. An explicit send()
         # has already boxed its argument; only the implicit None needs boxing.
@@ -708,8 +708,9 @@ def gen_yield_from_proto(self, v: Val, t: str, y: str, callee: FnInfo | None) ->
 
 
 def gen_gen_keep(self, w: list[str], ys: str, yh: str, yi: str) -> None:
-    # Forward raw value, optional wide pointer and optional identity companion.
-    self.mstore("int", w[0], ys)
+    # Forward raw value (a packed word: an int, or the packed slot of another value), optional
+    # wide pointer and optional identity companion.
+    self.mstore("%slot", w[0], ys)
     if yh != "":
         self.mstore("%ptr", w[1], yh)
     if yi != "":
@@ -740,7 +741,7 @@ def yield_snapshot(self, value: Val, identity: str) -> Val:
     # slot now; its nullable box names exactly this result, as a scalar call's.
     if identity != "":
         value.idslot = self.alloca("dyn", "")
-        self.mem_store(Val(value.idslot, "*dyn"), Val(identity, "dyn"))
+        self.mem_store(Val(value.idslot, "&dyn"), Val(identity, "dyn"))
         value.idheld = identity
         value.idexact = True
         value.idcounter = self.alloca("int", "")
@@ -775,7 +776,7 @@ def gen_gen_words(self, p: str, t: str, y: str, owned: Val | None = None) -> lis
         self.fn.tries.append(tr)
         self.handler = failed
         self.place(tr.body)
-    value = yield_snapshot(self, self.big(Val(s, "int"), hi) if hi != "" else self.from_slot(s, t), identity)
+    value = yield_snapshot(self, self.big(Val(s, "int"), hi) if hi != "" else self.from_word(s, t), identity)
     result = self.gen_slots(self.coerce(value, y), y)
     if failed != "" and owned is not None:
         self.handler = outer
@@ -797,7 +798,7 @@ def gen_gen_value(self, p: str, t: str) -> Val:
         v = self.big(Val(s, "int"), self.mload("%ptr", self.maddr("int", p, str(GENVALP))))
         v = v if self.read_policy() else self.big_narrow(v)
     else:
-        v = self.from_slot(s, t)
+        v = self.from_word(s, t)
     identity = self.mload("dyn", self.maddr("int", p, str(generator_slots(self.gproto, int_program(), False)))) if generator_identity(t, self.idhere()) else ""
     return yield_snapshot(self, v, identity)
 
@@ -814,7 +815,7 @@ def gen_gen_returned(self, h: Val, r: str) -> Val:
     s = self.mload("int", self.maddr("int", pr, str(GENRET)))
     if r == BIG:
         return self.big(Val(s, "int"), self.mload("%ptr", self.maddr("int", pr, str(GENRETP))))
-    return self.from_slot(s, r)
+    return self.from_word(s, r)
 
 
 def gen_yield_from_iter(self, what: str) -> None:
@@ -1290,7 +1291,7 @@ def gen_gen_send(self, g: Val, args: list[Node]) -> Val:
         self.br(lok)
         self.place(lok)
     sa = self.maddr("int", p, str(GENSEND))
-    self.mstore("int", self.to_slot(v), sa)
+    self.mstore("%slot", self.to_slot(v), sa)
     done = self.label()
     self.gen_next(g, done)
     self.mstore("int", "0", sa)  # (taken where g resumed)

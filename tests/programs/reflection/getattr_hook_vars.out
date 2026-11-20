@@ -1,0 +1,15 @@
+{'suit': 'hearts', 'label': 'queen'} ['__weakref__', 'label', 'suit'] True
+queen hook zz hearts
+suit hearts
+label queen
+key suit
+key label
+{'suit': 'hearts', 'label': 'queen'} hearts
+queen
+{'suit': 'hearts'} ['__subclasshook__', '__weakref__', 'suit'] True
+hook label hook zz hearts
+suit hearts
+key suit
+{'suit': 'hearts'} hearts
+KeyError: 'label'
+[exit 0]

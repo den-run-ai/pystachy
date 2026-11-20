@@ -9,7 +9,9 @@ from src.pystachy_compiler.utils import atomic_dict, atomic_list, gelem, generat
 
 
 def gen_lower(self, fn: IFn) -> None:
-    # (first its layout reads become machine ops, machine_ir.py: lower_ins prints none of them)
+    # (first its casts go, with their numbers, and its layout reads become machine ops,
+    # machine_ir.py: lower_ins prints none of them)
+    self.erase_casts(fn)
     self.machine_ir(fn)
     o = self.out
     chunk_start = len(o)

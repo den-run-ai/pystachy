@@ -371,11 +371,15 @@ class TypedIRTests(unittest.TestCase):
     def test_union_parts_copy_bits_without_claiming_a_member(self):
         g = Gen()
         before = {}
-        result = g.uparts(g.fn, {}, "%a0", "union[float,int]", {}, before, {}, {})
-        tag, payload = before["0:0"]
+        result = g.uparts(g.fn, {}, "%a0", "union[float,int]", {}, before, {}, {}, {})
+        tag, payload, word = before["0:0"]
         self.assertEqual((tag.op, payload.op, payload.s), ("union.tag", "union.raw", ""))
         self.assertEqual([(a.v, a.t) for a in payload.a], [("%a0", "union[float,int]")])
-        self.assertEqual(result, [f"%t{tag.r[0]}", f"%t{payload.r[1]}"])
+        # (the bits, as the int that the payload slot holds: a bits cast, numbered as a cast)
+        self.assertEqual((word.op, word.t, word.s, [(a.v, a.t) for a in word.a]),
+                         ("cast", "int", "bits", [(f"%t{payload.r[1]}", "%slot")]))
+        self.assertEqual(g.fn.casts, word.r)
+        self.assertEqual(result, [f"%t{tag.r[0]}", f"%t{word.r[0]}"])
 
     def test_optional_union_tag_stays_after_its_null_guard(self):
         g = Gen()

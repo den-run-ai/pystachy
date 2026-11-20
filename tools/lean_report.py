@@ -5,7 +5,8 @@ The hosted compiler compiles each differential test program and deviation once
 (tools/inspect_compiler.py --typed-after-only --guard-evidence --stop-after finalize), and every adapter checks that
 snapshot: dynamic payload reads (check_lean_boundary), unchecked accesses (check_lean_access),
 removed null checks and closed-union reads (check_lean_guards), field initialization
-(check_lean_fields) and collector scanning (check_lean_gc) in every program, and promoting ints'
+(check_lean_fields), collector scanning (check_lean_gc) and each function's shape and
+def-before-use (check_lean_shape) in every program, and promoting ints'
 fit claims, inline arithmetic and storage guards (check_lean_storage) in the programs whose
 imports reach a module that opts in to them. tools/lean_boundary/REPORT.md records the counts,
 each function left unproved and digests of the inputs; --status compares those digests with the
@@ -44,9 +45,11 @@ import check_lean_corpus as corpus
 import check_lean_fields as fields
 import check_lean_gc as collector
 import check_lean_guards as guards
+import check_lean_shape as shape
 import check_lean_storage as storage
 import check_lean_storage_corpus as storage_corpus
 import inspect_compiler
+import typed_ir_text
 
 ROOT = corpus.ROOT
 REPORT = ROOT / "tools/lean_boundary/REPORT.md"
@@ -64,6 +67,7 @@ CHECKS = (
     ("int", "Promoting-int fit claims", "INT.md", "claims"),
     ("int_inline", "Promoting-int inline arithmetic", "INT.md#actual-inline-overflow-tests", "uses"),
     ("storage", "Promoting-int storage", "STORAGE.md", "obligations"),
+    ("shape", "Typed-IR shape and def-before-use", "SHAPE.md", "functions"),
 )
 # (union payload bits are proved with their function's union reads: one list names both)
 LISTED_WITH = {"union_payload": "union"}
@@ -73,6 +77,7 @@ LISTED_WITH = {"union_payload": "union"}
 INPUTS = {
     "compiler": ("pystachy.py", "VERSION", "src", "lib"),
     "checkers": ("tools/lean_report.py", "tools/inspect_compiler.py", "tools/check_lean_*.py", "tools/lean_boundary/*.lean",
+                 "tools/typed_ir_text.py", "tools/typed_ir_ops.py",
                  "tools/lean_boundary/lakefile.toml", "tools/lean_boundary/lake-manifest.json",
                  "tools/lean_boundary/lean-toolchain"),
     "corpus": ("*.py", "*.path"),
@@ -407,6 +412,14 @@ def gc_check(snapshot, checker, _):
                           report["records"], "obligations")}
 
 
+def shape_check(snapshot, _, __):
+    records = [typed_ir_text.from_snapshot(function, snapshot.get("files", [])) for function in snapshot["functions"]]
+    verdict, _ = shape.check(records)
+    rejected = [{"function": r["symbol"], "status": "rejected", "obligations": 1, "message": r["reason"]}
+                for r in verdict["rejected"]]
+    return {"shape": counted(len(records), len(records), len(records) - len(rejected), rejected, "obligations")}
+
+
 def storage_checks(snapshot, _, __):
     report, _ = storage.check_all(snapshot)
     totals = report["totals"]
@@ -511,7 +524,7 @@ def check_program(program, promoting, timeout, checker, access_checker):
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         return dict(record, error=" ".join(str(error).split())[:MESSAGE], seconds=round(time.monotonic() - started, 1))
     record.update(snapshot_sha256=digest, checks={}, timing={"inspect": round(time.monotonic() - started, 2)})
-    for run in (payload_check, access_check, guard_checks, gc_check) + ((storage_checks,) if promoting else ()):
+    for run in (payload_check, access_check, guard_checks, gc_check, shape_check) + ((storage_checks,) if promoting else ()):
         begun = time.monotonic()
         try:
             record["checks"].update(run(snapshot, checker, access_checker))

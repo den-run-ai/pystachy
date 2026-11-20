@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import copy
-import json
 import os
 from pathlib import Path
 import subprocess
@@ -11,6 +10,7 @@ import tempfile
 from types import SimpleNamespace
 import unittest
 
+import check_lean_boundary as boundary
 import inspect_compiler
 
 
@@ -209,7 +209,7 @@ class LayoutMetadataTests(unittest.TestCase):
                 [sys.executable, str(ROOT / "tools/inspect_compiler.py"), str(program), "--output", str(output)],
                 cwd=ROOT, env=environment, text=True, capture_output=True, timeout=40)
             self.assertEqual(result.returncode, 0, result.stderr)
-            snapshot = json.loads((output / "typed-after.json").read_text())
+            snapshot = boundary.read_snapshot((output / "typed-after.json"), boundary.MAX_PROGRAM_BYTES)[0]
             functions = {fn["symbol"]: fn for fn in snapshot["functions"]}
             plain = functions["@f.fixed$plain"]["representation_metadata"]
             self.assertTrue(plain["int_containers"])
@@ -269,7 +269,7 @@ class LayoutMetadataTests(unittest.TestCase):
                                          "--output", str(output), "--typed-after-only"],
                                         cwd=ROOT, env=env, text=True, capture_output=True, timeout=40)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                snapshot = json.loads((output / "typed-after.json").read_text())
+                snapshot = boundary.read_snapshot((output / "typed-after.json"), boundary.MAX_PROGRAM_BYTES)[0]
                 snapshots.append(snapshot)
                 fn = next(fn for fn in snapshot["functions"] if fn["symbol"] == "@f.fixed$total")
                 tuple_reads = {f"%t{op['results'][-1]}" for block in fn["blocks"] for op in block["operations"]

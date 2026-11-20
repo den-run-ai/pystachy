@@ -26,6 +26,8 @@ if os.environ.get("LEAN_BOUNDARY_REQUIRED") == "1" and not CHECKER.is_file():
     raise RuntimeError("Lean shape checker is required; build tools/lean_boundary first")
 FIXTURE = ROOT / "tools/fixtures/typed_ir/score_samples.listget.after.tir"
 SHAPE = "an instruction's shape, a parameter or a branch to the entry block"
+UNREACHED = "a value read where its definition does not reach on every path"
+TREE = "a dominator tree that an edge of the control flow contradicts"
 
 
 def compiled(case):
@@ -53,6 +55,19 @@ def operations(record, label):
 
 def find(record, op):
     return next(i for b in record["blocks"] for i in b["operations"] if i["op"] == op)
+
+
+def reading(value, number, kind="float"):
+    """An instruction that reads value: a select of it, defining number."""
+    return {"op": "select", "type": kind, "text": "", "immediate": 0, "descriptor": "", "results": [number],
+            "operands": [{"value": "true", "type": "bool"}, {"value": value, "type": kind},
+                         {"value": value, "type": kind}], "targets": []}
+
+
+def phi(reads):
+    """A phi of (value, predecessor) pairs, defining 40."""
+    return {"op": "phi", "type": "float", "text": "", "immediate": 0, "descriptor": "", "results": [40],
+            "operands": [{"value": v, "type": "float"} for v, _ in reads], "targets": [p for _, p in reads]}
 
 
 def run(candidate):
@@ -195,6 +210,81 @@ class ShapeCheckerTests(unittest.TestCase):
                 record = copy.deepcopy(self.record)
                 change(record)
                 self.rejected(record, reason)
+
+    def test_a_read_that_a_path_reaches_before_its_definition_is_rejected(self):
+        def same_block(r):
+            code = operations(r, "L13")
+            code.insert(0, code.pop(1))  # (slot.unpack of %t14, above the list.load that defines it)
+
+        def one_branch(r):
+            operations(r, "L21").insert(0, reading("%t25", 41))  # (%t25 is L19's, L20 also reaches L21)
+
+        def phi_from_the_other_branch(r):
+            operations(r, "L21").insert(0, phi([("%t25", "L20"), ("0.0", "L19")]))
+
+        def loop_exit(r):
+            operations(r, "L9").insert(0, reading("%t15", 41))  # (the loop's exit is no path through L13)
+
+        for change in (same_block, one_branch, phi_from_the_other_branch, loop_exit):
+            with self.subTest(change=change.__name__):
+                record = copy.deepcopy(self.record)
+                change(record)
+                self.rejected(record, UNREACHED)
+
+    def test_a_read_that_every_path_reaches_after_its_definition_is_accepted(self):
+        for block, read in (("L21", phi([("%t25", "L19"), ("0.0", "L20")])), ("L19", reading("%t15", 41)),
+                            ("L8", reading("%t14", 41, "%slot")), ("L20", reading("%t18", 41, "bool"))):
+            with self.subTest(block=block):
+                record = copy.deepcopy(self.record)
+                operations(record, block).insert(0, read)
+                verdict, accepted = shape.check([record], CHECKER)
+                self.assertTrue(accepted, verdict)
+
+    def test_code_no_path_reaches_is_not_checked(self):
+        record = copy.deepcopy(self.record)
+        record["blocks"].append({"label": "L90", "handler": "", "operations": [reading("%t25", 41), {
+            "op": "ret", "type": "", "text": "", "immediate": 0, "descriptor": "", "results": [],
+            "operands": [{"value": "%t41", "type": "float"}], "targets": []}]})
+        self.assertEqual(shape.candidate([record])["functions"][0]["tree"][-1][0], 6)  # (L90 is in no pair)
+        verdict, accepted = shape.check([record], CHECKER)
+        self.assertTrue(accepted, verdict)
+
+    def test_a_tree_an_edge_contradicts_is_rejected(self):
+        candidate = shape.candidate([self.record])
+        self.assertEqual(run(candidate)[0], 0)
+        labels = {name: n for n, name in enumerate(b["label"] for b in self.record["blocks"])}
+        tree = candidate["functions"][0]["tree"]
+        self.assertIn([labels["L21"], labels["L13"]], tree)
+        for change in (lambda t: t.__setitem__(t.index([labels["L21"], labels["L13"]]), [labels["L21"], labels["L19"]]),
+                       lambda t: t.remove([labels["L21"], labels["L13"]]),
+                       lambda t: t.append([labels["entry"], labels["L9"]])):
+            changed = copy.deepcopy(candidate)
+            change(changed["functions"][0]["tree"])
+            status, verdict = run(changed)
+            self.assertEqual(status, 1)
+            self.assertEqual(verdict["rejected"][0]["reason"], TREE)
+
+    def test_an_invokes_results_are_first_seen_in_its_normal_successor(self):
+        record, invoke = next((r, i) for r in compiled("exc_callback.py") for b in r["blocks"] for i in b["operations"]
+                              if len(i["targets"]) == 2 and i["results"] and i["op"] in ("rt", "call", "icall"))
+        normal, unwind = invoke["targets"]
+        value = f"%t{invoke['results'][0]}"
+        self.assertTrue(shape.check([record], CHECKER)[1])
+        accepted = copy.deepcopy(record)
+        operations(accepted, normal).insert(0, reading(value, 90000, invoke["type"]))
+        verdict, ok = shape.check([accepted], CHECKER)
+        self.assertTrue(ok, verdict)
+        # (on the exception edge the call returned nothing: the handler, after the landing op, reads it)
+        handler = operations(record, unwind)[0]["targets"][0]
+        landing = copy.deepcopy(record)
+        operations(landing, handler).insert(0, reading(value, 90000, invoke["type"]))
+        self.rejected(landing, UNREACHED)
+        # (a second way into the normal successor, even from code no path reaches, could skip the call)
+        entered = copy.deepcopy(accepted)
+        entered["blocks"].append({"label": "L90000", "handler": "", "operations": [{
+            "op": "br", "type": "", "text": "", "immediate": 0, "descriptor": "", "results": [], "operands": [],
+            "targets": [normal]}]})
+        self.rejected(entered, UNREACHED)
 
     def test_a_phi_may_name_the_entry_block_and_a_check_its_error_block(self):
         record = copy.deepcopy(self.record)

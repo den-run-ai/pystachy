@@ -37,11 +37,18 @@ SDIST_DIR = "pyperformance-1.14.0/pyperformance/data-files/benchmarks/"
 # bench/pyperformance/NAME.py's main reads them; each starts with the number of loops.
 BENCHMARKS = {
     "barnes_hut": (["1"], ["1", "5", "50"]),
+    "base64": (["1"], ["1"]),
     "bpe_tokeniser": (["1"], ["1", "260", "smoke"]),
     "chaos": (["10"], ["1", "200"]),
     "comprehensions": (["10000"], ["1"]),
+    "crypto_pyaes": (["20"], ["1"]),
+    "decimal_factorial": (["1"], ["1", "200", "1000"]),
+    "decimal_pi": (["2"], ["1"]),
+    "deltablue": (["400"], ["1", "5"]),
     "fannkuch": (["2"], ["1", "7"]),
     "float": (["10"], ["1", "1000"]),
+    "gc_collect": (["500"], ["1", "5", "3"]),
+    "gc_traversal": (["200"], ["1", "30"]),
     "generators": (["10"], ["1", "100"]),
     "go": (["4"], ["1"]),
     "hexiom": (["100"], ["1"]),
@@ -51,8 +58,12 @@ BENCHMARKS = {
     "meteor_contest": (["6"], ["1"]),
     "nbody": (["10"], ["1", "100"]),
     "nqueens": (["10"], ["1", "6"]),
+    "pathlib": (["50"], ["1", "40"]),
     "pidigits": (["4"], ["1", "200"]),
+    "pprint": (["1"], ["1", "50"]),
+    "pyflate": (["3"], ["1"]),
     "raytrace": (["4"], ["1", "20", "20"]),
+    "regex_compile": (["10"], ["1", "300"]),
     "regex_dna": (["4"], ["1", "1000"]),
     "regex_effbot": (["20"], ["1"]),
     "regex_v8": (["20"], ["1"]),
@@ -60,11 +71,17 @@ BENCHMARKS = {
     "richards_super": (["20"], ["1"]),
     "scimark": (["2"], ["1"]),
     "spectral_norm": (["10"], ["1"]),
+    "telco": (["200"], ["1"]),
+    "tomli_loads": (["4"], ["1", "3"]),
     "unpack_sequence": (["50000"], ["1"]),
 }
 
-# Excluded from the delivered suite pending a separate provenance decision.
-DEFERRED = {"deltablue": "license provenance"}
+# Ports named for a standard library module: NAME.py alongside the other entry points would
+# shadow that module, so their files are bm_NAME.py.
+SHADOWING = {"base64", "logging", "pathlib", "pprint"}
+
+# Sources excluded from the delivered suite pending a separate decision, with the reason: none now.
+DEFERRED: dict[str, str] = {}
 
 # SHA-256 of each upstream bm_NAME/run_benchmark.py tried, ported or not: the 31 that this port
 # set out to try, and the other 21 that need no third-party package (bench/pyperformance/README.md).
@@ -122,6 +139,33 @@ UPSTREAM = {
     "unpack_sequence": "0dafe97531abc4a5baf30fe011db7acb3bf1e64cd4e41acb0c7db2bb141a8382",
     "xml_etree": "1d824c4d4dd92a7598e085dbdf7beed3809a75e4d6972c90377822c78f73477c",
 }
+
+# regex_compile's port reads the regexes that upstream captures from its own copies of two other
+# benchmarks, in REGEX_RECORD; --census captures them again from these pinned files and compares.
+REGEX_RECORD = BENCH / "data" / "regex_compile.txt"
+REGEX_HELPERS = {
+    "bm_regex_effbot.py": "0823b6507f8babea2238847562d9c9af31000ea57cbb695e5d47053321ea68c7",
+    "bm_regex_v8.py": "37133ec6c383183a95ee640deffce54b42cbad4dbfa24415e46ad656127c56aa",
+}
+# CPython runs this in a directory of upstream's regex_compile: a line of REGEX_RECORD for each
+# captured regex, "p" with a compiled pattern's own flags where the regex is one.
+REGEX_CAPTURE = """import re, sys, time, types
+stub = types.ModuleType("pyperf")
+stub.perf_counter = time.perf_counter
+sys.modules["pyperf"] = stub
+sys.path.insert(0, sys.argv[1])
+import run_benchmark
+for regex, flags in run_benchmark.capture_regexes():
+    if isinstance(regex, re.Pattern):
+        if flags:
+            raise ValueError("a compiled pattern captured with flags")
+        kind, flags, regex = "p", regex.flags, regex.pattern
+    else:
+        kind = "s"
+    if not isinstance(regex, str) or any(c in regex for c in "\\t\\r\\n"):
+        raise ValueError("a regex that a line cannot hold: %r" % (regex,))
+    sys.stdout.write("%s\\t%d\\t%s\\n" % (kind, flags, regex))
+"""
 
 # --census: the statements that stand in for each upstream main, calling what its pyperf
 # runner would time with the default arguments.
@@ -193,17 +237,28 @@ CENSUS_CALLS = {
 
 
 # What pyperf times in each ported benchmark, which --census reads from the upstream main: the
-# function that runner.bench_func() calls, whose calls the port's main times in one loop; or the
-# functions that time themselves for runner.bench_time_func(), each around one loop. The ports
-# keep those timers in place with time.perf_counter(), which is pyperf.perf_counter(), and add
-# their seconds to a list TIMED, whose sum the main prints.
+# function that runner.bench_func() calls, whose calls the port's main times in one loop (a tuple
+# of them where the runner calls bench_func() several times: the main times one loop for each and
+# prints their total); or the functions that time themselves for runner.bench_time_func(), each
+# around one loop, or around one statement of that loop. The ports keep those timers in place with
+# time.perf_counter(), which is pyperf.perf_counter(), and add their seconds to a list TIMED,
+# whose sum the main prints.
 TIMED_PART = {
     "barnes_hut": ["bench_quadtree_nbody"],
+    "base64": ["bench_a85_large", "bench_a85_small", "bench_b16_large", "bench_b16_small", "bench_b32_large",
+               "bench_b32_small", "bench_b64_large", "bench_b64_small", "bench_b85_large", "bench_b85_small",
+               "bench_urlsafe_b64_small"],
     "bpe_tokeniser": ["bench_bpe_tokeniser"],
     "chaos": "create_image_chaos",
     "comprehensions": ["bench_comprehensions"],
+    "crypto_pyaes": ["bench_pyaes"],
+    "decimal_factorial": "bench_decimal_factorial",
+    "decimal_pi": "bench_decimal_pi",
+    "deltablue": "delta_blue",
     "fannkuch": "fannkuch",
     "float": "benchmark",
+    "gc_collect": ["benchamark_collection"],
+    "gc_traversal": ["benchamark_collection"],
     "generators": ["bench_generators"],
     "go": "versus_cpu",
     "hexiom": ["main"],
@@ -213,8 +268,12 @@ TIMED_PART = {
     "meteor_contest": ["bench_meteor_contest"],
     "nbody": ["bench_nbody"],
     "nqueens": "bench_n_queens",
+    "pathlib": ["bench_pathlib"],
     "pidigits": "calc_ndigits",
+    "pprint": ("_safe_repr", "pformat"),
+    "pyflate": ["bench_pyflake"],
     "raytrace": ["bench_raytrace"],
+    "regex_compile": ["bench_regex_compile"],
     "regex_dna": ["bench_regex_dna"],
     "regex_effbot": ["bench_regex_effbot"],
     "regex_v8": ["bench_regex_v8"],
@@ -222,13 +281,14 @@ TIMED_PART = {
     "richards_super": "run",
     "scimark": ["SparseCompRow_matmult", "bench_FFT", "bench_LU", "bench_MonteCarlo", "bench_SOR"],
     "spectral_norm": ["bench_spectral_norm"],
+    "telco": ["bench_telco"],
+    "tomli_loads": ["bench_tomli_loads"],
     "unpack_sequence": ["do_unpacking"],
 }
 
 
 def port_path(name):
-    # A logging.py alongside the other entry points would shadow the standard library.
-    return BENCH / ("bm_logging.py" if name == "logging" else f"{name}.py")
+    return BENCH / (f"bm_{name}.py" if name in SHADOWING else f"{name}.py")
 
 
 def digest(data):
@@ -278,15 +338,26 @@ def called(node):
 
 
 def timers(tree, clock):
-    """{function: (timer statements, statements between the first and the last)} for each function
-    whose body calls CLOCK.perf_counter()."""
+    """{function: (timer statements, statements between the first and the last, inside)} for each
+    function whose body calls CLOCK.perf_counter(). Where the one statement that does is a loop,
+    the timer statements are that loop's, and INSIDE is true."""
     out = {}
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef):
-            marks = [i for i, s in enumerate(node.body) if f"{clock}.perf_counter()" in ast.unparse(s)]
+            body, inside = node.body, False
+            marks = [i for i, s in enumerate(body) if f"{clock}.perf_counter()" in ast.unparse(s)]
+            if len(marks) == 1 and isinstance(body[marks[0]], ast.For):
+                body, inside = body[marks[0]].body, True
+                marks = [i for i, s in enumerate(body) if f"{clock}.perf_counter()" in ast.unparse(s)]
             if marks:
-                out[node.name] = (len(marks), node.body[marks[0] + 1:marks[-1]])
+                out[node.name] = (len(marks), body[marks[0] + 1:marks[-1]], inside)
     return out
+
+
+def misplaced(count, between, inside):
+    """Whether a function's two timer statements are neither around its one loop nor, inside that
+    loop, around one statement of it."""
+    return count != 2 or len(between) != 1 or not (inside or isinstance(between[0], ast.For))
 
 
 def upstream_timed_part(text):
@@ -295,10 +366,12 @@ def upstream_timed_part(text):
     targets = {ast.unparse(n.args[1]).split(".")[-1] for n in ast.walk(tree) if isinstance(n, ast.Call)
                and isinstance(n.func, ast.Attribute) and n.func.attr == "bench_func" and len(n.args) > 1}
     own = timers(tree, "pyperf")
-    problems = [f"{name}(): its timer is not around one loop" for name, (count, between) in sorted(own.items())
-                if count != 2 or len(between) != 1 or not isinstance(between[0], ast.For)]
-    if targets and own or len(targets) > 1:
-        problems.append("both bench_func() and its own timers, or several bench_func() targets")
+    problems = [f"{name}(): its timer is not around one loop" for name, timer in sorted(own.items())
+                if misplaced(*timer)]
+    if targets and own:
+        problems.append("both bench_func() and its own timers")
+    if len(targets) > 1:
+        return tuple(sorted(targets)), problems
     return (min(targets) if targets else sorted(own)), problems
 
 
@@ -314,7 +387,24 @@ def timing_errors(name, text):
                 value = ast.unparse(stmt.value.args[1])
                 starts = [i for i in range(k) if ast.unparse(body[i]) == "t0 = time.perf_counter()"]
                 region = body[starts[-1] + 1:k] if starts else None
-    if isinstance(spec, str):
+    if isinstance(spec, tuple):
+        # one timed loop of one statement for each target, added to the seconds that the main prints
+        if own:
+            errors.append(f"functions with their own timer: {', '.join(sorted(own))}")
+        loops = []
+        for node in ast.walk(tree):
+            body = getattr(node, "body", None)
+            for k, stmt in enumerate(body if isinstance(body, list) else []):
+                if ast.unparse(stmt) == "t0 = time.perf_counter()" and k + 2 < len(body) \
+                        and ast.unparse(body[k + 2]) == "seconds += time.perf_counter() - t0":
+                    loops.append(body[k + 1])
+        if value != "seconds" or text.count("time.perf_counter()") != 2 * len(loops):
+            errors.append("the main does not print the seconds that its timed loops add up")
+        elif any(not isinstance(loop, ast.For) or len(loop.body) != 1 for loop in loops):
+            errors.append("the main times more than one loop of one statement for a target")
+        elif [min(called(loop.body[0]) & set(spec), default="") for loop in loops] != list(spec):
+            errors.append(f"the main's timed loops do not call {', '.join(name + '()' for name in spec)}, one each")
+    elif isinstance(spec, str):
         if own:
             errors.append(f"functions with their own timer: {', '.join(sorted(own))}")
         if value != "time.perf_counter() - t0" or region is None:
@@ -327,8 +417,8 @@ def timing_errors(name, text):
         if sorted(own) != sorted(spec):
             errors.append(f"functions with their own timer: {', '.join(sorted(own)) or 'none'}; "
                           f"expected {', '.join(spec)}")
-        for function, (count, between) in sorted(own.items()):
-            if count != 2 or len(between) != 1 or not isinstance(between[0], ast.For):
+        for function, timer in sorted(own.items()):
+            if misplaced(*timer):
                 errors.append(f"{function}(): the timer is not around one loop")
         if value != "sum(TIMED)" or region is not None:
             errors.append("the main does not print sum(TIMED), without a timer of its own")
@@ -337,15 +427,34 @@ def timing_errors(name, text):
     return errors
 
 
-def upstream_files(path):
-    """Read the census sources from the pinned sdist or its extracted benchmarks directory."""
+def upstream_files(path, files=None):
+    """Read the census sources from the pinned sdist or its extracted benchmarks directory: each
+    benchmark's run_benchmark.py, or FILES of bm_regex_compile."""
+    names = ({name: f"bm_{name}/run_benchmark.py" for name in UPSTREAM} if files is None
+             else {name: "bm_regex_compile/" + name for name in files})
     if path.is_dir():
-        return {name: (path / f"bm_{name}" / "run_benchmark.py").read_bytes() for name in UPSTREAM}
+        return {name: (path / relative).read_bytes() for name, relative in names.items()}
     checksum = digest(path.read_bytes())
     if checksum != SDIST_SHA256:
         raise ValueError(f"{path}: SHA-256 {checksum}, expected {SDIST_SHA256}")
     with tarfile.open(path) as tar:
-        return {name: tar.extractfile(SDIST_DIR + f"bm_{name}/run_benchmark.py").read() for name in UPSTREAM}
+        return {name: tar.extractfile(SDIST_DIR + relative).read() for name, relative in names.items()}
+
+
+def regex_capture(source, helpers, timeout):
+    """What upstream's regex_compile (SOURCE, with its HELPERS) captures, as REGEX_RECORD's text."""
+    for name, text in helpers.items():
+        if digest(text) != REGEX_HELPERS[name]:
+            raise RuntimeError(f"bm_regex_compile/{name}: SHA-256 {digest(text)}, expected {REGEX_HELPERS[name]}")
+    with tempfile.TemporaryDirectory(prefix="pyperformance-regexes-") as tmp:
+        (Path(tmp) / "run_benchmark.py").write_bytes(source)
+        for name, text in helpers.items():
+            (Path(tmp) / name).write_bytes(text)
+        result = subprocess.run([sys.executable, "-I", "-X", "utf8", "-W", "ignore", "-c", REGEX_CAPTURE, tmp],
+                                capture_output=True, timeout=timeout)
+    if result.returncode:
+        raise RuntimeError("regex_compile: capture failed: " + result.stderr.decode("utf-8", "replace")[-500:])
+    return result.stdout.decode("utf-8")
 
 
 def census(args, compiler, env):
@@ -388,9 +497,16 @@ def census(args, compiler, env):
     failures = [f"{r['name']}: hunks without a 'Pystachy port' note at lines {', '.join(r['unmarked_hunks'])}"
                 for r in rows if r.get("unmarked_hunks")]
     failures += [f"{r['name']}: {problem}" for r in rows for problem in r.get("timing", [])]
+    result = {"sdist_sha256": None if input_path.is_dir() else SDIST_SHA256, "benchmarks": rows}
+    if "regex_compile" in sources and "regex_compile" in BENCHMARKS:
+        captured = regex_capture(sources["regex_compile"], upstream_files(input_path, REGEX_HELPERS), args.timeout)
+        result["regex_record"] = {"sha256": digest(captured.encode("utf-8")), "regexes": captured.count("\n"),
+                                  "matches": captured == REGEX_RECORD.read_text(encoding="utf-8")}
+        if not result["regex_record"]["matches"]:
+            failures.append(f"regex_compile: {REGEX_RECORD.relative_to(ROOT)} is not what the pinned sources capture")
     for failure in failures:
         print(failure, file=sys.stderr)
-    return {"sdist_sha256": None if input_path.is_dir() else SDIST_SHA256, "benchmarks": rows}, not failures
+    return result, not failures
 
 
 def seconds(stderr):

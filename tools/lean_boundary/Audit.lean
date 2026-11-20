@@ -10,6 +10,7 @@ import PystachyInline
 import PystachyStorage
 import PystachyPipeline
 import PystachyShape
+import PystachyDominance
 
 /- Fail the build if the public guarantees depend on an admitted proof, a
 custom assumption, or native computation trusted by the kernel. The three
@@ -59,7 +60,12 @@ run_cmd do
       ``PystachyShape.checkBlock_sound, ``PystachyShape.distinct_sound,
       ``PystachyShape.covers_sound, ``PystachyShape.accepted_wellFormed,
       ``PystachyShape.accepted_single_definition,
-      ``PystachyShape.accepted_terminator_last] do
+      ``PystachyShape.accepted_terminator_last,
+      ``PystachyDominance.isAnc_sound, ``PystachyDominance.walk_dominated,
+      ``PystachyDominance.blockMap_sound, ``PystachyDominance.lookup_sound,
+      ``PystachyDominance.definedBefore_sound, ``PystachyDominance.definedAtEnd_sound,
+      ``PystachyDominance.accepted_defined_before_use,
+      ``PystachyDominance.accepted_phi_defined] do
     let axioms ← collectAxioms theoremName
     for axiomName in axioms do
       unless allowed.contains axiomName do

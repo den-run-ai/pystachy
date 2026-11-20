@@ -183,6 +183,11 @@ case $(cat mock-mode) in
 esac
 ''')
         suite.chmod(0o755)
+        # (a PR's third AOT quarter then runs runtime-cache: tests/cache.sh's 97 native and 99 hosted checks)
+        cache = self.root / "tests/cache.sh"
+        cache.write_text(f"#!{sys.executable}\nimport sys\n"
+                         'print(97 if sys.argv[1].endswith("/pystachy2") else 99, "passed, 0 failed")\n')
+        cache.chmod(0o755)
         self.env = {**os.environ, "PY": str(compiler), "LC_ALL": "C.UTF-8", "PYSTACHY_LLVM": str(self.root / "bin"),
                     "PATH": str(self.root / "bin") + os.pathsep + os.environ["PATH"]}
 
@@ -208,8 +213,14 @@ esac
                 with self.subTest(group=group):
                     result, report, logs = self.run_group(group, profile="pr")
                     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                    expected_steps = ["bootstrap", name] + (["scaling-1"] if group == "native-aot-3" else [])
+                    expected_steps = (["bootstrap", name] + (["runtime-cache"] if group == "native-aot-2" else [])
+                                      + (["scaling-1"] if group == "native-aot-3" else []))
                     self.assertEqual([step["name"] for step in report["steps"]], expected_steps)
+                    if group == "native-aot-2":
+                        cache_step = report["steps"][-1]
+                        self.assertEqual((cache_step["result"], cache_step["passed"], cache_step["expected"]),
+                                         ("pass", 196, 196))
+                        self.assertEqual(cache_step["compilers"], ["stage2", "CPython-hosted"])
                     if group == "native-aot-3":
                         self.assertEqual(report["steps"][-1]["shapes"], ["calls"])
                     step = report["steps"][1]

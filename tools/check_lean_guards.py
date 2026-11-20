@@ -96,7 +96,7 @@ def union_context(snapshot):
     for fn in snapshot["functions"]:
         for block in fn["blocks"]:
             for op in block["operations"]:
-                if (op["op"] == "field.addr" and len(op["operands"]) == 1 and op["type"].startswith("*")
+                if (op["op"] == "field.addr" and len(op["operands"]) == 1 and op["type"].startswith("&")
                         and union_members(op["type"][1:]) is not None):
                     cls = op["operands"][0]["type"]
                     if cls in layouts:
@@ -446,7 +446,7 @@ def memory_keys(snapshot):
                     written.add(("packed", args[0]["type"]))
                 elif kind == "slot.unpack" and union_members(op["type"]) is not None:
                     note(("packed", op["type"]), op["type"])
-                elif kind == "field.addr" and op["type"].startswith("*") and union_members(op["type"][1:]) is not None:
+                elif kind == "field.addr" and op["type"].startswith("&") and union_members(op["type"][1:]) is not None:
                     key = memory_key(context, producers, f"%t{op['results'][0]}")
                     if key is not None:
                         note(key, op["type"][1:])
@@ -648,7 +648,7 @@ PRESENT = "present"  # (an opt[None] split's tag 1: the member is its payload's,
 SCALAR_MEMBERS = frozenset({"member:bool", "member:float", "member:int"})
 OPTIONAL_SCALARS = frozenset({"opt[bool]", "opt[float]", "opt[int]"})
 # Operand types that carry a payload word without saying which member's bits it holds.
-GENERIC_WORDS = frozenset({"%slot", "%ptr", "*T", "*K", "*V", "S", "*dyn", "dyn"})
+GENERIC_WORDS = frozenset({"%slot", "%ptr", "*T", "*K", "*V", "*U", "S", "*dyn", "dyn"})
 
 
 def split_layout(fn, slots, tag_names):
@@ -1193,13 +1193,17 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
         elif op is not None and op["op"] in {"tuple.load", "dyn.payload"} and value == f"%t{op['results'][-1]}":
             typ = op["text"]
         elif op is not None and op["type"].startswith("*") and value == f"%t{op['results'][0]}" and (
-                op["op"] == "list.load" or (op["op"] == "rt" and op["text"] in {"list.get", "list.pop"})):
-            # (a list's item, encoded *element: typed-ir.md's list reads; a generic *T one is
-            # the receiver's item, as union payload provenance takes it there)
+                op["op"] == "list.load" or op["op"] == "rt"):
+            # (a list's item, encoded *element: typed-ir.md's list reads; a runtime call's packed
+            # result, the item of the type Gen.instantiate gave it; a generic *T one is the
+            # receiver's item, as union payload provenance takes it there, and another variable
+            # no member)
             typ = op["type"][1:]
             receiver = types.get(op["operands"][0]["value"], "") if op["operands"] else ""
-            if typ == "T" and receiver.startswith("list[") and receiver.endswith("]"):
+            if typ == "T" and op["text"] in {"", "list.get", "list.pop"} and receiver.startswith("list[") and receiver.endswith("]"):
                 typ = targs(receiver)[0]
+            elif typ in {"T", "K", "V", "U", "R", "S"}:
+                typ = None
         else:
             typ = types.get(value) if op is not None or value.startswith("%a") else None
         if typ is None or typ in GENERIC_WORDS or value in words:

@@ -25,6 +25,7 @@ from src.pystachy_compiler.memory_ir import (
     gen_verify_memory as memory_ir_verify_memory,
 )
 from src.pystachy_compiler.machine_ir import (
+    gen_erase_casts as machine_ir_erase_casts,
     gen_machine_ir as machine_ir_machine_ir,
     gen_verify_machine as machine_ir_verify_machine,
 )
@@ -367,6 +368,7 @@ from src.pystachy_compiler.reflection import (
     gen_enum_missing as reflection_enum_missing,
     gen_enum_new as reflection_enum_new,
     gen_enum_view as reflection_enum_view,
+    gen_enum_view_class as reflection_enum_view_class,
     gen_refl_dir_names as reflection_refl_dir_names,
     gen_refl_dir as reflection_refl_dir,
     gen_refl_dir_of as reflection_refl_dir_of,
@@ -627,6 +629,8 @@ from src.pystachy_compiler.conversions import (
     gen_floats as conversions_floats,
     gen_ufloats as conversions_ufloats,
     gen_from_slot as conversions_from_slot,
+    gen_slot_word as conversions_slot_word,
+    gen_from_word as conversions_from_word,
     gen_is_dc as conversions_is_dc,
     gen_isnum as conversions_isnum,
     gen_isref as conversions_isref,
@@ -785,6 +789,7 @@ from src.pystachy_compiler.emission import (
     gen_ret_ as emission_ret_,
     gen_returned_none as emission_returned_none,
     gen_rt as emission_rt,
+    gen_instantiate as emission_instantiate,
     gen_list_get as emission_list_get,
     gen_list_len as emission_list_len,
     gen_list_write as emission_list_write,
@@ -792,7 +797,10 @@ from src.pystachy_compiler.emission import (
     gen_save as emission_save,
     gen_sconst as emission_sconst,
     gen_bconst as emission_bconst,
+    gen_cast as emission_cast,
+    gen_number_casts as emission_number_casts,
     gen_select as emission_select,
+    gen_slot as emission_slot,
     gen_tmp as emission_tmp,
     gen_unreachable as emission_unreachable,
     gen_unwrap as emission_unwrap,
@@ -962,11 +970,17 @@ from src.pystachy_compiler.expressions import (
     gen_forget_walrus as expressions_forget_walrus,
     gen_format_ as expressions_format_,
     gen_has as expressions_has,
+    nested_hint as expressions_nested_hint,
     gen_ifexp as expressions_ifexp,
     gen_numeric_phi as expressions_numeric_phi,
     gen_index as expressions_index,
     gen_indexed_ord as expressions_indexed_ord,
     gen_isinst as expressions_isinst,
+    gen_cabc_ref as expressions_cabc_ref,
+    gen_cabc_isinst as expressions_cabc_isinst,
+    gen_cabc_exact as expressions_cabc_exact,
+    gen_cabc_methods as expressions_cabc_methods,
+    gen_cabc_issub as expressions_cabc_issub,
     gen_class_matches as expressions_class_matches,
     gen_obj_isinst as expressions_obj_isinst,
     gen_isinst_reads as expressions_isinst_reads,
@@ -1331,6 +1345,25 @@ from src.pystachy_compiler.statements import (
     gen_while_ as statements_while_,
 )
 from src.pystachy_compiler.syntax import Node, mk
+from src.pystachy_compiler.builtin_bases import (
+    gen_bbase as builtin_bases_bbase,
+    gen_bbuiltin as builtin_bases_bbuiltin,
+    gen_bcompared as builtin_bases_bcompared,
+    gen_bdecay as builtin_bases_bdecay,
+    gen_bearly as builtin_bases_bearly,
+    gen_bdecays as builtin_bases_bdecays,
+    gen_bfill as builtin_bases_bfill,
+    gen_bfound as builtin_bases_bfound,
+    gen_binit as builtin_bases_binit,
+    gen_bitems as builtin_bases_bitems,
+    gen_bkind as builtin_bases_bkind,
+    gen_bmake as builtin_bases_bmake,
+    gen_bmissable as builtin_bases_bmissable,
+    gen_bmissing as builtin_bases_bmissing,
+    gen_bstored as builtin_bases_bstored,
+    gen_bsuper as builtin_bases_bsuper,
+    gen_bview as builtin_bases_bview,
+)
 from src.pystachy_compiler.structs import (
     StructFmt,
     gen_struct_call as structs_struct_call,
@@ -1594,6 +1627,7 @@ class Gen:
         self.iflag: dict[str, str] = {}
         self.modlevel = False
         self.n = 0
+        self.ncasts = 0  # (the casts made so far, numbered below zero until their function is complete: gen_cast)
         self.cur = "entry"
         self.term = False
         # the block convert_at's value reaches its phi from, which its caller reads at once (a
@@ -1861,6 +1895,17 @@ class Gen:
         self.implicitgen: dict[str, bool] = {}  # the classes generic only by their bases' subscripts (program.implicit_tparams)
         self.iterabc: dict[str, bool] = {}  # the classes whose base was collections.abc's Iterator or Iterable (program.iter_abc)
         self.pep695: dict[str, bool] = {}  # the generic classes of PEP 695's syntax, class C[T] (reflection: __type_params__)
+        # the classes that derive from a builtin container (builtin_bases.py), class C(list): each
+        # one's base as its class statement names it, and the builtin type its objects begin as,
+        # once asked for (bbase: list[T], or list[?] where a bare base's items have no type yet,
+        # until a first fill shows them: bfound). Program state, as classes and nts are, which no
+        # frame saves: a nested compile (bearly's early one, a template's instance) and dry() may
+        # find a bare base's type, which the function they interrupt then needs and keeps (the
+        # items a fill stores have the type that dry() computes). A Rejoin's fresh Gen starts from
+        # the hint bfound leaves in newhints, or without it where a declined attempt restored
+        # newhints as it raised Rejoin (dynamic.py's optional cases, a declined narrowing)
+        self.bsubn: dict[str, Node] = {}
+        self.bsub: dict[str, str] = {}
         # the type aliases, by qualified name: the statement that binds each (Mod.taliases), and
         # those whose annotation alias_ann is making the type of
         self.taliases: dict[str, Node] = {}
@@ -2599,8 +2644,8 @@ class Gen:
     def refl_type_of(self, v: Val, what: str, nonnull: bool = False) -> list[RLeaf]:
         return reflection_refl_type_of(self, v, what, nonnull)
 
-    def refl_class_of(self, v: Val, nonnull: bool = False) -> Val:
-        return reflection_refl_class_of(self, v, nonnull)
+    def refl_class_of(self, v: Val, nonnull: bool = False, t: str = "%ptr") -> Val:
+        return reflection_refl_class_of(self, v, nonnull, t)
 
     def refl_type_attr(self, x: Node, what: str) -> Val:
         return reflection_refl_type_attr(self, x, what)
@@ -2629,8 +2674,8 @@ class Gen:
     def refl_phi(self, vals: list[Val], blocks: list[str], end: str, what: str) -> Val:
         return reflection_refl_phi(self, vals, blocks, end, what)
 
-    def refl_catch_attr(self, x: Val, a: str, d: Val, vals: list[Val], blocks: list[str], end: str, truth: bool = False) -> None:
-        return reflection_refl_catch_attr(self, x, a, d, vals, blocks, end, truth)
+    def refl_catch_attr(self, x: Val, a: str, d: Val, vals: list[Val], blocks: list[str], end: str, truth: bool = False, body: Node | None = None) -> None:
+        return reflection_refl_catch_attr(self, x, a, d, vals, blocks, end, truth, body)
 
     def refl_getattr(self, args: list[Node], want: str, split: bool = False) -> Val:
         return reflection_refl_getattr(self, args, want, split)
@@ -2773,6 +2818,9 @@ class Gen:
     def enum_view(self, c: str, line: int) -> Node:
         return reflection_enum_view(self, c, line)
 
+    def enum_view_class(self, t: str) -> str:
+        return reflection_enum_view_class(self, t)
+
     def enum_member(self, n: Node, want: str) -> Val:
         return reflection_enum_member(self, n, want)
 
@@ -2896,6 +2944,9 @@ class Gen:
     def verify_memory(self, fn: IFn, b: Blk, i: Ins, slots: bool) -> None:
         return memory_ir_verify_memory(self, fn, b, i, slots)
 
+    def erase_casts(self, fn: IFn) -> None:
+        return machine_ir_erase_casts(self, fn)
+
     def machine_ir(self, fn: IFn) -> None:
         return machine_ir_machine_ir(self, fn)
 
@@ -2913,6 +2964,9 @@ class Gen:
 
     def jump(self, l: str) -> None:
         return emission_jump(self, l)
+
+    def slot(self, i: Ins) -> None:
+        return emission_slot(self, i)
 
     def br(self, l: str) -> None:
         return emission_br(self, l)
@@ -2941,8 +2995,17 @@ class Gen:
     def select(self, c: str, x: Val, y: Val) -> str:
         return emission_select(self, c, x, y)
 
-    def rt(self, name: str, ret: str, args: list[str], x: str = "") -> str:
-        return emission_rt(self, name, ret, args, x)
+    def cast(self, v: Val, t: str, kind: str) -> Val:
+        return emission_cast(self, v, t, kind)
+
+    def number_casts(self) -> None:
+        return emission_number_casts(self)
+
+    def rt(self, name: str, ret: str, args: list[str], x: str = "", t: str = "") -> str:
+        return emission_rt(self, name, ret, args, x, t)
+
+    def instantiate(self, fn: IFn) -> None:
+        emission_instantiate(self, fn)
 
     def list_len(self, o: Val) -> str:
         return emission_list_len(self, o)
@@ -3010,11 +3073,17 @@ class Gen:
     def alloca(self, t: str, name: str) -> str:
         return emission_alloca(self, t, name)
 
-    def to_slot(self, v: Val, keep: bool = False) -> str:
-        return conversions_to_slot(self, v, keep)
+    def to_slot(self, v: Val, keep: bool = False, opaque: bool = False) -> str:
+        return conversions_to_slot(self, v, keep, opaque)
 
     def from_slot(self, s: str, t: str) -> Val:
         return conversions_from_slot(self, s, t)
+
+    def slot_word(self, v: Val) -> Val:
+        return conversions_slot_word(self, v)
+
+    def from_word(self, s: str, t: str) -> Val:
+        return conversions_from_word(self, s, t)
 
     def rarg(self, v: Val) -> str:
         return conversions_rarg(self, v)
@@ -3421,8 +3490,8 @@ class Gen:
     def glue_field(self, o: Val, name: str) -> None:
         return declarations_glue_field(self, o, name)
 
-    def getfield(self, o: Val, p: Val, name: str) -> Val:
-        return declarations_getfield(self, o, p, name)
+    def getfield(self, o: Val, p: Val, name: str, plain: bool = False) -> Val:
+        return declarations_getfield(self, o, p, name, plain)
 
     def setfield(self, o: Val, p: Val, name: str, v: Val) -> None:
         return declarations_setfield(self, o, p, name, v)
@@ -4002,8 +4071,8 @@ class Gen:
     def usplits(self, fn: IFn, defs: dict[str, list[int]], uses: dict[str, list[list[int]]], v: str, seen: dict[str, bool], optional: bool = False) -> bool:
         return optimizations_usplits(self, fn, defs, uses, v, seen, optional)
 
-    def uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts: dict[str, list[str]], before: dict[str, list[Ins]], after: dict[str, list[Ins]], heads: dict[int, list[Ins]]) -> list[str]:
-        return optimizations_uparts(self, fn, defs, v, t, parts, before, after, heads)
+    def uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts: dict[str, list[str]], before: dict[str, list[Ins]], after: dict[str, list[Ins]], heads: dict[int, list[Ins]], words: dict[str, str]) -> list[str]:
+        return optimizations_uparts(self, fn, defs, v, t, parts, before, after, heads, words)
 
     def uleaves(self, fn: IFn, uses: dict[str, list[list[int]]], i: Ins, split: dict[str, Ins]) -> bool:
         return optimizations_uleaves(self, fn, uses, i, split)
@@ -4698,6 +4767,9 @@ class Gen:
     def knownobj(self, n: Node) -> bool:
         return expressions_knownobj(self, n)
 
+    def nested_hint(self, t: str, a: str) -> str:
+        return expressions_nested_hint(self, t, a)
+
     def has(self, t: str, a: str) -> int:
         return expressions_has(self, t, a)
 
@@ -4706,6 +4778,21 @@ class Gen:
 
     def isinst(self, t: str, c: Node) -> int:
         return expressions_isinst(self, t, c)
+
+    def cabc_ref(self, c: Node) -> str:
+        return expressions_cabc_ref(self, c)
+
+    def cabc_isinst(self, t: str, k: str) -> int:
+        return expressions_cabc_isinst(self, t, k)
+
+    def cabc_exact(self, c: str, k: str) -> int:
+        return expressions_cabc_exact(self, c, k)
+
+    def cabc_methods(self, c: str, names: list[str]) -> int:
+        return expressions_cabc_methods(self, c, names)
+
+    def cabc_issub(self, a: Node, k: str, kn: Node) -> Val:
+        return expressions_cabc_issub(self, a, k, kn)
 
     def class_matches(self, c: str, t: Node) -> bool:
         return expressions_class_matches(self, c, t)
@@ -5664,6 +5751,57 @@ class Gen:
     def bytes_method(self, o: Val, m: str, args: list[Node]) -> Val:
         return builtins_bytes_method(self, o, m, args)
 
+    def bkind(self, t: str) -> str:
+        return builtin_bases_bkind(self, t)
+
+    def bbase(self, t: str) -> str:
+        return builtin_bases_bbase(self, t)
+
+    def bdecays(self, t: str, own: list[str]) -> bool:
+        return builtin_bases_bdecays(self, t, own)
+
+    def bview(self, v: Val, sized: bool = False) -> Val:
+        return builtin_bases_bview(self, v, sized)
+
+    def bdecay(self, v: Val, own: list[str], sized: bool = False) -> Val:
+        return builtin_bases_bdecay(self, v, own, sized)
+
+    def bbuiltin(self, name: str, v: Val, n: int) -> Val:
+        return builtin_bases_bbuiltin(self, name, v, n)
+
+    def bcompared(self, op: str, a: Val, b: Val) -> list[Val]:
+        return builtin_bases_bcompared(self, op, a, b)
+
+    def bstored(self, t: str, key: Node, vt: str) -> None:
+        builtin_bases_bstored(self, t, key, vt)
+
+    def bsuper(self, me: Val, m: str, args: list[Node]) -> Val:
+        return builtin_bases_bsuper(self, me, m, args)
+
+    def bearly(self, t: str) -> None:
+        builtin_bases_bearly(self, t)
+
+    def bfound(self, t: str, b: str) -> None:
+        builtin_bases_bfound(self, t, b)
+
+    def bfill(self, t: str, m: str, args: list[Node]) -> None:
+        builtin_bases_bfill(self, t, m, args)
+
+    def bitems(self, a: Node) -> str:
+        return builtin_bases_bitems(self, a)
+
+    def binit(self, o: Val) -> None:
+        builtin_bases_binit(self, o)
+
+    def bmake(self, c: str, args: list[Node]) -> Val:
+        return builtin_bases_bmake(self, c, args)
+
+    def bmissing(self, me: Val, key: Node) -> Val:
+        return builtin_bases_bmissing(self, me, key)
+
+    def bmissable(self, kt: str, dkt: str) -> bool:
+        return builtin_bases_bmissable(self, kt, dkt)
+
     def struct_call(self, name: str, args: list[Node], want: str) -> Val | None:
         return structs_struct_call(self, name, args, want)
 
@@ -5875,8 +6013,8 @@ class Gen:
     def store_elem(self, k: Val, et: str) -> Val:
         return containers_store_elem(self, k, et)
 
-    def nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str, kt: str) -> str:
-        return containers_nonekey(self, k, none, fn, av, x, kt)
+    def nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str, kt: str, dt: str = "", t: str = "") -> str:
+        return containers_nonekey(self, k, none, fn, av, x, kt, dt, t)
 
     def none_dkey(self, k: Val, kt: str) -> Val:
         return containers_none_dkey(self, k, kt)
@@ -5947,8 +6085,8 @@ class Gen:
     def utag(self, t: str) -> int:
         return unions_utag(self, t)
 
-    def ubox(self, v: Val, m: str) -> str:
-        return unions_ubox(self, v, m)
+    def ubox(self, v: Val, m: str, u: str) -> str:
+        return unions_ubox(self, v, m, u)
 
     def uget(self, u: Val, m: str) -> Val:
         return unions_uget(self, u, m)
