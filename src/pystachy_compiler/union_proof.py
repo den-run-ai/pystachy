@@ -337,7 +337,9 @@ class UnionProof:
                         self.roots[a.v] = a.v
                         self.native[a.v] = consts[a.v].text
                 if len(i.r) == 1:
-                    held = i.t.startswith("&") or i.t.startswith("*")
+                    # (an address, or the packed slot of a list read or a runtime call; a packed
+                    # slot that another op makes is a value, as its %slot type made it)
+                    held = i.t.startswith("&") or (i.t.startswith("*") and (i.op == "list.load" or i.op == "rt"))
                     self.typebase(("MU:" if held else "U:") + "%t" + str(i.r[0]), i.t[1:] if held else i.t)
                     if held and i.op != "rt":
                         self.memtypes["%t" + str(i.r[0])] = i.t[1:]
@@ -441,7 +443,7 @@ class UnionProof:
 
     def transport_closure(self, i: Ins, vals: dict[str, bool], slots: dict[str, bool], bits: bool) -> None:
         r = "%t" + str(i.r[0]) if len(i.r) > 0 else ""
-        if (i.op == "phi" or i.op == "select" or i.op == "slot.pack") and (bits or (i.t == "int" or i.t == "%slot")):
+        if (i.op == "phi" or i.op == "select" or i.op == "slot.pack") and (bits or (i.t == "int" or i.t == "%slot" or i.t.startswith("*"))):
             aa = i.a[1:] if i.op == "select" else i.a
             for a in aa:
                 if a.v in vals:

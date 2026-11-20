@@ -131,6 +131,20 @@ def store(address, value, typ):
             "operands": [{"value": address, "type": "&" + typ}, {"value": value, "type": typ}]}
 
 
+def retarget_payload(function, payload, typ):
+    """Make dyn.payload read typ, keeping its packed slot and its readers' operands that slot's
+    type (as the compiler gives them): the mutation stays well formed, and only its tag is wrong."""
+    payload["text"] = typ
+    if payload["type"].startswith("*"):
+        payload["type"] = "*" + typ
+    value = f"%t{payload['results'][-1]}"
+    for block in function["blocks"]:
+        for op in block["operations"]:
+            for operand in op["operands"]:
+                if operand["value"] == value and operand["type"].startswith("*"):
+                    operand["type"] = "*" + typ
+
+
 def instruction(op, typ="", text="", results=(), operands=(), targets=(), descriptor=""):
     return {"op": op, "type": typ, "text": text, "immediate": 0, "descriptor": descriptor,
             "results": list(results), "targets": list(targets),
@@ -544,7 +558,7 @@ class ProvedCheckerTests(SnapshotFixture):
 
         def wrong_tag(function):
             _, _, payload = self.operation(function, "dyn.payload")
-            payload["text"] = "bool"
+            retarget_payload(function, payload, "bool")
             _, _, unpack = self.operation(function, "slot.unpack")
             unpack["type"] = "bool"
         self.rejected_mutation(wrong_tag)
@@ -771,7 +785,7 @@ class StateGuardTests(SnapshotFixture):
             with self.subTest(function=name):
                 snapshot, function = self.selected(name)
                 _, _, payload = self.operation(function, "dyn.payload")
-                payload["text"] = wrong_tag
+                retarget_payload(function, payload, wrong_tag)
                 _, _, unpack = self.operation(function, "slot.unpack")
                 unpack["type"] = wrong_tag
                 self.assertFalse(self.check(self.normalized(snapshot, name)))
@@ -872,7 +886,7 @@ class ClassAndIntTests(SnapshotFixture):
     def test_a_base_class_test_does_not_prove_a_subclass_read(self):
         def read_subclass(snapshot, function):
             _, _, payload = self.operation(function, "dyn.payload")
-            payload["text"] = "Sub"
+            retarget_payload(function, payload, "Sub")
             _, _, unpack = self.operation(function, "slot.unpack")
             unpack["type"] = "Sub"
         self.assertFalse(self.mutated("boundary_class", read_subclass))
@@ -890,8 +904,9 @@ class ClassAndIntTests(SnapshotFixture):
             block, index, payload = self.operation(function, "dyn.payload")
             # Add a well-shaped bool projection under the existing int-or-bool
             # guard. Even an unused read must satisfy its exact tag obligation.
-            block["operations"].insert(index, {**copy.deepcopy(payload),
-                                              "text": "bool", "results": [9030, 9031]})
+            read = {**copy.deepcopy(payload), "results": [9030, 9031]}
+            retarget_payload({"blocks": []}, read, "bool")
+            block["operations"].insert(index, read)
         self.assertFalse(self.mutated("boundary_int", read_as_bool))
 
     def test_int_payload_cannot_be_reannotated_as_a_pointer(self):

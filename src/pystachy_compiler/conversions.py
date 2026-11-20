@@ -31,10 +31,12 @@ from src.pystachy_compiler.utils import (
 )
 
 
-def gen_to_slot(self, v: Val, keep: bool = False) -> str:
+def gen_to_slot(self, v: Val, keep: bool = False, opaque: bool = False) -> str:
     # v in an 8-byte slot. A slot holds a 64-bit int, so a promoting int is narrowed, and so is a
     # tuple of them, into the tuple of their 64-bit ints, which is the same tuple (bigints.py), as
-    # the runtime reads it; but kept (keep) as an item of a tuple of its type
+    # the runtime reads it; but kept (keep) as an item of a tuple of its type. The slot is the
+    # packed slot *T of v's type T, or %slot where it goes on as bits (opaque): a box's payload,
+    # which unionslots may keep in an int, or an identity comparison's
     if v.t == BIG:
         v = self.big_narrow(v)  # (an 8-byte slot holds a 64-bit int: bigints.py)
     if v.t == BIGOPT:
@@ -43,7 +45,7 @@ def gen_to_slot(self, v: Val, keep: bool = False) -> str:
         v = self.big_tuple_narrow(v)
     if v.t == "int":
         return v.v
-    i = Ins("slot.pack", "%slot", "")
+    i = Ins("slot.pack", "%slot" if opaque else "*" + v.t, "")
     i.a = [v]
     self.put(i, 1)
     return tmpname(i.r[0])
@@ -51,6 +53,25 @@ def gen_to_slot(self, v: Val, keep: bool = False) -> str:
 def gen_from_slot(self, s: str, t: str) -> Val:
     # Recursive container slots hold the existing union-box pointer. Expose one
     # layer of its finite named type graph when reading the value.
+    t = self.rec_type(t)
+    if t == "int":
+        return Val(s, t)
+    # read through the packed slot *t where one of the block's last ops made s a packed slot (its
+    # type is then checked against t), else through the opaque %slot of a machine word
+    packed = False
+    code = self.blk.code
+    for j in range(len(code) - 1, max(len(code) - 64, 0) - 1, -1):
+        if len(code[j].r) > 0 and tmpname(code[j].r[len(code[j].r) - 1]) == s:
+            packed = code[j].t.startswith("*")
+            break
+    i = Ins("slot.unpack", t, "")
+    i.a = [Val(s, "*" + t if packed else "%slot")]
+    self.put(i, 1)
+    return Val(tmpname(i.r[0]), t)
+
+def gen_from_word(self, s: str, t: str) -> Val:
+    # the value of type t in machine word s, which a mach.load read as an int: from_slot's, but
+    # read as the opaque %slot, since no op claims a type for the word
     t = self.rec_type(t)
     if t == "int":
         return Val(s, t)
@@ -263,7 +284,7 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
     if is_fn(v.t) and is_callable(unopt(t)):
         return Val(self.to_callable(v, unopt(t)).v, t)  # (a function where a Callable is expected)
     if is_sopt(t) and v.t == unopt(t):
-        return Val(self.rt("pys_box", "ptr", ["i64 " + self.to_slot(v)]), t).identity(v)  # representation-only boxing
+        return Val(self.rt("pys_box", "ptr", ["i64 " + self.to_slot(v, False, True)]), t).identity(v)  # representation-only boxing
     if v.t == "frozenset[dyn]" and is_fset(unopt(t)) and self.fset_unboxes(selem(unopt(t))):
         # a frozenset of Any values where a frozenset[T] or an AbstractSet[T] is expected: no code
         # changes it, so it crosses as a tuple does, a new frozenset of its elements, each checked

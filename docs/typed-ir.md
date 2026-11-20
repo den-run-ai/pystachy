@@ -316,11 +316,15 @@ as `int` or a runtime call's `list[T]` read as `list[int]`. Any other difference
 an `int` read as a `float`, a `list[int]` as a `list[str]`, a class as an unrelated class.
 An address has a type of its own, `&T`, and a packed slot (an eight-byte word that holds a
 `T`) the type `*T`, so no view reads one as the other: a slot's register, `field.addr` and the
-identity result's `%idret` define addresses, which memory ops, compiled calls and phis read. A
-value whose definition gives only a machine type, a runtime type variable or a placeholder is
-read at related types by every operand that names its own. The views that narrow (`bits`,
-`opt[U]` read as `U`, a derived class, other union members) take the frontend's word for a test
-before them: they are the casts that MLIR would write as ops.
+identity result's `%idret` define addresses, which memory ops, compiled calls and phis read.
+An op that makes a packed slot gives it its type: `slot.pack`, a list read, a tuple item's
+`tuple.load`, a union's or dynamic box's payload. `%slot` remains for eight bytes that claim no
+type: a box's payload bits, a raw identity word, a word that a runtime call returns as an
+`int`, which `slot.unpack` then reads through `%slot`. A value whose definition gives only a
+machine type, a runtime type variable or a placeholder is read at related types by every
+operand that names its own. The views that narrow (`bits`, `opt[U]` read as `U`, a derived
+class, other union members) take the frontend's word for a test before them: they are the
+casts that MLIR would write as ops.
 
 Some result numbers only name an intermediate LLVM value of their operation's lowering:
 `ovf`'s `{i64, i1}` pair, the three addresses of `list.load`, the address of a `tuple.load`.
@@ -357,11 +361,11 @@ one, whatever block defines it.
 | `mach.load` | per instruction | 1 | 1 | 0 | `t`, `s:metadata` | first | `%ptr -> machine` |
 | `mach.store` | per instruction | 2 | 0 | 0 | `s:metadata` | none | `%ptr, machine` |
 | `mach.addr` | none | 2 | 1 | 0 | `t`, `s:element`, `k:inbounds` | first | `%ptr, int -> %ptr` |
-| `tuple.load` | `rL`, `rD`, `rO` | 1 | 2: temporary, value | 0 | `t`, `s:item`, `k:index` | each | `ftuple -> %slot` |
-| `tuple.store` | `wL`, `wD`, `wO` | 2 | 1: temporary | 0 | `s:item`, `k:index` | each | `ftuple, %slot` |
+| `tuple.load` | `rL`, `rD`, `rO` | 1 | 2: temporary, value | 0 | `t`, `s:item`, `k:index` | each | `ftuple -> packed` |
+| `tuple.store` | `wL`, `wD`, `wO` | 2 | 1: temporary | 0 | `s:item`, `k:index` | each | `ftuple, packed` |
 | `field.addr` | none | 1 | 1 | 0 | `t`, `k:index` | first | `class -> &$F` |
-| `slot.pack` | none | 1 | 1 | 0 | `t` | first | `native -> %slot` |
-| `slot.unpack` | none | 1 | 1 | 0 | `t` | first | `%slot -> native` |
+| `slot.pack` | none | 1 | 1 | 0 | `t` | first | `native -> packed` |
+| `slot.unpack` | none | 1 | 1 | 0 | `t` | first | `packed -> native` |
 | `scalar.bin` | none | 1 to 2 | 1 | 0 | `t`, `s:operator`, `x:flags` | first | `$T:arith, $T -> $T` |
 | `scalar.cast` | none | 1 | 1 | 0 | `t`, `s:operator` | first | `bits -> bits` |
 | `scalar.cmp` | none | 2 | 1 | 0 | `t`, `s:operator` | first | `$T:bits, $T -> bool` |
@@ -371,10 +375,10 @@ one, whatever block defines it.
 | `ptr.cmp` | none | 2 | 1 | 0 | `t`, `s:operator` | first | `ref, ref -> bool` |
 | `empty.kind` | `wD` | 1 | 1 | 0 | `k:hole` | none | `dictset` |
 | `union.tag` | `rL`, `rD`, `rO` | 1 | 1 | 0 | `t` | none | `union -> int` |
-| `union.payload` | `rL`, `rD`, `rO` | 1 | 2: temporary, value | 0 | `t`, `s:member` | second | `union -> %slot` |
+| `union.payload` | `rL`, `rD`, `rO` | 1 | 2: temporary, value | 0 | `t`, `s:member` | second | `union -> packed` |
 | `union.raw` | `rL`, `rD`, `rO` | 1 | 2: temporary, value | 0 | `t` | second | `union -> %slot` |
 | `dyn.type` | none | 1 | 1 | 0 | `t` | first | `dyn -> dyntype` |
-| `dyn.payload` | none | 1 | 2: temporary, value | 0 | `t`, `s:type` | second | `dyn -> %slot` |
+| `dyn.payload` | none | 1 | 2: temporary, value | 0 | `t`, `s:type` | second | `dyn -> packed` |
 | `dyn.raw` | none | 1 | 2: temporary, value | 0 | `t` | second | `dyn -> %slot` |
 | `big.make` | none | 2 | 2: temporary, value | 0 | `t` | second | `int, %ptr -> int+` |
 | `big.lo` | none | 1 | 1 | 0 | `t` | first | `int+ -> int` |
@@ -393,8 +397,9 @@ one, whatever block defines it.
 |---|---|
 | `any` | any type |
 | `native` | a native value type: no machine type (%), address (&), packed slot (*) or descriptor (#) |
-| `scalar` | a native value type other than None, or a machine scalar (%ptr, %byte, %i32, %slot) |
-| `machine` | a native value type other than None, or %ptr, %byte or %i32 |
+| `scalar` | a native value type other than None, a machine scalar (%ptr, %byte, %i32, %slot) or a packed slot |
+| `machine` | a native value type other than None, %ptr, %byte, %i32, %slot or a packed slot |
+| `packed` | a packed slot *T of a native T, or %slot: eight bytes that claim no type |
 | `ref` | a native reference type or None |
 | `number` | int or float |
 | `numeric` | bool, int or float |
@@ -475,8 +480,10 @@ attributes, or specialization on runtime lengths. The verifier checks the suppor
 element representations, operand agreement, result count and allocation declaration.
 
 `tuple.load` and `tuple.store` retain a fixed tuple's type, constant item index and
-declared item type while transferring an opaque `%slot`. The verifier checks that the
-index selects that member and that load results and store operands are slots. Native
+declared item type while transferring the item's packed slot `*T` (a promoting int's
+64-bit `*int`; a word past the items, its Mpz pointer, is the untyped `%slot`). The verifier
+checks that the index selects that member and that load results and store operands are
+its packed slot or `%slot`. Native
 packing and unpacking remain separate typed operations. These instructions replace raw
 LLVM in fixed tuple reads and heap/stack construction, preserving the existing layout,
 conservative memory effects and dictionary-key canonicalization. Variable-length tuple
@@ -1029,7 +1036,7 @@ L7:
   cbr(bool %t12) -> L13, L9
 L13:
   %t14 ~%t28 ~%t29 ~%t30 = list.load(list[float] %t4, int %t10) : *float
-  %t15 = slot.unpack(%slot %t14) : float
+  %t15 = slot.unpack(*float %t14) : float
 ```
 
 A result is written as operands name it: `%tN`, or a slot's register (`%samples.2 = slot
@@ -1146,7 +1153,7 @@ value number that an operand reads. It proves no dominance, typing or lowering p
 Typed instruction coverage is complete for the LLVM backend. Further backend neutrality
 needs shared compiler/runtime layout definitions and a clearer separation of frontend
 elaboration from machine contracts. Operands still read values through the views of
-`TYPE_VIEWS`: precise result types for runtime calls, packed slots and empty containers, and
+`TYPE_VIEWS`: precise result types for runtime calls and empty containers, and
 conversion ops for the views that narrow would leave each value one type, as MLIR's are. WebAssembly GC, more general check elimination and a
 Python-object representation backend are design possibilities, not supported modes.
 

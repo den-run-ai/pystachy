@@ -118,8 +118,8 @@ def lt(t: str) -> str:
         return "i32"
     if t == "None":
         return "void"
-    if t == "%slot":
-        return "i64"  # (the IR's pseudo-type of a value in an 8-byte container slot)
+    if t == "%slot" or t.startswith("*"):
+        return "i64"  # (a packed slot *T, the eight-byte word that holds a T, or %slot, opaque bits)
     if t == "int+":
         return "{i64, ptr}"  # (a promoting int: its 64-bit value, and its Mpz or null, bigints.py)
     return "ptr"
@@ -477,6 +477,12 @@ def tslots(t: str) -> int:
         if ts[i] == BIG:
             last = i
     return len(ts) + last + 1
+
+
+def packed_item(t: str) -> str:
+    # what the slot of a fixed tuple's item of type t holds: the item, or a promoting int's 64-bit
+    # int (its Mpz word is a slot of its own past the items: hislot)
+    return "int" if t == BIG else t
 
 
 def hislot(t: str, i: int) -> int:

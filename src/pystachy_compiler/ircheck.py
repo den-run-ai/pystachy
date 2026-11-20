@@ -8,7 +8,7 @@ from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
 from src.pystachy_compiler.specs import BIG, EMPTYFS, FX, FXALL, FXBIT, ICMP, IROPS, LIST_READS, LIST_WRITES, NONEVAR, RAWR, RAWW, RUNTIME, TYPE_CLASSES
 from src.pystachy_compiler.specs import OPS, OP_ENTRY, OP_FIELDS, OP_INVOKE, OP_K, OP_LABELS, OP_MAX, OP_MIN, OP_OPERAND_TYPES, OP_PER_OPERAND, OP_RESULT_TYPE, OP_S, OP_T, OP_TEMPS, OP_X, RESULT_NUMBERS
-from src.pystachy_compiler.utils import gelem, generator_identity, is_dict, is_gen, is_opt, is_set, is_tuple, is_union, list_read_error, list_receiver_error, list_write_error, lt, same_kind, targs, tslots, umembers, unopt
+from src.pystachy_compiler.utils import gelem, generator_identity, is_dict, is_gen, is_opt, is_set, is_tuple, is_union, list_read_error, list_receiver_error, list_write_error, lt, packed_item, same_kind, targs, tslots, umembers, unopt
 
 class EffectSummaries:
     # One compilation's completed function contexts. FnInfo retains each context's parameter
@@ -247,9 +247,11 @@ class OpTypes:
         if name == "native":
             return native
         if name == "scalar":
-            return (native and t != "None") or t == "%ptr" or t == "%byte" or t == "%i32" or t == "%slot"
+            return (native and t != "None") or t == "%ptr" or t == "%byte" or t == "%i32" or t == "%slot" or (t.startswith("*") and native_type(t[1:], self.classes))
+        if name == "packed":
+            return t == "%slot" or (t.startswith("*") and native_type(t[1:], self.classes))
         if name == "machine":
-            return (native and t != "None") or t == "%ptr" or t == "%byte" or t == "%i32"
+            return (native and t != "None") or t == "%ptr" or t == "%byte" or t == "%i32" or t == "%slot" or (t.startswith("*") and native_type(t[1:], self.classes))
         if name == "ref":
             return native and (t == "None" or lt(t) == "ptr")
         if name == "number":
@@ -754,6 +756,17 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     self.bad_ir(fn, b, f"{i.op} of a slot past the items needs a promoting int item's Mpz word")  # (tslots)
                 if i.k < len(ts) and (i.s != ts[i.k] or not native_type(i.s, self.classes)):
                     self.bad_ir(fn, b, f"{i.op} needs the declared native item type")
+                # (an item's slot is packed: it holds the item, a promoting int's its 64-bit int; a
+                # slot past the items holds an Mpz word, which no type describes; %slot claims none)
+                got = i.t if i.op == "tuple.load" else i.a[1].t if len(i.a) == 2 else ""
+                if 0 <= i.k < len(ts) and got != "%slot" and got != "*" + packed_item(ts[i.k]):
+                    self.bad_ir(fn, b, f"{i.op} of item {i.k} needs *{packed_item(ts[i.k])}, got {got}")
+                if i.k >= len(ts) and got != "%slot":
+                    self.bad_ir(fn, b, f"{i.op} of an Mpz word needs %slot, got {got}")
+            if i.op == "slot.unpack" and len(i.a) == 1 and i.a[0].t != "%slot" and i.a[0].t != "*" + i.t:
+                self.bad_ir(fn, b, f"slot.unpack of a {i.t} needs *{i.t} or %slot, got {i.a[0].t}")
+            if i.op == "slot.pack" and i.t != "%slot" and len(i.a) == 1 and i.t != "*" + i.a[0].t:
+                self.bad_ir(fn, b, f"slot.pack of a {i.a[0].t} needs *{i.a[0].t} or %slot, got {i.t}")
             if i.op == "num.cast" and i.a[0].t != "bool" and not (i.a[0].t == "int" and i.t == "float"):
                 self.bad_ir(fn, b, "num.cast needs bool to int/float or int to float")
             if i.op == "num.cmp" and i.s not in ICMP:
@@ -767,10 +780,14 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 union_proofs = True
                 if i.op == "union.payload" and i.s not in union_types[i.a[0].t]:
                     self.bad_ir(fn, b, f"union.payload of {i.s or 'no member'}, which {i.a[0].t} does not hold")
+                if i.op == "union.payload" and i.t != "%slot" and i.t != "*" + i.s:
+                    self.bad_ir(fn, b, f"union.payload of {i.s} needs the packed slot *{i.s}, got {i.t}")
             if i.op == "dyn.payload":
                 dynamic_proofs = True
                 if i.s == "" or i.s == "dyn" or i.s.startswith("%"):
                     self.bad_ir(fn, b, "dyn.payload needs the type of the payload it reads")
+                if i.t != "%slot" and i.t != "*" + i.s:
+                    self.bad_ir(fn, b, f"dyn.payload of {i.s} needs the packed slot *{i.s}, got {i.t}")
             if i.op == "dyn.raw":
                 dynamic_raw = True
                 if len(i.r) != 2 or i.r[0] < 0 or i.r[1] < 0 or i.r[0] == i.r[1]:

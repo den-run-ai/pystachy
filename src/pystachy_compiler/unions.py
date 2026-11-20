@@ -218,14 +218,14 @@ def gen_utag(self, t: str) -> int:
 
 def gen_ubox(self, v: Val, m: str) -> str:
     # v, of member type m, as a union's box (a class's object that may be None: null)
-    b = self.rt("pys_ubox", "ptr", [f"i64 {self.utag(m)}", "i64 " + self.to_slot(Val(v.v, m))])
+    b = self.rt("pys_ubox", "ptr", [f"i64 {self.utag(m)}", "i64 " + self.to_slot(Val(v.v, m), False, True)])
     if m not in self.classes or v.v in self.nn:
         return b
     return self.select(self.ptr_cmp('==', v, Val('null', 'None')).v, Val('null', '%ptr'), Val(b, '%ptr'))
 
 def gen_uget(self, u: Val, m: str) -> Val:
     # the value a union's box u holds, known to be of member type m
-    i = Ins("union.payload", "%slot", m)
+    i = Ins("union.payload", "*" + m, m)
     i.a = [u]
     self.put(i, 2)
     return self.from_slot(tmpname(i.r[1]), m).identity(u)

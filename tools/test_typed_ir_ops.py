@@ -160,7 +160,7 @@ class TypeCheckTests(unittest.TestCase):
                 (typed("select", "float", [("%a0", "bool"), ("1", "int"), ("2", "int")]),
                  "select result needs int ($T is int at operand 1), got float"),
                 (typed("select", "None", [("%a0", "bool"), ("null", "None"), ("null", "None")]),
-                 "select operand 1 needs a native value type other than None, or a machine scalar (%ptr, %byte, %i32, %slot), got None"),
+                 "select operand 1 needs a native value type other than None, a machine scalar (%ptr, %byte, %i32, %slot) or a packed slot, got None"),
                 # a type around a variable
                 (typed("mem.load", "int", [("%a0", "int")]), f"mem.load operand 0 needs &$T, $T {specs.TYPE_CLASSES['native']}, got int"),
                 (typed("mem.load", "%ptr", [("%a0", "&%ptr")]), f"mem.load operand 0 needs &$T, $T {specs.TYPE_CLASSES['native']}, got &%ptr"),

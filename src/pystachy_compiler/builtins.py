@@ -3346,7 +3346,8 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
             self.guard(self.scalar('xor', [Val(numok, 'bool'), Val('true', 'bool')]), "ValueError: tuple.index(x): x not in tuple")
     elif numx.t != "" and m == "index":
         fn = "pys_list_index_as"  # (its ValueError names x, not the item)
-        av = av + ["i64 " + self.to_slot(Val(numok, "bool")), "i64 " + self.to_slot(numx), f"ptr {self.sconst(self.desc(numx.t, '=='))}"]
+        # (the flag and the number as the bits of runtime words: a bool and an int)
+        av = av + ["i64 " + self.to_slot(Val(numok, "bool"), False, True), "i64 " + self.to_slot(numx, False, True), f"ptr {self.sconst(self.desc(numx.t, '=='))}"]
     if bk.t != "":
         self.bool_find(o.v, bk, av[1][4:])
     x = self.key_fx(K) if base == "dict" else ""  # (Ins.x of a lookup: U? where the keys are objects)
