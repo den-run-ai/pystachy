@@ -10930,7 +10930,10 @@ static Trk *trk;
 /* GC_NO_ROOT(dq): queued CPython references, outside the Pystachy heap. */
 static I ctrk, trk_free = -1, *dq, ndq, cdq, trk_gc, trk_exit;
 I pys_track(void *o, I v, I n) {
-  gc_allocd += TRK_BYTES + (n > 0 ? n : 0);
+  /* (the count stops at INT64_MAX / 2, which no heap reaches, so that what is added later cannot overflow it: a size
+     near INT64_MAX, which a __sizeof__ that lies gives, overflowed it, and no collection started again, #1584) */
+  I add = n > 0 ? n : 0;
+  gc_allocd = add < INT64_MAX / 2 - TRK_BYTES - gc_allocd ? gc_allocd + TRK_BYTES + add : INT64_MAX / 2;
   if (!gc_off && gc_allocd >= gc_limit) collect();   /* (as an allocation of that size would: o is live in the caller) */
   I i = trk_free;
   if (i >= 0) trk_free = trk[i].v;
