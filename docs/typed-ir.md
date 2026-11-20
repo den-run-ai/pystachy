@@ -995,7 +995,8 @@ decides a fixed tuple's slots while its function is printed.
 - `tools/typed_ir_ops.py --check` fails when the [operation reference](#operation-reference)
   differs from `OPS`.
 - `tools/typed_ir_text.py verify tools/fixtures/typed_ir/invalid.tir` holds the verifier to
-  the error each function of the file expects (see [text form](#text-form)).
+  the error each function of the file expects, and `classes.tir` holds the verifier's class
+  view to the classes its module declares (see [text form](#text-form)).
 - `make check-runtime` checks runtime signature/effect declarations.
 - `make irsame` and `make irsame-py` compare a refactor's IR, diagnostics and exit status with a
   reference compiler. Behavior changes need their own explicit tests, not a byte-identical promise.
@@ -1007,9 +1008,9 @@ self-compile timings in the design log are not current test totals or performanc
 
 ## Text form
 
-`tools/typed_ir_text.py` prints a function's IR as text and parses it back. One instruction
-is one line: its results, the operation, its text (`Ins.s`), its other fields, its typed
-operands, its labels, its result type and, on request, its [location](#locations).
+`tools/typed_ir_text.py` prints a module's or a function's IR as text and parses it back. One
+instruction is one line: its results, the operation, its text (`Ins.s`), its other fields, its
+typed operands, its labels, its result type and, on request, its [location](#locations).
 
 ```text
 L7:
@@ -1035,16 +1036,41 @@ Types are the compiler's canonical strings. Most are Python's (`int`, `list[floa
 slot at `%s.3` and `list.load` returns a list item's slot; `%ptr`, `%byte`, `%i32` and `%slot`
 are machine types with no Python meaning.
 
-Printing and parsing are inverse: a function printed with its locations parses to the record
-it was printed from, and a text that is not in the printed form is rejected. The record holds
+A text holds functions alone, or a module: its declarations between `module {` and `}`, then
+its functions, each written as it is alone. `print` writes a typed-after snapshot as a module,
+whose declarations are the snapshot's tables of the program's classes, DynTypes and class
+layouts:
+
+```text
+module {
+  class Both base=Storage roles=[Reader] tagged
+  class Reader overlaps=[Storage] tagged
+  class Storage overlaps=[Reader] tagged
+  dyntype @dt.Both kind=8 cls=1 flags=256 base=@dt.Storage role=@dt.Reader payload=Both
+  layout Both descriptor=@dt.Both base=@dt.Storage role=@dt.Reader number=1 members=[int int bool dyn] llvm=[i64 i64 i1 ptr]
+}
+
+function @m.Storage.__init__.1(self: Both, value: int) -> None effects=wO {
+```
+
+A class gives its single base, a class of the program or a builtin exception class; its
+fieldless secondary bases (`roles`); the unrelated classes it shares a subclass with
+(`overlaps`); and whether its objects begin with a class tag. A `dyntype` is a DynType that the
+program emits for dynamic values, with its kind, class number, flags, base and role DynTypes
+and the static type of its boxes' payload, and a `layout` is the struct of a class that has
+one. A field that holds its default (`""`, `[]`, 0 or false) is omitted.
+
+Printing and parsing are inverse: a module or function printed with its locations parses to
+the record it was printed from, and a text that is not in the printed form is rejected. A function record holds
 a function's symbol, parameters, return type, effects, slots, blocks, check targets and loops,
-as the [inspection snapshots](compiler-inspection.md) do. `to_ifn` builds the compiler's own
-`IFn` from it, so a test writes IR as text, runs the verifier or one pass and compares the
+as the [inspection snapshots](compiler-inspection.md) do, and a module record holds the
+declarations and its function records. `to_ifn` builds the compiler's own `IFn` from a
+function record, so a test writes IR as text, runs the verifier or one pass and compares the
 printed result: [`tools/test_typed_ir_text.py`](../tools/test_typed_ir_text.py) runs `listget`
 on [a fixture](../tools/fixtures/typed_ir/score_samples.listget.before.tir) that way, and
-checks that the fixture is what the compiler emits. The text holds no module data, class
-layouts or runtime declarations, so a function that needs those is tested from source. It is a
-test and review form of the hosted compiler, not an interchange format.
+checks that the fixture is what the compiler emits. The text holds no class fields, globals or
+runtime declarations, so a function that needs those is tested from source. It is a test and
+review form of the hosted compiler, not an interchange format.
 
 `verify` runs the verifier on each function of a text file, as MLIR's `-verify-diagnostics`
 does. A comment line `; expected-error {{MESSAGE}}` says that the function's verification
@@ -1052,7 +1078,13 @@ fails with an error containing MESSAGE in the block that holds the line, and a f
 without one must verify. The verifier stops at its first error, so a function expects one
 at most. [`invalid.tir`](../tools/fixtures/typed_ir/invalid.tir) breaks one rule per
 function: each kind of shape and type rule of an operation's row, some operations' own
-checks, block structure, and the values operands name. Its last function verifies.
+checks, block structure, and the values operands name. Its last function verifies. A
+module's functions are verified with its classes, which the class view of an operand's type
+relates by their bases, secondary bases and overlaps; a function list declares none.
+[`classes.tir`](../tools/fixtures/typed_ir/classes.tir) reads a class as its base, as a
+derived class, as a secondary base, as a class it overlaps and as `object`, which verify, and
+as unrelated classes, which do not. A module declares no fields, so a `field.addr` does not
+verify.
 
 ### Locations
 
