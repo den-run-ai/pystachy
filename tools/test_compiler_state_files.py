@@ -20,7 +20,7 @@ class FileStateTests(unittest.TestCase):
     # completed or rejected compilation's discoveries visible between calls.
     def setUp(self):
         self.roots = [diagnostics.FILES, diagnostics.DYNFILES, diagnostics.IDINERT, diagnostics.INTFILES, diagnostics.INTSPANS, LAMBDAS,
-                      driver.RENAMED, driver.LIBS, driver.LINKDL, GLUE, SPECSHOW, loader.ENUMCLASSES, loader.NESTED]
+                      driver.RENAMED, driver.LIBS, driver.LINKDL, GLUE, SPECSHOW, loader.ENUMCLASSES, loader.NESTED, loader.LOCALWHY]
         self.saved = [value.copy() for value in self.roots]
         self.source = diagnostics.SRC
         diagnostics.SRC = "hosted-context.py"
@@ -61,6 +61,8 @@ class FileStateTests(unittest.TestCase):
         loader.ORDERED.update({1: "__lt__", 5: "+ __le__"})
         loader.NESTED.clear()
         loader.NESTED.update({1: ["Kind"], 5: ["Mode"]})
+        loader.LOCALWHY.clear()
+        loader.LOCALWHY.update({1: "why", 5: "else"})
         instance = loader.Loader([])
         program(instance, "plain.py", "print(1)\n")
         self.assertEqual(diagnostics.FILES, ["plain.py"])
@@ -71,6 +73,7 @@ class FileStateTests(unittest.TestCase):
         self.assertEqual(loader.ENUMCLASSES, {})
         self.assertEqual(loader.ORDERED, {})
         self.assertEqual(loader.NESTED, {})
+        self.assertEqual(loader.LOCALWHY, {})
         instance = loader.Loader([])
         program(instance, "dynamic.py", "# pystachy: dynamic-any\nprint(1)\n")
         self.assertEqual(diagnostics.FILES, ["dynamic.py"])
@@ -96,7 +99,7 @@ class FileStateTests(unittest.TestCase):
     def test_each_missing_reset_is_detected(self):
         source = textwrap.dedent(inspect.getsource(loader.Loader.program))
         for reset in ("FILES.clear()", "DYNFILES.clear()", "IDINERT.clear()", "INTFILES.clear()", "INTSPANS.clear()", "ENUMCLASSES.clear()",
-                      "ORDERED.clear()", "NESTED.clear()"):
+                      "ORDERED.clear()", "NESTED.clear()", "LOCALWHY.clear()"):
             with self.subTest(reset=reset):
                 statement = "    " + reset + "\n"
                 self.assertEqual(source.count(statement), 1)

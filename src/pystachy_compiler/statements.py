@@ -6,7 +6,7 @@ from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.frames import Exit, IterArg, SeqStart, StopCatch
 from src.pystachy_compiler.ir import Blk, Ins, Loop, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
-from src.pystachy_compiler.names import ENUMCLASSES, owner, short
+from src.pystachy_compiler.names import ENUMCLASSES, LOCALWHY, local_class, owner, short
 from src.pystachy_compiler.specs import (
     STR_HEADER_SIZE,
     ABCS,
@@ -347,7 +347,7 @@ def nested_bound(self, c: str) -> None:
     # class c's statement has run: the classes its body nests (C.N, Loader's nested_classes),
     # which CPython binds as its attributes, are bound now for the reads of them written C.N
     # (Node.outer), whose flags their own statements, which run before c's, leave unset
-    if "." in c[c.rfind("$") + 1 :]:
+    if "." in c[c.rfind("$") + 1 :] or local_class(c):
         return
     for x in self.gflag:
         if x.startswith(c + ".") and x in self.classes:
@@ -1220,7 +1220,7 @@ def gen_stmt_main(self, n: Node) -> None:
         else:
             self.modchk(n)  # (CPython reads its identity decorators before its body runs: Loader.identity_decos)
             self.hoist_class(self.classes[n.s])
-        if n.s in self.gflag and (k != "cdefaults" or "." not in n.s[n.s.rfind("$") + 1 :]):
+        if n.s in self.gflag and (k != "cdefaults" or "." not in n.s[n.s.rfind("$") + 1 :] or local_class(n.s)):
             self.mstore('bool', 'true', f'@g.{n.s}.def')
         if k == "cdefaults":
             nested_bound(self, n.s)
@@ -1263,7 +1263,8 @@ def gen_stmt_main(self, n: Node) -> None:
     elif k == "def" or k == "class" or k == "subclass":
         if self.modlevel:
             self.err(f"a {'class' if k == 'subclass' else k} statement inside a block of a module's code (if, try, for, while, with) is not supported: only at its top level")
-        self.err("a class inside a function is not supported")
+        why = LOCALWHY.get(n.line, "")
+        self.err("a class inside a function is not supported" + (": " + why if why != "" else ""))
     elif k == "badimport":
         self.err(n.s)
     elif k == "match":

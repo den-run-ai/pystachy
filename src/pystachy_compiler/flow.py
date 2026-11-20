@@ -15,7 +15,7 @@ from src.pystachy_compiler.analysis import (
 )
 from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
-from src.pystachy_compiler.names import short
+from src.pystachy_compiler.names import local_class, short
 from src.pystachy_compiler.syntax import Node, mentions, mk
 from src.pystachy_compiler.specs import NONEVAR
 from src.pystachy_compiler.utils import is_const, numeric_identity
@@ -248,7 +248,7 @@ def gen_flow_program(self, top: list[Node], mod: str, mfns: list[FnInfo], mcls: 
     for nm in mfl.marks:
         self.gflag[nm] = True
     for ci in mcls:
-        if "." in ci.name[ci.name.rfind("$") + 1 :]:
+        if "." in ci.name[ci.name.rfind("$") + 1 :] and not local_class(ci.name):
             # (a nested class, C.N: reads of it written C.N, which code compiled later may mark,
             # find it bound once C's statement has run, which sets its flag: nested_bound)
             self.gflag[ci.name] = True

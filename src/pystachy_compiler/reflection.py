@@ -3102,7 +3102,7 @@ def gen_enum_view(self, c: str, line: int) -> Node:
     # (Loader's enum_classes), _pys_enum_C, a name node of it
     if c not in self.classes or self.classes[c].node.line not in ENUMCLASSES:
         self.err(f"internal error: {short(c)} is no enum class")
-    g = c[: c.rfind("$") + 1] + "_pys_enum_" + short(c)
+    g = c[: c.rfind("$") + 1] + "_pys_enum_" + c[c.rfind("$") + 1 :]  # (the class's own name, not its display name: RENAMED)
     if g not in self.gtypes and g not in self.mvars:
         self.err(f"enum class {short(c)} without members cannot be used as a value (classes are not values: an enum class with members is its EnumType object)")
     return mk("name", g, line, [])
