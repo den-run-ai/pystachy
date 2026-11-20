@@ -34,6 +34,7 @@ Run these from the repository root:
 | `make test-cache` | Check runtime build-cache reuse, invalidation and failed-build handling with both compilers. |
 | `make test-program-cache` | Check default native program reuse, source/toolchain invalidation, setting keys, fresh execution, concurrency, eviction and failure recovery. |
 | `make test-ffi` | Check C calls, FFI diagnostics, embedded CPython (`pyobj`) and CPython extension modules. |
+| `make python-versions PYTHONS="..."` | Check the compiler under other CPython versions: the hosted compiler's IR, a corpus sample it compiles, and the FFI with each interpreter's libpython ([other CPython versions](#other-cpython-versions)). |
 | `make check-ir` | Check the typed IR and its LLVM lowering across the compiler corpus. |
 | `make check-runtime` | Check runtime declarations, effects and source agreement. |
 | `make irsame REF=<commit>` | Compare IR, diagnostics and exit status with a reference compiler for a refactor. |
@@ -396,6 +397,30 @@ payload checksums with `tools/verification_bootstrap.py` before execution. Runti
 stay private: variants still build every selected runtime configuration, and coverage still
 builds each instrumented runtime. Hosted compiler coverage remains independent. No compiled
 binary or successful test/proof result is reused between runs.
+
+## Other CPython versions
+
+The tests' expected output is what the CPython of `.python-version` prints, and verification
+runs under that interpreter. The compiler itself runs under CPython 3.11 or later; compiled
+programs embed CPython, and CPython imports extension modules, from 3.12.
+`make python-versions PYTHONS="python3.11 python3.15t"` (`tools/python_versions.sh`) checks
+each interpreter in three ways:
+
+| Check | Requirement |
+|---|---|
+| IR | Run by that interpreter, the hosted compiler emits the IR of stage 1 of `make` for itself and for `runtime.py`, byte for byte. |
+| Corpus sample | `tests/programs/syntax` and `tests/programs/imports` pass in JIT and AOT with that hosted compiler; `FILES` selects other cases. |
+| FFI | `tests/ffi/run.sh` passes with the interpreter's libpython. It may skip only what that interpreter cannot run: embedding and extension modules before 3.12, extension modules on a free-threaded build before 3.15, and the JSON repair replay, whose oracle is the pinned CPython. |
+
+The [Python versions workflow](../.github/workflows/python-versions.yml) runs these checks with
+CPython 3.11, 3.12, 3.14 and 3.15 and the free-threaded 3.14t and 3.15t: daily, on demand and
+on relevant `main` pushes. Like Variants, it builds one verified bootstrap and each interpreter's
+job restores it. Pull requests do not run it, because their [job budget](#pr-budget) is full.
+Its interpreters are pinned to exact releases, like `.python-version`, and are updated by hand.
+
+Compiled programs keep the semantics of the pinned CPython whichever interpreter hosts the
+compiler. Other minor versions print differently for some corpus programs (CPython 3.12.16 for
+116 of 2,964), so `tests/record.sh` refuses them.
 
 ## Continuous integration
 
@@ -1098,7 +1123,9 @@ for tags and release dispatch; publishing requires CI, Installation, Lint and Pa
 The [Coverage workflow](../.github/workflows/coverage.yml) runs apart from PR CI, daily, manually
 and on relevant `main` pushes; no check requires it; [reading coverage](#reading-coverage) describes it. So
 does the [Variants workflow](../.github/workflows/variants.yml), which
-[configuration variants](#configuration-variants) describes.
+[configuration variants](#configuration-variants) describes, and the
+[Python versions workflow](../.github/workflows/python-versions.yml), which
+[other CPython versions](#other-cpython-versions) describes.
 
 Every job, including release jobs, has a time limit of at most 15 minutes. Release preparation
 waits at most ten minutes for its exact-commit CI evidence. Expensive new checks must fit the

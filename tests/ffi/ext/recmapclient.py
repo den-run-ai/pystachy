@@ -69,7 +69,9 @@ elif len(sys.argv) > 1 and sys.argv[1] == "--child":
 else:
     skipped = False
     for mode in ("finite", "none", "unlimited"):
-        result = subprocess.run([sys.executable, __file__, "--child", mode], capture_output=True, text=True, timeout=30)
+        # (-W ignore: the GIL warning of 3.15t would be on the child's stderr)
+        result = subprocess.run([sys.executable, "-W", "ignore", __file__, "--child", mode],
+                                capture_output=True, text=True, timeout=30)
         assert result.returncode in (0, 77) and result.stderr == "", (mode, result.returncode, result.stdout, result.stderr)
         print(result.stdout, end="")
         skipped |= result.returncode == 77
