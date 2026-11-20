@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import dynamic_program, fail, int_lists, int_program
 from src.pystachy_compiler.dynamic_proof import DynamicProof, DynTypes
-from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, operand_kind, tmpname, value_definitions
+from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, operand_kind, slot_register, tmpname, value_definitions
 from src.pystachy_compiler.scalar_ir import SCALAR_INTS
 from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof

@@ -75,7 +75,7 @@ class OperationTableTests(unittest.TestCase):
             self.assertEqual(set(row["names"]), set(row["fields"]) - {"t"})
         # (an operator selects an arithmetic, conversion or comparison op's computation)
         self.assertEqual(sorted(op for op, names in named.items() if names.get("s") == typed_ir_ops.OPERATOR),
-                         ["int.ucmp", "num.cmp", "ovf", "ptr.cmp", "scalar.bin", "scalar.cast", "scalar.cmp"])
+                         ["cast", "int.ucmp", "num.cmp", "ovf", "ptr.cmp", "scalar.bin", "scalar.cast", "scalar.cmp"])
 
     def test_malformed_rows_are_rejected(self):
         for text, why in (("T|0|0|1|", "columns"), ("Q|0|0|0||0|", "effect"), ("T T|0|0|0||0|", "effect"),

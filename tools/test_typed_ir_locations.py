@@ -173,9 +173,9 @@ class StampingTests(unittest.TestCase):
 
 class VerifierTests(unittest.TestCase):
     CASE = """function @f(n: int) -> None {
-  %n.1 = slot n : int
+  %n.1 = slot name=n : int
 entry:
-  mem.store(*int %n.1, int %a0)
+  mem.store(&int %n.1, int %a0)
   br -> L2
 L2:
   ret.none

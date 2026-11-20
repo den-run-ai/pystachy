@@ -46,7 +46,7 @@ loop kind=range mode="" head=L5 body=L8 step=L9 exit=L8 tests=[] indices=[%t3 "a
 """
 # WRITTEN with locations on an instruction that ends in each part a line may end in: a type, a
 # label, an operand list, a field and the operation's name; the slot's line is in file 2
-LOCATED = (WRITTEN.replace("  %left.1 = slot left : int\n", "  %left.1 = slot left : int loc(2:1)\n")
+LOCATED = (WRITTEN.replace("  %left.1 = slot name=left : int\n", "  %left.1 = slot name=left : int loc(2:1)\n")
            .replace(' -> L5\nL5: handler=L9\n', ' -> L5 loc(7)\nL5: handler=L9\n')
            .replace("(tuple[int,str] %stk.2) : %slot\n", "(tuple[int,str] %stk.2) : %slot loc(8)\n")
            .replace("  ret.none\n", "  ret.none loc(12)\n")
@@ -164,7 +164,8 @@ class TextTests(unittest.TestCase):
                                   ("loc(30000012)", "a location must be written loc(3:12)"),
                                   ("loc(3:012)", "a location must be written loc(3:12)"),
                                   ("loc(3:10000000)", "a location's line must be below 10000000"),
-                                  ("loc(-1)", "unexpected text"), ("loc()", "unexpected text"), ("loc(1:)", "unexpected text")):
+                                  ("loc(-1)", "ret.none has no operator to write bare"), ("loc()", "ret.none has no operator to write bare"),
+                                  ("loc(1:)", "ret.none has no operator to write bare")):
             with self.subTest(written=written), self.assertRaises(text.TextError) as raised:
                 text.parse_functions(WRITTEN.replace("  ret.none\n", f"  ret.none {written}\n"))
             self.assertIn(f"line 13: {expected}", str(raised.exception))
@@ -257,7 +258,7 @@ class TextTests(unittest.TestCase):
         for op in specs.OPS:
             names = text.named_fields(op)
             ins = {"op": op, "type": "", "text": "", "immediate": 0, "descriptor": "", "results": [],
-                   "operands": [{"value": "%a0", "type": "int"}], "targets": []}
+                   "operands": [{"value": "%a0", "type": "int"}], "targets": [], "line": 0}
             for field, key in text.FIELD_KEYS:
                 ins[key] = (3 if field == "k" else "v." + field) if field in names else ins[key]
             with self.subTest(op=op):
