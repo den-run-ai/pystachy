@@ -2504,3 +2504,9 @@ These modules were shipped earlier and have been removed; see the
   does not execute CPython bytecode or expose code objects; `dis` remains unavailable. This is
   an intentional compatibility reduction, not a claim that the former table operations were
   incorrect.
+
+## Code mode host tools
+
+The Pystachy-specific `codemode.call(name, payload)` exchanges Unicode strings with a
+synchronous tool registered by a WebAssembly host. Calling it in native JIT or AOT
+execution raises `NotImplementedError`. See the [host API](../wasm/README.md#calling-tools-from-a-node-host).

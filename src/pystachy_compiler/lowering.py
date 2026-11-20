@@ -4,7 +4,7 @@ from src.pystachy_compiler.diagnostics import fail, int_program
 from src.pystachy_compiler.ir import Blk, IFn, Ins, Val, slot_register, tmpname, one_num
 from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.lower_module import const_slot, struct_types
-from src.pystachy_compiler.specs import CHECKED, COMPLEXC, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
+from src.pystachy_compiler.specs import CHECKED, CLASSREC_LL, COMPLEXC, DYNTYPE_LL, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
 from src.pystachy_compiler.utils import atomic_dict, atomic_list, gelem, generator_identity, generator_slots, identity_abi, numeric_identity, is_dict, is_tuple, lt, selem, takes_self, targs, tslots
 
 
@@ -321,7 +321,15 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         else:
             o.append(f"  store {lt(i.a[1].t)} {i.a[1].v}, ptr {i.a[0].v}{metadata}")
     elif op == "mach.addr":
-        o.append(f"  {tmpname(i.r[0])} = getelementptr{' inbounds' if i.k == 1 else ''} {lt(i.s)}, ptr {i.a[0].v}, i64 {i.a[1].v}")
+        # Record indices select fields. LLVM's target layout places them,
+        # including the padding between pointers and 64-bit integers.
+        if i.s == "dyntype" or i.s == "classrec":
+            element = DYNTYPE_LL if i.s == "dyntype" else CLASSREC_LL
+            index = f"i32 0, i32 {i.a[1].v}"
+        else:
+            element = lt(i.s)
+            index = f"i64 {i.a[1].v}"
+        o.append(f"  {tmpname(i.r[0])} = getelementptr{' inbounds' if i.k == 1 else ''} {element}, ptr {i.a[0].v}, {index}")
     elif op == "mem.load":
         o.append(f"  {tmpname(i.r[0])} = load {'ptr' if i.t == 'None' else lt(i.t)}, ptr {i.a[0].v}{self.ftags.get(i.a[0].v, '')}")
     elif op == "mem.store":

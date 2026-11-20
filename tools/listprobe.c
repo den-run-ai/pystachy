@@ -29,7 +29,7 @@ static List *buffers;
 static I *roots[] = {(I *)&buffers};
 static _Noreturn void bad(const char *what) { fprintf(stderr, "listprobe: %s\n", what); exit(1); }
 static int atomic(void *p) {
-  uintptr_t w = (uintptr_t)p; Seg **m = pmap[w >> 30], *s = m ? m[w >> 12 & 0x3ffff] : 0;
+  uintptr_t w = (uintptr_t)p; Seg **m = pmap[PM_TOP(w)], *s = m ? m[PM_LEAF(w)] : 0;
   if (!s) bad("list storage outside the heap");
   return s->k & 1;
 }

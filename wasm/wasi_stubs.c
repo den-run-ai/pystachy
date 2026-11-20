@@ -28,7 +28,9 @@ int kill(pid_t pid, int sig) { (void)pid; (void)sig; NOSYS(-1); }
 int pipe(int fds[2]) { (void)fds; NOSYS(-1); }
 int dup(int fd) { (void)fd; NOSYS(-1); }
 int dup2(int fd, int to) { (void)fd; (void)to; NOSYS(-1); }
-int chmod(const char *path, mode_t mode) { (void)path; (void)mode; NOSYS(-1); }
+
+/* Older wasi-libc lacks chmod. Newer releases provide it alongside other POSIX calls. */
+__attribute__((weak)) int chmod(const char *path, mode_t mode) { (void)path; (void)mode; NOSYS(-1); }
 
 /* users: one, whose id is 0 and whom the user database does not hold */
 uid_t getuid(void) { return 0; }

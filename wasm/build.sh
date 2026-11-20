@@ -8,13 +8,10 @@
 # Without LLVM (wasm/README.md's typed IR emitter):
 #        wasm/build.sh runtime-wasm            build/wasm/runtime.wasm, the runtime as a module that
 #                                              programs import, if runtime.o or reactor.c changed
-#        wasm/build.sh emitter                 build/wasm/tir_wasm: wasm/tir_wasm.py, compiled by
-#                                              PYSTACHY (else the build runs it on PY)
-#        wasm/build.sh tir FILE.py OUT.wasm    FILE.py's typed IR module (tools/inspect_compiler.py,
-#                                              tools/typed_ir_text.py print, both on PY), emitted
-#                                              as a module of runtime.wasm's; where tir_wasm.py
-#                                              refuses it, as program does. WASM_TIR_LOG: a file
-#                                              that gets "FILE.py emitted" or "FILE.py refused: WHY"
+#        wasm/build.sh emitter                 build native tools for source and module-text input
+#        wasm/build.sh direct FILE.py OUT.wasm emit from finalized typed IR, exit 3 on refusal
+#        wasm/build.sh tir FILE.py OUT.wasm    same, with LLVM fallback on an emitter refusal
+#                                              WASM_TIR_LOG records emitted or refused per file
 # Environment: PYSTACHY, the compiler (default ./pystachy; "python3 pystachy.py" works too);
 # PYSTACHY_LLVM, LLVM's bin directory (clang, llvm-link, opt, and wasm-ld there or on PATH);
 # WASI_SYSROOT, a wasi-libc sysroot (default: Ubuntu's wasi-libc package, whose headers and
@@ -79,21 +76,24 @@ runtime() {
   touch "$stamp"
 }
 
-program() { # FILE.py OUT.wasm
+program() ( # FILE.py OUT.wasm [already lowered program.ll]
   [ -f "$RT/runtime.o" ] && [ -f "$RT/stubs.o" ] || { echo "wasm/build.sh: no runtime in $RT: run wasm/build.sh runtime" >&2; exit 1; }
   SYS=$(sysroot)
   t=$(mktemp -d "${TMPDIR:-/tmp}/pystachy-wasm.XXXXXX")
   trap 'rm -rf "$t"' EXIT
-  # shellcheck disable=SC2086
-  $PYSTACHY ir "$1" -o "$t/prog.ll"
+  ir=${3:-$t/prog.ll}
+  if [ "$#" -lt 3 ]; then
+    # shellcheck disable=SC2086
+    $PYSTACHY ir "$1" -o "$ir"
+  fi
   # (wasm32's constants and main: wasm/wasm32_ir.py)
-  "$PY" wasm/wasm32_ir.py "$t/prog.ll" "$t/prog-wasi.ll"
+  "$PY" wasm/wasm32_ir.py "$ir" "$t/prog-wasi.ll"
   "${LLVM}clang" --target=$TARGET -O"$OPT" -c -x ir "$t/prog-wasi.ll" -o "$t/prog.o" -Wno-override-module
   # --fatal-warnings: a call whose signature differs from its definition's (which would trap)
   # shellcheck disable=SC2086
   "${LLVM}clang" --target=$TARGET --sysroot="$SYS" "$t/prog.o" "$RT/runtime.o" "$RT/stubs.o" -o "$2" \
     -Wl,--fatal-warnings -Wl,-z,stack-size=8388608 $LIBS
-}
+)
 
 runtime_wasm() {
   runtime
@@ -109,42 +109,48 @@ runtime_wasm() {
   # the class dispatchers (env.pys_obj_*), which wasm/run.mjs supplies
   # shellcheck disable=SC2086
   "${LLVM}clang" --target=$TARGET --sysroot="$SYS" -mexec-model=reactor "$t/reactor.o" "$RT/runtime.o" "$RT/stubs.o" \
-    -o "$t/runtime.wasm" -Wl,--export-all -Wl,--allow-undefined -Wl,-z,stack-size=8388608 $LIBS
+    -o "$t/runtime.wasm" -Wl,--export-all -Wl,--allow-undefined-file=wasm/reactor.imports -Wl,--fatal-warnings -Wl,-z,stack-size=8388608 $LIBS
   mv "$t/runtime.wasm" "$RT/runtime.wasm"
   rm -rf "$t"; trap - EXIT
 }
 
 emitter() {
   mkdir -p "$RT"
-  # shellcheck disable=SC2086
+  # shellcheck disable=SC2086 # PYSTACHY can be a hosted compiler command
   PYSTACHY_PATH=. $PYSTACHY build wasm/tir_wasm.py -o "$RT/tir_wasm"
+  # shellcheck disable=SC2086
+  PYSTACHY_PATH=. $PYSTACHY build tools/wasm_from_source.py -o "$RT/wasm_from_source"
 }
 
-tir() { # FILE.py OUT.wasm
+direct() {
+  if [ -x "$RT/wasm_from_source" ]; then
+    PYSTACHY_HOME=${PYSTACHY_HOME:-$PWD} "$RT/wasm_from_source" "$@"
+  else
+    PYTHONPATH=.${PYTHONPATH:+:$PYTHONPATH} "$PY" tools/wasm_from_source.py "$@"
+  fi
+}
+
+tir() {
   [ -f "$RT/runtime.wasm" ] || { echo "wasm/build.sh: no $RT/runtime.wasm: run wasm/build.sh runtime-wasm" >&2; exit 1; }
+  # On refusal the frontend can lower the same finalized functions for the LLVM route.
+  # Give each build its own temporary IR and publish the output only after a successful build.
   d=$(mktemp -d "${TMPDIR:-/tmp}/pystachy-tir.XXXXXX")
   trap 'rm -rf "$d"' EXIT
-  "$PY" tools/inspect_compiler.py "$1" --output "$d/inspect" --typed-after-only > /dev/null 2>&1 || true
-  why=
-  if [ ! -f "$d/inspect/typed-after.json" ]; then
-    why="no typed-after snapshot"
-  elif ! "$PY" tools/typed_ir_text.py print "$d/inspect/typed-after.json" > "$d/prog.tir" 2> "$d/print.err"; then
-    why="the module does not print: $(head -1 "$d/print.err")"
-  else
-    if [ -x "$RT/tir_wasm" ]; then
-      "$RT/tir_wasm" "$d/prog.tir" "$2" 2> "$d/emit.err" || why=$(head -1 "$d/emit.err")
-    else
-      PYTHONPATH=. "$PY" wasm/tir_wasm.py "$d/prog.tir" "$2" 2> "$d/emit.err" || why=$(head -1 "$d/emit.err")
-    fi
-  fi
-  rm -rf "$d"; trap - EXIT
-  if [ -z "$why" ]; then
-    [ -z "${WASM_TIR_LOG:-}" ] || echo "$1 emitted" >> "$WASM_TIR_LOG"
-    return 0
-  fi
-  [ -z "${WASM_TIR_LOG:-}" ] || echo "$1 refused: ${why#tir_wasm: refused: }" >> "$WASM_TIR_LOG"
-  rm -f "$2"
-  program "$1" "$2"
+  status=0
+  direct "$1" "$d/program.wasm" "$d/program.ll" 2> "$d/err" || status=$?
+  case $status in
+    0)
+      cat "$d/err" >&2
+      if [ -n "${WASM_TIR_LOG:-}" ]; then printf '%s emitted\n' "$1" >> "$WASM_TIR_LOG"; fi ;;
+    3)
+      if [ -n "${WASM_TIR_LOG:-}" ]; then
+        IFS= read -r why < "$d/err" || why="emitter refused"
+        printf '%s refused: %s\n' "$1" "${why#tir_wasm: refused: }" >> "$WASM_TIR_LOG"
+      fi
+      program "$1" "$d/program.wasm" "$d/program.ll" ;;
+    *) cat "$d/err" >&2; return "$status" ;;
+  esac
+  mv "$d/program.wasm" "$2"
 }
 
 case ${1:-} in
@@ -152,6 +158,7 @@ case ${1:-} in
   program) [ $# = 3 ] || { echo "usage: wasm/build.sh program FILE.py OUT.wasm" >&2; exit 2; }; program "$2" "$3" ;;
   runtime-wasm) runtime_wasm ;;
   emitter) emitter ;;
+  direct) [ $# = 3 ] || { echo "usage: wasm/build.sh direct FILE.py OUT.wasm" >&2; exit 2; }; direct "$2" "$3" ;;
   tir) [ $# = 3 ] || { echo "usage: wasm/build.sh tir FILE.py OUT.wasm" >&2; exit 2; }; tir "$2" "$3" ;;
-  *) echo "usage: wasm/build.sh runtime | program FILE.py OUT.wasm | runtime-wasm | emitter | tir FILE.py OUT.wasm" >&2; exit 2 ;;
+  *) echo "usage: wasm/build.sh runtime | program FILE.py OUT.wasm | runtime-wasm | emitter | {direct|tir} FILE.py OUT.wasm" >&2; exit 2 ;;
 esac

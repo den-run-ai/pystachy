@@ -402,7 +402,7 @@ static void marked_scalars(void) {
 #define MIB ((I)1 << 20)
 static _Noreturn void storage_bad(const char *what) { fprintf(stderr, "dictprobe: storage: %s\n", what); exit(1); }
 static int atomic(const void *p) {     /* is p's object one the collector never scans */
-  uintptr_t w = (uintptr_t)p; Seg **m = pmap[w >> 30], *s = m ? m[w >> 12 & 0x3ffff] : 0;
+  uintptr_t w = (uintptr_t)p; Seg **m = pmap[PM_TOP(w)], *s = m ? m[PM_LEAF(w)] : 0;
   if (!s) storage_bad("a table outside the heap");
   return s->k & 1;                     /* (a chunk's free list 2 * class + atomic; a large object's: atomic) */
 }

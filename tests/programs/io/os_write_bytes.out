@@ -1,0 +1,5 @@
+3 0
+41ff00
+OSError [Errno 9] Bad file descriptor
+OverflowError Python int too large to convert to C int
+[exit 0]

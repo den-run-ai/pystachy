@@ -2,7 +2,7 @@
 
 The compiler's proof (src/pystachy_compiler/dynamic_proof.py) and the Lean bridge
 (tools/check_lean_boundary.py) each copy runtime.c's DynType kinds and role flag, its builtin
-DynTypes, the word of a DynType that holds its class number and its constant boxes; dynamic.py
+DynTypes, the DynType field that holds its class number and its constant boxes; dynamic.py
 emits DynTypes with the same kinds and flags. These tests read those definitions from runtime.c,
 so that neither copy can drift from the runtime. They check no layout beyond them.
 """
@@ -60,12 +60,10 @@ class RuntimeTableTests(unittest.TestCase):
         self.assertEqual(dynamic_proof.BUILTIN_KINDS, runtime)
         self.assertEqual(bridge.BUILTIN_TYPES, runtime)
 
-    def test_class_number_word(self):
-        # every field before cls is one i64 word: an I or a pointer
+    def test_class_number_field(self):
         index = next(j for j, field in enumerate(self.fields) if field.split()[-1].lstrip("*") == "cls")
-        self.assertTrue(all(field.startswith("I ") or "*" in field for field in self.fields[:index]), self.fields)
-        self.assertEqual(int(dynamic_proof.CLASS_WORD), index)
-        self.assertEqual(int(bridge.CLASS_WORD), index)
+        self.assertEqual(int(dynamic_proof.CLASS_FIELD), index)
+        self.assertEqual(int(bridge.CLASS_FIELD), index)
 
     def test_constant_boxes(self):
         self.assertEqual(dynamic_proof.BOX_TAGS, {box: tag for box, (tag, _) in self.boxes.items()})

@@ -157,6 +157,19 @@ jobs:
           VERIFY_BOOTSTRAP_DIR: build/ci-bootstrap
         run: tests/verify.sh "$VERIFY_GROUP"
 
+      - name: Run Python tool calls through both Wasm backends
+        if: matrix.machine == 'x86_64' && (matrix.group == 'native-aot-0' || matrix.group == 'native-0')
+        env:
+          PYSTACHY: build/verify/pystachy2
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y wasi-libc libclang-rt-18-dev-wasm32 lld-18
+          export PYSTACHY_HOME="$PWD"
+          wasm/build.sh runtime-wasm
+          wasm/build.sh emitter
+          node --no-warnings --test wasm/test_codemode.mjs
+          tests/run.sh "$PYSTACHY" "wasm wasm-tir" tests/programs/apps/ouro2_*.py
+
       # These hosted/native controls run sequentially after a short GC JIT group.
       # PRs use the second native JIT worker below; neither placement adds a job.
       - name: Runtime ABI and GC root checker controls

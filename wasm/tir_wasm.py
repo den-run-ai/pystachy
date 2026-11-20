@@ -11,9 +11,9 @@ Its custom section `pystachy.data` holds the data block's size, which the loader
 
 Each typed-IR value is a WebAssembly local of its LLVM type's WebAssembly type (i64, f64, or i32
 for i1, i8, i32 and pointers); a slot whose address only loads and stores read is a local too.
-A function's blocks are laid out in order inside nested blocks and a loop: a branch forward to
-a block is a br to its label, a branch backward sets the next block's index and continues the
-loop, whose br_table dispatches it. A phi's values are assigned on each edge, all read first.
+A function's blocks are laid out in forward order inside nested blocks. Functions with a
+backedge also have a dispatch loop: a backward branch sets the next block's index and
+continues the loop, whose br_table dispatches it. A phi's values are assigned on each edge, all read first.
 
 It lowers what the first version needs (wasm/README.md's cuts): no exception handlers, no
 generators, no function values, no dynamic values or class dispatchers, no collector roots (the
@@ -25,8 +25,8 @@ build wasm/tir_wasm.py, from the repository root (it reads the compiler's RUNTIM
 import struct
 import sys
 
-from src.pystachy_compiler.specs import RTSYM
-from src.pystachy_compiler.utils import RtFn, atomic_dict, atomic_list, lt, rtsym, tslots
+from src.pystachy_compiler.specs import RTSYM, RUNTIME
+from src.pystachy_compiler.utils import atomic_dict, atomic_list, lt, rtll, rtsig, rtsym, tslots
 
 I32 = 0x7F
 I64 = 0x7E
@@ -184,7 +184,7 @@ def operands(text: str, at: int) -> tuple[list[Operand], int]:
         at += 2
 
 
-def fields(text: str, at: int, end: int) -> dict[str, str]:
+def fields(text: str, at: int, end: int, const: Const | None = None) -> dict[str, str]:
     # NAME=VALUE ... (and bare flags, as NAME="1") between at and end
     out: dict[str, str] = {}
     while at < end:
@@ -196,7 +196,9 @@ def fields(text: str, at: int, end: int) -> dict[str, str]:
             k += 1
         name = text[at:k]
         if k < end and text[k] == "=":
-            if text[k + 1] == "[":
+            if name == "items" and const is not None:
+                const.items, at = operands(text, k + 1)
+            elif text[k + 1] == "[":
                 close = k + 1
                 depth = 0
                 while True:
@@ -347,12 +349,7 @@ def declaration(m: Module, line: str) -> None:
     name, at = atom(line, sp + 1, "")
     if keyword == "const":
         c = Const(name, "")
-        if " items=(" in line:
-            k = line.index(" items=(")
-            c.items, _ = operands(line, k + len(" items="))
-            f = fields(line, at, k)
-        else:
-            f = fields(line, at, len(line))
+        f = fields(line, at, len(line), c)
         c.kind = f.get("kind", "")
         c.text = f.get("text", "")
         if "refs" in f:
@@ -509,6 +506,7 @@ class Emitter:
         self.addr: dict[str, int] = {}
         self.relocs: list[int] = []
         self.recursion = False
+        self.dispatch_local = -1
         # per function
         self.fn = Func("")
         self.locals: dict[str, int] = {}
@@ -598,10 +596,7 @@ class Emitter:
         elif v.v == "null":
             self.word(0)
         elif v.t == "float":
-            if v.v.startswith("0x"):
-                self.data.extend(struct.pack("<Q", int(v.v[2:], 16)))
-            else:
-                self.data.extend(struct.pack("<d", float(v.v)))
+            self.data.extend(float_bytes(v.v))
         elif v.v.startswith("@"):
             self.ref(v.v)
             self.data.extend(bytes(4))
@@ -617,15 +612,15 @@ class Emitter:
 
     # -- runtime functions, imported from runtime.wasm by symbol --
     def runtime(self, key: str) -> Import:
-        f = RtFn(key)
-        return self.runtime_sym(f.sym, f.ll)
-
-    def runtime_sym(self, sym: str, ll: list[str]) -> Import:
+        if key not in RUNTIME:
+            raise Refused(f"runtime entry {key}")
+        sym = rtsym(key)
         if sym in SIZED:
             sym = "pys_wasi_" + sym  # (wasm/wasi_stubs.c's, which take LP64's i64 lengths)
         elif not sym.startswith("pys_"):
             raise Refused(f"runtime symbol {sym}")
         if sym not in self.imports:
+            ll = [rtll(t) for t in rtsig(key)]
             params = [wasm_type(t) for t in ll[1:]]
             results: list[int] = [] if ll[0] == "void" else [wasm_type(ll[0])]
             self.imports[sym] = Import(sym, ll, self.types.of(params, results))
@@ -641,7 +636,7 @@ class Emitter:
                         self.recursion = True
                         if i.fields["entry"] == "recursion.enter":
                             self.runtime("recursion.error")
-                    elif i.op == "rt" and rtsym_of(self.rt_key(i)) != "fabs":
+                    elif i.op == "rt" and i.fields.get("entry", "") != "fabs":
                         self.runtime(self.rt_key(i))
                     elif i.op == "alloc.fixed" or i.op == "vtuple.make":
                         self.alloc_import()
@@ -741,17 +736,9 @@ class Emitter:
                 raise Refused(f"symbol {sym} as a value")
             self.data_addr(sym, 0)
             self.op(0xAD)
-        elif v.startswith("bitcast (i64 ") and v.endswith(" to double)") and wt == F64:
-            self.op(0x44)
-            self.code.extend(struct.pack("<q", int(v[len("bitcast (i64 "):len(v) - len(" to double)")])))
         elif wt == F64:
             self.op(0x44)
-            if v.startswith("0x"):
-                self.code.extend(struct.pack("<Q", int(v[2:], 16)))
-            elif is_number(v):
-                self.code.extend(struct.pack("<d", float(v)))
-            else:
-                raise Refused(f"a float operand {v}")
+            self.code.extend(float_bytes(v))
         elif not is_number(v) or "." in v or "e" in v:
             raise Refused(f"an operand {v} as {ll}")
         elif wt == I64:
@@ -790,39 +777,61 @@ class Emitter:
                         self.phis[b.label] = []
                     self.phis[b.label].append(i)
         n = len(fn.blocks)
-        nxt = self.scratch(I32)
-        # loop $top; block $b(n-1) ... block $b0; br_table on nxt
-        self.op(0x03)
-        self.op(VOID)
-        for _ in range(n):
+        # Forward edges branch out of nested blocks. Only a backedge needs a
+        # dispatcher: emit the body first so goto can request one on demand.
+        self.dispatch_local = -1
+        for j in range(n):
+            if j > 0:
+                self.op(0x0B)
+            self.cur = j
+            for i in fn.blocks[j].code:
+                self.inst(i)
+        blocks = self.code
+        self.code = bytearray()
+        if self.dispatch_local >= 0:
+            self.op(0x03)
+            self.op(VOID)
+        for j in range(1, n):
             self.op(0x02)
             self.op(VOID)
-        self.get(nxt)
-        self.op(0x0E)
-        uleb(self.code, n)
-        for j in range(n):
-            uleb(self.code, j)
-        uleb(self.code, 0)
-        for j in range(n):
-            self.op(0x0B)  # (the end of $bj: block j's code follows)
-            self.cur = j
-            self.block(fn.blocks[j], nxt)
-        self.op(0x0B)  # (the loop's end: no block falls out of it)
+        if self.dispatch_local >= 0:
+            self.op(0x02)
+            self.op(VOID)
+            self.get(self.dispatch_local)
+            self.op(0x0E)
+            uleb(self.code, n)
+            for j in range(n):
+                uleb(self.code, j)
+            uleb(self.code, 0)
+            self.op(0x0B)
+        self.code.extend(blocks)
+        if self.dispatch_local >= 0:
+            self.op(0x0B)
         self.op(0x00)
         self.op(0x0B)
         body = bytearray()
-        extra = self.ltypes[self.nparams:]
-        uleb(body, len(extra))
-        for wt in extra:
-            uleb(body, 1)
-            body.append(wt)
+        # One local declaration per consecutive run of the same Wasm type.
+        decls = bytearray()
+        groups = 0
+        j = self.nparams
+        while j < len(self.ltypes):
+            wt = self.ltypes[j]
+            end = j + 1
+            while end < len(self.ltypes) and self.ltypes[end] == wt:
+                end += 1
+            uleb(decls, end - j)
+            decls.append(wt)
+            groups += 1
+            j = end
+        uleb(body, groups)
+        body.extend(decls)
         body.extend(self.code)
         out = bytearray()
         uleb(out, len(body))
         out.extend(body)
         return out
 
-    def goto(self, label: str, nxt: int) -> None:
+    def goto(self, label: str, extra_depth: int) -> None:
         # from block self.cur, to label: its phis' values (all read, then all set), then a br
         if label not in self.bindex:
             raise Refused(f"branch to unknown block {label}")
@@ -837,18 +846,18 @@ class Emitter:
         for j in range(len(phis) - 1, -1, -1):
             self.set(self.locals[phis[j].res[0]])
         n = len(self.fn.blocks)
+        if target == self.cur + 1 and extra_depth == 0:
+            return  # the successor follows immediately after this block
         if target > self.cur:
             self.op(0x0C)
-            uleb(self.code, target - self.cur - 1)
+            uleb(self.code, target - self.cur - 1 + extra_depth)
         else:
+            if self.dispatch_local < 0:
+                self.dispatch_local = self.scratch(I32)
             self.i32c(target)
-            self.set(nxt)
+            self.set(self.dispatch_local)
             self.op(0x0C)
-            uleb(self.code, n - 1 - self.cur)
-
-    def block(self, b: Block, nxt: int) -> None:
-        for i in b.code:
-            self.inst(i, nxt)
+            uleb(self.code, n - 1 - self.cur + extra_depth)
 
     def call_import(self, imp: Import, args: list[Operand]) -> None:
         if len(args) != len(imp.ll) - 1:
@@ -865,7 +874,7 @@ class Emitter:
         # a computed address (an i32 value)
         self.push(a, "ptr")
 
-    def inst(self, i: Inst, nxt: int) -> None:
+    def inst(self, i: Inst) -> None:
         op = i.op
         if op == "phi":
             return
@@ -874,7 +883,7 @@ class Emitter:
             if key.startswith("recursion."):
                 self.recursion_op(i, key)
                 return
-            if rtsym_of(self.rt_key(i)) == "fabs":
+            if key == "fabs":
                 self.push(i.args[0], "double")
                 self.op(0x99)  # (f64.abs)
                 self.result(i, 0, "float")
@@ -951,14 +960,14 @@ class Emitter:
                 self.i32c(0)
             self.op(0x0F)
         elif op == "br":
-            self.goto(i.targets[0], nxt)
+            self.goto(i.targets[0], 0)
         elif op == "cbr":
             self.push(i.args[0], "i1")
             self.op(0x04)
             self.op(VOID)
-            self.cur_if(i.targets[0], nxt)
+            self.goto(i.targets[0], 1)
             self.op(0x05)
-            self.cur_if(i.targets[1], nxt)
+            self.goto(i.targets[1], 1)
             self.op(0x0B)
             self.op(0x00)
         elif op == "check":
@@ -968,9 +977,9 @@ class Emitter:
             self.push(i.args[0], "i1")
             self.op(0x04)
             self.op(VOID)
-            self.cur_if(self.fn.cold[key], nxt)
+            self.goto(self.fn.cold[key], 1)
             self.op(0x0B)
-            self.goto(i.targets[0], nxt)
+            self.goto(i.targets[0], 0)
         elif op == "switch":
             for j in range(1, len(i.args)):
                 self.push(i.args[0], "i64")
@@ -978,9 +987,9 @@ class Emitter:
                 self.op(0x51)
                 self.op(0x04)
                 self.op(VOID)
-                self.cur_if(i.targets[j], nxt)
+                self.goto(i.targets[j], 1)
                 self.op(0x0B)
-            self.goto(i.targets[0], nxt)
+            self.goto(i.targets[0], 0)
         elif op == "raise":
             self.call_import(self.runtime("raise"), i.args)
             self.op(0x00)
@@ -1034,7 +1043,10 @@ class Emitter:
             if i.t == "float":
                 self.op(0xBF)
             elif i.t == "bool" or value_ll(i.t) == "ptr":
-                self.op(0xA7)  # (i32.wrap_i64: an i1 is its low bit, a pointer its low word)
+                self.op(0xA7)  # i32.wrap_i64
+                if i.t == "bool":
+                    self.i32c(1)
+                    self.op(0x71)  # trunc i64 to i1
             self.result(i, 0, i.t)
         elif op == "mem.load" or op == "mach.load":
             self.load(i)
@@ -1044,7 +1056,10 @@ class Emitter:
             self.address(i.args[0])
             self.push(i.args[1], "i64")
             self.op(0xA7)
-            self.i32c(access(lt(i.fields.get("element", "int")))[3])
+            element = i.fields.get("element", "")
+            if element not in ("int", "%ptr", "%byte"):
+                raise Refused(f"mach.addr element {element}")
+            self.i32c(access(lt(element))[3])
             self.op(0x6C)
             self.op(0x6A)
             self.set(self.local(i.res[0], I32))
@@ -1120,11 +1135,6 @@ class Emitter:
             self.mem(0x37, 3, 0)
         else:
             raise Refused(f"operation {op}")
-
-    def cur_if(self, label: str, nxt: int) -> None:
-        # a goto from inside an if, whose own label adds one to the br's depth
-        self.goto(label, nxt)
-        fix_last_br(self.code)
 
     def recursion_op(self, i: Inst, key: str) -> None:
         state = 1  # (global 1: rt.pys_recursion_state's address)
@@ -1493,10 +1503,6 @@ class Emitter:
         return out
 
 
-def rtsym_of(key: str) -> str:
-    return rtsym(key)
-
-
 def is_number(v: str) -> bool:
     # an int or a decimal float's text
     body = v[1:] if v.startswith("-") else v
@@ -1530,18 +1536,16 @@ def wasm_ll(wt: int, ll: str) -> str:
     return ll
 
 
-def fix_last_br(code: bytearray) -> None:
-    # the br that goto() wrote last (0x0C, then its depth's LEB, at the end of code): depth + 1
-    k = len(code) - 1
-    while code[k - 1] & 0x80:
-        k -= 1
-    depth = 0
-    shift = 0
-    for j in range(k, len(code)):
-        depth |= (code[j] & 0x7F) << shift
-        shift += 7
-    del code[k:]
-    uleb(code, depth + 1)
+def float_bytes(value: str) -> bytes:
+    # Finite decimal operands and exact IEEE bits share one representation for
+    # instruction immediates and constant data (including signed infinities).
+    if value.startswith("bitcast (i64 ") and value.endswith(" to double)"):
+        return struct.pack("<q", int(value[len("bitcast (i64 "):len(value) - len(" to double)")]))
+    if value.startswith("0x"):
+        return struct.pack("<Q", int(value[2:], 16))
+    if is_number(value):
+        return struct.pack("<d", float(value))
+    raise Refused(f"a float operand {value}")
 
 
 def int_cmp(o: str, unsigned: bool) -> int:

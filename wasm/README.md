@@ -1,13 +1,12 @@
 # WebAssembly (experimental)
 
 This directory builds Pystachy programs for `wasm32-wasi` (WASI preview 1) and runs them
-under Node's WASI. It is a prototype: the compiler is unchanged, programs reach WebAssembly
-through the LLVM IR it already emits, and the runtime (`runtime.c` and `runtime.py`) is
-compiled once for the same target.
+under Node. Short typed programs can reach WebAssembly directly from finalized typed IR or
+through LLVM. Both routes use the same runtime (`runtime.c` and `runtime.py`).
 
 ## Build and run
 
-The toolchain is the LLVM 18 that the native build uses, plus Ubuntu's `wasi-libc` and
+The toolchain is the LLVM 18 that the native build uses, plus Ubuntu's `lld-18`, `wasi-libc` and
 `libclang-rt-18-dev-wasm32` packages (or `WASI_SYSROOT`), and Node 22 or later.
 
 ```sh
@@ -37,7 +36,8 @@ as a WASI reactor, and `run.mjs` instantiates both. The emitter is written in th
 
 ```sh
 wasm/build.sh runtime-wasm               # build/wasm/runtime.wasm
-wasm/build.sh emitter                    # build/wasm/tir_wasm (optional: else it runs on Python)
+wasm/build.sh emitter                    # native source and module-text compilers
+wasm/build.sh direct prog.py prog.wasm   # direct only, exit 3 on an unsupported operation
 wasm/build.sh tir prog.py prog.wasm      # emitted, or through LLVM where the emitter refuses it
 node --disable-warning=ExperimentalWarning wasm/run.mjs prog.wasm ARGS...
 tests/run.sh ./pystachy wasm-tir tests/programs/apps/ouro2_*.py
@@ -55,8 +55,51 @@ constants), dynamic values, and classes that the runtime compares or prints thro
 program's dispatchers; `wasm/build.sh tir` then builds the program through LLVM, and
 `WASM_TIR_LOG` records which way each program went.
 
-The typed IR module text comes from `tools/inspect_compiler.py` on Python, so `wasm/build.sh
-tir` is not yet fast end to end: the compiler cannot print the module itself.
+The source compiler passes the finalized functions and declarations directly to the emitter.
+`build/wasm/wasm_from_source SOURCE.py OUT.wasm` compiles a file in one process. Use `- -`
+for UTF-8 source on stdin and binary Wasm on stdout. For existing module text, use
+`build/wasm/tir_wasm MODULE.tir OUT.wasm`. The shell build can also run the source compiler
+on Python when the native executable is absent. In fallback mode a named refusal reuses
+the same compilation's LLVM IR. Input errors and failed builds propagate to the caller.
+
+## Calling tools from a Node host
+
+Build the runtime and emitters once with the commands above. A host can then keep its
+compiled runtime module across snippets. Each snippet gets fresh memory, globals and WASI
+state. This example prints `open 2`.
+
+```js
+import { createCodeMode } from "./wasm/codemode.mjs";
+
+const runPython = createCodeMode();
+const tools = new Map([["issues", project => "closed\nopen\nopen"]]);
+const status = await runPython(`
+from codemode import call
+states = call("issues", "pystachy").split("\\n")
+print("open", states.count("open"))
+`, { tools });
+```
+
+`codemode.call(name, payload) -> str` invokes one synchronous JavaScript callback.
+Names, payloads and replies are Unicode strings. An unregistered name, callback exception
+or invalid reply traps the guest (status 134). Compilation errors reject the promise.
+Status 3 on a compiler error identifies a direct-emitter refusal. Use the file-based
+`tir` command when LLVM fallback is wanted.
+
+`createCodeMode({compiler, runtime, cwd})` accepts alternate artifact paths and a source
+import directory. `createRunner(runtime)` in `run.mjs` accepts already compiled program
+bytes, a file path or a `WebAssembly.Module`. Both hosts accept per-call `args` (including
+argv[0]), `env`, `tools` and numeric `stdin`, `stdout`, `stderr` descriptors. Embedded
+runs start with an empty environment and no directory mounts. Stdio defaults to the host
+descriptors. The command-line runner exposes the host filesystem and environment.
+
+Guest execution and callbacks are synchronous on the Node thread. Hosts that require a
+deadline or run untrusted source need a separately confined, terminable process for the
+compiler and runner. The prototype provides neither fuel accounting nor suspend/resume.
+
+Run `node --no-warnings bench/startup/wasm.mjs 11` from the checkout to measure
+source compilation, a fresh guest in a warm host, and source-to-exit latency in warm
+and fresh Node processes. It checks the output of a distinct snippet for every sample.
 
 ## What differs from a native build
 
@@ -67,13 +110,14 @@ tir` is not yet fast end to end: the compiler cannot print the module itself.
   exit status, but `try`, `with` and `except` cannot catch anything.
 - **No processes, signals, users or dynamic loading.** `wasi_stubs.c` defines those calls to
   fail with `ENOSYS`, so the runtime raises the matching `OSError`.
-- **The file system is the host's**, through a preopened `/`. The working directory is Node's,
-  passed as `PWD`.
+- **Filesystem access depends on the runner.** The CLI preopens `/` and passes Node's working
+  directory as `PWD`. The embedded code mode host supplies no directory mounts.
 - **Pointers are 4 bytes.** Compiled code addresses the runtime's structs through their LLVM
   types, which follow the target's layout. Constants that hold an address in a 64-bit slot are
-  rewritten as the address and a zero word (`wasm32_ir.py`). The compiler still reads some
-  runtime records by 8-byte word index (a `DynType`'s class id and flags, class reflection
-  records), so dynamic `Any` dispatch on classes and parts of reflection read the wrong field.
+  rewritten as the address and a zero word (`wasm32_ir.py`). Dynamic class dispatch and
+  reflection read the name, class id and flags at their target-specific offsets in `DynType`
+  and the flags in a class reflection record.
+  A boxed class record pointer occupies an eight-byte payload slot on both targets.
 
 ## Files
 
@@ -81,6 +125,8 @@ tir` is not yet fast end to end: the compiler cannot print the module itself.
 |---|---|
 | `build.sh` | Runtime, `runtime.wasm`, emitter and program builds |
 | `run.mjs` | Node WASI runner, for a command or a module on `runtime.wasm` |
+| `codemode.mjs`, `tools.mjs` | String-source host and synchronous tool imports |
+| `../tools/wasm_from_source.py` | Source to Wasm from finalized compiler records |
 | `tir_wasm.py` | Typed IR module text to a WebAssembly module, without LLVM |
 | `reactor.c` | `runtime.wasm`'s entry: arguments, `pys_init`, the program's code, `pys_finish` |
 | `wasm32_ir.py` | IR rewrite for wasm32 constants, `main` and C library lengths |

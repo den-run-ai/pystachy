@@ -576,7 +576,7 @@ from the budget. Each test runner uses at most four processes within its worker.
 |---|---:|---|
 | Linux bootstrap | 1 | x86-64 compiler/runtime fixed points and verified compiler bundle. |
 | Hosted | 1 | Every corpus case: hosted/native IR, diagnostics and check parity; hosted driver end-to-end strata. |
-| Native AOT | 4 | Disjoint quarters of the **complete** corpus in AOT; the fourth worker also checks scaling's second half. |
+| Native AOT | 4 | Disjoint quarters of the **complete** corpus in AOT; the first verifies both Wasm routes and host tool calls, and the fourth checks scaling's second half. |
 | Native JIT and variants | 2 | Disjoint halves of the **complete** corpus in JIT, then seven sampled configurations split across the same workers; the first then checks native program-cache invalidation and execution, the second runtime ABI, cache and GC controls. |
 | Safety | 2 | Representative and changed cases: optimizer off, Python-free rebuild, UBSan rebuild, JIT/AOT GC stress; generated ASan controls on the second worker. |
 | Opt-in compatibility | 1 | Selected programs with dynamic `Any` and promoting ints, against fresh CPython oracles; shared pytest example APIs and native runner qualification. |
@@ -1112,6 +1112,7 @@ without DCO certification. The existing submission bot sends a one-time,
 non-blocking rights/guidelines/AI acknowledgment reminder on new PRs. The legacy
 DCO workflow always skips; remove it after deleting its required status in
 GitHub branch protection settings.
+
 
 ## Lessons from reviewed changes
 

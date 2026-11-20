@@ -3,6 +3,7 @@ does not lower (wasm/README.md). Node validates the module where it is installed
 import importlib.util
 from pathlib import Path
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
@@ -67,11 +68,69 @@ class TirWasm(unittest.TestCase):
             check = "new WebAssembly.Module(require('fs').readFileSync(process.argv[1]))"
             subprocess.run(["node", "-e", check, str(path)], check=True)
 
+    def test_constant_fields_and_float_slots(self):
+        text = HELLO.replace('text="hello, world"', 'text=" items=(str @s.1)"')
+        text = text.replace("  runtime ovf.smul", '  const @tc.0 kind=tuple items=(float "bitcast (i64 9218868437227405312 to double)", float "bitcast (i64 -4503599627370496 to double)")\n  runtime ovf.smul')
+        module = T.Emitter(T.parse(text))
+        module.lay_out_data()
+        self.assertEqual(module.data[module.addr["@s.2"] + 24:][:17], b" items=(str @s.1)")
+        self.assertEqual(module.data[module.addr["@tc.0"]:][:16], struct.pack("<dd", float("inf"), float("-inf")))
+
+    @unittest.skipUnless(shutil.which("node"), "node runs the module")
+    def test_control_flow_and_packed_bool(self):
+        # Each program records its result in its first (and only) global.
+        preamble = """module complete {
+  global @result type=int
+}
+function @main.init() -> None kind=block {
+entry:
+"""
+        cases = [
+            ("""  %t1 = slot.unpack (*bool 2) : bool
+  cbr (bool %t1) -> yes, no
+yes:
+  mem.store (&int @result, int 1)
+  ret
+no:
+  mem.store (&int @result, int 42)
+  ret
+""", False),
+            ("""  br -> next
+next:
+  %t0 = phi (int 0, int %t1) -> entry, next : int
+  %t1 = scalar.bin add (int %t0, int 1) : int
+  %t2 = num.cmp < (int %t1, int 42) : bool
+  cbr (bool %t2) -> next, done
+done:
+  mem.store (&int @result, int %t1)
+  ret
+""", True),
+        ]
+        script = """
+const fs = require('node:fs');
+const mod = new WebAssembly.Module(fs.readFileSync(process.argv[1]));
+const memory = new WebAssembly.Memory({ initial: 1 });
+const instance = new WebAssembly.Instance(mod, { env: { memory, data: 0 }, rt: { pys_recursion_state: 0 } });
+instance.exports.init();
+console.log(new DataView(memory.buffer).getBigInt64(0, true).toString());
+"""
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "case.wasm"
+            for body, has_backedge in cases:
+                with self.subTest(has_backedge=has_backedge):
+                    emitter = T.Emitter(T.parse(preamble + body + "}"))
+                    path.write_bytes(emitter.module())
+                    self.assertEqual(emitter.dispatch_local >= 0, has_backedge)
+                    result = subprocess.check_output(["node", "-e", script, str(path)], text=True, timeout=10)
+                    self.assertEqual(result.strip(), "42")
+
     def test_refusals_name_what(self):
         cases = {
+            HELLO.replace("entry=write", "entry=unknown"): "runtime entry unknown",
             HELLO.replace("module complete", "module"): "complete",
             HELLO.replace("opts=[allocelide]", "opts=[allocelide] exceptions"): "exceptions",
             HELLO.replace("  ret\n", "  %t9 = gen.start : int\n  ret\n"): "operation gen.start",
+            HELLO.replace("  ret\n", "  %t9 = mach.addr element=dyntype (%ptr null, int 3) : %ptr\n  ret\n"): "mach.addr element dyntype",
             HELLO.replace("L6:\n", "L6: handler=L5\n"): "handler",
         }
         for text, what in cases.items():

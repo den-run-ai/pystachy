@@ -124,6 +124,9 @@ has the full table, startup and memory costs, and reproduction commands.
 
 ## How it works
 
+The experimental [WebAssembly backend](wasm/README.md) can compile typed Python
+snippets directly from typed IR and run them with named tool callbacks in a Node host.
+
 Pystachy compiles the whole program before it runs, including the library modules
 it imports; there is no interpreter fallback. The frontend checks and infers types,
 specializes functions and builds a [typed IR](https://github.com/den-run-ai/pystachy/blob/main/docs/typed-ir.md), where Pystachy's own
