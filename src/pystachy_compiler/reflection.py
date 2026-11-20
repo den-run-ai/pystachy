@@ -1102,7 +1102,7 @@ def gen_refl_supported(self, c: str, what: str) -> None:
     elif c == COMPLEXC:
         why = "a complex number"
     elif self.iterabc_derived(c):
-        why = "a class deriving from collections.abc's Iterator or Iterable, which ABCMeta gives attributes of its own"
+        why = "a class deriving from a class of collections.abc, which ABCMeta gives attributes of its own"
     elif ci.mod in GLUE and self.curfn.mod != ci.mod:
         self.err(f"{what} of a {ci.mod}.{short(c)} object is not supported: its fields are Pystachy's {ci.mod} module's own (its twin's are others), and a program may use only its methods")
     elif opaque_class(ci, self.libdir) and self.curfn.mod != ci.mod:

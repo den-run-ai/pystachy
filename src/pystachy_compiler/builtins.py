@@ -747,6 +747,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         if hy < 0:
             return self.ptr_cmp('!=', hv, Val('null', 'None'))
         return Val("true" if hy == 1 else "false", "bool")
+    if name == "issubclass" and len(args) == 2 and args[0].kind != "kw" and args[1].kind != "kw" and args[0].kind != "starred" and self.cabc_ref(args[1]) != "":
+        return self.cabc_issub(args[0], self.cabc_ref(args[1]), args[1])
     if name == "issubclass" and len(args) == 2 and args[0].kind != "kw" and args[1].kind != "kw" and args[1].kind != "starred" and not self.exc_classes(args[1]) and self.exc_dynamic(args[1]):
         # issubclass(t, c) of an exception class's class object t, c a value holding them
         v = self.expr(args[0], "")

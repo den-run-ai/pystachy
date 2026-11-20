@@ -206,6 +206,10 @@ lib/_pystachy_abc.py keeps the docstrings of CPython 3.13.16's Lib/abc.py and Mo
 whose abstract methods the compiler applies with the message of Objects/typeobject.c; it is
 derived from Python and is used under the same license and copyright notice.
 
+lib/_pystachy_collections_abc.py is adapted from CPython 3.13.16's Lib/_collections_abc.py, whose
+classes' methods and docstrings it keeps; it is derived from Python and is used under the same
+license and copyright notice.
+
 lib/_pystachy_binascii.py ports CPython 3.13.16's Modules/binascii.c and the hex separators of
 Python/pystrhex.c to Pystachy's subset, following their behaviour and messages and keeping the C
 module's docstrings; it is derived from Python and is used under the same license and copyright

@@ -567,7 +567,9 @@ See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
 [single inheritance](typing.md#single-inheritance).
 
 - **Inheritance:** multiple bases outside the [method-only secondary bases](typing.md#method-only-secondary-bases) subset; ordinary hierarchies involving layout-specialized templates,
-  NamedTuple or builtins; generic inheritance outside the [visitor subset](typing.md#explicit-generic-classes)
+  NamedTuple or builtins; a `collections.abc` base beside other bases or a keyword, naming a type
+  variable (`Sequence[T]`), or rebound by its module, and the [mixin forms](../../lib/compatibility.md#collectionsabc)
+  that differ (`reversed()` of a `Mapping`, `pop(k, default=d)`, a class-method `_from_iterable`); generic inheritance outside the [visitor subset](typing.md#explicit-generic-classes)
   (bases whose constructor binds type variables, or a type variable inside a base's type
   argument: `Visitor[list[T]]`); mixed dataclass/ordinary hierarchies; decorated subclasses except
   dataclass-from-dataclass and [identity decorators](typing.md#single-inheritance); changing method kind; incompatible virtual call signatures or

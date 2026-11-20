@@ -125,8 +125,9 @@ The supported `collections.abc` annotations use concrete container types:
 | `Set[T]` | `set[T]`, or an abstract set (below) once the program gives one a frozenset |
 | `Callable[[A, B], R]` | The same `Callable` as `typing` |
 
-These types are invariant. A tuple or string is not a `Sequence`, and `isinstance()`
-tests of these annotations are decided using the compiled type. A `Sequence[T]` parameter's
+These types are invariant: a tuple or string is not a `Sequence` here. `isinstance()` and
+`issubclass()` with `collections.abc`'s classes answer as CPython's do, by the value's type
+([`collections.abc`](../../lib/compatibility.md#collectionsabc)). A `Sequence[T]` parameter's
 empty tuple default, `= ()`, is an empty list where the function only reads the parameter's
 items: it loops over it, tests membership (last in a chain) or truth, or passes it as the
 iterable that `len()`, `sorted()`, `sum()` and similar builtins read, but never indexes, compares,
@@ -1483,6 +1484,14 @@ abstract methods: those decorated with `@abstractmethod` (also under `@property`
 `@classmethod` or `@staticmethod`) until a subclass defines them again. Making an object of a
 class with an abstract method left raises CPython's `TypeError` once the arguments are
 evaluated ([abc](../../lib/compatibility.md#abc)).
+
+A class may derive from one of `collections.abc`'s classes, or typing's name of one, also
+subscripted: `class Lower(MutableMapping[str, int])`, `class Ticks(Iterator[int])`. It defines
+the abstract methods and inherits the others, which CPython's `_collections_abc.py` writes
+(`Mapping.get`, `keys()`, `MutableMapping.update`, `Sequence.index`, `Set`'s operators); the
+subscript types nothing, as the class's own annotations type its methods
+([test](../../tests/programs/classes/abc_mutable_mapping.py),
+[limits](../../lib/compatibility.md#collectionsabc)).
 
 Instance reads of class attributes honor subclass defaults and instance assignments. A class
 attribute may be rebound through its defining class; assigning an inherited attribute through

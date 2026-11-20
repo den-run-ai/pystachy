@@ -62,7 +62,10 @@ from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, LOCALS, LOCALWHY, NESTED, ORDERED, owner, short
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.specs import (
+    ABC_BASES,
+    ABC_TYPING,
     ABCS,
+    CABCS,
     ABSTRACT_DECOS,
     ANNKINDS,
     BOPENS,
@@ -988,6 +991,121 @@ def enum_names(body: Node) -> dict[str, str]:
                 for k in ENUM_NAMES:
                     out[a.s + "." + k] = k
     return out
+
+
+def abc_names(body: Node) -> dict[str, str]:
+    # the names module body binds the classes of collections.abc as (specs.ABC_BASES), each to its
+    # name there: from collections.abc import Mapping, or as another name (also from typing, whose
+    # AbstractSet is Set); import collections.abc, or import collections (collections.abc.Mapping),
+    # import collections.abc as c (c.Mapping), import typing (typing.Mapping)
+    out: dict[str, str] = {}
+    for st in body.kids:
+        for a in st.kids if st.kind == "import" else []:
+            if a.kind != "alias" or len(a.kids) != 2:
+                continue
+            full = a.kids[0].s
+            if st.s == "from":
+                mod = full[: full.rfind(".")] if "." in full else ""
+                nm = full[full.rfind(".") + 1 :]
+                k = ABC_TYPING.get(nm, "") if mod == "typing" else nm if (mod == "collections.abc" or mod == "_collections_abc") and nm in ABC_BASES else ""
+                if k != "":
+                    out[a.s] = k
+                continue
+            prefix = a.s if full == "collections.abc" or full == "_collections_abc" or full == "typing" else a.s + ".abc" if full == "collections" else ""
+            if prefix != "" and full == "typing":
+                for nm in ABC_TYPING:
+                    out[prefix + "." + nm] = ABC_TYPING[nm]
+            elif prefix != "":
+                for nm in ABC_BASES:
+                    out[prefix + "." + nm] = nm
+    return out
+
+
+def abc_imports(body: list[Node], root: str) -> int:
+    # how many top-level imports in body bind name root to a module whose ABCs abc_names reads (a
+    # name that only they bind names them: import collections and import collections.abc bind the
+    # one package), or to a name of collections.abc or typing, which it binds once
+    n = 0
+    for st in body:
+        for a in st.kids if st.kind == "import" else []:
+            if a.kind == "alias" and len(a.kids) == 2 and a.s == root:
+                full = a.kids[0].s
+                mod = full[: full.rfind(".")] if st.s == "from" and "." in full else full
+                n += 1 if mod == "collections" or mod == "collections.abc" or mod == "_collections_abc" or mod == "typing" else 0
+    return n
+
+
+def abc_inert(e: Node, bound: dict[str, bool], rebound: dict[str, bool]) -> bool:
+    # (abc_classes) can a base's subscript e be left out where the class statement runs, as reading
+    # it can neither raise nor run the program's code: names that the module's statements before
+    # bind (not deleted or bound by a function), builtins, strings (forward references), None and
+    # ..., attributes of typing or collections.abc, and subscripts, tuples and | of those; not a
+    # call, nor another module's attribute, which a circular import may not have bound yet
+    k = e.kind
+    if k == "name":
+        return (e.s in bound or e.s in PYBUILTINS) and e.s not in rebound
+    if k == "str" or k == "None" or k == "Ellipsis":
+        return True
+    if k == "attr":
+        d = dotted(e)
+        return d.startswith("typing.") or d.startswith("collections.abc.")
+    if k == "index" or k == "tuple" or (k == "binop" and e.s == "|"):
+        for x in e.kids:
+            if not abc_inert(x, bound, rebound):
+                return False
+        return True
+    return False
+
+
+def abc_classes(n: Node, names: dict[str, str]) -> None:
+    # each class statement of module body n whose one base names a class of collections.abc (names:
+    # abc_names), subscripted or not (Mapping[str, int]): it derives from lib's class of that name
+    # (specs.CABCS), whose methods it inherits as CPython's subclasses do; a from-import that binds
+    # the compiler's name _pys_abc_NAME to it comes before the first such class. The subscript's
+    # types are no class's: the methods' own annotations type them, as CPython ignores them. A
+    # name that the module rebinds, or deletes, keeps the base it names (an error)
+    if len(names) == 0:
+        return
+    rebound: dict[str, bool] = {}
+    globals_deep(n.kids, rebound)
+    deleted(n.kids, rebound)
+    # (the module's type variables: a subscript that names one makes a generic class, which keeps
+    # its base, an error)
+    tvars: list[str] = []
+    for st in n.kids:
+        if st.kind == "assign" and len(st.kids) == 2 and st.kids[0].kind == "name" and st.kids[1].kind == "call":
+            f = dotted(st.kids[1].kids[0])
+            if f.endswith("TypeVar") or f.endswith("ParamSpec") or f.endswith("TypeVarTuple"):
+                tvars.append(st.kids[0].s)
+    used: list[str] = []
+    out: list[Node] = []
+    at = -1
+    bound: dict[str, bool] = {}  # (the names the module's statements before bind: a subscript may read them)
+    for st in n.kids:
+        bases = [i for i in range(1, len(st.kids)) if st.kind == "subclass" and st.kids[i].kind != "kw" and st.kids[i].kind != "typeparams"]
+        if len(bases) == 1 and len(bases) == len(st.kids) - 1:
+            b = st.kids[bases[0]]
+            d = dotted(b.kids[0] if b.kind == "index" and len(b.kids) == 2 else b)
+            root = d.split(".")[0]
+            k = names.get(d, "")
+            generic = b.kind == "index" and len(b.kids) == 2 and (mentions(b.kids[1], tvars) or not abc_inert(b.kids[1], bound, rebound))
+            if k != "" and not generic and root not in rebound and bind_count(n.kids, root) == 2 * abc_imports(n.kids, root):
+                st.kids[bases[0]] = mk("name", "_pys_abc_" + k, b.line, [])
+                if k not in used:
+                    used.append(k)
+                if at < 0:
+                    at = len(out)
+        out.append(st)
+        for x in st.kids if st.kind == "import" else []:
+            bound[x.s] = True
+        if st.kind == "def" or st.kind == "class" or st.kind == "subclass":
+            bound[st.s] = True
+        for t in st.kids[:-1] if st.kind == "assign" else []:
+            if t.kind == "name":
+                bound[t.s] = True
+    if len(used) > 0:
+        imp = Parser(Lexer(f"from {CABCS} import " + ", ".join([f"{k} as _pys_abc_{k}" for k in used]) + "\n", out[at].line).file()).module().kids[0]
+        n.kids = out[:at] + [imp] + out[at:]
 
 
 def dotted(n: Node) -> str:
@@ -2648,6 +2766,7 @@ class Loader:
         cm_methods(m.body, cm_names(m.body))
         functools_classes(m.body, functools_names(m.body))
         enum_classes(m.body, enum_names(m.body))
+        abc_classes(m.body, abc_names(m.body))
         self.argparse(m.body)
         self.ctypes(m.body)
         self.prescan(m)
@@ -3049,6 +3168,8 @@ class Loader:
         cm_methods(self.parsed[key], cm_names(self.parsed[key]))
         functools_classes(self.parsed[key], functools_names(self.parsed[key]))
         enum_classes(self.parsed[key], enum_names(self.parsed[key]))
+        if not self.in_lib(path):
+            abc_classes(self.parsed[key], abc_names(self.parsed[key]))
         self.argparse(self.parsed[key])
         self.ctypes(self.parsed[key])
         return self.parsed[key]
