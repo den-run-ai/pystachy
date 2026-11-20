@@ -1288,7 +1288,10 @@ its `def` line; module code's prologue takes its block's line 1, which the compi
 the main program's file even for an imported module. A pass gives an op it creates the line of
 the op it derives from: listguard's tests take their loop's line, a depth restoration its
 `return`'s and exception lowering's branch its `raise`'s. With `PYSTACHY_IRCHECK=1`, the
-verifier rejects an op without a line in any function the compiler built (`IFn.located`). IR
+verifier rejects an op without a line in any function the compiler built (`IFn.located`), but
+in the raise block that a function's checks of one message share: with line tables, that block
+has line 0 where the checks are on several lines, as LLVM numbers code merged from several
+lines. IR
 written as text may leave lines unknown (0), as MLIR's verifier accepts unknown locations.
 Only LLVM line tables (`PYSTACHY_DEBUG_LINES=1`) print them.
 
