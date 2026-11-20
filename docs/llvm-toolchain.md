@@ -109,7 +109,8 @@ bytes.
 The archive needs C and C++ libraries at least as new as the build host's; the two
 `LLVM_TOOLCHAIN_GLIB*` settings make the build fail if it needs newer ones than
 `manylinux_2_28` promises. The script's header lists the other settings. On AArch64, use
-the `manylinux_2_28_aarch64` image; that build is untested.
+the `manylinux_2_28_aarch64` image: the workflow builds x86-64 alone, and [measured](#measured)
+has the one AArch64 build.
 
 ## Check
 
@@ -146,7 +147,7 @@ comes from one `build` of the recipe at commit `7fde2da2`; the `MinSizeRel` one
 each figure is the median of three interleaved rounds. The bootstrap and corpus times are
 single runs with four workers on Ubuntu 24.04.
 
-The workflow ran five times on GitHub's `ubuntu-24.04` runners on 20 November 2026; the fifth
+The workflow ran six times on GitHub's `ubuntu-24.04` runners on 20 November 2026; the fifth
 was a second attempt of the fourth, at the same commit. Those runners compile 1.4 to 2 times
 slower than the host above. In the first two runs there was no `generators` job, and every
 slice compiled the table generators itself:
@@ -158,6 +159,7 @@ slice compiled the table generators itself:
 | `generators`, 6 slices, `package` | 7.3 to 9.3 min | 53.7 min | 14.6 min | 20.4 min |
 | `generators`, 8 slices, `package` | 5.8 to 8.0 min | 60.6 min | 13.5 min | 19.4 min |
 | `generators`, `package`: objects cached | skipped | 3.5 min | 3.6 min | 10.0 min |
+| `generators`, 6 slices, `package`: cache written | 7.1 to 8.2 min, and one of 10.7 | 55.0 min | 16.9 min | 22.5 min |
 
 A whole run adds `bootstrap`, 5.8 to 6.3 minutes, and the wait for runners while the pull
 request's own checks ran: up to 3.6 minutes in the first run. `generators` took 2.8 minutes,
@@ -171,15 +173,25 @@ sources and configuring, and two to three minutes on the generators: 46% of the 
 generators' objects, a slice reached its own 16 to 21 seconds into the build. Eight such
 slices brought the archive 1.1 minutes sooner than six, for 13% more runner time; that is
 within the spread of the runners, on which equal slices of one run took 7.3 to 9.3 minutes,
-so the workflow compiles six. The six-slice run was before the cache: six slices and the
-cache have not run together. By these times one runner would need about 45 minutes for the
-whole build, an estimate: no job may run that long.
+so the workflow compiles six. The sixth run was the workflow as it is, six slices that end by
+writing the cache, on a branch that held none; one slow slice set its 16.9 minutes. By these
+times one runner would need about 45 minutes for the whole build, an estimate: no job may run
+that long.
 
 `package` found 2,360 objects compiled and assembled the other four. The first two runs, and
 eight slices built in the same image on the host above, gave one archive, byte for byte:
 SHA-256 `364462a2…94aafc98`. The third run and six slices on that host gave another,
 `8c964bce…799ca32c`, and the fifth run and those six slices a third, `9d71e217…528b61c1`. The
-files of all three are equal except `share/BUILD.txt`, which records the recipe's hash.
+files of all three are equal except `share/BUILD.txt`, which records the recipe's hash. The
+recipe then added `share/licenses/LLVM-THIRD-PARTY.TXT`: the sixth run, which compiled every
+object again, and that host's objects of before gave a fourth archive, `aa7aeba2…86e18d85`,
+whose other files are the third's.
+
+The sixth run's jobs also ran once on `ubuntu-24.04-arm` runners in the
+`manylinux_2_28_aarch64` image, with the recipe unchanged. The slices took 7.0 to 9.7 minutes,
+and the AArch64 archive, 23.0 MiB with SHA-256 `bf002c93…dc6fd087`, was ready after 15.3
+minutes. It passed the check, and with it `make` reached both fixed points and two corpus
+areas passed in JIT and AOT. That is one build: nothing has reproduced its bytes.
 
 With each of the first three archives selected by `PYSTACHY_LLVM` on Ubuntu 24.04, `make`
 reached the compiler's and the runtime's fixed points and `make test` passed all 5,395 cases
