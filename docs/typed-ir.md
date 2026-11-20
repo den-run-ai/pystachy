@@ -1002,8 +1002,9 @@ decides a fixed tuple's slots while its function is printed.
 - `tools/typed_ir_ops.py --check` fails when the [operation reference](#operation-reference)
   differs from `OPS`.
 - `tools/typed_ir_text.py verify tools/fixtures/typed_ir/invalid.tir` holds the verifier to
-  the error each function of the file expects, and `classes.tir` holds the verifier's class
-  view to the classes its module declares (see [text form](#text-form)).
+  the error each function of the file expects, `classes.tir` holds the verifier's class view
+  to the classes its module declares, and `fields.tir` its `field.addr` rule to their structs
+  (see [text form](#text-form)).
 - `make check-runtime` checks runtime signature/effect declarations.
 - `make irsame` and `make irsame-py` compare a refactor's IR, diagnostics and exit status with a
   reference compiler. Behavior changes need their own explicit tests, not a byte-identical promise.
@@ -1055,9 +1056,9 @@ layouts:
 
 ```text
 module {
-  class Both base=Storage roles=[Reader] tagged
-  class Reader overlaps=[Storage] tagged
-  class Storage overlaps=[Reader] tagged
+  class Both base=Storage roles=[Reader] tagged fields=[" class":int value:int " Storage.0":bool " Storage.box.0":dyn] flags=[value:2] boxes=[value:3]
+  class Reader overlaps=[Storage] tagged fields=[" class":int]
+  class Storage overlaps=[Reader] tagged fields=[" class":int value:int] flags=[value:2] boxes=[value:3]
   dyntype @dt.Both kind=8 cls=1 flags=256 base=@dt.Storage role=@dt.Reader payload=Both
   layout Both descriptor=@dt.Both base=@dt.Storage role=@dt.Reader number=1 members=[int int bool dyn] llvm=[i64 i64 i1 ptr]
 }
@@ -1067,10 +1068,17 @@ function @m.Storage.__init__.1(self: Both, value: int) -> None effects=wO {
 
 A class gives its single base, a class of the program or a builtin exception class; its
 fieldless secondary bases (`roles`); the unrelated classes it shares a subclass with
-(`overlaps`); and whether its objects begin with a class tag. A `dyntype` is a DynType that the
-program emits for dynamic values, with its kind, class number, flags, base and role DynTypes
-and the static type of its boxes' payload, and a `layout` is the struct of a class that has
-one. A field that holds its default (`""`, `[]`, 0 or false) is omitted.
+(`overlaps`); whether its objects begin with a class tag; and its struct, as `field.addr`
+indexes it. `fields` lists its fields in order with their types, and `flags` and `boxes` give
+the index of a field's "is assigned" flag and identity box. A hidden field's name begins with
+a space, so it is quoted. A class's own flags take the indexes after its fields, and its own
+boxes those after its flags. A derived class's struct begins with its base's, so the base's
+flags and boxes are hidden fields of it: `Both` keeps the flag and identity box of `value` at
+2 and 3, where `Storage`'s struct has them, as its fields `" Storage.0"` and
+`" Storage.box.0"`. A `dyntype` is a DynType that the program emits for dynamic values, with
+its kind, class number, flags, base and role DynTypes and the static type of its boxes'
+payload, and a `layout` is the struct of a class that has one. A field that holds its default
+(`""`, `[]`, `{}`, 0 or false) is omitted.
 
 Printing and parsing are inverse: a printed module or function parses to the record it was
 printed from, and a text that is not in the printed form is rejected. A function record holds
@@ -1080,9 +1088,9 @@ declarations and its function records. `to_ifn` builds the compiler's own `IFn` 
 function record, so a test writes IR as text, runs the verifier or one pass and compares the
 printed result: [`tools/test_typed_ir_text.py`](../tools/test_typed_ir_text.py) runs `listget`
 on [a fixture](../tools/fixtures/typed_ir/score_samples.listget.before.tir) that way, and
-checks that the fixture is what the compiler emits. The text holds no class fields, globals or
-runtime declarations, so a function that needs those is tested from source. It is a test and
-review form of the hosted compiler, not an interchange format.
+checks that the fixture is what the compiler emits. The text holds no globals or runtime
+declarations, so a function that needs those is tested from source. It is a test and review
+form of the hosted compiler, not an interchange format.
 
 `verify` runs the verifier on each function of a text file, as MLIR's `-verify-diagnostics`
 does. A comment line `; expected-error {{MESSAGE}}` says that the function's verification
@@ -1095,8 +1103,11 @@ module's functions are verified with its classes, which the class view of an ope
 relates by their bases, secondary bases and overlaps; a function list declares none.
 [`classes.tir`](../tools/fixtures/typed_ir/classes.tir) reads a class as its base, as a
 derived class, as a secondary base, as a class it overlaps and as `object`, which verify, and
-as unrelated classes, which do not. A module declares no fields, so a `field.addr` does not
-verify.
+as unrelated classes, which do not. A `field.addr` addresses a member of its class's declared
+struct, at the member's type: [`fields.tir`](../tools/fixtures/typed_ir/fields.tir) addresses
+fields, flags and identity boxes, a base's among them, which verify, and indexes past a
+class's struct and members at other types, which do not. A struct that no class could have,
+such as a field declared twice or a flag past the class's members, is an error of the text.
 
 The optional [Lean shape checker](../tools/lean_boundary/SHAPE.md) reads the same records
 and the operation table. For the functions it accepts it proves the table's counts and
