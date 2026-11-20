@@ -46,7 +46,7 @@ loop kind=range mode="" head=L5 body=L8 step=L9 exit=L8 tests=[] indices=[%t3 "a
 """
 # WRITTEN with locations on an instruction that ends in each part a line may end in: a type, a
 # label, an operand list, a field and the operation's name; the slot's line is in file 2
-LOCATED = (WRITTEN.replace("  %left.1 = slot left : int\n", "  %left.1 = slot left : int loc(2:1)\n")
+LOCATED = (WRITTEN.replace("  %left.1 = slot name=left : int\n", "  %left.1 = slot name=left : int loc(2:1)\n")
            .replace(' -> L5\nL5: handler=L9\n', ' -> L5 loc(7)\nL5: handler=L9\n')
            .replace("(tuple[int,str] %stk.2) : %slot\n", "(tuple[int,str] %stk.2) : %slot loc(8)\n")
            .replace("  ret.none\n", "  ret.none loc(12)\n")
@@ -257,7 +257,7 @@ class TextTests(unittest.TestCase):
         for op in specs.OPS:
             names = text.named_fields(op)
             ins = {"op": op, "type": "", "text": "", "immediate": 0, "descriptor": "", "results": [],
-                   "operands": [{"value": "%a0", "type": "int"}], "targets": []}
+                   "operands": [{"value": "%a0", "type": "int"}], "targets": [], "line": 0}
             for field, key in text.FIELD_KEYS:
                 ins[key] = (3 if field == "k" else "v." + field) if field in names else ins[key]
             with self.subTest(op=op):
@@ -455,7 +455,8 @@ class CompilerTests(unittest.TestCase):
             subprocess.run([sys.executable, str(ROOT / "tools/inspect_compiler.py"), str(program), "--output", str(output),
                             "--typed-after-only", "--stop-after", "finalize"], check=True, capture_output=True, timeout=120)
             snapshot = json.loads((output / "typed-after.json").read_text())
-            printed = subprocess.run(tool + ["print", str(output / "typed-after.json")],
+            # (with its locations: printed without them, every op's line reads back as 0)
+            printed = subprocess.run(tool + ["print", str(output / "typed-after.json"), "--locations"],
                                      check=True, capture_output=True, text=True, timeout=60).stdout
             module = text.parse_module(printed)
             self.assertEqual(module, text.module_from_snapshot(snapshot))
@@ -484,7 +485,7 @@ class CompilerTests(unittest.TestCase):
             addressing = {r["symbol"] for r in module["functions"] for b in r["blocks"] for i in b["operations"] if i["op"] == "field.addr"}
             self.assertGreaterEqual(len(addressing - failing), 3)
             # (its functions print as they do alone, after its declarations)
-            alone = subprocess.run(tool + ["print", str(output / "typed-after.json"), "--function", "@"],
+            alone = subprocess.run(tool + ["print", str(output / "typed-after.json"), "--function", "@", "--locations"],
                                    check=True, capture_output=True, text=True, timeout=60).stdout
             self.assertTrue(printed.endswith("}\n\n" + alone))
             listing = Path(directory) / "module.tir"

@@ -332,6 +332,9 @@ def read_instruction(text):
         require(second is None or int(second) < per, f"a location's line must be below {per}")
         require(text[located.start() + 1:] == location_text(line), f"a location must be written {location_text(line)}")
         text = text[:located.start()]
+    else:
+        # (a location written otherwise: no bare atom holds a parenthesis, so it is no field)
+        require(re.search(r" loc\([^\"]*\)$", text) is None, "unexpected text")
     at = 0
     results = []
     names = []
