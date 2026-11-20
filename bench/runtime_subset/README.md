@@ -233,3 +233,59 @@ the items:
 
 `str.join` and its slice form are therefore as they were before, and the three join cases
 of the first table compare the same code.
+
+## Numeric helpers
+
+`math.hypot`, `math.dist` and `math.fma`, `pow(a, b, m)`, `round(x, n)` of an int and `sum()`
+of ints from an int start moved from `runtime.c` to `runtime.py`, with the primitives they
+need: the high half of a 128-bit product and the remainder of a 128-bit dividend, a float's
+bits, and `fma`, the square root and division as IEEE 754 defines them. Their workload is
+[`numeric.py`](numeric.py), which `compare.py` selects for these cases:
+
+| Case | Default iterations | Work measured |
+|---|---:|---|
+| `hypot` | 60,000,000 | `math.hypot(x, y)` of two of 1,024 floats |
+| `hypot-3` | 30,000,000 | `math.hypot(x, y, z)`, whose coordinates the program first puts in a list |
+| `dist-3` | 40,000,000 | `math.dist(p, q)` of two of 64 lists of 3 floats |
+| `dist-64` | 4,000,000 | `math.dist(p, q)` of two of 16 lists of 64 floats |
+| `fma` | 150,000,000 | `math.fma(x, y, z)` of three of 1,024 floats |
+| `powmod` | 3,000,000 | `pow(a, b, m)` of 63 bases below 2**63, 7 exponents (two negative) and 4 moduli of 61 to 63 bits |
+| `powmod-31` | 3,500,000 | the same with 4 moduli of 30 and 31 bits |
+| `round-int` | 70,000,000 | `round(x, n)` of one of 4,096 ints, `n` from -1 to -9 |
+| `ints-sum` | 900,000 | `sum(xs, start)` of 4,096 ints from an int start |
+
+```sh
+taskset -c "$BENCH_CPU" python3.13 bench/runtime_subset/compare.py \
+  --before "$BENCH_BASELINE" --after . --pairs 7 \
+  --cases hypot hypot-3 dist-3 dist-64 fma powmod powmod-31 round-int ints-sum \
+  --json /tmp/numeric.json
+```
+
+The [recorded report](numeric.json) compares
+`d526f148f3d5c61a229b6f736be2e8fa0956e1cc` with
+`a76bd5ae2d5e6450440ac552e1e3e53ba0807d66`, both from clean checkouts with freshly
+bootstrapped compilers, on CPython 3.13.16 and LLVM 18.1.3. The host is again a shared
+four-CPU Linux x86-64 virtual machine (an Intel Xeon whose model the host does not name);
+the run was pinned to CPU 2 and the load average was 0.72 when it began.
+
+| Workload | AOT after / before | JIT after / before | AOT ns per iteration, before to after |
+|---|---:|---:|---:|
+| `hypot` | 0.709 | 0.728 | 19.9 to 14.1 |
+| `hypot-3` | 0.477 | 0.566 | 57.3 to 27.2 |
+| `dist-3` | 0.850 | 0.854 | 24.3 to 20.7 |
+| `dist-64` | 0.995 | 1.041 | 222 to 224 |
+| `fma` | 0.767 | 1.006 | 7.42 to 5.70 |
+| `powmod` | 0.821 | 0.816 | 321 to 264 |
+| `powmod-31` | 0.874 | 0.857 | 277 to 243 |
+| `round-int` | 0.804 | 0.766 | 14.9 to 12.0 |
+| `ints-sum` | 0.994 | 1.013 | 1,139 to 1,086 |
+
+Ratios are medians of 7 alternating pairs, and the times are medians of the kernel
+timer divided by the iterations, loop included. Single pairs range from 0.466 to 1.057.
+`hypot` and `dist` no longer copy their coordinates: they read them once for the largest
+and once for the sum. `dist-64` therefore makes no collection and peaks at 1.1 MiB of
+managed heap, where `runtime.c`'s copy of more than 16 coordinates gave 61 collections and
+a 33.1 MiB peak. In AOT its second reading costs what the copy did; under the JIT it is
+4% slower (215 to 222 ns per iteration). The 64 collections of `hypot-3` are those of
+the list the program makes for each call, in both versions; the other cases make none.
+The AOT executable is 149,680 bytes before and 150,016 after.
