@@ -3697,13 +3697,7 @@ List *pys_list_slice(List *l, I lo, I hi) {
   if (l->ids && opt_in()) { pys_list_identity(r, l->ids[0]); memcpy(r->ids + 1, l->ids + lo + 1, (hi - lo) * 8); }
   memcpy(r->a, l->a + lo, (hi - lo) * 8); r->len = hi - lo; return r;
 }
-Str *pys_str_join_slice(Str *sep, List *l, I lo, I hi) {
-  span(&lo, &hi, l->len);
-  /* join only reads this view and calls no user code. Its interior pointer keeps the
-     scanned item storage alive across the result allocation (see the collector). */
-  List view = {.len = hi - lo, .cap = hi - lo, .a = lo < hi ? l->a + lo : NULL};
-  return pys_str_join(sep, &view);
-}
+Str *pys_str_join_slice(Str *sep, List *l, I lo, I hi);   /* sep.join(l[lo:hi]): runtime.py's, which reads l's items in place */
 List *pys_list_copy(List *l) { return pys_list_slice(l, NONE, NONE); }
 void pys_list_clear(List *l) { memset(l->a, 0, l->len * 8); if (l->ids && opt_in()) memset(l->ids + 1, 0, l->len * 8); l->len = 0; empty(l); }
 List *pys_list_slice_step(List *l, I lo, I hi, I st) {
@@ -4329,12 +4323,13 @@ Dyn *pys_list_minmax_identity(List *l, Str *d, I max, I kind) {
   }
   return (Dyn *)l->ids[at + 1];
 }
-I pys_any(List *l) { for (I i = 0; i < l->len; i++) if (l->a[i]) return 1; return 0; }
-I pys_all(List *l) { for (I i = 0; i < l->len; i++) if (!l->a[i]) return 0; return 1; }
+/* any(), all() and the float sums of a list are runtime.py's */
+I pys_any(List *l);
+I pys_all(List *l);
 I pys_sum_int(List *l, I s) { list_narrow(l); for (I i = 0; i < l->len; i++) if (__builtin_add_overflow(s, l->a[i], &s)) pys_fail(OVF); return s; }
 double pys_sum_float(List *l, double s);
 double pys_sum_float_int(List *l, I s);
-double pys_sum_int_float(List *l, double s) { for (I i = 0; i < l->len; i++) s += (double)l->a[i]; return s; }   /* ints: not compensated */
+double pys_sum_int_float(List *l, double s);
 double pys_m_dist(List *p, List *q) {   /* math.dist: hypot's vnorm of the differences of two lists of floats */
   if (p->len != q->len) pys_fail("ValueError: both points must have the same number of dimensions");
   double b[16], *v = p->len > 16 ? pys_alloc_atomic(p->len * 8) : b, max = 0.0; int nan = 0;
@@ -8316,13 +8311,7 @@ double pys_getctime(Str *p) { return stat_secs(stat1(p).st_ctimespec); }
 double pys_getmtime(Str *p) { return stat_secs(stat1(p).st_mtim); }
 double pys_getctime(Str *p) { return stat_secs(stat1(p).st_ctim); }
 #endif
-Str *pys_path_join(Str *a, Str *b) {     /* os.path.join(a, b), as posixpath.join steps through its parts */
-  if ((b->len && b->s[0] == '/') || !a->len) return b;
-  if (a->s[a->len - 1] == '/') return pys_str_add(a, b);
-  Str *s = pys_alloc_atomic(sizeof(Str) + a->len + b->len + 2);
-  s->len = a->len + 1 + b->len; memcpy(s->s, a->s, a->len); s->s[a->len] = '/'; memcpy(s->s + a->len + 1, b->s, b->len);
-  return s;
-}
+Str *pys_path_join(Str *a, Str *b);     /* os.path.join(a, b): runtime.py's, with the other functions of os.path */
 /* POSIX environment text uses UTF-8 with surrogateescape, as CPython's os.environ.
    Keep the common ASCII paths allocation-free until a value is returned. These
    codec functions are implemented in runtime.py and share the ordinary codec checks. */

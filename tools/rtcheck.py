@@ -120,6 +120,14 @@ def fuzz_str():
         same("expandtabs", outcome(rt.pys_str_expandtabs, s, ts), outcome(s.expandtabs, ts), (s, ts))
         parts = [text(n=4) for _ in range(R.randrange(4))]
         same("join", outcome(rt.pys_str_join, n, parts), outcome(n.join, parts), (n, parts))
+        # the join of a slice, whose bounds are a slice's (-2**63: omitted); an item that is None
+        # is counted from the slice's first
+        items = [text(n=4) for _ in range(R.randrange(7))]
+        if items and R.randrange(8) == 0:
+            items[R.randrange(len(items))] = None
+        lo, hi = [R.choice([None, None, R.randrange(-9, 10), R.randrange(-9, 10), -2**63 + 1, 2**63 - 1]) for _ in range(2)]
+        same("join-slice", outcome(rt.pys_str_join_slice, n, items, -2**63 if lo is None else lo, -2**63 if hi is None else hi),
+             outcome(lambda: n.join(items[lo:hi])), (n, items, lo, hi))
         # widths count characters: compare on UTF-8 text through its bytes
         w = text(WIDE, 6)
         width = R.randrange(-2, 12)
@@ -315,6 +323,10 @@ def fuzz_math():
         same("sum-float", bits(outcome(rt.pys_sum_float, xs, start)), bits(outcome(sum, xs, start)), (xs, start))
         same("sum-int-start", bits(outcome(rt.pys_sum_float_int, xs, a)),
              bits(outcome(lambda: float(sum(xs, a)))), (xs, a))
+        ns = [R.choice([0, 0, 0, 1, -1, a, c, num()]) for _ in range(R.randrange(9))]
+        same("any", outcome(rt.pys_any, ns), ("ok", int(any(ns))), (ns,))
+        same("all", outcome(rt.pys_all, ns), ("ok", int(all(ns))), (ns,))
+        same("sum-ints-float", bits(outcome(rt.pys_sum_int_float, ns, start)), bits(outcome(sum, ns, start)), (ns, start))
         for name, mine, ref in [("degrees", rt.pys_m_degrees, math.degrees), ("radians", rt.pys_m_radians, math.radians)]:
             same(name, bits(outcome(mine, start)), bits(outcome(ref, start)), (start,))
         other, rel, ab = real(), real(), real()
@@ -648,9 +660,8 @@ def fuzz_ascii():
 def fuzz_path():
     # os.path's string functions against posixpath's, which os.path is on POSIX: paths of
     # slashes, dots, names and "~", also of non-ASCII characters. abspath() and relpath() take
-    # the working directory and join() from CPython here, as they take runtime.c's when compiled
+    # the working directory from CPython here, as they take runtime.c's when compiled
     rt.pys_getcwd = lambda: b(os.getcwd())
-    rt.pys_path_join = lambda x, y: b(posixpath.join(u(x), u(y)))
     parts = ["/", "/", ".", ".", "..", "a", "b.c", "é", "€", "𝄞", "~", " ", "//", "x.y.z", ".h"]
 
     def path():
@@ -669,6 +680,7 @@ def fuzz_path():
         for name in "basename dirname split splitext isabs normpath abspath".split():
             same("path." + name, outcome(getattr(rt, "pys_path_" + name), b(p)), want(getattr(posixpath, name), p), (p,))
         same("path.relpath", outcome(rt.pys_path_relpath, b(p), b(q)), want(posixpath.relpath, p, q), (p, q))
+        same("path.join", outcome(rt.pys_path_join, b(p), b(q)), want(posixpath.join, p, q), (p, q))
         m = [path() for _ in range(R.randrange(4))] + [p + q for _ in range(R.randrange(2))]
         same("path.commonprefix", outcome(rt.pys_path_commonprefix, [b(x) for x in m]), want(posixpath.commonprefix, m), (m,))
 

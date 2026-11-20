@@ -15,7 +15,7 @@ used by `runtime.py`. Ordinary programs cannot use that interface.
 
 | Part | Responsibilities |
 |---|---|
-| `runtime.py` | String methods and ASCII escaping, `str(int)` and `int(str, base)`, scalar and integer `math`, float `sum`/`fsum`/`prod`, checked integer power, range arithmetic, dict hashing and format-spec parsing. |
+| `runtime.py` | String methods and ASCII escaping, `os.path`'s string functions, `str(int)` and `int(str, base)`, scalar and integer `math`, `any`/`all`, float `sum`/`fsum`/`prod`, checked integer power, range arithmetic, dict hashing and format-spec parsing. |
 | `runtime.c` | Collector, object and container memory layouts, I/O, signals, native library calls and float conversion. |
 | [The compiler](../src/README.md) | Runtime compilation, checked primitives, runtime signatures and linking. |
 

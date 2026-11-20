@@ -193,6 +193,32 @@ def pys_m_perm(n: int, k: int) -> int:
     return r
 
 
+# ---------- any, all and a float sum of ints ----------
+# A list of ints or bools holds each item in an 8-byte slot. From a float start, sum() adds each
+# int as a float, without compensation. (The int sum stays in runtime.c, which first refuses a
+# list that holds an int past 64 bits.)
+
+
+def pys_any(xs: list[int]) -> int:
+    for x in xs:
+        if x != 0:
+            return 1
+    return 0
+
+
+def pys_all(xs: list[int]) -> int:
+    for x in xs:
+        if x == 0:
+            return 0
+    return 1
+
+
+def pys_sum_int_float(xs: list[int], s: float) -> float:
+    for x in xs:
+        s += float(x)
+    return s
+
+
 # ---------- sum of floats ----------
 # CPython's compensated (Neumaier) sum, preserving the C implementation's
 # arithmetic order. An integer start adds its first float without compensation.
@@ -1795,34 +1821,53 @@ def pys_str_expandtabs(s: str, size: int) -> str:
     return _rt.str_done(r)
 
 
-def pys_str_join(sep: str, l: list[str]) -> str:
-    # iterating (no index checks), and a separator of one byte stored as a byte
+def join_items(sep: str, l: list[str], lo: int, hi: int) -> str:
+    # sep.join(l[lo:hi]) for 0 <= lo <= hi <= len(l), with a separator of one byte stored as a byte
     m = len(sep)
     n = 0
-    i = 0
-    for x in l:
+    for i in range(lo, hi):
+        x = l[i]
         if _rt.null(x):
             # an item of a list[str | None]
-            raise TypeError("sequence item " + str(i) + ": expected str instance, NoneType found")
+            raise TypeError("sequence item " + str(i - lo) + ": expected str instance, NoneType found")
         n += len(x)
-        i += 1
-    if len(l) > 1:
-        n += m * (len(l) - 1)
+    if hi - lo > 1:
+        n += m * (hi - lo - 1)
     r = _rt.str_new(n)
     at = 0
     c = _rt.byte(sep, 0) if m == 1 else -1
-    first = True
-    for x in l:
-        if not first and m > 0:
+    for i in range(lo, hi):
+        if i > lo and m > 0:
             if c >= 0:
                 _rt.str_put(r, at, c)
             else:
                 _rt.copy(r, at, sep, 0, m)
             at += m
-        first = False
+        x = l[i]
         _rt.copy(r, at, x, 0, len(x))
         at += len(x)
     return _rt.str_done(r)
+
+
+def pys_str_join(sep: str, l: list[str]) -> str:
+    return join_items(sep, l, 0, len(l))
+
+
+def pys_str_join_slice(sep: str, l: list[str], lo: int, hi: int) -> str:
+    # sep.join(l[lo:hi]) without the list l[lo:hi]: lo and hi as a slice takes them, where
+    # -2**63 is an omitted bound
+    n = len(l)
+    if lo == -9223372036854775807 - 1:
+        lo = 0
+    elif lo < 0:
+        lo = max(lo + n, 0)
+    elif lo > n:
+        lo = n
+    if hi == -9223372036854775807 - 1 or hi > n:
+        hi = n
+    elif hi < 0:
+        hi = max(hi + n, 0)
+    return join_items(sep, l, lo, max(hi, lo))
 
 
 def pys_str_split(s: str, sep: str, maxsplit: int) -> list[str]:
@@ -1964,7 +2009,21 @@ def pys_str_splitlines(s: str, keep: int) -> list[str]:
 
 
 def pys_getcwd() -> str: ...
-def pys_path_join(a: str, b: str) -> str: ...
+
+
+def pys_path_join(a: str, b: str) -> str:
+    # os.path.join(a, b), as posixpath.join steps through its parts: b alone if it is absolute
+    # or a is empty, else a, a "/" unless a ends with one, and b
+    if len(a) == 0 or (len(b) > 0 and _rt.byte(b, 0) == 47):
+        return b
+    if _rt.byte(a, len(a) - 1) == 47:
+        return a + b
+    n = len(a)
+    r = _rt.str_new(_rt.wrap_add(_rt.wrap_add(n, 1), len(b)))
+    _rt.copy(r, 0, a, 0, n)
+    _rt.str_put(r, n, 47)
+    _rt.copy(r, _rt.wrap_add(n, 1), b, 0, len(b))
+    return _rt.str_done(r)
 
 
 def last_part(p: str) -> int:
