@@ -49,6 +49,7 @@ from src.pystachy_compiler.syntax import Node, comp_names, made_var, mk, names_i
 from src.pystachy_compiler.union_arithmetic import unarith
 from src.pystachy_compiler.utils import (
     holds_no_object,
+    packed_item,
     is_clsval,
     clsof,
     opaque_class,
@@ -3157,7 +3158,7 @@ def gen_probe_type(self, n: Node) -> str:
     return t
 
 def gen_tget(self, v: Val, i: int) -> Val:
-    item = Ins("tuple.load", "%slot", targs(v.t)[i])
+    item = Ins("tuple.load", "*" + packed_item(targs(v.t)[i]), targs(v.t)[i])
     item.k = i
     item.a = [v]
     self.put(item, 2)
@@ -3185,7 +3186,7 @@ def gen_tstore(self, v: Val, index: int, slot: str) -> None:
     ts = targs(v.t)
     item = Ins("tuple.store", "", ts[index] if index < len(ts) else BIG)
     item.k = index
-    item.a = [v, Val(slot, "%slot")]
+    item.a = [v, Val(slot, "*" + packed_item(ts[index]) if index < len(ts) else "%slot")]
     self.put(item, 1)
 
 def gen_tput(self, v: Val, index: int, x: Val) -> None:
@@ -3396,7 +3397,7 @@ def gen_list_read(self, o: Val, i: Val) -> Val:
     done = self.label()
     length = self.list_len(o)
     self.cbr(self.int_ucmp('<', Val(i.v, "int"), Val(length, "int")).v, fast, slow)
-    ph = Ins("phi", "%slot", "")
+    ph = Ins("phi", "*int", "")
     self.place(fast)
     read = Ins("list.load", "*int", "")
     read.a = [o, i]

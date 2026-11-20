@@ -1513,7 +1513,7 @@ def gen_dyn_box(self, v: Val) -> Val:
         self.place(chk)
         typ = Val(self.rtdata("pys_dyntype_int" if t == "int" else "pys_dyntype_float"), "dyntype")
         st = self.ptr_cmp("==", Val(self.dyn_typeof(b), "dyntype"), typ).v
-        sp = self.num_cmp("==", self.dyn_raw(b), Val(self.to_slot(v), "int")).v
+        sp = self.num_cmp("==", self.dyn_raw(b), Val(self.to_slot(v, False, True), "int")).v
         self.cbr(self.scalar("and", [Val(st, "bool"), Val(sp, "bool")]), hit, miss)
         self.place(hit)
         self.br(end)
@@ -2352,7 +2352,7 @@ def gen_dyn_payload(self, v: Val, t: str) -> Val:
         return r
     if t == "None" or t == NONEVAR:
         return Val("null", "None")
-    i = Ins("dyn.payload", "%slot", t)
+    i = Ins("dyn.payload", "*" + t, t)
     i.a = [Val(v.v, DYN)]
     self.put(i, 2)
     return self.from_slot(tmpname(i.r[1]), t)
@@ -2393,13 +2393,13 @@ def gen_dyn_unbox(self, v: Val, t: str, what: str = "") -> Val:
         return self.class_value_unbox(v, t)
     if dyn_builtin_type(t) != "":
         r = self.rt("pys_dyn_unbox", "i64", [f"ptr {v.v}", f"ptr {self.dyn_type(t)}"])
-        x = self.from_slot(self.to_slot(Val(r, "int")), t) if t != "int" else Val(r, "int")
+        x = self.from_word(r, t) if t != "int" else Val(r, "int")
         if t == "int" or t == "float":
             x.idfrom = v.v  # (a box of exactly type t: pys_dyn_unbox)
         return x
     if t in self.classes and t not in self.tmpl and self.classes[t].exc == "":
         r = self.rt("pys_dyn_unbox", "i64", [f"ptr {v.v}", f"ptr {self.dyn_class_type(t)}"])
-        return self.from_slot(self.to_slot(Val(r, "int")), t)
+        return self.from_word(r, t)
     if is_union(unopt(t)):
         ms = umembers(unopt(t)) + (["None"] if is_opt(t) or self.optional(unopt(t)) == unopt(t) else [])
         self.dyn_check(v, ms, typestr(t))

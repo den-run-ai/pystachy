@@ -17,7 +17,7 @@ L7:
   cbr(bool %t12) -> L13, L9
 L13:
   %t14 = rt list.get (list[float] %t4, int %t10) : *float
-  %t15 = slot.unpack(%slot %t14) : float
+  %t15 = slot.unpack(*float %t14) : float
   mem.store(&float %sample.16, float %t15)
   %t17 = mem.load(&float %sample.16) : float
   %t18 = num.cmp > (float %t17, float 0.0) : bool

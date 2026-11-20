@@ -392,7 +392,7 @@ class ListReadEmissionTests(unittest.TestCase):
         def observe(g, fn):
             if fn.f.name == "first":
                 ops = [i for b in fn.blocks for i in b.code]
-                self.assertEqual([i.t for i in ops if i.op == "phi"], ["%slot"])
+                self.assertEqual([i.t for i in ops if i.op == "phi"], ["*int"])
                 self.assertEqual([i.t for i in ops if i.op == "list.load"], ["*int"])
                 seen.append(True)
             original(g, fn)

@@ -627,6 +627,7 @@ from src.pystachy_compiler.conversions import (
     gen_floats as conversions_floats,
     gen_ufloats as conversions_ufloats,
     gen_from_slot as conversions_from_slot,
+    gen_from_word as conversions_from_word,
     gen_is_dc as conversions_is_dc,
     gen_isnum as conversions_isnum,
     gen_isref as conversions_isref,
@@ -3001,11 +3002,14 @@ class Gen:
     def alloca(self, t: str, name: str) -> str:
         return emission_alloca(self, t, name)
 
-    def to_slot(self, v: Val, keep: bool = False) -> str:
-        return conversions_to_slot(self, v, keep)
+    def to_slot(self, v: Val, keep: bool = False, opaque: bool = False) -> str:
+        return conversions_to_slot(self, v, keep, opaque)
 
     def from_slot(self, s: str, t: str) -> Val:
         return conversions_from_slot(self, s, t)
+
+    def from_word(self, s: str, t: str) -> Val:
+        return conversions_from_word(self, s, t)
 
     def rarg(self, v: Val) -> str:
         return conversions_rarg(self, v)

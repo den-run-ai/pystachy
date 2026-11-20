@@ -173,7 +173,9 @@ def check_payload_consumers(blocks):
     for block in blocks:
         for op in block["operations"]:
             if op["op"] == "dyn.payload":
-                shape(op, 1, 2, typ="%slot", texts=(op["text"],))
+                shape(op, 1, 2, texts=(op["text"],))
+                # (the packed slot of the declared type, or the untyped %slot of older snapshots)
+                require(op["type"] in ("%slot", "*" + op["text"]), "invalid dyn.payload shape")
                 addresses.add(f"%t{op['results'][0]}")
                 payloads[f"%t{op['results'][1]}"] = op["text"]
     for block in blocks:
@@ -186,7 +188,7 @@ def check_payload_consumers(blocks):
                 typ = payloads[value]
                 if op["op"] == "slot.unpack":
                     shape(op, 1, 1, typ=typ)
-                    require(operand["type"] == "%slot", "dyn.payload unpack requires a slot operand")
+                    require(operand["type"] in ("%slot", "*" + typ), "dyn.payload unpack requires a slot operand")
                 elif typ == "int":
                     # The runtime ABI names an uninterpreted i64 slot *T. These
                     # two constructors copy that word unchanged into a fresh
@@ -971,7 +973,8 @@ def normalize_snapshot(snapshot, function, max_blocks=1024, max_instructions=MAX
                 emit({"op": "jump", "next": len(nodes) + 1})
             elif kind == "dyn.payload":
                 tags = accepted(op["text"])
-                shape(op, 1, 2, typ="%slot", texts=(op["text"],))
+                shape(op, 1, 2, texts=(op["text"],))
+                require(op["type"] in ("%slot", "*" + op["text"]), "invalid dyn.payload shape")
                 require(operands[0]["type"] == "dyn" and (operands[0]["value"] in definitions
                                                           or operands[0]["value"].startswith("@")),
                         "dyn.payload requires a dynamic register or constant box")

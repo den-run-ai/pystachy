@@ -195,13 +195,14 @@ class Ins:
         self.line = 0  # encoded source position; zero for synthesized operations
         self.op = op  # a key of IROPS
         self.t = t  # its result type ("" if it defines no value; an rt op's as RUNTIME spells it), a slot's type
-        # slot.pack/unpack keep the native type in the operand/result and use %slot for
-        # the opaque eight-byte container payload. Only LLVM lowering chooses its bitcast.
+        # slot.pack/unpack keep the native type T in the operand/result and the packed slot *T, the
+        # eight-byte word that holds it, on the other side; %slot is a word that claims no type (a
+        # box's payload bits, a runtime word). Only LLVM lowering chooses its bitcast.
         # union.tag reads a nonoptional union's tag; union.payload reads its member's
-        # opaque slot (s: member type, r: address then payload). Narrowing proves those reads safe.
+        # packed slot *s (s: member type, r: address then payload). Narrowing proves those reads safe.
         # union.raw copies those bits without claiming a member (s: empty); its tag travels
         # with the bits when unionslots splits storage or rebuilds a box.
-        # dyn.type reads a dynamic value's DynType pointer and dyn.payload its slot (s: the type
+        # dyn.type reads a dynamic value's DynType pointer and dyn.payload its packed slot *s (s: the type
         # a test proved it holds, r: address then payload); the box never changes (dynamic.py).
         # dyn.raw reads opaque identity bits with no member claim (s: empty), for
         # direct integer equality only; r is again the address then payload.

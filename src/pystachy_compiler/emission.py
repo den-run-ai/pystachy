@@ -597,7 +597,7 @@ def gen_deref(self, v: Val) -> Val:
         return Val(v.v, unopt(v.t)).identity(v)
     if v.t == BIGOPT:
         return self.big_unbox(v)
-    return self.from_slot(self.mload('int', v.v), unopt(v.t)).identity(v)
+    return self.from_word(self.mload('int', v.v), unopt(v.t)).identity(v)
 
 def gen_reboxes(self, a: str, b: str) -> bool:
     # is tuple type a tuple type b, but for items that are ints, floats or bools where b's may
