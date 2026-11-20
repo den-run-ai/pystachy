@@ -51,7 +51,7 @@ def capture(source):
 
     def record(i):
         return {"op": i.op, "type": i.t, "text": i.s, "immediate": i.k, "descriptor": i.x, "results": list(i.r),
-                "operands": [{"value": a.v, "type": a.t} for a in i.a], "targets": list(i.b)}
+                "operands": [{"value": a.v, "type": a.t} for a in i.a], "targets": list(i.b), "line": i.line}
 
     functions = []
     state = {"fn": None, "ins": None, "blocks": {}}
