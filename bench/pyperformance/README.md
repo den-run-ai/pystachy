@@ -350,8 +350,8 @@ alpha.4 tag.
 The table gives **millions of whole-process instructions**, sorted by change.
 Positive values mean more instructions; negative values mean fewer. `pidigits`
 needed alpha.4's [promoting ints](../../docs/python-int.md); alpha.3 raised
-`OverflowError`, so it has no comparable row. `logging` joined the suite after
-this measurement. The table therefore does not cover the current 24-port suite.
+`OverflowError`, so it has no comparable row. `logging` and `bpe_tokeniser` joined
+the suite after this measurement, so the table does not cover the current 25-port suite.
 
 | Benchmark | alpha.3 | alpha.4 | Change |
 |---|---:|---:|---:|

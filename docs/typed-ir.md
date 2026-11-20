@@ -1221,8 +1221,9 @@ instruction without one has line 0.
 
 The optional [Lean shape checker](../tools/lean_boundary/SHAPE.md) reads the same records
 and the operation table. For the functions it accepts it proves the table's counts and
-fields, one terminator at each block's end, resolved labels and one definition for each
-value number that an operand reads. It proves no dominance, typing or lowering property.
+fields, one terminator at each block's end, resolved labels, one definition for each value
+number that an operand reads, and that the definition is reached on every path to the read.
+It proves no typing or lowering property.
 
 <a id="73-a-webassembly-gc-backend"></a>
 <a id="74-the-cpython-extension-mode-4-4"></a>

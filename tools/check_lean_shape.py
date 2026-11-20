@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
-"""Check typed-IR functions' shape with Lean, against the compiler's operation table.
+"""Check typed-IR functions' shape and def-before-use with Lean, against the operation table.
 
 Lean checks that each instruction has the operand, result and label counts and only the fields
 its row of OPS declares, that each block ends in its one terminator, that labels name blocks,
-and that each value number has one definition that every operand reading it can name. Inputs
-are inspection snapshots (typed-before.json, typed-after.json) or typed-IR text (.tir).
+and that each value number has one definition that every operand reading it can name; then that
+the definition is reached on every path from the entry block to each read (PystachyDominance).
+Inputs are inspection snapshots (typed-before.json, typed-after.json) or typed-IR text (.tir).
 
     python3 tools/check_lean_shape.py /tmp/inspect/typed-after.json
     python3 tools/check_lean_shape.py tools/fixtures/typed_ir/score_samples.listget.after.tir
 
 This adapter is trusted: it reads the table, interns labels, classifies each operand's spelling
-(ir.operand_kind) and numbers the operations. Lean proves nothing of dominance, types, effects
-or lowering.
+(ir.operand_kind) and numbers the operations. The dominator tree it computes is a claim that Lean
+tests against every edge, not trusted. Lean proves nothing of types, effects or lowering.
 """
 import argparse
 import json
@@ -35,7 +36,8 @@ FIELDS = (("type", "", 1), ("text", "", 2), ("immediate", 0, 4), ("descriptor", 
 VALUE, PARAM, SLOT, CONSTANT, UNKNOWN = 0, 1, 2, 3, 4
 LIMITATIONS = [
     "Checks instruction shape against OPS, block terminators, label resolution and single definition of value numbers.",
-    "A definition is not shown to dominate its uses; operand and result types, effects and lowering are not checked.",
+    "Checks that each value's definition is reached on every path to each read; code no path reaches is not checked.",
+    "Operand and result types, effects and lowering are not checked.",
     "The Python adapter, the operation table it reads, operand classification and the native Lean executable are trusted.",
     "A snapshot or text is an observation of the compiler's IR, not the IR that lowering consumed.",
 ]
@@ -103,14 +105,68 @@ def normalize(record, names):
             "j": ins["op"] == "phi",
         }
 
+    blocks = [{"label": labels[block["label"]], "code": [instruction(ins) for ins in block["operations"]]}
+              for block in record["blocks"]]
     return {
         "symbol": record["symbol"],
         "params": len(record["parameters"]),
         "slots": [instruction(slot) for slot in record["slots"]],
         # (two blocks of one label have one number, which Lean's distinct labels reject)
-        "blocks": [{"label": labels[block["label"]], "code": [instruction(ins) for ins in block["operations"]]}
-                   for block in record["blocks"]],
+        "blocks": blocks,
+        "tree": dominator_tree(blocks),
     }
+
+
+def dominator_tree(blocks):
+    """Each block that the entry block reaches, but the entry block, with its immediate dominator:
+    [label, parent] pairs (Cooper, Harvey and Kennedy's iteration in reverse postorder). Lean
+    checks this claim against every edge, as PystachyDominance.successors draws them."""
+    if not blocks:
+        return []
+    successors = {block["label"]: [] for block in blocks}
+    for block in blocks:
+        for ins in block["code"]:
+            if not ins["j"]:
+                successors[block["label"]].extend(l for l in ins["b"] + ins["e"] if l in successors)
+    entry = blocks[0]["label"]
+    postorder, seen, stack = [], {entry}, [(entry, iter(successors[entry]))]
+    while stack:
+        node, pending = stack[-1]
+        following = next((s for s in pending if s not in seen), None)
+        if following is None:
+            stack.pop()
+            postorder.append(node)
+        else:
+            seen.add(following)
+            stack.append((following, iter(successors[following])))
+    order = postorder[::-1]
+    rank = {label: n for n, label in enumerate(order)}
+    predecessors = {label: [] for label in order}
+    for label in order:
+        for s in successors[label]:
+            predecessors[s].append(label)
+    parent = {entry: entry}
+
+    def meet(a, b):
+        while a != b:
+            while rank[a] > rank[b]:
+                a = parent[a]
+            while rank[b] > rank[a]:
+                b = parent[b]
+        return a
+
+    changed = True
+    while changed:
+        changed = False
+        for label in order[1:]:
+            found = None
+            for p in predecessors[label]:
+                if p in parent:
+                    found = p if found is None else meet(p, found)
+            if parent.get(label) != found:
+                parent[label] = found
+                changed = True
+    return [[label, parent[label]] for label in order[1:]]
 
 
 def candidate(records):

@@ -1626,7 +1626,79 @@ def gen_inplace(self, op: str, cur: Val, rhs: Node) -> Val:
         b = self.expr(rhs, cur.t)  # (as for cur op rhs: c += Counter() types the empty Counter)
         self.none_operand(op + "=", cur, b)
         return self.call_fn(self.classes[cur.t].methods[im], [cur, b], [])
-    return self.arith(op, cur, self.expr(rhs, cur.t), op + "=")
+    b = self.expr(rhs, cur.t)
+    r = self.inplace_subclasses(op, cur, b)
+    if r is not None:
+        return r
+    return self.arith(op, cur, b, op + "=")
+
+def gen_inplace_subclasses(self, op: str, cur: Val, b: Val) -> Val | None:
+    # cur op= b of an object whose class has no in-place method for op (__iadd__ & co) but
+    # whose subclasses have one (#1538): CPython calls the in-place method of the object's own
+    # class, so the class is selected by its tag, as virtual_call selects an override: a
+    # subclass's in-place method where it has one, else cur op b. The results join (wider).
+    # None where no subclass has one, or b is an Any, whose dynamic operation calls the method
+    # of the object's class itself (dyn_arith): cur op b, as before
+    im = "__i" + DUNDER[op][2:] if op in DUNDER else ""
+    if im == "" or b.t == "dyn" or cur.t not in self.classes or self.classes[cur.t].tag == 0 or im in self.classes[cur.t].methods:
+        return None
+    cs = [c for c in self.classes.values() if c.tag > 0 and c.name != cur.t and self.derives(c.name, cur.t) and im in c.methods]
+    if len(cs) == 0:
+        return None
+    self.none_operand(op + "=", cur, b)
+    tag = self.mload('int', cur.v)
+    end = self.label()
+    other = self.label()
+    arms: list[str] = []
+    for i in range(len(cs)):
+        arms.append(self.label())
+        nxt = self.label() if i + 1 < len(cs) else other
+        self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(cs[i].tag), "int")).v, arms[i], nxt)
+        if i + 1 < len(cs):
+            self.place(nxt)
+    vals: list[Val] = []
+    edges: list[str] = []
+    narrow = dict(self.narrowed)
+    for i in range(len(cs) + 1):
+        self.narrowed = dict(narrow)
+        if i < len(cs):
+            self.place(arms[i])
+            v = self.call_fn(cs[i].methods[im], [Val(cur.v, cs[i].name), b], [], direct=True)
+        else:
+            self.place(other)
+            v = self.arith(op, cur, b, op + "=")
+        if not self.term:
+            if self.idhere() and numeric_identity(v.t):
+                v.idfrom = self.dyn_id_box(v).v
+            vals.append(v)
+            edges.append(self.cur)
+            self.br(end)
+    self.narrowed = narrow
+    t = vals[0].t if len(vals) > 0 else "None"
+    for v in vals[1:]:
+        w = self.wider(v.t, t)
+        if w == "":
+            self.err(f"{op}= on {short(cur.t)} calls the in-place method of the object's class where it has one, whose results ({', '.join([typestr(x.t) for x in vals])}) have no common type; give them one")
+        t = w
+    ph = Ins("phi", t, "")
+    for i in range(len(vals)):
+        r = self.convert_at(vals[i], t, edges[i])
+        self.incoming(ph, r.v, self.convedge)
+    self.place(end)
+    if len(vals) == 0:
+        self.unreachable()
+    result = Val("null", "None") if t == "None" else Val(self.phi(ph), t)
+    if self.idhere() and numeric_identity(t):
+        identity = Ins("phi", "dyn", "")
+        for i in range(len(vals)):
+            self.incoming(identity, vals[i].idfrom if vals[i].idfrom != "" else "null", edges[i])
+        held = self.phi(identity)
+        result.idslot = self.alloca("dyn", "")
+        self.mem_store(Val(result.idslot, "*dyn"), Val(held, "dyn"))
+        result.idheld = held
+        result.idcounter = self.alloca("int", "")
+        result.idversion = "0"
+    return result
 
 def gen_objlen(self, v: Val) -> Val:
     r = self.call_fn(self.classes[v.t].methods["__len__"], [v], [])

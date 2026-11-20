@@ -1302,6 +1302,7 @@ from src.pystachy_compiler.statements import (
     gen_hoist_class as statements_hoist_class,
     gen_imported as statements_imported,
     gen_inplace as statements_inplace,
+    gen_inplace_subclasses as statements_inplace_subclasses,
     gen_iterable as statements_iterable,
     gen_iterarg as statements_iterarg,
     gen_ival as statements_ival,
@@ -4627,6 +4628,9 @@ class Gen:
 
     def inplace(self, op: str, cur: Val, rhs: Node) -> Val:
         return statements_inplace(self, op, cur, rhs)
+
+    def inplace_subclasses(self, op: str, cur: Val, b: Val) -> Val | None:
+        return statements_inplace_subclasses(self, op, cur, b)
 
     def objlen(self, v: Val) -> Val:
         return statements_objlen(self, v)
