@@ -183,7 +183,7 @@ def load(path):
         snapshot = json.loads(source)
         require(isinstance(snapshot, dict) and snapshot.get("schema_version") == 1
                 and isinstance(snapshot.get("functions"), list), "expected an inspection snapshot of schema_version 1")
-        return [typed_ir_text.from_snapshot(function) for function in snapshot["functions"]]
+        return [typed_ir_text.from_snapshot(function, snapshot.get("files", [])) for function in snapshot["functions"]]
     return typed_ir_text.parse_functions(source)
 
 

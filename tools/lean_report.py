@@ -413,7 +413,7 @@ def gc_check(snapshot, checker, _):
 
 
 def shape_check(snapshot, _, __):
-    records = [typed_ir_text.from_snapshot(function) for function in snapshot["functions"]]
+    records = [typed_ir_text.from_snapshot(function, snapshot.get("files", [])) for function in snapshot["functions"]]
     verdict, _ = shape.check(records)
     rejected = [{"function": r["symbol"], "status": "rejected", "obligations": 1, "message": r["reason"]}
                 for r in verdict["rejected"]]
