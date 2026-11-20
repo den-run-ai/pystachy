@@ -2951,7 +2951,7 @@ def gen_stack_tuple(self, vals: list[Val]) -> Val:
     i = Ins("slot", t, "")
     i.k = 2
     i.r = one_num(self.n)
-    self.fn.slots.append(i)
+    self.slot(i)
     p = f"%stk.{self.n}"
     for j in range(len(vals)):
         self.tput(Val(p, t), j, vals[j])
@@ -4373,8 +4373,7 @@ def gen_declining_call(self, f: FnInfo, me: Val, arg: Val, direct: bool, decl: l
         return r
     clear = Ins("mach.store", "", "")  # (mstore, before the code of the call)
     clear.a = [Val(self.decl_flag(), "%ptr"), Val("false", "bool")]
-    if self.source_lines.enabled:
-        clear.line = self.line
+    clear.line = self.line
     blk.code.insert(at, clear)
     decl.append(True)
     return r

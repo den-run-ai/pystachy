@@ -26,9 +26,9 @@ import re
 import subprocess
 import sys
 
-from check_lean_boundary import (INVOKES, MAX_PROGRAM_BYTES, OP_KEYS, OUTCOMES, SEVERITY,
-                                 TERMINATORS, Unsupported, check_header, checker_result, name,
-                                 read_snapshot, require)
+from check_lean_boundary import (INVOKES, MAX_PROGRAM_BYTES, OUTCOMES, SEVERITY,
+                                 TERMINATORS, Unsupported, check_header, checker_result,
+                                 instruction_fields, name, read_snapshot, require)
 from check_lean_effects import WORD, fresh_addresses, fresh_store, summaries, tagged_classes
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -97,7 +97,7 @@ MAX_TYPE = 1 << 20
 
 def instruction(value, slot=False):
     """A validated operation of the snapshot (a type, such as a long tuple's, can be long)."""
-    require(isinstance(value, dict) and set(value) == OP_KEYS, "invalid instruction fields")
+    require(instruction_fields(value), "invalid instruction fields")
     for key in ("op", "text", "descriptor"):
         require(isinstance(value[key], str) and len(value[key]) <= 4096, f"invalid instruction {key}")
     require(isinstance(value["type"], str) and len(value["type"]) <= MAX_TYPE, "invalid instruction type")

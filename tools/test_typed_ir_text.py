@@ -44,6 +44,13 @@ cold "Kind: text" -> L8
 loop kind=range mode="" head=L5 body=L8 step=L9 exit=L8 tests=[] indices=[%t3 "a b"] counter=%left.1 stop=(int 10) sequences=[] nonnegative=true
 }
 """
+# WRITTEN with locations on an instruction that ends in each part a line may end in: a type, a
+# label, an operand list, a field and the operation's name; the slot's line is in file 2
+LOCATED = (WRITTEN.replace("  %left.1 = slot left : int\n", "  %left.1 = slot left : int loc(2:1)\n")
+           .replace(' -> L5\nL5: handler=L9\n', ' -> L5 loc(7)\nL5: handler=L9\n')
+           .replace("(tuple[int,str] %stk.2) : %slot\n", "(tuple[int,str] %stk.2) : %slot loc(8)\n")
+           .replace("  ret.none\n", "  ret.none loc(12)\n")
+           .replace("-> L8, L5, L8\n", "-> L8, L5, L8 loc(9999999)\n"))
 
 
 def compiled(path, source=None):
@@ -115,12 +122,41 @@ class TextTests(unittest.TestCase):
         self.assertEqual(find, {
             "op": "rt", "type": "int", "text": "dict.find", "immediate": 0, "descriptor": "!s", "results": [3],
             "operands": [{"value": "%a1", "type": "dict[str,int]"}, {"value": "@s.4", "type": "str"},
-                         {"value": "ptrtoint (ptr @s.4 to i64)", "type": "int"}], "targets": []})
+                         {"value": "ptrtoint (ptr @s.4 to i64)", "type": "int"}], "targets": [], "line": 0})
         self.assertEqual(record["blocks"][1]["operations"][1]["targets"], ["L8", "L9"])
         self.assertEqual(record["blocks"][3]["operations"][0]["targets"], [""])
         self.assertEqual(record["check_targets"], {"Kind: text": "L8"})
         self.assertEqual(record["loops"][0]["indices"], ["%t3", "a b"])
         self.assertEqual(record["loops"][0]["stop"], {"value": "10", "type": "int"})
+
+    def test_locations_print_on_request_and_read_back(self):
+        self.assertEqual(LOCATED.count(" loc("), 5)
+        record = text.parse_function(LOCATED)
+        self.assertEqual(record["slots"][0]["line"], 20000001)
+        self.assertEqual([i["line"] for b in record["blocks"] for i in b["operations"]], [0, 0, 7, 8, 0, 12, 0, 9999999])
+        self.assertEqual(text.format_function(record, True), LOCATED)
+        self.assertEqual(text.format_function(record), WRITTEN)
+        self.assertEqual(text.roundtrip_errors(record), [])
+        unlocated = text.parse_function(WRITTEN)
+        self.assertEqual({i["line"] for i in unlocated["slots"] + [i for b in unlocated["blocks"] for i in b["operations"]]}, {0})
+        self.assertEqual(text.format_function(unlocated, True), WRITTEN)
+        self.assertEqual(text.location_text(1), "loc(1)")
+        self.assertEqual(text.location_text(10000000), "loc(1:0)")
+
+    def test_malformed_locations_are_rejected_with_their_line(self):
+        for written, expected in (("loc(0)", "an unknown location is omitted"), ("loc(0:0)", "an unknown location is omitted"),
+                                  ("loc(012)", "a location must be written loc(12)"),
+                                  ("loc(0:12)", "a location must be written loc(12)"),
+                                  ("loc(30000012)", "a location must be written loc(3:12)"),
+                                  ("loc(3:012)", "a location must be written loc(3:12)"),
+                                  ("loc(3:10000000)", "a location's line must be below 10000000"),
+                                  ("loc(-1)", "unexpected text"), ("loc()", "unexpected text"), ("loc(1:)", "unexpected text")):
+            with self.subTest(written=written), self.assertRaises(text.TextError) as raised:
+                text.parse_functions(WRITTEN.replace("  ret.none\n", f"  ret.none {written}\n"))
+            self.assertIn(f"line 13: {expected}", str(raised.exception))
+        for line in ("  ret.none  loc(1)", "  ret.noneloc(1)", "  ret.none loc(1) "):
+            with self.subTest(line=line), self.assertRaises(text.TextError):
+                text.parse_functions(WRITTEN.replace("  ret.none\n", line + "\n"))
 
     def test_comments_and_blank_lines_are_skipped(self):
         record = text.parse_function("; a test\n\n" + WRITTEN.replace("entry:\n", "entry:\n  ; why\n"))
@@ -179,6 +215,9 @@ class TextTests(unittest.TestCase):
                                  (lambda r: r["blocks"][2]["operations"][0].__setitem__("results", ["1"]), "result numbers must be integers"),
                                  (lambda r: r["slots"][0].__setitem__("results", [1, 2]), "a slot has one number"),
                                  (lambda r: r["loops"][0].__setitem__("sort", "x"), "unknown loop field"),
+                                 (lambda r: r["slots"][1].__setitem__("line", -1), "a line must be a nonnegative integer"),
+                                 (lambda r: r["slots"][1].__setitem__("line", "3"), "a line must be a nonnegative integer"),
+                                 (lambda r: r["slots"][1].pop("line"), "a line must be a nonnegative integer"),
                                  (lambda r: r.__setitem__("coroutine", 1), "coroutine must be a boolean")):
             with self.subTest(expected=expected):
                 broken = json.loads(json.dumps(record))
@@ -197,6 +236,8 @@ class CompilerTests(unittest.TestCase):
                 with self.subTest(case=case, symbol=record["symbol"]):
                     self.assertEqual(text.roundtrip_errors(record), [])
                     self.assertEqual(text.from_ifn(text.to_ifn(record)), record)
+                    # (each op the compiler built has its source line, which the round trips keep)
+                    self.assertNotIn(0, [i["line"] for i in record["slots"] + [i for b in record["blocks"] for i in b["operations"]]])
                 count += 1
                 ops.update(i["op"] for b in record["blocks"] for i in b["operations"])
         self.assertGreater(count, 100)
@@ -211,22 +252,56 @@ class CompilerTests(unittest.TestCase):
             for name in ("typed-before.json", "typed-after.json"):
                 snapshot = json.loads((output / name).read_text())
                 self.assertGreater(len(snapshot["functions"]), 0)
+                self.assertEqual(snapshot["files"][0], str(EXAMPLE))
                 for function in snapshot["functions"]:
-                    record = text.from_snapshot(function)
+                    record = text.from_snapshot(function, snapshot["files"])
                     self.assertEqual(text.roundtrip_errors(record), [])
                     self.assertEqual(text.parse_function(text.format_function(record))["symbol"], function["symbol"])
+                    # (a record's line is the snapshot's location, as the compiler numbers lines)
+                    for b, found in zip([{"operations": function["slots"]}] + function["blocks"],
+                                        [{"operations": record["slots"]}] + record["blocks"], strict=True):
+                        for ins, line in zip(b["operations"], [i["line"] for i in found["operations"]], strict=True):
+                            self.assertEqual(ins["location"]["precision"], "line")
+                            self.assertEqual((ins["location"]["file"], ins["location"]["line"]),
+                                             (snapshot["files"][line // 10000000], line % 10000000))
             printed = subprocess.run([sys.executable, str(ROOT / "tools/typed_ir_text.py"), "print", str(output / "typed-after.json"),
                                       "--function", "score_samples"], check=True, capture_output=True, text=True, timeout=60).stdout
             self.assertEqual(text.parse_function(printed)["symbol"], "@f.score_samples")
+            self.assertNotIn(" loc(", printed)
+            located = subprocess.run([sys.executable, str(ROOT / "tools/typed_ir_text.py"), "print", str(output / "typed-after.json"),
+                                      "--function", "score_samples", "--locations"], check=True, capture_output=True, text=True, timeout=60).stdout
+            self.assertIn(" loc(", located)
+            self.assertEqual(text.format_function(text.parse_function(located)), printed)
             listing = Path(directory) / "score.tir"
-            listing.write_text(printed)
-            checked = subprocess.run([sys.executable, str(ROOT / "tools/typed_ir_text.py"), "check", str(listing)],
-                                     capture_output=True, text=True, timeout=60)
-            self.assertEqual((checked.returncode, checked.stdout), (0, "typed_ir_text: 1 functions parse and print unchanged\n"))
+            for listed in (located, printed):
+                listing.write_text(listed)
+                checked = subprocess.run([sys.executable, str(ROOT / "tools/typed_ir_text.py"), "check", str(listing)],
+                                         capture_output=True, text=True, timeout=60)
+                self.assertEqual((checked.returncode, checked.stdout), (0, "typed_ir_text: 1 functions parse and print unchanged\n"))
             listing.write_text(printed.replace("  br -> ", "  br  -> ", 1))
             checked = subprocess.run([sys.executable, str(ROOT / "tools/typed_ir_text.py"), "check", str(listing)],
                                      capture_output=True, text=True, timeout=60)
             self.assertEqual(checked.returncode, 1)
+
+
+    def test_a_snapshot_location_names_one_of_its_files(self):
+        ret = {"op": "ret.none", "type": "", "text": "", "immediate": 0, "descriptor": "", "results": [], "operands": [],
+               "targets": [], "location": {"file": "lib/heapq.py", "line": 12, "column": None, "precision": "line"}}
+        function = {"symbol": "@f", "parameters": [], "return_representation": "None", "recursion": {"coroutine": False},
+                    "effects": None, "slots": [], "blocks": [{"label": "entry", "handler": "", "operations": [ret]}],
+                    "check_targets": {}, "loops": []}
+        record = text.from_snapshot(function, ["main.py", "lib/os.py", "lib/heapq.py"])
+        self.assertEqual(record["blocks"][0]["operations"][0]["line"], 20000012)
+        self.assertEqual(text.format_function(record, True), "function @f() -> None {\nentry:\n  ret.none loc(2:12)\n}\n")
+        with self.assertRaisesRegex(text.TextError, "lib/heapq.py, which the snapshot's files do not list"):
+            text.from_snapshot(function, ["main.py"])
+        for unknown in (None, "absent"):
+            with self.subTest(location=unknown):
+                if unknown is None:
+                    ret["location"] = None
+                else:
+                    del ret["location"]
+                self.assertEqual(text.from_snapshot(function)["blocks"][0]["operations"][0]["line"], 0)
 
 
 class PassTests(unittest.TestCase):
