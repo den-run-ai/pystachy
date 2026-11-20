@@ -24,7 +24,7 @@ contracts bootstrap check-ir
 COMMIT = "a" * 40
 BUNDLE = "d" * 64
 # The corpus of the reports below: its cases (which the GC suites' shards hold between them, and the
-# gc-ir halves and tests-cpython compile) and its syntax cases
+# gc-ir thirds and tests-cpython compile) and its syntax cases
 CORPUS_CASES = 60
 SYNTAX_CASES = 2
 
@@ -94,7 +94,7 @@ SAMPLE_MUTATIONS = [lambda step: step.pop("stressed_sample"),
                     lambda step: step["stressed_sample"].update(failed=1),
                     lambda step: step["stressed_sample"].update(failures=["lost case"]),
                     lambda step: step["stressed_sample"].pop("failures")]
-# The gc-ir halves: the stressed compiler's IR, messages, status and checks identical to stage 2's
+# The gc-ir thirds: the stressed compiler's IR, messages, status and checks identical to stage 2's
 GC_IR_MUTATIONS = [lambda step: step.update(ir_identical=False),
                    lambda step: step.update(ir_identical="true"),
                    lambda step: step.pop("ir_identical"),
@@ -114,7 +114,7 @@ GC_IR_MUTATIONS = [lambda step: step.update(ir_identical=False),
                    lambda step: step.pop("check_identical"),
                    lambda step: step.update(shard_index=1 - step["shard_index"]),
                    lambda step: step.pop("shard_index"),
-                   lambda step: step.update(shard_count=3),
+                   lambda step: step.update(shard_count=2),
                    lambda step: step.update(result="fail")]
 
 
@@ -264,9 +264,10 @@ def report(group, steps):
             step["python_int_optin"] = copy.deepcopy(python_int_report(int(name[-1])))
         if name in merge.GC_STEPS:
             step.update(gc_suite(name))
-        if name in merge.GC_IR_STEPS:   # halves of the corpus's cases and its 2 syntax cases
+        if name in merge.GC_IR_STEPS:   # thirds of the corpus's cases; the first two hold its 2 syntax cases
             step.update(compiler_interval=merge.GC_COMPILER_INTERVAL, reference="stage2", ir_identical=True,
-                        runtime_identical=True, ir_cases=CORPUS_CASES // 2, check_cases=1, check_identical=True)
+                        runtime_identical=True, ir_cases=CORPUS_CASES // 3,
+                        check_cases=1 if name != "gc-ir-2" else 0, check_identical=True)
         if name in merge.SHARDED_STEPS:
             step.update(shard_index=int(name[-1]), shard_count=merge.SHARDED_STEPS[name])
         if name in merge.SCALING_STEPS:
@@ -440,7 +441,7 @@ class ContractTests(unittest.TestCase):
         for alias in ("gc-stress", "gc-ir", "gc-jit", "gc-aot", "ubsan", "native", "opt-off", "python-free", "scaling-1",
                       "python-int-optin"):
             self.assertNotIn(alias, groups)  # Compatibility aliases must not duplicate CI work.
-        for group in ("gc-self", "gc-ir-0", "gc-ir-1", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2", "ubsan-0", "ubsan-1",
+        for group in ("gc-self", "gc-ir-0", "gc-ir-1", "gc-ir-2", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2", "ubsan-0", "ubsan-1",
                       "ubsan-2", "ubsan-3", "ubsan-4", "python-free-0", "python-free-1", "python-free-2", "python-free-3"):
             self.assertEqual(groups[group], ["bootstrap", group])
         self.assertEqual(groups["runtime-cache"], ["bootstrap", "runtime-cache", "annotation-widening"])
@@ -475,7 +476,7 @@ class ContractTests(unittest.TestCase):
                 path.write_text(json.dumps(report(group, steps)))
             result = merge.merge_reports(directory, groups, COMMIT)
             self.assertEqual([step["name"] for step in result["steps"]], groups["all"])
-            for group in ("opt-off-0", "opt-off-1", "opt-off-2", "gc-self", "gc-ir-0", "gc-ir-1", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2",
+            for group in ("opt-off-0", "opt-off-1", "opt-off-2", "gc-self", "gc-ir-0", "gc-ir-1", "gc-ir-2", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2",
                           "hosted", "native-0", "native-1", "native-2", "python-free-0", "python-free-1",
                           "python-free-2", "python-free-3", "ubsan-0", "ubsan-1", "ubsan-2", "ubsan-3", "ubsan-4", "runtime-cache", "contracts", "benchmarks",
                           "scaling", "dynany-optin-0", "dynany-optin-1", "dynany-optin-2",
@@ -539,14 +540,14 @@ class ContractTests(unittest.TestCase):
                     with self.subTest(mode_checks=checks), self.assertRaisesRegex(ValueError, error):
                         merge.merge_reports(directory, groups, COMMIT)
             merge.merge_reports(directory, groups, COMMIT)
-            # the gc-ir halves compile every corpus case once (sources.corpus_cases) and check every syntax
+            # the gc-ir thirds compile every corpus case once (sources.corpus_cases) and check every syntax
             # case (sources.syntax_cases); a GC suite's stressed sample counts toward its mode's checks,
             # and its shards hold every corpus case between them
             for group, mutate, error in (
-                    ("gc-ir-0", lambda data: data["steps"][1].update(ir_cases=CORPUS_CASES // 2 - 1), "gc-ir halves"),
-                    ("gc-ir-1", lambda data: data["steps"][1].update(ir_cases=CORPUS_CASES // 2 + 1), "gc-ir halves"),
-                    ("gc-ir-1", lambda data: data["steps"][1].update(check_cases=0), "gc-ir halves"),
-                    ("gc-ir-0", lambda data: data["steps"][1].update(check_cases=2), "gc-ir halves"),
+                    ("gc-ir-0", lambda data: data["steps"][1].update(ir_cases=CORPUS_CASES // 3 - 1), "gc-ir thirds"),
+                    ("gc-ir-2", lambda data: data["steps"][1].update(ir_cases=CORPUS_CASES // 3 + 1), "gc-ir thirds"),
+                    ("gc-ir-1", lambda data: data["steps"][1].update(check_cases=0), "gc-ir thirds"),
+                    ("gc-ir-2", lambda data: data["steps"][1].update(check_cases=1), "gc-ir thirds"),
                     ("gc-jit-0", lambda data: data["steps"][-1]["stressed_sample"].update(passed=2, expected=2),
                      "GC JIT shards must cover"),
                     ("gc-aot-1", lambda data: data["steps"][-1]["stressed_sample"].update(passed=2, expected=2),
@@ -713,7 +714,7 @@ class ContractTests(unittest.TestCase):
             with self.subTest(step="scaling-0", mutation=index), self.assertRaises(ValueError):
                 merge.validate_report(data, "scaling", groups["scaling"])
         # Identity reports remain mandatory and validate the same evidence independently of JIT.
-        for group in ("gc-ir-0", "gc-ir-1"):
+        for group in ("gc-ir-0", "gc-ir-1", "gc-ir-2"):
             valid = report(group, groups[group])
             self.assertEqual(valid["steps"][1]["name"], group)
             for index, mutate in enumerate(GC_IR_MUTATIONS):
@@ -722,21 +723,21 @@ class ContractTests(unittest.TestCase):
                 with self.subTest(group=group, gc_ir_mutation=index), self.assertRaises(ValueError):
                     merge.validate_report(data, group, groups[group])
 
-    def test_gc_suites_require_both_complete_gc_ir_halves(self):
+    def test_gc_suites_require_all_complete_gc_ir_thirds(self):
         # The GC suites run code compiled by stage 2 unstressed: even a contract without the gc-ir
-        # halves, or with one of them, cannot drop the stressed compiler's identity.
+        # thirds, or with some of them, cannot drop the stressed compiler's identity.
         aot = "gc-aot-0 bootstrap gc-aot-0\ngc-aot-1 bootstrap gc-aot-1\ngc-aot-2 bootstrap gc-aot-2\n"
-        full = merge.parse_groups("all bootstrap gc-ir-0 gc-ir-1 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2\n"
-                                  "gc-ir-0 bootstrap gc-ir-0\ngc-ir-1 bootstrap gc-ir-1\n"
+        full = merge.parse_groups("all bootstrap gc-ir-0 gc-ir-1 gc-ir-2 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2\n"
+                                  "gc-ir-0 bootstrap gc-ir-0\ngc-ir-1 bootstrap gc-ir-1\ngc-ir-2 bootstrap gc-ir-2\n"
                                   "gc-jit-0 bootstrap gc-jit-0\ngc-jit-1 bootstrap gc-jit-1\n" + aot)
         without = merge.parse_groups("all bootstrap gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2\n"
                                      "gc-jit-0 bootstrap gc-jit-0\ngc-jit-1 bootstrap gc-jit-1\n" + aot)
-        half = merge.parse_groups("all bootstrap gc-ir-0 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2\n"
-                                  "gc-ir-0 bootstrap gc-ir-0\n"
+        half = merge.parse_groups("all bootstrap gc-ir-0 gc-ir-1 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2\n"
+                                  "gc-ir-0 bootstrap gc-ir-0\ngc-ir-1 bootstrap gc-ir-1\n"
                                   "gc-jit-0 bootstrap gc-jit-0\ngc-jit-1 bootstrap gc-jit-1\n" + aot)
         alone = merge.parse_groups("all bootstrap gc-ir-0\ngc-ir-0 bootstrap gc-ir-0\n")
-        for groups, error in ((full, None), (without, "gc-ir halves"), (half, "gc-ir halves"),
-                              (alone, "gc-ir halves")):
+        for groups, error in ((full, None), (without, "gc-ir thirds"), (half, "gc-ir thirds"),
+                              (alone, "gc-ir thirds")):
             with self.subTest(groups=groups), tempfile.TemporaryDirectory() as tmp:
                 directory = Path(tmp)
                 for name in groups:

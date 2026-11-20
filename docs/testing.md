@@ -664,8 +664,8 @@ benchmark correctness, and Lint checks CPython port preservation. The full group
 | `python-free-0`, `python-free-1`, `python-free-2`, `python-free-3` | Rebuild with no Python on `PATH`; four disjoint quarters of the suite with that compiler. |
 | `ubsan-0`, `ubsan-1`, `ubsan-2`, `ubsan-3`, `ubsan-4` | Sanitized compiler/runtime; five disjoint fifths of the JIT/AOT suite. |
 | `gc-self` | Collector-stressed self-compilation and identical-IR check. |
-| `gc-ir-0`, `gc-ir-1` | Two disjoint halves of the corpus: the compiler collecting every 1,000 allocations gives stage 2's IR, messages and exit status for every case and stage 2's `check` results. Both halves also compare `runtime.py`. |
-| `gc-jit-0`, `gc-jit-1` | Two disjoint halves of the JIT suite with program GC stress, one case in 16 of each half with the compiler stressed too. Execution uses its own weighted partition, independently of the identity halves. The x86-64 `gc-jit-0` job then runs runtime ABI, cache, GC and generated-code ASan controls. |
+| `gc-ir-0`, `gc-ir-1`, `gc-ir-2` | Three disjoint thirds of the corpus: the compiler collecting every 1,000 allocations gives stage 2's IR, messages and exit status for every case and stage 2's `check` results. Each third also compares `runtime.py`. |
+| `gc-jit-0`, `gc-jit-1` | Two disjoint halves of the JIT suite with program GC stress, one case in 16 of each half with the compiler stressed too. Execution uses its own weighted partition, independently of the identity thirds. The x86-64 `gc-jit-0` job then runs runtime ABI, cache, GC and generated-code ASan controls. |
 | `gc-aot-0`, `gc-aot-1`, `gc-aot-2` | Three disjoint thirds of the AOT suite with program GC stress, one case in 16 of each third with the compiler stressed too. |
 | `dynany-optin-0` through `dynany-optin-2` | Three disjoint thirds of `tests/programs/`, opted into dynamic `Any`, compared with a fresh pinned-CPython oracle in JIT and AOT. |
 | `python-int-optin-0` through `python-int-optin-2` | Three disjoint thirds of `tests/programs/`, opted into promoting ints, with a fresh pinned-CPython oracle in JIT and AOT and exact reviewed limitations. |
@@ -675,7 +675,7 @@ benchmark correctness, and Lint checks CPython port preservation. The full group
 | `scaling` | Every compiler-scaling shape, in two steps, shapes measured side by side. |
 
 GC identity and JIT execution have separate job budgets. The aggregate still requires
-both identity halves and every execution shard; case selection and stress intervals
+all three identity thirds and every execution shard; case selection and stress intervals
 are unchanged. The PR matrix retains its existing groups and budget.
 A failed group leaves the others running. The aggregate checks are
 `make verify (Linux x86-64, LLVM 18, Python 3.13)` and
@@ -760,23 +760,23 @@ GNU `date` and do not affect the comparison or test verdict.
 Identity timings are appended as cases finish, retaining completed work if a later
 case reaches the job limit. Their row order can differ between runs.
 
-The full GC identity halves use `tests/gc_case_weights.txt` when present, falling
+The full GC identity thirds use `tests/gc_case_weights.txt` when present, falling
 back to the ordinary case weights otherwise. GC weights measure stressed compiler
 work, which can be large for imports whose programs run quickly. JIT halves and
 AOT thirds use ordinary JIT/AOT weights for execution and its deterministic
 compiler-stressed sample. Changing the identity weights therefore leaves the
 execution partition, order and sample unchanged. Each partition covers the full
-corpus; the aggregate requires both identity halves and every execution shard.
+corpus; the aggregate requires all three identity thirds and every execution shard.
 The PR profile retains its sparse selection. Weight changes affect placement and
 order, never coverage or stress intervals.
-A GC table `reserve W0 W1` row would supply initial weights before balancing identity
+A GC table `reserve W0 W1 W2` row would supply initial weights before balancing identity
 cases, in the table's weight units; a missing table or reserve row means zero reserve.
 The current table has none. Its header names the commit and CI run whose x86-64 and
 ARM64 `gc-ir-N-times.log` files it was refreshed from: each case's wall time for both
 compilations and their comparison, scaled to the median corpus program. JIT samples
 also enable the IR checker through `tests/run.sh`'s default.
 Refresh GC weights with `tools/case_weights.py -o tests/gc_case_weights.txt` and
-both halves' `gc-ir-N-times.log` files from one completed run; runtime, syntax and
+all three thirds' `gc-ir-N-times.log` files from one completed run; runtime, syntax and
 execution timings describe different work and should not be mixed into that table.
 `tools/case_weights.py` writes case weights only, so it does not carry a reserve into
 potentially different units. Identity now has its own jobs; do not reserve JIT work
@@ -786,9 +786,9 @@ before adopting the refresh.
 GC self-compilation collects every 5,000 allocations and has a separate ten-minute bound.
 At the former interval of 1,000, it spent 23 minutes on 15,543 full-heap collections;
 the wider interval still exercises thousands of collections without dominating CI.
-The compiler collecting every 1,000 allocations is checked by identity, once a run: `gc-ir-0`
-and `gc-ir-1` run independently of JIT and compile the cases of two disjoint halves of the
-corpus (`gc_shard_cases`, balanced as above) with it and with stage 2 unstressed, through
+The compiler collecting every 1,000 allocations is checked by identity, once a run: `gc-ir-0`,
+`gc-ir-1` and `gc-ir-2` run independently of JIT and compile the cases of three disjoint thirds of
+the corpus (`gc_shard_cases`, balanced as above) with it and with stage 2 unstressed, through
 `tools/irsame.sh` (`rt` for `rtmode_*` cases, with the IR check on), and require the same IR byte
 for byte, the same messages and the same exit status for every case, the same IR of `runtime.py`,
 and the same `check` output and status for every `syntax_*` case (`tools/irsame.sh --check`). The
@@ -811,19 +811,21 @@ empty), so the stressed compiler builds the runtime that the job's GC tests use,
 cache, `opt`/`lli` and `clang`/link paths after the IR run under stress; the program-stressed run
 takes the shard's other cases. AOT keeps three jobs: projected from the same measurements, two
 would each take about 11.2 minutes of work, over the ten-minute target, and three take about 7.7.
-Self-compilation, both identity halves and the five execution suites use separate runners
+Identity runs in thirds since the typed-IR verifier, which the IR check runs under stress too, made
+each x86-64 half take about 11.5 minutes, against 8 on v0.6.1, and one reach the 15-minute limit.
+Self-compilation, the three identity thirds and the five execution suites use separate runners
 and report their own durations.
-The final gate requires all eight groups, both execution modes, the intervals (1,000 for `gc-ir`
+The final gate requires all nine groups, both execution modes, the intervals (1,000 for `gc-ir`
 and the samples' compiler, 0 for the program-stressed runs' compiler, 1 for every program),
 distinct shard identities, each sample's identity (its period and its mode's offset, as many
 cases as its shard has positions at that offset, and with the program-stressed run's cases as
 many as the shard holds) and complete counts for every run: each mode's runs and samples together
 make as many checks as `tests/verify.sh` counts in the whole corpus in one mode (each report's
 `sources.mode_checks`), and its shards hold `sources.corpus_cases` cases between them; the
-`gc-ir` halves together compare `sources.corpus_cases` cases and `sources.syntax_cases` checks
-with no difference. It rejects GC suites without both `gc-ir` halves, even in a contract that
+`gc-ir` thirds together compare `sources.corpus_cases` cases and `sources.syntax_cases` checks
+with no difference. It rejects GC suites without all three `gc-ir` thirds, even in a contract that
 omits them. `tests/verify.sh gc-stress` still runs all GC checks locally with one bootstrap;
-`gc-ir` runs the two identity halves, `gc-jit` those and the two JIT halves, and `gc-aot` the
+`gc-ir` runs the three identity thirds, `gc-jit` those and the two JIT halves, and `gc-aot` the
 three AOT thirds.
 The native and opt-off suites run in thirds, Python-free in quarters, and UBSan in fifths
 (`tests/verify.sh`'s `shard_cases`). The gate requires each

@@ -35,8 +35,8 @@
 #                  runtime.py (types, coverage, and the effects their call graphs show), and no
 #                  function of runtime.py reaches itself through runtime.c
 #   gc-self        the native compiler collecting every 5000 allocations reproduces the IR
-#   gc-ir-0/-1     the stage-2 compiler collecting every 1000 allocations compiles each case of one of
-#                  two disjoint halves of the corpus (gc_shard_cases), and runtime.py, exactly as stage 2
+#   gc-ir-0/-1/-2  the stage-2 compiler collecting every 1000 allocations compiles each case of one of
+#                  three disjoint thirds of the corpus (gc_shard_cases), and runtime.py, exactly as stage 2
 #                  does unstressed (tools/irsame.sh: the same IR, messages and exit status, byte for
 #                  byte), and `check`s each syntax_*.py alike (tools/irsame.sh --check)
 #   gc-jit-0/-1, gc-aot-0/-1/-2 every test of the shard passes, JIT (two halves) or AOT (three
@@ -172,7 +172,7 @@ plan() {
     bootstrap) echo 'bootstrap' ;;
     # (in the order a run of all records them: the contracts' steps, as their lanes report them, after
     # the opt-in sweeps)
-    all) echo 'bootstrap tests-cpython tests-native-0 tests-native-1 tests-native-2 tests-opt-off-0 tests-opt-off-1 tests-opt-off-2 runtime-cache python-free-0 python-free-1 python-free-2 python-free-3 ubsan-0 ubsan-1 ubsan-2 ubsan-3 ubsan-4 gc-self gc-ir-0 gc-ir-1 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks example-cli dynany-optin-0 dynany-optin-1 dynany-optin-2 python-int-optin-0 python-int-optin-1 python-int-optin-2 annotation-widening check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code aot-dead-code unicode-audit scaling-0 scaling-1' ;;
+    all) echo 'bootstrap tests-cpython tests-native-0 tests-native-1 tests-native-2 tests-opt-off-0 tests-opt-off-1 tests-opt-off-2 runtime-cache python-free-0 python-free-1 python-free-2 python-free-3 ubsan-0 ubsan-1 ubsan-2 ubsan-3 ubsan-4 gc-self gc-ir-0 gc-ir-1 gc-ir-2 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks example-cli dynany-optin-0 dynany-optin-1 dynany-optin-2 python-int-optin-0 python-int-optin-1 python-int-optin-2 annotation-widening check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code aot-dead-code unicode-audit scaling-0 scaling-1' ;;
     hosted) echo 'bootstrap tests-cpython' ;;
     native-0) echo 'bootstrap tests-native-0' ;;
     native-1) echo 'bootstrap tests-native-1' ;;
@@ -196,15 +196,16 @@ plan() {
     gc-self) echo 'bootstrap gc-self' ;;
     gc-ir-0) echo 'bootstrap gc-ir-0' ;;
     gc-ir-1) echo 'bootstrap gc-ir-1' ;;
+    gc-ir-2) echo 'bootstrap gc-ir-2' ;;
     gc-jit-0) echo 'bootstrap gc-jit-0' ;;
     gc-jit-1) echo 'bootstrap gc-jit-1' ;;
     gc-aot-0) echo 'bootstrap gc-aot-0' ;;
     gc-aot-1) echo 'bootstrap gc-aot-1' ;;
     gc-aot-2) echo 'bootstrap gc-aot-2' ;;
-    gc-ir) echo 'bootstrap gc-ir-0 gc-ir-1' ;; # local aliases are not CI groups
-    gc-jit) echo 'bootstrap gc-ir-0 gc-ir-1 gc-jit-0 gc-jit-1' ;;
+    gc-ir) echo 'bootstrap gc-ir-0 gc-ir-1 gc-ir-2' ;; # local aliases are not CI groups
+    gc-jit) echo 'bootstrap gc-ir-0 gc-ir-1 gc-ir-2 gc-jit-0 gc-jit-1' ;;
     gc-aot) echo 'bootstrap gc-aot-0 gc-aot-1 gc-aot-2' ;;
-    gc-stress) echo 'bootstrap gc-self gc-ir-0 gc-ir-1 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2' ;;
+    gc-stress) echo 'bootstrap gc-self gc-ir-0 gc-ir-1 gc-ir-2 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2' ;;
     runtime-cache) echo 'bootstrap runtime-cache annotation-widening' ;;
     dynany-optin-0|dynany-optin-1|dynany-optin-2) echo "bootstrap $1" ;;
     dynany-optin) echo 'bootstrap dynany-optin-0 dynany-optin-1 dynany-optin-2' ;; # local alias
@@ -216,10 +217,10 @@ plan() {
     *) echo "verify: unknown group: $1" >&2; return 2 ;;
   esac
 }
-[ $# -le 1 ] || { echo 'usage: tests/verify.sh [all|hosted|native-0|native-1|native-2|native|opt-off-0|opt-off-1|opt-off-2|opt-off|python-free-0|python-free-1|python-free-2|python-free-3|python-free|ubsan-0|ubsan-1|ubsan-2|ubsan-3|ubsan-4|ubsan|gc-self|gc-ir-0|gc-ir-1|gc-ir|gc-jit-0|gc-jit-1|gc-jit|gc-aot-0|gc-aot-1|gc-aot-2|gc-aot|gc-stress|runtime-cache|dynany-optin-0|dynany-optin-1|dynany-optin-2|dynany-optin|python-int-optin-0|python-int-optin-1|python-int-optin-2|python-int-optin|contracts|benchmarks|scaling|--list]' >&2; exit 2; }
+[ $# -le 1 ] || { echo 'usage: tests/verify.sh [all|hosted|native-0|native-1|native-2|native|opt-off-0|opt-off-1|opt-off-2|opt-off|python-free-0|python-free-1|python-free-2|python-free-3|python-free|ubsan-0|ubsan-1|ubsan-2|ubsan-3|ubsan-4|ubsan|gc-self|gc-ir-0|gc-ir-1|gc-ir-2|gc-ir|gc-jit-0|gc-jit-1|gc-jit|gc-aot-0|gc-aot-1|gc-aot-2|gc-aot|gc-stress|runtime-cache|dynany-optin-0|dynany-optin-1|dynany-optin-2|dynany-optin|python-int-optin-0|python-int-optin-1|python-int-optin-2|python-int-optin|contracts|benchmarks|scaling|--list]' >&2; exit 2; }
 GROUP=${1:-all}
 if [ "$GROUP" = --list ]; then
-  groups='all bootstrap hosted native-0 native-1 native-2 opt-off-0 opt-off-1 opt-off-2 python-free-0 python-free-1 python-free-2 python-free-3 ubsan-0 ubsan-1 ubsan-2 ubsan-3 ubsan-4 gc-self gc-ir-0 gc-ir-1 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 runtime-cache dynany-optin-0 dynany-optin-1 dynany-optin-2 python-int-optin-0 python-int-optin-1 python-int-optin-2 contracts benchmarks scaling'
+  groups='all bootstrap hosted native-0 native-1 native-2 opt-off-0 opt-off-1 opt-off-2 python-free-0 python-free-1 python-free-2 python-free-3 ubsan-0 ubsan-1 ubsan-2 ubsan-3 ubsan-4 gc-self gc-ir-0 gc-ir-1 gc-ir-2 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 runtime-cache dynany-optin-0 dynany-optin-1 dynany-optin-2 python-int-optin-0 python-int-optin-1 python-int-optin-2 contracts benchmarks scaling'
   [ "$PROFILE" != pr ] || groups='all bootstrap hosted native-jit-0 native-jit-1 native-aot-0 native-aot-1 native-aot-2 native-aot-3 safety-0 safety-1 opt-in contracts gc-self benchmarks'
   for g in $groups; do
     printf '%s %s\n' "$g" "$(plan "$g")"
@@ -769,12 +770,12 @@ step gc-self $r "$s" "$L" ", \"compiler_interval\": 5000, \"ir_identical\": $(sa
 fi
 
 # ---- GC stress: the stressed compiler's output, then the corpus in both modes, on independent CI runners
-# gc-ir-0/-1: stage 2 collecting every GC_COMPILER_INTERVAL allocations must compile each case of one
-# of two disjoint halves of the corpus (gc_shard_cases) exactly as stage 2 does unstressed (tools/irsame.sh:
+# gc-ir-0/-1/-2: stage 2 collecting every GC_COMPILER_INTERVAL allocations must compile each case of
+# one of three disjoint thirds of the corpus (gc_shard_cases) exactly as stage 2 does unstressed (tools/irsame.sh:
 # `ir`, or `rt` for rtmode_*, with the IR check on as tests/run.sh has it; the IR byte for byte, every
 # message and the exit status), runtime.py too (`rt`), and `check` each syntax_*.py alike
-# (tools/irsame.sh --check): the two halves compile every case once a run with the stressed compiler.
-# The full gate requires both identity halves. Execution uses its own complete partition, balanced
+# (tools/irsame.sh --check): the three thirds compile every case once a run with the stressed compiler.
+# The full gate requires all three identity thirds. Execution uses its own complete partition, balanced
 # by native JIT/AOT weights: gc-jit-0/-1 (two halves, JIT) and gc-aot-0/-1/-2 (three thirds, AOT).
 # Where the IR is the same, the LLVM tools build the same program, so they collect at every
 # program allocation (PYSTACHY_GC_STRESS_PROGRAM=1), compiled by stage 2 unstressed: compiling each case
@@ -795,10 +796,10 @@ GC_COMPILER_INTERVAL=1000
 GC_SAMPLE_EVERY=16
 GC_JIT_SAMPLE_OFFSET=4
 GC_AOT_SAMPLE_OFFSET=12
-for shard in 0 1; do
+for shard in 0 1 2; do
   want gc-ir-$shard || continue
   L=$V/gc-ir-$shard.log; s=$(now); r=fail; ir_ok=false; ir_n=0; rt_ok=false; chk_ok=false
-  gc_shard_cases $shard 2 "$V/gc-ir-$shard-cases.log"
+  gc_shard_cases $shard 3 "$V/gc-ir-$shard-cases.log"
   grep '/syntax_[^/]*\.py$' "$V/gc-ir-$shard-cases.log" > "$V/gc-ir-$shard-syntax.log"
   chk_n=$(lines "$V/gc-ir-$shard-syntax.log")
   set --
@@ -838,7 +839,7 @@ for shard in 0 1; do
     fi
   } > "$L" 2>&1
   [ $ir_ok = true ] && [ $rt_ok = true ] && [ $chk_ok = true ] && r=pass
-  step gc-ir-$shard $r "$s" "$L" ", \"compiler_interval\": $GC_COMPILER_INTERVAL, \"reference\": \"stage2\", \"ir_cases\": ${ir_n:-0}, \"ir_identical\": $ir_ok, \"runtime_identical\": $rt_ok, \"check_cases\": $chk_n, \"check_identical\": $chk_ok, \"shard_index\": $shard, \"shard_count\": 2"
+  step gc-ir-$shard $r "$s" "$L" ", \"compiler_interval\": $GC_COMPILER_INTERVAL, \"reference\": \"stage2\", \"ir_cases\": ${ir_n:-0}, \"ir_identical\": $ir_ok, \"runtime_identical\": $rt_ok, \"check_cases\": $chk_n, \"check_identical\": $chk_ok, \"shard_index\": $shard, \"shard_count\": 3"
 done
 for gc_group in gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2; do
   want "$gc_group" || continue
@@ -1356,7 +1357,7 @@ sources = {str(p): {"lines": p.read_bytes().count(b"\n"),
 # (suite_checks: the checks of the whole corpus in JIT and AOT, which the shards of each such suite
 # make together; mode_checks: its checks in one mode, which the shards of each GC suite make with
 # their samples, and the UBSan fifths once in each mode)
-# (corpus_cases and syntax_cases: the cases tests-cpython, and the gc-ir halves together, compile
+# (corpus_cases and syntax_cases: the cases tests-cpython, and the gc-ir thirds together, compile
 # with both compilers, and those they check with both; all of them counted in tests/corpus.sh's corpus)
 cases = [Path(p) for p in Path(os.environ["CORPUS_LIST"]).read_text().splitlines()]
 sources.update(test_programs=sum(p.parts[:2] == ("tests", "programs") for p in cases),

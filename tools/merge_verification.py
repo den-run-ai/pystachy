@@ -27,7 +27,7 @@ SUITE_STEPS = {"tests-cpython", "tests-native-0", "tests-native-1", "tests-nativ
 # shards their suite has: the name ends in the shard index.
 SHARDED_STEPS = {f"{suite}-{index}": count for suite, count in
                  (("tests-native", 3), ("tests-opt-off", 3), ("python-free", 4),
-                  ("ubsan", 5), ("gc-ir", 2), ("gc-jit", 2), ("gc-aot", 3))
+                  ("ubsan", 5), ("gc-ir", 3), ("gc-jit", 2), ("gc-aot", 3))
                  for index in range(count)}
 # The PR profile keeps full native coverage in two JIT workers and four AOT workers. Each alternate configuration runs
 # the common deterministic sample in one worker; these are not partial shards of the full gate.
@@ -38,12 +38,12 @@ SUITE_STEPS.update(PR_NATIVE_STEPS)
 PR_SHARDED_STEPS = {**{name: PR_NATIVE_SHARDS[mode] for name, mode in PR_NATIVE_STEPS.items()}, "tests-opt-off-0": 1,
                     "python-free-0": 1, "ubsan-0": 1, "gc-jit-0": 1, "gc-aot-0": 1}
 # The GC suites run their shards (halves in JIT, thirds in AOT) with program stress alone, compiled by
-# stage 2 unstressed, after the gc-ir halves have shown the stage-2 compiler collecting every
+# stage 2 unstressed, after the gc-ir thirds have shown the stage-2 compiler collecting every
 # GC_COMPILER_INTERVAL allocations to compile every case to the same IR, messages and status. Each
 # runs a sample of its shard end to end with the compiler stressed too, first: the cases at positions
 # GC_SAMPLE_OFFSETS[mode] modulo GC_SAMPLE_EVERY of the shard as shard_cases lists it (tests/verify.sh)
 GC_STEPS = {"gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2"}
-GC_IR_STEPS = ("gc-ir-0", "gc-ir-1")
+GC_IR_STEPS = ("gc-ir-0", "gc-ir-1", "gc-ir-2")
 GC_COMPILER_INTERVAL = 1000
 GC_SAMPLE_EVERY = 16
 GC_SAMPLE_OFFSETS = {"jit": 4, "aot": 12}
@@ -377,7 +377,7 @@ def validate_report(report, group, expected, profile="full", selection=None):
                     integer(step.get("check_cases"), f"{label}.check_cases") < 0 or
                     step.get("check_identical") is not True):
                 raise ValueError(f"{label}: the compiler collecting every {GC_COMPILER_INTERVAL} allocations must "
-                                 "compile its half of the corpus and runtime.py as stage 2 does")
+                                 "compile its third of the corpus and runtime.py as stage 2 does")
         if step["name"] == "tests-cpython":
             # Every case compiled alike by both compilers, every syntax case checked alike, and the
             # sample's end-to-end checks (counted below as a suite step's)
@@ -536,8 +536,8 @@ def merge_reports(directory, groups, expected_commit=None, machine=None, subset=
                 sum(reports[group]["steps"][-1]["shard_cases"] for group in shards) !=
                 integer(reports[wanted[0]]["sources"].get("corpus_cases"), "sources.corpus_cases", 1)):
             raise ValueError(f"{what} shards must hold every corpus case between them")
-    # The gc-ir halves compile every case of the corpus once with the stressed compiler (by count:
-    # shard_cases's halves are disjoint) and check every syntax case, which the GC suites, compiled
+    # The gc-ir thirds compile every case of the corpus once with the stressed compiler (by count:
+    # shard_cases's thirds are disjoint) and check every syntax case, which the GC suites, compiled
     # by stage 2 unstressed, rely on: a contract without them cannot drop them either.
     gc_ir = [step for report in reports.values() for step in report["steps"] if step["name"] in GC_IR_STEPS]
     gc_suites = [step["name"] for report in reports.values() for step in report["steps"] if step["name"] in GC_STEPS]
@@ -548,7 +548,7 @@ def merge_reports(directory, groups, expected_commit=None, machine=None, subset=
                 integer(sources.get("corpus_cases"), "sources.corpus_cases", 1) or
                 sum(step["check_cases"] for step in gc_ir) !=
                 integer(sources.get("syntax_cases"), "sources.syntax_cases", 1)):
-            raise ValueError(f"{(gc_suites or ['gc-ir'])[0]}: the gc-ir halves must compile every corpus case "
+            raise ValueError(f"{(gc_suites or ['gc-ir'])[0]}: the gc-ir thirds must compile every corpus case "
                              f"once, and check every syntax case, with the compiler collecting every "
                              f"{GC_COMPILER_INTERVAL} allocations")
     halves = {step["name"]: step["shapes"] for report in reports.values() for step in report["steps"]
